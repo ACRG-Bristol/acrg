@@ -23,7 +23,7 @@ git push
 ***Update regularly***
 To make sure you're up-to-date with everyone else's changes, regularly type (or set a cron job), from inside the folder:
 
-git checkout master
+git pull
 
 ***Changing someone else's code***
 First, make sure you have the most up-to-date version of the repo (see above). Then, edit the code on your machine. Then, when you're done, just commit the changes back to the repo:
