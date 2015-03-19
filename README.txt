@@ -31,3 +31,8 @@ First, make sure you have the most up-to-date version of the repo (see above). T
 git commit -m "ADD_SOME_DESCRIPTIVE_COMMENTS_HERE_IN_QUOTES"
 
 git push
+
+*Adding an ssh key*
+
+Git will ask you for a password every time you want to connect using https. You can get around this by adding your RSA key to your account. Instructions are here: https://confluence.atlassian.com/display/BITBUCKET/Set+up+SSH+for+Git. You can probably start at step 6.
+
