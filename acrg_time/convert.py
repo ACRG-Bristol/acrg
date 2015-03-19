@@ -1,0 +1,142 @@
+# -*- coding: utf-8 -*-
+"""
+
+FUNCTIONS
+
+sec2time: Convert "seconds since YYYY-MM-DD HH:MM" format (e.g. from CF files)
+    to datetime
+
+    Example: 
+        time = \
+        acrg_time.convert.sec2time(seconds, "2000-01-01 00:00")
+
+time2sec: Calculate seconds since some reference time. Assumes you want 
+    a reference time at the beginning of that year, unless you specify a 
+    particular reference time
+
+    Example:
+        seconds_since, reference = acrg_time.convert.time2sec(datetime)
+
+
+Created on Fri Nov 21 10:48:30 2014
+
+@author: chxmr
+"""
+
+import datetime as dt
+import time as tm
+import calendar
+import dateutil
+
+def check_iter(var):
+    
+    if not hasattr(var, '__iter__'):
+        var = [var]
+        notIter = True
+    else:
+        notIter = False
+
+    return var, notIter
+
+
+def return_iter(var, notIter):
+    
+    if notIter:
+        return var[0]
+    else:
+        return var
+
+
+def reftime(time_reference):
+    
+    time_reference, notIter = check_iter(time_reference)
+    
+    #If reference time is a string, assume it's in CF convention 
+    # and convert to datetime
+    if type(time_reference[0]) is str or type(time_reference[0]) is unicode:
+        time_ref=dateutil.parser.parse(time_reference[0])
+    else:
+        time_ref=time_reference[0]
+    
+    return time_ref
+
+
+def sec2time(seconds, time_reference):
+
+    seconds, notIter = check_iter(seconds)
+
+    time_ref = reftime(time_reference)
+
+    return return_iter([time_ref + 
+        dt.timedelta(seconds=long(s)) for s in seconds], notIter)
+
+
+def min2time(minutes, time_reference):
+    
+    minutes, notIter = check_iter(minutes)
+    
+    time_ref = reftime(time_reference)
+
+    return return_iter([time_ref +
+        dt.timedelta(minutes=m) for m in minutes], notIter)
+
+
+def day2time(days, time_reference):
+    
+    days, notIter = check_iter(days)
+
+    time_ref = reftime(time_reference)
+    
+    return return_iter([time_ref + dt.timedelta(days=d) for d in days], 
+                        notIter)
+
+
+def time2sec(time, time_reference=None):
+    
+    time, notIter = check_iter(time)
+    
+    if time_reference is None:
+        time_reference=dt.datetime(min(time).year, 1, 1, 0, 0)
+
+    time_seconds=[\
+        (t.replace(tzinfo=None)-time_reference).total_seconds() \
+        for t in time]
+
+    return return_iter(time_seconds, notIter), time_reference
+
+
+def time2decimal(dates):
+    
+    def sinceEpoch(date): # returns seconds since epoch
+        return tm.mktime(date.timetuple())
+    s = sinceEpoch
+    
+    dates, notIter = check_iter(dates)
+    
+    frac=[]
+    for date in dates:
+        year = date.year
+        startOfThisYear = dt.datetime(year=year, month=1, day=1)
+        startOfNextYear = dt.datetime(year=year+1, month=1, day=1)
+    
+        yearElapsed = s(date) - s(startOfThisYear)
+        yearDuration = s(startOfNextYear) - s(startOfThisYear)
+        fraction = yearElapsed/yearDuration
+
+        frac.append(date.year + fraction)
+        
+    return return_iter(frac, notIter)
+    
+    
+def decimal2time(frac):
+    
+    frac, notIter = check_iter(frac)
+
+    dates = []
+    for f in frac:
+        year = int(f)
+        yeardatetime = dt.datetime(year, 1, 1)
+        daysPerYear = 365 + calendar.leapdays(year, year+1)
+        dates.append(yeardatetime + dt.timedelta(days = daysPerYear*(f - year)))
+    
+    return return_iter(dates, notIter)
