@@ -3,7 +3,7 @@ Shared Python code for the Atmospheric Chemistry Research Group (University of B
 ***First Installation***
 For ACRG group members, check out the code using your (personal) Google account. Create a directory, and then, from that directory, type:
 
-git clone https://mrghg@bitbucket.org/mrghg/acrg.git
+git clone https://YOUR_USERNAME@bitbucket.org/mrghg/acrg.git
 
 ***Adding a file to the repo***
 From your directory, first add a file to the SVN library:
