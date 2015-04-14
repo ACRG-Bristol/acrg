@@ -29,7 +29,7 @@ from acrg_time import convert
 import json
 import datetime as dt
 
-root_directory="/data/shared/obs/AGAGE_UKMO"
+root_directory="/data/shared/AGAGE_UKMO"
 
 def synonyms(search_string, info):
     
@@ -157,6 +157,9 @@ def get(site_in, species_in,
         file_site = [f[1] for f in file_info]
         file_species = [re.split("-|\.", f[-1])[0] for f in file_info]
         file_height = [re.split("-|\.", f[-1])[1] for f in file_info]
+        
+        print file_species
+        print file_site
         
         #Get file list
         file_species_string = listsearch(file_species, species, species_info)
