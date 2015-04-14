@@ -121,7 +121,7 @@ def get(site_in, species_in,
         with open(acrg_path[0] + "/acrg_species_info.json") as f:
             species_info=json.load(f)
 
-        with open(acrg_path[0] + "/site_info.json") as f:
+        with open(acrg_path[0] + "/acrg_site_info.json") as f:
             site_info=json.load(f)
         
         site = synonyms(site_in, site_info)
