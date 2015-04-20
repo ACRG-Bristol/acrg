@@ -289,8 +289,10 @@ def filtering(time, mf, filt):
     def daytime2hr(time,mf):
         df=pandas.DataFrame(mf, index=time, columns=['mf'])
         dfpm=df[(df.index.hour>=10) * (df.index.hour<=16)]
-        return [t.to_pydatetime() + dt.timedelta(0.5) for t in dfpm.index], \
-                np.array(dfpm['mf'])
+        dfr = dfpm.resample("2H", how="mean")
+        dfn = dfr.dropna()
+        return [t.to_pydatetime() for t in dfn.index], \
+                np.array(dfn['mf'])
 
     filters={"midday":midday,
              "daytime2hr":daytime2hr}
