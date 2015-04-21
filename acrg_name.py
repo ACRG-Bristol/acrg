@@ -285,15 +285,24 @@ def filtering(time, mf, filt):
         dfr=dfpm.resample("1D", how="median")
         return [t.to_pydatetime() + dt.timedelta(0.5) for t in dfr.index], \
                 np.array(dfr['mf'])
+    
+    def daytime2hr(time,mf):
+        df=pandas.DataFrame(mf, index=time, columns=['mf'])
+        dfpm=df[(df.index.hour>=10) * (df.index.hour<=16)]
+        dfr = dfpm.resample("2H", how="mean")
+        dfn = dfr.dropna()
+        return [t.to_pydatetime() for t in dfn.index], \
+                np.array(dfn['mf'])
 
-    filters={"midday":midday}
+    filters={"midday":midday,
+             "daytime2hr":daytime2hr}
             
     return filters[filt](time, mf)
 
 
 def sensitivity_single_site(site, species,
                 years=[2012], flux_years=None,
-                domain="_small", basis_case='voronoi', filt=None):
+                domain="small", basis_case='voronoi', filt=None):
     
     if flux_years is None:
         flux_years=years
@@ -324,7 +333,7 @@ def sensitivity_single_site(site, species,
 
 
 def sensitivity(obs, species, years=[2012], flux_years=None,
-                domain="_small", basis_case='voronoi', filt=None):
+                domain="small", basis_case='voronoi', filt=None):
 
     H=[]
     y_time=[]
