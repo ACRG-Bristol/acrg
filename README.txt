@@ -46,4 +46,4 @@ Git will ask you for a password every time you want to connect using https. You 
 
 ***Conflicts***
 
-Conflicts are inevitable. Git sorts this out for you. If you try to "push" changes from your local repository when you're not up-to-date, it'll complain. In that case, pull the latest changes from the server.
+Conflicts are inevitable. Git sorts this out for you. If you try to "push" changes from your local repository when you're not up-to-date, it'll complain. In that case, pull the latest changes from the server. FINISH THIS...
