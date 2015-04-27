@@ -34,6 +34,7 @@ from operator import itemgetter
 from acrg_grid import areagrid
 from acrg_time.convert import time2sec
 import os
+import matplotlib.pyplot as plt
 
 #Default NAME output file version
 #This is changed depending on presence of "Fields:" line in files
@@ -616,8 +617,15 @@ def particle_locations(input_search_string, lons = None, lats = None):
             compression=None
         
         df = pandas.read_csv(f, compression=compression, sep=r"\s+")
-
         for i in range(1, len(set(numpy.array(df["Id"])))+1):
+            print(dlons, dlats)
+            plt.plot(df.Long[df["Id"]==i], df.Lat[df["Id"]==i], '.')
+            plt.plot([50, 120], [edge_lats[1] - dlats/2., edge_lats[1] - dlats/2.])
+            plt.plot([50, 120], [edge_lats[1], edge_lats[1]])
+            plt.plot([50, 120], [edge_lats[0] + dlats/2., edge_lats[0] + dlats/2.])
+            plt.plot([edge_lons[1] - dlons/2., edge_lons[1] - dlons/2.], [0, 60])
+            plt.plot([edge_lons[0] + dlons/2., edge_lons[0] + dlons/2.], [0, 60])
+            plt.show()
         
 #            hist.append(numpy.zeros((2*len(lats) + 2*len(lons), len(heights))))
             hist_ti = {}
@@ -625,28 +633,24 @@ def particle_locations(input_search_string, lons = None, lats = None):
             
             #Northern edge
             dfe = df[(df["Lat"] > edge_lats[1] - dlats/2.) & (df["Id"] == i)]
-#            hist[-1][0:len(lats),:] = \
             hist_ti["N"] = \
                 particle_location_edges(dfe["Long"].values, dfe["Ht"].values,
                                         lons, heights)
             particles_ti += numpy.sum(hist_ti["N"])
             #Eastern edge
             dfe = df[(df["Long"] > edge_lons[1] - dlons/2.) & (df["Id"] == i)]
-#            hist[-1][len(lats):len(lats)+len(lons),:] = \
             hist_ti["E"] = \
                 particle_location_edges(dfe["Lat"].values, dfe["Ht"].values,
                                         lats, heights)
             particles_ti += numpy.sum(hist_ti["E"])
             #Southern edge
             dfe = df[(df["Lat"] < edge_lats[0] + dlats/2.) & (df["Id"] == i)]
-#            hist[-1][len(lats)+len(lons):2*len(lats)+len(lons),:] = \
             hist_ti["S"] = \
                 particle_location_edges(dfe["Long"].values, dfe["Ht"].values,
                                         lons, heights)
             particles_ti += numpy.sum(hist_ti["S"])
             #Western edge
             dfe = df[(df["Long"] < edge_lons[0] + dlons/2.) & (df["Id"] == i)]
-#            hist[-1][2*len(lats)+len(lons):2*len(lats)+2*len(lons),:] = \
             hist_ti["W"] = \
                 particle_location_edges(dfe["Lat"].values, dfe["Ht"].values,
                                         lats, heights)
@@ -654,9 +658,10 @@ def particle_locations(input_search_string, lons = None, lats = None):
 
             hist_ti = {direction: hist_direction / particles_ti
                 for (direction, hist_direction) in hist_ti.iteritems()}
+            print(numpy.sum(hist_ti["W"]) + numpy.sum(hist_ti["S"]) +\
+                    numpy.sum(hist_ti["N"])+numpy.sum(hist_ti["E"]))
             hist.append(hist_ti)
             particles.append(particles_ti)
-#            hist[-1] = hist[-1]/numpy.sum(hist[-1])
         
     return hist_lats, hist_lons, hist_heights, hist
 
@@ -717,7 +722,7 @@ def process_multiple(input_search_string, output_file,
         concatenate_footprints(files,
             met_time=met["time"], pressure=met["P"],
             temperature=met["T"])
-            
+
     if particle_search_string is not None:
         hist_lats, hist_lons, hist_heights, hist = \
             particle_locations(particle_search_string, lons = lons, lats = lats)
@@ -730,4 +735,5 @@ def process_multiple(input_search_string, output_file,
             wind_speed=met["wind"], wind_direction=met["wind_direction"],
             PBLH=met["PBLH"], particle_locations = hist,
             particle_heights = hist_heights)
+
 
