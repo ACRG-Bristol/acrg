@@ -137,6 +137,8 @@ class read_sitefile_GONZI_nc:
         Day = data.variables['DD'][:]
         SecSinceMidnight=data.variables['Time_Slots'][:]
         
+        CH4 = data.variables['CH4'][:]        
+        
         
         # Create the time variable
         time_t = [dt.datetime(Year[i],Month[i],Day[i]) + dt.timedelta(seconds=(SecSinceMidnight[i]).astype('int')) for i in np.arange(len(Day))]
@@ -149,6 +151,7 @@ class read_sitefile_GONZI_nc:
         self.lon = lon[good_i]
         self.alt = alt[good_i]
         self.filename = sitefile
+        self.CH4 = CH4[good_i]
 
 
  # Class to read in the netcdf site file written by matt listing the fixed sites    
@@ -258,9 +261,10 @@ class read_column_sitefile_nc:
 
 # Class to read in the netcdf site file written by matt listing the mobile GAUGE sites (ferry and aircraft)  
 class read_mobile_sitefile_nc:
-    def __init__(self, species = 'CH4', dir = '/data/shared/GAUGE/', month = 1, year = 2003):
+    def __init__(self, sitefile = 0, species = 'CH4', dir = '/data/shared/GAUGE/', month = 1, year = 2003):
         
-        sitefile = dir + species + '/mozart_obs_mobile/mozart_obs_mobile_' +str(year)+ str(month).zfill(2)+'.nc'
+        if type(sitefile) == type(0):
+            sitefile = dir + species + '/mozart_obs_mobile/mozart_obs_mobile_' +str(year)+ str(month).zfill(2)+'.nc'
         
         print 'Site file to read:'
         print sitefile
@@ -476,8 +480,6 @@ class data_filter_fixed:
         # loop through each lat/lon in the siteinfo
         for j in np.arange(len(siteinfo.lat)):
             
-            # Use the haverseine code to determine the closest surface grid point to the given location
-            #haversine =  haver.multipledistances([siteinfo.lat[j], siteinfo.lon[j]] , data.lat, data.lon)     
             
             # use the match_latlot code which is based on bisect rather than calculating the exact distance
             latlon_index = match_latlon(siteinfo.lat[j],siteinfo.lon[j],data.lat, data.lon)      
@@ -783,7 +785,7 @@ class data_filter_mobile:
         
         species = data.species
         #print 'reading site file : ' 
-       #S print sitefile
+        print sitefile
         
         # Read site info file
         
@@ -807,8 +809,11 @@ class data_filter_mobile:
             site_lats = siteinfo.lat[time_index]
             site_lons = siteinfo.lon[time_index]
             site_alts = siteinfo.alt[time_index]
+            site_conc = siteinfo.conc[time_index]
+            site_repeat = siteinfo.repeatability[time_index]
             site_pressures = siteinfo.pressure[time_index]
             seconds = obs_seconds[time_index]            
+            site_units = siteinfo.units
             
             # create parameters to store output
             model_pressures = np.empty(len(site_times))      
@@ -887,6 +892,9 @@ class data_filter_mobile:
             self.site_lon = site_lons
             self.site_alt = site_alts
             self.site_pressure = site_pressures
+            self.site_conc = site_conc
+            self.site_repeat = site_repeat
+            self.site_units = site_units
             self.model_pressure = np.squeeze(model_pressures)
             self.model_lat = model_lats
             self.model_lon = model_lons
@@ -958,13 +966,15 @@ class write_ncdf_mobile:
         ncobs_lat = ncF.createVariable('obs_lat', 'f', ('time',))
         ncobs_alt = ncF.createVariable('obs_alt', 'f', ('time',))
         ncobs_press = ncF.createVariable('obs_pressure', 'f', ('time',))
+        ncobs_conc = ncF.createVariable('obs_conc', 'f', ('time',))
+        ncobs_repeat = ncF.createVariable('obs_repeatability', 'f', ('time',))
         
         ncmodel_time = ncF.createVariable('model_time', 'i', ('time',))
         ncmodel_lon = ncF.createVariable('model_lon', 'f', ('time',))
         ncmodel_lat = ncF.createVariable('model_lat', 'f', ('time',))
         ncmodel_press = ncF.createVariable('model_pressure', 'f', ('time',))
 
-        ncconc = ncF.createVariable('conc', 'f', ('time'))
+        ncmodel_conc = ncF.createVariable('model_conc', 'f', ('time'))
         
         
         # Fill the variables
@@ -977,6 +987,8 @@ class write_ncdf_mobile:
         ncobs_lat[:] = filtereddata.site_lat
         ncobs_alt[:] = filtereddata.site_alt
         ncobs_press[:] = filtereddata.site_pressure
+        ncobs_conc[:] = filtereddata.site_conc
+        ncobs_repeat[:] = filtereddata.site_repeat
         
         # times as seconds since 1/1/2009
         ncmodel_time[:] = [(t - dt.datetime(2009,1,1,0,0,0)).total_seconds() for t in filtereddata.model_time]     
@@ -985,13 +997,14 @@ class write_ncdf_mobile:
         ncmodel_lat[:] = filtereddata.model_lat
         ncmodel_press[:] = filtereddata.model_pressure
 
-        ncconc[:] = filtereddata.conc
+        ncmodel_conc[:] = filtereddata.conc
         
         
         # Give the variables some attributes        
         ncmodel_lon.units = 'Degrees east'
         ncmodel_lat.units = 'Degrees north'
-        ncconc.units = filtereddata.concunits
+        ncmodel_conc.units = filtereddata.concunits
+        ncobs_conc.units = filtereddata.site_units
         ncmodel_press.units = filtereddata.pressureunits
         ncmodel_time.units = 'seconds since 2009-01-01 00:00:00'
         
@@ -1138,19 +1151,176 @@ class write_ncdf_column:
         ncF.close()
         print "Written " + outdir + '/'+ filename
 
+
+# Class to write out the data for the mobile platforms in the GONZI format
+#dimensions:
+#	N_Observations = 52560 ;
+#	N_Stat = 3 ;
+#variables:
+#	float Time_Slots(N_Observations) ;
+#		Time_Slots:long_name = "600 sec (=10 min) intervalls since midnight" ;
+#	float R(N_Observations, N_Stat) ;
+#		R:long_name = "Code in file" ;
+#	float B(N_Observations, N_Stat) ;
+#		B:long_name = "Code in file" ;
+#	float YYYY(N_Observations) ;
+#		YYYY:long_name = "Year" ;
+#	float MM(N_Observations) ;
+#		MM:long_name = "Month" ;
+#	float DD(N_Observations) ;
+#		DD:long_name = "Day" ;
+#	float LONG(N_Observations, N_Stat) ;
+#		LONG:long_name = "Longitude in degrees" ;
+#		LONG:units = "degrees" ;
+#	float LAT(N_Observations, N_Stat) ;
+#		LAT:long_name = "Latitude in degrees" ;
+#		LAT:units = "degrees" ;
+#	float ALTI(N_Observations, N_Stat) ;
+#		ALTI:long_name = "Altitude in metres" ;
+#		ALTI:units = "metres" ;
+#	float CO2(N_Observations, N_Stat) ;
+#		CO2:long_name = "Observed CO2 in ppm" ;
+#		CO2:units = "ppm" ;
+#		CO2:fill_value = "-9999" ;
+#	float CH4(N_Observations, N_Stat) ;
+#		CH4:long_name = "Observed CH4 in ppb" ;
+#		CH4:units = "ppb" ;
+#		CH4:fill_value = "-9999" ;
+#	float CH4_prec(N_Observations, N_Stat) ;
+#		CH4_prec:long_name = "CH4 precision (repeatability) in ppb" ;
+#		CH4_prec:units = "ppb" ;
+#		CH4_prec:fill_value = "-9999" ;
+#	float CO2_prec(N_Observations, N_Stat) ;
+#		CO2_prec:long_name = "CO2 precision (repeatability) in ppm" ;
+#		CO2_prec:units = "ppm" ;
+#		CO2_prec:fill_value = "-9999" ;
+#	float CH4_flag(N_Observations, N_Stat) ;
+#		CH4_flag:long_name = "CH4 flag 0=valid, 1=reduced quality, 2=missing" ;
+#	float CO2_flag(N_Observations, N_Stat) ;
+#		CO2_flag:long_name = "CO2 flag 0=valid, 1=reduced quality, 2=missing" ;
+#	float Model_CO2(N_Observations, N_Stat) ;
+#		Model_CO2:long_name = "Model CO2 in ppm" ;
+#		Model_CO2:units = "ppm" ;
+#		Model_CO2:fill_value = "-9999" ;
+#	float Model_CH4(N_Observations, N_Stat) ;
+#		Model_CH4:long_name = "Model CH4 in ppb" ;
+#		Model_CH4:units = "ppb" ;
+#		Model_CH4:fill_value = "-9999" ;
+#	float Model_N2O(N_Observations, N_Stat) ;
+#		Model_N2O:long_name = "Model N2O in ppb" ;
+#		Model_N2O:units = "ppb" ;
+#		Model_N2O:fill_value = "-9999" ;
+#
+#// global attributes:
+#		:title = "Aircraft: N_Stat=mean,sddev,N" ;
+#		:author = "Siegfried Gonzi" ;
+#		:date = "2014-11-25" ;
+
+# Rewrites my monthly *_mobile* files into the above format and fills in the obs data using mozart_obs_mobile
+
+class write_GONZI:
+    def __init__(self, species = 'CH4', \
+        modeloutput_dir = '/data/as13988/MOZART/', \
+        obs_dir = '/shared_data/snowy/shared/GAUGE/', \
+        outdir = 0, filename=0):
+        
+        import os
+        import fnmatch
+        
+        
+
+        # Read in the matched model/obs output 
+        # This will have been prefiltered to time and space match the obs 
+        # But will include data from all mobile platforms
+        # need to subsample for ferry and our flights
+
+        modeldata = read_ncdf_mobile(species = species, dir = modeloutput_dir+ '/' + species)      
+        
+        
+        # Only want to match the ferry or the air craft
+        # Extract the Ferry data
+        #ferry_index = np.     
+        
+      
+      
+        if type(outdir) == int:
+            outdir = os.path.dirname(filtereddata.mzfile)
+    
+        if type(filename) == int:
+            if type(filtereddata.mzfile) == tuple:            
+                filetimestamp = filtereddata.mzfile[0][filtereddata.mzfile[0].find('h1')+ 2: filtereddata.mzfile[0].find('.nc')]
+            if type(filtereddata.mzfile) == str:
+                filetimestamp = filtereddata.mzfile[filtereddata.mzfile.find('h1')+ 2: filtereddata.mzfile.find('.nc')]
+            filename = filtereddata.species + '_' + filtereddata.case + '.mzt.h1'+  filetimestamp + '_' + filtereddata.sitetype+'.nc'
+
+        print 'writing file: ' + outdir + '/'+ filename
+        
+        #Write NetCDF file
+        ncF = netCDF4.Dataset(outdir + '/'+ filename, 'w')
+        
+        # Create the dimensions
+        ncF.createDimension('time', len(filtereddata.model_time))
+        ncF.createDimension('lev', np.shape(filtereddata.model_pressure)[1])
+        
+        
+        # Make some global attributes
+        ncF.mzfile = filtereddata.mzfile
+        ncF.sitefile = filtereddata.sitefile
+        ncF.case = filtereddata.case
+        ncF.species = filtereddata.species
+        ncF.sitetype = filtereddata.sitetype
+        
+        # Create the variables 
+        nctime = ncF.createVariable('time', 'i', ('time',))   
+        
+        nclon = ncF.createVariable('lon', 'f', ('time',))
+        nclat = ncF.createVariable('lat', 'f', ('time',))
+        
+        ncpress = ncF.createVariable('pressure', 'f', ('time', 'lev',))
+        ncconc = ncF.createVariable('conc', 'f', ('time', 'lev',))
+        
+        # Fill the variables               
+        # times as seconds since 1/1/2009
+        nctime[:] = [(t - dt.datetime(2009,1,1,0,0,0)).total_seconds() for t in filtereddata.model_time]     
+   
+        
+   
+        nclon[:] = filtereddata.model_lon
+        nclat[:] = filtereddata.model_lat
+        ncpress[:,:] = filtereddata.model_pressure
+        ncconc[:,:] = filtereddata.conc
+        
+        
+        # Give the variables some attributes        
+        nclon.units = 'Degrees east'
+        nclat.units = 'Degrees north'
+        ncconc.units = filtereddata.concunits
+        nctime.units = 'seconds since 2009-01-01 00:00:00'
+        ncpress.units = filtereddata.pressureunits
+
+        
+        ncF.close()
+        print "Written " + outdir + '/'+ filename
+
+
 # ___________________________________________________________________________________________________________________
 # CODE TO READ THE DIFFERENT DATA TYPES
 # ___________________________________________________________________________________________________________________
 # Class to read in the filtered output
 class read_ncdf_fixed:
-    def __init__(self, filepattern = '*_TT.nc', filenames = 0, species='CH4' ):
+    def __init__(self, filepattern = '*_TT.nc', filenames = 0, species='CH4', directory = 1):
         
         if type(filenames) == type(0):
             import fnmatch
             import os
             
+            if type(directory) == type(1):
+                directory = '/data/as13988/MOZART/'+species+'/output/FWDModelComparison_NewEDGAR/'
+            
+            filepattern = '*'+species+filepattern
+            
             matches = []
-            for root, dirnames, filenames in os.walk('/data/as13988/MOZART/'+species+'/output/FWDModelComparison_NewEDGAR/'):
+            for root, dirnames, filenames in os.walk(directory):
                 for filename in fnmatch.filter(filenames, filepattern):
                     matches.append(os.path.join(root, filename))   
                     
@@ -1158,75 +1328,86 @@ class read_ncdf_fixed:
         # need to sort the files
         filenames.sort()
         
-        for j in np.arange(len(filenames)):
+        if len(filenames) == 0 :
+            print 'There are no files matching the file pattern in the given directory'
+
+        else:
             
-            print 'Reading file : ' + str(filenames[j])
-            
-            data=netCDF4.Dataset(filenames[j])
-            
-            lon = data.variables['lon'][:]
-            lat = data.variables['lat'][:]
-            
-            #sitenames = data.variables['sitename'][:] 
-            sitenames = data.variables['sitename'][:] 
-            
-            time_j = np.transpose(data.variables['time'][:])
-            conc_j = np.transpose(data.variables['conc'][:])
-            emis_j = np.transpose(data.variables['emiss'][:])
-            pressure_j = np.transpose(data.variables['pressure'][:])
-            
-            # Create the time variable
-            dateunits = data.variables['time'].getncattr('units')
-            sincedate = dateunits[dateunits.find('seconds since ') +14:-1] # seconds since 2014-01-01 00:00:00
+            for j in np.arange(len(filenames)):
                 
-            dt_date_j = [ dt.datetime.strptime(sincedate, "%Y-%m-%d %H:%M:%S") + dt.timedelta(seconds=(i).astype('int')) for i in time_j]
-            
-            
-            if j == 0:
-            
-                conc = conc_j              
-                emis = emis_j
-                pressure =  pressure_j
-                dt_date = dt_date_j              
+                print 'Reading file : ' + str(filenames[j])
                 
-            else:
+                data=netCDF4.Dataset(filenames[j])
+                
+                lon = data.variables['lon'][:]
+                lat = data.variables['lat'][:]
+                
+                #sitenames = data.variables['sitename'][:] 
+                sitenames = data.variables['sitename'][:] 
+                
+                time_j = np.transpose(data.variables['time'][:])
+                conc_j = np.transpose(data.variables['conc'][:])
+                emis_j = np.transpose(data.variables['emiss'][:])
+                pressure_j = np.transpose(data.variables['pressure'][:])
+                
+                # Create the time variable
+                dateunits = data.variables['time'].getncattr('units')
+                sincedate = dateunits[dateunits.find('seconds since ') +14:-1] # seconds since 2014-01-01 00:00:00
+                    
+                dt_date_j = [ dt.datetime.strptime(sincedate, "%Y-%m-%d %H:%M:%S") + dt.timedelta(seconds=(i).astype('int')) for i in time_j]
                 
                 
-                conc = np.concatenate((conc, conc_j), axis=3)
-                emis = np.concatenate((emis, emis_j), axis=2)
-                pressure = np.concatenate((pressure, pressure_j), axis=3)                
-                dt_date = np.concatenate((dt_date, dt_date_j))
-      
+                if j == 0:
                 
-        self.time = dt_date
-        self.emis = emis
-        self.conc = conc
-        self.pressure = pressure
-        self.lon = lon
-        self.lat = lat
-        self.sitenames = sitenames
-        self.filenames = filenames         
-        self.species = str(data.__getattribute__('species')).strip()
-        self.case = str(data.__getattribute__('case')).strip()
-        self.sitetype = str(data.__getattribute__('sitetype')).strip()
-        self.sitefile = str(data.__getattribute__('sitefile')).strip()
-        
-        self.concunits = data.variables['conc'].getncattr('units')
-        self.emissunits = data.variables['emiss'].getncattr('units')
-        self.pressureunits = data.variables['pressure'].getncattr('units')
+                    conc = conc_j              
+                    emis = emis_j
+                    pressure =  pressure_j
+                    dt_date = dt_date_j              
+                    
+                else:
+                    
+                    
+                    conc = np.concatenate((conc, conc_j), axis=3)
+                    emis = np.concatenate((emis, emis_j), axis=2)
+                    pressure = np.concatenate((pressure, pressure_j), axis=3)                
+                    dt_date = np.concatenate((dt_date, dt_date_j))
+          
+                    
+            self.time = dt_date
+            self.emis = emis
+            self.conc = conc
+            self.pressure = pressure
+            self.lon = lon
+            self.lat = lat
+            self.sitenames = sitenames
+            self.filenames = filenames         
+            self.species = str(data.__getattribute__('species')).strip()
+            self.case = str(data.__getattribute__('case')).strip()
+            self.sitetype = str(data.__getattribute__('sitetype')).strip()
+            self.sitefile = str(data.__getattribute__('sitefile')).strip()
+            
+            self.concunits = data.variables['conc'].getncattr('units')
+            self.emissunits = data.variables['emiss'].getncattr('units')
+            self.pressureunits = data.variables['pressure'].getncattr('units')
  
 
 # Class to read in the filtered output
 class read_ncdf_mobile:
     def __init__(self, species = 'CH4', filepattern = '*_mobile.nc', filenames = 0, \
-        directory = '/data/as13988/MOZART/CH4/output/FWDModelComparison_NewEDGAR/'):
+        directory = 1):
         
         if type(filenames) == type(0):
             import fnmatch
             import os
             
+            if type(directory) == type(1):
+                directory = '/data/as13988/MOZART/'+species+'/output/FWDModelComparison_NewEDGAR/'
+            
+            filepattern = '*'+species+filepattern
+             
+            
             matches = []
-            for root, dirnames, filenames in os.walk('/data/as13988/MOZART/' +species+ '/output/FWDModelComparison_NewEDGAR/'):
+            for root, dirnames, filenames in os.walk(directory):
                 for filename in fnmatch.filter(filenames, filepattern):
                     matches.append(os.path.join(root, filename))   
                     
@@ -1234,89 +1415,99 @@ class read_ncdf_mobile:
         # need to sort the files
         filenames.sort()
         
-        for j in np.arange(len(filenames)):
-            
-            print 'Reading file : ' + str(filenames[j])
-            
-            data=netCDF4.Dataset(filenames[j])
-                        
-            model_lon_j = data.variables['model_lon'][:]
-            model_lat_j = data.variables['model_lat'][:]
-            obs_lon_j = data.variables['obs_lon'][:]
-            obs_lat_j = data.variables['obs_lat'][:]
-           
-            #sitenames = data.variables['sitename'][:] 
-            sitenames_j = data.variables['sitename'][:] 
-            
-            model_time_j = np.transpose(data.variables['model_time'][:])
-            obs_time_j = np.transpose(data.variables['obs_time'][:])
-            conc_j = np.transpose(data.variables['conc'][:])
-            model_pressure_j = np.transpose(data.variables['model_pressure'][:])
-            obs_pressure_j = np.transpose(data.variables['obs_pressure'][:])
-            
-            # Create the time variable
-            dateunits = data.variables['model_time'].getncattr('units')
-            sincedate = dateunits[dateunits.find('seconds since ') +14:-1] # seconds since 2014-01-01 00:00:00
-                
-            model_dt_date_j = [ dt.datetime.strptime(sincedate, "%Y-%m-%d %H:%M:%S") + dt.timedelta(seconds=(i).astype('int')) for i in model_time_j]
-            obs_dt_date_j = [ dt.datetime.strptime(sincedate, "%Y-%m-%d %H:%M:%S") + dt.timedelta(seconds=(i).astype('int')) for i in obs_time_j]
-           
-            
-            if j == 0:
-
-                sitenames = sitenames_j            
-            
-                conc = conc_j      
-                
-                model_pressure =  model_pressure_j
-                obs_pressure =  obs_pressure_j
-                
-                model_dt_date = model_dt_date_j         
-                obs_dt_date = obs_dt_date_j         
-                
-                model_lat = model_lat_j
-                model_lon = model_lon_j
-                obs_lat = obs_lat_j
-                obs_lon = obs_lon_j
-                
-
-            else:
-                
-                sitenames = np.concatenate((sitenames, sitenames_j))               
-                
-                conc = np.concatenate((conc, conc_j))
-                
-                model_pressure = np.concatenate((model_pressure, model_pressure_j))    
-                obs_pressure = np.concatenate((obs_pressure, obs_pressure_j)) 
-                
-                model_dt_date = np.concatenate((model_dt_date, model_dt_date_j))
-                obs_dt_date = np.concatenate((obs_dt_date, obs_dt_date_j))
-                
-                model_lat = np.concatenate((model_lat, model_lat_j))
-                model_lon = np.concatenate((model_lon, model_lon_j))
-                obs_lat = np.concatenate((obs_lat, obs_lat_j))
-                obs_lon = np.concatenate((obs_lon, obs_lon_j))
-
-                
-                
-        self.model_time = model_dt_date
-        self.obs_time = obs_dt_date
-        self.conc = conc
-        self.model_pressure = model_pressure
-        self.obs_pressure = obs_pressure
-        self.model_lon = model_lon
-        self.model_lat = model_lat
-        self.obs_lon = obs_lon
-        self.obs_lat = obs_lat
-        self.sitenames = sitenames
-        self.filenames = filenames         
-        self.species = str(data.__getattribute__('species')).strip()
-        self.case = str(data.__getattribute__('case')).strip()
-        self.sitetype = str(data.__getattribute__('sitetype')).strip()
-        self.sitefile = str(data.__getattribute__('sitefile')).strip()
+        if len(filenames) == 0:        
+            print "There are no files in the given directory matching the file pattern"
         
-        self.concunits = data.variables['conc'].getncattr('units')
-        self.pressureunits = data.variables['model_pressure'].getncattr('units')
+        else: 
+            for j in np.arange(len(filenames)):
+                
+                print 'Reading file : ' + str(filenames[j])
+                
+                data=netCDF4.Dataset(filenames[j])
+                            
+                model_lon_j = data.variables['model_lon'][:]
+                model_lat_j = data.variables['model_lat'][:]
+                obs_lon_j = data.variables['obs_lon'][:]
+                obs_lat_j = data.variables['obs_lat'][:]
+               
+                #sitenames = data.variables['sitename'][:] 
+                sitenames_j = data.variables['sitename'][:] 
+                
+                model_time_j = np.transpose(data.variables['model_time'][:])
+                obs_time_j = np.transpose(data.variables['obs_time'][:])
+
+                model_conc_j = np.transpose(data.variables['conc'][:])
+                obs_conc_j = np.transpose(data.variables['obs_conc'][:])
+
+                model_pressure_j = np.transpose(data.variables['model_pressure'][:])
+                obs_pressure_j = np.transpose(data.variables['obs_pressure'][:])
+                
+                # Create the time variable
+                dateunits = data.variables['model_time'].getncattr('units')
+                sincedate = dateunits[dateunits.find('seconds since ') +14:-1] # seconds since 2014-01-01 00:00:00
+                    
+                model_dt_date_j = [ dt.datetime.strptime(sincedate, "%Y-%m-%d %H:%M:%S") + dt.timedelta(seconds=(i).astype('int')) for i in model_time_j]
+                obs_dt_date_j = [ dt.datetime.strptime(sincedate, "%Y-%m-%d %H:%M:%S") + dt.timedelta(seconds=(i).astype('int')) for i in obs_time_j]
+               
+                
+                if j == 0:
+    
+                    sitenames = sitenames_j            
+                
+                    model_conc = model_conc_j      
+                    obs_conc = obs_conc_j                    
+
+                    model_pressure =  model_pressure_j
+                    obs_pressure =  obs_pressure_j
+                    
+                    model_dt_date = model_dt_date_j         
+                    obs_dt_date = obs_dt_date_j         
+                    
+                    model_lat = model_lat_j
+                    model_lon = model_lon_j
+                    obs_lat = obs_lat_j
+                    obs_lon = obs_lon_j
+                    
+    
+                else:
+                    
+                    sitenames = np.concatenate((sitenames, sitenames_j))               
+                    
+                    model_conc = np.concatenate((model_conc, model_conc_j))
+                    obs_conc = np.concatenate((obs_conc, obs_conc_j))
+
+                    model_pressure = np.concatenate((model_pressure, model_pressure_j))    
+                    obs_pressure = np.concatenate((obs_pressure, obs_pressure_j)) 
+                    
+                    model_dt_date = np.concatenate((model_dt_date, model_dt_date_j))
+                    obs_dt_date = np.concatenate((obs_dt_date, obs_dt_date_j))
+                    
+                    model_lat = np.concatenate((model_lat, model_lat_j))
+                    model_lon = np.concatenate((model_lon, model_lon_j))
+                    obs_lat = np.concatenate((obs_lat, obs_lat_j))
+                    obs_lon = np.concatenate((obs_lon, obs_lon_j))
+    
+                    
+                    
+            self.model_time = model_dt_date
+            self.obs_time = obs_dt_date
+            self.model_conc = model_conc
+            self.obs_conc = obs_conc
+            self.model_pressure = model_pressure
+            self.obs_pressure = obs_pressure
+            self.model_lon = model_lon
+            self.model_lat = model_lat
+            self.obs_lon = obs_lon
+            self.obs_lat = obs_lat
+            self.sitenames = sitenames
+            self.filenames = filenames         
+            self.species = str(data.__getattribute__('species')).strip()
+            self.case = str(data.__getattribute__('case')).strip()
+            self.sitetype = str(data.__getattribute__('sitetype')).strip()
+            self.sitefile = str(data.__getattribute__('sitefile')).strip()
+            
+            self.concunits = data.variables['conc'].getncattr('units')
+            self.pressureunits = data.variables['model_pressure'].getncattr('units')
        
 # ___________________________________________________________________________________________________________________
 # CODE TO PLOT THE DIFFERENT DATA TYPES
@@ -1329,7 +1520,6 @@ class plot_ncdf_fixed:
         
         import matplotlib.ticker as ticker
         import matplotlib.pyplot as plt
-        import generatecolours
         
         # Extract the data for the given site
         sites = data.sitenames
@@ -1362,7 +1552,7 @@ class plot_ncdf_fixed:
             
             n_colours = 27        
             
-            colours = generatecolours.generatecolours(n_colours).RGB
+            colours = generatecolours(n_colours).RGB
             
             # Plot of 
             fig = plt.figure()
@@ -1412,8 +1602,9 @@ class plot_ncdf_fixed:
         
 # Class to plot the filtered output
 # Plots the output of read_ncdf_mobile
+# defaults to not plotting the obs concentrations as we only have these for CH4 at the moment
 class plot_ncdf_mobile:
-    def __init__(self, data, sitename = 'mhd', scaling = 1e06):
+    def __init__(self, data, sitename = 'mhd', scaling = 1e06, no_obs =0):
         
         import matplotlib.ticker as ticker
         import matplotlib.pyplot as plt
@@ -1431,7 +1622,9 @@ class plot_ncdf_mobile:
         
             time = np.squeeze(data.obs_time[matched])
             
-            conc = np.squeeze(data.conc[matched])
+            model_conc = np.squeeze(data.model_conc[matched])
+            obs_conc = np.squeeze(data.obs_conc[matched])
+                
             
             model_pressure = np.squeeze(data.model_pressure[matched])
             obs_pressure = np.squeeze(data.obs_pressure[matched])
@@ -1459,8 +1652,12 @@ class plot_ncdf_mobile:
             # Plot the data
             plt1 = plt.subplot(4,1,1)
                         
-            plt1.plot(time, conc*scaling, "o-", color = 'blue', markersize = 3)
+            plt1.plot(time, model_conc*scaling, "o-", color = 'blue', markersize = 3)
+            
+            if no_obs !=0:
+                plt1.plot(time, obs_conc*scaling, "o-", color = 'red', markersize = 3)
                 
+            
             y_formatter = ticker.ScalarFormatter(useOffset=False)
             plt1.yaxis.set_major_formatter(y_formatter)
              
@@ -1503,3 +1700,19 @@ class plot_ncdf_mobile:
 
 
             plt.show()      
+
+
+
+# Generates a given number of HSV or RGB tuples spread over colour space 
+class generatecolours:
+    def __init__(self, N):
+        
+        import colorsys        
+        
+        HSV_tuples = [(x*1.0/N, 0.5, 0.5) for x in range(N)]
+        RGB_tuples = map(lambda x: colorsys.hsv_to_rgb(*x), HSV_tuples)
+        
+        self.RGB = RGB_tuples
+        self.HSV = HSV_tuples
+
+
