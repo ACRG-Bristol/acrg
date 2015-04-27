@@ -785,7 +785,7 @@ class data_filter_mobile:
         
         species = data.species
         #print 'reading site file : ' 
-       #S print sitefile
+        print sitefile
         
         # Read site info file
         
