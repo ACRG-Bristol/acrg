@@ -258,11 +258,11 @@ class read_column_sitefile_nc:
 
 # Class to read in the netcdf site file written by matt listing the mobile GAUGE sites (ferry and aircraft)  
 class read_mobile_sitefile_nc:
-    def __init__(self, sitefile = 0, species = 'CH4', dir = '/data/shared/GAUGE/', month = 1, year = 2003):
+    def __init__(self, species = 'CH4', dir = '/data/shared/GAUGE/', month = 1, year = 2003):
         
-        if type(sitefile) == int:
-            sitefile = dir + species + '/mozart_obs_mobile/mozart_obs_mobile_' +str(year)+ str(month).zfill(2)+'.nc'
+        sitefile = dir + species + '/mozart_obs_mobile/mozart_obs_mobile_' +str(year)+ str(month).zfill(2)+'.nc'
         
+        print 'Site file to read:'
         print sitefile
         
         data=netCDF4.Dataset(sitefile, 'r')
@@ -781,11 +781,13 @@ class data_filter_mobile:
         # Read MOZART file name
         data = read(mzfile)
         
+        species = data.species
         #print 'reading site file : ' 
        #S print sitefile
         
         # Read site info file
-        siteinfo = read_mobile_sitefile_nc(sitefile = sitefile)
+        
+        siteinfo = read_mobile_sitefile_nc(species = species, month = data.time[0].month, year = data.time[0].year)
         
         # Only want to match times that are within the range of the file
         modeltime_range = [data.time[0], data.time[1] - data.time[0] + data.time[-1]]
@@ -1238,41 +1240,74 @@ class read_ncdf_mobile:
             
             data=netCDF4.Dataset(filenames[j])
                         
-            lon = data.variables['model_lon'][:]
-            lat = data.variables['model_lat'][:]
-            
+            model_lon_j = data.variables['model_lon'][:]
+            model_lat_j = data.variables['model_lat'][:]
+            obs_lon_j = data.variables['obs_lon'][:]
+            obs_lat_j = data.variables['obs_lat'][:]
+           
             #sitenames = data.variables['sitename'][:] 
-            sitenames = data.variables['sitename'][:] 
+            sitenames_j = data.variables['sitename'][:] 
             
-            time_j = np.transpose(data.variables['model_time'][:])
+            model_time_j = np.transpose(data.variables['model_time'][:])
+            obs_time_j = np.transpose(data.variables['obs_time'][:])
             conc_j = np.transpose(data.variables['conc'][:])
-            pressure_j = np.transpose(data.variables['model_pressure'][:])
+            model_pressure_j = np.transpose(data.variables['model_pressure'][:])
+            obs_pressure_j = np.transpose(data.variables['obs_pressure'][:])
             
             # Create the time variable
             dateunits = data.variables['model_time'].getncattr('units')
             sincedate = dateunits[dateunits.find('seconds since ') +14:-1] # seconds since 2014-01-01 00:00:00
                 
-            dt_date_j = [ dt.datetime.strptime(sincedate, "%Y-%m-%d %H:%M:%S") + dt.timedelta(seconds=(i).astype('int')) for i in time_j]
-            
+            model_dt_date_j = [ dt.datetime.strptime(sincedate, "%Y-%m-%d %H:%M:%S") + dt.timedelta(seconds=(i).astype('int')) for i in model_time_j]
+            obs_dt_date_j = [ dt.datetime.strptime(sincedate, "%Y-%m-%d %H:%M:%S") + dt.timedelta(seconds=(i).astype('int')) for i in obs_time_j]
+           
             
             if j == 0:
+
+                sitenames = sitenames_j            
             
-                conc = conc_j       
-                pressure =  pressure_j
-                dt_date = dt_date_j         
+                conc = conc_j      
                 
+                model_pressure =  model_pressure_j
+                obs_pressure =  obs_pressure_j
+                
+                model_dt_date = model_dt_date_j         
+                obs_dt_date = obs_dt_date_j         
+                
+                model_lat = model_lat_j
+                model_lon = model_lon_j
+                obs_lat = obs_lat_j
+                obs_lon = obs_lon_j
+                
+
             else:
                 
+                sitenames = np.concatenate((sitenames, sitenames_j))               
                 
-                conc = np.concatenate((conc, conc_j), axis=3)
-                pressure = np.concatenate((pressure, pressure_j), axis=3)                
-                dt_date = np.concatenate((dt_date, dt_date_j))
+                conc = np.concatenate((conc, conc_j))
                 
-        self.time = dt_date
+                model_pressure = np.concatenate((model_pressure, model_pressure_j))    
+                obs_pressure = np.concatenate((obs_pressure, obs_pressure_j)) 
+                
+                model_dt_date = np.concatenate((model_dt_date, model_dt_date_j))
+                obs_dt_date = np.concatenate((obs_dt_date, obs_dt_date_j))
+                
+                model_lat = np.concatenate((model_lat, model_lat_j))
+                model_lon = np.concatenate((model_lon, model_lon_j))
+                obs_lat = np.concatenate((obs_lat, obs_lat_j))
+                obs_lon = np.concatenate((obs_lon, obs_lon_j))
+
+                
+                
+        self.model_time = model_dt_date
+        self.obs_time = obs_dt_date
         self.conc = conc
-        self.pressure = pressure
-        self.lon = lon
-        self.lat = lat
+        self.model_pressure = model_pressure
+        self.obs_pressure = obs_pressure
+        self.model_lon = model_lon
+        self.model_lat = model_lat
+        self.obs_lon = obs_lon
+        self.obs_lat = obs_lat
         self.sitenames = sitenames
         self.filenames = filenames         
         self.species = str(data.__getattribute__('species')).strip()
@@ -1290,7 +1325,7 @@ class read_ncdf_mobile:
 # Class to plot the filtered output
 # Plots the output of read_ncdf_fixed
 class plot_ncdf_fixed:
-    def __init__(self, data, sitename = 'mhd', scaling = 1e06):
+    def __init__(self, data, sitename = 'mhd', scaling = 1e06, x_range = 1):
         
         import matplotlib.ticker as ticker
         import matplotlib.pyplot as plt
@@ -1366,6 +1401,9 @@ class plot_ncdf_fixed:
                
             #plt.savefig(outputdir+'ReferenceTankStability_'+filesuffix+data.loflo+'.png', dpi=200)
             
+            if type(x_range) != type(1):
+                plt1.set_xlim(x_range)            
+            
             #print "Figure saved as:"
             #print outputdir+'ReferenceTankStability_'+data.loflo+'.png'
             
@@ -1384,27 +1422,84 @@ class plot_ncdf_mobile:
         sites = data.sitenames
         matched = np.where(sites == sitename)[0]
         
-        time = data.time
-        
-        # conc is lon x lat x lev x time x site
-        conc = np.squeeze(data.conc[:,:,:,:,matched])
-        
-        # Plot of 
-        fig = plt.figure()
-        
-        # Plot the data
-        plt1 = plt.subplot()
-                    
-        plt1.plot(time, conc*scaling, "-", color = 'blue', markersize = 3)
+        if len(matched) == 0 :        
+            print 'There are no sitenames matching ' + sitename
             
-        y_formatter = ticker.ScalarFormatter(useOffset=False)
-        plt1.yaxis.set_major_formatter(y_formatter)
+        else:
+            # conc is of dimension time 
+            # sitenames are also of dimension time        
         
-        x_tickno_formatter = ticker.MaxNLocator(5)
-        plt1.xaxis.set_major_locator(x_tickno_formatter)
-        
-        plt1.set_title('Model output for '+ sitename)
-        plt1.set_ylabel(data.species + '(' + data.concunits + '*' + str(scaling) + ')')
-        plt1.set_xlabel('Time')
-        
-        plt.show()      
+            time = np.squeeze(data.obs_time[matched])
+            
+            conc = np.squeeze(data.conc[matched])
+            
+            model_pressure = np.squeeze(data.model_pressure[matched])
+            obs_pressure = np.squeeze(data.obs_pressure[matched])
+            
+            model_lat = np.squeeze(data.model_lat[matched])
+            obs_lat = np.squeeze(data.obs_lat[matched])
+            
+            model_lon = np.squeeze(data.model_lon[matched])
+            obs_lon = np.squeeze(data.obs_lon[matched])
+            
+            model_GT180 = np.where(model_lon > 180)[0]
+            obs_GT180 = np.where(obs_lon > 180)[0]
+            
+                   
+            
+            if len(model_GT180) != 0:
+                model_lon[model_GT180] = model_lon[model_GT180] - 360
+            
+            if len(obs_GT180) != 0:
+                obs_lon[obs_GT180] = obs_lon[obs_GT180] - 360
+
+            # Plot of 
+            fig = plt.figure()
+            
+            # Plot the data
+            plt1 = plt.subplot(4,1,1)
+                        
+            plt1.plot(time, conc*scaling, "o-", color = 'blue', markersize = 3)
+                
+            y_formatter = ticker.ScalarFormatter(useOffset=False)
+            plt1.yaxis.set_major_formatter(y_formatter)
+             
+            plt1.set_title('Model output for '+ sitename)
+            plt1.set_ylabel(data.species + '(' + data.concunits + '*' + str(scaling) + ')')
+            plt1.set_xlabel('Time')
+            
+            
+            plt2 = plt.subplot(4,1,2)
+                        
+            plt2.plot(time, model_pressure, "o-", color = 'blue', markersize = 3)
+            plt2.plot(time, obs_pressure, "o-", color = 'red', markersize = 3)
+                
+            y_formatter = ticker.ScalarFormatter(useOffset=False)
+            plt2.yaxis.set_major_formatter(y_formatter)
+             
+            plt2.set_ylabel('pressure')
+            
+            
+            plt3 = plt.subplot(4,1,3)
+                        
+            plt3.plot(time, model_lat, "o-", color = 'blue', markersize = 3)
+            plt3.plot(time, obs_lat, "o-", color = 'red', markersize = 3)
+                
+            y_formatter = ticker.ScalarFormatter(useOffset=False)
+            plt3.yaxis.set_major_formatter(y_formatter)
+             
+            plt3.set_ylabel('lat')
+
+
+            plt4 = plt.subplot(4,1,4)
+                        
+            plt4.plot(time, model_lon, "o-", color = 'blue', markersize = 3)
+            plt4.plot(time, obs_lon, "o-", color = 'red', markersize = 3)
+                
+            y_formatter = ticker.ScalarFormatter(useOffset=False)
+            plt4.yaxis.set_major_formatter(y_formatter)
+             
+            plt4.set_ylabel('lon')
+
+
+            plt.show()      
