@@ -1228,10 +1228,12 @@ class write_GONZI:
         import fnmatch
         
         
+
         # Read in the matched model/obs output 
         # This will have been prefiltered to time and space match the obs 
         # But will include data from all mobile platforms
         # need to subsample for ferry and our flights
+
         modeldata = read_ncdf_mobile(species = species, dir = modeloutput_dir+ '/' + species)      
         
         
@@ -1239,15 +1241,6 @@ class write_GONZI:
         # Extract the Ferry data
         #ferry_index = np.     
         
-        
-        
-      
-      
-      
-      
-      
-      
-      
       
       
         if type(outdir) == int:
@@ -1442,8 +1435,10 @@ class read_ncdf_mobile:
                 
                 model_time_j = np.transpose(data.variables['model_time'][:])
                 obs_time_j = np.transpose(data.variables['obs_time'][:])
+
                 model_conc_j = np.transpose(data.variables['conc'][:])
                 obs_conc_j = np.transpose(data.variables['obs_conc'][:])
+
                 model_pressure_j = np.transpose(data.variables['model_pressure'][:])
                 obs_pressure_j = np.transpose(data.variables['obs_pressure'][:])
                 
@@ -1461,7 +1456,7 @@ class read_ncdf_mobile:
                 
                     model_conc = model_conc_j      
                     obs_conc = obs_conc_j                    
-                    
+
                     model_pressure =  model_pressure_j
                     obs_pressure =  obs_pressure_j
                     
@@ -1480,7 +1475,7 @@ class read_ncdf_mobile:
                     
                     model_conc = np.concatenate((model_conc, model_conc_j))
                     obs_conc = np.concatenate((obs_conc, obs_conc_j))
-                    
+
                     model_pressure = np.concatenate((model_pressure, model_pressure_j))    
                     obs_pressure = np.concatenate((obs_pressure, obs_pressure_j)) 
                     
