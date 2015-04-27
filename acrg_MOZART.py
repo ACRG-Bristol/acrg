@@ -32,6 +32,8 @@ import bisect
 class read:
     def __init__(self, filename):
     
+        print 'Reading file : ' + filename
+        
         if type(filename) == tuple:
             filename = filename[0]
         
@@ -156,6 +158,8 @@ class read_fixed_sitefile_nc:
         if type(sitefile) == int:
             sitefile = dir + species + '/mozart_obs_stationary.nc'
         
+        print 'Using site file : ' + sitefile
+        
         data=netCDF4.Dataset(sitefile, 'r')
 
         if species == 'CH4':
@@ -176,7 +180,7 @@ class read_fixed_sitefile_nc:
         lat = data.variables['latitude'][:]
         alt = data.variables['altitude'] # "m  above 1.9x2.5 MOZART surface level (m)" ;
         conc = data.variables[species_lc]
-        repeatability = data.variables['ch4_repeatability']
+        repeatability = data.variables[species_lc+'_repeatability']
 	      
         # Create the time variable
         dateunits = data.variables['time'].getncattr('units')
@@ -259,7 +263,7 @@ class read_mobile_sitefile_nc:
         if type(sitefile) == int:
             sitefile = dir + species + '/mozart_obs_mobile/mozart_obs_mobile_' +str(year)+ str(month).zfill(2)+'.nc'
         
-       
+        print sitefile
         
         data=netCDF4.Dataset(sitefile, 'r')
 
@@ -635,6 +639,7 @@ class data_filter_fixed:
                     
         self.site = siteinfo.site
         self.sitetype = 'TT'
+        self.sitenames = siteinfo.site
         self.site_lat = siteinfo.lat
         self.site_lon = siteinfo.lon
         self.site_alt = siteinfo.alt
@@ -656,6 +661,7 @@ class data_filter_fixed:
         self.concunits = data.concunits
         self.emissunits = data.emissunits
         self.pressureunits = data.pressureunits         
+        
 
 
 
@@ -775,6 +781,8 @@ class data_filter_mobile:
         # Read MOZART file name
         data = read(mzfile)
         
+        #print 'reading site file : ' 
+       #S print sitefile
         
         # Read site info file
         siteinfo = read_mobile_sitefile_nc(sitefile = sitefile)
@@ -926,7 +934,6 @@ class write_ncdf_mobile:
         
         print 'writing file: ' + outdir + '/'+ filename
         
-        pdb.set_trace()
         
         #Write NetCDF file
         ncF = netCDF4.Dataset(outdir + '/'+ filename, 'w')
@@ -1129,76 +1136,70 @@ class write_ncdf_column:
         ncF.close()
         print "Written " + outdir + '/'+ filename
 
-
-
+# ___________________________________________________________________________________________________________________
+# CODE TO READ THE DIFFERENT DATA TYPES
+# ___________________________________________________________________________________________________________________
 # Class to read in the filtered output
 class read_ncdf_fixed:
-    def __init__(self, filenames):
+    def __init__(self, filepattern = '*_TT.nc', filenames = 0, species='CH4' ):
         
+        if type(filenames) == type(0):
+            import fnmatch
+            import os
+            
+            matches = []
+            for root, dirnames, filenames in os.walk('/data/as13988/MOZART/'+species+'/output/FWDModelComparison_NewEDGAR/'):
+                for filename in fnmatch.filter(filenames, filepattern):
+                    matches.append(os.path.join(root, filename))   
+                    
+        filenames = matches
         # need to sort the files
         filenames.sort()
         
         for j in np.arange(len(filenames)):
             
-            data=netCDF4.Dataset(filenames[j])
+            print 'Reading file : ' + str(filenames[j])
             
-            year_j = data.variables['year'][:]
-            month_j = data.variables['month'][:] 
-            day_j = data.variables['day'][:] 
-            hour_j = data.variables['hour'][:]
-            minute_j = data.variables['minute'][:] 
+            data=netCDF4.Dataset(filenames[j])
             
             lon = data.variables['lon'][:]
             lat = data.variables['lat'][:]
-            alt = data.variables['alt'][:]            
             
-            sitenames = data.variables['sitenames'][:] 
+            #sitenames = data.variables['sitename'][:] 
+            sitenames = data.variables['sitename'][:] 
             
+            time_j = np.transpose(data.variables['time'][:])
             conc_j = np.transpose(data.variables['conc'][:])
-            conc_SD_j = np.transpose(data.variables['conc_sd'][:])
             emis_j = np.transpose(data.variables['emiss'][:])
             pressure_j = np.transpose(data.variables['pressure'][:])
             
-            dt_date_j = [dt.datetime(year_j[i],month_j[i],day_j[i],hour_j[i], minute_j[i]) for i in np.arange(len(year_j))]
-    
+            # Create the time variable
+            dateunits = data.variables['time'].getncattr('units')
+            sincedate = dateunits[dateunits.find('seconds since ') +14:-1] # seconds since 2014-01-01 00:00:00
+                
+            dt_date_j = [ dt.datetime.strptime(sincedate, "%Y-%m-%d %H:%M:%S") + dt.timedelta(seconds=(i).astype('int')) for i in time_j]
+            
+            
             if j == 0:
             
-                year = year_j
-                month = month_j
-                day = day_j
-                hour = hour_j
-                minute = minute_j
-                conc = conc_j
-                conc_SD = conc_SD_j                
+                conc = conc_j              
                 emis = emis_j
                 pressure =  pressure_j
                 dt_date = dt_date_j              
                 
             else:
                 
-                year = np.concatenate((year, year_j))
-                month = np.concatenate((month, month_j))
-                day = np.concatenate((day, day_j))
-                hour = np.concatenate((hour, hour_j))                
-                minute = np.concatenate((minute, minute_j))
-                conc = np.concatenate((conc, conc_j))
-                conc_SD = np.concatenate((conc_SD, conc_SD_j))
-                emis = np.concatenate((emis, emis_j))
-                pressure = np.concatenate((pressure, pressure_j))                
+                
+                conc = np.concatenate((conc, conc_j), axis=3)
+                emis = np.concatenate((emis, emis_j), axis=2)
+                pressure = np.concatenate((pressure, pressure_j), axis=3)                
                 dt_date = np.concatenate((dt_date, dt_date_j))
       
                 
         self.time = dt_date
-        self.year = year
-        self.month = month
-        self.day = day
-        self.hour = hour
-        self.minute = minute
         self.emis = emis
         self.conc = conc
-        self.conc_SD = conc_SD
         self.pressure = pressure
-        self.alt = alt
         self.lon = lon
         self.lat = lat
         self.sitenames = sitenames
@@ -1211,5 +1212,199 @@ class read_ncdf_fixed:
         self.concunits = data.variables['conc'].getncattr('units')
         self.emissunits = data.variables['emiss'].getncattr('units')
         self.pressureunits = data.variables['pressure'].getncattr('units')
-        
+ 
 
+# Class to read in the filtered output
+class read_ncdf_mobile:
+    def __init__(self, species = 'CH4', filepattern = '*_mobile.nc', filenames = 0, \
+        directory = '/data/as13988/MOZART/CH4/output/FWDModelComparison_NewEDGAR/'):
+        
+        if type(filenames) == type(0):
+            import fnmatch
+            import os
+            
+            matches = []
+            for root, dirnames, filenames in os.walk('/data/as13988/MOZART/' +species+ '/output/FWDModelComparison_NewEDGAR/'):
+                for filename in fnmatch.filter(filenames, filepattern):
+                    matches.append(os.path.join(root, filename))   
+                    
+        filenames = matches
+        # need to sort the files
+        filenames.sort()
+        
+        for j in np.arange(len(filenames)):
+            
+            print 'Reading file : ' + str(filenames[j])
+            
+            data=netCDF4.Dataset(filenames[j])
+                        
+            lon = data.variables['model_lon'][:]
+            lat = data.variables['model_lat'][:]
+            
+            #sitenames = data.variables['sitename'][:] 
+            sitenames = data.variables['sitename'][:] 
+            
+            time_j = np.transpose(data.variables['model_time'][:])
+            conc_j = np.transpose(data.variables['conc'][:])
+            pressure_j = np.transpose(data.variables['model_pressure'][:])
+            
+            # Create the time variable
+            dateunits = data.variables['model_time'].getncattr('units')
+            sincedate = dateunits[dateunits.find('seconds since ') +14:-1] # seconds since 2014-01-01 00:00:00
+                
+            dt_date_j = [ dt.datetime.strptime(sincedate, "%Y-%m-%d %H:%M:%S") + dt.timedelta(seconds=(i).astype('int')) for i in time_j]
+            
+            
+            if j == 0:
+            
+                conc = conc_j       
+                pressure =  pressure_j
+                dt_date = dt_date_j         
+                
+            else:
+                
+                
+                conc = np.concatenate((conc, conc_j), axis=3)
+                pressure = np.concatenate((pressure, pressure_j), axis=3)                
+                dt_date = np.concatenate((dt_date, dt_date_j))
+                
+        self.time = dt_date
+        self.conc = conc
+        self.pressure = pressure
+        self.lon = lon
+        self.lat = lat
+        self.sitenames = sitenames
+        self.filenames = filenames         
+        self.species = str(data.__getattribute__('species')).strip()
+        self.case = str(data.__getattribute__('case')).strip()
+        self.sitetype = str(data.__getattribute__('sitetype')).strip()
+        self.sitefile = str(data.__getattribute__('sitefile')).strip()
+        
+        self.concunits = data.variables['conc'].getncattr('units')
+        self.pressureunits = data.variables['model_pressure'].getncattr('units')
+       
+# ___________________________________________________________________________________________________________________
+# CODE TO PLOT THE DIFFERENT DATA TYPES
+# ___________________________________________________________________________________________________________________
+
+# Class to plot the filtered output
+# Plots the output of read_ncdf_fixed
+class plot_ncdf_fixed:
+    def __init__(self, data, sitename = 'mhd', scaling = 1e06):
+        
+        import matplotlib.ticker as ticker
+        import matplotlib.pyplot as plt
+        import generatecolours
+        
+        # Extract the data for the given site
+        sites = data.sitenames
+        matched = np.where(sites == sitename)[0]
+        
+        if len(matched) > 1:
+            # THis means that the site was listed twice in the site file as two measurement networks share it.
+            # As we're pulling out model data at the same location it doesn't matter which version we use
+            # Default to using the first one
+            matched = [matched[0]]
+            
+        
+        if len(matched) == 0:
+            print 'There is no sitename matching : ' + sitename
+            print 'Check the sitename or try using lowercase'
+        else: 
+            time = data.time
+            
+            # conc is lon x lat x lev x time x site
+            conc = np.squeeze(data.conc[:,:,:,:,matched])
+            pressure = np.squeeze(data.pressure[:,:,:,:,matched])
+                       
+            
+            reshapedconc = np.reshape(conc,(27,np.shape(conc)[-1]))
+            
+            # Indicies for lats, lons and levs
+            lat_i = [1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3]
+            lon_i = [1,1,1,2,2,2,3,3,3,1,1,1,2,2,2,3,3,3,1,1,1,2,2,2,3,3,3]
+            lev_i = [1,2,3,1,2,3,1,2,3,1,2,3,1,2,3,1,2,3,1,2,3,1,2,3,1,2,3]  
+            
+            n_colours = 27        
+            
+            colours = generatecolours.generatecolours(n_colours).RGB
+            
+            # Plot of 
+            fig = plt.figure()
+            fig.subplots_adjust(right = 0.8)
+            
+            legend_spacing = np.arange(n_colours)   
+            
+            for i in np.arange(n_colours):      
+                # find all the results from that cylinder
+                conc_i = reshapedconc[i]        
+    
+                # Plot the data
+                plt1 = plt.subplot()
+                            
+                plt1.plot(time, conc_i*scaling, "-", color = colours[i], markersize = 3)
+                    
+                y_formatter = ticker.ScalarFormatter(useOffset=False)
+                plt1.yaxis.set_major_formatter(y_formatter)
+                
+                x_tickno_formatter = ticker.MaxNLocator(5)
+                plt1.xaxis.set_major_locator(x_tickno_formatter)
+                
+                plt1.set_title('Model output at '+ sitename)
+                plt1.set_ylabel(data.species + '(' + data.concunits + '*' + str(scaling) + ')')
+                plt1.set_xlabel('Time')
+    
+                legend_i = str(data.lat[matched,lat_i[i]-1][0]) + ', ' +str(data.lon[matched,lon_i[i]-1][0]) + ', ' + str(lev_i[i]-1)
+    
+                plt.figtext(0.82, 0.85-(0.03*legend_spacing[i]), legend_i, verticalalignment='bottom', \
+                horizontalalignment='left', color=colours[i], fontsize=8)
+                    
+            plt1.plot(time, reshapedconc[13]*scaling, "--", color = 'black', markersize = 3)
+    
+            plt.figtext(0.82, 0.88, 'Lat, Lon, Lev', verticalalignment='bottom', horizontalalignment='left', color='black', fontsize=8)
+            plt.figtext(0.6, 0.2, 'Central point ---', verticalalignment='bottom', horizontalalignment='left', color='black', fontsize=8)
+               
+            #plt.savefig(outputdir+'ReferenceTankStability_'+filesuffix+data.loflo+'.png', dpi=200)
+            
+            #print "Figure saved as:"
+            #print outputdir+'ReferenceTankStability_'+data.loflo+'.png'
+            
+            plt.show()
+        
+        
+# Class to plot the filtered output
+# Plots the output of read_ncdf_mobile
+class plot_ncdf_mobile:
+    def __init__(self, data, sitename = 'mhd', scaling = 1e06):
+        
+        import matplotlib.ticker as ticker
+        import matplotlib.pyplot as plt
+        
+        # Extract the data for the given site
+        sites = data.sitenames
+        matched = np.where(sites == sitename)[0]
+        
+        time = data.time
+        
+        # conc is lon x lat x lev x time x site
+        conc = np.squeeze(data.conc[:,:,:,:,matched])
+        
+        # Plot of 
+        fig = plt.figure()
+        
+        # Plot the data
+        plt1 = plt.subplot()
+                    
+        plt1.plot(time, conc*scaling, "-", color = 'blue', markersize = 3)
+            
+        y_formatter = ticker.ScalarFormatter(useOffset=False)
+        plt1.yaxis.set_major_formatter(y_formatter)
+        
+        x_tickno_formatter = ticker.MaxNLocator(5)
+        plt1.xaxis.set_major_locator(x_tickno_formatter)
+        
+        plt1.set_title('Model output for '+ sitename)
+        plt1.set_ylabel(data.species + '(' + data.concunits + '*' + str(scaling) + ')')
+        plt1.set_xlabel('Time')
+        
+        plt.show()      
