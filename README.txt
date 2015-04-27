@@ -22,9 +22,9 @@ git commit -m "ADD_SOME_DESCRIPTIVE_COMMENTS_HERE_IN_QUOTES"
 
 Note that it won't work if you don't add the -m with some comments.
 
-Then "push" it to the central repository
+Then "push" it to the central repository (the "origin master" isn't really necessary, but apparently it's a good idea for when we start using branches).
 
-git push
+git push origin master
 
 ***Update regularly***
 To make sure you're up-to-date with everyone else's changes, regularly type (or set a cron job), from inside the folder:
@@ -38,8 +38,12 @@ git add FILENAME
 
 git commit -m "ADD_SOME_DESCRIPTIVE_COMMENTS_HERE_IN_QUOTES"
 
-git push
+git push origin master
 
 *Adding an ssh key*
 
 Git will ask you for a password every time you want to connect using https. You can get around this by adding your RSA key to your account. Instructions are here: https://confluence.atlassian.com/display/BITBUCKET/Set+up+SSH+for+Git. You can probably start at step 6.
+
+***Conflicts***
+
+Conflicts are inevitable. Git sorts this out for you. If you try to "push" changes from your local repository when you're not up-to-date, it'll complain. In that case, pull the latest changes from the server.
