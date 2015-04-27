@@ -16,6 +16,7 @@ import time
 import csv 
 from itertools import chain
 import pdb
+import acrg_read_GCwerks as read_GCwerks
 
 # Class that contains the USNs and associated DNos
 class USNsDNos():
@@ -37,7 +38,7 @@ class USNsDNos():
 #     -      -         -            -            -    -    cavity    cavity         -       co2     co2       ch4     ch4        co      co 
 #  date   time      type       sample     standard port      temp     press       h2o         C   stdev         C   stdev         C   stdev 
 # 140710 093530      tank  USN20132963        H-239    6    45.000   139.999     0.532    418.42*  0.188*  1993.75*  0.204*   200.84*  5.913*
-
+""""
 class read_data:
     def __init__(self, datafile):
         
@@ -168,10 +169,6 @@ class read_data:
       
 
     
-
-
-
-
 # Class to make the flags
 # nb: an * flag will =  a 1 flag
 # an F flag will = a 2 flag
@@ -221,8 +218,79 @@ class Stripflags:
 
         self.gas = stripped_gas.astype('float')
         self.orig_gas = orig_gas
+"""
 
+class read_data:
+    def __init__(self, datafile):
+        
+        # Read in the data using the general code
+        indata =  read_GCwerks.read_gcexport_crds(datafile)    
+            
+        # Find making USN or vice versa
+        if (indata.filename.split('.')[2]).find('USN') != -1:
+            # We've been given a USN so find the DNo
+            USN_tank = (indata.filename.split('.')[2])
+            index = (USNsDNos().USNs).index(USN_tank)
+            DNo_tank = (USNsDNos().DNos)[index]
+            
+        else:
+            # We've been given a DNo so find the USN
+            DNo_tank = (indata.filename.split('.')[2])
+            index = (USNsDNos().DNos).index(DNo_tank)
+            USN_tank = (USNsDNos().USNs)[index]            
+            
+        self.site = indata.filename.split('.')[0]
+        self.instrument = indata.filename.split('.')[1]
+        self.processeddate = indata.filename.split('.')[3]
+        self.USN = USN_tank
+        self.DNo = DNo_tank
+  
+        scales = Read_scales()   
+        # Match location to scale        
+        in_sitekey =  indata.filename.split('.')[0] +'_'+ (indata.filename.split('.')[1]).split('_')[0]
+        scale_index = np.where(scales.sitekey == in_sitekey)
 
+        print in_sitekey
+        print scale_index
+        print scales.co2_scale[scale_index]
+        print scales.ch4_scale[scale_index]
+        print scales.co_scale[scale_index]
+        
+
+           
+        self.date = indata.date
+        self.time = indata.time
+        self.datetime = indata.dt_date
+        self.sampletype = indata.sampletype
+        self.samplename = indata.samplename
+        self.standard = indata.standard
+        self.port = indata.port.astype('int')
+        self.cavity_temp = indata.cavity_temp.astype('float')
+        self.cavity_press = indata.cavity_press.astype('float')
+        self.h2o = indata.h2o
+        
+        self.co2_orig = indata.co2_orig
+        self.co2 = indata.co2_stripped.gas
+        self.co2sd_orig = indata.co2sd_orig
+        self.co2sd = indata.co2sd_stripped.gas
+        self.co2flags = indata.co2flags.flags
+        self.co2_n = indata.co2_n
+        self.co2_scale = scales.co2_scale[scale_index]
+        
+        self.ch4_orig = indata.ch4_orig
+        self.ch4 = indata.ch4_stripped.gas
+        self.ch4sd_orig = indata.ch4sd_orig
+        self.ch4sd = indata.ch4sd_stripped.gas
+        self.ch4flags = indata.ch4flags.flags
+        self.ch4_n = indata.ch4_n
+        self.ch4_scale = scales.ch4_scale[scale_index]
+        
+        self.co_scale = scales.co_scale[scale_index]        
+        
+        self.nogases = indata.nogases        
+                
+        self.filename = indata.filename
+        self.datadir = indata.dirname
 
 # Plotting the minute means
 class PlotRawMM:
@@ -231,11 +299,11 @@ class PlotRawMM:
      
         if plotflagged == 0:
             
-            dt_co2, co2, co2sd = Extractgood(data.datetime, data.co2, data.co2flags, data.co2sd)
-            dt_ch4, ch4, ch4sd = Extractgood(data.datetime, data.ch4, data.ch4flags, data.ch4sd)
+            dt_co2, co2, co2sd = read_GCwerks.Extractgood(data.datetime, data.co2, data.co2flags, data.co2sd)
+            dt_ch4, ch4, ch4sd = read_GCwerks.Extractgood(data.datetime, data.ch4, data.ch4flags, data.ch4sd)
             
             if data.nogases == 3:     
-                 dt_co, co, cosd = Extractgood(data.datetime, data.co, data.co2flags, data.cosd)
+                 dt_co, co, cosd = read_GCwerks.Extractgood(data.datetime, data.co, data.co2flags, data.cosd)
         else:
             dt_co2 = data.datetime            
             co2 = data.co2
@@ -310,21 +378,6 @@ class PlotRawMM:
                  
              plt.show()
 
-
-# Code to extract the flagged data
-def Extractgood(time, gas, flags, SD=0):
-    
-    index = (np.array(np.where(flags == 0)))[0,:]       
-    time_flag = [time[i] for i in index]          
-    gas_flag = gas[index]
-    
-    if type(SD) != int:
-        sd_flag = SD[index]
-    else:
-        sd_flag = 0
-        
-    return time_flag, gas_flag, sd_flag
-    
     
 # code to make a range for the plot
 # +/- 20% of the actual range
@@ -341,17 +394,17 @@ def Calcrange(data, sd):
 class Calcmeans:
    def __init__(self, data):
 
-    dt_co2, co2, co2sd = Extractgood(data.datetime, data.co2, data.co2flags)
+    dt_co2, co2, co2sd = read_GCwerks.Extractgood(data.datetime, data.co2, data.co2flags)
     
     co2runmeans, co2runsds, co2runcount = Calcrunmeans(dt_co2, co2)
         
     
-    dt_ch4, ch4, ch4sd = Extractgood(data.datetime, data.ch4, data.ch4flags)
+    dt_ch4, ch4, ch4sd = read_GCwerks.Extractgood(data.datetime, data.ch4, data.ch4flags)
     
     ch4runmeans, ch4runsds, ch4runcount = Calcrunmeans(dt_ch4, ch4)
 
     if data.nogases == 3:
-        dt_co, co, ch4sd = Extractgood(data.datetime, data.co, data.coflags)
+        dt_co, co, ch4sd = read_GCwerks.Extractgood(data.datetime, data.co, data.coflags)
     
         corunmeans, corunsds, coruncount = Calcrunmeans(dt_co, co)
         
