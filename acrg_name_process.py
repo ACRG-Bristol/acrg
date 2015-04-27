@@ -19,6 +19,9 @@ To run for all sites:
 NOTE: 2-hours and "small" footprints and NAMEII format
     are hard wired at the moment.
 
+Hello Matt - ANYTHING
+
+
 @author: chxmr
 """
 
