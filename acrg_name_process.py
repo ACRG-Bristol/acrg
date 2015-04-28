@@ -613,6 +613,9 @@ def particle_locations(input_search_string, lons = None, lats = None):
     hist = []
     particles = []
     
+    #Variables to check domain extents
+    particle_extremes = {"N": -90., "E": -360. ,"S": 90.,"W": 360.}   
+    
     for f in files:
         
         if f[-3:].upper() == '.GZ':
@@ -622,16 +625,7 @@ def particle_locations(input_search_string, lons = None, lats = None):
         
         df = pandas.read_csv(f, compression=compression, sep=r"\s+")
         for i in range(1, len(set(numpy.array(df["Id"])))+1):
-            print(dlons, dlats)
-            plt.plot(df.Long[df["Id"]==i], df.Lat[df["Id"]==i], '.')
-            plt.plot([50, 120], [edge_lats[1] - dlats/2., edge_lats[1] - dlats/2.])
-            plt.plot([50, 120], [edge_lats[1], edge_lats[1]])
-            plt.plot([50, 120], [edge_lats[0] + dlats/2., edge_lats[0] + dlats/2.])
-            plt.plot([edge_lons[1] - dlons/2., edge_lons[1] - dlons/2.], [0, 60])
-            plt.plot([edge_lons[0] + dlons/2., edge_lons[0] + dlons/2.], [0, 60])
-            plt.show()
         
-#            hist.append(numpy.zeros((2*len(lats) + 2*len(lons), len(heights))))
             hist_ti = {}
             particles_ti = 0.
             
@@ -662,11 +656,22 @@ def particle_locations(input_search_string, lons = None, lats = None):
 
             hist_ti = {direction: hist_direction / particles_ti
                 for (direction, hist_direction) in hist_ti.iteritems()}
-            print(numpy.sum(hist_ti["W"]) + numpy.sum(hist_ti["S"]) +\
-                    numpy.sum(hist_ti["N"])+numpy.sum(hist_ti["E"]))
+
             hist.append(hist_ti)
             particles.append(particles_ti)
-        
+
+            # Store extremes
+            if max(df["Lat"]) > particle_extremes["N"]:
+                particle_extremes["N"] = max(df["Lat"])
+            if min(df["Lat"]) < particle_extremes["S"]:
+                particle_extremes["S"] = min(df["Lat"])
+            if max(df["Long"]) > particle_extremes["E"]:
+                particle_extremes["E"] = max(df["Long"])
+            if min(df["Long"]) < particle_extremes["W"]:
+                particle_extremes["W"] = min(df["Long"])
+    
+    print(particle_extremes)
+    
     return hist_lats, hist_lons, hist_heights, hist
 
 def process_satellite_single(input_directory, output_file):
@@ -739,6 +744,3 @@ def process_multiple(input_search_string, output_file,
             wind_speed=met["wind"], wind_direction=met["wind_direction"],
             PBLH=met["PBLH"], particle_locations = hist,
             particle_heights = hist_heights)
-            
-#HELLO MATT 
-
