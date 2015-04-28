@@ -83,6 +83,7 @@ import netCDF4 as nc
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
+from mpl_toolkits.mplot3d import Axes3D
 import datetime as dt
 import os
 import glob
@@ -155,6 +156,31 @@ def ncread(filenames, varname):
     return lat, lon, time, var
     
 
+def read_particle_locations(filenames):
+    
+    f = nc.Dataset(filenames[0], 'r')
+    
+    #Get grid and time first
+    pl_height = f.variables['height'][:]
+    pl_n = [f.variables['particle_locations_n'][:,:,:]]
+    pl_e = [f.variables['particle_locations_e'][:,:,:]]
+    pl_s = [f.variables['particle_locations_s'][:,:,:]]
+    pl_w = [f.variables['particle_locations_w'][:,:,:]]
+    f.close()
+    
+    for f in filenames[1:]:
+        pl_n.append(f.variables['particle_locations_n'][:,:,:])
+        pl_e.append(f.variables['particle_locations_e'][:,:,:])
+        pl_s.append(f.variables['particle_locations_s'][:,:,:])
+        pl_w.append(f.variables['particle_locations_w'][:,:,:])
+        
+    pl = {"N": np.dstack(pl_n),
+          "E": np.dstack(pl_e),
+          "S": np.dstack(pl_s),
+          "W": np.dstack(pl_w)}
+
+    return pl_height, pl
+
 class read:
     def __init__(self, sitecode_or_filename, years=[2012], domain="small"):
 
@@ -174,6 +200,7 @@ class read:
                 years = [years]
             filenames, fileyears = filename(site, domain, years)
         
+        #Get footprints
         lat, lon, time, fp = ncread(filenames, 'fp')
 
         self.lon = lon
@@ -184,6 +211,12 @@ class read:
         self.latmin = np.min(lat)
         self.fp = np.asarray(fp)
         self.time = time
+
+        #Get particle locations (if available)
+        pl_height, pl = read_particle_locations(filenames)
+
+        self.particle_locations = pl
+        self.particle_height = pl_height
         
 
 class flux:
@@ -494,7 +527,71 @@ def plot(fp_data, date, out_filename=None,
     else:
         plt.show()
 
+
+def plot3d(fp_data, date, out_filename=None, 
+         cutoff = -3.5):
+
+    """date as string "d/m/y H:M" or datetime object 
+    datetime.datetime(yyyy,mm,dd,hh,mm)
+    """
     
+    #looks for nearest time point aviable in footprint   
+    if isinstance(date, str):
+        date=dt.datetime.strptime(date, '%d/%m/%Y %H:%M')
+
+    time_index = bisect.bisect_left(fp_data.time, date)
+
+    data = np.log10(fp_data.fp[:,:,time_index])
+    lon_range = (fp_data.lonmin, fp_data.lonmax)
+    lat_range = (fp_data.latmin, fp_data.latmax)
+
+    #Set very small elements to zero
+    data[np.where(data <  cutoff)]=np.nan
+
+    fig = plt.figure(figsize=(8,7))
+
+    fig.text(0.1, 0.2, str(date), fontsize = 20)
+    
+    ax = Axes3D(fig)
+    
+    ax.set_ylim(lat_range)
+    ax.set_xlim(lon_range)
+    ax.set_zlim((min(fp_data.particle_height), max(fp_data.particle_height)))
+
+    fpX, fpY = np.meshgrid(fp_data.lon, fp_data.lat)
+    
+    levels = np.arange(cutoff, 0., 0.05)
+
+    plfp = ax.contourf(fpX, fpY, data, levels, offset = 0.)
+    plnX, plnY = np.meshgrid(fp_data.lon, fp_data.particle_height)
+    plwX, plwY = np.meshgrid(fp_data.lat, fp_data.particle_height)
+    pllevs = np.arange(0., 0.0031, 0.0001)
+    
+    plnvals = fp_data.particle_locations["N"][:,:,time_index]
+    plnvals[np.where(plnvals == 0.)]=np.nan
+    plwvals = fp_data.particle_locations["W"][:,:,time_index]
+    plwvals[np.where(plwvals == 0.)]=np.nan
+    plpln = ax.contourf(plnX, plnvals, plnY,
+                        zdir = 'y', offset = max(fp_data.lat), levels = pllevs)
+    plplw = ax.contourf(plwvals, plwX, plwY,
+                        zdir = 'x', offset = min(fp_data.lon), levels = pllevs)    
+    ax.view_init(50)
+
+    cb = plt.colorbar(plfp, location='bottom', shrink=0.8)
+    tick_locator = ticker.MaxNLocator(nbins=7)
+    cb.locator = tick_locator
+    cb.update_ticks()
+    cb.set_label('log$_{10}$( (mol/mol) / (mol/m$^2$/s))', 
+             fontsize=15)
+    cb.ax.tick_params(labelsize=13) 
+
+    if out_filename is not None:
+        plt.savefig(out_filename)
+        plt.close()
+    else:
+        plt.show()
+
+
 def animate(allfpdata, output_directory, 
             lon_range = None, lat_range=None, 
             cutoff = -3.5,

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Get AGAGE data, average and filter for baseline
+Get AGAGE data, average, truncate and filter for baseline
 
 Examples:
 
@@ -8,6 +8,12 @@ Get Mace Head CH4 observations and average into 3 hourly periods:
 
     import acrg_agage as agage
     time, ch4, sigma = agage.get("MHD", "CH4", average="3H")
+    
+Get Mace Head CH4 observations, truncate for 2010-2012 inclusive
+and average into 6 hourly periods:
+
+    import acrg_agage as agage
+    time, ch4, sigma = agage.get("MHD", "CH4", startY=2010, endY=2013,average="6H")
 
 Calculate Cape Grim monthly means, with baseline filtering:
     
@@ -111,7 +117,7 @@ def ukmo_flags(site, site_info):
     return pd.DataFrame(flag, index=flag_time, columns=("flags",))
 
 
-def get(site_in, species_in, 
+def get(site_in, species_in, startY=None,endY=None,
         height=None, baseline=False, average=None, 
         output_variability=False):
         
@@ -203,6 +209,13 @@ def get(site_in, species_in,
                 
             ncf.close()
         
+        # TRUNCATE TIME SERIES TO SAVE TIME - LIMIT TO WHOLE YEARS
+        #ts=pd.Series(mf, index=time)
+        #ts=ts.truncate(dt.datetime(startY, 1, 1), dt.datetime(endY, 1, 1))
+
+        #mf=np.array(ts)  # NOT GOOD - I'm overwriting each time!!
+        #time=ts.index
+        
         time=np.array(time)
         mf=np.hstack(mf)
         if len(dmf) > 0:
@@ -227,7 +240,15 @@ def get(site_in, species_in,
         #Put into data frame        
         mfdf=(pd.DataFrame(zip(mf, dmf, vmf), 
                            index=time, columns=("mf", "dmf", "vmf"))).sort()
-        
+        if startY is not None:
+            if endY is None:
+                print 'Need to specify an end year as well'
+                return
+            else:
+                if endY == startY:
+                    print 'End year needs to be different from start year'
+                    return
+                mfdf=mfdf.truncate(dt.datetime(startY, 1, 1), dt.datetime(endY, 1, 1))
         #Do baseline filtering
         if baseline:
             #Get flags

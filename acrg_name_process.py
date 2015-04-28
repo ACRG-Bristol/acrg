@@ -19,6 +19,10 @@ To run for all sites:
 NOTE: 2-hours and "small" footprints and NAMEII format
     are hard wired at the moment.
 
+There are lots of undocumented routines
+
+Testing, testing
+
 @author: chxmr
 """
 
@@ -33,10 +37,12 @@ import scipy.constants as const
 from operator import itemgetter
 from acrg_grid import areagrid
 from acrg_time.convert import time2sec
+import os
+import matplotlib.pyplot as plt
 
 #Default NAME output file version
 #This is changed depending on presence of "Fields:" line in files
-namever=2
+namever=3
 
 #Time formats
 UTC_format = '%H%M%Z %d/%m/%Y'
@@ -156,7 +162,7 @@ def load_NAME(file_lines, namever):
         y = float(vals[1]) - 1.5
         
         # populate the data arrays (i.e. all columns but the leading 4) 
-        for i, data_array in enumerate(data_arrays): 
+        for i, data_array in enumerate(data_arrays):
             data_array[y, x] = float(vals[i + 4])
     
     return headers, column_headings, data_arrays
@@ -196,21 +202,9 @@ def read_file(fname):
     return header, column_headings, data_arrays
 
 
-def define_grid(header, column_headings):
-    
-    #Co-ordinates OF CENTRE OF CELL
-    #IS THIS SAME FOR NAME II OR NAME III FORMAT????
-    Xcount = header['X grid size']
-    Xstep = header['X grid resolution']
-    Xstart = header['X grid origin']
-    lons=numpy.arange(Xstart,Xstart+Xcount*Xstep-0.01*Xstep,Xstep) + Xstep/2.
-   
-    Ycount = header['Y grid size']
-    Ystep = header['Y grid resolution']
-    Ystart = header['Y grid origin']
-    lats=numpy.arange(Ystart,Ystart+Ycount*Ystep-0.01*Ystep,Ystep) + Ystep/2
+def define_grid(header, column_headings, satellite = False):
 
-    #ESTIMATE NUMBER OF TIMESTEPS PER FILE: ASSUMES ONLY ONE SPECIES PER FILE!!!
+    #Get file info
     z_level=column_headings['z_level'][4:]
     time=column_headings['time'][4:]
     if namever==2:
@@ -218,43 +212,73 @@ def define_grid(header, column_headings):
     else:
         species_name=column_headings['name'][4:]
 
-    #Get levels and sort in increasing height
-    levs=list(set(z_level))
-    lev_sort=[]
-    for lev in levs:
-        digits = re.findall(r"[-+]?\d*\.\d+|\d+", lev)
-        if not digits:
-            lev_sort.append(10000000.) #PUT STUFF LIKE BOUNDARY LAYER TO END
-        else:
-            lev_sort.append(float(digits[0]))
-
-    levs=[lev for (sort, lev) in sorted(zip(lev_sort, levs))]
-    nlevs=len(levs)
-
-    ntime=len(time)/nlevs
-
-    time=[]
     if namever == 2:
         timeFormat=UTC_format
     else:
         timeFormat=NAMEIII_short_format
+
+
+    #Longitude and latitude    
+    #Co-ordinates OF CENTRE OF CELL
+    Xcount = header['X grid size']
+    Xstep = header['X grid resolution']
+    Xstart = header['X grid origin']
+    lons=numpy.arange(Xstart,Xstart+Xcount*Xstep-0.01*Xstep,Xstep) + Xstep/2.
+    
+    Ycount = header['Y grid size']
+    Ystep = header['Y grid resolution']
+    Ystart = header['Y grid origin']
+    lats=numpy.arange(Ystart,Ystart+Ycount*Ystep-0.01*Ystep,Ystep) + Ystep/2
+
+    if satellite == False:
         
+        #Get levels and sort in increasing height
+        levs=list(set(z_level))
+        lev_sort=[]
+        for lev in levs:
+            digits = re.findall(r"[-+]?\d*\.\d+|\d+", lev)
+            if not digits:
+                lev_sort.append(10000000.) #PUT STUFF LIKE BOUNDARY LAYER TO END
+            else:
+                lev_sort.append(float(digits[0]))
+    
+        levs=[lev for (sort, lev) in sorted(zip(lev_sort, levs))]
+        nlevs=len(levs)
+    
+        #Time
+        #ESTIMATE NUMBER OF TIMESTEPS PER FILE: ASSUMES ONLY ONE SPECIES PER FILE
+        ntime=len(time)/nlevs
+        
+    else:
+        # Assume only one time step per file
+        #Levels
+        nlevs = len(z_level)
+        levs = range(nlevs)
+    
+        #Time
+        time=[datetime.datetime.strptime(header['End of release'], timeFormat)]
+        ntime = 1
+
+
+    #Time steps    
     timeRef=datetime.datetime.strptime(header['End of release'], timeFormat)
     timeEnd=datetime.datetime.strptime(header['Start of release'], timeFormat)
     
     timeStep=(timeEnd - timeRef).total_seconds()/3600/ntime
 
-    print("Timestep: %d minutes" % round(timeStep*60))
-    print("Levels: %d " % nlevs)
-    print("NAME version: %d" % namever)
-    
+    time=[]
     if ntime == 1:
         time.append(timeRef)
     else:
         for i in range(ntime):
-            time.append(timeRef + \
-                datetime.timedelta(hours=timeStep*(i+1)))
+            time.append(timeRef + datetime.timedelta(hours=timeStep*(i+1)))
 
+
+    print("Timestep: %d minutes" % round(timeStep*60))
+    print("Levels: %d " % nlevs)
+    print("NAME version: %d" % namever)
+    
+    
     return lons, lats, levs, time, timeStep
     
 
@@ -356,7 +380,7 @@ def read_met(fnames):
                 a=i
                 break
 
-        m = pandas.read_csv(fname, skiprows = a, nrows =19, 
+        m = pandas.read_csv(fname, skiprows = a, 
                             compression=compression)
         m = numpy.array(m)
 
@@ -368,20 +392,27 @@ def read_met(fnames):
         WINDcol = int(numpy.where(m=='                Wind speed')[1])
         WINDDcol = int(numpy.where(m=='  Wind direction (degrees)')[1])
         
-        #Read rest of file in so that data is not in string format
-        m2 = pandas.read_csv(fname, skiprows = a+18, 
-                             compression=compression)
-        m2 = numpy.array(m2)
+        #Find where data starts
+        for i, mi in enumerate(m[:, 0]):
+            if str(mi).strip() != '':
+                break
+        
+        m2 = m[i+1:, :]
+
+#        #Read rest of file in so that data is not in string format
+#        m2 = pandas.read_csv(fname, skiprows = a+18, 
+#                             compression=compression)
+#        m2 = numpy.array(m2)
         
         time = time + \
             [pandas.to_datetime(d, dayfirst=True) for d in m2[:,timecol]]
 
-        T=T + list(const.C2K(m2[:, Tcol]))
-        P=P + list(m2[:, Pcol])
-        wind=wind + list(m2[:, WINDcol])
-        wind_direction=wind_direction + list(m2[:, WINDDcol])
-        PBLH=PBLH + list(m2[:, PBLHcol])
-            
+        T=T + list(const.C2K(m2[:, Tcol].astype(float)))
+        P=P + list(m2[:, Pcol].astype(float))
+        wind=wind + list(m2[:, WINDcol].astype(float))
+        wind_direction=wind_direction + list(m2[:, WINDDcol].astype(float))
+        PBLH=PBLH + list(m2[:, PBLHcol].astype(float))
+        
     T=numpy.array(T)
     P=numpy.array(P)
     PBLH=numpy.array(PBLH)
@@ -449,7 +480,8 @@ def concatenate_footprints(file_list, \
 def write_netcdf(fp, lons, lats, levs, time, outfile, \
             temperature=None, pressure=None, \
             wind_speed=None, wind_direction=None, \
-            PBLH=None, varname="fp"):
+            PBLH=None, varname="fp", particle_locations=None, \
+            particle_heights=None):
     
     time_seconds, time_reference = time2sec(time)
     
@@ -507,96 +539,176 @@ def write_netcdf(fp, lons, lats, levs, time, outfile, \
         ncPBLH=ncF.createVariable('PBLH', 'f', ('time',))
         ncPBLH[:]=PBLH
         ncPBLH.units='m'
+
+    if particle_locations is not None:
+        ncF.createDimension('height', len(particle_locations[0]["N"][0,:]))
+        ncHeight=ncF.createVariable('height', 'f',
+                                   ('height',))
+        ncPartN=ncF.createVariable('particle_locations_n', 'f',
+                                   ('height', 'lon', 'time'))
+        ncPartE=ncF.createVariable('particle_locations_e', 'f',
+                                   ('height', 'lat', 'time'))
+        ncPartS=ncF.createVariable('particle_locations_s', 'f',
+                                   ('height', 'lon', 'time'))
+        ncPartW=ncF.createVariable('particle_locations_w', 'f',
+                                   ('height', 'lat', 'time'))
+        ncHeight[:]=particle_heights
+        ncPartN[:, :, :]=numpy.transpose(
+            numpy.dstack([pl["N"] for pl in particle_locations]), (1, 0, 2))
+        ncPartE[:, :, :]=numpy.transpose(
+            numpy.dstack([pl["E"] for pl in particle_locations]), (1, 0, 2))
+        ncPartS[:, :, :]=numpy.transpose(
+            numpy.dstack([pl["S"] for pl in particle_locations]), (1, 0, 2))
+        ncPartW[:, :, :]=numpy.transpose(
+            numpy.dstack([pl["W"] for pl in particle_locations]), (1, 0, 2))
+        ncPartN.units=''
+        ncPartN.long_name='Fraction of total particles leaving domain (N side)'
+        ncPartE.units=''
+        ncPartE.long_name='Fraction of total particles leaving domain (E side)'
+        ncPartS.units=''
+        ncPartS.long_name='Fraction of total particles leaving domain (S side)'
+        ncPartW.units=''
+        ncPartW.long_name='Fraction of total particles leaving domain (W side)'
     
     ncF.close()
     print "Written " + outfile
 
 
-def name_site_name(site):
+def particle_locations(input_search_string, lons = None, lats = None):
+
+    def particle_location_edges(xvalues, yvalues, x, y):
+        
+        dx = x[1] - x[0]
+        xedges = numpy.append(x - dx/2., x[-1] + dx/2.)
+        dy = y[1] - y[0]
+        yedges = numpy.append(y - dy/2., y[-1] + dy/2.)
+        
+        hist, xe, ye = numpy.histogram2d(xvalues, yvalues,
+                                         bins = (xedges, yedges))
+        
+        return hist
     
-    name={"MHD": "MACE_HEAD",
-          "TTA": "ANGUS_TOWER",
-          "RGL": "RIDGEHILL",
-          "TAC": "TACOLNESTON",
-          "BSD": "BILSDALE",
-          "HFD": "HEATHFIELD",
-          "THD": "TRINIDAD_HEAD"}
-    
-    return name[site]
-
-
-def process_agage(site, suffix="_small"):
-
-    #Get site meteorology
-    met_files=glob.glob('/data/shared/NAME/site_meteorology/*' + \
-        name_site_name(site) + "*.txt")
-
-    met = read_met(met_files)
-
-    #Search for files
-    files=glob.glob("/dagage2/agage/metoffice/NAME_output_" + \
-        name_site_name(site) + suffix + "/*.txt.gz")
+    files=glob.glob(input_search_string)
     files.sort()
-    
-    year=[int(f[f.rfind('_')+1:f.rfind('_')+5]) for f in files]
-    years=set(year)
 
-    for y in years:
+    edge_lons = [min(lons), max(lons)]
+    edge_lats = [min(lats), max(lats)]
+    dlons = lons[1] - lons[0]
+    dlats = lats[1] - lats[0]
+    dheights = 1000
+    
+    heights = numpy.arange(0, 15001, 1000) + dheights/2.
+    
+    # Define output grid
+    hist_lats = numpy.hstack([numpy.zeros(len(lats)) + lats[-1],
+                           lats[::-1],
+                           numpy.zeros(len(lats)) + lats[0],
+                           lats] )
+    hist_lons = numpy.hstack([lons,
+                           numpy.zeros(len(lons)) + lons[-1],
+                           lons[::-1],
+                           numpy.zeros(len(lons)) + lons[0]])
+    hist_heights = heights
+    
+    hist = []
+    particles = []
+    
+    for f in files:
         
-        #Output file
-        outFile='/data/shared/NAME/fp_netcdf/' + \
-            site + suffix + '_' + str(y) + '.nc'
-        
-        #Site meteorology for this year
-        if len(met_files) > 0:
-            met_time_year, temperature_year, pressure_year = zip(* \
-                [met for met in \
-                zip(met_time, temperature, pressure) if met[0].year == y])
+        if f[-3:].upper() == '.GZ':
+            compression="gzip"
         else:
-            met_time_year=None
-            temperature_year=None
-            pressure_year=None
+            compression=None
         
-        #Input files for this year
-        fileYear=[f for f, yr in zip(files, year) if yr == y]
-        fileYear.sort()
+        df = pandas.read_csv(f, compression=compression, sep=r"\s+")
+        for i in range(1, len(set(numpy.array(df["Id"])))+1):
+            print(dlons, dlats)
+            plt.plot(df.Long[df["Id"]==i], df.Lat[df["Id"]==i], '.')
+            plt.plot([50, 120], [edge_lats[1] - dlats/2., edge_lats[1] - dlats/2.])
+            plt.plot([50, 120], [edge_lats[1], edge_lats[1]])
+            plt.plot([50, 120], [edge_lats[0] + dlats/2., edge_lats[0] + dlats/2.])
+            plt.plot([edge_lons[1] - dlons/2., edge_lons[1] - dlons/2.], [0, 60])
+            plt.plot([edge_lons[0] + dlons/2., edge_lons[0] + dlons/2.], [0, 60])
+            plt.show()
         
-        fp, lons, lats, levs, time, temp, press = \
-            concatenate_footprints(fileYear, \
-                met_time=met_time_year, pressure=pressure_year, \
-                temperature=temperature_year)
-        
-        write_netcdf(fp, lons, lats, levs, time, outFile, \
-            temperature=temp, pressure=press)
+#            hist.append(numpy.zeros((2*len(lats) + 2*len(lons), len(heights))))
+            hist_ti = {}
+            particles_ti = 0.
+            
+            #Northern edge
+            dfe = df[(df["Lat"] > edge_lats[1] - dlats/2.) & (df["Id"] == i)]
+            hist_ti["N"] = \
+                particle_location_edges(dfe["Long"].values, dfe["Ht"].values,
+                                        lons, heights)
+            particles_ti += numpy.sum(hist_ti["N"])
+            #Eastern edge
+            dfe = df[(df["Long"] > edge_lons[1] - dlons/2.) & (df["Id"] == i)]
+            hist_ti["E"] = \
+                particle_location_edges(dfe["Lat"].values, dfe["Ht"].values,
+                                        lats, heights)
+            particles_ti += numpy.sum(hist_ti["E"])
+            #Southern edge
+            dfe = df[(df["Lat"] < edge_lats[0] + dlats/2.) & (df["Id"] == i)]
+            hist_ti["S"] = \
+                particle_location_edges(dfe["Long"].values, dfe["Ht"].values,
+                                        lons, heights)
+            particles_ti += numpy.sum(hist_ti["S"])
+            #Western edge
+            dfe = df[(df["Long"] < edge_lons[0] + dlons/2.) & (df["Id"] == i)]
+            hist_ti["W"] = \
+                particle_location_edges(dfe["Lat"].values, dfe["Ht"].values,
+                                        lats, heights)
+            particles_ti += numpy.sum(hist_ti["W"])
 
+            hist_ti = {direction: hist_direction / particles_ti
+                for (direction, hist_direction) in hist_ti.iteritems()}
+            print(numpy.sum(hist_ti["W"]) + numpy.sum(hist_ti["S"]) +\
+                    numpy.sum(hist_ti["N"])+numpy.sum(hist_ti["E"]))
+            hist.append(hist_ti)
+            particles.append(particles_ti)
+        
+    return hist_lats, hist_lons, hist_heights, hist
 
-def run_agage():
+def process_satellite_single(input_directory, output_file):
     
-    sites=['TTA', 'HFD', 'RGL', 'TAC', 'MHD', 'BSD']
+    # Get list of met
+    met_files = sorted(\
+        glob.glob(os.path.join(input_directory, "Met*/*.txt.gz")))
 
-    for site in sites:
-        process_agage(site, suffix="_small")
+    met = [read_met(f) for f in met_files]
+    
+    files = glob.glob(os.path.join(input_directory, "Fields_*.txt.gz"))
+    files = [f for f in files if "_BL_" not in f]
+    
+    if len(files) > 1:
+        print("More than one file in directory")
+        return None
+    
+    # Get data
+    header, column_headings, data_arrays = read_file(files[0])
+    lons, lats, levs, time, timeStep = define_grid(header, column_headings, 
+                                                   satellite = True)
 
+    fp=numpy.zeros((len(lats), len(lons), len(levs)))
+    press = numpy.zeros(len(levs))
+    temp = numpy.zeros(len(levs))
 
-#def process_single(infile, outfile, met_file=None):
-#
-#    if met_file is not None:
-#        met = read_met(met_file)
-#    else:
-#        met={"time":None, "T":None, "P":None}
-#    
-#    header, column_headings, data_arrays = read_file(infile)
-#
-#    fp, lons, lats, levs, time, temp, press = \
-#        footprint_array(header, column_headings, data_arrays, \
-#        met_time=met["time"], pressure=met["P"], temperature=met["T"])
-#
-#    write_netcdf(fp, lons, lats, levs, time, outfile, \
-#            temperature=temp, pressure=press)
+    area = areagrid(lats, lons)
+
+    for lev in levs:
+        #Convert footprint to (mol/m2/s)^-1
+        #The 1 assumes 1g/s emissions rate
+        fp[:, :, lev]=data_arrays[lev]*area/ \
+            (3600.*timeStep*1.)/ \
+            (met[lev]["P"][0]/const.R/met[lev]['T'][0])
+        press[lev] = met[lev]["P"][0]
+        temp[lev] = met[lev]["T"][0]
+
+    return fp, lons, lats, levs, time, temp, press
 
 
 def process_multiple(input_search_string, output_file, 
-                     met_search_string=None):
+                     met_search_string=None, particle_search_string=None):
 
     #Get site meteorology
     if met_search_string is not None:
@@ -615,8 +727,15 @@ def process_multiple(input_search_string, output_file,
             met_time=met["time"], pressure=met["P"],
             temperature=met["T"])
 
+    if particle_search_string is not None:
+        hist_lats, hist_lons, hist_heights, hist = \
+            particle_locations(particle_search_string, lons = lons, lats = lats)
+    else:
+        hist = None
+        hist_heights = None
+
     write_netcdf(fp, lons, lats, levs, time, output_file,
             temperature=met["T"], pressure=met["P"],
             wind_speed=met["wind"], wind_direction=met["wind_direction"],
-            PBLH=met["PBLH"])
-
+            PBLH=met["PBLH"], particle_locations = hist,
+            particle_heights = hist_heights)
