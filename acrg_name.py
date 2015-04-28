@@ -96,6 +96,7 @@ import bisect
 import numexpr
 import subprocess
 from progressbar import ProgressBar
+import xray
 
 fp_directory = '/data/shared/NAME/fp_netcdf/'
 flux_directory = '/data/shared/NAME/emissions/'
@@ -202,7 +203,7 @@ class read:
         
         #Get footprints
         lat, lon, time, fp = ncread(filenames, 'fp')
-
+            
         self.lon = lon
         self.lat = lat
         self.lonmax = np.max(lon)
@@ -212,11 +213,12 @@ class read:
         self.fp = np.asarray(fp)
         self.time = time
 
-        #Get particle locations (if available)
-        pl_height, pl = read_particle_locations(filenames)
+        if domain is "NWEU":
+            #Get particle locations (if available)
+            pl_height, pl = read_particle_locations(filenames)
 
-        self.particle_locations = pl
-        self.particle_height = pl_height
+            self.particle_locations = pl
+            self.particle_height = pl_height
         
 
 class flux:
@@ -641,4 +643,30 @@ def animate(allfpdata, output_directory,
         filelist = glob.glob(os.path.join(output_directory, "*.png"))
         for f in filelist:
             os.remove(f)
-
+            
+def fp_resample(fp,lat,lon,time, av_period=None, dimension='time', av_how='mean',
+                startM=None, endM=None):
+                    
+    da = xray.DataArray(fp, [('lat', lat),('lon', lon), 
+                                 ('time', time)], name = 'fp')
+                                 
+    if av_period is not None:
+        da = da.resample(av_period, dimension, how=av_how, base=1)
+    
+    if startM is not None:
+        if endM is None:
+                print 'Need to specify an end month as well'
+                return
+        else:
+            if endM == startM:
+                print 'End month needs to be different from start month'
+                return
+                
+            year=time[1].timetuple().tm_year
+            da = da.sel(time=slice(dt.datetime(year,startM,01), dt.datetime(year,endM,01)))
+    
+    fp_out=da
+    time_out = da.time    
+    
+    return fp_out, time_out
+   

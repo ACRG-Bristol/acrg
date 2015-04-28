@@ -209,13 +209,6 @@ def get(site_in, species_in, startY=None,endY=None,
                 
             ncf.close()
         
-        # TRUNCATE TIME SERIES TO SAVE TIME - LIMIT TO WHOLE YEARS
-        #ts=pd.Series(mf, index=time)
-        #ts=ts.truncate(dt.datetime(startY, 1, 1), dt.datetime(endY, 1, 1))
-
-        #mf=np.array(ts)  # NOT GOOD - I'm overwriting each time!!
-        #time=ts.index
-        
         time=np.array(time)
         mf=np.hstack(mf)
         if len(dmf) > 0:
