@@ -441,7 +441,7 @@ class analytical_inversion:
             species_key = species
             
         acrg_path=os.path.split(os.path.realpath(__file__))
-        with open(acrg_path + "/acrg_species_info.json") as f:
+        with open(acrg_path[0] + "/acrg_species_info.json") as f:
             species_info=json.load(f)
         if type(species_key) is not str:
             species_key = str(species_key) 
@@ -482,13 +482,13 @@ class analytical_inversion:
         area = areagrid(flux_data.lat, flux_data.lon)
             
         awflux = flux_data.flux[:,:,0]*area
-        f = np.zeros(np.shape(x))
+        fl = np.zeros(np.shape(x))
         
         for i in range(int(np.min(basis_data.basis)), int(np.max(basis_data.basis))+1):
-            f[i-1] = np.sum(awflux[basis_data.basis[:,:,0]==i])
+            fl[i-1] = np.sum(awflux[basis_data.basis[:,:,0]==i])
         
-        prior = sum(f*(3600*24*365)*mol_mass*1e-3)
-        E = np.array(x)*f*(3600*24*365)*mol_mass*1e-3
+        prior = sum(fl*(3600*24*365)*mol_mass*1e-3)
+        E = np.array(x)*fl*(3600*24*365)*mol_mass*1e-3
         E_tot = sum(E)
 
         qmatrix = np.zeros((len(E), len(E)))
