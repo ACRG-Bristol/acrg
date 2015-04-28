@@ -268,3 +268,26 @@ def get(site_in, species_in, startY=None,endY=None,
         else:
             return mfdf.index.to_pydatetime(), np.array(mfdf['mf']), \
                 np.array(mfdf['dmf'])
+
+
+def get_obs(sites,species,start,end, height=None, baseline=False, average = '2H'):
+    obs = {}
+    if type(sites) is not list:
+        sites = [sites]
+    if height == None:
+        for site in sites:
+            ts, mfs, error = get(site, species, average=average)
+            data = pd.DataFrame(mfs, index = ts, columns = ['mf'])
+            data = data[start: end]
+            obs[site] = data
+    elif height != None:
+        if type(height) is not list:
+            height == height
+        for site in sites:
+            i = sites.index(site)
+            ts, mfs, error = get(site, species, height = height[i], baseline= baseline, average=average)
+            data = pd.DataFrame(mfs, index = ts, columns = ['mf'])
+            data = data[start: end]
+            obs[site] = data        
+        
+    return obs

@@ -96,6 +96,9 @@ import bisect
 import numexpr
 import subprocess
 from progressbar import ProgressBar
+import json
+from acrg_grid import areagrid
+import acrg_agage as agage
 import xray
 
 fp_directory = '/data/shared/NAME/fp_netcdf/'
@@ -368,24 +371,31 @@ def sensitivity_single_site(site, species,
 
 
 def sensitivity(obs, species, years=[2012], flux_years=None,
-                domain="small", basis_case='voronoi', filt=None):
-
+                domain="small", basis_case='voronoi', filt=None, alt_fp_filename = None):
+#Using alt_fp_filename only works for one site at the moment
     H=[]
     y_time=[]
     y_site=[]
     y=[]
 
     for site in sorted(obs.iterkeys()):
-        ts, Hs = sensitivity_single_site(site, species, years, 
+        if alt_fp_filename is not None:
+            ts, Hs = sensitivity_single_site(alt_fp_filename, species, years, 
+                                flux_years=flux_years, domain=domain, 
+                                filt=filt)
+        else:
+            ts, Hs = sensitivity_single_site(site, species, years, 
                                 flux_years=flux_years, domain=domain, 
                                 filt=filt)
         df_site = pandas.DataFrame(Hs, index=ts)
         obsdf = obs[site].dropna()
         Hdf = df_site.reindex(obsdf.index)
-        y_time.append(Hdf.index.to_pydatetime())
-        y_site.append([site for i in range(len(Hdf.index))])
-        y.append(obsdf.values)
-        H.append(df_site.values)
+        Hdf2 = Hdf.dropna()
+        obsdf2 = obsdf.reindex(Hdf2.index)
+        y_time.append(Hdf2.index.to_pydatetime())
+        y_site.append([site for i in range(len(Hdf2.index))])
+        y.append(obsdf2.values)
+        H.append(Hdf2.values)
         
     H=np.vstack(H)
     y_time=np.hstack(y_time)
@@ -393,6 +403,115 @@ def sensitivity(obs, species, years=[2012], flux_years=None,
     y=np.vstack(y)
 
     return y_time, y_site, y, H
+
+
+def baseline(y, y_time, y_site, obs, days_to_average = 5):
+    
+    keys = sorted(obs.iterkeys())
+
+    n = days_to_average
+    pos = np.zeros(len(y))
+    for site in keys:
+        val = np.max(pos)
+        wh = np.where(y_site == site)
+        ts = pandas.Series(1, y_time[wh])
+        fiveday = np.clip((ts.index.day-1) // n, 0, n)
+        months = (ts.index.month - ts.index.month[0])
+        pos[wh] = (val + 1) + fiveday + months*(n+1)
+    
+    HB = np.zeros((len(y), len(np.unique(pos))))
+    xerror = np.zeros(len(np.unique(pos)))
+    col = 0
+    for i in range(len(np.unique(pos))):
+        wh = np.where(pos == i+1)
+        HB[wh, col] = 1
+        xerror[col] = 10000
+        col += 1
+                
+    return HB, xerror
+
+
+class analytical_inversion:
+    def __init__(self, obs, species, years=[2012], flux_years=None,
+                domain="small", basis_case='voronoi', filt=None,
+                species_key = None, baseline_days = 5, alt_fp_filename = None):
+    
+        y_time, y_site, y, H = sensitivity(obs, species, years, flux_years=flux_years,
+                domain=domain, basis_case=basis_case, filt=filt, alt_fp_filename = alt_fp_filename)
+        
+        if species_key == None:
+            species_key = species
+            
+        acrg_path=os.path.split(os.path.realpath(__file__))
+        with open(acrg_path[0] + "/acrg_species_info.json") as f:
+            species_info=json.load(f)
+        if type(species_key) is not str:
+            species_key = str(species_key) 
+        species_key = agage.synonyms(species_key, species_info)
+    
+        mol_mass = float(species_info[species_key]['mol_mass'])
+        u = species_info[species_key]['units']
+        
+        units = {"ppm" : 1e6,
+                 "ppb" : 1e9,
+                 "ppt" : 1e12,
+                 "ppq" : 1e15}
+        
+        H0 = H*units[u]
+        x0 = np.ones(len(H[0,:]))
+        
+#       Solve for baseline    
+        HB, xerror = baseline(y, y_time, y_site,obs, days_to_average = baseline_days)
+        H = np.append(H0, HB, axis = 1)
+        
+#       Inversion
+        xa = np.append(x0,np.zeros(len(xerror)))
+        P = np.diagflat(np.append(x0**2, xerror))
+        R = np.diagflat((y*0.1)**2)
+        
+        H = np.matrix(H)
+        xa = np.matrix(xa).T
+        y = np.matrix(y)
+        P1 = np.matrix(P).I
+        R1= np.matrix(R).I
+            
+        P = ((H.T*R1)*H + P1).I
+        x = xa + P*H.T*R1*(y - H*xa)
+        
+#       Find real emissions values
+        flux_data=flux(species, flux_years, domain=domain)
+        basis_data = basis_function(basis_case, years=years, domain=domain)
+        area = areagrid(flux_data.lat, flux_data.lon)
+            
+        awflux = flux_data.flux[:,:,0]*area
+        fl = np.zeros(np.shape(x))
+        
+        for i in range(int(np.min(basis_data.basis)), int(np.max(basis_data.basis))+1):
+            fl[i-1] = np.sum(awflux[basis_data.basis[:,:,0]==i])
+        
+        prior = sum(fl*(3600*24*365)*mol_mass*1e-3)
+        E = np.array(x)*fl*(3600*24*365)*mol_mass*1e-3
+        E_tot = sum(E)
+
+        qmatrix = np.zeros((len(E), len(E)))
+        for i in range(len(E)):
+            qmatrix[:,i] = E[:,0]*E[i]
+
+        V = np.array(P)*qmatrix
+        sigma = sum(sum(V))**0.5
+        
+#       Find baseline solution
+        BL = H[:,len(H0[0,:]):]*x[len(H0[0,:]):]
+    
+        self.prior_scal = xa
+        self.model = H
+        self.obs = y
+        self.post_scal = x
+        self.prior_emi = prior
+        self.post_emi = float(E_tot)
+        self.uncert = sigma
+        self.baseline = BL
+
 #    
 #    time, H0 = sensitivity_single_site(sites[0], species,
 #                                       years=years, flux_years=flux_years,
