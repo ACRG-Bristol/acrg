@@ -369,15 +369,20 @@ def sensitivity_single_site(site, species,
 
 
 def sensitivity(obs, species, years=[2012], flux_years=None,
-                domain="small", basis_case='voronoi', filt=None):
-
+                domain="small", basis_case='voronoi', filt=None, alt_fp_filename = None):
+#Using alt_fp_filename only works for one site at the moment
     H=[]
     y_time=[]
     y_site=[]
     y=[]
 
     for site in sorted(obs.iterkeys()):
-        ts, Hs = sensitivity_single_site(site, species, years, 
+        if alt_fp_filename is not None:
+            ts, Hs = sensitivity_single_site(alt_fp_filename, species, years, 
+                                flux_years=flux_years, domain=domain, 
+                                filt=filt)
+        else:
+            ts, Hs = sensitivity_single_site(site, species, years, 
                                 flux_years=flux_years, domain=domain, 
                                 filt=filt)
         df_site = pandas.DataFrame(Hs, index=ts)
@@ -426,10 +431,11 @@ def baseline(y, y_time, y_site, obs, days_to_average = 5):
 
 class analytical_inversion:
     def __init__(self, obs, species, years=[2012], flux_years=None,
-                domain="small", basis_case='voronoi', filt=None, species_key = None, baseline_days = 5):
+                domain="small", basis_case='voronoi', filt=None,
+                species_key = None, baseline_days = 5, alt_fp_filename = None):
     
         y_time, y_site, y, H = sensitivity(obs, species, years, flux_years=flux_years,
-                domain=domain, basis_case=basis_case, filt=filt)
+                domain=domain, basis_case=basis_case, filt=filt, alt_fp_filename = alt_fp_filename)
         
         if species_key == None:
             species_key = species
