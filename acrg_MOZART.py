@@ -974,7 +974,7 @@ class write_ncdf_mobile:
         ncmodel_lat = ncF.createVariable('model_lat', 'f', ('time',))
         ncmodel_press = ncF.createVariable('model_pressure', 'f', ('time',))
 
-        ncconc = ncF.createVariable('conc', 'f', ('time'))
+        ncmodel_conc = ncF.createVariable('model_conc', 'f', ('time'))
         
         
         # Fill the variables
@@ -997,13 +997,13 @@ class write_ncdf_mobile:
         ncmodel_lat[:] = filtereddata.model_lat
         ncmodel_press[:] = filtereddata.model_pressure
 
-        ncconc[:] = filtereddata.conc
+        ncmodel_conc[:] = filtereddata.conc
         
         
         # Give the variables some attributes        
         ncmodel_lon.units = 'Degrees east'
         ncmodel_lat.units = 'Degrees north'
-        ncconc.units = filtereddata.concunits
+        ncmodel_conc.units = filtereddata.concunits
         ncobs_conc.units = filtereddata.site_units
         ncmodel_press.units = filtereddata.pressureunits
         ncmodel_time.units = 'seconds since 2009-01-01 00:00:00'
@@ -1228,58 +1228,19 @@ class write_GONZI:
         import fnmatch
         
         
-        # Read in the model output 
+
+        # Read in the matched model/obs output 
         # This will have been prefiltered to time and space match the obs 
-        # But will include data from all the flights and the ferry
+        # But will include data from all mobile platforms
+        # need to subsample for ferry and our flights
+
         modeldata = read_ncdf_mobile(species = species, dir = modeloutput_dir+ '/' + species)      
         
         
         # Only want to match the ferry or the air craft
         # Extract the Ferry data
-        ferry_index = np.     
+        #ferry_index = np.     
         
-        
-        
-        # Read in the obs data
-        filepattern = 'mozart_obs_mobile_*.nc'
-            
-        matches = []
-        for root, dirnames, filenames in os.walk(obs_dir+species+'/mozart_obs_mobile/'):
-            for filename in fnmatch.filter(filenames, filepattern):
-                matches.append(os.path.join(root, filename))   
-                    
-        obs_files = matches
-        # need to sort the files
-        obs_files.sort()
-
-        for i in obs_files:
-            obs_i = read_mobile_sitefile_nc(obs_files[i])
-      
-                self.time = time_dt
-        self.time_secs = time
-        self.lat = lat
-        self.lon = lon
-        self.alt = alt[:]
-        
-        self.alt_units = alt.units
-        self.scale = scale
-        
-        self.gasname = species_lc
-        self.conc = gas_data[:]
-        self.repeatability = gas_repeatability[:]
-        self.units = gas_data.units
-        self.pressure = pressure[:]
-        self.pressure_units = pressure.units
-        self.network = network
-        self.site = site
-        self.sitefile = sitefile      
-      
-      
-      
-      
-      
-      
-      
       
       
         if type(outdir) == int:
@@ -1474,7 +1435,10 @@ class read_ncdf_mobile:
                 
                 model_time_j = np.transpose(data.variables['model_time'][:])
                 obs_time_j = np.transpose(data.variables['obs_time'][:])
-                conc_j = np.transpose(data.variables['conc'][:])
+
+                model_conc_j = np.transpose(data.variables['conc'][:])
+                obs_conc_j = np.transpose(data.variables['obs_conc'][:])
+
                 model_pressure_j = np.transpose(data.variables['model_pressure'][:])
                 obs_pressure_j = np.transpose(data.variables['obs_pressure'][:])
                 
@@ -1490,8 +1454,9 @@ class read_ncdf_mobile:
     
                     sitenames = sitenames_j            
                 
-                    conc = conc_j      
-                    
+                    model_conc = model_conc_j      
+                    obs_conc = obs_conc_j                    
+
                     model_pressure =  model_pressure_j
                     obs_pressure =  obs_pressure_j
                     
@@ -1508,8 +1473,9 @@ class read_ncdf_mobile:
                     
                     sitenames = np.concatenate((sitenames, sitenames_j))               
                     
-                    conc = np.concatenate((conc, conc_j))
-                    
+                    model_conc = np.concatenate((model_conc, model_conc_j))
+                    obs_conc = np.concatenate((obs_conc, obs_conc_j))
+
                     model_pressure = np.concatenate((model_pressure, model_pressure_j))    
                     obs_pressure = np.concatenate((obs_pressure, obs_pressure_j)) 
                     
@@ -1525,7 +1491,8 @@ class read_ncdf_mobile:
                     
             self.model_time = model_dt_date
             self.obs_time = obs_dt_date
-            self.conc = conc
+            self.model_conc = model_conc
+            self.obs_conc = obs_conc
             self.model_pressure = model_pressure
             self.obs_pressure = obs_pressure
             self.model_lon = model_lon
@@ -1635,8 +1602,9 @@ class plot_ncdf_fixed:
         
 # Class to plot the filtered output
 # Plots the output of read_ncdf_mobile
+# defaults to not plotting the obs concentrations as we only have these for CH4 at the moment
 class plot_ncdf_mobile:
-    def __init__(self, data, sitename = 'mhd', scaling = 1e06):
+    def __init__(self, data, sitename = 'mhd', scaling = 1e06, no_obs =0):
         
         import matplotlib.ticker as ticker
         import matplotlib.pyplot as plt
@@ -1654,7 +1622,9 @@ class plot_ncdf_mobile:
         
             time = np.squeeze(data.obs_time[matched])
             
-            conc = np.squeeze(data.conc[matched])
+            model_conc = np.squeeze(data.model_conc[matched])
+            obs_conc = np.squeeze(data.obs_conc[matched])
+                
             
             model_pressure = np.squeeze(data.model_pressure[matched])
             obs_pressure = np.squeeze(data.obs_pressure[matched])
@@ -1682,8 +1652,12 @@ class plot_ncdf_mobile:
             # Plot the data
             plt1 = plt.subplot(4,1,1)
                         
-            plt1.plot(time, conc*scaling, "o-", color = 'blue', markersize = 3)
+            plt1.plot(time, model_conc*scaling, "o-", color = 'blue', markersize = 3)
+            
+            if no_obs !=0:
+                plt1.plot(time, obs_conc*scaling, "o-", color = 'red', markersize = 3)
                 
+            
             y_formatter = ticker.ScalarFormatter(useOffset=False)
             plt1.yaxis.set_major_formatter(y_formatter)
              

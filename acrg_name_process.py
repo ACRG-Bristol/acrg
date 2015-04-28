@@ -739,6 +739,3 @@ def process_multiple(input_search_string, output_file,
             wind_speed=met["wind"], wind_direction=met["wind_direction"],
             PBLH=met["PBLH"], particle_locations = hist,
             particle_heights = hist_heights)
-            
-#HELLO MATT 
-
