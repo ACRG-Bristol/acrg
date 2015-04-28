@@ -23,6 +23,7 @@ import datetime as dt
 from acrg_grid.hybridcoords import hybridcoords as hybrid_coords
 import pdb
 import bisect
+import os
 
 # ___________________________________________________________________________________________________________________
 # CODE TO READ THE DIFFERENT DATA TYPES
@@ -266,60 +267,67 @@ class read_mobile_sitefile_nc:
         if type(sitefile) == type(0):
             sitefile = dir + species + '/mozart_obs_mobile/mozart_obs_mobile_' +str(year)+ str(month).zfill(2)+'.nc'
         
-        print 'Site file to read:'
-        print sitefile
-        
-        data=netCDF4.Dataset(sitefile, 'r')
-
-        if species == 'CH4':
-            species_lc = 'ch4'
-        
-        if species == 'CO2':
-            species_lc = 'co2'
-        
-        if species == 'N2O':
-            species_lc = 'n2o'
-        
-        # Extract the data    
-        time = data.variables['time'][:] # "seconds since 2004-01-01 00:00:00" ;
-        site = data.variables['site'][:]
-        network = data.variables['network'][:]
-        scale = data.variables['scale'][:]
-        lon = data.variables['longitude'][:]
-        lat = data.variables['latitude'][:]
-        alt = data.variables['altitude']
-        gas_data = data.variables[species_lc]
-        gas_repeatability = data.variables[species_lc+'_repeatability']
-        pressure = data.variables['pressure']
-        
-        # Create the time variable
-        dateunits = data.variables['time'].getncattr('units')
-        sincedate = dateunits[dateunits.find('seconds since ') +14:-1] # seconds since 2014-01-01 00:00:00
+        # Check if the site file exists
+        exists = os.path.isfile(sitefile)
                 
-        time_dt = [ dt.datetime.strptime(sincedate, "%Y-%m-%d %H:%M:%S") + dt.timedelta(seconds=(i).astype('int')) for i in time]
-        #time_dt = [dt.datetime(2009,1,1,0,0,0) + dt.timedelta(seconds=(i).astype('int')) for i in time]
-
-        self.time = time_dt
-        self.time_secs = time
-        self.lat = lat
-        self.lon = lon
-        self.alt = alt[:]
-        
-        self.alt_units = alt.units
-        self.scale = scale
-        
-        self.gasname = species_lc
-        self.conc = gas_data[:]
-        self.repeatability = gas_repeatability[:]
-        self.units = gas_data.units
-        self.pressure = pressure[:]
-        self.pressure_units = pressure.units
-        self.network = network
-        self.site = site
-        self.sitefile = sitefile
-        
- 
-
+        if exists :
+            
+            print 'Site file being read:'
+            print sitefile
+            
+            data=netCDF4.Dataset(sitefile, 'r')
+    
+            if species == 'CH4':
+                species_lc = 'ch4'
+            
+            if species == 'CO2':
+                species_lc = 'co2'
+            
+            if species == 'N2O':
+                species_lc = 'n2o'
+            
+            # Extract the data    
+            time = data.variables['time'][:] # "seconds since 2004-01-01 00:00:00" ;
+            site = data.variables['site'][:]
+            network = data.variables['network'][:]
+            scale = data.variables['scale'][:]
+            lon = data.variables['longitude'][:]
+            lat = data.variables['latitude'][:]
+            alt = data.variables['altitude']
+            gas_data = data.variables[species_lc]
+            gas_repeatability = data.variables[species_lc+'_repeatability']
+            pressure = data.variables['pressure']
+            
+            # Create the time variable
+            dateunits = data.variables['time'].getncattr('units')
+            sincedate = dateunits[dateunits.find('seconds since ') +14:-1] # seconds since 2014-01-01 00:00:00
+                    
+            time_dt = [ dt.datetime.strptime(sincedate, "%Y-%m-%d %H:%M:%S") + dt.timedelta(seconds=(i).astype('int')) for i in time]
+            #time_dt = [dt.datetime(2009,1,1,0,0,0) + dt.timedelta(seconds=(i).astype('int')) for i in time]
+    
+            self.time = time_dt
+            self.time_secs = time
+            self.lat = lat
+            self.lon = lon
+            self.alt = alt[:]
+            
+            self.alt_units = alt.units
+            self.scale = scale
+            
+            self.gasname = species_lc
+            self.conc = gas_data[:]
+            self.repeatability = gas_repeatability[:]
+            self.units = gas_data.units
+            self.pressure = pressure[:]
+            self.pressure_units = pressure.units
+            self.network = network
+            self.site = site
+            self.sitefile = sitefile
+            self.fileexists = exists
+    
+        else:
+            print 'Sitefile ' + sitefile + ' does not exist'
+            self.fileexists = exists
 
 
 
@@ -787,32 +795,29 @@ class data_filter_mobile:
         #print 'reading site file : ' 
         print sitefile
         
-        # Read site info file
+        # Read site info file        
         
         siteinfo = read_mobile_sitefile_nc(species = species, month = data.time[0].month, year = data.time[0].year)
         
-        # Only want to match times that are within the range of the file
-        modeltime_range = [data.time[0], data.time[1] - data.time[0] + data.time[-1]]
-        model_secs = np.asarray([(i - dt.datetime(2009,1,1,0,0,0)).total_seconds() for i in data.time])
-              
+        # only proceed if the site file exists
+        if siteinfo.fileexists :
         
-        if sum(np.asarray(siteinfo.time) >= modeltime_range[0])/len(siteinfo.time) + sum(np.asarray(siteinfo.time) <= modeltime_range[1]) >= 2:
-
+            # Only want to match times that are within the range of the file
+            #modeltime_range = [data.time[0], data.time[1] - data.time[0] + data.time[-1]]
+            model_secs = np.asarray([(i - dt.datetime(2009,1,1,0,0,0)).total_seconds() for i in data.time])
+                  
+             # Convert obs time stamp to seconds since 2009/01/01 00:00:00
             obs_seconds = np.asarray([(i - dt.datetime(2009,1,1,0,0,0)).total_seconds() for i in siteinfo.time])
-            modelrange_seconds = [(modeltime_range[0] - dt.datetime(2009,1,1,0,0,0)).total_seconds(), (modeltime_range[1] - dt.datetime(2009,1,1,0,0,0)).total_seconds()]
             
-            time_index = (np.where((obs_seconds >= modelrange_seconds[0]) & (obs_seconds < modelrange_seconds[1])))[0]
-
-        
-            # extract times, lats, lons and alts that correspond to the time range of the model output file
-            site_times = [siteinfo.time[j] for j in time_index]
-            site_lats = siteinfo.lat[time_index]
-            site_lons = siteinfo.lon[time_index]
-            site_alts = siteinfo.alt[time_index]
-            site_conc = siteinfo.conc[time_index]
-            site_repeat = siteinfo.repeatability[time_index]
-            site_pressures = siteinfo.pressure[time_index]
-            seconds = obs_seconds[time_index]            
+      
+            site_times = siteinfo.time
+            site_lats = siteinfo.lat
+            site_lons = siteinfo.lon
+            site_alts = siteinfo.alt
+            site_conc = siteinfo.conc
+            site_repeat = siteinfo.repeatability
+            site_pressures = siteinfo.pressure
+            seconds = obs_seconds        
             site_units = siteinfo.units
             
             # create parameters to store output
@@ -821,6 +826,7 @@ class data_filter_mobile:
             model_times = []
             model_lats = np.empty(len(site_times))
             model_lons = np.empty(len(site_times))
+            
             
             # loop through each lat/lon in the same time range as the model output
             for j in np.arange(len(site_lats)):
@@ -851,7 +857,7 @@ class data_filter_mobile:
                     
                 else:
                     site_pressure_j = calc_pressure(site_alts[j], data.P0, units=siteinfo.alt_units).pressure
-
+    
                     
                 # Extract column pressure at the correct lat/lon for the  matching timestamp
                 column_P = np.squeeze(data.pressure[timeindex_j,:,latlon_index[0], latlon_index[1]])
@@ -862,8 +868,8 @@ class data_filter_mobile:
                 lev_i = np.where(abs(column_P - site_pressure_j) == min(abs(column_P - site_pressure_j)))[0]
              
             
-
-
+    
+    
                 # Extract the corresponding concentrations and emission
                 # Put data for each lat/lon (i.e. j value) into output arrays            
                 model_pressures[j] = np.squeeze(column_P[lev_i])
@@ -885,8 +891,8 @@ class data_filter_mobile:
                 
                 
                 
-            self.network = siteinfo.network[time_index]
-            self.site = siteinfo.site[time_index]
+            self.network = siteinfo.network
+            self.site = siteinfo.site
             self.sitetype = 'mobile'
             self.site_lat = site_lats
             self.site_lon = site_lons
@@ -908,12 +914,11 @@ class data_filter_mobile:
             self.sitefile = sitefile
             self.concunits = data.concunits
             self.pressureunits = data.pressureunits
+            self.fileexists = True
             
         else:
-            print 'There were no time matched points for files: ' + mzfile + ' & ' + sitefile
-            self.time = 0
-            
-            
+            print 'There is no matching mobile obs data for : ' + mzfile
+            self.fileexists = False
             
             
 # ___________________________________________________________________________________________________________________
@@ -1411,7 +1416,8 @@ class read_ncdf_mobile:
                 for filename in fnmatch.filter(filenames, filepattern):
                     matches.append(os.path.join(root, filename))   
                     
-        filenames = matches
+            filenames = matches
+            
         # need to sort the files
         filenames.sort()
         
@@ -1540,7 +1546,7 @@ class plot_ncdf_fixed:
             
             # conc is lon x lat x lev x time x site
             conc = np.squeeze(data.conc[:,:,:,:,matched])
-            pressure = np.squeeze(data.pressure[:,:,:,:,matched])
+            #pressure = np.squeeze(data.pressure[:,:,:,:,matched])
                        
             
             reshapedconc = np.reshape(conc,(27,np.shape(conc)[-1]))
