@@ -87,8 +87,8 @@
         "longitude": -2.98598
     },
     "WAO" : {
-        "alt": ["WAYBOURNE"],
-        "long_name" : "Waybourne Observatory, UK",
+        "alt": ["WEYBOURNE"],
+        "long_name" : "Weybourne Observatory, UK",
         "height": ["10m"],
         "latitude": 52.95042,
         "longitude": 1.12194
