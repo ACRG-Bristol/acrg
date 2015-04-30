@@ -398,11 +398,6 @@ def read_met(fnames):
                 break
         
         m2 = m[i+1:, :]
-
-#        #Read rest of file in so that data is not in string format
-#        m2 = pandas.read_csv(fname, skiprows = a+18, 
-#                             compression=compression)
-#        m2 = numpy.array(m2)
         
         time = time + \
             [pandas.to_datetime(d, dayfirst=True) for d in m2[:,timecol]]
@@ -618,6 +613,8 @@ def particle_locations(input_search_string, lons = None, lats = None):
     
     for f in files:
         
+        print("Particle locations " + f)
+        
         if f[-3:].upper() == '.GZ':
             compression="gzip"
         else:
@@ -670,7 +667,15 @@ def particle_locations(input_search_string, lons = None, lats = None):
             if min(df["Long"]) < particle_extremes["W"]:
                 particle_extremes["W"] = min(df["Long"])
     
-    print(particle_extremes)
+    #Check extremes
+    if particle_extremes["N"] < edge_lats[1] - dlats/2.:
+        print("WARNING: CHECK DOMAIN EDGE TO NORTH")
+    if particle_extremes["E"] < edge_lons[1] - dlons/2.:
+        print("WARNING: CHECK DOMAIN EDGE TO EAST")
+    if particle_extremes["S"] > edge_lats[0] + dlats/2.:
+        print("WARNING: CHECK DOMAIN EDGE TO SOUTH")
+    if particle_extremes["W"] > edge_lons[0] + dlons/2.:
+        print("WARNING: CHECK DOMAIN EDGE TO WEST")
     
     return hist_lats, hist_lons, hist_heights, hist
 
