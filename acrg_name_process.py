@@ -362,6 +362,8 @@ def read_met(fnames):
     wind_direction=[]
     PBLH=[]
     time=[]
+    X=[]
+    Y=[]
     
     for fname in fnames:
         
@@ -384,14 +386,40 @@ def read_met(fnames):
                             compression=compression)
         m = numpy.array(m)
 
-        #Find columns with header names
-        timecol = int(numpy.where(m=='                       T')[1])
-        Tcol = int(numpy.where(m=='           Temperature (C)')[1])
-        Pcol = int(numpy.where(m=='             Pressure (Pa)')[1])
-        PBLHcol = int(numpy.where(m=='      Boundary layer depth')[1])
-        WINDcol = int(numpy.where(m=='                Wind speed')[1])
-        WINDDcol = int(numpy.where(m=='  Wind direction (degrees)')[1])
+        Xcol = None
+        Ycol = None
+        X_file = None
+        Y_file = None
         
+        #Find columns with header names
+        for row in m:
+            for coli, col in enumerate(row):
+                if type(col) is str:
+                    if "             T" in col:
+                        timecol = coli
+                    if "Temperature (C)" in col:
+                        Tcol = coli
+                    if "Pressure (Pa)" in col:
+                        Pcol = coli
+                    if "Boundary layer depth" in col:
+                        PBLHcol = coli
+                    if "Wind speed" in col:
+                        WINDcol = coli
+                    if "Wind direction" in col:
+                        WINDDcol = coli
+
+                    # Check whether there is an X and Y column
+                    if "X (Lat-Long)" in col:
+                        Xcol = coli
+                    if "Y (Lat-Long)" in col:
+                        Ycol = coli
+
+                    # Check whether X and Y is in col header
+                    if "X = " in col:
+                        X_file = float(col.strip().split(" ")[2])
+                    if "Y = " in col:
+                        Y_file = float(col.strip().split(" ")[2])
+                    
         #Find where data starts
         for i, mi in enumerate(m[:, 0]):
             if str(mi).strip() != '':
@@ -407,13 +435,21 @@ def read_met(fnames):
         wind=wind + list(m2[:, WINDcol].astype(float))
         wind_direction=wind_direction + list(m2[:, WINDDcol].astype(float))
         PBLH=PBLH + list(m2[:, PBLHcol].astype(float))
+        if Xcol is not None:
+            X=X + list(m2[:, Xcol].astype(float))
+            Y=Y + list(m2[:, Ycol].astype(float))
+        elif X_file is not None:
+            X = X + [X_file for i in m2[:, Tcol]]
+            Y = Y + [Y_file for i in m2[:, Tcol]]
         
     T=numpy.array(T)
     P=numpy.array(P)
     PBLH=numpy.array(PBLH)
     wind=numpy.array(wind)
     wind_direction=numpy.array(wind_direction)
-        
+    X=numpy.array(X)
+    Y=numpy.array(Y)
+    
     if len(time) == 0:
         time=None
         T=None
@@ -423,7 +459,7 @@ def read_met(fnames):
         PBLH=None
         
     return {'time': time, "T": T, "P": P, "PBLH": PBLH, "wind":wind,
-             "wind_direction":wind_direction}
+             "wind_direction":wind_direction, "lat": Y, "lon": X}
 
 
 def concatenate_footprints(file_list, \
