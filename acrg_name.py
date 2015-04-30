@@ -445,6 +445,8 @@ class analytical_inversion:
         acrg_path=os.path.split(os.path.realpath(__file__))
         with open(acrg_path[0] + "/acrg_species_info.json") as f:
             species_info=json.load(f)
+            
+            
         if type(species_key) is not str:
             species_key = str(species_key) 
         species_key = agage.synonyms(species_key, species_info)
@@ -509,6 +511,7 @@ class analytical_inversion:
         self.post_scal = x
         self.prior_emi = prior
         self.post_emi = float(E_tot)
+        self.post_emi_allregions = E
         self.uncert = sigma
         self.baseline = BL
 
