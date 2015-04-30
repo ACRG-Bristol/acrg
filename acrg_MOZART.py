@@ -1799,75 +1799,133 @@ class plot_ncdf_fixed:
             
             # Plot model output and obs    
             # Read in the obs
-            obs = read_fixed_sitefile_nc(species = data.species, dir = '/data/shared/GAUGE/')
+            if data.species == 'CH4' :
+                obs = read_fixed_sitefile_nc(species = data.species, dir = '/data/shared/GAUGE/')
         
-            # Extract the data for the given site
-            index = np.where(obs.site == sitename)[0] 
-            
-            # loop through each network at each site
-            for j in index:
+                # Extract the data for the given site
+                index = np.where(obs.site == sitename)[0] 
                 
-                print 'Plotting site ' + obs.site[j]
-                print 'Plotting data from ' + obs.network[j]                
+                # loop through each network at each site
+                for j in index:
+                    
+                    print 'Plotting site ' + obs.site[j]
+                    print 'Plotting data from ' + obs.network[j]                
+                    
+                    # find where the obs exist i.e. != nan   
+                    obs_index = np.where(np.isfinite(np.squeeze(obs.conc[j,:])))[0]      
+                    
+                    print 'Number of finite elements in obs data = ' + str(len(obs_index))
+                    
+                    if len(obs_index) != 0:   
+                    
+                        obs_conc = np.squeeze(obs.conc[j,:])[obs_index]
+                        obs_time = [obs.time[i] for i in obs_index]
+                        
+                        # Only plot model output for the same time range as the obs
+                        start = bisect.bisect_left(time, min(obs_time)) -1
+                        finish = bisect.bisect_right(time, max(obs_time))
+                    
+                        model_time = time[start:finish]
+                        model_conc = reshapedconc[13][start:finish]
+        
+                    else:
+                        model_time = time
+                        model_conc = reshapedconc[13]
+                        obs_conc = []
+                        obs_time = []
+                        
+                        
+                    #pdb.set_trace()  
+                    
+                    fig = plt.figure()
+                     
+                    # Plot the data
+                    plt1 = plt.subplot()
+                                
+                    plt1.plot(model_time, model_conc*scaling, "bo-", markersize = 3, markeredgecolor = 'blue')
+                    plt1.plot(obs_time, np.squeeze(obs_conc), "ro-", markersize = 3, markeredgecolor = 'red')
+                     
+                    y_formatter = ticker.ScalarFormatter(useOffset=False)
+                    plt1.yaxis.set_major_formatter(y_formatter)
+                    
+                    x_tickno_formatter = ticker.MaxNLocator(5)
+                    plt1.xaxis.set_major_locator(x_tickno_formatter)
+                    
+                    plt1.set_title('Model output and obsservations at '+ sitename + '(' + obs.network[j] + ')' )
+                    plt1.set_ylabel(data.species + '(' + data.concunits + '*' + str(scaling) + ')')
+                    plt1.set_xlabel('Time')
+        
+                    
+                    if save_plot != 0:
+                        outdir = os.path.dirname(os.path.dirname(data.filenames[0]))
+                        fig.savefig(outdir + '/plots/' + data.species+ '_'+ obs.network[j] + '_'+ sitename+ '.png', dpi=100)
+                        print'Figure saved as : ' + outdir + '/plots/' + data.species+ '_'+ obs.network[j] + '_'+ sitename+ '.png'
+                    
+                    
+                    plt.show()
                 
-                # find where the obs exist i.e. != nan   
-                obs_index = np.where(np.isfinite(np.squeeze(obs.conc[j,:])))[0]      
+                    plt.close()
+             
+            # read in the AGAGE_UKMO files
+            else :
                 
-                print 'Number of finite elements in obs data = ' + str(len(obs_index))
+                import acrg_agage
+                import json
                 
-                if len(obs_index) != 0:   
+                print 'Plotting site ' + sitename
+                print 'Plotting data from UKMO'            
                 
-                    obs_conc = np.squeeze(obs.conc[j,:])[obs_index]
-                    obs_time = [obs.time[i] for i in obs_index]
+                # check if there is UKMO data for that site
+                acrg_path=os.path.split(os.path.realpath(__file__))
+    
+                with open(acrg_path[0] + "/acrg_site_info_UKMO.json") as f:
+                    site_info=json.load(f)
+                
+                site = acrg_agage.synonyms(sitename, site_info)
+                if site is None:
+                    print("Site " + sitename + ' is not listed in UKMO data')
+                
+                else:
+                    
+                    obs_time, obs_conc, obs_sigma = acrg_agage.get(sitename, data.species)                
                     
                     # Only plot model output for the same time range as the obs
-                    start = bisect.bisect_left(time, min(obs_time)) -1
-                    finish = bisect.bisect_right(time, max(obs_time))
-                
-                    model_time = time[start:finish]
-                    model_conc = reshapedconc[13][start:finish]
-    
-                else:
+                    #start = bisect.bisect_left(time, min(obs_time)) -1
+                    #finish = bisect.bisect_right(time, max(obs_time))
+                    
                     model_time = time
                     model_conc = reshapedconc[13]
-                    obs_conc = []
-                    obs_time = []
+                    
+                    fig = plt.figure()
+                     
+                    # Plot the data
+                    plt1 = plt.subplot()
+                                
+                    
+                    plt1.plot(obs_time, np.squeeze(obs_conc), "r-", markersize = 3, markeredgecolor = 'red')
+                    plt1.plot(model_time, model_conc*scaling, "b-", markersize = 3, markeredgecolor = 'blue')
+                     
+                    y_formatter = ticker.ScalarFormatter(useOffset=False)
+                    plt1.yaxis.set_major_formatter(y_formatter)
+                    
+                    x_tickno_formatter = ticker.MaxNLocator(5)
+                    plt1.xaxis.set_major_locator(x_tickno_formatter)
+                    
+                    plt1.set_title('Model output and obsservations at '+ sitename + '(UKMO)' )
+                    plt1.set_ylabel(data.species + '(' + data.concunits + '*' + str(scaling) + ')')
+                    plt1.set_xlabel('Time')
+        
+                    
+                    if save_plot != 0:
+                        outdir = os.path.dirname(os.path.dirname(data.filenames[0]))
+                        fig.savefig(outdir + '/plots/' + data.species+ '_UKMO_'+ sitename+ '.png', dpi=100)
+                        print'Figure saved as : ' + outdir + '/plots/' + data.species+ '_UKMO_'+ sitename+ '.png'
                     
                     
-                #pdb.set_trace()  
+                    plt.show()
                 
-                fig = plt.figure()
+                    plt.close()
                  
-                # Plot the data
-                plt1 = plt.subplot()
-                            
-                plt1.plot(model_time, model_conc*scaling, "bo-", markersize = 3, markeredgecolor = 'blue')
-                plt1.plot(obs_time, np.squeeze(obs_conc), "ro-", markersize = 3, markeredgecolor = 'red')
-                 
-                y_formatter = ticker.ScalarFormatter(useOffset=False)
-                plt1.yaxis.set_major_formatter(y_formatter)
-                
-                x_tickno_formatter = ticker.MaxNLocator(5)
-                plt1.xaxis.set_major_locator(x_tickno_formatter)
-                
-                plt1.set_title('Model output and obsservations at '+ sitename + '(' + obs.network[j] + ')' )
-                plt1.set_ylabel(data.species + '(' + data.concunits + '*' + str(scaling) + ')')
-                plt1.set_xlabel('Time')
-    
-                
-                if save_plot != 0:
-                    outdir = os.path.dirname(os.path.dirname(data.filenames[0]))
-                    fig.savefig(outdir + '/plots/' + data.species+ '_'+ obs.network[j] + '_'+ sitename+ '.png', dpi=100)
-                    print'Figure saved as : ' + outdir + '/plots/' + data.species+ '_'+ obs.network[j] + '_'+ sitename+ '.png'
-                
-                
-                plt.show()
-            
-                plt.close()
-         
-            
-    
-           
 
         
         
