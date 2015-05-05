@@ -931,7 +931,7 @@ class data_match_mobile:
                 print 'You need to give obs lon'
             
 
-
+            
              
             # Convert the model times and the obs times to seconds
             # Assumes that these are given as datetimes
@@ -940,7 +940,7 @@ class data_match_mobile:
             
             obs_secs = np.asarray([(i - dt.datetime(2009,1,1,0,0,0)).total_seconds() for i in obs_time])
 
-                      
+              
  
             # create parameters to store output
             matched_pressure = np.empty(len(obs_time))      
@@ -974,7 +974,11 @@ class data_match_mobile:
                 
                 # Determine the closest level
                 # if there's no alt or pressure given assuming it's the surface (which for mozart is the last one)
-                print j                
+                #pdb.set_trace()  
+
+                # Extract column pressure at the correct lat/lon for the  matching timestamp
+                column_P = np.squeeze(model_pressure[timeindex_j,:,latlon_index[0], latlon_index[1]])                
+                
                 if type(obs_pressure) == type(0) and type(obs_alt) == type(0):
                     
                     lev_i = -1
@@ -986,19 +990,21 @@ class data_match_mobile:
                         obs_pressure_j = calc_pressure(obs_alt[j], model_P0, units=obs_alt_units).pressure                    
                     
                     else:
-                        
-                        obs_pressure_j = obs_pressure[j]
-                    
-                    # Extract column pressure at the correct lat/lon for the  matching timestamp
-                    
-                    column_P = np.squeeze(model_pressure[timeindex_j,:,latlon_index[0], latlon_index[1]])
+                        # ferry P = -1
+                        if obs_pressure[j] == -1:
+                            # use surface
+                            lev_i = -1
+                            
+                        else:
+                            
+                            obs_pressure_j = obs_pressure[j]
                     
                     # Match site pressure to column level
                     # as the pressure levels aren't evenly matched i'd need to find the gap and then compare to 
                     # the pressures  on either side which is unlikely to be much faster than this anyway
                     lev_i = np.where(abs(column_P - obs_pressure_j) == min(abs(column_P - obs_pressure_j)))[0]
              
-                    matched_pressure[j] = np.squeeze(column_P[lev_i])
+                matched_pressure[j] = np.squeeze(column_P[lev_i])
                      
                 # Extract the corresponding concentrations and emission
                 # Put data for each lat/lon (i.e. j value) into output arrays            
@@ -1923,10 +1929,11 @@ class plot_ncdf_fixed:
                     
                     
                     plt.show()
+                    
                 
                     plt.close()
                  
-
+                 
         
         
         
@@ -1934,7 +1941,7 @@ class plot_ncdf_fixed:
 # Plots the output of read_ncdf_mobile
 # defaults to not plotting the obs concentrations as we only have these for CH4 at the moment
 class plot_ncdf_mobile:
-    def __init__(self, data, sitename = 'ferry', save_plot = 0, scaling = 1e06):
+    def __init__(self, data, sitename = 'ferry', save_plot = 0, scaling = 1e06, no_obs=1):
         
         import matplotlib.ticker as ticker
         import matplotlib.pyplot as plt
