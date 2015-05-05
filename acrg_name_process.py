@@ -33,12 +33,14 @@ import gzip
 import datetime
 import re
 import pandas
+import numpy as np
 import scipy.constants as const
 from operator import itemgetter
 from acrg_grid import areagrid
 from acrg_time.convert import time2sec
 import os
 import matplotlib.pyplot as plt
+from bisect import bisect
 
 #Default NAME output file version
 #This is changed depending on presence of "Fields:" line in files
@@ -47,6 +49,15 @@ namever=3
 #Time formats
 UTC_format = '%H%M%Z %d/%m/%Y'
 NAMEIII_short_format = '%d/%m/%Y  %H:%M %Z'
+
+met_default = {"time": "             T",
+               "P": "Pressure (Pa)",
+               "T": "Temperature (C)",
+               "PBLH": "Boundary layer depth",
+               "wind": "Wind speed",
+               "wind_direction": "Wind direction",
+               "lon": "xxxxxxx",
+               "lat": "yyyyyyy"}
 
 def load_NAME(file_lines, namever):
     """
@@ -283,9 +294,7 @@ def define_grid(header, column_headings, satellite = False):
     
 
 def footprint_array(header, column_headings, data_arrays, \
-    met_time=None, pressure = None, temperature = None, area=None):
-
-    STP_warning=False
+    met = None, area = None):
 
     lons, lats, levs, time, timeStep = define_grid(header, column_headings)
 
@@ -304,42 +313,33 @@ def footprint_array(header, column_headings, data_arrays, \
     #Declare footprint array
     fp=numpy.zeros((nlat, nlon, ntime))
 
-    temp=numpy.zeros((ntime))
-    press=numpy.zeros((ntime))
-    
     #Calculate conversion factor depending on meteorology
     lev=levs[0] #JUST GET FIRST LEVEL
     lev_columns=[i for i, l in enumerate(z_level) if l == lev]
+
+    #Output met dataframe. One element per footprint
+    met_out = pandas.DataFrame(
+        columns = [key for key in met_default.keys() if key != "time"],
+        index = time)
+
     for i, column in enumerate(lev_columns):
-        if pressure is None:
-            STP_warning = True
-            molm3=44.6429  #mol of air per m3 at STP
-            temp[i]=273.
-            press[i]=100000.
-        else:
+
+        if met is not None:
             #NOTE: I've added the timeStep to the Met time below
             # because time is labeled at the beginning of the period
             # and footprint is labeled at end
-            time_diff=[abs(t + datetime.timedelta(0, 3600*timeStep) - time[i]) 
-                for t in met_time]
-            meti=min(enumerate(time_diff), key=itemgetter(1))[0]
-            if abs(time[i] - met_time[meti]) > \
-                    datetime.timedelta(0, timeStep*4*3600):
-                print time[i], " don't have met data, assuming STP"
-                molm3=44.6429  #mol of air per m3 at STP
-                temp[i]=273.
-                press[i]=100000.
-            else:
-                molm3=pressure[meti]/const.R/temperature[meti]
-                temp[i]=temperature[meti]
-                press[i]=pressure[meti]
-
-        #Convert footprint to (mol/m2/s)^-1
-        fp[:, :, i]=data_arrays[column]*area/ \
-            (3600.*timeStep*1.)/molm3 #The 1 assumes 1g/s emissions rate
-
-    if STP_warning:
-        print("WARNING: No met data, assuming STP")
+            meti = bisect(met.index,
+                          time[i] - datetime.timedelta(0, 3600*timeStep))
+            if abs(time[i] - met.index[meti]) < \
+                    datetime.timedelta(0, timeStep*3600):
+                molm3=met["P"][meti]/const.R/const.C2K(met["T"][meti])
+         
+                #Convert footprint to (mol/m2/s)^-1
+                fp[:, :, i]=data_arrays[column]*area/ \
+                    (3600.*timeStep*1.)/molm3 #The 1 assumes 1g/s emissions rate
+                
+                for key in [key for key in met_default.keys() if key != "time"]:
+                    met_out[key][time[i]] = met[key][meti]
 
 #This code can be used if you want to output all levels
 #    for levi, lev in enumerate(levs):
@@ -347,7 +347,8 @@ def footprint_array(header, column_headings, data_arrays, \
 #        for i, column in enumerate(lev_columns):
 #            fp[:, :, levi, i]=data_arrays[column]
     
-    return fp, lons, lats, lev, time, temp, press
+    return fp, lons, lats, lev, time, met_out
+
 
 def read_met(fnames):
     
@@ -355,15 +356,10 @@ def read_met(fnames):
         fnames.sort()
     else:
         fnames=[fnames]
+
+    column_indices = {key: -1 for key, value in met_default.iteritems()}
     
-    T=[]
-    P=[]
-    wind=[]
-    wind_direction=[]
-    PBLH=[]
-    time=[]
-    X=[]
-    Y=[]
+    output_df = None
     
     for fname in fnames:
         
@@ -395,18 +391,11 @@ def read_met(fnames):
         for row in m:
             for coli, col in enumerate(row):
                 if type(col) is str:
-                    if "             T" in col:
-                        timecol = coli
-                    if "Temperature (C)" in col:
-                        Tcol = coli
-                    if "Pressure (Pa)" in col:
-                        Pcol = coli
-                    if "Boundary layer depth" in col:
-                        PBLHcol = coli
-                    if "Wind speed" in col:
-                        WINDcol = coli
-                    if "Wind direction" in col:
-                        WINDDcol = coli
+                    
+                    #Work out column indices by searching through met_default
+                    for key in met_default.keys():
+                        if met_default[key] in col:
+                            column_indices[key] = coli
 
                     # Check whether there is an X and Y column
                     if "X (Lat-Long)" in col:
@@ -427,59 +416,52 @@ def read_met(fnames):
         
         m2 = m[i+1:, :]
         
-        time = time + \
-            [pandas.to_datetime(d, dayfirst=True) for d in m2[:,timecol]]
-
-        T=T + list(const.C2K(m2[:, Tcol].astype(float)))
-        P=P + list(m2[:, Pcol].astype(float))
-        wind=wind + list(m2[:, WINDcol].astype(float))
-        wind_direction=wind_direction + list(m2[:, WINDDcol].astype(float))
-        PBLH=PBLH + list(m2[:, PBLHcol].astype(float))
+        #Create arrays/lists to store release locations
         if Xcol is not None:
-            X=X + list(m2[:, Xcol].astype(float))
-            Y=Y + list(m2[:, Ycol].astype(float))
+            X=m2[:, Xcol].astype(float)
+            Y=m2[:, Ycol].astype(float)
         elif X_file is not None:
-            X = X + [X_file for i in m2[:, Tcol]]
-            Y = Y + [Y_file for i in m2[:, Tcol]]
-        
-    T=numpy.array(T)
-    P=numpy.array(P)
-    PBLH=numpy.array(PBLH)
-    wind=numpy.array(wind)
-    wind_direction=numpy.array(wind_direction)
-    X=numpy.array(X)
-    Y=numpy.array(Y)
+            X = [X_file for i in m2[:, column_indices["time"]]]
+            Y = [Y_file for i in m2[:, column_indices["time"]]]
+            
+        #Construct dictionary
+        met_dict = {}
+        for key in met_default.keys():
+            if column_indices[key] != -1 and key != "time":
+                met_dict[key] = m2[:, column_indices[key]].astype(float)
+        met_dict["lon"] = X
+        met_dict["lat"] = Y
+
+        #Construct dataframe
+        output_df_file = pandas.DataFrame(met_dict,
+                          index=[pandas.to_datetime(d, dayfirst=True)
+                              for d in m2[:,column_indices["time"]]])
+
+        if output_df is None:
+            output_df = output_df_file.copy()
+        else:
+            output_df.append(output_df_file)
     
-    if len(time) == 0:
-        time=None
-        T=None
-        P=None
-        wind=None
-        wind_direction=None
-        PBLH=None
-        
-    return {'time': time, "T": T, "P": P, "PBLH": PBLH, "wind":wind,
-             "wind_direction":wind_direction, "lat": Y, "lon": X}
+    output_df = output_df[output_df["P"] > 0.]
+    output_df.sort(inplace = True)
+    
+    return output_df
 
-
-def concatenate_footprints(file_list, \
-    met_time=None, pressure = None, temperature = None):
+def concatenate_footprints(file_list, met = None):
 
     file_list=sorted(file_list)
     nfiles=len(file_list)
     
     #Get first file in order to define data arrays
     header, column_headings, data_arrays = read_file(file_list[0])
-    fp_first, lons, lats, lev, time, temp_first, press_first = \
+    fp_first, lons, lats, lev, time, met_out = \
         footprint_array(header, column_headings, data_arrays, \
-        met_time=met_time, pressure=pressure, temperature=temperature)
+                        met = met)
 
     print("... read " + file_list[0])
     
     fp = [fp_first]
-    temp = [temp_first]
-    press = [press_first]
-
+    
     #Calculate area
     area=areagrid(lats, lons)
 
@@ -488,31 +470,28 @@ def concatenate_footprints(file_list, \
     if nfiles > 1:
         for fi, f in enumerate(file_list[1:]):
             header, column_headings, data_arrays = read_file(f)
-            fp_file, lons, lats, lev, time_file, temp_file, press_file = \
+            fp_file, lons, lats, lev, time_file, met_out_file = \
                 footprint_array(header, column_headings, data_arrays, \
-                met_time=met_time, pressure=pressure, temperature=temperature, \
-                area=area)
+                met = met, area=area)
             if levlast <> lev:
                 print("WARNING, looks like lowest level has changed: " + fp_file)
             fp.append(fp_file)
-            temp.append(temp_file)
-            press.append(press_file)
+            met_out = met_out.append(met_out_file)
             time=time+time_file
             levlast=lev
             print("... read " + f)
 
     fp=numpy.dstack(fp)
-    temp=numpy.hstack(temp)
-    press=numpy.hstack(press)
 
-    return fp, lons, lats, lev, time, temp, press
+    return fp, lons, lats, lev, time, met_out
 
 
-def write_netcdf(fp, lons, lats, levs, time, outfile, \
-            temperature=None, pressure=None, \
-            wind_speed=None, wind_direction=None, \
-            PBLH=None, varname="fp", particle_locations=None, \
-            particle_heights=None):
+def write_netcdf(fp, lons, lats, levs, time, outfile,
+            temperature=None, pressure=None,
+            wind_speed=None, wind_direction=None,
+            PBLH=None, varname="fp",
+            release_lon = None, release_lat = None,
+            particle_locations=None, particle_heights=None):
     
     time_seconds, time_reference = time2sec(time)
     
@@ -527,7 +506,8 @@ def write_netcdf(fp, lons, lats, levs, time, outfile, \
     nclon=ncF.createVariable('lon', 'f', ('lon',))
     nclat=ncF.createVariable('lat', 'f', ('lat',))
     nclev=ncF.createVariable('lev', 'str', ('lev',))
-    ncfp=ncF.createVariable(varname, 'f', ('lat', 'lon', 'time'))
+    ncfp=ncF.createVariable(varname, 'f', ('lat', 'lon', 'time'), zlib = True,
+                            least_significant_digit = 4)
     
     nctime[:]=time_seconds
     nctime.long_name='time'
@@ -547,42 +527,64 @@ def write_netcdf(fp, lons, lats, levs, time, outfile, \
     ncfp.units='(mol/mol)/(mol/m2/s)'
 
     if temperature is not None:
-        nctemp=ncF.createVariable('temperature', 'f', ('time',))
+        nctemp=ncF.createVariable('temperature', 'f', ('time',), zlib = True,
+                            least_significant_digit = 4)
         nctemp[:]=temperature
         nctemp.units='K'
 
     if pressure is not None:
-        ncpress=ncF.createVariable('pressure', 'f', ('time',))
+        ncpress=ncF.createVariable('pressure', 'f', ('time',), zlib = True,
+                            least_significant_digit = 4)
         ncpress[:]=pressure/100.
         ncpress.units='hPa'
 
     if wind_speed is not None:
-        ncwind_speed=ncF.createVariable('wind_speed', 'f', ('time',))
+        ncwind_speed=ncF.createVariable('wind_speed', 'f', ('time',), zlib = True,
+                            least_significant_digit = 4)
         ncwind_speed[:]=wind_speed
         ncwind_speed.units='m/s'
 
     if wind_direction is not None:
-        ncwind_direction=ncF.createVariable('wind_direction', 'f', ('time',))
+        ncwind_direction=ncF.createVariable('wind_direction', 'f', ('time',), zlib = True,
+                            least_significant_digit = 4)
         ncwind_direction[:]=wind_direction
         ncwind_direction.units='degrees'
 
     if PBLH is not None:
-        ncPBLH=ncF.createVariable('PBLH', 'f', ('time',))
+        ncPBLH=ncF.createVariable('PBLH', 'f', ('time',), zlib = True,
+                            least_significant_digit = 4)
         ncPBLH[:]=PBLH
         ncPBLH.units='m'
+
+    if release_lon is not None:
+        ncRlon=ncF.createVariable('release_lon', 'f', ('time',), zlib = True,
+                            least_significant_digit = 4)
+        ncRlon[:]=release_lon
+        ncRlon.units='Degrees east'
+
+    if release_lat is not None:
+        ncRlat=ncF.createVariable('release_lat', 'f', ('time',), zlib = True,
+                            least_significant_digit = 4)
+        ncRlat[:]=release_lat
+        ncRlat.units='Degrees north'
 
     if particle_locations is not None:
         ncF.createDimension('height', len(particle_locations[0]["N"][0,:]))
         ncHeight=ncF.createVariable('height', 'f',
-                                   ('height',))
+                                   ('height',),
+                                    zlib = True, least_significant_digit = 4)
         ncPartN=ncF.createVariable('particle_locations_n', 'f',
-                                   ('height', 'lon', 'time'))
+                                   ('height', 'lon', 'time'),
+                                    zlib = True, least_significant_digit = 4)
         ncPartE=ncF.createVariable('particle_locations_e', 'f',
-                                   ('height', 'lat', 'time'))
+                                   ('height', 'lat', 'time'),
+                                    zlib = True, least_significant_digit = 4)
         ncPartS=ncF.createVariable('particle_locations_s', 'f',
-                                   ('height', 'lon', 'time'))
+                                   ('height', 'lon', 'time'),
+                                    zlib = True, least_significant_digit = 4)
         ncPartW=ncF.createVariable('particle_locations_w', 'f',
-                                   ('height', 'lat', 'time'))
+                                   ('height', 'lat', 'time'),
+                                    zlib = True, least_significant_digit = 4)
         ncHeight[:]=particle_heights
         ncPartN[:, :, :]=numpy.transpose(
             numpy.dstack([pl["N"] for pl in particle_locations]), (1, 0, 2))
@@ -628,7 +630,7 @@ def particle_locations(input_search_string, lons = None, lats = None):
     dlats = lats[1] - lats[0]
     dheights = 1000
     
-    heights = numpy.arange(0, 15001, 1000) + dheights/2.
+    heights = numpy.arange(0, 20001, 1000) + dheights/2.
     
     # Define output grid
     hist_lats = numpy.hstack([numpy.zeros(len(lats)) + lats[-1],
@@ -712,8 +714,9 @@ def particle_locations(input_search_string, lons = None, lats = None):
         print("WARNING: CHECK DOMAIN EDGE TO SOUTH")
     if particle_extremes["W"] > edge_lons[0] + dlons/2.:
         print("WARNING: CHECK DOMAIN EDGE TO WEST")
-    
+
     return hist_lats, hist_lons, hist_heights, hist
+
 
 def process_satellite_single(input_directory, output_file):
     
@@ -761,17 +764,14 @@ def process_multiple(input_search_string, output_file,
         met_files=sorted(glob.glob(met_search_string))
         met = read_met(met_files)
     else:
-        met={"time":None, "T":None, "P":None, 
-             "wind": None, "wind_direction": None, "PBLH": None}
+        met=None
 
     #Search for files
     files=glob.glob(input_search_string)
     files.sort()
 
-    fp, lons, lats, levs, time, temp, press = \
-        concatenate_footprints(files,
-            met_time=met["time"], pressure=met["P"],
-            temperature=met["T"])
+    fp, lons, lats, levs, time, met_out = \
+        concatenate_footprints(files, met = met)
 
     if particle_search_string is not None:
         hist_lats, hist_lons, hist_heights, hist = \
@@ -781,7 +781,41 @@ def process_multiple(input_search_string, output_file,
         hist_heights = None
 
     write_netcdf(fp, lons, lats, levs, time, output_file,
-            temperature=met["T"], pressure=met["P"],
-            wind_speed=met["wind"], wind_direction=met["wind_direction"],
-            PBLH=met["PBLH"], particle_locations = hist,
+            temperature=met_out["T"].values.astype(np.float),
+            pressure=met_out["P"].values.astype(np.float),
+            wind_speed=met_out["wind"].values.astype(np.float),
+            wind_direction=met_out["wind_direction"].values.astype(np.float),
+            PBLH=met_out["PBLH"].values.astype(np.float),
+            release_lon = met_out["lon"].values.astype(np.float),
+            release_lat = met_out["lat"].values.astype(np.float),
+            particle_locations = hist,
             particle_heights = hist_heights)
+
+#def process_agage_single():
+
+
+base_dir = "/dagage2/agage/metoffice/NAME_output/"
+
+year = 2014
+month = 04
+height = 10
+site = "MHD"
+domain = "EUROPE"
+
+site_dir = domain + "_" + site + "_" + str(height) + "magl/"
+
+fp_search_string = base_dir + site_dir + "Fields_files/*" + \
+    str(year) + str(month).zfill(2) + \
+    "*.txt.gz"
+
+met_search_string = base_dir + site_dir + "Met/*.txt.gz"
+particle_search_string = base_dir + site_dir + "Particle_files/*" + \
+    str(year) + str(month).zfill(2) + "*.txt.gz"
+
+output_file = base_dir + site_dir + "Processed_Fields_files/" +\
+                site + "-" + str(height) + "m_" + domain + "_" + \
+                str(year) + str(month).zfill(2) + ".nc"
+
+process_multiple(fp_search_string, output_file,
+                 met_search_string = met_search_string,
+                 particle_search_string = particle_search_string)

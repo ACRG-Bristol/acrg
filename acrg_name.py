@@ -164,26 +164,54 @@ def read_particle_locations(filenames):
     
     f = nc.Dataset(filenames[0], 'r')
     
-    #Get grid and time first
-    pl_height = f.variables['height'][:]
-    pl_n = [f.variables['particle_locations_n'][:,:,:]]
-    pl_e = [f.variables['particle_locations_e'][:,:,:]]
-    pl_s = [f.variables['particle_locations_s'][:,:,:]]
-    pl_w = [f.variables['particle_locations_w'][:,:,:]]
-    f.close()
+    # Test if particle locations are in file
+    if "particle_locations_n" in f.variables.keys():
     
-    for f in filenames[1:]:
-        pl_n.append(f.variables['particle_locations_n'][:,:,:])
-        pl_e.append(f.variables['particle_locations_e'][:,:,:])
-        pl_s.append(f.variables['particle_locations_s'][:,:,:])
-        pl_w.append(f.variables['particle_locations_w'][:,:,:])
+        #Get grid and time first
+        pl_height = f.variables['height'][:]
+        pl_n = [f.variables['particle_locations_n'][:,:,:]]
+        pl_e = [f.variables['particle_locations_e'][:,:,:]]
+        pl_s = [f.variables['particle_locations_s'][:,:,:]]
+        pl_w = [f.variables['particle_locations_w'][:,:,:]]
+        f.close()
         
-    pl = {"N": np.dstack(pl_n),
-          "E": np.dstack(pl_e),
-          "S": np.dstack(pl_s),
-          "W": np.dstack(pl_w)}
+        for f in filenames[1:]:
+            pl_n.append(f.variables['particle_locations_n'][:,:,:])
+            pl_e.append(f.variables['particle_locations_e'][:,:,:])
+            pl_s.append(f.variables['particle_locations_s'][:,:,:])
+            pl_w.append(f.variables['particle_locations_w'][:,:,:])
+            
+        pl = {"N": np.dstack(pl_n),
+              "E": np.dstack(pl_e),
+              "S": np.dstack(pl_s),
+              "W": np.dstack(pl_w)}
+    
+        return pl_height, pl
 
-    return pl_height, pl
+    else:
+        
+        return None, None
+
+def read_release_locations(filenames):
+    
+    f = nc.Dataset(filenames[0], 'r')
+    
+    # Test if particle locations are in file
+    if "release_lon" in f.variables.keys():
+    
+        #Get grid and time first
+        release_lon = f.variables['release_lon'][:]
+        release_lat = f.variables['release_lat'][:]
+        f.close()
+        
+        for f in filenames[1:]:
+            release_lon.append(f.variables['release_lon'][:])
+            release_lat.append(f.variables['release_lat'][:])
+        
+        return np.hstack(release_lat), np.hstack(release_lon)
+
+    else:
+        return None, None
 
 class read:
     def __init__(self, sitecode_or_filename, years=[2012], domain="small"):
@@ -216,10 +244,14 @@ class read:
         self.fp = np.asarray(fp)
         self.time = time
 
-        if domain is "NWEU":
-            #Get particle locations (if available)
-            pl_height, pl = read_particle_locations(filenames)
-
+        #Get release locations (if available)
+        release_lat, release_lon = read_release_locations(filenames)
+        self.release_lon = release_lon
+        self.release_lat = release_lat
+        
+        #Get particle locations (if available)
+        pl_height, pl = read_particle_locations(filenames)
+        if pl_height is not None:
             self.particle_locations = pl
             self.particle_height = pl_height
         
@@ -619,7 +651,7 @@ def plot(fp_data, date, out_filename=None,
     data = np.log10(fp_data.fp[:,:,time_index])
 
     #Set very small elements to zero
-    data[np.where(data <  cutoff)]=str("nan")
+    data[np.where(data <  cutoff)]=np.nan
 
     fig = plt.figure(figsize=(8,8))
     fig.add_axes([0.1,0.1,0.8,0.8])
@@ -630,9 +662,18 @@ def plot(fp_data, date, out_filename=None,
     
     levels = np.arange(cutoff, 0., 0.05)
     
-#    cm = plt.cm.Purples
-    cs = map_data.m.contourf(map_data.x,map_data.y,data,
+    #Plot map
+    cs = map_data.m.contourf(map_data.x, map_data.y, data,
                              levels)
+                             
+    #Plot release location
+    if "release_lat" in dir(fp_data):
+        rplons, rplats = np.meshgrid(fp_data.release_lon[time_index],
+                                     fp_data.release_lat[time_index])
+        rpx, rpy = map_data.m(rplons, rplats)
+        print(rpx, rpy)
+        rp = map_data.m.scatter(rpx, rpy, 100, color = 'black')
+
     plt.title(str(date), fontsize=20)
 
     cb = map_data.m.colorbar(cs, location='bottom', pad="5%")
