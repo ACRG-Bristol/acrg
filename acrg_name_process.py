@@ -35,12 +35,13 @@ import re
 import pandas
 import numpy as np
 import scipy.constants as const
-from operator import itemgetter
 from acrg_grid import areagrid
 from acrg_time.convert import time2sec
 import os
-import matplotlib.pyplot as plt
 from bisect import bisect
+import json
+from os.path import split, realpath, exists
+
 
 #Default NAME output file version
 #This is changed depending on presence of "Fields:" line in files
@@ -351,7 +352,7 @@ def footprint_array(header, column_headings, data_arrays, \
 
 
 def read_met(fnames):
-    
+
     if isinstance(fnames, list):
         fnames.sort()
     else:
@@ -360,7 +361,7 @@ def read_met(fnames):
     column_indices = {key: -1 for key, value in met_default.iteritems()}
     
     output_df = None
-    
+        
     for fname in fnames:
         
         #This should now check for column headings
@@ -441,6 +442,8 @@ def read_met(fnames):
             output_df = output_df_file.copy()
         else:
             output_df.append(output_df_file)
+    
+        print("Read Met file " + fname)
     
     output_df = output_df[output_df["P"] > 0.]
     output_df.sort(inplace = True)
@@ -756,19 +759,33 @@ def process_satellite_single(input_directory, output_file):
     return fp, lons, lats, levs, time, temp, press
 
 
-def process_multiple(input_search_string, output_file, 
-                     met_search_string=None, particle_search_string=None):
+def process_multiple(input_search_string, output_file, met_search_string,
+                     particle_search_string=None):
 
     #Get site meteorology
     if met_search_string is not None:
+        
         met_files=sorted(glob.glob(met_search_string))
+
+        # Check whether met files are available
+        if len(met_files) == 0:
+            print("Can't find met files: " + met_search_string)
+            return None
+
         met = read_met(met_files)
+
     else:
-        met=None
+        print("At the moment, you MUST specify met files")
+        return None
 
     #Search for files
     files=glob.glob(input_search_string)
     files.sort()
+
+    # Check whether fields files are available
+    if len(met_files) == 0:
+        print("Can't find fields files: " + met_search_string)
+        return None
 
     fp, lons, lats, levs, time, met_out = \
         concatenate_footprints(files, met = met)
@@ -780,6 +797,11 @@ def process_multiple(input_search_string, output_file,
         hist = None
         hist_heights = None
 
+    #Check output file
+    if not exists(split(output_file)[0]):
+        print("Output directory doesn't exist: " + split(output_file)[0])
+        return None
+        
     write_netcdf(fp, lons, lats, levs, time, output_file,
             temperature=met_out["T"].values.astype(np.float),
             pressure=met_out["P"].values.astype(np.float),
@@ -791,31 +813,62 @@ def process_multiple(input_search_string, output_file,
             particle_locations = hist,
             particle_heights = hist_heights)
 
-#def process_agage_single():
+def process_agage_single(site, domain,
+                         heights = None, years = None, months = None,
+                         base_dir = "/dagage2/agage/metoffice/NAME_output/"):
+
+    acrg_path=split(realpath(__file__))
+    
+    with open(acrg_path[0] + "/acrg_site_info.json") as f:
+        site_info=json.load(f)
+        
+    # If no height specified, run all heights
+    if heights is None:
+        heights = site_info[site]["height_name"]
+    elif type(heights) is not list:
+        heights = [heights]
+    
+    for height in heights:
+        
+        site_dir = domain + "_" + site + "_" + height
+    
+        if years is None:
+            #Find all years and months available
+            #Assumes fields files are processes with _YYYYMMDD.txt.gz at the end    
+            years = []
+            months = []
+            
+            fields_files = glob.glob(base_dir + site_dir + "/Fields_files/*.txt*")
+            for fields_file in fields_files:
+                f = split(fields_file)[1].split("_")[-1].split('.')[0]
+                years.append(int(f[0:4]))
+                months.append(int(f[4:6]))
+        
+        for year, month in set(zip(years, months)):
+            
+            fp_search_string = base_dir + site_dir + "/Fields_files/*" + \
+                str(year) + str(month).zfill(2) + \
+                "*.txt.gz"
+            
+            met_search_string = base_dir + site_dir + "/Met/*.txt.gz"
+            
+            particle_search_string = base_dir + site_dir + "/Particle_files/*" + \
+                str(year) + str(month).zfill(2) + "*.txt.gz"
+            
+            output_file = base_dir + site_dir + "/Processed_Fields_files/" +\
+                            site + "-" + height + "_" + domain + "_" + \
+                            str(year) + str(month).zfill(2) + ".nc"
+            
+            print("Running " + fp_search_string)
+            process_multiple(fp_search_string, output_file,
+                             met_search_string = met_search_string,
+                             particle_search_string = particle_search_string)
 
 
-base_dir = "/dagage2/agage/metoffice/NAME_output/"
+# Process a list of AGAGE/DECC/GAUGE files if called as main
+if __name__ == "__main__":
 
-year = 2014
-month = 04
-height = 10
-site = "MHD"
-domain = "EUROPE"
-
-site_dir = domain + "_" + site + "_" + str(height) + "magl/"
-
-fp_search_string = base_dir + site_dir + "Fields_files/*" + \
-    str(year) + str(month).zfill(2) + \
-    "*.txt.gz"
-
-met_search_string = base_dir + site_dir + "Met/*.txt.gz"
-particle_search_string = base_dir + site_dir + "Particle_files/*" + \
-    str(year) + str(month).zfill(2) + "*.txt.gz"
-
-output_file = base_dir + site_dir + "Processed_Fields_files/" +\
-                site + "-" + str(height) + "m_" + domain + "_" + \
-                str(year) + str(month).zfill(2) + ".nc"
-
-process_multiple(fp_search_string, output_file,
-                 met_search_string = met_search_string,
-                 particle_search_string = particle_search_string)
+    site = "HFD"
+    domain = "EUROPE"
+    
+    process_agage_single(site, domain)
