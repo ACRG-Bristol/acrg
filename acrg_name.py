@@ -101,6 +101,7 @@ from acrg_grid import areagrid
 import acrg_agage as agage
 import xray
 from copy import deepcopy
+from os.path import split, realpath
 
 fp_directory = '/data/shared/NAME/fp_netcdf/'
 flux_directory = '/data/shared/NAME/emissions/'
@@ -122,7 +123,7 @@ def filename(site, domain, years, flux=None, basis=None):
     for year in years:
         files=glob.glob(baseDirectory + \
             domain + "/" + \
-            site + "_" + domain + "_" + str(year) + ".nc")
+            site + "_" + domain + "_" + str(year) + "*.nc")
         if len(files) == 0:
             print("Can't find file " + baseDirectory + \
                 domain + "/" + \
@@ -215,7 +216,13 @@ def read_release_locations(filenames):
         return None, None
 
 class read:
-    def __init__(self, sitecode_or_filename, years=[2012], domain="small"):
+    def __init__(self, sitecode_or_filename, years=[2012], domain="small",
+                 height = None):
+
+        #Get site info for heights
+        acrg_path=split(realpath(__file__))
+        with open(acrg_path[0] + "/acrg_site_info.json") as f:
+            site_info=json.load(f)
 
         #Chose whether we've input a site code or a file name
         #If it's a three-letter site code, assume it's been processed
@@ -231,30 +238,38 @@ class read:
             site=sitecode_or_filename[:]
             if type(years) is not list:
                 years = [years]
-            filenames, fileyears = filename(site, domain, years)
-        
-        #Get footprints
-        lat, lon, time, fp = ncread(filenames, 'fp')
-            
-        self.lon = lon
-        self.lat = lat
-        self.lonmax = np.max(lon)
-        self.lonmin = np.min(lon)
-        self.latmax = np.max(lat)
-        self.latmin = np.min(lat)
-        self.fp = np.asarray(fp)
-        self.time = time
+            if height is None:
+                height = site_info[site]["height_name"][0]
+            filenames, fileyears = filename(site + "-" + height, domain, years)
 
-        #Get release locations (if available)
-        release_lat, release_lon = read_release_locations(filenames)
-        self.release_lon = release_lon
-        self.release_lat = release_lat
-        
-        #Get particle locations (if available)
-        pl_height, pl = read_particle_locations(filenames)
-        if pl_height is not None:
-            self.particle_locations = pl
-            self.particle_height = pl_height
+        if len(filenames) == 0:
+            print("Can't find files, exiting")
+            self.time = None
+        else:
+            
+            #Get footprints
+            lat, lon, time, fp = ncread(sorted(filenames), 'fp')
+                    
+            self.lon = lon
+            self.lat = lat
+            self.lonmax = np.max(lon)
+            self.lonmin = np.min(lon)
+            self.latmax = np.max(lat)
+            self.latmin = np.min(lat)
+            self.fp = np.asarray(fp)
+            self.time = time
+    
+            #Get release locations (if available)
+            release_lat, release_lon = read_release_locations(filenames)
+            if release_lat is not None:
+                self.release_lon = release_lon
+                self.release_lat = release_lat
+            
+            #Get particle locations (if available)
+            pl_height, pl = read_particle_locations(filenames)
+            if pl_height is not None:
+                self.particle_locations = pl
+                self.particle_height = pl_height
         
 
 class flux:
@@ -272,7 +287,7 @@ class flux:
             filenames, fileyears = \
                 filename(species, domain, years, flux=True)
 
-        lat, lon, time, flux = ncread(filenames, 'flux')
+        lat, lon, time, flux = ncread(sorted(filenames), 'flux')
         
         self.lon = lon
         self.lat = lat
@@ -672,7 +687,6 @@ def plot(fp_data, date, out_filename=None,
         rplons, rplats = np.meshgrid(fp_data.release_lon[time_index],
                                      fp_data.release_lat[time_index])
         rpx, rpy = map_data.m(rplons, rplats)
-        print(rpx, rpy)
         rp = map_data.m.scatter(rpx, rpy, 100, color = 'black')
 
     plt.title(str(date), fontsize=20)
@@ -812,7 +826,7 @@ def animate(allfpdata, output_directory,
 
 def fp_resample(fp, av_period=None, dimension='time', av_how='mean',
                 startM=None, endM=None):
-                    
+    
     da = xray.DataArray(fp.fp, [('lat', fp.lat),('lon', fp.lon), 
                                  ('time', fp.time)], name = 'fp')
     
@@ -834,8 +848,8 @@ def fp_resample(fp, av_period=None, dimension='time', av_how='mean',
     
     fp_out = deepcopy(fp)
     fp_out.fp = np.array(da)
-    fp_out.time = da.time.values
+    fp_out.time = list(da.time)
     
-    return fp
+    return fp_out
     
     

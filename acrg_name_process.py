@@ -868,7 +868,8 @@ def process_agage_single(site, domain,
 # Process a list of AGAGE/DECC/GAUGE files if called as main
 if __name__ == "__main__":
 
-    site = "HFD"
     domain = "EUROPE"
+    sites = ["BSD", "TAC", "TTA", "RGL", "MHD", "HFD"]
     
-    process_agage_single(site, domain)
+    for site in sites:
+        process_agage_single(site, domain)
