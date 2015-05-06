@@ -100,6 +100,7 @@ import json
 from acrg_grid import areagrid
 import acrg_agage as agage
 import xray
+from copy import deepcopy
 
 fp_directory = '/data/shared/NAME/fp_netcdf/'
 flux_directory = '/data/shared/NAME/emissions/'
@@ -806,13 +807,15 @@ def animate(allfpdata, output_directory,
         filelist = glob.glob(os.path.join(output_directory, "*.png"))
         for f in filelist:
             os.remove(f)
-            
-def fp_resample(fp,lat,lon,time, av_period=None, dimension='time', av_how='mean',
+
+
+
+def fp_resample(fp, av_period=None, dimension='time', av_how='mean',
                 startM=None, endM=None):
                     
-    da = xray.DataArray(fp, [('lat', lat),('lon', lon), 
-                                 ('time', time)], name = 'fp')
-                                 
+    da = xray.DataArray(fp.fp, [('lat', fp.lat),('lon', fp.lon), 
+                                 ('time', fp.time)], name = 'fp')
+    
     if av_period is not None:
         da = da.resample(av_period, dimension, how=av_how, base=1)
     
@@ -826,10 +829,13 @@ def fp_resample(fp,lat,lon,time, av_period=None, dimension='time', av_how='mean'
                 return
                 
             year=time[1].timetuple().tm_year
-            da = da.sel(time=slice(dt.datetime(year,startM,01), dt.datetime(year,endM,01)))
+            da = da.sel(time=slice(dt.datetime(year,startM,01),
+                                   dt.datetime(year,endM,01)))
     
-    fp_out=da
-    time_out = da.time    
+    fp_out = deepcopy(fp)
+    fp_out.fp = np.array(da)
+    fp_out.time = da.time.values
     
-    return fp_out, time_out
-   
+    return fp
+    
+    
