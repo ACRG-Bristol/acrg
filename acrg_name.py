@@ -238,7 +238,7 @@ class flux:
                 years = [years]
             filenames, fileyears = \
                 filename(species, domain, years, flux=True)
-
+                
         lat, lon, time, flux = ncread(filenames, 'flux')
         
         self.lon = lon
@@ -381,12 +381,12 @@ def sensitivity(obs, species, years=[2012], flux_years=None,
     for site in sorted(obs.iterkeys()):
         if alt_fp_filename is not None:
             ts, Hs = sensitivity_single_site(alt_fp_filename, species, years, 
-                                flux_years=flux_years, domain=domain, 
-                                filt=filt)
+                                flux_years=flux_years, domain=domain,
+                                basis_case = basis_case, filt=filt)
         else:
             ts, Hs = sensitivity_single_site(site, species, years, 
                                 flux_years=flux_years, domain=domain, 
-                                filt=filt)
+                                basis_case = basis_case, filt=filt)
         df_site = pandas.DataFrame(Hs, index=ts)
         obsdf = obs[site].dropna()
         Hdf = df_site.reindex(obsdf.index)
@@ -405,9 +405,9 @@ def sensitivity(obs, species, years=[2012], flux_years=None,
     return y_time, y_site, y, H
 
 
-def baseline(y, y_time, y_site, obs, days_to_average = 5):
+def baseline(y, y_time, y_site, days_to_average = 5):
     
-    keys = sorted(obs.iterkeys())
+    keys = np.unique(y_site)
 
     n = days_to_average
     pos = np.zeros(len(y))
