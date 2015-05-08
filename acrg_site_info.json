@@ -3,39 +3,45 @@
         "alt": [],
         "long_name" : "Bilsdale, UK",
         "height": ["108m", "42m", "248m"],
+        "height_name": ["110magl", "50magl", "250magl"],
         "latitude": 54.35858,
         "longitude": -1.15033
     },
     "BTT" : {
         "alt": ["BTTOWER", "BT TOWER", "BT_TOWER"],
         "long_name" : "BT Tower, UK",
-        "height": ["100m"],
+        "height": ["185m"],
+        "height_name": ["185magl"],
         "latitude": 51.52150,
         "longitude": -0.13890
     },
     "CGO" : {
         "alt": ["CG"],
         "long_name" : "Cape Grim, Tazmania",
-        "height": ["10m"]
+        "height": ["10m"],
+        "height_name": ["10magl"]
     },
     "EHL" : {
         "alt": ["EARLSHALL"],
         "long_name" : "Earlshall, UK",
-        "height": ["20m"],
+        "height": ["50m"],
+        "height_name": ["50magl"],
         "latitude": 51.80590,
         "longitude": 1.10790
     },
     "GLA" : {
         "alt": ["GLATTON"],
         "long_name" : "Glatton, UK",
-        "height": ["20m"],
+        "height": ["10m"],
+        "height_name": ["10magl"],
         "latitude": 52.46073,
         "longitude": -0.30359
     },
     "HAD" : {
         "alt": ["HADDENHAM"],
         "long_name" : "Haddenham, UK",
-        "height": ["20m"],
+        "height": ["10m"],
+        "height_name": ["10magl"],
         "latitude": 52.35986,
         "longitude": 0.14828
     },
@@ -43,6 +49,7 @@
         "alt": [],
         "long_name" : "Heathfield, UK",
         "height": ["100m", "50m"],
+        "height_name": ["100magl", "50magl"],
         "latitude": 50.97675,
         "longitude": 0.23048
     },
@@ -50,6 +57,7 @@
         "alt" : ["MH"],
         "long_name" : "Mace Head, Ireland",
         "height": ["10m"],
+        "height_name": ["10magl"],
         "latitude": 53.32611,
         "longitude": -9.90389
     },
@@ -57,6 +65,7 @@
         "alt": ["RH"],
         "long_name" : "Ridge Hill, UK",
         "height": ["90m", "45m"],
+        "height_name": ["90magl", "45magl"],
         "latitude": 51.997435,
         "longitude": -2.53990
     },
@@ -64,18 +73,21 @@
         "alt": [],
         "long_name" : "Tacolneston Tower, UK",
         "height": ["100m", "54m", "185m"],
+        "height_name": ["100magl", "50magl", "185magl"],
         "latitude": 52.51775,
         "longitude": 1.13872
     },
     "THD" : {
         "alt": ["TH"],
         "long_name" : "Trinidad Head, California",
-        "height": ["10m"]
+        "height": ["10m"],
+        "height_name": ["10magl"]
     },
     "TIL" : {
         "alt": ["TILNEY"],
         "long_name" : "Tilney, UK",
-        "height": ["20m"],
+        "height": ["10m"],
+        "height_name": ["10magl"],
         "latitude": 52.73667,
         "longitude": 0.32127
     },
@@ -83,6 +95,7 @@
         "alt": ["ANGUS"],
         "long_name" : "Angus Tower, UK",
         "height": ["222m"],
+        "height_name": ["222magl"],
         "latitude": 56.55511,
         "longitude": -2.98598
     },
@@ -90,6 +103,7 @@
         "alt": ["WEYBOURNE"],
         "long_name" : "Weybourne Observatory, UK",
         "height": ["10m"],
+        "height_name": ["10magl"],
         "latitude": 52.95042,
         "longitude": 1.12194
     }

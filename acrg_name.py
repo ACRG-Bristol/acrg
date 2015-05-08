@@ -100,6 +100,8 @@ import json
 from acrg_grid import areagrid
 import acrg_agage as agage
 import xray
+from copy import deepcopy
+from os.path import split, realpath
 
 fp_directory = '/data/shared/NAME/fp_netcdf/'
 flux_directory = '/data/shared/NAME/emissions/'
@@ -121,7 +123,7 @@ def filename(site, domain, years, flux=None, basis=None):
     for year in years:
         files=glob.glob(baseDirectory + \
             domain + "/" + \
-            site + "_" + domain + "_" + str(year) + ".nc")
+            site + "_" + domain + "_" + str(year) + "*.nc")
         if len(files) == 0:
             print("Can't find file " + baseDirectory + \
                 domain + "/" + \
@@ -164,29 +166,63 @@ def read_particle_locations(filenames):
     
     f = nc.Dataset(filenames[0], 'r')
     
-    #Get grid and time first
-    pl_height = f.variables['height'][:]
-    pl_n = [f.variables['particle_locations_n'][:,:,:]]
-    pl_e = [f.variables['particle_locations_e'][:,:,:]]
-    pl_s = [f.variables['particle_locations_s'][:,:,:]]
-    pl_w = [f.variables['particle_locations_w'][:,:,:]]
-    f.close()
+    # Test if particle locations are in file
+    if "particle_locations_n" in f.variables.keys():
     
-    for f in filenames[1:]:
-        pl_n.append(f.variables['particle_locations_n'][:,:,:])
-        pl_e.append(f.variables['particle_locations_e'][:,:,:])
-        pl_s.append(f.variables['particle_locations_s'][:,:,:])
-        pl_w.append(f.variables['particle_locations_w'][:,:,:])
+        #Get grid and time first
+        pl_height = f.variables['height'][:]
+        pl_n = [f.variables['particle_locations_n'][:,:,:]]
+        pl_e = [f.variables['particle_locations_e'][:,:,:]]
+        pl_s = [f.variables['particle_locations_s'][:,:,:]]
+        pl_w = [f.variables['particle_locations_w'][:,:,:]]
+        f.close()
         
-    pl = {"N": np.dstack(pl_n),
-          "E": np.dstack(pl_e),
-          "S": np.dstack(pl_s),
-          "W": np.dstack(pl_w)}
+        for f in filenames[1:]:
+            pl_n.append(f.variables['particle_locations_n'][:,:,:])
+            pl_e.append(f.variables['particle_locations_e'][:,:,:])
+            pl_s.append(f.variables['particle_locations_s'][:,:,:])
+            pl_w.append(f.variables['particle_locations_w'][:,:,:])
+            
+        pl = {"N": np.dstack(pl_n),
+              "E": np.dstack(pl_e),
+              "S": np.dstack(pl_s),
+              "W": np.dstack(pl_w)}
+    
+        return pl_height, pl
 
-    return pl_height, pl
+    else:
+        
+        return None, None
+
+def read_release_locations(filenames):
+    
+    f = nc.Dataset(filenames[0], 'r')
+    
+    # Test if particle locations are in file
+    if "release_lon" in f.variables.keys():
+    
+        #Get grid and time first
+        release_lon = f.variables['release_lon'][:]
+        release_lat = f.variables['release_lat'][:]
+        f.close()
+        
+        for f in filenames[1:]:
+            release_lon.append(f.variables['release_lon'][:])
+            release_lat.append(f.variables['release_lat'][:])
+        
+        return np.hstack(release_lat), np.hstack(release_lon)
+
+    else:
+        return None, None
 
 class read:
-    def __init__(self, sitecode_or_filename, years=[2012], domain="small"):
+    def __init__(self, sitecode_or_filename, years=[2012], domain="small",
+                 height = None):
+
+        #Get site info for heights
+        acrg_path=split(realpath(__file__))
+        with open(acrg_path[0] + "/acrg_site_info.json") as f:
+            site_info=json.load(f)
 
         #Chose whether we've input a site code or a file name
         #If it's a three-letter site code, assume it's been processed
@@ -202,26 +238,38 @@ class read:
             site=sitecode_or_filename[:]
             if type(years) is not list:
                 years = [years]
-            filenames, fileyears = filename(site, domain, years)
-        
-        #Get footprints
-        lat, lon, time, fp = ncread(filenames, 'fp')
-            
-        self.lon = lon
-        self.lat = lat
-        self.lonmax = np.max(lon)
-        self.lonmin = np.min(lon)
-        self.latmax = np.max(lat)
-        self.latmin = np.min(lat)
-        self.fp = np.asarray(fp)
-        self.time = time
+            if height is None:
+                height = site_info[site]["height_name"][0]
+            filenames, fileyears = filename(site + "-" + height, domain, years)
 
-        if domain is "NWEU":
+        if len(filenames) == 0:
+            print("Can't find files, exiting")
+            self.time = None
+        else:
+            
+            #Get footprints
+            lat, lon, time, fp = ncread(sorted(filenames), 'fp')
+                    
+            self.lon = lon
+            self.lat = lat
+            self.lonmax = np.max(lon)
+            self.lonmin = np.min(lon)
+            self.latmax = np.max(lat)
+            self.latmin = np.min(lat)
+            self.fp = np.asarray(fp)
+            self.time = time
+    
+            #Get release locations (if available)
+            release_lat, release_lon = read_release_locations(filenames)
+            if release_lat is not None:
+                self.release_lon = release_lon
+                self.release_lat = release_lat
+            
             #Get particle locations (if available)
             pl_height, pl = read_particle_locations(filenames)
-
-            self.particle_locations = pl
-            self.particle_height = pl_height
+            if pl_height is not None:
+                self.particle_locations = pl
+                self.particle_height = pl_height
         
 
 class flux:
@@ -238,8 +286,8 @@ class flux:
                 years = [years]
             filenames, fileyears = \
                 filename(species, domain, years, flux=True)
-                
-        lat, lon, time, flux = ncread(filenames, 'flux')
+
+        lat, lon, time, flux = ncread(sorted(filenames), 'flux')
         
         self.lon = lon
         self.lat = lat
@@ -619,7 +667,7 @@ def plot(fp_data, date, out_filename=None,
     data = np.log10(fp_data.fp[:,:,time_index])
 
     #Set very small elements to zero
-    data[np.where(data <  cutoff)]=str("nan")
+    data[np.where(data <  cutoff)]=np.nan
 
     fig = plt.figure(figsize=(8,8))
     fig.add_axes([0.1,0.1,0.8,0.8])
@@ -630,9 +678,17 @@ def plot(fp_data, date, out_filename=None,
     
     levels = np.arange(cutoff, 0., 0.05)
     
-#    cm = plt.cm.Purples
-    cs = map_data.m.contourf(map_data.x,map_data.y,data,
+    #Plot map
+    cs = map_data.m.contourf(map_data.x, map_data.y, data,
                              levels)
+                             
+    #Plot release location
+    if "release_lat" in dir(fp_data):
+        rplons, rplats = np.meshgrid(fp_data.release_lon[time_index],
+                                     fp_data.release_lat[time_index])
+        rpx, rpy = map_data.m(rplons, rplats)
+        rp = map_data.m.scatter(rpx, rpy, 100, color = 'black')
+
     plt.title(str(date), fontsize=20)
 
     cb = map_data.m.colorbar(cs, location='bottom', pad="5%")
@@ -765,13 +821,15 @@ def animate(allfpdata, output_directory,
         filelist = glob.glob(os.path.join(output_directory, "*.png"))
         for f in filelist:
             os.remove(f)
-            
-def fp_resample(fp,lat,lon,time, av_period=None, dimension='time', av_how='mean',
+
+
+
+def fp_resample(fp, av_period=None, dimension='time', av_how='mean',
                 startM=None, endM=None):
-                    
-    da = xray.DataArray(fp, [('lat', lat),('lon', lon), 
-                                 ('time', time)], name = 'fp')
-                                 
+    
+    da = xray.DataArray(fp.fp, [('lat', fp.lat),('lon', fp.lon), 
+                                 ('time', fp.time)], name = 'fp')
+    
     if av_period is not None:
         da = da.resample(av_period, dimension, how=av_how, base=1)
     
@@ -784,11 +842,54 @@ def fp_resample(fp,lat,lon,time, av_period=None, dimension='time', av_how='mean'
                 print 'End month needs to be different from start month'
                 return
                 
-            year=time[1].timetuple().tm_year
-            da = da.sel(time=slice(dt.datetime(year,startM,01), dt.datetime(year,endM,01)))
+            year=fp.time[1].timetuple().tm_year
+            da = da.sel(time=slice(dt.datetime(year,startM,01),
+                                   dt.datetime(year,endM,01)))
     
-    fp_out=da
-    time_out = da.time    
+    fp_out = deepcopy(fp)
+    fp_out.fp = da
+    fp_out.time = list(da.time)
     
-    return fp_out, time_out
-   
+    return fp_out
+    
+class get_country:
+  def __init__(self, domain, ocean=None):
+
+        if ocean is None:
+
+            countryDirectory='/data/shared/NAME/countries/'
+            filename=glob.glob(countryDirectory + \
+                 "/" + "country_" \
+                 + domain + ".nc")
+             
+        else:
+            countryDirectory='/data/shared/NAME/countries/'
+            filename=glob.glob(countryDirectory + \
+                 "/" + "country_ocean_"\
+                 + domain + ".nc")
+        
+        f = nc.Dataset(filename[0], 'r')
+    
+        lon = f.variables['lon'][:]
+        lat = f.variables['lat'][:]
+    
+        #Get country indices and names
+        country = f.variables['country'][:, :]
+        name_temp = f.variables['name'][:,:]
+        f.close()
+    
+        name=[]
+        for ii in range(len(name_temp[:,0])):
+            name.append(''.join(name_temp[ii,:]))
+            
+        name=np.asarray(name)
+    
+    
+        self.lon = lon
+        self.lat = lat
+        self.lonmax = np.max(lon)
+        self.lonmin = np.min(lon)
+        self.latmax = np.max(lat)
+        self.latmin = np.min(lat)
+        self.country = np.asarray(country)
+        self.name = name 
