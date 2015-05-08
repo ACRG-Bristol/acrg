@@ -672,15 +672,15 @@ def plot(fp_data, date, out_filename=None,
     fig = plt.figure(figsize=(8,8))
     fig.add_axes([0.1,0.1,0.8,0.8])
 
-    map_data.m.drawcoastlines()
-    map_data.m.drawstates()
-    map_data.m.drawcountries()
-    
+#    map_data.m.drawcoastlines()
+#    map_data.m.drawstates()
+#    map_data.m.drawcountries()
+    map_data.m.shadedrelief()
     levels = np.arange(cutoff, 0., 0.05)
     
     #Plot map
     cs = map_data.m.contourf(map_data.x, map_data.y, data,
-                             levels)
+                             levels, cmap = plt.cm.Spectral_r)
                              
     #Plot release location
     if "release_lat" in dir(fp_data):

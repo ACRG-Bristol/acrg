@@ -31,8 +31,8 @@ UTC_format = '%H%M%Z %d/%m/%Y'
 NAMEIII_short_format = '%d/%m/%Y  %H:%M %Z'
 
 met_default = {"time": "             T",
-               "P": "Pressure (Pa)",
-               "T": "Temperature (C)",
+               "press": "Pressure (Pa)",
+               "temp": "Temperature (C)",
                "PBLH": "Boundary layer depth",
                "wind": "Wind speed",
                "wind_direction": "Wind direction",
@@ -367,7 +367,12 @@ def read_met(fnames):
     
         print("Read Met file " + fname)
     
-    output_df = output_df[output_df["P"] > 0.]
+    output_df = output_df[output_df["press"] > 0.]
+    output_df.drop_duplicates(inplace = True)
+    
+    # Remove duplicate indices
+    output_df = output_df.groupby(level = 0).last()
+
     output_df.sort(inplace = True)
     
     output_df.index.name = "time"
@@ -513,7 +518,8 @@ def footprint_array(fields_file, particle_file, met):
     fp.time.attrs = {"long_name": "end of time period"}
     
     # Add in met data
-    fp.merge(xray.Dataset.from_dataframe(met.reindex(index = time)),
+    metr = met.reindex(index = time)
+    fp.merge(xray.Dataset.from_dataframe(metr),
              inplace = True)
     
     # Add in particle locations
@@ -522,8 +528,8 @@ def footprint_array(fields_file, particle_file, met):
     # Extract footprint from columns
     for i, column in enumerate(lev_columns):
     
-        molm3=fp["P"][dict(time = [i])].values[0]/const.R/\
-            const.C2K(fp["T"][dict(time = [i])].values[0])
+        molm3=fp["press"][dict(time = [i])].values[0]/const.R/\
+            const.C2K(fp["temp"][dict(time = [i])].values[0])
         fp.fp[dict(time = [i])] = data_arrays[column]*area/ \
             (3600.*timeStep*1.)/molm3
         #The 1 assumes 1g/s emissions rate
@@ -539,9 +545,12 @@ def footprint_concatenate(fields_prefix, particle_prefix, year, month, met):
                              str(year) + str(month).zfill(2) + "*.txt*"))
     file_datestr = [f.split(fields_prefix)[-1].split(".txt")[0].split("_")[-1] \
             for f in fields_files]
-    particle_files = [glob.glob(particle_prefix + "*" + datestr + "*.txt*")[0] \
-            for datestr in file_datestr
-            if not glob.glob(particle_prefix + "*" + datestr + "*.txt*") is False]
+
+    particle_files = []
+    for datestr in file_datestr:
+        if not glob.glob(particle_prefix + "*" + datestr + "*.txt*") is False:
+            particle_files.append(
+                glob.glob(particle_prefix + "*" + datestr + "*.txt*")[0])
     
     if len(particle_files) != len(fields_files):
         print("Missing particle files")
@@ -664,14 +673,6 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
         ncPartE[:, :, :]=particle_locations["E"]
         ncPartS[:, :, :]=particle_locations["S"]
         ncPartW[:, :, :]=particle_locations["W"]
-#        ncPartN[:, :, :]=numpy.transpose(
-#            numpy.dstack([pl["N"] for pl in particle_locations]), (1, 0, 2))
-#        ncPartE[:, :, :]=numpy.transpose(
-#            numpy.dstack([pl["E"] for pl in particle_locations]), (1, 0, 2))
-#        ncPartS[:, :, :]=numpy.transpose(
-#            numpy.dstack([pl["S"] for pl in particle_locations]), (1, 0, 2))
-#        ncPartW[:, :, :]=numpy.transpose(
-#            numpy.dstack([pl["W"] for pl in particle_locations]), (1, 0, 2))
         ncPartN.units=''
         ncPartN.long_name='Fraction of total particles leaving domain (N side)'
         ncPartE.units=''
@@ -705,8 +706,8 @@ def process(domain, site, height, year, month,
         met = read_met(met_files)
 
     # Get footprints
-    fields_prefix = subfolder + fields_folder + "/Fields"
-    particles_prefix = subfolder + particles_folder + "/Particles"
+    fields_prefix = subfolder + fields_folder + "/"
+    particles_prefix = subfolder + particles_folder + "/"
     fp = footprint_concatenate(fields_prefix, particles_prefix, year, month, met)
 
     # Output filename
@@ -714,20 +715,20 @@ def process(domain, site, height, year, month,
                 "_" + domain + "_" + str(year) + str(month).zfill(2) + ".nc"
 
     # Define particle locations dictionary (annoying)
-    pl = {"N": fp.pl_n.values.squeeze(),
-          "E": fp.pl_e.values.squeeze(),
-          "S": fp.pl_s.values.squeeze(),
-          "W": fp.pl_w.values.squeeze()}
+    pl = {"N": numpy.transpose(fp.pl_n.values.squeeze(), (2, 1, 0)),
+          "E": numpy.transpose(fp.pl_e.values.squeeze(), (2, 1, 0)),
+          "S": numpy.transpose(fp.pl_s.values.squeeze(), (2, 1, 0)),
+          "W": numpy.transpose(fp.pl_w.values.squeeze(), (2, 1, 0))}
 
     # Write outputs
-    write_netcdf(fp.fp.values.squeeze(),
+    write_netcdf(numpy.transpose(fp.fp.values.squeeze(), (1, 2, 0)),
                  fp.lon.values.squeeze(),
                  fp.lat.values.squeeze(),
                  ["0 - 40magl",],
                  fp.time.to_pandas().index.to_pydatetime(),
                  outfile,
-                 temperature=fp["T"].values.squeeze(),
-                 pressure=fp["P"].values.squeeze(),
+                 temperature=fp["temp"].values.squeeze(),
+                 pressure=fp["press"].values.squeeze(),
                  wind_speed=fp["wind"].values.squeeze(),
                  wind_direction=fp["wind_direction"].values.squeeze(),
                  PBLH=fp["PBLH"].values.squeeze(),
@@ -736,7 +737,7 @@ def process(domain, site, height, year, month,
                  particle_locations = pl,
                  particle_heights = fp.height.values.squeeze())
 
-    return 1
+    return fp
 
 
 def process_agage(domain, site,
@@ -771,7 +772,7 @@ def process_agage(domain, site,
                 months.append(int(f[4:6]))
         
         for year, month in set(zip(years, months)):            
-            process(domain, site, height, year, month,
+            out = process(domain, site, height, year, month,
                 base_dir = base_dir)
 
 
@@ -779,8 +780,8 @@ def process_agage(domain, site,
 if __name__ == "__main__":
 
     domain = "EUROPE"
-    sites = ["BSD"]
-#    sites = ["BSD", "TAC", "TTA", "RGL", "MHD", "HFD"]
+#    sites = ["MHD"]
+    sites = ["BSD", "TAC", "TTA", "RGL", "MHD", "HFD"]
     for site in sites:
         process_agage(domain, site)
 

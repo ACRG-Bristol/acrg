@@ -21,6 +21,12 @@
         "height": ["10m"],
         "height_name": ["10magl"]
     },
+    "DJI" : {
+        "alt": [""],
+        "long_name" : "Darjeeling, India",
+        "height": ["20m"],
+        "height_name": ["500magl"]
+    },
     "EHL" : {
         "alt": ["EARLSHALL"],
         "long_name" : "Earlshall, UK",
