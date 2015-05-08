@@ -842,14 +842,54 @@ def fp_resample(fp, av_period=None, dimension='time', av_how='mean',
                 print 'End month needs to be different from start month'
                 return
                 
-            year=time[1].timetuple().tm_year
+            year=fp.time[1].timetuple().tm_year
             da = da.sel(time=slice(dt.datetime(year,startM,01),
                                    dt.datetime(year,endM,01)))
     
     fp_out = deepcopy(fp)
-    fp_out.fp = np.array(da)
+    fp_out.fp = da
     fp_out.time = list(da.time)
     
     return fp_out
     
+class get_country:
+  def __init__(self, domain, ocean=None):
+
+        if ocean is None:
+
+            countryDirectory='/data/shared/NAME/countries/'
+            filename=glob.glob(countryDirectory + \
+                 "/" + "country_" \
+                 + domain + ".nc")
+             
+        else:
+            countryDirectory='/data/shared/NAME/countries/'
+            filename=glob.glob(countryDirectory + \
+                 "/" + "country_ocean_"\
+                 + domain + ".nc")
+        
+        f = nc.Dataset(filename[0], 'r')
     
+        lon = f.variables['lon'][:]
+        lat = f.variables['lat'][:]
+    
+        #Get country indices and names
+        country = f.variables['country'][:, :]
+        name_temp = f.variables['name'][:,:]
+        f.close()
+    
+        name=[]
+        for ii in range(len(name_temp[:,0])):
+            name.append(''.join(name_temp[ii,:]))
+            
+        name=np.asarray(name)
+    
+    
+        self.lon = lon
+        self.lat = lat
+        self.lonmax = np.max(lon)
+        self.lonmin = np.min(lon)
+        self.latmax = np.max(lat)
+        self.latmin = np.min(lat)
+        self.country = np.asarray(country)
+        self.name = name 
