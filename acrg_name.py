@@ -453,7 +453,7 @@ def sensitivity(obs, species, years=[2012], flux_years=None,
     return y_time, y_site, y, H
 
 
-def baseline(y, y_time, y_site, days_to_average = 5):
+def baseline(y, y_time, y_site, x_error = 10000, days_to_average = 5):
     
     keys = np.unique(y_site)
 
@@ -473,7 +473,7 @@ def baseline(y, y_time, y_site, days_to_average = 5):
     for i in range(len(np.unique(pos))):
         wh = np.where(pos == i+1)
         HB[wh, col] = 1
-        xerror[col] = 10000
+        xerror[col] = x_error
         col += 1
                 
     return HB, xerror
