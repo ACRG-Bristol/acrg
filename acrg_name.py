@@ -728,7 +728,7 @@ def plot3d(fp_data, date, out_filename=None,
     #Set very small elements to zero
     data[np.where(data <  cutoff)]=np.nan
 
-    fig = plt.figure(figsize=(8,7))
+    fig = plt.figure(figsize=(16,12))
 
     fig.text(0.1, 0.2, str(date), fontsize = 20)
     
@@ -764,9 +764,11 @@ def plot3d(fp_data, date, out_filename=None,
     cb.set_label('log$_{10}$( (mol/mol) / (mol/m$^2$/s))', 
              fontsize=15)
     cb.ax.tick_params(labelsize=13) 
+    
+    plt.tight_layout()
 
     if out_filename is not None:
-        plt.savefig(out_filename)
+        plt.savefig(out_filename, dpi = 600)
         plt.close()
     else:
         plt.show()

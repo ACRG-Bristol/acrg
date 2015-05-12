@@ -21,6 +21,7 @@ from bisect import bisect
 import json
 from os.path import split, realpath, exists
 import xray
+import shutil
 
 #Default NAME output file version
 #This is changed depending on presence of "Fields:" line in files
@@ -125,6 +126,7 @@ def load_NAME(file_lines, namever):
                 new_time_column_header.append(datetime.datetime.strptime(t, NAMEIII_short_format))
         else:
             new_time_column_header.append(t)
+        
     column_headings['time'] = new_time_column_header
         
     # skip the blank line after the column headers
@@ -155,7 +157,7 @@ def load_NAME(file_lines, namever):
         # populate the data arrays (i.e. all columns but the leading 4) 
         for i, data_array in enumerate(data_arrays):
             data_array[y, x] = float(vals[i + 4])
-    
+
     return headers, column_headings, data_arrays
     
 
@@ -564,7 +566,10 @@ def footprint_concatenate(fields_prefix, particle_prefix, year, month, met):
                 fp.append(footprint_array(fields_file, particle_file, met))
 
     # Concatenate
-    fp = xray.concat(fp, "time")
+    if len(fp) > 0:
+        fp = xray.concat(fp, "time")
+    else:
+        fp = None
 
     return fp
 
@@ -710,32 +715,34 @@ def process(domain, site, height, year, month,
     particles_prefix = subfolder + particles_folder + "/"
     fp = footprint_concatenate(fields_prefix, particles_prefix, year, month, met)
 
-    # Output filename
-    outfile = subfolder + processed_folder + "/" + site + "-" + height + \
-                "_" + domain + "_" + str(year) + str(month).zfill(2) + ".nc"
+    if fp is not None:
 
-    # Define particle locations dictionary (annoying)
-    pl = {"N": numpy.transpose(fp.pl_n.values.squeeze(), (2, 1, 0)),
-          "E": numpy.transpose(fp.pl_e.values.squeeze(), (2, 1, 0)),
-          "S": numpy.transpose(fp.pl_s.values.squeeze(), (2, 1, 0)),
-          "W": numpy.transpose(fp.pl_w.values.squeeze(), (2, 1, 0))}
-
-    # Write outputs
-    write_netcdf(numpy.transpose(fp.fp.values.squeeze(), (1, 2, 0)),
-                 fp.lon.values.squeeze(),
-                 fp.lat.values.squeeze(),
-                 ["0 - 40magl",],
-                 fp.time.to_pandas().index.to_pydatetime(),
-                 outfile,
-                 temperature=fp["temp"].values.squeeze(),
-                 pressure=fp["press"].values.squeeze(),
-                 wind_speed=fp["wind"].values.squeeze(),
-                 wind_direction=fp["wind_direction"].values.squeeze(),
-                 PBLH=fp["PBLH"].values.squeeze(),
-                 release_lon=fp["release_lon"].values.squeeze(),
-                 release_lat=fp["release_lat"].values.squeeze(),
-                 particle_locations = pl,
-                 particle_heights = fp.height.values.squeeze())
+        # Output filename
+        outfile = subfolder + processed_folder + "/" + site + "-" + height + \
+                    "_" + domain + "_" + str(year) + str(month).zfill(2) + ".nc"
+    
+        # Define particle locations dictionary (annoying)
+        pl = {"N": numpy.transpose(fp.pl_n.values.squeeze(), (2, 1, 0)),
+              "E": numpy.transpose(fp.pl_e.values.squeeze(), (2, 1, 0)),
+              "S": numpy.transpose(fp.pl_s.values.squeeze(), (2, 1, 0)),
+              "W": numpy.transpose(fp.pl_w.values.squeeze(), (2, 1, 0))}
+    
+        # Write outputs
+        write_netcdf(numpy.transpose(fp.fp.values.squeeze(), (1, 2, 0)),
+                     fp.lon.values.squeeze(),
+                     fp.lat.values.squeeze(),
+                     ["0 - 40magl",],
+                     fp.time.to_pandas().index.to_pydatetime(),
+                     outfile,
+                     temperature=fp["temp"].values.squeeze(),
+                     pressure=fp["press"].values.squeeze(),
+                     wind_speed=fp["wind"].values.squeeze(),
+                     wind_direction=fp["wind_direction"].values.squeeze(),
+                     PBLH=fp["PBLH"].values.squeeze(),
+                     release_lon=fp["release_lon"].values.squeeze(),
+                     release_lat=fp["release_lat"].values.squeeze(),
+                     particle_locations = pl,
+                     particle_heights = fp.height.values.squeeze())
 
     return fp
 
@@ -771,9 +778,23 @@ def process_agage(domain, site,
                 years.append(int(f[0:4]))
                 months.append(int(f[4:6]))
         
-        for year, month in set(zip(years, months)):            
+        for year, month in set(zip(years, months)):
             out = process(domain, site, height, year, month,
                 base_dir = base_dir)
+
+# Routine to copy files from:
+#   /dagage2/agage/metoffice/NAME_output/DOMAIN_SITE_HEIGHT/Processed_Fields_files
+#   to:
+#   air:/data/shared/NAME/fp_netcdf/DOMAIN/
+def copy_processed(domain):
+    src_folder = "/dagage2/agage/metoffice/NAME_output/"
+    dst_folder = "/data/shared/NAME/fp_netcdf/" + domain + "/"
+    
+    files = glob.glob(src_folder + domain +
+        "*/Processed_Fields_files/*.nc")
+
+    for f in files:
+        shutil.copy(f, dst_folder)
 
 
 # Process a list of AGAGE/DECC/GAUGE files if called as main
@@ -781,7 +802,7 @@ if __name__ == "__main__":
 
     domain = "EUROPE"
 #    sites = ["MHD"]
-    sites = ["BSD", "TAC", "TTA", "RGL", "MHD", "HFD"]
+    sites = ["TTA", "RGL", "MHD", "HFD", "BSD", "TAC"]
     for site in sites:
         process_agage(domain, site)
 
