@@ -96,6 +96,12 @@ import bisect
 import numexpr
 import subprocess
 from progressbar import ProgressBar
+import json
+from acrg_grid import areagrid
+import acrg_agage as agage
+import xray
+from copy import deepcopy
+from os.path import split, realpath
 
 fp_directory = '/data/shared/NAME/fp_netcdf/'
 flux_directory = '/data/shared/NAME/emissions/'
@@ -117,7 +123,7 @@ def filename(site, domain, years, flux=None, basis=None):
     for year in years:
         files=glob.glob(baseDirectory + \
             domain + "/" + \
-            site + "_" + domain + "_" + str(year) + ".nc")
+            site + "_" + domain + "_" + str(year) + "*.nc")
         if len(files) == 0:
             print("Can't find file " + baseDirectory + \
                 domain + "/" + \
@@ -160,29 +166,63 @@ def read_particle_locations(filenames):
     
     f = nc.Dataset(filenames[0], 'r')
     
-    #Get grid and time first
-    pl_height = f.variables['height'][:]
-    pl_n = [f.variables['particle_locations_n'][:,:,:]]
-    pl_e = [f.variables['particle_locations_e'][:,:,:]]
-    pl_s = [f.variables['particle_locations_s'][:,:,:]]
-    pl_w = [f.variables['particle_locations_w'][:,:,:]]
-    f.close()
+    # Test if particle locations are in file
+    if "particle_locations_n" in f.variables.keys():
     
-    for f in filenames[1:]:
-        pl_n.append(f.variables['particle_locations_n'][:,:,:])
-        pl_e.append(f.variables['particle_locations_e'][:,:,:])
-        pl_s.append(f.variables['particle_locations_s'][:,:,:])
-        pl_w.append(f.variables['particle_locations_w'][:,:,:])
+        #Get grid and time first
+        pl_height = f.variables['height'][:]
+        pl_n = [f.variables['particle_locations_n'][:,:,:]]
+        pl_e = [f.variables['particle_locations_e'][:,:,:]]
+        pl_s = [f.variables['particle_locations_s'][:,:,:]]
+        pl_w = [f.variables['particle_locations_w'][:,:,:]]
+        f.close()
         
-    pl = {"N": np.dstack(pl_n),
-          "E": np.dstack(pl_e),
-          "S": np.dstack(pl_s),
-          "W": np.dstack(pl_w)}
+        for f in filenames[1:]:
+            pl_n.append(f.variables['particle_locations_n'][:,:,:])
+            pl_e.append(f.variables['particle_locations_e'][:,:,:])
+            pl_s.append(f.variables['particle_locations_s'][:,:,:])
+            pl_w.append(f.variables['particle_locations_w'][:,:,:])
+            
+        pl = {"N": np.dstack(pl_n),
+              "E": np.dstack(pl_e),
+              "S": np.dstack(pl_s),
+              "W": np.dstack(pl_w)}
+    
+        return pl_height, pl
 
-    return pl_height, pl
+    else:
+        
+        return None, None
+
+def read_release_locations(filenames):
+    
+    f = nc.Dataset(filenames[0], 'r')
+    
+    # Test if particle locations are in file
+    if "release_lon" in f.variables.keys():
+    
+        #Get grid and time first
+        release_lon = f.variables['release_lon'][:]
+        release_lat = f.variables['release_lat'][:]
+        f.close()
+        
+        for f in filenames[1:]:
+            release_lon.append(f.variables['release_lon'][:])
+            release_lat.append(f.variables['release_lat'][:])
+        
+        return np.hstack(release_lat), np.hstack(release_lon)
+
+    else:
+        return None, None
 
 class read:
-    def __init__(self, sitecode_or_filename, years=[2012], domain="small"):
+    def __init__(self, sitecode_or_filename, years=[2012], domain="small",
+                 height = None):
+
+        #Get site info for heights
+        acrg_path=split(realpath(__file__))
+        with open(acrg_path[0] + "/acrg_site_info.json") as f:
+            site_info=json.load(f)
 
         #Chose whether we've input a site code or a file name
         #If it's a three-letter site code, assume it's been processed
@@ -198,25 +238,38 @@ class read:
             site=sitecode_or_filename[:]
             if type(years) is not list:
                 years = [years]
-            filenames, fileyears = filename(site, domain, years)
-        
-        #Get footprints
-        lat, lon, time, fp = ncread(filenames, 'fp')
+            if height is None:
+                height = site_info[site]["height_name"][0]
+            filenames, fileyears = filename(site + "-" + height, domain, years)
 
-        self.lon = lon
-        self.lat = lat
-        self.lonmax = np.max(lon)
-        self.lonmin = np.min(lon)
-        self.latmax = np.max(lat)
-        self.latmin = np.min(lat)
-        self.fp = np.asarray(fp)
-        self.time = time
-
-        #Get particle locations (if available)
-        pl_height, pl = read_particle_locations(filenames)
-
-        self.particle_locations = pl
-        self.particle_height = pl_height
+        if len(filenames) == 0:
+            print("Can't find files, exiting")
+            self.time = None
+        else:
+            
+            #Get footprints
+            lat, lon, time, fp = ncread(sorted(filenames), 'fp')
+                    
+            self.lon = lon
+            self.lat = lat
+            self.lonmax = np.max(lon)
+            self.lonmin = np.min(lon)
+            self.latmax = np.max(lat)
+            self.latmin = np.min(lat)
+            self.fp = np.asarray(fp)
+            self.time = time
+    
+            #Get release locations (if available)
+            release_lat, release_lon = read_release_locations(filenames)
+            if release_lat is not None:
+                self.release_lon = release_lon
+                self.release_lat = release_lat
+            
+            #Get particle locations (if available)
+            pl_height, pl = read_particle_locations(filenames)
+            if pl_height is not None:
+                self.particle_locations = pl
+                self.particle_height = pl_height
         
 
 class flux:
@@ -234,7 +287,7 @@ class flux:
             filenames, fileyears = \
                 filename(species, domain, years, flux=True)
 
-        lat, lon, time, flux = ncread(filenames, 'flux')
+        lat, lon, time, flux = ncread(sorted(filenames), 'flux')
         
         self.lon = lon
         self.lat = lat
@@ -366,24 +419,31 @@ def sensitivity_single_site(site, species,
 
 
 def sensitivity(obs, species, years=[2012], flux_years=None,
-                domain="small", basis_case='voronoi', filt=None):
-
+                domain="small", basis_case='voronoi', filt=None, alt_fp_filename = None):
+#Using alt_fp_filename only works for one site at the moment
     H=[]
     y_time=[]
     y_site=[]
     y=[]
 
     for site in sorted(obs.iterkeys()):
-        ts, Hs = sensitivity_single_site(site, species, years, 
+        if alt_fp_filename is not None:
+            ts, Hs = sensitivity_single_site(alt_fp_filename, species, years, 
+                                flux_years=flux_years, domain=domain,
+                                basis_case = basis_case, filt=filt)
+        else:
+            ts, Hs = sensitivity_single_site(site, species, years, 
                                 flux_years=flux_years, domain=domain, 
-                                filt=filt)
+                                basis_case = basis_case, filt=filt)
         df_site = pandas.DataFrame(Hs, index=ts)
         obsdf = obs[site].dropna()
         Hdf = df_site.reindex(obsdf.index)
-        y_time.append(Hdf.index.to_pydatetime())
-        y_site.append([site for i in range(len(Hdf.index))])
-        y.append(obsdf.values)
-        H.append(df_site.values)
+        Hdf2 = Hdf.dropna()
+        obsdf2 = obsdf.reindex(Hdf2.index)
+        y_time.append(Hdf2.index.to_pydatetime())
+        y_site.append([site for i in range(len(Hdf2.index))])
+        y.append(obsdf2.values)
+        H.append(Hdf2.values)
         
     H=np.vstack(H)
     y_time=np.hstack(y_time)
@@ -391,6 +451,118 @@ def sensitivity(obs, species, years=[2012], flux_years=None,
     y=np.vstack(y)
 
     return y_time, y_site, y, H
+
+
+def baseline(y, y_time, y_site, x_error = 10000, days_to_average = 5):
+    
+    keys = np.unique(y_site)
+
+    n = days_to_average
+    pos = np.zeros(len(y))
+    for site in keys:
+        val = np.max(pos)
+        wh = np.where(y_site == site)
+        ts = pandas.Series(1, y_time[wh])
+        fiveday = np.clip((ts.index.day-1) // n, 0, n)
+        months = (ts.index.month - ts.index.month[0])
+        pos[wh] = (val + 1) + fiveday + months*(n+1)
+    
+    HB = np.zeros((len(y), len(np.unique(pos))))
+    xerror = np.zeros(len(np.unique(pos)))
+    col = 0
+    for i in range(len(np.unique(pos))):
+        wh = np.where(pos == i+1)
+        HB[wh, col] = 1
+        xerror[col] = x_error
+        col += 1
+                
+    return HB, xerror
+
+
+class analytical_inversion:
+    def __init__(self, obs, species, years=[2012], flux_years=None,
+                domain="small", basis_case='voronoi', filt=None,
+                species_key = None, baseline_days = 5, alt_fp_filename = None):
+    
+        y_time, y_site, y, H = sensitivity(obs, species, years, flux_years=flux_years,
+                domain=domain, basis_case=basis_case, filt=filt, alt_fp_filename = alt_fp_filename)
+        
+        if species_key == None:
+            species_key = species
+            
+        acrg_path=os.path.split(os.path.realpath(__file__))
+        with open(acrg_path[0] + "/acrg_species_info.json") as f:
+            species_info=json.load(f)
+            
+            
+        if type(species_key) is not str:
+            species_key = str(species_key) 
+        species_key = agage.synonyms(species_key, species_info)
+    
+        mol_mass = float(species_info[species_key]['mol_mass'])
+        u = species_info[species_key]['units']
+        
+        units = {"ppm" : 1e6,
+                 "ppb" : 1e9,
+                 "ppt" : 1e12,
+                 "ppq" : 1e15}
+        
+        H0 = H*units[u]
+        x0 = np.ones(len(H[0,:]))
+        
+#       Solve for baseline    
+        HB, xerror = baseline(y, y_time, y_site,obs, days_to_average = baseline_days)
+        H = np.append(H0, HB, axis = 1)
+        
+#       Inversion
+        xa = np.append(x0,np.zeros(len(xerror)))
+        P = np.diagflat(np.append(x0**2, xerror))
+        R = np.diagflat((y*0.1)**2)
+        
+        H = np.matrix(H)
+        xa = np.matrix(xa).T
+        y = np.matrix(y)
+        P1 = np.matrix(P).I
+        R1= np.matrix(R).I
+            
+        P = ((H.T*R1)*H + P1).I
+        x = xa + P*H.T*R1*(y - H*xa)
+        
+#       Find real emissions values
+        flux_data=flux(species, flux_years, domain=domain)
+        basis_data = basis_function(basis_case, years=years, domain=domain)
+        area = areagrid(flux_data.lat, flux_data.lon)
+            
+        awflux = flux_data.flux[:,:,0]*area
+        fl = np.zeros(np.shape(x))
+        
+        for i in range(int(np.min(basis_data.basis)), int(np.max(basis_data.basis))+1):
+            fl[i-1] = np.sum(awflux[basis_data.basis[:,:,0]==i])
+        
+        prior = sum(fl*(3600*24*365)*mol_mass*1e-3)
+        E = np.array(x)*fl*(3600*24*365)*mol_mass*1e-3
+        E_tot = sum(E)
+
+        qmatrix = np.zeros((len(E), len(E)))
+        for i in range(len(E)):
+            qmatrix[:,i] = E[:,0]*E[i]
+
+        V = np.array(P)*qmatrix
+        sigma = sum(sum(V))**0.5
+        
+#       Find baseline solution
+        BL = H[:,len(H0[0,:]):]*x[len(H0[0,:]):]
+    
+        self.prior_scal = xa
+        self.model = H
+        self.obs = y
+        self.post_scal = x
+        self.prior_emi = prior
+        self.post_emi = float(E_tot)
+        self.post_emi_allregions = E
+        self.uncert = sigma
+        self.baseline = BL
+
 #    
 #    time, H0 = sensitivity_single_site(sites[0], species,
 #                                       years=years, flux_years=flux_years,
@@ -495,20 +667,28 @@ def plot(fp_data, date, out_filename=None,
     data = np.log10(fp_data.fp[:,:,time_index])
 
     #Set very small elements to zero
-    data[np.where(data <  cutoff)]=str("nan")
+    data[np.where(data <  cutoff)]=np.nan
 
     fig = plt.figure(figsize=(8,8))
     fig.add_axes([0.1,0.1,0.8,0.8])
 
-    map_data.m.drawcoastlines()
-    map_data.m.drawstates()
-    map_data.m.drawcountries()
-    
+#    map_data.m.drawcoastlines()
+#    map_data.m.drawstates()
+#    map_data.m.drawcountries()
+    map_data.m.shadedrelief()
     levels = np.arange(cutoff, 0., 0.05)
     
-#    cm = plt.cm.Purples
-    cs = map_data.m.contourf(map_data.x,map_data.y,data,
-                             levels)
+    #Plot map
+    cs = map_data.m.contourf(map_data.x, map_data.y, data,
+                             levels, cmap = plt.cm.Spectral_r)
+                             
+    #Plot release location
+    if "release_lat" in dir(fp_data):
+        rplons, rplats = np.meshgrid(fp_data.release_lon[time_index],
+                                     fp_data.release_lat[time_index])
+        rpx, rpy = map_data.m(rplons, rplats)
+        rp = map_data.m.scatter(rpx, rpy, 100, color = 'black')
+
     plt.title(str(date), fontsize=20)
 
     cb = map_data.m.colorbar(cs, location='bottom', pad="5%")
@@ -548,7 +728,7 @@ def plot3d(fp_data, date, out_filename=None,
     #Set very small elements to zero
     data[np.where(data <  cutoff)]=np.nan
 
-    fig = plt.figure(figsize=(8,7))
+    fig = plt.figure(figsize=(16,12))
 
     fig.text(0.1, 0.2, str(date), fontsize = 20)
     
@@ -584,9 +764,11 @@ def plot3d(fp_data, date, out_filename=None,
     cb.set_label('log$_{10}$( (mol/mol) / (mol/m$^2$/s))', 
              fontsize=15)
     cb.ax.tick_params(labelsize=13) 
+    
+    plt.tight_layout()
 
     if out_filename is not None:
-        plt.savefig(out_filename)
+        plt.savefig(out_filename, dpi = 600)
         plt.close()
     else:
         plt.show()
@@ -642,3 +824,74 @@ def animate(allfpdata, output_directory,
         for f in filelist:
             os.remove(f)
 
+
+
+def fp_resample(fp, av_period=None, dimension='time', av_how='mean',
+                startM=None, endM=None):
+    
+    da = xray.DataArray(fp.fp, [('lat', fp.lat),('lon', fp.lon), 
+                                 ('time', fp.time)], name = 'fp')
+    
+    if av_period is not None:
+        da = da.resample(av_period, dimension, how=av_how, base=1)
+    
+    if startM is not None:
+        if endM is None:
+                print 'Need to specify an end month as well'
+                return
+        else:
+            if endM == startM:
+                print 'End month needs to be different from start month'
+                return
+                
+            year=fp.time[1].timetuple().tm_year
+            da = da.sel(time=slice(dt.datetime(year,startM,01),
+                                   dt.datetime(year,endM,01)))
+    
+    fp_out = deepcopy(fp)
+    fp_out.fp = da
+    fp_out.time = list(da.time)
+    
+    return fp_out
+    
+class get_country:
+  def __init__(self, domain, ocean=None):
+
+        if ocean is None:
+
+            countryDirectory='/data/shared/NAME/countries/'
+            filename=glob.glob(countryDirectory + \
+                 "/" + "country_" \
+                 + domain + ".nc")
+             
+        else:
+            countryDirectory='/data/shared/NAME/countries/'
+            filename=glob.glob(countryDirectory + \
+                 "/" + "country_ocean_"\
+                 + domain + ".nc")
+        
+        f = nc.Dataset(filename[0], 'r')
+    
+        lon = f.variables['lon'][:]
+        lat = f.variables['lat'][:]
+    
+        #Get country indices and names
+        country = f.variables['country'][:, :]
+        name_temp = f.variables['name'][:,:]
+        f.close()
+    
+        name=[]
+        for ii in range(len(name_temp[:,0])):
+            name.append(''.join(name_temp[ii,:]))
+            
+        name=np.asarray(name)
+    
+    
+        self.lon = lon
+        self.lat = lat
+        self.lonmax = np.max(lon)
+        self.lonmin = np.min(lon)
+        self.latmax = np.max(lat)
+        self.latmin = np.min(lat)
+        self.country = np.asarray(country)
+        self.name = name 
