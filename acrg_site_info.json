@@ -35,6 +35,18 @@
         "latitude": 51.80590,
         "longitude": 1.10790
     },
+    "GAUGE-FAAM" : {
+        "alt": ["FAAM"],
+        "long_name" : "GAUGE flights, UK",
+        "height": ["various"],
+        "height_name": ["various"]
+    },
+    "GAUGE-FERRY" : {
+        "alt": ["FERRY"],
+        "long_name" : "GAUGE ferry, UK",
+        "height": ["20m"],
+        "height_name": ["20magl"]
+    },
     "GLA" : {
         "alt": ["GLATTON"],
         "long_name" : "Glatton, UK",

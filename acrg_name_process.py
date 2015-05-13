@@ -284,7 +284,7 @@ def read_met(fnames):
 
     column_indices = {key: -1 for key, value in met_default.iteritems()}
     
-    output_df = None
+    output_df = []
         
     for fname in fnames:
         
@@ -362,19 +362,22 @@ def read_met(fnames):
                           index=[pandas.to_datetime(d, dayfirst=True)
                               for d in m2[:,column_indices["time"]]])
 
-        if output_df is None:
-            output_df = output_df_file.copy()
-        else:
-            output_df.append(output_df_file)
+
+        output_df.append(output_df_file)
     
         print("Read Met file " + fname)
     
+    # Concatenate list of data frames
+    output_df = pandas.concat(output_df)
+    
+    # Check for missing values
     output_df = output_df[output_df["press"] > 0.]
     output_df.drop_duplicates(inplace = True)
     
-    # Remove duplicate indices
+    # Remove duplicate indices (if found)
     output_df = output_df.groupby(level = 0).last()
 
+    # Sort the dataframe by time
     output_df.sort(inplace = True)
     
     output_df.index.name = "time"
@@ -484,7 +487,6 @@ def footprint_array(fields_file, particle_file, met):
 
     print("Reading ... " + fields_file)
     header, column_headings, data_arrays = read_file(fields_file)
-
 
     # Define grid, including output heights    
     lons, lats, levs, time, timeStep = define_grid(header, column_headings)
@@ -801,8 +803,8 @@ def copy_processed(domain):
 if __name__ == "__main__":
 
     domain = "EUROPE"
-#    sites = ["MHD"]
-    sites = ["TTA", "RGL", "MHD", "HFD", "BSD", "TAC"]
+    sites = ["TTA", "RGL", "MHD", "HFD", "BSD", "TAC",
+             "GAUGE-FERRY", "GAUGE-FAAM"]
     for site in sites:
         process_agage(domain, site)
 
