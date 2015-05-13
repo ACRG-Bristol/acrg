@@ -27,9 +27,43 @@ class USNsDNos():
        self.USNs = USNs
        self.DNos = DNos
 
+# Class that matches each site to a specific colour
+class SiteColours():
+    def __init__(self, sitein = 0):
+        colours = ['blue', 'red', 'orange', 'green', 'dodgerblue', 'magenta', 'orchid', 'purple', 'black', 'sienna', 'gray', 'limegreen']
+        sites = ['RGL', 'TAC', 'HFD', 'BSD', 'TTA', 'FAAM', 'Man', 'Bas', 'MPI', 'FERRY']
+        
+        if sitein != 0:
+            index = np.where(np.array(sites) == sitein)[0]
+            
+            if len(index) == 0:
+                index = -1
+                
+        self.colours = colours
+        self.sites = sites
+        self.outcolour = colours[index]
 
-
-
+# Class to calculate the wmo precision bars
+class WMOLines():
+    def __init__(self, conc, gas = 'CO2'):
+        
+        gases = ['CO2', 'CH4', 'CO', 'N2O', 'SF6']
+        compatibility = [0.1, 2, 2, 0.1, 0.02]
+        units = ['ppm', 'ppb','ppb','ppb','ppt']
+        
+        gas_index = np.where(np.array(gases) == gas)[0]
+  
+        # calculate the mean conc
+        conc = np.array(conc)
+        notnan_conc = conc[~np.isnan(conc)]
+        
+        mean_conc = np.zeros(2)
+        mean_conc[:] = np.mean([notnan_conc])  
+  
+        self.plusline = mean_conc + compatibility[gas_index]
+        self.minusline = mean_conc - compatibility[gas_index]
+        self.units = units[gas_index]
+        self.compatibility = compatibility[gas_index]
 
  # Class to read in the txt output of gcexport made using ICPDataExtractScript on Dagage2
 # file format is 3 header lines
@@ -38,187 +72,6 @@ class USNsDNos():
 #     -      -         -            -            -    -    cavity    cavity         -       co2     co2       ch4     ch4        co      co 
 #  date   time      type       sample     standard port      temp     press       h2o         C   stdev         C   stdev         C   stdev 
 # 140710 093530      tank  USN20132963        H-239    6    45.000   139.999     0.532    418.42*  0.188*  1993.75*  0.204*   200.84*  5.913*
-""""
-class read_data:
-    def __init__(self, datafile):
-        
-        if type(datafile) == tuple:
-            data=np.genfromtxt(datafile[0], dtype=str, skip_header=3)
-        elif type(datafile) == str:
-            data=np.genfromtxt(datafile, dtype=str, skip_header=3)
-        
-        date = data[:,0]
-        time = data[:,1]
-        sampletype = data[:,2]
-        samplename = data[:,3]
-        standard = data[:,4]
-        port = data[:,5]
-        cavity_temp = data[:,6]
-        cavity_press = data[:,7] 
-        h2o = data[:,8]
-        co2_orig = data[:,9]
-        co2sd_orig = data[:,10]
-        co2_n = data[:,11]
-        ch4_orig = data[:,12]
-        ch4sd_orig = data[:,13]
-        ch4_n = data[:,14]
-        
-        dirname, filename = os.path.split(datafile)
-
-        
-        co2flags = Makeflags(co2_orig)
-        ch4flags = Makeflags(ch4_orig)
-        
-        
-        # Strip flags from conc data
-        co2_stripped = Stripflags(co2_orig)
-        co2sd_stripped = Stripflags(co2sd_orig)
-        ch4_stripped = Stripflags(ch4_orig)
-        ch4sd_stripped = Stripflags(ch4sd_orig)
-        
-        
-        # CO data is only at some sites
-        if np.shape(data)[1] == 18:
-            co_orig = data[:,15]
-            cosd_orig = data[:,16]
-            co_n = data[:,17]
-            coflags = Makeflags(co_orig)
-            co_stripped = Stripflags(co_orig)
-            cosd_stripped = Stripflags(cosd_orig)
-            
-        # make datetime variable
-        dt_date = [dt.datetime.strptime(date[i] + ' ' + time[i] , "%y%m%d %H%M%S") for i in np.arange(len(date))]
-           
-                  # Find making USN or vice versa
-        if (filename.split('.')[2]).find('USN') != -1:
-            # We've been given a USN so find the DNo
-            USN_tank = (filename.split('.')[2])
-            index = (USNsDNos().USNs).index(USN_tank)
-            DNo_tank = (USNsDNos().DNos)[index]
-            
-        else:
-            # We've been given a DNo so find the USN
-            DNo_tank = (filename.split('.')[2])
-            index = (USNsDNos().DNos).index(DNo_tank)
-            USN_tank = (USNsDNos().USNs)[index]            
-            
-        self.site = filename.split('.')[0]
-        self.instrument = filename.split('.')[1]
-        self.processeddate = filename.split('.')[3]
-        self.USN = USN_tank
-        self.DNo = DNo_tank
-  
-        scales = Read_scales()   
-        # Match location to scale        
-        in_sitekey =  filename.split('.')[0] +'_'+ (filename.split('.')[1]).split('_')[0]
-        scale_index = np.where(scales.sitekey == in_sitekey)
-
-        print in_sitekey
-        print scale_index
-        print scales.co2_scale[scale_index]
-        print scales.ch4_scale[scale_index]
-        print scales.co_scale[scale_index]
-        
-
-           
-        self.date = date
-        self.time = time
-        self.datetime = dt_date
-        self.sampletype = sampletype
-        self.samplename = samplename
-        self.standard = standard
-        self.port = port.astype('int')
-        self.cavity_temp = cavity_temp.astype('float')
-        self.cavity_press = cavity_press.astype('float')
-        self.h2o = h2o
-        
-        self.co2_orig = co2_orig
-        self.co2 = co2_stripped.gas
-        self.co2sd_orig = co2sd_orig
-        self.co2sd = co2sd_stripped.gas
-        self.co2flags = co2flags.flags
-        self.co2_n = co2_n
-        self.co2_scale = scales.co2_scale[scale_index]
-        
-        self.ch4_orig = ch4_orig
-        self.ch4 = ch4_stripped.gas
-        self.ch4sd_orig = ch4sd_orig
-        self.ch4sd = ch4sd_stripped.gas
-        self.ch4flags = ch4flags.flags
-        self.ch4_n = ch4_n
-        self.ch4_scale = scales.ch4_scale[scale_index]
-        
-        self.co_scale = scales.co_scale[scale_index]        
-        
-        self.nogases = 2        
-        
-        # CO data is only at some sites
-        if data[0][-1] != 'nan':
-            self.co_orig = co_orig
-            self.co = co_stripped.gas
-            self.cosd_orig = cosd_orig
-            self.cosd = cosd_stripped.gas
-            self.coflags = coflags.flags
-            self.co_n = co_n
-            
-            self.nogases = 3
-        
-        self.filename = filename
-        self.datadir = dirname
-        
-      
-
-    
-# Class to make the flags
-# nb: an * flag will =  a 1 flag
-# an F flag will = a 2 flag
-class Makeflags:
-    def __init__(self, gas):    
-        
-        flag = np.zeros(shape=len(gas))
-        for i in np.arange(len(gas)):
-            A = (gas[i]).find('*')
-            B = (gas[i]).find('F')
-            
-            # a * flag
-            if A > 0:
-                flag[i] = 1
-
-            # a F flag
-            if B > 0:
-                flag[i] = 2
-
-
-        self.flags = flag.astype('int')
-        
-
-# Class to strip the * and F flags from the raw data
-class Stripflags:
-    def __init__(self, gas):    
-        
-        orig_gas = gas        
-        stripped_gas = np.zeros(shape=len(gas))
-        
-        for i in np.arange(len(gas)):
-            
-            A = (orig_gas[i]).find('*')
-            B = (orig_gas[i]).find('F')
-            
-            # a * flag
-            if A > 0:
-                stripped_gas[i] = orig_gas[i][:(len(orig_gas[i])-1)]
-
-
-            # a F flag
-            if B > 0:
-                stripped_gas[i] = orig_gas[i][:(len(orig_gas[i])-1)]
-
-            if A < 0 and B < 0:
-                stripped_gas[i] = orig_gas[i]
-
-        self.gas = stripped_gas.astype('float')
-        self.orig_gas = orig_gas
-"""
 
 class read_data:
     def __init__(self, datafile):
@@ -270,27 +123,33 @@ class read_data:
         self.h2o = indata.h2o
         
         self.co2_orig = indata.co2_orig
-        self.co2 = indata.co2_stripped.gas
+        self.co2 = indata.co2
         self.co2sd_orig = indata.co2sd_orig
-        self.co2sd = indata.co2sd_stripped.gas
-        self.co2flags = indata.co2flags.flags
+        self.co2sd = indata.co2sd
+        self.co2flags = indata.co2flags
         self.co2_n = indata.co2_n
         self.co2_scale = scales.co2_scale[scale_index]
         
         self.ch4_orig = indata.ch4_orig
-        self.ch4 = indata.ch4_stripped.gas
+        self.ch4 = indata.ch4
         self.ch4sd_orig = indata.ch4sd_orig
-        self.ch4sd = indata.ch4sd_stripped.gas
-        self.ch4flags = indata.ch4flags.flags
+        self.ch4sd = indata.ch4sd
+        self.ch4flags = indata.ch4flags
         self.ch4_n = indata.ch4_n
         self.ch4_scale = scales.ch4_scale[scale_index]
         
+        self.co_orig = indata.co_orig
+        self.co = indata.co
+        self.cosd_orig = indata.cosd_orig
+        self.cosd = indata.cosd
+        self.coflags = indata.coflags
+        self.co_n = indata.co_n
         self.co_scale = scales.co_scale[scale_index]        
         
         self.nogases = indata.nogases        
                 
         self.filename = indata.filename
-        self.datadir = indata.dirname
+        self.datadir = indata.datadir
 
 # Plotting the minute means
 class PlotRawMM:
@@ -381,28 +240,32 @@ class PlotRawMM:
     
 # code to make a range for the plot
 # +/- 20% of the actual range
-def Calcrange(data, sd):
+def Calcrange(data, sd, even = 0):
     extra = ((np.nanmax(data)+np.nanmax(sd)) - (np.nanmin(data)-np.nanmax(sd)))/10
 
     datarange = [np.nanmin(data)- (3*extra), np.nanmax(data)+(3*extra)]
     
+    if even != 0:
+        biggest = np.max(abs(np.array(datarange)))
+        datarange = [(-1*biggest), biggest]
     return datarange
 
 
 # Code to determine the number of runs and calculate mean and sds for each run and an overall mean and sd
 # Note this only uses unflagged data!!!
+# use read_data to read in the raw data. It does all the flag removal
 class Calcmeans:
    def __init__(self, data):
 
     dt_co2, co2, co2sd = read_GCwerks.Extractgood(data.datetime, data.co2, data.co2flags)
     
     co2runmeans, co2runsds, co2runcount = Calcrunmeans(dt_co2, co2)
-        
     
     dt_ch4, ch4, ch4sd = read_GCwerks.Extractgood(data.datetime, data.ch4, data.ch4flags)
     
     ch4runmeans, ch4runsds, ch4runcount = Calcrunmeans(dt_ch4, ch4)
-
+   
+   
     if data.nogases == 3:
         dt_co, co, ch4sd = read_GCwerks.Extractgood(data.datetime, data.co, data.coflags)
     
@@ -645,6 +508,8 @@ class Read_co2_meansmulti:
             
             data_i = Read_co2_means(files[i], DNo_tank, USN_tank)
                 
+            #pdb.set_trace()
+            
             sitekey.append(data_i.sitekey)
             datetime.append(data_i.datetime)
 
@@ -881,6 +746,9 @@ class Read_co2_means:
         # make datetime variable
         dt_date = [dt.datetime.strptime(date_time[i] , "%y%m%d %H%M%S") for i in np.arange(len(date_time))]
         
+        
+        #pdb.set_trace()
+        
         self.sitekey = sitekey
         self.datetime = dt_date
     
@@ -1004,17 +872,43 @@ class Plot_co2_means:
         # one colour per site
         n_colours = len(set(means.site))
           
-        colournames = ['blue', 'red', 'orange', 'green', 'cyan', 'magenta', 'brown', 'purple',  'black', 'limegreen','yellow','gray']
-        
-        symbol_fmt = ['o-', 'v-','s-','D-', 'x-']
+        symbol_fmt = ['o', 'v','s','D', 'x', '8', '*', '+']
         
         # Plot of 
         fig = plt.figure()
         fig.subplots_adjust(right = 0.6)
+        fig.set_size_inches(8,4)
         
         legend_spacing = np.arange(len(means.site))   
         ls_1 = 0
         ls_2 = 0
+        
+        
+        # Plot the WMO compatibility goals
+        daterange = [min(means.datetime), max(means.datetime)]  
+
+        
+        co2_lines = WMOLines(means.co2, gas='CO2')
+        
+        plt1 = plt.subplot(3, 1, 1)
+        plt1.plot(daterange, co2_lines.plusline,  ':', color = 'grey')
+        plt1.plot(daterange, co2_lines.minusline,  ':', color = 'grey')
+    
+
+        
+        ch4_lines = WMOLines(means.ch4, gas = 'CH4')    
+    
+        plt2 = plt.subplot(3, 1, 2)
+        plt2.plot(daterange, ch4_lines.plusline, ':', color = 'grey')
+        plt2.plot(daterange, ch4_lines.minusline, ':', color = 'grey')
+        
+        
+        co_lines = WMOLines(means.co, gas = 'CO')
+        
+        plt3 = plt.subplot(3, 1, 3)
+        plt3.plot(daterange, co_lines.plusline, ':', color = 'grey')
+        plt3.plot(daterange, co_lines.minusline, ':', color = 'grey')
+        
         
         for i in np.arange(n_colours):      
             # extract the site name
@@ -1041,7 +935,7 @@ class Plot_co2_means:
             
             import re            
             
-                        
+            #pdb.set_trace()
             
             # plot each instrument separately
             for h in np.arange(len(instruments)):
@@ -1056,7 +950,7 @@ class Plot_co2_means:
                     if B[k] != None:
                         instrumentindex.append(k)
                         
-                
+            
                 plot_datetime = [site_datetime[l] for l in instrumentindex]            
                 plot_co2 = [site_co2[l] for l in instrumentindex]    
                 plot_co2sd = [site_co2sd[l] for l in instrumentindex]    
@@ -1074,13 +968,14 @@ class Plot_co2_means:
                 # check if they're all from the same instrument
                 plt1 = plt.subplot(3, 1, 1)
                 
-                daterange = (dt.date(2014,6,1),dt.date(2015,3,1))
-                #daterange = (dt.date(2013,11,1),dt.date(2015,3,1))
+                daterange = (dt.date(2014,6,1),dt.date(2015,5,1))
+                if sum(np.array(means.site) == 'MPI')> 0:                
+                    daterange = (dt.date(2013,11,1),dt.date(2015,5,1))
                 
                 
                 
-                plt1.errorbar(plot_datetime, plot_co2, yerr=plot_co2sd, fmt=symbol_fmt[h], color = colournames[i], label = plot_sitekey, markersize = 3)
-                plt1.set_ylim(Calcrange(means.co2, means.co2sd))
+                plt1.errorbar(plot_datetime, plot_co2, yerr=plot_co2sd, fmt=symbol_fmt[h], color = SiteColours(sitein=site).outcolour, label = plot_sitekey, markersize = 3)
+                #plt1.set_ylim(Calcrange(means.co2, means.co2sd))
                 plt1.set_xlim(daterange)     
                 
                 y_formatter = ticker.ScalarFormatter(useOffset=False)
@@ -1096,7 +991,7 @@ class Plot_co2_means:
                 plt1.set_ylabel('[CO$_2$] (ppm)')
             
                 plt2 = plt.subplot(3, 1, 2)
-                plt2.errorbar(plot_datetime, plot_ch4, yerr=plot_ch4sd, fmt=symbol_fmt[h], color = colournames[i], label = plot_sitekey, markersize = 3)
+                plt2.errorbar(plot_datetime, plot_ch4, yerr=plot_ch4sd, fmt=symbol_fmt[h], color = SiteColours(sitein=site).outcolour, label = plot_sitekey, markersize = 3)
                 plt2.set_ylim(Calcrange(means.ch4, means.ch4sd))
                 plt2.set_ylabel('[CH$_4$] (ppb)')
                 plt2.set_xlim(daterange)  
@@ -1106,7 +1001,7 @@ class Plot_co2_means:
                 
                 #
                 plt3 = plt.subplot(3, 1, 3)
-                plt3.errorbar(plot_datetime, plot_co, yerr=plot_cosd, fmt=symbol_fmt[h], color = colournames[i], label = plot_sitekey, markersize = 3)
+                plt3.errorbar(plot_datetime, plot_co, yerr=plot_cosd, fmt=symbol_fmt[h], color = SiteColours(sitein=site).outcolour, label = plot_sitekey, markersize = 3)
                 plt3.set_ylim(Calcrange(means.co, means.cosd))
                 plt3.set_ylabel('[CO] (ppb)')
                 plt3.set_xlabel('time')
@@ -1115,19 +1010,26 @@ class Plot_co2_means:
                 plt3.xaxis.set_major_formatter(x_formatter)
                 plt3.xaxis.set_major_locator(x_tickno_formatter)
                 
-                plt.figtext(0.64, 0.85-(0.05*legend_spacing[ls_1]), symbol_fmt[h]+ plot_sitekey[0], verticalalignment='bottom', horizontalalignment='left', color=colournames[i], fontsize=8)
+                plt.figtext(0.64, 0.85-(0.05*legend_spacing[ls_1]), symbol_fmt[h]+' - '+ plot_sitekey[0], verticalalignment='bottom', \
+                    horizontalalignment='left', color=SiteColours(sitein=site).outcolour, fontsize=8)
                 
-                if plot_co_scale[0] != 'nan':
-                    plt.figtext(0.82, 0.85-(0.05*legend_spacing[ls_2]), symbol_fmt[h]+  'co - '+ plot_co_scale[0], verticalalignment='bottom', horizontalalignment='left', color=colournames[i], fontsize=8)
+                # Plot the CO data if it exists
+                if np.isnan(plot_co[0]):
+                    print 'No CO'
+                else:          
+                    plt.figtext(0.78, 0.85-(0.03*legend_spacing[ls_2]), plot_sitekey[0] +  ' - CO '+ plot_co_scale[0], verticalalignment='bottom',\
+                        horizontalalignment='left', color=SiteColours(sitein=site).outcolour, fontsize=6)
                     ls_2 = ls_2 + 1
                 
                 ls_1 =ls_1 +1   
-                
-                
-        plt.figtext(0.82, 0.15, symbol_fmt[h]+  'CO2-WMOx2007', verticalalignment='bottom', horizontalalignment='left', fontsize=8)
-        plt.figtext(0.82, 0.1, symbol_fmt[h]+  'CH4-WMOx2004', verticalalignment='bottom', horizontalalignment='left', fontsize=8)
 
+                
+        plt.figtext(0.8, 0.2, symbol_fmt[h]+  ' - CO2 WMOx2007', verticalalignment='bottom', horizontalalignment='left', fontsize=6)
+        plt.figtext(0.8, 0.17, symbol_fmt[h]+  ' - CH4 WMOx2004', verticalalignment='bottom', horizontalalignment='left', fontsize=6)
 
+        plt.figtext(0.64, 0.05, 'Mean +/- WMO compatibility goals', verticalalignment='bottom', horizontalalignment='left', fontsize=6, color ='grey')
+
+        print 'Plot saved as: ' + outputdir+'Means_'+means.USN+suffix+'.png'
         plt.savefig(outputdir+'Means_'+means.USN+suffix+'.png', dpi=200)
             
         plt.show()
@@ -1141,18 +1043,34 @@ class Plot_n2o_means:
         # The number of colours is the number of unique sites
         # one colour per site
         n_colours = len(set(means.site))
-          
-        colournames = ['blue', 'red', 'orange', 'green', 'cyan', 'magenta', 'pink', 'purple',  'black', 'limegreen','yellow','gray']
         
-        symbol_fmt = ['o-', 'v-','s-','D-', 'x-']
+        symbol_fmt = ['o', 'v','s','D', 'x', '8', '*', '+']
         
         # Plot of 
         fig = plt.figure()
         fig.subplots_adjust(right = 0.7)
-        
+        fig.set_size_inches(8,4)
+       
         legend_spacing = np.arange(len(means.site))   
         ls =0
         
+        # Plot the WMO compatibility goals
+        daterange = [min(means.datetime), max(means.datetime)]  
+        
+        n2o_lines = WMOLines(means.n2o, gas='N2O')
+        
+        plt1 = plt.subplot(2, 1, 1)
+        plt1.plot(daterange, n2o_lines.plusline,  ':', color = 'grey')
+        plt1.plot(daterange, n2o_lines.minusline,  ':', color = 'grey')
+    
+    
+        sf6_lines = WMOLines(means.sf6, gas = 'SF6')    
+    
+        plt2 = plt.subplot(2, 1, 2)
+        plt2.plot(daterange, sf6_lines.plusline, ':', color = 'grey')
+        plt2.plot(daterange, sf6_lines.minusline, ':', color = 'grey')
+        
+
         for i in np.arange(n_colours):      
             # extract the site name
             site = list(set(means.site))[i]
@@ -1190,7 +1108,11 @@ class Plot_n2o_means:
             
             import re            
             
-                        
+            daterange = (dt.date(2014,6,1),dt.date(2015,5,1))
+            
+            if sum(np.array(means.site) == 'MPI') > 0:
+                daterange = (dt.date(2013,11,1),dt.date(2015,5,1))
+
             
             # plot each instrument separately
             for h in np.arange(len(instruments)):
@@ -1235,9 +1157,9 @@ class Plot_n2o_means:
                 plt1 = plt.subplot(2, 1, 1)
                 
         
-                plt1.errorbar(plot_datetime, plot_n2o, yerr=plot_n2osd, fmt=symbol_fmt[h], color = colournames[i], label = plot_sitekey, markersize = 3)
+                plt1.errorbar(plot_datetime, plot_n2o, yerr=plot_n2osd, fmt=symbol_fmt[h], color = SiteColours(sitein=site).outcolour, label = plot_sitekey, markersize = 3)
                 plt1.set_ylim(Calcrange(means.n2o, means.n2osd))
-                plt1.set_xlim((dt.date(2013,11,1),dt.date(2015,3,1)))     
+                plt1.set_xlim(daterange)     
                 
                 y_formatter = ticker.ScalarFormatter(useOffset=False)
                 plt1.yaxis.set_major_formatter(y_formatter)
@@ -1252,27 +1174,29 @@ class Plot_n2o_means:
                 plt1.set_ylabel('[N$_2$O] (ppb)')
             
                 plt2 = plt.subplot(2, 1, 2)
-                plt2.errorbar(plot_datetime, plot_sf6, yerr=plot_sf6sd, fmt=symbol_fmt[h], color = colournames[i], label = plot_sitekey, markersize = 3)
+                plt2.errorbar(plot_datetime, plot_sf6, yerr=plot_sf6sd, fmt=symbol_fmt[h], color =  SiteColours(sitein=site).outcolour, label = plot_sitekey, markersize = 3)
                 plt2.set_ylim(Calcrange(means.sf6, means.sf6sd))
                 plt2.set_ylabel('[SF$_6$] (ppt)')
-                plt2.set_xlim((dt.date(2013,11,1),dt.date(2015,3,1)))  
+                plt2.set_xlim(daterange)  
                 plt2.yaxis.set_major_formatter(y_formatter)
                 plt2.xaxis.set_major_formatter(x_formatter)            
                 plt2.xaxis.set_major_locator(x_tickno_formatter)
                 
                 # Symbol and site
-                plt.figtext(0.72, 0.85-(0.05*legend_spacing[ls]), plot_sitekey, verticalalignment='bottom', horizontalalignment='left', color=colournames[i], fontsize=8)
+                plt.figtext(0.72, 0.85-(0.05*legend_spacing[ls]), plot_sitekey, verticalalignment='bottom', horizontalalignment='left', color= SiteColours(sitein=site).outcolour, fontsize=8)
                 
                 # Scale                
-                plt.figtext(0.72, 0.4-(0.05*legend_spacing[ls]), plot_n2o_scale+ ', ' + plot_sf6_scale, verticalalignment='bottom', horizontalalignment='left', color=colournames[i], fontsize=8)
+                plt.figtext(0.72, 0.4-(0.03*legend_spacing[ls]), plot_n2o_scale+ ', ' + plot_sf6_scale, verticalalignment='bottom', horizontalalignment='left', color= SiteColours(sitein=site).outcolour, fontsize=6)
                 
             
                 #pdb.set_trace()
                 
                 ls =ls +1               
                 
-        plt.figtext(0.72, 0.45, 'N$_2$O scale, SF$_6$ scale', verticalalignment='bottom', horizontalalignment='left', color='black', fontsize=8)
-               
+        plt.figtext(0.72, 0.42, 'N$_2$O scale, SF$_6$ scale', verticalalignment='bottom', horizontalalignment='left', color='black', fontsize=6)
+        plt.figtext(0.72, 0.1, 'Mean +/- WMO compatibility goals', verticalalignment='bottom', horizontalalignment='left', fontsize=8, color ='grey')
+
+
         plt.savefig(outputdir+'N2O_SF6_Means_'+means.USN+suffix+'.png', dpi=200)
         
         print "Figure saved as:"
@@ -1361,14 +1285,41 @@ class Plot_summary:
         # one colour per site
         n_colours = len(set(sites))
           
-        colournames = ['blue', 'red', 'orange', 'green', 'cyan', 'magenta', 'brown', 'purple',  'black', 'limegreen','yellow','gray']
-              
+               
         # Plot of 
         fig = plt.figure()
-        fig.subplots_adjust(right = 0.8)
-        
+        fig.subplots_adjust(right = 0.7)
+        fig.set_size_inches(8,4)
+
         legend_spacing = np.arange(len(sites))   
         ls_1 = 0
+        
+        # Plot the WMO compatibility goals
+        daterange = [min(co2_datetimes), max(co2_datetimes)]  
+
+        
+        co2_lines = WMOLines(co2_diffs, gas='CO2')
+        
+        plt1 = plt.subplot(3, 1, 1)
+        plt1.plot(daterange, co2_lines.plusline,  ':', color = 'grey')
+        plt1.plot(daterange, co2_lines.minusline,  ':', color = 'grey')
+    
+    
+        ch4_lines = WMOLines(ch4_diffs, gas = 'CH4')    
+    
+        plt2 = plt.subplot(3, 1, 2)
+        plt2.plot(daterange, ch4_lines.plusline, ':', color = 'grey')
+        plt2.plot(daterange, ch4_lines.minusline, ':', color = 'grey')
+        
+        
+        n2o_lines = WMOLines(n2o_diffs, gas = 'N2O')
+        
+        plt3 = plt.subplot(3, 1, 3)
+        plt3.plot(daterange, n2o_lines.plusline, ':', color = 'grey')
+        plt3.plot(daterange, n2o_lines.minusline, ':', color = 'grey')
+        
+        
+        
         
         for i in np.arange(n_colours):      
             # extract the site name
@@ -1394,11 +1345,13 @@ class Plot_summary:
             # check if they're all from the same instrument
             plt1 = plt.subplot(3, 1, 1)
             
-            daterange = (dt.date(2013,11,1),dt.date(2015,3,1))
-            #daterange = (dt.date(2013,11,1),dt.date(2015,3,1))
+            daterange = (dt.date(2014,6,1),dt.date(2015,5,1))
             
-            plt1.errorbar(co2_site_datetime, site_co2_diffs, yerr=site_co2sd, fmt='o', color = colournames[i], markersize = 3)
-            plt1.set_ylim(Calcrange(co2_diffs, co2sd))
+            if sum(np.array(sites) == 'MPI') > 0:            
+                daterange = (dt.date(2013,11,1),dt.date(2015,5,1))
+            
+            plt1.errorbar(co2_site_datetime, site_co2_diffs, yerr=site_co2sd, fmt='o', color = SiteColours(sitein=site).outcolour, markersize = 3)
+            plt1.set_ylim(Calcrange(co2_diffs, co2sd, even=1))
             plt1.set_xlim(daterange)     
             
             y_formatter = ticker.ScalarFormatter(useOffset=False)
@@ -1414,8 +1367,8 @@ class Plot_summary:
             plt1.set_ylabel('[CO$\mathregular{_2}$] (ppm)')
         
             plt2 = plt.subplot(3, 1, 2)
-            plt2.errorbar(co2_site_datetime, site_ch4_diffs, yerr=site_ch4sd, fmt='o', color = colournames[i],  markersize = 3)
-            plt2.set_ylim(Calcrange(ch4_diffs, ch4sd))
+            plt2.errorbar(co2_site_datetime, site_ch4_diffs, yerr=site_ch4sd, fmt='o', color = SiteColours(sitein=site).outcolour,  markersize = 3)
+            plt2.set_ylim(Calcrange(ch4_diffs, ch4sd, even=1))
             plt2.set_ylabel('[CH$\mathregular{_4}$] (ppb)')
             
             plt2.set_xlim(daterange)  
@@ -1425,8 +1378,8 @@ class Plot_summary:
             
             
             plt3 = plt.subplot(3, 1, 3)
-            plt3.errorbar(n2o_site_datetime, site_n2o_diffs, yerr=site_n2osd, fmt='o', color = colournames[i],  markersize = 3)
-            plt3.set_ylim(Calcrange(n2o_diffs, n2osd))
+            plt3.errorbar(n2o_site_datetime, site_n2o_diffs, yerr=site_n2osd, fmt='o', color = SiteColours(sitein=site).outcolour,  markersize = 3)
+            plt3.set_ylim(Calcrange(n2o_diffs, n2osd, even=1))
             plt3.set_ylabel('[N$\mathregular{_2}$O] (ppb)')
             plt3.set_xlabel('time')
             plt3.set_xlim(daterange)  
@@ -1434,15 +1387,17 @@ class Plot_summary:
             plt3.xaxis.set_major_formatter(x_formatter)
             plt3.xaxis.set_major_locator(x_tickno_formatter)
             
-            plt.figtext(0.84, 0.85-(0.05*legend_spacing[ls_1]), site, verticalalignment='bottom', horizontalalignment='left', color=colournames[i], fontsize=8)
+            plt.figtext(0.74, 0.85-(0.05*legend_spacing[ls_1]), site, verticalalignment='bottom', horizontalalignment='left', color=SiteColours(sitein=site).outcolour, fontsize=8)
             
             ls_1 =ls_1 +1   
                 
         # '$\mathregular{x^2}$'
         
-        plt.figtext(0.82, 0.17, 'CO$\mathregular{_2}$ - WMOx2007', verticalalignment='bottom', horizontalalignment='left', fontsize=8)
-        plt.figtext(0.82, 0.14, 'CH$\mathregular{_4}$ - WMOx2004', verticalalignment='bottom', horizontalalignment='left', fontsize=8)
-        plt.figtext(0.82, 0.11, 'N$\mathregular{_2}$O - SIO98 (DECC/GAUGE), WMOx2006 (others) ', verticalalignment='bottom', horizontalalignment='left', fontsize=8)
+        plt.figtext(0.72, 0.2, 'CO$\mathregular{_2}$ - WMOx2007', verticalalignment='bottom', horizontalalignment='left', fontsize=6)
+        plt.figtext(0.72, 0.17, 'CH$\mathregular{_4}$ - WMOx2004', verticalalignment='bottom', horizontalalignment='left', fontsize=6)
+        plt.figtext(0.72, 0.14, 'N$\mathregular{_2}$O - SIO98 (DECC/GAUGE), WMOx2006 (others) ', verticalalignment='bottom', horizontalalignment='left', fontsize=6)
+        plt.figtext(0.72, 0.11, 'Mean +/- WMO compatibility goals', verticalalignment='bottom', horizontalalignment='left', fontsize=6, color ='grey')
+
 
 
         plt.savefig(outputdir+'SummmaryPlot_Timeseries' + suffix + '.png', dpi=200)
@@ -1451,16 +1406,36 @@ class Plot_summary:
         
         
         n_colours = len(set(sites))
-          
-        colournames = ['blue', 'red', 'orange', 'green', 'cyan', 'magenta', 'brown', 'purple',  'black', 'limegreen','yellow','gray']
               
-        # Plot of 
+        # Plot of diffs against concentration
         fig = plt.figure()
-        fig.subplots_adjust(right = 0.8)
+        fig.subplots_adjust(right = 0.7)
+        fig.set_size_inches(8,4)
         
         legend_spacing = np.arange(len(sites))   
         ls_1 = 0
         
+        # Plot WMO compatibility goals    
+        co2_range = [min(co2),max(co2)]
+        
+        plt1 = plt.subplot(3, 1, 1)
+        plt1.plot(co2_range, co2_lines.plusline,  ':', color = 'grey')
+        plt1.plot(co2_range, co2_lines.minusline,  ':', color = 'grey')
+    
+    
+        ch4_range = [min(ch4),max(ch4)]
+        
+        plt2 = plt.subplot(3, 1, 2)
+        plt2.plot(ch4_range, ch4_lines.plusline, ':', color = 'grey')
+        plt2.plot(ch4_range, ch4_lines.minusline, ':', color = 'grey')
+        
+        
+        n2o_range = [min(n2o),max(n2o)]
+        
+        plt3 = plt.subplot(3, 1, 3)
+        plt3.plot(n2o_range, n2o_lines.plusline, ':', color = 'grey')
+        plt3.plot(n2o_range, n2o_lines.minusline, ':', color = 'grey')
+
         
         for k in np.arange(n_colours):      
             # extract the site name
@@ -1486,9 +1461,9 @@ class Plot_summary:
             # check if they're all from the same instrument
             plt1 = plt.subplot(3, 1, 1)
             
-            plt1.errorbar(site_co2, site_co2_diffs, yerr=site_co2sd, fmt='o', color = colournames[k], markersize = 3)
-            plt1.set_ylim(Calcrange(co2_diffs, co2sd))
-            
+            plt1.errorbar(site_co2, site_co2_diffs, yerr=site_co2sd, fmt='o', color = SiteColours(sitein=site).outcolour, markersize = 3)
+            plt1.set_ylim(Calcrange(co2_diffs, co2sd, even=1))
+            plt1.set_xlim([370,490])
             
             y_formatter = ticker.ScalarFormatter(useOffset=False)
             plt1.yaxis.set_major_formatter(y_formatter)
@@ -1499,30 +1474,31 @@ class Plot_summary:
        
         
             plt2 = plt.subplot(3, 1, 2)
-            plt2.errorbar(site_ch4, site_ch4_diffs, yerr=site_ch4sd, fmt='o', color = colournames[k],  markersize = 3)
-            plt2.set_ylim(Calcrange(ch4_diffs, ch4sd))
+            plt2.errorbar(site_ch4, site_ch4_diffs, yerr=site_ch4sd, fmt='o', color = SiteColours(sitein=site).outcolour,  markersize = 3)
+            plt2.set_ylim(Calcrange(ch4_diffs, ch4sd, even = 1))
             plt2.set_ylabel('mean - [CO$\mathregular{_2}$] (ppb)')
             plt2.yaxis.set_major_formatter(y_formatter)
-            
+            plt2.set_xlim([1750,2250])
             
             plt3 = plt.subplot(3, 1, 3)
-            plt3.errorbar(site_n2o, site_n2o_diffs, yerr=site_n2osd, fmt='o', color = colournames[k],  markersize = 3)
-            plt3.set_ylim(Calcrange(n2o_diffs, n2osd))
+            plt3.errorbar(site_n2o, site_n2o_diffs, yerr=site_n2osd, fmt='o', color = SiteColours(sitein=site).outcolour,  markersize = 3)
+            plt3.set_ylim(Calcrange(n2o_diffs, n2osd, even=1))
             plt3.set_ylabel('mean - [N$\mathregular{_2}$O] (ppb)')
-           
+            plt3.set_xlim([322,336])
 
             plt3.set_xlabel('Concentration')
             plt3.yaxis.set_major_formatter(y_formatter)
             
-            plt.figtext(0.84, 0.85-(0.05*legend_spacing[ls_1]), site, verticalalignment='bottom', horizontalalignment='left', color=colournames[k], fontsize=8)
+            plt.figtext(0.74, 0.85-(0.05*legend_spacing[ls_1]), site, verticalalignment='bottom', horizontalalignment='left', color=SiteColours(sitein=site).outcolour, fontsize=8)
             
             ls_1 =ls_1 +1   
                 
         # '$\mathregular{x^2}$'
         
-        plt.figtext(0.82, 0.17, 'CO$\mathregular{_2}$ - WMOx2007', verticalalignment='bottom', horizontalalignment='left', fontsize=8)
-        plt.figtext(0.82, 0.14, 'CH$\mathregular{_4}$ - WMOx2004', verticalalignment='bottom', horizontalalignment='left', fontsize=8)
-        plt.figtext(0.82, 0.11, 'N$\mathregular{_2}$O - SIO98 (DECC/GAUGE), WMOx2006 (others) ', verticalalignment='bottom', horizontalalignment='left', fontsize=8)
+        plt.figtext(0.72, 0.2, 'CO$\mathregular{_2}$ - WMOx2007', verticalalignment='bottom', horizontalalignment='left', fontsize=6)
+        plt.figtext(0.72, 0.17, 'CH$\mathregular{_4}$ - WMOx2004', verticalalignment='bottom', horizontalalignment='left', fontsize=6)
+        plt.figtext(0.72, 0.14, 'N$\mathregular{_2}$O - SIO98 (DECC/GAUGE), WMOx2006 (others) ', verticalalignment='bottom', horizontalalignment='left', fontsize=6)
+        plt.figtext(0.72, 0.11, 'Mean +/- WMO compatibility goals', verticalalignment='bottom', horizontalalignment='left', fontsize=6, color ='grey')
 
 
         plt.savefig(outputdir+'SummmaryPlot_Conc' + suffix + '.png', dpi=200)

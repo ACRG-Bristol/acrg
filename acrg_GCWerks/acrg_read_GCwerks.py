@@ -72,6 +72,7 @@ class read_gcexport_crds:
            
         self.date = date
         self.time = time
+        self.dt_date = dt_date
         self.datetime = dt_date
         self.sampletype = sampletype
         self.samplename = samplename
@@ -119,6 +120,8 @@ class read_gcexport_crds:
 # an F flag will = a 2 flag
 class Makeflags:
     def __init__(self, gas):    
+        
+        
         
         flag = np.zeros(shape=len(gas))
         for i in np.arange(len(gas)):

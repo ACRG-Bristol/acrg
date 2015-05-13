@@ -1,0 +1,573 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Mar 23 10:47:23 2015
+
+@author: as13988
+"""
+
+from acrg_GCWerks import acrg_read_GCwerks as read_GCwerks
+import matplotlib.ticker as ticker
+import matplotlib.pyplot as plt
+import matplotlib
+import pdb
+import numpy as np
+import datetime as dt
+import os
+import bisect
+from acrg_GCWerks import fitting
+ 
+# Read raw data
+class read_raw:
+    def __init__(self, inputfile='/Users/as13988/Documents/Work/Picarro/Drying/GCWerksOutput/DPG.E-114.DPG=5a.20150325.dat'):
+        data = read_GCwerks.read_gcexport_crds(inputfile)
+        
+        self.data = data
+
+
+# Read timefile
+"""
+# Timefile dew point generator tests run at Heathfield
+# Configurations types
+# 1 = H2O trap bypassed, through Nafion
+# 2 = H2O trap bypassed, Nafion bypassed
+# 3 = through H2O trap, Nafion bypassed
+# 4 = through H2O trap, through Nafion
+#
+# Runs
+# 1 = Cylinder E-114 Dew Point = 5C
+# 2 = Cylinder E-114 Dew Point = 5C
+# 3 = Cylinder E-114 Dew Point = 15C
+# 4 = Cylinder E-114 Dew Point = 20C
+# 5 = Cylinder of compressed air Dew Point = 5
+# 6 = Cylinder of compressed air Dew Point = 15
+# 7 = Cylinder H-249 Dew Point = 5
+# 8 = Cylinder H-249 Dew Point = 10
+# 9 = Cylinder UAN20070098 Dew Point = 15
+# 10 = Cylinder UAN20070098 Dew Point = 5
+#---------------------------------------
+Cylinder	DewPoint	Config	RunNo	StartTime			EndTime				Comment
+E-114		5 			2 		1 		11/03/2015 13:32		11/03/2015 16:05		# Could be dodgy as it's at a different flow rate
+"""
+class read_timefile:
+    def __init__(self, timefile='/Users/as13988/Documents/Work/Picarro/Drying/DPGTimefile'):
+        
+        config_types = ['H2O trap bypassed, through Nafion', \
+                         'H2O trap bypassed, Nafion bypassed', \
+                         'through H2O trap, Nafion bypassed', \
+                         'through H2O trap, through bypassed']
+
+        run_types = ['Cylinder E-114 Dew Point = 5C', \
+                    'Cylinder E-114 Dew Point = 5C', \
+                    'Cylinder E-114 Dew Point = 15C', \
+                    'Cylinder E-114 Dew Point = 20C', \
+                    'Cylinder of compressed air Dew Point = 5', \
+                    'Cylinder of compressed air Dew Point = 15', \
+                    'Cylinder H-249 Dew Point = 5', \
+                    'Cylinder H-249 Dew Point = 10', \
+                    'Cylinder UAN20070098 Dew Point = 15', \
+                    'Cylinder UAN20070098 Dew Point = 5']
+        
+        # If you leave the delimiter blank it splits based on white space
+        if type(timefile) == tuple:
+            timedata=np.genfromtxt(timefile[0], dtype=str, skip_header=20)
+        elif type(timefile) == str:
+            timedata=np.genfromtxt(timefile, dtype=str, skip_header=20)     
+        
+        cylinder = timedata[:,0]
+        
+        dewpoint = timedata[:,1].astype(int)      
+        config_no = timedata[:,2].astype(int)
+        run_no = timedata[:,3]
+        starttime = [timedata[i,4] + ' ' + timedata[i,5] for i in np.arange(len(timedata[:,4]))]
+        endtime = [timedata[i,6] + ' ' + timedata[i,7] for i in np.arange(len(timedata[:,4]))]
+        
+        # Convert starttime and endtime to a datetime 
+        start_dt = [dt.datetime.strptime(i, "%d/%m/%Y %H:%M") for i in starttime]
+        end_dt = [dt.datetime.strptime(i, "%d/%m/%Y %H:%M") for i in endtime]
+        
+        self.cylinder = cylinder
+        self.dewpoint = dewpoint.astype(int)
+        self.config_no = config_no.astype(int)
+        self.run_no = run_no.astype(int)  
+        self.starttime_str = starttime
+        self.sendtime_str = endtime
+        self.start_dt = start_dt
+        self.end_dt = end_dt
+        self.config_types = config_types
+        self.run_types = run_types
+                
+        dirname, filename = os.path.split(timefile)
+        
+        self.filename = filename
+        self.dirname = dirname
+
+
+# Split minutemeans
+class split_raw:
+    def __init__(self, data, timefile='/Users/as13988/Documents/Work/Picarro/Drying/DPGTimefile', run_no = 0):
+     
+        data = data.data
+     
+     
+        # Extract the unflagged data
+        dt_co2, co2, co2sd = read_GCwerks.Extractgood(data.datetime, data.co2, data.co2flags, data.co2sd)
+        dt_ch4, ch4, ch4sd = read_GCwerks.Extractgood(data.datetime, data.ch4, data.ch4flags, data.ch4sd)
+  
+        # Read in the timefile
+        timedata = read_timefile(timefile=timefile)     
+        
+        # If the run number isn't given default to the run that is closest to the first time stamp in the data
+        if run_no == 0:
+            config_no_sorted = [x for (y,x) in sorted(zip(timedata.start_dt,timedata.run_no))]
+            start_dt_sorted = [y for (y,x) in sorted(zip(timedata.start_dt,timedata.run_no))]
+        
+            run_no = config_no_sorted[bisect.bisect(start_dt_sorted, data.datetime[0])]
+        
+        #pdb.set_trace()
+
+        # Find the start and end times for that run
+        index = np.where(timedata.run_no == run_no)[0]
+        starttimes = [timedata.start_dt[i] for i in index]
+        endtimes = [timedata.end_dt[i] for i in index]
+        config_no = timedata.config_no[index]
+                
+        
+        #pdb.set_trace()
+        
+        # Split the time file info for that run no into the individual config types
+        # Extract the corresponding data and time stamps
+        config_types = list(set(config_no))
+         
+        datasplit = []         
+         
+        # go through each config type
+        for j in config_types:
+            config_index = np.where(config_no == j)[0]
+            
+            configsplit = []            
+            
+            for k in config_index:
+                startindex = bisect.bisect(dt_co2, starttimes[k])
+                endindex = bisect.bisect(dt_co2, endtimes[k])
+                
+                co2times_k = dt_co2[startindex:endindex]
+                co2_k = co2[startindex:endindex]
+                co2sd_k = co2sd[startindex:endindex]
+                
+                startindex = bisect.bisect(dt_ch4, starttimes[k])
+                endindex = bisect.bisect(dt_ch4, endtimes[k])
+                
+                ch4times_k = dt_ch4[startindex:endindex]
+                ch4_k = ch4[startindex:endindex]
+                ch4sd_k = ch4sd[startindex:endindex]
+                        
+                
+                dict_k = {'dt_co2' :co2times_k, \
+                        'co2' : co2_k, \
+                        'co2sd' : co2sd_k, \
+                        'dt_ch4' :ch4times_k, \
+                        'ch4' : ch4_k, \
+                        'ch4sd' : ch4sd_k, \
+                        }
+                
+                configsplit.append(dict_k)
+                
+                
+            dict_j = {'cylinder' : timedata.cylinder[index[0]], \
+                    'dewpoint' : timedata.dewpoint[index[0]], \
+                    'config_no' : j, \
+                    'run_no' : run_no, \
+                    'starttime' : [starttimes[i] for i in config_index], \
+                    'endtime' : [endtimes[i] for i in config_index], \
+                    'data' : configsplit, \
+                    }
+            datasplit.append(dict_j)
+            
+        self.split_data = datasplit   
+        self.unflaggeddata = {'dt_co2' :dt_co2, \
+                        'co2' : co2, \
+                        'co2sd' : co2sd, \
+                        'dt_ch4' :dt_ch4, \
+                        'ch4' : ch4, \
+                        'ch4sd' : ch4sd, \
+                        }
+        self.timedata = timedata
+        self.configs = config_types
+
+
+# do fits and calculate means
+class make_means:
+    def __init__(self, inputfile='/Users/as13988/Documents/Work/Picarro/Drying/GCWerksOutput/DPG.E-114.DPG=5a.20150326.dat', \
+            timefile='/Users/as13988/Documents/Work/Picarro/Drying/DPGTimefile', \
+            outputdir='/Users/as13988/Documents/Work/Picarro/Drying/GCWerksOutput/', run_no = 0, species ='co2', fit_type=0):
+     
+        # Read in the raw data 
+        data = read_raw(inputfile=inputfile)
+     
+        # split the raw data
+        processed_data = split_raw(data, timefile=timefile, run_no = run_no)
+        
+        # all data
+        all_data = processed_data.unflaggeddata
+        all_seconds = np.array([(l - all_data['dt_co2'][0]).total_seconds() for l in all_data['dt_co2']])
+            
+# ____________________________________________________________________
+# FITS        
+# ____________________________________________________________________
+# TYPE 2 = do a fit to the "No H2O trap, No nafion"        
+        type2_data = processed_data.split_data[np.where(np.array(processed_data.configs) == 2)[0]]
+
+        # cycle through each run of type 2   
+        x_2 = []
+        y_2 = []
+        
+        for j in np.arange(np.shape(type2_data['data'])[0]):
+            x_2.extend(type2_data['data'][j]['dt_co2'])          
+            y_2.extend(type2_data['data'][j]['co2'])
+        
+        # convert to seconds since the start of the run
+        x_2_secs = np.array([(k - all_data['dt_co2'][0]).total_seconds() for k in x_2])
+        
+        # do the fit to the data
+        fit_2 = fitting.fit_data(x_2_secs, y_2, scale=1, fit_type=fit_type)
+        
+        
+        # calculate the fit at all the data points
+        all_fit_2 = (fitting.func(all_seconds*fit_2.x_scale, fit_2.coeffs, fit_type=fit_2.fit_type))/fit_2.y_scale
+  
+# TYPE 1     
+        # cycle through each run of type 1 
+        x_1 = []
+        y_1 = []     
+        type1_data = processed_data.split_data[np.where(np.array(processed_data.configs) == 1)[0]]
+         
+        for j in np.arange(np.shape(type1_data['data'])[0]):
+            x_1.extend(type1_data['data'][j]['dt_'+species])          
+            y_1.extend(type1_data['data'][j][species])
+        
+        # convert to seconds since the start of the run
+        x_1_secs = np.array([(k - all_data['dt_co2'][0]).total_seconds() for k in x_1])
+        
+        # Calculate values from the fit to type 2 at type 1's time steps
+        x_1_fit = (fitting.func(x_1_secs*fit_2.x_scale, fit_2.coeffs, fit_type=fit_2.fit_type))/fit_2.y_scale        
+         
+# TYPE 3
+        # cycle through each run of type 3      
+        x_3 = []
+        y_3 = []
+        type3_data = processed_data.split_data[np.where(np.array(processed_data.configs) == 3)[0]]
+
+        for j in np.arange(np.shape(type3_data['data'])[0]):
+            x_3.extend(type3_data['data'][j]['dt_'+species])          
+            y_3.extend(type3_data['data'][j][species])
+        
+        # convert to seconds since the start of the run
+        x_3_secs = np.array([(k - all_data['dt_'+species][0]).total_seconds() for k in x_3])
+        
+        # Calculate values from the fit to type 2 at type 3's time steps
+        x_3_fit = (fitting.func(x_3_secs*fit_2.x_scale, fit_2.coeffs, fit_type=fit_2.fit_type))/fit_2.y_scale        
+            
+# TYPE 4         
+        # cycle through each run of type 4
+        x_4 = []
+        y_4 = []
+        type4_data = processed_data.split_data[np.where(np.array(processed_data.configs) == 4)[0]]
+        
+        for j in np.arange(np.shape(type4_data['data'])[0]):
+            x_4.extend(type4_data['data'][j]['dt_'+species])          
+            y_4.extend(type4_data['data'][j][species])
+            
+        x_4_secs = np.array([(k - all_data['dt_'+species][0]).total_seconds() for k in x_4])
+        
+        # Calculate values from the fit to type 2 at type 3's time steps
+        x_4_fit = (fitting.func(x_4_secs*fit_2.x_scale, fit_2.coeffs, fit_type=fit_2.fit_type))/fit_2.y_scale        
+        
+
+# ____________________________________________________________________
+# PLOTS       
+# ____________________________________________________________________
+# TYPE 2 & TYPE 1       
+        colours = ['purple','blue','green','red'] 
+        
+    # PLot fit to config 2
+        fig = plt.figure()
+        ax = fig.add_subplot(111)        
+        fig.subplots_adjust(bottom = 0.2)
+
+        # Plot all data
+        ax.plot(all_seconds, all_data[species], '+', color = 'grey')
+
+        # Plot type 2 data
+        ax.plot(x_2_secs,y_2, 'o', color = colours[1])
+
+        # Plot fit to type 2 data           
+        ax.plot(all_seconds, all_fit_2, '-', color = colours[1])
+
+        # PLot type 1, 3 & 4 data
+        ax.plot(x_1_secs,y_1, 'o', color = colours[0])
+        ax.plot(x_3_secs,y_3, 'o', color = colours[2])
+        ax.plot(x_4_secs,y_4, 'o', color = colours[3])
+     
+        plt.figtext(0.6, 0.05, 'H2O trap, Nafion bypassed', verticalalignment='bottom', horizontalalignment='left', fontsize=8, color = 'green')
+        plt.figtext(0.6, 0.1, 'H2O trap, Nafion', verticalalignment='bottom', horizontalalignment='left', fontsize=8, color = 'red')
+        plt.figtext(0.2, 0.1, 'H2O trap bypassed, Nafion', verticalalignment='bottom', horizontalalignment='left', fontsize=8, color = 'purple')
+        plt.figtext(0.2, 0.05, 'H2O trap bypassed, Nafion bypassed', verticalalignment='bottom', horizontalalignment='left', fontsize=8, color = 'blue')
+        
+        
+        if fit_2.fit_type == 'exp':            
+            plt.figtext(0.25, 0.5, 'y = ' + str(fit_2.coeffs[0]) + '*e^-' + str(fit_2.coeffs[1])+ 'x +' + str(fit_2.coeffs[2]))
+
+        if fit_2.fit_type == 'log':            
+            plt.figtext(0.25, 0.5, 'y = ' + str(fit_2.coeffs[0]) + '*log(-' + str(fit_2.coeffs[1])+ 'x) +' + str(fit_2.coeffs[2]))
+
+        if fit_2.fit_type == 'lin':            
+            plt.figtext(0.25, 0.5, 'y = ' + str(fit_2.coeffs[0]) + 'x + ' + str(fit_2.coeffs[1]))
+
+
+        ax.set_xlabel('Seconds since start of run')
+        ax.set_ylabel('[' + species +'] dry minute mean')
+        ax.set_title(os.path.splitext(data.data.filename)[0])
+        #ax.set_ylim((439,440.5))
+         
+        plt.show()
+        plt.savefig(outputdir+'fits/'+os.path.splitext(data.data.filename)[0]+'_Fit2.png', dpi=200)
+        
+        plt.close()       
+        
+    # PLot data with fit deducted
+        fig = plt.figure()
+        ax = fig.add_subplot(111)   
+        fig.subplots_adjust(bottom = 0.2)
+
+        # Plot type 2 less fit
+        ax.plot(x_2_secs, y_2- fit_2.fit, 'o', mfc = 'none', mec = colours[1])
+
+        # Plot type 1 data less fit to type 2
+        ax.plot(x_1_secs, y_1 - x_1_fit, 'o', mfc = 'none', mec =  colours[0])      
+        ax.plot(x_3_secs, y_3 - x_3_fit, 'o', mfc = 'none', mec = colours[2])   
+        ax.plot(x_4_secs, y_4 - x_4_fit, 'o', mfc = 'none', mec = colours[3])   
+                
+        plt.figtext(0.2, 0.05, 'H2O trap bypassed, Nafion', verticalalignment='bottom', horizontalalignment='left', fontsize=8, color = 'purple')
+        plt.figtext(0.2, 0.1, 'H2O trap bypassed, Nafion bypassed', verticalalignment='bottom', horizontalalignment='left', fontsize=8, color = 'blue')
+        plt.figtext(0.6, 0.1, 'H2O trap, Nafion bypassed', verticalalignment='bottom', horizontalalignment='left', fontsize=8, color = 'green')
+        plt.figtext(0.6, 0.05, 'H2O trap, Nafion', verticalalignment='bottom', horizontalalignment='left', fontsize=8, color = 'red')
+
+        ax.set_xlabel('Seconds since start of run')
+        ax.set_ylabel('Difference from long term trend (No trap, No Nafion)')
+        ax.set_title(os.path.splitext(data.data.filename)[0])
+
+       
+        plt.show()
+        plt.savefig(outputdir+'fits/'+os.path.splitext(data.data.filename)[0]+'_DiffFit2.png', dpi=200)
+               
+
+# ____________________________________________________________________
+# CALCULATE MEANS       
+# ____________________________________________________________________
+
+# Cycle through each config and deduct the config2 fit and calculate means for each run
+        means = []
+        
+        configs = [1,2,3,4]
+        
+        for i in configs:
+            #print i
+            typei_data = processed_data.split_data[np.where(np.array(processed_data.configs) == i)[0]]
+            
+            no_means = np.shape(typei_data['data'])[0]
+            seconds = np.zeros(no_means)
+            conc = np.zeros(no_means)            
+            conc_sd = np.zeros(no_means)
+            fit = np.zeros(no_means)
+            fit_sd = np.zeros(no_means)
+            diff = np.zeros(no_means)
+            diff_sd = np.zeros(no_means)
+            
+            for j in np.arange(np.shape(typei_data['data'])[0]):
+                # Extract the data for that block
+                x_i = typei_data['data'][j]['dt_'+species] 
+                y_i = typei_data['data'][j][species]
+                
+                # Determine the seconds for the block
+                x_i_secs = np.array([(k - all_data['dt_'+species][0]).total_seconds() for k in x_i])
+        
+                # Calculate values from the fit to type 2 at given time steps
+                x_i_fit = (fitting.func(x_i_secs*fit_2.x_scale, fit_2.coeffs, fit_type=fit_2.fit_type))/fit_2.y_scale        
+       
+                seconds[j] = np.mean(x_i_secs)
+                conc[j] = np.mean(y_i)
+                conc_sd[j] = np.std(y_i)
+                fit[j] = np.mean(x_i_fit)
+                fit_sd[j] =  np.std(x_i_fit)
+                diff[j] = np.mean(y_i - x_i_fit)
+                diff_sd[j] = np.std(y_i - x_i_fit)
+       
+       
+            # Calculate means
+            mean_i = { 'config_no' : i, \
+                      'seconds' : seconds, \
+                      'conc' : conc, \
+                      'conc_sd' : conc_sd, \
+                      'fit' : fit, \
+                      'fit_sd' : fit_sd, \
+                      'diff' : diff, \
+                      'diff_sd' : diff_sd}
+            
+            means.append(mean_i)
+
+
+# ____________________________________________________________________
+# PLOT MEANS       
+# ____________________________________________________________________
+
+# Cycle through each config and plot the means for each run
+        #pdb.set_trace()
+        for i in np.arange(np.shape(means)[0]):
+            #print i
+            #print means[i]['seconds'], means[i]['diff'], means[i]['diff_sd']
+           # print colours[i]
+            
+            ax.errorbar(means[i]['seconds'], means[i]['diff'], means[i]['diff_sd'], color = colours[i], fmt='o')
+
+
+
+        plt.savefig(outputdir+'fits/'+os.path.splitext(data.data.filename)[0]+'_DiffFit2_means.png', dpi=200)
+        plt.close()
+
+        self.all_seconds = all_seconds
+        self.conc = all_data[species]
+        self.means = means
+
+             
+
+
+# Plot minutemeans
+class plot_raw:
+    def __init__(self, inputfile = '/Users/as13988/Documents/Work/Picarro/Drying/GCWerksOutput/DPG.E-114.DPG=5a.20150325.dat',\
+        outputdir='/Users/as13988/Documents/Work/Picarro/Drying/GCWerksOutput/', \
+        timefile='/Users/as13988/Documents/Work/Picarro/Drying/DPGTimefile', plot_unflagged = 1, filesuffix=''):
+        
+        data = read_raw(inputfile=inputfile)
+  
+        #pdb.set_trace()  
+  
+        splitdata = split_raw(data, timefile=timefile, run_no = 0)
+        
+        run_no = splitdata.split_data[0]['run_no']
+        
+        # plot all the data in grey
+        fig = plt.figure()
+        fig.subplots_adjust(bottom = 0.2)
+        
+        plt1 = plt.subplot(2, 1, 1)
+        
+        # Config colours
+        # set these to be consistent with Georgina
+        # 1 = H2O trap bypassed, through Nafion PURPLE
+        # 2 = H2O trap bypassed, Nafion bypassed BLUE
+        # 3 = through H2O trap, Nafion bypassed GREEN
+        # 4 = through H2O trap, through Nafion RED
+        colours = ['purple','blue','green','red','grey']        
+        
+        
+        if plot_unflagged == 0:
+            # Plot CO2
+            plt1.errorbar(data.data.datetime, data.data.co2, yerr=data.data.co2sd, fmt='+', color = 'grey', markersize = 3)
+            #plt1.set_ylim(Calcrange(means.co2, means.co2sd))
+            #plt1.set_xlim(daterange)     
+            
+            y_formatter = ticker.ScalarFormatter(useOffset=False)
+            plt1.yaxis.set_major_formatter(y_formatter)
+            
+            #x_formatter = matplotlib.dates.DateFormatter('%H:%M %m/%Y')
+            x_tickno_formatter = ticker.MaxNLocator(4)
+            x_formatter = matplotlib.dates.DateFormatter('%H:%M %d/%m/%Y')
+            plt1.xaxis.set_major_formatter(x_formatter)
+            plt1.xaxis.set_major_locator(x_tickno_formatter)
+            
+            plt1.set_title(splitdata.timedata.run_types[run_no -1])
+            plt1.set_ylabel('[CO$_2$] (ppm)')
+            
+            # Plot CH4 
+            plt2 = plt.subplot(2, 1, 2)
+            plt2.errorbar(data.data.datetime, data.data.ch4, yerr=data.data.ch4sd, fmt='+', color = 'grey', markersize = 3)
+            #plt2.set_ylim(Calcrange(means.ch4, means.ch4sd))
+            plt2.set_ylabel('[CH$_4$] (ppb)')
+            #plt2.set_xlim(daterange)  
+            plt2.yaxis.set_major_formatter(y_formatter)
+            plt2.xaxis.set_major_formatter(x_formatter)            
+            plt2.xaxis.set_major_locator(x_tickno_formatter)
+        
+        else:
+            #PLot CO2 data
+            plt1.errorbar(splitdata.unflaggeddata['dt_co2'], splitdata.unflaggeddata['co2'], yerr=splitdata.unflaggeddata['co2sd'], fmt='+', color = 'grey', markersize = 3)
+            #plt1.set_ylim(Calcrange(means.co2, means.co2sd))
+            #plt1.set_xlim(daterange)     
+            
+            y_formatter = ticker.ScalarFormatter(useOffset=False)
+            plt1.yaxis.set_major_formatter(y_formatter)
+            
+            x_formatter = matplotlib.dates.DateFormatter('%H:%M %m/%Y')
+            x_tickno_formatter = ticker.MaxNLocator(4)
+            
+            plt1.xaxis.set_major_formatter(x_formatter)
+            plt1.xaxis.set_major_locator(x_tickno_formatter)
+            
+            plt1.set_title(splitdata.timedata.run_types[run_no -1])
+            plt1.set_ylabel('[CO$_2$] (ppm)')
+            
+            # Plot CH4
+            plt2 = plt.subplot(2, 1, 2)
+            plt2.errorbar(splitdata.unflaggeddata['dt_ch4'], splitdata.unflaggeddata['ch4'], yerr=splitdata.unflaggeddata['ch4sd'], fmt='+', color = 'grey', markersize = 3)
+            #plt2.set_ylim(Calcrange(means.ch4, means.ch4sd))
+            plt2.set_ylabel('[CH$_4$] (ppb)')
+            #plt2.set_xlim(daterange)  
+            plt2.yaxis.set_major_formatter(y_formatter)
+            plt2.xaxis.set_major_formatter(x_formatter)            
+            plt2.xaxis.set_major_locator(x_tickno_formatter)
+        
+      
+        # plot each config over the top
+        # Determine the number of configurations used
+        configno = np.shape(splitdata.split_data)[0]
+        
+        for i in np.arange(configno):
+ 
+            config_colour = colours[splitdata.split_data[i]['config_no'] -1]           
+            configdata_i = splitdata.split_data[i]['data']
+
+            # Determine the number of runs of configuration i
+            no_config_runs = np.shape(configdata_i)[0]            
+            
+        
+            
+            for j in np.arange(no_config_runs):
+                
+                plt1.errorbar(configdata_i[j]['dt_co2'], configdata_i[j]['co2'], yerr=configdata_i[j]['co2sd'], fmt='+', color = config_colour)
+                y_formatter = ticker.ScalarFormatter(useOffset=False)
+                plt1.yaxis.set_major_formatter(y_formatter)
+                  
+                x_formatter = matplotlib.dates.DateFormatter('%H:%M %d/%m/%Y')
+                x_tickno_formatter = ticker.MaxNLocator(4)
+                
+                  
+                plt1.xaxis.set_major_formatter(x_formatter)
+                plt1.xaxis.set_major_locator(x_tickno_formatter)
+    
+                plt.errorbar(configdata_i[j]['dt_ch4'], configdata_i[j]['ch4'], yerr=configdata_i[j]['ch4sd'], fmt='+', color = config_colour)
+                plt2.set_ylabel('[CH$_4$] (ppb)')
+                plt2.yaxis.set_major_formatter(y_formatter)
+                plt2.xaxis.set_major_formatter(x_formatter)            
+                plt2.xaxis.set_major_locator(x_tickno_formatter)
+        
+        plt.figtext(0.2, 0.05, 'H2O trap bypassed, Nafion', verticalalignment='bottom', horizontalalignment='left', fontsize=8, color = 'purple')
+        plt.figtext(0.2, 0.1, 'H2O trap bypassed, Nafion bypassed', verticalalignment='bottom', horizontalalignment='left', fontsize=8, color = 'blue')
+        plt.figtext(0.6, 0.05, 'H2O trap, Nafion bypassed', verticalalignment='bottom', horizontalalignment='left', fontsize=8, color = 'green')
+        plt.figtext(0.6, 0.1, 'H2O trap, Nafion', verticalalignment='bottom', horizontalalignment='left', fontsize=8, color = 'red')
+        
+        plt.savefig(outputdir+os.path.splitext(data.data.filename)[0]+filesuffix+'.png', dpi=200)
+        
+           
+        
+        
+        plt.show()
