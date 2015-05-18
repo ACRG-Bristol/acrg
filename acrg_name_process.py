@@ -227,6 +227,7 @@ def define_grid(header, column_headings, satellite = False):
         
         #Get levels and sort in increasing height
         levs=list(set(z_level))
+        print(levs)
         lev_sort=[]
         for lev in levs:
             digits = re.findall(r"[-+]?\d*\.\d+|\d+", lev)
@@ -258,15 +259,11 @@ def define_grid(header, column_headings, satellite = False):
     timeEnd=datetime.datetime.strptime(header['Start of release'], timeFormat)
     
     timeStep=(timeEnd - timeRef).total_seconds()/3600/ntime
-
-    time=[]
-    if ntime == 1:
-        time.append(timeRef)
-    else:
-        for i in range(ntime):
-            time.append(timeRef + datetime.timedelta(hours=timeStep*(i+1)))
-
-
+    
+    # Labelling time steps at END of each time period!
+    time = [timeRef + datetime.timedelta(hours=timeStep*(i+1)) \
+            for i in range(ntime)]
+    
     print("Timestep: %d minutes" % round(timeStep*60))
     print("Levels: %d " % nlevs)
     print("NAME version: %d" % namever)

@@ -43,7 +43,7 @@
         "long_name" : "GAUGE flights, UK",
         "height": ["various"],
         "height_name": ["various"],
-        "network": "DECC"
+        "network": "GAUGE"
     },
     "GAUGE-FERRY" : {
         "alt": ["FERRY"],

@@ -210,6 +210,7 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
             
             df = pd.DataFrame({"mf": ncf.variables[ncvarname][:]},
                               index = time)
+            units = float(ncf.variables[ncvarname].units)
             
             #Get repeatability
             if ncvarname + "_repeatability" in ncf.variables.keys():
@@ -268,17 +269,27 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
                 how[key] = "median"
         data_frame=data_frame.resample(average, how=how)
 
+    # Drop NaNs
+    data_frame.dropna(inplace = True)
+
+    data_frame.mf.units = units
+
     return data_frame
     
 
 def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
             height=None, baseline=False, average = None):
 
+    # Prepare inputs
     start_time = convert.reftime(start)
     end_time = convert.reftime(end)
 
     if type(sites) is not list:
         sites = [sites]
+
+    if average is not None:
+        if type(average) is not list:
+            average = [average]
     
     obs = {}
 
@@ -286,7 +297,7 @@ def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
         if len(height) != len(sites):
             print("If you're going to specify heights, " +
                   "make sure the length of the height list is " +
-                  "the same length as sites list")
+                  "the same length as sites list. Returning.")
             return None
     else:
         height = [None for i in sites]
@@ -295,18 +306,23 @@ def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
         if len(average) != len(sites):
             print("If you're going to specify averaging, " +
                   "make sure the length of the average list is " +
-                  "the same length as sites list")
+                  "the same length as sites list. Returning.")
             return None
     else:
         average = [None for i in sites]
 
-    
+
+    # Get data
     for si, site in enumerate(sites):
         data = get(site, species, height = height[si],
                    start = start_time, end = end_time,
                    average = average[si])
         if data is not None:
-            obs[site] = data
+            obs[site] = data.copy()
+    
+    # Add some attributes
+    obs[".species"] = species
+    obs[".units"] = data.mf.units
     
     if len(obs) == 0:
         return None
