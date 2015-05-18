@@ -193,16 +193,24 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
     
     for f in files:
         
+        print("Reading: " + f)
+
+        skip = False
+        
         ncf=Dataset(data_directory + f, 'r')
 
-        time = convert.sec2time(ncf.variables["time"][:], 
-                                ncf.variables["time"].units[14:])
-           
-        skip = False
-        if max(time) < start_time:
+        if "time" not in ncf.variables:
+            print("Skipping: " + f + ". No time variable")
             skip = True
-        if min(time) > end_time:
-            skip = True
+
+        else:
+            time = convert.sec2time(ncf.variables["time"][:], 
+                                    ncf.variables["time"].units[14:])
+               
+            if max(time) < start_time:
+                skip = True
+            if min(time) > end_time:
+                skip = True
 
         if not skip:
 
