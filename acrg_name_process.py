@@ -227,7 +227,6 @@ def define_grid(header, column_headings, satellite = False):
         
         #Get levels and sort in increasing height
         levs=list(set(z_level))
-        print(levs)
         lev_sort=[]
         for lev in levs:
             digits = re.findall(r"[-+]?\d*\.\d+|\d+", lev)
