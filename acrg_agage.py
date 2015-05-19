@@ -35,7 +35,8 @@ from acrg_time import convert
 import json
 import datetime as dt
 
-root_directory="/shared_data/air/shared/AGAGE_UKMO"
+
+root_directory="/shared_data/air/shared/obs"
 
 def synonyms(search_string, info):
     
@@ -98,196 +99,243 @@ def ukmo_flags(site, site_info):
         flag_directory + "*.txt")
     file_site = [f[0] for f in file_info]
     file_site_string=listsearch(file_site, site, site_info)
-    files=sorted([f for f in fnames if file_site_string in f])
+
+    if file_site_string is None:
+
+        return None
+        
+    else:
+
+        files=sorted([f for f in fnames if file_site_string in f])
     
-    flag=[]
-    flag_time=[]
-    
-    for f in files:
-        flag_data=pd.io.parsers.read_csv(flag_directory + "/" + f, 
-                                         delim_whitespace=True, skiprows=6)
-        flag_time = flag_time + [dt.datetime(y, m, d, h, mi)
-            for y, m, d, h, mi in 
-            zip(flag_data["YY"], flag_data["MM"], flag_data["DD"], 
-                flag_data["HH"], flag_data["MI"])]
-        flag.append(flag_data["B"])
-    
-    flag=np.hstack(flag)
-    
-    return pd.DataFrame(flag, index=flag_time, columns=("flags",))
-
-
-def get(site_in, species_in, startY=None,endY=None,
-        height=None, baseline=False, average=None, 
-        output_variability=False):
-        
-        #Get site info and species info from JSON files
-        acrg_path=split(realpath(__file__))
-        
-        with open(acrg_path[0] + "/acrg_species_info.json") as f:
-            species_info=json.load(f)
-
-        with open(acrg_path[0] + "/acrg_site_info.json") as f:
-            site_info=json.load(f)
-        
-        site = synonyms(site_in, site_info)
-        if site is None:
-            print("No site called " + site_in +
-                ". Either try a different name, or add name to site_info.json.")
-            return
-
-        species = synonyms(species_in, species_info)
-        if species is None:
-            print("No species called " + species_in +
-                ". Either try a different name, or add name to species_info.json.")
-            return
-        
-        data_directory=root_directory + "/data/"
-
-        if height is None:
-            file_height_string = site_info[site]["height"][0]
-        else:
-            file_height_string = listsearch(height, site, site_info, 
-                                            label="height")
-            if file_height_string is None:
-                print("Height " + height + " doesn't exist in site_info.json. "
-                    + "Available heights are " + str(site_info[site]["height"])
-                    + ". Leave blank for default height.")
-                return
-        
-        #Get file info
-        fnames, file_info=file_search_and_split(data_directory + "*.nc")
-        if len(fnames) == 0:
-            print("Can't find data files")
-        file_inst = [f[0] for f in file_info]
-        file_site = [f[1] for f in file_info]
-        file_species = [re.split("-|\.", f[-1])[0] for f in file_info]
-        file_height = [re.split("-|\.", f[-1])[1] for f in file_info]
-        
-        
-        #Get file list
-        file_species_string = listsearch(file_species, species, species_info)
-        file_site_string = listsearch(file_site, site, site_info)
-        files = [f for f, si, sp, hi in \
-            zip(fnames, file_site, file_species, file_height) if \
-            si == file_site_string and
-            sp == file_species_string and
-            hi == file_height_string]
-#        files = sorted([f for f in fnames if 
-#        #    inst in f and 
-#            file_site_string in f and 
-#            file_species_string in f and 
-#            file_height_string in f])
-
-        #Get files
-        time=[]
-        mf=[]
-        dmf=[]
-        vmf=[]
-        status_flag=[]
+        flag=[]
+        flag_time=[]
         
         for f in files:
-            ncf=Dataset(data_directory + f, 'r')
-            time = time + (
-                convert.sec2time(ncf.variables["time"][:], 
-                                 ncf.variables["time"].units[14:]))
+            flag_data=pd.io.parsers.read_csv(flag_directory + "/" + f, 
+                                             delim_whitespace=True, skiprows=6)
+            flag_time = flag_time + [dt.datetime(y, m, d, h, mi)
+                for y, m, d, h, mi in 
+                zip(flag_data["YY"], flag_data["MM"], flag_data["DD"], 
+                    flag_data["HH"], flag_data["MI"])]
+            flag.append(flag_data["B"])
+        
+        flag=np.hstack(flag)
+        
+        return pd.DataFrame(flag, index=flag_time, columns=("flags",))
+
+
+def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
+        height=None, baseline=False, average=None):
+        
+    start_time = convert.reftime(start)
+    end_time = convert.reftime(end)
+    
+    #Get site info and species info from JSON files
+    acrg_path=split(realpath(__file__))
+    
+    with open(acrg_path[0] + "/acrg_species_info.json") as f:
+        species_info=json.load(f)
+
+    with open(acrg_path[0] + "/acrg_site_info.json") as f:
+        site_info=json.load(f)
+    
+    site = synonyms(site_in, site_info)
+    if site is None:
+        print("No site called " + site_in +
+            ". Either try a different name, or add name to site_info.json.")
+        return
+
+    species = synonyms(species_in, species_info)
+    if species is None:
+        print("No species called " + species_in +
+            ". Either try a different name, or add name to species_info.json.")
+        return
+    
+    if height is None:
+        file_network_string = site_info[site]["network"]
+        file_height_string = site_info[site]["height"][0]
+    else:
+        file_height_string = listsearch(height, site, site_info, 
+                                        label="height")
+        if file_height_string is None:
+            print("Height " + height + " doesn't exist in site_info.json. "
+                + "Available heights are " + str(site_info[site]["height"])
+                + ". Leave blank for default height.")
+            return
+
+    data_directory=root_directory + "/" + file_network_string + "/"
+    
+    #Get file info
+    fnames, file_info=file_search_and_split(data_directory + "*.nc")
+
+    if len(fnames) == 0:
+        print("Can't find any data files: " + data_directory + "*.nc")
+    file_inst = [f[0] for f in file_info]
+    file_site = [f[1] for f in file_info]
+    file_species = [re.split("-|\.", f[-1])[0] for f in file_info]
+    file_height = [re.split("-|\.", f[-1])[1] for f in file_info]
+        
+    #Get file list
+    file_species_string = listsearch(file_species, species, species_info)
+    file_site_string = listsearch(file_site, site, site_info)
+
+    files = [f for f, si, sp, hi in \
+        zip(fnames, file_site, file_species, file_height) if \
+        si.upper() == file_site_string.upper() and
+        sp.upper() == file_species_string.upper() and
+        hi.upper() == file_height_string.upper()]
+    files.sort()
+
+    #Get files
+    #####################################
+    
+    data_frames = []
+    
+    for f in files:
+        
+        print("Reading: " + f)
+
+        skip = False
+        
+        ncf=Dataset(data_directory + f, 'r')
+
+        if "time" not in ncf.variables:
+            print("Skipping: " + f + ". No time variable")
+            skip = True
+
+        else:
+            time = convert.sec2time(ncf.variables["time"][:], 
+                                    ncf.variables["time"].units[14:])
+               
+            if max(time) < start_time:
+                skip = True
+            if min(time) > end_time:
+                skip = True
+
+        if not skip:
+
             ncvarname=listsearch(ncf.variables, species, species_info)
-            #Get mole fraction
-            mf.append(ncf.variables[ncvarname][:])
+            
+            df = pd.DataFrame({"mf": ncf.variables[ncvarname][:]},
+                              index = time)
+            units = float(ncf.variables[ncvarname].units)
+            
             #Get repeatability
-            file_dmf=ncf.variables[ncvarname + "_repeatability"]
-            if len(file_dmf) > 0:
-                dmf.append(file_dmf[:])
+            if ncvarname + "_repeatability" in ncf.variables.keys():
+                file_dmf=ncf.variables[ncvarname + "_repeatability"]
+                if len(file_dmf) > 0:
+                    df["dmf"] = file_dmf[:]
+    
             #Get variability
-            file_vmf=ncf.variables[ncvarname + "_variability"]
-            if len(file_vmf) > 0:
-                vmf.append(file_vmf[:])
+            if ncvarname + "_variability" in ncf.variables.keys():
+                file_vmf=ncf.variables[ncvarname + "_variability"]
+                if len(file_vmf) > 0:
+                    df["vmf"] = file_vmf[:]
+    
             #Get status flag
-            file_flag=ncf.variables[ncvarname + "_status_flag"]
-            if len(file_flag) > 0:
-                status_flag.append(file_flag[:])
-                
-            ncf.close()
+            if ncvarname + "_status_flag" in ncf.variables.keys():
+                file_flag=ncf.variables[ncvarname + "_status_flag"]
+                if len(file_flag) > 0:
+                    df["status_flag"] = file_flag[:]
+                    df = df[df.status_flag < 3]
         
-        time=np.array(time)
-        mf=np.hstack(mf)
-        if len(dmf) > 0:
-            dmf=np.hstack(dmf)
-        else:
-            dmf=np.zeros((len(mf)))
-        
-        if len(vmf) > 0:
-            vmf=np.hstack(vmf)
-        else:
-            vmf=np.zeros((len(mf)))
+            df = df[df.mf > 0.]
+            
+            data_frames.append(df)
 
-        status_flag = np.hstack(status_flag)
-        
-        #Flag out bad data
-        wh=np.where(status_flag < 3)
-        time=time[wh]
-        mf=mf[wh]
-        dmf=dmf[wh]
-        vmf=vmf[wh]
+        ncf.close()
 
-        #Put into data frame        
-        mfdf=(pd.DataFrame(zip(mf, dmf, vmf), 
-                           index=time, columns=("mf", "dmf", "vmf"))).sort()
-        if startY is not None:
-            if endY is None:
-                print 'Need to specify an end year as well'
-                return
-            else:
-                if endY == startY:
-                    print 'End year needs to be different from start year'
-                    return
-                mfdf=mfdf.truncate(dt.datetime(startY, 1, 1), dt.datetime(endY, 1, 1))
-        #Do baseline filtering
-        if baseline:
-            #Get flags
-            flagdf=ukmo_flags(site, site_info)
+    if len(data_frames) > 0:
+        data_frame = pd.concat(data_frames).sort()
+        data_frame.index.name = 'time'
+        data_frame = data_frame[start_time : end_time]
+    else:
+        return None
+
+    #Do baseline filtering
+    if baseline:
+        #Get flags
+        flagdf=ukmo_flags(site, site_info)
+        
+        if flagdf is None:
+            print("No baseline flags, sorry!")
+        else:
             #Truncate time series if no flags available
-            mfdf=mfdf[min(flagdf.index):max(flagdf.index)]
+            data_frame=data_frame[min(flagdf.index) : max(flagdf.index)]
             #Re-index flag time series to mf Data frame index
-            mfdf["flag"]=flagdf.reindex(index=mfdf.index, method='pad')
+            data_frame["flag"]=flagdf.reindex(index=data_frame.index,
+                                              method='pad')
             #Only retain background
-            mfdf=mfdf[mfdf['flag']==10]
-            #Remove flags
-            mfdf.drop('flag', 1)
-        
-        if average is not None:
-            mfdf=mfdf.resample(average, 
-                               how={"mf": "median", 
-                                    "dmf": quadratic_sum,
-                                    "vmf": "mean"})
+            data_frame=data_frame[data_frame['flag']==10]
+    
+    if average is not None:
+        how = {}
+        for key in data_frame.columns:
+            if key == "dmf":
+                how[key] = quadratic_sum
+            else:
+                how[key] = "median"
+        data_frame=data_frame.resample(average, how=how)
 
-        #Output with either repeatability or variability
-        if output_variability:
-            return mfdf.index.to_pydatetime(), np.array(mfdf['mf']), \
-                np.array(mfdf['vmf'])
-        else:
-            return mfdf.index.to_pydatetime(), np.array(mfdf['mf']), \
-                np.array(mfdf['dmf'])
+    # Drop NaNs
+    data_frame.dropna(inplace = True)
 
+    data_frame.mf.units = units
 
-def get_obs(sites,species,start,end, height=None, baseline=False, average = '2H'):
-    obs = {}
+    return data_frame
+    
+
+def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
+            height=None, baseline=False, average = None):
+
+    # Prepare inputs
+    start_time = convert.reftime(start)
+    end_time = convert.reftime(end)
+
     if type(sites) is not list:
         sites = [sites]
-    if height == None:
-        for site in sites:
-            ts, mfs, error = get(site, species, average=average)
-            data = pd.DataFrame(mfs, index = ts, columns = ['mf'])
-            data = data[start: end]
-            obs[site] = data
-    elif height != None:
-        if type(height) is not list:
-            height == height
-        for site in sites:
-            i = sites.index(site)
-            ts, mfs, error = get(site, species, height = height[i], baseline= baseline, average=average)
-            data = pd.DataFrame(mfs, index = ts, columns = ['mf'])
-            data = data[start: end]
-            obs[site] = data        
-        
-    return obs
+
+    if average is not None:
+        if type(average) is not list:
+            average = [average]
+    
+    obs = {}
+
+    if height is not None:
+        if len(height) != len(sites):
+            print("If you're going to specify heights, " +
+                  "make sure the length of the height list is " +
+                  "the same length as sites list. Returning.")
+            return None
+    else:
+        height = [None for i in sites]
+
+    if average is not None:
+        if len(average) != len(sites):
+            print("If you're going to specify averaging, " +
+                  "make sure the length of the average list is " +
+                  "the same length as sites list. Returning.")
+            return None
+    else:
+        average = [None for i in sites]
+
+
+    # Get data
+    for si, site in enumerate(sites):
+        data = get(site, species, height = height[si],
+                   start = start_time, end = end_time,
+                   average = average[si])
+        if data is not None:
+            obs[site] = data.copy()
+    
+    # Add some attributes
+    obs[".species"] = species
+    obs[".units"] = data.mf.units
+    
+    if len(obs) == 0:
+        return None
+    else:
+        return obs
+    
+    
