@@ -235,6 +235,25 @@ def flux(domain, species):
     return flux_ds
 
 
+def basis(domain, basis_case = 'voronoi'):
+    """
+    Read in a basis function file.
+    """
+    
+    files = sorted(glob.glov(basis_directory + domain + "/" +
+                    basis_case + "*.nc"))
+    if len(files) == 0:
+        print("Can't find basis functions: " + domain + " " + basis_case)
+        return None
+        
+    basis_ds = []
+    for f in files:
+        basis_ds.append(xray.open_dataset(f))
+    basis_ds = xray.concat(basis_ds, dim = "time")
+
+    return basis_ds
+
+
 def combine_datasets(dsa, dsb, method = "ffill"):
     """
     Merge two datasets. Assumes that you want to 
@@ -348,6 +367,23 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
     return fp_and_data
 
 
+def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
+    
+    sites = [key for key in fp_and_data.keys() if key[0] != '.']
+    basis_func = basis(domain = domain, basis_case = basis_case)
+    
+    for si, site in enumerate(sites):
+        site_ds = fp_and_data[site]
+        site_bf = combine(datasets(site_ds, basis_func))
+        
+        reference = timeseries(site_bf)
+        
+#        Work out how to get length of basis functions
+        for i in range(len(basis_func)):
+            flux_scale = site_bf.flux*(site_bf.basis +1)
+            perturbed = (fp_data.fp*fp_data.flux*flux_scale).sum(["lat", "lon"])
+        
+
 
 def filtering(time, mf, filt):
 
@@ -372,34 +408,67 @@ def filtering(time, mf, filt):
     return filters[filt](time, mf)
 
 
-def sensitivity_single_site(site, species,
-                years=[2012], flux_years=None,
-                domain="small", basis_case='voronoi', filt=None):
-    
-    if flux_years is None:
-        flux_years=years
-    
-    fp_data=read(site, years, domain=domain)
-    flux_data=flux(species, flux_years, domain=domain)    
-    basis_data = basis_function(basis_case, years=years, domain=domain)
+def footprint_x_flux(fp_data, flux_data, basis=None, basis_scale=1.,
+                     filt=None):
 
+#    #Calculate flux timestep
+#    if len(flux_data.time) == 1:
+#        flux_time_delta=dt.timedelta(0) 
+#    else:
+#        flux_time_delta=(flux_data.time[1] - flux_data.time[0])/2
+
+    #Calculate scaling to apply to flux field
+    #CONSTANT SCALING IN TIME AT THE MOMENT!
+    flux_scale=np.ones((flux_data.flux[:,:,0]).shape)
+    if basis is not None:
+        for si, scale in enumerate(basis_scale):
+            wh=np.where(basis == si + 1) # Basis numbers should start at 1
+            flux_scale[wh] = flux_scale[wh]*scale
+    
+#    #Calculate time series
+#    mf=np.zeros(len(fp_data.time))
+#    for ti, t in enumerate(fp_data.time):
+#        #find nearest point in emissions dataset
+##        flux_ti=min([len(flux_data.time)-1,
+##                     bisect.bisect(flux_data.time, t - flux_time_delta)])
+#        fp=fp_data.fp[:, :, ti]
+#        flux=flux_data.flux[:, :, flux_ti]
+##        mf[ti]=0.
+#        mf[ti]=numexpr.evaluate("sum(fp*flux*flux_scale)")
+(ds.fp*ds.flux*flux_scale).sum(["lat", "lon"])
+    
+    time=fp_data.time
+    
+    if filt is not None:
+        time, mf = filtering(time, mf, filt)
+
+    return time, mf
+
+
+def sensitivity_single_site(fp_data, basis_case='voronoi', filt=None):
+    
+  
+    basis_data = basis_function(basis_case, years=years, domain=domain)
     basis_scale=np.ones(np.max(basis_data.basis))
     
-    time, reference = footprint_x_flux(fp_data, flux_data, 
-                    basis=basis_data.basis[:,:,0], basis_scale=basis_scale, 
-                    filt=filt)
+    reference = timeseries(fp_data)
 
     sensitivity=np.zeros((len(reference), len(basis_scale)))
-    
     
     for xi, scale in enumerate(basis_scale):
         basis_scale_perturbed=basis_scale.copy()
         basis_scale_perturbed[xi] += 1.
-        time, perturbed = footprint_x_flux(fp_data, flux_data, 
-                        basis=basis_data.basis[:,:,0], 
-                        basis_scale=basis_scale_perturbed, 
-                        filt=filt)
+        flux_scale=np.ones((flux_data.flux[:,:,0]).shape)
+        wh=np.where(basis == xi + 1) # Basis numbers should start at 1
+        flux_scale[wh] = flux_scale[wh]*scale   
+        
+        (fp_data.fp*fp_data.flux*flux_scale).sum(["lat", "lon"])
         sensitivity[:, xi] = perturbed - reference
+    time=fp_data.time
+    
+    if filt is not None:
+        time, mf = filtering(time, mf, filt)
+
 
     return time, sensitivity
 
