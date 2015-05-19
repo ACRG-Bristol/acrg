@@ -5,7 +5,8 @@
         "height": ["108m", "42m", "248m"],
         "height_name": ["110magl", "50magl", "250magl"],
         "latitude": 54.35858,
-        "longitude": -1.15033
+        "longitude": -1.15033,
+        "network": "DECC"
     },
     "BTT" : {
         "alt": ["BTTOWER", "BT TOWER", "BT_TOWER"],
@@ -13,7 +14,8 @@
         "height": ["185m"],
         "height_name": ["185magl"],
         "latitude": 51.52150,
-        "longitude": -0.13890
+        "longitude": -0.13890,
+        "network": "GAUGE"
     },
     "CGO" : {
         "alt": ["CG"],
@@ -25,7 +27,8 @@
         "alt": [""],
         "long_name" : "Darjeeling, India",
         "height": ["20m"],
-        "height_name": ["500magl"]
+        "height_name": ["500magl"],
+        "network": "AGAGE"
     },
     "EHL" : {
         "alt": ["EARLSHALL"],
@@ -39,13 +42,15 @@
         "alt": ["FAAM"],
         "long_name" : "GAUGE flights, UK",
         "height": ["various"],
-        "height_name": ["various"]
+        "height_name": ["various"],
+        "network": "GAUGE"
     },
     "GAUGE-FERRY" : {
         "alt": ["FERRY"],
         "long_name" : "GAUGE ferry, UK",
         "height": ["20m"],
-        "height_name": ["20magl"]
+        "height_name": ["20magl"],
+        "network": "GAUGE"
     },
     "GLA" : {
         "alt": ["GLATTON"],
@@ -53,7 +58,8 @@
         "height": ["10m"],
         "height_name": ["10magl"],
         "latitude": 52.46073,
-        "longitude": -0.30359
+        "longitude": -0.30359,
+        "network": "GAUGE"
     },
     "HAD" : {
         "alt": ["HADDENHAM"],
@@ -61,7 +67,8 @@
         "height": ["10m"],
         "height_name": ["10magl"],
         "latitude": 52.35986,
-        "longitude": 0.14828
+        "longitude": 0.14828,
+        "network": "GAUGE"
     },
     "HFD" : {
         "alt": [],
@@ -69,7 +76,8 @@
         "height": ["100m", "50m"],
         "height_name": ["100magl", "50magl"],
         "latitude": 50.97675,
-        "longitude": 0.23048
+        "longitude": 0.23048,
+        "network": "DECC"
     },
     "MHD" : {
         "alt" : ["MH"],
@@ -77,7 +85,8 @@
         "height": ["10m"],
         "height_name": ["10magl"],
         "latitude": 53.32611,
-        "longitude": -9.90389
+        "longitude": -9.90389,
+        "network": "AGAGE"
     },
     "RGL" : {
         "alt": ["RH"],
@@ -85,7 +94,8 @@
         "height": ["90m", "45m"],
         "height_name": ["90magl", "45magl"],
         "latitude": 51.997435,
-        "longitude": -2.53990
+        "longitude": -2.53990,
+        "network": "DECC"
     },
     "TAC" : {
         "alt": [],
@@ -93,13 +103,15 @@
         "height": ["100m", "54m", "185m"],
         "height_name": ["100magl", "50magl", "185magl"],
         "latitude": 52.51775,
-        "longitude": 1.13872
+        "longitude": 1.13872,
+        "network": "DECC"
     },
     "THD" : {
         "alt": ["TH"],
         "long_name" : "Trinidad Head, California",
         "height": ["10m"],
-        "height_name": ["10magl"]
+        "height_name": ["10magl"],
+        "network": "AGAGE"
     },
     "TIL" : {
         "alt": ["TILNEY"],
@@ -107,7 +119,8 @@
         "height": ["10m"],
         "height_name": ["10magl"],
         "latitude": 52.73667,
-        "longitude": 0.32127
+        "longitude": 0.32127,
+        "network": "GAUGE"
     },
     "TTA" : {
         "alt": ["ANGUS"],
@@ -115,7 +128,8 @@
         "height": ["222m"],
         "height_name": ["222magl"],
         "latitude": 56.55511,
-        "longitude": -2.98598
+        "longitude": -2.98598,
+        "network": "DECC"
     },
     "WAO" : {
         "alt": ["WEYBOURNE"],
@@ -123,6 +137,7 @@
         "height": ["10m"],
         "height_name": ["10magl"],
         "latitude": 52.95042,
-        "longitude": 1.12194
+        "longitude": 1.12194,
+        "network": "GAUGE"
     }
 }
