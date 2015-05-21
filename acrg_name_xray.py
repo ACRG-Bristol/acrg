@@ -240,7 +240,7 @@ def basis(domain, basis_case = 'voronoi'):
     Read in a basis function file.
     """
     
-    files = sorted(glob.glov(basis_directory + domain + "/" +
+    files = sorted(glob.glob(basis_directory + domain + "/" +
                     basis_case + "*.nc"))
     if len(files) == 0:
         print("Can't find basis functions: " + domain + " " + basis_case)
@@ -297,7 +297,7 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
         
         data = {"MHD": MHD_dataframe, "TAC": TAC_dataframe}
 
-    The dataset must me labeled with "time" index, "mf" and "dmf" columns.
+    The dataset must be labeled with "time" index, "mf" and "dmf" columns.
     To combine this with corresponding NAME footprints:
     
         dataset = footprints_data_merge(data)
@@ -363,27 +363,75 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
                 site_ds = site_ds.resample(average[si], dim = "time")
             
             fp_and_data[site] = site_ds
+        
+    for a in attributes:
+        fp_and_data[a] = data[a]
 
     return fp_and_data
 
 
 def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
+    """
+    Adds a sensitivity matrix, H, to each site xray dataframe in fp_and_data.
+    
+    Basis function data in an array: lat, lon, no. regions. In each 'region'
+    element of array there is a lt lon grid with 1 in region and 0 outside region.
+    """    
     
     sites = [key for key in fp_and_data.keys() if key[0] != '.']
+    attributes = [key for key in fp_and_data.keys() if key[0] == '.']
     basis_func = basis(domain = domain, basis_case = basis_case)
+    fp_data_H = {}
     
-    for si, site in enumerate(sites):
+    for site in sites:
         site_ds = fp_and_data[site]
-        site_bf = combine(datasets(site_ds, basis_func))
+        if ".units" in attributes:
+            site_ds.fp = site_ds.fp / fp_and_data[".units"]
+        site_bf = combine_datasets(site_ds, basis_func)
         
-        reference = timeseries(site_bf)
+        reference = site_bf.mf_mod
         
-#        Work out how to get length of basis functions
-        for i in range(len(basis_func)):
-            flux_scale = site_bf.flux*(site_bf.basis +1)
-            perturbed = (fp_data.fp*fp_data.flux*flux_scale).sum(["lat", "lon"])
+        H = np.zeros((len(site_bf.coords['region']),len(reference)))
         
-
+        for i in range(len(site_bf.coords['region'])):
+            reg = site_bf.basis.sel(region=i)
+            flux_scale = reg + 1
+            perturbed = (site_bf.fp*site_bf.flux*flux_scale).sum(["lat", "lon"])
+            H[i,:] = perturbed - reference
+        
+        sensitivity = xray.Dataset({'H': (['region','time'], H)},
+                                    coords = {'region': (site_bf.coords['region']),
+                                              'time' : (site_ds.coords['time'])})
+        site_ds = combine_datasets(site_ds, sensitivity)
+        fp_data_H[site] = site_ds
+    
+    return fp_data_H
+    
+    
+def merge_sensitivity(fp_data_H):
+#    outputs y, y_site, y_time, H
+    y = []
+    y_error = []
+    y_site = []
+    y_time = []
+    H = []
+    
+    sites = [key for key in fp_data_H.keys() if key[0] != '.']
+    for si, site in enumerate(sites):
+        y.append(fp_data_H[site].mf.values)
+        y_error.append(fp_data_H[site].dmf.values)
+        y_site.append([site for i in range(len(fp_data_H[site].coords['time']))])
+        y_time.append(fp_data_H[site].coords['time'].values)
+        H.append(fp_data_H[site].H.values)
+    
+    y = np.hstack(y)
+    y_error = np.hstack(y_error)
+    y_site = np.hstack(y_site)
+    y_time = np.hstack(y_time)
+    H = np.hstack(H)
+    
+    return y, y_error, y_site, y_time, H.T
+    
 
 def filtering(time, mf, filt):
 
@@ -406,105 +454,6 @@ def filtering(time, mf, filt):
              "daytime2hr":daytime2hr}
             
     return filters[filt](time, mf)
-
-
-def footprint_x_flux(fp_data, flux_data, basis=None, basis_scale=1.,
-                     filt=None):
-
-#    #Calculate flux timestep
-#    if len(flux_data.time) == 1:
-#        flux_time_delta=dt.timedelta(0) 
-#    else:
-#        flux_time_delta=(flux_data.time[1] - flux_data.time[0])/2
-
-    #Calculate scaling to apply to flux field
-    #CONSTANT SCALING IN TIME AT THE MOMENT!
-    flux_scale=np.ones((flux_data.flux[:,:,0]).shape)
-    if basis is not None:
-        for si, scale in enumerate(basis_scale):
-            wh=np.where(basis == si + 1) # Basis numbers should start at 1
-            flux_scale[wh] = flux_scale[wh]*scale
-    
-#    #Calculate time series
-#    mf=np.zeros(len(fp_data.time))
-#    for ti, t in enumerate(fp_data.time):
-#        #find nearest point in emissions dataset
-##        flux_ti=min([len(flux_data.time)-1,
-##                     bisect.bisect(flux_data.time, t - flux_time_delta)])
-#        fp=fp_data.fp[:, :, ti]
-#        flux=flux_data.flux[:, :, flux_ti]
-##        mf[ti]=0.
-#        mf[ti]=numexpr.evaluate("sum(fp*flux*flux_scale)")
-(ds.fp*ds.flux*flux_scale).sum(["lat", "lon"])
-    
-    time=fp_data.time
-    
-    if filt is not None:
-        time, mf = filtering(time, mf, filt)
-
-    return time, mf
-
-
-def sensitivity_single_site(fp_data, basis_case='voronoi', filt=None):
-    
-  
-    basis_data = basis_function(basis_case, years=years, domain=domain)
-    basis_scale=np.ones(np.max(basis_data.basis))
-    
-    reference = timeseries(fp_data)
-
-    sensitivity=np.zeros((len(reference), len(basis_scale)))
-    
-    for xi, scale in enumerate(basis_scale):
-        basis_scale_perturbed=basis_scale.copy()
-        basis_scale_perturbed[xi] += 1.
-        flux_scale=np.ones((flux_data.flux[:,:,0]).shape)
-        wh=np.where(basis == xi + 1) # Basis numbers should start at 1
-        flux_scale[wh] = flux_scale[wh]*scale   
-        
-        (fp_data.fp*fp_data.flux*flux_scale).sum(["lat", "lon"])
-        sensitivity[:, xi] = perturbed - reference
-    time=fp_data.time
-    
-    if filt is not None:
-        time, mf = filtering(time, mf, filt)
-
-
-    return time, sensitivity
-
-
-def sensitivity(fp_data, basis_case='voronoi', filt=None, alt_fp_filename = None):
-#Using alt_fp_filename only works for one site at the moment
-    H=[]
-    y_time=[]
-    y_site=[]
-    y=[]
-
-    for site in sorted(obs.iterkeys()):
-        if alt_fp_filename is not None:
-            ts, Hs = sensitivity_single_site(alt_fp_filename, species, years, 
-                                flux_years=flux_years, domain=domain,
-                                basis_case = basis_case, filt=filt)
-        else:
-            ts, Hs = sensitivity_single_site(site, species, years, 
-                                flux_years=flux_years, domain=domain, 
-                                basis_case = basis_case, filt=filt)
-        df_site = pandas.DataFrame(Hs, index=ts)
-        obsdf = obs[site].dropna()
-        Hdf = df_site.reindex(obsdf.index)
-        Hdf2 = Hdf.dropna()
-        obsdf2 = obsdf.reindex(Hdf2.index)
-        y_time.append(Hdf2.index.to_pydatetime())
-        y_site.append([site for i in range(len(Hdf2.index))])
-        y.append(obsdf2.values)
-        H.append(Hdf2.values)
-        
-    H=np.vstack(H)
-    y_time=np.hstack(y_time)
-    y_site=np.hstack(y_site)
-    y=np.vstack(y)
-
-    return y_time, y_site, y, H
 
 
 def baseline(y, y_time, y_site, x_error = 10000, days_to_average = 5):
