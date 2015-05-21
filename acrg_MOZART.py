@@ -24,7 +24,9 @@ from acrg_grid.hybridcoords import hybridcoords as hybrid_coords
 import pdb
 import bisect
 import os
-
+import matplotlib.pyplot as plt
+from mpl_toolkits.basemap import Basemap
+from matplotlib import ticker
 # ___________________________________________________________________________________________________________________
 # CODE TO READ THE DIFFERENT DATA TYPES
 # ___________________________________________________________________________________________________________________
@@ -839,8 +841,8 @@ class data_filter_mobile:
                                             obs_lon = siteinfo.lon, \
                                             obs_time = siteinfo.time, \
                                             obs_pressure = siteinfo.pressure, \
-                                            obs_alt = 0, \
-                                            obs_alt_units = 0, \
+                                            obs_alt = siteinfo.alt, \
+                                            obs_alt_units = siteinfo.alt_units, \
                                             quiet = 1)
          
                 
@@ -964,6 +966,8 @@ class data_match_mobile:
                 timeindex_j = bisect.bisect(model_secs + (time_gap/2), obs_secs[j])
                 
                 
+                #pdb.set_trace()                
+                
                 # if it's AFTER the last model point then bisect returns the number of elements in the data.time array
                 if timeindex_j == len(model_time):
                     timeindex_j = len(model_time) - 1
@@ -985,10 +989,14 @@ class data_match_mobile:
                 
                 else:
                     # if obs pressure isn't given use alt
-                    if type(obs_pressure) == type(0):
+                    if type(obs_pressure) == type(0) or obs_pressure[j] == -1:
 
                         obs_pressure_j = calc_pressure(obs_alt[j], model_P0, units=obs_alt_units).pressure                    
-                    
+                        # Match site pressure to column level
+                        # as the pressure levels aren't evenly matched i'd need to find the gap and then compare to 
+                        # the pressures  on either side which is unlikely to be much faster than this anyway
+                        lev_i = np.where(abs(column_P - obs_pressure_j) == min(abs(column_P - obs_pressure_j)))[0]
+                        
                     else:
                         # ferry P = -1
                         if obs_pressure[j] == -1:
@@ -999,10 +1007,10 @@ class data_match_mobile:
                             
                             obs_pressure_j = obs_pressure[j]
                     
-                    # Match site pressure to column level
-                    # as the pressure levels aren't evenly matched i'd need to find the gap and then compare to 
-                    # the pressures  on either side which is unlikely to be much faster than this anyway
-                    lev_i = np.where(abs(column_P - obs_pressure_j) == min(abs(column_P - obs_pressure_j)))[0]
+                            # Match site pressure to column level
+                            # as the pressure levels aren't evenly matched i'd need to find the gap and then compare to 
+                            # the pressures  on either side which is unlikely to be much faster than this anyway
+                            lev_i = np.where(abs(column_P - obs_pressure_j) == min(abs(column_P - obs_pressure_j)))[0]
              
                 matched_pressure[j] = np.squeeze(column_P[lev_i])
                      
@@ -1301,7 +1309,7 @@ class write_GONZI:
     def __init__(self, species = 'N2O', \
         modeloutput_dir = '/data/as13988/MOZART/', \
         obs_dir = '/shared_data/snowy/shared/GAUGE/', \
-        outdir = 0, filename=0):
+        outdir = 0, filename=0, scaling = 1e06):
         
         import os
         import shutil
@@ -1411,7 +1419,10 @@ class write_GONZI:
         else:
             
             # Put the matched data into the non NAN sections of the variables 
-            species_var[[gonzi_acf.good_index],0] = matched_data.matched_conc
+           # pdb.set_trace()            
+            
+            
+            species_var[[gonzi_acf.good_index],0] = matched_data.matched_conc*scaling
             ncF.variables['Model_' + species][:] = species_var
         
             ncF.close()
@@ -1488,7 +1499,7 @@ class write_GONZI:
         else:
             
             # Put the matched data into the non NAN sections of the variables 
-            species_var[[gonzi_ferry.good_index],0] = matched_data.matched_conc
+            species_var[[gonzi_ferry.good_index],0] = matched_data.matched_conc*scaling
             ncF.variables['Model_' + species][:] = species_var
         
             ncF.close()
@@ -2085,3 +2096,195 @@ class generatecolours:
         self.HSV = HSV_tuples
 
 
+# Code to set up input for contour plotting
+class plot_map_setup:
+    def __init__(self, data, 
+                 lon_range = None, lat_range = None):
+
+        if lon_range is None:
+            lon_range = (min(data.lon), max(data.lon))
+        if lat_range is None:
+            lat_range = (min(data.lat), max(data.lat))
+        
+        m = Basemap(projection='gall',
+            llcrnrlat=lat_range[0], urcrnrlat=lat_range[1],
+            llcrnrlon=lon_range[0], urcrnrlon=lon_range[1],
+            resolution='l')
+
+        lons, lats = np.meshgrid(data.lon, data.lat)
+        x, y = m(lons, lats)
+        
+        self.x = x
+        self.y = y
+        self.m = m
+
+
+# Plot a filled contour map of a given MZT output
+# Defaults to plotting the first timestep at ground level
+def plotlevel_MZT(data, level = -1, timestep = 0, out_filename=None, 
+         lon_range=None, lat_range=None,
+         map_data = None, nlevels = 10, minconc = None, maxconc = None):
+
+    if map_data is None:
+        map_data = plot_map_setup(data, 
+                                  lon_range = lon_range,
+                                  lat_range = lat_range)
+    
+    fig = plt.figure(figsize=(8,8))
+    fig.add_axes([0.1,0.1,0.8,0.8])
+
+    map_data.m.drawcoastlines()
+#    map_data.m.drawstates()
+#    map_data.m.drawcountries()
+#    map_data.m.shadedrelief()
+    
+    species = data.species
+    
+    species_options = ['CO2', 'CH4', 'N2O']    
+    scale_options = [1e6, 1e9, 1e9]
+    unit_options = ['ppm', 'ppb', 'ppb']    
+    
+    index = np.where(np.array(species_options) == species)[0]
+    scale = scale_options[index]
+    units = unit_options[index]    
+    
+    if level < 0 :
+        level = np.arange(56)[level]
+    
+    # make range for conc contours
+    # Rounds to the nearest 100
+    conc = np.squeeze(data.conc[timestep, level, :,:])*scale
+    if minconc == None:
+        minconc = np.floor(np.min(conc)/100)*100
+    if maxconc == None:
+       maxconc = np.ceil(np.max(conc)/100)*100
+    
+    step = (maxconc - minconc)/nlevels
+    
+    levels = np.arange(minconc, maxconc+step, step)
+    
+    #pdb.set_trace()
+    
+    #Plot map
+    cs = map_data.m.contourf(map_data.x, map_data.y, conc, levels, cmap = plt.cm.Spectral_r)
+    """     
+    # Alter this at some point to plot the tall tower sites ?
+                       
+    #Plot release location
+    if "release_lat" in dir(fp_data):
+        rplons, rplats = np.meshgrid(fp_data.release_lon[time_index],
+                                     fp_data.release_lat[time_index])
+        rpx, rpy = map_data.m(rplons, rplats)
+        rp = map_data.m.scatter(rpx, rpy, 100, color = 'black')
+        
+    """
+    time = data.time[timestep]
+
+    # Determine the average pressure at that level in kPa
+    P = np.round(np.mean(np.squeeze(data.pressure[timestep, level, :,:]))/1000.0)
+    
+    plt.title('MOZART output P = ' + str(P) + ' at ' + str(time), fontsize=16)
+
+    cb = map_data.m.colorbar(cs, location='bottom', pad="5%")
+    
+    tick_locator = ticker.MaxNLocator(nbins=7)
+    cb.locator = tick_locator
+    cb.update_ticks()
+ 
+    cb.set_label(species + ' [' + units + ']', 
+                 fontsize=12)
+    cb.ax.tick_params(labelsize=13) 
+    
+    if out_filename is not None:
+        out_filename = 'MZT_' + species + '_L'+str(level)+ '_'+time.strftime('%y%m%d_%H%M')+'.png'
+        plt.savefig('/home/as13988/Plots/' + out_filename)
+        plt.show()
+        plt.close()
+    else:
+        plt.show()
+        
+      
+# Plot multiple profile plots for a given MZT output file at a given lon against lat and then at a given lat against lon
+# Defaults to plotting the first timestep at lat = 0.94 and lon = 0
+def plotprofiles_MZT(data, timestep = 0, latindex = 48, lonindex = 0, out_filename=None, 
+         minconc = None, maxconc = None):
+    
+    from mpl_toolkits.mplot3d import Axes3D
+    
+
+    species = data.species
+    
+    species_options = ['CO2', 'CH4', 'N2O']    
+    scale_options = [1e6, 1e9, 1e9]
+    unit_options = ['ppm', 'ppb', 'ppb']    
+    
+    index = np.where(np.array(species_options) == species)[0]
+    scale = scale_options[index]
+    units = unit_options[index]    
+
+
+    # extract the conc at the given timestep for all levels and lons
+    # extract the corresponding pressures
+    conc_lons = np.squeeze(data.conc[timestep, :, latindex,:])*scale
+    conc_lats = np.squeeze(data.conc[timestep, :, :,lonindex])*scale
+    p_lons = np.squeeze(data.pressure[timestep, :, latindex,:])/1000
+    p_lats = np.squeeze(data.pressure[timestep, :, :,lonindex])/1000
+    lon_lons, b = np.meshgrid(data.lon, np.arange(56))
+    lat_lats, b = np.meshgrid(data.lat, np.arange(56))
+    
+    
+    fig = plt.figure(figsize=(8,8))
+    ax = fig.gca(projection='3d')
+    
+    for i in np.arange(len(data.lon)/3)*3:
+        y = conc_lons[:,i]
+        z = p_lons[:,i]
+        x = lon_lons[:,i]
+        
+        ax.plot(x, y, z)
+   
+    ax.invert_zaxis()
+    ax.azim = -20
+    ax.elev = 10
+    ax.set_ylim3d(1800,2100)
+    ax.set_xlabel('lon')
+    ax.set_ylabel(species + ' [' + units + ']')   
+    ax.set_zlabel('Pressure (kPa)')
+    ax.set_title('MOZART output Lat = ' + str(np.round(data.lat[latindex])) + ' at ' + str(data.time[timestep]), fontsize=16)
+
+    plt.show()
+    
+    if out_filename is not None:
+        out_filename = 'MZT_' + species + '_Lat'+str(np.round(data.lat[latindex]))+ '_'+data.time[timestep].strftime('%y%m%d_%H%M')+'.png'
+        plt.savefig('/home/as13988/Plots/' + out_filename)
+    
+    plt.close()
+
+
+    fig = plt.figure(figsize=(8,8))
+    ax = fig.gca(projection='3d')
+    
+    for i in np.arange(len(data.lat)):
+        y = conc_lats[:,i]
+        z = p_lats[:,i]
+        x = lat_lats[:,i]
+        
+        ax.plot(x, y, z)
+   
+    ax.invert_zaxis()
+    ax.azim = -20
+    ax.elev = 10
+    ax.set_xlabel('lat')
+    ax.set_ylabel(species + ' [' + units + ']')   
+    ax.set_zlabel('Pressure (kPa)')
+    ax.set_title('MOZART output Lon = ' + str(np.round(data.lon[lonindex])) + ' at ' + str(data.time[timestep]), fontsize=16)
+    
+    #ax.set_ylim3d(1800,2100)
+    
+    plt.show()
+    
+    if out_filename is not None:
+        out_filename = 'MZT_' + species + '_Lon'+ str(np.round(data.lon[lonindex]))+ '_'+data.time[timestep].strftime('%y%m%d_%H%M')+'.png'
+        plt.savefig('/home/as13988/Plots/' + out_filename)
+    
+    plt.close()

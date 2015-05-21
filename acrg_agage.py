@@ -35,7 +35,8 @@ from acrg_time import convert
 import json
 import datetime as dt
 
-root_directory="/data/shared/obs"
+
+root_directory="/shared_data/air/shared/obs"
 
 def synonyms(search_string, info):
     
