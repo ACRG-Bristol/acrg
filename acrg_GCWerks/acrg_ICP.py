@@ -31,7 +31,7 @@ class USNsDNos():
 class SiteColours():
     def __init__(self, sitein = 0):
         colours = ['blue', 'red', 'orange', 'green', 'dodgerblue', 'magenta', 'orchid', 'purple', 'black', 'sienna', 'gray', 'limegreen']
-        sites = ['RGL', 'TAC', 'HFD', 'BSD', 'TTA', 'FAAM', 'Man', 'Bas', 'MPI', 'FERRY']
+        sites = ['RGL', 'TAC', 'HFD', 'BSD', 'TTA', 'FAAM', 'Man', 'BAS', 'MPI', 'FERRY']
         
         if sitein != 0:
             index = np.where(np.array(sites) == sitein)[0]
@@ -1363,13 +1363,13 @@ class Plot_summary:
             plt1.xaxis.set_major_formatter(x_formatter)
             plt1.xaxis.set_major_locator(x_tickno_formatter)
             
-            plt1.set_title('Cylinder intercomparison')
-            plt1.set_ylabel('[CO$\mathregular{_2}$] (ppm)')
+            plt1.set_title('Cylinder intercomparison', fontsize =7)
+            plt1.set_ylabel('mean - [CO$\mathregular{_2}$] (ppm)', fontsize =7)
         
             plt2 = plt.subplot(3, 1, 2)
             plt2.errorbar(co2_site_datetime, site_ch4_diffs, yerr=site_ch4sd, fmt='o', color = SiteColours(sitein=site).outcolour,  markersize = 3)
             plt2.set_ylim(Calcrange(ch4_diffs, ch4sd, even=1))
-            plt2.set_ylabel('[CH$\mathregular{_4}$] (ppb)')
+            plt2.set_ylabel('mean- [CH$\mathregular{_4}$] (ppb)', fontsize =7)
             
             plt2.set_xlim(daterange)  
             plt2.yaxis.set_major_formatter(y_formatter)
@@ -1380,7 +1380,7 @@ class Plot_summary:
             plt3 = plt.subplot(3, 1, 3)
             plt3.errorbar(n2o_site_datetime, site_n2o_diffs, yerr=site_n2osd, fmt='o', color = SiteColours(sitein=site).outcolour,  markersize = 3)
             plt3.set_ylim(Calcrange(n2o_diffs, n2osd, even=1))
-            plt3.set_ylabel('[N$\mathregular{_2}$O] (ppb)')
+            plt3.set_ylabel('mean - [N$\mathregular{_2}$O] (ppb)', fontsize =7)
             plt3.set_xlabel('time')
             plt3.set_xlim(daterange)  
             plt3.yaxis.set_major_formatter(y_formatter)
@@ -1469,24 +1469,24 @@ class Plot_summary:
             plt1.yaxis.set_major_formatter(y_formatter)
             
             
-            plt1.set_title('Cylinder intercomparison')
-            plt1.set_ylabel('mean - [CO$\mathregular{_2}$] (ppm)')
+            plt1.set_title('Cylinder intercomparison', fontsize = 7)
+            plt1.set_ylabel('mean - [CO$\mathregular{_2}$] (ppm)', fontsize = 7)
        
         
             plt2 = plt.subplot(3, 1, 2)
             plt2.errorbar(site_ch4, site_ch4_diffs, yerr=site_ch4sd, fmt='o', color = SiteColours(sitein=site).outcolour,  markersize = 3)
             plt2.set_ylim(Calcrange(ch4_diffs, ch4sd, even = 1))
-            plt2.set_ylabel('mean - [CO$\mathregular{_2}$] (ppb)')
+            plt2.set_ylabel('mean - [CH$\mathregular{_4}$] (ppb)', fontsize = 7)
             plt2.yaxis.set_major_formatter(y_formatter)
             plt2.set_xlim([1750,2250])
             
             plt3 = plt.subplot(3, 1, 3)
             plt3.errorbar(site_n2o, site_n2o_diffs, yerr=site_n2osd, fmt='o', color = SiteColours(sitein=site).outcolour,  markersize = 3)
             plt3.set_ylim(Calcrange(n2o_diffs, n2osd, even=1))
-            plt3.set_ylabel('mean - [N$\mathregular{_2}$O] (ppb)')
+            plt3.set_ylabel('mean - [N$\mathregular{_2}$O] (ppb)', fontsize = 7)
             plt3.set_xlim([322,336])
 
-            plt3.set_xlabel('Concentration')
+            plt3.set_xlabel('Concentration', fontsize = 7)
             plt3.yaxis.set_major_formatter(y_formatter)
             
             plt.figtext(0.74, 0.85-(0.05*legend_spacing[ls_1]), site, verticalalignment='bottom', horizontalalignment='left', color=SiteColours(sitein=site).outcolour, fontsize=8)

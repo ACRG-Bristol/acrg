@@ -2,81 +2,6 @@
 """
 Created on Mon Nov 10 10:45:51 2014
 
-Script to create footprint maps using netCDF processed NAME output.
-
-site:
-'MHD' Mace Head
-'RGL' Ridgehill
-'TAC' Tacolneston
-'BSD' Bilsdale
-'HFD' Heathfield
-
-date in datetime format:
-import datetime as dt
-yourdate = dt.datetime(year,month,day,hour)
-Footprint data available 2 hourly from midnight.
-
-fpread:
-adds footprints together if more than one.
-r = fpread('MHD',2012)
-r.fp 
-array([[[  0.00000000e+00,   5.02990042e-06,   1.00698571e-05, ...,
-           0.00000000e+00,   0.00000000e+00,   0.00000000e+00],
-        [  0.00000000e+00,   1.50677261e-05,   0.00000000e+00, ...,
-           0.00000000e+00,   0.00000000e+00,   0.00000000e+00],
-        [  0.00000000e+00,   5.50260556e-05,   0.00000000e+00, ...,
-           0.00000000e+00,   0.00000000e+00,   0.00000000e+00],
-        ..., 
-        [  0.00000000e+00,   6.43811800e-05,   0.00000000e+00, ...,
-           0.00000000e+00,   0.00000000e+00,   0.00000000e+00],
-        [  0.00000000e+00,   2.29741690e-05,   0.00000000e+00, ...,
-           0.00000000e+00,   0.00000000e+00,   0.00000000e+00],
-        [  0.00000000e+00,   7.58096758e-06,   0.00000000e+00, ...,
-           0.00000000e+00,   0.00000000e+00,   0.00000000e+00]],
-       ..., 
-       [[  3.01224500e-05,   7.02261314e-05,   2.00294908e-05, ...,
-           5.01100658e-05,   0.00000000e+00,   3.01291821e-05],
-        [  1.00021070e-05,   1.99628830e-05,   4.00702156e-05, ...,
-           5.99743616e-05,   0.00000000e+00,   1.99514634e-05],
-        [  1.99381211e-05,   3.99558521e-05,   1.99148908e-05, ...,
-           5.98267434e-05,   9.96659401e-06,   1.99097249e-05],
-        ..., 
-        [  5.11917424e-05,   1.12853151e-04,   5.12245788e-05, ...,
-           1.02568538e-05,   0.00000000e+00,   0.00000000e+00],
-        [  1.01825599e-05,   3.05091289e-05,   7.61858028e-05, ...,
-           1.52862031e-05,   0.00000000e+00,   1.52607008e-05],
-        [  1.00746984e-05,   1.05599909e-04,   4.53294342e-05, ...,
-           0.00000000e+00,   0.00000000e+00,   0.00000000e+00]]], dtype=float32)
-
-r.timedate
- [datetime.datetime(2012, 1, 1, 2, 0),
- datetime.datetime(2012, 1, 1, 4, 0),
- datetime.datetime(2012, 1, 1, 6, 0),
- ...]
-
-plot:
-read in footprint first with read function
-then use plot function with read output and date to plot a still.
---> outputs a figure you can then save
-if you use the plot function with addfp output:
---> outputs one figure with footprints for all stations files in addfp added together
-
-animate:
-first use 'addfp' to add footprints together and/or to resample footprints on the right timeline.
-You can either just select two dates, a start and end, to make the timeline or select a different
-frequency to the 2 hour frequency of the footprints.
-
-fpanim(fpaddOutput, filedomain = 'If you want to create a separate file')
---> outputs still files in a directory called FP_Animation (or FP_Animation+domain) within the directory that the program is run
-this can be turned into a movie using the following in the command line:
-MP4: ffmpeg -r 16 -i ?footprints_%05d.png' -f mp4 -vcodec libx264 -pix_fmt yuv420p -intra -qscale 0 footprints.mp4
-WMV: ffmpeg -r 16 -i ?footprints_%05d.png' -b 5000k -f asf -vcodec wmv2 -acodec wmav2 footprints.wmv
-(change the number 16 to change the speed of the animation (files per second))
-
-The colourbar for the animation stills is fixed between -4 and 0, this works quite well for multiple sites added
-together but you might prefer a larger range for single sites.
-
-@author: ew14860
 """
 
 import netCDF4 as nc
@@ -88,19 +13,14 @@ import datetime as dt
 import os
 import glob
 from matplotlib import ticker
-from acrg_time.convert import sec2time
 import pandas as pd
 import bisect
-#from numbapro import autojit, vectorize
-#from timeit import default_timer as timer
-import numexpr
 import subprocess
 from progressbar import ProgressBar
 import json
 from acrg_grid import areagrid
 import acrg_agage as agage
 import xray
-from copy import deepcopy
 from os.path import split, realpath
 from acrg_time import convert
 import calendar
@@ -433,6 +353,8 @@ def merge_sensitivity(fp_data_H):
     return y, y_error, y_site, y_time, H.T
     
 
+
+
 def filtering(time, mf, filt):
 
     def midday(time, mf):
@@ -629,7 +551,8 @@ def plot_default_colors(site):
     if site in cmap.keys():
         return cmap[site]
     else:
-        return plt.cm.BuPu
+        return (plt.cm.BuPu + plt.cm.Reds)/2.
+
 
 def plot_map_zoom(fp_data):
     
@@ -645,6 +568,7 @@ def plot_map_zoom(fp_data):
                  max(fp_data[sites[0]].lat.values) - 0.25*dlat]
 
     return lat_range, lon_range
+
 
 def plot(fp_data, date, out_filename=None, 
          lon_range=None, lat_range=None, cutoff = -3.5,
@@ -675,6 +599,7 @@ def plot(fp_data, date, out_filename=None,
     fig.add_axes([0.1,0.1,0.8,0.8])
 
     map_data.m.drawcoastlines()
+    map_data.m.fillcontinents(color='green',lake_color=None, alpha = 0.2)
     map_data.m.drawcountries()
 
     levels = np.arange(cutoff, 0., 0.05)
@@ -682,29 +607,27 @@ def plot(fp_data, date, out_filename=None,
     release_lon = {}
     release_lat = {}
 
-#    data = np.zeros(np.shape(
-#                    fp_data[sites[0]].fp.values.squeeze())) - cutoff
+    data = np.zeros(np.shape(
+                    fp_data[sites[0]].fp[dict(time = [0])].values.squeeze()))
 
     for site in sites:
     
         fp_data_ti = fp_data[site].reindex_like( \
                         xray.Dataset(coords = {"time": [date]}), method = "pad")
-        
-        data = np.log10(fp_data_ti.fp.values.squeeze())
-        
-        #Set very small elements to zero
-        data[np.where(data <  cutoff)]=np.nan
-        
-        #Plot map
-        cs = map_data.m.contourf(map_data.x, map_data.y, data,
-                                 levels, cmap = plot_default_colors(site),
-                                 alpha = 0.8,
-                                 antialiased = True)
+        data += np.nan_to_num(fp_data_ti.fp.values.squeeze())
 
         # Store release location to overplot later
         if "release_lat" in dir(fp_data_ti):
             release_lon[site] = fp_data_ti.release_lon.values
             release_lat[site] = fp_data_ti.release_lat.values
+
+    #Set very small elements to zero
+    data = np.log10(data)
+    data[np.where(data <  cutoff)]=np.nan
+    
+    #Plot contours
+    cs = map_data.m.contourf(map_data.x, map_data.y, data,
+                             levels, cmap = plt.cm.BuPu)
 
     # over-plot release location
     if len(release_lon) > 0:
@@ -714,7 +637,7 @@ def plot(fp_data, date, out_filename=None,
             rpx, rpy = map_data.m(rplons, rplats)
             rp = map_data.m.scatter(rpx, rpy, 40, color = 'black')
     
-    plt.title(str(date), fontsize=20)
+    plt.title(str(pd.to_datetime(str(date))), fontsize=20)
 
     cb = map_data.m.colorbar(cs, location='bottom', pad="5%")
     
