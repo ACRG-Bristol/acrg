@@ -305,13 +305,14 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
     
     for site in sites:
         site_ds = fp_and_data[site]
-        if ".units" in attributes:
-            site_ds.fp = site_ds.fp / fp_and_data[".units"]
         site_bf = combine_datasets(site_ds, basis_func)
         
         reference = site_bf.mf_mod
         
         H = np.zeros((len(site_bf.coords['region']),len(reference)))
+        
+        if ".units" in attributes:
+            site_bf.fp = site_bf.fp / fp_and_data[".units"]        
         
         for i in range(len(site_bf.coords['region'])):
             reg = site_bf.basis.sel(region=i)
