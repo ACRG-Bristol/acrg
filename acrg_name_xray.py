@@ -9,6 +9,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
 from mpl_toolkits.mplot3d import Axes3D
+from matplotlib.ticker import MaxNLocator
+from matplotlib.colors import BoundaryNorm
 import datetime as dt
 import os
 import glob
@@ -502,7 +504,8 @@ class analytical_inversion:
 
 class plot_map_setup:
     def __init__(self, fp_data, 
-                 lon_range = None, lat_range = None):
+                 lon_range = None, lat_range = None,
+                 bottom_left = False):
 
         if lon_range is None:
             lon_range = (min(fp_data.lon.values),
@@ -516,8 +519,15 @@ class plot_map_setup:
             llcrnrlon=lon_range[0], urcrnrlon=lon_range[1],
             resolution='l')
 
-        lons, lats = np.meshgrid(fp_data.lon.values,
-                                 fp_data.lat.values)
+        if bottom_left == False:
+            lons, lats = np.meshgrid(fp_data.lon.values,
+                                     fp_data.lat.values)
+        else:
+            dlon = fp_data.lon.values[1] - fp_data.lon.values[0]
+            dlat = fp_data.lat.values[1] - fp_data.lat.values[0]            
+            lons, lats = np.meshgrid(fp_data.lon.values - dlon,
+                                     fp_data.lat.values - dlat)
+        
         x, y = m(lons, lats)
         
         self.x = x
@@ -638,6 +648,129 @@ def plot(fp_data, date, out_filename=None,
         plt.show()
 
 
+def plot_scatter(fp_data, date, out_filename=None, 
+         lon_range=None, lat_range=None, cutoff = -3.,
+         map_data = None, zoom = False):
+    
+    """date as string "d/m/y H:M" or datetime object 
+    datetime.datetime(yyyy,mm,dd,hh,mm)
+    """
+    
+    # Looks for nearest time point aviable in footprint   
+    date = convert.reftime(date)
+
+    # Get sites
+    sites = fp_data.keys()
+
+    # Zoom in. Assumes release point is to the East of centre
+    if zoom:
+        lat_range, lon_range = plot_map_zoom(fp_data)
+        
+    # Get map data
+    if map_data is None:
+        map_data = plot_map_setup(fp_data[sites[0]],
+                                  lon_range = lon_range,
+                                  lat_range = lat_range, bottom_left = True)
+
+    # Open plot
+    fig = plt.figure(figsize=(8,8))
+    fig.add_axes([0.1,0.1,0.8,0.8])
+
+    map_data.m.drawcoastlines()
+    map_data.m.fillcontinents(color='grey',lake_color=None, alpha = 0.2)
+    map_data.m.drawcountries()
+
+    #Calculate color levels
+    cmap = {"SURFACE": plt.cm.BuPu,
+            "SHIP": plt.cm.Blues,
+            "AIRCRAFT": plt.cm.Reds,
+            "SATELLITE": plt.cm.Greens}
+            
+    levels = MaxNLocator(nbins=30).tick_values(cutoff, 0.)
+
+    norm = {}
+    for platform in cmap.keys():
+        norm[platform] = BoundaryNorm(levels,
+                                      ncolors=cmap[platform].N,
+                                      clip=True)
+
+    # Create dictionaries and arrays    
+    release_lon = {}
+    release_lat = {}
+
+    data = {}
+
+    platforms = ["SURFACE", "SHIP", "AIRCRAFT", "SATELLITE"]
+
+    for platform in platforms:
+        data[platform] = np.zeros(np.shape(
+            fp_data[sites[0]].fp[dict(time = [0])].values.squeeze()))
+
+
+    # Generate plot data
+    for site in sites:
+    
+        tdelta = fp_data[site].time - date
+        if np.min(np.abs(tdelta)) < 2*3600.*1e9:
+
+            fp_data_ti = fp_data[site].reindex_like( \
+                            xray.Dataset(coords = {"time": [date]}), method = "pad")
+            
+            if "platform" in site_info[site]:
+                data[site_info[site]["platform"].upper()] += \
+                    np.nan_to_num(fp_data_ti.fp.values.squeeze())
+            else:
+                data["SURFACE"] += np.nan_to_num(fp_data_ti.fp.values.squeeze())
+    
+            # Store release location to overplot later
+            if "release_lat" in dir(fp_data_ti):
+                release_lon[site] = fp_data_ti.release_lon.values
+                release_lat[site] = fp_data_ti.release_lat.values
+
+    #Set very small elements to zero
+    for platform in platforms:
+        data[platform] = np.log10(data[platform])
+        data[platform][np.where(data[platform] <  cutoff)]=np.nan
+    
+    #Plot SURFACE contours
+    cs = map_data.m.pcolormesh(map_data.x, map_data.y,
+                               np.ma.masked_where(np.isnan(data["SURFACE"]), data["SURFACE"]),
+                               cmap = cmap["SURFACE"], norm = norm["SURFACE"])
+
+    for platform in [p for p in platforms if p != "SURFACE"]:
+        cp = map_data.m.pcolormesh(map_data.x, map_data.y,
+                                   np.ma.masked_where(np.isnan(data[platform]), data[platform]),
+                                   cmap = cmap[platform],
+                                   norm = norm[platform], alpha = 0.6, antialiased = True)
+
+    # over-plot release location
+    if len(release_lon) > 0:
+        for site in sites:
+            if site in release_lon:
+                rplons, rplats = np.meshgrid(release_lon[site],
+                                             release_lat[site])
+                rpx, rpy = map_data.m(rplons, rplats)
+                rp = map_data.m.scatter(rpx, rpy, 40, color = 'black')
+    
+    plt.title(str(pd.to_datetime(str(date))), fontsize=20)
+
+    cb = map_data.m.colorbar(cs, location='bottom', pad="5%")
+    
+    tick_locator = ticker.MaxNLocator(nbins=7)
+    cb.locator = tick_locator
+    cb.update_ticks()
+ 
+    cb.set_label('log$_{10}$( (mol/mol) / (mol/m$^2$/s))', 
+                 fontsize=15)
+    cb.ax.tick_params(labelsize=13) 
+    
+    if out_filename is not None:
+        plt.savefig(out_filename)
+        plt.close()
+    else:
+        plt.show()
+
+
 def time_unique(fp_data):
     
     sites = fp_data.keys()
@@ -718,7 +851,7 @@ def plot3d(fp_data, date, out_filename=None,
 
 def animate(fp_data, output_directory, 
             lon_range = None, lat_range=None, zoom = False,
-            cutoff = -3.5,
+            cutoff = -3.,
             overwrite=True, file_label = 'fp', 
             framerate=10, delete_png=False,
             video_os="mac", ffmpeg_only = False):
@@ -733,7 +866,7 @@ def animate(fp_data, output_directory,
             
         map_data = plot_map_setup(fp_data[sites[0]], 
                                   lon_range = lon_range, 
-                                  lat_range= lat_range)
+                                  lat_range= lat_range, bottom_left = True)
         
         # Find unique times
         times = time_unique(fp_data)
@@ -748,7 +881,7 @@ def animate(fp_data, output_directory,
                                file_label + '_' + str(ti).zfill(5) + '.png')
                                
             if len(glob.glob(fname)) == 0 or overwrite == True:            
-                plot(fp_data, t, out_filename = fname, 
+                plot_scatter(fp_data, t, out_filename = fname, 
                      lon_range = lon_range, lat_range= lat_range,
                      cutoff=cutoff, map_data = map_data)
                      

@@ -292,6 +292,10 @@ def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
     start_time = convert.reftime(start)
     end_time = convert.reftime(end)
 
+    if end_time < start_time:
+        print("End time is before start time")
+        return None
+
     if type(sites) is not list:
         sites = [sites]
 

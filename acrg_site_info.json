@@ -43,14 +43,16 @@
         "long_name" : "GAUGE flights, UK",
         "height": ["various"],
         "height_name": ["various"],
-        "network": "GAUGE"
+        "network": "GAUGE",
+        "platform": "aircraft"
     },
     "GAUGE-FERRY" : {
         "alt": ["FERRY"],
         "long_name" : "GAUGE ferry, UK",
         "height": ["20m"],
         "height_name": ["20magl"],
-        "network": "GAUGE"
+        "network": "GAUGE",
+        "platform": "ship"
     },
     "GLA" : {
         "alt": ["GLATTON"],
