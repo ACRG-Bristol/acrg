@@ -679,7 +679,7 @@ def plot_scatter(fp_data, date, out_filename=None,
     date = convert.reftime(date)
 
     # Get sites
-    sites = fp_data.keys()
+    sites = sites = [key for key in fp_data.keys() if key[0] != '.']
 
     # Zoom in. Assumes release point is to the East of centre
     if zoom:
@@ -792,11 +792,12 @@ def plot_scatter(fp_data, date, out_filename=None,
 
 def time_unique(fp_data):
     
-    sites = fp_data.keys()
+    sites = [key for key in fp_data.keys() if key[0] != '.']
     
     time = fp_data[sites[0]].time.to_dataset()
     if len(sites) > 1:
         for site in sites[1:]:
+            print(site)
             time.merge(fp_data[site].time.to_dataset(), inplace = True)
     
     return time
@@ -875,7 +876,7 @@ def animate(fp_data, output_directory,
             framerate=10, delete_png=False,
             video_os="mac", ffmpeg_only = False):
     
-    sites = fp_data.keys()
+    sites = [key for key in fp_data.keys() if key[0] != '.']
     
     if ffmpeg_only is False:
 

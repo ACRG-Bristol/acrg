@@ -12,6 +12,7 @@ import gzip
 import datetime
 import re
 import pandas
+import datetime as dt
 import numpy as np
 import scipy.constants as const
 from acrg_grid import areagrid
@@ -496,11 +497,17 @@ def particle_locations(particle_file, time, lats, lons, levs, heights,
     return hist
 
 
-def footprint_array(fields_file, particle_file, met, satellite = False,
+def footprint_array(fields_file, 
+                    particle_file = None,
+                    met = None,
+                    satellite = False,
                     time_step = None):
 
     print("Reading ... " + fields_file)
     header, column_headings, data_arrays = read_file(fields_file)
+
+    if met is None:
+        met = met_empty()
 
     if type(met) is not list:
         met = [met]
@@ -520,9 +527,10 @@ def footprint_array(fields_file, particle_file, met, satellite = False,
     area=areagrid(lats, lons)
     
     # Get particle locations
-    particle_hist = particle_locations(particle_file,
-                                       time, lats, lons, levs,
-                                       heights, id_is_lev = satellite)
+    if particle_file is not None:
+        particle_hist = particle_locations(particle_file,
+                                           time, lats, lons, levs,
+                                           heights, id_is_lev = satellite)
     
     nlon=len(lons)
     nlat=len(lats)
@@ -553,7 +561,7 @@ def footprint_array(fields_file, particle_file, met, satellite = False,
                                     "lev": (["lev"], levs)})
 
     for levi, lev in enumerate(levs):
-        metr = met[levi].reindex(index = time)
+        metr = met[levi].reindex(index = time, method = "pad")
         for key in met[levi].keys():
             met_ds[key][dict(lev = [levi])] = \
                 metr[key].values.reshape((len(time), 1))
@@ -561,51 +569,72 @@ def footprint_array(fields_file, particle_file, met, satellite = False,
 
 
     # Add in particle locations
-    fp.merge(particle_hist, inplace = True)
+    if particle_file is not None:
+        fp.merge(particle_hist, inplace = True)
     
     # Extract footprint from columns
-    for i, lev in enumerate(levs):
-        if satellite:
-            slice_dict = dict(time = [0], lev = [i])
-        else:
-            slice_dict = dict(time = [i], lev = [0])
-            
+    def convert_to_ppt(fp, slice_dict, column):
         molm3=fp["press"][slice_dict].values/const.R/\
-            const.C2K(fp["temp"][slice_dict].values)
+            const.C2K(fp["temp"][slice_dict].values.squeeze())
         fp.fp[slice_dict] = data_arrays[i]*area/ \
             (3600.*timeStep*1.)/molm3
         #The 1 assumes 1g/s emissions rate
+        return fp
 
+    if satellite:
+        for i in range(len(levs)):
+            slice_dict = dict(time = [0], lev = [i])
+            fp = convert_to_ppt(fp, slice_dict, i)
+    else:
+        for i in range(len(time)):
+            slice_dict = dict(time = [i], lev = [0])
+            fp = convert_to_ppt(fp, slice_dict, i)
+        
     return fp
     
     
-def footprint_concatenate(fields_prefix, particle_prefix, datestr, met,
+def footprint_concatenate(fields_prefix,
+                          particle_prefix = None,
+                          datestr = "*",
+                          met = None,
                           satellite = False, time_step = None):
+
+    # If no meteorology, get null values
+    # THIS IS NOT RECOMMENDED. ERRORS of ~ ±10%.
+    if met is None:
+        met = met_empty()
 
     # Find footprint files and MATCHING particle location files
     # These files are identified by their date string. Make sure this is right!
     fields_files = sorted(glob.glob(fields_prefix + "*" +
                              datestr + "*.txt*"))
-                             
+
+    # Search for particle files                             
     file_datestrs = [f.split(fields_prefix)[-1].split(".txt")[0].split("_")[-1] \
             for f in fields_files]
 
     particle_files = []
-    for file_datestr in file_datestrs:
-        if not glob.glob(particle_prefix + "*" + file_datestr + "*.txt*") is False:
-            particle_files.append(
-                glob.glob(particle_prefix + "*" + file_datestr + "*.txt*")[0])
+    if particle_prefix is not None:
+        for file_datestr in file_datestrs:
+            if not glob.glob(particle_prefix + "*" + file_datestr + "*.txt*") is False:
+                particle_files.append(
+                    glob.glob(particle_prefix + "*" + file_datestr + "*.txt*")[0])
     
-    if len(particle_files) != len(fields_files):
-        print("Particle files don't match fields files")
-        return None
+        if len(particle_files) != len(fields_files):
+            print("Particle files don't match fields files")
+            return None
+    else:
+        particle_files = [None for f in fields_files]
+
 
     # Create a list of xray objects
     fp = []
     if len(fields_files) > 0:
         for fields_file, particle_file in \
             zip(fields_files, particle_files):
-                fp.append(footprint_array(fields_file, particle_file, met,
+                fp.append(footprint_array(fields_file,
+                                          particle_file = particle_file,
+                                          met = met,
                                           satellite = satellite,
                                           time_step = time_step))
 
@@ -735,6 +764,20 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
     print "Written " + outfile
 
 
+def process_basic(fields_folder, outfile):
+    """
+    Basic processing with no meteorology or particle files
+    NOT recommended, but helpful for a quick check
+    """
+    
+    fp = footprint_concatenate(fields_folder)
+    write_netcdf(fp.fp.values.squeeze(),
+                 fp.lon.values.squeeze(), 
+                 fp.lat.values.squeeze(), 
+                 fp.lev.values.squeeze(), 
+                 fp.time.to_pandas().index.to_pydatetime(), 
+                 outfile)
+
 def process(domain, site, height, year, month,
             base_dir = "/dagage2/agage/metoffice/NAME_output/",
             fields_folder = "Fields_files",
@@ -787,13 +830,26 @@ def process(domain, site, height, year, month,
         # Get footprints
         fields_prefix = subfolder + fields_folder + "/"
         particles_prefix = subfolder + particles_folder + "/"
-        fp.append(footprint_concatenate(fields_prefix, particles_prefix,
-                                        datestr, met,
-                                        satellite = satellite,
-                                        time_step = timeStep))
 
+        fp_file = footprint_concatenate(fields_prefix,
+                                        datestr = datestr, met = met,
+                                        particle_prefix = particles_prefix,
+                                        satellite = satellite,
+                                        time_step = timeStep)
+
+#        # Do satellite process
+#        if satellite:
+#            satellite_obs_file = subfolder + "Observations/*" + \
+#                                datestr + "*/*.txt*"
+#            fp_file = satellite_vertical_profile(fp_file,
+#                                                 satellite_obs_file)
+
+        fp.append(fp_file)
+    
+    # Concatentate
     fp = xray.concat(fp, "time")
 
+    #Write netCDF file
     if fp is not None:
 
         # Output filename
@@ -810,7 +866,7 @@ def process(domain, site, height, year, month,
         write_netcdf(numpy.transpose(fp.fp.values.squeeze(), (1, 2, 0)),
                      fp.lon.values.squeeze(),
                      fp.lat.values.squeeze(),
-                     ["0 - 40magl",],
+                     fp.lev.values.squeeze(),
                      fp.time.to_pandas().index.to_pydatetime(),
                      outfile,
                      temperature=fp["temp"].values.squeeze(),
@@ -825,6 +881,13 @@ def process(domain, site, height, year, month,
 
     return fp
 
+
+def satellite_vertical_profile(fp_file, satellite_obs_file):
+    
+    
+    
+    return fp_file
+                                                 
 
 def process_agage(domain, site,
                   heights = None, years = None, months = None,
@@ -860,6 +923,19 @@ def process_agage(domain, site,
         for year, month in set(zip(years, months)):
             out = process(domain, site, height, year, month,
                 base_dir = base_dir)
+
+
+def met_empty():
+    
+    met = pandas.DataFrame({key: 0. for key in met_default.keys() if key != "time"},
+                          index = [dt.datetime(1900, 1, 1), dt.datetime(2020, 1, 1)])
+    met.index.name = "time"
+    met["press"] = [100000., 100000.]
+    met["temp"] = [280., 280.]
+    
+    print("WARNING: NO MET")
+
+    return met
 
 # Routine to copy files from:
 #   /dagage2/agage/metoffice/NAME_output/DOMAIN_SITE_HEIGHT/Processed_Fields_files
