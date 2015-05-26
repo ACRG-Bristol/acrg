@@ -23,6 +23,7 @@ import json
 from os.path import split, realpath, exists
 import xray
 import shutil
+from scipy.interpolate import interp1d
 
 #Default NAME output file version
 #This is changed depending on presence of "Fields:" line in files
@@ -837,12 +838,16 @@ def process(domain, site, height, year, month,
                                         satellite = satellite,
                                         time_step = timeStep)
 
-#        # Do satellite process
-#        if satellite:
-#            satellite_obs_file = subfolder + "Observations/*" + \
-#                                datestr + "*/*.txt*"
-#            fp_file = satellite_vertical_profile(fp_file,
-#                                                 satellite_obs_file)
+        # Do satellite process
+        if satellite:
+            satellite_obs_file = glob.glob(subfolder + "Observations/*" + \
+                                datestr + "*.nc")
+            if len(satellite_obs_file) != 1:
+                print("ERROR: More than one matching satellite obs file")
+                return None
+                
+            fp_file = satellite_vertical_profile(fp_file,
+                                                 satellite_obs_file[0])
 
         fp.append(fp_file)
     
@@ -861,12 +866,12 @@ def process(domain, site, height, year, month,
               "E": numpy.transpose(fp.pl_e.values.squeeze(), (2, 1, 0)),
               "S": numpy.transpose(fp.pl_s.values.squeeze(), (2, 1, 0)),
               "W": numpy.transpose(fp.pl_w.values.squeeze(), (2, 1, 0))}
-    
+        
         # Write outputs
         write_netcdf(numpy.transpose(fp.fp.values.squeeze(), (1, 2, 0)),
                      fp.lon.values.squeeze(),
                      fp.lat.values.squeeze(),
-                     fp.lev.values.squeeze(),
+                     fp.lev.values,
                      fp.time.to_pandas().index.to_pydatetime(),
                      outfile,
                      temperature=fp["temp"].values.squeeze(),
@@ -882,12 +887,73 @@ def process(domain, site, height, year, month,
     return fp
 
 
-def satellite_vertical_profile(fp_file, satellite_obs_file):
+def satellite_vertical_profile(fp, satellite_obs_file):
     
+    def satellite_interpolator(var, press_in, press_out):
+        
+        # Add extra level at the bottom for extrapolation
+        dp = 10000.
+        dvardp_low = (var[1,:,:] - var[0,:,:])/\
+                     (press_in[1] - press_in[0])
+        var_low = var[0,:,:] + dp*dvardp_low
+        press_low = press_in[0] + dp
+        press_temp = numpy.concatenate((np.array(press_low).reshape(1),
+                                     press_in))
+        var_temp = numpy.concatenate((var_low.reshape((1, var.shape[1], var.shape[2])),
+                                   var))
+        
+        # Assume top level missing values are zero
+        interpolator = interp1d(press_temp, var_temp,
+                              bounds_error = False, axis = 0, fill_value = 0.)
+
+        # Interpolate
+        out = interpolator(press_out)              
+        
+        # Set negative values to zero
+        out[out<0.] = 0.
+
+        return out
+        
+    print("Reading satellite obs file: " + satellite_obs_file)
+    sat = xray.open_dataset(satellite_obs_file)
+    if np.abs(sat.lon.values[0] - fp.release_lon.values[0,0]) > 1.:
+        print("WARNING: Satellite longitude doesn't match footprints")
+    if np.abs(sat.lat.values[0] - fp.release_lat.values[0,0]) > 1:
+        print("WARNING: Satellite latitude doesn't match footprints")        
+    if np.abs(sat.time.values[0] - fp.time.values[0]) > 60*1e9:
+        print("WARNING: Satellite time doesn't match footprints")
+    if len(fp.time.values) > 1:
+        print("ERROR: satellite comparison only for one time step at the moment")
+        return fp
     
+    sat = sat.reindex_like(fp.time, method = "nearest")
+
+    # Interpolate pressure levels
+    prior_factor = numpy.sum(sat.pressure_weights.values.squeeze()* \
+                          sat.xch4_averaging_kernel.values.squeeze()* \
+                          sat.ch4_profile_apriori.values.squeeze())
+
+    variables = ["fp", "pl_n", "pl_e", "pl_s", "pl_w"]
+    out = {}
+    for variable in variables:
+        var = satellite_interpolator(fp[variable].values.squeeze(),
+                                          fp.press.values.squeeze(),
+                                          sat.pressure_levels.values.squeeze()*100.)
+        out[variable] = np.zeros((1, 1, var.shape[1], var.shape[2]))
+        for lev in range(len(sat.pressure_levels.values.squeeze())):
+            out[variable] += var[lev, :, :] * \
+                             sat.pressure_weights.values.squeeze()[lev] * \
+                             sat.xch4_averaging_kernel.values.squeeze()[lev]
+
+    # Compress dataset to one level and store column averages
+    fp = fp[dict(lev = [0])]
+    for variable in variables:
+        fp[variable].values = out[variable]
     
-    return fp_file
-                                                 
+    fp["lev"] = numpy.array(["column"])
+
+    return fp
+    
 
 def process_agage(domain, site,
                   heights = None, years = None, months = None,
@@ -957,7 +1023,8 @@ if __name__ == "__main__":
 
     domain = "EUROPE"
     sites = ["TTA", "RGL", "MHD", "HFD", "BSD", "TAC",
-             "GAUGE-FERRY", "GAUGE-FAAM"]
+             "GAUGE-FERRY", "GAUGE-FAAM",
+             "EHL", "TIL", "GLA", "WAO", "HAO"]
     for site in sites:
         process_agage(domain, site)
 
