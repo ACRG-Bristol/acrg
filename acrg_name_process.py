@@ -532,7 +532,9 @@ def footprint_array(fields_file,
         particle_hist = particle_locations(particle_file,
                                            time, lats, lons, levs,
                                            heights, id_is_lev = satellite)
-    
+    else:
+        print("Warning: no particle location file corresponding to " + fields_file)
+
     nlon=len(lons)
     nlat=len(lats)
     nlev=len(levs)
@@ -669,7 +671,7 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
     nclat=ncF.createVariable('lat', 'f', ('lat',))
     nclev=ncF.createVariable('lev', 'str', ('lev',))
     ncfp=ncF.createVariable(varname, 'f', ('lat', 'lon', 'time'), zlib = True,
-                            least_significant_digit = 4)
+                            least_significant_digit = 5)
     
     nctime[:]=time_seconds
     nctime.long_name='time'
@@ -808,7 +810,10 @@ def process(domain, site, height, year, month,
     fp = []
     
     for datestr in datestrs:
- 
+
+        print("Looking for files with date string: " + datestr + " in " + \
+              subfolder)
+
         # Get Met files
         if satellite:
             met_search_str = subfolder + met_folder + "/*" + datestr + "*/*.txt*"
@@ -849,10 +854,14 @@ def process(domain, site, height, year, month,
             fp_file = satellite_vertical_profile(fp_file,
                                                  satellite_obs_file[0])
 
-        fp.append(fp_file)
+        if fp_file is not None:
+            fp.append(fp_file)
+    
     
     # Concatentate
-    fp = xray.concat(fp, "time")
+    if len(fp) > 0:
+        fp = xray.concat(fp, "time")
+
 
     #Write netCDF file
     if fp is not None:
@@ -925,14 +934,15 @@ def satellite_vertical_profile(fp, satellite_obs_file):
     if len(fp.time.values) > 1:
         print("ERROR: satellite comparison only for one time step at the moment")
         return fp
+    if len(sat.time.values) > 1:
+        print("ERROR: satellite comparison only for one time step at the moment")
+        return fp
     
-    sat = sat.reindex_like(fp.time, method = "nearest")
+    # Change timestamp to that from obs file
+    #  because NAME output only has 1 minute resolution
+    fp = fp.reindex_like(sat.time, method = "nearest")
 
     # Interpolate pressure levels
-    prior_factor = numpy.sum(sat.pressure_weights.values.squeeze()* \
-                          sat.xch4_averaging_kernel.values.squeeze()* \
-                          sat.ch4_profile_apriori.values.squeeze())
-
     variables = ["fp", "pl_n", "pl_e", "pl_s", "pl_w"]
     out = {}
     for variable in variables:
@@ -985,7 +995,7 @@ def process_agage(domain, site,
                 f = split(fields_file)[1].split("_")[-1].split('.')[0]
                 years.append(int(f[0:4]))
                 months.append(int(f[4:6]))
-        
+
         for year, month in set(zip(years, months)):
             out = process(domain, site, height, year, month,
                 base_dir = base_dir)
@@ -1022,9 +1032,9 @@ def copy_processed(domain):
 if __name__ == "__main__":
 
     domain = "EUROPE"
-    sites = ["TTA", "RGL", "MHD", "HFD", "BSD", "TAC",
+    sites = ["TAC",
              "GAUGE-FERRY", "GAUGE-FAAM",
-             "EHL", "TIL", "GLA", "WAO", "HAO"]
+             "EHL", "TIL", "GLA", "WAO", "HAO"] #"BSD", "TTA", "RGL", "MHD", "HFD", 
     for site in sites:
         process_agage(domain, site)
 

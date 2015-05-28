@@ -63,6 +63,14 @@
         "longitude": -0.30359,
         "network": "GAUGE"
     },
+    "GOSAT-INDIA" : {
+        "alt": ["GOSAT"],
+        "long_name" : "GOSAT, India",
+        "height": ["column"],
+        "height_name": ["column"],
+        "network": "GOSAT/GOSAT-INDIA",
+        "platform": "satellite"
+    },
     "HAD" : {
         "alt": ["HADDENHAM"],
         "long_name" : "Haddenham, UK",

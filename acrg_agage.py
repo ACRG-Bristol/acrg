@@ -34,9 +34,20 @@ from netCDF4 import Dataset
 from acrg_time import convert
 import json
 import datetime as dt
-
+import xray
 
 root_directory="/shared_data/air/shared/obs"
+
+#Get site info and species info from JSON files
+acrg_path=split(realpath(__file__))
+
+with open(acrg_path[0] + "/acrg_species_info.json") as f:
+    species_info=json.load(f)
+
+with open(acrg_path[0] + "/acrg_site_info.json") as f:
+    site_info=json.load(f)
+
+
 
 def synonyms(search_string, info):
     
@@ -125,33 +136,8 @@ def ukmo_flags(site, site_info):
         return pd.DataFrame(flag, index=flag_time, columns=("flags",))
 
 
-def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
-        height=None, baseline=False, average=None):
-        
-    start_time = convert.reftime(start)
-    end_time = convert.reftime(end)
-    
-    #Get site info and species info from JSON files
-    acrg_path=split(realpath(__file__))
-    
-    with open(acrg_path[0] + "/acrg_species_info.json") as f:
-        species_info=json.load(f)
+def get_file_list(site, species, start, end, height):
 
-    with open(acrg_path[0] + "/acrg_site_info.json") as f:
-        site_info=json.load(f)
-    
-    site = synonyms(site_in, site_info)
-    if site is None:
-        print("No site called " + site_in +
-            ". Either try a different name, or add name to site_info.json.")
-        return
-
-    species = synonyms(species_in, species_info)
-    if species is None:
-        print("No species called " + species_in +
-            ". Either try a different name, or add name to species_info.json.")
-        return
-    
     if height is None:
         file_network_string = site_info[site]["network"]
         file_height_string = site_info[site]["height"][0]
@@ -175,7 +161,7 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
     file_site = [f[1] for f in file_info]
     file_species = [re.split("-|\.", f[-1])[0] for f in file_info]
     file_height = [re.split("-|\.", f[-1])[1] for f in file_info]
-        
+
     #Get file list
     file_species_string = listsearch(file_species, species, species_info)
     file_site_string = listsearch(file_site, site, site_info)
@@ -187,6 +173,30 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
         hi.upper() == file_height_string.upper()]
     files.sort()
 
+    return data_directory, files
+
+
+def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
+        height=None, baseline=False, average=None):
+        
+    start_time = convert.reftime(start)
+    end_time = convert.reftime(end)
+    
+    site = synonyms(site_in, site_info)
+    if site is None:
+        print("No site called " + site_in +
+            ". Either try a different name, or add name to site_info.json.")
+        return
+
+    species = synonyms(species_in, species_info)
+    if species is None:
+        print("No species called " + species_in +
+            ". Either try a different name, or add name to species_info.json.")
+        return
+        
+    data_directory, files = get_file_list(site, species, start_time, end_time,
+                                          height)
+    
     #Get files
     #####################################
     
@@ -286,6 +296,43 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
     return data_frame
     
 
+def get_gosat(site, species, start = "1900-01-01", end = "2020-01-01"):
+    
+    start_time = convert.reftime(start)
+    end_time = convert.reftime(end)
+
+    data_directory, files = get_file_list(site, species, start_time, end_time,
+                                          None)
+    files_date = [convert.reftime(f.split("_")[2][0:8]) for f in files]
+    files_keep = [True if d >= start_time and d < end_time else False for d in files_date]
+    files = [f for (f, k) in zip(files, files_keep) if k == True]
+
+    data = []
+    for f in files:
+        data.append(xray.open_dataset(data_directory + f))
+    
+    data = xray.concat(data, dim = "time")
+
+    prior_factor = (data.pressure_weights* \
+                    (1.-data.xch4_averaging_kernel)* \
+                    data.ch4_profile_apriori).sum(dim = "lev")
+
+    data["mf_prior_factor"] = prior_factor
+    data["mf"] = data.xch4 - data.mf_prior_factor
+    data["dmf"] = data.xch4_uncertainty
+
+    data = data.drop("lev")
+    data = data.drop(["xch4", "xch4_uncertainty", "lon", "lat"])
+    data = data.to_dataframe()
+    
+    if species.upper() == "CH4":
+        data.mf.units = 1e9
+    if species.upper() == "CO2":
+        data.mf.units = 1e6
+
+    return data
+
+
 def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
             height=None, baseline=False, average = None):
 
@@ -327,9 +374,13 @@ def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
 
     # Get data
     for si, site in enumerate(sites):
-        data = get(site, species, height = height[si],
-                   start = start_time, end = end_time,
-                   average = average[si])
+        if "GOSAT" in site.upper():
+            data = get_gosat(site, species,
+                       start = start_time, end = end_time)
+        else:
+            data = get(site, species, height = height[si],
+                       start = start_time, end = end_time,
+                       average = average[si])
         if data is not None:
             obs[site] = data.copy()
     
@@ -341,5 +392,4 @@ def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
         return None
     else:
         return obs
-    
     
