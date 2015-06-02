@@ -18,12 +18,12 @@ import scipy.constants as const
 from acrg_grid import areagrid
 from acrg_time.convert import time2sec
 import os
-from bisect import bisect
 import json
 from os.path import split, realpath, exists
 import xray
 import shutil
 from scipy.interpolate import interp1d
+import copy
 
 #Default NAME output file version
 #This is changed depending on presence of "Fields:" line in files
@@ -801,11 +801,18 @@ def process(domain, site, height, year, month,
     
     # Get date strings for file search
     if satellite:
-        fields_files = glob.glob(subfolder + fields_folder +"/*" + str(year) \
-                        + str(month).zfill(2) + "*.txt*")
+        file_search_string = subfolder + fields_folder +"/*" + str(year) \
+                        + str(month).zfill(2) + "*.txt*"
+        fields_files = glob.glob(file_search_string)
         datestrs = sorted([f.split("_")[-1].split(".")[0] for f in fields_files])
+
+        # Check that we've found something
+        if len(datestrs) == 0:
+            print("Error, can't find files in " + file_search_string)
+
     else:
         datestrs = [str(year) + str(month).zfill(2)]
+
 
     fp = []
     
@@ -848,7 +855,9 @@ def process(domain, site, height, year, month,
             satellite_obs_file = glob.glob(subfolder + "Observations/*" + \
                                 datestr + "*.nc")
             if len(satellite_obs_file) != 1:
-                print("ERROR: More than one matching satellite obs file")
+                print("ERROR: There must be exactly one matching satellite " + 
+                        "file in the Observations/ folder")
+                print("Files: " + satellite_obs_file)
                 return None
                 
             fp_file = satellite_vertical_profile(fp_file,
@@ -858,23 +867,24 @@ def process(domain, site, height, year, month,
             fp.append(fp_file)
     
     
-    # Concatentate
     if len(fp) > 0:
+        
+        # Concatentate
         fp = xray.concat(fp, "time")
 
-
-    #Write netCDF file
-    if fp is not None:
+        #Write netCDF file
 
         # Output filename
         outfile = subfolder + processed_folder + "/" + site + "-" + height + \
                     "_" + domain + "_" + str(year) + str(month).zfill(2) + ".nc"
-    
+        
         # Define particle locations dictionary (annoying)
         pl = {"N": numpy.transpose(fp.pl_n.values.squeeze(), (2, 1, 0)),
               "E": numpy.transpose(fp.pl_e.values.squeeze(), (2, 1, 0)),
               "S": numpy.transpose(fp.pl_s.values.squeeze(), (2, 1, 0)),
               "W": numpy.transpose(fp.pl_w.values.squeeze(), (2, 1, 0))}
+
+        print("Writing file: " + outfile)
         
         # Write outputs
         write_netcdf(numpy.transpose(fp.fp.values.squeeze(), (1, 2, 0)),
@@ -892,6 +902,9 @@ def process(domain, site, height, year, month,
                      release_lat=fp["release_lat"].values.squeeze(),
                      particle_locations = pl,
                      particle_heights = fp.height.values.squeeze())
+
+    else:
+        print("Couldn't seem to find any files")
 
     return fp
 
@@ -966,7 +979,8 @@ def satellite_vertical_profile(fp, satellite_obs_file):
     
 
 def process_agage(domain, site,
-                  heights = None, years = None, months = None,
+                  heights = None,
+                  years_in = None, months_in = None,
                   base_dir = "/dagage2/agage/metoffice/NAME_output/"):
 
     acrg_path=split(realpath(__file__))
@@ -984,7 +998,7 @@ def process_agage(domain, site,
         
         subfolder = base_dir + domain + "_" + site + "_" + height + "/"
     
-        if years is None:
+        if years_in is None:
             #Find all years and months available
             #Assumes fields files are processes with _YYYYMMDD.txt.gz at the end    
             years = []
@@ -995,6 +1009,9 @@ def process_agage(domain, site,
                 f = split(fields_file)[1].split("_")[-1].split('.')[0]
                 years.append(int(f[0:4]))
                 months.append(int(f[4:6]))
+        else:
+            years = copy.copy(years_in)
+            months = copy.copy(months_in)
 
         for year, month in set(zip(years, months)):
             out = process(domain, site, height, year, month,
@@ -1032,9 +1049,9 @@ def copy_processed(domain):
 if __name__ == "__main__":
 
     domain = "EUROPE"
-    sites = ["TAC",
+    sites = ["BSD", "TTA", "RGL", "MHD", "HFD", "TAC",
              "GAUGE-FERRY", "GAUGE-FAAM",
-             "EHL", "TIL", "GLA", "WAO", "HAO"] #"BSD", "TTA", "RGL", "MHD", "HFD", 
+             "EHL", "TIL", "GLA", "WAO", "HAD"]
     for site in sites:
         process_agage(domain, site)
 
