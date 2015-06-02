@@ -136,10 +136,15 @@ def ukmo_flags(site, site_info):
         return pd.DataFrame(flag, index=flag_time, columns=("flags",))
 
 
-def get_file_list(site, species, start, end, height):
+def get_file_list(site, species, start, end, height,
+                  network = None, instrument = None):
+
+    if network is None:
+        file_network_string = site_info[site]["network"]
+    else:
+        file_network_string = network
 
     if height is None:
-        file_network_string = site_info[site]["network"]
         file_height_string = site_info[site]["height"][0]
     else:
         file_height_string = listsearch(height, site, site_info, 
@@ -153,11 +158,10 @@ def get_file_list(site, species, start, end, height):
     data_directory=root_directory + "/" + file_network_string + "/"
     
     #Get file info
-    fnames, file_info=file_search_and_split(data_directory + "*.nc")
+    fnames, file_info = file_search_and_split(data_directory + "*.nc")
 
     if len(fnames) == 0:
         print("Can't find any data files: " + data_directory + "*.nc")
-    file_inst = [f[0] for f in file_info]
     file_site = [f[1] for f in file_info]
     file_species = [re.split("-|\.", f[-1])[0] for f in file_info]
     file_height = [re.split("-|\.", f[-1])[1] for f in file_info]
@@ -165,19 +169,24 @@ def get_file_list(site, species, start, end, height):
     #Get file list
     file_species_string = listsearch(file_species, species, species_info)
     file_site_string = listsearch(file_site, site, site_info)
-
+    
     files = [f for f, si, sp, hi in \
-        zip(fnames, file_site, file_species, file_height) if \
-        si.upper() == file_site_string.upper() and
-        sp.upper() == file_species_string.upper() and
-        hi.upper() == file_height_string.upper()]
-    files.sort()
+             zip(fnames, file_site, file_species, file_height) if \
+                 si.upper() == file_site_string.upper() and
+                 sp.upper() == file_species_string.upper() and
+                 hi.upper() == file_height_string.upper()]
 
+    if instrument is not None:
+        files = [f for f in files if instrument.upper() in f.upper()]
+
+    files.sort()
+    
     return data_directory, files
 
 
 def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
-        height=None, baseline=False, average=None):
+        height=None, baseline=False, average=None,
+        network = None, instrument = None):
         
     start_time = convert.reftime(start)
     end_time = convert.reftime(end)
@@ -195,7 +204,8 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
         return
         
     data_directory, files = get_file_list(site, species, start_time, end_time,
-                                          height)
+                                          height, network = network,
+                                          instrument = instrument)
     
     #Get files
     #####################################
@@ -334,7 +344,23 @@ def get_gosat(site, species, start = "1900-01-01", end = "2020-01-01"):
 
 
 def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
-            height=None, baseline=False, average = None):
+            height = None, baseline = False, average = None,
+            network = None, instrument = None):
+
+
+    def check_list_and_length(var, sites, error_message_string):
+        if var is not None:
+            if type(var) is not list:
+                var = [var]
+            if len(var) != len(var):
+                print("If you're going to specify " + error_message_string +
+                      ", make sure the length of the height list is " +
+                      "the same length as sites list. Returning.")
+                return None
+        else:
+            var = [None for i in sites]
+        return var
+
 
     # Prepare inputs
     start_time = convert.reftime(start)
@@ -347,32 +373,16 @@ def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
     if type(sites) is not list:
         sites = [sites]
 
-    if average is not None:
-        if type(average) is not list:
-            average = [average]
-    
-    obs = {}
+    height = check_list_and_length(height, sites, "height")
+    average = check_list_and_length(average, sites, "average")
+    network = check_list_and_length(network, sites, "network")
+    instrument = check_list_and_length(instrument, sites, "instrument")
 
-    if height is not None:
-        if len(height) != len(sites):
-            print("If you're going to specify heights, " +
-                  "make sure the length of the height list is " +
-                  "the same length as sites list. Returning.")
-            return None
-    else:
-        height = [None for i in sites]
-
-    if average is not None:
-        if len(average) != len(sites):
-            print("If you're going to specify averaging, " +
-                  "make sure the length of the average list is " +
-                  "the same length as sites list. Returning.")
-            return None
-    else:
-        average = [None for i in sites]
-
+    if height == None or average == None or network == None or instrument == None:
+        return None
 
     # Get data
+    obs = {}
     for si, site in enumerate(sites):
         if "GOSAT" in site.upper():
             data = get_gosat(site, species,
@@ -380,13 +390,16 @@ def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
         else:
             data = get(site, species, height = height[si],
                        start = start_time, end = end_time,
-                       average = average[si])
+                       average = average[si],
+                       network = network[si],
+                       instrument = instrument[si])
         if data is not None:
             obs[site] = data.copy()
     
     # Add some attributes
-    obs[".species"] = species
-    obs[".units"] = data.mf.units
+    if data is not None:
+        obs[".species"] = species
+        obs[".units"] = data.mf.units
     
     if len(obs) == 0:
         return None
