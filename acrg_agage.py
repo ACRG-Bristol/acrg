@@ -248,7 +248,7 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
             if is_number(ncf.variables[ncvarname].units):
                 units = float(ncf.variables[ncvarname].units)
             else:
-                units = ncf.variables[ncvarname].units
+                units = str(ncf.variables[ncvarname].units)
             
             #Get repeatability
             if ncvarname + "_repeatability" in ncf.variables.keys():
@@ -269,7 +269,7 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
                     df["status_flag"] = file_flag[:]
                     df = df[df.status_flag < 3]
         
-            if "permil" not in units:
+            if units != "permil":
                 df = df[df.mf > 0.]
             
             data_frames.append(df)
