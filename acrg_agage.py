@@ -47,7 +47,12 @@ with open(acrg_path[0] + "/acrg_species_info.json") as f:
 with open(acrg_path[0] + "/acrg_site_info.json") as f:
     site_info=json.load(f)
 
-
+def is_number(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
 
 def synonyms(search_string, info):
     
@@ -159,17 +164,17 @@ def get_file_list(site, species, start, end, height,
     
     #Get file info
     fnames, file_info = file_search_and_split(data_directory + "*.nc")
-
+    
     if len(fnames) == 0:
         print("Can't find any data files: " + data_directory + "*.nc")
     file_site = [f[1] for f in file_info]
     file_species = [re.split("-|\.", f[-1])[0] for f in file_info]
     file_height = [re.split("-|\.", f[-1])[1] for f in file_info]
-
+    
     #Get file list
     file_species_string = listsearch(file_species, species, species_info)
     file_site_string = listsearch(file_site, site, site_info)
-    
+
     files = [f for f, si, sp, hi in \
              zip(fnames, file_site, file_species, file_height) if \
                  si.upper() == file_site_string.upper() and
@@ -187,7 +192,7 @@ def get_file_list(site, species, start, end, height,
 def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
         height=None, baseline=False, average=None,
         network = None, instrument = None):
-        
+    
     start_time = convert.reftime(start)
     end_time = convert.reftime(end)
     
@@ -239,7 +244,11 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
             
             df = pd.DataFrame({"mf": ncf.variables[ncvarname][:]},
                               index = time)
-            units = float(ncf.variables[ncvarname].units)
+            
+            if is_number(ncf.variables[ncvarname].units):
+                units = float(ncf.variables[ncvarname].units)
+            else:
+                units = ncf.variables[ncvarname].units
             
             #Get repeatability
             if ncvarname + "_repeatability" in ncf.variables.keys():
@@ -260,7 +269,8 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
                     df["status_flag"] = file_flag[:]
                     df = df[df.status_flag < 3]
         
-            df = df[df.mf > 0.]
+            if "permil" not in units:
+                df = df[df.mf > 0.]
             
             data_frames.append(df)
 
