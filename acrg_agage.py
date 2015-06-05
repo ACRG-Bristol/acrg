@@ -164,16 +164,25 @@ def get_file_list(site, species, start, end, height,
     
     #Get file info
     fnames, file_info = file_search_and_split(data_directory + "*.nc")
-    
+
     if len(fnames) == 0:
         print("Can't find any data files: " + data_directory + "*.nc")
+        return data_directory, None
+        
     file_site = [f[1] for f in file_info]
     file_species = [re.split("-|\.", f[-1])[0] for f in file_info]
     file_height = [re.split("-|\.", f[-1])[1] for f in file_info]
     
     #Get file list
     file_species_string = listsearch(file_species, species, species_info)
+    if file_species_string is None:
+        print("Can't find files for species " + species + " in " + data_directory)
+        return data_directory, None
+        
     file_site_string = listsearch(file_site, site, site_info)
+    if file_site_string is None:
+        print("Can't find files for site " + site + " in " + data_directory)
+        return data_directory, None
 
     files = [f for f, si, sp, hi in \
              zip(fnames, file_site, file_species, file_height) if \
@@ -184,9 +193,11 @@ def get_file_list(site, species, start, end, height,
     if instrument is not None:
         files = [f for f in files if instrument.upper() in f.upper()]
 
-    files.sort()
-    
-    return data_directory, files
+    if len(files) == 0:
+        return data_directory, None
+    else:
+        files.sort()
+        return data_directory, files
 
 
 def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
@@ -211,110 +222,116 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
     data_directory, files = get_file_list(site, species, start_time, end_time,
                                           height, network = network,
                                           instrument = instrument)
-    
+
     #Get files
     #####################################
     
-    data_frames = []
+    if files is not None:
     
-    for f in files:
+        data_frames = []
         
-        print("Reading: " + f)
-
-        skip = False
-        
-        ncf=Dataset(data_directory + f, 'r')
-
-        if "time" not in ncf.variables:
-            print("Skipping: " + f + ". No time variable")
-            skip = True
-
-        else:
-            time = convert.sec2time(ncf.variables["time"][:], 
-                                    ncf.variables["time"].units[14:])
-               
-            if max(time) < start_time:
-                skip = True
-            if min(time) > end_time:
-                skip = True
-
-        if not skip:
-
-            ncvarname=listsearch(ncf.variables, species, species_info)
+        for f in files:
             
-            df = pd.DataFrame({"mf": ncf.variables[ncvarname][:]},
-                              index = time)
+            print("Reading: " + f)
+    
+            skip = False
             
-            if is_number(ncf.variables[ncvarname].units):
-                units = float(ncf.variables[ncvarname].units)
+            ncf=Dataset(data_directory + f, 'r')
+    
+            if "time" not in ncf.variables:
+                print("Skipping: " + f + ". No time variable")
+                skip = True
+    
             else:
-                units = str(ncf.variables[ncvarname].units)
-            
-            #Get repeatability
-            if ncvarname + "_repeatability" in ncf.variables.keys():
-                file_dmf=ncf.variables[ncvarname + "_repeatability"]
-                if len(file_dmf) > 0:
-                    df["dmf"] = file_dmf[:]
+                time = convert.sec2time(ncf.variables["time"][:], 
+                                        ncf.variables["time"].units[14:])
+                   
+                if max(time) < start_time:
+                    skip = True
+                if min(time) > end_time:
+                    skip = True
     
-            #Get variability
-            if ncvarname + "_variability" in ncf.variables.keys():
-                file_vmf=ncf.variables[ncvarname + "_variability"]
-                if len(file_vmf) > 0:
-                    df["vmf"] = file_vmf[:]
+            if not skip:
     
-            #Get status flag
-            if ncvarname + "_status_flag" in ncf.variables.keys():
-                file_flag=ncf.variables[ncvarname + "_status_flag"]
-                if len(file_flag) > 0:
-                    df["status_flag"] = file_flag[:]
-                    df = df[df.status_flag < 3]
+                ncvarname=listsearch(ncf.variables, species, species_info)
+                
+                df = pd.DataFrame({"mf": ncf.variables[ncvarname][:]},
+                                  index = time)
+                
+                if is_number(ncf.variables[ncvarname].units):
+                    units = float(ncf.variables[ncvarname].units)
+                else:
+                    units = str(ncf.variables[ncvarname].units)
+                
+                #Get repeatability
+                if ncvarname + "_repeatability" in ncf.variables.keys():
+                    file_dmf=ncf.variables[ncvarname + "_repeatability"]
+                    if len(file_dmf) > 0:
+                        df["dmf"] = file_dmf[:]
         
-            if units != "permil":
-                df = df[df.mf > 0.]
+                #Get variability
+                if ncvarname + "_variability" in ncf.variables.keys():
+                    file_vmf=ncf.variables[ncvarname + "_variability"]
+                    if len(file_vmf) > 0:
+                        df["vmf"] = file_vmf[:]
+        
+                #Get status flag
+                if ncvarname + "_status_flag" in ncf.variables.keys():
+                    file_flag=ncf.variables[ncvarname + "_status_flag"]
+                    if len(file_flag) > 0:
+                        df["status_flag"] = file_flag[:]
+                        df = df[df.status_flag < 3]
             
-            data_frames.append(df)
+                if units != "permil":
+                    df = df[df.mf > 0.]
+                
+                data_frames.append(df)
+    
+            ncf.close()
+    
+        if len(data_frames) > 0:
+            data_frame = pd.concat(data_frames).sort()
+            data_frame.index.name = 'time'
+            data_frame = data_frame[start_time : end_time]
+        else:
+            return None
+    
+        #Do baseline filtering
+        if baseline:
+            #Get flags
+            flagdf=ukmo_flags(site, site_info)
+            
+            if flagdf is None:
+                print("No baseline flags, sorry!")
+            else:
+                #Truncate time series if no flags available
+                data_frame=data_frame[min(flagdf.index) : max(flagdf.index)]
+                #Re-index flag time series to mf Data frame index
+                data_frame["flag"]=flagdf.reindex(index=data_frame.index,
+                                                  method='pad')
+                #Only retain background
+                data_frame=data_frame[data_frame['flag']==10]
+        
+        if average is not None:
+            how = {}
+            for key in data_frame.columns:
+                if key == "dmf":
+                    how[key] = quadratic_sum
+                else:
+                    how[key] = "median"
+            data_frame=data_frame.resample(average, how=how)
+    
+        # Drop NaNs
+        data_frame.dropna(inplace = True)
+    
+        data_frame.mf.units = units
+    
+        return data_frame
 
-        ncf.close()
-
-    if len(data_frames) > 0:
-        data_frame = pd.concat(data_frames).sort()
-        data_frame.index.name = 'time'
-        data_frame = data_frame[start_time : end_time]
     else:
+        
         return None
 
-    #Do baseline filtering
-    if baseline:
-        #Get flags
-        flagdf=ukmo_flags(site, site_info)
-        
-        if flagdf is None:
-            print("No baseline flags, sorry!")
-        else:
-            #Truncate time series if no flags available
-            data_frame=data_frame[min(flagdf.index) : max(flagdf.index)]
-            #Re-index flag time series to mf Data frame index
-            data_frame["flag"]=flagdf.reindex(index=data_frame.index,
-                                              method='pad')
-            #Only retain background
-            data_frame=data_frame[data_frame['flag']==10]
-    
-    if average is not None:
-        how = {}
-        for key in data_frame.columns:
-            if key == "dmf":
-                how[key] = quadratic_sum
-            else:
-                how[key] = "median"
-        data_frame=data_frame.resample(average, how=how)
-
-    # Drop NaNs
-    data_frame.dropna(inplace = True)
-
-    data_frame.mf.units = units
-
-    return data_frame
-    
 
 def get_gosat(site, species, start = "1900-01-01", end = "2020-01-01"):
     
@@ -394,6 +411,7 @@ def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
     # Get data
     obs = {}
     for si, site in enumerate(sites):
+        print(site)
         if "GOSAT" in site.upper():
             data = get_gosat(site, species,
                        start = start_time, end = end_time)
@@ -403,6 +421,7 @@ def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
                        average = average[si],
                        network = network[si],
                        instrument = instrument[si])
+                       
         if data is not None:
             obs[site] = data.copy()
     

@@ -144,7 +144,7 @@ def flux(domain, species):
     """
 
     files = sorted(glob.glob(flux_directory + domain + "/" + 
-                   species.lower() + "*.nc"))
+                   species.lower() + "_" + "*.nc"))
     if len(files) == 0:
         print("Can't find flux: " + domain + " " + species)
         return None
@@ -276,7 +276,7 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
             
             # If units are specified, multiply by scaling factor
             if ".units" in attributes:
-                site_ds.fp = site_ds.fp * data[".units"]
+                site_ds.fp = site_ds.fp / data[".units"]
             
             # Calculate model time series, if required
             if calc_timeseries:
