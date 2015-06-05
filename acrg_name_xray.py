@@ -305,11 +305,11 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
     sites = [key for key in fp_and_data.keys() if key[0] != '.']
     attributes = [key for key in fp_and_data.keys() if key[0] == '.']
     basis_func = basis(domain = domain, basis_case = basis_case)
-    fp_data_H = {}
     
     for site in sites:
-        site_ds = fp_and_data[site]
-        site_bf = combine_datasets(site_ds, basis_func)
+
+        site_bf = combine_datasets(fp_and_data[site]["fp", "flux", "mf_mod"],
+                                   basis_func)
         
         reference = site_bf.mf_mod
         
@@ -320,17 +320,17 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
         
         for i in range(len(site_bf.coords['region'])):
             reg = site_bf.basis.sel(region=i)
-            flux_scale = reg + 1
+            flux_scale = reg + 1.
             perturbed = (site_bf.fp*site_bf.flux*flux_scale).sum(["lat", "lon"])
             H[i,:] = perturbed - reference
         
         sensitivity = xray.Dataset({'H': (['region','time'], H)},
                                     coords = {'region': (site_bf.coords['region']),
-                                              'time' : (site_ds.coords['time'])})
-        site_ds = combine_datasets(site_ds, sensitivity)
-        fp_data_H[site] = site_ds
+                                              'time' : (fp_and_data[site].coords['time'])})
+
+        fp_and_data[site] = fp_and_data[site].merge(sensitivity)
     
-    return fp_data_H
+    return fp_and_data
     
     
 def merge_sensitivity(fp_data_H):
