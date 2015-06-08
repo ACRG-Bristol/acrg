@@ -80,7 +80,7 @@ def synonyms(search_string, info):
     return out_string
 
 def listsearch(varnames, species, species_info, label="alt"):
-    
+
     for v in varnames:
         if species.upper() == v.upper():
             out_string = v
@@ -143,24 +143,27 @@ def ukmo_flags(site, site_info):
 
 def get_file_list(site, species, start, end, height,
                   network = None, instrument = None):
-
+        
     if network is None:
         file_network_string = site_info[site]["network"]
     else:
         file_network_string = network
 
+    data_directory=root_directory + "/" + file_network_string + "/"
+
     if height is None:
         file_height_string = site_info[site]["height"][0]
     else:
+        if type(height) is not list:
+            height = [height]
+
         file_height_string = listsearch(height, site, site_info, 
                                         label="height")
         if file_height_string is None:
             print("Height " + height + " doesn't exist in site_info.json. "
                 + "Available heights are " + str(site_info[site]["height"])
                 + ". Leave blank for default height.")
-            return
-
-    data_directory=root_directory + "/" + file_network_string + "/"
+            return data_directory, None
     
     #Get file info
     fnames, file_info = file_search_and_split(data_directory + "*.nc")
