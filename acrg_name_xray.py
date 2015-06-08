@@ -358,29 +358,55 @@ def merge_sensitivity(fp_data_H):
     return y, y_error, y_site, y_time, H.T
     
 
-
-
-def filtering(time, mf, filt):
-
-    def midday(time, mf):
-        df=pandas.DataFrame(mf, index=time, columns=['mf'])
-        dfpm=df[(df.index.hour>=10) * (df.index.hour<=15)]
-        dfr=dfpm.resample("1D", how="median")
-        return [t.to_pydatetime() + dt.timedelta(0.5) for t in dfr.index], \
-                np.array(dfr['mf'])
+def filtering(datasets_in, filters):
+    """
+    Apply filtering (in time dimension) to entire dataset.
     
-    def daytime2hr(time,mf):
-        df=pandas.DataFrame(mf, index=time, columns=['mf'])
-        dfpm=df[(df.index.hour>=10) * (df.index.hour<=16)]
-        dfr = dfpm.resample("2H", how="mean")
-        dfn = dfr.dropna()
-        return [t.to_pydatetime() for t in dfn.index], \
-                np.array(dfn['mf'])
+    Filters supplied in a list and then applied in order. So, if you want
+    a daily, daytime average, you could do this:
+    
+    datasets_dictionary = filtering(datasets_dictionary, 
+                                    ["daytime", "daily_median"])
+    
+    The first filter "daytime" selects data between 1000 and 1500 UTC,
+    the second "daily_median" calculates the daily median. Obviously in this
+    case, you need to do the first filter before the second.    
+    """
 
-    filters={"midday":midday,
-             "daytime2hr":daytime2hr}
-            
-    return filters[filt](time, mf)
+    if type(filters) is not list:
+        filters = [filters]
+
+    datasets = datasets_in.copy()
+
+    # Filter functions
+    def daily_median(dataset):
+        # Calculate daily median
+        return dataset.resample("1D", "time", how = "median")
+    
+    def daytime(dataset):
+        # Subset during daytime hours
+        hours = dataset.time.to_pandas().index.hour
+        ti = [i for i, h in enumerate(hours) if h >= 10 and h <= 15]
+        return dataset[dict(time = ti)]
+
+    def pblh_gt_500(dataset):
+        # Subset for times when boundary layer height is > 500m
+        ti = [i for i, pblh in enumerate(dataset.PBLH) if pblh > 500.]
+        return dataset[dict(time = ti)]
+        
+    filtering_functions={"daily_median":daily_median,
+                         "daytime":daytime,
+                         "pblh_gt_500": pblh_gt_500}
+
+    # Get list of sites
+    sites = [key for key in datasets.keys() if key[0] != '.']
+    
+    # Do filtering
+    for site in sites:
+        for filt in filters:
+            datasets[site] = filtering_functions[filt](datasets[site])
+
+    return datasets
 
 
 def baseline(y, y_time, y_site, x_error = 10000, days_to_average = 5):
