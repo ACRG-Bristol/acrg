@@ -268,7 +268,7 @@ class read_fixed_sitefile_nc:
     def __init__(self, sitefile = 0, species = 'CH4', dir = '/data/shared/GAUGE/'):
         
         if type(sitefile) == int:
-            sitefile = dir + species + '/mozart_obs_stationary.nc'
+            sitefile = dir + species + '/global_obs_stationary*.nc'
         
         print 'Using site file : ' + sitefile
         
@@ -319,10 +319,10 @@ class read_fixed_sitefile_nc:
 
  # Class to read in the netcdf site file written by matt listing the column sites (satelite + TCON)  
 class read_column_sitefile_nc:
-    def __init__(self, sitefile = 0, species = 'CH4', dir = '/data/shared/GAUGE/mozart_obs_column/', month = 1, year = 2009):
+    def __init__(self, sitefile = 0, species = 'CH4', dir = '/data/shared/GAUGE/global_obs_column*/', month = 1, year = 2009):
         
         if type(sitefile) == int:
-            sitefile = dir + species + '/mozart_obs_column' + str(month).zfill(2) +str(year)+ '.nc'
+            sitefile = dir + species + '/global_obs_column*' + str(month).zfill(2) +str(year)+ '.nc'
         
         data=netCDF4.Dataset(sitefile, 'r')
 
@@ -373,7 +373,7 @@ class read_mobile_sitefile_nc:
     def __init__(self, sitefile = 0, species = 'CH4', dir = '/data/shared/GAUGE/', month = 1, year = 2003):
         
         if type(sitefile) == type(0):
-            sitefile = dir + species + '/mozart_obs_mobile/mozart_obs_mobile_' +str(year)+ str(month).zfill(2)+'.nc'
+            sitefile = dir + species + '/global_obs_mobile_*/global_obs_mobile_*' +str(year)+ str(month).zfill(2)+'.nc'
         
         # Check if the site file exists
         exists = os.path.isfile(sitefile)
@@ -895,7 +895,7 @@ class data_filter_column:
 # This uses an individual MOZART history file
 # and a site file which contains the lat, lon, alt and time for moving sites
 class data_filter_mobile:
-    def __init__(self, mzfile, sitefile = '/data/shared/GAUGE/CH4/mozart_obs_mobile/mozart_obs_mobile_200301.nc'):   
+    def __init__(self, mzfile, sitefile = '/data/shared/GAUGE/CH4/global_obs_mobile_*/global_obs_mobile_*_200301.nc'):   
                 
     
         # Read MOZART file name
