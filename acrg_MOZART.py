@@ -47,7 +47,12 @@ class read:
         
         if 'h1' in filename:        
             conc_varname = (str(data.__getattribute__('title'))).strip()+'_13:30_LT'
-          
+        
+        if 'h2' in filename:        
+            conc_varname = (str(data.__getattribute__('title'))).strip()+'_VMR_avrg'
+        
+        
+        
         conc = data.variables[conc_varname][:]
         date = data.variables['date'][:] # Date YYYYMMDD
         secs = data.variables['datesec'][:] # Seconds to be added to above date to make date-time variable
@@ -102,7 +107,90 @@ class read:
             emis = data.variables[emiss_varname][:]
             self.emis = emis             
             self.emissunits = data.variables[emiss_varname].getncattr('units')
-             
+
+# Class to read in the data
+"""
+format
+dimensions:
+	lon = 144 ;
+	lat = 96 ;
+	time = UNLIMITED ; // (24 currently)
+variables:
+	double lon(lon) ;
+		lon:long_name = "longitude" ;
+		lon:units = "degrees_east" ;
+	double lat(lat) ;
+		lat:long_name = "latitude" ;
+		lat:units = "degrees_north" ;
+	int date(time) ;
+		date:long_name = "Date" ;
+		date:units = "YYYYMMDD" ;
+	double time(time) ;
+		time:long_name = "Time" ;
+		time:units = "days since 0000-01-01 00:00:00" ;
+	double ch4emissions(time, lat, lon) ;
+		ch4emissions:long_name = "CH4 emission rate" ;
+		ch4emissions:units = "molecules/cm2/s" ;
+
+// global attributes:
+		:Title = "CH4_emissions" ;
+		:Author = "Ann Stavert" ;
+		:Created = "Sun Apr 27 15:22:18 2014" ;
+"""
+class read_flux:
+    def __init__(self, filename):
+    
+        print 'Reading file : ' + filename
+        
+        if type(filename) == tuple:
+            filename = filename[0]
+        
+        data=netCDF4.Dataset(filename)
+        
+        emiss_varname = (str(data.__getattribute__('Title'))).strip()[0:3]
+        
+        # convert from upper to lowercase
+        name_dict = {'CO2' : 'co2',\
+                    'CH4' :'ch4',\
+                    'N2O' : 'n2o'}
+        emiss_varname = name_dict[emiss_varname]
+        
+        emiss = data.variables[emiss_varname+'emissions'][:]
+        date = data.variables['date'][:] # Date YYYYMMDD
+        lon = data.variables['lon'][:].astype('float')
+        lat = data.variables['lat'][:].astype('float')
+        time = data.variables['time'][:].astype('float')
+        
+        # Split up the date based on position        
+        year = np.asarray([int(((date.astype('str'))[i])[0:4]) for i in np.arange(len(date))])
+        month = np.asarray([int(((date.astype('str'))[i])[4:6]) for i in np.arange(len(date))])
+        day = np.asarray([int(((date.astype('str'))[i])[6:8]) for i in np.arange(len(date))])
+        
+        dt_date = [dt.datetime(year[i],month[i],day[i]) for i in np.arange(len(date))]
+        
+        # Calculate monthly means use xray
+        import xray
+        
+        x_data = xray.DataArray(emiss, [('date', dt_date), ('lat', lat), ('lon', lon)])
+        monthly_means = x_data.resample('MS', dim='date', how='mean')
+        
+         
+        self.time = time
+        self.time_units = data.variables['time'].__getattribute__('units')
+        self.dt_date = dt_date
+        self.year = year
+        self.month = month
+        self.day = day
+        self.emiss = emiss
+        self.monthly_time = monthly_means.date.values
+        self.monthly_means = monthly_means.values
+        self.species = emiss_varname
+        self.emis_units = data.variables[emiss_varname+'emissions'].__getattribute__('units')  
+        self.lon = lon
+        self.lat = lat
+        self.filename = filename     
+        
+                 
              
  # Class to read in the site file GONZI netcdf version       
 class read_sitefile_GONZI_nc:
@@ -185,7 +273,7 @@ class read_fixed_sitefile_nc:
     def __init__(self, sitefile = 0, species = 'CH4', dir = '/data/shared/GAUGE/'):
         
         if type(sitefile) == int:
-            sitefile = dir + species + '/mozart_obs_stationary.nc'
+            sitefile = dir + species + '/global_obs_stationary*.nc'
         
         print 'Using site file : ' + sitefile
         
@@ -236,10 +324,10 @@ class read_fixed_sitefile_nc:
 
  # Class to read in the netcdf site file written by matt listing the column sites (satelite + TCON)  
 class read_column_sitefile_nc:
-    def __init__(self, sitefile = 0, species = 'CH4', dir = '/data/shared/GAUGE/mozart_obs_column/', month = 1, year = 2009):
+    def __init__(self, sitefile = 0, species = 'CH4', dir = '/data/shared/GAUGE/global_obs_column*/', month = 1, year = 2009):
         
         if type(sitefile) == int:
-            sitefile = dir + species + '/mozart_obs_column' + str(month).zfill(2) +str(year)+ '.nc'
+            sitefile = dir + species + '/global_obs_column*' + str(month).zfill(2) +str(year)+ '.nc'
         
         data=netCDF4.Dataset(sitefile, 'r')
 
@@ -290,7 +378,7 @@ class read_mobile_sitefile_nc:
     def __init__(self, sitefile = 0, species = 'CH4', dir = '/data/shared/GAUGE/', month = 1, year = 2003):
         
         if type(sitefile) == type(0):
-            sitefile = dir + species + '/mozart_obs_mobile/mozart_obs_mobile_' +str(year)+ str(month).zfill(2)+'.nc'
+            sitefile = dir + species + '/global_obs_mobile_*/global_obs_mobile_*' +str(year)+ str(month).zfill(2)+'.nc'
         
         # Check if the site file exists
         exists = os.path.isfile(sitefile)
@@ -812,7 +900,7 @@ class data_filter_column:
 # This uses an individual MOZART history file
 # and a site file which contains the lat, lon, alt and time for moving sites
 class data_filter_mobile:
-    def __init__(self, mzfile, sitefile = '/data/shared/GAUGE/CH4/mozart_obs_mobile/mozart_obs_mobile_200301.nc'):   
+    def __init__(self, mzfile, sitefile = '/data/shared/GAUGE/CH4/global_obs_mobile_*/global_obs_mobile_*_200301.nc'):   
                 
     
         # Read MOZART file name
@@ -2208,9 +2296,6 @@ def plotlevel_MZT(data, level = -1, timestep = 0, out_filename=None,
 # Defaults to plotting the first timestep at lat = 0.94 and lon = 0
 def plotprofiles_MZT(data, timestep = 0, latindex = 48, lonindex = 0, out_filename=None, 
          minconc = None, maxconc = None):
-    
-    from mpl_toolkits.mplot3d import Axes3D
-    
 
     species = data.species
     
@@ -2236,6 +2321,7 @@ def plotprofiles_MZT(data, timestep = 0, latindex = 48, lonindex = 0, out_filena
     fig = plt.figure(figsize=(8,8))
     ax = fig.gca(projection='3d')
     
+    
     for i in np.arange(len(data.lon)/3)*3:
         y = conc_lons[:,i]
         z = p_lons[:,i]
@@ -2246,7 +2332,7 @@ def plotprofiles_MZT(data, timestep = 0, latindex = 48, lonindex = 0, out_filena
     ax.invert_zaxis()
     ax.azim = -20
     ax.elev = 10
-    ax.set_ylim3d(1800,2100)
+    #ax.set_ylim3d(1800,2100)
     ax.set_xlabel('lon')
     ax.set_ylabel(species + ' [' + units + ']')   
     ax.set_zlabel('Pressure (kPa)')
@@ -2256,7 +2342,7 @@ def plotprofiles_MZT(data, timestep = 0, latindex = 48, lonindex = 0, out_filena
     
     if out_filename is not None:
         out_filename = 'MZT_' + species + '_Lat'+str(np.round(data.lat[latindex]))+ '_'+data.time[timestep].strftime('%y%m%d_%H%M')+'.png'
-        plt.savefig('/home/as13988/Plots/' + out_filename)
+        fig.savefig('/home/as13988/Plots/' + out_filename)
     
     plt.close()
 
@@ -2285,6 +2371,6 @@ def plotprofiles_MZT(data, timestep = 0, latindex = 48, lonindex = 0, out_filena
     
     if out_filename is not None:
         out_filename = 'MZT_' + species + '_Lon'+ str(np.round(data.lon[lonindex]))+ '_'+data.time[timestep].strftime('%y%m%d_%H%M')+'.png'
-        plt.savefig('/home/as13988/Plots/' + out_filename)
+        fig.savefig('/home/as13988/Plots/' + out_filename)
     
     plt.close()
