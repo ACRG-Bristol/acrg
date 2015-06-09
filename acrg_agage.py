@@ -256,8 +256,8 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
     
             if not skip:
     
-                ncvarname=listsearch(ncf.variables, species, species_info)
-                
+                ncvarname=listsearch(ncf.variables.keys(), species, species_info)
+
                 df = pd.DataFrame({"mf": ncf.variables[ncvarname][:]},
                                   index = time)
                 

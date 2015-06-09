@@ -71,6 +71,15 @@
         "network": "GOSAT/GOSAT-INDIA",
         "platform": "satellite"
     },
+    "GSN" : {
+        "alt": ["GOSAN"],
+        "long_name" : "Gosan, Korea",
+        "height": ["10m"],
+        "height_name": ["10magl"],
+        "latitude": 126.1618,
+        "longitude": 33.29244,
+        "network": "AGAGE"
+    },
     "HAD" : {
         "alt": ["HADDENHAM"],
         "long_name" : "Haddenham, UK",

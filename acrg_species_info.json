@@ -48,7 +48,7 @@
         "print_string": "C$_8$F$_18$", 
         "units": "ppt"
     }, 
-    "CCl4": {"alt": [],
+    "CCl4": {"alt": ["carbon_tetrachloride"],
         "group": "Chloromethanes", 
         "long_name": "Carbon tetrachloride", 
         "mol_mass": "153.8236",
