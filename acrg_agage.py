@@ -34,9 +34,25 @@ from netCDF4 import Dataset
 from acrg_time import convert
 import json
 import datetime as dt
-
+import xray
 
 root_directory="/shared_data/air/shared/obs"
+
+#Get site info and species info from JSON files
+acrg_path=split(realpath(__file__))
+
+with open(acrg_path[0] + "/acrg_species_info.json") as f:
+    species_info=json.load(f)
+
+with open(acrg_path[0] + "/acrg_site_info.json") as f:
+    site_info=json.load(f)
+
+def is_number(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
 
 def synonyms(search_string, info):
     
@@ -64,7 +80,7 @@ def synonyms(search_string, info):
     return out_string
 
 def listsearch(varnames, species, species_info, label="alt"):
-    
+
     for v in varnames:
         if species.upper() == v.upper():
             out_string = v
@@ -125,20 +141,74 @@ def ukmo_flags(site, site_info):
         return pd.DataFrame(flag, index=flag_time, columns=("flags",))
 
 
-def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
-        height=None, baseline=False, average=None):
+def get_file_list(site, species, start, end, height,
+                  network = None, instrument = None):
         
+    if network is None:
+        file_network_string = site_info[site]["network"]
+    else:
+        file_network_string = network
+
+    data_directory=root_directory + "/" + file_network_string + "/"
+
+    if height is None:
+        file_height_string = site_info[site]["height"][0]
+    else:
+        if type(height) is not list:
+            height = [height]
+
+        file_height_string = listsearch(height, site, site_info, 
+                                        label="height")
+        if file_height_string is None:
+            print("Height " + height + " doesn't exist in site_info.json. "
+                + "Available heights are " + str(site_info[site]["height"])
+                + ". Leave blank for default height.")
+            return data_directory, None
+    
+    #Get file info
+    fnames, file_info = file_search_and_split(data_directory + "*.nc")
+
+    if len(fnames) == 0:
+        print("Can't find any data files: " + data_directory + "*.nc")
+        return data_directory, None
+        
+    file_site = [f[1] for f in file_info]
+    file_species = [re.split("-|\.", f[-1])[0] for f in file_info]
+    file_height = [re.split("-|\.", f[-1])[1] for f in file_info]
+    
+    #Get file list
+    file_species_string = listsearch(file_species, species, species_info)
+    if file_species_string is None:
+        print("Can't find files for species " + species + " in " + data_directory)
+        return data_directory, None
+        
+    file_site_string = listsearch(file_site, site, site_info)
+    if file_site_string is None:
+        print("Can't find files for site " + site + " in " + data_directory)
+        return data_directory, None
+
+    files = [f for f, si, sp, hi in \
+             zip(fnames, file_site, file_species, file_height) if \
+                 si.upper() == file_site_string.upper() and
+                 sp.upper() == file_species_string.upper() and
+                 hi.upper() == file_height_string.upper()]
+
+    if instrument is not None:
+        files = [f for f in files if instrument.upper() in f.upper()]
+
+    if len(files) == 0:
+        return data_directory, None
+    else:
+        files.sort()
+        return data_directory, files
+
+
+def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
+        height=None, baseline=False, average=None,
+        network = None, instrument = None):
+    
     start_time = convert.reftime(start)
     end_time = convert.reftime(end)
-    
-    #Get site info and species info from JSON files
-    acrg_path=split(realpath(__file__))
-    
-    with open(acrg_path[0] + "/acrg_species_info.json") as f:
-        species_info=json.load(f)
-
-    with open(acrg_path[0] + "/acrg_site_info.json") as f:
-        site_info=json.load(f)
     
     site = synonyms(site_in, site_info)
     if site is None:
@@ -151,191 +221,220 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
         print("No species called " + species_in +
             ". Either try a different name, or add name to species_info.json.")
         return
-    
-    if height is None:
-        file_network_string = site_info[site]["network"]
-        file_height_string = site_info[site]["height"][0]
-    else:
-        file_height_string = listsearch(height, site, site_info, 
-                                        label="height")
-        if file_height_string is None:
-            print("Height " + height + " doesn't exist in site_info.json. "
-                + "Available heights are " + str(site_info[site]["height"])
-                + ". Leave blank for default height.")
-            return
-
-    data_directory=root_directory + "/" + file_network_string + "/"
-    
-    #Get file info
-    fnames, file_info=file_search_and_split(data_directory + "*.nc")
-
-    if len(fnames) == 0:
-        print("Can't find any data files: " + data_directory + "*.nc")
-    file_inst = [f[0] for f in file_info]
-    file_site = [f[1] for f in file_info]
-    file_species = [re.split("-|\.", f[-1])[0] for f in file_info]
-    file_height = [re.split("-|\.", f[-1])[1] for f in file_info]
         
-    #Get file list
-    file_species_string = listsearch(file_species, species, species_info)
-    file_site_string = listsearch(file_site, site, site_info)
-
-    files = [f for f, si, sp, hi in \
-        zip(fnames, file_site, file_species, file_height) if \
-        si.upper() == file_site_string.upper() and
-        sp.upper() == file_species_string.upper() and
-        hi.upper() == file_height_string.upper()]
-    files.sort()
+    data_directory, files = get_file_list(site, species, start_time, end_time,
+                                          height, network = network,
+                                          instrument = instrument)
 
     #Get files
     #####################################
     
-    data_frames = []
+    if files is not None:
     
-    for f in files:
+        data_frames = []
         
-        print("Reading: " + f)
-
-        skip = False
+        for f in files:
+            
+            print("Reading: " + f)
+    
+            skip = False
+            
+            ncf=Dataset(data_directory + f, 'r')
+    
+            if "time" not in ncf.variables:
+                print("Skipping: " + f + ". No time variable")
+                skip = True
+    
+            else:
+                time = convert.sec2time(ncf.variables["time"][:], 
+                                        ncf.variables["time"].units[14:])
+                   
+                if max(time) < start_time:
+                    skip = True
+                if min(time) > end_time:
+                    skip = True
+    
+            if not skip:
+    
+                ncvarname=listsearch(ncf.variables, species, species_info)
+                
+                df = pd.DataFrame({"mf": ncf.variables[ncvarname][:]},
+                                  index = time)
+                
+                if is_number(ncf.variables[ncvarname].units):
+                    units = float(ncf.variables[ncvarname].units)
+                else:
+                    units = str(ncf.variables[ncvarname].units)
+                
+                #Get repeatability
+                if ncvarname + "_repeatability" in ncf.variables.keys():
+                    file_dmf=ncf.variables[ncvarname + "_repeatability"]
+                    if len(file_dmf) > 0:
+                        df["dmf"] = file_dmf[:]
         
-        ncf=Dataset(data_directory + f, 'r')
-
-        if "time" not in ncf.variables:
-            print("Skipping: " + f + ". No time variable")
-            skip = True
-
+                #Get variability
+                if ncvarname + "_variability" in ncf.variables.keys():
+                    file_vmf=ncf.variables[ncvarname + "_variability"]
+                    if len(file_vmf) > 0:
+                        df["vmf"] = file_vmf[:]
+        
+                #Get status flag
+                if ncvarname + "_status_flag" in ncf.variables.keys():
+                    file_flag=ncf.variables[ncvarname + "_status_flag"]
+                    if len(file_flag) > 0:
+                        df["status_flag"] = file_flag[:]
+                        df = df[df.status_flag < 3]
+            
+                if units != "permil":
+                    df = df[df.mf > 0.]
+                
+                data_frames.append(df)
+    
+            ncf.close()
+    
+        if len(data_frames) > 0:
+            data_frame = pd.concat(data_frames).sort()
+            data_frame.index.name = 'time'
+            data_frame = data_frame[start_time : end_time]
         else:
-            time = convert.sec2time(ncf.variables["time"][:], 
-                                    ncf.variables["time"].units[14:])
-               
-            if max(time) < start_time:
-                skip = True
-            if min(time) > end_time:
-                skip = True
-
-        if not skip:
-
-            ncvarname=listsearch(ncf.variables, species, species_info)
-            
-            df = pd.DataFrame({"mf": ncf.variables[ncvarname][:]},
-                              index = time)
-            units = float(ncf.variables[ncvarname].units)
-            
-            #Get repeatability
-            if ncvarname + "_repeatability" in ncf.variables.keys():
-                file_dmf=ncf.variables[ncvarname + "_repeatability"]
-                if len(file_dmf) > 0:
-                    df["dmf"] = file_dmf[:]
+            return None
     
-            #Get variability
-            if ncvarname + "_variability" in ncf.variables.keys():
-                file_vmf=ncf.variables[ncvarname + "_variability"]
-                if len(file_vmf) > 0:
-                    df["vmf"] = file_vmf[:]
-    
-            #Get status flag
-            if ncvarname + "_status_flag" in ncf.variables.keys():
-                file_flag=ncf.variables[ncvarname + "_status_flag"]
-                if len(file_flag) > 0:
-                    df["status_flag"] = file_flag[:]
-                    df = df[df.status_flag < 3]
+        #Do baseline filtering
+        if baseline:
+            #Get flags
+            flagdf=ukmo_flags(site, site_info)
+            
+            if flagdf is None:
+                print("No baseline flags, sorry!")
+            else:
+                #Truncate time series if no flags available
+                data_frame=data_frame[min(flagdf.index) : max(flagdf.index)]
+                #Re-index flag time series to mf Data frame index
+                data_frame["flag"]=flagdf.reindex(index=data_frame.index,
+                                                  method='pad')
+                #Only retain background
+                data_frame=data_frame[data_frame['flag']==10]
         
-            df = df[df.mf > 0.]
-            
-            data_frames.append(df)
+        if average is not None:
+            how = {}
+            for key in data_frame.columns:
+                if key == "dmf":
+                    how[key] = quadratic_sum
+                else:
+                    how[key] = "median"
+            data_frame=data_frame.resample(average, how=how)
+    
+        # Drop NaNs
+        data_frame.dropna(inplace = True)
+    
+        data_frame.mf.units = units
+    
+        return data_frame
 
-        ncf.close()
-
-    if len(data_frames) > 0:
-        data_frame = pd.concat(data_frames).sort()
-        data_frame.index.name = 'time'
-        data_frame = data_frame[start_time : end_time]
     else:
+        
         return None
 
-    #Do baseline filtering
-    if baseline:
-        #Get flags
-        flagdf=ukmo_flags(site, site_info)
-        
-        if flagdf is None:
-            print("No baseline flags, sorry!")
-        else:
-            #Truncate time series if no flags available
-            data_frame=data_frame[min(flagdf.index) : max(flagdf.index)]
-            #Re-index flag time series to mf Data frame index
-            data_frame["flag"]=flagdf.reindex(index=data_frame.index,
-                                              method='pad')
-            #Only retain background
-            data_frame=data_frame[data_frame['flag']==10]
+
+def get_gosat(site, species, start = "1900-01-01", end = "2020-01-01"):
     
-    if average is not None:
-        how = {}
-        for key in data_frame.columns:
-            if key == "dmf":
-                how[key] = quadratic_sum
-            else:
-                how[key] = "median"
-        data_frame=data_frame.resample(average, how=how)
+    start_time = convert.reftime(start)
+    end_time = convert.reftime(end)
 
-    # Drop NaNs
-    data_frame.dropna(inplace = True)
+    data_directory, files = get_file_list(site, species, start_time, end_time,
+                                          None)
+    files_date = [convert.reftime(f.split("_")[2][0:8]) for f in files]
+    files_keep = [True if d >= start_time and d < end_time else False for d in files_date]
+    files = [f for (f, k) in zip(files, files_keep) if k == True]
 
-    data_frame.mf.units = units
-
-    return data_frame
+    data = []
+    for f in files:
+        data.append(xray.open_dataset(data_directory + f))
     
+    data = xray.concat(data, dim = "time")
+
+    prior_factor = (data.pressure_weights* \
+                    (1.-data.xch4_averaging_kernel)* \
+                    data.ch4_profile_apriori).sum(dim = "lev")
+
+    data["mf_prior_factor"] = prior_factor
+    data["mf"] = data.xch4 - data.mf_prior_factor
+    data["dmf"] = data.xch4_uncertainty
+
+    data = data.drop("lev")
+    data = data.drop(["xch4", "xch4_uncertainty", "lon", "lat"])
+    data = data.to_dataframe()
+    
+    if species.upper() == "CH4":
+        data.mf.units = 1e9
+    if species.upper() == "CO2":
+        data.mf.units = 1e6
+
+    return data
+
 
 def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
-            height=None, baseline=False, average = None):
+            height = None, baseline = False, average = None,
+            network = None, instrument = None):
+
+
+    def check_list_and_length(var, sites, error_message_string):
+        if var is not None:
+            if type(var) is not list:
+                var = [var]
+            if len(var) != len(var):
+                print("If you're going to specify " + error_message_string +
+                      ", make sure the length of the height list is " +
+                      "the same length as sites list. Returning.")
+                return None
+        else:
+            var = [None for i in sites]
+        return var
+
 
     # Prepare inputs
     start_time = convert.reftime(start)
     end_time = convert.reftime(end)
 
+    if end_time < start_time:
+        print("End time is before start time")
+        return None
+
     if type(sites) is not list:
         sites = [sites]
 
-    if average is not None:
-        if type(average) is not list:
-            average = [average]
-    
-    obs = {}
+    height = check_list_and_length(height, sites, "height")
+    average = check_list_and_length(average, sites, "average")
+    network = check_list_and_length(network, sites, "network")
+    instrument = check_list_and_length(instrument, sites, "instrument")
 
-    if height is not None:
-        if len(height) != len(sites):
-            print("If you're going to specify heights, " +
-                  "make sure the length of the height list is " +
-                  "the same length as sites list. Returning.")
-            return None
-    else:
-        height = [None for i in sites]
-
-    if average is not None:
-        if len(average) != len(sites):
-            print("If you're going to specify averaging, " +
-                  "make sure the length of the average list is " +
-                  "the same length as sites list. Returning.")
-            return None
-    else:
-        average = [None for i in sites]
-
+    if height == None or average == None or network == None or instrument == None:
+        return None
 
     # Get data
+    obs = {}
     for si, site in enumerate(sites):
-        data = get(site, species, height = height[si],
-                   start = start_time, end = end_time,
-                   average = average[si])
+        print(site)
+        if "GOSAT" in site.upper():
+            data = get_gosat(site, species,
+                       start = start_time, end = end_time)
+        else:
+            data = get(site, species, height = height[si],
+                       start = start_time, end = end_time,
+                       average = average[si],
+                       network = network[si],
+                       instrument = instrument[si])
+                       
         if data is not None:
             obs[site] = data.copy()
     
     # Add some attributes
-    obs[".species"] = species
-    obs[".units"] = data.mf.units
+    if data is not None:
+        obs[".species"] = species
+        obs[".units"] = data.mf.units
     
     if len(obs) == 0:
         return None
     else:
         return obs
-    
     

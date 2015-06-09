@@ -9,6 +9,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
 from mpl_toolkits.mplot3d import Axes3D
+from matplotlib.ticker import MaxNLocator
+from matplotlib.colors import BoundaryNorm
 import datetime as dt
 import os
 import glob
@@ -126,7 +128,7 @@ def footprints(sitecode_or_filename, start = "2010-01-01", end = "2016-01-01",
         # If a species is specified, also get flux            
         if species is not None:
             flux_ds = flux(domain, species)
-            if flux is not None:
+            if flux_ds is not None:
                 fp = combine_datasets(fp, flux_ds)
         
         return fp
@@ -142,7 +144,7 @@ def flux(domain, species):
     """
 
     files = sorted(glob.glob(flux_directory + domain + "/" + 
-                   species.lower() + "*.nc"))
+                   species.lower() + "_" + "*.nc"))
     if len(files) == 0:
         print("Can't find flux: " + domain + " " + species)
         return None
@@ -153,6 +155,25 @@ def flux(domain, species):
     flux_ds = xray.concat(flux_ds, dim = "time")
 
     return flux_ds
+
+
+def basis(domain, basis_case = 'voronoi'):
+    """
+    Read in a basis function file.
+    """
+    
+    files = sorted(glob.glob(basis_directory + domain + "/" +
+                    basis_case + "*.nc"))
+    if len(files) == 0:
+        print("Can't find basis functions: " + domain + " " + basis_case)
+        return None
+        
+    basis_ds = []
+    for f in files:
+        basis_ds.append(xray.open_dataset(f))
+    basis_ds = xray.concat(basis_ds, dim = "time")
+
+    return basis_ds
 
 
 def combine_datasets(dsa, dsb, method = "ffill"):
@@ -198,7 +219,7 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
         
         data = {"MHD": MHD_dataframe, "TAC": TAC_dataframe}
 
-    The dataset must me labeled with "time" index, "mf" and "dmf" columns.
+    The dataset must be labeled with "time" index, "mf" and "dmf" columns.
     To combine this with corresponding NAME footprints:
     
         dataset = footprints_data_merge(data)
@@ -244,7 +265,9 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
 
         # Get footprints
         site_fp = footprints(site, start = start, end = end,
-                             domain = domain, species = species)
+                                 domain = domain,
+                                 species = [species if calc_timeseries == True \
+                                             else None][0])
         
         if site_fp is not None:
             
@@ -264,100 +287,126 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
                 site_ds = site_ds.resample(average[si], dim = "time")
             
             fp_and_data[site] = site_ds
+        
+    for a in attributes:
+        fp_and_data[a] = data[a]
 
     return fp_and_data
 
 
-
-
-
-def filtering(time, mf, filt):
-
-    def midday(time, mf):
-        df=pandas.DataFrame(mf, index=time, columns=['mf'])
-        dfpm=df[(df.index.hour>=10) * (df.index.hour<=15)]
-        dfr=dfpm.resample("1D", how="median")
-        return [t.to_pydatetime() + dt.timedelta(0.5) for t in dfr.index], \
-                np.array(dfr['mf'])
+def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
+    """
+    Adds a sensitivity matrix, H, to each site xray dataframe in fp_and_data.
     
-    def daytime2hr(time,mf):
-        df=pandas.DataFrame(mf, index=time, columns=['mf'])
-        dfpm=df[(df.index.hour>=10) * (df.index.hour<=16)]
-        dfr = dfpm.resample("2H", how="mean")
-        dfn = dfr.dropna()
-        return [t.to_pydatetime() for t in dfn.index], \
-                np.array(dfn['mf'])
-
-    filters={"midday":midday,
-             "daytime2hr":daytime2hr}
-            
-    return filters[filt](time, mf)
-
-
-def sensitivity_single_site(site, species,
-                years=[2012], flux_years=None,
-                domain="small", basis_case='voronoi', filt=None):
+    Basis function data in an array: lat, lon, no. regions. In each 'region'
+    element of array there is a lt lon grid with 1 in region and 0 outside region.
+    """    
     
-    if flux_years is None:
-        flux_years=years
+    sites = [key for key in fp_and_data.keys() if key[0] != '.']
+    attributes = [key for key in fp_and_data.keys() if key[0] == '.']
+    basis_func = basis(domain = domain, basis_case = basis_case)
     
-    fp_data=read(site, years, domain=domain)
-    flux_data=flux(species, flux_years, domain=domain)    
-    basis_data = basis_function(basis_case, years=years, domain=domain)
+    for site in sites:
 
-    basis_scale=np.ones(np.max(basis_data.basis))
-    
-    time, reference = footprint_x_flux(fp_data, flux_data, 
-                    basis=basis_data.basis[:,:,0], basis_scale=basis_scale, 
-                    filt=filt)
-
-    sensitivity=np.zeros((len(reference), len(basis_scale)))
-    
-    
-    for xi, scale in enumerate(basis_scale):
-        basis_scale_perturbed=basis_scale.copy()
-        basis_scale_perturbed[xi] += 1.
-        time, perturbed = footprint_x_flux(fp_data, flux_data, 
-                        basis=basis_data.basis[:,:,0], 
-                        basis_scale=basis_scale_perturbed, 
-                        filt=filt)
-        sensitivity[:, xi] = perturbed - reference
-
-    return time, sensitivity
-
-
-def sensitivity(fp_data, basis_case='voronoi', filt=None, alt_fp_filename = None):
-#Using alt_fp_filename only works for one site at the moment
-    H=[]
-    y_time=[]
-    y_site=[]
-    y=[]
-
-    for site in sorted(obs.iterkeys()):
-        if alt_fp_filename is not None:
-            ts, Hs = sensitivity_single_site(alt_fp_filename, species, years, 
-                                flux_years=flux_years, domain=domain,
-                                basis_case = basis_case, filt=filt)
-        else:
-            ts, Hs = sensitivity_single_site(site, species, years, 
-                                flux_years=flux_years, domain=domain, 
-                                basis_case = basis_case, filt=filt)
-        df_site = pandas.DataFrame(Hs, index=ts)
-        obsdf = obs[site].dropna()
-        Hdf = df_site.reindex(obsdf.index)
-        Hdf2 = Hdf.dropna()
-        obsdf2 = obsdf.reindex(Hdf2.index)
-        y_time.append(Hdf2.index.to_pydatetime())
-        y_site.append([site for i in range(len(Hdf2.index))])
-        y.append(obsdf2.values)
-        H.append(Hdf2.values)
+        site_bf = combine_datasets(fp_and_data[site]["fp", "flux", "mf_mod"],
+                                   basis_func)
         
-    H=np.vstack(H)
-    y_time=np.hstack(y_time)
-    y_site=np.hstack(y_site)
-    y=np.vstack(y)
+        reference = site_bf.mf_mod
+        
+        H = np.zeros((len(site_bf.coords['region']),len(reference)))
+        
+        if ".units" in attributes:
+            site_bf.fp = site_bf.fp / fp_and_data[".units"]        
+        
+        for i in range(len(site_bf.coords['region'])):
+            reg = site_bf.basis.sel(region=i)
+            flux_scale = reg + 1.
+            perturbed = (site_bf.fp*site_bf.flux*flux_scale).sum(["lat", "lon"])
+            H[i,:] = perturbed - reference
+        
+        sensitivity = xray.Dataset({'H': (['region','time'], H)},
+                                    coords = {'region': (site_bf.coords['region']),
+                                              'time' : (fp_and_data[site].coords['time'])})
 
-    return y_time, y_site, y, H
+        fp_and_data[site] = fp_and_data[site].merge(sensitivity)
+    
+    return fp_and_data
+    
+    
+def merge_sensitivity(fp_data_H):
+#    outputs y, y_site, y_time, H
+    y = []
+    y_error = []
+    y_site = []
+    y_time = []
+    H = []
+    
+    sites = [key for key in fp_data_H.keys() if key[0] != '.']
+    for si, site in enumerate(sites):
+        y.append(fp_data_H[site].mf.values)
+        y_error.append(fp_data_H[site].dmf.values)
+        y_site.append([site for i in range(len(fp_data_H[site].coords['time']))])
+        y_time.append(fp_data_H[site].coords['time'].values)
+        H.append(fp_data_H[site].H.values)
+    
+    y = np.hstack(y)
+    y_error = np.hstack(y_error)
+    y_site = np.hstack(y_site)
+    y_time = np.hstack(y_time)
+    H = np.hstack(H)
+    
+    return y, y_error, y_site, y_time, H.T
+    
+
+def filtering(datasets_in, filters):
+    """
+    Apply filtering (in time dimension) to entire dataset.
+    
+    Filters supplied in a list and then applied in order. So, if you want
+    a daily, daytime average, you could do this:
+    
+    datasets_dictionary = filtering(datasets_dictionary, 
+                                    ["daytime", "daily_median"])
+    
+    The first filter "daytime" selects data between 1000 and 1500 UTC,
+    the second "daily_median" calculates the daily median. Obviously in this
+    case, you need to do the first filter before the second.    
+    """
+
+    if type(filters) is not list:
+        filters = [filters]
+
+    datasets = datasets_in.copy()
+
+    # Filter functions
+    def daily_median(dataset):
+        # Calculate daily median
+        return dataset.resample("1D", "time", how = "median")
+    
+    def daytime(dataset):
+        # Subset during daytime hours
+        hours = dataset.time.to_pandas().index.hour
+        ti = [i for i, h in enumerate(hours) if h >= 10 and h <= 15]
+        return dataset[dict(time = ti)]
+
+    def pblh_gt_500(dataset):
+        # Subset for times when boundary layer height is > 500m
+        ti = [i for i, pblh in enumerate(dataset.PBLH) if pblh > 500.]
+        return dataset[dict(time = ti)]
+        
+    filtering_functions={"daily_median":daily_median,
+                         "daytime":daytime,
+                         "pblh_gt_500": pblh_gt_500}
+
+    # Get list of sites
+    sites = [key for key in datasets.keys() if key[0] != '.']
+    
+    # Do filtering
+    for site in sites:
+        for filt in filters:
+            datasets[site] = filtering_functions[filt](datasets[site])
+
+    return datasets
 
 
 def baseline(y, y_time, y_site, x_error = 10000, days_to_average = 5):
@@ -502,7 +551,8 @@ class analytical_inversion:
 
 class plot_map_setup:
     def __init__(self, fp_data, 
-                 lon_range = None, lat_range = None):
+                 lon_range = None, lat_range = None,
+                 bottom_left = False):
 
         if lon_range is None:
             lon_range = (min(fp_data.lon.values),
@@ -516,8 +566,15 @@ class plot_map_setup:
             llcrnrlon=lon_range[0], urcrnrlon=lon_range[1],
             resolution='l')
 
-        lons, lats = np.meshgrid(fp_data.lon.values,
-                                 fp_data.lat.values)
+        if bottom_left == False:
+            lons, lats = np.meshgrid(fp_data.lon.values,
+                                     fp_data.lat.values)
+        else:
+            dlon = fp_data.lon.values[1] - fp_data.lon.values[0]
+            dlat = fp_data.lat.values[1] - fp_data.lat.values[0]            
+            lons, lats = np.meshgrid(fp_data.lon.values - dlon,
+                                     fp_data.lat.values - dlat)
+        
         x, y = m(lons, lats)
         
         self.x = x
@@ -595,7 +652,8 @@ def plot(fp_data, date, out_filename=None,
     for site in sites:
     
         fp_data_ti = fp_data[site].reindex_like( \
-                        xray.Dataset(coords = {"time": [date]}), method = "pad")
+                        xray.Dataset(coords = {"time": [date]}),
+                        method = "nearest")
         data += np.nan_to_num(fp_data_ti.fp.values.squeeze())
 
         # Store release location to overplot later
@@ -638,13 +696,157 @@ def plot(fp_data, date, out_filename=None,
         plt.show()
 
 
+def plot_scatter(fp_data, date, out_filename=None, 
+         lon_range=None, lat_range=None, cutoff = -3.,
+         map_data = None, zoom = False):
+    
+    """date as string "d/m/y H:M" or datetime object 
+    datetime.datetime(yyyy,mm,dd,hh,mm)
+    """
+    
+    # Looks for nearest time point aviable in footprint   
+    date = convert.reftime(date)
+
+    # Get sites
+    sites = [key for key in fp_data.keys() if key[0] != '.']
+
+    # Zoom in. Assumes release point is to the East of centre
+    if zoom:
+        lat_range, lon_range = plot_map_zoom(fp_data)
+        
+    # Get map data
+    if map_data is None:
+        map_data = plot_map_setup(fp_data[sites[0]],
+                                  lon_range = lon_range,
+                                  lat_range = lat_range, bottom_left = True)
+
+    # Open plot
+    fig = plt.figure(figsize=(8,8))
+    fig.add_axes([0.1,0.1,0.8,0.8])
+
+    map_data.m.drawcoastlines()
+    map_data.m.fillcontinents(color='grey',lake_color=None, alpha = 0.2)
+    map_data.m.drawcountries()
+
+    #Calculate color levels
+#    cmap = {"SURFACE": plt.cm.BuPu,
+#            "SHIP": plt.cm.Blues,
+#            "AIRCRAFT": plt.cm.Reds,
+#            "SATELLITE": plt.cm.Greens}
+    cmap = plt.cm.YlGnBu
+    rp_color = {"SURFACE": "blue",
+                "SHIP": "purple",
+                "AIRCRAFT": "red",
+                "SATELLITE": "green"}
+            
+    levels = MaxNLocator(nbins=100).tick_values(cutoff, -1.)
+
+#    norm = {}
+#    for platform in cmap.keys():
+#        norm[platform] = BoundaryNorm(levels,
+#                                      ncolors=cmap[platform].N,
+#                                      clip=True)
+    norm = BoundaryNorm(levels,
+                        ncolors=cmap.N,
+                        clip=True)
+
+    # Create dictionaries and arrays    
+    release_lon = {}
+    release_lat = {}
+
+    data = {}
+
+    platforms = ["SURFACE", "SHIP", "AIRCRAFT", "SATELLITE"]
+
+#    for platform in platforms:
+#        data[platform] = np.zeros(np.shape(
+#            fp_data[sites[0]].fp[dict(time = [0])].values.squeeze()))
+    data = np.zeros(np.shape(
+            fp_data[sites[0]].fp[dict(time = [0])].values.squeeze()))
+
+    # Generate plot data
+    for site in sites:
+    
+        tdelta = fp_data[site].time - date
+        if np.min(np.abs(tdelta)) < 2*3600.*1e9:
+
+            fp_data_ti = fp_data[site].reindex_like( \
+                            xray.Dataset(coords = {"time": [date]}),
+                            method = "nearest")
+            
+#            if "platform" in site_info[site]:
+#                data[site_info[site]["platform"].upper()] += \
+#                    np.nan_to_num(fp_data_ti.fp.values.squeeze())
+#            else:
+#                data["SURFACE"] += np.nan_to_num(fp_data_ti.fp.values.squeeze())
+            data += np.nan_to_num(fp_data_ti.fp.values.squeeze())
+    
+            # Store release location to overplot later
+            if "release_lat" in dir(fp_data_ti):
+                release_lon[site] = fp_data_ti.release_lon.values
+                release_lat[site] = fp_data_ti.release_lat.values
+
+    #Set very small elements to zero
+#    for platform in platforms:
+#        data[platform] = np.log10(data[platform])
+#        data[platform][np.where(data[platform] <  cutoff)]=np.nan
+    data = np.log10(data)
+    data[np.where(data <  cutoff)]=np.nan
+    
+#    #Plot SURFACE contours
+#    cs = map_data.m.pcolormesh(map_data.x, map_data.y,
+#                               np.ma.masked_where(np.isnan(data["SURFACE"]), data["SURFACE"]),
+#                               cmap = cmap["SURFACE"], norm = norm["SURFACE"])
+#
+#    for platform in [p for p in platforms if p != "SURFACE"]:
+#        cp = map_data.m.pcolormesh(map_data.x, map_data.y,
+#                                   np.ma.masked_where(np.isnan(data[platform]), data[platform]),
+#                                   cmap = cmap[platform],
+#                                   norm = norm[platform], alpha = 0.6, antialiased = True)
+    cs = map_data.m.pcolormesh(map_data.x, map_data.y,
+                               np.ma.masked_where(np.isnan(data), data),
+                               cmap = cmap, norm = norm)
+
+    # over-plot release location
+    if len(release_lon) > 0:
+        for site in sites:
+            if site in release_lon:
+                rplons, rplats = np.meshgrid(release_lon[site],
+                                             release_lat[site])
+                rpx, rpy = map_data.m(rplons, rplats)
+                if "platform" in site_info[site]:
+                    color = rp_color[site_info[site]["platform"].upper()]
+                else:
+                    color = rp_color["SURFACE"]
+                rp = map_data.m.scatter(rpx, rpy, 40, color = color)
+    
+    plt.title(str(pd.to_datetime(str(date))), fontsize=20)
+
+    cb = map_data.m.colorbar(cs, location='bottom', pad="5%")
+    
+    tick_locator = ticker.MaxNLocator(nbins=7)
+    cb.locator = tick_locator
+    cb.update_ticks()
+ 
+    cb.set_label('log$_{10}$( (mol/mol) / (mol/m$^2$/s) )', 
+                 fontsize=15)
+    cb.ax.tick_params(labelsize=13) 
+    
+    if out_filename is not None:
+        plt.savefig(out_filename)
+        plt.close()
+    else:
+        plt.show()
+
+
 def time_unique(fp_data):
     
-    sites = fp_data.keys()
+    sites = [key for key in fp_data.keys() if key[0] != '.']
     
     time = fp_data[sites[0]].time.to_dataset()
     if len(sites) > 1:
         for site in sites[1:]:
+            print(site)
             time.merge(fp_data[site].time.to_dataset(), inplace = True)
     
     return time
@@ -718,12 +920,12 @@ def plot3d(fp_data, date, out_filename=None,
 
 def animate(fp_data, output_directory, 
             lon_range = None, lat_range=None, zoom = False,
-            cutoff = -3.5,
+            cutoff = -3.,
             overwrite=True, file_label = 'fp', 
             framerate=10, delete_png=False,
             video_os="mac", ffmpeg_only = False):
     
-    sites = fp_data.keys()
+    sites = [key for key in fp_data.keys() if key[0] != '.']
     
     if ffmpeg_only is False:
 
@@ -733,7 +935,7 @@ def animate(fp_data, output_directory,
             
         map_data = plot_map_setup(fp_data[sites[0]], 
                                   lon_range = lon_range, 
-                                  lat_range= lat_range)
+                                  lat_range= lat_range, bottom_left = True)
         
         # Find unique times
         times = time_unique(fp_data)
@@ -748,7 +950,7 @@ def animate(fp_data, output_directory,
                                file_label + '_' + str(ti).zfill(5) + '.png')
                                
             if len(glob.glob(fname)) == 0 or overwrite == True:            
-                plot(fp_data, t, out_filename = fname, 
+                plot_scatter(fp_data, t, out_filename = fname, 
                      lon_range = lon_range, lat_range= lat_range,
                      cutoff=cutoff, map_data = map_data)
                      
