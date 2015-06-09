@@ -75,6 +75,7 @@ MLR: Added distancelist. Given a list of lon/lat pairs, outputs a list of
  
 import math
 import numpy as np
+from numba import jit
 
 radius = 6371 #km
  
@@ -91,8 +92,34 @@ def distance(origin, destination, radius=radius):
  
     return d
     
+# Turns the multipledistances into a function rather than a class
+@jit
+def fn_multipledistances(origin, lat, lon, distances):
+    # Calculate the distance between the point of interest and 
+    #  ALL points in the grid
+    lat1, lon1 = origin
     
- 
+    distances = np.zeros(len(lat))    
+    
+    for j in np.arange(len(lon)):
+        
+        lat2 = lat[j]
+        lon2 = lon[j]
+
+        dlat = math.radians(lat2-lat1)
+        dlon = math.radians(lon2-lon1)
+        
+        a = math.sin(dlat/2) * math.sin(dlat/2) + math.cos(math.radians(lat1)) \
+            * math.cos(math.radians(lat2)) * math.sin(dlon/2) * math.sin(dlon/2)
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+        
+        d_j = radius * c        
+        
+        distances[j] = d_j
+    
+    return distances
+    
+    
 class multipledistances:
     def __init__(self, origin, lat, lon, \
         radius=radius):
