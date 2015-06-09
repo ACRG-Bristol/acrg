@@ -47,7 +47,12 @@ class read:
         
         if 'h1' in filename:        
             conc_varname = (str(data.__getattribute__('title'))).strip()+'_13:30_LT'
-          
+        
+        if 'h2' in filename:        
+            conc_varname = (str(data.__getattribute__('title'))).strip()+'_VMR_avrg'
+        
+        
+        
         conc = data.variables[conc_varname][:]
         date = data.variables['date'][:] # Date YYYYMMDD
         secs = data.variables['datesec'][:] # Seconds to be added to above date to make date-time variable
