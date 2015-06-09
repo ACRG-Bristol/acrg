@@ -358,20 +358,23 @@ class rbf_4():
         
         yi = y - min(y)         
         
+        reload(haversine)        
+        
         # Want to start with E = average distance between centres
         # Calculate the distance between the each centre and the rest
         for i in np.arange(36):
             temp = np.zeros(len(ci[0,:]))
             
-            # syntax (origin, lat, lon)
-            ci_dist = haversine.fn_multipledistances(ci[:,i], ci[0,:], ci[1,:], temp)
+            
+            # syntax (origin, lat, lon, output, index array)
+            index = np.arange(len(ci[:,0]))
+            ci_dist = haversine.fn_multipledistances(ci[:,i], ci[0,:], ci[1,:], temp, index)
             
             if i == 0:
                 dist = ci_dist
             else:
                 dist = np.concatenate((dist,ci_dist))
         
-            
         
         epsilon_i = np.zeros(nocentres)
         epsilon_i[:] = (1/np.mean(dist))**2
