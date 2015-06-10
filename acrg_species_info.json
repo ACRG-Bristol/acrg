@@ -153,7 +153,7 @@
         "print_string": "CH$_4$", 
         "units": "ppb"
     }, 
-    "CH4C13": {"alt": [],
+    "CH4C13": {"alt": ["d13ch4"],
         "group": "CH4", 
         "long_name": "Methane 13C", 
         "mol_mass": 17.0426, 

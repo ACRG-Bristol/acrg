@@ -257,7 +257,15 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
             if not skip:
     
                 ncvarname=listsearch(ncf.variables.keys(), species, species_info)
-
+                
+                if ncvarname is None:
+                    print("Can't find mole fraction variable name '" + species + 
+                          "' or alternatives in file. Either change " + 
+                          "variable name, or add alternative to " + 
+                          "acrg_species_info.json")
+                    ncf.close()
+                    return None
+                
                 df = pd.DataFrame({"mf": ncf.variables[ncvarname][:]},
                                   index = time)
                 
