@@ -311,18 +311,19 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
         site_bf = combine_datasets(fp_and_data[site]["fp", "flux", "mf_mod"],
                                    basis_func)
         
-        reference = site_bf.mf_mod
+        #reference = site_bf.mf_mod
         
-        H = np.zeros((len(site_bf.coords['region']),len(reference)))
+        H = np.zeros((len(site_bf.coords['region']),len(site_bf.mf_mod)))
         
         if ".units" in attributes:
             site_bf.fp = site_bf.fp / fp_and_data[".units"]        
         
         for i in range(len(site_bf.coords['region'])):
             reg = site_bf.basis.sel(region=i)
-            flux_scale = reg + 1.
-            perturbed = (site_bf.fp*site_bf.flux*flux_scale).sum(["lat", "lon"])
-            H[i,:] = perturbed - reference
+            #flux_scale = reg + 1.
+            #perturbed = (site_bf.fp*site_bf.flux*flux_scale).sum(["lat", "lon"])
+            #H[i,:] = perturbed - reference
+            H[i,:] = (site_bf.fp*site_bf.flux*reg).sum(["lat", "lon"])
         
         sensitivity = xray.Dataset({'H': (['region','time'], H)},
                                     coords = {'region': (site_bf.coords['region']),
