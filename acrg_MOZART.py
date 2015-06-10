@@ -101,7 +101,7 @@ class read:
             self.emissunits = data.variables[emiss_varname].getncattr('units')
         if 'h2' in filename:
             start_date = data.variables['nbdate'][:]
-            dt_start_date = dt.datetime.strptime(str(start_date[0]),'%Y%m%d')
+            dt_start_date = dt.datetime.strptime(str(start_date),'%Y%m%d')
             self.start_date = dt_start_date
 
 # Class to read in the data
