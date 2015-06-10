@@ -50,8 +50,7 @@ class read:
         
         if 'h2' in filename:        
             conc_varname = (str(data.__getattribute__('title'))).strip()+'_VMR_avrg'
-        
-        
+
         
         conc = data.variables[conc_varname][:]
         date = data.variables['date'][:] # Date YYYYMMDD
@@ -63,19 +62,12 @@ class read:
         P0=data.variables['P0'][:].astype('float')
         hyai=data.variables['hyai'][:].astype('float')
         hybi=data.variables['hybi'][:].astype('float')
-        
-        
-        # Split up the date based on position        
-        year = np.asarray([int(((date.astype('str'))[i])[0:4]) for i in np.arange(len(date))])
-        month = np.asarray([int(((date.astype('str'))[i])[4:6]) for i in np.arange(len(date))])
-        day = np.asarray([int(((date.astype('str'))[i])[6:8]) for i in np.arange(len(date))])
-
-        
+                
+        # Split up the date using datetime.strptime
         dt_time = [dt.timedelta(seconds=(secs[i]).astype('int')) for i in np.arange(len(date))]
-        dt_date = [dt.datetime(year[i],month[i],day[i]) for i in np.arange(len(date))]
+        dt_date = [dt.datetime.strptime(str(date[i]),'%Y%m%d') for i in np.arange(len(date))]
         
         time_t = [dt_time[i] + dt_date[i] for i in np.arange(len(date))]
-
         
         P = np.empty((len(date), len(hyai)-1, len(lat), len(lon)))
 
@@ -107,6 +99,10 @@ class read:
             emis = data.variables[emiss_varname][:]
             self.emis = emis             
             self.emissunits = data.variables[emiss_varname].getncattr('units')
+        if 'h2' in filename:
+            start_date = data.variables['nbdate'][:]
+            dt_start_date = dt.datetime.strptime(str(start_date[0]),'%Y%m%d')
+            self.start_date = dt_start_date
 
 # Class to read in the data
 """
