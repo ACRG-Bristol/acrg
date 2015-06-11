@@ -2,6 +2,16 @@
 """
 Created on Thu Jun 11 15:17:02 2015
 
+Code to get MOZART volume mixing ratios at the edges of a domain,
+for including boundary conditions in inversions.
+
+First use "MOZART_vmr" to find an xray dataset of MOZART vmr with the altitude
+of each gridcell.
+
+Second use "MOZART_boundaries" to find an xray dataset with the vmrs on the 4
+edges of the specified domain. This is interpolated in height and lat/lon to
+agree with NAME output.
+
 @author: ew14860
 """
 
