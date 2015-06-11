@@ -30,6 +30,7 @@ import calendar
 fp_directory = '/data/shared/NAME/fp_netcdf/'
 flux_directory = '/data/shared/NAME/emissions/'
 basis_directory = '/data/shared/NAME/basis_functions/'
+bc_directory = '/data/shared/NAME/boundary_conditions/'
 
 # Get acrg_site_info file
 acrg_path=split(realpath(__file__))
@@ -175,6 +176,24 @@ def basis(domain, basis_case = 'voronoi'):
 
     return basis_ds
 
+def boundary_conditions(domain, species):
+    """
+    Read in the files with the MOZART vmrs at the domain edges to give
+    the boundary conditions.
+    """
+    
+    files = sorted(glob.glob(bc_directory + domain + "/" + 
+                   species.lower() + "_" + "*.nc"))
+    if len(files) == 0:
+        print("Can't find boundary conditions: " + domain + " " + species)
+        return None
+        
+    bc_ds = []
+    for f in files:
+        bc_ds.append(xray.open_dataset(f))
+    bc_ds = xray.concat(bc_ds, dim = "time")
+
+    return bc_ds
 
 def combine_datasets(dsa, dsb, method = "ffill"):
     """
@@ -330,6 +349,18 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
                                               'time' : (fp_and_data[site].coords['time'])})
 
         fp_and_data[site] = fp_and_data[site].merge(sensitivity)
+        
+        if basis_case == 'transd':
+            sub_fp_temp = site_bf.fp.sel(lon=slice(min(site_bf.sub_lon),max(site_bf.sub_lon)), 
+                                    lat=slice(min(site_bf.sub_lat),max(site_bf.sub_lat)))   
+            
+            
+            sub_fp = xray.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
+                               coords = {'sub_lat': (site_bf.coords['sub_lat']),
+                                         'sub_lon': (site_bf.coords['sub_lon']),
+                                'time' : (fp_and_data[site].coords['time'])})
+            
+            fp_and_data[site] = fp_and_data[site].merge(sub_fp)
     
     return fp_and_data
     
