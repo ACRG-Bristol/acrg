@@ -177,6 +177,10 @@ def basis(domain, basis_case = 'voronoi'):
     return basis_ds
 
 def boundary_conditions(domain, species):
+    """
+    Read in the files with the MOZART vmrs at the domain edges to give
+    the boundary conditions.
+    """
     
     files = sorted(glob.glob(bc_directory + domain + "/" + 
                    species.lower() + "_" + "*.nc"))
