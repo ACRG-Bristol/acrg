@@ -30,6 +30,7 @@ import calendar
 fp_directory = '/data/shared/NAME/fp_netcdf/'
 flux_directory = '/data/shared/NAME/emissions/'
 basis_directory = '/data/shared/NAME/basis_functions/'
+bc_directory = '/data/shared/NAME/boundary_conditions/'
 
 # Get acrg_site_info file
 acrg_path=split(realpath(__file__))
@@ -175,6 +176,20 @@ def basis(domain, basis_case = 'voronoi'):
 
     return basis_ds
 
+def boundary_conditions(domain, species):
+    
+    files = sorted(glob.glob(bc_directory + domain + "/" + 
+                   species.lower() + "_" + "*.nc"))
+    if len(files) == 0:
+        print("Can't find boundary conditions: " + domain + " " + species)
+        return None
+        
+    bc_ds = []
+    for f in files:
+        bc_ds.append(xray.open_dataset(f))
+    bc_ds = xray.concat(bc_ds, dim = "time")
+
+    return bc_ds
 
 def combine_datasets(dsa, dsb, method = "ffill"):
     """
