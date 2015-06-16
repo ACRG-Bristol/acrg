@@ -116,13 +116,13 @@ def footprints(sitecode_or_filename, start = "2010-01-01", end = "2016-01-01",
         files = filenames(site, domain, start, end, height = height)
 
     if len(files) == 0:
-        print("Can't find files, exiting")
+        print("Can't find files, " + sitecode_or_filename)
         return None
     else:
         files.sort()
         fp = []
         for f in files:
-            fp.append(xray.open_dataset(f))
+            fp.append(xray.open_dataset(f, engine = "h5netcdf"))
             
         fp = xray.concat(fp, dim = 'time')
 
@@ -635,7 +635,7 @@ def plot_map_zoom(fp_data):
                  max(fp_data[sites[0]].lon.values) - 0.2*dlon]
     dlat = max(fp_data[sites[0]].lat.values) - \
             min(fp_data[sites[0]].lat.values)
-    lat_range = [min(fp_data[sites[0]].lat.values) + 0.5*dlat,
+    lat_range = [min(fp_data[sites[0]].lat.values) + 0.53*dlat,
                  max(fp_data[sites[0]].lat.values) - 0.25*dlat]
 
     return lat_range, lon_range
