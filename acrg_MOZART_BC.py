@@ -23,6 +23,9 @@ import acrg_MOZART as mz
 import os
 import pandas as pd
 import glob
+import datetime as dt
+import getpass
+import collections as c
 
 mzt_dir = '/shared_data/air/shared/MOZART/mzt_output/'
 filename = mzt_dir + 'CH4/FWDModelComparison_NewEDGAR.mz4.h2.2014-01.nc'
@@ -153,7 +156,7 @@ def MOZART_vmr(species, filename=None, start = "2010-01-01", end = "2016-01-01")
             Alt = mz.calc_altitude(f.pressure,f.P0)
             conc = np.reshape(f.conc, (len(f.lev),len(f.lat),len(f.lon),len([f.start_date])))
             Alt = np.reshape(Alt,np.shape(conc))
-            vmr_var_name = '%s_vmr_mozart' %f.species
+            vmr_var_name = 'vmr_mozart'
 
             MZ = xray.Dataset({vmr_var_name : (['height', 'lat', 'lon','time'], conc),
                    'Alt' : (['height', 'lat', 'lon','time'], Alt)},
@@ -166,10 +169,15 @@ def MOZART_vmr(species, filename=None, start = "2010-01-01", end = "2016-01-01")
             convert_lon(MZ,vmr_var_name)
             mzt.append(MZ)
         mzt = xray.concat(mzt, dim = 'time')
+        attributes = {"title":"MOZART volume mixing ratios",
+                      "author" : getpass.getuser(),
+                        "date_created" : np.str(dt.datetime.today()),
+                        "species" : "CH4"}
+        mzt.attrs = c.OrderedDict(attributes)
         return mzt
 
 
-def MOZART_boundaries(MZ,species, FPfile = FPfilename):
+def MOZART_boundaries(MZ, FPfile = FPfilename):
     """
     Gets an xray dataset with 4 variables, each of one side of the domain boundary
     (n,e,s,w) and with height and lat/lon interpolated to the NAME grid.
@@ -178,8 +186,8 @@ def MOZART_boundaries(MZ,species, FPfile = FPfilename):
     want to find the edges of and the right height levels. By default this is a
     footprint file with the EUROPE domain.
     """
-    species = species.upper()
-    vmr_var_name = '%s_vmr_mozart' %species
+    
+    vmr_var_name = 'vmr_mozart'
 
     #Get info from a EUROPE footprint file:
     FP = xray.open_dataset(FPfilename)
@@ -209,6 +217,9 @@ def MOZART_boundaries(MZ,species, FPfile = FPfilename):
     E = interp_lonlat(interp_heights(east, vmr_var_name,interp_height),vmr_var_name,fp_lat).rename({vmr_var_name : vmr_var_name+'_e'})     
     W = interp_lonlat(interp_heights(west, vmr_var_name,interp_height),vmr_var_name,fp_lat).rename({vmr_var_name : vmr_var_name+'_w'}) 
 
-    MZT_edges = N.merge(E).merge(S).merge(W)  
+    MZT_edges = N.merge(E).merge(S).merge(W)
+    MZT_edges.attrs['title'] = "MOZART volume mixing ratios at domain edges"
+    MZT_edges.attrs['author'] = getpass.getuser()
+    MZT_edges.attrs['date_created'] = np.str(dt.datetime.today())
     
     return MZT_edges

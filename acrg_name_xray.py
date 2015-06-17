@@ -20,8 +20,8 @@ import bisect
 import subprocess
 from progressbar import ProgressBar
 import json
-from acrg_grid import areagrid
 import acrg_agage as agage
+from acrg_grid import areagrid
 import xray
 from os.path import split, realpath
 from acrg_time import convert
@@ -304,6 +304,14 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
             # Resample, if required
             if average[si] is not None:
                 site_ds = site_ds.resample(average[si], dim = "time")
+        
+        # Get domain boundary vmrs from MOZART
+        site_bc = boundary_conditions(domain, species)
+        
+        if site_bc is not None:
+            
+            # Merge datasets
+            site_ds = combine_datasets(site_ds, site_bc)
             
             fp_and_data[site] = site_ds
         
