@@ -788,7 +788,8 @@ def process(domain, site, height, year, month,
             particles_folder = "Particle_files",
             met_folder = "Met",
             processed_folder = "Processed_Fields_files",
-            satellite = False):
+            satellite = False,
+            force_update = True):
     
     subfolder = base_dir + domain + "_" + site + "_" + height + "/"
     
@@ -822,25 +823,26 @@ def process(domain, site, height, year, month,
 
 
     # Check whether outfile needs updating
-    print("Testing whether file exists or needs updating: " + outfile)
-    if os.path.exists(outfile):
-        ncf = Dataset(outfile)
-        time_test = sec2time(ncf.variables["time"][:],
-                             ncf.variables["time"].units[14:])
-        #Find maximum day (minus 0.1s because last time is usually midnight on 1st of the next month)
-        maxday = (max(time_test) - dt.timedelta(seconds = 0.1)).day
-        ncf.close()
-        if satellite:
-            days = [int(datestr.split('-')[0][-2:]) for datestr in datestrs]
-            if maxday >= max(days):
-                return None
-        else:
-            fields_files = glob.glob(subfolder + fields_folder + "/*" + \
-                                     datestrs[0] + "*.txt*")
-            days = [int(os.path.split(fields_file)[1].split("_")[-1][6:8]) \
-                    for fields_file in fields_files]
-            if maxday >= max(days):
-                return None
+    if not force_update:
+        print("Testing whether file exists or needs updating: " + outfile)
+        if os.path.exists(outfile):
+            ncf = Dataset(outfile)
+            time_test = sec2time(ncf.variables["time"][:],
+                                 ncf.variables["time"].units[14:])
+            #Find maximum day (minus 0.1s because last time is usually midnight on 1st of the next month)
+            maxday = (max(time_test) - dt.timedelta(seconds = 0.1)).day
+            ncf.close()
+            if satellite:
+                days = [int(datestr.split('-')[0][-2:]) for datestr in datestrs]
+                if maxday >= max(days):
+                    return None
+            else:
+                fields_files = glob.glob(subfolder + fields_folder + "/*" + \
+                                         datestrs[0] + "*.txt*")
+                days = [int(os.path.split(fields_file)[1].split("_")[-1][6:8]) \
+                        for fields_file in fields_files]
+                if maxday >= max(days):
+                    return None
 
     fp = []
     
@@ -1005,7 +1007,8 @@ def satellite_vertical_profile(fp, satellite_obs_file):
 def process_agage(domain, site,
                   heights = None,
                   years_in = None, months_in = None,
-                  base_dir = "/dagage2/agage/metoffice/NAME_output/"):
+                  base_dir = "/dagage2/agage/metoffice/NAME_output/",
+                  force_update = False):
 
     acrg_path=split(realpath(__file__))
     
@@ -1039,7 +1042,7 @@ def process_agage(domain, site,
 
         for year, month in set(zip(years, months)):
             out = process(domain, site, height, year, month,
-                base_dir = base_dir)
+                base_dir = base_dir, force_update = force_update)
 
 
 def met_empty():
