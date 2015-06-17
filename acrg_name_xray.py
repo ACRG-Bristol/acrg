@@ -304,8 +304,6 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
             # Resample, if required
             if average[si] is not None:
                 site_ds = site_ds.resample(average[si], dim = "time")
-            
-            fp_and_data[site] = site_ds
         
         # Get domain boundary vmrs from MOZART
         site_bc = boundary_conditions(domain, species)
@@ -313,7 +311,9 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
         if site_bc is not None:
             
             # Merge datasets
-            site_ds = combine_datasets(site_ds, site_bc)            
+            site_ds = combine_datasets(site_ds, site_bc)
+            
+            fp_and_data[site] = site_ds
         
     for a in attributes:
         fp_and_data[a] = data[a]
