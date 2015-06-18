@@ -126,11 +126,14 @@ def footprints(sitecode_or_filename, start = "2010-01-01", end = "2016-01-01",
             
         fp = xray.concat(fp, dim = 'time')
 
-        # If a species is specified, also get flux            
+        # If a species is specified, also get flux and mozart edges           
         if species is not None:
             flux_ds = flux(domain, species)
+            mz_ds = MOZART_edges(domain,species)
             if flux_ds is not None:
                 fp = combine_datasets(fp, flux_ds)
+            if mz_ds is not None:
+                fp = combine_datasets(fp,mz_ds)
         
         return fp
 
@@ -176,7 +179,7 @@ def basis(domain, basis_case = 'voronoi'):
 
     return basis_ds
 
-def boundary_conditions(domain, species):
+def MOZART_edges(domain, species):
     """
     Read in the files with the MOZART vmrs at the domain edges to give
     the boundary conditions.
@@ -185,15 +188,15 @@ def boundary_conditions(domain, species):
     files = sorted(glob.glob(bc_directory + domain + "/" + 
                    species.lower() + "_" + "*.nc"))
     if len(files) == 0:
-        print("Can't find boundary conditions: " + domain + " " + species)
+        print("Can't find MOZART edges: " + domain + " " + species)
         return None
         
-    bc_ds = []
+    mz_ds = []
     for f in files:
-        bc_ds.append(xray.open_dataset(f))
-    bc_ds = xray.concat(bc_ds, dim = "time")
+        mz_ds.append(xray.open_dataset(f))
+    mz_ds = xray.concat(mz_ds, dim = "time")
 
-    return bc_ds
+    return mz_ds
 
 def combine_datasets(dsa, dsb, method = "ffill"):
     """
@@ -226,8 +229,22 @@ def timeseries(ds):
     return (ds.fp*ds.flux).sum(["lat", "lon"])
 
 
+def boundary_conditions(ds):
+    """
+    Compute particle location * mozart edges time series.
+    All that is required is that you input an xray
+    dataset with both the particle locations and maozart edge fields present    
+    """ 
+    BCN = (ds.particle_locations_n*ds.vmr_mozart_n).sum(["height", "lon"])
+    BCE = (ds.particle_locations_e*ds.vmr_mozart_e).sum(["height", "lat"])
+    BCS = (ds.particle_locations_s*ds.vmr_mozart_s).sum(["height", "lon"])
+    BCW = (ds.particle_locations_w*ds.vmr_mozart_w).sum(["height", "lat"])
+    
+    return BCN+BCE+BCS+BCW
+
+
 def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
-                          calc_timeseries = True, average = None):
+                          calc_timeseries = True, calc_bc = True, average = None):
     """
     Output a dictionary of xray footprint datasets, that correspond to a given
     dictionary of Pandas dataframes, containing mole fraction time series.
@@ -285,7 +302,7 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
         # Get footprints
         site_fp = footprints(site, start = start, end = end,
                                  domain = domain,
-                                 species = [species if calc_timeseries == True \
+                                 species = [species if calc_timeseries == True or calc_bc == True \
                                              else None][0])
         
         if site_fp is not None:
@@ -293,25 +310,22 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
             # Merge datasets
             site_ds = combine_datasets(site_ds, site_fp, method = "bfill")
             
+            # Calculate boundary conditions, if required         
+            if calc_bc:
+                site_ds["bc"] = boundary_conditions(site_ds)            
+            
             # If units are specified, multiply by scaling factor
             if ".units" in attributes:
                 site_ds.fp = site_ds.fp / data[".units"]
+                site_ds.bc = site_ds.bc / data[".units"]
             
             # Calculate model time series, if required
             if calc_timeseries:
                 site_ds["mf_mod"] = timeseries(site_ds)
-    
+                
             # Resample, if required
             if average[si] is not None:
                 site_ds = site_ds.resample(average[si], dim = "time")
-        
-        # Get domain boundary vmrs from MOZART
-        site_bc = boundary_conditions(domain, species)
-        
-        if site_bc is not None:
-            
-            # Merge datasets
-            site_ds = combine_datasets(site_ds, site_bc)
             
             fp_and_data[site] = site_ds
         
@@ -371,6 +385,8 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
             fp_and_data[site] = fp_and_data[site].merge(sub_fp)
     
     return fp_and_data
+
+def bc_sensitivity(fp_and_data)
     
     
 def merge_sensitivity(fp_data_H):
