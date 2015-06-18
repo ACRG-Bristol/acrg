@@ -31,6 +31,7 @@ fp_directory = '/data/shared/NAME/fp_netcdf/'
 flux_directory = '/data/shared/NAME/emissions/'
 basis_directory = '/data/shared/NAME/basis_functions/'
 bc_directory = '/data/shared/NAME/boundary_conditions/'
+bc_basis_directory = '/data/shared/NAME/BC_basis_functions/'
 
 # Get acrg_site_info file
 acrg_path=split(realpath(__file__))
@@ -197,6 +198,21 @@ def MOZART_edges(domain, species):
     mz_ds = xray.concat(mz_ds, dim = "time")
 
     return mz_ds
+
+def bc_basis(domain, basis_case = 'NESW'):
+    
+    files = sorted(glob.glob(bc_basis_directory + domain + "/" +
+                    basis_case + "*.nc"))
+    if len(files) == 0:
+        print("Can't find boundary condition basis functions: " + domain + " " + basis_case)
+        return None
+        
+    basis_ds = []
+    for f in files:
+        basis_ds.append(xray.open_dataset(f))
+    basis_ds = xray.concat(basis_ds, dim = "time")
+
+    return basis_ds
 
 def combine_datasets(dsa, dsb, method = "ffill"):
     """
@@ -386,8 +402,50 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
     
     return fp_and_data
 
-def bc_sensitivity(fp_and_data)
-    
+#def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW'):
+#    
+#    sites = [key for key in fp_and_data.keys() if key[0] != '.']
+#    attributes = [key for key in fp_and_data.keys() if key[0] == '.']
+#    basis_func = bc_basis(domain = domain, basis_case = basis_case)
+#    
+#    for site in sites:
+#
+#        site_bf = combine_datasets(fp_and_data[site]["fp", "flux", "mf_mod"],
+#                                   basis_func)
+#        
+#        #reference = site_bf.mf_mod
+#        
+#        H = np.zeros((len(site_bf.coords['region']),len(site_bf.mf_mod)))
+#        
+#        if ".units" in attributes:
+#            site_bf.fp = site_bf.fp / fp_and_data[".units"]        
+#        
+#        for i in range(len(site_bf.coords['region'])):
+#            reg = site_bf.basis.sel(region=i)
+#            #flux_scale = reg + 1.
+#            #perturbed = (site_bf.fp*site_bf.flux*flux_scale).sum(["lat", "lon"])
+#            #H[i,:] = perturbed - reference
+#            H[i,:] = (site_bf.fp*site_bf.flux*reg).sum(["lat", "lon"])
+#        
+#        sensitivity = xray.Dataset({'H': (['region','time'], H)},
+#                                    coords = {'region': (site_bf.coords['region']),
+#                                              'time' : (fp_and_data[site].coords['time'])})
+#
+#        fp_and_data[site] = fp_and_data[site].merge(sensitivity)
+#        
+#        if basis_case == 'transd':
+#            sub_fp_temp = site_bf.fp.sel(lon=slice(min(site_bf.sub_lon),max(site_bf.sub_lon)), 
+#                                    lat=slice(min(site_bf.sub_lat),max(site_bf.sub_lat)))   
+#            
+#            
+#            sub_fp = xray.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
+#                               coords = {'sub_lat': (site_bf.coords['sub_lat']),
+#                                         'sub_lon': (site_bf.coords['sub_lon']),
+#                                'time' : (fp_and_data[site].coords['time'])})
+#            
+#            fp_and_data[site] = fp_and_data[site].merge(sub_fp)
+#    
+#    return fp_and_data
     
 def merge_sensitivity(fp_data_H):
 #    outputs y, y_site, y_time, H
