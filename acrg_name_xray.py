@@ -332,9 +332,13 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
             
             # If units are specified, multiply by scaling factor
             if ".units" in attributes:
-                site_ds.fp = site_ds.fp / data[".units"]
-                site_ds.bc = site_ds.bc / data[".units"]
-            
+#                site_ds.fp = site_ds.fp / data[".units"]
+#                site_ds.bc = site_ds.bc / data[".units"]
+                site_ds.update({'fp' : (site_ds.fp.dims, site_ds.fp / data["units"])},
+                                       coords = site_ds.fp.coords)
+                site_ds.update({'bc' : (site_ds.bc.dims, site_ds.bc / data["units"])},
+                                       coords = site_ds.bc.coords)
+                        
             # Calculate model time series, if required
             if calc_timeseries:
                 site_ds["mf_mod"] = timeseries(site_ds)
@@ -372,8 +376,8 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
         
         H = np.zeros((len(site_bf.coords['region']),len(site_bf.mf_mod)))
         
-        if ".units" in attributes:
-            site_bf.fp = site_bf.fp / fp_and_data[".units"]        
+#        if ".units" in attributes:
+#            site_bf.fp = site_bf.fp / fp_and_data[".units"]        
         
         for i in range(len(site_bf.coords['region'])):
             reg = site_bf.basis.sel(region=i)
