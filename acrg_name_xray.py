@@ -334,10 +334,8 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
             if ".units" in attributes:
 #                site_ds.fp = site_ds.fp / data[".units"]
 #                site_ds.bc = site_ds.bc / data[".units"]
-                site_ds.update({'fp' : (site_ds.fp.dims, site_ds.fp / data["units"])},
-                                       coords = site_ds.fp.coords)
-                site_ds.update({'bc' : (site_ds.bc.dims, site_ds.bc / data["units"])},
-                                       coords = site_ds.bc.coords)
+                site_ds.update({'fp' : (site_ds.fp.dims, site_ds.fp / data[".units"])})
+                site_ds.update({'bc' : (site_ds.bc.dims, site_ds.bc / data[".units"])})
                         
             # Calculate model time series, if required
             if calc_timeseries:
