@@ -405,50 +405,46 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
     return fp_and_data
 
 
-#def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW'):
-#    
-#    sites = [key for key in fp_and_data.keys() if key[0] != '.']
+def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW'):
+    
+    sites = [key for key in fp_and_data.keys() if key[0] != '.']
 #    attributes = [key for key in fp_and_data.keys() if key[0] == '.']
-#    basis_func = bc_basis(domain = domain, basis_case = basis_case)
-#    
-#    for site in sites:
-#
-#        site_bf = combine_datasets(fp_and_data[site]["fp", "flux", "mf_mod"],
-#                                   basis_func)
-#        
-#        #reference = site_bf.mf_mod
-#        
-#        H = np.zeros((len(site_bf.coords['region']),len(site_bf.mf_mod)))
-#        
-#        if ".units" in attributes:
-#            site_bf.fp = site_bf.fp / fp_and_data[".units"]        
-#        
-#        for i in range(len(site_bf.coords['region'])):
-#            reg = site_bf.basis.sel(region=i)
-#            #flux_scale = reg + 1.
-#            #perturbed = (site_bf.fp*site_bf.flux*flux_scale).sum(["lat", "lon"])
-#            #H[i,:] = perturbed - reference
-#            H[i,:] = (site_bf.fp*site_bf.flux*reg).sum(["lat", "lon"])
-#        
-#        sensitivity = xray.Dataset({'H': (['region','time'], H)},
-#                                    coords = {'region': (site_bf.coords['region']),
-#                                              'time' : (fp_and_data[site].coords['time'])})
-#
-#        fp_and_data[site] = fp_and_data[site].merge(sensitivity)
-#        
-#        if basis_case == 'transd':
-#            sub_fp_temp = site_bf.fp.sel(lon=slice(min(site_bf.sub_lon),max(site_bf.sub_lon)), 
-#                                    lat=slice(min(site_bf.sub_lat),max(site_bf.sub_lat)))   
-#            
-#            
-#            sub_fp = xray.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
-#                               coords = {'sub_lat': (site_bf.coords['sub_lat']),
-#                                         'sub_lon': (site_bf.coords['sub_lon']),
-#                                'time' : (fp_and_data[site].coords['time'])})
-#            
-#            fp_and_data[site] = fp_and_data[site].merge(sub_fp)
-#    
-#    return fp_and_data
+    basis_func = bc_basis(domain = domain, basis_case = basis_case)
+    
+    for site in sites:
+
+        # stitch together the particle locations, mozart edges and
+        #boundary condition basis functions
+        DS = fp_and_data[site]    
+
+        part_loc = np.hstack([DS.particle_locations_n,
+                                DS.particle_locations_e,
+                                DS.particle_locations_s,
+                                DS.particle_locations_w])
+        
+        mz_ed = np.hstack([DS.vmr_mozart_n,
+                           DS.vmr_mozart_e,
+                           DS.vmr_mozart_s,
+                           DS.vmr_mozart_w])
+        
+        bf = np.hstack([basis_func.basis_mz_n,
+                        basis_func.basis_mz_e,
+                        basis_func.basis_mz_s,
+                        basis_func.basis_mz_w])
+        
+        H = np.zeros((len(basis_func.coords['region']),len(DS.bc)))
+        
+        for i in range(len(basis_func.coords['region'])):
+            reg = bf[:,:,i,:]
+            H[i,:] = np.sum((part_loc*mz_ed*reg), axis=(0,1))
+        
+        sensitivity = xray.Dataset({'H': (['region','time'], H)},
+                                    coords = {'region': (basis_func.coords['region']),
+                                              'time' : (DS.coords['time'])})
+
+        fp_and_data[site] = fp_and_data[site].merge(sensitivity)
+    
+    return fp_and_data
 
 
 def merge_sensitivity(fp_data_H):
