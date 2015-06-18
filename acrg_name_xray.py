@@ -332,8 +332,6 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
             
             # If units are specified, multiply by scaling factor
             if ".units" in attributes:
-#                site_ds.fp = site_ds.fp / data[".units"]
-#                site_ds.bc = site_ds.bc / data[".units"]
                 site_ds.update({'fp' : (site_ds.fp.dims, site_ds.fp / data[".units"])})
                 site_ds.update({'bc' : (site_ds.bc.dims, site_ds.bc / data[".units"])})
                         
@@ -370,22 +368,24 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
         site_bf = combine_datasets(fp_and_data[site]["fp", "flux", "mf_mod"],
                                    basis_func)
         
-        #reference = site_bf.mf_mod
+#        reference = site_bf.mf_mod
         
-        H = np.zeros((len(site_bf.coords['region']),len(site_bf.mf_mod)))
+#        H = np.zeros((len(site_bf.coords['region']),len(site_bf.mf_mod)))
+        H = np.zeros((int(np.max(site_bf.basis)),len(site_bf.mf_mod)))
         
-#        if ".units" in attributes:
-#            site_bf.fp = site_bf.fp / fp_and_data[".units"]        
-        
-        for i in range(len(site_bf.coords['region'])):
-            reg = site_bf.basis.sel(region=i)
-            #flux_scale = reg + 1.
-            #perturbed = (site_bf.fp*site_bf.flux*flux_scale).sum(["lat", "lon"])
-            #H[i,:] = perturbed - reference
+#        for i in range(len(site_bf.coords['region'])):
+#            reg = site_bf.basis.sel(region=i)
+        for i in range(int(np.max(site_bf.basis))):
+            reg = np.zeros(np.shape(site_bf.basis))
+            reg[np.where(site_bf.basis == i+1)] = 1
+#            flux_scale = reg + 1.
+#            perturbed = (site_bf.fp*site_bf.flux*flux_scale).sum(["lat", "lon"])
+#            H[i,:] = perturbed - reference
             H[i,:] = (site_bf.fp*site_bf.flux*reg).sum(["lat", "lon"])
         
         sensitivity = xray.Dataset({'H': (['region','time'], H)},
-                                    coords = {'region': (site_bf.coords['region']),
+#                                    coords = {'region': (site_bf.coords['region']),
+                                        coords = {'region' : range(np.min(site_bf.basis),np.max(site_bf.basis)+1),
                                               'time' : (fp_and_data[site].coords['time'])})
 
         fp_and_data[site] = fp_and_data[site].merge(sensitivity)
@@ -403,6 +403,7 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
             fp_and_data[site] = fp_and_data[site].merge(sub_fp)
     
     return fp_and_data
+
 
 #def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW'):
 #    
@@ -448,7 +449,8 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
 #            fp_and_data[site] = fp_and_data[site].merge(sub_fp)
 #    
 #    return fp_and_data
-    
+
+
 def merge_sensitivity(fp_data_H):
 #    outputs y, y_site, y_time, H
     y = []
