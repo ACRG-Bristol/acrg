@@ -326,18 +326,21 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
             # Merge datasets
             site_ds = combine_datasets(site_ds, site_fp, method = "bfill")
             
-            # Calculate boundary conditions, if required         
-            if calc_bc:
-                site_ds["bc"] = boundary_conditions(site_ds)            
-            
             # If units are specified, multiply by scaling factor
             if ".units" in attributes:
                 site_ds.update({'fp' : (site_ds.fp.dims, site_ds.fp / data[".units"])})
-                site_ds.update({'bc' : (site_ds.bc.dims, site_ds.bc / data[".units"])})
+                site_ds.update({'vmr_mozart_n' : (site_ds.vmr_mozart_n.dims, site_ds.vmr_mozart_n / data[".units"])})
+                site_ds.update({'vmr_mozart_e' : (site_ds.vmr_mozart_e.dims, site_ds.vmr_mozart_e / data[".units"])})
+                site_ds.update({'vmr_mozart_s' : (site_ds.vmr_mozart_s.dims, site_ds.vmr_mozart_s / data[".units"])})
+                site_ds.update({'vmr_mozart_w' : (site_ds.vmr_mozart_w.dims, site_ds.vmr_mozart_w / data[".units"])})
                         
             # Calculate model time series, if required
             if calc_timeseries:
                 site_ds["mf_mod"] = timeseries(site_ds)
+                       
+            # Calculate boundary conditions, if required         
+            if calc_bc:
+                site_ds["bc"] = boundary_conditions(site_ds)  
                 
             # Resample, if required
             if average[si] is not None:
@@ -415,7 +418,16 @@ def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW'):
 
         # stitch together the particle locations, mozart edges and
         #boundary condition basis functions
-        DS = fp_and_data[site]    
+        DS = combine_datasets(fp_and_data[site]["particle_locations_n",
+                                                     "particle_locations_e",
+                                                     "particle_locations_s",
+                                                     "particle_locations_w",
+                                                     "vmr_mozart_n",
+                                                     "vmr_mozart_e",
+                                                     "vmr_mozart_s",
+                                                     "vmr_mozart_w",
+                                                     "bc"],
+                                                     basis_func)
 
         part_loc = np.hstack([DS.particle_locations_n,
                                 DS.particle_locations_e,
@@ -427,19 +439,19 @@ def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW'):
                            DS.vmr_mozart_s,
                            DS.vmr_mozart_w])
         
-        bf = np.hstack([basis_func.basis_mz_n,
-                        basis_func.basis_mz_e,
-                        basis_func.basis_mz_s,
-                        basis_func.basis_mz_w])
+        bf = np.hstack([DS.basis_mz_n,
+                        DS.basis_mz_e,
+                        DS.basis_mz_s,
+                        DS.basis_mz_w])
         
-        H = np.zeros((len(basis_func.coords['region']),len(DS.bc)))
+        H_bc = np.zeros((len(DS.coords['region']),len(DS.bc)))
         
-        for i in range(len(basis_func.coords['region'])):
+        for i in range(len(DS.coords['region'])):
             reg = bf[:,:,i,:]
-            H[i,:] = np.sum((part_loc*mz_ed*reg), axis=(0,1))
+            H_bc[i,:] = np.sum((part_loc*mz_ed*reg), axis=(0,1))
         
-        sensitivity = xray.Dataset({'H': (['region','time'], H)},
-                                    coords = {'region': (basis_func.coords['region']),
+        sensitivity = xray.Dataset({'H_bc': (['region_bc','time'], H_bc)},
+                                    coords = {'region_bc': (DS.coords['region'].values),
                                               'time' : (DS.coords['time'])})
 
         fp_and_data[site] = fp_and_data[site].merge(sensitivity)
@@ -454,6 +466,7 @@ def merge_sensitivity(fp_data_H):
     y_site = []
     y_time = []
     H = []
+    H_bc = []
     
     sites = [key for key in fp_data_H.keys() if key[0] != '.']
     for si, site in enumerate(sites):
@@ -462,14 +475,21 @@ def merge_sensitivity(fp_data_H):
         y_site.append([site for i in range(len(fp_data_H[site].coords['time']))])
         y_time.append(fp_data_H[site].coords['time'].values)
         H.append(fp_data_H[site].H.values)
+        if 'H_bc' in fp_data_H[site].data_vars:
+            H_bc.append(fp_data_H[site].H_bc.values)
     
     y = np.hstack(y)
     y_error = np.hstack(y_error)
     y_site = np.hstack(y_site)
     y_time = np.hstack(y_time)
     H = np.hstack(H)
+    if len(H_bc) > 0:
+        H_bc = np.hstack(H_bc)
     
-    return y, y_error, y_site, y_time, H.T
+    if len(H_bc) > 0:
+        return y, y_error, y_site, y_time, H.T, H_bc.T
+    else:
+        return y, y_error, y_site, y_time, H.T
     
 
 def filtering(datasets_in, filters):
