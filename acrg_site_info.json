@@ -43,14 +43,16 @@
         "long_name" : "GAUGE flights, UK",
         "height": ["various"],
         "height_name": ["various"],
-        "network": "GAUGE"
+        "network": "GAUGE",
+        "platform": "aircraft"
     },
     "GAUGE-FERRY" : {
         "alt": ["FERRY"],
         "long_name" : "GAUGE ferry, UK",
         "height": ["20m"],
         "height_name": ["20magl"],
-        "network": "GAUGE"
+        "network": "GAUGE",
+        "platform": "ship"
     },
     "GLA" : {
         "alt": ["GLATTON"],
@@ -61,14 +63,31 @@
         "longitude": -0.30359,
         "network": "GAUGE"
     },
+    "GOSAT-INDIA" : {
+        "alt": ["GOSAT"],
+        "long_name" : "GOSAT, India",
+        "height": ["column"],
+        "height_name": ["column"],
+        "network": "GOSAT/GOSAT-INDIA",
+        "platform": "satellite"
+    },
+    "GSN" : {
+        "alt": ["GOSAN"],
+        "long_name" : "Gosan, Korea",
+        "height": ["10m"],
+        "height_name": ["10magl"],
+        "latitude": 126.1618,
+        "longitude": 33.29244,
+        "network": "AGAGE"
+    },
     "HAD" : {
         "alt": ["HADDENHAM"],
         "long_name" : "Haddenham, UK",
-        "height": ["10m"],
-        "height_name": ["10magl"],
+        "height": ["25m"],
+        "height_name": ["20magl"],
         "latitude": 52.35986,
         "longitude": 0.14828,
-        "network": "GAUGE"
+        "network": "UCAM-EA"
     },
     "HFD" : {
         "alt": [],
@@ -116,11 +135,11 @@
     "TIL" : {
         "alt": ["TILNEY"],
         "long_name" : "Tilney, UK",
-        "height": ["10m"],
-        "height_name": ["10magl"],
+        "height": ["27m"],
+        "height_name": ["20magl"],
         "latitude": 52.73667,
         "longitude": 0.32127,
-        "network": "GAUGE"
+        "network": "UCAM-EA"
     },
     "TTA" : {
         "alt": ["ANGUS"],
@@ -134,10 +153,10 @@
     "WAO" : {
         "alt": ["WEYBOURNE"],
         "long_name" : "Weybourne Observatory, UK",
-        "height": ["10m"],
-        "height_name": ["10magl"],
+        "height": ["21m"],
+        "height_name": ["20magl"],
         "latitude": 52.95042,
         "longitude": 1.12194,
-        "network": "GAUGE"
+        "network": "UCAM-EA"
     }
 }

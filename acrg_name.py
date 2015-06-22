@@ -532,7 +532,7 @@ class analytical_inversion:
         flux_data=flux(species, flux_years, domain=domain)
         basis_data = basis_function(basis_case, years=years, domain=domain)
         area = areagrid(flux_data.lat, flux_data.lon)
-            
+        
         awflux = flux_data.flux[:,:,0]*area
         fl = np.zeros(np.shape(x))
         
