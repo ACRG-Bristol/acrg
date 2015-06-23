@@ -332,9 +332,11 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
         fp_and_data[site] = fp_and_data[site].merge(sensitivity)
         
         if basis_case == 'transd':
+            
             sub_fp_temp = site_bf.fp.sel(lon=slice(min(site_bf.sub_lon),max(site_bf.sub_lon)), 
                                     lat=slice(min(site_bf.sub_lat),max(site_bf.sub_lat)))   
-            
+            #sub_flux_temp = site_bf.flux.sel(lon=slice(min(site_bf.sub_lon),max(site_bf.sub_lon)), 
+            #                       lat=slice(min(site_bf.sub_lat),max(site_bf.sub_lat))) 
             
             sub_fp = xray.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
                                coords = {'sub_lat': (site_bf.coords['sub_lat']),
