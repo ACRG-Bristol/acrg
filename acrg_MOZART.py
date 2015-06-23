@@ -473,7 +473,12 @@ class calc_pressure:
         pressure = P0*exp((-1*altitude)/7.64) 
         
         self.pressure = pressure
-
+ 
+#Calculates altitude from pressures using the standard scale height 7.64 km.
+#Pressure in Pa.       
+def calc_altitude(P, P0, h0=7.64e3):
+    alt = -h0*np.log(P/P0)
+    return alt
 
  # Class to read in the site file txt version
 class read_sitefile_txt:

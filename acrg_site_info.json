@@ -83,11 +83,11 @@
     "HAD" : {
         "alt": ["HADDENHAM"],
         "long_name" : "Haddenham, UK",
-        "height": ["10m"],
-        "height_name": ["10magl"],
+        "height": ["25m"],
+        "height_name": ["20magl"],
         "latitude": 52.35986,
         "longitude": 0.14828,
-        "network": "GAUGE"
+        "network": "UCAM-EA"
     },
     "HFD" : {
         "alt": [],
@@ -135,11 +135,11 @@
     "TIL" : {
         "alt": ["TILNEY"],
         "long_name" : "Tilney, UK",
-        "height": ["10m"],
-        "height_name": ["10magl"],
+        "height": ["27m"],
+        "height_name": ["20magl"],
         "latitude": 52.73667,
         "longitude": 0.32127,
-        "network": "GAUGE"
+        "network": "UCAM-EA"
     },
     "TTA" : {
         "alt": ["ANGUS"],
@@ -153,10 +153,10 @@
     "WAO" : {
         "alt": ["WEYBOURNE"],
         "long_name" : "Weybourne Observatory, UK",
-        "height": ["10m"],
-        "height_name": ["10magl"],
+        "height": ["21m"],
+        "height_name": ["20magl"],
         "latitude": 52.95042,
         "longitude": 1.12194,
-        "network": "GAUGE"
+        "network": "UCAM-EA"
     }
 }

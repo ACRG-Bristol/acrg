@@ -16,7 +16,7 @@ import datetime as dt
 import numpy as np
 import scipy.constants as const
 from acrg_grid import areagrid
-from acrg_time.convert import time2sec
+from acrg_time.convert import time2sec, sec2time
 import os
 import json
 from os.path import split, realpath, exists
@@ -24,6 +24,7 @@ import xray
 import shutil
 from scipy.interpolate import interp1d
 import copy
+import dirsync
 
 #Default NAME output file version
 #This is changed depending on presence of "Fields:" line in files
@@ -787,7 +788,8 @@ def process(domain, site, height, year, month,
             particles_folder = "Particle_files",
             met_folder = "Met",
             processed_folder = "Processed_Fields_files",
-            satellite = False):
+            satellite = False,
+            force_update = True):
     
     subfolder = base_dir + domain + "_" + site + "_" + height + "/"
     
@@ -809,10 +811,38 @@ def process(domain, site, height, year, month,
         # Check that we've found something
         if len(datestrs) == 0:
             print("Error, can't find files in " + file_search_string)
+            return None
 
     else:
         datestrs = [str(year) + str(month).zfill(2)]
 
+
+    # Output filename
+    outfile = subfolder + processed_folder + "/" + site + "-" + height + \
+                "_" + domain + "_" + str(year) + str(month).zfill(2) + ".nc"
+
+
+    # Check whether outfile needs updating
+    if not force_update:
+        print("Testing whether file exists or needs updating: " + outfile)
+        if os.path.exists(outfile):
+            ncf = Dataset(outfile)
+            time_test = sec2time(ncf.variables["time"][:],
+                                 ncf.variables["time"].units[14:])
+            #Find maximum day (minus 0.1s because last time is usually midnight on 1st of the next month)
+            maxday = (max(time_test) - dt.timedelta(seconds = 0.1)).day
+            ncf.close()
+            if satellite:
+                days = [int(datestr.split('-')[0][-2:]) for datestr in datestrs]
+                if maxday >= max(days):
+                    return None
+            else:
+                fields_files = glob.glob(subfolder + fields_folder + "/*" + \
+                                         datestrs[0] + "*.txt*")
+                days = [int(os.path.split(fields_file)[1].split("_")[-1][6:8]) \
+                        for fields_file in fields_files]
+                if maxday >= max(days):
+                    return None
 
     fp = []
     
@@ -873,10 +903,6 @@ def process(domain, site, height, year, month,
         fp = xray.concat(fp, "time")
 
         #Write netCDF file
-
-        # Output filename
-        outfile = subfolder + processed_folder + "/" + site + "-" + height + \
-                    "_" + domain + "_" + str(year) + str(month).zfill(2) + ".nc"
         
         # Define particle locations dictionary (annoying)
         pl = {"N": numpy.transpose(fp.pl_n.values.squeeze(), (2, 1, 0)),
@@ -981,7 +1007,8 @@ def satellite_vertical_profile(fp, satellite_obs_file):
 def process_agage(domain, site,
                   heights = None,
                   years_in = None, months_in = None,
-                  base_dir = "/dagage2/agage/metoffice/NAME_output/"):
+                  base_dir = "/dagage2/agage/metoffice/NAME_output/",
+                  force_update = False):
 
     acrg_path=split(realpath(__file__))
     
@@ -1015,7 +1042,7 @@ def process_agage(domain, site,
 
         for year, month in set(zip(years, months)):
             out = process(domain, site, height, year, month,
-                base_dir = base_dir)
+                base_dir = base_dir, force_update = force_update)
 
 
 def met_empty():
@@ -1035,15 +1062,19 @@ def met_empty():
 #   to:
 #   air:/data/shared/NAME/fp_netcdf/DOMAIN/
 def copy_processed(domain):
+
     src_folder = "/dagage2/agage/metoffice/NAME_output/"
     dst_folder = "/data/shared/NAME/fp_netcdf/" + domain + "/"
     
     files = glob.glob(src_folder + domain +
         "*/Processed_Fields_files/*.nc")
 
-    for f in files:
-        shutil.copy(f, dst_folder)
+    folders = set([os.path.split(f)[0] for f in files])
 
+    for f in folders:
+        print("Syncing " + f + " and " + dst_folder)
+        dirsync.sync(f, dst_folder, "sync")
+    print("Done sync")
 
 # Process a list of AGAGE/DECC/GAUGE files if called as main
 if __name__ == "__main__":

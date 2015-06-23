@@ -20,8 +20,8 @@ import bisect
 import subprocess
 from progressbar import ProgressBar
 import json
-from acrg_grid import areagrid
 import acrg_agage as agage
+from acrg_grid import areagrid
 import xray
 from os.path import split, realpath
 from acrg_time import convert
@@ -30,6 +30,8 @@ import calendar
 fp_directory = '/data/shared/NAME/fp_netcdf/'
 flux_directory = '/data/shared/NAME/emissions/'
 basis_directory = '/data/shared/NAME/basis_functions/'
+bc_directory = '/data/shared/NAME/boundary_conditions/'
+bc_basis_directory = '/data/shared/NAME/BC_basis_functions/'
 
 # Get acrg_site_info file
 acrg_path=split(realpath(__file__))
@@ -115,21 +117,24 @@ def footprints(sitecode_or_filename, start = "2010-01-01", end = "2016-01-01",
         files = filenames(site, domain, start, end, height = height)
 
     if len(files) == 0:
-        print("Can't find files, exiting")
+        print("Can't find files, " + sitecode_or_filename)
         return None
     else:
         files.sort()
         fp = []
         for f in files:
-            fp.append(xray.open_dataset(f))
+            fp.append(xray.open_dataset(f, engine = "h5netcdf"))
             
         fp = xray.concat(fp, dim = 'time')
 
-        # If a species is specified, also get flux            
+        # If a species is specified, also get flux and mozart edges           
         if species is not None:
             flux_ds = flux(domain, species)
+            mz_ds = MOZART_edges(domain,species)
             if flux_ds is not None:
                 fp = combine_datasets(fp, flux_ds)
+            if mz_ds is not None:
+                fp = combine_datasets(fp,mz_ds)
         
         return fp
 
@@ -175,6 +180,39 @@ def basis(domain, basis_case = 'voronoi'):
 
     return basis_ds
 
+def MOZART_edges(domain, species):
+    """
+    Read in the files with the MOZART vmrs at the domain edges to give
+    the boundary conditions.
+    """
+    
+    files = sorted(glob.glob(bc_directory + domain + "/" + 
+                   species.lower() + "_" + "*.nc"))
+    if len(files) == 0:
+        print("Can't find MOZART edges: " + domain + " " + species)
+        return None
+        
+    mz_ds = []
+    for f in files:
+        mz_ds.append(xray.open_dataset(f))
+    mz_ds = xray.concat(mz_ds, dim = "time")
+
+    return mz_ds
+
+def bc_basis(domain, basis_case = 'NESW'):
+    
+    files = sorted(glob.glob(bc_basis_directory + domain + "/" +
+                    basis_case + "*.nc"))
+    if len(files) == 0:
+        print("Can't find boundary condition basis functions: " + domain + " " + basis_case)
+        return None
+        
+    basis_ds = []
+    for f in files:
+        basis_ds.append(xray.open_dataset(f))
+    basis_ds = xray.concat(basis_ds, dim = "time")
+
+    return basis_ds
 
 def combine_datasets(dsa, dsb, method = "ffill"):
     """
@@ -207,8 +245,22 @@ def timeseries(ds):
     return (ds.fp*ds.flux).sum(["lat", "lon"])
 
 
+def boundary_conditions(ds):
+    """
+    Compute particle location * mozart edges time series.
+    All that is required is that you input an xray
+    dataset with both the particle locations and maozart edge fields present    
+    """ 
+    BCN = (ds.particle_locations_n*ds.vmr_mozart_n).sum(["height", "lon"])
+    BCE = (ds.particle_locations_e*ds.vmr_mozart_e).sum(["height", "lat"])
+    BCS = (ds.particle_locations_s*ds.vmr_mozart_s).sum(["height", "lon"])
+    BCW = (ds.particle_locations_w*ds.vmr_mozart_w).sum(["height", "lat"])
+    
+    return BCN+BCE+BCS+BCW
+
+
 def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
-                          calc_timeseries = True, average = None):
+                          calc_timeseries = True, calc_bc = True, average = None):
     """
     Output a dictionary of xray footprint datasets, that correspond to a given
     dictionary of Pandas dataframes, containing mole fraction time series.
@@ -266,7 +318,7 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
         # Get footprints
         site_fp = footprints(site, start = start, end = end,
                                  domain = domain,
-                                 species = [species if calc_timeseries == True \
+                                 species = [species if calc_timeseries == True or calc_bc == True \
                                              else None][0])
         
         if site_fp is not None:
@@ -276,12 +328,20 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
             
             # If units are specified, multiply by scaling factor
             if ".units" in attributes:
-                site_ds.fp = site_ds.fp / data[".units"]
-            
+                site_ds.update({'fp' : (site_ds.fp.dims, site_ds.fp / data[".units"])})
+                site_ds.update({'vmr_mozart_n' : (site_ds.vmr_mozart_n.dims, site_ds.vmr_mozart_n / data[".units"])})
+                site_ds.update({'vmr_mozart_e' : (site_ds.vmr_mozart_e.dims, site_ds.vmr_mozart_e / data[".units"])})
+                site_ds.update({'vmr_mozart_s' : (site_ds.vmr_mozart_s.dims, site_ds.vmr_mozart_s / data[".units"])})
+                site_ds.update({'vmr_mozart_w' : (site_ds.vmr_mozart_w.dims, site_ds.vmr_mozart_w / data[".units"])})
+                        
             # Calculate model time series, if required
             if calc_timeseries:
                 site_ds["mf_mod"] = timeseries(site_ds)
-    
+                       
+            # Calculate boundary conditions, if required         
+            if calc_bc:
+                site_ds["bc"] = boundary_conditions(site_ds)  
+                
             # Resample, if required
             if average[si] is not None:
                 site_ds = site_ds.resample(average[si], dim = "time")
@@ -311,22 +371,24 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
         site_bf = combine_datasets(fp_and_data[site]["fp", "flux", "mf_mod"],
                                    basis_func)
         
-        #reference = site_bf.mf_mod
+#        reference = site_bf.mf_mod
         
-        H = np.zeros((len(site_bf.coords['region']),len(site_bf.mf_mod)))
+#        H = np.zeros((len(site_bf.coords['region']),len(site_bf.mf_mod)))
+        H = np.zeros((int(np.max(site_bf.basis)),len(site_bf.mf_mod)))
         
-        if ".units" in attributes:
-            site_bf.fp = site_bf.fp / fp_and_data[".units"]        
-        
-        for i in range(len(site_bf.coords['region'])):
-            reg = site_bf.basis.sel(region=i)
-            #flux_scale = reg + 1.
-            #perturbed = (site_bf.fp*site_bf.flux*flux_scale).sum(["lat", "lon"])
-            #H[i,:] = perturbed - reference
+#        for i in range(len(site_bf.coords['region'])):
+#            reg = site_bf.basis.sel(region=i)
+        for i in range(int(np.max(site_bf.basis))):
+            reg = np.zeros(np.shape(site_bf.basis))
+            reg[np.where(site_bf.basis == i+1)] = 1
+#            flux_scale = reg + 1.
+#            perturbed = (site_bf.fp*site_bf.flux*flux_scale).sum(["lat", "lon"])
+#            H[i,:] = perturbed - reference
             H[i,:] = (site_bf.fp*site_bf.flux*reg).sum(["lat", "lon"])
         
         sensitivity = xray.Dataset({'H': (['region','time'], H)},
-                                    coords = {'region': (site_bf.coords['region']),
+#                                    coords = {'region': (site_bf.coords['region']),
+                                        coords = {'region' : range(np.min(site_bf.basis),np.max(site_bf.basis)+1),
                                               'time' : (fp_and_data[site].coords['time'])})
 
         fp_and_data[site] = fp_and_data[site].merge(sensitivity)
@@ -346,8 +408,59 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
             fp_and_data[site] = fp_and_data[site].merge(sub_fp)
     
     return fp_and_data
+
+
+def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW'):
     
+    sites = [key for key in fp_and_data.keys() if key[0] != '.']
+#    attributes = [key for key in fp_and_data.keys() if key[0] == '.']
+    basis_func = bc_basis(domain = domain, basis_case = basis_case)
     
+    for site in sites:
+
+        # stitch together the particle locations, mozart edges and
+        #boundary condition basis functions
+        DS = combine_datasets(fp_and_data[site]["particle_locations_n",
+                                                     "particle_locations_e",
+                                                     "particle_locations_s",
+                                                     "particle_locations_w",
+                                                     "vmr_mozart_n",
+                                                     "vmr_mozart_e",
+                                                     "vmr_mozart_s",
+                                                     "vmr_mozart_w",
+                                                     "bc"],
+                                                     basis_func)
+
+        part_loc = np.hstack([DS.particle_locations_n,
+                                DS.particle_locations_e,
+                                DS.particle_locations_s,
+                                DS.particle_locations_w])
+        
+        mz_ed = np.hstack([DS.vmr_mozart_n,
+                           DS.vmr_mozart_e,
+                           DS.vmr_mozart_s,
+                           DS.vmr_mozart_w])
+        
+        bf = np.hstack([DS.basis_mz_n,
+                        DS.basis_mz_e,
+                        DS.basis_mz_s,
+                        DS.basis_mz_w])
+        
+        H_bc = np.zeros((len(DS.coords['region']),len(DS.bc)))
+        
+        for i in range(len(DS.coords['region'])):
+            reg = bf[:,:,i,:]
+            H_bc[i,:] = np.sum((part_loc*mz_ed*reg), axis=(0,1))
+        
+        sensitivity = xray.Dataset({'H_bc': (['region_bc','time'], H_bc)},
+                                    coords = {'region_bc': (DS.coords['region'].values),
+                                              'time' : (DS.coords['time'])})
+
+        fp_and_data[site] = fp_and_data[site].merge(sensitivity)
+    
+    return fp_and_data
+
+
 def merge_sensitivity(fp_data_H):
 #    outputs y, y_site, y_time, H
     y = []
@@ -355,6 +468,7 @@ def merge_sensitivity(fp_data_H):
     y_site = []
     y_time = []
     H = []
+    H_bc = []
     
     sites = [key for key in fp_data_H.keys() if key[0] != '.']
     for si, site in enumerate(sites):
@@ -363,14 +477,21 @@ def merge_sensitivity(fp_data_H):
         y_site.append([site for i in range(len(fp_data_H[site].coords['time']))])
         y_time.append(fp_data_H[site].coords['time'].values)
         H.append(fp_data_H[site].H.values)
+        if 'H_bc' in fp_data_H[site].data_vars:
+            H_bc.append(fp_data_H[site].H_bc.values)
     
     y = np.hstack(y)
     y_error = np.hstack(y_error)
     y_site = np.hstack(y_site)
     y_time = np.hstack(y_time)
     H = np.hstack(H)
+    if len(H_bc) > 0:
+        H_bc = np.hstack(H_bc)
     
-    return y, y_error, y_site, y_time, H.T
+    if len(H_bc) > 0:
+        return y, y_error, y_site, y_time, H.T, H_bc.T
+    else:
+        return y, y_error, y_site, y_time, H.T
     
 
 def filtering(datasets_in, filters):
@@ -618,7 +739,7 @@ def plot_map_zoom(fp_data):
                  max(fp_data[sites[0]].lon.values) - 0.2*dlon]
     dlat = max(fp_data[sites[0]].lat.values) - \
             min(fp_data[sites[0]].lat.values)
-    lat_range = [min(fp_data[sites[0]].lat.values) + 0.5*dlat,
+    lat_range = [min(fp_data[sites[0]].lat.values) + 0.53*dlat,
                  max(fp_data[sites[0]].lat.values) - 0.25*dlat]
 
     return lat_range, lon_range
