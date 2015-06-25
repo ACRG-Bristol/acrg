@@ -333,17 +333,12 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
 
         # Convert to dataset
         site_ds = xray.Dataset.from_dataframe(site_df)
-
-
-        ##############################################################
+        
         # Get footprints
         site_fp = footprints(site, start = start, end = end,
                                  domain = domain,
                                  species = [species if calc_timeseries == True or calc_bc == True \
-                                             else None][0])
-                               
-        #THIS IS THE PROBLEM FUNCTION                           
-        ###########################################################################
+                                             else None][0])            
         
         if site_fp is not None:
             
