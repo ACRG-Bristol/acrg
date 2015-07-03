@@ -27,11 +27,11 @@ from os.path import split, realpath
 from acrg_time import convert
 import calendar
 
-fp_directory = '/data/shared/NAME/fp_netcdf/'
+fp_directory = '/data/shared/NAME/fp/'
 flux_directory = '/data/shared/NAME/emissions/'
 basis_directory = '/data/shared/NAME/basis_functions/'
-bc_directory = '/data/shared/NAME/boundary_conditions/'
-bc_basis_directory = '/data/shared/NAME/BC_basis_functions/'
+bc_directory = '/data/shared/NAME/bc/'
+bc_basis_directory = '/data/shared/NAME/bc_basis_functions/'
 
 # Get acrg_site_info file
 acrg_path=split(realpath(__file__))
@@ -79,7 +79,8 @@ def filenames(site, domain, start, end, height = None, flux=None, basis=None):
     
     return  files
 
-def read_netcdfs(files, dim, transform_func=None):
+def read_netcdfs(files, dim = "time", transform_func=None):
+    
     def process_one_path(path):
         # use a context manager, to ensure the file gets closed after use
         with xray.open_dataset(path) as ds:
@@ -88,13 +89,11 @@ def read_netcdfs(files, dim, transform_func=None):
             # load all data from the transformed dataset, to ensure we can
             # use it after closing each original file
             ds.load()
-            return ds
+        return ds
 
-    #paths = sorted(glob(files))
-    datasets = [process_one_path(p) for p in files]
+    datasets = [process_one_path(p) for p in sorted(files)]
     combined = xray.concat(datasets, dim)
     return combined   
-
 
 
 def footprints(sitecode_or_filename, start = "2010-01-01", end = "2016-01-01",
@@ -136,23 +135,23 @@ def footprints(sitecode_or_filename, start = "2010-01-01", end = "2016-01-01",
     if len(files) == 0:
         print("Can't find files, " + sitecode_or_filename)
         return None
+
     else:
-        files.sort()
-        fp = []
-        #for f in files:
-        #    fp.append(xray.open_dataset(f, engine = "h5netcdf"))
-            
-        #fp = xray.concat(fp, dim = 'time')
-        fp=read_netcdfs(files, "time")
+        
+        fp=read_netcdfs(files)
+        
         # If a species is specified, also get flux and mozart edges           
         if species is not None:
+
             flux_ds = flux(domain, species)
-            mz_ds = MOZART_edges(domain,species)
+
             if flux_ds is not None:
                 fp = combine_datasets(fp, flux_ds)
-            if mz_ds is not None:
-                fp = combine_datasets(fp,mz_ds)
-        
+
+            bc_ds = boundary_conditions(domain, species)
+            if bc_ds is not None:
+                fp = combine_datasets(fp, bc_ds)
+
         return fp
 
 
@@ -170,13 +169,27 @@ def flux(domain, species):
     if len(files) == 0:
         print("Can't find flux: " + domain + " " + species)
         return None
-        
-    flux_ds = []
-    for f in files:
-        flux_ds.append(xray.open_dataset(f))
-    flux_ds = xray.concat(flux_ds, dim = "time")
+    
+    flux_ds = read_netcdfs(files)
 
     return flux_ds
+
+
+def boundary_conditions(domain, species):
+    """
+    Read in the files with the global model vmrs at the domain edges to give
+    the boundary conditions.
+    """
+    
+    files = sorted(glob.glob(bc_directory + domain + "/" + 
+                   species.lower() + "_" + "*.nc"))
+    if len(files) == 0:
+        print("Can't find boundary condition files: " + domain + " " + species)
+        return None
+
+    bc_ds = read_netcdfs(files)
+
+    return bc_ds
 
 
 def basis(domain, basis_case = 'voronoi'):
@@ -189,47 +202,24 @@ def basis(domain, basis_case = 'voronoi'):
     if len(files) == 0:
         print("Can't find basis functions: " + domain + " " + basis_case)
         return None
-        
-    basis_ds = []
-    for f in files:
-        basis_ds.append(xray.open_dataset(f))
-    basis_ds = xray.concat(basis_ds, dim = "time")
+
+    basis_ds = read_netcdfs(files)
 
     return basis_ds
 
-def MOZART_edges(domain, species):
-    """
-    Read in the files with the MOZART vmrs at the domain edges to give
-    the boundary conditions.
-    """
-    
-    files = sorted(glob.glob(bc_directory + domain + "/" + 
-                   species.lower() + "_" + "*.nc"))
-    if len(files) == 0:
-        print("Can't find MOZART edges: " + domain + " " + species)
-        return None
-        
-    mz_ds = []
-    for f in files:
-        mz_ds.append(xray.open_dataset(f))
-    mz_ds = xray.concat(mz_ds, dim = "time")
 
-    return mz_ds
-
-def bc_basis(domain, basis_case = 'NESW'):
+def basis_boundary_conditions(domain, basis_case = 'NESW'):
     
     files = sorted(glob.glob(bc_basis_directory + domain + "/" +
                     basis_case + "*.nc"))
     if len(files) == 0:
         print("Can't find boundary condition basis functions: " + domain + " " + basis_case)
         return None
-        
-    basis_ds = []
-    for f in files:
-        basis_ds.append(xray.open_dataset(f))
-    basis_ds = xray.concat(basis_ds, dim = "time")
+    
+    basis_ds = read_netcdfs(files)
 
     return basis_ds
+
 
 def combine_datasets(dsa, dsb, method = "ffill"):
     """
@@ -242,8 +232,8 @@ def combine_datasets(dsa, dsb, method = "ffill"):
 
     ds will have the index of dsa    
     """
-    ds = dsa.merge(dsb.reindex_like(dsa, method))
-    return ds
+    
+    return dsa.merge(dsb.reindex_like(dsa, method))
 
 
 def timeseries(ds):
@@ -262,24 +252,21 @@ def timeseries(ds):
     return (ds.fp*ds.flux).sum(["lat", "lon"])
 
 
-def boundary_conditions(ds):
+def timeseries_boundary_conditions(ds):
     """
-    Compute particle location * mozart edges time series.
+    Compute particle location * global model edges time series.
     All that is required is that you input an xray
     dataset with both the particle locations and maozart edge fields present    
     """ 
-    BCN = (ds.particle_locations_n*ds.vmr_mozart_n).sum(["height", "lon"])
-    BCE = (ds.particle_locations_e*ds.vmr_mozart_e).sum(["height", "lat"])
-    BCS = (ds.particle_locations_s*ds.vmr_mozart_s).sum(["height", "lon"])
-    BCW = (ds.particle_locations_w*ds.vmr_mozart_w).sum(["height", "lat"])
+    return (ds.particle_locations_n*ds.vmr_n).sum(["height", "lon"]) + \
+           (ds.particle_locations_e*ds.vmr_e).sum(["height", "lat"]) + \
+           (ds.particle_locations_s*ds.vmr_s).sum(["height", "lon"]) + \
+           (ds.particle_locations_w*ds.vmr_w).sum(["height", "lat"])
+
     
-    #bc = [[BCN],[BCE], [BCS], [BCW]]
-    return BCN+BCE+BCS+BCW
-    #return bc
-
-
 def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
-                          calc_timeseries = True, calc_bc = True, average = None):
+                          calc_timeseries = True, calc_bc = True,
+                          average = None):
     """
     Output a dictionary of xray footprint datasets, that correspond to a given
     dictionary of Pandas dataframes, containing mole fraction time series.
@@ -313,6 +300,9 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
     else:
         average = [None for i in sites]
 
+    # Check if species is defined in data dictionary
+    if ".species" in data.keys():
+        species = data[".species"]
 
     # Output array
     fp_and_data = {}
@@ -336,9 +326,10 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
         
         # Get footprints
         site_fp = footprints(site, start = start, end = end,
-                                 domain = domain,
-                                 species = [species if calc_timeseries == True or calc_bc == True \
-                                             else None][0])            
+                             domain = domain,
+                             species = [species if calc_timeseries == True or \
+                                         calc_bc == True \
+                                         else None][0])
         
         if site_fp is not None:
             
@@ -347,21 +338,22 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
             
             # If units are specified, multiply by scaling factor
             if ".units" in attributes:
-                site_ds.update({'fp' : (site_ds.fp.dims, site_ds.fp / data[".units"])})
+#                site_ds.update({'fp' : (site_ds.fp.dims, site_ds.fp / data[".units"])})
                 if calc_bc:
-                    site_ds.update({'vmr_mozart_n' : (site_ds.vmr_mozart_n.dims, site_ds.vmr_mozart_n / data[".units"])})
-                    site_ds.update({'vmr_mozart_e' : (site_ds.vmr_mozart_e.dims, site_ds.vmr_mozart_e / data[".units"])})
-                    site_ds.update({'vmr_mozart_s' : (site_ds.vmr_mozart_s.dims, site_ds.vmr_mozart_s / data[".units"])})
-                    site_ds.update({'vmr_mozart_w' : (site_ds.vmr_mozart_w.dims, site_ds.vmr_mozart_w / data[".units"])})
-                        
+                    for key in site_ds.keys():
+                        if "fp" in key or "vmr" in key:
+                            site_ds.update({key :
+                                            (site_ds[key].dims, site_ds[key] / \
+                                            data[".units"])})
+            
             # Calculate model time series, if required
             if calc_timeseries:
                 site_ds["mf_mod"] = timeseries(site_ds)
-                       
+            
             # Calculate boundary conditions, if required         
             if calc_bc:
-                site_ds["bc"] = boundary_conditions(site_ds)  
-                
+                site_ds["bc"] = timeseries_boundary_conditions(site_ds)  
+            
             # Resample, if required
             if average[si] is not None:
                 site_ds = site_ds.resample(average[si], dim = "time")
@@ -436,7 +428,8 @@ def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW'):
     
     sites = [key for key in fp_and_data.keys() if key[0] != '.']
 #    attributes = [key for key in fp_and_data.keys() if key[0] == '.']
-    basis_func = bc_basis(domain = domain, basis_case = basis_case)
+    basis_func = basis_boundary_conditions(domain = domain,
+                                           basis_case = basis_case)
     
     for site in sites:
 
