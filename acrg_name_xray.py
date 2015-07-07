@@ -703,7 +703,8 @@ class analytical_inversion:
 class plot_map_setup:
     def __init__(self, fp_data, 
                  lon_range = None, lat_range = None,
-                 bottom_left = False):
+                 bottom_left = False,
+                 map_resolution = "l"):
 
         if lon_range is None:
             lon_range = (min(fp_data.lon.values),
@@ -715,7 +716,7 @@ class plot_map_setup:
         m = Basemap(projection='gall',
             llcrnrlat=lat_range[0], urcrnrlat=lat_range[1],
             llcrnrlon=lon_range[0], urcrnrlon=lon_range[1],
-            resolution='l')
+            resolution = map_resolution)
 
         if bottom_left == False:
             lons, lats = np.meshgrid(fp_data.lon.values,
@@ -751,7 +752,7 @@ def plot_map_zoom(fp_data):
     dlon = max(fp_data[sites[0]].lon.values) - \
             min(fp_data[sites[0]].lon.values)
     lon_range = [min(fp_data[sites[0]].lon.values) + 0.6*dlon,
-                 max(fp_data[sites[0]].lon.values) - 0.2*dlon]
+                 max(fp_data[sites[0]].lon.values) - 0.25*dlon]
     dlat = max(fp_data[sites[0]].lat.values) - \
             min(fp_data[sites[0]].lat.values)
     lat_range = [min(fp_data[sites[0]].lat.values) + 0.53*dlat,
@@ -849,7 +850,10 @@ def plot(fp_data, date, out_filename=None,
 
 def plot_scatter(fp_data, date, out_filename=None, 
          lon_range=None, lat_range=None, cutoff = -3.,
-         map_data = None, zoom = False):
+         map_data = None, zoom = False,
+         map_resolution = "l", 
+         map_background = "countryborders",
+         colormap = plt.cm.YlGnBu):
     
     """date as string "d/m/y H:M" or datetime object 
     datetime.datetime(yyyy,mm,dd,hh,mm)
@@ -869,22 +873,27 @@ def plot_scatter(fp_data, date, out_filename=None,
     if map_data is None:
         map_data = plot_map_setup(fp_data[sites[0]],
                                   lon_range = lon_range,
-                                  lat_range = lat_range, bottom_left = True)
+                                  lat_range = lat_range,
+                                  bottom_left = True,
+                                  map_resolution = map_resolution)
 
     # Open plot
     fig = plt.figure(figsize=(8,8))
     fig.add_axes([0.1,0.1,0.8,0.8])
 
-    map_data.m.drawcoastlines()
-    map_data.m.fillcontinents(color='grey',lake_color=None, alpha = 0.2)
-    map_data.m.drawcountries()
+    if map_background == "shadedrelief":
+        map_data.m.shadedrelief()
+    elif map_background == "countryborders":
+        map_data.m.drawcoastlines()
+        map_data.m.fillcontinents(color='grey',lake_color=None, alpha = 0.2)
+        map_data.m.drawcountries()
 
     #Calculate color levels
 #    cmap = {"SURFACE": plt.cm.BuPu,
 #            "SHIP": plt.cm.Blues,
 #            "AIRCRAFT": plt.cm.Reds,
 #            "SATELLITE": plt.cm.Greens}
-    cmap = plt.cm.YlGnBu
+    cmap = colormap
     rp_color = {"SURFACE": "blue",
                 "SHIP": "purple",
                 "AIRCRAFT": "red",
