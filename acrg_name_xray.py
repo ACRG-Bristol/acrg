@@ -140,7 +140,7 @@ def footprints(sitecode_or_filename, start = "2010-01-01", end = "2016-01-01",
         
         fp=read_netcdfs(files)
         
-        # If a species is specified, also get flux and mozart edges           
+        # If a species is specified, also get flux and vmr at domain edges           
         if species is not None:
 
             flux_ds = flux(domain, species)
@@ -256,7 +256,7 @@ def timeseries_boundary_conditions(ds):
     """
     Compute particle location * global model edges time series.
     All that is required is that you input an xray
-    dataset with both the particle locations and maozart edge fields present    
+    dataset with both the particle locations and vmr at domain edge fields present    
     """ 
     return (ds.particle_locations_n*ds.vmr_n).sum(["height", "lon"]) + \
            (ds.particle_locations_e*ds.vmr_e).sum(["height", "lat"]) + \
@@ -433,7 +433,7 @@ def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW'):
     
     for site in sites:
 
-        # stitch together the particle locations, mozart edges and
+        # stitch together the particle locations, vmrs at domain edges and
         #boundary condition basis functions
         DS = combine_datasets(fp_and_data[site]["particle_locations_n",
                                                      "particle_locations_e",
@@ -451,21 +451,21 @@ def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW'):
                                 DS.particle_locations_s,
                                 DS.particle_locations_w])
         
-        mz_ed = np.hstack([DS.vmr_n,
+        vmr_ed = np.hstack([DS.vmr_n,
                            DS.vmr_e,
                            DS.vmr_s,
                            DS.vmr_w])
         
-        bf = np.hstack([DS.basis_mz_n,
-                        DS.basis_mz_e,
-                        DS.basis_mz_s,
-                        DS.basis_mz_w])
+        bf = np.hstack([DS.bc_basis_n,
+                        DS.bc_basis_e,
+                        DS.bc_basis_s,
+                        DS.bc_basis_w])
         
         H_bc = np.zeros((len(DS.coords['region']),len(DS.bc)))
         
         for i in range(len(DS.coords['region'])):
             reg = bf[:,:,i,:]
-            H_bc[i,:] = np.sum((part_loc*mz_ed*reg), axis=(0,1))
+            H_bc[i,:] = np.sum((part_loc*vmr_ed*reg), axis=(0,1))
         
         sensitivity = xray.Dataset({'H_bc': (['region_bc','time'], H_bc)},
                                     coords = {'region_bc': (DS.coords['region'].values),
