@@ -439,10 +439,10 @@ def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW'):
                                                      "particle_locations_e",
                                                      "particle_locations_s",
                                                      "particle_locations_w",
-                                                     "vmr_mozart_n",
-                                                     "vmr_mozart_e",
-                                                     "vmr_mozart_s",
-                                                     "vmr_mozart_w",
+                                                     "vmr_n",
+                                                     "vmr_e",
+                                                     "vmr_s",
+                                                     "vmr_w",
                                                      "bc"],
                                                      basis_func)
 
@@ -451,10 +451,10 @@ def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW'):
                                 DS.particle_locations_s,
                                 DS.particle_locations_w])
         
-        mz_ed = np.hstack([DS.vmr_mozart_n,
-                           DS.vmr_mozart_e,
-                           DS.vmr_mozart_s,
-                           DS.vmr_mozart_w])
+        mz_ed = np.hstack([DS.vmr_n,
+                           DS.vmr_e,
+                           DS.vmr_s,
+                           DS.vmr_w])
         
         bf = np.hstack([DS.basis_mz_n,
                         DS.basis_mz_e,
