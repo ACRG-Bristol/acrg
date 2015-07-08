@@ -477,7 +477,8 @@ def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW'):
 
 
 def merge_sensitivity(fp_data_H):
-#    outputs y, y_site, y_time, H
+#    outputs y, y_site, y_time in a single array for all sites
+#   (as opposed to a dictionary) and H and H_bc if present in dataset
     y = []
     y_error = []
     y_site = []
@@ -491,7 +492,8 @@ def merge_sensitivity(fp_data_H):
         y_error.append(fp_data_H[site].dmf.values)
         y_site.append([site for i in range(len(fp_data_H[site].coords['time']))])
         y_time.append(fp_data_H[site].coords['time'].values)
-        H.append(fp_data_H[site].H.values)
+        if 'H' in fp_data_H[site].data_vars:
+            H.append(fp_data_H[site].H.values)
         if 'H_bc' in fp_data_H[site].data_vars:
             H_bc.append(fp_data_H[site].H_bc.values)
     
@@ -499,14 +501,19 @@ def merge_sensitivity(fp_data_H):
     y_error = np.hstack(y_error)
     y_site = np.hstack(y_site)
     y_time = np.hstack(y_time)
-    H = np.hstack(H)
+    if len(H) > 0:
+        H = np.hstack(H)
     if len(H_bc) > 0:
         H_bc = np.hstack(H_bc)
     
-    if len(H_bc) > 0:
+    if len(H_bc) > 0 and len(H) > 0:
         return y, y_error, y_site, y_time, H.T, H_bc.T
-    else:
+    elif len(H_bc) == 0 and len(H) > 0:
         return y, y_error, y_site, y_time, H.T
+    elif len(H_bc) > 0 and len(H) == 0:
+         return y, y_error, y_site, y_time, H_bc.T
+    else:
+        return y, y_error, y_site, y_time
     
 
 def filtering(datasets_in, filters):
