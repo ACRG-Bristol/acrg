@@ -27,11 +27,11 @@ from os.path import split, realpath
 from acrg_time import convert
 import calendar
 
-fp_directory = '/data/shared/NAME/fp_netcdf/'
+fp_directory = '/data/shared/NAME/fp/'
 flux_directory = '/data/shared/NAME/emissions/'
 basis_directory = '/data/shared/NAME/basis_functions/'
-bc_directory = '/data/shared/NAME/boundary_conditions/'
-bc_basis_directory = '/data/shared/NAME/BC_basis_functions/'
+bc_directory = '/data/shared/NAME/bc/'
+bc_basis_directory = '/data/shared/NAME/bc_basis_functions/'
 
 # Get acrg_site_info file
 acrg_path=split(realpath(__file__))
@@ -268,10 +268,10 @@ def boundary_conditions(ds):
     All that is required is that you input an xray
     dataset with both the particle locations and maozart edge fields present    
     """ 
-    BCN = (ds.particle_locations_n*ds.vmr_mozart_n).sum(["height", "lon"])
-    BCE = (ds.particle_locations_e*ds.vmr_mozart_e).sum(["height", "lat"])
-    BCS = (ds.particle_locations_s*ds.vmr_mozart_s).sum(["height", "lon"])
-    BCW = (ds.particle_locations_w*ds.vmr_mozart_w).sum(["height", "lat"])
+    BCN = (ds.particle_locations_n*ds.vmr_n).sum(["height", "lon"])
+    BCE = (ds.particle_locations_e*ds.vmr_e).sum(["height", "lat"])
+    BCS = (ds.particle_locations_s*ds.vmr_s).sum(["height", "lon"])
+    BCW = (ds.particle_locations_w*ds.vmr_w).sum(["height", "lat"])
     
     #bc = [[BCN],[BCE], [BCS], [BCW]]
     return BCN+BCE+BCS+BCW
@@ -349,10 +349,10 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
             if ".units" in attributes:
                 site_ds.update({'fp' : (site_ds.fp.dims, site_ds.fp / data[".units"])})
                 if calc_bc:
-                    site_ds.update({'vmr_mozart_n' : (site_ds.vmr_mozart_n.dims, site_ds.vmr_mozart_n / data[".units"])})
-                    site_ds.update({'vmr_mozart_e' : (site_ds.vmr_mozart_e.dims, site_ds.vmr_mozart_e / data[".units"])})
-                    site_ds.update({'vmr_mozart_s' : (site_ds.vmr_mozart_s.dims, site_ds.vmr_mozart_s / data[".units"])})
-                    site_ds.update({'vmr_mozart_w' : (site_ds.vmr_mozart_w.dims, site_ds.vmr_mozart_w / data[".units"])})
+                    site_ds.update({'vmr_n' : (site_ds.vmr_n.dims, site_ds.vmr_n / data[".units"])})
+                    site_ds.update({'vmr_e' : (site_ds.vmr_e.dims, site_ds.vmr_e / data[".units"])})
+                    site_ds.update({'vmr_s' : (site_ds.vmr_s.dims, site_ds.vmr_s / data[".units"])})
+                    site_ds.update({'vmr_w' : (site_ds.vmr_w.dims, site_ds.vmr_w / data[".units"])})
                         
             # Calculate model time series, if required
             if calc_timeseries:
@@ -446,10 +446,10 @@ def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW'):
                                                      "particle_locations_e",
                                                      "particle_locations_s",
                                                      "particle_locations_w",
-                                                     "vmr_mozart_n",
-                                                     "vmr_mozart_e",
-                                                     "vmr_mozart_s",
-                                                     "vmr_mozart_w",
+                                                     "vmr_n",
+                                                     "vmr_e",
+                                                     "vmr_s",
+                                                     "vmr_w",
                                                      "bc"],
                                                      basis_func)
 
@@ -458,10 +458,10 @@ def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW'):
                                 DS.particle_locations_s,
                                 DS.particle_locations_w])
         
-        mz_ed = np.hstack([DS.vmr_mozart_n,
-                           DS.vmr_mozart_e,
-                           DS.vmr_mozart_s,
-                           DS.vmr_mozart_w])
+        mz_ed = np.hstack([DS.vmr_n,
+                           DS.vmr_e,
+                           DS.vmr_s,
+                           DS.vmr_w])
         
         bf = np.hstack([DS.basis_mz_n,
                         DS.basis_mz_e,
