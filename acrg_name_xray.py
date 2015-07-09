@@ -384,7 +384,9 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
 
         site_bf = combine_datasets(fp_and_data[site]["fp", "flux", "mf_mod"],
                                    basis_func)
-        
+        basis_scale = xray.Dataset({'basis_scale': (['lat','lon','time'], np.zeros(np.shape(site_bf.basis)))},
+                    coords = site_bf.coords)
+        site_bf = site_bf.merge(basis_scale)
 #        reference = site_bf.mf_mod
         
 #        H = np.zeros((len(site_bf.coords['region']),len(site_bf.mf_mod)))
@@ -393,12 +395,12 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
 #        for i in range(len(site_bf.coords['region'])):
 #            reg = site_bf.basis.sel(region=i)
         for i in range(int(np.max(site_bf.basis))):
-            reg = np.zeros(np.shape(site_bf.basis))
-            reg[np.where(site_bf.basis == i+1)] = 1
+            site_bf.basis_scale = np.zeros(np.shape(site_bf.basis_scale))
+            site_bf.basis_scale[np.where(site_bf.basis == i+1)] = 1
 #            flux_scale = reg + 1.
 #            perturbed = (site_bf.fp*site_bf.flux*flux_scale).sum(["lat", "lon"])
 #            H[i,:] = perturbed - reference
-            H[i,:] = (site_bf.fp*site_bf.flux*reg).sum(["lat", "lon"])
+            H[i,:] = (site_bf.fp*site_bf.flux*site_bf.basis_scale).sum(["lat", "lon"])
         
         sensitivity = xray.Dataset({'H': (['region','time'], H)},
 #                                    coords = {'region': (site_bf.coords['region']),
