@@ -26,6 +26,7 @@ import xray
 from os.path import split, realpath
 from acrg_time import convert
 import calendar
+import pickle
 
 fp_directory = '/data/shared/NAME/fp/'
 flux_directory = '/data/shared/NAME/emissions/'
@@ -469,7 +470,8 @@ def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW'):
     return fp_and_data
 
 
-def merge_sensitivity(fp_data_H):
+def merge_sensitivity(fp_data_H,
+                      out_filename = None):
     """
     outputs y, y_site, y_time in a single array for all sites
    (as opposed to a dictionary) and H and H_bc if present in dataset
@@ -513,15 +515,27 @@ def merge_sensitivity(fp_data_H):
     if len(H_bc) > 0:
         H_bc = np.hstack(H_bc)
     
-    if len(H_bc) > 0 and len(H) > 0:
-        return y, y_error, y_site, y_time, H.T, H_bc.T
-    elif len(H_bc) == 0 and len(H) > 0:
-        return y, y_error, y_site, y_time, H.T
-    elif len(H_bc) > 0 and len(H) == 0:
-         return y, y_error, y_site, y_time, H_bc.T
-    else:
-        return y, y_error, y_site, y_time
+    out_variables = y, y_error, y_site, y_time
     
+    if len(H_bc) > 0:
+        out_variables += (H_bc.T,)
+    else:
+        out_variables += (None,)
+        
+    if len(H) > 0:
+        out_variables += (H.T,)
+    else:
+        out_variables += (None,)
+
+    # Save or return y, y_error, y_site, y_time, H_bc, H
+    if out_filename is None:
+        return out_variables
+    else:
+        with open(out_filename, "w") as outfile:
+            pickle.dump(out_variables, outfile)        
+        print("Written " + out_filename)
+        return out_variables
+
 
 def filtering(datasets_in, filters):
     """
