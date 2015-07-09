@@ -385,24 +385,15 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
         site_bf = combine_datasets(fp_and_data[site]["fp", "flux", "mf_mod"],
                                    basis_func)
         
-#        reference = site_bf.mf_mod
-        
-#        H = np.zeros((len(site_bf.coords['region']),len(site_bf.mf_mod)))
         H = np.zeros((int(np.max(site_bf.basis)),len(site_bf.mf_mod)))
         
-#        for i in range(len(site_bf.coords['region'])):
-#            reg = site_bf.basis.sel(region=i)
         for i in range(int(np.max(site_bf.basis))):
             reg = np.zeros(np.shape(site_bf.basis))
             reg[np.where(site_bf.basis == i+1)] = 1
-#            flux_scale = reg + 1.
-#            perturbed = (site_bf.fp*site_bf.flux*flux_scale).sum(["lat", "lon"])
-#            H[i,:] = perturbed - reference
             H[i,:] = (site_bf.fp*site_bf.flux*reg).sum(["lat", "lon"])
         
         sensitivity = xray.Dataset({'H': (['region','time'], H)},
-#                                    coords = {'region': (site_bf.coords['region']),
-                                        coords = {'region' : range(1,np.max(site_bf.basis)+1),
+                                    coords = {'region' : range(1,np.max(site_bf.basis)+1),
                                               'time' : (fp_and_data[site].coords['time'])})
 
         fp_and_data[site] = fp_and_data[site].merge(sensitivity)
@@ -436,15 +427,15 @@ def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW'):
         # stitch together the particle locations, vmrs at domain edges and
         #boundary condition basis functions
         DS = combine_datasets(fp_and_data[site]["particle_locations_n",
-                                                     "particle_locations_e",
-                                                     "particle_locations_s",
-                                                     "particle_locations_w",
-                                                     "vmr_n",
-                                                     "vmr_e",
-                                                     "vmr_s",
-                                                     "vmr_w",
-                                                     "bc"],
-                                                     basis_func)
+                                                 "particle_locations_e",
+                                                 "particle_locations_s",
+                                                 "particle_locations_w",
+                                                 "vmr_n",
+                                                 "vmr_e",
+                                                 "vmr_s",
+                                                 "vmr_w",
+                                                 "bc"],
+                                                 basis_func)
 
         part_loc = np.hstack([DS.particle_locations_n,
                                 DS.particle_locations_e,
@@ -477,8 +468,11 @@ def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW'):
 
 
 def merge_sensitivity(fp_data_H):
-#    outputs y, y_site, y_time in a single array for all sites
-#   (as opposed to a dictionary) and H and H_bc if present in dataset
+    """
+    outputs y, y_site, y_time in a single array for all sites
+   (as opposed to a dictionary) and H and H_bc if present in dataset
+   """
+
     y = []
     y_error = []
     y_site = []
