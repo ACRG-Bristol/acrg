@@ -384,13 +384,18 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
 
         site_bf = combine_datasets(fp_and_data[site]["fp", "flux", "mf_mod"],
                                    basis_func)
-        
+
+        basis_scale = xray.Dataset({'basis_scale': (['lat','lon','time'],
+                                                    np.zeros(np.shape(site_bf.basis)))},
+                                   coords = site_bf.coords)
+        site_bf = site_bf.merge(basis_scale)
+
         H = np.zeros((int(np.max(site_bf.basis)),len(site_bf.mf_mod)))
         
         for i in range(int(np.max(site_bf.basis))):
-            reg = np.zeros(np.shape(site_bf.basis))
-            reg[np.where(site_bf.basis == i+1)] = 1
-            H[i,:] = (site_bf.fp*site_bf.flux*reg).sum(["lat", "lon"])
+            site_bf.basis_scale = np.zeros(np.shape(site_bf.basis_scale))
+            site_bf.basis_scale[np.where(site_bf.basis == i+1)] = 1
+            H[i,:] = (site_bf.fp*site_bf.flux*site_bf.basis_scale).sum(["lat", "lon"])
         
         sensitivity = xray.Dataset({'H': (['region','time'], H)},
                                     coords = {'region' : range(1,np.max(site_bf.basis)+1),
@@ -402,9 +407,6 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
             
             sub_fp_temp = site_bf.fp.sel(lon=slice(min(site_bf.sub_lon),max(site_bf.sub_lon)), 
                                     lat=slice(min(site_bf.sub_lat),max(site_bf.sub_lat)))   
-            #sub_flux_temp = site_bf.flux.sel(lon=slice(min(site_bf.sub_lon),max(site_bf.sub_lon)), 
-            #                       lat=slice(min(site_bf.sub_lat),max(site_bf.sub_lat))) 
-            
             sub_fp = xray.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
                                coords = {'sub_lat': (site_bf.coords['sub_lat']),
                                          'sub_lon': (site_bf.coords['sub_lon']),
@@ -481,11 +483,21 @@ def merge_sensitivity(fp_data_H):
     H_bc = []
     
     sites = [key for key in fp_data_H.keys() if key[0] != '.']
+    
     for si, site in enumerate(sites):
+
         y.append(fp_data_H[site].mf.values)
-        y_error.append(fp_data_H[site].dmf.values)
+        
+        # Approximate y_error
+        if "vmf" in fp_data_H[site].keys():
+            y_error.append(fp_data_H[site].vmf.values)
+        elif "dmf" in fp_data_H[site].keys():
+            y_error.append(fp_data_H[site].vmf.values)
+        
         y_site.append([site for i in range(len(fp_data_H[site].coords['time']))])
+
         y_time.append(fp_data_H[site].coords['time'].values)
+
         if 'H' in fp_data_H[site].data_vars:
             H.append(fp_data_H[site].H.values)
         if 'H_bc' in fp_data_H[site].data_vars:
@@ -495,6 +507,7 @@ def merge_sensitivity(fp_data_H):
     y_error = np.hstack(y_error)
     y_site = np.hstack(y_site)
     y_time = np.hstack(y_time)
+    
     if len(H) > 0:
         H = np.hstack(H)
     if len(H_bc) > 0:
