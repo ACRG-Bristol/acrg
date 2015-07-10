@@ -494,7 +494,7 @@ def merge_sensitivity(fp_data_H,
         if "vmf" in fp_data_H[site].keys():
             y_error.append(fp_data_H[site].vmf.values)
         elif "dmf" in fp_data_H[site].keys():
-            y_error.append(fp_data_H[site].vmf.values)
+            y_error.append(fp_data_H[site].dmf.values)
         
         y_site.append([site for i in range(len(fp_data_H[site].coords['time']))])
 
