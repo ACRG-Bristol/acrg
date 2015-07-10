@@ -379,6 +379,7 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
     
     sites = [key for key in fp_and_data.keys() if key[0] != '.']
     attributes = [key for key in fp_and_data.keys() if key[0] == '.']
+    
     basis_func = basis(domain = domain, basis_case = basis_case)
     
     for site in sites:
@@ -394,9 +395,12 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
         H = np.zeros((int(np.max(site_bf.basis)),len(site_bf.mf_mod)))
         
         for i in range(int(np.max(site_bf.basis))):
-            site_bf.basis_scale = np.zeros(np.shape(site_bf.basis_scale))
-            site_bf.basis_scale[np.where(site_bf.basis == i+1)] = 1
-            H[i,:] = (site_bf.fp*site_bf.flux*site_bf.basis_scale).sum(["lat", "lon"])
+            site_bf.basis_scale.values = np.zeros(np.shape(site_bf.basis_scale))
+            site_bf.basis_scale.values[np.where(site_bf.basis == i+1)] = 1
+            fpalign, fluxalign, scalealign = xray.align(site_bf.fp,
+                                                        site_bf.flux,
+                                                        site_bf.basis_scale)
+            H[i,:] = (fpalign*fluxalign*scalealign).sum(["lat", "lon"])
         
         sensitivity = xray.Dataset({'H': (['region','time'], H)},
                                     coords = {'region' : range(1,np.max(site_bf.basis)+1),
@@ -430,15 +434,15 @@ def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW'):
         # stitch together the particle locations, vmrs at domain edges and
         #boundary condition basis functions
         DS = combine_datasets(fp_and_data[site]["particle_locations_n",
-                                                 "particle_locations_e",
-                                                 "particle_locations_s",
-                                                 "particle_locations_w",
-                                                 "vmr_n",
-                                                 "vmr_e",
-                                                 "vmr_s",
-                                                 "vmr_w",
-                                                 "bc"],
-                                                 basis_func)
+                                                "particle_locations_e",
+                                                "particle_locations_s",
+                                                "particle_locations_w",
+                                                "vmr_n",
+                                                "vmr_e",
+                                                "vmr_s",
+                                                "vmr_w",
+                                                "bc"],
+                                                basis_func)
 
         part_loc = np.hstack([DS.particle_locations_n,
                                 DS.particle_locations_e,
@@ -471,11 +475,13 @@ def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW'):
 
 
 def merge_sensitivity(fp_data_H,
-                      out_filename = None):
+                      out_filename = None,
+                      remove_nan = True):
     """
-    outputs y, y_site, y_time in a single array for all sites
-   (as opposed to a dictionary) and H and H_bc if present in dataset
-   """
+    Outputs y, y_site, y_time in a single array for all sites
+    (as opposed to a dictionary) and H and H_bc if present in dataset.
+    Assumes my default that NaN values in y will be removed.
+    """
 
     y = []
     y_error = []
@@ -494,36 +500,55 @@ def merge_sensitivity(fp_data_H,
         if "vmf" in fp_data_H[site].keys():
             y_error.append(fp_data_H[site].vmf.values)
         elif "dmf" in fp_data_H[site].keys():
-            y_error.append(fp_data_H[site].vmf.values)
+            y_error.append(fp_data_H[site].dmf.values)
         
         y_site.append([site for i in range(len(fp_data_H[site].coords['time']))])
 
         y_time.append(fp_data_H[site].coords['time'].values)
 
         if 'H' in fp_data_H[site].data_vars:
-            H.append(fp_data_H[site].H.values)
+            # Make sure H matrices are aligned in the correct dimensions
+            if fp_data_H[site].H.dims[0] == "time":
+                H.append(fp_data_H[site].H.values)
+            else:
+                H.append(fp_data_H[site].H.values.T)
         if 'H_bc' in fp_data_H[site].data_vars:
-            H_bc.append(fp_data_H[site].H_bc.values)
-    
+            if fp_data_H[site].H_bc.dims[0] == "time":
+                H_bc.append(fp_data_H[site].H_bc.values)
+            else:
+                H_bc.append(fp_data_H[site].H_bc.values.T)
+
     y = np.hstack(y)
     y_error = np.hstack(y_error)
     y_site = np.hstack(y_site)
     y_time = np.hstack(y_time)
     
+    if remove_nan:
+        why = np.isfinite(y)
+        y = y[why]
+        y_error = y_error[why]
+        y_site = y_site[why]
+        y_time = y_time[why]
+    
     if len(H) > 0:
-        H = np.hstack(H)
+        H = np.vstack(H)
+        if remove_nan:
+            H = H[why, :]
+            
     if len(H_bc) > 0:
-        H_bc = np.hstack(H_bc)
+        H_bc = np.vstack(H_bc)
+        if remove_nan:
+            H_bc = H_bc[why, :]
     
     out_variables = y, y_error, y_site, y_time
     
     if len(H_bc) > 0:
-        out_variables += (H_bc.T,)
+        out_variables += (H_bc,)
     else:
         out_variables += (None,)
         
     if len(H) > 0:
-        out_variables += (H.T,)
+        out_variables += (H,)
     else:
         out_variables += (None,)
 
@@ -532,7 +557,7 @@ def merge_sensitivity(fp_data_H,
         return out_variables
     else:
         with open(out_filename, "w") as outfile:
-            pickle.dump(out_variables, outfile)        
+            pickle.dump(out_variables, outfile)
         print("Written " + out_filename)
         return out_variables
 
