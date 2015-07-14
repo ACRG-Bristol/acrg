@@ -29,7 +29,7 @@ import collections as c
 
 mzt_dir = '/shared_data/air/shared/MOZART/mzt_output/'
 filename = mzt_dir + 'CH4/FWDModelComparison_NewEDGAR.mz4.h2.2014-01.nc'
-FPfilename = "/data/shared/NAME/fp_netcdf/EUROPE/BSD-50magl_EUROPE_201401.nc"
+FPfilename = "/data/shared/NAME/fp/EUROPE/BSD-50magl_EUROPE_201401.nc"
 
 
 def MOZART_filenames(species, start = "2010-01-01", end = "2016-01-01"):
@@ -156,7 +156,7 @@ def MOZART_vmr(species, filename=None, start = "2010-01-01", end = "2016-01-01")
             Alt = mz.calc_altitude(f.pressure,f.P0)
             conc = np.reshape(f.conc, (len(f.lev),len(f.lat),len(f.lon),len([f.start_date])))
             Alt = np.reshape(Alt,np.shape(conc))
-            vmr_var_name = 'vmr_mozart'
+            vmr_var_name = 'vmr'
 
             MZ = xray.Dataset({vmr_var_name : (['height', 'lat', 'lon','time'], conc),
                    'Alt' : (['height', 'lat', 'lon','time'], Alt)},
@@ -187,7 +187,7 @@ def MOZART_boundaries(MZ, FPfile = FPfilename):
     footprint file with the EUROPE domain.
     """
     
-    vmr_var_name = 'vmr_mozart'
+    vmr_var_name = 'vmr'
 
     #Get info from a EUROPE footprint file:
     FP = xray.open_dataset(FPfilename)
