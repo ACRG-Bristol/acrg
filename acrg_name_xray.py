@@ -597,7 +597,7 @@ def baseline(y, y_time, y_site, x_error = 10000, days_to_average = 5):
     for site in keys:
         val = np.max(pos)
         wh = np.where(y_site == site)
-        ts = pandas.Series(1, y_time[wh])
+        ts = pd.Series(1, y_time[wh])
         fiveday = np.clip((ts.index.day-1) // n, 0, n)
         months = (ts.index.month - ts.index.month[0])
         pos[wh] = (val + 1) + fiveday + months*(n+1)
