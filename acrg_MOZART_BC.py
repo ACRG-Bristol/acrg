@@ -64,6 +64,7 @@ def convert_lon(DS, data_var):
     rather than the 0-360 convention.
     WARNING: variable must have dimensions ('height','lat','lon','time') in that order.
     """
+    DS.coords['lon'] = DS.coords['lon'] - 180
     L = len(DS.coords['lon'])/2
     var0 = DS[data_var]
     var = np.zeros(np.shape(var0))
@@ -165,7 +166,6 @@ def MOZART_vmr(species, filename=None, start = "2010-01-01", end = "2016-01-01")
                                         'lon' : f.lon,
                                         'time': [f.start_date]})
             #Change longitude from being 0 - 360 to being -180 - 180.
-            MZ.coords['lon'] = MZ.coords['lon'] - 180
             convert_lon(MZ,vmr_var_name)
             mzt.append(MZ)
         mzt = xray.concat(mzt, dim = 'time')
