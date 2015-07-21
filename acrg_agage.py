@@ -374,9 +374,9 @@ def get_gosat(site, species, start = "1900-01-01", end = "2020-01-01"):
     data = data.to_dataframe()
     
     if species.upper() == "CH4":
-        data.mf.units = 1e9
+        data.mf.units = 1e-9
     if species.upper() == "CO2":
-        data.mf.units = 1e6
+        data.mf.units = 1e-6
 
     return data
 

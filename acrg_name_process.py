@@ -1064,7 +1064,7 @@ def met_empty():
 def copy_processed(domain):
 
     src_folder = "/dagage2/agage/metoffice/NAME_output/"
-    dst_folder = "/data/shared/NAME/fp_netcdf/" + domain + "/"
+    dst_folder = "/data/shared/NAME/fp/" + domain + "/"
     
     files = glob.glob(src_folder + domain +
         "*/Processed_Fields_files/*.nc")
