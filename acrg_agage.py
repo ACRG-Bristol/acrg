@@ -205,7 +205,7 @@ def get_file_list(site, species, start, end, height,
 
 def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
         height=None, baseline=False, average=None,
-        network = None, instrument = None):
+        network = None, instrument = None, status_flag_unflagged = 0):
     
     start_time = convert.reftime(start)
     end_time = convert.reftime(end)
@@ -291,8 +291,8 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
                     file_flag=ncf.variables[ncvarname + "_status_flag"]
                     if len(file_flag) > 0:
                         df["status_flag"] = file_flag[:]
-                        df = df[df.status_flag < 3]
-            
+                        df = df[df.status_flag == status_flag_unflagged]
+                
                 if units != "permil":
                     df = df[df.mf > 0.]
                 
@@ -383,7 +383,7 @@ def get_gosat(site, species, start = "1900-01-01", end = "2020-01-01"):
 
 def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
             height = None, baseline = False, average = None,
-            network = None, instrument = None):
+            network = None, instrument = None, status_flag_unflagged = 0):
 
 
     def check_list_and_length(var, sites, error_message_string):
@@ -431,7 +431,8 @@ def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
                        start = start_time, end = end_time,
                        average = average[si],
                        network = network[si],
-                       instrument = instrument[si])
+                       instrument = instrument[si],
+                       status_flag_unflagged = status_flag_unflagged)
                        
         if data is not None:
             obs[site] = data.copy()

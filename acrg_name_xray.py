@@ -26,12 +26,13 @@ import xray
 from os.path import split, realpath
 from acrg_time import convert
 import calendar
+import pickle
 
-fp_directory = '/data/shared/NAME/fp_netcdf/'
+fp_directory = '/data/shared/NAME/fp/'
 flux_directory = '/data/shared/NAME/emissions/'
 basis_directory = '/data/shared/NAME/basis_functions/'
-bc_directory = '/data/shared/NAME/boundary_conditions/'
-bc_basis_directory = '/data/shared/NAME/BC_basis_functions/'
+bc_directory = '/data/shared/NAME/bc/'
+bc_basis_directory = '/data/shared/NAME/bc_basis_functions/'
 
 # Get acrg_site_info file
 acrg_path=split(realpath(__file__))
@@ -79,7 +80,8 @@ def filenames(site, domain, start, end, height = None, flux=None, basis=None):
     
     return  files
 
-def read_netcdfs(files, dim, transform_func=None):
+def read_netcdfs(files, dim = "time", transform_func=None):
+    
     def process_one_path(path):
         # use a context manager, to ensure the file gets closed after use
         with xray.open_dataset(path) as ds:
@@ -88,13 +90,11 @@ def read_netcdfs(files, dim, transform_func=None):
             # load all data from the transformed dataset, to ensure we can
             # use it after closing each original file
             ds.load()
-            return ds
+        return ds
 
-    #paths = sorted(glob(files))
-    datasets = [process_one_path(p) for p in files]
+    datasets = [process_one_path(p) for p in sorted(files)]
     combined = xray.concat(datasets, dim)
     return combined   
-
 
 
 def footprints(sitecode_or_filename, start = "2010-01-01", end = "2016-01-01",
@@ -136,23 +136,23 @@ def footprints(sitecode_or_filename, start = "2010-01-01", end = "2016-01-01",
     if len(files) == 0:
         print("Can't find files, " + sitecode_or_filename)
         return None
+
     else:
-        files.sort()
-        fp = []
-        #for f in files:
-        #    fp.append(xray.open_dataset(f, engine = "h5netcdf"))
-            
-        #fp = xray.concat(fp, dim = 'time')
-        fp=read_netcdfs(files, "time")
-        # If a species is specified, also get flux and mozart edges           
+        
+        fp=read_netcdfs(files)
+        
+        # If a species is specified, also get flux and vmr at domain edges           
         if species is not None:
+
             flux_ds = flux(domain, species)
-            mz_ds = MOZART_edges(domain,species)
+
             if flux_ds is not None:
                 fp = combine_datasets(fp, flux_ds)
-            if mz_ds is not None:
-                fp = combine_datasets(fp,mz_ds)
-        
+
+            bc_ds = boundary_conditions(domain, species)
+            if bc_ds is not None:
+                fp = combine_datasets(fp, bc_ds)
+
         return fp
 
 
@@ -170,13 +170,27 @@ def flux(domain, species):
     if len(files) == 0:
         print("Can't find flux: " + domain + " " + species)
         return None
-        
-    flux_ds = []
-    for f in files:
-        flux_ds.append(xray.open_dataset(f))
-    flux_ds = xray.concat(flux_ds, dim = "time")
+    
+    flux_ds = read_netcdfs(files)
 
     return flux_ds
+
+
+def boundary_conditions(domain, species):
+    """
+    Read in the files with the global model vmrs at the domain edges to give
+    the boundary conditions.
+    """
+    
+    files = sorted(glob.glob(bc_directory + domain + "/" + 
+                   species.lower() + "_" + "*.nc"))
+    if len(files) == 0:
+        print("Can't find boundary condition files: " + domain + " " + species)
+        return None
+
+    bc_ds = read_netcdfs(files)
+
+    return bc_ds
 
 
 def basis(domain, basis_case = 'voronoi'):
@@ -189,47 +203,24 @@ def basis(domain, basis_case = 'voronoi'):
     if len(files) == 0:
         print("Can't find basis functions: " + domain + " " + basis_case)
         return None
-        
-    basis_ds = []
-    for f in files:
-        basis_ds.append(xray.open_dataset(f))
-    basis_ds = xray.concat(basis_ds, dim = "time")
+
+    basis_ds = read_netcdfs(files)
 
     return basis_ds
 
-def MOZART_edges(domain, species):
-    """
-    Read in the files with the MOZART vmrs at the domain edges to give
-    the boundary conditions.
-    """
-    
-    files = sorted(glob.glob(bc_directory + domain + "/" + 
-                   species.lower() + "_" + "*.nc"))
-    if len(files) == 0:
-        print("Can't find MOZART edges: " + domain + " " + species)
-        return None
-        
-    mz_ds = []
-    for f in files:
-        mz_ds.append(xray.open_dataset(f))
-    mz_ds = xray.concat(mz_ds, dim = "time")
 
-    return mz_ds
-
-def bc_basis(domain, basis_case = 'NESW'):
+def basis_boundary_conditions(domain, basis_case = 'NESW'):
     
     files = sorted(glob.glob(bc_basis_directory + domain + "/" +
                     basis_case + "*.nc"))
     if len(files) == 0:
         print("Can't find boundary condition basis functions: " + domain + " " + basis_case)
         return None
-        
-    basis_ds = []
-    for f in files:
-        basis_ds.append(xray.open_dataset(f))
-    basis_ds = xray.concat(basis_ds, dim = "time")
+    
+    basis_ds = read_netcdfs(files)
 
     return basis_ds
+
 
 def combine_datasets(dsa, dsb, method = "ffill"):
     """
@@ -242,8 +233,8 @@ def combine_datasets(dsa, dsb, method = "ffill"):
 
     ds will have the index of dsa    
     """
-    ds = dsa.merge(dsb.reindex_like(dsa, method))
-    return ds
+    
+    return dsa.merge(dsb.reindex_like(dsa, method))
 
 
 def timeseries(ds):
@@ -262,24 +253,22 @@ def timeseries(ds):
     return (ds.fp*ds.flux).sum(["lat", "lon"])
 
 
-def boundary_conditions(ds):
+def timeseries_boundary_conditions(ds):
     """
-    Compute particle location * mozart edges time series.
+    Compute particle location * global model edges time series.
     All that is required is that you input an xray
-    dataset with both the particle locations and maozart edge fields present    
+    dataset with both the particle locations and vmr at domain edge fields present    
     """ 
-    BCN = (ds.particle_locations_n*ds.vmr_mozart_n).sum(["height", "lon"])
-    BCE = (ds.particle_locations_e*ds.vmr_mozart_e).sum(["height", "lat"])
-    BCS = (ds.particle_locations_s*ds.vmr_mozart_s).sum(["height", "lon"])
-    BCW = (ds.particle_locations_w*ds.vmr_mozart_w).sum(["height", "lat"])
+
+    return (ds.particle_locations_n*ds.vmr_n).sum(["height", "lon"]) + \
+           (ds.particle_locations_e*ds.vmr_e).sum(["height", "lat"]) + \
+           (ds.particle_locations_s*ds.vmr_s).sum(["height", "lon"]) + \
+           (ds.particle_locations_w*ds.vmr_w).sum(["height", "lat"])
+
     
-    #bc = [[BCN],[BCE], [BCS], [BCW]]
-    return BCN+BCE+BCS+BCW
-    #return bc
-
-
 def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
-                          calc_timeseries = True, calc_bc = True, average = None):
+                          calc_timeseries = True, calc_bc = True,
+                          average = None):
     """
     Output a dictionary of xray footprint datasets, that correspond to a given
     dictionary of Pandas dataframes, containing mole fraction time series.
@@ -313,6 +302,9 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
     else:
         average = [None for i in sites]
 
+    # Check if species is defined in data dictionary
+    if ".species" in data.keys():
+        species = data[".species"]
 
     # Output array
     fp_and_data = {}
@@ -336,9 +328,10 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
         
         # Get footprints
         site_fp = footprints(site, start = start, end = end,
-                                 domain = domain,
-                                 species = [species if calc_timeseries == True or calc_bc == True \
-                                             else None][0])            
+                             domain = domain,
+                             species = [species if calc_timeseries == True or \
+                                         calc_bc == True \
+                                         else None][0])
         
         if site_fp is not None:
             
@@ -347,21 +340,22 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
             
             # If units are specified, multiply by scaling factor
             if ".units" in attributes:
-                site_ds.update({'fp' : (site_ds.fp.dims, site_ds.fp / data[".units"])})
+#                site_ds.update({'fp' : (site_ds.fp.dims, site_ds.fp / data[".units"])})
                 if calc_bc:
-                    site_ds.update({'vmr_mozart_n' : (site_ds.vmr_mozart_n.dims, site_ds.vmr_mozart_n / data[".units"])})
-                    site_ds.update({'vmr_mozart_e' : (site_ds.vmr_mozart_e.dims, site_ds.vmr_mozart_e / data[".units"])})
-                    site_ds.update({'vmr_mozart_s' : (site_ds.vmr_mozart_s.dims, site_ds.vmr_mozart_s / data[".units"])})
-                    site_ds.update({'vmr_mozart_w' : (site_ds.vmr_mozart_w.dims, site_ds.vmr_mozart_w / data[".units"])})
-                        
+                    for key in site_ds.keys():
+                        if "fp" in key or "vmr" in key:
+                            site_ds.update({key :
+                                            (site_ds[key].dims, site_ds[key] / \
+                                            data[".units"])})
+            
             # Calculate model time series, if required
             if calc_timeseries:
                 site_ds["mf_mod"] = timeseries(site_ds)
-                       
+            
             # Calculate boundary conditions, if required         
             if calc_bc:
-                site_ds["bc"] = boundary_conditions(site_ds)  
-                
+                site_ds["bc"] = timeseries_boundary_conditions(site_ds)  
+            
             # Resample, if required
             if average[si] is not None:
                 site_ds = site_ds.resample(average[si], dim = "time")
@@ -386,31 +380,31 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
     
     sites = [key for key in fp_and_data.keys() if key[0] != '.']
     attributes = [key for key in fp_and_data.keys() if key[0] == '.']
+    
     basis_func = basis(domain = domain, basis_case = basis_case)
     
     for site in sites:
 
         site_bf = combine_datasets(fp_and_data[site]["fp", "flux", "mf_mod"],
                                    basis_func)
-        
-#        reference = site_bf.mf_mod
-        
-#        H = np.zeros((len(site_bf.coords['region']),len(site_bf.mf_mod)))
+
+        basis_scale = xray.Dataset({'basis_scale': (['lat','lon','time'],
+                                                    np.zeros(np.shape(site_bf.basis)))},
+                                   coords = site_bf.coords)
+        site_bf = site_bf.merge(basis_scale)
+
         H = np.zeros((int(np.max(site_bf.basis)),len(site_bf.mf_mod)))
         
-#        for i in range(len(site_bf.coords['region'])):
-#            reg = site_bf.basis.sel(region=i)
         for i in range(int(np.max(site_bf.basis))):
-            reg = np.zeros(np.shape(site_bf.basis))
-            reg[np.where(site_bf.basis == i+1)] = 1
-#            flux_scale = reg + 1.
-#            perturbed = (site_bf.fp*site_bf.flux*flux_scale).sum(["lat", "lon"])
-#            H[i,:] = perturbed - reference
-            H[i,:] = (site_bf.fp*site_bf.flux*reg).sum(["lat", "lon"])
+            site_bf.basis_scale.values = np.zeros(np.shape(site_bf.basis_scale))
+            site_bf.basis_scale.values[np.where(site_bf.basis == i+1)] = 1
+            fpalign, fluxalign, scalealign = xray.align(site_bf.fp,
+                                                        site_bf.flux,
+                                                        site_bf.basis_scale)
+            H[i,:] = (fpalign*fluxalign*scalealign).sum(["lat", "lon"])
         
         sensitivity = xray.Dataset({'H': (['region','time'], H)},
-#                                    coords = {'region': (site_bf.coords['region']),
-                                        coords = {'region' : range(1,np.max(site_bf.basis)+1),
+                                    coords = {'region' : range(1,np.max(site_bf.basis)+1),
                                               'time' : (fp_and_data[site].coords['time'])})
 
         fp_and_data[site] = fp_and_data[site].merge(sensitivity)
@@ -419,9 +413,6 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
             
             sub_fp_temp = site_bf.fp.sel(lon=slice(min(site_bf.sub_lon),max(site_bf.sub_lon)), 
                                     lat=slice(min(site_bf.sub_lat),max(site_bf.sub_lat)))   
-            #sub_flux_temp = site_bf.flux.sel(lon=slice(min(site_bf.sub_lon),max(site_bf.sub_lon)), 
-            #                       lat=slice(min(site_bf.sub_lat),max(site_bf.sub_lat))) 
-            
             sub_fp = xray.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
                                coords = {'sub_lat': (site_bf.coords['sub_lat']),
                                          'sub_lon': (site_bf.coords['sub_lon']),
@@ -436,43 +427,45 @@ def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW'):
     
     sites = [key for key in fp_and_data.keys() if key[0] != '.']
 #    attributes = [key for key in fp_and_data.keys() if key[0] == '.']
-    basis_func = bc_basis(domain = domain, basis_case = basis_case)
+    basis_func = basis_boundary_conditions(domain = domain,
+                                           basis_case = basis_case)
     
     for site in sites:
 
-        # stitch together the particle locations, mozart edges and
+        # stitch together the particle locations, vmrs at domain edges and
         #boundary condition basis functions
         DS = combine_datasets(fp_and_data[site]["particle_locations_n",
-                                                     "particle_locations_e",
-                                                     "particle_locations_s",
-                                                     "particle_locations_w",
-                                                     "vmr_mozart_n",
-                                                     "vmr_mozart_e",
-                                                     "vmr_mozart_s",
-                                                     "vmr_mozart_w",
-                                                     "bc"],
-                                                     basis_func)
+                                                "particle_locations_e",
+                                                "particle_locations_s",
+                                                "particle_locations_w",
+                                                "vmr_n",
+                                                "vmr_e",
+                                                "vmr_s",
+                                                "vmr_w",
+                                                "bc"],
+                                                basis_func)
 
         part_loc = np.hstack([DS.particle_locations_n,
                                 DS.particle_locations_e,
                                 DS.particle_locations_s,
                                 DS.particle_locations_w])
         
-        mz_ed = np.hstack([DS.vmr_mozart_n,
-                           DS.vmr_mozart_e,
-                           DS.vmr_mozart_s,
-                           DS.vmr_mozart_w])
+
+        vmr_ed = np.hstack([DS.vmr_n,
+                           DS.vmr_e,
+                           DS.vmr_s,
+                           DS.vmr_w])
         
-        bf = np.hstack([DS.basis_mz_n,
-                        DS.basis_mz_e,
-                        DS.basis_mz_s,
-                        DS.basis_mz_w])
+        bf = np.hstack([DS.bc_basis_n,
+                        DS.bc_basis_e,
+                        DS.bc_basis_s,
+                        DS.bc_basis_w])
         
         H_bc = np.zeros((len(DS.coords['region']),len(DS.bc)))
         
         for i in range(len(DS.coords['region'])):
             reg = bf[:,:,i,:]
-            H_bc[i,:] = np.sum((part_loc*mz_ed*reg), axis=(0,1))
+            H_bc[i,:] = np.sum((part_loc*vmr_ed*reg), axis=(0,1))
         
         sensitivity = xray.Dataset({'H_bc': (['region_bc','time'], H_bc)},
                                     coords = {'region_bc': (DS.coords['region'].values),
@@ -483,8 +476,15 @@ def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW'):
     return fp_and_data
 
 
-def merge_sensitivity(fp_data_H):
-#    outputs y, y_site, y_time, H
+def merge_sensitivity(fp_data_H,
+                      out_filename = None,
+                      remove_nan = True):
+    """
+    Outputs y, y_site, y_time in a single array for all sites
+    (as opposed to a dictionary) and H and H_bc if present in dataset.
+    Assumes my default that NaN values in y will be removed.
+    """
+
     y = []
     y_error = []
     y_site = []
@@ -493,28 +493,76 @@ def merge_sensitivity(fp_data_H):
     H_bc = []
     
     sites = [key for key in fp_data_H.keys() if key[0] != '.']
-    for si, site in enumerate(sites):
-        y.append(fp_data_H[site].mf.values)
-        y_error.append(fp_data_H[site].dmf.values)
-        y_site.append([site for i in range(len(fp_data_H[site].coords['time']))])
-        y_time.append(fp_data_H[site].coords['time'].values)
-        H.append(fp_data_H[site].H.values)
-        if 'H_bc' in fp_data_H[site].data_vars:
-            H_bc.append(fp_data_H[site].H_bc.values)
     
+    for si, site in enumerate(sites):
+
+        y.append(fp_data_H[site].mf.values)
+        
+        # Approximate y_error
+        if "vmf" in fp_data_H[site].keys():
+            y_error.append(fp_data_H[site].vmf.values)
+        elif "dmf" in fp_data_H[site].keys():
+            y_error.append(fp_data_H[site].dmf.values)
+        
+        y_site.append([site for i in range(len(fp_data_H[site].coords['time']))])
+
+        y_time.append(fp_data_H[site].coords['time'].values)
+
+        if 'H' in fp_data_H[site].data_vars:
+            # Make sure H matrices are aligned in the correct dimensions
+            if fp_data_H[site].H.dims[0] == "time":
+                H.append(fp_data_H[site].H.values)
+            else:
+                H.append(fp_data_H[site].H.values.T)
+        if 'H_bc' in fp_data_H[site].data_vars:
+            if fp_data_H[site].H_bc.dims[0] == "time":
+                H_bc.append(fp_data_H[site].H_bc.values)
+            else:
+                H_bc.append(fp_data_H[site].H_bc.values.T)
+
     y = np.hstack(y)
     y_error = np.hstack(y_error)
     y_site = np.hstack(y_site)
     y_time = np.hstack(y_time)
-    H = np.hstack(H)
+    
+    if remove_nan:
+        why = np.isfinite(y)
+        y = y[why]
+        y_error = y_error[why]
+        y_site = y_site[why]
+        y_time = y_time[why]
+    
+    if len(H) > 0:
+        H = np.vstack(H)
+        if remove_nan:
+            H = H[why, :]
+            
     if len(H_bc) > 0:
-        H_bc = np.hstack(H_bc)
+        H_bc = np.vstack(H_bc)
+        if remove_nan:
+            H_bc = H_bc[why, :]
+    
+    out_variables = y, y_error, y_site, y_time
     
     if len(H_bc) > 0:
-        return y, y_error, y_site, y_time, H.T, H_bc.T
+        out_variables += (H_bc,)
     else:
-        return y, y_error, y_site, y_time, H.T
-    
+        out_variables += (None,)
+        
+    if len(H) > 0:
+        out_variables += (H,)
+    else:
+        out_variables += (None,)
+
+    # Save or return y, y_error, y_site, y_time, H_bc, H
+    if out_filename is None:
+        return out_variables
+    else:
+        with open(out_filename, "w") as outfile:
+            pickle.dump(out_variables, outfile)
+        print("Written " + out_filename)
+        return out_variables
+
 
 def filtering(datasets_in, filters):
     """
@@ -576,7 +624,7 @@ def baseline(y, y_time, y_site, x_error = 10000, days_to_average = 5):
     for site in keys:
         val = np.max(pos)
         wh = np.where(y_site == site)
-        ts = pandas.Series(1, y_time[wh])
+        ts = pd.Series(1, y_time[wh])
         fiveday = np.clip((ts.index.day-1) // n, 0, n)
         months = (ts.index.month - ts.index.month[0])
         pos[wh] = (val + 1) + fiveday + months*(n+1)
@@ -710,7 +758,8 @@ class analytical_inversion:
 class plot_map_setup:
     def __init__(self, fp_data, 
                  lon_range = None, lat_range = None,
-                 bottom_left = False):
+                 bottom_left = False,
+                 map_resolution = "l"):
 
         if lon_range is None:
             lon_range = (min(fp_data.lon.values),
@@ -722,7 +771,7 @@ class plot_map_setup:
         m = Basemap(projection='gall',
             llcrnrlat=lat_range[0], urcrnrlat=lat_range[1],
             llcrnrlon=lon_range[0], urcrnrlon=lon_range[1],
-            resolution='l')
+            resolution = map_resolution)
 
         if bottom_left == False:
             lons, lats = np.meshgrid(fp_data.lon.values,
@@ -758,7 +807,7 @@ def plot_map_zoom(fp_data):
     dlon = max(fp_data[sites[0]].lon.values) - \
             min(fp_data[sites[0]].lon.values)
     lon_range = [min(fp_data[sites[0]].lon.values) + 0.6*dlon,
-                 max(fp_data[sites[0]].lon.values) - 0.2*dlon]
+                 max(fp_data[sites[0]].lon.values) - 0.25*dlon]
     dlat = max(fp_data[sites[0]].lat.values) - \
             min(fp_data[sites[0]].lat.values)
     lat_range = [min(fp_data[sites[0]].lat.values) + 0.53*dlat,
@@ -856,7 +905,10 @@ def plot(fp_data, date, out_filename=None,
 
 def plot_scatter(fp_data, date, out_filename=None, 
          lon_range=None, lat_range=None, cutoff = -3.,
-         map_data = None, zoom = False):
+         map_data = None, zoom = False,
+         map_resolution = "l", 
+         map_background = "countryborders",
+         colormap = plt.cm.YlGnBu):
     
     """date as string "d/m/y H:M" or datetime object 
     datetime.datetime(yyyy,mm,dd,hh,mm)
@@ -876,22 +928,27 @@ def plot_scatter(fp_data, date, out_filename=None,
     if map_data is None:
         map_data = plot_map_setup(fp_data[sites[0]],
                                   lon_range = lon_range,
-                                  lat_range = lat_range, bottom_left = True)
+                                  lat_range = lat_range,
+                                  bottom_left = True,
+                                  map_resolution = map_resolution)
 
     # Open plot
     fig = plt.figure(figsize=(8,8))
     fig.add_axes([0.1,0.1,0.8,0.8])
 
-    map_data.m.drawcoastlines()
-    map_data.m.fillcontinents(color='grey',lake_color=None, alpha = 0.2)
-    map_data.m.drawcountries()
+    if map_background == "shadedrelief":
+        map_data.m.shadedrelief()
+    elif map_background == "countryborders":
+        map_data.m.drawcoastlines()
+        map_data.m.fillcontinents(color='grey',lake_color=None, alpha = 0.2)
+        map_data.m.drawcountries()
 
     #Calculate color levels
 #    cmap = {"SURFACE": plt.cm.BuPu,
 #            "SHIP": plt.cm.Blues,
 #            "AIRCRAFT": plt.cm.Reds,
 #            "SATELLITE": plt.cm.Greens}
-    cmap = plt.cm.YlGnBu
+    cmap = colormap
     rp_color = {"SURFACE": "blue",
                 "SHIP": "purple",
                 "AIRCRAFT": "red",
@@ -1141,9 +1198,9 @@ def animate(fp_data, output_directory,
 
 
 class get_country:
-  def __init__(self, domain, ocean=None):
+  def __init__(self, domain, ocean=False):
 
-        if ocean is None:
+        if ocean is False:
 
             countryDirectory='/data/shared/NAME/countries/'
             filename=glob.glob(countryDirectory + \
