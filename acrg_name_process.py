@@ -681,10 +681,10 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
     nctime.calendar='gregorian'
 
     nclon[:]=lons
-    nclon.units='Degrees east'
+    nclon.units='Degrees_east'
     
     nclat[:]=lats
-    nclat.units='Degrees north'
+    nclat.units='Degrees_north'
 
     nclev[:]=numpy.array(levs)
     
@@ -725,13 +725,13 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
         ncRlon=ncF.createVariable('release_lon', 'f', ('time',), zlib = True,
                             least_significant_digit = 4)
         ncRlon[:]=release_lon
-        ncRlon.units='Degrees east'
+        ncRlon.units='Degrees_east'
 
     if release_lat is not None:
         ncRlat=ncF.createVariable('release_lat', 'f', ('time',), zlib = True,
                             least_significant_digit = 4)
         ncRlat[:]=release_lat
-        ncRlat.units='Degrees north'
+        ncRlat.units='Degrees_north'
 
     if particle_locations is not None:
         ncF.createDimension('height', len(particle_heights))
