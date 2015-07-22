@@ -289,6 +289,11 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
             if not site in site_info.keys():
         dataset = footprints_data_merge(data)
         
+    An optional site modifier dictionary is used that maps the site name in the
+    obs file to the site name in the footprint file, if they are different. This
+    is useful for example if the same site FPs are run with a different met and 
+    there named slightly differently from the obs file.
+        
     Output dataset will contain a dictionary of merged data and footprints:
         
         dataset = {"MHD": MHD_xray_dataset, "TAC": TAC_xray_dataset}
