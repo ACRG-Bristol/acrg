@@ -223,3 +223,22 @@ def MOZART_boundaries(MZ, FPfile = FPfilename):
     MZT_edges.attrs['date_created'] = np.str(dt.datetime.today())
     
     return MZT_edges
+    
+
+def MOZART_BC_nc(start = '2012-01-01', end = "2014-09-01", species = 'CH4', domain = 'EUROPE'):   
+    """
+    Specify end date as 2 months after the month of the last file
+    (because the date specified is actually the first day of the next month and
+    the range goes up to but doesn't include the last date). Only monthly
+    frequency because this is the frequency that the files need to be output
+    in for use in acrg_name_xray.py.
+    """
+
+    start_dates = pd.DatetimeIndex(start=start, end = end, freq='M', closed='left')
+
+    for i in start_dates:
+        MZ = MOZART_vmr(species, start = i, end = i)
+        MZ_edges = MOZART_boundaries(MZ)
+        yearmonth = str(i.year) + str(i.month).zfill(2)
+        MZ_edges.to_netcdf(path = '/data/shared/NAME/bc/%s/%s_%s_%s.nc'
+                                                    %(domain,species.lower(),domain,yearmonth), mode = 'w')    
