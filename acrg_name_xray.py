@@ -800,7 +800,7 @@ def plot_default_colors(site):
 
 def plot_map_zoom(fp_data):
     
-    sites = fp_data.keys()
+    sites = [key for key in fp_data.keys() if key[0] != '.']
     
     dlon = max(fp_data[sites[0]].lon.values) - \
             min(fp_data[sites[0]].lon.values)
@@ -826,7 +826,7 @@ def plot(fp_data, date, out_filename=None,
     date = convert.reftime(date)
 
     # Get sites
-    sites = fp_data.keys()
+    sites = [key for key in fp_data.keys() if key[0] != '.']
 
     # Zoom in. Assumes release point is to the East of centre
     if zoom:
@@ -942,17 +942,13 @@ def plot_scatter(fp_data, date, out_filename=None,
         map_data.m.drawcountries()
 
     #Calculate color levels
-#    cmap = {"SURFACE": plt.cm.BuPu,
-#            "SHIP": plt.cm.Blues,
-#            "AIRCRAFT": plt.cm.Reds,
-#            "SATELLITE": plt.cm.Greens}
     cmap = colormap
     rp_color = {"SURFACE": "blue",
                 "SHIP": "purple",
                 "AIRCRAFT": "red",
                 "SATELLITE": "green"}
             
-    levels = MaxNLocator(nbins=100).tick_values(cutoff, -1.)
+    levels = MaxNLocator(nbins=100).tick_values(cutoff, 0.)
 
 #    norm = {}
 #    for platform in cmap.keys():

@@ -475,7 +475,7 @@ def particle_locations(particle_file, time, lats, lons, levs, heights,
         for key in hist.data_vars.keys():
             hist[key][slice_dict] = hist[key][slice_dict]/\
                                             particles
-
+        
         # Store extremes
         if max(df["Lat"]) > particle_extremes["N"]:
             particle_extremes["N"] = max(df["Lat"])
@@ -740,16 +740,16 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
                                     zlib = True, least_significant_digit = 4)
         ncPartN=ncF.createVariable('particle_locations_n', 'f',
                                    ('height', 'lon', 'time'),
-                                    zlib = True, least_significant_digit = 4)
+                                    zlib = True, least_significant_digit = 7)
         ncPartE=ncF.createVariable('particle_locations_e', 'f',
                                    ('height', 'lat', 'time'),
-                                    zlib = True, least_significant_digit = 4)
+                                    zlib = True, least_significant_digit = 7)
         ncPartS=ncF.createVariable('particle_locations_s', 'f',
                                    ('height', 'lon', 'time'),
-                                    zlib = True, least_significant_digit = 4)
+                                    zlib = True, least_significant_digit = 7)
         ncPartW=ncF.createVariable('particle_locations_w', 'f',
                                    ('height', 'lat', 'time'),
-                                    zlib = True, least_significant_digit = 4)
+                                    zlib = True, least_significant_digit = 7)
         ncHeight[:]=particle_heights
         ncPartN[:, :, :]=particle_locations["N"]
         ncPartE[:, :, :]=particle_locations["E"]
@@ -1064,7 +1064,7 @@ def met_empty():
 def copy_processed(domain):
 
     src_folder = "/dagage2/agage/metoffice/NAME_output/"
-    dst_folder = "/data/shared/NAME/fp_netcdf/" + domain + "/"
+    dst_folder = "/data/shared/NAME/fp/" + domain + "/"
     
     files = glob.glob(src_folder + domain +
         "*/Processed_Fields_files/*.nc")
@@ -1082,7 +1082,7 @@ if __name__ == "__main__":
     domain = "EUROPE"
     sites = ["BSD", "TTA", "RGL", "MHD", "HFD", "TAC",
              "GAUGE-FERRY", "GAUGE-FAAM",
-             "EHL", "TIL", "GLA", "WAO", "HAD"]
+             "EHL", "TIL", "GLA", "WAO", "HAD", "GSN"]
     for site in sites:
-        process_agage(domain, site)
+        process_agage(domain, site, force_update = True)
 

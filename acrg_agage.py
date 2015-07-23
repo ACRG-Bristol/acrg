@@ -265,7 +265,7 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
                           "acrg_species_info.json")
                     ncf.close()
                     return None
-                
+
                 df = pd.DataFrame({"mf": ncf.variables[ncvarname][:]},
                                   index = time)
                 
@@ -292,10 +292,10 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
                     if len(file_flag) > 0:
                         df["status_flag"] = file_flag[:]
                         df = df[df.status_flag == status_flag_unflagged]
-                
+
                 if units != "permil":
                     df = df[df.mf > 0.]
-                
+
                 data_frames.append(df)
     
             ncf.close()
@@ -306,7 +306,7 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
             data_frame = data_frame[start_time : end_time]
         else:
             return None
-    
+
         #Do baseline filtering
         if baseline:
             #Get flags
