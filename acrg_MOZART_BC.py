@@ -230,8 +230,7 @@ def MOZART_BC_nc(start = '2012-01-01', end = "2014-09-01", species = 'CH4', doma
     Specify end date as 2 months after the month of the last file
     (because the date specified is actually the first day of the next month and
     the range goes up to but doesn't include the last date). Only monthly
-    frequency because this is the frequency that the files need to be output
-    in for use in acrg_name_xray.py.
+    frequency because this is the frequency of the mozart files we have so far.
     """
 
     start_dates = pd.DatetimeIndex(start=start, end = end, freq='M', closed='left')
