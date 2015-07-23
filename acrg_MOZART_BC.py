@@ -64,6 +64,7 @@ def convert_lon(DS, data_var):
     rather than the 0-360 convention.
     WARNING: variable must have dimensions ('height','lat','lon','time') in that order.
     """
+    DS.coords['lon'] = DS.coords['lon'] - 180
     L = len(DS.coords['lon'])/2
     var0 = DS[data_var]
     var = np.zeros(np.shape(var0))
@@ -165,7 +166,6 @@ def MOZART_vmr(species, filename=None, start = "2010-01-01", end = "2016-01-01")
                                         'lon' : f.lon,
                                         'time': [f.start_date]})
             #Change longitude from being 0 - 360 to being -180 - 180.
-            MZ.coords['lon'] = MZ.coords['lon'] - 180
             convert_lon(MZ,vmr_var_name)
             mzt.append(MZ)
         mzt = xray.concat(mzt, dim = 'time')
@@ -223,3 +223,21 @@ def MOZART_boundaries(MZ, FPfile = FPfilename):
     MZT_edges.attrs['date_created'] = np.str(dt.datetime.today())
     
     return MZT_edges
+    
+
+def MOZART_BC_nc(start = '2012-01-01', end = "2014-09-01", species = 'CH4', domain = 'EUROPE'):   
+    """
+    Specify end date as 2 months after the month of the last file
+    (because the date specified is actually the first day of the next month and
+    the range goes up to but doesn't include the last date). Only monthly
+    frequency because this is the frequency of the mozart files we have so far.
+    """
+
+    start_dates = pd.DatetimeIndex(start=start, end = end, freq='M', closed='left')
+
+    for i in start_dates:
+        MZ = MOZART_vmr(species, start = i, end = i)
+        MZ_edges = MOZART_boundaries(MZ)
+        yearmonth = str(i.year) + str(i.month).zfill(2)
+        MZ_edges.to_netcdf(path = '/data/shared/NAME/bc/%s/%s_%s_%s.nc'
+                                                    %(domain,species.lower(),domain,yearmonth), mode = 'w')    

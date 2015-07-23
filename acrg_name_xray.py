@@ -57,6 +57,11 @@ def filenames(site, domain, start, end, height = None, flux=None, basis=None):
     # Get height
     #Get site info for heights
     if height is None:
+        if not site in site_info.keys():
+            print("Site code not found in arcg_site_info.json to get height information. " + \
+                  "Check that site code is as intended. "+ \
+                  "If so, either add new site to file or input height manually.")
+            return None
         height = site_info[site]["height_name"][0]
     
     # Generate time series
@@ -78,7 +83,7 @@ def filenames(site, domain, start, end, height = None, flux=None, basis=None):
             domain + "/" + \
             site + "*" + height + "*" + domain + "*" + "*.nc")
     
-    return  files
+    return files
 
 def read_netcdfs(files, dim = "time", transform_func=None):
     
@@ -259,6 +264,7 @@ def timeseries_boundary_conditions(ds):
     All that is required is that you input an xray
     dataset with both the particle locations and vmr at domain edge fields present    
     """ 
+
     return (ds.particle_locations_n*ds.vmr_n).sum(["height", "lon"]) + \
            (ds.particle_locations_e*ds.vmr_e).sum(["height", "lat"]) + \
            (ds.particle_locations_s*ds.vmr_s).sum(["height", "lon"]) + \
@@ -267,7 +273,7 @@ def timeseries_boundary_conditions(ds):
     
 def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
                           calc_timeseries = True, calc_bc = True,
-                          average = None):
+                          average = None, site_modifier = {}, height = None):
     """
     Output a dictionary of xray footprint datasets, that correspond to a given
     dictionary of Pandas dataframes, containing mole fraction time series.
@@ -280,8 +286,13 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
 
     The dataset must be labeled with "time" index, "mf" and "dmf" columns.
     To combine this with corresponding NAME footprints:
-    
+            if not site in site_info.keys():
         dataset = footprints_data_merge(data)
+        
+    An optional site modifier dictionary is used that maps the site name in the
+    obs file to the site name in the footprint file, if they are different. This
+    is useful for example if the same site FPs are run with a different met and 
+    there named slightly differently from the obs file.
         
     Output dataset will contain a dictionary of merged data and footprints:
         
@@ -309,8 +320,8 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
     fp_and_data = {}
     
     for si, site in enumerate(sites):
-        
-        # Dataframe for this site
+
+        # Dataframe for this site            
         site_df = data[site]
         
         # Get time range
@@ -325,13 +336,19 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
         # Convert to dataset
         site_ds = xray.Dataset.from_dataframe(site_df)
         
+        if site in site_modifier.keys():
+            site_modifier_fp = site_modifier[site]
+        else:    
+            site_modifier_fp = site
+            
         # Get footprints
-        site_fp = footprints(site, start = start, end = end,
+        site_fp = footprints(site_modifier_fp, start = start, end = end,
                              domain = domain,
                              species = [species if calc_timeseries == True or \
                                          calc_bc == True \
-                                         else None][0])
-        
+                                         else None][0], \
+                             height = height)
+                             
         if site_fp is not None:
             
             # Merge datasets
@@ -339,14 +356,14 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
             
             # If units are specified, multiply by scaling factor
             if ".units" in attributes:
-#                site_ds.update({'fp' : (site_ds.fp.dims, site_ds.fp / data[".units"])})
+                site_ds.update({'fp' : (site_ds.fp.dims, site_ds.fp / data[".units"])})
                 if calc_bc:
                     for key in site_ds.keys():
                         if "fp" in key or "vmr" in key:
                             site_ds.update({key :
                                             (site_ds[key].dims, site_ds[key] / \
                                             data[".units"])})
-            
+
             # Calculate model time series, if required
             if calc_timeseries:
                 site_ds["mf_mod"] = timeseries(site_ds)
@@ -449,6 +466,7 @@ def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW'):
                                 DS.particle_locations_s,
                                 DS.particle_locations_w])
         
+
         vmr_ed = np.hstack([DS.vmr_n,
                            DS.vmr_e,
                            DS.vmr_s,
@@ -622,7 +640,7 @@ def baseline(y, y_time, y_site, x_error = 10000, days_to_average = 5):
     for site in keys:
         val = np.max(pos)
         wh = np.where(y_site == site)
-        ts = pandas.Series(1, y_time[wh])
+        ts = pd.Series(1, y_time[wh])
         fiveday = np.clip((ts.index.day-1) // n, 0, n)
         months = (ts.index.month - ts.index.month[0])
         pos[wh] = (val + 1) + fiveday + months*(n+1)
@@ -1192,9 +1210,9 @@ def animate(fp_data, output_directory,
 
 
 class get_country:
-  def __init__(self, domain, ocean=None):
+  def __init__(self, domain, ocean=False):
 
-        if ocean is None:
+        if ocean is False:
 
             countryDirectory='/data/shared/NAME/countries/'
             filename=glob.glob(countryDirectory + \
