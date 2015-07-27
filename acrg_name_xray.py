@@ -227,7 +227,7 @@ def basis_boundary_conditions(domain, basis_case = 'NESW'):
     return basis_ds
 
 
-def combine_datasets(dsa, dsb, method = "ffill"):
+def combine_datasets(dsa, dsb, method = "nearest"):
     """
     Merge two datasets. Assumes that you want to 
     re-index to the FIRST dataset.
@@ -352,14 +352,14 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
         if site_fp is not None:
             
             # Merge datasets
-            site_ds = combine_datasets(site_ds, site_fp, method = "bfill")
+            site_ds = combine_datasets(site_ds, site_fp, method = "nearest")
             
             # If units are specified, multiply by scaling factor
             if ".units" in attributes:
                 site_ds.update({'fp' : (site_ds.fp.dims, site_ds.fp / data[".units"])})
                 if calc_bc:
                     for key in site_ds.keys():
-                        if "fp" in key or "vmr" in key:
+                        if "vmr" in key:
                             site_ds.update({key :
                                             (site_ds[key].dims, site_ds[key] / \
                                             data[".units"])})
@@ -920,14 +920,32 @@ def plot(fp_data, date, out_filename=None,
 
 
 def plot_scatter(fp_data, date, out_filename=None, 
-         lon_range=None, lat_range=None, cutoff = -3.,
+         lon_range=None, lat_range=None, log_range = [-3., 0.],
          map_data = None, zoom = False,
          map_resolution = "l", 
          map_background = "countryborders",
          colormap = plt.cm.YlGnBu):
+    """
+    Plot footprint using pcolormesh.
     
-    """date as string "d/m/y H:M" or datetime object 
-    datetime.datetime(yyyy,mm,dd,hh,mm)
+    Arguments:
+    fp_data: Dictionary of xray datasets containing footprints
+        and other variables
+    date: Almost any time format should work (datetime object, string, etc).
+        Footprints from all sites in dictionary that have time indices at that time
+        will be plotted.
+        
+    Keywords:
+    lon_range: list of min and max longitudes [min, max]
+    lat_range: list of min and max latitudes [min, max]
+    log_range: list of min and max LOG10(footprints) for 
+        color scale
+    map_data: contains plot_map_setup class (useful if animating, 
+        so that entire map does not need to be re-calculated each time)
+    zoom: shortcut to zoom in to subset of domain (needs work)
+    map_resolution: resolution of map
+    map_background: choice of "countryborders", "shadedrelief"
+    colormap: color map to use for contours
     """
     
     # Looks for nearest time point aviable in footprint   
@@ -966,13 +984,8 @@ def plot_scatter(fp_data, date, out_filename=None,
                 "AIRCRAFT": "red",
                 "SATELLITE": "green"}
             
-    levels = MaxNLocator(nbins=100).tick_values(cutoff, 0.)
+    levels = MaxNLocator(nbins=100).tick_values(log_range[0], log_range[1])
 
-#    norm = {}
-#    for platform in cmap.keys():
-#        norm[platform] = BoundaryNorm(levels,
-#                                      ncolors=cmap[platform].N,
-#                                      clip=True)
     norm = BoundaryNorm(levels,
                         ncolors=cmap.N,
                         clip=True)
@@ -1018,7 +1031,7 @@ def plot_scatter(fp_data, date, out_filename=None,
 #        data[platform] = np.log10(data[platform])
 #        data[platform][np.where(data[platform] <  cutoff)]=np.nan
     data = np.log10(data)
-    data[np.where(data <  cutoff)]=np.nan
+    data[np.where(data <  log_range[0])]=np.nan
     
 #    #Plot SURFACE contours
 #    cs = map_data.m.pcolormesh(map_data.x, map_data.y,
