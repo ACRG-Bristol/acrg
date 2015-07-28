@@ -5,10 +5,12 @@ Created on Thu Jun 11 15:17:02 2015
 Code to get MOZART volume mixing ratios at the edges of a domain,
 for including boundary conditions in inversions.
 
-First use "MOZART_vmr" to find an xray dataset of MOZART vmr with the altitude
+Call MOZART_BC_nc which does the following:
+
+Uses "MOZART_vmr" to find an xray dataset of MOZART vmr with the altitude
 of each gridcell.
 
-Second use "MOZART_boundaries" to find an xray dataset with the vmrs on the 4
+Uses "MOZART_boundaries" to find an xray dataset with the vmrs on the 4
 edges of the specified domain. This is interpolated in height and lat/lon to
 agree with NAME output.
 
@@ -29,7 +31,6 @@ import collections as c
 
 mzt_dir = '/shared_data/air/shared/MOZART/mzt_output/'
 filename = mzt_dir + 'CH4/FWDModelComparison_NewEDGAR.mz4.h2.2014-01.nc'
-FPfilename = "/data/shared/NAME/fp/EUROPE/BSD-50magl_EUROPE_201401.nc"
 
 
 def MOZART_filenames(species, start = "2010-01-01", end = "2016-01-01"):
@@ -177,23 +178,30 @@ def MOZART_vmr(species, filename=None, start = "2010-01-01", end = "2016-01-01")
         return mzt
 
 
-def MOZART_boundaries(MZ, FPfile = FPfilename):
+#def MOZART_boundaries(MZ, FPfile = FPfilename):
+def MOZART_boundaries(MZ, domain):
     """
     Gets an xray dataset with 4 variables, each of one side of the domain boundary
     (n,e,s,w) and with height and lat/lon interpolated to the NAME grid.
     MZ is a mozart xray dataset created using MOZART_vmr.
-    FPfile is the footprint filename of a footprint with the domain size that you
-    want to find the edges of and the right height levels. By default this is a
-    footprint file with the EUROPE domain.
     """
+
+    listoffiles = glob.glob("/shared_data/air/shared/NAME/fp/" + domain + "/*")
+    
+    with xray.open_dataset(listoffiles[0]) as temp:
+        fields_ds = temp.load()
+    
+    fp_lat = fields_ds["lat"].values
+    fp_lon = fields_ds["lon"].values
+    fp_height = fields_ds["height"].values
     
     vmr_var_name = 'vmr'
 
     #Get info from a EUROPE footprint file:
-    FP = xray.open_dataset(FPfilename)
-    fp_lon = FP['lon']
-    fp_lat = FP['lat']
-    fp_height = FP['height']
+#    FP = xray.open_dataset(FPfilename)
+#    fp_lon = FP['lon']
+#    fp_lat = FP['lat']
+#    fp_height = FP['height']
 
     #Select the gidcells closest to the edges of the EUROPE domain. Bisect finds the 
     #index of the dimension value that occurs after the specified lons/lats.
@@ -211,7 +219,7 @@ def MOZART_boundaries(MZ, FPfile = FPfilename):
     west = MZ.sel(lon = MZ.coords['lon'][lon_w],
                   lat = slice(MZ.coords['lat'][lat_s],MZ.coords['lat'][lat_n])).drop(['lon'])
               
-    interp_height = fp_height.values
+    interp_height = fp_height
     N = interp_lonlat(interp_heights(north, vmr_var_name,interp_height),vmr_var_name,fp_lon).rename({vmr_var_name : vmr_var_name+'_n'})        
     S = interp_lonlat(interp_heights(south, vmr_var_name,interp_height),vmr_var_name,fp_lon).rename({vmr_var_name : vmr_var_name+'_s'})     
     E = interp_lonlat(interp_heights(east, vmr_var_name,interp_height),vmr_var_name,fp_lat).rename({vmr_var_name : vmr_var_name+'_e'})     
@@ -237,7 +245,7 @@ def MOZART_BC_nc(start = '2012-01-01', end = "2014-09-01", species = 'CH4', doma
 
     for i in start_dates:
         MZ = MOZART_vmr(species, start = i, end = i)
-        MZ_edges = MOZART_boundaries(MZ)
+        MZ_edges = MOZART_boundaries(MZ, domain)
         yearmonth = str(i.year) + str(i.month).zfill(2)
         MZ_edges.to_netcdf(path = '/data/shared/NAME/bc/%s/%s_%s_%s.nc'
                                                     %(domain,species.lower(),domain,yearmonth), mode = 'w')    
