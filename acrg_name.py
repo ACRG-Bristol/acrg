@@ -348,7 +348,7 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
                                          calc_bc == True \
                                          else None][0], \
                              height = height)
-                             
+        
         if site_fp is not None:
             
             # Merge datasets
