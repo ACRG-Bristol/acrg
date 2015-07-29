@@ -394,6 +394,9 @@ def read_met(fnames):
 
 def particle_locations(particle_file, time, lats, lons, levs, heights,
                        id_is_lev = False):
+    '''
+    Read and process particle location files.
+    '''
 
     def particle_location_edges(xvalues, yvalues, x, y):
         
@@ -436,7 +439,7 @@ def particle_locations(particle_file, time, lats, lons, levs, heights,
         compression=None
     
     df = pandas.read_csv(particle_file, compression=compression, sep=r"\s+")
-
+    
     for i in set(numpy.array(df["Id"])):
         
         if id_is_lev:
@@ -472,10 +475,21 @@ def particle_locations(particle_file, time, lats, lons, levs, heights,
         #Calculate total particles and normalise
         hist_sum = hist[slice_dict].sum()
         particles = sum([hist_sum[key].values for key in hist_sum.keys()])
-        for key in hist.data_vars.keys():
-            hist[key][slice_dict] = hist[key][slice_dict]/\
-                                            particles
-
+        if particles > 0.:
+            for key in hist.data_vars.keys():
+                hist[key][slice_dict] = hist[key][slice_dict]/\
+                                                particles
+        else:
+            print("WARNING: No particles have reached edge")
+            if i > 1:
+                print("WARNING: Copying lower level/previous time step")
+                if id_is_lev:
+                    slice_dict_prev = {"time": [0], "lev": [i-2]}
+                else:
+                    slice_dict_prev = {"time": [i-2]}
+                for key in hist.data_vars.keys():
+                    hist[key][slice_dict] = hist[key][slice_dict_prev]
+        
         # Store extremes
         if max(df["Lat"]) > particle_extremes["N"]:
             particle_extremes["N"] = max(df["Lat"])
@@ -631,7 +645,7 @@ def footprint_concatenate(fields_prefix,
         particle_files = [None for f in fields_files]
 
 
-    # Create a list of xray objects
+    # Create a list of xray datasets
     fp = []
     if len(fields_files) > 0:
         for fields_file, particle_file in \
@@ -681,10 +695,10 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
     nctime.calendar='gregorian'
 
     nclon[:]=lons
-    nclon.units='Degrees east'
+    nclon.units='Degrees_east'
     
     nclat[:]=lats
-    nclat.units='Degrees north'
+    nclat.units='Degrees_north'
 
     nclev[:]=numpy.array(levs)
     
@@ -725,13 +739,13 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
         ncRlon=ncF.createVariable('release_lon', 'f', ('time',), zlib = True,
                             least_significant_digit = 4)
         ncRlon[:]=release_lon
-        ncRlon.units='Degrees east'
+        ncRlon.units='Degrees_east'
 
     if release_lat is not None:
         ncRlat=ncF.createVariable('release_lat', 'f', ('time',), zlib = True,
                             least_significant_digit = 4)
         ncRlat[:]=release_lat
-        ncRlat.units='Degrees north'
+        ncRlat.units='Degrees_north'
 
     if particle_locations is not None:
         ncF.createDimension('height', len(particle_heights))
@@ -740,16 +754,16 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
                                     zlib = True, least_significant_digit = 4)
         ncPartN=ncF.createVariable('particle_locations_n', 'f',
                                    ('height', 'lon', 'time'),
-                                    zlib = True, least_significant_digit = 4)
+                                    zlib = True, least_significant_digit = 7)
         ncPartE=ncF.createVariable('particle_locations_e', 'f',
                                    ('height', 'lat', 'time'),
-                                    zlib = True, least_significant_digit = 4)
+                                    zlib = True, least_significant_digit = 7)
         ncPartS=ncF.createVariable('particle_locations_s', 'f',
                                    ('height', 'lon', 'time'),
-                                    zlib = True, least_significant_digit = 4)
+                                    zlib = True, least_significant_digit = 7)
         ncPartW=ncF.createVariable('particle_locations_w', 'f',
                                    ('height', 'lat', 'time'),
-                                    zlib = True, least_significant_digit = 4)
+                                    zlib = True, least_significant_digit = 7)
         ncHeight[:]=particle_heights
         ncPartN[:, :, :]=particle_locations["N"]
         ncPartE[:, :, :]=particle_locations["E"]
@@ -816,12 +830,10 @@ def process(domain, site, height, year, month,
     else:
         datestrs = [str(year) + str(month).zfill(2)]
 
-
     # Output filename
     outfile = subfolder + processed_folder + "/" + site + "-" + height + \
                 "_" + domain + "_" + str(year) + str(month).zfill(2) + ".nc"
-
-
+    
     # Check whether outfile needs updating
     if not force_update:
         print("Testing whether file exists or needs updating: " + outfile)
@@ -845,7 +857,7 @@ def process(domain, site, height, year, month,
                     return None
 
     fp = []
-    
+
     for datestr in datestrs:
 
         print("Looking for files with date string: " + datestr + " in " + \
@@ -879,23 +891,22 @@ def process(domain, site, height, year, month,
                                         particle_prefix = particles_prefix,
                                         satellite = satellite,
                                         time_step = timeStep)
-
+        
         # Do satellite process
         if satellite:
             satellite_obs_file = glob.glob(subfolder + "Observations/*" + \
-                                datestr + "*.nc")
+                                           datestr + "*.nc")
             if len(satellite_obs_file) != 1:
                 print("ERROR: There must be exactly one matching satellite " + 
                         "file in the Observations/ folder")
                 print("Files: " + satellite_obs_file)
                 return None
-                
+
             fp_file = satellite_vertical_profile(fp_file,
                                                  satellite_obs_file[0])
 
         if fp_file is not None:
             fp.append(fp_file)
-    
     
     if len(fp) > 0:
         
@@ -936,31 +947,61 @@ def process(domain, site, height, year, month,
 
 
 def satellite_vertical_profile(fp, satellite_obs_file):
+    '''
+    Do weighted average by satellite averaging kernel and
+    pressure weight. One time point only. Expects xray.dataset
+    with one time point and N vertical levels.
+    
+    fp = footprint for ONE time point. N levels in lev dimension 
+        with footprints and particle locations defined at each level
+    satellite_obs_file = NetCDF-format satellite observation file,
+        one per time step
+    '''
+    
     
     def satellite_interpolator(var, press_in, press_out):
+        '''
+        Interpolator function by pressure for 2D fields
+        '''
+        
+        initial_sum = np.sum(var)
+        
+        # Check if lowest levels are the same
+        # This is an error with NAME vertical profiles where it assumes
+        # the pressure of the surface if particles have accidentally been
+        # released under ground
+        press_in_edit = press_in.copy()
+        if np.allclose(press_in[0], press_in[1]):
+            press_in_edit[0]-= 10000.
         
         # Add extra level at the bottom for extrapolation
         dp = 10000.
         dvardp_low = (var[1,:,:] - var[0,:,:])/\
-                     (press_in[1] - press_in[0])
+                     (press_in_edit[1] - press_in_edit[0])
         var_low = var[0,:,:] + dp*dvardp_low
-        press_low = press_in[0] + dp
+        press_low = press_in_edit[0] + dp
         press_temp = numpy.concatenate((np.array(press_low).reshape(1),
-                                     press_in))
-        var_temp = numpy.concatenate((var_low.reshape((1, var.shape[1], var.shape[2])),
-                                   var))
+                                        press_in_edit))
+        var_temp = numpy.concatenate((var_low.reshape((1,) + var.shape[1:]),
+                                      var))
         
         # Assume top level missing values are zero
-        interpolator = interp1d(press_temp, var_temp,
-                              bounds_error = False, axis = 0, fill_value = 0.)
+        interpolator = interp1d(np.log(press_temp), var_temp,
+                                bounds_error = False, axis = 0,
+                                fill_value = 0.)
 
         # Interpolate
-        out = interpolator(press_out)              
+        out = interpolator(np.log(press_out))
         
         # Set negative values to zero
         out[out<0.] = 0.
 
-        return out
+        final_sum = np.sum(out)
+        
+        print(initial_sum/final_sum)
+        
+        # Re-scale to correct any difference in total
+        return out*initial_sum/final_sum
         
     print("Reading satellite obs file: " + satellite_obs_file)
     sat = xray.open_dataset(satellite_obs_file)
@@ -976,30 +1017,69 @@ def satellite_vertical_profile(fp, satellite_obs_file):
     if len(sat.time.values) > 1:
         print("ERROR: satellite comparison only for one time step at the moment")
         return fp
-    
+
+    print(fp.pl_n.sum() + fp.pl_e.sum() + fp.pl_s.sum() + fp.pl_w.sum())
+        
+    if not np.allclose((fp.pl_n.sum() + fp.pl_e.sum() + \
+                        fp.pl_s.sum() + fp.pl_w.sum()), \
+                        len(fp.lev)):
+        print("ERROR: Particle histograms dont add up to 1 (or nlev)")
+        return None
+
     # Change timestamp to that from obs file
     #  because NAME output only has 1 minute resolution
     fp = fp.reindex_like(sat.time, method = "nearest")
-
+    print(fp.pl_n.sum() + fp.pl_e.sum() + fp.pl_s.sum() + fp.pl_w.sum())
+    
     # Interpolate pressure levels
     variables = ["fp", "pl_n", "pl_e", "pl_s", "pl_w"]
     out = {}
+    out_interpolated = {}
+    particle_total = 0.
     for variable in variables:
+        print(variable)
+#        return fp[variable].values.squeeze(), \
+#                 fp.press.values.squeeze(), \
+#                 sat.pressure_levels.values.squeeze()*100.
+
+        #Interpolate fields to satellite data pressure levels
         var = satellite_interpolator(fp[variable].values.squeeze(),
-                                          fp.press.values.squeeze(),
-                                          sat.pressure_levels.values.squeeze()*100.)
-        out[variable] = np.zeros((1, 1, var.shape[1], var.shape[2]))
+                                     fp.press.values.squeeze(),
+                                     sat.pressure_levels.values.squeeze()*100.)
+        if variable[0:2] == "pl":
+            particle_total += np.sum(var)
+
+        # Store interpolated variable for use in for loop later
+        out_interpolated[variable] = var
+        
+        # Create empty output variable
+        out[variable] = np.zeros((1, 1,) + var.shape[1:])
+        
+    #Check any interpolation errors
+    for variable in variables:
+        if not np.allclose(particle_total,
+                           float(len(fp["lev"]))):
+            print("ERROR: Particle count doesn't match lev")
+            return None
+
+    # Weight levels using pressure weight and averaging kernel
+    sum_ak_pw = np.sum(sat.pressure_weights.values.squeeze() * \
+          sat.xch4_averaging_kernel.values.squeeze())
+    for variable in variables:
         for lev in range(len(sat.pressure_levels.values.squeeze())):
-            out[variable] += var[lev, :, :] * \
+            out[variable] += out_interpolated[variable][lev, :, :] * \
                              sat.pressure_weights.values.squeeze()[lev] * \
                              sat.xch4_averaging_kernel.values.squeeze()[lev]
-
+    
     # Compress dataset to one level and store column averages
     fp = fp[dict(lev = [0])]
     for variable in variables:
         fp[variable].values = out[variable]
     
     fp["lev"] = numpy.array(["column"])
+    
+    print(sum_ak_pw)
+    print(fp.pl_n.sum() + fp.pl_e.sum() + fp.pl_s.sum() + fp.pl_w.sum())
 
     return fp
     
@@ -1008,7 +1088,7 @@ def process_agage(domain, site,
                   heights = None,
                   years_in = None, months_in = None,
                   base_dir = "/dagage2/agage/metoffice/NAME_output/",
-                  force_update = False):
+                  force_update = False, satellite = False):
 
     acrg_path=split(realpath(__file__))
     
@@ -1042,7 +1122,8 @@ def process_agage(domain, site,
 
         for year, month in set(zip(years, months)):
             out = process(domain, site, height, year, month,
-                base_dir = base_dir, force_update = force_update)
+                base_dir = base_dir, force_update = force_update,
+                satellite = satellite)
 
 
 def met_empty():
@@ -1064,7 +1145,7 @@ def met_empty():
 def copy_processed(domain):
 
     src_folder = "/dagage2/agage/metoffice/NAME_output/"
-    dst_folder = "/data/shared/NAME/fp_netcdf/" + domain + "/"
+    dst_folder = "/data/shared/NAME/fp/" + domain + "/"
     
     files = glob.glob(src_folder + domain +
         "*/Processed_Fields_files/*.nc")
@@ -1082,7 +1163,7 @@ if __name__ == "__main__":
     domain = "EUROPE"
     sites = ["BSD", "TTA", "RGL", "MHD", "HFD", "TAC",
              "GAUGE-FERRY", "GAUGE-FAAM",
-             "EHL", "TIL", "GLA", "WAO", "HAD"]
+             "EHL", "TIL", "GLA", "WAO", "HAD", "GSN"]
     for site in sites:
-        process_agage(domain, site)
+        process_agage(domain, site, force_update = True)
 

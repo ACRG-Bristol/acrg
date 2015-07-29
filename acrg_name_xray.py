@@ -57,6 +57,11 @@ def filenames(site, domain, start, end, height = None, flux=None, basis=None):
     # Get height
     #Get site info for heights
     if height is None:
+        if not site in site_info.keys():
+            print("Site code not found in arcg_site_info.json to get height information. " + \
+                  "Check that site code is as intended. "+ \
+                  "If so, either add new site to file or input height manually.")
+            return None
         height = site_info[site]["height_name"][0]
     
     # Generate time series
@@ -78,7 +83,7 @@ def filenames(site, domain, start, end, height = None, flux=None, basis=None):
             domain + "/" + \
             site + "*" + height + "*" + domain + "*" + "*.nc")
     
-    return  files
+    return files
 
 def read_netcdfs(files, dim = "time", transform_func=None):
     
@@ -222,7 +227,7 @@ def basis_boundary_conditions(domain, basis_case = 'NESW'):
     return basis_ds
 
 
-def combine_datasets(dsa, dsb, method = "ffill"):
+def combine_datasets(dsa, dsb, method = "nearest"):
     """
     Merge two datasets. Assumes that you want to 
     re-index to the FIRST dataset.
@@ -268,7 +273,7 @@ def timeseries_boundary_conditions(ds):
     
 def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
                           calc_timeseries = True, calc_bc = True,
-                          average = None):
+                          average = None, site_modifier = {}, height = None):
     """
     Output a dictionary of xray footprint datasets, that correspond to a given
     dictionary of Pandas dataframes, containing mole fraction time series.
@@ -281,8 +286,13 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
 
     The dataset must be labeled with "time" index, "mf" and "dmf" columns.
     To combine this with corresponding NAME footprints:
-    
+            if not site in site_info.keys():
         dataset = footprints_data_merge(data)
+        
+    An optional site modifier dictionary is used that maps the site name in the
+    obs file to the site name in the footprint file, if they are different. This
+    is useful for example if the same site FPs are run with a different met and 
+    there named slightly differently from the obs file.
         
     Output dataset will contain a dictionary of merged data and footprints:
         
@@ -310,8 +320,8 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
     fp_and_data = {}
     
     for si, site in enumerate(sites):
-        
-        # Dataframe for this site
+
+        # Dataframe for this site            
         site_df = data[site]
         
         # Get time range
@@ -326,28 +336,34 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
         # Convert to dataset
         site_ds = xray.Dataset.from_dataframe(site_df)
         
+        if site in site_modifier.keys():
+            site_modifier_fp = site_modifier[site]
+        else:    
+            site_modifier_fp = site
+            
         # Get footprints
-        site_fp = footprints(site, start = start, end = end,
+        site_fp = footprints(site_modifier_fp, start = start, end = end,
                              domain = domain,
                              species = [species if calc_timeseries == True or \
                                          calc_bc == True \
-                                         else None][0])
-        
+                                         else None][0], \
+                             height = height)
+                             
         if site_fp is not None:
             
             # Merge datasets
-            site_ds = combine_datasets(site_ds, site_fp, method = "bfill")
+            site_ds = combine_datasets(site_ds, site_fp, method = "nearest")
             
             # If units are specified, multiply by scaling factor
             if ".units" in attributes:
 #                site_ds.update({'fp' : (site_ds.fp.dims, site_ds.fp / data[".units"])})
                 if calc_bc:
                     for key in site_ds.keys():
-                        if "fp" in key or "vmr" in key:
+                        if "vmr" in key:
                             site_ds.update({key :
                                             (site_ds[key].dims, site_ds[key] / \
                                             data[".units"])})
-            
+
             # Calculate model time series, if required
             if calc_timeseries:
                 site_ds["mf_mod"] = timeseries(site_ds)
@@ -624,7 +640,7 @@ def baseline(y, y_time, y_site, x_error = 10000, days_to_average = 5):
     for site in keys:
         val = np.max(pos)
         wh = np.where(y_site == site)
-        ts = pandas.Series(1, y_time[wh])
+        ts = pd.Series(1, y_time[wh])
         fiveday = np.clip((ts.index.day-1) // n, 0, n)
         months = (ts.index.month - ts.index.month[0])
         pos[wh] = (val + 1) + fiveday + months*(n+1)
@@ -802,7 +818,7 @@ def plot_default_colors(site):
 
 def plot_map_zoom(fp_data):
     
-    sites = fp_data.keys()
+    sites = [key for key in fp_data.keys() if key[0] != '.']
     
     dlon = max(fp_data[sites[0]].lon.values) - \
             min(fp_data[sites[0]].lon.values)
@@ -828,7 +844,7 @@ def plot(fp_data, date, out_filename=None,
     date = convert.reftime(date)
 
     # Get sites
-    sites = fp_data.keys()
+    sites = [key for key in fp_data.keys() if key[0] != '.']
 
     # Zoom in. Assumes release point is to the East of centre
     if zoom:
@@ -904,14 +920,32 @@ def plot(fp_data, date, out_filename=None,
 
 
 def plot_scatter(fp_data, date, out_filename=None, 
-         lon_range=None, lat_range=None, cutoff = -3.,
+         lon_range=None, lat_range=None, log_range = [-3., 0.],
          map_data = None, zoom = False,
          map_resolution = "l", 
          map_background = "countryborders",
          colormap = plt.cm.YlGnBu):
+    """
+    Plot footprint using pcolormesh.
     
-    """date as string "d/m/y H:M" or datetime object 
-    datetime.datetime(yyyy,mm,dd,hh,mm)
+    Arguments:
+    fp_data: Dictionary of xray datasets containing footprints
+        and other variables
+    date: Almost any time format should work (datetime object, string, etc).
+        Footprints from all sites in dictionary that have time indices at that time
+        will be plotted.
+        
+    Keywords:
+    lon_range: list of min and max longitudes [min, max]
+    lat_range: list of min and max latitudes [min, max]
+    log_range: list of min and max LOG10(footprints) for 
+        color scale
+    map_data: contains plot_map_setup class (useful if animating, 
+        so that entire map does not need to be re-calculated each time)
+    zoom: shortcut to zoom in to subset of domain (needs work)
+    map_resolution: resolution of map
+    map_background: choice of "countryborders", "shadedrelief"
+    colormap: color map to use for contours
     """
     
     # Looks for nearest time point aviable in footprint   
@@ -944,23 +978,14 @@ def plot_scatter(fp_data, date, out_filename=None,
         map_data.m.drawcountries()
 
     #Calculate color levels
-#    cmap = {"SURFACE": plt.cm.BuPu,
-#            "SHIP": plt.cm.Blues,
-#            "AIRCRAFT": plt.cm.Reds,
-#            "SATELLITE": plt.cm.Greens}
     cmap = colormap
     rp_color = {"SURFACE": "blue",
                 "SHIP": "purple",
                 "AIRCRAFT": "red",
                 "SATELLITE": "green"}
             
-    levels = MaxNLocator(nbins=100).tick_values(cutoff, -1.)
+    levels = MaxNLocator(nbins=100).tick_values(log_range[0], log_range[1])
 
-#    norm = {}
-#    for platform in cmap.keys():
-#        norm[platform] = BoundaryNorm(levels,
-#                                      ncolors=cmap[platform].N,
-#                                      clip=True)
     norm = BoundaryNorm(levels,
                         ncolors=cmap.N,
                         clip=True)
@@ -1006,7 +1031,7 @@ def plot_scatter(fp_data, date, out_filename=None,
 #        data[platform] = np.log10(data[platform])
 #        data[platform][np.where(data[platform] <  cutoff)]=np.nan
     data = np.log10(data)
-    data[np.where(data <  cutoff)]=np.nan
+    data[np.where(data <  log_range[0])]=np.nan
     
 #    #Plot SURFACE contours
 #    cs = map_data.m.pcolormesh(map_data.x, map_data.y,
