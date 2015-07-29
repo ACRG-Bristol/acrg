@@ -835,93 +835,6 @@ def plot_map_zoom(fp_data):
 
 
 def plot(fp_data, date, out_filename=None, 
-         lon_range=None, lat_range=None, cutoff = -3.5,
-         map_data = None, zoom = False):
-    
-    """date as string "d/m/y H:M" or datetime object 
-    datetime.datetime(yyyy,mm,dd,hh,mm)
-    """
-    
-    # Looks for nearest time point aviable in footprint   
-    date = convert.reftime(date)
-
-    # Get sites
-    sites = [key for key in fp_data.keys() if key[0] != '.']
-
-    # Zoom in. Assumes release point is to the East of centre
-    if zoom:
-        lat_range, lon_range = plot_map_zoom(fp_data)
-        
-    # Get map data
-    if map_data is None:
-        map_data = plot_map_setup(fp_data[sites[0]],
-                                  lon_range = lon_range,
-                                  lat_range = lat_range)
-    
-    # Open plot
-    fig = plt.figure(figsize=(8,8))
-    fig.add_axes([0.1,0.1,0.8,0.8])
-
-    map_data.m.drawcoastlines()
-    map_data.m.fillcontinents(color='green',lake_color=None, alpha = 0.2)
-    map_data.m.drawcountries()
-
-    levels = np.arange(cutoff, 0., 0.05)
-    
-    release_lon = {}
-    release_lat = {}
-
-    data = np.zeros(np.shape(
-                    fp_data[sites[0]].fp[dict(time = [0])].values.squeeze()))
-
-    for site in sites:
-    
-        fp_data_ti = fp_data[site].reindex_like( \
-                        xray.Dataset(coords = {"time": [date]}),
-                        method = "nearest")
-        data += np.nan_to_num(fp_data_ti.fp.values.squeeze())
-
-        # Store release location to overplot later
-        if "release_lat" in dir(fp_data_ti):
-            release_lon[site] = fp_data_ti.release_lon.values
-            release_lat[site] = fp_data_ti.release_lat.values
-
-    #Set very small elements to zero
-    data = np.log10(data)
-    data[np.where(data <  cutoff)]=np.nan
-    
-    #Plot contours
-    cs = map_data.m.contourf(map_data.x, map_data.y, data,
-                             levels, cmap = plt.cm.BuPu)
-
-    # over-plot release location
-    if len(release_lon) > 0:
-        for site in sites:            
-            rplons, rplats = np.meshgrid(release_lon[site],
-                                         release_lat[site])
-            rpx, rpy = map_data.m(rplons, rplats)
-            rp = map_data.m.scatter(rpx, rpy, 40, color = 'black')
-    
-    plt.title(str(pd.to_datetime(str(date))), fontsize=20)
-
-    cb = map_data.m.colorbar(cs, location='bottom', pad="5%")
-    
-    tick_locator = ticker.MaxNLocator(nbins=7)
-    cb.locator = tick_locator
-    cb.update_ticks()
- 
-    cb.set_label('log$_{10}$( (mol/mol) / (mol/m$^2$/s))', 
-                 fontsize=15)
-    cb.ax.tick_params(labelsize=13) 
-    
-    if out_filename is not None:
-        plt.savefig(out_filename)
-        plt.close()
-    else:
-        plt.show()
-
-
-def plot_scatter(fp_data, date, out_filename=None, 
          lon_range=None, lat_range=None, log_range = [-3., 0.],
          map_data = None, zoom = False,
          map_resolution = "l", 
@@ -998,11 +911,6 @@ def plot_scatter(fp_data, date, out_filename=None,
 
     data = {}
 
-    platforms = ["SURFACE", "SHIP", "AIRCRAFT", "SATELLITE"]
-
-#    for platform in platforms:
-#        data[platform] = np.zeros(np.shape(
-#            fp_data[sites[0]].fp[dict(time = [0])].values.squeeze()))
     data = np.zeros(np.shape(
             fp_data[sites[0]].fp[dict(time = [0])].values.squeeze()))
 
@@ -1015,12 +923,7 @@ def plot_scatter(fp_data, date, out_filename=None,
             fp_data_ti = fp_data[site].reindex_like( \
                             xray.Dataset(coords = {"time": [date]}),
                             method = "nearest")
-            
-#            if "platform" in site_info[site]:
-#                data[site_info[site]["platform"].upper()] += \
-#                    np.nan_to_num(fp_data_ti.fp.values.squeeze())
-#            else:
-#                data["SURFACE"] += np.nan_to_num(fp_data_ti.fp.values.squeeze())
+
             data += np.nan_to_num(fp_data_ti.fp.values.squeeze())
     
             # Store release location to overplot later
@@ -1029,22 +932,10 @@ def plot_scatter(fp_data, date, out_filename=None,
                 release_lat[site] = fp_data_ti.release_lat.values
 
     #Set very small elements to zero
-#    for platform in platforms:
-#        data[platform] = np.log10(data[platform])
-#        data[platform][np.where(data[platform] <  cutoff)]=np.nan
     data = np.log10(data)
     data[np.where(data <  log_range[0])]=np.nan
     
-#    #Plot SURFACE contours
-#    cs = map_data.m.pcolormesh(map_data.x, map_data.y,
-#                               np.ma.masked_where(np.isnan(data["SURFACE"]), data["SURFACE"]),
-#                               cmap = cmap["SURFACE"], norm = norm["SURFACE"])
-#
-#    for platform in [p for p in platforms if p != "SURFACE"]:
-#        cp = map_data.m.pcolormesh(map_data.x, map_data.y,
-#                                   np.ma.masked_where(np.isnan(data[platform]), data[platform]),
-#                                   cmap = cmap[platform],
-#                                   norm = norm[platform], alpha = 0.6, antialiased = True)
+    #Plot footprint
     cs = map_data.m.pcolormesh(map_data.x, map_data.y,
                                np.ma.masked_where(np.isnan(data), data),
                                cmap = cmap, norm = norm)
