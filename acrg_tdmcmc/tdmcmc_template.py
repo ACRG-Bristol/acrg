@@ -127,14 +127,14 @@ k_ap = 100
 nIt=50000        # of iterations
 burn_in=50000     # of iterations to discard
 nsub=100       # nsub=100=store every 100th iteration)
-#sigma_y=0.02     # Model-measurement uncertainty, in % (e.g. 0.05)
+#sigma_y=0.02     # Model-measurement uncertainty, in % (e.g. 0.05) DEFINED LATER
                  
 nbeta=8       # Number of parallel chains
 beta= np.array((1.,1./2.,1./4.,1./8.,1./16.,1./32.,1./64.,1./128)) 
 
 
 x_pdf=np.array([3,3])  # 1 = UNIFORM, 2=GAUSSIAN, 3=LOGNORMAL  1st term for fixed terms, 2nd for variable
-pdf_param1_pdf = 1
+#pdf_param1_pdf = 1
 pdf_param2_pdf = 1
 
 # Uniform
@@ -145,12 +145,12 @@ pdf_param2_pdf = 1
 pdf_param10=np.array([1.,1.])
 pdf_param20=np.array([0.2,0.2])
 
-pdf_hyperparam1=pdf_param10*2
-pdf_hyperparam2=pdf_param20*2
+#pdf_hyperparam1=pdf_param10*2
+pdf_hyperparam2=np.array([0.5,1.])
 
 stepsize=0.9    # Stepsize for x_update in MCMC - defaults otherwise
-stepsize_pdf_p1=0.1*0.
-stepsize_pdf_p2=0.1*0.
+#stepsize_pdf_p1=0.1*0.
+stepsize_pdf_p2=0.1
 ############################################################
 #%%
 data = agage.get_obs(sites, species, start = start_date, end = end_date, average = av_period)
@@ -215,10 +215,12 @@ y_site = np.hstack(y_site)
 y_time = np.hstack(y_time)
 H_bc = np.hstack(H_bc)
 
+q_ap0=q_ap[0,:,:].copy()
+q_ap_v = np.ravel(q_ap0)
 nmeasure=len(y)
 h_v = np.zeros((nmeasure,Ngrid))
 for ti in range(nmeasure):                                    
-    h_v[ti,:] = np.ravel(H_vary[ti,:,:])   # Create sensitivty matrix spatially vectorised
+    h_v[ti,:] = np.ravel(H_vary[ti,:,:])*q_ap_v   # Create sensitivty matrix spatially vectorised
     
 
 #%%
@@ -233,10 +235,10 @@ nIC=nBC+nfixed
 
 
 h_agg0 = np.zeros((nmeasure,k_ap+nIC))
-q_agg0 = np.zeros((k_ap+nIC))
+#q_agg0 = np.zeros((k_ap+nIC))
 x_agg=np.zeros((k_ap+nIC))+1.  
 
-q_agg0[:nIC]=1.
+#q_agg0[:nIC]=1.
 h_agg0[:,0]=H_bc
 h_agg0[:,nBC:nIC]=H_fixed
 
@@ -253,7 +255,7 @@ y_error[:] = sigma_model0[0]
 
 sigma_y0 = np.sqrt(y_error**2 + sigma_measure**2)
 
-sigma_model_hparams = np.array([0.,2.*sigma_model0[0]])
+sigma_model_hparams = np.array([0.2*sigma_model0[0],5.*sigma_model0[0]])
 stepsize_sigma_y=0.5
 sigma_model_pdf = 1   # UNIFORM
 
@@ -263,14 +265,12 @@ sigma_model_pdf = 1   # UNIFORM
 #######################################
 kICmax=kmax+nIC              # nIC and kmax already defined at top of file
 
-q_ap0=q_ap[0,:,:]
-q_ap_v = np.ravel(q_ap0)
 # Set up different starting nuclei locations for each chain 
 plon=np.zeros((kmax,nbeta))
 plat=np.zeros((kmax,nbeta))
 regions_v=np.zeros((Ngrid,nbeta),dtype=np.uint16)
 h_agg=np.zeros((nmeasure, kICmax,nbeta))
-q_agg=np.zeros((kICmax,nbeta))
+#q_agg=np.zeros((kICmax,nbeta))
 n0=np.zeros((nmeasure,nbeta))    
 n0T=np.zeros((nbeta))
 for ib in range(nbeta):
@@ -287,9 +287,9 @@ for ib in range(nbeta):
 
     for ri in range(k_ap):
         wh_ri = np.where(regions_v0 == ri)
-        q_agg0[ri+nIC]=np.mean(q_ap_v[wh_ri])          
+        #q_agg0[ri+nIC]=np.mean(q_ap_v[wh_ri])          
         for ti in range(nmeasure):
-            h_agg0[ti,ri+nIC]=np.sum(h_v[ti,wh_ri])*q_agg0[ri+nIC]
+            h_agg0[ti,ri+nIC]=np.sum(h_v[ti,wh_ri])
   
     y_model = np.dot(h_agg0,x_agg) 
     n0_ap = y_model-y
@@ -297,7 +297,7 @@ for ib in range(nbeta):
   
   
     h_agg[:,:k_ap+nIC,ib] = h_agg0.copy()
-    q_agg[:k_ap+nIC,ib]=q_agg0.copy()
+    #q_agg[:k_ap+nIC,ib]=q_agg0.copy()
     n0[:,ib]=n0_ap.copy()
     n0T[ib]=n0T_ap*1.
     
@@ -341,17 +341,18 @@ startt = run_time.time()
 ## x_pdf needs to be array(2), 1st term for IC, 2nd for emissions
 ## kICmax = kmax+nIC
 
+### This one based on hb_td_mcmc_acrg.f90
 k_it, x_out, regions_out, plon_out, plat_out, sigma_y_out, n0T_out, \
-pdf_param1_out, pdf_param2_out, q_agg_out, accept, reject, \
+pdf_param2_out, accept, reject, \
 accept_birth, reject_birth, accept_death, reject_death, accept_move, reject_move, \
 accept_swap, accept_sigma_y, reject_sigma_y = hbtdmcmc.hbtdmcmc(
-beta,k, x, h_agg,q_agg,y,n0,n0T, plon, plat, regions_v, 
-pdf_param1, pdf_param2, lon,lat, h_v, q_ap_v, sigma_y, sigma_model, sigma_measure, 
+beta,k, x, h_agg,y,n0,n0T, plon, plat, regions_v, 
+pdf_param1, pdf_param2, lon,lat, h_v, sigma_y, sigma_model, sigma_measure, 
 R_indices, sigma_model_hparams, stepsize_sigma_y, sigma_model_pdf, 
 sigma_clon, sigma_clat,  
 lonmin, lonmax, latmin,latmax, sigma_bd, kmin, x_pdf, burn_in, 
-pdf_hyperparam1, pdf_hyperparam2, pdf_param1_pdf, pdf_param2_pdf, 
-stepsize, stepsize_pdf_p1, stepsize_pdf_p2,
+pdf_hyperparam2, pdf_param2_pdf,
+stepsize, stepsize_pdf_p2,
 nIt, nsub, nit_sub, nIC, 
 nbeta, kmax, kICmax, nmeasure, Ngrid, nlon,nlat, ydim1, ydim2)
 
@@ -376,12 +377,12 @@ for yi in range(nmeasure):
 
 regions_it=np.transpose(regions_out)-1
 x_it=np.transpose(x_out)
-q_agg_it=np.transpose(q_agg_out)
+#q_agg_it=np.transpose(q_agg_out)
 
 for it in range(nit_sub):    
     for zz in range(k_it[it]):
         wh_reg = np.where(regions_it[it,:] == zz)
-        x_post_vit[it,wh_reg] = x_it[it,zz+nIC]*q_agg_it[it,zz+nIC]
+        x_post_vit[it,wh_reg] = x_it[it,zz+nIC]
 
 # THe nested loop above takes time - how can I speed it up?
 
@@ -433,7 +434,7 @@ for ti in range(nmeasure):
 
 #PLOTTING
 
-data=(x_post_mean-q_ap0)  # mol/m2/s
+data=(x_post_mean*q_ap0-q_ap0)  # mol/m2/s
 area=areagrid(lat,lon)
 data=data*area*16.04*3600.*24.*365./1e9
 
@@ -459,9 +460,9 @@ m.drawcoastlines()
 m.drawstates()
 m.drawcountries() 
 
-clevels = np.arange(0., 4.0e-8, 2.e-9)  
+clevels = np.arange(0., 2., 0.1)  
 
-cs = m.contourf(mapx,mapy,x_post_mean, clevels, extend='both', cmap='YlGnBu')
+cs = m.contourf(mapx,mapy,x_post_mean, clevels, extend='both', cmap='RdBu_r')
 cb = m.colorbar(cs, location='bottom', pad="5%")  
 
 
@@ -544,7 +545,7 @@ name_uk = np.where(cds.name == 'UNITED KINGDOM')
 uk_index = np.where(country_v == name_uk[0])
 area_v=np.ravel(area)
 
-x_uk = np.sum(x_post_v_mean[uk_index]*area_v[uk_index]) # in mol/s
+x_uk = np.sum(x_post_v_mean[uk_index]*area_v[uk_index]*q_ap_v[uk_index]) # in mol/s
 x_uk = x_uk*16.04/1000.   # in kg/s
 x_uk = x_uk*365.*24.*3600./1.e9    # in Tg/yr
 
@@ -565,7 +566,6 @@ post_mcmc = xray.Dataset({"x_it": (["nIt", "kICmax"],
                         x_it),
                         "k_it": (["nIt"],
                         k_it),
-                        "q_agg_it": (["nIt", "kICmax"],q_agg_it),
                         "x_post_vit": (["nIt", "Ngrid"],
                         x_post_vit),
                         "regions_it": (["nIt", "Ngrid"],
