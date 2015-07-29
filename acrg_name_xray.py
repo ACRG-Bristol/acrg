@@ -91,7 +91,7 @@ def read_netcdfs(files, dim = "time", transform_func=None):
             # use it after closing each original file
             ds.load()
         return ds
-
+    
     datasets = [process_one_path(p) for p in sorted(files)]
     combined = xray.concat(datasets, dim)
     return combined   
