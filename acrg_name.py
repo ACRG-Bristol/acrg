@@ -413,13 +413,27 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
 
         H = np.zeros((int(np.max(site_bf.basis)),len(site_bf.mf_mod)))
         
+        fp=site_bf.fp.values
+        flux=site_bf.flux.values
+        H_all=fp*flux 
+        H_all_v=np.zeros((len(site_bf.lat)*len(site_bf.lon),len(site_bf.time)))
+        for ti in range(len(site_bf.time)):
+            H_all_v[:,ti]=np.ravel(H_all[:,:,ti])
+            
+        base_temp = np.ravel(site_bf.basis.values[:,:,0])
         for i in range(int(np.max(site_bf.basis))):
-            site_bf.basis_scale.values = np.zeros(np.shape(site_bf.basis_scale))
-            site_bf.basis_scale.values[np.where(site_bf.basis == i+1)] = 1
-            fpalign, fluxalign, scalealign = xray.align(site_bf.fp,
-                                                        site_bf.flux,
-                                                        site_bf.basis_scale)
-            H[i,:] = (fpalign*fluxalign*scalealign).sum(["lat", "lon"])
+            wh_ri = np.where(base_temp == i+1)
+             
+            for ti in range(len(site_bf.time)):
+                 H[i,ti]=np.sum(H_all_v[wh_ri,ti])        
+        
+#        for i in range(int(np.max(site_bf.basis))):
+#            site_bf.basis_scale.values = np.zeros(np.shape(site_bf.basis_scale))
+#            site_bf.basis_scale.values[np.where(site_bf.basis == i+1)] = 1
+#            fpalign, fluxalign, scalealign = xray.align(site_bf.fp,
+#                                                        site_bf.flux,
+#                                                        site_bf.basis_scale)
+#            H[i,:] = (fpalign*fluxalign*scalealign).sum(["lat", "lon"])
         
         sensitivity = xray.Dataset({'H': (['region','time'], H)},
                                     coords = {'region' : range(1,np.max(site_bf.basis)+1),
