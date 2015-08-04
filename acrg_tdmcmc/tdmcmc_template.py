@@ -13,7 +13,7 @@ Solves for x
 """
 
 #import hbtdmcmc
-import acrg_name_xray as name
+import acrg_name as name
 import numpy as np
 import acrg_agage as agage
 import matplotlib.pyplot as plt
