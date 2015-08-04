@@ -13,13 +13,8 @@ plot_scaling - plot posterior scaling map
 regions_histogram - plot histogram of number of regions
 
 country_emissions - calculate emissions from given list of countries
-                    Currnetly hard-wired for methane
+                    Currently hard-wired for methane
 
-Requires:
-
-Output files from tdmcmc_template.py stored in the form:
-
-"output_" + network + "_" + species +  "_" + months[-1] + ".nc"
 
 @author: ml12574
 """
@@ -30,10 +25,6 @@ from mpl_toolkits.basemap import Basemap
 import xray
 import acrg_name_xray as name
 from acrg_grid import areagrid
-import glob
-import pandas
-import matplotlib.dates as mdates
-#import datetime
 from netCDF4 import Dataset
 from acrg_time.convert import time2sec
 import os
@@ -42,7 +33,14 @@ import json
 
 def append_netcdf(flux_mean, flux_percentile, country_mean, country_percentile, 
                  lon, lat, time, country, percentile, experiment, outfile):
-       
+      
+    """
+    Function for appending flux and country output to file
+    
+    Only use this function once file has already been created
+    Create file first using write_netcdf function below
+    """         
+      
     fm_name = "_".join(['flux_mean', experiment])
     fpc_name = "_".join(['flux_percentile', experiment])
     countrym_name = "_".join(['country_mean', experiment])
@@ -76,6 +74,13 @@ def append_netcdf(flux_mean, flux_percentile, country_mean, country_percentile,
 
 def write_netcdf(flux_mean, flux_percentile, country_mean, country_percentile, 
                  lon, lat, time, country, percentile, experiment, outfile):
+    
+    """
+    Function for writing all flux and country output to file
+    
+    Only use this function for first set of variables
+    Once file has been created, use append_netcdf function above
+    """    
     
     time_seconds, time_reference = time2sec(time)
     
@@ -143,6 +148,11 @@ def write_netcdf(flux_mean, flux_percentile, country_mean, country_percentile,
 
 def plot_scaling(data,lon,lat, out_filename=None, fignum=1):
     
+    """
+    Plot 2d scaling map of posterior x
+    i.e. degree of scaling applied to prior emissions 
+    data = mean or median of x_post_vit
+    """    
     lon_range = (np.min(lon), np.max(lon))
     lat_range = (np.min(lat), np.max(lat))
     m = Basemap(projection='gall',
@@ -171,6 +181,11 @@ def plot_scaling(data,lon,lat, out_filename=None, fignum=1):
     
 def regions_histogram(k_it, out_filename=None, fignum=2):
     
+    """
+    Plot a histogram of the number of regions in trandimensional inversion
+    
+    Use this as a check for whether kmax should be larger
+    """
     bin_max=np.ceil((np.max(k_it)+50.)/40.)*40
     bin_step = bin_max/20
     bins=np.arange(0,bin_max,bin_step)    
@@ -186,8 +201,18 @@ def regions_histogram(k_it, out_filename=None, fignum=2):
         plt.show()
     
 def country_emissions(ds_mcmc, x_post_vit, x_ap_abs_v, countries, species, domain='EUROPE'):
+        
+    """
+    Generates national totals for a given list of countries
+    Requires post_mcmc xray dataset
     
-    acrg_path="/home/ml12574/work/programs/Python/acrg"
+    Units are hard-wired at the moment, need to make non-methane specific
+    Returns: mean, 5th,16th,median,84th,95th percentiles and prior for each country
+    
+    Output in Tg/yr
+    """
+    temp = os.path.split(os.path.realpath(__file__))
+    acrg_path=os.path.join(temp[0],"..")
     with open(acrg_path + "/acrg_species_info.json") as f:
         species_info=json.load(f)
             
@@ -250,6 +275,13 @@ def country_emissions(ds_mcmc, x_post_vit, x_ap_abs_v, countries, species, domai
     
 def plot_timeseries(ds, species, out_filename=None):
     
+    """
+    Plot measurement timeseries of posterior and observed measurements
+    Requires post_mcmc xray dataset
+    For future: incorporate model & measurement uncertainty
+    
+    Specify an out_filename to write to disk
+    """
     
     x_it=ds.x_it.values
     h_v_all=ds.h_v_all.values
@@ -311,170 +343,67 @@ def plot_timeseries(ds, species, out_filename=None):
     else:
         plt.show()
 
-    
-
 def open_ds(path):
-        # use a context manager, to ensure the file gets closed after use
-        with xray.open_dataset(path) as ds:
-            ds.load()
-        return ds    
-#####################################################################          
-# Read in post_mcmc dataset
-
-########### INPUTS ####################
-
-#months=["2013-07-01", "2013-08-01", "2013-09-01", "2013-10-01", 
-#       "2013-11-01", "2013-12-01", "2014-01-01", "2014-02-01",
-#       "2014-03-01", "2014-04-01", "2014-05-01", "2014-06-01"]
-months=["2014-03-01"]
-output_directory = "/home/ml12574/work/programs/Python/td-mcmc/outputs/"
-
-species="CH4"
-network='DECC'
-experiment="MHD_TAC_RGL_TTA"
-countries=np.asarray(['UNITED KINGDOM', 'IRELAND', 'FRANCE', 'GERMANY', 
-                      'DENMARK', 'BELGIUM', 'NETHERLANDS', 'LUXEMBOURG'])
-percentile = [5,16,50,84,95]
-outfile="flux_NAME-Bristol_ch4.nc"
-
-# SUBROUTINE OPTIONS
-
-write_outfile=False
-append_outfile=False
-calc_country=True
-plot_scale_map=True
-plot_regions = True
-plot_y_timeseries=True
-
-
-
-print 'Beginning post processing'
-
-
-ncountries=len(countries)
-ntime = len(months)
-npercentile=len(percentile)
-
-country_mean=np.zeros((ncountries,ntime))  
-country_percentile=np.zeros((ncountries,ntime,npercentile)) 
-country_50=np.zeros((ncountries,ntime))  
-country_05=np.zeros((ncountries,ntime))  
-country_95=np.zeros((ncountries,ntime))  
-country_16=np.zeros((ncountries,ntime))  
-country_84=np.zeros((ncountries,ntime))  
-
-country_prior=np.zeros((ncountries,ntime))  
-
-f=glob.glob(output_directory + \
-        "output_" + network + "_" + species + "_" + months[-1] + ".nc")
-if len(f) > 0:
-    ds0 = open_ds(f[0]) 
-    nlon=len(ds0.lon)
-    nlat=len(ds0.lat)
-else:
-    raise LookupError("Try a different base file to get nlon and nlat")
-
-flux_mean = np.zeros((nlat,nlon,ntime))
-flux_percentile = np.zeros((nlat,nlon,ntime,npercentile))
-
-files = []
-#q_country={}
-q_country={}
-for tt,ti in enumerate(months):
-        f=glob.glob(output_directory + \
-        "output_" + network + "_" + species + "_" + ti + ".nc")
-        if len(f) > 0:
-            files += f
-            ds = open_ds(f[0])
-    # Process x_it, and y_it etc.
-        
     
-            nlon=len(ds.lon)
-            nlat=len(ds.lat)
-            Ngrid=nlon*nlat
-            nIt=len(ds.nIt)
-            nIC=ds.nIC.values
-            nmeasure=len(ds.nmeasure)
-            
-            x_post_vit=np.zeros((nIt,Ngrid))
-            
-            sigma_y_mean=np.zeros((nmeasure))
-            
-            sigma_y_mean=np.mean(ds.sigma_y_it.values, axis=1)
-            
-            regions_it=ds.regions_it.values
-            x_it=ds.x_it.values
-            #q_agg_it=ds.q_agg_it.values
-            k_it=ds.k_it.values
-            x_post_vit=ds.x_post_vit.values
-            x_ap_abs=ds.x_ap_abs.values
-            x_ap_abs_v=np.ravel(x_ap_abs)
-            
+    """
+    Function efficiently opens xray datasets.
+    """
+    # use a context manager, to ensure the file gets closed after use
+    with xray.open_dataset(path) as ds:
+        ds.load()
+    return ds    
+
+def plot_nuclei_density(ds, out_filename=None, fignum=3):
     
-            x_post_v_mean=np.mean(x_post_vit, axis=0)
-            x_post_v_05 = np.percentile(x_post_vit, 5, axis=0)
-            x_post_v_16 = np.percentile(x_post_vit, 16, axis=0)
-            x_post_v_50 = np.percentile(x_post_vit, 50, axis=0)
-            x_post_v_84 = np.percentile(x_post_vit, 84, axis=0)
-            x_post_v_95 = np.percentile(x_post_vit, 95, axis=0)
-            
-
-            flux_mean[:,:,tt] = np.reshape(x_post_v_mean*x_ap_abs_v, (nlat,nlon))
-            flux_percentile[:,:,tt,0] = np.reshape(x_post_v_05*x_ap_abs_v, (nlat,nlon))
-            flux_percentile[:,:,tt,1] = np.reshape(x_post_v_16*x_ap_abs_v, (nlat,nlon))
-            flux_percentile[:,:,tt,2] = np.reshape(x_post_v_50*x_ap_abs_v, (nlat,nlon))
-            flux_percentile[:,:,tt,3] = np.reshape(x_post_v_84*x_ap_abs_v, (nlat,nlon))
-            flux_percentile[:,:,tt,4] = np.reshape(x_post_v_95*x_ap_abs_v, (nlat,nlon))
-            
-            if calc_country == True:
-                country_mean[:,tt], country_05[:,tt], country_16[:,tt], \
-                country_50[:,tt], country_84[:,tt], country_95[:,tt], country_prior[:,tt] \
-                = country_emissions(ds,x_post_vit, x_ap_abs_v,countries, species)        
-            
-            if plot_scale_map == True:
-                lon=np.asarray(ds.lon.values)
-                lat=np.asarray(ds.lat.values)
-                x_post_mean = np.reshape(x_post_v_mean, (nlat,nlon))
-                plot_scaling(x_post_mean, lon,lat, fignum=tt)
-
-            if plot_regions == True:
-                regions_histogram(k_it, fignum=tt+20)
-                
-            if plot_y_timeseries == True:
-                plot_timeseries(ds, species)
-
+    """
+    Plot a 2D histogram/density plot of where nuclei are located in inversion domain
     
-country_mean[country_mean==0.]=np.nan 
-country_05[country_05==0.]=np.nan
-country_16[country_16==0.]=np.nan
-country_50[country_50==0.]=np.nan
-country_84[country_84==0.]=np.nan
-country_95[country_95==0.]=np.nan
+    Requires x_ray dataset of outputs    
+    Currently in rainbow colour scheme - Eurgh! #endrainbow
+    
+    Specify an out_filename to write to disk
+    """
+    ##############################
+    # Density plot of nuclei locations
+    
+    lon=ds.lon.values
+    lat=ds.lat.values
+    plat_it=ds.plat_it.values
+    plon_it=ds.plon_it.values
+    
+    xedges=np.arange(np.min(lon),np.max(lon)+2.,2.)
+    yedges=np.arange(np.min(lat),np.max(lat)+2.,2.)
+    lon_range = (np.min(xedges), xedges[-2])
+    lat_range = (np.min(yedges), yedges[-2])
+    plat_it_v=np.ravel(plat_it)
+    plon_it_v=np.ravel(plon_it)
+    
+    H, yedges, xedges = np.histogram2d(plat_it_v, plon_it_v, bins=(yedges, xedges))
+    
+    m2 = Basemap(projection='gall',
+                llcrnrlat=lat_range[0], urcrnrlat=lat_range[1],
+                llcrnrlon=lon_range[0], urcrnrlon=lon_range[1],
+                resolution='l')
+    
+    lona, latb = np.meshgrid(xedges[:-1],yedges[:-1])
+    mapa, mapb = m2(lona, latb)
+    
+    fig = plt.figure(fignum,figsize=(8,8))
+    ax = fig.add_subplot(111)
+    
+    m2.drawcoastlines()
+    m2.drawcountries() 
+    
+    hlevels=np.arange(np.min(H), np.max(H), (np.max(H)-np.min(H))/20) 
+    
+    ds=m2.contourf(mapa,mapb,H, hlevels)
+    db = m2.colorbar(ds, location='bottom')
 
-country_percentile[:,:,0] = country_05
-country_percentile[:,:,1] = country_16
-country_percentile[:,:,2] = country_50
-country_percentile[:,:,3] = country_84
-country_percentile[:,:,4] = country_95
-
-
-d0=pandas.to_datetime(months)
-lon=np.asarray(ds.lon.values)
-lat=np.asarray(ds.lat.values)
-
-
-#%%
-#outfile="/home/ml12574/work/programs/Python/td-mcmc/flux_NAME-Bristol_ch4.nc"
-outfile="flux_NAME-Bristol_ch4.nc"
-if write_outfile == True:
-    write_netcdf(flux_mean, flux_percentile,  country_mean, country_percentile, 
-                     lon, lat, d0, countries, percentile, experiment, outfile)
-elif append_outfile == True:
-    append_netcdf(flux_mean, flux_percentile, country_mean, country_percentile, 
-                     lon, lat, d0, countries, percentile, experiment, outfile)
-
-
-
+    if out_filename is not None:
+        plt.savefig(out_filename)
+        plt.close()
+    else:
+        plt.show()
 
 
 
