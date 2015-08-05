@@ -28,11 +28,23 @@ from acrg_time import convert
 import calendar
 import pickle
 
-fp_directory = '/data/shared/NAME/fp/'
-flux_directory = '/data/shared/NAME/emissions/'
-basis_directory = '/data/shared/NAME/basis_functions/'
-bc_directory = '/data/shared/NAME/bc/'
-bc_basis_directory = '/data/shared/NAME/bc_basis_functions/'
+acrg_path = os.getenv("ACRG_PATH")
+data_path = os.getenv("DATA_PATH")
+
+if acrg_path is None:
+    acrg_path = os.getenv("HOME")
+    print("Default ACRG directory is assumed to be home directory. Set path in .bashrc as \
+            export ACRG_PATH=/path/to/acrg/repository/ and restart python terminal")
+if data_path is None:
+    data_path = "/data/shared/"
+    print("Default Data directory is assumed to be /data/shared/. Set path in .bashrc as \
+            export DATA_PATH=/path/to/data/directory/ and restart python terminal")
+
+fp_directory = data_path + 'NAME/fp/'
+flux_directory = data_path +'NAME/emissions/'
+basis_directory = data_path + 'NAME/basis_functions/'
+bc_directory = data_path +'NAME/bc/'
+bc_basis_directory = data_path +'NAME/bc_basis_functions/'
 
 # Get acrg_site_info file
 acrg_path=split(realpath(__file__))
@@ -1136,13 +1148,13 @@ class get_country:
 
         if ocean is False:
 
-            countryDirectory='/data/shared/NAME/countries/'
+            countryDirectory=data_path +'NAME/countries/'
             filename=glob.glob(countryDirectory + \
                  "/" + "country_" \
                  + domain + ".nc")
              
         else:
-            countryDirectory='/data/shared/NAME/countries/'
+            countryDirectory=data_path +'NAME/countries/'
             filename=glob.glob(countryDirectory + \
                  "/" + "country_ocean_"\
                  + domain + ".nc")
