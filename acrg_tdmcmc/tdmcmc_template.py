@@ -12,8 +12,8 @@ Solves for x
 @author: ml12574
 """
 
-import hbtdmcmc
-import acrg_name_xray as name
+#import hbtdmcmc
+import acrg_name as name
 import numpy as np
 import acrg_agage as agage
 import matplotlib.pyplot as plt
@@ -156,7 +156,7 @@ stepsize_pdf_p2=0.1
 data = agage.get_obs(sites, species, start = start_date, end = end_date, average = av_period)
 
 
-fp_all = name.footprints_data_merge(data, domain=domain, species=species)
+fp_all = name.footprints_data_merge(data, domain=domain, species=species, calc_bc='true')
 
 fp_data_H2 = name.fp_sensitivity(fp_all, domain=domain, basis_case='transd')
 
@@ -595,6 +595,9 @@ post_mcmc = xray.Dataset({"x_it": (["nIt", "kICmax"],
 
 
 output_directory="/PATH/TO/OUTPUTS/"
+
+#Output files from tdmcmc_template.py stored in the form:
+# "output_" + network + "_" + species +  "_" + date + ".nc"
 #fname=os.path.join(output_directory,
-#                    "output_" + start_date + ".nc")
+#                    "output_" + network + "_" + species + "_" + start_date + ".nc")
 #post_mcmc.to_netcdf(path=fname, mode='w')

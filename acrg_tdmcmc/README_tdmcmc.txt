@@ -4,7 +4,13 @@ Files in this directory:
 
 acrg_hbtdmcmc.f90  - Fortran script for running transdimensional reversible jump mcmc
 tdmcmc_template.py - Python template script to create right inputs for acrg_hbtdmcmc.f90
-hbtdmcmc.so  - Shared object file to be called as module in python template script
+
+tdmcmc_post_process.py - Python script containing routines for plotting tdmcmmc output and generating country totals
+post_process_template.py - Template file to show how you might call functions contained in tdmcmc_post_process.py
+
+
+***** Templates should be copied to a local area for you to edit *****************
+****** They exist for reference only, at some point you have to actually do some work yourself!!!!! *************************
 
 *** Compiling with f2py ***
 
@@ -20,7 +26,7 @@ To compile using intel compiler use:
 
 f2py -c -m hbtdmcmc --fcompiler=intelem acrg_hbtdmcmc.f90
 
-### WARNING - INTELEM DOES NOT WORK WITH OPENMP - it compiles but won't run. #####
+*********** WARNING - INTELEM DOES NOT WORK WITH OPENMP - it compiles but won't run. ***************
 
 
 *** Running from python ***
