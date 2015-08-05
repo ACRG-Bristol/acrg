@@ -475,6 +475,7 @@ def particle_locations(particle_file, time, lats, lons, levs, heights,
         #Calculate total particles and normalise
         hist_sum = hist[slice_dict].sum()
         particles = sum([hist_sum[key].values for key in hist_sum.keys()])
+        print("Number of particles reaching edge: %f02" %particles)
         if particles > 0.:
             for key in hist.data_vars.keys():
                 hist[key][slice_dict] = hist[key][slice_dict]/\
@@ -820,7 +821,7 @@ def process(domain, site, height, year, month,
         file_search_string = subfolder + fields_folder +"/*" + str(year) \
                         + str(month).zfill(2) + "*.txt*"
         fields_files = glob.glob(file_search_string)
-        datestrs = sorted([f.split("_")[-1].split(".")[0] for f in fields_files])
+        datestrs = sorted([fi.split("_")[-1].split(".")[0] for fi in fields_files])
 
         # Check that we've found something
         if len(datestrs) == 0:
@@ -958,7 +959,6 @@ def satellite_vertical_profile(fp, satellite_obs_file):
         one per time step
     '''
     
-    
     def satellite_interpolator(var, press_in, press_out):
         '''
         Interpolator function by pressure for 2D fields
@@ -998,7 +998,7 @@ def satellite_vertical_profile(fp, satellite_obs_file):
 
         final_sum = np.sum(out)
         
-        print(initial_sum/final_sum)
+        print("Interpolator: initial/final: %0.2f" % (initial_sum/final_sum))
         
         # Re-scale to correct any difference in total
         return out*initial_sum/final_sum
@@ -1018,8 +1018,6 @@ def satellite_vertical_profile(fp, satellite_obs_file):
         print("ERROR: satellite comparison only for one time step at the moment")
         return fp
 
-    print(fp.pl_n.sum() + fp.pl_e.sum() + fp.pl_s.sum() + fp.pl_w.sum())
-        
     if not np.allclose((fp.pl_n.sum() + fp.pl_e.sum() + \
                         fp.pl_s.sum() + fp.pl_w.sum()), \
                         len(fp.lev)):
@@ -1029,8 +1027,7 @@ def satellite_vertical_profile(fp, satellite_obs_file):
     # Change timestamp to that from obs file
     #  because NAME output only has 1 minute resolution
     fp = fp.reindex_like(sat.time, method = "nearest")
-    print(fp.pl_n.sum() + fp.pl_e.sum() + fp.pl_s.sum() + fp.pl_w.sum())
-    
+
     # Interpolate pressure levels
     variables = ["fp", "pl_n", "pl_e", "pl_s", "pl_w"]
     out = {}
@@ -1078,8 +1075,9 @@ def satellite_vertical_profile(fp, satellite_obs_file):
     
     fp["lev"] = numpy.array(["column"])
     
-    print(sum_ak_pw)
-    print(fp.pl_n.sum() + fp.pl_e.sum() + fp.pl_s.sum() + fp.pl_w.sum())
+    print("Averaging kernal*pressure weight: %0.2f" % sum_ak_pw)
+    print("Sum of (averaging kernel*pressure weight)-weighted particle locations: %0.2f" % \
+          (fp.pl_n.sum() + fp.pl_e.sum() + fp.pl_s.sum() + fp.pl_w.sum()).values)
 
     return fp
     
