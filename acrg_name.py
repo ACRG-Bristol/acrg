@@ -340,7 +340,9 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
             site_modifier_fp = site_modifier[site]
         else:    
             site_modifier_fp = site
-            
+        
+        print(type(site_modifier_fp))
+        
         # Get footprints
         site_fp = footprints(site_modifier_fp, start = start, end = end,
                              domain = domain,
