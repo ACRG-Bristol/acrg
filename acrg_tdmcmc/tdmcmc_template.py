@@ -12,7 +12,7 @@ Solves for x
 @author: ml12574
 """
 
-#import hbtdmcmc
+import hbtdmcmc
 import acrg_name as name
 import numpy as np
 import acrg_agage as agage
