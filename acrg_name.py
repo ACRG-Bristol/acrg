@@ -863,7 +863,7 @@ def plot_map_zoom(fp_data):
 
 
 def plot(fp_data, date, out_filename=None, 
-         lon_range=None, lat_range=None, log_range = [-3., 0.],
+         lon_range=None, lat_range=None, log_range = [5., 9.],
          map_data = None, zoom = False,
          map_resolution = "l", 
          map_background = "countryborders",
@@ -989,7 +989,7 @@ def plot(fp_data, date, out_filename=None,
     cb.locator = tick_locator
     cb.update_ticks()
  
-    cb.set_label('log$_{10}$( (mol/mol) / (mol/m$^2$/s) )', 
+    cb.set_label('log$_{10}$( (nmol/mol) / (mol/m$^2$/s) )', 
                  fontsize=15)
     cb.ax.tick_params(labelsize=13) 
     

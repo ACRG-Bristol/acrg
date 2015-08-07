@@ -959,50 +959,6 @@ def satellite_vertical_profile(fp, satellite_obs_file):
         one per time step
     '''
     
-    def satellite_interpolator(var, press_in, press_out):
-        '''
-        Interpolator function by pressure for 2D fields
-        '''
-        
-        initial_sum = np.sum(var)
-        
-        # Check if lowest levels are the same
-        # This is an error with NAME vertical profiles where it assumes
-        # the pressure of the surface if particles have accidentally been
-        # released under ground
-        press_in_edit = press_in.copy()
-        if np.allclose(press_in[0], press_in[1]):
-            press_in_edit[0]-= 10000.
-        
-        # Add extra level at the bottom for extrapolation
-        dp = 10000.
-        dvardp_low = (var[1,:,:] - var[0,:,:])/\
-                     (press_in_edit[1] - press_in_edit[0])
-        var_low = var[0,:,:] + dp*dvardp_low
-        press_low = press_in_edit[0] + dp
-        press_temp = numpy.concatenate((np.array(press_low).reshape(1),
-                                        press_in_edit))
-        var_temp = numpy.concatenate((var_low.reshape((1,) + var.shape[1:]),
-                                      var))
-        
-        # Assume top level missing values are zero
-        interpolator = interp1d(np.log(press_temp), var_temp,
-                                bounds_error = False, axis = 0,
-                                fill_value = 0.)
-
-        # Interpolate
-        out = interpolator(np.log(press_out))
-        
-        # Set negative values to zero
-        out[out<0.] = 0.
-
-        final_sum = np.sum(out)
-        
-        print("Interpolator: initial/final: %0.2f" % (initial_sum/final_sum))
-        
-        # Re-scale to correct any difference in total
-        return out*initial_sum/final_sum
-        
     print("Reading satellite obs file: " + satellite_obs_file)
     sat = xray.open_dataset(satellite_obs_file)
     if np.abs(sat.lon.values[0] - fp.release_lon.values[0,0]) > 1.:
@@ -1031,43 +987,37 @@ def satellite_vertical_profile(fp, satellite_obs_file):
     # Interpolate pressure levels
     variables = ["fp", "pl_n", "pl_e", "pl_s", "pl_w"]
     out = {}
-    out_interpolated = {}
-    particle_total = 0.
-    for variable in variables:
-        print(variable)
-#        return fp[variable].values.squeeze(), \
-#                 fp.press.values.squeeze(), \
-#                 sat.pressure_levels.values.squeeze()*100.
-
-        #Interpolate fields to satellite data pressure levels
-        var = satellite_interpolator(fp[variable].values.squeeze(),
-                                     fp.press.values.squeeze(),
-                                     sat.pressure_levels.values.squeeze()*100.)
-        if variable[0:2] == "pl":
-            particle_total += np.sum(var)
-
-        # Store interpolated variable for use in for loop later
-        out_interpolated[variable] = var
-        
-        # Create empty output variable
-        out[variable] = np.zeros((1, 1,) + var.shape[1:])
-        
-    #Check any interpolation errors
-    for variable in variables:
-        if not np.allclose(particle_total,
-                           float(len(fp["lev"]))):
-            print("ERROR: Particle count doesn't match lev")
-            return None
 
     # Weight levels using pressure weight and averaging kernel
     sum_ak_pw = np.sum(sat.pressure_weights.values.squeeze() * \
-          sat.xch4_averaging_kernel.values.squeeze())
+                       sat.xch4_averaging_kernel.values.squeeze())
+    sum_particle_count = 0.
+
     for variable in variables:
-        for lev in range(len(sat.pressure_levels.values.squeeze())):
-            out[variable] += out_interpolated[variable][lev, :, :] * \
-                             sat.pressure_weights.values.squeeze()[lev] * \
-                             sat.xch4_averaging_kernel.values.squeeze()[lev]
-    
+
+        fp_lev = int(np.abs(fp.press - \
+                            sat.pressure_levels[dict(lev = 0)]*100.).argmin())
+        var = fp[variable][{"lev": fp_lev}].values.squeeze() * \
+              sat.pressure_weights.values.squeeze()[0] * \
+              sat.xch4_averaging_kernel.values.squeeze()[0]
+        out[variable] = var.reshape((1, 1) + var.shape)
+
+        for lev, press in enumerate(sat.pressure_levels.values.squeeze()[1:]):
+            fp_lev = np.abs(fp.press.values.squeeze() - press*100.).argmin()
+            var = fp[variable][{"lev": fp_lev}].values.squeeze() * \
+                  sat.pressure_weights.values.squeeze()[lev+1] * \
+                  sat.xch4_averaging_kernel.values.squeeze()[lev+1]
+            out[variable] += var.reshape((1, 1) + var.shape)
+            
+        if variable[0:2] == "pl":
+            sum_particle_count += out[variable].sum()
+
+    # Check whether particle sum makes sense
+    if not np.allclose(sum_particle_count, sum_ak_pw):
+        print("ERROR: Particle fractions don't match averaging_kernel * " + \
+              "pressure_weight")
+        return None
+
     # Compress dataset to one level and store column averages
     fp = fp[dict(lev = [0])]
     for variable in variables:
@@ -1075,10 +1025,6 @@ def satellite_vertical_profile(fp, satellite_obs_file):
     
     fp["lev"] = numpy.array(["column"])
     
-    print("Averaging kernal*pressure weight: %0.2f" % sum_ak_pw)
-    print("Sum of (averaging kernel*pressure weight)-weighted particle locations: %0.2f" % \
-          (fp.pl_n.sum() + fp.pl_e.sum() + fp.pl_s.sum() + fp.pl_w.sum()).values)
-
     return fp
     
 
