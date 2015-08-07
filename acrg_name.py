@@ -98,14 +98,13 @@ def filenames(site, domain, start, end, height = None, flux=None, basis=None):
     return files
 
 def read_netcdfs(files, dim = "time", transform_func=None):
+    '''
+    Use xray to open sequential netCDF files. 
+    Makes sure that file is closed after open_dataset call.
+    '''
     
     def process_one_path(path):
-        # use a context manager, to ensure the file gets closed after use
         with xray.open_dataset(path) as ds:
-            # transform_func should do some sort of selection or
-            # aggregation
-            # load all data from the transformed dataset, to ensure we can
-            # use it after closing each original file
             ds.load()
         return ds
     

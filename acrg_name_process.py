@@ -773,7 +773,7 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
     ncF.createDimension('lat', len(lats))
     ncF.createDimension('lev', 1)
     
-    nctime=ncF.createVariable('time', 'i', ('time',))
+    nctime=ncF.createVariable('time', 'f', ('time',))
     nclon=ncF.createVariable('lon', 'f', ('lon',))
     nclat=ncF.createVariable('lat', 'f', ('lat',))
     nclev=ncF.createVariable('lev', 'str', ('lev',))
@@ -912,7 +912,9 @@ def satellite_vertical_profile(fp, satellite_obs_file):
     '''
     
     print("Reading satellite obs file: " + satellite_obs_file)
-    sat = xray.open_dataset(satellite_obs_file)
+    with xray.open_dataset(satellite_obs_file) as f:
+        sat = f.load()
+        
     if np.abs(sat.lon.values[0] - fp.release_lon.values[0,0]) > 1.:
         print("WARNING: Satellite longitude doesn't match footprints")
     if np.abs(sat.lat.values[0] - fp.release_lat.values[0,0]) > 1:
@@ -944,7 +946,7 @@ def satellite_vertical_profile(fp, satellite_obs_file):
     sum_ak_pw = np.sum(sat.pressure_weights.values.squeeze() * \
                        sat.xch4_averaging_kernel.values.squeeze())
     sum_particle_count = 0.
-
+    
     for variable in variables:
 
         fp_lev = int(np.abs(fp.press - \
