@@ -47,8 +47,7 @@ bc_directory = data_path +'NAME/bc/'
 bc_basis_directory = data_path +'NAME/bc_basis_functions/'
 
 # Get acrg_site_info file
-acrg_path=split(realpath(__file__))
-with open(acrg_path[0] + "/acrg_site_info.json") as f:
+with open(acrg_path + "/acrg_site_info.json") as f:
     site_info=json.load(f)
 
 def filenames(site, domain, start, end, height = None, flux=None, basis=None):
@@ -351,8 +350,16 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
             site_modifier_fp = site_modifier[site]
         else:    
             site_modifier_fp = site
-        
-        print(type(site_modifier_fp))
+         
+        if height is not None:
+            
+            if type(height) is not dict:
+                print("Height input needs to be a dictionary with sitename:height")
+                return None
+                
+            height_site = height[site] 
+        else:
+            height_site = height
         
         # Get footprints
         site_fp = footprints(site_modifier_fp, start = start, end = end,
@@ -360,7 +367,7 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
                              species = [species if calc_timeseries == True or \
                                          calc_bc == True \
                                          else None][0], \
-                             height = height)
+                             height = height_site)
         
         if site_fp is not None:
             
