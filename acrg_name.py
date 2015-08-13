@@ -284,7 +284,7 @@ def timeseries_boundary_conditions(ds):
     
 def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
                           calc_timeseries = True, calc_bc = True,
-                          average = None, site_modifier = {}, height = {}):
+                          average = None, site_modifier = {}, height = None):
     """
     Output a dictionary of xray footprint datasets, that correspond to a given
     dictionary of Pandas dataframes, containing mole fraction time series.
@@ -351,6 +351,16 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
             site_modifier_fp = site_modifier[site]
         else:    
             site_modifier_fp = site
+         
+        if height is not None:
+            
+            if type(height) is not dict:
+                print("Height input needs to be a dictionary with sitename:height")
+                return None
+                
+            height_site = height[site] 
+        else:
+            height_site = height
         
         # Get footprints
         site_fp = footprints(site_modifier_fp, start = start, end = end,
@@ -358,7 +368,7 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
                              species = [species if calc_timeseries == True or \
                                          calc_bc == True \
                                          else None][0], \
-                             height = height[site])
+                             height = height_site)
         
         if site_fp is not None:
             
