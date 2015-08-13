@@ -47,8 +47,7 @@ bc_directory = data_path +'NAME/bc/'
 bc_basis_directory = data_path +'NAME/bc_basis_functions/'
 
 # Get acrg_site_info file
-acrg_path=split(realpath(__file__))
-with open(acrg_path[0] + "/acrg_site_info.json") as f:
+with open(acrg_path + "/acrg_site_info.json") as f:
     site_info=json.load(f)
 
 def filenames(site, domain, start, end, height = None, flux=None, basis=None):

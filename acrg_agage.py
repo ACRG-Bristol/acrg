@@ -52,12 +52,10 @@ if data_path is None:
 root_directory= data_path + "obs/"
 
 #Get site info and species info from JSON files
-acrg_path=split(realpath(__file__))
-
-with open(acrg_path[0] + "/acrg_species_info.json") as f:
+with open(acrg_path + "/acrg_species_info.json") as f:
     species_info=json.load(f)
 
-with open(acrg_path[0] + "/acrg_site_info.json") as f:
+with open(acrg_path + "/acrg_site_info.json") as f:
     site_info=json.load(f)
 
 def is_number(s):
