@@ -98,14 +98,13 @@ def filenames(site, domain, start, end, height = None, flux=None, basis=None):
     return files
 
 def read_netcdfs(files, dim = "time", transform_func=None):
+    '''
+    Use xray to open sequential netCDF files. 
+    Makes sure that file is closed after open_dataset call.
+    '''
     
     def process_one_path(path):
-        # use a context manager, to ensure the file gets closed after use
         with xray.open_dataset(path) as ds:
-            # transform_func should do some sort of selection or
-            # aggregation
-            # load all data from the transformed dataset, to ensure we can
-            # use it after closing each original file
             ds.load()
         return ds
     
@@ -861,7 +860,7 @@ def plot_map_zoom(fp_data):
 
 
 def plot(fp_data, date, out_filename=None, 
-         lon_range=None, lat_range=None, log_range = [-3., 0.],
+         lon_range=None, lat_range=None, log_range = [5., 9.],
          map_data = None, zoom = False,
          map_resolution = "l", 
          map_background = "countryborders",
@@ -987,7 +986,7 @@ def plot(fp_data, date, out_filename=None,
     cb.locator = tick_locator
     cb.update_ticks()
  
-    cb.set_label('log$_{10}$( (mol/mol) / (mol/m$^2$/s) )', 
+    cb.set_label('log$_{10}$( (nmol/mol) / (mol/m$^2$/s) )', 
                  fontsize=15)
     cb.ax.tick_params(labelsize=13) 
     
