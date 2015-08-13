@@ -353,15 +353,13 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
         else:    
             site_modifier_fp = site
         
-        print(type(site_modifier_fp))
-        
         # Get footprints
         site_fp = footprints(site_modifier_fp, start = start, end = end,
                              domain = domain,
                              species = [species if calc_timeseries == True or \
                                          calc_bc == True \
                                          else None][0], \
-                             height = height)
+                             height = height[si])
         
         if site_fp is not None:
             
