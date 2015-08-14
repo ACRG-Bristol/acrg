@@ -704,8 +704,7 @@ class analytical_inversion:
         if species_key == None:
             species_key = species
             
-        acrg_path=os.path.split(os.path.realpath(__file__))
-        with open(acrg_path[0] + "/acrg_species_info.json") as f:
+        with open(acrg_path + "/acrg_species_info.json") as f:
             species_info=json.load(f)
             
             
