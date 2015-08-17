@@ -187,6 +187,21 @@ def flux(domain, species):
         return None
     
     flux_ds = read_netcdfs(files)
+    
+    # Check that time coordinate is present
+    if not "time" in flux_ds.coords.keys():
+        print("ERROR: No 'time' coordinate " + \
+              "in flux dataset for " + domain + ", " + species)
+        return None
+
+    # Check for level coordinate. If one level, assume surface and drop
+    if "lev" in flux_ds.coords.keys():
+        print("WARNING: Can't support multi-level fluxes. Trying to remove 'lev' coordinate " + \
+              "from flux dataset for " + domain + ", " + species)
+        if len(flux_ds.lev) > 1:
+            print("ERROR: More than one flux level")
+        else:
+            return flux_ds.drop("lev")
 
     return flux_ds
 
@@ -265,7 +280,12 @@ def timeseries(ds):
     There are almost certainly much more efficient ways of doing this.
     """
 
-    return (ds.fp*ds.flux).sum(["lat", "lon"])
+    if "flux" in ds.keys():
+        return (ds.fp*ds.flux).sum(["lat", "lon"])
+    else:
+        print("Can't calculate time series " + \
+              "no fluxes. Check flux file.")
+        return None
 
 
 def timeseries_boundary_conditions(ds):
