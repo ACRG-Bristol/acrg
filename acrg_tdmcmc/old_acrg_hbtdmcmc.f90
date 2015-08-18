@@ -5,8 +5,8 @@ R_indices, sigma_model_hparams, stepsize_sigma_y, sigma_model_pdf, &
 sigma_clon, sigma_clat, & 
 lonmin, lonmax, latmin,latmax, sigma_bd, kmin, x_pdf_all, burn_in, &
 pdf_p1_hparam1, pdf_p1_hparam2, pdf_p2_hparam1, pdf_p2_hparam2, pdf_param1_pdf, pdf_param2_pdf, &
-stepsize, stepsize_pdf_p1,stepsize_pdf_p2, nIt, nsub, nit_sub, nIC, &
-nbeta, kmax, kICmax, nmeasure, Ngrid, nlon,nlat, ydim1, ydim2, nIC1, &
+stepsize,stepsize_pdf_p1, stepsize_pdf_p2, nIt, nsub, nit_sub, nIC, &
+nbeta, kmax, kICmax, nmeasure, Ngrid, nlon,nlat, ydim1, ydim2, &
 k_out, x_out, regions_out, plon_out, plat_out, sigma_y_out, n0T_out, &
 pdf_param1_out, pdf_param2_out, accept, reject, &
 accept_birth, reject_birth, accept_death, reject_death, accept_move, reject_move, &
@@ -33,7 +33,6 @@ INTEGER kmin
 INTEGER nIC
 INTEGER ydim1
 INTEGER ydim2
-INTEGER nIC1
 ! Single Variables
 REAL lonmin
 REAL lonmax
@@ -42,24 +41,24 @@ REAL latmax
 REAL sigma_bd
 REAL sigma_clon
 REAL sigma_clat
+REAL stepsize
 REAL stepsize_sigma_y
+REAL stepsize_pdf_p1
+REAL stepsize_pdf_p2
 INTEGER sigma_model_pdf
 INTEGER pdf_param1_pdf
 INTEGER pdf_param2_pdf
 ! Input arrays
-REAL stepsize(nIC1)
-REAL stepsize_pdf_p1(nIC1)
-REAL stepsize_pdf_p2(nIC1)
-INTEGER x_pdf_all(nIC1)
+INTEGER, DIMENSION(2) :: x_pdf_all
 REAL beta(nbeta)
 INTEGER k(nbeta)
 REAL x(kICmax, nbeta)               
-REAL pdf_param1(nIC1,nbeta)            
-REAL pdf_param2(nIC1,nbeta)                
-REAL pdf_p1_hparam1(nIC1)
-REAL pdf_p1_hparam2(nIC1)
-REAL pdf_p2_hparam1(nIC1)
-REAL pdf_p2_hparam2(nIC1)
+REAL pdf_param1(2,nbeta)            
+REAL pdf_param2(2,nbeta)                
+REAL pdf_p1_hparam1(2)
+REAL pdf_p1_hparam2(2)
+REAL pdf_p2_hparam1(2)
+REAL pdf_p2_hparam2(2)
 REAL h_agg(nmeasure,kICmax,nbeta)
 REAL y(nmeasure) 
 REAL n0(nmeasure, nbeta) 
@@ -77,17 +76,15 @@ REAL lat(nlat)
 REAL h_v(nmeasure, Ngrid)
 ! Outputs
 INTEGER k_out(nit_sub)
-REAL x_out(kICmax,nit_sub)  
-REAL pdf_param1_out(nIC1,nit_sub)             
-REAL pdf_param2_out(nIC1,nit_sub)   
+REAL x_out(kICmax,nit_sub)               
+REAL pdf_param1_out(2,nit_sub)    
+REAL pdf_param2_out(2,nit_sub)  
 REAL plon_out(kmax,nit_sub)
 REAL plat_out(kmax,nit_sub)
 INTEGER regions_out(Ngrid,nit_sub)
 REAL sigma_y_out(nmeasure, nit_sub)
 REAL n0T_out(nit_sub)
-INTEGER accept(nIC1)
-INTEGER reject(nIC1)
-INTEGER accept_birth, reject_birth
+INTEGER accept, reject, accept_birth, reject_birth
 INTEGER accept_death, reject_death, accept_move, reject_move, accept_swap
 INTEGER accept_sigma_y, reject_sigma_y
 ! INTERMEDIATE VARIABLES
@@ -95,11 +92,11 @@ INTEGER it, ibeta, remain_it, pair1,pair2, ib, it_sub, remain, kIC       !remain
 INTEGER remain_swap
 REAL u, u1,u2, randomu,pT_chain, beta1,beta2
 INTEGER k_it(nit_sub)
-REAL x_it(kICmax,nit_sub)                             
-REAL pdf_param1_it(nIC1,nit_sub)   
-REAL pdf_param2_it(nIC1,nit_sub)   
+REAL x_it(kICmax,nit_sub)    
+REAL pdf_param1_it(2,nit_sub)                            
+REAL pdf_param2_it(2,nit_sub)   
 REAL plon_it(kmax,nit_sub)               
-REAL plat_it(kmax,nit_sub)              
+REAL plat_it(kmax,nit_sub)             
 REAL sigma_model_ap(ydim2)            
 INTEGER regions_it(Ngrid,nit_sub)
 REAL sigma_y_it(nmeasure,nit_sub)
@@ -107,7 +104,7 @@ REAL n0T_it(nit_sub)
 ! SUBROUTINE INPUTS
 REAL betaib, n0Tib
 REAL xib(kICmax), plonib(kmax), platib(kmax), n0ib(nmeasure)           
-REAL pdf_param1ib(nIC1), pdf_param2ib(nIC1)
+REAL pdf_param1ib(2), pdf_param2ib(2)
 REAL h_aggib(nmeasure,kICmax)
 REAL sigma_yib(nmeasure), sigma_modelib(ydim2)
 INTEGER kib
@@ -115,11 +112,10 @@ INTEGER regions_vib(Ngrid)
 ! SUBROUTINE OUTPUTS
 REAL n0Tib1                     
 REAL xib1(kICmax), plonib1(kmax), platib1(kmax), n0ib1(nmeasure)      
-REAL pdf_param1ib1(nIC1), pdf_param2ib1(nIC1)
+REAL pdf_param1ib1(2), pdf_param2ib1(2)
 REAL h_aggib1(nmeasure,kICmax)
 REAL sigma_yib1(nmeasure), sigma_modelib1(ydim2)
 INTEGER kib1, rejectib1, acceptib1, reject_yib1, accept_yib1
-INTEGER acceptxib1(nIC1), rejectxib1(nIC1)
 INTEGER regions_vib1(Ngrid)
 REAL detval(nbeta)
 REAL detvalib, detvalib1
@@ -131,22 +127,21 @@ REAL detvalib, detvalib1
 !f2py intent(in) sigma_y, sigma_model, sigma_measure
 !f2py intent(in) R_indices, sigma_model_hparams, stepsize_sigma_y, sigma_model_pdf
 !f2py intent(in) lonmin, lonmax, latmin,latmax, sigma_bd, kmin, x_pdf_all, burn_in
-!f2py intent(in) pdf_p2_hparam1, pdf_p2_hparam2, stepsize_pdf_p2, pdf_param2_pdf
-!f2py intent(in) pdf_p1_hparam1, pdf_p1_hparam2, stepsize_pdf_p1, pdf_param1_pdf
-!f2py intent(in) stepsize, nIt,nsub,nit_sub, nIC1
+!f2py intent(in) pdf_p1_hparam1,pdf_p1_hparam2, pdf_p2_hparam1,pdf_p2_hparam2, stepsize, nIt,nsub,nit_sub
 !f2py intent(in) nIC, nbeta, kmax, kICmax, nmeasure, Ngrid, nlon,nlat, ydim1, ydim2
+!f2py intent(in) pdf_param1_pdf, pdf_param2_pdf, stepsize_pdf_p1, stepsize_pdf_p2
 !f2py intent(out) k_out, x_out, regions_out, plon_out, plat_out, sigma_y_out, n0T_out
-!f2py intent(out) pdf_param2_out, pdf_param1_out
+!f2py intent(out) pdf_param1_out, pdf_param2_out
 !f2py intent(out) accept, reject, accept_swap, accept_birth, accept_death, accept_move
 !f2py intent(out) reject_birth, reject_death, reject_move, accept_sigma_y, reject_sigma_y
 
   call OMP_SET_NUM_THREADS(nbeta)
 
-accept(:)=0
+accept=0
 accept_birth=0
 accept_death=0
 accept_move=0
-reject(:)=0
+reject=0
 reject_birth=0
 reject_death=0
 reject_move=0
@@ -154,11 +149,9 @@ accept_sigma_y=0
 reject_sigma_y=0
 it_sub=1
 
-
 sigma_model_ap=sigma_model(:,1)
 
 detval(:) = sum(alog(sigma_y(:,1)))
-
 
 
 ! MCMC loop
@@ -170,13 +163,12 @@ do it=1,(nIt+burn_in)
 
 !$OMP PARALLEL DO DEFAULT(SHARED) private(ibeta, betaib,kib,xib,pdf_param1ib,pdf_param2ib, plonib, platib), &
 !$OMP& private(regions_vib,h_aggib,n0ib,n0Tib,kIC,xib1,n0ib1,n0Tib1,acceptib1,rejectib1,regions_vib1), &
-!$OMP& private(u, kib1, h_aggib1, plonib1, platib1, acceptxib1, rejectxib1), &
+!$OMP& private(u, kib1, h_aggib1, plonib1, platib1), &
 !$OMP& private(sigma_yib, sigma_modelib, sigma_yib1, sigma_modelib1, accept_yib1, reject_yib1), &
-!$OMP& private(pdf_param1ib1, pdf_param2ib1, detvalib, detvalib1),&
+!$OMP& private(pdf_param1ib1,pdf_param2ib1, detvalib, detvalib1),&
 !$OMP& shared(x,n0,n0T, k, pdf_param1, pdf_param2, h_agg, plon,plat, regions_v)
    do ibeta=1,nbeta
 
-       !ibeta=1
        betaib = beta(ibeta)
        kib = k(ibeta)
        xib  = x(:,ibeta)
@@ -201,10 +193,10 @@ do it=1,(nIt+burn_in)
 
             call x_update(betaib,kib, xib, pdf_param1ib,pdf_param2ib, &
                          h_aggib,n0ib,n0Tib,sigma_yib, stepsize, &
-                         pdf_p1_hparam1, pdf_p1_hparam2, stepsize_pdf_p1, pdf_param1_pdf, &
-                         pdf_p2_hparam1, pdf_p2_hparam2, stepsize_pdf_p2, pdf_param2_pdf, &
-                         accept,reject,x_pdf_all, it, burn_in, nIC, kICmax, nmeasure, nIC1, &
-                         xib1, pdf_param1ib1, pdf_param2ib1, n0ib1, n0Tib1, acceptxib1, rejectxib1)
+                         pdf_p1_hparam1, pdf_p1_hparam2, pdf_p2_hparam1, pdf_p2_hparam2, &
+                         stepsize_pdf_p1, stepsize_pdf_p2, pdf_param1_pdf, pdf_param2_pdf, &
+                         accept,reject,x_pdf_all, it, burn_in, nIC, kICmax, nmeasure, &
+                         xib1, pdf_param1ib1,pdf_param2ib1, n0ib1, n0Tib1, acceptib1, rejectib1)
 
 
             x(:,ibeta) = xib1
@@ -214,16 +206,16 @@ do it=1,(nIt+burn_in)
             pdf_param2(:,ibeta) = pdf_param2ib1
             
             if (betaib .EQ. 1.) then 
-               accept(:) = acceptxib1
-               reject(:) = rejectxib1
+               accept = acceptib1
+               reject = rejectib1
             endif
             
            
 
-       elseif (remain_it .EQ. 5) then       ! BIRTH
+       elseif (remain_it .EQ. 2) then       ! BIRTH
                
                call birth(betaib,kib, xib, h_aggib,y,n0ib,n0Tib,sigma_yib, plonib, platib, regions_vib, lon,lat, & 
-                          h_v, pdf_param1ib(nIC1), pdf_param2ib(nIC1), x_pdf_all(nIC1), &
+                          h_v, pdf_param1ib(2), pdf_param2ib(2), x_pdf_all(2), &
                           lonmin, lonmax, &
                           latmin,latmax, sigma_bd,accept_birth, reject_birth,it,burn_in,nIC,kICmax,kmax, &
                           nmeasure,Ngrid,nlon,nlat, &
@@ -247,7 +239,7 @@ do it=1,(nIt+burn_in)
            elseif (remain_it .EQ. 3) then    ! DEATH
 
                call death(betaib,kib, xib, h_aggib, y,n0ib,n0Tib,sigma_yib, plonib, platib, regions_vib, lon,lat, & 
-                          h_v, pdf_param1ib(nIC1), pdf_param2ib(nIC1), x_pdf_all(nIC1), sigma_bd, &
+                          h_v, pdf_param1ib(2), pdf_param2ib(2), x_pdf_all(2), sigma_bd, &
                           accept_death, reject_death, it, burn_in,nIC, kICmax, kmin, kmax, nmeasure, &
                           Ngrid,nlon,nlat, &
                           kib1, xib1, h_aggib1,n0ib1, n0Tib1, regions_vib1, plonib1, platib1, acceptib1, rejectib1)
@@ -287,7 +279,7 @@ do it=1,(nIt+burn_in)
                   reject_move=rejectib1
                endif
 
-          elseif (remain_it .EQ. 2) then  ! SIGMA_Y UPDATE
+          elseif (remain_it .EQ. 5) then  ! SIGMA_Y UPDATE
              
               call sigma_y_update(betaib, sigma_modelib, sigma_model_ap, sigma_measure, sigma_yib, detvalib, &
                  sigma_model_hparams, stepsize_sigma_y, sigma_model_pdf, R_indices, &
@@ -376,16 +368,15 @@ pdf_param2_out=pdf_param2_it
 END SUBROUTINE hbtdmcmc
 
 
-
 SUBROUTINE x_update(beta,k, x, pdf_param1_all,pdf_param2_all,  &
 h_agg,n0,n0T,sigma_y, stepsize, &
-pdf_p1_hparam1_all, pdf_p1_hparam2_all, stepsize_pdf_p1, pdf_param1_pdf, &
-pdf_p2_hparam1_all, pdf_p2_hparam2_all, stepsize_pdf_p2, pdf_param2_pdf, &
-accept, reject, x_pdf_all, it, burn_in, nIC, kICmax, nmeasure, nIC1, &
+pdf_p1_hparam1_all, pdf_p1_hparam2_all,pdf_p2_hparam1_all, pdf_p2_hparam2_all, &
+stepsize_pdf_p1, stepsize_pdf_p2, pdf_param1_pdf, pdf_param2_pdf, &
+accept, reject, x_pdf_all, it, burn_in, nIC, kICmax, nmeasure, &
 x_out, pdf_param1_out, pdf_param2_out, n0_out, n0T_out, accept_out, reject_out) 
 
 Implicit none 
-INTEGER nmeasure, it, burn_in, k, nIC, kICmax, nIC1
+INTEGER nmeasure, accept, reject, it, burn_in, k, nIC, kICmax
 REAL beta, n0T, n0T_out 
 REAL x(kICmax) 
 REAL x_out(kICmax) 
@@ -395,65 +386,66 @@ REAL n0_out(nmeasure)
 REAL sigma_y(nmeasure)
 REAL dy(nmeasure)
 REAL n1(nmeasure) 
-
-INTEGER x_pdf_all(nIC1)
-REAL pdf_param1_all(nIC1), pdf_param2_all(nIC1)
-REAL pdf_p1_hparam1_all(nIC1), pdf_p1_hparam2_all(nIC1) 
-REAL  pdf_p2_hparam1_all(nIC1), pdf_p2_hparam2_all(nIC1)
-REAL pdf_param1_out(nIC1), pdf_param2_out(nIC1)
-INTEGER, DIMENSION(2) :: elem
+INTEGER, DIMENSION(2) :: x_pdf_all
+REAL, DIMENSION(2) :: pdf_param1_all, pdf_param2_all 
 REAL pdf_param1        
 REAL pdf_param2
-REAL stepsize(nIC1)
-INTEGER accept(nIC1), reject(nIC1)
-INTEGER accept_out(nIC1), reject_out(nIC1)
-REAL stepsize_pdf_p2(nIC1), stepsize_pdf_p1(nIC1)
-INTEGER xi, x_pdf, ki,xx
+REAL stepsize
+INTEGER xi, accept_out, reject_out, x_pdf
 REAL dx, n1T, pT, randomu, random_normal, p0,p1, u
-INTEGER pdf_param2_pdf, pdf_param1_pdf
-REAL pdf_p2_hparam1, pdf_p2_hparam2, pdf_p1_hparam1, pdf_p1_hparam2
+INTEGER pdf_param1_pdf, pdf_param2_pdf
+REAL, DIMENSION(2) :: pdf_p1_hparam1_all, pdf_p1_hparam2_all
+REAL, DIMENSION(2) :: pdf_p2_hparam1_all, pdf_p2_hparam2_all
+REAL, DIMENSION(2) :: pdf_param1_out, pdf_param2_out
+REAL pdf_p1_hparam1, pdf_p1_hparam2, pdf_p2_hparam1, pdf_p2_hparam2
+REAL stepsize_pdf_p1, stepsize_pdf_p2
+INTEGER ki, xx
+INTEGER elem(2)
 REAL p0_temp, p1_temp
-REAL dpdf_param2, pdf_param2_new, dpdf_param1, pdf_param1_new
-REAL p0_pdf_param2, p1_pdf_param2, p0_pdf_param1, p1_pdf_param1
+REAL dpdf_param1, dpdf_param2, pdf_param1_new, pdf_param2_new
+REAL p0_pdf_param1, p1_pdf_param1, p0_pdf_param2, p1_pdf_param2
 REAL x_new(kICmax)
-REAL stepsize0, stepsize_pdf_p10, stepsize_pdf_p20
+
+!INPUTS:
+! ARRAYS :: beta, nbeta, pdf_param1, pdf_param2, x, n0, h_agg, sigma_y, n0T, k
+! INTEGERS :: nbeta, accept, reject, nMeasure, x_pdf, k_max, it, burn_in    REAL h_agg(nMeasure,kmax,nbeta) 
+! REAL ::  xmin, xmax
+
+! OUTPUTS:
+! x_out, n0_out, n0T_out, accept_out, reject_out
 
    ! CHANGE OF EMISSIONS VALUES
-  call random_number(u)   
+  call random_number(u)  
   elem(1)= FLOOR((nIC)*u)+1 
   elem(2) = FLOOR(k*u)+1+nIC
-  !xi=FLOOR((nIC+k)*u)+1
 
-  do xx=1,2
+do xx=1,2
+
   xi=elem(xx)
+ 
+  xi=FLOOR((nIC+k)*u)+1
   if (xi .LE. nIC) then
-     x_pdf = x_pdf_all(xi)
-     pdf_param1 = pdf_param1_all(xi)
-     pdf_param2 = pdf_param2_all(xi)
-     pdf_p1_hparam1 = pdf_p1_hparam1_all(xi)
-     pdf_p1_hparam2 = pdf_p1_hparam2_all(xi)
-     pdf_p2_hparam1 = pdf_p2_hparam1_all(xi)
-     pdf_p2_hparam2 = pdf_p2_hparam2_all(xi)
-     stepsize0 = stepsize(xi)
-     stepsize_pdf_p10 = stepsize_pdf_p1(xi)
-     stepsize_pdf_p20 = stepsize_pdf_p2(xi)
+     x_pdf = x_pdf_all(1)
+     pdf_param1 = pdf_param1_all(1)
+     pdf_param2 = pdf_param2_all(1)
+     pdf_p1_hparam1 = pdf_p1_hparam1_all(1)
+     pdf_p1_hparam2 = pdf_p1_hparam2_all(1)
+     pdf_p2_hparam1 = pdf_p2_hparam1_all(1)
+     pdf_p2_hparam2 = pdf_p2_hparam2_all(1)
   else if (xi .GT. nIC) then
-     x_pdf = x_pdf_all(nIC1)
-     pdf_param1 = pdf_param1_all(nIC1)
-     pdf_param2 = pdf_param2_all(nIC1)
-     pdf_p1_hparam1 = pdf_p1_hparam1_all(nIC1)
-     pdf_p1_hparam2 = pdf_p1_hparam2_all(nIC1)
-     pdf_p2_hparam1 = pdf_p2_hparam1_all(nIC1)
-     pdf_p2_hparam2 = pdf_p2_hparam2_all(nIC1) 
-     stepsize0 = stepsize(nIC1)
-     stepsize_pdf_p10 = stepsize_pdf_p1(nIC1)
-     stepsize_pdf_p20 = stepsize_pdf_p2(nIC1)
+     x_pdf = x_pdf_all(2)
+     pdf_param1 = pdf_param1_all(2)
+     pdf_param2 = pdf_param2_all(2)
+     pdf_p1_hparam1 = pdf_p1_hparam1_all(2)
+     pdf_p1_hparam2 = pdf_p1_hparam2_all(2) 
+     pdf_p2_hparam1 = pdf_p2_hparam1_all(2)
+     pdf_p2_hparam2 = pdf_p2_hparam2_all(2) 
   endif
-  dx = random_normal()*stepsize0
-  dpdf_param1 = random_normal()*stepsize_pdf_p10
+  !stepsize_param2=pdf_param2*stepsize_pdf_p2
+  dx = random_normal()*stepsize
+  dpdf_param1 = random_normal()*stepsize_pdf_p1*pdf_param1
+  dpdf_param2 = random_normal()*stepsize_pdf_p2*pdf_param2
   pdf_param1_new = pdf_param1 + dpdf_param1
-
-  dpdf_param2 = random_normal()*stepsize_pdf_p20
   pdf_param2_new = pdf_param2 + dpdf_param2
 
   x_new = x
@@ -476,33 +468,15 @@ REAL stepsize0, stepsize_pdf_p10, stepsize_pdf_p20
              x(xi)=x(xi)+dx       
              n0=n1
              n0T=n1T
-             if (xi .LE. nIC) then
-                if (beta .EQ. 1. .and. it .GT. burn_in) accept(xi) = accept(xi) + 1
-             else if (xi .GT. nIC) then      
-                if (beta .EQ. 1. .and. it .GT. burn_in) accept(nIC1) = accept(nIC1) + 1
-             endif
-             !if (beta.EQ. 1. .and. it .GT. burn_in)  accept = accept + 1
+
+             if (beta.EQ. 1. .and. it .GT. burn_in)  accept = accept + 1
           else
                  !REJECT
-             if (beta .EQ. 1. .and. it .GT. burn_in) then 
-                 if (xi .LE. nIC) then 
-                     reject(xi) = reject(xi) + 1
-                 else
-                     reject(nIC1) = reject(nIC1) + 1  
-                 endif
-             endif
-                 !if (beta .EQ. 1. .and. it .GT. burn_in) reject = reject + 1
+                 if (beta .EQ. 1. .and. it .GT. burn_in) reject = reject + 1
           endif           ! randomu condition  
       else 
           !Reject if x is negative
-           if (beta .EQ. 1. .and. it .GT. burn_in) then 
-                 if (xi .LE. nIC) then 
-                     reject(xi) = reject(xi) + 1
-                 else
-                     reject(nIC1) = reject(nIC1) + 1  
-                 endif
-             endif
-          !if (beta .EQ. 1. .and. it .GT. burn_in) reject = reject + 1
+          if (beta .EQ. 1. .and. it .GT. burn_in) reject = reject + 1
 
       endif           ! xmin, xmax condition     
 
@@ -541,15 +515,11 @@ REAL stepsize0, stepsize_pdf_p10, stepsize_pdf_p20
             enddo
          endif
 
-
-          pT = p1+p1_pdf_param2+p1_pdf_param1-p0-p0_pdf_param2-p0_pdf_param1 -0.5*(n1T - n0T)*beta ! All p1s already in log space
+          pT = p1+p1_pdf_param1+p1_pdf_param2-p0-p0_pdf_param1-p0_pdf_param2 -0.5*(n1T - n0T)*beta ! All p1s already in log space
 
          if (pdf_param2_pdf .eq. 1) then
              if (pdf_param2_new .lt. pdf_p2_hparam1) pT = -1.e20
              if (pdf_param2_new .gt. pdf_p2_hparam2) pT = -1.e20
-         else if (pdf_param1_pdf .eq. 1) then
-             if (pdf_param1_new .lt. pdf_p1_hparam1) pT = -1.e20
-             if (pdf_param1_new .gt. pdf_p1_hparam2) pT = -1.e20
          endif
 
          call random_number(randomu)
@@ -560,31 +530,24 @@ REAL stepsize0, stepsize_pdf_p10, stepsize_pdf_p20
              n0=n1
              n0T=n1T
              if (xi .LE. nIC) then
-                pdf_param1_all(xi)=pdf_param1_new
-                pdf_param2_all(xi)=pdf_param2_new
-                if (beta .EQ. 1. .and. it .GT. burn_in) accept(xi) = accept(xi) + 1
+                pdf_param1_all(1)=pdf_param1_new
+                pdf_param2_all(1)=pdf_param2_new
              else if (xi .GT. nIC) then
-                pdf_param1_all(nIC1)=pdf_param1_new
-                pdf_param2_all(nIC1)=pdf_param2_new
-                if (beta .EQ. 1. .and. it .GT. burn_in) accept(nIC1) = accept(nIC1) + 1
+                pdf_param1_all(2)=pdf_param1_new
+                pdf_param2_all(2)=pdf_param2_new
              endif
              
-             !if (beta .EQ. 1. .and. it .GT. burn_in) accept = accept + 1
+             if (beta .EQ. 1. .and. it .GT. burn_in) accept = accept + 1
                                 
          else
              !REJECT
-             if (beta .EQ. 1. .and. it .GT. burn_in) then 
-                 if (xi .LE. nIC) then 
-                     reject(xi) = reject(xi) + 1
-                 else
-                     reject(nIC1) = reject(nIC1) + 1  
-                 endif
-             endif
+             if (beta .EQ. 1. .and. it .GT. burn_in) reject = reject + 1
                               
          endif   ! randomu condition
 
   endif   ! x_pdf condition
-  enddo
+
+enddo    ! xx loop
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 x_out=x
@@ -1200,6 +1163,7 @@ REAL sigma_y_new(nmeasure)
 
     call calc_pdf(sigma_model_current(yi), sigma_model_hparams(1), sigma_model_hparams(2), sigma_model_pdf, p0_sigma_y)
     call calc_pdf(sigma_model_new, sigma_model_hparams(1), sigma_model_hparams(2), sigma_model_pdf, p1_sigma_y)
+
 	
     do jj=1,dim2   
         y_error_new(R_indices(:,jj)) = sigma_model_current(jj)    ! Provided dim2 isn't too big then should be fine
@@ -1212,7 +1176,7 @@ REAL sigma_y_new(nmeasure)
 
     n1T=sum((n0/sigma_y_new)**2)
 
-    detval_new = sum(alog(sigma_y_new))           ! This is actually the inverse of the determinant
+    detval_new = sum(alog(sigma_y_new))           ! This is actually the inverse of the sqrt of determinant
 
     ! Compute P1/P0 	
     pT= p1_sigma_y-p0_sigma_y - detval_new*beta + detval_current*beta - 0.5*(n1T - n0T)*beta       !*beta      ! -detval_new becasue it's inverse of true determinant
@@ -1220,7 +1184,14 @@ REAL sigma_y_new(nmeasure)
        if (sigma_model_new .lt. sigma_model_hparams(1)) pT = -1.e20
        if (sigma_model_new .gt. sigma_model_hparams(2)) pT = -1.e20
     endif
-  
+
+    !write(*,*) "pT = ", pT
+    !write(*,*) "sigma_model_hparams = ", sigma_model_hparams
+    !write(*,*) "sigma_model_pdf  = ", sigma_model_pdf
+    !write(*,*) "sigma_model_new = ",sigma_model_new
+    !write(*,*) "sigma_model_current = ", sigma_model_current
+    !stop
+
     call random_number(randomu)     ! Generates uniformly distributed random number
     
     if(alog(randomu) .le. pT) then      
