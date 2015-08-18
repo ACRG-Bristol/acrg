@@ -28,15 +28,26 @@ from acrg_time import convert
 import calendar
 import pickle
 
-fp_directory = '/data/shared/NAME/fp/'
-flux_directory = '/data/shared/NAME/emissions/'
-basis_directory = '/data/shared/NAME/basis_functions/'
-bc_directory = '/data/shared/NAME/bc/'
-bc_basis_directory = '/data/shared/NAME/bc_basis_functions/'
+acrg_path = os.getenv("ACRG_PATH")
+data_path = os.getenv("DATA_PATH")
+
+if acrg_path is None:
+    acrg_path = os.getenv("HOME")
+    print("Default ACRG directory is assumed to be home directory. Set path in .bashrc as \
+            export ACRG_PATH=/path/to/acrg/repository/ and restart python terminal")
+if data_path is None:
+    data_path = "/data/shared/"
+    print("Default Data directory is assumed to be /data/shared/. Set path in .bashrc as \
+            export DATA_PATH=/path/to/data/directory/ and restart python terminal")
+
+fp_directory = data_path + 'NAME/fp/'
+flux_directory = data_path +'NAME/emissions/'
+basis_directory = data_path + 'NAME/basis_functions/'
+bc_directory = data_path +'NAME/bc/'
+bc_basis_directory = data_path +'NAME/bc_basis_functions/'
 
 # Get acrg_site_info file
-acrg_path=split(realpath(__file__))
-with open(acrg_path[0] + "/acrg_site_info.json") as f:
+with open(acrg_path + "/acrg_site_info.json") as f:
     site_info=json.load(f)
 
 def filenames(site, domain, start, end, height = None, flux=None, basis=None):
@@ -86,14 +97,13 @@ def filenames(site, domain, start, end, height = None, flux=None, basis=None):
     return files
 
 def read_netcdfs(files, dim = "time", transform_func=None):
+    '''
+    Use xray to open sequential netCDF files. 
+    Makes sure that file is closed after open_dataset call.
+    '''
     
     def process_one_path(path):
-        # use a context manager, to ensure the file gets closed after use
         with xray.open_dataset(path) as ds:
-            # transform_func should do some sort of selection or
-            # aggregation
-            # load all data from the transformed dataset, to ensure we can
-            # use it after closing each original file
             ds.load()
         return ds
     
@@ -177,6 +187,21 @@ def flux(domain, species):
         return None
     
     flux_ds = read_netcdfs(files)
+    
+    # Check that time coordinate is present
+    if not "time" in flux_ds.coords.keys():
+        print("ERROR: No 'time' coordinate " + \
+              "in flux dataset for " + domain + ", " + species)
+        return None
+
+    # Check for level coordinate. If one level, assume surface and drop
+    if "lev" in flux_ds.coords.keys():
+        print("WARNING: Can't support multi-level fluxes. Trying to remove 'lev' coordinate " + \
+              "from flux dataset for " + domain + ", " + species)
+        if len(flux_ds.lev) > 1:
+            print("ERROR: More than one flux level")
+        else:
+            return flux_ds.drop("lev")
 
     return flux_ds
 
@@ -255,7 +280,12 @@ def timeseries(ds):
     There are almost certainly much more efficient ways of doing this.
     """
 
-    return (ds.fp*ds.flux).sum(["lat", "lon"])
+    if "flux" in ds.keys():
+        return (ds.fp*ds.flux).sum(["lat", "lon"])
+    else:
+        print("Can't calculate time series " + \
+              "no fluxes. Check flux file.")
+        return None
 
 
 def timeseries_boundary_conditions(ds):
@@ -341,8 +371,16 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
             site_modifier_fp = site_modifier[site]
         else:    
             site_modifier_fp = site
-        
-        print(type(site_modifier_fp))
+         
+        if height is not None:
+            
+            if type(height) is not dict:
+                print("Height input needs to be a dictionary with sitename:height")
+                return None
+                
+            height_site = height[site] 
+        else:
+            height_site = height
         
         # Get footprints
         site_fp = footprints(site_modifier_fp, start = start, end = end,
@@ -350,7 +388,7 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
                              species = [species if calc_timeseries == True or \
                                          calc_bc == True \
                                          else None][0], \
-                             height = height)
+                             height = height_site)
         
         if site_fp is not None:
             
@@ -713,8 +751,7 @@ class analytical_inversion:
         if species_key == None:
             species_key = species
             
-        acrg_path=os.path.split(os.path.realpath(__file__))
-        with open(acrg_path[0] + "/acrg_species_info.json") as f:
+        with open(acrg_path + "/acrg_species_info.json") as f:
             species_info=json.load(f)
             
             
@@ -878,7 +915,7 @@ def plot_map_zoom(fp_data):
 
 
 def plot(fp_data, date, out_filename=None, 
-         lon_range=None, lat_range=None, log_range = [-3., 0.],
+         lon_range=None, lat_range=None, log_range = [5., 9.],
          map_data = None, zoom = False,
          map_resolution = "l", 
          map_background = "countryborders",
@@ -1004,7 +1041,7 @@ def plot(fp_data, date, out_filename=None,
     cb.locator = tick_locator
     cb.update_ticks()
  
-    cb.set_label('log$_{10}$( (mol/mol) / (mol/m$^2$/s) )', 
+    cb.set_label('log$_{10}$( (nmol/mol) / (mol/m$^2$/s) )', 
                  fontsize=15)
     cb.ax.tick_params(labelsize=13) 
     
@@ -1163,13 +1200,13 @@ class get_country:
 
         if ocean is False:
 
-            countryDirectory='/data/shared/NAME/countries/'
+            countryDirectory=data_path +'NAME/countries/'
             filename=glob.glob(countryDirectory + \
                  "/" + "country_" \
                  + domain + ".nc")
              
         else:
-            countryDirectory='/data/shared/NAME/countries/'
+            countryDirectory=data_path +'NAME/countries/'
             filename=glob.glob(countryDirectory + \
                  "/" + "country_ocean_"\
                  + domain + ".nc")

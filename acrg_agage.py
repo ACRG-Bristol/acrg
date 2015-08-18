@@ -35,16 +35,27 @@ from acrg_time import convert
 import json
 import datetime as dt
 import xray
+import os
 
-root_directory="/shared_data/air/shared/obs"
+acrg_path = os.getenv("ACRG_PATH")
+data_path = os.getenv("DATA_PATH")
+
+if acrg_path is None:
+    acrg_path = os.getenv("HOME")
+    print("Default ACRG directory is assumed to be home directory. Set path in .bashrc as \
+            export ACRG_PATH=/path/to/acrg/repository/ and restart python terminal")
+if data_path is None:
+    data_path = "/data/shared/"
+    print("Default Data directory is assumed to be /data/shared/. Set path in .bashrc as \
+            export DATA_PATH=/path/to/data/directory/ and restart python terminal")
+
+root_directory= data_path + "obs/"
 
 #Get site info and species info from JSON files
-acrg_path=split(realpath(__file__))
-
-with open(acrg_path[0] + "/acrg_species_info.json") as f:
+with open(acrg_path + "/acrg_species_info.json") as f:
     species_info=json.load(f)
 
-with open(acrg_path[0] + "/acrg_site_info.json") as f:
+with open(acrg_path + "/acrg_site_info.json") as f:
     site_info=json.load(f)
 
 def is_number(s):
