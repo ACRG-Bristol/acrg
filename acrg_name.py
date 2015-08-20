@@ -303,7 +303,8 @@ def timeseries_boundary_conditions(ds):
     
 def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
                           calc_timeseries = True, calc_bc = True,
-                          average = None, site_modifier = {}, height = None):
+                          average = None, site_modifier = {}, height = None,
+                          full_corr = False):
     """
     Output a dictionary of xray footprint datasets, that correspond to a given
     dictionary of Pandas dataframes, containing mole fraction time series.
@@ -392,7 +393,11 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
         if site_fp is not None:
             
             # Merge datasets
-            site_ds = combine_datasets(site_ds, site_fp, method = "nearest")
+            #site_ds = combine_datasets(site_ds, site_fp, method = "nearest")
+            if full_corr:
+                site_ds = combine_datasets(site_fp, site_ds, method = None)
+            else:
+                site_ds = combine_datasets(site_ds, site_fp, method = "nearest")
             
             # If units are specified, multiply by scaling factor
             if ".units" in attributes:
@@ -636,7 +641,7 @@ def merge_sensitivity(fp_data_H,
         return out_variables
 
 
-def filtering(datasets_in, filters):
+def filtering(datasets_in, filters, full_corr=False):
     """
     Apply filtering (in time dimension) to entire dataset.
     
@@ -657,20 +662,42 @@ def filtering(datasets_in, filters):
     datasets = datasets_in.copy()
 
     # Filter functions
-    def daily_median(dataset):
+    def daily_median(dataset, full_corr=False):
         # Calculate daily median
         return dataset.resample("1D", "time", how = "median")
     
-    def daytime(dataset):
+    def daytime(dataset, full_corr=False):
         # Subset during daytime hours
         hours = dataset.time.to_pandas().index.hour
         ti = [i for i, h in enumerate(hours) if h >= 10 and h <= 15]
-        return dataset[dict(time = ti)]
+        
+        if full_corr:
+            dataset_temp = dataset[dict(time = ti)]   
+            dataset_out = dataset_temp.reindex_like(dataset)
+            return dataset_out
+        else:
+            return dataset[dict(time = ti)]
+        
 
-    def pblh_gt_500(dataset):
+    def pblh_gt_500(dataset, full_corr=False):
         # Subset for times when boundary layer height is > 500m
         ti = [i for i, pblh in enumerate(dataset.PBLH) if pblh > 500.]
-        return dataset[dict(time = ti)]
+        
+        if full_corr:
+            mf_data_array = dataset.mf            
+            dataset_temp = dataset.drop('mf')
+            
+            dataarray_temp = mf_data_array[dict(time = ti)]   
+            #dataarray_temp2 = dataarray_temp.reindex_like(dataset)
+            
+            mf_ds = xray.Dataset({'mf': (['time'], dataarray_temp)}, 
+                                  coords = {'time' : (dataarray_temp.coords['time'])})
+            
+            dataset_out = combine_datasets(dataset_temp, mf_ds, method=None)
+            return dataset_out
+        else:
+            return dataset[dict(time = ti)]
+        
         
     filtering_functions={"daily_median":daily_median,
                          "daytime":daytime,
@@ -682,7 +709,7 @@ def filtering(datasets_in, filters):
     # Do filtering
     for site in sites:
         for filt in filters:
-            datasets[site] = filtering_functions[filt](datasets[site])
+            datasets[site] = filtering_functions[filt](datasets[site], full_corr=full_corr)
 
     return datasets
 
