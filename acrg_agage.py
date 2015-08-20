@@ -257,9 +257,18 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
                 skip = True
     
             else:
-                time = convert.sec2time(ncf.variables["time"][:], 
-                                        ncf.variables["time"].units[14:])
-                   
+                if ("seconds" in ncf.variables["time"].units) is True:
+                    time = convert.sec2time(ncf.variables["time"][:], 
+                                            ncf.variables["time"].units[14:])
+                elif ("minutes" in ncf.variables["time"].units) is True:
+                    time = convert.min2time(ncf.variables["time"][:], 
+                                            ncf.variables["time"].units[14:]) 
+                elif ("days" in ncf.variables["time"].units) is True:
+                    time = convert.day2time(ncf.variables["time"][:], 
+                                            ncf.variables["time"].units[14:])
+                else: 
+                    print("Time unit is not a recognized unit (seconds, minuties or days since")
+                            
                 if max(time) < start_time:
                     skip = True
                 if min(time) > end_time:
