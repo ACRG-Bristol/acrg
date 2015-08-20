@@ -28,7 +28,7 @@ Created on Sat Dec 27 17:17:01 2014
 import numpy as np
 import pandas as pd
 import glob
-from os.path import split, realpath
+from os.path import split, realpath, join
 import re
 from netCDF4 import Dataset
 from acrg_time import convert
@@ -52,10 +52,10 @@ if data_path is None:
 root_directory= data_path + "obs/"
 
 #Get site info and species info from JSON files
-with open(acrg_path + "/acrg_species_info.json") as f:
+with open(join(acrg_path, "acrg_species_info.json")) as f:
     species_info=json.load(f)
 
-with open(acrg_path + "/acrg_site_info.json") as f:
+with open(join(acrg_path, "acrg_site_info.json")) as f:
     site_info=json.load(f)
 
 def is_number(s):

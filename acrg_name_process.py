@@ -763,7 +763,6 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
     NOTE that netCDF4 is required, as we make use of compression.    
     '''
     
-    
     time_seconds, time_reference = time2sec(time)
     
     #Write NetCDF file
