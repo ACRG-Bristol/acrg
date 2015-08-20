@@ -23,7 +23,7 @@ import json
 import acrg_agage as agage
 from acrg_grid import areagrid
 import xray
-from os.path import split, realpath
+from os.path import split, realpath, join
 from acrg_time import convert
 import calendar
 import pickle
@@ -40,14 +40,14 @@ if data_path is None:
     print("Default Data directory is assumed to be /data/shared/. Set path in .bashrc as \
             export DATA_PATH=/path/to/data/directory/ and restart python terminal")
 
-fp_directory = data_path + 'NAME/fp/'
-flux_directory = data_path +'NAME/emissions/'
-basis_directory = data_path + 'NAME/basis_functions/'
-bc_directory = data_path +'NAME/bc/'
-bc_basis_directory = data_path +'NAME/bc_basis_functions/'
+fp_directory = join(data_path, 'NAME/fp/')
+flux_directory = join(data_path, 'NAME/emissions/')
+basis_directory = join(data_path, 'NAME/basis_functions/')
+bc_directory = join(data_path, 'NAME/bc/')
+bc_basis_directory = join(data_path,'NAME/bc_basis_functions/')
 
 # Get acrg_site_info file
-with open(acrg_path + "/acrg_site_info.json") as f:
+with open(join(acrg_path, "/acrg_site_info.json")) as f:
     site_info=json.load(f)
 
 def filenames(site, domain, start, end, height = None, flux=None, basis=None):
