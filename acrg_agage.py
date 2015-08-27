@@ -28,7 +28,7 @@ Created on Sat Dec 27 17:17:01 2014
 import numpy as np
 import pandas as pd
 import glob
-from os.path import split, realpath
+from os.path import split, realpath, join
 import re
 from netCDF4 import Dataset
 from acrg_time import convert
@@ -49,13 +49,13 @@ if data_path is None:
     print("Default Data directory is assumed to be /data/shared/. Set path in .bashrc as \
             export DATA_PATH=/path/to/data/directory/ and restart python terminal")
 
-root_directory= data_path + "obs/"
+root_directory= join(data_path, "obs/")
 
 #Get site info and species info from JSON files
-with open(acrg_path + "/acrg_species_info.json") as f:
+with open(join(acrg_path, "acrg_species_info.json")) as f:
     species_info=json.load(f)
 
-with open(acrg_path + "/acrg_site_info.json") as f:
+with open(join(acrg_path, "acrg_site_info.json")) as f:
     site_info=json.load(f)
 
 def is_number(s):
@@ -121,7 +121,7 @@ def quadratic_sum(x):
 #Get Met Office baseline flags
 def ukmo_flags(site, site_info):
     
-    flag_directory=root_directory + "/flags/"
+    flag_directory=join(root_directory, "flags/")
     fnames, file_info=file_search_and_split(
         flag_directory + "*.txt")
     file_site = [f[0] for f in file_info]
@@ -139,7 +139,7 @@ def ukmo_flags(site, site_info):
         flag_time=[]
         
         for f in files:
-            flag_data=pd.io.parsers.read_csv(flag_directory + "/" + f, 
+            flag_data=pd.io.parsers.read_csv(join(flag_directory, f), 
                                              delim_whitespace=True, skiprows=6)
             flag_time = flag_time + [dt.datetime(y, m, d, h, mi)
                 for y, m, d, h, mi in 
@@ -160,8 +160,8 @@ def get_file_list(site, species, start, end, height,
     else:
         file_network_string = network
 
-    data_directory=root_directory + "/" + file_network_string + "/"
-
+    data_directory=join(root_directory, file_network_string)
+    
     if height is None:
         file_height_string = site_info[site]["height"][0]
     else:
@@ -177,10 +177,10 @@ def get_file_list(site, species, start, end, height,
             return data_directory, None
     
     #Get file info
-    fnames, file_info = file_search_and_split(data_directory + "*.nc")
+    fnames, file_info = file_search_and_split(join(data_directory, "*.nc"))
 
     if len(fnames) == 0:
-        print("Can't find any data files: " + data_directory + "*.nc")
+        print("Can't find any data files: " + join(data_directory, "*.nc"))
         return data_directory, None
         
     file_site = [f[1] for f in file_info]
@@ -250,16 +250,25 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
     
             skip = False
             
-            ncf=Dataset(data_directory + f, 'r')
+            ncf=Dataset(join(data_directory, f), 'r')
     
             if "time" not in ncf.variables:
                 print("Skipping: " + f + ". No time variable")
                 skip = True
     
             else:
-                time = convert.sec2time(ncf.variables["time"][:], 
-                                        ncf.variables["time"].units[14:])
-                   
+                if ("seconds" in ncf.variables["time"].units) is True:
+                    time = convert.sec2time(ncf.variables["time"][:], 
+                                            ncf.variables["time"].units[14:])
+                elif ("minutes" in ncf.variables["time"].units) is True:
+                    time = convert.min2time(ncf.variables["time"][:], 
+                                            ncf.variables["time"].units[14:]) 
+                elif ("days" in ncf.variables["time"].units) is True:
+                    time = convert.day2time(ncf.variables["time"][:], 
+                                            ncf.variables["time"].units[14:])
+                else: 
+                    print("Time unit is not a recognized unit (seconds, minuties or days since")
+                            
                 if max(time) < start_time:
                     skip = True
                 if min(time) > end_time:

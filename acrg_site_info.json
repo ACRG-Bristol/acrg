@@ -23,6 +23,13 @@
         "height": ["10m"],
         "height_name": ["10magl"]
     },
+    "CLA" : {
+        "alt": [""],
+        "long_name" : "Comilla, Bangladesh",
+        "height": ["10m"],
+        "height_name": ["10magl"],
+        "network": "NIES"
+    },
     "DJI" : {
         "alt": [""],
         "long_name" : "Darjeeling, India",
