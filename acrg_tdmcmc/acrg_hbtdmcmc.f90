@@ -2,7 +2,7 @@
 SUBROUTINE hbtdmcmc(beta,k, x, h_agg,y,n0,n0T, plon, plat, regions_v, &
 pdf_param1, pdf_param2, lon,lat, h_v, sigma_y, sigma_model, sigma_measure, &
 R_indices, sigma_model_hparams, stepsize_sigma_y, sigma_model_pdf, &
-sigma_clon, sigma_clat, & 
+sigma_clon, sigma_clat, rjmcmc, & 
 lonmin, lonmax, latmin,latmax, sigma_bd, kmin, x_pdf_all, burn_in, &
 pdf_p1_hparam1, pdf_p1_hparam2, pdf_p2_hparam1, pdf_p2_hparam2, pdf_param1_pdf, pdf_param2_pdf, &
 stepsize, stepsize_pdf_p1,stepsize_pdf_p2, nIt, nsub, nit_sub, nIC, &
@@ -46,6 +46,7 @@ REAL stepsize_sigma_y
 INTEGER sigma_model_pdf
 INTEGER pdf_param1_pdf
 INTEGER pdf_param2_pdf
+INTEGER rjmcmc
 ! Input arrays
 REAL stepsize(nIC1)
 REAL stepsize_pdf_p1(nIC1)
@@ -128,7 +129,7 @@ REAL detvalib, detvalib1
 
 !f2py intent(in) beta,k, x, h_agg,y,n0,n0T, plon, plat, regions_v
 !f2py intent(in) pdf_param1, pdf_param2, lon,lat, h_v, sigma_clon, sigma_clat  
-!f2py intent(in) sigma_y, sigma_model, sigma_measure
+!f2py intent(in) sigma_y, sigma_model, sigma_measure, rjmcmc
 !f2py intent(in) R_indices, sigma_model_hparams, stepsize_sigma_y, sigma_model_pdf
 !f2py intent(in) lonmin, lonmax, latmin,latmax, sigma_bd, kmin, x_pdf_all, burn_in
 !f2py intent(in) pdf_p2_hparam1, pdf_p2_hparam2, stepsize_pdf_p2, pdf_param2_pdf
@@ -166,7 +167,12 @@ detval(:) = sum(alog(sigma_y(:,1)))
 do it=1,(nIt+burn_in)
    
    call random_number(u) 
-   remain_it = FLOOR(5*u) + 1    ! Choose random number between 1 and 5 to chose what to update
+
+   if (rjmcmc .EQ. 1) then
+       remain_it = FLOOR(5*u) + 1    ! Choose random number between 1 and 5 to chose what to update
+   else
+       remain_it = FLOOR(2*u) + 1    ! Choose random number between 1 and 2 - no reversible jump.
+   endif
 
 !$OMP PARALLEL DO DEFAULT(SHARED) private(ibeta, betaib,kib,xib,pdf_param1ib,pdf_param2ib, plonib, platib), &
 !$OMP& private(regions_vib,h_aggib,n0ib,n0Tib,kIC,xib1,n0ib1,n0Tib1,acceptib1,rejectib1,regions_vib1), &
@@ -220,7 +226,7 @@ do it=1,(nIt+burn_in)
             
            
 
-       elseif (remain_it .EQ. 5) then       ! BIRTH
+       elseif (remain_it .EQ. 3) then       ! BIRTH
                
                call birth(betaib,kib, xib, h_aggib,y,n0ib,n0Tib,sigma_yib, plonib, platib, regions_vib, lon,lat, & 
                           h_v, pdf_param1ib(nIC1), pdf_param2ib(nIC1), x_pdf_all(nIC1), &
@@ -244,7 +250,7 @@ do it=1,(nIt+burn_in)
                    reject_birth=rejectib1
                endif
 
-           elseif (remain_it .EQ. 3) then    ! DEATH
+           elseif (remain_it .EQ. 4) then    ! DEATH
 
                call death(betaib,kib, xib, h_aggib, y,n0ib,n0Tib,sigma_yib, plonib, platib, regions_vib, lon,lat, & 
                           h_v, pdf_param1ib(nIC1), pdf_param2ib(nIC1), x_pdf_all(nIC1), sigma_bd, &
@@ -266,7 +272,7 @@ do it=1,(nIt+burn_in)
                    reject_death=rejectib1
                endif
 
-           elseif (remain_it .EQ. 4) then    ! MOVE
+           elseif (remain_it .EQ. 5) then    ! MOVE
                 
                
                call move(betaib,kib, xib, h_aggib, y,n0ib,n0Tib,sigma_yib, plonib, platib, regions_vib, lon,lat, & 
@@ -524,12 +530,12 @@ REAL stepsize0, stepsize_pdf_p10, stepsize_pdf_p20
 
          if (xi .LE. nIC) then
            
-            do ki =1,nIC
-               call calc_pdf(x(ki),pdf_param1,pdf_param2,x_pdf, p0_temp)           ! Will apply whatever the PDF
-               call calc_pdf(x_new(ki),pdf_param1_new,pdf_param2_new,x_pdf, p1_temp)        
+            !do ki =1,nIC
+               call calc_pdf(x(xi),pdf_param1,pdf_param2,x_pdf, p0_temp)           ! Will apply whatever the PDF
+               call calc_pdf(x_new(xi),pdf_param1_new,pdf_param2_new,x_pdf, p1_temp)        
                p0=p0+p0_temp
                p1=p1+p1_temp
-            enddo
+            !enddo
 
          else if (xi .GT. nIC) then
 

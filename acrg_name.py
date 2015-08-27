@@ -697,11 +697,31 @@ def filtering(datasets_in, filters, full_corr=False):
             return dataset_out
         else:
             return dataset[dict(time = ti)]
+            
+    def pblh_gt_250(dataset, full_corr=False):
+        # Subset for times when boundary layer height is > 500m
+        ti = [i for i, pblh in enumerate(dataset.PBLH) if pblh > 250.]
+        
+        if full_corr:
+            mf_data_array = dataset.mf            
+            dataset_temp = dataset.drop('mf')
+            
+            dataarray_temp = mf_data_array[dict(time = ti)]   
+            #dataarray_temp2 = dataarray_temp.reindex_like(dataset)
+            
+            mf_ds = xray.Dataset({'mf': (['time'], dataarray_temp)}, 
+                                  coords = {'time' : (dataarray_temp.coords['time'])})
+            
+            dataset_out = combine_datasets(dataset_temp, mf_ds, method=None)
+            return dataset_out
+        else:
+            return dataset[dict(time = ti)]
         
         
     filtering_functions={"daily_median":daily_median,
                          "daytime":daytime,
-                         "pblh_gt_500": pblh_gt_500}
+                         "pblh_gt_500": pblh_gt_500,
+                         "pblh_gt_250": pblh_gt_250}
 
     # Get list of sites
     sites = [key for key in datasets.keys() if key[0] != '.']
