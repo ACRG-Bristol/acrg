@@ -47,7 +47,7 @@ bc_directory = join(data_path, 'NAME/bc/')
 bc_basis_directory = join(data_path,'NAME/bc_basis_functions/')
 
 # Get acrg_site_info file
-with open(join(acrg_path, "/acrg_site_info.json")) as f:
+with open(join(acrg_path, "acrg_site_info.json")) as f:
     site_info=json.load(f)
 
 def filenames(site, domain, start, end, height = None, flux=None, basis=None):
