@@ -377,8 +377,8 @@ def get_gosat(site, species, start = "1900-01-01", end = "2020-01-01"):
 
     data = []
     for f in files:
-        data.append(xray.open_dataset(data_directory + f))
-    
+        data.append(xray.open_dataset(join(data_directory,f)))
+        
     data = xray.concat(data, dim = "time")
 
     prior_factor = (data.pressure_weights* \
