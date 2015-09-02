@@ -120,6 +120,8 @@ end_date = '2014-07-01'
 domain='EUROPE'
 
 
+rjmcmc=1             # 1 if want to do reverible-jump. 0 otherwise
+
 bl_period=10           # No. of days for which each sigma_y value applies
 kmin=4       
 kmax=400    
@@ -431,7 +433,7 @@ accept_swap, accept_sigma_y, reject_sigma_y = hbtdmcmc.hbtdmcmc(
 beta,k, x, h_agg,y,n0,n0T, plon, plat, regions_v, 
 pdf_param1, pdf_param2, lon,lat, h_v, sigma_y, sigma_model, sigma_measure, 
 R_indices, sigma_model_hparams, stepsize_sigma_y, sigma_model_pdf, 
-sigma_clon, sigma_clat,  
+sigma_clon, sigma_clat, rjmcmc, 
 lonmin, lonmax, latmin,latmax, sigma_bd, kmin, x_pdf, burn_in, 
 pdf_p1_hparam1, pdf_p1_hparam2, pdf_p2_hparam1, pdf_p2_hparam2, pdf_param1_pdf, 
 pdf_param2_pdf,stepsize_all, stepsize_pdf_p1_all,stepsize_pdf_p2_all, 
@@ -638,7 +640,6 @@ for ti in range(nmeasure):
 #uk_95 = uk_95*16.04/1000.*365.*24.*3600./1.e9   # in kg/s
 #uk_05 = uk_05*16.04/1000.*365.*24.*3600./1.e9 
 #uk_ap = uk_ap*16.04/1000.*365.*24.*3600./1.e9 
-
 
 # SAVE MCMC output in a dataset and write to netcdf
 # Set up post-mcmc dataset
