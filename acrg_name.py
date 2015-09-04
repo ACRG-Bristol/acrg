@@ -103,7 +103,7 @@ import xray
 from copy import deepcopy
 from os.path import split, realpath
 
-fp_directory = '/data/shared/NAME/fp_netcdf/'
+fp_directory = '/data/shared/NAME/fp/'
 flux_directory = '/data/shared/NAME/emissions/'
 basis_directory = '/data/shared/NAME/basis_functions/'
 
