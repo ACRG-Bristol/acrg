@@ -46,7 +46,7 @@ class EDGARread:
                 species = i
                 if species is not None:
                     break
-        flux = f.variables[species]
+        flux = np.array(f.variables[species])
         units = f.variables[species].units
 
         f.close()
