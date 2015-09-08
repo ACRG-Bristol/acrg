@@ -46,7 +46,7 @@ class EDGARread:
                 species = i
                 if species is not None:
                     break
-        flux = np.array(f.variables[species])
+        flux = f.variables[species][:,:]
         units = f.variables[species].units
 
         f.close()
@@ -98,8 +98,8 @@ def regrid(filename_of_EDGAR_emissions, filename_of_footprint, input_species_nam
         lon_ed = lon_ed-180
         flux_ed0 = flux_ed.copy()
         flux_ed = np.zeros(np.shape(flux_ed0))
-        flux_ed[:,0:(len(lon_ed)/2),:]=flux_ed0[:,(len(lon_ed)/2):,:]
-        flux_ed[:,(len(lon_ed)/2):,:]=flux_ed0[:,0:(len(lon_ed)/2),:]
+        flux_ed[:,0:(len(lon_ed)/2)]=flux_ed0[:,(len(lon_ed)/2):]
+        flux_ed[:,(len(lon_ed)/2):]=flux_ed0[:,0:(len(lon_ed)/2)]
     
     elif lon_ed[0] < 0:
         lon_ed = lon_ed
