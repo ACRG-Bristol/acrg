@@ -832,8 +832,8 @@ def scaling_to_emissions(x, P, species, domain, basis_case, av_date, species_key
     if species_key == None:
         species_key = species
     
-    prior_x = sum(regrid.mol2kg(flux,species_key)*(3600*24*365))
-    E = np.array(x)*regrid.mol2kg(flux,species_key)*(3600*24*365)
+    prior_x = sum(regrid.mol2kg(basisflux,species_key)*(3600*24*365))
+    E = np.array(x)*regrid.mol2kg(basisflux,species_key)*(3600*24*365)
     post_x = sum(E)
 
     qmatrix = np.zeros((len(E), len(E)))
