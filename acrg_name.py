@@ -21,6 +21,7 @@ import subprocess
 from progressbar import ProgressBar
 import json
 import acrg_agage as agage
+import acrg_regrid as regrid
 from acrg_grid import areagrid
 import xray
 from os.path import split, realpath, join
@@ -735,7 +736,17 @@ def filtering(datasets_in, filters, full_corr=False):
 
 
 def baseline(y, y_time, y_site, x_error = 10000, days_to_average = 5):
+    """
+    Prepares an add-on to the sensitivity (H) matrix, that allows the baseline
+    to be solved within the inversion.
     
+    Specify how many days of data you want the baseline to be solved for at a time.
+    If this number will leave one or two days at the end of the month, these days
+    will be added to the previous bucket. For example, a days_to_average value of 5
+    might leave a 6 day long bucket at the end of the month.
+    
+    Also specify the error on x for the inversion.
+    """
     keys = np.unique(y_site)
 
     n = days_to_average
@@ -760,88 +771,140 @@ def baseline(y, y_time, y_site, x_error = 10000, days_to_average = 5):
     return HB, xerror
 
 
+def gauss_inversion(data, prior, model, data_error, prior_error):
+    """
+    Simple gaussian inversion. Inputs are required to be arrays,
+    already in the correct dimensions for the inversion:
+    data : (m,)
+    prior : (n,)
+    model : (m,n)
+    data_error : (m,m)
+    prior_error : (n,n)
+    """
+    if type(data) is not np.matrix:
+        data = np.matrix(data)
+    if type(prior) is not np.matrix:
+        prior = np.matrix(prior)
+    if type(model) is not np.matrix:
+        model = np.matrix(model)
+    if type(data_error) is not np.matrix:
+        data_error = np.matrix(data_error)
+    if type(prior_error) is not np.matrix:
+        prior_error= np.matrix(prior_error)
+
+    y = data.T
+    xa = prior.T
+    H = model
+    R1 = data_error.I
+    P1 = prior_error.I
+    
+    P = ((H.T*R1)*H + P1).I
+    x = xa + P*H.T*R1*(y - H*xa)
+        
+    return x, P
+    
+    
+def scaling_to_emissions(x, P, species, domain, basis_case, av_date, species_key=None):
+    """
+    For Gaussian inversion will convert outputs (emission scaling factors and associated error)
+    to emission estimates.
+    """
+    if type(x) is not np.array:
+        x = np.array(x)
+
+    flux_data= flux(domain, species)
+    basis_data = basis(domain, basis_case)
+    
+    flux_timestamp = pd.DatetimeIndex(flux_data.time.values).asof(av_date)
+    basis_timestamp = pd.DatetimeIndex(basis_data.time.values).asof(av_date)
+    
+    flux0 = flux_data.flux.sel(time=flux_timestamp).values
+    basis0 = basis_data.basis.sel(time=basis_timestamp).values
+    
+    area = areagrid(flux_data.lat.values, flux_data.lon.values)
+            
+    awflux = flux0*area
+    basisflux = np.zeros(np.shape(x))
+        
+    for i in range(int(np.min(basis0)), int(np.max(basis0))+1):
+        basisflux[i-1] = np.sum(awflux[basis0[:,:]==i])
+
+    if species_key == None:
+        species_key = species
+    
+    prior_x = sum(regrid.mol2kg(flux,species_key)*(3600*24*365))
+    E = np.array(x)*regrid.mol2kg(flux,species_key)*(3600*24*365)
+    post_x = sum(E)
+
+    qmatrix = np.zeros((len(E), len(E)))
+    for i in range(len(E)):
+        qmatrix[:,i] = E[:,0]*E[i]
+
+    if type(P) is not np.array:
+        P = np.array(P)
+    V = np.array(P)*qmatrix
+    uncert = sum(sum(V))**0.5
+    
+    return post_x, uncert, prior_x
+
+
 class analytical_inversion:
-    def __init__(self, obs, species, years=[2012], flux_years=None,
-                domain="small", basis_case='voronoi', filt=None,
-                species_key = None, baseline_days = 5, alt_fp_filename = None):
-    
-        y_time, y_site, y, H = sensitivity(obs, species, years, flux_years=flux_years,
-                domain=domain, basis_case=basis_case, filt=filt, alt_fp_filename = alt_fp_filename)
+    def __init__(self, out_var_file, species, domain,
+                 basis_case='voronoi', species_key = None, baseline_error = 10000, baseline_days = 5):
+        """
+        Using the output file from merge_sensitivity will calculate emissions estimates
+        using a Gaussian analyical inversion.
+        If H_bc exists (the boundary conditions have been found using vmrs from a global model)
+        then there is no need to specify baseline_days, however baseline_error is still needed.
         
-        if species_key == None:
-            species_key = species
-            
-        with open(acrg_path + "/acrg_species_info.json") as f:
-            species_info=json.load(f)
-            
-            
-        if type(species_key) is not str:
-            species_key = str(species_key) 
-        species_key = agage.synonyms(species_key, species_info)
-    
-        mol_mass = float(species_info[species_key]['mol_mass'])
-        u = species_info[species_key]['units']
+        species_key is used if the species name gives more information than just the species
+        (e.g. ch4-fossil-fire : species is 'ch4-fossil-fire', species_key is 'ch4')
+        """
         
-        units = {"ppm" : 1e6,
-                 "ppb" : 1e9,
-                 "ppt" : 1e12,
-                 "ppq" : 1e15}
+        y, y_error, y_site, y_time, H_bc, H = pickle.load(open(out_var_file))
         
-        H0 = H*units[u]
         x0 = np.ones(len(H[0,:]))
         
-#       Solve for baseline    
-        HB, xerror = baseline(y, y_time, y_site,obs, days_to_average = baseline_days)
-        H = np.append(H0, HB, axis = 1)
+#       Solve for baseline
+        if H_bc is not None:
+            H = np.append(H, H_bc, axis=1)
+            xerror = np.zeros(len(H_bc[:,0]))*baseline_error
+        else:
+            HB, xerror = baseline(y, y_time, y_site, x_error = baseline_error, days_to_average = baseline_days)
+            H = np.append(H, HB, axis = 1)
         
 #       Inversion
         xa = np.append(x0,np.zeros(len(xerror)))
         P = np.diagflat(np.append(x0**2, xerror))
-        R = np.diagflat((y*0.1)**2)
+        if y_error == None:
+            y_error = y*0.1
         
-        H = np.matrix(H)
-        xa = np.matrix(xa).T
-        y = np.matrix(y)
-        P1 = np.matrix(P).I
-        R1= np.matrix(R).I
-            
-        P = ((H.T*R1)*H + P1).I
-        x = xa + P*H.T*R1*(y - H*xa)
+        R = np.diagflat(y_error**2)
         
+        x, P = gauss_inversion(y, xa, H, R, P)      
+        
+#       Find middle time in y_time to get appropriate flux and basis year in scaling_to_emissions
+        av_date = y_time[len(y_time)/2]
+                
 #       Find real emissions values
-        flux_data=flux(species, flux_years, domain=domain)
-        basis_data = basis_function(basis_case, years=years, domain=domain)
-        area = areagrid(flux_data.lat, flux_data.lon)
-            
-        awflux = flux_data.flux[:,:,0]*area
-        fl = np.zeros(np.shape(x))
-        
-        for i in range(int(np.min(basis_data.basis)), int(np.max(basis_data.basis))+1):
-            fl[i-1] = np.sum(awflux[basis_data.basis[:,:,0]==i])
-        
-        prior = sum(fl*(3600*24*365)*mol_mass*1e-3)
-        E = np.array(x)*fl*(3600*24*365)*mol_mass*1e-3
-        E_tot = sum(E)
-
-        qmatrix = np.zeros((len(E), len(E)))
-        for i in range(len(E)):
-            qmatrix[:,i] = E[:,0]*E[i]
-
-        V = np.array(P)*qmatrix
-        sigma = sum(sum(V))**0.5
+        posterior, uncertainty, prior = scaling_to_emissions(x, P, species, domain, basis_case, av_date, species_key)   
         
 #       Find baseline solution
-        BL = H[:,len(H0[0,:]):]*x[len(H0[0,:]):]
+        BL = H[:,len(H[0,:]):]*x[len(H[0,:]):]
     
         self.prior_scal = xa
         self.model = H
         self.obs = y
+        self.time = y_time
+        self.site_code = y_site
+        self.obs_error = y_error
         self.post_scal = x
         self.prior_emi = prior
-        self.post_emi = float(E_tot)
-        self.post_emi_allregions = E
-        self.uncert = sigma
+        self.post_emi = float(posterior)
+        self.uncert = uncertainty
         self.baseline = BL
+
+
 
 #    
 #    time, H0 = sensitivity_single_site(sites[0], species,
