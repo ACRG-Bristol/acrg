@@ -849,7 +849,7 @@ def scaling_to_emissions(x, P, species, domain, basis_case, av_date, species_key
 
 class analytical_inversion:
     def __init__(self, out_var_file, species, domain, basis_case='voronoi',
-                 species_key = None, x_error=1, baseline_error = 100, baseline_days = 5):
+                 species_key = None, prior_error=1, baseline_error = 100, baseline_days = 5):
         """
         Using the output file from merge_sensitivity will calculate emissions estimates
         using a Gaussian analyical inversion.
@@ -877,7 +877,7 @@ class analytical_inversion:
         
 #       Inversion
         xa = np.append(x0,np.zeros(len(xerror_bl)))
-        xerror = np.ones(len(x0))*float(x_error)
+        xerror = np.ones(len(x0))*float(prior_error)
         P = np.diagflat(np.append(xerror**2, xerror_bl**2))
         if y_error == None:
             y_error = y*0.1
