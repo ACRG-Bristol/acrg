@@ -832,13 +832,12 @@ def scaling_to_emissions(x, P, species, domain, basis_case, av_date, species_key
     if species_key == None:
         species_key = species
     
-    prior_x = sum(regrid.mol2kg(basisflux,species_key)*(3600*24*365))
-    E = np.array(x)*regrid.mol2kg(basisflux,species_key)*(3600*24*365)
-    post_x = sum(E)
+    prior_x = regrid.mol2kg(basisflux,species_key)*(3600*24*365)
+    post_x = np.array(x)*regrid.mol2kg(basisflux,species_key)*(3600*24*365)
 
-    qmatrix = np.zeros((len(E), len(E)))
-    for i in range(len(E)):
-        qmatrix[:,i] = E[:,0]*E[i]
+    qmatrix = np.zeros((len(post_x), len(post_x)))
+    for i in range(len(post_x)):
+        qmatrix[:,i] = post_x[:,0]*post_x[i]
 
     if type(P) is not np.array:
         P = np.array(P)
@@ -900,7 +899,7 @@ class analytical_inversion:
         self.obs_error = y_error
         self.post_scal = x
         self.prior_emi = prior
-        self.post_emi = float(posterior)
+        self.post_emi = posterior
         self.uncert = uncertainty
         self.baseline = BL
 
