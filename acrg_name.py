@@ -735,7 +735,7 @@ def filtering(datasets_in, filters, full_corr=False):
     return datasets
 
 
-def baseline(y, y_time, y_site, x_error = 10000, days_to_average = 5):
+def baseline(y, y_time, y_site, baseline_error = 100, days_to_average = 5):
     """
     Prepares an add-on to the sensitivity (H) matrix, that allows the baseline
     to be solved within the inversion.
@@ -749,7 +749,7 @@ def baseline(y, y_time, y_site, x_error = 10000, days_to_average = 5):
     """
     keys = np.unique(y_site)
 
-    n = days_to_average
+    n = float(days_to_average)
     pos = np.zeros(len(y))
     for site in keys:
         val = np.max(pos)
@@ -765,7 +765,7 @@ def baseline(y, y_time, y_site, x_error = 10000, days_to_average = 5):
     for i in range(len(np.unique(pos))):
         wh = np.where(pos == i+1)
         HB[wh, col] = 1
-        xerror[col] = x_error
+        xerror[col] = float(baseline_error)
         col += 1
                 
     return HB, xerror
@@ -848,11 +848,14 @@ def scaling_to_emissions(x, P, species, domain, basis_case, av_date, species_key
 
 
 class analytical_inversion:
-    def __init__(self, out_var_file, species, domain,
-                 basis_case='voronoi', species_key = None, baseline_error = 10000, baseline_days = 5):
+    def __init__(self, out_var_file, species, domain, basis_case='voronoi',
+                 species_key = None, x_error=1, baseline_error = 100, baseline_days = 5):
         """
         Using the output file from merge_sensitivity will calculate emissions estimates
         using a Gaussian analyical inversion.
+        
+        x_error is percentage error for the emissions scaling factor (1 = 100% error).
+        
         If H_bc exists (the boundary conditions have been found using vmrs from a global model)
         then there is no need to specify baseline_days, however baseline_error is still needed.
         
@@ -867,14 +870,15 @@ class analytical_inversion:
 #       Solve for baseline
         if H_bc is not None:
             H = np.append(H, H_bc, axis=1)
-            xerror = np.zeros(len(H_bc[:,0]))*baseline_error
+            xerror_bl = np.zeros(len(H_bc[:,0]))*float(baseline_error)
         else:
-            HB, xerror = baseline(y, y_time, y_site, x_error = baseline_error, days_to_average = baseline_days)
+            HB, xerror_bl = baseline(y, y_time, y_site, baseline_error = baseline_error, days_to_average = baseline_days)
             H = np.append(H, HB, axis = 1)
         
 #       Inversion
-        xa = np.append(x0,np.zeros(len(xerror)))
-        P = np.diagflat(np.append(x0**2, xerror))
+        xa = np.append(x0,np.zeros(len(xerror_bl)))
+        xerror = np.ones(len(x0))*float(x_error)
+        P = np.diagflat(np.append(xerror**2, xerror_bl**2))
         if y_error == None:
             y_error = y*0.1
         
