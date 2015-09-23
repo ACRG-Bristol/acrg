@@ -4,7 +4,8 @@ Created on Sat Jul 25 15:46:31 2015
 
 @author: ag12733
 
-Creat basis functions for SOUTHASIA domain
+Creates basis functions for domain
+Creates boundary condition basis functions for edge curtains
 """
 
 import numpy as np
