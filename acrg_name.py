@@ -802,15 +802,15 @@ def gauss_inversion(data, prior, model, data_error, prior_error):
     x = xa + P*H.T*R1*(y - H*xa)
         
     return x, P
-    
-    
-def scaling_to_emissions(x, P, species, domain, basis_case, av_date, species_key=None):
+
+
+def prior_flux(species, domain, basis_case, av_date, species_key = None):
     """
-    For Gaussian inversion will convert outputs (emission scaling factors and associated error)
-    to emission estimates.
+    Calculates an area weighted flux for each basis region using the prior emissions.
+    'av_date' is a date representative of the timeseries being looked at. It is used
+    to find the most appropriate flux and basis files. WARNING! This has a bug at the
+    moment, only finds the nearest flux or basis file ON OR BEFORE the inputted av_date.
     """
-    if type(x) is not np.array:
-        x = np.array(x)
 
     flux_data= flux(domain, species)
     basis_data = basis(domain, basis_case)
@@ -821,19 +821,34 @@ def scaling_to_emissions(x, P, species, domain, basis_case, av_date, species_key
     flux0 = flux_data.flux.sel(time=flux_timestamp).values
     basis0 = basis_data.basis.sel(time=basis_timestamp).values
     
+    basis_nos = range(int(np.min(basis0)), int(np.max(basis0))+1)
+    
     area = areagrid(flux_data.lat.values, flux_data.lon.values)
             
     awflux = flux0*area
-    basisflux = np.zeros(np.shape(x))
+    basisflux = np.zeros(np.shape(basis_nos))
         
-    for i in range(int(np.min(basis0)), int(np.max(basis0))+1):
+    for i in basis_nos:
         basisflux[i-1] = np.sum(awflux[basis0[:,:]==i])
 
     if species_key == None:
         species_key = species
     
     prior_x = regrid.mol2kg(basisflux,species_key)*(3600*24*365)
-    post_x = np.array(x)*regrid.mol2kg(basisflux,species_key)*(3600*24*365)
+    
+    return prior_x
+    
+    
+def scaling_to_post_flux(prior_flux, x, P):
+    """
+    For Gaussian inversion will convert outputs (emission scaling factors and associated error)
+    to emission estimates using the prior flux calculated using the function 'prior_flux'.
+    """
+
+    if type(x) is not np.array:
+        x = np.array(x)
+
+    post_x = np.array(x)*prior_flux
 
     qmatrix = np.zeros((len(post_x), len(post_x)))
     for i in range(len(post_x)):
@@ -844,7 +859,7 @@ def scaling_to_emissions(x, P, species, domain, basis_case, av_date, species_key
     V = np.array(P)*qmatrix
     uncert = sum(sum(V))**0.5
     
-    return post_x, uncert, prior_x
+    return post_x, uncert
 
 
 class analytical_inversion:
@@ -890,7 +905,8 @@ class analytical_inversion:
         av_date = y_time[len(y_time)/2]
                 
 #       Find real emissions values
-        posterior, uncertainty, prior = scaling_to_emissions(x, P, species, domain, basis_case, av_date, species_key)   
+        prior = prior_flux(species, domain, basis_case, av_date, species_key = None)
+        posterior, uncertainty = scaling_to_post_flux(prior_flux, x, P)   
         
 #       Find baseline solution
         BL = H[:,len(H[0,:]):]*x[len(H[0,:]):]
