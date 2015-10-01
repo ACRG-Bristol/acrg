@@ -215,7 +215,7 @@ def get_file_list(site, species, start, end, height,
 
 
 def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
-        height=None, baseline=False, average=None,
+        height=None, baseline=False, average=None, full_corr=False,
         network = None, instrument = None, status_flag_unflagged = 0):
     
     start_time = convert.reftime(start)
@@ -350,10 +350,34 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
                     how[key] = quadratic_sum
                 else:
                     how[key] = "median"
+            
+            if full_corr == True:
+                if min(data_frame.index) > start_time:
+                    dum_frame = pd.DataFrame({"status_flag": float('nan')},
+                                         index = np.array([start_time]))   
+                    dum_frame["mf"] =  float('nan')                  
+                    dum_frame["dmf"] =  float('nan')  
+                    dum_frame.index.name = 'time'                                                                               
+                    data_frame = data_frame.append(dum_frame)
+            
+                if min(data_frame.index) < end_time:
+                    dum_frame2 = pd.DataFrame({"status_flag": float('nan')},
+                                         index = np.array([end_time]))   
+                    dum_frame2["mf"] =  float('nan')                  
+                    dum_frame2["dmf"] =  float('nan')  
+                    dum_frame2.index.name = 'time'                                                                                    
+                    data_frame = data_frame.append(dum_frame2)  
+            
+            
             data_frame=data_frame.resample(average, how=how)
-    
+            if full_corr == True:
+                data_frame=data_frame.drop(data_frame.index[-1])
+              
         # Drop NaNs
-        data_frame.dropna(inplace = True)
+        if full_corr == False:
+            data_frame.dropna(inplace = True)
+         
+    
     
         data_frame.mf.units = units
     
@@ -402,7 +426,7 @@ def get_gosat(site, species, start = "1900-01-01", end = "2020-01-01"):
 
 
 def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
-            height = None, baseline = False, average = None,
+            height = None, baseline = False, average = None, full_corr=False,
             network = None, instrument = None, status_flag_unflagged = 0):
 
 
@@ -452,6 +476,7 @@ def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
                        average = average[si],
                        network = network[si],
                        instrument = instrument[si],
+                       full_corr = full_corr,
                        status_flag_unflagged = status_flag_unflagged)
                        
         if data is not None:

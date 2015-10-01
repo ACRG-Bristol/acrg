@@ -123,8 +123,8 @@ INTEGER accept_sigma_ys, reject_sigma_ys, accept_y, reject_y, reject_swap
 INTEGER accept_rho, reject_rho
 ! INTERMEDIATE VARIABLES
 INTEGER it, ibeta, remain_it, pair1,pair2, ib, it_sub, remain, kIC, ii,jj       !remain_dim
-INTEGER remain_swap, ti
-REAL u, u1,u2, randomu,pT_chain, beta1,beta2, q_small
+INTEGER remain_swap, ti, remain_hparam
+REAL u, u1,u2, u3, randomu,pT_chain, beta1,beta2, q_small
 INTEGER k_it(nit_sub)
 REAL x_it(kICmax,nit_sub)                             
 REAL pdf_param1_it(nIC1,nit_sub), pdf_param2_it(nIC1,nit_sub)     
@@ -173,7 +173,7 @@ REAL xib1(kICmax), plonib1(kmax), platib1(kmax), n0ib1(nmeasuremax)
 REAL pdf_param1ib1(nIC1), pdf_param2ib1(nIC1)
 REAL h_aggib1(nmeasuremax,kICmax), yib1(nmeasuremax)
 REAL sigma_ysib1(numsites), sigma_ytib1(ydim2)
-INTEGER kib1, rejectib1, acceptib1
+INTEGER kib1, rejectib1, acceptib1, acceptyib1, rejectyib1
 INTEGER acceptxib1(nIC1), rejectxib1(nIC1)
 INTEGER regions_vib1(Ngrid)
 REAL Tinvib1(nmeasuretotal, nmeasuretotal), Rinvib1(nmeasuremax,nmeasuremax)
@@ -294,14 +294,14 @@ do ibeta=1,nbeta
      do ii = 1,numsites 
          do jj = 1,numsites
               arg_dum = arg(ii,jj)
-              if (arg_dum==0.) then
-                   U_temp(ii,jj) = 1.
-              else
-                   call rkbesl(arg_dum, alpha, nb, ize, k_arg_dum, ncalc)
-                   k_arg_dum = k_arg_dum*exp(-1*arg(ii,jj))
-                   U_temp(ii,jj) = 1/(2**(nu(ibeta)-1)*ga)*(sqrt(2*nu(ibeta))*distance(ii,jj)/rho(ibeta))**nu(ibeta)*k_arg_dum
-                   !U_temp(ii,jj) = exp(-1.*distance(ii,jj)/rho(ibeta))
-              endif
+           !   if (arg_dum==0.) then
+           !        U_temp(ii,jj) = 1.
+           !   else
+           !        call rkbesl(arg_dum, alpha, nb, ize, k_arg_dum, ncalc)
+           !        k_arg_dum = k_arg_dum*exp(-1*arg(ii,jj))
+           !        U_temp(ii,jj) = 1/(2**(nu(ibeta)-1)*ga)*(sqrt(2*nu(ibeta))*distance(ii,jj)/rho(ibeta))**nu(ibeta)*k_arg_dum
+                   U_temp(ii,jj) = exp(-1.*distance(ii,jj)/rho(ibeta))
+           !   endif
          enddo
      enddo
  
@@ -309,13 +309,14 @@ do ibeta=1,nbeta
      Uinv(:,:,ibeta) = Ainv(U_temp)
 
      detval_U(ibeta) = det(U_temp)
-
-
+ 
      do ii=1,numsites
            Sinv(:,ii,ibeta) = y_vars_inv(ii)*y_vars_inv*Uinv(:,ii,ibeta)
            !Sinv(ii,ii,ibeta) = space_vec
-          ! Sinv(ii,ii,ibeta) = 1./y_vars(ii)**2      ! Ignore spatital correlation for now
+         !  Sinv(ii,ii,ibeta) = 1./y_vars(ii)**2      ! Ignore spatital correlation for now
+
      enddo
+   
 
      Sinv_temp = Sinv(:,:,ibeta)
      Tinv_temp = Tinv(:,:,ibeta)
@@ -330,6 +331,7 @@ do ibeta=1,nbeta
     ! detval_S(ibeta) = sum(alog(y_vars))*nmeasuretotal 
 
      detval_S(ibeta) = (sum(alog(y_vars)) + detval_U(ibeta))*nmeasuretotal
+   ! detval_S(ibeta)  = det(Sinv_temp)
 
   else 
 
@@ -343,6 +345,7 @@ do ibeta=1,nbeta
   
   detval(ibeta) = detval_S(ibeta) + detval_T(ibeta)
 
+ 
 
   !n0 = matmul(H_agg,x_agg) - y   ! but y = matmul(H_agg,x_agg) so n0(:)=0 and n0T=0.
   !C = matmul(n0,Rinv)
@@ -365,24 +368,34 @@ do it=1,(nIt+burn_in)
 
 
    ! DO REVERSIBLE JUMP
+ !  if (rjmcmc .EQ. 1) then
+ !     remain_it = FLOOR(7*u) + 1  
+ !   ! FIXED-DIMENSION CASE
+ !  else if (rjmcmc .NE. 1) then
+ !     remain_it = FLOOR(2*u) + 4 
+ !  else
+ !       WRITE(*,*) 'rjmcmc not specified correctly'
+ !       CALL ABORT
+ !  endif
+
+   ! DO REVERSIBLE JUMP
    if (rjmcmc .EQ. 1 .and. numsites .EQ. 1) then
-       remain_it = FLOOR(6*u) + 1  
+       remain_it = FLOOR(5*u) + 1  
    else if (rjmcmc .EQ. 1 .and. numsites .GT. 1) then
-       remain_it = FLOOR(8*u) + 1    
-
-
-
+       remain_it = FLOOR(7*u) + 1    
+ 
    ! FIXED-DIMENSION CASE
    else if (rjmcmc .NE. 1 .and. numsites .EQ. 1) then
-       remain_it = FLOOR(3*u) + 4 
+       remain_it = FLOOR(2*u) + 4 
    else if (rjmcmc .NE. 1 .and. numsites .GT. 1) then
-       remain_it = FLOOR(5*u) + 4 
+      remain_it = FLOOR(4*u) + 4 
 
    ! ELSE  ABORT - HAS TO BE ONE OF THEM!!
    else
         WRITE(*,*) 'Either rjmcmc or numsites not specified correctly'
         CALL ABORT
    endif
+
    !remain_it = FLOOR(3*u) + 1 
    !remain_it = 8
 
@@ -392,12 +405,12 @@ do it=1,(nIt+burn_in)
 !$OMP& private(kib1,xib1,pdf_param1ib1,pdf_param2ib1, plonib1, platib1), &
 !$OMP& private(regions_vib1,h_aggib1,n0ib1,n0Tib1, sigma_ytib1, sigma_ysib1), &
 !$OMP& private(detval_Tib1, detval_Sib1, detvalib1, acceptxib1, rejectxib1, acceptib1, rejectib1), &
-!$OMP& private(tauib1, Qinvib1, Rinvib1, Sinvib1, Tinvib1, yib1, m0Tib1, u), &
+!$OMP& private(tauib1, Qinvib1, Rinvib1, Sinvib1, Tinvib1, yib1, m0Tib1, u, acceptyib1, rejectyib1), &
 !$OMP& private(rhoib, nuib, Uinvib, detval_Uib, rhoib1, nuib1, Uinvib1, detval_Uib1), &
 !$OMP& shared(x,n0,n0T, k, pdf_param1, pdf_param2, h_agg, plon,plat, regions_v)
-   do ibeta=1,nbeta
+  ! do ibeta=1,nbeta
 
-       !ibeta=1
+       ibeta=1
        betaib = beta(ibeta)
        kib = k(ibeta)
        xib  = x(:,ibeta)
@@ -435,13 +448,11 @@ do it=1,(nIt+burn_in)
 
        kIC = kib+nIC
        
-
-   
-        if (remain_it .EQ. 4) then              ! X UPDATE
-
-            call  y_update(betaib, yib, z, n0ib, n0Tib, m0Tib, Rinvib, sigma_measure, accept_y, reject_y, &
+       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+       ! Y UPDATE EVERY ITERATION
+       call  y_update(betaib, yib, z, n0ib, n0Tib, m0Tib, Rinvib, sigma_measure, accept_y, reject_y, &
                     stepsize_y, timeindex_nonzero, nmeasuremax, nmeasure, it, burn_in,  &
-                    n0Tib1, m0Tib1, yib1, n0ib1, acceptib1, rejectib1)
+                    n0Tib1, m0Tib1, yib1, n0ib1, acceptyib1, rejectyib1)
 
             n0T(ibeta) = n0Tib1
             m0T(ibeta) = m0Tib1
@@ -454,11 +465,13 @@ do it=1,(nIt+burn_in)
 
                
             if (betaib .EQ. 1.) then 
-               accept_y = acceptib1
-               reject_y = rejectib1
+               accept_y = acceptyib1
+               reject_y = rejectyib1
             endif
+ 
+       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-
+        if (remain_it .EQ. 4) then              ! X UPDATE
 
             call x_update(betaib,kib, xib, pdf_param1ib,pdf_param2ib, &
                          h_aggib,n0ib,n0Tib, Rinvib, stepsize, &
@@ -550,8 +563,22 @@ do it=1,(nIt+burn_in)
                   reject_move=rejectib1
                endif
 
-          elseif (remain_it .EQ. 5) then  ! SIGMA_YT UPDATE
+          elseif (remain_it .EQ. 5) then  ! HYPERPARAMETERS UPDATE
              
+
+           !   call random_number(u3)
+              
+             ! Only one site
+           !  if (numsites .EQ. 1) then
+           !     remain_hparam = FLOOR(2*u3) + 1  
+           !  ! MULTIPLE SITE CASE
+           !  else if (numsites .GT. 1) then
+           !     remain_hparam = FLOOR(4*u3) + 1 
+           !  endif
+             
+              ! SIGMA_YT UPDATE
+
+             ! if (remain_hparam .EQ. 1) then
 
               call sigma_yt_update(betaib, sigma_ytib, sigma_yt_ap, &
                    detvalib, detval_Tib, detval_Sib, sigma_yt_hparams, stepsize_sigma_yt, sigma_yt_pdf, R_indices, &
@@ -568,37 +595,24 @@ do it=1,(nIt+burn_in)
               Tinv(:,:,ibeta)=Tinvib1 
               Rinv(:,:,ibeta)=Rinvib1 
         
+              n0Tib=n0Tib1
+              sigma_ytib=sigma_ytib1  
+              detvalib=detvalib1
+              detval_Tib=detval_Tib1
+              Tinvib=Tinvib1
+              Rinvib=Rinvib1
+
               if (betaib .EQ. 1.) then 
                accept_sigma_yt = acceptib1
                reject_sigma_yt = rejectib1
               endif
-        
-          elseif (remain_it .EQ. 7) then  ! SIGMA_YS UPDATE
              
-              call sigma_ys_update(betaib, sigma_ysib, sigma_ys_ap, &
-                   detvalib, detval_Sib, detval_Tib, detval_Uib, &
-                   sigma_ys_hparams, stepsize_sigma_ys, sigma_ys_pdf, &
-                   Sinvib, Rinvib, Tinvib, Uinvib, n0ib,n0Tib, &
-                   accept_sigma_ys, reject_sigma_ys, it, burn_in, nmeasuretotal, nmeasuremax, numsites, &
-                   n0Tib1, acceptib1, rejectib1, sigma_ysib1, detvalib1, detval_Sib1, Rinvib1, Sinvib1) 
+             
+             ! elseif (remain_hparam .EQ. 2) then
 
+              ! TAU UPDATE 
 
-              sigma_ys(:,ibeta) = sigma_ysib1
-              n0T(ibeta) = n0Tib1
-              detval(ibeta) = detvalib1
-              detval_S(ibeta) = detval_Sib1
-              Sinv(:,:,ibeta)=Sinvib1 
-              Rinv(:,:,ibeta)=Rinvib1 
-        
-              if (betaib .EQ. 1.) then 
-               accept_sigma_ys = acceptib1
-               reject_sigma_ys = rejectib1
-              endif
-
-
-          elseif (remain_it .EQ. 6) then ! TAU UPDATE
-
-
+             ! if (rjmcmc .eq. 5) then
               call tau_update(betaib, tauib, sigma_ytib, R_indices,  &
                    detvalib, detval_Tib, detval_Sib, tau_hparams(1), tau_hparams(2), stepsize_tau, tau_pdf,  &
                    Rinvib, Tinvib, Qinvib, Sinvib, deltatime, n0ib, n0Tib, &
@@ -613,42 +627,87 @@ do it=1,(nIt+burn_in)
               detval(ibeta) = detvalib1
               detval_T(ibeta) = detval_Tib1
 
+              !n0Tib = n0Tib1
+              !tauib = tauib1
+              !Tinvib=Tinvib1 
+              !Rinvib=Rinvib1 
+              !Qinvib=Qinvib1 
+              !detvalib = detvalib1
+              !detval_Tib = detval_Tib1
+
               if (betaib .EQ. 1.) then 
                accept_tau = acceptib1
                reject_tau = rejectib1
               endif
 
-         
-         elseif (remain_it .EQ. 8) then ! RHO + NU UPDATE
+  
+                   
+              elseif (remain_it .EQ. 6) then  ! SIGMA_YS UPDATE
+             
+                   call sigma_ys_update(betaib, sigma_ysib, sigma_ys_ap, &
+                        detvalib, detval_Sib, detval_Tib, detval_Uib, &
+                        sigma_ys_hparams, stepsize_sigma_ys, sigma_ys_pdf, &
+                        Sinvib, Rinvib, Tinvib, Uinvib, n0ib, n0Tib, &
+                        accept_sigma_ys, reject_sigma_ys, it, burn_in, nmeasuretotal, nmeasuremax, numsites, &
+                        n0Tib1, acceptib1, rejectib1, sigma_ysib1, detvalib1, detval_Sib1, Rinvib1, Sinvib1) 
 
-             call rho_nu_update(betaib, rhoib, nuib, sigma_ysib,  &
-                  detvalib, detval_Tib, detval_Sib, detval_Uib, &
-                  rho_hparams(1), rho_hparams(2), stepsize_rho, rho_pdf,  &
-                  nu_hparams(1), nu_hparams(2), stepsize_nu, nu_pdf,  &
-                  Rinvib, Tinvib, Sinvib, Uinvib, distance, &
-                  n0ib, n0Tib, accept_rho, reject_rho, it, burn_in, nmeasuretotal, nmeasuremax, numsites, &
-                  n0Tib1, acceptib1, rejectib1, rhoib1, nuib1, Rinvib1, Sinvib1, Uinvib1, detvalib1, detval_Sib1, detval_Uib1) 
+
+                    sigma_ys(:,ibeta) = sigma_ysib1
+                    n0T(ibeta) = n0Tib1
+                    detval(ibeta) = detvalib1
+                    detval_S(ibeta) = detval_Sib1
+                    Sinv(:,:,ibeta)=Sinvib1 
+                    Rinv(:,:,ibeta)=Rinvib1 
+        
+                    !sigma_ysib = sigma_ysib1
+                    !n0Tib = n0Tib1
+                    !detvalib = detvalib1
+                    !detval_Sib = detval_Sib1
+                    !Sinvib=Sinvib1 
+                    !Rinvib=Rinvib1 
 
 
-              n0T(ibeta) = n0Tib1
-              rho(ibeta) = rhoib1
-              nu(ibeta) = nuib1
-              Rinv(:,:,ibeta)=Rinvib1 
-              Sinv(:,:,ibeta)=Sinvib1 
-              Uinv(:,:,ibeta)=Uinvib1 
-              detval(ibeta) = detvalib1
-              detval_S(ibeta) = detval_Sib1
-              detval_U(ibeta) = detval_Uib1
+                    if (betaib .EQ. 1.) then 
+                       accept_sigma_ys = acceptib1
+                       reject_sigma_ys = rejectib1
+                    endif
+                
+                 
+               elseif (remain_it .EQ. 7) then ! RHO + NU UPDATE
+                    
 
-              if (betaib .EQ. 1.) then 
-               accept_rho = acceptib1
-               reject_rho = rejectib1
-              endif
+                   call rho_nu_update(betaib, rhoib, nuib, sigma_ysib,  &
+                        detvalib, detval_Tib, detval_Sib, detval_Uib, &
+                        rho_hparams(1), rho_hparams(2), stepsize_rho, rho_pdf,  &
+                        nu_hparams(1), nu_hparams(2), stepsize_nu, nu_pdf,  &
+                        Rinvib, Tinvib, Sinvib, Uinvib, distance, &
+                        n0ib, n0Tib, accept_rho, reject_rho, it, burn_in, nmeasuretotal, nmeasuremax, numsites, &
+                        n0Tib1, acceptib1, rejectib1, rhoib1, nuib1, Rinvib1, Sinvib1, &
+                        Uinvib1, detvalib1, detval_Sib1, detval_Uib1) 
 
+
+                    n0T(ibeta) = n0Tib1
+                    rho(ibeta) = rhoib1
+                    nu(ibeta) = nuib1
+                    Rinv(:,:,ibeta)=Rinvib1 
+                    Sinv(:,:,ibeta)=Sinvib1 
+                    Uinv(:,:,ibeta)=Uinvib1 
+                    detval(ibeta) = detvalib1
+                    detval_S(ibeta) = detval_Sib1
+                    detval_U(ibeta) = detval_Uib1
+
+                    if (betaib .EQ. 1.) then 
+                        accept_rho = acceptib1
+                        reject_rho = rejectib1
+                    endif
+                  
+
+              ! endif   !remian_hparam
 
           endif     ! remain_it
+
            
-   enddo    ! beta loop
+  ! enddo    ! beta loop
 !$OMP END PARALLEL DO
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! Store xit and swap betas
@@ -683,8 +742,8 @@ do it=1,(nIt+burn_in)
    
             call random_number(randomu)
             if (alog(randomu) .LE. pT_chain) then
-                beta(pair2)=beta1*1.
-                beta(pair1)=beta2*1.
+           !     beta(pair2)=beta1*1.
+           !     beta(pair1)=beta2*1.
                 accept_swap=accept_swap+1
             else
                 reject_swap=reject_swap+1
@@ -1706,6 +1765,7 @@ Tinv_out=Tinv_current
 END SUBROUTINE sigma_yt_update
 
 
+
 SUBROUTINE sigma_ys_update(beta, sigma_ys_current, sigma_ys_ap, &
 detval_current, detval_S_current, detval_T,  detval_U, &
 sigma_ys_hparams, stepsize_sigma_ys, sigma_ys_pdf, &
@@ -1775,14 +1835,16 @@ REAL C(nmeasuremax)
 
     ! DETERMINANT IN LOG SPACE - need to actually take the log
     !detval_T_new = det(T_new)*numsites
-    !detval_S_new = sum(alog(y_vars_new))*nmeasuretotal 
+    
+    ! detval_S_new = sum(alog(y_vars_new))*nmeasuretotal      !!!! DIAGONAL  !!
 
-    !detval_S_new = 1./det(Sinv_new)
+    !detval_S_new = det(Sinv_new)*nmeasuretotal*(-1)
     detval_S_new = (sum(alog(y_vars_new)) + detval_U)*nmeasuretotal
 
 
     detval_new = detval_S_new + detval_T
 
+   
     C = matmul(n0,Rinv_new)
     n1T = dot_product(n0,C)
 
@@ -1922,8 +1984,7 @@ if (tau_new .GT. tau_hparam1 .and. tau_new .LT. tau_hparam2) THEN
      detval_T_new = (sum(alog(y_vart))+(alog(1-q_small**2)*((nmeasuretotal-1)/2.)))*numsites   ! DETERMINANT IN LOG SPACE log of sqrt of determinant
 
     detval_new = detval_S + detval_T_new
-		
-		
+
     C = matmul(n0,Rinv_new)
     n1T = dot_product(n0,C)
 		
@@ -2024,6 +2085,8 @@ rho_new = rho_current + drho
 dnu = random_normal()*stepsize_nu
 nu_new = nu_current + dnu 
 
+U_new(:,:)=0.
+
 if (rho_new .GT. rho_hparam1 .and. rho_new .LT. rho_hparam2 &
     .and. nu_new .GE. nu_hparam1 .and. nu_new .LT. nu_hparam2) THEN
 
@@ -2047,14 +2110,14 @@ if (rho_new .GT. rho_hparam1 .and. rho_new .LT. rho_hparam2 &
     do ii = 1,numsites 
          do jj = 1,numsites
               arg_dum = arg(ii,jj)
-              if (arg_dum==0.) then
-                   U_new(ii,jj) = 1.
-              else
-                   call rkbesl(arg_dum, alpha, nb, ize, k_arg_dum, ncalc)
-                   k_arg_dum = k_arg_dum*exp(-1*arg(ii,jj))
-                   U_new(ii,jj) = 1/(2**(nu_new-1)*ga)*(sqrt(2*nu_new)*distance(ii,jj)/rho_new)**nu_new*k_arg_dum
-                   !U_new(ii,jj) = exp(-1.*distance(ii,jj)/rho_new)
-              endif
+            !  if (arg_dum==0.) then
+            !       U_new(ii,jj) = 1.
+            !  else
+            !       call rkbesl(arg_dum, alpha, nb, ize, k_arg_dum, ncalc)
+            !       k_arg_dum = k_arg_dum*exp(-1*arg(ii,jj))
+            !       U_new(ii,jj) = 1/(2**(nu_new-1)*ga)*(sqrt(2*nu_new)*distance(ii,jj)/rho_new)**nu_new*k_arg_dum
+                   U_new(ii,jj) = exp(-1.*distance(ii,jj)/rho_new)
+            !  endif
          enddo
     enddo
 
@@ -2421,7 +2484,7 @@ function Ainv(A)
   call SGETRF(n, n, Ainv, n, ipiv, info)
 
   if (info /= 0) then
-     stop 'Matrix is numerically singular!'
+     stop 'In Ainv: Matrix is numerically singular!'
   end if
 
   ! DGETRI computes the inverse of a matrix using the LU factorization
