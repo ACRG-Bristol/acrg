@@ -111,7 +111,7 @@ def regrid(filename_of_EDGAR_emissions, filename_of_footprint, input_species_nam
     interp1 = sci.RegularGridInterpolator(coord_ed, flux_ed, method = 'linear')
 
 #   Read in footprint grid
-    read_fp = name.read(filename_of_footprint)
+    read_fp = name.footprints(filename_of_footprint)
     lon_fp = read_fp.lon
     lat_fp = read_fp.lat
     
