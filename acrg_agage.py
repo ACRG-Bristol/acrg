@@ -28,20 +28,20 @@ Created on Sat Dec 27 17:17:01 2014
 import numpy as np
 import pandas as pd
 import glob
-from os.path import split, realpath, join
+from os.path import split, join
+from os import getenv
 import re
 from netCDF4 import Dataset
 from acrg_time import convert
 import json
 import datetime as dt
 import xray
-import os
 
-acrg_path = os.getenv("ACRG_PATH")
-data_path = os.getenv("DATA_PATH")
+acrg_path = getenv("ACRG_PATH")
+data_path = getenv("DATA_PATH")
 
 if acrg_path is None:
-    acrg_path = os.getenv("HOME")
+    acrg_path = getenv("HOME")
     print("Default ACRG directory is assumed to be home directory. Set path in .bashrc as \
             export ACRG_PATH=/path/to/acrg/repository/ and restart python terminal")
 if data_path is None:
@@ -401,8 +401,8 @@ def get_gosat(site, species, start = "1900-01-01", end = "2020-01-01"):
 
     data = []
     for f in files:
-        data.append(xray.open_dataset(data_directory + f))
-    
+        data.append(xray.open_dataset(join(data_directory,f)))
+        
     data = xray.concat(data, dim = "time")
 
     prior_factor = (data.pressure_weights* \

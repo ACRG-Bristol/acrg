@@ -1002,7 +1002,8 @@ def process(domain, site, height, year, month,
             met_folder = "Met",
             processed_folder = "Processed_Fields_files",
             satellite = False,
-            force_update = True):
+            force_update = True,
+            perturbed_folder = None):
     '''
     Process a single month of footprints for a given domain, site, height,
     year, month. If you want to process all files for a given domain + site
@@ -1021,12 +1022,23 @@ def process(domain, site, height, year, month,
     satellite: Read a "column" of footprints. There are very particular rules
         about how the met, footprints and particle location files are stored
         and named. See extra instructions in satellite_vertical_profile. 
-    
+    perturbed_folder: Process a subfolder which has all of the required folders
+        (Fields_files, etc). This is for perturbed parameter ensembles for 
+        a particular site. E.g. for EUROPE_BSD_110magl/Perturbed/PARAMETERNAME_VALUE
+        you'd set:
+            perturbed_folder = "Perturbed/PARAMETERNAME_VALUE"
+
     Outputs:
     This routine outputs a copy of the xray dataset that is written to file.
     '''
     
     subfolder = base_dir + domain + "_" + site + "_" + height + "/"
+    
+    if perturbed_folder is not None:
+        if perturbed_folder[-1] == "/":
+            subfolder += perturbed_folder
+        else:
+            subfolder += perturbed_folder + "/"
     
     # Check for manual timestep (if footprints are for < 1min,
     # which is the min resolution of the NAME output file)    
@@ -1173,7 +1185,8 @@ def process_all(domain, site,
                 months_in = None,
                 base_dir = "/dagage2/agage/metoffice/NAME_output/",
                 force_update = False,
-                satellite = False):
+                satellite = False,
+                perturbed_folder = None):
     '''
     For a given domain and site, process all available fields files (including
     multiple heights).
@@ -1190,6 +1203,11 @@ def process_all(domain, site,
         files. Set force_update = True to reprocess an existing file
     satellite: If a column of footprints needs to be processed, set to true.
         See extra instructions in satellite_vertical_profile. 
+    perturbed_folder: Process a subfolder which has all of the required folders
+        (Fields_files, etc). This is for perturbed parameter ensembles for 
+        a particular site. E.g. for EUROPE_BSD_110magl/Perturbed/PARAMETERNAME_VALUE
+        you'd set:
+            perturbed_folder = "Perturbed/PARAMETERNAME_VALUE"
     '''
 
     acrg_path=split(realpath(__file__))
@@ -1206,7 +1224,12 @@ def process_all(domain, site,
     for height in heights:
         
         subfolder = base_dir + domain + "_" + site + "_" + height + "/"
-    
+        if perturbed_folder is not None:
+            if perturbed_folder[-1] == "/":
+                subfolder += perturbed_folder
+            else:
+                subfolder += perturbed_folder + "/"
+        
         if years_in is None:
             #Find all years and months available
             #Assumes fields files are processes with _YYYYMMDD.txt.gz at the end    
@@ -1225,7 +1248,7 @@ def process_all(domain, site,
         for year, month in set(zip(years, months)):
             out = process(domain, site, height, year, month,
                 base_dir = base_dir, force_update = force_update,
-                satellite = satellite)
+                satellite = satellite, perturbed_folder = perturbed_folder)
 
 
 def copy_processed(domain):

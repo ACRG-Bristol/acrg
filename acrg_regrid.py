@@ -112,8 +112,8 @@ def regrid(filename_of_EDGAR_emissions, filename_of_footprint, input_species_nam
 
 #   Read in footprint grid
     read_fp = name.footprints(filename_of_footprint)
-    lon_fp = read_fp.lon
-    lat_fp = read_fp.lat
+    lon_fp = read_fp.lon.values
+    lat_fp = read_fp.lat.values
     
     X, Y = np.meshgrid(lat_fp, lon_fp)
     
@@ -234,7 +234,7 @@ def write(lat, lon, flux, species, domain, year, EDGAR_filename = None, footprin
     #Mole fraction variable
     ncflux=f.createVariable('flux', \
         'd', ('lat', 'lon', 'time'))
-    ncflux[:,:]=flux
+    ncflux[:,:,:]=flux
     ncflux.units='mol/m2/s'
 
     f.close() 
