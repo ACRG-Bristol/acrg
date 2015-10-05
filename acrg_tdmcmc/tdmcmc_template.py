@@ -4,10 +4,9 @@ Created on Fri Jul 17 09:32:41 2015
 
 Template script for running Trans-dimensional inversion
 
-Uses hb_td_mcmc_acrg.f90
-
-Relies on y=sum(h_v)*mean(q_v)##(x)
-Solves for x
+Uses acrg_hbtdmcmc.f90
+Relies on y=sum(h_v*q_v)##(x)
+Solves for x - scaling of prior emissions field
 
 @author: ml12574
 """
@@ -126,8 +125,8 @@ bl_period=10           # No. of days for which each sigma_y value applies
 kmin=4       
 kmax=400    
 k_ap = 100   
-nIt=100000        # of iterations
-burn_in=100000     # of iterations to discard
+nIt=1000        # of iterations
+burn_in=1000     # of iterations to discard
 nsub=100       # nsub=100=store every 100th iteration)
 #sigma_y=0.02     # Model-measurement uncertainty, in % (e.g. 0.05) DEFINED LATER
                  
@@ -356,14 +355,10 @@ t0=run_time.time()
 k=np.zeros((nbeta),dtype=np.int)+k_ap
 
 x=np.zeros((kICmax,nbeta))
-#pdf_param1 = np.zeros((2,nbeta))
-#pdf_param2 = np.zeros((2,nbeta))
 sigma_y = np.zeros((nmeasure,nbeta))
 sigma_model = np.zeros((ydim2,nbeta))
 for ib in range(nbeta):  
     x[:k_ap+nIC,ib]=x_agg.copy()
-    #pdf_param1[:,ib]=pdf_param10
-    #pdf_param2[:,ib]=pdf_param20
     sigma_y[:,ib]=sigma_y0.copy()
     sigma_model[:,ib]=sigma_model0.copy()
 
@@ -644,7 +639,28 @@ for ti in range(nmeasure):
 # SAVE MCMC output in a dataset and write to netcdf
 # Set up post-mcmc dataset
 
-props=["x_update", "birth", "death", "move", "sigma_y", "swap"]
+props_temp=["birth", "death", "move", "sigma_y", "swap"]
+props = np.zeros((nIC1+len(props_temp)),dtype=object)
+accepts = np.zeros((nIC1+len(props_temp)))
+rejects = np.zeros((nIC1+len(props_temp)))
+for ii in range(nBC):
+    props[ii]="bc"+str(ii)
+for jj in range(nfixed):
+    props[jj+nBC]="fixed"+str(jj)
+props[nIC1-1] = "vary"
+props[nIC1:] = props_temp
+
+accepts[:nIC1]=accept
+rejects[:nIC1]=reject
+
+accepts[nIC1:] = [accept_birth,accept_death,
+                         accept_move,accept_sigma_y, accept_swap]
+
+reject_swap = (nIt/2-accept_swap)
+rejects[nIC1:] = [reject_birth,reject_death,
+                         reject_move,reject_sigma_y, reject_swap]
+
+#props=["x_update", "birth", "death", "move", "sigma_y", "swap"]
 
 
 post_mcmc = xray.Dataset({"x_it": (["nIt", "kICmax"],
@@ -664,12 +680,11 @@ post_mcmc = xray.Dataset({"x_it": (["nIt", "kICmax"],
                         "n0T_it": (["nIt"],
                         n0T_out),
                         "y": (["nmeasure"], y),
+                        "y_time": (["nmeasure"], y_time),
                         "accepts": (["proposal"],
-                        [accept,accept_birth,accept_death,
-                         accept_move,accept_sigma_y, accept_swap]),
+                        accepts),
                         "rejects": (["proposal"],
-                        [reject,reject_birth,reject_death,
-                         reject_move,reject_sigma_y, (nIt/2-accept_swap)]),
+                        rejects),
                         "h_v_all": (["nmeasure","NgridIC"],
                         h_v_all), 
                         "q_ap": (["lat", "lon"],

@@ -740,11 +740,28 @@ uk_ap = uk_ap*16.04/1000.*365.*24.*3600./1.e9
 # Set up post-mcmc dataset
 
 
+props_temp=["birth", "death", "move", "sigma_yt", "tau", "sigma_ys", "rho", "swap"]
+#strs = ["" for ii in range(nIC1)]
+props = np.zeros((nIC1+len(props_temp)),dtype=object)
+accepts = np.zeros((nIC1+len(props_temp)))
+rejects = np.zeros((nIC1+len(props_temp)))
+for ii in range(nBC):
+    props[ii]="bc"+str(ii)
+for jj in range(nfixed):
+    props[jj+nBC]="fixed"+str(jj)
+props[nIC1-1] = "vary"
+props[nIC1:] = props_temp
 
-"""
+accepts[:nIC1]=accept
+rejects[:nIC1]=reject
 
-props=["x_update", "birth", "death", "move", "sigma_y", "swap"]
+accepts[nIC1:] = [accept_birth,accept_death,
+                         accept_move,accept_sigma_yt, accept_tau,
+                         accept_sigma_ys, accept_rho, accept_swap]
 
+rejects[nIC1:] = [reject_birth,reject_death,
+                         reject_move,reject_sigma_yt, reject_tau,
+                         reject_sigma_ys, reject_rho, reject_swap]
 
 post_mcmc = xray.Dataset({"x_it": (["nIt", "kICmax"],
                         x_it),
@@ -758,19 +775,20 @@ post_mcmc = xray.Dataset({"x_it": (["nIt", "kICmax"],
                         plon_out),
                         "plat_it": (["kmax","nIt"],
                         plat_out),
-                        "sigma_y_it": (["nmeasure", "nIt"],
-                        sigma_y_out),
+                        "sigma_yt_it": (["ydim2", "nIt"],
+                        sigma_yt_out),
                         "n0T_it": (["nIt"],
                         n0T_out),
-                        "y": (["nmeasure"], y),
-                        "accepts": (["proposal"],
-                        [accept,accept_birth,accept_death,
-                         accept_move,accept_sigma_y, accept_swap]),
-                        "rejects": (["proposal"],
-                        [reject,reject_birth,reject_death,
-                         reject_move,reject_sigma_y, (nIt/2-accept_swap)]),
-                        "h_v_all": (["nmeasure","NgridIC"],
+                        "tau_it": (["nIt"],
+                        tau_out),
+                        "z": (["nmeasure"], z),
+                         "y_time": (["nmeasuremax"], y_time),
+                        "accepts": (["proposal"], accepts),
+                        "rejects": (["proposal"], rejects),
+                        "h_v_all": (["nmeasuremax","NgridIC"],
                         h_v_all), 
+                        "timeindex_nonzero": (["nmeasure"],
+                        timeindex_nonzero-1), 
                         "q_ap": (["lat", "lon"],
                         q_ap0), 
                         "nIC": nIC,
@@ -785,4 +803,4 @@ output_directory="/PATH/TO/OUTPUTS/"
 #fname=os.path.join(output_directory,
 #                    "output_" + network + "_" + species + "_" + start_date + ".nc")
 #post_mcmc.to_netcdf(path=fname, mode='w')
-"""
+

@@ -394,11 +394,11 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
             
             # Merge datasets
             #site_ds = combine_datasets(site_ds, site_fp, method = "nearest")
-            if full_corr:
-                site_ds = combine_datasets(site_ds, site_fp, method = "nearest")
+            #if full_corr:
+            #    site_ds = combine_datasets(site_ds, site_fp, method = "nearest")
                 #site_ds = combine_datasets(site_fp, site_ds, method = None)
-            else:
-                site_ds = combine_datasets(site_ds, site_fp, method = "nearest")
+            #else:
+            site_ds = combine_datasets(site_ds, site_fp, method = "nearest")
             
             # If units are specified, multiply by scaling factor
             if ".units" in attributes:
