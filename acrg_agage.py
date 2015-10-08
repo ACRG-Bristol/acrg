@@ -265,7 +265,7 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
                                             ncf.variables["time"].units[14:]) 
                 elif ("days" in ncf.variables["time"].units) is True:
                     time = convert.day2time(ncf.variables["time"][:], 
-                                            ncf.variables["time"].units[14:])
+                                            ncf.variables["time"].units[11:])
                 else: 
                     print("Time unit is not a recognized unit (seconds, minuties or days since")
                             

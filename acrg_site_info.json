@@ -30,6 +30,13 @@
         "height_name": ["10magl"],
         "network": "NIES"
     },
+    "CRI" : {
+        "alt": [""],
+        "long_name" : "Cape Rama, India",
+        "height": ["6m"],
+        "height_name": ["10magl"],
+        "network": "CSIRO"
+    },
     "DJI" : {
         "alt": [""],
         "long_name" : "Darjeeling, India",
@@ -122,6 +129,13 @@
         "latitude": 51.997435,
         "longitude": -2.53990,
         "network": "DECC"
+    },
+    "SNG" : {
+        "alt": [""],
+        "long_name" : "Sinhagad, India",
+        "height": ["10m"],
+        "height_name": ["10magl"],
+        "network": "IITM"
     },
     "TAC" : {
         "alt": [],

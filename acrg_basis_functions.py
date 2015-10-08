@@ -112,9 +112,8 @@ def basis_transd(domain = "SOUTHASIA", time = "2012-01-01", basis_case = "transd
 
 def basis_bc_blocks(domain = "SOUTHASIA", basis_case = "NESW", time = "2012-01-01", vertical=4):
     
-# creates uniform blocks for each direction (NESW). 
+# creates blocks for each direction (NESW). 
 # Each direction is split into vertical slabs governed by input variable
-# currently splits vertical grid
 
     files = glob.glob(fields_file_path + domain + "/*")
     
@@ -233,7 +232,8 @@ def basis_bc_pca(domain = "SOUTHASIA", time = "2012-01-15", species='ch4', units
         pc_s.append(pcs[ii][:,ind[2]])
         pc_w.append(pcs[ii][:,ind[3]])
 
-# reverse pcs for east and south to make continuous curtain
+# "un-reverse" pcs for east and south
+
     for ii in range(3):
         pc_e[ii] = np.fliplr(pc_e[ii])
         pc_s[ii] = np.fliplr(pc_s[ii])
