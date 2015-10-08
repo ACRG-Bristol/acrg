@@ -123,8 +123,8 @@ INTEGER accept_sigma_ys, reject_sigma_ys, accept_y, reject_y, reject_swap
 INTEGER accept_rho, reject_rho
 ! INTERMEDIATE VARIABLES
 INTEGER it, ibeta, remain_it, pair1,pair2, ib, it_sub, remain, kIC, ii,jj       !remain_dim
-INTEGER remain_swap, ti
-REAL u, u1,u2, randomu,pT_chain, beta1,beta2, q_small
+INTEGER remain_swap, ti, remain_hparam
+REAL u, u1,u2, u3, randomu,pT_chain, beta1,beta2, q_small
 INTEGER k_it(nit_sub)
 REAL x_it(kICmax,nit_sub)                             
 REAL pdf_param1_it(nIC1,nit_sub), pdf_param2_it(nIC1,nit_sub)     
@@ -173,7 +173,7 @@ REAL xib1(kICmax), plonib1(kmax), platib1(kmax), n0ib1(nmeasuremax)
 REAL pdf_param1ib1(nIC1), pdf_param2ib1(nIC1)
 REAL h_aggib1(nmeasuremax,kICmax), yib1(nmeasuremax)
 REAL sigma_ysib1(numsites), sigma_ytib1(ydim2)
-INTEGER kib1, rejectib1, acceptib1
+INTEGER kib1, rejectib1, acceptib1, acceptyib1, rejectyib1
 INTEGER acceptxib1(nIC1), rejectxib1(nIC1)
 INTEGER regions_vib1(Ngrid)
 REAL Tinvib1(nmeasuretotal, nmeasuretotal), Rinvib1(nmeasuremax,nmeasuremax)
@@ -294,14 +294,14 @@ do ibeta=1,nbeta
      do ii = 1,numsites 
          do jj = 1,numsites
               arg_dum = arg(ii,jj)
-              if (arg_dum==0.) then
-                   U_temp(ii,jj) = 1.
-              else
-                   call rkbesl(arg_dum, alpha, nb, ize, k_arg_dum, ncalc)
-                   k_arg_dum = k_arg_dum*exp(-1*arg(ii,jj))
-                   U_temp(ii,jj) = 1/(2**(nu(ibeta)-1)*ga)*(sqrt(2*nu(ibeta))*distance(ii,jj)/rho(ibeta))**nu(ibeta)*k_arg_dum
-                   !U_temp(ii,jj) = exp(-1.*distance(ii,jj)/rho(ibeta))
-              endif
+           !   if (arg_dum==0.) then
+           !        U_temp(ii,jj) = 1.
+           !   else
+           !        call rkbesl(arg_dum, alpha, nb, ize, k_arg_dum, ncalc)
+           !        k_arg_dum = k_arg_dum*exp(-1*arg(ii,jj))
+           !        U_temp(ii,jj) = 1/(2**(nu(ibeta)-1)*ga)*(sqrt(2*nu(ibeta))*distance(ii,jj)/rho(ibeta))**nu(ibeta)*k_arg_dum
+                   U_temp(ii,jj) = exp(-1.*distance(ii,jj)/rho(ibeta))
+           !   endif
          enddo
      enddo
  
@@ -309,13 +309,14 @@ do ibeta=1,nbeta
      Uinv(:,:,ibeta) = Ainv(U_temp)
 
      detval_U(ibeta) = det(U_temp)
-
-
+ 
      do ii=1,numsites
            Sinv(:,ii,ibeta) = y_vars_inv(ii)*y_vars_inv*Uinv(:,ii,ibeta)
            !Sinv(ii,ii,ibeta) = space_vec
-          ! Sinv(ii,ii,ibeta) = 1./y_vars(ii)**2      ! Ignore spatital correlation for now
+         !  Sinv(ii,ii,ibeta) = 1./y_vars(ii)**2      ! Ignore spatital correlation for now
+
      enddo
+   
 
      Sinv_temp = Sinv(:,:,ibeta)
      Tinv_temp = Tinv(:,:,ibeta)
@@ -330,6 +331,7 @@ do ibeta=1,nbeta
     ! detval_S(ibeta) = sum(alog(y_vars))*nmeasuretotal 
 
      detval_S(ibeta) = (sum(alog(y_vars)) + detval_U(ibeta))*nmeasuretotal
+   ! detval_S(ibeta)  = det(Sinv_temp)
 
   else 
 
@@ -343,6 +345,7 @@ do ibeta=1,nbeta
   
   detval(ibeta) = detval_S(ibeta) + detval_T(ibeta)
 
+ 
 
   !n0 = matmul(H_agg,x_agg) - y   ! but y = matmul(H_agg,x_agg) so n0(:)=0 and n0T=0.
   !C = matmul(n0,Rinv)
@@ -365,24 +368,34 @@ do it=1,(nIt+burn_in)
 
 
    ! DO REVERSIBLE JUMP
+ !  if (rjmcmc .EQ. 1) then
+ !     remain_it = FLOOR(7*u) + 1  
+ !   ! FIXED-DIMENSION CASE
+ !  else if (rjmcmc .NE. 1) then
+ !     remain_it = FLOOR(2*u) + 4 
+ !  else
+ !       WRITE(*,*) 'rjmcmc not specified correctly'
+ !       CALL ABORT
+ !  endif
+
+   ! DO REVERSIBLE JUMP
    if (rjmcmc .EQ. 1 .and. numsites .EQ. 1) then
-       remain_it = FLOOR(6*u) + 1  
+       remain_it = FLOOR(5*u) + 1  
    else if (rjmcmc .EQ. 1 .and. numsites .GT. 1) then
-       remain_it = FLOOR(8*u) + 1    
-
-
-
+       remain_it = FLOOR(7*u) + 1    
+ 
    ! FIXED-DIMENSION CASE
    else if (rjmcmc .NE. 1 .and. numsites .EQ. 1) then
-       remain_it = FLOOR(3*u) + 4 
+       remain_it = FLOOR(2*u) + 4 
    else if (rjmcmc .NE. 1 .and. numsites .GT. 1) then
-       remain_it = FLOOR(5*u) + 4 
+      remain_it = FLOOR(4*u) + 4 
 
    ! ELSE  ABORT - HAS TO BE ONE OF THEM!!
    else
         WRITE(*,*) 'Either rjmcmc or numsites not specified correctly'
         CALL ABORT
    endif
+
    !remain_it = FLOOR(3*u) + 1 
    !remain_it = 8
 
@@ -392,12 +405,12 @@ do it=1,(nIt+burn_in)
 !$OMP& private(kib1,xib1,pdf_param1ib1,pdf_param2ib1, plonib1, platib1), &
 !$OMP& private(regions_vib1,h_aggib1,n0ib1,n0Tib1, sigma_ytib1, sigma_ysib1), &
 !$OMP& private(detval_Tib1, detval_Sib1, detvalib1, acceptxib1, rejectxib1, acceptib1, rejectib1), &
-!$OMP& private(tauib1, Qinvib1, Rinvib1, Sinvib1, Tinvib1, yib1, m0Tib1, u), &
+!$OMP& private(tauib1, Qinvib1, Rinvib1, Sinvib1, Tinvib1, yib1, m0Tib1, u, acceptyib1, rejectyib1), &
 !$OMP& private(rhoib, nuib, Uinvib, detval_Uib, rhoib1, nuib1, Uinvib1, detval_Uib1), &
 !$OMP& shared(x,n0,n0T, k, pdf_param1, pdf_param2, h_agg, plon,plat, regions_v)
-   do ibeta=1,nbeta
+  ! do ibeta=1,nbeta
 
-       !ibeta=1
+       ibeta=1
        betaib = beta(ibeta)
        kib = k(ibeta)
        xib  = x(:,ibeta)
@@ -435,13 +448,11 @@ do it=1,(nIt+burn_in)
 
        kIC = kib+nIC
        
-
-   
-        if (remain_it .EQ. 4) then              ! X UPDATE
-
-            call  y_update(betaib, yib, z, n0ib, n0Tib, m0Tib, Rinvib, sigma_measure, accept_y, reject_y, &
+       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+       ! Y UPDATE EVERY ITERATION
+       call  y_update(betaib, yib, z, n0ib, n0Tib, m0Tib, Rinvib, sigma_measure, accept_y, reject_y, &
                     stepsize_y, timeindex_nonzero, nmeasuremax, nmeasure, it, burn_in,  &
-                    n0Tib1, m0Tib1, yib1, n0ib1, acceptib1, rejectib1)
+                    n0Tib1, m0Tib1, yib1, n0ib1, acceptyib1, rejectyib1)
 
             n0T(ibeta) = n0Tib1
             m0T(ibeta) = m0Tib1
@@ -454,17 +465,20 @@ do it=1,(nIt+burn_in)
 
                
             if (betaib .EQ. 1.) then 
-               accept_y = acceptib1
-               reject_y = rejectib1
+               accept_y = acceptyib1
+               reject_y = rejectyib1
             endif
+ 
+       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-
+        if (remain_it .EQ. 4) then              ! X UPDATE
 
             call x_update(betaib,kib, xib, pdf_param1ib,pdf_param2ib, &
-                         h_aggib,n0ib,n0Tib, Rinvib, stepsize, &
+                         h_aggib,n0ib,n0Tib, Rinvib, Sinvib, Tinvib,stepsize, &
                          pdf_p1_hparam1, pdf_p1_hparam2, stepsize_pdf_p1, pdf_param1_pdf, &
                          pdf_p2_hparam1, pdf_p2_hparam2, stepsize_pdf_p2, pdf_param2_pdf, &
                          accept,reject,x_pdf_all, it, burn_in, nIC, kICmax, nmeasuremax, nIC1, &
+                         numsites, nmeasuretotal, &
                          xib1, pdf_param1ib1, pdf_param2ib1, n0ib1, n0Tib1, acceptxib1, rejectxib1)
 
             x(:,ibeta) = xib1
@@ -481,9 +495,10 @@ do it=1,(nIt+burn_in)
        elseif (remain_it .EQ. 1) then       ! BIRTH
                
                call birth(betaib,kib, xib, h_aggib,yib,n0ib,n0Tib,Rinvib, plonib, platib, regions_vib, lon,lat, & 
-                          h_v, pdf_param1ib(nIC1), pdf_param2ib(nIC1), x_pdf_all(nIC1), &
+                          h_v, pdf_param1ib(nIC1), pdf_param2ib(nIC1), x_pdf_all(nIC1), Sinvib, Tinvib, &
                           lonmin, lonmax, latmin,latmax, sigma_bd, &
-                          accept_birth, reject_birth,it,burn_in,nIC,kICmax,kmax,nmeasuremax,Ngrid,nlon,nlat, &
+                          accept_birth, reject_birth,it,burn_in,nIC,kICmax,kmax,nmeasuremax, &
+                          numsites, nmeasuretotal, Ngrid,nlon,nlat, &
                           kib1, xib1, h_aggib1, n0ib1, n0Tib1, regions_vib1, plonib1, platib1, acceptib1, rejectib1)
 
                 k(ibeta) = kib1
@@ -503,10 +518,10 @@ do it=1,(nIt+burn_in)
 
            elseif (remain_it .EQ. 2) then    ! DEATH
 
-               call death(betaib,kib, xib, h_aggib, yib, n0ib,n0Tib,Rinvib, plonib, platib, regions_vib, lon,lat, & 
-                          h_v, pdf_param1ib(nIC1), pdf_param2ib(nIC1), x_pdf_all(nIC1), sigma_bd, &
+               call death(betaib,kib, xib, h_aggib, yib, n0ib,n0Tib,Rinvib, Sinvib, Tinvib, plonib, platib, regions_vib, &
+                          lon,lat,h_v, pdf_param1ib(nIC1), pdf_param2ib(nIC1), x_pdf_all(nIC1), sigma_bd, &
                           accept_death, reject_death, it, burn_in,nIC, kICmax, kmin, kmax, nmeasuremax, &
-                          Ngrid,nlon,nlat, &
+                          numsites, nmeasuretotal, Ngrid,nlon,nlat, &
                           kib1, xib1, h_aggib1,n0ib1, n0Tib1, regions_vib1, plonib1, platib1, acceptib1, rejectib1)
                      
                k(ibeta) = kib1
@@ -525,9 +540,9 @@ do it=1,(nIt+burn_in)
 
            elseif (remain_it .EQ. 3) then    ! MOVE
                
-               call move(betaib,kib, xib, h_aggib, yib ,n0ib,n0Tib,Rinvib, plonib, platib, regions_vib, lon,lat, & 
-                         h_v, lonmin, lonmax, latmin,latmax, sigma_clon, sigma_clat, accept_move, reject_move, it, &
-                         burn_in, nIC, kICmax, kIC, kmax, nmeasuremax, Ngrid,nlon,nlat, &
+               call move(betaib,kib, xib, h_aggib, yib ,n0ib,n0Tib,Rinvib, Sinvib, Tinvib, plonib, platib, regions_vib, & 
+                         lon,lat,h_v, lonmin, lonmax, latmin,latmax, sigma_clon, sigma_clat, accept_move, reject_move, it, &
+                         burn_in, nIC, kICmax, kIC, kmax, nmeasuremax, numsites, nmeasuretotal, Ngrid,nlon,nlat, &
                          h_aggib1, n0ib1, n0Tib1, regions_vib1, plonib1, platib1, acceptib1, rejectib1)
                
                plon(:,ibeta) = plonib1
@@ -550,8 +565,22 @@ do it=1,(nIt+burn_in)
                   reject_move=rejectib1
                endif
 
-          elseif (remain_it .EQ. 5) then  ! SIGMA_YT UPDATE
+          elseif (remain_it .EQ. 5) then  ! HYPERPARAMETERS UPDATE
              
+
+           !   call random_number(u3)
+              
+             ! Only one site
+           !  if (numsites .EQ. 1) then
+           !     remain_hparam = FLOOR(2*u3) + 1  
+           !  ! MULTIPLE SITE CASE
+           !  else if (numsites .GT. 1) then
+           !     remain_hparam = FLOOR(4*u3) + 1 
+           !  endif
+             
+              ! SIGMA_YT UPDATE
+
+             ! if (remain_hparam .EQ. 1) then
 
               call sigma_yt_update(betaib, sigma_ytib, sigma_yt_ap, &
                    detvalib, detval_Tib, detval_Sib, sigma_yt_hparams, stepsize_sigma_yt, sigma_yt_pdf, R_indices, &
@@ -568,37 +597,24 @@ do it=1,(nIt+burn_in)
               Tinv(:,:,ibeta)=Tinvib1 
               Rinv(:,:,ibeta)=Rinvib1 
         
+              n0Tib=n0Tib1
+              sigma_ytib=sigma_ytib1  
+              detvalib=detvalib1
+              detval_Tib=detval_Tib1
+              Tinvib=Tinvib1
+              Rinvib=Rinvib1
+
               if (betaib .EQ. 1.) then 
                accept_sigma_yt = acceptib1
                reject_sigma_yt = rejectib1
               endif
-        
-          elseif (remain_it .EQ. 7) then  ! SIGMA_YS UPDATE
              
-              call sigma_ys_update(betaib, sigma_ysib, sigma_ys_ap, &
-                   detvalib, detval_Sib, detval_Tib, detval_Uib, &
-                   sigma_ys_hparams, stepsize_sigma_ys, sigma_ys_pdf, &
-                   Sinvib, Rinvib, Tinvib, Uinvib, n0ib,n0Tib, &
-                   accept_sigma_ys, reject_sigma_ys, it, burn_in, nmeasuretotal, nmeasuremax, numsites, &
-                   n0Tib1, acceptib1, rejectib1, sigma_ysib1, detvalib1, detval_Sib1, Rinvib1, Sinvib1) 
+             
+             ! elseif (remain_hparam .EQ. 2) then
 
+              ! TAU UPDATE 
 
-              sigma_ys(:,ibeta) = sigma_ysib1
-              n0T(ibeta) = n0Tib1
-              detval(ibeta) = detvalib1
-              detval_S(ibeta) = detval_Sib1
-              Sinv(:,:,ibeta)=Sinvib1 
-              Rinv(:,:,ibeta)=Rinvib1 
-        
-              if (betaib .EQ. 1.) then 
-               accept_sigma_ys = acceptib1
-               reject_sigma_ys = rejectib1
-              endif
-
-
-          elseif (remain_it .EQ. 6) then ! TAU UPDATE
-
-
+             ! if (rjmcmc .eq. 5) then
               call tau_update(betaib, tauib, sigma_ytib, R_indices,  &
                    detvalib, detval_Tib, detval_Sib, tau_hparams(1), tau_hparams(2), stepsize_tau, tau_pdf,  &
                    Rinvib, Tinvib, Qinvib, Sinvib, deltatime, n0ib, n0Tib, &
@@ -613,42 +629,87 @@ do it=1,(nIt+burn_in)
               detval(ibeta) = detvalib1
               detval_T(ibeta) = detval_Tib1
 
+              !n0Tib = n0Tib1
+              !tauib = tauib1
+              !Tinvib=Tinvib1 
+              !Rinvib=Rinvib1 
+              !Qinvib=Qinvib1 
+              !detvalib = detvalib1
+              !detval_Tib = detval_Tib1
+
               if (betaib .EQ. 1.) then 
                accept_tau = acceptib1
                reject_tau = rejectib1
               endif
 
-         
-         elseif (remain_it .EQ. 8) then ! RHO + NU UPDATE
+  
+                   
+              elseif (remain_it .EQ. 6) then  ! SIGMA_YS UPDATE
+             
+                   call sigma_ys_update(betaib, sigma_ysib, sigma_ys_ap, &
+                        detvalib, detval_Sib, detval_Tib, detval_Uib, &
+                        sigma_ys_hparams, stepsize_sigma_ys, sigma_ys_pdf, &
+                        Sinvib, Rinvib, Tinvib, Uinvib, n0ib, n0Tib, &
+                        accept_sigma_ys, reject_sigma_ys, it, burn_in, nmeasuretotal, nmeasuremax, numsites, &
+                        n0Tib1, acceptib1, rejectib1, sigma_ysib1, detvalib1, detval_Sib1, Rinvib1, Sinvib1) 
 
-             call rho_nu_update(betaib, rhoib, nuib, sigma_ysib,  &
-                  detvalib, detval_Tib, detval_Sib, detval_Uib, &
-                  rho_hparams(1), rho_hparams(2), stepsize_rho, rho_pdf,  &
-                  nu_hparams(1), nu_hparams(2), stepsize_nu, nu_pdf,  &
-                  Rinvib, Tinvib, Sinvib, Uinvib, distance, &
-                  n0ib, n0Tib, accept_rho, reject_rho, it, burn_in, nmeasuretotal, nmeasuremax, numsites, &
-                  n0Tib1, acceptib1, rejectib1, rhoib1, nuib1, Rinvib1, Sinvib1, Uinvib1, detvalib1, detval_Sib1, detval_Uib1) 
+
+                    sigma_ys(:,ibeta) = sigma_ysib1
+                    n0T(ibeta) = n0Tib1
+                    detval(ibeta) = detvalib1
+                    detval_S(ibeta) = detval_Sib1
+                    Sinv(:,:,ibeta)=Sinvib1 
+                    Rinv(:,:,ibeta)=Rinvib1 
+        
+                    !sigma_ysib = sigma_ysib1
+                    !n0Tib = n0Tib1
+                    !detvalib = detvalib1
+                    !detval_Sib = detval_Sib1
+                    !Sinvib=Sinvib1 
+                    !Rinvib=Rinvib1 
 
 
-              n0T(ibeta) = n0Tib1
-              rho(ibeta) = rhoib1
-              nu(ibeta) = nuib1
-              Rinv(:,:,ibeta)=Rinvib1 
-              Sinv(:,:,ibeta)=Sinvib1 
-              Uinv(:,:,ibeta)=Uinvib1 
-              detval(ibeta) = detvalib1
-              detval_S(ibeta) = detval_Sib1
-              detval_U(ibeta) = detval_Uib1
+                    if (betaib .EQ. 1.) then 
+                       accept_sigma_ys = acceptib1
+                       reject_sigma_ys = rejectib1
+                    endif
+                
+                 
+               elseif (remain_it .EQ. 7) then ! RHO + NU UPDATE
+                    
 
-              if (betaib .EQ. 1.) then 
-               accept_rho = acceptib1
-               reject_rho = rejectib1
-              endif
+                   call rho_nu_update(betaib, rhoib, nuib, sigma_ysib,  &
+                        detvalib, detval_Tib, detval_Sib, detval_Uib, &
+                        rho_hparams(1), rho_hparams(2), stepsize_rho, rho_pdf,  &
+                        nu_hparams(1), nu_hparams(2), stepsize_nu, nu_pdf,  &
+                        Rinvib, Tinvib, Sinvib, Uinvib, distance, &
+                        n0ib, n0Tib, accept_rho, reject_rho, it, burn_in, nmeasuretotal, nmeasuremax, numsites, &
+                        n0Tib1, acceptib1, rejectib1, rhoib1, nuib1, Rinvib1, Sinvib1, &
+                        Uinvib1, detvalib1, detval_Sib1, detval_Uib1) 
 
+
+                    n0T(ibeta) = n0Tib1
+                    rho(ibeta) = rhoib1
+                    nu(ibeta) = nuib1
+                    Rinv(:,:,ibeta)=Rinvib1 
+                    Sinv(:,:,ibeta)=Sinvib1 
+                    Uinv(:,:,ibeta)=Uinvib1 
+                    detval(ibeta) = detvalib1
+                    detval_S(ibeta) = detval_Sib1
+                    detval_U(ibeta) = detval_Uib1
+
+                    if (betaib .EQ. 1.) then 
+                        accept_rho = acceptib1
+                        reject_rho = rejectib1
+                    endif
+                  
+
+              ! endif   !remian_hparam
 
           endif     ! remain_it
+
            
-   enddo    ! beta loop
+  ! enddo    ! beta loop
 !$OMP END PARALLEL DO
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! Store xit and swap betas
@@ -683,8 +744,8 @@ do it=1,(nIt+burn_in)
    
             call random_number(randomu)
             if (alog(randomu) .LE. pT_chain) then
-                beta(pair2)=beta1*1.
-                beta(pair1)=beta2*1.
+           !     beta(pair2)=beta1*1.
+           !     beta(pair1)=beta2*1.
                 accept_swap=accept_swap+1
             else
                 reject_swap=reject_swap+1
@@ -744,14 +805,16 @@ END SUBROUTINE hbtdmcmc
 
 
 SUBROUTINE x_update(beta,k, x, pdf_param1_all,pdf_param2_all,  &
-h_agg,n0,n0T,Rinv, stepsize, &
+h_agg,n0,n0T,Rinv, Sinv, Tinv, stepsize, &
 pdf_p1_hparam1_all, pdf_p1_hparam2_all, stepsize_pdf_p1, pdf_param1_pdf, &
 pdf_p2_hparam1_all, pdf_p2_hparam2_all, stepsize_pdf_p2, pdf_param2_pdf, &
 accept, reject, x_pdf_all, it, burn_in, nIC, kICmax, nmeasuremax, nIC1, &
+numsites, nmeasuretotal, &
 x_out, pdf_param1_out, pdf_param2_out, n0_out, n0T_out, accept_out, reject_out) 
 
 Implicit none 
 INTEGER nmeasuremax, it, burn_in, k, nIC, kICmax, nIC1
+INTEGER nmeasuretotal, numsites
 REAL beta, n0T, n0T_out 
 REAL x(kICmax) 
 REAL x_out(kICmax) 
@@ -759,6 +822,8 @@ REAL h_agg(nmeasuremax,kICmax)
 REAL n0(nmeasuremax) 
 REAL n0_out(nmeasuremax) 
 REAL Rinv(nmeasuremax, nmeasuremax)
+REAL Sinv(numsites, numsites)
+REAL Tinv(nmeasuretotal, nmeasuretotal)
 REAL dy(nmeasuremax)
 REAL n1(nmeasuremax) 
 INTEGER x_pdf_all(nIC1)
@@ -784,6 +849,8 @@ REAL p0_temp, p1_temp
 REAL dpdf_param1, pdf_param1_new, dpdf_param2, pdf_param2_new
 REAL p0_pdf_param2, p1_pdf_param2, p0_pdf_param1, p1_pdf_param1
 REAL x_new(kICmax)
+REAL n1_arr(nmeasuretotal,numsites)
+REAL C_arr(nmeasuretotal,numsites)   
 
 !INPUTS:
 ! ARRAYS :: beta, nbeta, pdf_param1, pdf_param2, x, n0, h_agg, sigma_y, n0T, k
@@ -794,12 +861,14 @@ REAL x_new(kICmax)
 ! x_out, n0_out, n0T_out, accept_out, reject_out
 
    ! CHANGE OF EMISSIONS VALUES
-  call random_number(u)   
-  elem(1)= FLOOR((nIC)*u)+1 
-  elem(2) = FLOOR(k*u)+1+nIC
+ ! call random_number(u)   
+ ! elem(1)= FLOOR((nIC)*u)+1 
+ ! elem(2) = FLOOR(k*u)+1+nIC
 
-  do xx=1,2
-  xi=elem(xx)
+ ! do xx=1,2
+ ! xi=elem(xx)
+
+ do xi = 1, k+nIC
 
   !xi=FLOOR((nIC+k)*u)+1
   if (xi .LE. nIC) then
@@ -897,8 +966,23 @@ REAL x_new(kICmax)
 
          dy=h_agg(:,xi)*dx 
          n1=n0+dy
-         C = matmul(n1,Rinv)
-         n1T= dot_product(n1,C)
+
+         if (numsites .EQ. 1) then
+            C = matmul(n1,Rinv)
+            n1T= dot_product(n1,C)
+         else
+            n1_arr = reshape(n1, (/nmeasuretotal, numsites/))
+            C_arr = matmul(matmul(Tinv,n1_arr),Sinv)
+            C = reshape(C_arr,(/nmeasuremax/))
+            n1T = dot_product(n1,C)
+         endif   ! numsites
+
+! n1_arr = reshape(n1, (/nmeasuretotal, numsites/))
+!call sgemm ('N', 'N', nmeasuretotal, numsites, nmeasuretotal, aa, Tinv_current, nmeasuretotal, n1_arr, nmeasuretotal, bb, dum3, nmeasuretotal)
+!call sgemm ('N', 'N', nmeasuretotal, numsites, numsites, aa, dum3, nmeasuretotal, Sinv_current, numsites, bb, C_arr, nmeasuretotal)
+!C = reshape(C_arr,(/nmeasuremax/))
+
+
          !n1T=sum((n1/sigma_y)**2)
                  
          call calc_pdf(pdf_param1,pdf_p1_hparam1,pdf_p1_hparam2,pdf_param1_pdf, p0_pdf_param1) 
@@ -988,7 +1072,7 @@ REAL x_new(kICmax)
          endif   ! randomu condition
 
   endif   ! x_pdf condition
-  enddo
+  enddo   ! xi loop
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 x_out=x
@@ -1003,14 +1087,16 @@ END SUBROUTINE x_update
 
 
 SUBROUTINE birth(beta,k, x, h_agg,y,n0,n0T,Rinv, plon, plat, regions_v, lon,lat, & 
-h_v,pdf_param1, pdf_param2, x_pdf,  &
+h_v,pdf_param1, pdf_param2, x_pdf, Sinv, Tinv, &
 lonmin, lonmax, latmin,latmax, sigma_bd, &
-accept_birth, reject_birth, it, burn_in, nIC, kICmax, kmax, nmeasuremax, Ngrid,nlon,nlat, &
+accept_birth, reject_birth, it, burn_in, nIC, kICmax, kmax, nmeasuremax, &
+numsites, nmeasuretotal, Ngrid,nlon,nlat, &
 k_out, x_out, h_agg_out, n0_out, n0T_out, regions_v_out, plon_out, plat_out, accept_out, reject_out)
 
 IMPLICIT NONE
 ! Dimensions
 INTEGER nmeasuremax, Ngrid, nlon,nlat, k,kmax, nIC, kICmax
+INTEGER nmeasuretotal, numsites
 REAL lonmin,lonmax,latmin,latmax,sigma_bd
 ! Single Variables
 INTEGER accept_birth, reject_birth, it, burn_in, x_pdf 
@@ -1023,6 +1109,8 @@ REAL h_agg(nmeasuremax,kICmax)
 REAL y(nmeasuremax) 
 REAL n0(nmeasuremax) 
 REAL Rinv(nmeasuremax,nmeasuremax)
+REAL Tinv(nmeasuretotal,nmeasuretotal)
+REAL Sinv(numsites,numsites)
 REAL plon(kmax)
 REAL plat(kmax)
 INTEGER regions_v(Ngrid)
@@ -1046,6 +1134,8 @@ REAL mu, sigma
 INTEGER regions_v1b(Ngrid)       
 REAL n1b(nmeasuremax)  
 REAL C(nmeasuremax)          
+REAL n1_arr(nmeasuretotal,numsites)
+REAL C_arr(nmeasuretotal,numsites)  
 ! Allocatable arrays
 REAL, DIMENSION(:),ALLOCATABLE :: plon1b, plat1b, x1b
 REAL, DIMENSION(:,:), ALLOCATABLE :: h_agg2
@@ -1147,9 +1237,16 @@ if (k1 .LT. kmax) THEN
           
           n1b=matmul(h_agg2,x1b)-y                                         
           !n1Tb=sum((n1b/sigma_y)**2)
-          C = matmul(n1b,Rinv)
-          n1Tb= dot_product(n1b,C)
 
+          if (numsites .EQ. 1) then
+             C = matmul(n1b,Rinv)
+             n1Tb= dot_product(n1b,C)
+          else
+             n1_arr = reshape(n1b, (/nmeasuretotal, numsites/))
+             C_arr = matmul(matmul(Tinv,n1_arr),Sinv)
+             C = reshape(C_arr,(/nmeasuremax/))
+             n1Tb = dot_product(n1b,C)
+          endif    ! numsites
 
           if (x_pdf .EQ. 2) THEN   !2=GAUSSIAN
 
@@ -1225,10 +1322,10 @@ reject_out=reject_birth
 END SUBROUTINE birth
 
 
-SUBROUTINE death(beta,k, x, h_agg,y,n0,n0T,Rinv, plon, plat, regions_v, lon,lat, & 
+SUBROUTINE death(beta,k, x, h_agg,y,n0,n0T,Rinv, Sinv, Tinv, plon, plat, regions_v, lon,lat, & 
 h_v, pdf_param1, pdf_param2, x_pdf, &
 sigma_bd, accept_death, reject_death, &
-it, burn_in, nIC, kICmax, kmin, kmax, nmeasuremax, Ngrid,nlon,nlat, &
+it, burn_in, nIC, kICmax, kmin, kmax, nmeasuremax, numsites, nmeasuretotal, Ngrid,nlon,nlat, &
 k_out, x_out, h_agg_out, n0_out, n0T_out, regions_v_out, &
 plon_out, plat_out, accept_out, reject_out)
 
@@ -1237,6 +1334,7 @@ plon_out, plat_out, accept_out, reject_out)
 IMPLICIT NONE
 ! Dimensions
 INTEGER kmax,nmeasuremax,Ngrid,nlon,nlat, accept_death, reject_death, it, burn_in, kmin, k, nIC, kICmax
+INTEGER numsites, nmeasuretotal
 REAL sigma_bd, beta, n0T 
 ! Input arrays
 REAL x(kICmax) 
@@ -1246,6 +1344,8 @@ REAL h_agg(nmeasuremax,kICmax)
 REAL y(nmeasuremax) 
 REAL n0(nmeasuremax) 
 REAL Rinv(nmeasuremax,nmeasuremax)
+REAL Sinv(numsites,numsites)
+REAL Tinv(nmeasuretotal,nmeasuretotal)
 REAL plon(kmax)
 REAL plat(kmax)
 INTEGER regions_v(Ngrid)
@@ -1270,6 +1370,8 @@ REAL mu,sigma
 INTEGER regions_v1d(Ngrid)      
 REAL n1d(nmeasuremax)  
 REAL C(nmeasuremax)           
+REAL n1_arr(nmeasuretotal,numsites)
+REAL C_arr(nmeasuretotal,numsites)  
 ! Allocatable arrays
 REAL, DIMENSION(:),ALLOCATABLE :: plon1d, plat1d, x1d 
 REAL, DIMENSION(:,:), ALLOCATABLE :: h_agg2d
@@ -1350,8 +1452,15 @@ if (k1d .GE. kmin) THEN
   n1d=matmul(h_agg2d,x1d)-y
   !n1Td=sum((n1d/sigma_y)**2) 
 
-  C = matmul(n1d,Rinv)
-  n1Td= dot_product(n1d,C)
+  if (numsites .EQ. 1) then
+     C = matmul(n1d,Rinv)
+     n1Td= dot_product(n1d,C)
+  else
+     n1_arr = reshape(n1d, (/nmeasuretotal, numsites/))
+     C_arr = matmul(matmul(Tinv,n1_arr),Sinv)
+     C = reshape(C_arr,(/nmeasuremax/))
+     n1Td = dot_product(n1d,C)
+  endif       ! numsites
 
                           
   ! ACCEPTANCE PROBABILITY  
@@ -1436,9 +1545,9 @@ reject_out=reject_death
 END SUBROUTINE death
 
 
-SUBROUTINE move(beta,k, x, h_agg, y,n0,n0T,Rinv, plon, plat, regions_v, lon,lat, & 
+SUBROUTINE move(beta,k, x, h_agg, y,n0,n0T,Rinv, Sinv, Tinv, plon, plat, regions_v, lon,lat, & 
 h_v, lonmin, lonmax, latmin,latmax, sigma_clon, sigma_clat, accept_move, reject_move, it, &
-burn_in, nIC, kICmax, kIC, kmax, nmeasuremax, Ngrid,nlon,nlat, &
+burn_in, nIC, kICmax, kIC, kmax, nmeasuremax, numsites, nmeasuretotal, Ngrid,nlon,nlat, &
 h_agg_out, n0_out, n0T_out, regions_v_out, plon_out, plat_out, accept_out, reject_out)
 
 
@@ -1446,6 +1555,7 @@ h_agg_out, n0_out, n0T_out, regions_v_out, plon_out, plat_out, accept_out, rejec
 IMPLICIT NONE
 ! Dimensions
 INTEGER kmax, nmeasuremax, Ngrid, nlon,nlat, accept_move, reject_move, it, burn_in,k, nIC, kIC, kICmax
+INTEGER numsites, nmeasuretotal
 ! Single Variables
 REAL lonmin,lonmax,latmin,latmax, sigma_clon, sigma_clat, beta 
 ! Input arrays
@@ -1455,6 +1565,8 @@ REAL y(nmeasuremax)
 REAL n0(nmeasuremax) 
 REAL n0T
 REAL Rinv(nmeasuremax,nmeasuremax)
+REAL Sinv(numsites,numsites)
+REAL Tinv(nmeasuretotal,nmeasuretotal)
 REAL plon(kmax)
 REAL plat(kmax)
 INTEGER regions_v(Ngrid)
@@ -1479,6 +1591,8 @@ REAL u, n1Tm, pT_move, randomu
 INTEGER regions_v1m(Ngrid)      
 REAL n1m(nmeasuremax) 
 REAL C(nmeasuremax)
+REAL n1_arr(nmeasuretotal,numsites)
+REAL C_arr(nmeasuretotal,numsites)  
 ! Allocatable arrays
 ! None
 
@@ -1532,9 +1646,16 @@ REAL,PARAMETER     :: pi = 3.14159265
      
      n1m=matmul(h_agg2m,x1m)-y
      !n1Tm=sum((n1m/sigma_y)**2)
-     C = matmul(n1m,Rinv)
-     n1Tm= dot_product(n1m,C)
-
+    
+     if (numsites .EQ. 1) then
+        C = matmul(n1m,Rinv)
+        n1Tm= dot_product(n1m,C)
+     else
+        n1_arr = reshape(n1m, (/nmeasuretotal, numsites/))
+        C_arr = matmul(matmul(Tinv,n1_arr),Sinv)
+        C = reshape(C_arr,(/nmeasuremax/))
+        n1Tm = dot_product(n1m,C)
+     endif    !numsites
                                      
      ! ACCEPTANCE PROBABILITY   
      pT_move = (n1Tm - n0T)*(-0.5)*beta  
@@ -1618,6 +1739,8 @@ REAL p0_sigma_yt, p1_sigma_yt, n1T, detval_new, detval_T_new, pT, q_small
 REAL y_vart_new(nmeasuretotal), y_vart_new_inv(nmeasuretotal)
 REAL Tinv_new(nmeasuretotal,nmeasuretotal), Rinv_new(nmeasuremax,nmeasuremax) 
 REAL C(nmeasuremax), autocorr_vec(nmeasuretotal)
+REAL n0_arr(nmeasuretotal,numsites)
+REAL C_arr(nmeasuretotal,numsites)  
 
 
  !do yi=1,dim2
@@ -1659,8 +1782,16 @@ REAL C(nmeasuremax), autocorr_vec(nmeasuretotal)
     !detval_T_new = det(T_new)*numsites
     detval_new = detval_S + detval_T_new
 
-    C = matmul(n0,Rinv_new)
-    n1T = dot_product(n0,C)
+
+    if (numsites .EQ. 1) then
+       C = matmul(n0,Rinv_new)
+       n1T = dot_product(n0,C)
+    else
+       n0_arr = reshape(n0, (/nmeasuretotal, numsites/))
+       C_arr = matmul(matmul(Tinv_new,n0_arr),Sinv)
+       C = reshape(C_arr,(/nmeasuremax/))
+       n1T = dot_product(n0,C)
+    endif
 
     !n1T=sum((n0/sigma_y_new)**2)
     !detval_new = sum(alog(sigma_y_new))           ! This is actually the inverse of the determinant
@@ -1706,6 +1837,7 @@ Tinv_out=Tinv_current
 END SUBROUTINE sigma_yt_update
 
 
+
 SUBROUTINE sigma_ys_update(beta, sigma_ys_current, sigma_ys_ap, &
 detval_current, detval_S_current, detval_T,  detval_U, &
 sigma_ys_hparams, stepsize_sigma_ys, sigma_ys_pdf, &
@@ -1745,6 +1877,8 @@ REAL y_vars_new(numsites), y_vars_inv_new(numsites)
 REAL Sinv_new(numsites,numsites)
 REAL Rinv_new(nmeasuremax,nmeasuremax) 
 REAL C(nmeasuremax)
+REAL n0_arr(nmeasuretotal,numsites)
+REAL C_arr(nmeasuretotal,numsites)  
 
     ! )nly one value for sigma_ys
     call random_number(u)   
@@ -1775,16 +1909,24 @@ REAL C(nmeasuremax)
 
     ! DETERMINANT IN LOG SPACE - need to actually take the log
     !detval_T_new = det(T_new)*numsites
-    !detval_S_new = sum(alog(y_vars_new))*nmeasuretotal 
+    
+    ! detval_S_new = sum(alog(y_vars_new))*nmeasuretotal      !!!! DIAGONAL  !!
 
-    !detval_S_new = 1./det(Sinv_new)
+    !detval_S_new = det(Sinv_new)*nmeasuretotal*(-1)
     detval_S_new = (sum(alog(y_vars_new)) + detval_U)*nmeasuretotal
 
 
     detval_new = detval_S_new + detval_T
 
-    C = matmul(n0,Rinv_new)
-    n1T = dot_product(n0,C)
+    if (numsites .EQ. 1) then
+       C = matmul(n0,Rinv_new)
+       n1T = dot_product(n0,C)
+    else
+       n0_arr = reshape(n0, (/nmeasuretotal, numsites/))
+       C_arr = matmul(matmul(Tinv,n0_arr),Sinv_new)
+       C = reshape(C_arr,(/nmeasuremax/))
+       n1T = dot_product(n0,C)
+    endif
 
     ! Compute P1/P0 	
     pT= p1_sigma_ys-p0_sigma_ys - detval_new*beta + detval_current*beta - 0.5*(n1T - n0T)*beta       !*beta      ! -detval_new becasue it's inverse of true determinant
@@ -1868,6 +2010,8 @@ REAL Tinv_new(nmeasuretotal, nmeasuretotal)
 REAL Qinv_new(nmeasuretotal, nmeasuretotal)
 REAL C(nmeasuremax), autocorr_vec(nmeasuretotal)
 REAL y_vart(nmeasuretotal), y_vart_inv(nmeasuretotal)
+REAL n0_arr(nmeasuretotal,numsites)
+REAL C_arr(nmeasuretotal,numsites)  
 
 
 
@@ -1922,11 +2066,18 @@ if (tau_new .GT. tau_hparam1 .and. tau_new .LT. tau_hparam2) THEN
      detval_T_new = (sum(alog(y_vart))+(alog(1-q_small**2)*((nmeasuretotal-1)/2.)))*numsites   ! DETERMINANT IN LOG SPACE log of sqrt of determinant
 
     detval_new = detval_S + detval_T_new
-		
-		
-    C = matmul(n0,Rinv_new)
-    n1T = dot_product(n0,C)
-		
+
+
+    if (numsites .EQ. 1) then
+       C = matmul(n0,Rinv_new)
+       n1T = dot_product(n0,C)
+    else
+       n0_arr = reshape(n0, (/nmeasuretotal, numsites/))
+       C_arr = matmul(matmul(Tinv_new,n0_arr),Sinv)
+       C = reshape(C_arr,(/nmeasuremax/))
+       n1T = dot_product(n0,C)
+    endif
+	
     ! compute P1/P0 
     pT=p1_tau - p0_tau - detval_new*beta + detval_current*beta - 0.5*(n1T - n0T)*beta    ! This way round or should detvals be opposite? 
 
@@ -2011,7 +2162,8 @@ REAL Uinv_new(numsites, numsites), U_new(numsites,numsites)
 REAL C(nmeasuremax), autocorr_vec(numsites)
 REAL y_vars_inv(numsites)
 REAL ga
-
+REAL n0_arr(nmeasuretotal,numsites)
+REAL C_arr(nmeasuretotal,numsites)  
 real (kind =8)  alpha, arg_dum, k_arg_dum
 real (kind =8) arg(numsites,numsites)
 integer ( kind = 4 ) nb, ize, ncalc
@@ -2023,6 +2175,8 @@ rho_new = rho_current + drho
 ! Generate new value of nu
 dnu = random_normal()*stepsize_nu
 nu_new = nu_current + dnu 
+
+U_new(:,:)=0.
 
 if (rho_new .GT. rho_hparam1 .and. rho_new .LT. rho_hparam2 &
     .and. nu_new .GE. nu_hparam1 .and. nu_new .LT. nu_hparam2) THEN
@@ -2047,14 +2201,14 @@ if (rho_new .GT. rho_hparam1 .and. rho_new .LT. rho_hparam2 &
     do ii = 1,numsites 
          do jj = 1,numsites
               arg_dum = arg(ii,jj)
-              if (arg_dum==0.) then
-                   U_new(ii,jj) = 1.
-              else
-                   call rkbesl(arg_dum, alpha, nb, ize, k_arg_dum, ncalc)
-                   k_arg_dum = k_arg_dum*exp(-1*arg(ii,jj))
-                   U_new(ii,jj) = 1/(2**(nu_new-1)*ga)*(sqrt(2*nu_new)*distance(ii,jj)/rho_new)**nu_new*k_arg_dum
-                   !U_new(ii,jj) = exp(-1.*distance(ii,jj)/rho_new)
-              endif
+            !  if (arg_dum==0.) then
+            !       U_new(ii,jj) = 1.
+            !  else
+            !       call rkbesl(arg_dum, alpha, nb, ize, k_arg_dum, ncalc)
+            !       k_arg_dum = k_arg_dum*exp(-1*arg(ii,jj))
+            !       U_new(ii,jj) = 1/(2**(nu_new-1)*ga)*(sqrt(2*nu_new)*distance(ii,jj)/rho_new)**nu_new*k_arg_dum
+                   U_new(ii,jj) = exp(-1.*distance(ii,jj)/rho_new)
+            !  endif
          enddo
     enddo
 
@@ -2075,10 +2229,16 @@ if (rho_new .GT. rho_hparam1 .and. rho_new .LT. rho_hparam2 &
    
     detval_new = detval_S_new + detval_T
 		
-		
-    C = matmul(n0,Rinv_new)
-    n1T = dot_product(n0,C)
-		
+    if (numsites .EQ. 1) then		
+       C = matmul(n0,Rinv_new)
+       n1T = dot_product(n0,C)
+    else
+       n0_arr = reshape(n0, (/nmeasuretotal, numsites/))
+       C_arr = matmul(matmul(Tinv,n0_arr),Sinv_new)
+       C = reshape(C_arr,(/nmeasuremax/))
+       n1T = dot_product(n0,C)
+    endif	
+	
     ! compute P1/P0 
     pT= p1_rho - p0_rho  + p1_nu - p0_nu - detval_new*beta + detval_current*beta - 0.5*(n1T - n0T)*beta    ! This way round or should detvals be opposite? 
 
@@ -2421,7 +2581,7 @@ function Ainv(A)
   call SGETRF(n, n, Ainv, n, ipiv, info)
 
   if (info /= 0) then
-     stop 'Matrix is numerically singular!'
+     stop 'In Ainv: Matrix is numerically singular!'
   end if
 
   ! DGETRI computes the inverse of a matrix using the LU factorization

@@ -23,7 +23,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
 import xray
-import acrg_name_xray as name
+import acrg_name as name
 from acrg_grid import areagrid
 from netCDF4 import Dataset
 from acrg_time.convert import time2sec
@@ -146,7 +146,7 @@ def write_netcdf(flux_mean, flux_percentile, country_mean, country_percentile,
     ncF.close()
     print "Written " + experiment + " to " + outfile
 
-def plot_scaling(data,lon,lat, out_filename=None, fignum=1):
+def plot_scaling(data,lon,lat, out_filename=None, absolute=False, fignum=1):
     
     """
     Plot 2d scaling map of posterior x
@@ -168,10 +168,16 @@ def plot_scaling(data,lon,lat, out_filename=None, fignum=1):
     
     m.drawcoastlines()
     m.drawcountries() 
-    clevels = np.arange(0., 2.0, 0.02)  
- 
+    
+    if absolute == True:
+        clevels = np.arange(-4., 4., 0.1)
+    else:
+        clevels = np.arange(0., 2.0, 0.02)  
+     
     cs = m.contourf(mapx,mapy,data, clevels, extend='both', cmap='RdBu_r')
     cb = m.colorbar(cs, location='bottom', pad="5%")
+    cb.set_label('Scaling of prior')    
+    #cb.set_label('Posterior - prior (kg/m$^{2}$/s)*1.e9')
     if out_filename is not None:
         plt.savefig(out_filename)
         plt.close()
@@ -228,7 +234,7 @@ def country_emissions(ds_mcmc, x_post_vit, x_ap_abs_v, countries, species, domai
     latmax=np.max(ds_mcmc.lat.values)
     area=areagrid(ds_mcmc.lat.values,ds_mcmc.lon.values)
     # GET COUNTRY DATA
-    c_object=name.get_country(domain, ocean=True)
+    c_object=name.get_country(domain, ocean=False)
     cds = xray.Dataset({'country': (['lat','lon'], c_object.country), 
                         'name' : (['ncountries'],c_object.name) },
                                         coords = {'lat': (c_object.lat),
@@ -273,7 +279,7 @@ def country_emissions(ds_mcmc, x_post_vit, x_ap_abs_v, countries, species, domai
         
     return q_country_mean, q_country_05, q_country_16, q_country_50, q_country_84, q_country_95, q_country_ap
     
-def plot_timeseries(ds, species, out_filename=None):
+def plot_timeseries(ds, species, out_filename=None, full_corr=False):
     
     """
     Plot measurement timeseries of posterior and observed measurements
@@ -293,7 +299,10 @@ def plot_timeseries(ds, species, out_filename=None):
     nIC=ds.nIC.values
     nmeasure=len(ds.nmeasure)
     
-    y_obs = ds.y.values
+    if full_corr == True:
+        y_obs = ds.z.values
+    else:
+        y_obs = ds.y.values
     
     x_post_all_it=np.zeros((nIt,Ngrid+nIC))
     y_post_it = np.zeros((nIt,nmeasure))
@@ -302,9 +311,26 @@ def plot_timeseries(ds, species, out_filename=None):
     x_post_all_it[:,:nIC]=x_it[:,:nIC]
     x_post_all_it[:,nIC:]=x_post_vit
     
-    for it in range(nIt):
-        y_post_it[it,:]=np.dot(h_v_all,x_post_all_it[it,:])  
-        y_bg_it[it,:]=np.dot(h_v_all[:,:nIC],x_it[it,:nIC])
+    if full_corr == True:
+        
+        nmeasuremax=len(ds.nmeasuremax)
+        y_post_it_temp = np.zeros((nIt,nmeasuremax))
+        y_bg_it_temp = np.zeros((nIt,nmeasuremax))
+        
+        for it in range(nIt):
+            y_post_it_temp[it,:]=np.dot(h_v_all,x_post_all_it[it,:])  
+            y_bg_it_temp[it,:]=np.dot(h_v_all[:,:nIC],x_it[it,:nIC])
+            
+            timeindex_nonzero = ds.timeindex_nonzero.values
+            y_post_it[it,:] = y_post_it_temp[it,timeindex_nonzero]
+            y_bg_it[it,:] = y_bg_it_temp[it,timeindex_nonzero]    
+    
+    else:
+        for it in range(nIt):
+            y_post_it[it,:]=np.dot(h_v_all,x_post_all_it[it,:])  
+            y_bg_it[it,:]=np.dot(h_v_all[:,:nIC],x_it[it,:nIC])
+        
+        
     
     y_post_mean=np.mean(y_post_it, axis=0)
     y_post_05 = np.percentile(y_post_it, 5, axis=0)  

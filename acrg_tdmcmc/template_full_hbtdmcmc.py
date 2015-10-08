@@ -82,35 +82,40 @@ def get_nsigma_y(fp_data_H,start_date, end_date, bl_period, nmeasuremax):
 #start_date = args.start
 #end_date = args.end
     
-#sites=['MHD', 'TAC']
-#av_period=['2H', '2H']
+#sites=['MHD', 'TAC', 'RGL']
+#av_period=['2H', '2H', '2H']
 sites=['MHD']
 av_period=['2H']
 #sites=['MHD', 'TAC', 'RGL', 'TTA']
 #av_period=['2H', '2H', '2H', '2H']
 species='CH4'
-start_date = '2014-06-01'
-end_date = '2014-07-01'
+start_date = '2014-04-01'
+end_date = '2014-05-01'
 domain='EUROPE'
 
+"""
+KEEP PLUGGING AWAY AT THIS TILL I DISCOVER WHAT IT IS THAT MAKES IT NOT WORK!!
+"""
 
-bl_period=10           # No. of days for which each sigma_y value applies
+rjmcmc=1
+
+bl_period=30           # No. of days for which each sigma_y value applies
 kmin=4       
 kmax=250    
 k_ap = 100   
-nIt=10000       # of iterations
-burn_in=10000     # of iterations to discard
+nIt=1000       # of iterations
+burn_in=1000     # of iterations to discard
 nsub=100      # nsub=100=store every 100th iteration)
 #sigma_y=0.02     # Model-measurement uncertainty, in % (e.g. 0.05) DEFINED LATER
                  
-nbeta=8       # Number of parallel chains
+#nbeta=8       # Number of parallel chains
 #beta= np.array((1.,1./2.,1./4.,1./8.,1./16.,1./32.,1./64.,1./128)) 
 
-beta=np.array((1., np.exp(-0.125),np.exp(-0.25),np.exp(-0.5),
-               np.exp(-1.),np.exp(-2.), np.exp(-4.), np.exp(-8.)))
+#beta=np.array((1., np.exp(-0.125),np.exp(-0.25),np.exp(-0.5),
+#               np.exp(-1.),np.exp(-2.), np.exp(-4.), np.exp(-8.)))
 
-#nbeta=4       # Number of parallel chains
-#beta= np.array((1.,1./2.,1./512.,1./64.)) 
+nbeta=4       # Number of parallel chains
+beta= np.array((1.,1./2.,1./512.,1./64.)) 
 
 
 #x_pdf=np.array([3,3])  # 1 = UNIFORM, 2=GAUSSIAN, 3=LOGNORMAL  1st term for fixed terms, 2nd for variable
@@ -147,7 +152,7 @@ stepsize_pdf_p1=0.1*0.
 stepsize_pdf_p2=0.05
 
 deltatime=2.
-tau0 = 24.
+tau0 = 8.
 
 ############################################################
 #%%
@@ -161,7 +166,7 @@ fp_data_H2 = name.fp_sensitivity(fp_all, domain=domain, basis_case='transd')
 
 fp_data_H2=name.bc_sensitivity(fp_data_H2, domain=domain)
 
-fp_data_H = name.filtering(fp_data_H2, ["pblh_gt_250"], full_corr=True)
+fp_data_H = name.filtering(fp_data_H2, ["pblh_gt_500"], full_corr=True)
 #fp_data_H = name.filtering(fp_data_H2, ["pblh_gt_500", "daily_median"])
 
 lat = np.asarray(fp_data_H[sites[0]].sub_lat)
@@ -179,7 +184,7 @@ y_all = []
 y_error=[]
 y_site = []
 y_time = []
-H_bc=[]
+#H_bc=[]
 
 for si, site in enumerate(sites):
     
@@ -200,7 +205,7 @@ for si, site in enumerate(sites):
     else:
         y_error.append(0.002*fp_data_H3.mf.values)
     
-    H_bc.append(fp_data_H3.bc.values)
+    #H_bc.append(fp_data_H3.bc.values)
     sub_flux_temp = fp_data_H3.flux.sel(lon=slice(lonmin,lonmax), 
                                     lat=slice(latmin,latmax))
     
@@ -208,27 +213,32 @@ for si, site in enumerate(sites):
         H_fixed2=fp_data_H3.H
         H_vary2=fp_data_H3.sub_fp
         q_ap2=sub_flux_temp
+        H_bc2=fp_data_H3.H_bc
               
     else:
         H_fixed2=xray.concat((H_fixed2,fp_data_H3.H), dim="time")    
         H_vary2=xray.concat((H_vary2,fp_data_H3.sub_fp),dim="time" )  
         q_ap2=xray.concat((q_ap2,sub_flux_temp), dim="time") 
+        H_bc2=xray.concat((H_bc2,fp_data_H3.H_bc), dim="time") 
 
 if H_fixed2.dims[0] != "time":
     H_fixed2=H_fixed2.transpose()
     H_vary2=H_vary2.transpose("time","sub_lat","sub_lon")
     q_ap2=q_ap2.transpose("time","lat","lon")
+if H_bc2.dims[0] !="time":
+    H_bc2=H_bc2.transpose()
     
 H_fixed=H_fixed2.values
 H_vary=H_vary2.values
 q_ap=q_ap2.values
+H_bc=H_bc2.values
  
 y_all = np.hstack(y_all)
 
 y_error=np.hstack(y_error)
 y_site = np.hstack(y_site)
 y_time = np.hstack(y_time)
-H_bc = np.hstack(H_bc)
+#H_bc = np.hstack(H_bc)
 
 q_ap0=q_ap[0,:,:].copy()
 q_ap_v = np.ravel(q_ap0)
@@ -248,19 +258,31 @@ nmeasuremax= len(y_all)
 nmeasuretotal= nmeasuremax/numsites
 nmeasure = len(z)
 
+
+tindex_zero_temp = np.arange(nmeasuremax)
+timeindex_zero=np.delete(tindex_zero_temp, timeindex_nonzero)
+
 #############################################
 
 h_v = np.zeros((nmeasuremax,Ngrid))
 for ti in range(nmeasuremax):                                    
     h_v[ti,:] = np.ravel(H_vary[ti,:,:])*q_ap_v   # Create sensitivty matrix spatially vectorised
     
-    
+
+# If these lines are set then correlations revert to small - i.e tau=2 rho=40.
+# Solution map looks odd, very jagged and not smooth
+# Think that means it's not an acceptable approach.    
+#for ti in timeindex_zero:
+#    h_v[ti,:] = 0.
+#    H_bc[ti,:] = 0.
+#    H_fixed[ti,:] = 0.
 
 #%%
 ############################################################
 # Create IC  
-#nBC=len(fp_data_H[sites[0]].region_bc)
-nBC=1
+nBC=len(fp_data_H[sites[0]].region_bc)
+#nBC=1
+#nBC=numsites
 nfixed = len(fp_data_H[sites[0]].region)
 
 R_indices, ydim1, ydim2 = get_nsigma_y(fp_data_H,start_date, end_date, bl_period, nmeasuremax)
@@ -271,9 +293,17 @@ h_agg0 = np.zeros((nmeasuremax,k_ap+nIC))
 #q_agg0 = np.zeros((k_ap+nIC))
 x_agg=np.zeros((k_ap+nIC))+1.  
 
+#h_bc_temp=np.asarray(H_bc)
+#for ii in range(nBC):
+#    h_agg0[nmeasuretotal*ii:nmeasuretotal*(ii+1),ii]=h_bc_temp[ii,:]
+
+
+
 #q_agg0[:nIC]=1.
-h_agg0[:,0]=H_bc*0.91
+#h_agg0[:,0]=H_bc*0.91
+h_agg0[:,:nBC]=H_bc*0.95
 h_agg0[:,nBC:nIC]=H_fixed
+
 
 #%%
 # Define prior model uncertainty
@@ -293,10 +323,10 @@ sigma_yt_pdf = 1   # UNIFORM
 sigma_ys_pdf = 1   # UNIFORM
 
 tau_pdf=1 # UNIFORM
-stepsize_tau=5.
-tau_hparams=np.array([0.1, 144.])
+stepsize_tau=2.
+tau_hparams=np.array([0., 24.])
 
-stepsize_y=0.02
+stepsize_y=0.01
 
 #%%
 
@@ -329,7 +359,8 @@ for ib in range(nbeta):
     y[:,ib] = np.dot(h_agg0,x_agg) 
     
     h_agg[:,:k_ap+nIC,ib] = h_agg0.copy()
-        
+ 
+
 #################################
 #%%
 # Define spatial correlation
@@ -338,14 +369,28 @@ for ib in range(nbeta):
 # Create Matern covariance for spatial correlation
 
 nu0 = 0.50
-rho0 = 150.
+rho0 = 100.
 distance = np.zeros((numsites,numsites))
 if numsites==1:
     distance=0.
     space_corr=1.
 elif numsites==2:
-
-    space_corr=np.ones((2,2))
+    
+    distance[0,1]=250.
+    distance[1,0]=250.
+    
+    space_corr=np.zeros((2,2))
+    for ii in range(2):
+        space_corr[ii,ii]=1.
+        
+elif numsites==3:
+    mhd_dist = [0.,700.,470.]
+    tac_dist = [700.,0.,250.]
+    rgl_dist = [470.,250.,0.]
+    
+    distance[0,:] = mhd_dist
+    distance[1,:] = tac_dist
+    distance[2,:] = rgl_dist
 elif numsites==4:
 
     mhd_dist = [0.,700.,470.,525.]
@@ -396,11 +441,11 @@ elif numsites==4:
 
 rho_pdf=1
 nu_pdf=1
-rho_hparams=np.array([1., 1000.])
-nu_hparams=np.array([0.49,2.5])
+rho_hparams=np.array([0., 1000.])
+nu_hparams=np.array([0.499,2.5])
 
-stepsize_rho=20.
-stepsize_nu=0.2
+stepsize_rho=50.
+stepsize_nu=0.2*0.
 
 #%%
 # MCMC Parameters
@@ -448,9 +493,9 @@ timeindex_nonzero=timeindex_nonzero+1
 stepsize_all=np.zeros((nIC+1))+stepsize
 stepsize_pdf_p1_all=np.zeros((nIC+1))+(stepsize_pdf_p1*pdf_param10)
 stepsize_pdf_p2_all=np.zeros((nIC+1))+(stepsize_pdf_p2*pdf_param20)
-stepsize_all[0]=stepsize_all[0]/200.
-stepsize_pdf_p1_all[0]=stepsize_pdf_p1_all[0]/10.
-stepsize_pdf_p2_all[0]=stepsize_pdf_p2_all[0]/10.
+stepsize_all[:nBC]=stepsize_all[:nBC]/100.
+stepsize_pdf_p1_all[:nBC]=stepsize_pdf_p1_all[:nBC]/10.
+stepsize_pdf_p2_all[:nBC]=stepsize_pdf_p2_all[:nBC]/10.
 #stepsize_all[-1]=stepsize_all[-1]*1.2
 
 pdf_param1[:,:]=pdf_param10
@@ -476,8 +521,6 @@ startt = run_time.time()
 
 ### This one based on hb_td_mcmc_acrg.f90
 
-rjmcmc=1
-
 k_it, x_out, regions_out, plon_out, plat_out, n0T_out, y_out, \
 sigma_yt_out, sigma_ys_out, tau_out, pdf_param1_out, pdf_param2_out, rho_out, nu_out,  \
 accept, reject, accept_birth, reject_birth, accept_death, reject_death, \
@@ -493,7 +536,6 @@ x_pdf, pdf_param1_pdf, pdf_param2_pdf, sigma_yt_pdf, sigma_ys_pdf, tau_pdf,
 rho, nu, rho_hparams, nu_hparams, stepsize_rho, stepsize_nu, rho_pdf, nu_pdf, rjmcmc,
 lonmin, lonmax, latmin, latmax, kmin, sigma_bd, burn_in, nIt,nmeasuretotal, nsub, nIC, nit_sub, 
 nmeasure, nmeasuremax, ydim1, ydim2, Ngrid, nlon, kICmax,nlat, nbeta, kmax,numsites, nIC1)
-
 
 endt=run_time.time()
 
@@ -598,7 +640,7 @@ m.drawcoastlines()
 m.drawstates()
 m.drawcountries() 
 
-clevels = np.arange(0., 2., 0.1)  
+clevels = np.arange(0., 2., 0.04)  
 
 cs = m.contourf(mapx,mapy,x_post_mean, clevels, extend='both', cmap='RdBu_r')
 cb = m.colorbar(cs, location='bottom', pad="5%")  
@@ -698,11 +740,28 @@ uk_ap = uk_ap*16.04/1000.*365.*24.*3600./1.e9
 # Set up post-mcmc dataset
 
 
+props_temp=["birth", "death", "move", "sigma_yt", "tau", "sigma_ys", "rho", "swap"]
+#strs = ["" for ii in range(nIC1)]
+props = np.zeros((nIC1+len(props_temp)),dtype=object)
+accepts = np.zeros((nIC1+len(props_temp)))
+rejects = np.zeros((nIC1+len(props_temp)))
+for ii in range(nBC):
+    props[ii]="bc"+str(ii)
+for jj in range(nfixed):
+    props[jj+nBC]="fixed"+str(jj)
+props[nIC1-1] = "vary"
+props[nIC1:] = props_temp
 
-"""
+accepts[:nIC1]=accept
+rejects[:nIC1]=reject
 
-props=["x_update", "birth", "death", "move", "sigma_y", "swap"]
+accepts[nIC1:] = [accept_birth,accept_death,
+                         accept_move,accept_sigma_yt, accept_tau,
+                         accept_sigma_ys, accept_rho, accept_swap]
 
+rejects[nIC1:] = [reject_birth,reject_death,
+                         reject_move,reject_sigma_yt, reject_tau,
+                         reject_sigma_ys, reject_rho, reject_swap]
 
 post_mcmc = xray.Dataset({"x_it": (["nIt", "kICmax"],
                         x_it),
@@ -716,19 +775,20 @@ post_mcmc = xray.Dataset({"x_it": (["nIt", "kICmax"],
                         plon_out),
                         "plat_it": (["kmax","nIt"],
                         plat_out),
-                        "sigma_y_it": (["nmeasure", "nIt"],
-                        sigma_y_out),
+                        "sigma_yt_it": (["ydim2", "nIt"],
+                        sigma_yt_out),
                         "n0T_it": (["nIt"],
                         n0T_out),
-                        "y": (["nmeasure"], y),
-                        "accepts": (["proposal"],
-                        [accept,accept_birth,accept_death,
-                         accept_move,accept_sigma_y, accept_swap]),
-                        "rejects": (["proposal"],
-                        [reject,reject_birth,reject_death,
-                         reject_move,reject_sigma_y, (nIt/2-accept_swap)]),
-                        "h_v_all": (["nmeasure","NgridIC"],
+                        "tau_it": (["nIt"],
+                        tau_out),
+                        "z": (["nmeasure"], z),
+                         "y_time": (["nmeasuremax"], y_time),
+                        "accepts": (["proposal"], accepts),
+                        "rejects": (["proposal"], rejects),
+                        "h_v_all": (["nmeasuremax","NgridIC"],
                         h_v_all), 
+                        "timeindex_nonzero": (["nmeasure"],
+                        timeindex_nonzero-1), 
                         "q_ap": (["lat", "lon"],
                         q_ap0), 
                         "nIC": nIC,
@@ -743,4 +803,4 @@ output_directory="/PATH/TO/OUTPUTS/"
 #fname=os.path.join(output_directory,
 #                    "output_" + network + "_" + species + "_" + start_date + ".nc")
 #post_mcmc.to_netcdf(path=fname, mode='w')
-"""
+
