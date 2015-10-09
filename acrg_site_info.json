@@ -110,7 +110,7 @@
         "height_name": ["100magl", "50magl"],
         "latitude": 50.97675,
         "longitude": 0.23048,
-        "network": "DECC"
+        "network": "GAUGE"
     },
     "MHD" : {
         "alt" : ["MH"],
