@@ -36,6 +36,7 @@ from acrg_time import convert
 import json
 import datetime as dt
 import xray
+import pdb
 
 acrg_path = getenv("ACRG_PATH")
 data_path = getenv("DATA_PATH")
@@ -251,7 +252,7 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
             skip = False
             
             ncf=Dataset(join(data_directory, f), 'r')
-    
+            
             if "time" not in ncf.variables:
                 print("Skipping: " + f + ". No time variable")
                 skip = True
@@ -262,6 +263,9 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
                                             ncf.variables["time"].units[14:])
                 elif ("minutes" in ncf.variables["time"].units) is True:
                     time = convert.min2time(ncf.variables["time"][:], 
+                                            ncf.variables["time"].units[14:]) 
+                elif ("hours" in ncf.variables["time"].units) is True:
+                    time = convert.hours2time(ncf.variables["time"][:], 
                                             ncf.variables["time"].units[14:]) 
                 elif ("days" in ncf.variables["time"].units) is True:
                     time = convert.day2time(ncf.variables["time"][:], 
