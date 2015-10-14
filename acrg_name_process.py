@@ -917,8 +917,8 @@ def satellite_vertical_profile(fp, satellite_obs_file):
     if np.abs(sat.lon.values[0] - fp.release_lon.values[0,0]) > 1.:
         print("WARNING: Satellite longitude doesn't match footprints")
     if np.abs(sat.lat.values[0] - fp.release_lat.values[0,0]) > 1:
-        print("WARNING: Satellite latitude doesn't match footprints")        
-    if np.abs(sat.time.values[0] - fp.time.values[0]) > 60*1e9:
+        print("WARNING: Satellite latitude doesn't match footprints")
+    if np.abs(sat.time.values[0] - fp.time.values[0]).astype(int) > 60*1e9:
         print("WARNING: Satellite time doesn't match footprints")
     if len(fp.time.values) > 1:
         print("ERROR: satellite comparison only for one time step at the moment")
@@ -1002,7 +1002,7 @@ def process(domain, site, height, year, month,
             met_folder = "Met",
             processed_folder = "Processed_Fields_files",
             satellite = False,
-            force_update = True,
+            force_update = False,
             perturbed_folder = None):
     '''
     Process a single month of footprints for a given domain, site, height,
