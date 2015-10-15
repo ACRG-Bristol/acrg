@@ -6,7 +6,7 @@
         "height_name": ["110magl", "50magl", "250magl"],
         "latitude": 54.35858,
         "longitude": -1.15033,
-        "network": "DECC"
+        "network": "GAUGE"
     },
     "BTT" : {
         "alt": ["BTTOWER", "BT TOWER", "BT_TOWER"],
@@ -23,10 +23,24 @@
         "height": ["10m"],
         "height_name": ["10magl"]
     },
+    "CLA" : {
+        "alt": [""],
+        "long_name" : "Comilla, Bangladesh",
+        "height": ["10m"],
+        "height_name": ["10magl"],
+        "network": "NIES"
+    },
+    "CRI" : {
+        "alt": [""],
+        "long_name" : "Cape Rama, India",
+        "height": ["6m"],
+        "height_name": ["10magl"],
+        "network": "CSIRO"
+    },
     "DJI" : {
         "alt": [""],
         "long_name" : "Darjeeling, India",
-        "height": ["20m"],
+        "height": ["10m"],
         "height_name": ["500magl"],
         "network": "AGAGE"
     },
@@ -96,7 +110,7 @@
         "height_name": ["100magl", "50magl"],
         "latitude": 50.97675,
         "longitude": 0.23048,
-        "network": "DECC"
+        "network": "GAUGE"
     },
     "MHD" : {
         "alt" : ["MH"],
@@ -115,6 +129,13 @@
         "latitude": 51.997435,
         "longitude": -2.53990,
         "network": "DECC"
+    },
+    "SNG" : {
+        "alt": [""],
+        "long_name" : "Sinhagad, India",
+        "height": ["10m"],
+        "height_name": ["10magl"],
+        "network": "IITM"
     },
     "TAC" : {
         "alt": [],

@@ -80,6 +80,14 @@ def min2time(minutes, time_reference):
     return return_iter([time_ref +
         dt.timedelta(minutes=m) for m in minutes], notIter)
 
+def hours2time(hours, time_reference):
+    
+    hours, notIter = check_iter(hours)
+    
+    time_ref = reftime(time_reference)
+
+    return return_iter([time_ref +
+        dt.timedelta(hours=m) for m in hours], notIter)
 
 def day2time(days, time_reference):
     

@@ -1,0 +1,8 @@
+
+ifort -c mod_MCMC.f90 -openmp
+
+ifort -c hierarchical_MCMC_fullcovariance_Kronecker.f90 -openmp -I/usr/local/netcdf-3.6.3/include
+
+ifort hierarchical_MCMC_fullcovariance_Kronecker.o mod_MCMC.o -L/opt/intel/mkl/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -openmp /usr/local/netcdf-3.6.3/lib/libnetcdf.a -O3 -o MCMC.bin
+
+

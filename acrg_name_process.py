@@ -2,6 +2,26 @@
 """
 Created on Thu May  7 10:34:25 2015
 
+To use this script, you will need to have a directory, labeled as:
+DOMAIN_SITE_HEIGHT (e.g. EUROPE_MHD_10magl), with the following structure:
+
+Met/
+Fields_files/
+Particle_files/
+Processed_Fields_files/
+Observations/ (satellite/column footprints only)
+
+Each file in Fields_files/ and Particle_files/ must end with a date string
+(format YYYYMMDD) which must be present in both folders 
+e.g. fields_file_YYYYMMDD.txt.gz.
+
+To process all files in a folder run:
+
+process_all("DOMAIN", "SITE")
+
+Output netCDF files are created one file per month, per domain, per site
+in the Processed_Fields_files directory.
+
 @author: chxmr
 """
 
@@ -34,6 +54,10 @@ namever=3
 UTC_format = '%H%M%Z %d/%m/%Y'
 NAMEIII_short_format = '%d/%m/%Y  %H:%M %Z'
 
+# Define default met parameters. The keys are the column headings
+#  in the Pandas dataframe that is created by read_met,
+#  the values are the search strings that are used in read_met
+#  to read the column headings
 met_default = {"time": "             T",
                "press": "Pressure (Pa)",
                "temp": "Temperature (C)",
@@ -45,10 +69,17 @@ met_default = {"time": "             T",
 
 def load_NAME(file_lines, namever):
     """
-    Loads the Met Office's NAME III grid output files returning headers, column definitions and data arrays as 3 separate lists.
+    Loads the Met Office's NAME III grid output files returning
+    headers, column definitions and data arrays as 3 separate lists.
     
-    For a technical specification see http://www-hc.metoffice.com/~apdg/nameiii/ModelDocumentation/md2_4_v2%28Output%29.pdf
+    For a technical specification see 
+    http://www-hc.metoffice.com/~apdg/nameiii/ModelDocumentation/md2_4_v2%28Output%29.pdf
     
+    Inputs to this routine are a list of file text lines (extracted using
+    the extract_file_lines routine), and the NAME version.
+
+    Where I've modified the original Met Office routine to accept file_lines, 
+    rather than the file itself, I've put the initials MLR
     """
     # loading a file gives a generator of lines which can be progressed using the next() method. 
     # This will come in handy as we wish to progress through the file line by line.
@@ -169,6 +200,10 @@ def load_NAME(file_lines, namever):
     
 
 def extract_file_lines(fname):
+    '''
+    Determine whether file is zipped or not, and then extract text into
+    file_lines variable.
+    '''
     
     if fname[-3:].upper() == ".GZ":
         #Unzip file
@@ -183,7 +218,10 @@ def extract_file_lines(fname):
 
 
 def read_file(fname):
-
+    '''
+    Read a given fields file and break into header, column_headings and data_arrays
+    '''
+    
     global namever
     
     #Extract line-by-line file contents from either txt.gz or txt file    
@@ -203,6 +241,13 @@ def read_file(fname):
 
 
 def define_grid(header, column_headings, satellite = False):
+    '''
+    Largely taken from Met Office Python code.
+    
+    Define output grid using file header information.
+    
+    For satellite instructions, see satellite_vertical_profile.
+    '''
 
     #Get file info
     z_level=column_headings['z_level'][4:]
@@ -283,7 +328,31 @@ def define_grid(header, column_headings, satellite = False):
     return lons, lats, levs, time, timeStep
 
 
+def met_empty():
+    '''
+    Create an empty Met dictionary. Not recommended.
+    '''
+    
+    met = pandas.DataFrame({key: 0. for key in met_default.keys() if key != "time"},
+                          index = [dt.datetime(1900, 1, 1), dt.datetime(2020, 1, 1)])
+    met.index.name = "time"
+    met["press"] = [100000., 100000.]
+    met["temp"] = [280., 280.]
+    
+    print("WARNING: NO MET")
+
+    return met
+
+
 def read_met(fnames):
+    '''
+    For a given list of filenames, extract site meteorology and concatenate
+    into a Pandas dataframe.
+    
+    A dictionary of output column names and met file header search strings
+    is given in the met_default dictionary at the top of this file.
+    '''
+
 
     if isinstance(fnames, list):
         fnames.sort()
@@ -394,6 +463,9 @@ def read_met(fnames):
 
 def particle_locations(particle_file, time, lats, lons, levs, heights,
                        id_is_lev = False):
+    '''
+    Read and process a particle location file.
+    '''
 
     def particle_location_edges(xvalues, yvalues, x, y):
         
@@ -436,7 +508,7 @@ def particle_locations(particle_file, time, lats, lons, levs, heights,
         compression=None
     
     df = pandas.read_csv(particle_file, compression=compression, sep=r"\s+")
-
+    
     for i in set(numpy.array(df["Id"])):
         
         if id_is_lev:
@@ -472,10 +544,22 @@ def particle_locations(particle_file, time, lats, lons, levs, heights,
         #Calculate total particles and normalise
         hist_sum = hist[slice_dict].sum()
         particles = sum([hist_sum[key].values for key in hist_sum.keys()])
-        for key in hist.data_vars.keys():
-            hist[key][slice_dict] = hist[key][slice_dict]/\
-                                            particles
-
+        print("Number of particles reaching edge: %f02" %particles)
+        if particles > 0.:
+            for key in hist.data_vars.keys():
+                hist[key][slice_dict] = hist[key][slice_dict]/\
+                                                particles
+        else:
+            print("WARNING: No particles have reached edge")
+            if i > 1:
+                print("WARNING: Copying lower level/previous time step")
+                if id_is_lev:
+                    slice_dict_prev = {"time": [0], "lev": [i-2]}
+                else:
+                    slice_dict_prev = {"time": [i-2]}
+                for key in hist.data_vars.keys():
+                    hist[key][slice_dict] = hist[key][slice_dict_prev]
+        
         # Store extremes
         if max(df["Lat"]) > particle_extremes["N"]:
             particle_extremes["N"] = max(df["Lat"])
@@ -504,6 +588,10 @@ def footprint_array(fields_file,
                     met = None,
                     satellite = False,
                     time_step = None):
+    '''
+    Convert text output from a given file files into arrays in an 
+    xray dataset.
+    '''
 
     print("Reading ... " + fields_file)
     header, column_headings, data_arrays = read_file(fields_file)
@@ -602,6 +690,17 @@ def footprint_concatenate(fields_prefix,
                           datestr = "*",
                           met = None,
                           satellite = False, time_step = None):
+    '''
+    For a given file search string (fields_prefix), find all fields and particle
+    files, read them and concatenate the output arrays.
+    
+    Returns an xray dataset.
+    
+    Example:
+    
+    fp_dataset = footprint_concatenate("/dagage2/agage/metoffice/NAME_output/MY_FOOTPRINTS_FOLDER/Fields_Files/filename_prefix")
+    '''
+    
 
     # If no meteorology, get null values
     # THIS IS NOT RECOMMENDED. ERRORS of ~ ±10%.
@@ -631,7 +730,7 @@ def footprint_concatenate(fields_prefix,
         particle_files = [None for f in fields_files]
 
 
-    # Create a list of xray objects
+    # Create a list of xray datasets
     fp = []
     if len(fields_files) > 0:
         for fields_file, particle_file in \
@@ -657,6 +756,12 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
             PBLH=None, varname="fp",
             release_lon = None, release_lat = None,
             particle_locations=None, particle_heights=None):
+    '''
+    This routine writes a netCDF file with footprints, particle locations
+    meteorology, and release locations.
+    
+    NOTE that netCDF4 is required, as we make use of compression.    
+    '''
     
     time_seconds, time_reference = time2sec(time)
     
@@ -667,7 +772,7 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
     ncF.createDimension('lat', len(lats))
     ncF.createDimension('lev', 1)
     
-    nctime=ncF.createVariable('time', 'i', ('time',))
+    nctime=ncF.createVariable('time', 'f', ('time',))
     nclon=ncF.createVariable('lon', 'f', ('lon',))
     nclat=ncF.createVariable('lat', 'f', ('lat',))
     nclev=ncF.createVariable('lev', 'str', ('lev',))
@@ -681,10 +786,10 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
     nctime.calendar='gregorian'
 
     nclon[:]=lons
-    nclon.units='Degrees east'
+    nclon.units='Degrees_east'
     
     nclat[:]=lats
-    nclat.units='Degrees north'
+    nclat.units='Degrees_north'
 
     nclev[:]=numpy.array(levs)
     
@@ -725,13 +830,13 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
         ncRlon=ncF.createVariable('release_lon', 'f', ('time',), zlib = True,
                             least_significant_digit = 4)
         ncRlon[:]=release_lon
-        ncRlon.units='Degrees east'
+        ncRlon.units='Degrees_east'
 
     if release_lat is not None:
         ncRlat=ncF.createVariable('release_lat', 'f', ('time',), zlib = True,
                             least_significant_digit = 4)
         ncRlat[:]=release_lat
-        ncRlat.units='Degrees north'
+        ncRlat.units='Degrees_north'
 
     if particle_locations is not None:
         ncF.createDimension('height', len(particle_heights))
@@ -740,16 +845,16 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
                                     zlib = True, least_significant_digit = 4)
         ncPartN=ncF.createVariable('particle_locations_n', 'f',
                                    ('height', 'lon', 'time'),
-                                    zlib = True, least_significant_digit = 4)
+                                    zlib = True, least_significant_digit = 7)
         ncPartE=ncF.createVariable('particle_locations_e', 'f',
                                    ('height', 'lat', 'time'),
-                                    zlib = True, least_significant_digit = 4)
+                                    zlib = True, least_significant_digit = 7)
         ncPartS=ncF.createVariable('particle_locations_s', 'f',
                                    ('height', 'lon', 'time'),
-                                    zlib = True, least_significant_digit = 4)
+                                    zlib = True, least_significant_digit = 7)
         ncPartW=ncF.createVariable('particle_locations_w', 'f',
                                    ('height', 'lat', 'time'),
-                                    zlib = True, least_significant_digit = 4)
+                                    zlib = True, least_significant_digit = 7)
         ncHeight[:]=particle_heights
         ncPartN[:, :, :]=particle_locations["N"]
         ncPartE[:, :, :]=particle_locations["E"]
@@ -766,6 +871,114 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
     
     ncF.close()
     print "Written " + outfile
+
+
+def satellite_vertical_profile(fp, satellite_obs_file):
+    '''
+    Do weighted average by satellite averaging kernel and
+    pressure weight. One time point only. Expects xray.dataset
+    with one time point and N vertical levels.
+    
+    fp = footprint for ONE time point. N levels in lev dimension 
+        with footprints and particle locations defined at each level
+    satellite_obs_file = NetCDF-format satellite observation file,
+        one per time step
+        
+    Requirements for running processing satellite footprints
+    
+    General file naming: Files/folders need to have a date string of the form
+        YYYYMMDD-II at the end of the file/folder name,
+        where II is a two-digit index corresponding to the
+        sequence of footprints throughout the day. This modifies the usual
+        naming convention for surface sites, which are only YYYYMMDD.
+    Met: The Met/ folder MUST contain a set of subfolders which are labeled
+        with the YYYYMMDD-II time stamp. Each of these subfolders should then
+        contain nLev Met output files, where nLev are the number of vertical
+        levels in the NAME output. This is required so that we know
+        what pressure/temperature each NAME footprint for each vertical level
+        corresponds to. The files can be named in any way, but the file names
+        must be in ascending order when sorted (i.e. blah_01.txt.gz, blah_02.txt.gz).
+    Fields files:
+        There must be ONE fields file per time stamp, labeled at the end
+        of the file string with YYYYMMDD-II (e.g. blah_YYYYMMDD-II.txt.gz).
+        The fields file must contain exactly nLev columns, one for each vertical
+        level, in ascending order, left to right.
+    Particle location files:
+        There must be ONE fields file per time stamp, labeled at the end
+        of the file string with YYYYMMDD-II (e.g. blah_YYYYMMDD-II.txt.gz).
+        The ID column in this file must contain nLev values in ascending order
+        specifying the vertical level that each particle belongs to.    
+    '''
+    
+    print("Reading satellite obs file: " + satellite_obs_file)
+    with xray.open_dataset(satellite_obs_file) as f:
+        sat = f.load()
+        
+    if np.abs(sat.lon.values[0] - fp.release_lon.values[0,0]) > 1.:
+        print("WARNING: Satellite longitude doesn't match footprints")
+    if np.abs(sat.lat.values[0] - fp.release_lat.values[0,0]) > 1:
+        print("WARNING: Satellite latitude doesn't match footprints")
+    if np.abs(sat.time.values[0] - fp.time.values[0]).astype(int) > 60*1e9:
+        print("WARNING: Satellite time doesn't match footprints")
+    if len(fp.time.values) > 1:
+        print("ERROR: satellite comparison only for one time step at the moment")
+        return fp
+    if len(sat.time.values) > 1:
+        print("ERROR: satellite comparison only for one time step at the moment")
+        return fp
+
+    if not np.allclose((fp.pl_n.sum() + fp.pl_e.sum() + \
+                        fp.pl_s.sum() + fp.pl_w.sum()), \
+                        len(fp.lev)):
+        print("ERROR: Particle histograms dont add up to 1 (or nlev)")
+        return None
+
+    # Change timestamp to that from obs file
+    #  because NAME output only has 1 minute resolution
+    fp = fp.reindex_like(sat.time, method = "nearest")
+
+    # Interpolate pressure levels
+    variables = ["fp", "pl_n", "pl_e", "pl_s", "pl_w"]
+    out = {}
+
+    # Weight levels using pressure weight and averaging kernel
+    sum_ak_pw = np.sum(sat.pressure_weights.values.squeeze() * \
+                       sat.xch4_averaging_kernel.values.squeeze())
+    sum_particle_count = 0.
+    
+    for variable in variables:
+
+        fp_lev = int(np.abs(fp.press - \
+                            sat.pressure_levels[dict(lev = 0)]*100.).argmin())
+        var = fp[variable][{"lev": fp_lev}].values.squeeze() * \
+              sat.pressure_weights.values.squeeze()[0] * \
+              sat.xch4_averaging_kernel.values.squeeze()[0]
+        out[variable] = var.reshape((1, 1) + var.shape)
+
+        for lev, press in enumerate(sat.pressure_levels.values.squeeze()[1:]):
+            fp_lev = np.abs(fp.press.values.squeeze() - press*100.).argmin()
+            var = fp[variable][{"lev": fp_lev}].values.squeeze() * \
+                  sat.pressure_weights.values.squeeze()[lev+1] * \
+                  sat.xch4_averaging_kernel.values.squeeze()[lev+1]
+            out[variable] += var.reshape((1, 1) + var.shape)
+            
+        if variable[0:2] == "pl":
+            sum_particle_count += out[variable].sum()
+
+    # Check whether particle sum makes sense
+    if not np.allclose(sum_particle_count, sum_ak_pw):
+        print("ERROR: Particle fractions don't match averaging_kernel * " + \
+              "pressure_weight")
+        return None
+
+    # Compress dataset to one level and store column averages
+    fp = fp[dict(lev = [0])]
+    for variable in variables:
+        fp[variable].values = out[variable]
+    
+    fp["lev"] = numpy.array(["column"])
+    
+    return fp
 
 
 def process_basic(fields_folder, outfile):
@@ -789,9 +1002,43 @@ def process(domain, site, height, year, month,
             met_folder = "Met",
             processed_folder = "Processed_Fields_files",
             satellite = False,
-            force_update = True):
+            force_update = False,
+            perturbed_folder = None):
+    '''
+    Process a single month of footprints for a given domain, site, height,
+    year, month. If you want to process all files for a given domain + site
+    use process_all.
+    
+    This routine finds all fields files and particle location files which match
+    the timestamp in the file name. The date strings are stored in the datestr
+    variable, and these strings must match exactly for the fields and the particle
+    locations.
+    
+    At the moment, the entire Met folder is read each time.
+    
+    Options:
+    force_update: By default, any existing netCDF files are NOT overwritten.
+        To explicitly over-write a file, set force_update = True
+    satellite: Read a "column" of footprints. There are very particular rules
+        about how the met, footprints and particle location files are stored
+        and named. See extra instructions in satellite_vertical_profile. 
+    perturbed_folder: Process a subfolder which has all of the required folders
+        (Fields_files, etc). This is for perturbed parameter ensembles for 
+        a particular site. E.g. for EUROPE_BSD_110magl/Perturbed/PARAMETERNAME_VALUE
+        you'd set:
+            perturbed_folder = "Perturbed/PARAMETERNAME_VALUE"
+
+    Outputs:
+    This routine outputs a copy of the xray dataset that is written to file.
+    '''
     
     subfolder = base_dir + domain + "_" + site + "_" + height + "/"
+    
+    if perturbed_folder is not None:
+        if perturbed_folder[-1] == "/":
+            subfolder += perturbed_folder
+        else:
+            subfolder += perturbed_folder + "/"
     
     # Check for manual timestep (if footprints are for < 1min,
     # which is the min resolution of the NAME output file)    
@@ -806,7 +1053,7 @@ def process(domain, site, height, year, month,
         file_search_string = subfolder + fields_folder +"/*" + str(year) \
                         + str(month).zfill(2) + "*.txt*"
         fields_files = glob.glob(file_search_string)
-        datestrs = sorted([f.split("_")[-1].split(".")[0] for f in fields_files])
+        datestrs = sorted([fi.split("_")[-1].split(".")[0] for fi in fields_files])
 
         # Check that we've found something
         if len(datestrs) == 0:
@@ -816,12 +1063,10 @@ def process(domain, site, height, year, month,
     else:
         datestrs = [str(year) + str(month).zfill(2)]
 
-
     # Output filename
     outfile = subfolder + processed_folder + "/" + site + "-" + height + \
                 "_" + domain + "_" + str(year) + str(month).zfill(2) + ".nc"
-
-
+    
     # Check whether outfile needs updating
     if not force_update:
         print("Testing whether file exists or needs updating: " + outfile)
@@ -845,7 +1090,7 @@ def process(domain, site, height, year, month,
                     return None
 
     fp = []
-    
+
     for datestr in datestrs:
 
         print("Looking for files with date string: " + datestr + " in " + \
@@ -879,23 +1124,22 @@ def process(domain, site, height, year, month,
                                         particle_prefix = particles_prefix,
                                         satellite = satellite,
                                         time_step = timeStep)
-
+        
         # Do satellite process
         if satellite:
             satellite_obs_file = glob.glob(subfolder + "Observations/*" + \
-                                datestr + "*.nc")
+                                           datestr + "*.nc")
             if len(satellite_obs_file) != 1:
                 print("ERROR: There must be exactly one matching satellite " + 
                         "file in the Observations/ folder")
                 print("Files: " + satellite_obs_file)
                 return None
-                
+
             fp_file = satellite_vertical_profile(fp_file,
                                                  satellite_obs_file[0])
 
         if fp_file is not None:
             fp.append(fp_file)
-    
     
     if len(fp) > 0:
         
@@ -933,82 +1177,38 @@ def process(domain, site, height, year, month,
         print("Couldn't seem to find any files")
 
     return fp
-
-
-def satellite_vertical_profile(fp, satellite_obs_file):
-    
-    def satellite_interpolator(var, press_in, press_out):
-        
-        # Add extra level at the bottom for extrapolation
-        dp = 10000.
-        dvardp_low = (var[1,:,:] - var[0,:,:])/\
-                     (press_in[1] - press_in[0])
-        var_low = var[0,:,:] + dp*dvardp_low
-        press_low = press_in[0] + dp
-        press_temp = numpy.concatenate((np.array(press_low).reshape(1),
-                                     press_in))
-        var_temp = numpy.concatenate((var_low.reshape((1, var.shape[1], var.shape[2])),
-                                   var))
-        
-        # Assume top level missing values are zero
-        interpolator = interp1d(press_temp, var_temp,
-                              bounds_error = False, axis = 0, fill_value = 0.)
-
-        # Interpolate
-        out = interpolator(press_out)              
-        
-        # Set negative values to zero
-        out[out<0.] = 0.
-
-        return out
-        
-    print("Reading satellite obs file: " + satellite_obs_file)
-    sat = xray.open_dataset(satellite_obs_file)
-    if np.abs(sat.lon.values[0] - fp.release_lon.values[0,0]) > 1.:
-        print("WARNING: Satellite longitude doesn't match footprints")
-    if np.abs(sat.lat.values[0] - fp.release_lat.values[0,0]) > 1:
-        print("WARNING: Satellite latitude doesn't match footprints")        
-    if np.abs(sat.time.values[0] - fp.time.values[0]) > 60*1e9:
-        print("WARNING: Satellite time doesn't match footprints")
-    if len(fp.time.values) > 1:
-        print("ERROR: satellite comparison only for one time step at the moment")
-        return fp
-    if len(sat.time.values) > 1:
-        print("ERROR: satellite comparison only for one time step at the moment")
-        return fp
-    
-    # Change timestamp to that from obs file
-    #  because NAME output only has 1 minute resolution
-    fp = fp.reindex_like(sat.time, method = "nearest")
-
-    # Interpolate pressure levels
-    variables = ["fp", "pl_n", "pl_e", "pl_s", "pl_w"]
-    out = {}
-    for variable in variables:
-        var = satellite_interpolator(fp[variable].values.squeeze(),
-                                          fp.press.values.squeeze(),
-                                          sat.pressure_levels.values.squeeze()*100.)
-        out[variable] = np.zeros((1, 1, var.shape[1], var.shape[2]))
-        for lev in range(len(sat.pressure_levels.values.squeeze())):
-            out[variable] += var[lev, :, :] * \
-                             sat.pressure_weights.values.squeeze()[lev] * \
-                             sat.xch4_averaging_kernel.values.squeeze()[lev]
-
-    # Compress dataset to one level and store column averages
-    fp = fp[dict(lev = [0])]
-    for variable in variables:
-        fp[variable].values = out[variable]
-    
-    fp["lev"] = numpy.array(["column"])
-
-    return fp
     
 
-def process_agage(domain, site,
-                  heights = None,
-                  years_in = None, months_in = None,
-                  base_dir = "/dagage2/agage/metoffice/NAME_output/",
-                  force_update = False):
+def process_all(domain, site,
+                heights = None,
+                years_in = None,
+                months_in = None,
+                base_dir = "/dagage2/agage/metoffice/NAME_output/",
+                force_update = False,
+                satellite = False,
+                perturbed_folder = None):
+    '''
+    For a given domain and site, process all available fields files (including
+    multiple heights).
+    If you want to specify a subset of years/months to process, use the years_in
+    or months_in kewords.
+    
+    Keywords:
+    heights: If you only want to process a subset of heights, OR IF THE HEIGHT
+        INFORMATION IS NOT CONTAINED IN acrg_site_info.json, specify a list of
+        height strings here.
+    years_in: If you only want to process a subset of years, specify here.
+    months_in: Ditto for months
+    force_update: By default, this routine will not overwrite existing netcdf
+        files. Set force_update = True to reprocess an existing file
+    satellite: If a column of footprints needs to be processed, set to true.
+        See extra instructions in satellite_vertical_profile. 
+    perturbed_folder: Process a subfolder which has all of the required folders
+        (Fields_files, etc). This is for perturbed parameter ensembles for 
+        a particular site. E.g. for EUROPE_BSD_110magl/Perturbed/PARAMETERNAME_VALUE
+        you'd set:
+            perturbed_folder = "Perturbed/PARAMETERNAME_VALUE"
+    '''
 
     acrg_path=split(realpath(__file__))
     
@@ -1024,7 +1224,12 @@ def process_agage(domain, site,
     for height in heights:
         
         subfolder = base_dir + domain + "_" + site + "_" + height + "/"
-    
+        if perturbed_folder is not None:
+            if perturbed_folder[-1] == "/":
+                subfolder += perturbed_folder
+            else:
+                subfolder += perturbed_folder + "/"
+        
         if years_in is None:
             #Find all years and months available
             #Assumes fields files are processes with _YYYYMMDD.txt.gz at the end    
@@ -1042,29 +1247,20 @@ def process_agage(domain, site,
 
         for year, month in set(zip(years, months)):
             out = process(domain, site, height, year, month,
-                base_dir = base_dir, force_update = force_update)
+                base_dir = base_dir, force_update = force_update,
+                satellite = satellite, perturbed_folder = perturbed_folder)
 
 
-def met_empty():
-    
-    met = pandas.DataFrame({key: 0. for key in met_default.keys() if key != "time"},
-                          index = [dt.datetime(1900, 1, 1), dt.datetime(2020, 1, 1)])
-    met.index.name = "time"
-    met["press"] = [100000., 100000.]
-    met["temp"] = [280., 280.]
-    
-    print("WARNING: NO MET")
-
-    return met
-
-# Routine to copy files from:
-#   /dagage2/agage/metoffice/NAME_output/DOMAIN_SITE_HEIGHT/Processed_Fields_files
-#   to:
-#   air:/data/shared/NAME/fp_netcdf/DOMAIN/
 def copy_processed(domain):
-
+    '''
+    Routine to copy files from:
+        /dagage2/agage/metoffice/NAME_output/DOMAIN_SITE_HEIGHT/Processed_Fields_files
+        to:
+        air.chm:/data/shared/NAME/fp_netcdf/DOMAIN/
+    '''
+    
     src_folder = "/dagage2/agage/metoffice/NAME_output/"
-    dst_folder = "/data/shared/NAME/fp_netcdf/" + domain + "/"
+    dst_folder = "/data/shared/NAME/fp/" + domain + "/"
     
     files = glob.glob(src_folder + domain +
         "*/Processed_Fields_files/*.nc")
@@ -1076,13 +1272,14 @@ def copy_processed(domain):
         dirsync.sync(f, dst_folder, "sync")
     print("Done sync")
 
+
 # Process a list of AGAGE/DECC/GAUGE files if called as main
 if __name__ == "__main__":
 
     domain = "EUROPE"
     sites = ["BSD", "TTA", "RGL", "MHD", "HFD", "TAC",
              "GAUGE-FERRY", "GAUGE-FAAM",
-             "EHL", "TIL", "GLA", "WAO", "HAD"]
+             "EHL", "TIL", "GLA", "WAO", "HAD", "GSN"]
     for site in sites:
-        process_agage(domain, site)
+        process_agage(domain, site, force_update = True)
 

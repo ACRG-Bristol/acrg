@@ -202,7 +202,7 @@
         "print_string": "Desflurane", 
         "units": "ppt"
     }, 
-    "H-1211": {"alt": ["H1211", "Halon-1211", "Halon 1211"],
+    "H-1211": {"alt": ["H1211", "Halon-1211", "Halon 1211", "halon1211"],
         "group": "Halons", 
         "long_name": "Halon-1211", 
         "mol_mass": "165.36", 

@@ -28,23 +28,35 @@ Created on Sat Dec 27 17:17:01 2014
 import numpy as np
 import pandas as pd
 import glob
-from os.path import split, realpath
+from os.path import split, join
+from os import getenv
 import re
 from netCDF4 import Dataset
 from acrg_time import convert
 import json
 import datetime as dt
 import xray
+import pdb
 
-root_directory="/shared_data/air/shared/obs"
+acrg_path = getenv("ACRG_PATH")
+data_path = getenv("DATA_PATH")
+
+if acrg_path is None:
+    acrg_path = getenv("HOME")
+    print("Default ACRG directory is assumed to be home directory. Set path in .bashrc as \
+            export ACRG_PATH=/path/to/acrg/repository/ and restart python terminal")
+if data_path is None:
+    data_path = "/data/shared/"
+    print("Default Data directory is assumed to be /data/shared/. Set path in .bashrc as \
+            export DATA_PATH=/path/to/data/directory/ and restart python terminal")
+
+root_directory= join(data_path, "obs/")
 
 #Get site info and species info from JSON files
-acrg_path=split(realpath(__file__))
-
-with open(acrg_path[0] + "/acrg_species_info.json") as f:
+with open(join(acrg_path, "acrg_species_info.json")) as f:
     species_info=json.load(f)
 
-with open(acrg_path[0] + "/acrg_site_info.json") as f:
+with open(join(acrg_path, "acrg_site_info.json")) as f:
     site_info=json.load(f)
 
 def is_number(s):
@@ -110,7 +122,7 @@ def quadratic_sum(x):
 #Get Met Office baseline flags
 def ukmo_flags(site, site_info):
     
-    flag_directory=root_directory + "/flags/"
+    flag_directory=join(root_directory, "flags/")
     fnames, file_info=file_search_and_split(
         flag_directory + "*.txt")
     file_site = [f[0] for f in file_info]
@@ -128,7 +140,7 @@ def ukmo_flags(site, site_info):
         flag_time=[]
         
         for f in files:
-            flag_data=pd.io.parsers.read_csv(flag_directory + "/" + f, 
+            flag_data=pd.io.parsers.read_csv(join(flag_directory, f), 
                                              delim_whitespace=True, skiprows=6)
             flag_time = flag_time + [dt.datetime(y, m, d, h, mi)
                 for y, m, d, h, mi in 
@@ -149,8 +161,8 @@ def get_file_list(site, species, start, end, height,
     else:
         file_network_string = network
 
-    data_directory=root_directory + "/" + file_network_string + "/"
-
+    data_directory=join(root_directory, file_network_string)
+    
     if height is None:
         file_height_string = site_info[site]["height"][0]
     else:
@@ -166,10 +178,10 @@ def get_file_list(site, species, start, end, height,
             return data_directory, None
     
     #Get file info
-    fnames, file_info = file_search_and_split(data_directory + "*.nc")
+    fnames, file_info = file_search_and_split(join(data_directory, "*.nc"))
 
     if len(fnames) == 0:
-        print("Can't find any data files: " + data_directory + "*.nc")
+        print("Can't find any data files: " + join(data_directory, "*.nc"))
         return data_directory, None
         
     file_site = [f[1] for f in file_info]
@@ -204,8 +216,8 @@ def get_file_list(site, species, start, end, height,
 
 
 def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
-        height=None, baseline=False, average=None,
-        network = None, instrument = None):
+        height=None, baseline=False, average=None, full_corr=False,
+        network = None, instrument = None, status_flag_unflagged = 0):
     
     start_time = convert.reftime(start)
     end_time = convert.reftime(end)
@@ -239,16 +251,28 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
     
             skip = False
             
-            ncf=Dataset(data_directory + f, 'r')
-    
+            ncf=Dataset(join(data_directory, f), 'r')
+            
             if "time" not in ncf.variables:
                 print("Skipping: " + f + ". No time variable")
                 skip = True
     
             else:
-                time = convert.sec2time(ncf.variables["time"][:], 
-                                        ncf.variables["time"].units[14:])
-                   
+                if ("seconds" in ncf.variables["time"].units) is True:
+                    time = convert.sec2time(ncf.variables["time"][:], 
+                                            ncf.variables["time"].units[14:])
+                elif ("minutes" in ncf.variables["time"].units) is True:
+                    time = convert.min2time(ncf.variables["time"][:], 
+                                            ncf.variables["time"].units[14:]) 
+                elif ("hours" in ncf.variables["time"].units) is True:
+                    time = convert.hours2time(ncf.variables["time"][:], 
+                                            ncf.variables["time"].units[14:]) 
+                elif ("days" in ncf.variables["time"].units) is True:
+                    time = convert.day2time(ncf.variables["time"][:], 
+                                            ncf.variables["time"].units[11:])
+                else: 
+                    print("Time unit is not a recognized unit (seconds, minuties or days since")
+                            
                 if max(time) < start_time:
                     skip = True
                 if min(time) > end_time:
@@ -265,7 +289,7 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
                           "acrg_species_info.json")
                     ncf.close()
                     return None
-                
+
                 df = pd.DataFrame({"mf": ncf.variables[ncvarname][:]},
                                   index = time)
                 
@@ -291,11 +315,11 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
                     file_flag=ncf.variables[ncvarname + "_status_flag"]
                     if len(file_flag) > 0:
                         df["status_flag"] = file_flag[:]
-                        df = df[df.status_flag < 3]
-            
+                        df = df[df.status_flag == status_flag_unflagged]
+
                 if units != "permil":
                     df = df[df.mf > 0.]
-                
+
                 data_frames.append(df)
     
             ncf.close()
@@ -306,7 +330,7 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
             data_frame = data_frame[start_time : end_time]
         else:
             return None
-    
+
         #Do baseline filtering
         if baseline:
             #Get flags
@@ -330,10 +354,34 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
                     how[key] = quadratic_sum
                 else:
                     how[key] = "median"
+            
+            if full_corr == True:
+                if min(data_frame.index) > start_time:
+                    dum_frame = pd.DataFrame({"status_flag": float('nan')},
+                                         index = np.array([start_time]))   
+                    dum_frame["mf"] =  float('nan')                  
+                    dum_frame["dmf"] =  float('nan')  
+                    dum_frame.index.name = 'time'                                                                               
+                    data_frame = data_frame.append(dum_frame)
+            
+                if min(data_frame.index) < end_time:
+                    dum_frame2 = pd.DataFrame({"status_flag": float('nan')},
+                                         index = np.array([end_time]))   
+                    dum_frame2["mf"] =  float('nan')                  
+                    dum_frame2["dmf"] =  float('nan')  
+                    dum_frame2.index.name = 'time'                                                                                    
+                    data_frame = data_frame.append(dum_frame2)  
+            
+            
             data_frame=data_frame.resample(average, how=how)
-    
+            if full_corr == True:
+                data_frame=data_frame.drop(data_frame.index[-1])
+              
         # Drop NaNs
-        data_frame.dropna(inplace = True)
+        if full_corr == False:
+            data_frame.dropna(inplace = True)
+         
+    
     
         data_frame.mf.units = units
     
@@ -357,8 +405,8 @@ def get_gosat(site, species, start = "1900-01-01", end = "2020-01-01"):
 
     data = []
     for f in files:
-        data.append(xray.open_dataset(data_directory + f))
-    
+        data.append(xray.open_dataset(join(data_directory,f)))
+        
     data = xray.concat(data, dim = "time")
 
     prior_factor = (data.pressure_weights* \
@@ -374,16 +422,16 @@ def get_gosat(site, species, start = "1900-01-01", end = "2020-01-01"):
     data = data.to_dataframe()
     
     if species.upper() == "CH4":
-        data.mf.units = 1e9
+        data.mf.units = 1e-9
     if species.upper() == "CO2":
-        data.mf.units = 1e6
+        data.mf.units = 1e-6
 
     return data
 
 
 def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
-            height = None, baseline = False, average = None,
-            network = None, instrument = None):
+            height = None, baseline = False, average = None, full_corr=False,
+            network = None, instrument = None, status_flag_unflagged = 0):
 
 
     def check_list_and_length(var, sites, error_message_string):
@@ -431,7 +479,9 @@ def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
                        start = start_time, end = end_time,
                        average = average[si],
                        network = network[si],
-                       instrument = instrument[si])
+                       instrument = instrument[si],
+                       full_corr = full_corr,
+                       status_flag_unflagged = status_flag_unflagged)
                        
         if data is not None:
             obs[site] = data.copy()
