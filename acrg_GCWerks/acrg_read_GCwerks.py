@@ -252,6 +252,7 @@ class Makeflags:
         for i in np.arange(len(gas)):
             A = (gas[i]).find('*')
             B = (gas[i]).find('F')
+            C = (gas[i]).find('x')
             
             # a * flag
             if A > 0:
@@ -261,11 +262,14 @@ class Makeflags:
             if B > 0:
                 flag[i] = 2
 
-
+            # a x flag
+            if C > 0:
+                flag[i] = 3
+                
         self.flags = flag.astype('int')
         
 
-# Class to strip the * and F flags from the raw data
+# Class to strip the *,x and F flags from the raw data
 class Stripflags:
     def __init__(self, gas):    
         
@@ -273,14 +277,24 @@ class Stripflags:
         stripped_gas = np.zeros(shape=len(gas))
         
         for i in np.arange(len(gas)):
+
+                    
+            flags = ['*','F','x']
             
+            # one of the flags is in the string
+            if any(x in orig_gas[i] for x in flags):
+                stripped_gas[i] = orig_gas[i][:(len(orig_gas[i])-1)]
+
+            else:
+                stripped_gas[i] = orig_gas[i]
+                
+        """ Old method
             A = (orig_gas[i]).find('*')
             B = (orig_gas[i]).find('F')
-            
+
             # a * flag
             if A > 0:
                 stripped_gas[i] = orig_gas[i][:(len(orig_gas[i])-1)]
-
 
             # a F flag
             if B > 0:
@@ -288,7 +302,7 @@ class Stripflags:
 
             if A < 0 and B < 0:
                 stripped_gas[i] = orig_gas[i]
-
+        """
         self.gas = stripped_gas.astype('float')
         self.orig_gas = orig_gas
 
