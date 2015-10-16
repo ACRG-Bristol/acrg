@@ -809,8 +809,11 @@ def prior_flux(species, domain, basis_case, av_date, species_key = None):
     """
     Calculates an area weighted flux for each basis region using the prior emissions.
     'av_date' is a date representative of the timeseries being looked at. It is used
-    to find the most appropriate flux and basis files. WARNING! This has a bug at the
-    moment, only finds the nearest flux or basis file ON OR BEFORE the inputted av_date.
+    to find the most appropriate flux and basis files. Will only work for a flux that
+    doesn't change during the peirod of the inversion.
+    
+    WARNING! This has a bug at the moment, only finds the nearest flux or basis
+    file ON OR BEFORE the inputted av_date.
     """
 
     flux_data= flux(domain, species)
