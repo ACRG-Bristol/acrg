@@ -772,7 +772,7 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
     ncF.createDimension('lat', len(lats))
     ncF.createDimension('lev', 1)
     
-    nctime=ncF.createVariable('time', 'f', ('time',))
+    nctime=ncF.createVariable('time', 'd', ('time',))
     nclon=ncF.createVariable('lon', 'f', ('lon',))
     nclat=ncF.createVariable('lat', 'f', ('lat',))
     nclev=ncF.createVariable('lev', 'str', ('lev',))
