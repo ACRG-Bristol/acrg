@@ -47,8 +47,8 @@
     "EHL" : {
         "alt": ["EARLSHALL"],
         "long_name" : "Earlshall, UK",
-        "height": ["50m"],
-        "height_name": ["50magl"],
+        "height": ["25m"],
+        "height_name": ["25magl"],
         "latitude": 51.80590,
         "longitude": 1.10790,
         "network": "UCAM-EA"
