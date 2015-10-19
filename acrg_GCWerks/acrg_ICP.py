@@ -1915,12 +1915,12 @@ class Plot_individualsite:
 
         plt5.text(0.82, 0.85, inst_tag, horizontalalignment='center', verticalalignment='center', transform = plt5.transAxes, fontsize=8)
 
-        plt.figtext(0.6, 0.3, site, fontsize =8)
-        plt.figtext(0.6, 0.26, 'CO$\mathregular{_2}$ - WMOx2007, through NPL (HAD & TIL)', verticalalignment='bottom', horizontalalignment='left', fontsize=6)
-        plt.figtext(0.6, 0.23, 'CH$\mathregular{_4}$ - WMOx2004, x2004A (DECC/GAUGE/FERRY)', verticalalignment='bottom', horizontalalignment='left', fontsize=6)
-        plt.figtext(0.6, 0.2, 'N$\mathregular{_2}$O - WMOx2006, SIO98 (DECC/GAUGE)', verticalalignment='bottom', horizontalalignment='left', fontsize=6)
-        plt.figtext(0.6, 0.17, 'CO- WMOx2014', verticalalignment='bottom', horizontalalignment='left', fontsize=6)
-        plt.figtext(0.6, 0.14, 'SF$\mathregular{_6}$ - WMOx2006, SIO-SF6 (DECC/GAUGE)', verticalalignment='bottom', horizontalalignment='left', fontsize=6)
+        plt.figtext(0.56, 0.3, site, fontsize =8)
+        plt.figtext(0.56, 0.26, 'CO$\mathregular{_2}$ - WMOx2007, through NPL (HAD & TIL), Scripps (WAO)', verticalalignment='bottom', horizontalalignment='left', fontsize=6)
+        plt.figtext(0.56, 0.23, 'CH$\mathregular{_4}$ - WMOx2004, x2004A (DECC/GAUGE/FERRY)', verticalalignment='bottom', horizontalalignment='left', fontsize=6)
+        plt.figtext(0.56, 0.2, 'N$\mathregular{_2}$O - WMOx2006, SIO98 (DECC/GAUGE)', verticalalignment='bottom', horizontalalignment='left', fontsize=6)
+        plt.figtext(0.56, 0.17, 'CO- WMOx2014', verticalalignment='bottom', horizontalalignment='left', fontsize=6)
+        plt.figtext(0.56, 0.14, 'SF$\mathregular{_6}$ - WMOx2006, SIO-SF6 (DECC/GAUGE)', verticalalignment='bottom', horizontalalignment='left', fontsize=6)
         
         if use_MPI == 1:
             plt.figtext(0.72, 0.11, 'MPI +/- WMO compatibility goals', verticalalignment='bottom', horizontalalignment='left', fontsize=6, color ='grey')
@@ -1960,7 +1960,7 @@ class Plot_individualgas:
                 diffs = [CO2_D091968.co2_diffs, CO2_D091969.co2_diffs, CO2_D091970.co2_diffs]
                 ylabel = 'Site - mean [CO$\mathregular{_2}$] (ppm)'
                 linerange = [370,490]
-                scale_tag = 'CO$\mathregular{_2}$ - WMOx2007, through NPL (HAD & TIL)'
+                scale_tag = 'CO$\mathregular{_2}$ - WMOx2007, through NPL (HAD & TIL), Scripps (WAO)'
                 title = 'CO$\mathregular{_2}$'
                 ylims = [-0.2,0.2]
                 
