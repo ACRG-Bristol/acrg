@@ -1,0 +1,29 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Oct  9 12:24:18 2015
+
+@author: as13988
+"""
+
+import acrg_agage
+import numpy as np
+
+def read_MHD(gas):
+    if gas in ['co2', 'CO2']:
+        MHD = acrg_agage.get('MHD', 'CO2', instrument='CRDS', network='LSCE')
+    else:
+        MHD = acrg_agage.get('MHD', gas)
+    
+    return MHD
+    
+def read_site(site, gas):
+    site = acrg_agage.get(site, gas)
+
+def plotagainstMHD(site, gas):
+    MHD = read_MHD(gas)
+    site = read_site(site)
+    
+    ax = site.plot(y='mf')
+    MHD.plot(y='mf', ax=ax)
+    
+    
