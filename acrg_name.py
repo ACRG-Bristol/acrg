@@ -344,9 +344,14 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
     else:
         average = [None for i in sites]
 
-    # Check if species is defined in data dictionary
-    if ".species" in data.keys():
-        species = data[".species"]
+    # If not given, check if species is defined in data dictionary:
+    if species is None:
+        if ".species" in data.keys():
+            species = data[".species"]
+        else:
+            print "Can't find species"
+    else:
+        species = species
 
     # Output array
     fp_and_data = {}
