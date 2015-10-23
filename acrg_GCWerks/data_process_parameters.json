@@ -8,11 +8,6 @@
             "network": "AGAGE",
             "contact": "Simon O'Doherty",
             "contact_email": "s.odoherty@bristol.ac.uk"
-        },
-        "CO2": {
-            "network": "LSCE",
-            "contact": "SOMEONE",
-            "contact_email": "s.odoherty@bristol.ac.uk"
         }
     },
     "BSD" : {
