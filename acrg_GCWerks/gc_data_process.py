@@ -55,7 +55,24 @@ def dotC_read(dotC_file, scale = {}, units = {}):
     # Rename flag column with species name
     for i, key in enumerate(df.keys()):
         if key[0:4] == "Flag":
+            quality_flag = []
+            area_height_flag = []
+            for flags in df[key].values:
+
+                # Quality flag
+                if flags[0] == "-":
+                    quality_flag.append(0)
+                else:
+                    quality_flag.append(1)
+
+                # Area/height
+                if flags[1] == "-":
+                    area_height_flag.append(0)  # Area
+                else:
+                    area_height_flag.append(0)  # Height
+
             df = df.rename(columns = {key: df.keys()[i-1] + "_flag"})
+            df[df.keys()[i-1] + "_quality_flag"] = quality_flag
             scale[df.keys()[i-1]] = header[i-1][0]
             units[df.keys()[i-1]] = header[i-1][1]
             species.append(df.keys()[i-1])
@@ -86,7 +103,7 @@ def precisions_read(precisions_file):
 def run(site):
 
     for instrument in params[site]["instruments"]:
-    
+        
         data_files = sorted(glob.glob(join(params["agage_directory"],
                                       params[site]["gcwerks_site_name"] + \
                                       instrument + \
@@ -97,16 +114,16 @@ def run(site):
         dfs = []
         scale = {}
         units = {}
-
+        
         for fi, data_file in enumerate(data_files):
-        
+            
             print("Reading " + data_file)
-        
+            
             # Get observations
             df, species, units, scale = dotC_read(data_file,
                                                   scale = scale,
                                                   units = units)
-        
+
             # Get precision
             precision, precision_species = precisions_read(precision_files[fi])
 
@@ -143,14 +160,22 @@ def run(site):
         for sp in species:
             for inlet in inlets:        
         
-                ds_sp = ds.where(ds.Inlet == inlet)[[sp, sp + "_repeatability"]]
+                ds_sp = ds.where(ds.Inlet == inlet)[[sp,
+                                                     sp + "_repeatability",
+                                                     sp + "_quality_flag"]]
                 
                 # Drop NaNs
                 ds_sp = ds_sp.dropna("time")
-
+                
                 # Set units and attributes
-                ds_sp.time.encoding = {"units": "seconds since 1970-01-01 00:00"}
-                ds_sp[sp].attrs = {"units": unit_strings[units[sp]]}
+                ds_sp.time.encoding = {"units":
+                                       "seconds since 1970-01-01 00:00"}
+                ds_sp[sp].attrs = {"units":
+                                   unit_strings[units[sp]]}
+                ds_sp[sp + "_repeatability"].attrs = {"units": 
+                                                      unit_strings[units[sp]]}
+                ds_sp[sp + "_quality_flag"].attrs = {"flag_meaning": 
+                                                      "0 = unflagged, 1 = flagged"}
                 
                 ds_sp.attrs = {"Contact": \
                                params[site]["species_defaults"]["contact"],
@@ -163,3 +188,4 @@ def run(site):
                                 instrument_strings[instrument] + "_" + \
                                 site + "_" + inlet + "agl-" + 
                                 sp.replace("-", "") + ".nc"))
+                                
