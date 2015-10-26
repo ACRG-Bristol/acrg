@@ -1263,7 +1263,7 @@ def copy_processed(domain):
     dst_folder = "/data/shared/NAME/fp/" + domain + "/"
     
     files = glob.glob(src_folder + domain +
-        "*/Processed_Fields_files/*.nc")
+        "_*/Processed_Fields_files/*.nc")
 
     folders = set([os.path.split(f)[0] for f in files])
 
