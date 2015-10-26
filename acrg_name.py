@@ -114,7 +114,7 @@ def read_netcdfs(files, dim = "time", transform_func=None):
 
 
 def footprints(sitecode_or_filename, start = "2010-01-01", end = "2016-01-01",
-        domain="EUROPE", height = None, species = None):
+        domain="EUROPE", height = None, species = None, emissions_name = None):
     """
     Load a NAME footprint netCDF files into an xray dataset.
     Either specify:
@@ -132,8 +132,11 @@ def footprints(sitecode_or_filename, start = "2010-01-01", end = "2016-01-01",
     If the HEIGHT keyword is not specified, the default height from the
     acrg_site_info.json file is assumed.
     
-    If the SPECIES keyword is given, fluxes will also be loaded and
-    merged into the dataset.    
+    If the SPECIES or EMISSIONS_NAME keyword is given, fluxes will also
+    be loaded and merged into the dataset.
+    
+    EMISSIONS_NAME allows emissions files such as co2nee_EUROPE_2012.nc
+    to be read in. In this case EMISSIONS_NAME would be 'co2nee'
     """
     
     #Chose whether we've input a site code or a file name
@@ -157,17 +160,21 @@ def footprints(sitecode_or_filename, start = "2010-01-01", end = "2016-01-01",
         
         fp=read_netcdfs(files)
         
-        # If a species is specified, also get flux and vmr at domain edges           
-        if species is not None:
-
+        # If a species is specified, also get flux and vmr at domain edges
+        if emissions_name is not None:
+            flux_ds = flux(domain, emissions_name)
+        elif species is not None:
             flux_ds = flux(domain, species)
-
-            if flux_ds is not None:
-                fp = combine_datasets(fp, flux_ds)
-
+        
+        if species is not None:
             bc_ds = boundary_conditions(domain, species)
-            if bc_ds is not None:
+        
+        if flux_ds is not None:
+                fp = combine_datasets(fp, flux_ds)
+                
+        if bc_ds is not None:
                 fp = combine_datasets(fp, bc_ds)
+          
 
         return fp
 
@@ -305,7 +312,7 @@ def timeseries_boundary_conditions(ds):
 def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
                           calc_timeseries = True, calc_bc = True,
                           average = None, site_modifier = {}, height = None,
-                          full_corr = False):
+                          full_corr = False, emissions_name = None):
     """
     Output a dictionary of xray footprint datasets, that correspond to a given
     dictionary of Pandas dataframes, containing mole fraction time series.
@@ -344,9 +351,12 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
     else:
         average = [None for i in sites]
 
-    # Check if species is defined in data dictionary
-    if ".species" in data.keys():
-        species = data[".species"]
+    # If not given, check if species is defined in data dictionary:
+    if species is None:
+        if ".species" in data.keys():
+            species = data[".species"]
+        else:
+            print "Species is not specified and can't be found in data dictionary."
 
     # Output array
     fp_and_data = {}
@@ -389,8 +399,9 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
                              species = [species if calc_timeseries == True or \
                                          calc_bc == True \
                                          else None][0], \
-                             height = height_site)
-        
+                             height = height_site,
+                             emissions_name = [emissions_name if calc_timeseries == True \
+                                         else None][0])
         if site_fp is not None:
             
             # Merge datasets
@@ -412,7 +423,6 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
                                             data[".units"])})
 
                
-
             # Calculate model time series, if required
             if calc_timeseries:
                 site_ds["mf_mod"] = timeseries(site_ds)

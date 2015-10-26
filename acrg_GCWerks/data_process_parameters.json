@@ -1,0 +1,63 @@
+{
+    "agage_directory" : "/dagage2/agage/summary/data-net/",
+    "output_directory" : "/dagage2/agage/metoffice/processed_observations",
+    "MHD" : {
+        "gcwerks_site_name": "macehead",
+        "instruments" : [""],
+        "species_defaults": {
+            "network": "AGAGE",
+            "contact": "Simon O'Doherty",
+            "contact_email": "s.odoherty@bristol.ac.uk"
+        }
+    },
+    "BSD" : {
+        "gcwerks_site_name": "bilsdale",
+        "inlets": ["42m", "108m", "248m"],
+        "instruments" : [""],
+        "species_defaults": {
+            "network": "GAUGE",
+            "contact": "Simon O'Doherty",
+            "contact_email": "s.odoherty@bristol.ac.uk"
+        }
+    },
+    "HFD" : {
+        "gcwerks_site_name": "heathfield",
+        "inlets": ["100m", "50m"],
+        "instruments" : [""],
+        "species_defaults": {
+            "network": "GAUGE",
+            "contact": "Simon O'Doherty",
+            "contact_email": "s.odoherty@bristol.ac.uk"
+        }
+    },
+    "TTA" : {
+        "gcwerks_site_name": "angus",
+        "inlets": ["222m"],
+        "instruments" : [""],
+        "species_defaults": {
+            "network": "DECC",
+            "contact": "Simon O'Doherty",
+            "contact_email": "s.odoherty@bristol.ac.uk"
+        }
+    },
+    "RGL" : {
+        "gcwerks_site_name": "ridgehill",
+        "inlets": ["45m", "90m"],
+        "instruments" : [""],
+        "species_defaults": {
+            "network": "DECC",
+            "contact": "Simon O'Doherty",
+            "contact_email": "s.odoherty@bristol.ac.uk"
+        }
+    },
+    "TAC" : {
+        "gcwerks_site_name": "tacolneston",
+        "inlets": ["54m", "100m", "185m"],
+        "instruments" : [""],
+        "species_defaults": {
+            "network": "DECC",
+            "contact": "Simon O'Doherty",
+            "contact_email": "s.odoherty@bristol.ac.uk"
+        }
+    }
+}
