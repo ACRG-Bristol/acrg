@@ -45,6 +45,7 @@ import shutil
 from scipy.interpolate import interp1d
 import copy
 import dirsync
+import matplotlib.pyplot as plt
 
 #Default NAME output file version
 #This is changed depending on presence of "Fields:" line in files
@@ -336,8 +337,8 @@ def met_empty():
     met = pandas.DataFrame({key: 0. for key in met_default.keys() if key != "time"},
                           index = [dt.datetime(1900, 1, 1), dt.datetime(2020, 1, 1)])
     met.index.name = "time"
-    met["press"] = [100000., 100000.]
-    met["temp"] = [280., 280.]
+    met["press"] = [100000., 100000.] #Pa
+    met["temp"] = [10., 10.]    #C
     
     print("WARNING: NO MET")
 
@@ -425,7 +426,7 @@ def read_met(fnames):
         elif X_file is not None:
             X = [X_file for i in m2[:, column_indices["time"]]]
             Y = [Y_file for i in m2[:, column_indices["time"]]]
-            
+        
         #Construct dictionary
         met_dict = {}
         for key in met_default.keys():
@@ -676,7 +677,7 @@ def footprint_array(fields_file,
     # Add in particle locations
     if particle_file is not None:
         fp.merge(particle_hist, inplace = True)
-    
+
     # Extract footprint from columns
     def convert_to_ppt(fp, slice_dict, column):
         molm3=fp["press"][slice_dict].values/const.R/\
@@ -1313,6 +1314,42 @@ def copy_processed(domain):
         dirsync.sync(f, dst_folder, "sync")
     print("Done sync")
 
+def test_processed_met(domain, site, height,
+                       base_dir = "/dagage2/agage/metoffice/NAME_output/"):
+    
+    subfolder = base_dir + domain + "_" + site + "_" + height + \
+                "/Processed_Fields_files/"
+    files = sorted(glob.glob(subfolder + "*.nc"))
+
+    ds = []    
+    for f in files:
+        with xray.open_dataset(f) as fi: 
+            dsf = fi.load()
+
+        ds.append(dsf)
+    
+    ds = xray.concat(ds, "time")
+    
+    plt.plot(ds.time, ds.pressure)
+    plt.title("Pressure")
+    plt.show()
+
+    plt.plot(ds.time, ds.temperature)
+    plt.title("Temperature")
+    plt.show()
+
+    plt.plot(ds.time, ds.fp.sum(["lon", "lat"]))
+    plt.title("Sum(Footprint)")
+    plt.show()
+
+    plt.plot(ds.time, ds.particle_locations_n.sum(["lon", "height"]) + \
+                      ds.particle_locations_e.sum(["lat", "height"]) + \
+                      ds.particle_locations_s.sum(["lon", "height"]) + \
+                      ds.particle_locations_w.sum(["lat", "height"]))
+    plt.title("Sum(Particle locations) - should sum to 1")
+    plt.show()
+    
+    return ds
 
 # Process a list of AGAGE/DECC/GAUGE files if called as main
 if __name__ == "__main__":
@@ -1322,5 +1359,5 @@ if __name__ == "__main__":
              "GAUGE-FERRY", "GAUGE-FAAM",
              "EHL", "TIL", "GLA", "WAO", "HAD", "GSN"]
     for site in sites:
-        process_agage(domain, site, force_update = True)
+        process_all(domain, site, force_update = True)
 

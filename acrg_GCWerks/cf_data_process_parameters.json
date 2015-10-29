@@ -1,0 +1,103 @@
+{
+    "global_attributes": {
+        "Processed by": "Matt Rigby, University of Bristol (matt.rigby@bristol.ac.uk)",
+        "Conditions of use": "Ensure that you contact the data owner at the outset of your project."
+    },
+    "DECC": {
+        "directory" : "/dagage2/agage/summary/data-net/",
+        "directory_output" : "/dagage2/agage/metoffice/processed_observations",
+        "TTA" : {
+            "gcwerks_site_name": "angus",
+            "inlets": ["222m"],
+            "instruments" : [""],
+            "species_defaults": {
+                "contact": "Simon O'Doherty",
+                "contact_email": "s.odoherty@bristol.ac.uk"
+            }
+        },
+        "RGL" : {
+            "gcwerks_site_name": "ridgehill",
+            "inlets": ["45m", "90m"],
+            "instruments" : [""],
+            "species_defaults": {
+                "contact": "Simon O'Doherty",
+                "contact_email": "s.odoherty@bristol.ac.uk"
+            }
+        },
+        "TAC" : {
+            "gcwerks_site_name": "tacolneston",
+            "inlets": ["54m", "100m", "185m"],
+            "instruments" : [""],
+            "species_defaults": {
+                "contact": "Simon O'Doherty",
+                "contact_email": "s.odoherty@bristol.ac.uk"
+            }
+        }
+    },
+    "GC": {
+        "instruments": {
+            "GCMD": "",
+            "GCMS": "gcms",
+            "medusa": "medusa"
+        },
+        "instruments_out": {
+            "GCMD": {
+                "CH4": "GC-FID",
+                "else": "GC-ECD"
+            },
+            "GCMS": {
+                "else": "GCMS"
+            },
+            "medusa": {
+                "else": "GCMS-Medusa"
+            }
+        },
+        "directory" : {
+            "GCMD":        "/dagage2/agage/summary/data/",
+            "GCMS":   "/dagage2/agage/summary/data-gcms/",
+            "medusa": "/dagage2/agage/summary/data-gcms/"
+        },
+        "directory_output" : "/dagage2/agage/metoffice/processed_observations",
+        "MHD" : {
+            "gcwerks_site_name": "macehead",
+            "inlets": ["10m"],
+            "global_attributes": {
+                "data_owner": "Simon O'Doherty",
+                "data_owner_email": "s.odoherty@bristol.ac.uk"
+            }
+        }
+    },
+    "CRDS": {
+        "directory" : "/dagage2/agage/%site-picarro/results-gcwerks/",
+        "directory_output" : "/dagage2/agage/metoffice/processed_observations",
+        "BSD" : {
+            "gcwerks_site_name": "bilsdale",
+            "inlets": ["42m", "108m", "248m"],
+            "global_attributes": {
+                "contact": "Simon O'Doherty",
+                "contact_email": "s.odoherty@bristol.ac.uk"
+            }
+        },
+        "HFD" : {
+            "gcwerks_site_name": "heathfield",
+            "inlets": ["100m", "50m"],
+            "global_attributes": {
+                "contact": "Simon O'Doherty",
+                "contact_email": "s.odoherty@bristol.ac.uk"
+            }
+        }
+    },
+    "ICOS": {
+        "directory" : "/dagage2/agage/%site-picarro/results-icos/",
+        "directory_output" : "/dagage2/agage/metoffice/processed_observations",
+        "MHD" : {
+            "gcwerks_site_name": "macehead",
+            "instruments" : ["CRDS"],
+            "inlets": {"15m": "10m"},
+            "global_attributes": {
+                "data_owner": "Michael Ramonet",
+                "data_owner_email": "michel.ramonet@cea.fr"
+            }
+        }
+    }
+}
