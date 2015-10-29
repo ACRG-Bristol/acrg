@@ -126,6 +126,7 @@ def attributes(ds, species, global_attributes = None,
 
     flag_key = [key for key in ds.keys() if "_status_flag" in key]
     if len(flag_key) > 0:
+        flag_key = flag_key[0]
         ds[flag_key] = ds[flag_key].astype(int)
         ds[flag_key].attrs = {"flag_meaning":
                               "0 = unflagged, 1 = flagged",
@@ -166,12 +167,14 @@ def icos_data_read(data_file, species):
 
     df =  pd.read_csv(data_file,
                       sep = r"\s+")
+    
+    # Sometimes header appears in middle of file
+    if not "int" in str(df.Year.dtype):
+        df = df[df.Year != "Year"]
 
-    df = df[df.Year != "Year"]
+    df[[species.lower(), "Stdev"]] = df[[species.lower(), "Stdev"]].astype(float)
 
-    df[[species, "Stdev"]] = df[[species, "Stdev"]].astype(float)
-
-    df = df[df[species] >= 0.]
+    df = df[df[species.lower()] >= 0.]
     
     df.reset_index(inplace = True)
 
@@ -197,8 +200,8 @@ def icos_data_read(data_file, species):
     df = df.reset_index().drop_duplicates(subset='index').set_index('index')
     
     # Rename columns
-    df.rename(columns = {"Stdev": species + "_variability",
-                         "NbPoints": species + "_number_of_observations"},
+    df.rename(columns = {"Stdev": species.upper() + "_variability",
+                         "NbPoints": species.upper() + "_number_of_observations"},
                inplace = True)
 
     df.index.name = "time"
@@ -225,14 +228,14 @@ def icos(site, species, network):
             
             # Find data file
             data_file_search = join(data_directory, site.lower() + "." + \
-                                    species + ".1minute." + inlet + ".dat")
+                                    species.lower() + ".1minute." + inlet + ".dat")
             data_file = glob.glob(data_file_search)
             
             if len(data_file) == 0:
                 print("Can't find file " + data_file_search)
+                return None
             else:
                 data_file = data_file[0]
-            
             
             # Create Pandas dataframe
             ds = icos_data_read(data_file, species)
