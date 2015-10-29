@@ -163,16 +163,16 @@ def footprints(sitecode_or_filename, start = "2010-01-01", end = "2016-01-01",
         # If a species is specified, also get flux and vmr at domain edges
         if emissions_name is not None:
             flux_ds = flux(domain, emissions_name)
+            if flux_ds is not None:
+                fp = combine_datasets(fp, flux_ds)
         elif species is not None:
             flux_ds = flux(domain, species)
+            if flux_ds is not None:
+                fp = combine_datasets(fp, flux_ds)
         
         if species is not None:
             bc_ds = boundary_conditions(domain, species)
-        
-        if flux_ds is not None:
-                fp = combine_datasets(fp, flux_ds)
-                
-        if bc_ds is not None:
+            if bc_ds is not None:
                 fp = combine_datasets(fp, bc_ds)
           
 
