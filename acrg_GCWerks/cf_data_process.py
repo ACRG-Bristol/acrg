@@ -352,7 +352,7 @@ def gc(site, instrument, network):
     data_folder = params["GC"]["directory"][instrument]
     data_files = sorted(glob.glob(join(data_folder,
                                   site_gcwerks + \
-                                  instrument_gcwerks + ".??.C")))[0:2]
+                                  instrument_gcwerks + ".??.C")))
     
     precision_files = [data_file[0:-2] + ".precisions.C" \
                         for data_file in data_files]
