@@ -37,7 +37,7 @@ import json
 import datetime as dt
 import xray
 import pdb
-
+reload(convert)
 acrg_path = getenv("ACRG_PATH")
 data_path = getenv("DATA_PATH")
 
@@ -154,15 +154,18 @@ def ukmo_flags(site, site_info):
 
 
 def get_file_list(site, species, start, end, height,
-                  network = None, instrument = None):
-        
+                  network = None, instrument = None, alt_dir=None):
+    
     if network is None:
         file_network_string = site_info[site]["network"]
     else:
         file_network_string = network
-
-    data_directory=join(root_directory, file_network_string)
     
+    if alt_dir is None:
+        data_directory=join(root_directory, file_network_string)
+    else:
+        data_directory=alt_dir
+
     if height is None:
         file_height_string = site_info[site]["height"][0]
     else:
@@ -217,7 +220,7 @@ def get_file_list(site, species, start, end, height,
 
 def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
         height=None, baseline=False, average=None, full_corr=False,
-        network = None, instrument = None, status_flag_unflagged = 0):
+        network = None, instrument = None, status_flag_unflagged = 0, alt_dir = None):
     
     start_time = convert.reftime(start)
     end_time = convert.reftime(end)
@@ -236,8 +239,8 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
         
     data_directory, files = get_file_list(site, species, start_time, end_time,
                                           height, network = network,
-                                          instrument = instrument)
-
+                                          instrument = instrument, alt_dir=alt_dir)
+     
     #Get files
     #####################################
     
@@ -251,12 +254,12 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
     
             skip = False
             
-            ncf=Dataset(join(data_directory, f), 'r')
+            ncf=Dataset(join(data_directory, f), 'r')           
             
             if "time" not in ncf.variables:
                 print("Skipping: " + f + ". No time variable")
                 skip = True
-    
+            
             else:
                 if ("seconds" in ncf.variables["time"].units) is True:
                     time = convert.sec2time(ncf.variables["time"][:], 
