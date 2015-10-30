@@ -45,6 +45,7 @@ import shutil
 from scipy.interpolate import interp1d
 import copy
 import dirsync
+import matplotlib.pyplot as plt
 
 #Default NAME output file version
 #This is changed depending on presence of "Fields:" line in files
@@ -336,8 +337,8 @@ def met_empty():
     met = pandas.DataFrame({key: 0. for key in met_default.keys() if key != "time"},
                           index = [dt.datetime(1900, 1, 1), dt.datetime(2020, 1, 1)])
     met.index.name = "time"
-    met["press"] = [100000., 100000.]
-    met["temp"] = [280., 280.]
+    met["press"] = [100000., 100000.] #Pa
+    met["temp"] = [10., 10.]    #C
     
     print("WARNING: NO MET")
 
@@ -425,7 +426,7 @@ def read_met(fnames):
         elif X_file is not None:
             X = [X_file for i in m2[:, column_indices["time"]]]
             Y = [Y_file for i in m2[:, column_indices["time"]]]
-            
+        
         #Construct dictionary
         met_dict = {}
         for key in met_default.keys():
@@ -651,19 +652,32 @@ def footprint_array(fields_file,
     met_ds = xray.Dataset(met_dict,
                           coords = {"time": (["time"], time),
                                     "lev": (["lev"], levs)})
-
+    
     for levi, lev in enumerate(levs):
-        metr = met[levi].reindex(index = time, method = "pad")
-        for key in met[levi].keys():
+        # If there is only one level in the met list
+        # but more levels in the NAME output, just use the same met level
+        # for all NAME levels. This is probably a bad idea.
+        if len(met) == 1:
+            levi_met = 0
+            print("WARNING: ONLY ONE MET LEVEL. " + \
+                  "ASSUMING MET CONSTANT WITH HEIGHT!")
+        else:
+            levi_met = levi
+
+        metr = met[levi_met].reindex(index = time, method = "pad")
+
+        for key in met[levi_met].keys():
             met_ds[key][dict(lev = [levi])] = \
                 metr[key].values.reshape((len(time), 1))
+
+    # Merge met dataset into footprint dataset
     fp.merge(met_ds, inplace = True)
 
 
     # Add in particle locations
     if particle_file is not None:
         fp.merge(particle_hist, inplace = True)
-    
+
     # Extract footprint from columns
     def convert_to_ppt(fp, slice_dict, column):
         molm3=fp["press"][slice_dict].values/const.R/\
@@ -710,7 +724,7 @@ def footprint_concatenate(fields_prefix,
     # Find footprint files and MATCHING particle location files
     # These files are identified by their date string. Make sure this is right!
     fields_files = sorted(glob.glob(fields_prefix + "*" +
-                             datestr + "*.txt*"))
+                          datestr + "*.txt*"))
 
     # Search for particle files                             
     file_datestrs = [f.split(fields_prefix)[-1].split(".txt")[0].split("_")[-1] \
@@ -719,10 +733,19 @@ def footprint_concatenate(fields_prefix,
     particle_files = []
     if particle_prefix is not None:
         for file_datestr in file_datestrs:
-            if not glob.glob(particle_prefix + "*" + file_datestr + "*.txt*") is False:
-                particle_files.append(
-                    glob.glob(particle_prefix + "*" + file_datestr + "*.txt*")[0])
-    
+            
+            particle_file_search_string = \
+                particle_prefix + "*" + file_datestr + "*.txt*"
+            particle_file_search = \
+                glob.glob(particle_file_search_string)
+
+            if not particle_file_search is False:
+                particle_files.append(particle_file_search[0])
+            else:
+                print("Can't find particle file " + \
+                      particle_file_search_string)
+                return None
+                
         if len(particle_files) != len(fields_files):
             print("Particle files don't match fields files")
             return None
@@ -1000,6 +1023,7 @@ def process(domain, site, height, year, month,
             fields_folder = "Fields_files",
             particles_folder = "Particle_files",
             met_folder = "Met",
+            force_met_empty = False,
             processed_folder = "Processed_Fields_files",
             satellite = False,
             force_update = False,
@@ -1097,27 +1121,33 @@ def process(domain, site, height, year, month,
               subfolder)
 
         # Get Met files
-        if satellite:
-            met_search_str = subfolder + met_folder + "/*" + datestr + "*/*.txt*"
-        else:
-            met_search_str = subfolder + met_folder + "/*.txt*"
-  
-        met_files = sorted(glob.glob(met_search_str))
-    
-        if len(met_files) == 0:
-            print("Can't file MET files: " + met_search_str)
-            return None
-        else:
+        if force_met_empty is not True:
             if satellite:
-                met = []
-                for met_file in met_files:
-                    met.append(read_met(met_file))
+                met_search_str = subfolder + met_folder + "/*" + datestr + "*/*.txt*"
             else:
-                met = read_met(met_files)
+                met_search_str = subfolder + met_folder + "/*.txt*"
+      
+            met_files = sorted(glob.glob(met_search_str))
+        
+            if len(met_files) == 0:
+                print("Can't file MET files: " + met_search_str)
+                return None
+            else:
+                if satellite:
+                    met = []
+                    for met_file in met_files:
+                        met.append(read_met(met_file))
+                else:
+                    met = read_met(met_files)
+        else:
+            met = None
 
         # Get footprints
         fields_prefix = subfolder + fields_folder + "/"
-        particles_prefix = subfolder + particles_folder + "/"
+        if particles_folder is not None:
+            particles_prefix = subfolder + particles_folder + "/"
+        else:
+            particles_prefix = None
 
         fp_file = footprint_concatenate(fields_prefix,
                                         datestr = datestr, met = met,
@@ -1146,18 +1176,30 @@ def process(domain, site, height, year, month,
         # Concatentate
         fp = xray.concat(fp, "time")
 
+        # ONLY OUTPUT FIRST LEVEL FOR NOW
+        if len(fp.lev) > 1:
+            fp = fp[dict(lev = [0])]
+            print("WARNING: ONLY OUTPUTTING FIRST LEVEL!")
+        fp = fp.squeeze()
+        
         #Write netCDF file
+        #######################################
         
         # Define particle locations dictionary (annoying)
-        pl = {"N": numpy.transpose(fp.pl_n.values.squeeze(), (2, 1, 0)),
-              "E": numpy.transpose(fp.pl_e.values.squeeze(), (2, 1, 0)),
-              "S": numpy.transpose(fp.pl_s.values.squeeze(), (2, 1, 0)),
-              "W": numpy.transpose(fp.pl_w.values.squeeze(), (2, 1, 0))}
+        if "pl_n" in fp.keys():
+            pl = {"N": fp.pl_n.transpose("height", "lon", "time").values.squeeze(),
+                  "E": fp.pl_e.transpose("height", "lat", "time").values.squeeze(),
+                  "S": fp.pl_s.transpose("height", "lon", "time").values.squeeze(),
+                  "W": fp.pl_w.transpose("height", "lat", "time").values.squeeze()}
+            height_out = fp.height.values.squeeze()
+        else:
+            pl = None
+            height_out = None
 
         print("Writing file: " + outfile)
         
         # Write outputs
-        write_netcdf(numpy.transpose(fp.fp.values.squeeze(), (1, 2, 0)),
+        write_netcdf(fp.fp.transpose("lat", "lon", "time").values.squeeze(),
                      fp.lon.values.squeeze(),
                      fp.lat.values.squeeze(),
                      fp.lev.values,
@@ -1171,7 +1213,7 @@ def process(domain, site, height, year, month,
                      release_lon=fp["release_lon"].values.squeeze(),
                      release_lat=fp["release_lat"].values.squeeze(),
                      particle_locations = pl,
-                     particle_heights = fp.height.values.squeeze())
+                     particle_heights = height_out)
 
     else:
         print("Couldn't seem to find any files")
@@ -1263,7 +1305,7 @@ def copy_processed(domain):
     dst_folder = "/data/shared/NAME/fp/" + domain + "/"
     
     files = glob.glob(src_folder + domain +
-        "*/Processed_Fields_files/*.nc")
+        "_*/Processed_Fields_files/*.nc")
 
     folders = set([os.path.split(f)[0] for f in files])
 
@@ -1272,6 +1314,42 @@ def copy_processed(domain):
         dirsync.sync(f, dst_folder, "sync")
     print("Done sync")
 
+def test_processed_met(domain, site, height,
+                       base_dir = "/dagage2/agage/metoffice/NAME_output/"):
+    
+    subfolder = base_dir + domain + "_" + site + "_" + height + \
+                "/Processed_Fields_files/"
+    files = sorted(glob.glob(subfolder + "*.nc"))
+
+    ds = []    
+    for f in files:
+        with xray.open_dataset(f) as fi: 
+            dsf = fi.load()
+
+        ds.append(dsf)
+    
+    ds = xray.concat(ds, "time")
+    
+    plt.plot(ds.time, ds.pressure)
+    plt.title("Pressure")
+    plt.show()
+
+    plt.plot(ds.time, ds.temperature)
+    plt.title("Temperature")
+    plt.show()
+
+    plt.plot(ds.time, ds.fp.sum(["lon", "lat"]))
+    plt.title("Sum(Footprint)")
+    plt.show()
+
+    plt.plot(ds.time, ds.particle_locations_n.sum(["lon", "height"]) + \
+                      ds.particle_locations_e.sum(["lat", "height"]) + \
+                      ds.particle_locations_s.sum(["lon", "height"]) + \
+                      ds.particle_locations_w.sum(["lat", "height"]))
+    plt.title("Sum(Particle locations) - should sum to 1")
+    plt.show()
+    
+    return ds
 
 # Process a list of AGAGE/DECC/GAUGE files if called as main
 if __name__ == "__main__":
@@ -1281,5 +1359,5 @@ if __name__ == "__main__":
              "GAUGE-FERRY", "GAUGE-FAAM",
              "EHL", "TIL", "GLA", "WAO", "HAD", "GSN"]
     for site in sites:
-        process_agage(domain, site, force_update = True)
+        process_all(domain, site, force_update = True)
 

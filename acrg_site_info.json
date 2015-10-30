@@ -86,6 +86,14 @@
         "network": "GOSAT/GOSAT-INDIA",
         "platform": "satellite"
     },
+    "GOSAT-UK" : {
+        "alt": ["GOSAT"],
+        "long_name" : "GOSAT, UK",
+        "height": ["column"],
+        "height_name": ["column"],
+        "network": "GOSAT/GOSAT-UK",
+        "platform": "satellite"
+    },
     "GSN" : {
         "alt": ["GOSAN"],
         "long_name" : "Gosan, Korea",

@@ -114,7 +114,7 @@ def read_netcdfs(files, dim = "time", transform_func=None):
 
 
 def footprints(sitecode_or_filename, start = "2010-01-01", end = "2016-01-01",
-        domain="EUROPE", height = None, species = None):
+        domain="EUROPE", height = None, species = None, emissions_name = None):
     """
     Load a NAME footprint netCDF files into an xray dataset.
     Either specify:
@@ -132,8 +132,11 @@ def footprints(sitecode_or_filename, start = "2010-01-01", end = "2016-01-01",
     If the HEIGHT keyword is not specified, the default height from the
     acrg_site_info.json file is assumed.
     
-    If the SPECIES keyword is given, fluxes will also be loaded and
-    merged into the dataset.    
+    If the SPECIES or EMISSIONS_NAME keyword is given, fluxes will also
+    be loaded and merged into the dataset.
+    
+    EMISSIONS_NAME allows emissions files such as co2nee_EUROPE_2012.nc
+    to be read in. In this case EMISSIONS_NAME would be 'co2nee'
     """
     
     #Chose whether we've input a site code or a file name
@@ -157,17 +160,21 @@ def footprints(sitecode_or_filename, start = "2010-01-01", end = "2016-01-01",
         
         fp=read_netcdfs(files)
         
-        # If a species is specified, also get flux and vmr at domain edges           
-        if species is not None:
-
-            flux_ds = flux(domain, species)
-
+        # If a species is specified, also get flux and vmr at domain edges
+        if emissions_name is not None:
+            flux_ds = flux(domain, emissions_name)
             if flux_ds is not None:
                 fp = combine_datasets(fp, flux_ds)
-
+        elif species is not None:
+            flux_ds = flux(domain, species)
+            if flux_ds is not None:
+                fp = combine_datasets(fp, flux_ds)
+        
+        if species is not None:
             bc_ds = boundary_conditions(domain, species)
             if bc_ds is not None:
                 fp = combine_datasets(fp, bc_ds)
+          
 
         return fp
 
@@ -305,7 +312,7 @@ def timeseries_boundary_conditions(ds):
 def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
                           calc_timeseries = True, calc_bc = True,
                           average = None, site_modifier = {}, height = None,
-                          full_corr = False):
+                          full_corr = False, emissions_name = None):
     """
     Output a dictionary of xray footprint datasets, that correspond to a given
     dictionary of Pandas dataframes, containing mole fraction time series.
@@ -344,9 +351,12 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
     else:
         average = [None for i in sites]
 
-    # Check if species is defined in data dictionary
-    if ".species" in data.keys():
-        species = data[".species"]
+    # If not given, check if species is defined in data dictionary:
+    if species is None:
+        if ".species" in data.keys():
+            species = data[".species"]
+        else:
+            print "Species is not specified and can't be found in data dictionary."
 
     # Output array
     fp_and_data = {}
@@ -389,8 +399,9 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
                              species = [species if calc_timeseries == True or \
                                          calc_bc == True \
                                          else None][0], \
-                             height = height_site)
-        return site_fp
+                             height = height_site,
+                             emissions_name = [emissions_name if calc_timeseries == True \
+                                         else None][0])
         if site_fp is not None:
             
             # Merge datasets
@@ -412,7 +423,6 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
                                             data[".units"])})
 
                
-
             # Calculate model time series, if required
             if calc_timeseries:
                 site_ds["mf_mod"] = timeseries(site_ds)
@@ -736,7 +746,7 @@ def filtering(datasets_in, filters, full_corr=False):
     return datasets
 
 
-def baseline(y, y_time, y_site, baseline_error = 100, days_to_average = 5):
+def baseline(y, y_time, y_site, baseline_error = 100., days_to_average = 5.):
     """
     Prepares an add-on to the sensitivity (H) matrix, that allows the baseline
     to be solved within the inversion.
@@ -805,7 +815,7 @@ def gauss_inversion(data, prior, model, data_error, prior_error):
     return x, P
 
 
-def prior_flux(species, domain, basis_case, av_date, species_key = None):
+def prior_flux(species, domain, basis_case, av_date, emissions_name = None):
     """
     Calculates an area weighted flux for each basis region using the prior emissions.
     'av_date' is a date representative of the timeseries being looked at. It is used
@@ -816,7 +826,10 @@ def prior_flux(species, domain, basis_case, av_date, species_key = None):
     file ON OR BEFORE the inputted av_date.
     """
 
-    flux_data= flux(domain, species)
+    if emissions_name == None:
+        emissions_name = species
+
+    flux_data= flux(domain, emissions_name)
     basis_data = basis(domain, basis_case)
     
     flux_timestamp = pd.DatetimeIndex(flux_data.time.values).asof(av_date)
@@ -835,15 +848,12 @@ def prior_flux(species, domain, basis_case, av_date, species_key = None):
     for i in basis_nos:
         basisflux[i-1] = np.sum(awflux[basis0[:,:]==i])
 
-    if species_key == None:
-        species_key = species
-    
-    prior_x = regrid.mol2kg(basisflux,species_key)*(3600*24*365)
+    prior_x = regrid.mol2kg(basisflux,species)*(3600*24*365)
     
     return prior_x
     
     
-def scaling_to_post_flux(prior_flux, x, P):
+def scaling_to_post_flux(prior_x, x, P):
     """
     For Gaussian inversion will convert outputs (emission scaling factors and associated error)
     to emission estimates using the prior flux calculated using the function 'prior_flux'.
@@ -851,12 +861,13 @@ def scaling_to_post_flux(prior_flux, x, P):
 
     if type(x) is not np.array:
         x = np.array(x)
+    x2 = x.reshape(np.shape(prior_x))
 
-    post_x = np.array(x)*prior_flux
+    post_x = np.array(x2)*prior_x
 
     qmatrix = np.zeros((len(post_x), len(post_x)))
     for i in range(len(post_x)):
-        qmatrix[:,i] = post_x[:,0]*post_x[i]
+        qmatrix[:,i] = post_x[:]*post_x[i]
 
     if type(P) is not np.array:
         P = np.array(P)
@@ -868,7 +879,7 @@ def scaling_to_post_flux(prior_flux, x, P):
 
 class analytical_inversion:
     def __init__(self, out_var_file, species, domain, basis_case='voronoi',
-                 species_key = None, prior_error=1, baseline_error = 100, baseline_days = 5):
+                 emissions_name = None, prior_error=1., baseline_error = 100., baseline_days = 5.):
         """
         Using the output file from merge_sensitivity will calculate emissions estimates
         using a Gaussian analyical inversion.
@@ -889,10 +900,12 @@ class analytical_inversion:
 #       Solve for baseline
         if H_bc is not None:
             H = np.append(H, H_bc, axis=1)
-            xerror_bl = np.zeros(len(H_bc[:,0]))*float(baseline_error)
+            xerror_bl = np.ones(len(H_bc[0,:]))*float(baseline_error)
         else:
-            HB, xerror_bl = baseline(y, y_time, y_site, baseline_error = baseline_error, days_to_average = baseline_days)
-            H = np.append(H, HB, axis = 1)
+            H_bc, xerror_bl = baseline(y, y_time, y_site, baseline_error = baseline_error, days_to_average = baseline_days)
+            H = np.append(H, H_bc, axis = 1)
+        
+        prior_bl = np.dot(H_bc,np.ones(len(H_bc[0,:])))
         
 #       Inversion
         xa = np.append(x0,np.zeros(len(xerror_bl)))
@@ -909,11 +922,11 @@ class analytical_inversion:
         av_date = y_time[len(y_time)/2]
                 
 #       Find real emissions values
-        prior = prior_flux(species, domain, basis_case, av_date, species_key = None)
-        posterior, uncertainty = scaling_to_post_flux(prior_flux, x, P)   
+        prior = prior_flux(species, domain, basis_case, av_date, emissions_name = emissions_name)
+        posterior, uncertainty = scaling_to_post_flux(prior, x[:len(x0)], P[:len(x0),:len(x0)])   
         
 #       Find baseline solution
-        BL = H[:,len(H[0,:]):]*x[len(H[0,:]):]
+        BL = H[:,len(H_bc[0,:]):]*x[len(H_bc[0,:]):]
     
         self.prior_scal = xa
         self.model = H
@@ -925,7 +938,8 @@ class analytical_inversion:
         self.prior_emi = prior
         self.post_emi = posterior
         self.uncert = uncertainty
-        self.baseline = BL
+        self.prior_bl = prior_bl
+        self.post_bl = BL
 
 
 
