@@ -16,7 +16,7 @@ import pandas as pd
 import netCDF4
 import bisect
 from acrg_GCWerks import acrg_ICP
-
+reload(acrg_agage)
 # gases available
 def gases_measured():
     gases = ['co2','CO2','ch4','CH4', 'n2o','N2O','co','CO','sf6','SF6']
@@ -26,8 +26,8 @@ def gases_measured():
 # list of sites
 class sites_list():
     def __init__(self):
-        sites_tag = ['MHD','TTA','BSD','HFD','RGL','TAC', 'ferry','WAO','HAD','TIL', 'GLA','EHL']
-        sites_name = ['Mace Head','Angus', 'Bilsdale','Heathfield','Ridge Hill','Tacolneston', 'Ferry','Weybourne','Haddenham','Tilney','Glatton',"Earl's Court"]
+        sites_tag = ['MHD','TTA','BSD','HFD','RGL','TAC', 'ferry','WAO','HAD','TIL', 'GLA','EHL', 'WAO_UCAM', 'BTT']
+        sites_name = ['Mace Head','Angus', 'Bilsdale','Heathfield','Ridge Hill','Tacolneston', 'Ferry','Weybourne','Haddenham','Tilney','Glatton',"Earl's Hall", 'Weybourne UCam', 'BT Tower']
     
     
         self.sites_tag = sites_tag
@@ -45,23 +45,48 @@ def units(gas):
 
 # PLOT CODE!
 # Make the plot and save it    
-def plotagainstother(site, gas, suffix='', yscale=None, xscale=None, other_site='MHD', network=None):
+def plotagainstother(site, gas, suffix='', yscale=None, xscale=None, other_site='MHD',\
+                     alt_dir_site = None, alt_dir_other = None, dateformatter =None, network=None,\
+                     site_name = None, other_site_name = None, outdir = None):
+
+    # Check if the given site matches
+    if (np.where(np.array(sites_list().sites_tag) == site)[0]).size > 0: 
+        if site_name is None:
+            site_name = (sites_list().sites_name)[np.where(np.array(sites_list().sites_tag ) == site)[0]] 
+    else:
+        print 'Site ' + site + ' does not match any listed'
+        print 'Please use: ' 
+        for i in sites_list().sites_tag:
+            print i
     
-    site_name = (sites_list().sites_name)[np.where(np.array(sites_list().sites_tag ) == site)[0]] 
-    other_site_name = (sites_list().sites_name)[np.where(np.array(sites_list().sites_tag) == other_site)[0]]    
+    if (np.where(np.array(sites_list().sites_tag) == other_site)[0]).size > 0:   
+        if other_site_name is None:
+            other_site_name = (sites_list().sites_name)[np.where(np.array(sites_list().sites_tag) == other_site)[0]]    
+    else:
+        print 'Site ' + other_site + ' does not match any listed'
+        print 'Please use: ' 
+        for i in sites_list().sites_tag:
+            print i
+            
+    if outdir is None:    
+        outdir = '/home/as13988/GAUGE/MHDComparisons/'
+
+    if site in ['WAO_UCAM']:
+        network = 'UCAM-EA' 
     
-    
-    outputdir = '/home/as13988/GAUGE/MHDComparisons/'
-    site_data = read_site(site, gas)
-    
+    site_data = read_site(site, gas, network=network, alt_dir = alt_dir_site)
+        
     if (site_data) is not None:
         start = min(site_data.index)
         end = max(site_data.index)
         
         if other_site == 'MHD' and gas == 'co2':
             network='LSCE'
-        
-        other_site_data = read_site(other_site, gas, start = start, end = end, network=network)
+        else:
+            network = None
+            
+        other_site_data = read_site(other_site, gas, start = start, end = end, network=network,\
+        alt_dir = alt_dir_other)
              
         if other_site_data is not None:             
              
@@ -72,6 +97,9 @@ def plotagainstother(site, gas, suffix='', yscale=None, xscale=None, other_site=
             
             # Adjust the tick number on the x axis
             x_formatter = matplotlib.dates.DateFormatter('%m/%Y')
+            if dateformatter is not None:
+                x_formatter = matplotlib.dates.DateFormatter(dateformatter)
+
             x_tickno_formatter = matplotlib.ticker.MaxNLocator(5)
             ax.xaxis.set_major_formatter(x_formatter)
             ax.xaxis.set_major_locator(x_tickno_formatter)
@@ -92,7 +120,7 @@ def plotagainstother(site, gas, suffix='', yscale=None, xscale=None, other_site=
         
             if suffix  != '':
                 suffix = '_' + suffix
-            plt.savefig(outputdir+site+'Vs' + other_site + '_' + gas+suffix + '.png', dpi=200)
+            plt.savefig(outdir+site+'Vs' + other_site + '_' + gas+suffix + '.png', dpi=200)
             
         else:
                  print 'Can not find data for ' + gas + ' at ' + other_site 
@@ -100,7 +128,7 @@ def plotagainstother(site, gas, suffix='', yscale=None, xscale=None, other_site=
         print 'Can not find data for ' + gas + ' at ' + site 
 
 # Make the plot and save it    
-def plotagainstflask(site, flasksite, gas, suffix='', yscale=None, xscale=None, network=None):
+def plotagainstflask(site, flasksite, gas, suffix='', yscale=None, xscale=None, network=None, yscale_diff=None, xscale_diff=None):
     
     site_name = (sites_list().sites_name)[np.where(np.array(sites_list().sites_tag ) == site)[0]] 
     flask_site_name = (sites_list().sites_name)[np.where(np.array(sites_list().sites_tag) == flasksite)[0]]    
@@ -224,9 +252,6 @@ def plotagainstflask(site, flasksite, gas, suffix='', yscale=None, xscale=None, 
         ax1.xaxis.set_major_formatter(x_formatter)
         ax1.xaxis.set_major_locator(x_tickno_formatter)
         ax1.set_ylabel('insitu - flask' + units(gas))
-    
-        if xscale != None:
-            ax1.set_xlim(xscale)
         
         # Plot WMO lines
         lines = acrg_ICP.WMOLines(0, gas)
@@ -234,7 +259,13 @@ def plotagainstflask(site, flasksite, gas, suffix='', yscale=None, xscale=None, 
 
         ax1.plot(daterange, lines.plusline,'--')
         ax1.plot(daterange, lines.minusline,'--')
-
+        
+        if xscale_diff != None:
+            ax1.set_xlim(xscale_diff)
+        
+        if yscale_diff != None:
+            ax1.set_ylim(yscale_diff)  
+            
         plt.figtext(0.5, 0.9, site + ' Vs. ' + flasksite, verticalalignment='bottom', horizontalalignment='center', fontsize=12)
         plt.figtext(0.83, 0.84, 'Flask', verticalalignment='bottom', horizontalalignment='left', fontsize=10,color='red')
         plt.figtext(0.75, 0.84, 'In situ', verticalalignment='bottom', horizontalalignment='left', fontsize=10, color='blue')
@@ -262,6 +293,8 @@ def plotagainstflask(site, flasksite, gas, suffix='', yscale=None, xscale=None, 
         ax2.plot([extendedinsitu.min(), extendedinsitu.max()], lines.plusline,'--')
         ax2.plot([extendedinsitu.min(), extendedinsitu.max()], lines.minusline,'--')
         plt.figtext(0.15, 0.84, site + ' Vs. ' + flasksite, verticalalignment='bottom', horizontalalignment='left', fontsize=12)
+        pdb.set_trace()
+
 
         if suffix  != '':
             suffix = '_' + suffix
@@ -273,30 +306,35 @@ def plotagainstflask(site, flasksite, gas, suffix='', yscale=None, xscale=None, 
 
 # READ CODE!
 # Read in the site data for the given gas
-def read_site(site, gas, start = '1900-01-01 00:00:00', end = '2020-01-01 00:00:00', network=None):
+def read_site(site, gas, start = '1900-01-01 00:00:00', end = '2020-01-01 00:00:00', network=None, alt_dir = None):
    
+    
     if site in ['WAO','wao']:
         site_data = read_wao(gas).data   
         
-    if site in ['GLA','gla']:
-        site_data = read_gla(gas).data   
+    #if site in ['GLA','gla']:
+        #site_data = read_gla(gas).data   
     
     if site in ['MHD','mhd']:
-        site_data = read_MHD(gas, start = start, end=end)
+        site_data = read_MHD(gas, start = start, end=end, alt_dir=alt_dir)
     
-    if site not in ['WAO','wao','GLA','gla','MHD','mhd']:
-        site_data = acrg_agage.get(site, gas, start=start, end = end, network=network)
+    if site in ['WAO_UCAM', 'wao_ucam']:  
+        site_data = acrg_agage.get('WAO', gas, start=start, end = end, network=network)
+
+    #if site not in ['WAO','wao','GLA','gla','MHD','mhd','WAO_UCAM', 'wao_ucam']:
+    if site not in ['WAO','wao','MHD','mhd','WAO_UCAM', 'wao_ucam']:
+        site_data = acrg_agage.get(site, gas, start=start, end = end, network=network, alt_dir=alt_dir)
 
     return site_data
 
 
 # Read in the MHD data for the same date range as the site
-def read_MHD(gas, start = '1900-01-01 00:00:00', end = '2020-01-01 00:00:00'):
+def read_MHD(gas, start = '1900-01-01 00:00:00', end = '2020-01-01 00:00:00', alt_dir=None):
         
     if gas in ['co2', 'CO2']:
-        MHD = acrg_agage.get('MHD', 'CO2', instrument='CRDS', network='LSCE', start=start, end = end)
+        MHD = acrg_agage.get('MHD', 'CO2', instrument='CRDS', network='LSCE', start=start, end = end, alt_dir = alt_dir)
     else:
-        MHD = acrg_agage.get('MHD', gas, start=start, end = end)
+        MHD = acrg_agage.get('MHD', gas, start=start, end = end, alt_dir = alt_dir)
     
     return MHD
 
@@ -305,7 +343,7 @@ def read_MHD(gas, start = '1900-01-01 00:00:00', end = '2020-01-01 00:00:00'):
 class read_flask():
     def __init__(self, site, gas, start = None, end = None):
         
-        # need to set some parameters to get the data to read in properly
+        # need to set some parameters to get the data to reaTACd in properly
         network = None
         height = None
         
@@ -347,6 +385,11 @@ class read_wao():
             sd_header = 'CH4_WT_ppb'
             OK = 1
         
+        if gas =='N2O' or gas =='n2o':
+            infile = 'WAO_N2O_SF6_forAnn_151015.csv'
+            sd_header = 'N2O_flag'
+            OK = 2
+            
         meancolumnheaders = ['CO2_ppm','CO2_ppm','CH4_ppb','CH4_ppb','N2O_ppb','N2O_ppb','CO_ppb','CO_ppb','SF6_ppb','SF6_ppb']         
         
         if OK != None:        
@@ -359,16 +402,28 @@ class read_wao():
             # read in the file
             f = open(datadir+infile, 'r')
             lines = f.readlines()
+
+            # Hack for the N2O and SF6 csv file
+            if OK  == 2:  
+                noheaderlines = 3
+                # read in the header for the columns
+                data = pandas.read_csv(datadir+infile, header=noheaderlines-1, delimiter=',')
             
             # read in the first line which give you the number of header lines
-            noheaderlines = int((lines[0].split())[0])
+            else:
+                noheaderlines = int((lines[0].split())[0])
+                # read in the header for the columns
+                data = pandas.read_csv(datadir+infile, header=noheaderlines-1, delim_whitespace=True)
             
-            # read in the header for the columns
-            data = pandas.read_csv(datadir+infile, header=noheaderlines-1, delim_whitespace=True)
             
             if infile != 'wao-CO2_weybourne_20120101_compilation_hourlyaverage.na': 
-                time = [dt.datetime(int(data['year'][i]),int(data['month'][i]),int(data['day'][i]),int(data['hour'][i])) for i in np.arange(len(data['year']))]
-                sd = np.array(data[sd_header])
+                if OK == 2:
+                    time = [dt.datetime.strptime(data['Date_Time'][i], "%d/%m/%Y %H:%M") for i in np.arange(len(data['Date_Time']))]                   
+                    sd = np.arange(len(data.index))
+                    sd[:] = np.NaN
+                else:                    
+                    time = [dt.datetime(int(data['year'][i]),int(data['month'][i]),int(data['day'][i]),int(data['hour'][i])) for i in np.arange(len(data['year']))]
+                    sd = np.array(data[sd_header])
             else: 
                 time = [dt.datetime.strptime(data.index[i]+ ' ' + data['Date_and_Time'][i], "%d/%m/%Y %H:%M:%S") for i in np.arange(len(data['Date_and_Time']))]
                 sd = np.empty(len(time))
@@ -376,10 +431,10 @@ class read_wao():
             
             conc = np.array(data[mean_header])
             
-            gooddata = np.where(conc != 9999.0)[0]
+            gooddata = np.where(conc < 9999.0)[0] # Some files have 9999.0 some have 9999.99
     
             goodtime = [time[j] for j in gooddata]        
-            
+        
             df = pd.DataFrame({"mf": conc[gooddata], 'vmf': sd[gooddata]},
                                       index = goodtime)             
         else:
