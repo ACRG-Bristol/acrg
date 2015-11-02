@@ -325,7 +325,7 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
             ncf.close()
     
         if len(data_frames) > 0:
-            data_frame = pd.concat(data_frames).sort()
+            data_frame = pd.concat(data_frames).sort_index()
             data_frame.index.name = 'time'
             data_frame = data_frame[start_time : end_time]
         else:

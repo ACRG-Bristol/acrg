@@ -1094,7 +1094,7 @@ def plot(fp_data, date, out_filename=None,
 
     #Calculate color levels
     cmap = colormap
-    rp_color = {"SURFACE": "blue",
+    rp_color = {"SURFACE": "black",
                 "SHIP": "purple",
                 "AIRCRAFT": "red",
                 "SATELLITE": "green"}
@@ -1117,8 +1117,9 @@ def plot(fp_data, date, out_filename=None,
     # Generate plot data
     for site in sites:
     
-        tdelta = fp_data[site].time - date
-        if np.min(np.abs(tdelta)) < 2*3600.*1e9:
+        tdelta = fp_data[site].time - np.datetime64(date)
+
+        if np.min(np.abs(tdelta)).astype(np.int64) < 1.1*3600.*1e9:
 
             fp_data_ti = fp_data[site].reindex_like( \
                             xray.Dataset(coords = {"time": [date]}),
@@ -1151,7 +1152,7 @@ def plot(fp_data, date, out_filename=None,
                     color = rp_color[site_info[site]["platform"].upper()]
                 else:
                     color = rp_color["SURFACE"]
-                rp = map_data.m.scatter(rpx, rpy, 40, color = color)
+                rp = map_data.m.scatter(rpx, rpy, 100, color = color)
     
     plt.title(str(pd.to_datetime(str(date))), fontsize=20)
 
@@ -1172,21 +1173,24 @@ def plot(fp_data, date, out_filename=None,
         plt.show()
 
 
-def time_unique(fp_data):
+def time_unique(fp_data, time_regular = False):
     
     sites = [key for key in fp_data.keys() if key[0] != '.']
     
     time = fp_data[sites[0]].time.to_dataset()
     if len(sites) > 1:
         for site in sites[1:]:
-            print(site)
             time.merge(fp_data[site].time.to_dataset(), inplace = True)
+    
+    time = time.time.to_pandas().index.to_pydatetime()
+    if time_regular is not False:
+        time = pd.date_range(min(time), max(time), freq = time_regular)
     
     return time
 
 
 def plot3d(fp_data, date, out_filename=None, 
-         cutoff = -3.5):
+           log_range = [5., 9.]):
 
     """date as string "d/m/y H:M" or datetime object 
     datetime.datetime(yyyy,mm,dd,hh,mm)
@@ -1198,12 +1202,12 @@ def plot3d(fp_data, date, out_filename=None,
 
     time_index = bisect.bisect_left(fp_data.time, date)
 
-    data = np.log10(fp_data.fp[:,:,time_index])
-    lon_range = (fp_data.lonmin, fp_data.lonmax)
-    lat_range = (fp_data.latmin, fp_data.latmax)
+    data = np.log10(fp_data.fp.values[:,:,time_index].squeeze())
+    lon_range = (fp_data.lon.min().values, fp_data.lon.max().values)
+    lat_range = (fp_data.lat.min().values, fp_data.lat.max().values)
 
     #Set very small elements to zero
-    data[np.where(data <  cutoff)]=np.nan
+    data[np.where(data <  log_range[0])]=np.nan
 
     fig = plt.figure(figsize=(16,12))
 
@@ -1213,25 +1217,25 @@ def plot3d(fp_data, date, out_filename=None,
     
     ax.set_ylim(lat_range)
     ax.set_xlim(lon_range)
-    ax.set_zlim((min(fp_data.particle_height), max(fp_data.particle_height)))
+    ax.set_zlim((min(fp_data.height), max(fp_data.height)))
 
     fpX, fpY = np.meshgrid(fp_data.lon, fp_data.lat)
     
-    levels = np.arange(cutoff, 0., 0.05)
+    levels = np.arange(log_range[0], log_range[1], 0.05)
 
     plfp = ax.contourf(fpX, fpY, data, levels, offset = 0.)
-    plnX, plnY = np.meshgrid(fp_data.lon, fp_data.particle_height)
-    plwX, plwY = np.meshgrid(fp_data.lat, fp_data.particle_height)
+    plnX, plnY = np.meshgrid(fp_data.lon.values.squeeze(), fp_data.height.values.squeeze())
+    plwX, plwY = np.meshgrid(fp_data.lat.values.squeeze(), fp_data.height.values.squeeze())
     pllevs = np.arange(0., 0.0031, 0.0001)
     
-    plnvals = fp_data.particle_locations["N"][:,:,time_index]
+    plnvals = fp_data.particle_locations_n.values[:,:,time_index].squeeze()
     plnvals[np.where(plnvals == 0.)]=np.nan
-    plwvals = fp_data.particle_locations["W"][:,:,time_index]
+    plwvals = fp_data.particle_locations_w.values[:,:,time_index].squeeze()
     plwvals[np.where(plwvals == 0.)]=np.nan
     plpln = ax.contourf(plnX, plnvals, plnY,
-                        zdir = 'y', offset = max(fp_data.lat), levels = pllevs)
+                        zdir = 'y', offset = max(fp_data.lat.values), levels = pllevs)
     plplw = ax.contourf(plwvals, plwX, plwY,
-                        zdir = 'x', offset = min(fp_data.lon), levels = pllevs)    
+                        zdir = 'x', offset = min(fp_data.lon.values), levels = pllevs)    
     ax.view_init(50)
 
     cb = plt.colorbar(plfp, location='bottom', shrink=0.8)
@@ -1242,10 +1246,8 @@ def plot3d(fp_data, date, out_filename=None,
              fontsize=15)
     cb.ax.tick_params(labelsize=13) 
     
-    plt.tight_layout()
-
     if out_filename is not None:
-        plt.savefig(out_filename, dpi = 600)
+        plt.savefig(out_filename, dpi = 300)
         plt.close()
     else:
         plt.show()
@@ -1253,10 +1255,11 @@ def plot3d(fp_data, date, out_filename=None,
 
 def animate(fp_data, output_directory, 
             lon_range = None, lat_range=None, zoom = False,
-            cutoff = -3.,
-            overwrite=True, file_label = 'fp', 
+            log_range = [5., 9.],
+            overwrite=True, file_label = 'fp',
             framerate=10, delete_png=False,
-            video_os="mac", ffmpeg_only = False):
+            video_os="mac", ffmpeg_only = False,
+            plot_function = "plot", time_regular = "1H"):
     
     sites = [key for key in fp_data.keys() if key[0] != '.']
     
@@ -1265,27 +1268,32 @@ def animate(fp_data, output_directory,
         # Set up map        
         if zoom:
             lat_range, lon_range = plot_map_zoom(fp_data)
-            
+        
         map_data = plot_map_setup(fp_data[sites[0]], 
                                   lon_range = lon_range, 
                                   lat_range= lat_range, bottom_left = True)
         
         # Find unique times
-        times = time_unique(fp_data)
+        times = time_unique(fp_data,
+                            time_regular = time_regular)
 
         # Start progress bar
-        pbar=ProgressBar(maxval=len(times.time.values)).start()
+        pbar=ProgressBar(maxval=len(times)).start()
 
         # Plot each timestep
-        for ti, t in enumerate(times.time.values):
+        for ti, t in enumerate(times):
             
             fname=os.path.join(output_directory, 
                                file_label + '_' + str(ti).zfill(5) + '.png')
                                
-            if len(glob.glob(fname)) == 0 or overwrite == True:            
-                plot_scatter(fp_data, t, out_filename = fname, 
-                     lon_range = lon_range, lat_range= lat_range,
-                     cutoff=cutoff, map_data = map_data)
+            if len(glob.glob(fname)) == 0 or overwrite == True:
+                if plot_function == "plot":
+                    plot(fp_data, t, out_filename = fname, 
+                         lon_range = lon_range, lat_range= lat_range,
+                         log_range = log_range, map_data = map_data)
+                elif plot_function == "plot3d":
+                    plot3d(fp_data[sites[0]], t, out_filename = fname,
+                           log_range = log_range)
                      
             pbar.update(ti)
         pbar.finish()
