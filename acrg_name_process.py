@@ -711,7 +711,7 @@ def footprint_concatenate(fields_prefix,
     # These files are identified by their date string. Make sure this is right!
     fields_files = sorted(glob.glob(fields_prefix + "*" +
                              datestr + "*.txt*"))
-
+                             
     # Search for particle files                             
     file_datestrs = [f.split(fields_prefix)[-1].split(".txt")[0].split("_")[-1] \
             for f in fields_files]
@@ -1124,7 +1124,7 @@ def process(domain, site, height, year, month,
                                         particle_prefix = particles_prefix,
                                         satellite = satellite,
                                         time_step = timeStep)
-        
+
         # Do satellite process
         if satellite:
             satellite_obs_file = glob.glob(subfolder + "Observations/*" + \
@@ -1264,7 +1264,7 @@ def copy_processed(domain):
     
     files = glob.glob(src_folder + domain +
         "_*/Processed_Fields_files/*.nc")
-
+        
     folders = set([os.path.split(f)[0] for f in files])
 
     for f in folders:
