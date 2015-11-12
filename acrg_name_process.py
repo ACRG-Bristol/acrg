@@ -699,7 +699,7 @@ def footprint_array(fields_file,
     return fp
     
     
-def footprint_concatenate(fields_prefix,
+def footprint_concatenate(fields_prefix, 
                           particle_prefix = None,
                           datestr = "*",
                           met = None,
@@ -779,7 +779,8 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
             wind_speed=None, wind_direction=None,
             PBLH=None, varname="fp",
             release_lon = None, release_lat = None,
-            particle_locations=None, particle_heights=None):
+            particle_locations=None, particle_heights=None,
+            global_attributes = {"": ""}):
     '''
     This routine writes a netCDF file with footprints, particle locations
     meteorology, and release locations.
@@ -897,7 +898,7 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
     print "Written " + outfile
 
 
-def satellite_vertical_profile(fp, satellite_obs_file):
+def satellite_vertical_profile(fp, satellite_obs_file, max_level = 15):
     '''
     Do weighted average by satellite averaging kernel and
     pressure weight. One time point only. Expects xray.dataset
@@ -964,42 +965,43 @@ def satellite_vertical_profile(fp, satellite_obs_file):
     # Interpolate pressure levels
     variables = ["fp", "pl_n", "pl_e", "pl_s", "pl_w"]
     out = {}
-
+    lower_levels =  range(0,max_level)
+        
     # Weight levels using pressure weight and averaging kernel
-    sum_ak_pw = np.sum(sat.pressure_weights.values.squeeze() * \
-                       sat.xch4_averaging_kernel.values.squeeze())
+    sum_ak_pw = np.sum(sat.pressure_weights.values.squeeze()[lower_levels] * \
+                       sat.xch4_averaging_kernel.values.squeeze()[lower_levels])
     sum_particle_count = 0.
-    
+
     for variable in variables:
 
         fp_lev = int(np.abs(fp.press - \
-                            sat.pressure_levels[dict(lev = 0)]*100.).argmin())
+                            sat.pressure_levels[dict(lev = 0)]*100.).argmin()) 
         var = fp[variable][{"lev": fp_lev}].values.squeeze() * \
-              sat.pressure_weights.values.squeeze()[0] * \
-              sat.xch4_averaging_kernel.values.squeeze()[0]
+              sat.pressure_weights.values.squeeze()[fp_lev] * \
+              sat.xch4_averaging_kernel.values.squeeze()[fp_lev]
         out[variable] = var.reshape((1, 1) + var.shape)
 
-        for lev, press in enumerate(sat.pressure_levels.values.squeeze()[1:]):
-            fp_lev = np.abs(fp.press.values.squeeze() - press*100.).argmin()
-            var = fp[variable][{"lev": fp_lev}].values.squeeze() * \
-                  sat.pressure_weights.values.squeeze()[lev+1] * \
-                  sat.xch4_averaging_kernel.values.squeeze()[lev+1]
-            out[variable] += var.reshape((1, 1) + var.shape)
-            
+        for lev, press in enumerate(sat.pressure_levels.values.squeeze()[1:max_level]):
+                fp_lev = np.abs(fp.press.values.squeeze() - press*100.).argmin()
+                var = fp[variable][{"lev": fp_lev}].values.squeeze() * \
+                      sat.pressure_weights.values.squeeze()[fp_lev] * \
+                      sat.xch4_averaging_kernel.values.squeeze()[fp_lev]
+                out[variable] += var.reshape((1, 1) + var.shape)
         if variable[0:2] == "pl":
             sum_particle_count += out[variable].sum()
-
+        
     # Check whether particle sum makes sense
     if not np.allclose(sum_particle_count, sum_ak_pw):
         print("ERROR: Particle fractions don't match averaging_kernel * " + \
               "pressure_weight")
-        return None
-
-    # Compress dataset to one level and store column averages
+        return None    
+    
+    # Compress dataset to one level and store column totals
     fp = fp[dict(lev = [0])]
     for variable in variables:
         fp[variable].values = out[variable]
-    
+        
+    fp.attrs["max_level"] = max_level    
     fp["lev"] = numpy.array(["column"])
     
     return fp
@@ -1167,8 +1169,8 @@ def process(domain, site, height, year, month,
                 return None
 
             fp_file = satellite_vertical_profile(fp_file,
-                                                 satellite_obs_file[0])
-
+                                                 satellite_obs_file[0])  
+                                         
         if fp_file is not None:
             fp.append(fp_file)
     
@@ -1214,7 +1216,8 @@ def process(domain, site, height, year, month,
                      release_lon=fp["release_lon"].values.squeeze(),
                      release_lat=fp["release_lat"].values.squeeze(),
                      particle_locations = pl,
-                     particle_heights = height_out)
+                     particle_heights = height_out,
+                     global_attributes = fp.attrs)
 
     else:
         print("Couldn't seem to find any files")

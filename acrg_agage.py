@@ -392,7 +392,7 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
         return None
 
 
-def get_gosat(site, species, start = "1900-01-01", end = "2020-01-01"):
+def get_gosat(site, species, start = "1900-01-01", end = "2020-01-01", max_level = 15):
     
     start_time = convert.reftime(start)
     end_time = convert.reftime(end)
@@ -409,14 +409,27 @@ def get_gosat(site, species, start = "1900-01-01", end = "2020-01-01"):
         
     data = xray.concat(data, dim = "time")
 
-    prior_factor = (data.pressure_weights* \
-                    (1.-data.xch4_averaging_kernel)* \
-                    data.ch4_profile_apriori).sum(dim = "lev")
-
+    lower_levels =  range(0,max_level)
+#    prior_factor = (data.pressure_weights* \
+#                    (1.-data.xch4_averaging_kernel)* \
+#                    data.ch4_profile_apriori).sum(dim = "lev")
+    prior_factor = (data.pressure_weights[dict(lev=list(lower_levels))]* \
+                    (1.-data.xch4_averaging_kernel[dict(lev=list(lower_levels))])* \
+                    data.ch4_profile_apriori[dict(lev=list(lower_levels))]).sum(dim = "lev")
+                    
+    upper_levels = range(max_level, len(data.lev.values))            
+    prior_upper_level_factor = (data.pressure_weights[dict(lev=list(upper_levels))]* \
+                    data.ch4_profile_apriori[dict(lev=list(upper_levels))]).sum(dim = "lev")
+#    prior_upper_level_factor = (data.pressure_weights[dict(lev=list(upper_levels))]* \
+#                data.xch4_averaging_kernel[dict(lev=list(upper_levels))]*\
+#                data.ch4_profile_apriori[dict(lev=list(upper_levels))]).sum(dim = "lev")
+                
     data["mf_prior_factor"] = prior_factor
-    data["mf"] = data.xch4 - data.mf_prior_factor
+    data["mf_prior_upper_level_factor"] = prior_upper_level_factor
+    data["mf"] = data.xch4
+#    data["mf"] = data.xch4 - data.mf_prior_factor - data.mf_prior_upper_level_factor
     data["dmf"] = data.xch4_uncertainty
-
+    
     data = data.drop("lev")
     data = data.drop(["xch4", "xch4_uncertainty", "lon", "lat"])
     data = data.to_dataframe()
@@ -473,7 +486,8 @@ def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
         print(site)
         if "GOSAT" in site.upper():
             data = get_gosat(site, species,
-                       start = start_time, end = end_time)
+                       start = start_time, end = end_time)  
+           
         else:
             data = get(site, species, height = height[si],
                        start = start_time, end = end_time,
