@@ -17,6 +17,14 @@
         "longitude": -0.13890,
         "network": "GAUGE"
     },
+    "CARIBIC" : {
+        "alt": ["CARIBIC"],
+        "long_name" : "CARIBIC",
+        "height": ["various"],
+        "height_name": ["various"],
+        "network": "MPI",
+        "platform": "aircraft"
+    },
     "CGO" : {
         "alt": ["CG"],
         "long_name" : "Cape Grim, Tazmania",
@@ -84,6 +92,14 @@
         "height": ["column"],
         "height_name": ["column"],
         "network": "GOSAT/GOSAT-INDIA",
+        "platform": "satellite"
+    },
+    "GOSAT-UK" : {
+        "alt": ["GOSAT"],
+        "long_name" : "GOSAT, UK",
+        "height": ["column"],
+        "height_name": ["column"],
+        "network": "GOSAT/GOSAT-UK",
         "platform": "satellite"
     },
     "GSN" : {

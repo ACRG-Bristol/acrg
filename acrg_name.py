@@ -114,7 +114,7 @@ def read_netcdfs(files, dim = "time", transform_func=None):
 
 
 def footprints(sitecode_or_filename, start = "2010-01-01", end = "2016-01-01",
-        domain="EUROPE", height = None, species = None):
+        domain="EUROPE", height = None, species = None, emissions_name = None):
     """
     Load a NAME footprint netCDF files into an xray dataset.
     Either specify:
@@ -132,8 +132,11 @@ def footprints(sitecode_or_filename, start = "2010-01-01", end = "2016-01-01",
     If the HEIGHT keyword is not specified, the default height from the
     acrg_site_info.json file is assumed.
     
-    If the SPECIES keyword is given, fluxes will also be loaded and
-    merged into the dataset.    
+    If the SPECIES or EMISSIONS_NAME keyword is given, fluxes will also
+    be loaded and merged into the dataset.
+    
+    EMISSIONS_NAME allows emissions files such as co2nee_EUROPE_2012.nc
+    to be read in. In this case EMISSIONS_NAME would be 'co2nee'
     """
     
     #Chose whether we've input a site code or a file name
@@ -157,17 +160,21 @@ def footprints(sitecode_or_filename, start = "2010-01-01", end = "2016-01-01",
         
         fp=read_netcdfs(files)
         
-        # If a species is specified, also get flux and vmr at domain edges           
-        if species is not None:
-
-            flux_ds = flux(domain, species)
-
+        # If a species is specified, also get flux and vmr at domain edges
+        if emissions_name is not None:
+            flux_ds = flux(domain, emissions_name)
             if flux_ds is not None:
                 fp = combine_datasets(fp, flux_ds)
-
+        elif species is not None:
+            flux_ds = flux(domain, species)
+            if flux_ds is not None:
+                fp = combine_datasets(fp, flux_ds)
+        
+        if species is not None:
             bc_ds = boundary_conditions(domain, species)
             if bc_ds is not None:
                 fp = combine_datasets(fp, bc_ds)
+          
 
         return fp
 
@@ -305,7 +312,7 @@ def timeseries_boundary_conditions(ds):
 def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
                           calc_timeseries = True, calc_bc = True,
                           average = None, site_modifier = {}, height = None,
-                          full_corr = False):
+                          full_corr = False, emissions_name = None):
     """
     Output a dictionary of xray footprint datasets, that correspond to a given
     dictionary of Pandas dataframes, containing mole fraction time series.
@@ -344,9 +351,12 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
     else:
         average = [None for i in sites]
 
-    # Check if species is defined in data dictionary
-    if ".species" in data.keys():
-        species = data[".species"]
+    # If not given, check if species is defined in data dictionary:
+    if species is None:
+        if ".species" in data.keys():
+            species = data[".species"]
+        else:
+            print "Species is not specified and can't be found in data dictionary."
 
     # Output array
     fp_and_data = {}
@@ -389,7 +399,9 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
                              species = [species if calc_timeseries == True or \
                                          calc_bc == True \
                                          else None][0], \
-                             height = height_site)
+                             height = height_site,
+                             emissions_name = [emissions_name if calc_timeseries == True \
+                                         else None][0])
         if site_fp is not None:
             
             # Merge datasets
@@ -411,7 +423,6 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
                                             data[".units"])})
 
                
-
             # Calculate model time series, if required
             if calc_timeseries:
                 site_ds["mf_mod"] = timeseries(site_ds)
@@ -768,7 +779,7 @@ def filtering(datasets_in, filters, full_corr=False):
     return datasets
 
 
-def baseline(y, y_time, y_site, baseline_error = 100, days_to_average = 5):
+def baseline(y, y_time, y_site, baseline_error = 100., days_to_average = 5.):
     """
     Prepares an add-on to the sensitivity (H) matrix, that allows the baseline
     to be solved within the inversion.
@@ -837,7 +848,7 @@ def gauss_inversion(data, prior, model, data_error, prior_error):
     return x, P
 
 
-def prior_flux(species, domain, basis_case, av_date, species_key = None):
+def prior_flux(species, domain, basis_case, av_date, emissions_name = None):
     """
     Calculates an area weighted flux for each basis region using the prior emissions.
     'av_date' is a date representative of the timeseries being looked at. It is used
@@ -848,7 +859,10 @@ def prior_flux(species, domain, basis_case, av_date, species_key = None):
     file ON OR BEFORE the inputted av_date.
     """
 
-    flux_data= flux(domain, species)
+    if emissions_name == None:
+        emissions_name = species
+
+    flux_data= flux(domain, emissions_name)
     basis_data = basis(domain, basis_case)
     
     flux_timestamp = pd.DatetimeIndex(flux_data.time.values).asof(av_date)
@@ -867,15 +881,12 @@ def prior_flux(species, domain, basis_case, av_date, species_key = None):
     for i in basis_nos:
         basisflux[i-1] = np.sum(awflux[basis0[:,:]==i])
 
-    if species_key == None:
-        species_key = species
-    
-    prior_x = regrid.mol2kg(basisflux,species_key)*(3600*24*365)
+    prior_x = regrid.mol2kg(basisflux,species)*(3600*24*365)
     
     return prior_x
     
     
-def scaling_to_post_flux(prior_flux, x, P):
+def scaling_to_post_flux(prior_x, x, P):
     """
     For Gaussian inversion will convert outputs (emission scaling factors and associated error)
     to emission estimates using the prior flux calculated using the function 'prior_flux'.
@@ -883,12 +894,13 @@ def scaling_to_post_flux(prior_flux, x, P):
 
     if type(x) is not np.array:
         x = np.array(x)
+    x2 = x.reshape(np.shape(prior_x))
 
-    post_x = np.array(x)*prior_flux
+    post_x = np.array(x2)*prior_x
 
     qmatrix = np.zeros((len(post_x), len(post_x)))
     for i in range(len(post_x)):
-        qmatrix[:,i] = post_x[:,0]*post_x[i]
+        qmatrix[:,i] = post_x[:]*post_x[i]
 
     if type(P) is not np.array:
         P = np.array(P)
@@ -900,7 +912,7 @@ def scaling_to_post_flux(prior_flux, x, P):
 
 class analytical_inversion:
     def __init__(self, out_var_file, species, domain, basis_case='voronoi',
-                 species_key = None, prior_error=1, baseline_error = 100, baseline_days = 5):
+                 emissions_name = None, prior_error=1., baseline_error = 100., baseline_days = 5.):
         """
         Using the output file from merge_sensitivity will calculate emissions estimates
         using a Gaussian analyical inversion.
@@ -921,10 +933,12 @@ class analytical_inversion:
 #       Solve for baseline
         if H_bc is not None:
             H = np.append(H, H_bc, axis=1)
-            xerror_bl = np.zeros(len(H_bc[:,0]))*float(baseline_error)
+            xerror_bl = np.ones(len(H_bc[0,:]))*float(baseline_error)
         else:
-            HB, xerror_bl = baseline(y, y_time, y_site, baseline_error = baseline_error, days_to_average = baseline_days)
-            H = np.append(H, HB, axis = 1)
+            H_bc, xerror_bl = baseline(y, y_time, y_site, baseline_error = baseline_error, days_to_average = baseline_days)
+            H = np.append(H, H_bc, axis = 1)
+        
+        prior_bl = np.dot(H_bc,np.ones(len(H_bc[0,:])))
         
 #       Inversion
         xa = np.append(x0,np.zeros(len(xerror_bl)))
@@ -941,11 +955,11 @@ class analytical_inversion:
         av_date = y_time[len(y_time)/2]
                 
 #       Find real emissions values
-        prior = prior_flux(species, domain, basis_case, av_date, species_key = None)
-        posterior, uncertainty = scaling_to_post_flux(prior_flux, x, P)   
+        prior = prior_flux(species, domain, basis_case, av_date, emissions_name = emissions_name)
+        posterior, uncertainty = scaling_to_post_flux(prior, x[:len(x0)], P[:len(x0),:len(x0)])   
         
 #       Find baseline solution
-        BL = H[:,len(H[0,:]):]*x[len(H[0,:]):]
+        BL = H[:,len(H_bc[0,:]):]*x[len(H_bc[0,:]):]
     
         self.prior_scal = xa
         self.model = H
@@ -957,7 +971,8 @@ class analytical_inversion:
         self.prior_emi = prior
         self.post_emi = posterior
         self.uncert = uncertainty
-        self.baseline = BL
+        self.prior_bl = prior_bl
+        self.post_bl = BL
 
 
 
@@ -1112,7 +1127,7 @@ def plot(fp_data, date, out_filename=None,
 
     #Calculate color levels
     cmap = colormap
-    rp_color = {"SURFACE": "blue",
+    rp_color = {"SURFACE": "black",
                 "SHIP": "purple",
                 "AIRCRAFT": "red",
                 "SATELLITE": "green"}
@@ -1135,8 +1150,9 @@ def plot(fp_data, date, out_filename=None,
     # Generate plot data
     for site in sites:
     
-        tdelta = fp_data[site].time - date
-        if np.min(np.abs(tdelta)) < 2*3600.*1e9:
+        tdelta = fp_data[site].time - np.datetime64(date)
+
+        if np.min(np.abs(tdelta)).astype(np.int64) < 1.1*3600.*1e9:
 
             fp_data_ti = fp_data[site].reindex_like( \
                             xray.Dataset(coords = {"time": [date]}),
@@ -1169,7 +1185,7 @@ def plot(fp_data, date, out_filename=None,
                     color = rp_color[site_info[site]["platform"].upper()]
                 else:
                     color = rp_color["SURFACE"]
-                rp = map_data.m.scatter(rpx, rpy, 40, color = color)
+                rp = map_data.m.scatter(rpx, rpy, 100, color = color)
     
     plt.title(str(pd.to_datetime(str(date))), fontsize=20)
 
@@ -1190,21 +1206,24 @@ def plot(fp_data, date, out_filename=None,
         plt.show()
 
 
-def time_unique(fp_data):
+def time_unique(fp_data, time_regular = False):
     
     sites = [key for key in fp_data.keys() if key[0] != '.']
     
     time = fp_data[sites[0]].time.to_dataset()
     if len(sites) > 1:
         for site in sites[1:]:
-            print(site)
             time.merge(fp_data[site].time.to_dataset(), inplace = True)
+    
+    time = time.time.to_pandas().index.to_pydatetime()
+    if time_regular is not False:
+        time = pd.date_range(min(time), max(time), freq = time_regular)
     
     return time
 
 
 def plot3d(fp_data, date, out_filename=None, 
-         cutoff = -3.5):
+           log_range = [5., 9.]):
 
     """date as string "d/m/y H:M" or datetime object 
     datetime.datetime(yyyy,mm,dd,hh,mm)
@@ -1216,12 +1235,12 @@ def plot3d(fp_data, date, out_filename=None,
 
     time_index = bisect.bisect_left(fp_data.time, date)
 
-    data = np.log10(fp_data.fp[:,:,time_index])
-    lon_range = (fp_data.lonmin, fp_data.lonmax)
-    lat_range = (fp_data.latmin, fp_data.latmax)
+    data = np.log10(fp_data.fp.values[:,:,time_index].squeeze())
+    lon_range = (fp_data.lon.min().values, fp_data.lon.max().values)
+    lat_range = (fp_data.lat.min().values, fp_data.lat.max().values)
 
     #Set very small elements to zero
-    data[np.where(data <  cutoff)]=np.nan
+    data[np.where(data <  log_range[0])]=np.nan
 
     fig = plt.figure(figsize=(16,12))
 
@@ -1231,25 +1250,25 @@ def plot3d(fp_data, date, out_filename=None,
     
     ax.set_ylim(lat_range)
     ax.set_xlim(lon_range)
-    ax.set_zlim((min(fp_data.particle_height), max(fp_data.particle_height)))
+    ax.set_zlim((min(fp_data.height), max(fp_data.height)))
 
     fpX, fpY = np.meshgrid(fp_data.lon, fp_data.lat)
     
-    levels = np.arange(cutoff, 0., 0.05)
+    levels = np.arange(log_range[0], log_range[1], 0.05)
 
     plfp = ax.contourf(fpX, fpY, data, levels, offset = 0.)
-    plnX, plnY = np.meshgrid(fp_data.lon, fp_data.particle_height)
-    plwX, plwY = np.meshgrid(fp_data.lat, fp_data.particle_height)
+    plnX, plnY = np.meshgrid(fp_data.lon.values.squeeze(), fp_data.height.values.squeeze())
+    plwX, plwY = np.meshgrid(fp_data.lat.values.squeeze(), fp_data.height.values.squeeze())
     pllevs = np.arange(0., 0.0031, 0.0001)
     
-    plnvals = fp_data.particle_locations["N"][:,:,time_index]
+    plnvals = fp_data.particle_locations_n.values[:,:,time_index].squeeze()
     plnvals[np.where(plnvals == 0.)]=np.nan
-    plwvals = fp_data.particle_locations["W"][:,:,time_index]
+    plwvals = fp_data.particle_locations_w.values[:,:,time_index].squeeze()
     plwvals[np.where(plwvals == 0.)]=np.nan
     plpln = ax.contourf(plnX, plnvals, plnY,
-                        zdir = 'y', offset = max(fp_data.lat), levels = pllevs)
+                        zdir = 'y', offset = max(fp_data.lat.values), levels = pllevs)
     plplw = ax.contourf(plwvals, plwX, plwY,
-                        zdir = 'x', offset = min(fp_data.lon), levels = pllevs)    
+                        zdir = 'x', offset = min(fp_data.lon.values), levels = pllevs)    
     ax.view_init(50)
 
     cb = plt.colorbar(plfp, location='bottom', shrink=0.8)
@@ -1260,10 +1279,8 @@ def plot3d(fp_data, date, out_filename=None,
              fontsize=15)
     cb.ax.tick_params(labelsize=13) 
     
-    plt.tight_layout()
-
     if out_filename is not None:
-        plt.savefig(out_filename, dpi = 600)
+        plt.savefig(out_filename, dpi = 300)
         plt.close()
     else:
         plt.show()
@@ -1271,10 +1288,11 @@ def plot3d(fp_data, date, out_filename=None,
 
 def animate(fp_data, output_directory, 
             lon_range = None, lat_range=None, zoom = False,
-            cutoff = -3.,
-            overwrite=True, file_label = 'fp', 
+            log_range = [5., 9.],
+            overwrite=True, file_label = 'fp',
             framerate=10, delete_png=False,
-            video_os="mac", ffmpeg_only = False):
+            video_os="mac", ffmpeg_only = False,
+            plot_function = "plot", time_regular = "1H"):
     
     sites = [key for key in fp_data.keys() if key[0] != '.']
     
@@ -1283,27 +1301,32 @@ def animate(fp_data, output_directory,
         # Set up map        
         if zoom:
             lat_range, lon_range = plot_map_zoom(fp_data)
-            
+        
         map_data = plot_map_setup(fp_data[sites[0]], 
                                   lon_range = lon_range, 
                                   lat_range= lat_range, bottom_left = True)
         
         # Find unique times
-        times = time_unique(fp_data)
+        times = time_unique(fp_data,
+                            time_regular = time_regular)
 
         # Start progress bar
-        pbar=ProgressBar(maxval=len(times.time.values)).start()
+        pbar=ProgressBar(maxval=len(times)).start()
 
         # Plot each timestep
-        for ti, t in enumerate(times.time.values):
+        for ti, t in enumerate(times):
             
             fname=os.path.join(output_directory, 
                                file_label + '_' + str(ti).zfill(5) + '.png')
                                
-            if len(glob.glob(fname)) == 0 or overwrite == True:            
-                plot_scatter(fp_data, t, out_filename = fname, 
-                     lon_range = lon_range, lat_range= lat_range,
-                     cutoff=cutoff, map_data = map_data)
+            if len(glob.glob(fname)) == 0 or overwrite == True:
+                if plot_function == "plot":
+                    plot(fp_data, t, out_filename = fname, 
+                         lon_range = lon_range, lat_range= lat_range,
+                         log_range = log_range, map_data = map_data)
+                elif plot_function == "plot3d":
+                    plot3d(fp_data[sites[0]], t, out_filename = fname,
+                           log_range = log_range)
                      
             pbar.update(ti)
         pbar.finish()
