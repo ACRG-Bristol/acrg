@@ -460,8 +460,13 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
     
     for site in sites:
 
-        site_bf = combine_datasets(fp_and_data[site]["fp", "flux", "mf_mod"],
-                                   basis_func)
+#        site_bf = combine_datasets(fp_and_data[site]["fp", "flux", "mf_mod"],
+#                                   basis_func)
+
+        site_bf_temp = xray.Dataset({"fp":fp_and_data[site]["fp"],
+                                "flux":fp_and_data[site]["flux"],
+                                "mf_mod":fp_and_data[site]["mf_mod"]})
+        site_bf = combine_datasets(site_bf_temp,basis_func)
 
         basis_scale = xray.Dataset({'basis_scale': (['lat','lon','time'],
                                                     np.zeros(np.shape(site_bf.basis)))},
@@ -532,16 +537,27 @@ def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW'):
 
         # stitch together the particle locations, vmrs at domain edges and
         #boundary condition basis functions
-        DS = combine_datasets(fp_and_data[site]["particle_locations_n",
-                                                "particle_locations_e",
-                                                "particle_locations_s",
-                                                "particle_locations_w",
-                                                "vmr_n",
-                                                "vmr_e",
-                                                "vmr_s",
-                                                "vmr_w",
-                                                "bc"],
-                                                basis_func)
+#        DS = combine_datasets(fp_and_data[site]["particle_locations_n",
+#                                                "particle_locations_e",
+#                                                "particle_locations_s",
+#                                                "particle_locations_w",
+#                                                "vmr_n",
+#                                                "vmr_e",
+#                                                "vmr_s",
+#                                                "vmr_w",
+#                                                "bc"],
+#                                                basis_func)
+        DS_temp = xray.Dataset({"particle_locations_n":fp_and_data[site]["particle_locations_n"],
+                                "particle_locations_e":fp_and_data[site]["particle_locations_e"],
+                                "particle_locations_s":fp_and_data[site]["particle_locations_s"],
+                                "particle_locations_w":fp_and_data[site]["particle_locations_w"],
+                                "vmr_n":fp_and_data[site]["vmr_n"],
+                                "vmr_e":fp_and_data[site]["vmr_e"],
+                                "vmr_s":fp_and_data[site]["vmr_s"],
+                                "vmr_w":fp_and_data[site]["vmr_w"],
+                                "bc":fp_and_data[site]["bc"]})
+                                
+        DS = combine_datasets(DS_temp, basis_func)                                    
 
         part_loc = np.hstack([DS.particle_locations_n,
                                 DS.particle_locations_e,
