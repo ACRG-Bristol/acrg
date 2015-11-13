@@ -1,4 +1,13 @@
 {
+    "BMW" : {
+        "alt": [],
+        "long_name" : "Tudor Hill, Bermuda",
+        "height": ["30m"],
+        "height_name": ["30magl"],
+        "latitude": -64.8788,
+        "longitude": 32.2647,
+        "network": "NOAA"
+    },
     "BSD" : {
         "alt": [],
         "long_name" : "Bilsdale, UK",
