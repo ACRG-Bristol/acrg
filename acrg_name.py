@@ -79,7 +79,7 @@ def filenames(site, domain, start, end, height = None, flux=None, basis=None):
     # Generate time series
     months = pd.DatetimeIndex(start = start, end = end, freq = "M").to_pydatetime()
     yearmonth = [str(d.year) + str(d.month).zfill(2) for d in months]
-    
+
     files = []
     for ym in yearmonth:
         f=glob.glob(baseDirectory + \
@@ -364,7 +364,7 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
         month_days = calendar.monthrange(df_end.year, df_end.month)[1]
         end = dt.datetime(df_end.year, df_end.month, 1, 0, 0) + \
                 dt.timedelta(days = month_days)
-
+      
         # Convert to dataset
         site_ds = xray.Dataset.from_dataframe(site_df)
         
@@ -497,7 +497,16 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
                                 'time' : (fp_and_data[site].coords['time'])})
             
             fp_and_data[site] = fp_and_data[site].merge(sub_fp)
-    
+        elif basis_case in ('test', 'alcompare'):
+            sub_fp_temp = site_bf.fp.sel(lon=slice(min(site_bf.sub_lon),max(site_bf.sub_lon)), 
+                                    lat=slice(min(site_bf.sub_lat),max(site_bf.sub_lat)))   
+            sub_fp = xray.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
+                               coords = {'sub_lat': (site_bf.coords['sub_lat']),
+                                         'sub_lon': (site_bf.coords['sub_lon']),
+                                'time' : (fp_and_data[site].coords['time'])})
+            
+            fp_and_data[site] = fp_and_data[site].merge(sub_fp)
+            
     return fp_and_data
 
 
@@ -527,8 +536,13 @@ def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW'):
                                 DS.particle_locations_e,
                                 DS.particle_locations_s,
                                 DS.particle_locations_w])
-        
-
+        # Added by ML but not yet uploaded to repository:
+        for ii in range(len(DS.time)):
+            DS.vmr_n[:,:,ii]=DS.vmr_n[:,:,0].values
+            DS.vmr_e[:,:,ii]=DS.vmr_e[:,:,0].values
+            DS.vmr_s[:,:,ii]=DS.vmr_s[:,:,0].values
+            DS.vmr_w[:,:,ii]=DS.vmr_w[:,:,0].values
+            #########################################
         vmr_ed = np.hstack([DS.vmr_n,
                            DS.vmr_e,
                            DS.vmr_s,
@@ -678,6 +692,18 @@ def filtering(datasets_in, filters, full_corr=False):
             return dataset_out
         else:
             return dataset[dict(time = ti)]
+            
+    def noon(dataset, full_corr=False):
+        # Subset during daytime hours
+        hours = dataset.time.to_pandas().index.hour
+        ti = [i for i, h in enumerate(hours) if h >= 12 and h < 14]
+        
+        if full_corr:
+            dataset_temp = dataset[dict(time = ti)]   
+            dataset_out = dataset_temp.reindex_like(dataset)
+            return dataset_out
+        else:
+            return dataset[dict(time = ti)] 
         
 
     def pblh_gt_500(dataset, full_corr=False):
@@ -717,12 +743,19 @@ def filtering(datasets_in, filters, full_corr=False):
             return dataset_out
         else:
             return dataset[dict(time = ti)]
-        
+            
+    def local_influence(dataset, full_corr=False):
+        ti = [i for i, local_ratio in enumerate(dataset.local_ratio) if local_ratio < 0.3]
+        return dataset[dict(time = ti)]
+       
+       
         
     filtering_functions={"daily_median":daily_median,
                          "daytime":daytime,
+                         "noon":noon,
                          "pblh_gt_500": pblh_gt_500,
-                         "pblh_gt_250": pblh_gt_250}
+                         "pblh_gt_250": pblh_gt_250,
+                         "local_influence":local_influence}
 
     # Get list of sites
     sites = [key for key in datasets.keys() if key[0] != '.']
