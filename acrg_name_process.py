@@ -994,7 +994,7 @@ def satellite_vertical_profile(fp, satellite_obs_file, max_level = 15):
     if not np.allclose(sum_particle_count, sum_ak_pw):
         print("ERROR: Particle fractions don't match averaging_kernel * " + \
               "pressure_weight")
-        return None    
+        return None
     
     # Compress dataset to one level and store column totals
     fp = fp[dict(lev = [0])]
