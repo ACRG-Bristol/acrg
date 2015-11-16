@@ -4,8 +4,8 @@
         "long_name" : "Tudor Hill, Bermuda",
         "height": ["30m"],
         "height_name": ["30magl"],
-        "latitude": -64.8788,
-        "longitude": 32.2647,
+        "latitude": 32.2647,
+        "longitude": -64.8788,
         "network": "NOAA"
     },
     "BSD" : {
@@ -33,6 +33,15 @@
         "height_name": ["various"],
         "network": "MPI",
         "platform": "aircraft"
+    },
+    "CBA" : {
+        "alt": [],
+        "long_name" : "Cold Bay, United States",
+        "height": ["32.04m"],
+        "height_name": ["32magl"],
+        "latitude": 55.21,
+        "longitude": -162.72,
+        "network": "NOAA"
     },
     "CGO" : {
         "alt": ["CG"],
@@ -137,6 +146,24 @@
         "latitude": 50.97675,
         "longitude": 0.23048,
         "network": "GAUGE"
+    },
+    "KEY" : {
+        "alt": [],
+        "long_name" : "Key Biscane, United States",
+        "height": ["3m"],
+        "height_name": ["3magl"],
+        "latitude": 25.6654,
+        "longitude": -80.158,
+        "network": "NOAA"
+    },
+    "LEF" : {
+        "alt": [],
+        "long_name" : "Park Falls, United States",
+        "height": ["0m"],
+        "height_name": ["0magl"],
+        "latitude": 45.9451,
+        "longitude": -90.2732,
+        "network": "NOAA"
     },
     "MHD" : {
         "alt" : ["MH"],
