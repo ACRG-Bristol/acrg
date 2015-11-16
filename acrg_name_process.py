@@ -606,7 +606,7 @@ def footprint_array(fields_file,
     # Define grid, including output heights    
     lons, lats, levs, time, timeStep = define_grid(header, column_headings,
                                                    satellite = satellite)
-
+                                              
     # If time_step is input, overwrite value from NAME output file
     if time_step is not None:
         timeStep = time_step
@@ -624,7 +624,7 @@ def footprint_array(fields_file,
                                            heights, id_is_lev = satellite)
     else:
         print("Warning: no particle location file corresponding to " + fields_file)
-
+    
     nlon=len(lons)
     nlat=len(lats)
     nlev=len(levs)
@@ -763,8 +763,7 @@ def footprint_concatenate(fields_prefix,
                                           particle_file = particle_file,
                                           met = met,
                                           satellite = satellite,
-                                          time_step = time_step))
-
+                                          time_step = time_step))                                  
     # Concatenate
     if len(fp) > 0:
         fp = xray.concat(fp, "time")
@@ -780,7 +779,7 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
             PBLH=None, varname="fp",
             release_lon = None, release_lat = None,
             particle_locations=None, particle_heights=None,
-            global_attributes = {"": ""}):
+            global_attributes = {}):
     '''
     This routine writes a netCDF file with footprints, particle locations
     meteorology, and release locations.
@@ -796,6 +795,10 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
     ncF.createDimension('lon', len(lons))
     ncF.createDimension('lat', len(lats))
     ncF.createDimension('lev', 1)
+    
+    # pass any global attributes in fp to the netcdf file
+    for key in global_attributes.keys():
+        ncF.__setattr__(key,global_attributes[key])
     
     nctime=ncF.createVariable('time', 'd', ('time',))
     nclon=ncF.createVariable('lon', 'f', ('lon',))
@@ -898,7 +901,7 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
     print "Written " + outfile
 
 
-def satellite_vertical_profile(fp, satellite_obs_file, max_level = 15):
+def satellite_vertical_profile(fp, satellite_obs_file, max_level):
     '''
     Do weighted average by satellite averaging kernel and
     pressure weight. One time point only. Expects xray.dataset
@@ -908,7 +911,10 @@ def satellite_vertical_profile(fp, satellite_obs_file, max_level = 15):
         with footprints and particle locations defined at each level
     satellite_obs_file = NetCDF-format satellite observation file,
         one per time step
-        
+    max_level = the maximum vertical level of the retrieval that is included.
+                (maximum for GOSAT to include all levels from model is 20). 
+                The remaining levels are set equal to the a priori value.
+                
     Requirements for running processing satellite footprints
     
     General file naming: Files/folders need to have a date string of the form
@@ -934,6 +940,10 @@ def satellite_vertical_profile(fp, satellite_obs_file, max_level = 15):
         The ID column in this file must contain nLev values in ascending order
         specifying the vertical level that each particle belongs to.    
     '''
+    
+    if max_level is None:
+        print "ERROR: MAX LEVEL REQUIRED TO PROCESS SATELLITE FOOTPRINTS"
+        return None
     
     print("Reading satellite obs file: " + satellite_obs_file)
     with xray.open_dataset(satellite_obs_file) as f:
@@ -973,23 +983,23 @@ def satellite_vertical_profile(fp, satellite_obs_file, max_level = 15):
     sum_particle_count = 0.
 
     for variable in variables:
-
+        # get dimensions based on level 0
         fp_lev = int(np.abs(fp.press - \
                             sat.pressure_levels[dict(lev = 0)]*100.).argmin()) 
         var = fp[variable][{"lev": fp_lev}].values.squeeze() * \
-              sat.pressure_weights.values.squeeze()[fp_lev] * \
-              sat.xch4_averaging_kernel.values.squeeze()[fp_lev]
+              sat.pressure_weights.values.squeeze()[0] * \
+              sat.xch4_averaging_kernel.values.squeeze()[0]
         out[variable] = var.reshape((1, 1) + var.shape)
-
+        # run levels 1 - max_level (note it is reindexed to 0, therefore use lev+1)
         for lev, press in enumerate(sat.pressure_levels.values.squeeze()[1:max_level]):
                 fp_lev = np.abs(fp.press.values.squeeze() - press*100.).argmin()
                 var = fp[variable][{"lev": fp_lev}].values.squeeze() * \
-                      sat.pressure_weights.values.squeeze()[fp_lev] * \
-                      sat.xch4_averaging_kernel.values.squeeze()[fp_lev]
+                      sat.pressure_weights.values.squeeze()[lev+1] * \
+                      sat.xch4_averaging_kernel.values.squeeze()[lev+1]
                 out[variable] += var.reshape((1, 1) + var.shape)
         if variable[0:2] == "pl":
             sum_particle_count += out[variable].sum()
-        
+
     # Check whether particle sum makes sense
     if not np.allclose(sum_particle_count, sum_ak_pw):
         print("ERROR: Particle fractions don't match averaging_kernel * " + \
@@ -1029,6 +1039,7 @@ def process(domain, site, height, year, month,
             force_met_empty = False,
             processed_folder = "Processed_Fields_files",
             satellite = False,
+            max_level = None,
             force_update = False,
             perturbed_folder = None):
     '''
@@ -1054,7 +1065,9 @@ def process(domain, site, height, year, month,
         a particular site. E.g. for EUROPE_BSD_110magl/Perturbed/PARAMETERNAME_VALUE
         you'd set:
             perturbed_folder = "Perturbed/PARAMETERNAME_VALUE"
-
+    max_level: specified only for satellite data and indicates the max level to
+        process the foorprints. levels above are replaced by the prior profile
+        
     Outputs:
     This routine outputs a copy of the xray dataset that is written to file.
     '''
@@ -1157,7 +1170,7 @@ def process(domain, site, height, year, month,
                                         particle_prefix = particles_prefix,
                                         satellite = satellite,
                                         time_step = timeStep)
-
+                                
         # Do satellite process
         if satellite:
             satellite_obs_file = glob.glob(subfolder + "Observations/*" + \
@@ -1169,10 +1182,14 @@ def process(domain, site, height, year, month,
                 return None
 
             fp_file = satellite_vertical_profile(fp_file,
-                                                 satellite_obs_file[0])  
-                                         
+                                                 satellite_obs_file[0], max_level = max_level)  
+            
+            if fp_file is None:
+                return
+                 
         if fp_file is not None:
             fp.append(fp_file)
+
     
     if len(fp) > 0:
         
@@ -1185,6 +1202,7 @@ def process(domain, site, height, year, month,
             print("WARNING: ONLY OUTPUTTING FIRST LEVEL!")
         fp = fp.squeeze()
         
+
         #Write netCDF file
         #######################################
         
@@ -1232,7 +1250,8 @@ def process_all(domain, site,
                 base_dir = "/dagage2/agage/metoffice/NAME_output/",
                 force_update = False,
                 satellite = False,
-                perturbed_folder = None):
+                perturbed_folder = None,
+                max_level = None):
     '''
     For a given domain and site, process all available fields files (including
     multiple heights).
@@ -1294,7 +1313,7 @@ def process_all(domain, site,
         for year, month in set(zip(years, months)):
             out = process(domain, site, height, year, month,
                 base_dir = base_dir, force_update = force_update,
-                satellite = satellite, perturbed_folder = perturbed_folder)
+                satellite = satellite, perturbed_folder = perturbed_folder, max_level = max_level)
 
 
 def copy_processed(domain):

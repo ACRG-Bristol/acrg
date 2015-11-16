@@ -407,7 +407,8 @@ REAL pdf_param1_all(nIC1), pdf_param2_all(nIC1)
 REAL pdf_p1_hparam1_all(nIC1), pdf_p1_hparam2_all(nIC1) 
 REAL  pdf_p2_hparam1_all(nIC1), pdf_p2_hparam2_all(nIC1)
 REAL pdf_param1_out(nIC1), pdf_param2_out(nIC1)
-INTEGER, DIMENSION(2) :: elem
+INTEGER elem(5)
+REAL u(5)
 REAL pdf_param1        
 REAL pdf_param2
 REAL stepsize(nIC1)
@@ -415,7 +416,7 @@ INTEGER accept(nIC1), reject(nIC1)
 INTEGER accept_out(nIC1), reject_out(nIC1)
 REAL stepsize_pdf_p2(nIC1), stepsize_pdf_p1(nIC1)
 INTEGER xi, x_pdf, ki,xx
-REAL dx, n1T, pT, randomu, random_normal, p0,p1, u
+REAL dx, n1T, pT, randomu, random_normal, p0,p1
 INTEGER pdf_param2_pdf, pdf_param1_pdf
 REAL pdf_p2_hparam1, pdf_p2_hparam2, pdf_p1_hparam1, pdf_p1_hparam2
 REAL p0_temp, p1_temp
@@ -426,12 +427,26 @@ REAL stepsize0, stepsize_pdf_p10, stepsize_pdf_p20
 
    ! CHANGE OF EMISSIONS VALUES
   call random_number(u)   
-  elem(1)= FLOOR((nIC)*u)+1 
-  elem(2) = FLOOR(k*u)+1+nIC
+  !elem(1)= FLOOR((nIC)*u)+1 
+  !elem(2) = FLOOR(k*u)+1+nIC
+  !xi=FLOOR((nIC+k)*u)+1
+    
+  elem = FLOOR(k*u)+1+nIC
+
+  !elem(1:nIC)= FLOOR((nIC)*u)+1 
+  !elem(2) = FLOOR(k*u)+1+nIC
   !xi=FLOOR((nIC+k)*u)+1
 
-  do xx=1,2
-  xi=elem(xx)
+  do xx=1,nIC+5
+  
+  if (xx .LE. nIC) then
+     xi = xx
+  else
+     xi=elem(xx-nIC)
+  endif
+
+  !do xx=1,2
+  !xi=elem(xx)
   if (xi .LE. nIC) then
      x_pdf = x_pdf_all(xi)
      pdf_param1 = pdf_param1_all(xi)
@@ -553,7 +568,8 @@ REAL stepsize0, stepsize_pdf_p10, stepsize_pdf_p20
          if (pdf_param2_pdf .eq. 1) then
              if (pdf_param2_new .lt. pdf_p2_hparam1) pT = -1.e20
              if (pdf_param2_new .gt. pdf_p2_hparam2) pT = -1.e20
-         else if (pdf_param1_pdf .eq. 1) then
+         endif
+         if (pdf_param1_pdf .eq. 1) then
              if (pdf_param1_new .lt. pdf_p1_hparam1) pT = -1.e20
              if (pdf_param1_new .gt. pdf_p1_hparam2) pT = -1.e20
          endif
