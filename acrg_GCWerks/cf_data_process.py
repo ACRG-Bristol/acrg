@@ -7,7 +7,7 @@ Created on Fri Oct 16 14:08:07 2015
 
 import numpy as np
 import pandas as pd
-from os.path import join
+from os.path import join, split
 from datetime import datetime as dt
 import glob
 import xray
@@ -21,6 +21,10 @@ info_file = join(acrg_path,
                  "acrg_GCWerks/cf_data_process_parameters.json")
 with open(info_file) as sf:
     params = json.load(sf)
+
+site_info_file = join(acrg_path, "acrg_site_info.json")
+with open(site_info_file) as sf:
+    site_params = json.load(sf)
 
 # Output unit strings
 unit_species = {"CO2": "1e-6",
@@ -43,15 +47,23 @@ scales = {"CO2": "NOAA-2007",
 species_long = {"CO2": "carbon_dioxide",
                 "CH4": "methane",
                 "N2O": "nitrous_oxide",
-                "CO": "carbon_monixide"}
+                "CO": "carbon_monoxide"}
 
 # Translate header strings
 crds_header_string_interpret = {"C": "",
                                 "stdev": "_variability",
                                 "N": "_number_of_observations"}
 
+def site_info_attributes(site):
+    
+    if site in site_params.keys():
+        return {"site_longitude": site_params[site]["longitude"],
+                "site_latitude": site_params[site]["latitude"],
+                "site_long_name": site_params[site]["long_name"]}
+    else:
+        return None
 
-def attributes(ds, species, global_attributes = None,
+def attributes(ds, species, site, global_attributes = None,
                units = None, scale = None):
     """
     Format attributes for netCDF file
@@ -67,7 +79,7 @@ def attributes(ds, species, global_attributes = None,
     #############################################
     if global_attributes is None:
         global_attributes = {}
-    
+        
     # Add some defaults
     for key, value in params["global_attributes"].iteritems():
         global_attributes[key] = value
@@ -76,7 +88,14 @@ def attributes(ds, species, global_attributes = None,
     
     for key, values in global_attributes.iteritems():
         ds.attrs[key] = values
-
+        
+    # Add some site attributes
+    global_attributes_site = site_info_attributes(site.upper())
+    if global_attributes_site is not None:
+        for key, values in global_attributes_site.iteritems():
+            ds.attrs[key] = values
+    
+    # Add calibration scale
     if scale is not None:
         ds.attrs["Calibration_scale"] = scale
     else:
@@ -85,6 +104,7 @@ def attributes(ds, species, global_attributes = None,
         else:
             ds.attrs["Calibration_scale"] = "unknown"
 
+    # Add species name
     ds.attrs["species"] = species_out
 
     # Species-specific attributes
@@ -138,7 +158,7 @@ def attributes(ds, species, global_attributes = None,
 
     first_year = str(ds.time.to_pandas().index.to_pydatetime()[0].year)
     ds.time.encoding = {"units": "seconds since " + \
-                        first_year + "-01-01 00:00"}
+                        first_year + "-01-01 00:00:00"}
         
     return ds
 
@@ -151,6 +171,7 @@ def output_filename(output_directory,
                     inlet):
     
     return join(output_directory,
+                network + "/" + \
                 network + "-" + \
                 instrument + "_" + \
                 site + "_" + \
@@ -212,56 +233,53 @@ def icos_data_read(data_file, species):
     return ds
 
 
-def icos(site, species, network):
+def icos(site, network = "ICOS"):
     
+    # Get directories and site strings
     params_icos = params["ICOS"]
     site_string = params_icos[site]["gcwerks_site_name"]
-    inlets = params_icos[site]["inlets"].keys()
-    instruments = params_icos[site]["instruments"]
-    
-    for instrument in instruments:
-        
-        for inlet in inlets:
+    data_directory = params_icos["directory"].replace("%site", site_string)
+    out_directory = params_icos["directory_output"]
 
-            data_directory = params_icos["directory"].replace("%site", site_string)
-            out_directory = params_icos["directory_output"]
-            
-            # Find data file
-            data_file_search = join(data_directory, site.lower() + "." + \
-                                    species.lower() + ".1minute." + inlet + ".dat")
-            data_file = glob.glob(data_file_search)
-            
-            if len(data_file) == 0:
-                print("Can't find file " + data_file_search)
-                return None
-            else:
-                data_file = data_file[0]
-            
-            # Create Pandas dataframe
-            ds = icos_data_read(data_file, species)
-            
-            # Sort out attributes
-            global_attributes = params_icos[site.upper()]["global_attributes"]
-            ds = attributes(ds, species, global_attributes = global_attributes)
-            
-            # Write file
-            nc_filename = output_filename(out_directory,
-                                          network,
-                                          instrument,
-                                          site.upper(),
-                                          str(ds.time.to_pandas().index.to_pydatetime()[0].year),
-                                          ds.species,
-                                          params_icos[site]["inlets"][inlet])
-            
-            ds.to_netcdf(nc_filename)
-            
-            print("Written " + nc_filename)
+    # Search for species and inlets from file names
+    data_file_search = join(data_directory, site.lower() + ".*.1minute.*.dat")
+    data_files = glob.glob(data_file_search)
+    data_file_names = [split(f)[1] for f in data_files]
+    species_and_inlet = [(f.split(".")[1], f.split(".")[-2]) \
+                         for f in data_file_names]
+    
+    for i, (species, inlet) in enumerate(species_and_inlet):
+        
+        # Create Pandas dataframe
+        ds = icos_data_read(data_files[i], species.upper())
+        
+        # Sort out attributes
+        global_attributes = params_icos[site.upper()]["global_attributes"]
+        ds = attributes(ds,
+                        species.upper(),
+                        site.upper(),
+                        global_attributes = global_attributes)
+
+        # Write file
+        nc_filename = output_filename(out_directory,
+                                      network,
+                                      "CRDS",
+                                      site.upper(),
+                                      str(ds.time.to_pandas().index.to_pydatetime()[0].year),
+                                      ds.species,
+                                      params_icos[site]["inlet_rename"][inlet])
+        
+        ds.to_netcdf(nc_filename)
+        
+        print("Written " + nc_filename)
 
 
 # GC FUNCTIONS
 ###############################################################
 
 def gc_data_read(dotC_file, scale = {}, units = {}):
+
+    species = []
     
     # Read header
     header = pd.read_csv(dotC_file,
@@ -280,7 +298,8 @@ def gc_data_read(dotC_file, scale = {}, units = {}):
             for i in range(len(df))]
     df.index = time
 
-    species = []
+    # Drop duplicates
+    df = df.reset_index().drop_duplicates(subset='index').set_index('index')
 
     # Rename flag column with species name
     for i, key in enumerate(df.keys()):
@@ -326,6 +345,12 @@ def gc_precisions_read(precisions_file):
                             sep=r"\s+", dtype = str,
                             index_col = 0,
                             parse_dates = True)
+    
+    # Rename index column
+    precision.index.names = ["index"]
+
+    # Drop duplicates
+    precision = precision.reset_index().drop_duplicates(subset='index').set_index('index')
 
     return precision, precision_species
 
@@ -338,10 +363,7 @@ def gc(site, instrument, network):
         "GCMS": GC ADS (output GC-ADS)
         "medusa": GC medusa (output GC-MEDUSA)
     
-    Network can be:
-        "AGAGE"
-        "DECC"
-        "GAUGE"
+    Network is the network name for output file.
     """
 
     site_gcwerks = params["GC"][site]["gcwerks_site_name"]
@@ -350,10 +372,30 @@ def gc(site, instrument, network):
         instrument_gcwerks = "-" + instrument_gcwerks
     
     data_folder = params["GC"]["directory"][instrument]
-    data_files = sorted(glob.glob(join(data_folder,
-                                  site_gcwerks + \
-                                  instrument_gcwerks + ".??.C")))
+
+    # Search string
+    search_string = join(data_folder,
+                         site_gcwerks + \
+                         instrument_gcwerks + ".??.C")
+    # Search string with -md attached
+    search_string_md = join(data_folder,
+                            site_gcwerks + \
+                            instrument_gcwerks + "-md.??.C")
+
+    # Search for data files
+    # First try to find MD file called site.YY.C
+    data_files = sorted(glob.glob(search_string))
+    if instrument == "GCMD":
+        if len(data_files) == 0:
+            # Else try to look for site-md.YY.C
+            data_files = sorted(glob.glob(search_string_md))
     
+    # Error if can't find files
+    if len(data_files) == 0.:
+        print("ERROR: can't find any files: " + search_string + " or " + \
+              search_string_md)
+        return None
+
     precision_files = [data_file[0:-2] + ".precisions.C" \
                         for data_file in data_files]
     
@@ -385,9 +427,6 @@ def gc(site, instrument, network):
     # Concatenate
     dfs = pd.concat(dfs).sort_index()
     
-    # Drop duplicate indices
-    dfs = dfs.reset_index().drop_duplicates(subset='index').set_index('index')
-
     # Label time index
     dfs.index.name = "time"
 
@@ -404,7 +443,9 @@ def gc(site, instrument, network):
     for sp in species:
         
         for inlet in inlets:        
-    
+            
+            print("Processing " + sp + ", " + inlet + "...")
+            
             ds_sp = ds.where(ds.Inlet == inlet)[[sp,
                                                  sp + "_repeatability",
                                                  sp + "_status_flag"]]
@@ -412,30 +453,36 @@ def gc(site, instrument, network):
             # Drop NaNs
             ds_sp = ds_sp.dropna("time")
 
-            # Sort out attributes
-            global_attributes = params["GC"][site.upper()]["global_attributes"]
-            ds_sp = attributes(ds_sp, sp,
-                               global_attributes = global_attributes,
-                               units = units[sp],
-                               scale = scale[sp])
+            if len(ds_sp.time) == 0:
 
-            # Get instrument name for output
-            if sp in params["GC"]["instruments_out"][instrument]:
-                instrument_out = params["GC"]["instruments_out"][instrument][sp]
+                print("... no data in file, skipping " + sp)            
+
             else:
-                instrument_out = params["GC"]["instruments_out"][instrument]["else"]
-
-            # Write file
-            nc_filename = output_filename(params["GC"]["directory_output"],
-                                          network,
-                                          instrument_out,
-                                          site.upper(),
-                                          str(ds_sp.time.to_pandas().index.to_pydatetime()[0].year),
-                                          ds_sp.species,
-                                          inlet)
-
-            ds_sp.to_netcdf(nc_filename)
-            print("Written " + nc_filename)
+    
+                # Sort out attributes
+                global_attributes = params["GC"][site.upper()]["global_attributes"]
+                ds_sp = attributes(ds_sp, sp, site.upper(),
+                                   global_attributes = global_attributes,
+                                   units = units[sp],
+                                   scale = scale[sp])
+    
+                # Get instrument name for output
+                if sp.upper() in params["GC"]["instruments_out"][instrument]:
+                    instrument_out = params["GC"]["instruments_out"][instrument][sp]
+                else:
+                    instrument_out = params["GC"]["instruments_out"][instrument]["else"]
+    
+                # Write file
+                nc_filename = output_filename(params["GC"]["directory_output"],
+                                              network,
+                                              instrument_out,
+                                              site.upper(),
+                                              str(ds_sp.time.to_pandas().index.to_pydatetime()[0].year),
+                                              ds_sp.species,
+                                              inlet)
+                                              
+                ds_sp.to_netcdf(nc_filename)
+                print("... written " + nc_filename)
             
 
 
@@ -501,17 +548,17 @@ def crds(site, network):
     params_crds = params["CRDS"]
 
     site_string = params_crds[site]["gcwerks_site_name"]
-    inlets = params_crds[site]["inlets"]
+    data_directory = params_crds["directory"].replace("%site", site_string)
+
+    # Search for species and inlets from file names
+    data_file_search = join(data_directory, site.lower() + ".*.1minute.*.dat")
+    data_files = glob.glob(data_file_search)
+    inlets = [f.split(".")[-2] for f in data_files]
     
-    for inlet in inlets:
-    
-        data_file = glob.glob(join(params_crds["directory"].replace("%site",
-                                                                    site_string),
-                                   site.lower() + \
-                                   ".picarro.1minute." + inlet + ".dat"))[0]
+    for i, inlet in enumerate(inlets):
         
         # Create Pandas dataframe
-        ds, species = crds_data_read(data_file)
+        ds, species = crds_data_read(data_files[i])
         
         # Write netCDF file for each species
         for sp in species:
@@ -521,8 +568,8 @@ def crds(site, network):
             ds_sp.dropna("time")
             
             global_attributes = params_crds[site]["global_attributes"]
-
-            ds_sp = attributes(ds_sp, sp,
+    
+            ds_sp = attributes(ds_sp, sp, site.upper(),
                                global_attributes = global_attributes,
                                scale = scales[sp])
             
@@ -534,6 +581,40 @@ def crds(site, network):
                                           str(ds_sp.time.to_pandas().index.to_pydatetime()[0].year),
                                           ds_sp.species,
                                           inlet)
-
+    
             ds_sp.to_netcdf(nc_filename)
             print("Written " + nc_filename)
+
+
+if __name__ == "__main__":
+
+    # ICOS
+    icos("TTA")
+    icos("MHD", network = "LSCE")
+
+    #CRDS data
+    crds("TTA", "DECC")
+    crds("RGL", "DECC")
+    crds("TAC", "DECC")
+    crds("HFD", "GAUGE")
+    crds("BSD", "GAUGE")
+
+    # DECC Medusa
+    gc("TAC", "medusa", "DECC")
+
+    # GAUGE GC data
+    gc("BSD", "GCMD", "GAUGE")
+    gc("HFD", "GCMD", "GAUGE")
+
+    # DECC GC data    
+    gc("RGL", "GCMD", "DECC")
+    gc("TAC", "GCMD", "DECC")
+    gc("BSD", "GCMD", "DECC")
+
+    # AGAGE GC data    
+    gc("MHD", "GCMD", "AGAGE")
+
+    # AGAGE Medusa
+    gc("MHD", "medusa", "AGAGE")
+    
+    

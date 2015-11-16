@@ -12,6 +12,8 @@
         "instruments_out": {
             "GCMD": {
                 "CH4": "GC-FID",
+                "CO": "GC-RGA",
+                "H2": "GC-RGA",
                 "else": "GC-ECD"
             },
             "GCMS": {
@@ -22,14 +24,13 @@
             }
         },
         "directory" : {
-            "GCMD":        "/dagage2/agage/summary/data/",
+            "GCMD":   "/dagage2/agage/summary/data-net/",
             "GCMS":   "/dagage2/agage/summary/data-gcms/",
             "medusa": "/dagage2/agage/summary/data-gcms/"
         },
         "directory_output" : "/dagage2/agage/metoffice/processed_observations",
         "BSD" : {
             "gcwerks_site_name": "bilsdale",
-            "inlets": ["42m", "108m", "248m"],
             "global_attributes": {
                 "data_owner": "Simon O'Doherty",
                 "data_owner_email": "s.odoherty@bristol.ac.uk"
@@ -37,7 +38,6 @@
         },
         "HFD" : {
             "gcwerks_site_name": "heathfield",
-            "inlets": ["100m", "50m"],
             "global_attributes": {
                 "data_owner": "Simon O'Doherty",
                 "data_owner_email": "s.odoherty@bristol.ac.uk"
@@ -52,16 +52,21 @@
             }
         },
         "RGL" : {
-            "gcwerks_site_name": "ridgehill-md",
-            "inlets": ["45m", "90m"],
+            "gcwerks_site_name": "ridgehill",
             "global_attributes": {
                 "data_owner": "Simon O'Doherty",
                 "data_owner_email": "s.odoherty@bristol.ac.uk"
             }
         },
         "TAC" : {
-            "gcwerks_site_name": "tacolneston-md",
-            "inlets": ["54m", "100m", "185m"],
+            "gcwerks_site_name": "tacolneston",
+            "global_attributes": {
+                "data_owner": "Simon O'Doherty",
+                "data_owner_email": "s.odoherty@bristol.ac.uk"
+            }
+        },
+        "TTA" : {
+            "gcwerks_site_name": "angus",
             "global_attributes": {
                 "data_owner": "Simon O'Doherty",
                 "data_owner_email": "s.odoherty@bristol.ac.uk"
@@ -73,7 +78,6 @@
         "directory_output" : "/dagage2/agage/metoffice/processed_observations",
         "BSD" : {
             "gcwerks_site_name": "bilsdale",
-            "inlets": ["42m", "108m", "248m"],
             "global_attributes": {
                 "data_owner": "Simon O'Doherty",
                 "data_owner_email": "s.odoherty@bristol.ac.uk"
@@ -81,7 +85,6 @@
         },
         "HFD" : {
             "gcwerks_site_name": "heathfield",
-            "inlets": ["100m", "50m"],
             "global_attributes": {
                 "data_owner": "Simon O'Doherty",
                 "data_owner_email": "s.odoherty@bristol.ac.uk"
@@ -89,7 +92,6 @@
         },
         "RGL" : {
             "gcwerks_site_name": "ridgehill",
-            "inlets": ["45m", "90m"],
             "global_attributes": {
                 "data_owner": "Simon O'Doherty",
                 "data_owner_email": "s.odoherty@bristol.ac.uk"
@@ -97,7 +99,6 @@
         },
         "TAC" : {
             "gcwerks_site_name": "tacolneston",
-            "inlets": ["54m", "100m", "185m"],
             "global_attributes": {
                 "data_owner": "Simon O'Doherty",
                 "data_owner_email": "s.odoherty@bristol.ac.uk"
@@ -105,7 +106,6 @@
         },
         "TTA" : {
             "gcwerks_site_name": "angus",
-            "inlets": ["222m"],
             "global_attributes": {
                 "data_owner": "Simon O'Doherty",
                 "data_owner_email": "s.odoherty@bristol.ac.uk"
@@ -117,8 +117,7 @@
         "directory_output" : "/dagage2/agage/metoffice/processed_observations",
         "MHD" : {
             "gcwerks_site_name": "macehead",
-            "instruments" : ["CRDS"],
-            "inlets": {"15m": "10m"},
+            "inlet_rename": {"15m": "10m"},
             "global_attributes": {
                 "data_owner": "Michael Ramonet",
                 "data_owner_email": "michel.ramonet@cea.fr"
@@ -126,8 +125,7 @@
         },
         "TTA" : {
             "gcwerks_site_name": "angus",
-            "instruments" : ["CRDS"],
-            "inlets": {"222m": "222m"},
+            "inlet_rename": {"222m": "222m"},
             "global_attributes": {
                 "data_owner": "Simon O'Doherty",
                 "data_owner_email": "s.odoherty@bristol.ac.uk"
