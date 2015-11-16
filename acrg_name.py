@@ -79,7 +79,7 @@ def filenames(site, domain, start, end, height = None, flux=None, basis=None):
     # Generate time series
     months = pd.DatetimeIndex(start = start, end = end, freq = "M").to_pydatetime()
     yearmonth = [str(d.year) + str(d.month).zfill(2) for d in months]
-    
+
     files = []
     for ym in yearmonth:
         f=glob.glob(baseDirectory + \
@@ -364,8 +364,8 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
     for si, site in enumerate(sites):
 
         # Dataframe for this site            
-        site_df = data[site]
-        
+        site_df = data[site] 
+            
         # Get time range
         df_start = min(site_df.index).to_pydatetime()
         start = dt.datetime(df_start.year, df_start.month, 1, 0, 0)
@@ -374,7 +374,7 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
         month_days = calendar.monthrange(df_end.year, df_end.month)[1]
         end = dt.datetime(df_end.year, df_end.month, 1, 0, 0) + \
                 dt.timedelta(days = month_days)
-
+      
         # Convert to dataset
         site_ds = xray.Dataset.from_dataframe(site_df)
         
@@ -403,13 +403,18 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
                              emissions_name = [emissions_name if calc_timeseries == True \
                                          else None][0])
         if site_fp is not None:
-            
-            # Merge datasets
-            #site_ds = combine_datasets(site_ds, site_fp, method = "nearest")
-            #if full_corr:
-            #    site_ds = combine_datasets(site_ds, site_fp, method = "nearest")
-                #site_ds = combine_datasets(site_fp, site_ds, method = None)
-            #else:
+                        
+            # if there is satellite data, first check that the max_level in the obs
+            # and the max level in the processed FPs are the same            
+            if "GOSAT" in site.upper():
+                ml_obs = site_df.max_level
+                ml_fp = site_fp.max_level
+                if ml_obs != ml_fp:
+                    print "ERROR: MAX LEVEL OF SAT OBS DOES NOT EQUAL MAX LEVEL IN FP"
+                    print "max_level_fp =",ml_fp
+                    print "max_level_obs =",ml_obs
+                    return None
+                
             site_ds = combine_datasets(site_ds, site_fp, method = "nearest")
             
             # If units are specified, multiply by scaling factor
@@ -460,8 +465,13 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
     
     for site in sites:
 
-        site_bf = combine_datasets(fp_and_data[site]["fp", "flux", "mf_mod"],
-                                   basis_func)
+#        site_bf = combine_datasets(fp_and_data[site]["fp", "flux", "mf_mod"],
+#                                   basis_func)
+
+        site_bf_temp = xray.Dataset({"fp":fp_and_data[site]["fp"],
+                                "flux":fp_and_data[site]["flux"],
+                                "mf_mod":fp_and_data[site]["mf_mod"]})
+        site_bf = combine_datasets(site_bf_temp,basis_func)
 
         basis_scale = xray.Dataset({'basis_scale': (['lat','lon','time'],
                                                     np.zeros(np.shape(site_bf.basis)))},
@@ -508,7 +518,16 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
                                 'time' : (fp_and_data[site].coords['time'])})
             
             fp_and_data[site] = fp_and_data[site].merge(sub_fp)
-    
+        elif basis_case in ('test', 'alcompare'):
+            sub_fp_temp = site_bf.fp.sel(lon=slice(min(site_bf.sub_lon),max(site_bf.sub_lon)), 
+                                    lat=slice(min(site_bf.sub_lat),max(site_bf.sub_lat)))   
+            sub_fp = xray.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
+                               coords = {'sub_lat': (site_bf.coords['sub_lat']),
+                                         'sub_lon': (site_bf.coords['sub_lon']),
+                                'time' : (fp_and_data[site].coords['time'])})
+            
+            fp_and_data[site] = fp_and_data[site].merge(sub_fp)
+            
     return fp_and_data
 
 
@@ -523,23 +542,39 @@ def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW'):
 
         # stitch together the particle locations, vmrs at domain edges and
         #boundary condition basis functions
-        DS = combine_datasets(fp_and_data[site]["particle_locations_n",
-                                                "particle_locations_e",
-                                                "particle_locations_s",
-                                                "particle_locations_w",
-                                                "vmr_n",
-                                                "vmr_e",
-                                                "vmr_s",
-                                                "vmr_w",
-                                                "bc"],
-                                                basis_func)
+#        DS = combine_datasets(fp_and_data[site]["particle_locations_n",
+#                                                "particle_locations_e",
+#                                                "particle_locations_s",
+#                                                "particle_locations_w",
+#                                                "vmr_n",
+#                                                "vmr_e",
+#                                                "vmr_s",
+#                                                "vmr_w",
+#                                                "bc"],
+#                                                basis_func)
+        DS_temp = xray.Dataset({"particle_locations_n":fp_and_data[site]["particle_locations_n"],
+                                "particle_locations_e":fp_and_data[site]["particle_locations_e"],
+                                "particle_locations_s":fp_and_data[site]["particle_locations_s"],
+                                "particle_locations_w":fp_and_data[site]["particle_locations_w"],
+                                "vmr_n":fp_and_data[site]["vmr_n"],
+                                "vmr_e":fp_and_data[site]["vmr_e"],
+                                "vmr_s":fp_and_data[site]["vmr_s"],
+                                "vmr_w":fp_and_data[site]["vmr_w"],
+                                "bc":fp_and_data[site]["bc"]})
+                                
+        DS = combine_datasets(DS_temp, basis_func)                                    
 
         part_loc = np.hstack([DS.particle_locations_n,
                                 DS.particle_locations_e,
                                 DS.particle_locations_s,
                                 DS.particle_locations_w])
-        
-
+        # Added by ML but not yet uploaded to repository:
+        for ii in range(len(DS.time)):
+            DS.vmr_n[:,:,ii]=DS.vmr_n[:,:,0].values
+            DS.vmr_e[:,:,ii]=DS.vmr_e[:,:,0].values
+            DS.vmr_s[:,:,ii]=DS.vmr_s[:,:,0].values
+            DS.vmr_w[:,:,ii]=DS.vmr_w[:,:,0].values
+            #########################################
         vmr_ed = np.hstack([DS.vmr_n,
                            DS.vmr_e,
                            DS.vmr_s,
@@ -689,6 +724,18 @@ def filtering(datasets_in, filters, full_corr=False):
             return dataset_out
         else:
             return dataset[dict(time = ti)]
+            
+    def noon(dataset, full_corr=False):
+        # Subset during daytime hours
+        hours = dataset.time.to_pandas().index.hour
+        ti = [i for i, h in enumerate(hours) if h >= 12 and h < 14]
+        
+        if full_corr:
+            dataset_temp = dataset[dict(time = ti)]   
+            dataset_out = dataset_temp.reindex_like(dataset)
+            return dataset_out
+        else:
+            return dataset[dict(time = ti)] 
         
 
     def pblh_gt_500(dataset, full_corr=False):
@@ -728,12 +775,19 @@ def filtering(datasets_in, filters, full_corr=False):
             return dataset_out
         else:
             return dataset[dict(time = ti)]
-        
+            
+    def local_influence(dataset, full_corr=False):
+        ti = [i for i, local_ratio in enumerate(dataset.local_ratio) if local_ratio < 0.3]
+        return dataset[dict(time = ti)]
+       
+       
         
     filtering_functions={"daily_median":daily_median,
                          "daytime":daytime,
+                         "noon":noon,
                          "pblh_gt_500": pblh_gt_500,
-                         "pblh_gt_250": pblh_gt_250}
+                         "pblh_gt_250": pblh_gt_250,
+                         "local_influence":local_influence}
 
     # Get list of sites
     sites = [key for key in datasets.keys() if key[0] != '.']
@@ -1094,7 +1148,7 @@ def plot(fp_data, date, out_filename=None,
 
     #Calculate color levels
     cmap = colormap
-    rp_color = {"SURFACE": "blue",
+    rp_color = {"SURFACE": "black",
                 "SHIP": "purple",
                 "AIRCRAFT": "red",
                 "SATELLITE": "green"}
@@ -1117,8 +1171,9 @@ def plot(fp_data, date, out_filename=None,
     # Generate plot data
     for site in sites:
     
-        tdelta = fp_data[site].time - date
-        if np.min(np.abs(tdelta)) < 2*3600.*1e9:
+        tdelta = fp_data[site].time - np.datetime64(date)
+
+        if np.min(np.abs(tdelta)).astype(np.int64) < 1.1*3600.*1e9:
 
             fp_data_ti = fp_data[site].reindex_like( \
                             xray.Dataset(coords = {"time": [date]}),
@@ -1151,7 +1206,7 @@ def plot(fp_data, date, out_filename=None,
                     color = rp_color[site_info[site]["platform"].upper()]
                 else:
                     color = rp_color["SURFACE"]
-                rp = map_data.m.scatter(rpx, rpy, 40, color = color)
+                rp = map_data.m.scatter(rpx, rpy, 100, color = color)
     
     plt.title(str(pd.to_datetime(str(date))), fontsize=20)
 
@@ -1172,21 +1227,24 @@ def plot(fp_data, date, out_filename=None,
         plt.show()
 
 
-def time_unique(fp_data):
+def time_unique(fp_data, time_regular = False):
     
     sites = [key for key in fp_data.keys() if key[0] != '.']
     
     time = fp_data[sites[0]].time.to_dataset()
     if len(sites) > 1:
         for site in sites[1:]:
-            print(site)
             time.merge(fp_data[site].time.to_dataset(), inplace = True)
+    
+    time = time.time.to_pandas().index.to_pydatetime()
+    if time_regular is not False:
+        time = pd.date_range(min(time), max(time), freq = time_regular)
     
     return time
 
 
 def plot3d(fp_data, date, out_filename=None, 
-         cutoff = -3.5):
+           log_range = [5., 9.]):
 
     """date as string "d/m/y H:M" or datetime object 
     datetime.datetime(yyyy,mm,dd,hh,mm)
@@ -1198,12 +1256,12 @@ def plot3d(fp_data, date, out_filename=None,
 
     time_index = bisect.bisect_left(fp_data.time, date)
 
-    data = np.log10(fp_data.fp[:,:,time_index])
-    lon_range = (fp_data.lonmin, fp_data.lonmax)
-    lat_range = (fp_data.latmin, fp_data.latmax)
+    data = np.log10(fp_data.fp.values[:,:,time_index].squeeze())
+    lon_range = (fp_data.lon.min().values, fp_data.lon.max().values)
+    lat_range = (fp_data.lat.min().values, fp_data.lat.max().values)
 
     #Set very small elements to zero
-    data[np.where(data <  cutoff)]=np.nan
+    data[np.where(data <  log_range[0])]=np.nan
 
     fig = plt.figure(figsize=(16,12))
 
@@ -1213,25 +1271,25 @@ def plot3d(fp_data, date, out_filename=None,
     
     ax.set_ylim(lat_range)
     ax.set_xlim(lon_range)
-    ax.set_zlim((min(fp_data.particle_height), max(fp_data.particle_height)))
+    ax.set_zlim((min(fp_data.height), max(fp_data.height)))
 
     fpX, fpY = np.meshgrid(fp_data.lon, fp_data.lat)
     
-    levels = np.arange(cutoff, 0., 0.05)
+    levels = np.arange(log_range[0], log_range[1], 0.05)
 
     plfp = ax.contourf(fpX, fpY, data, levels, offset = 0.)
-    plnX, plnY = np.meshgrid(fp_data.lon, fp_data.particle_height)
-    plwX, plwY = np.meshgrid(fp_data.lat, fp_data.particle_height)
+    plnX, plnY = np.meshgrid(fp_data.lon.values.squeeze(), fp_data.height.values.squeeze())
+    plwX, plwY = np.meshgrid(fp_data.lat.values.squeeze(), fp_data.height.values.squeeze())
     pllevs = np.arange(0., 0.0031, 0.0001)
     
-    plnvals = fp_data.particle_locations["N"][:,:,time_index]
+    plnvals = fp_data.particle_locations_n.values[:,:,time_index].squeeze()
     plnvals[np.where(plnvals == 0.)]=np.nan
-    plwvals = fp_data.particle_locations["W"][:,:,time_index]
+    plwvals = fp_data.particle_locations_w.values[:,:,time_index].squeeze()
     plwvals[np.where(plwvals == 0.)]=np.nan
     plpln = ax.contourf(plnX, plnvals, plnY,
-                        zdir = 'y', offset = max(fp_data.lat), levels = pllevs)
+                        zdir = 'y', offset = max(fp_data.lat.values), levels = pllevs)
     plplw = ax.contourf(plwvals, plwX, plwY,
-                        zdir = 'x', offset = min(fp_data.lon), levels = pllevs)    
+                        zdir = 'x', offset = min(fp_data.lon.values), levels = pllevs)    
     ax.view_init(50)
 
     cb = plt.colorbar(plfp, location='bottom', shrink=0.8)
@@ -1242,10 +1300,8 @@ def plot3d(fp_data, date, out_filename=None,
              fontsize=15)
     cb.ax.tick_params(labelsize=13) 
     
-    plt.tight_layout()
-
     if out_filename is not None:
-        plt.savefig(out_filename, dpi = 600)
+        plt.savefig(out_filename, dpi = 300)
         plt.close()
     else:
         plt.show()
@@ -1253,10 +1309,11 @@ def plot3d(fp_data, date, out_filename=None,
 
 def animate(fp_data, output_directory, 
             lon_range = None, lat_range=None, zoom = False,
-            cutoff = -3.,
-            overwrite=True, file_label = 'fp', 
+            log_range = [5., 9.],
+            overwrite=True, file_label = 'fp',
             framerate=10, delete_png=False,
-            video_os="mac", ffmpeg_only = False):
+            video_os="mac", ffmpeg_only = False,
+            plot_function = "plot", time_regular = "1H"):
     
     sites = [key for key in fp_data.keys() if key[0] != '.']
     
@@ -1265,27 +1322,32 @@ def animate(fp_data, output_directory,
         # Set up map        
         if zoom:
             lat_range, lon_range = plot_map_zoom(fp_data)
-            
+        
         map_data = plot_map_setup(fp_data[sites[0]], 
                                   lon_range = lon_range, 
                                   lat_range= lat_range, bottom_left = True)
         
         # Find unique times
-        times = time_unique(fp_data)
+        times = time_unique(fp_data,
+                            time_regular = time_regular)
 
         # Start progress bar
-        pbar=ProgressBar(maxval=len(times.time.values)).start()
+        pbar=ProgressBar(maxval=len(times)).start()
 
         # Plot each timestep
-        for ti, t in enumerate(times.time.values):
+        for ti, t in enumerate(times):
             
             fname=os.path.join(output_directory, 
                                file_label + '_' + str(ti).zfill(5) + '.png')
                                
-            if len(glob.glob(fname)) == 0 or overwrite == True:            
-                plot_scatter(fp_data, t, out_filename = fname, 
-                     lon_range = lon_range, lat_range= lat_range,
-                     cutoff=cutoff, map_data = map_data)
+            if len(glob.glob(fname)) == 0 or overwrite == True:
+                if plot_function == "plot":
+                    plot(fp_data, t, out_filename = fname, 
+                         lon_range = lon_range, lat_range= lat_range,
+                         log_range = log_range, map_data = map_data)
+                elif plot_function == "plot3d":
+                    plot3d(fp_data[sites[0]], t, out_filename = fname,
+                           log_range = log_range)
                      
             pbar.update(ti)
         pbar.finish()
