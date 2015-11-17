@@ -37,7 +37,7 @@
     "CBA" : {
         "alt": [],
         "long_name" : "Cold Bay, United States",
-        "height": ["32.04m"],
+        "height": ["32m"],
         "height_name": ["32magl"],
         "latitude": 55.21,
         "longitude": -162.72,
