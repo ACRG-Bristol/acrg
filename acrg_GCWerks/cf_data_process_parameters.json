@@ -12,6 +12,8 @@
         "instruments_out": {
             "GCMD": {
                 "CH4": "GC-FID",
+                "CO": "GC-RGA",
+                "H2": "GC-RGA",
                 "else": "GC-ECD"
             },
             "GCMS": {
@@ -22,17 +24,26 @@
             }
         },
         "directory" : {
-            "GCMD":        "/dagage2/agage/summary/data/",
+            "GCMD":   "/dagage2/agage/summary/data/",
             "GCMS":   "/dagage2/agage/summary/data-gcms/",
             "medusa": "/dagage2/agage/summary/data-gcms/"
         },
         "directory_output" : "/dagage2/agage/metoffice/processed_observations",
         "BSD" : {
             "gcwerks_site_name": "bilsdale",
-            "inlets": ["42m", "108m", "248m"],
+            "inlets": ["108m", "42m", "248m"],
             "global_attributes": {
                 "data_owner": "Simon O'Doherty",
                 "data_owner_email": "s.odoherty@bristol.ac.uk"
+            }
+        },
+        "CGO" : {
+            "gcwerks_site_name": "capegrim",
+            "inlets": ["any"],
+            "inlet_label": ["70m"],
+            "global_attributes": {
+                "data_owner": "Paul Krummel",
+                "data_owner_email": "paul.krummel@csiro.au"
             }
         },
         "HFD" : {
@@ -41,6 +52,15 @@
             "global_attributes": {
                 "data_owner": "Simon O'Doherty",
                 "data_owner_email": "s.odoherty@bristol.ac.uk"
+            }
+        },
+        "GSN" : {
+            "gcwerks_site_name": "gosan",
+            "inlets": ["any"],
+            "inlet_label": ["10m"],
+            "global_attributes": {
+                "data_owner": "Sunyoung Park",
+                "data_owner_email": "sparky@kpu.ac.kr"
             }
         },
         "MHD" : {
@@ -52,55 +72,64 @@
             }
         },
         "RGL" : {
-            "gcwerks_site_name": "ridgehill-md",
-            "inlets": ["45m", "90m"],
-            "global_attributes": {
-                "data_owner": "Simon O'Doherty",
-                "data_owner_email": "s.odoherty@bristol.ac.uk"
-            }
-        },
-        "TAC" : {
-            "gcwerks_site_name": "tacolneston-md",
-            "inlets": ["54m", "100m", "185m"],
-            "global_attributes": {
-                "data_owner": "Simon O'Doherty",
-                "data_owner_email": "s.odoherty@bristol.ac.uk"
-            }
-        }
-    },
-    "CRDS": {
-        "directory" : "/dagage2/agage/%site-picarro/results-gcwerks/",
-        "directory_output" : "/dagage2/agage/metoffice/processed_observations",
-        "BSD" : {
-            "gcwerks_site_name": "bilsdale",
-            "inlets": ["42m", "108m", "248m"],
-            "global_attributes": {
-                "data_owner": "Simon O'Doherty",
-                "data_owner_email": "s.odoherty@bristol.ac.uk"
-            }
-        },
-        "HFD" : {
-            "gcwerks_site_name": "heathfield",
-            "inlets": ["100m", "50m"],
-            "global_attributes": {
-                "data_owner": "Simon O'Doherty",
-                "data_owner_email": "s.odoherty@bristol.ac.uk"
-            }
-        },
-        "RGL" : {
             "gcwerks_site_name": "ridgehill",
-            "inlets": ["45m", "90m"],
+            "inlets": ["90m", "45m"],
             "global_attributes": {
                 "data_owner": "Simon O'Doherty",
                 "data_owner_email": "s.odoherty@bristol.ac.uk"
+            }
+        },
+        "RPB" : {
+            "gcwerks_site_name": "barbados",
+            "inlets": ["any"],
+            "inlet_label": ["10m"],
+            "global_attributes": {
+                "data_owner": "Simon O'Doherty",
+                "data_owner_email": "s.odoherty@bristol.ac.uk"
+            }
+        },
+        "SDZ" : {
+            "gcwerks_site_name": "shangdianzi",
+            "inlets": ["any"],
+            "inlet_label": ["10m"],
+            "global_attributes": {
+                "data_owner": "Lingxi Zhou",
+                "data_owner_email": "zhoulx@cams.cma.gov.cn"
+            }
+        },
+        "SIO" : {
+            "gcwerks_site_name": "sio",
+            "inlets": ["any"],
+            "inlet_label": ["10m"],
+            "global_attributes": {
+                "data_owner": "Ray Weiss",
+                "data_owner_email": "rfweiss@ucsd.edu"
+            }
+        },
+        "SMO" : {
+            "gcwerks_site_name": "samoa",
+            "inlets": ["any"],
+            "inlet_label": ["10m"],
+            "global_attributes": {
+                "data_owner": "Ray Weiss",
+                "data_owner_email": "rfweiss@ucsd.edu"
             }
         },
         "TAC" : {
             "gcwerks_site_name": "tacolneston",
-            "inlets": ["54m", "100m", "185m"],
+            "inlets": ["100m", "54m", "185m"],
             "global_attributes": {
                 "data_owner": "Simon O'Doherty",
                 "data_owner_email": "s.odoherty@bristol.ac.uk"
+            }
+        },
+        "THD" : {
+            "gcwerks_site_name": "trinidadhead",
+            "inlets": ["any"],
+            "inlet_label": ["10m"],
+            "global_attributes": {
+                "data_owner": "Ray Weiss",
+                "data_owner_email": "rfweiss@ucsd.edu"
             }
         },
         "TTA" : {
@@ -112,13 +141,51 @@
             }
         }
     },
+    "CRDS": {
+        "directory" : "/dagage2/agage/%site-picarro/results-gcwerks/",
+        "directory_output" : "/dagage2/agage/metoffice/processed_observations",
+        "BSD" : {
+            "gcwerks_site_name": "bilsdale",
+            "global_attributes": {
+                "data_owner": "Simon O'Doherty",
+                "data_owner_email": "s.odoherty@bristol.ac.uk"
+            }
+        },
+        "HFD" : {
+            "gcwerks_site_name": "heathfield",
+            "global_attributes": {
+                "data_owner": "Simon O'Doherty",
+                "data_owner_email": "s.odoherty@bristol.ac.uk"
+            }
+        },
+        "RGL" : {
+            "gcwerks_site_name": "ridgehill",
+            "global_attributes": {
+                "data_owner": "Simon O'Doherty",
+                "data_owner_email": "s.odoherty@bristol.ac.uk"
+            }
+        },
+        "TAC" : {
+            "gcwerks_site_name": "tacolneston",
+            "global_attributes": {
+                "data_owner": "Simon O'Doherty",
+                "data_owner_email": "s.odoherty@bristol.ac.uk"
+            }
+        },
+        "TTA" : {
+            "gcwerks_site_name": "angus",
+            "global_attributes": {
+                "data_owner": "Simon O'Doherty",
+                "data_owner_email": "s.odoherty@bristol.ac.uk"
+            }
+        }
+    },
     "ICOS": {
         "directory" : "/dagage2/agage/%site-picarro/results-icos/",
         "directory_output" : "/dagage2/agage/metoffice/processed_observations",
         "MHD" : {
             "gcwerks_site_name": "macehead",
-            "instruments" : ["CRDS"],
-            "inlets": {"15m": "10m"},
+            "inlet_rename": {"15m": "10m"},
             "global_attributes": {
                 "data_owner": "Michael Ramonet",
                 "data_owner_email": "michel.ramonet@cea.fr"
@@ -126,8 +193,7 @@
         },
         "TTA" : {
             "gcwerks_site_name": "angus",
-            "instruments" : ["CRDS"],
-            "inlets": {"222m": "222m"},
+            "inlet_rename": {"222m": "222m"},
             "global_attributes": {
                 "data_owner": "Simon O'Doherty",
                 "data_owner_email": "s.odoherty@bristol.ac.uk"
