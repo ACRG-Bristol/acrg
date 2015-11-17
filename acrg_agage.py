@@ -507,10 +507,10 @@ def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
             if "GOSAT" in site.upper():
                 obs[site].max_level = data.max_level
                 
-    # Add some attributes
-    if data is not None:
-        obs[".species"] = species
-        obs[".units"] = data.mf.units
+        # Add some attributes
+        if data is not None:
+            obs[".species"] = species
+            obs[".units"] = data.mf.units
 
     
     if len(obs) == 0:
