@@ -183,6 +183,15 @@
         "longitude": -2.53990,
         "network": "DECC"
     },
+    "SDZ" : {
+        "alt": [""],
+        "long_name" : "Shandianzi, China",
+        "height": ["10m"],
+        "height_name": ["10magl"],
+        "latitude": 40.65,
+        "longitude": 117.12,
+        "network": "AGAGE"
+    },
     "SNG" : {
         "alt": [""],
         "long_name" : "Sinhagad, India",
