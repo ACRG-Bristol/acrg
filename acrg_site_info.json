@@ -37,8 +37,8 @@
     "CBA" : {
         "alt": [],
         "long_name" : "Cold Bay, United States",
-        "height": ["32m"],
-        "height_name": ["32magl"],
+        "height": ["36m"],
+        "height_name": ["36magl"],
         "latitude": 55.21,
         "longitude": -162.72,
         "network": "NOAA"
@@ -150,8 +150,8 @@
     "KEY" : {
         "alt": [],
         "long_name" : "Key Biscane, United States",
-        "height": ["3m"],
-        "height_name": ["3magl"],
+        "height": ["5m"],
+        "height_name": ["5magl"],
         "latitude": 25.6654,
         "longitude": -80.158,
         "network": "NOAA"
@@ -159,8 +159,8 @@
     "LEF" : {
         "alt": [],
         "long_name" : "Park Falls, United States",
-        "height": ["0m"],
-        "height_name": ["0magl"],
+        "height": ["396m"],
+        "height_name": ["396magl"],
         "latitude": 45.9451,
         "longitude": -90.2732,
         "network": "NOAA"
@@ -211,9 +211,11 @@
     "THD" : {
         "alt": ["TH"],
         "long_name" : "Trinidad Head, California",
-        "height": ["10m"],
-        "height_name": ["10magl"],
-        "network": "AGAGE"
+        "height": ["10m", "5m"],
+        "height_name": ["10magl", "5magl"],
+        "latitude": 41.0541,
+        "longitude": -124.151,
+        "network": ["AGAGE", "NOAA"]
     },
     "TIL" : {
         "alt": ["TILNEY"],
