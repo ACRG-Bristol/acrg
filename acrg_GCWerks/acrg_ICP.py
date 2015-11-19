@@ -122,6 +122,7 @@ class read_data:
         self.cavity_temp = indata.cavity_temp.astype('float')
         self.cavity_press = indata.cavity_press.astype('float')
         self.h2o = indata.h2o
+        self.h2o_reported = indata.h2o_reported
         
         self.co2_orig = indata.co2_orig
         self.co2 = indata.co2
@@ -556,12 +557,18 @@ class Read_co2_meansmulti:
         MPI_co2 = co2_list[np.where([i == 'MPI_Picarro' for i in sitekey_list])[0]]
         MPI_ch4 = ch4_list[np.where([i == 'MPI_Picarro' for i in sitekey_list])[0]]
         MPI_co = co_list[np.where([i == 'MPI_Aerolaser' for i in sitekey_list])[0]]
+        EMPA_co2 = co2_list[np.where([i == 'EMPA_CRDS_Prelim' for i in sitekey_list])[0]]
+        EMPA_ch4 = ch4_list[np.where([i == 'EMPA_CRDS_Prelim' for i in sitekey_list])[0]]
+        EMPA_co = co_list[np.where([i == 'EMPA_CRDS_Prelim' for i in sitekey_list])[0]]
+
 
         self.MPI_co2 = MPI_co2
         self.MPI_ch4 = MPI_ch4
         self.MPI_co = MPI_co
+        self.EMPA_co2 = EMPA_co2
+        self.EMPA_ch4 = EMPA_ch4
+        self.EMPA_co = EMPA_co
         
-                
         self.datetime = datetimes
         self.co2 = list(chain(*co2))
         self.co2sd = list(chain(*co2sd))
@@ -569,6 +576,7 @@ class Read_co2_meansmulti:
         self.co2_scale = list(chain(*co2_scale))
         self.co2_diffs = list(chain(*co2)) - np.nanmean(list(chain(*co2)))
         self.co2_MPIdiff = [i - MPI_co2 for i in co2_list]
+        self.co2_EMPAdiff = [i - EMPA_co2 for i in co2_list]
 
         self.ch4 = list(chain(*ch4))
         self.ch4sd = list(chain(*ch4sd))
@@ -576,14 +584,15 @@ class Read_co2_meansmulti:
         self.ch4_scale = list(chain(*ch4_scale)) 
         self.ch4_diffs = list(chain(*ch4)) - np.nanmean(list(chain(*ch4)))
         self.ch4_MPIdiff = [i - MPI_ch4 for i in ch4_list]
-        
-        
+        self.ch4_EMPAdiff = [i - EMPA_ch4 for i in ch4_list]
+       
         self.co = list(chain(*co))
         self.cosd = list(chain(*cosd))
         self.co_n = list(chain(*co_n))
         self.co_scale = list(chain(*co_scale))
         self.co_diffs = list(chain(*co)) - np.nanmean(list(chain(*co)))
         self.co_MPIdiff = [i - MPI_co for i in co_list]
+        self.co_EMPAdiff = [i - EMPA_co for i in co_list]
 
         self.raw_filename = list(chain(*raw_filename))
         self.site = list(chain(*site))
@@ -724,9 +733,13 @@ class Read_n2o_meansmulti:
         
         MPI_n2o = n2o_list[np.where([i == 'MPI_GC' for i in sitekey])[0]]
         MPI_sf6 = sf6_list[np.where([i == 'MPI_GC' for i in sitekey])[0]]
+        EMPA_n2o = n2o_list[np.where([i == 'EMPA_CRDS_Prelim' for i in sitekey])[0]]
+        EMPA_sf6 = sf6_list[np.where([i == 'EMPA_CRDS_Prelim' for i in sitekey])[0]]
         
         self.MPI_n2o = MPI_n2o
         self.MPI_sf6 = MPI_sf6
+        self.EMPA_n2o = EMPA_n2o
+        self.EMPA_sf6 = EMPA_sf6
         
         self.n2o = list(chain(*n2o))
         self.n2osd = list(chain(*n2osd))
@@ -734,6 +747,7 @@ class Read_n2o_meansmulti:
         self.n2o_scale = n2o_scale
         self.n2o_diffs = list(chain(*n2o)) - np.nanmean(list(chain(*n2o)))
         self.n2o_MPIdiff = [ i - MPI_n2o for i in n2o_list]
+        self.n2o_EMPAdiff = [ i - EMPA_n2o for i in n2o_list]
         
         self.sf6 = list(chain(*sf6))
         self.sf6sd = list(chain(*sf6sd))
@@ -741,6 +755,7 @@ class Read_n2o_meansmulti:
         self.sf6_scale = sf6_scale
         self.sf6_diffs = list(chain(*sf6)) - np.nanmean(list(chain(*sf6)))
         self.sf6_MPIdiff = [i - MPI_sf6 for i in sf6_list]
+        self.sf6_EMPAdiff = [i - EMPA_sf6 for i in sf6_list]
         
         self.raw_filename = list(chain(*raw_filename))
         self.site = site
@@ -1504,11 +1519,18 @@ class Plot_summary:
         
         plt.figtext(0.72, 0.2, 'CO$\mathregular{_2}$ - WMOx2007', verticalalignment='bottom', horizontalalignment='left', fontsize=6)
         plt.figtext(0.72, 0.17, 'CH$\mathregular{_4}$ - WMOx2004, x2004A', verticalalignment='bottom', horizontalalignment='left', fontsize=6)
-        plt.figtext(0.72, 0.14, 'N$\mathregular{_2}$O - SIO98 (DECC/GAUGE), WMOx2006 (others) ', verticalalignment='bottom', horizontalalignment='left', fontsize=6)
+        #plt.figtext(0.72, 0.14, 'N$\mathregular{_2}$O - SIO98 (DECC/GAUGE), WMOx2006A (others) ', verticalalignment='bottom', horizontalalignment='left', fontsize=6)
+        plt.figtext(0.72, 0.14, 'N$\mathregular{_2}$O - WMOx2006A', verticalalignment='bottom', horizontalalignment='left', fontsize=6)
+        
+        text1 = 'Mean +/- WMO compatibility goals'
         if use_MPI == 1:
-            plt.figtext(0.72, 0.11, 'MPI +/- WMO compatibility goals', verticalalignment='bottom', horizontalalignment='left', fontsize=6, color ='grey')
-        else:
-            plt.figtext(0.72, 0.11, 'Mean +/- WMO compatibility goals', verticalalignment='bottom', horizontalalignment='left', fontsize=6, color ='grey')
+            text1 = 'MPI +/- WMO compatibility goals'
+            
+        if use_EMPA == 1:    
+            text1 = 'EMPA +/- WMO compatibility goals'
+        
+        
+        plt.figtext(0.72, 0.11, text1, verticalalignment='bottom', horizontalalignment='left', fontsize=6, color ='grey')
         
         plt.savefig(outputdir+'SummmaryPlot_Timeseries' + suffix + '.png', dpi=200)
             
@@ -1623,11 +1645,17 @@ class Plot_summary:
         
         plt.figtext(0.72, 0.2, 'CO$\mathregular{_2}$ - WMOx2007', verticalalignment='bottom', horizontalalignment='left', fontsize=6)
         plt.figtext(0.72, 0.17, 'CH$\mathregular{_4}$ - WMOx2004, x2004A', verticalalignment='bottom', horizontalalignment='left', fontsize=6)
-        plt.figtext(0.72, 0.14, 'N$\mathregular{_2}$O - SIO98 (DECC/GAUGE), WMOx2006 (others) ', verticalalignment='bottom', horizontalalignment='left', fontsize=6)
+        #plt.figtext(0.72, 0.14, 'N$\mathregular{_2}$O - SIO98 (DECC/GAUGE), WMOx2006A (others) ', verticalalignment='bottom', horizontalalignment='left', fontsize=6)
+        plt.figtext(0.72, 0.14, 'N$\mathregular{_2}$O - WMOx2006A (others) ', verticalalignment='bottom', horizontalalignment='left', fontsize=6)
+        
+        text1 = 'Mean +/- WMO compatibility goals'
         if use_MPI == 1:
-            plt.figtext(0.72, 0.11, 'MPI +/- WMO compatibility goals', verticalalignment='bottom', horizontalalignment='left', fontsize=6, color ='grey')
-        else:
-            plt.figtext(0.72, 0.11, 'Mean +/- WMO compatibility goals', verticalalignment='bottom', horizontalalignment='left', fontsize=6, color ='grey')
+            text1 = 'MPI +/- WMO compatibility goals'
+            
+        if use_EMPA == 1:
+            text1 = 'EMPA +/- WMO compatibility goals'
+        
+        plt.figtext(0.72, 0.11, text1, verticalalignment='bottom', horizontalalignment='left', fontsize=6, color ='grey')
 
 
         plt.savefig(outputdir+'SummmaryPlot_Conc' + suffix + '.png', dpi=200)
@@ -1918,14 +1946,17 @@ class Plot_individualsite:
         plt.figtext(0.56, 0.3, site, fontsize =8)
         plt.figtext(0.56, 0.26, 'CO$\mathregular{_2}$ - WMOx2007, through NPL (HAD & TIL), Scripps (WAO)', verticalalignment='bottom', horizontalalignment='left', fontsize=6)
         plt.figtext(0.56, 0.23, 'CH$\mathregular{_4}$ - WMOx2004, x2004A (DECC/GAUGE/FERRY)', verticalalignment='bottom', horizontalalignment='left', fontsize=6)
-        plt.figtext(0.56, 0.2, 'N$\mathregular{_2}$O - WMOx2006, SIO98 (DECC/GAUGE)', verticalalignment='bottom', horizontalalignment='left', fontsize=6)
+        plt.figtext(0.56, 0.2, 'N$\mathregular{_2}$O - WMOx2006A, SIO98 (DECC/GAUGE)', verticalalignment='bottom', horizontalalignment='left', fontsize=6)
         plt.figtext(0.56, 0.17, 'CO- WMOx2014', verticalalignment='bottom', horizontalalignment='left', fontsize=6)
         plt.figtext(0.56, 0.14, 'SF$\mathregular{_6}$ - WMOx2006, SIO-SF6 (DECC/GAUGE)', verticalalignment='bottom', horizontalalignment='left', fontsize=6)
         
+        text1 = 'Mean +/- WMO compatibility goals'
         if use_MPI == 1:
-            plt.figtext(0.72, 0.11, 'MPI +/- WMO compatibility goals', verticalalignment='bottom', horizontalalignment='left', fontsize=6, color ='grey')
-        else:
-            plt.figtext(0.72, 0.11, 'Mean +/- WMO compatibility goals', verticalalignment='bottom', horizontalalignment='left', fontsize=6, color ='grey')
+            text1 =  'MPI +/- WMO compatibility goals'
+        if use_EMPA == 1:
+            text1 ='EMPA +/- WMO compatibility goals'
+        
+        plt.figtext(0.72, 0.11, text1, verticalalignment='bottom', horizontalalignment='left', fontsize=6, color ='grey')
 
 
         plt.savefig(outputdir+site+'_single' + suffix + '.png', dpi=200)
@@ -1936,7 +1967,7 @@ class Plot_individualsite:
 # Make a summary plot for a single gas
 class Plot_individualgas:
     def __init__(self, gas, N2O_D091968, N2O_D091969, N2O_D091970, CO2_D091968, CO2_D091969, CO2_D091970, \
-     outputdir='/Users/as13988/Documents/Work/Cylinders/ICP/Results/Plots/', suffix='', use_MPI = 0):
+     outputdir='/Users/as13988/Documents/Work/Cylinders/ICP/Results/Plots/', suffix='', use_MPI = 0, n2o_scaled =None, use_EMPA=0):
        
         # DNos = ['D091968', 'D091969', 'D091970'] 
        
@@ -1958,6 +1989,8 @@ class Plot_individualgas:
                 conc = [CO2_D091968.co2, CO2_D091969.co2, CO2_D091970.co2]
                 sd = [CO2_D091968.co2sd, CO2_D091969.co2sd, CO2_D091970.co2sd]
                 diffs = [CO2_D091968.co2_diffs, CO2_D091969.co2_diffs, CO2_D091970.co2_diffs]
+                tags = [CO2_D091968.sitekey, CO2_D091969.sitekey, CO2_D091970.sitekey]
+                
                 ylabel = 'Site - mean [CO$\mathregular{_2}$] (ppm)'
                 linerange = [370,490]
                 scale_tag = 'CO$\mathregular{_2}$ - WMOx2007, through NPL (HAD & TIL), Scripps (WAO)'
@@ -1968,10 +2001,17 @@ class Plot_individualgas:
                     diffs = [CO2_D091968.co2_MPIdiff, CO2_D091969.co2_MPIdiff, CO2_D091970.co2_MPIdiff]
                     ylabel = 'Site - MPI [CO$\mathregular{_2}$] (ppm)'
 
+                if use_EMPA == 1:
+                    diffs = [CO2_D091968.co2_EMPAdiff, CO2_D091969.co2_EMPAdiff, CO2_D091970.co2_EMPAdiff]
+                    ylabel = 'Site - EMPA [CO$\mathregular{_2}$] (ppm)'
+
+
             if any(gas in i for i in ['ch4', 'CH4']):
                 conc = [CO2_D091968.ch4, CO2_D091969.ch4, CO2_D091970.ch4]
                 sd = [CO2_D091968.ch4sd, CO2_D091969.ch4sd, CO2_D091970.ch4sd]
                 diffs = [CO2_D091968.ch4_diffs, CO2_D091969.ch4_diffs, CO2_D091970.ch4_diffs]
+                tags = [CO2_D091968.sitekey, CO2_D091969.sitekey, CO2_D091970.sitekey]
+                
                 ylabel = 'Site - mean [CH$\mathregular{_4}$] (ppb)'
                 linerange = [1750,2250]
                 scale_tag = 'CH$\mathregular{_4}$ - WMOx2004, x2004A (DECC/GAUGE/FERRY)'
@@ -1980,12 +2020,18 @@ class Plot_individualgas:
                                 
                 if use_MPI == 1:
                     diffs = [CO2_D091968.ch4_MPIdiff, CO2_D091969.ch4_MPIdiff, CO2_D091970.ch4_MPIdiff]
-                    ylabel = 'Site - MPI [CH$\mathregular{_4}$] (ppm)'
+                    ylabel = 'Site - MPI [CH$\mathregular{_4}$] (ppb)'
+
+                if use_EMPA == 1:
+                        diffs = [CO2_D091968.ch4_EMPAdiff, CO2_D091969.ch4_EMPAdiff, CO2_D091970.ch4_EMPAdiff]
+                        ylabel = 'Site - EMPA [CH$\mathregular{_4}$] (ppb)'
 
             if any(gas in i for i in ['co', 'CO']):
                 conc = [CO2_D091968.co, CO2_D091969.co, CO2_D091970.co]
                 sd = [CO2_D091968.cosd, CO2_D091969.cosd, CO2_D091970.cosd]
                 diffs = [CO2_D091968.co_diffs, CO2_D091969.co_diffs, CO2_D091970.co_diffs]
+                tags = [CO2_D091968.sitekey, CO2_D091969.sitekey, CO2_D091970.sitekey]
+
                 ylabel = 'Site - mean [CO] (ppb)'
                 linerange = [100,300]
                 scale_tag =  'CO- WMOx2014'
@@ -1995,6 +2041,10 @@ class Plot_individualgas:
                 if use_MPI == 1:
                     diffs = [CO2_D091968.co_MPIdiff, CO2_D091969.co_MPIdiff, CO2_D091970.co_MPIdiff]
                     ylabel = 'Site - MPI [CO] (ppb)'
+
+                if use_EMPA == 1:
+                        diffs = [CO2_D091968.co_EMPAdiff, CO2_D091969.co_EMPAdiff, CO2_D091970.co_EMPAdiff]
+                        ylabel = 'Site - EMPA [CO] (ppb)'
 
 
         if any(gas in i for i in ['n2o','sf6','N2O', 'SF6']):
@@ -2007,20 +2057,33 @@ class Plot_individualgas:
                 conc = [N2O_D091968.n2o, N2O_D091969.n2o, N2O_D091970.n2o]
                 sd = [N2O_D091968.n2osd, N2O_D091969.n2osd, N2O_D091970.n2osd]
                 diffs = [N2O_D091968.n2o_diffs, N2O_D091969.n2o_diffs, N2O_D091970.n2o_diffs]
+                tags = [N2O_D091968.sitekey, N2O_D091969.sitekey, N2O_D091970.sitekey]
+
                 ylabel = 'Site - mean [N$\mathregular{_2}$O] (ppb)'
                 linerange = [322,336]
-                scale_tag = 'N$\mathregular{_2}$O - WMOx2006, SIO98 (DECC/GAUGE)'
+                scale_tag = 'N$\mathregular{_2}$O - WMOx2006A, SIO98 (DECC/GAUGE)'
+                suffix ='_unscaled'
+                if n2o_scaled != None:
+                    scale_tag = 'N$\mathregular{_2}$O - WMOx2006A (DECC/GAUGE scaled)'
+                    suffix ='_scaled'
                 title = 'N$\mathregular{_2}$O'
-                ylims = [-1.2, 0.3]
+                ylims = [-1.2, 0.6]
         
                 if use_MPI == 1:
                     diffs = [N2O_D091968.n2o_MPIdiff, N2O_D091969.n2o_MPIdiff, N2O_D091970.n2o_MPIdiff]
                     ylabel = 'Site - MPI [N$\mathregular{_2}$O] (ppb)'
 
+                if use_EMPA == 1:
+                    diffs = [N2O_D091968.n2o_EMPAdiff, N2O_D091969.n2o_EMPAdiff, N2O_D091970.n2o_EMPAdiff]
+                    ylabel = 'Site - EMPA [N$\mathregular{_2}$O] (ppb)'
+
+
             if any(gas in i for i in ['sf6', 'SF6']):
                 conc = [N2O_D091968.sf6, N2O_D091969.sf6, N2O_D091970.sf6]
                 sd = [N2O_D091968.sf6sd, N2O_D091969.sf6sd, N2O_D091970.sf6sd]
                 diffs = [N2O_D091968.sf6_diffs, N2O_D091969.sf6_diffs, N2O_D091970.sf6_diffs]
+                tags = [N2O_D091968.sitekey, N2O_D091969.sitekey, N2O_D091970.sitekey]
+                
                 ylabel = 'Site - mean [SF$\mathregular{_6}$] (ppt)'
                 linerange = [6,14]
                 scale_tag = 'SF$\mathregular{_6}$ - WMOx2006, SIO-SF6 (DECC/GAUGE)'
@@ -2031,6 +2094,9 @@ class Plot_individualgas:
                     diffs = [N2O_D091968.sf6_MPIdiff, N2O_D091969.sf6_MPIdiff, N2O_D091970.sf6_MPIdiff]
                     ylabel = 'Site - MPI [SF$\mathregular{_6}$] (ppb)'
 
+                if use_EMPA == 1:
+                    diffs = [N2O_D091968.sf6_EMPAdiff, N2O_D091969.sf6_EMPAdiff, N2O_D091970.sf6_EMPAdiff]
+                    ylabel = 'Site - EMPA [SF$\mathregular{_6}$] (ppb)'
  
         # combine into one long list
         sites = list(chain(*sites))  
@@ -2039,7 +2105,7 @@ class Plot_individualgas:
         conc = list(chain(*conc))
         sd = list(chain(*sd))
         diffs = list(chain(*diffs))
-        
+        tags = list(chain(*tags))
              
         # Find all the sites to cycle through
         sites_all = np.unique(sites)
@@ -2050,7 +2116,7 @@ class Plot_individualgas:
         #fig.tight_layout()
         fig.set_size_inches(6,6)
         fig.suptitle(title, fontsize = 12)
-        sites_all = ['MPI', 'TTA', 'BSD','HFD','RGL','TAC','WAO','BT','FERRY','FAAM','HAD','TIL', 'Man']        
+        sites_all = ['MPI','TTA', 'BSD','HFD','RGL','TAC','WAO','BT','FERRY','FAAM','HAD','TIL', 'Man','EMPA']        
         
         for i in np.arange(len(sites_all)):
             
@@ -2061,10 +2127,14 @@ class Plot_individualgas:
             site_sd = [sd[j] for j in siteindex]
             site_inst = [inst_all[j] for j in siteindex]        
             site_diffs = [diffs[j] for j in siteindex]
+            site_tags = [tags[j] for j in siteindex]
             
             # Plot the WMO compatibility goals
             lines = WMOLines(diffs, gas=gas)
             if use_MPI == 1:
+                lines = WMOLines(0, gas=gas)
+    
+            if use_EMPA == 1:
                 lines = WMOLines(0, gas=gas)
     
             if np.isnan(site_conc).all():        
@@ -2072,10 +2142,22 @@ class Plot_individualgas:
             else:
                 inst_tag = site_inst[np.where(np.isfinite(site_diffs))[0][0]]
                  
-                
+            
             # Plot up the data
             plt1 = plt.subplot(5, 3, i)
-            plt1.errorbar(site_conc, site_diffs, yerr=site_sd, fmt='o', color = SiteColours(sitein=sites_all[i]).outcolour, markersize = 3)
+            fmts = ['o', 'v','s']
+            for j in np.arange(len(np.unique(site_tags))):
+                #pdb.set_trace()
+                tag_j = np.unique(site_tags)[j]
+                j_index = (np.where(np.array(site_tags) == tag_j))[0]
+                
+                plt1.errorbar(np.array(site_conc)[j_index], np.array(site_diffs)[j_index], yerr=np.array(site_sd)[j_index], fmt=fmts[j], color = SiteColours(sitein=sites_all[i]).outcolour, markersize = 3)
+                print sites_all[i] + ' ' + np.array(site_inst)[j_index][0]
+                yloc = 0.85 - (j * 0.08)
+                plt1.text(0.15, yloc, sites_all[i] + ' ' + np.array(site_inst)[j_index][0]+ '-' + fmts[j], horizontalalignment='left', verticalalignment='center', transform = plt1.transAxes, fontsize=6)
+                       
+                #plt1.text(0.75, 0.85-(j*0.03), sites_all[i] + ' ' + np.array(site_inst)[j_index][0], horizontalalignment='center', verticalalignment='center', transform = plt1.transAxes, fontsize=6)
+
             plt1.plot(linerange, lines.plusline,  ':', color = 'grey')
             plt1.plot(linerange, lines.minusline,  ':', color = 'grey')        
             #plt1.set_ylim(Calcrange(co2_diffs, co2sd, even=1))
@@ -2086,18 +2168,27 @@ class Plot_individualgas:
             y_formatter = ticker.ScalarFormatter(useOffset=False)
             plt1.yaxis.set_major_formatter(y_formatter)
             plt1.set_ylabel(ylabel, fontsize = 5)
+            
+            lims = [plt1.get_ylim()[0],plt1.get_ylim()[1],ylims[0], ylims[1]]
+            plt1.set_ylim([min(lims),max(lims)])
+            plt1.set_xlim(linerange)
+ 
             for label in (plt1.get_xticklabels() + plt1.get_yticklabels()):
                 label.set_fontname('Arial')
                 label.set_fontsize(6)
             
-            plt1.text(0.75, 0.85, sites_all[i] + ' ' + inst_tag, horizontalalignment='center', verticalalignment='center', transform = plt1.transAxes, fontsize=6)
             
         plt.figtext(0.07, 0.06, scale_tag, verticalalignment='bottom', horizontalalignment='left', fontsize=6)
-         
+        
+        text1 = 'Mean +/- WMO compatibility goals'
         if use_MPI == 1:
-            plt.figtext(0.07, 0.04, 'MPI +/- WMO compatibility goals', verticalalignment='bottom', horizontalalignment='left', fontsize=6, color ='grey')
-        else:
-            plt.figtext(0.07, 0.04, 'Mean +/- WMO compatibility goals', verticalalignment='bottom', horizontalalignment='left', fontsize=6, color ='grey')
+            text1 = 'MPI +/- WMO compatibility goals'
+        
+        if use_EMPA == 1:
+            text1 = 'EMPA +/- WMO compatibility goals'
+        
+        
+        plt.figtext(0.07, 0.04, text1, verticalalignment='bottom', horizontalalignment='left', fontsize=6, color ='grey')
 
 
         plt.savefig(outputdir+gas+'_single' + suffix + '.png', dpi=200)
