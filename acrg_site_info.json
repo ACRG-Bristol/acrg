@@ -1,4 +1,13 @@
 {
+    "BMW" : {
+        "alt": [],
+        "long_name" : "Tudor Hill, Bermuda",
+        "height": ["30m"],
+        "height_name": ["30magl"],
+        "latitude": 32.2647,
+        "longitude": -64.8788,
+        "network": "NOAA"
+    },
     "BSD" : {
         "alt": [],
         "long_name" : "Bilsdale, UK",
@@ -16,6 +25,23 @@
         "latitude": 51.52150,
         "longitude": -0.13890,
         "network": "GAUGE"
+    },
+    "CARIBIC" : {
+        "alt": ["CARIBIC"],
+        "long_name" : "CARIBIC",
+        "height": ["various"],
+        "height_name": ["various"],
+        "network": "MPI",
+        "platform": "aircraft"
+    },
+    "CBA" : {
+        "alt": [],
+        "long_name" : "Cold Bay, United States",
+        "height": ["36m"],
+        "height_name": ["36magl"],
+        "latitude": 55.21,
+        "longitude": -162.72,
+        "network": "NOAA"
     },
     "CGO" : {
         "alt": ["CG"],
@@ -86,6 +112,14 @@
         "network": "GOSAT/GOSAT-INDIA",
         "platform": "satellite"
     },
+    "GOSAT-UK" : {
+        "alt": ["GOSAT"],
+        "long_name" : "GOSAT, UK",
+        "height": ["column"],
+        "height_name": ["column"],
+        "network": "GOSAT/GOSAT-UK",
+        "platform": "satellite"
+    },
     "GSN" : {
         "alt": ["GOSAN"],
         "long_name" : "Gosan, Korea",
@@ -113,6 +147,24 @@
         "longitude": 0.23048,
         "network": "GAUGE"
     },
+    "KEY" : {
+        "alt": [],
+        "long_name" : "Key Biscane, United States",
+        "height": ["5m"],
+        "height_name": ["5magl"],
+        "latitude": 25.6654,
+        "longitude": -80.158,
+        "network": "NOAA"
+    },
+    "LEF" : {
+        "alt": [],
+        "long_name" : "Park Falls, United States",
+        "height": ["396m"],
+        "height_name": ["396magl"],
+        "latitude": 45.9451,
+        "longitude": -90.2732,
+        "network": "NOAA"
+    },
     "MHD" : {
         "alt" : ["MH"],
         "long_name" : "Mace Head, Ireland",
@@ -130,6 +182,15 @@
         "latitude": 51.997435,
         "longitude": -2.53990,
         "network": "DECC"
+    },
+    "SDZ" : {
+        "alt": [""],
+        "long_name" : "Shandianzi, China",
+        "height": ["10m"],
+        "height_name": ["10magl"],
+        "latitude": 40.65,
+        "longitude": 117.12,
+        "network": "AGAGE"
     },
     "SNG" : {
         "alt": [""],
@@ -150,9 +211,11 @@
     "THD" : {
         "alt": ["TH"],
         "long_name" : "Trinidad Head, California",
-        "height": ["10m"],
-        "height_name": ["10magl"],
-        "network": "AGAGE"
+        "height": ["10m", "5m"],
+        "height_name": ["10magl", "5magl"],
+        "latitude": 41.0541,
+        "longitude": -124.151,
+        "network": ["AGAGE", "NOAA"]
     },
     "TIL" : {
         "alt": ["TILNEY"],

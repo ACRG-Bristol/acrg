@@ -80,7 +80,9 @@ def find_EDGAR_year(filename_of_EDGAR_emissions):
     return date, year
     
 #Regridding EDGAR data
-def regrid(filename_of_EDGAR_emissions, filename_of_footprint, input_species_name = None):
+def regrid(filename_of_EDGAR_emissions,
+           filename_of_footprint,
+           input_species_name = None):
 
 #   Read in EDGAR grid
     read_ed = EDGARread(filename_of_EDGAR_emissions)
@@ -240,9 +242,14 @@ def write(lat, lon, flux, species, domain, year, EDGAR_filename = None, footprin
     f.close() 
 
 #The function that does everything
-def regrid_emissions(filename_of_EDGAR_emissions, filename_of_footprint, input_species_name = None, output_species_name = None):
+def regrid_emissions(filename_of_EDGAR_emissions,
+                     filename_of_footprint,
+                     input_species_name = None,
+                     output_species_name = None):
     
-    lat, lon, flux, species, units = regrid(filename_of_EDGAR_emissions, filename_of_footprint, input_species_name)
+    lat, lon, flux, species, units = regrid(filename_of_EDGAR_emissions,
+                                            filename_of_footprint,
+                                            input_species_name)
     converter = unit_converter(units)
     molflux = converter(flux, species)
     domain = find_domain(filename_of_footprint)
@@ -253,7 +260,9 @@ def regrid_emissions(filename_of_EDGAR_emissions, filename_of_footprint, input_s
     elif output_species_name is not None:
         output_spec = output_species_name
         
-    write(lat, lon, molflux, output_spec, domain, year, EDGAR_filename = filename_of_EDGAR_emissions, footprint_filename = filename_of_footprint)
+    write(lat, lon, molflux, output_spec, domain, year,
+          EDGAR_filename = filename_of_EDGAR_emissions,
+          footprint_filename = filename_of_footprint)
 
 
 
