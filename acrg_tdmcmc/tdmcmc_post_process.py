@@ -90,7 +90,6 @@ def write_netcdf(flux_mean, flux_percentile, flux_prior, flux_ap_percentile,
     fpc_name = "_".join(['flux_percentile', experiment])
     countrym_name = "_".join(['country_mean', experiment])
     countrypc_name = "_".join(['country_percentile', experiment])
-    countryP_name = "_".join(['country_prior', experiment])
     
     #Write NetCDF file
     ncF=Dataset(outfile, 'w')
@@ -296,10 +295,13 @@ def country_emissions(ds_mcmc, x_post_vit, x_ap_abs_v, countries, species,
     q_country_84=np.zeros((ncountries))
     q_country_ap=np.zeros((ncountries))
     
+    nlon=len(ds_mcmc.lon)
+    nlat=len(ds_mcmc.lat)
+    country_v_new=np.zeros((nlon*nlat))
     for ci,cc in enumerate(countries):
         name_country = np.where(cds.name == cc)
         c_index = np.where(country_v == name_country[0])
-        
+        country_v_new[c_index[0]]=ci+1
         for it in range(nIt):
             x_vit_temp=x_post_vit[it,:]
             q_country_it[ci,it]=np.sum(x_vit_temp[c_index[0]]*area_v[c_index[0]]
@@ -316,8 +318,9 @@ def country_emissions(ds_mcmc, x_post_vit, x_ap_abs_v, countries, species,
         q_country_16[ci]=np.percentile(q_country_it[ci,:],16)*365.*24.*3600./1.e9*molmass/1000.
         q_country_84[ci]=np.percentile(q_country_it[ci,:],84)*365.*24.*3600./1.e9*molmass/1000.
         
-        
-    return q_country_mean, q_country_05, q_country_16, q_country_50, q_country_84, q_country_95, q_country_ap
+    country_index = np.reshape(country_v_new, (nlat,nlon))   
+    return q_country_mean, q_country_05, q_country_16, q_country_50, q_country_84, \
+    q_country_95, q_country_ap, country_index
     
 def plot_timeseries(ds, species, out_filename=None, full_corr=False):
     
