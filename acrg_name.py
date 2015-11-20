@@ -537,6 +537,10 @@ def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW'):
 #    attributes = [key for key in fp_and_data.keys() if key[0] == '.']
     basis_func = basis_boundary_conditions(domain = domain,
                                            basis_case = basis_case)
+# sort basis_func into time order    
+    ind = basis_func.time.argsort()                                        
+    timenew = basis_func.time[ind]
+    basis_func = basis_func.reindex({"time":timenew})
     
     for site in sites:
 
@@ -561,7 +565,7 @@ def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW'):
                                 "vmr_s":fp_and_data[site]["vmr_s"],
                                 "vmr_w":fp_and_data[site]["vmr_w"],
                                 "bc":fp_and_data[site]["bc"]})
-                                
+                        
         DS = combine_datasets(DS_temp, basis_func)                                    
 
         part_loc = np.hstack([DS.particle_locations_n,
