@@ -364,8 +364,8 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
     for si, site in enumerate(sites):
 
         # Dataframe for this site            
-        site_df = data[site]
-        
+        site_df = data[site] 
+            
         # Get time range
         df_start = min(site_df.index).to_pydatetime()
         start = dt.datetime(df_start.year, df_start.month, 1, 0, 0)
@@ -403,13 +403,18 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
                              emissions_name = [emissions_name if calc_timeseries == True \
                                          else None][0])
         if site_fp is not None:
-            
-            # Merge datasets
-            #site_ds = combine_datasets(site_ds, site_fp, method = "nearest")
-            #if full_corr:
-            #    site_ds = combine_datasets(site_ds, site_fp, method = "nearest")
-                #site_ds = combine_datasets(site_fp, site_ds, method = None)
-            #else:
+                        
+            # if there is satellite data, first check that the max_level in the obs
+            # and the max level in the processed FPs are the same            
+            if "GOSAT" in site.upper():
+                ml_obs = site_df.max_level
+                ml_fp = site_fp.max_level
+                if ml_obs != ml_fp:
+                    print "ERROR: MAX LEVEL OF SAT OBS DOES NOT EQUAL MAX LEVEL IN FP"
+                    print "max_level_fp =",ml_fp
+                    print "max_level_obs =",ml_obs
+                    return None
+                
             site_ds = combine_datasets(site_ds, site_fp, method = "nearest")
             
             # If units are specified, multiply by scaling factor

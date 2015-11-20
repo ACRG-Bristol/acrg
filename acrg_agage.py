@@ -217,7 +217,7 @@ def get_file_list(site, species, start, end, height,
 
 def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
         height=None, baseline=False, average=None, full_corr=False,
-        network = None, instrument = None, status_flag_unflagged = 0):
+        network = None, instrument = None, status_flag_unflagged = [0]):
     
     start_time = convert.reftime(start)
     end_time = convert.reftime(end)
@@ -237,7 +237,8 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
     data_directory, files = get_file_list(site, species, start_time, end_time,
                                           height, network = network,
                                           instrument = instrument)
-
+    print(data_directory)
+    print(files)
     #Get files
     #####################################
     
@@ -315,7 +316,12 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
                     file_flag=ncf.variables[ncvarname + "_status_flag"]
                     if len(file_flag) > 0:
                         df["status_flag"] = file_flag[:]
-                        df = df[df.status_flag == status_flag_unflagged]
+                        
+                        # Flag out multiple flags
+                        flag = [False for _ in range(len(df.index))]
+                        for f in status_flag_unflagged:
+                            flag = flag | (df.status_flag == f)
+                        df = df[flag]
 
                 if units != "permil":
                     df = df[df.mf > 0.]
@@ -392,8 +398,12 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
         return None
 
 
-def get_gosat(site, species, start = "1900-01-01", end = "2020-01-01", max_level = 15):
+def get_gosat(site, species, max_level, start = "1900-01-01", end = "2020-01-01"):
     
+    if max_level is None:
+        print "ERROR: MAX LEVEL REQUIRED FOR SATELLITE OBS DATA"
+        return None
+        
     start_time = convert.reftime(start)
     end_time = convert.reftime(end)
 
@@ -410,9 +420,7 @@ def get_gosat(site, species, start = "1900-01-01", end = "2020-01-01", max_level
     data = xray.concat(data, dim = "time")
 
     lower_levels =  range(0,max_level)
-#    prior_factor = (data.pressure_weights* \
-#                    (1.-data.xch4_averaging_kernel)* \
-#                    data.ch4_profile_apriori).sum(dim = "lev")
+
     prior_factor = (data.pressure_weights[dict(lev=list(lower_levels))]* \
                     (1.-data.xch4_averaging_kernel[dict(lev=list(lower_levels))])* \
                     data.ch4_profile_apriori[dict(lev=list(lower_levels))]).sum(dim = "lev")
@@ -420,32 +428,33 @@ def get_gosat(site, species, start = "1900-01-01", end = "2020-01-01", max_level
     upper_levels = range(max_level, len(data.lev.values))            
     prior_upper_level_factor = (data.pressure_weights[dict(lev=list(upper_levels))]* \
                     data.ch4_profile_apriori[dict(lev=list(upper_levels))]).sum(dim = "lev")
-#    prior_upper_level_factor = (data.pressure_weights[dict(lev=list(upper_levels))]* \
-#                data.xch4_averaging_kernel[dict(lev=list(upper_levels))]*\
-#                data.ch4_profile_apriori[dict(lev=list(upper_levels))]).sum(dim = "lev")
                 
     data["mf_prior_factor"] = prior_factor
     data["mf_prior_upper_level_factor"] = prior_upper_level_factor
-    data["mf"] = data.xch4
-#    data["mf"] = data.xch4 - data.mf_prior_factor - data.mf_prior_upper_level_factor
+    data["mf"] = data.xch4 - data.mf_prior_factor - data.mf_prior_upper_level_factor
     data["dmf"] = data.xch4_uncertainty
-    
+
+        
     data = data.drop("lev")
     data = data.drop(["xch4", "xch4_uncertainty", "lon", "lat"])
     data = data.to_dataframe()
     
+    data.max_level = max_level
     if species.upper() == "CH4":
         data.mf.units = 1e-9
     if species.upper() == "CO2":
         data.mf.units = 1e-6
 
+    
     return data
 
 
 def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
             height = None, baseline = False, average = None, full_corr=False,
-            network = None, instrument = None, status_flag_unflagged = 0):
+            network = None, instrument = None, status_flag_unflagged = 0, max_level = None):
 
+    # retrieves obervations for a set of sites and species between start and end dates
+    # max_level only pertains to satellite data
 
     def check_list_and_length(var, sites, error_message_string):
         if var is not None:
@@ -486,8 +495,10 @@ def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
         print(site)
         if "GOSAT" in site.upper():
             data = get_gosat(site, species,
-                       start = start_time, end = end_time)  
-           
+                       start = start_time, end = end_time, max_level = max_level)
+            if data is None:
+                return
+                
         else:
             data = get(site, species, height = height[si],
                        start = start_time, end = end_time,
@@ -498,12 +509,15 @@ def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
                        status_flag_unflagged = status_flag_unflagged)
                        
         if data is not None:
-            obs[site] = data.copy()
-    
-    # Add some attributes
-    if data is not None:
-        obs[".species"] = species
-        obs[".units"] = data.mf.units
+            obs[site] = data.copy()            
+            if "GOSAT" in site.upper():
+                obs[site].max_level = data.max_level
+                
+        # Add some attributes
+        if data is not None:
+            obs[".species"] = species
+            obs[".units"] = data.mf.units
+
     
     if len(obs) == 0:
         return None

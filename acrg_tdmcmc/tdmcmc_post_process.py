@@ -90,6 +90,7 @@ def write_netcdf(flux_mean, flux_percentile, flux_prior, flux_ap_percentile,
     fpc_name = "_".join(['flux_percentile', experiment])
     countrym_name = "_".join(['country_mean', experiment])
     countrypc_name = "_".join(['country_percentile', experiment])
+    countryP_name = "_".join(['country_prior', experiment])
     
     #Write NetCDF file
     ncF=Dataset(outfile, 'w')
@@ -113,6 +114,7 @@ def write_netcdf(flux_mean, flux_percentile, flux_prior, flux_ap_percentile,
     ncfluxap=ncF.createVariable('flux_prior', 'f', ('lat', 'lon', 'time'))  
     ncfluxappc=ncF.createVariable('flux_prior_percentile', 'f', ('lat', 'lon', 'time', 'percentile'))  
     nccountryid=ncF.createVariable('country_index', 'i', ('lat', 'lon'))    
+
     
     nctime[:]=time_seconds
     nctime.long_name='time'
@@ -148,6 +150,7 @@ def write_netcdf(flux_mean, flux_percentile, flux_prior, flux_ap_percentile,
     
     nccountrypc[:, :, :]=country_percentile
     nccountrypc.units='Tg/yr'
+
     nccountrypc.long_name='Posterior percentile emissions from individual countries'
     
     ncfluxap[:,:,:]=flux_prior
@@ -203,10 +206,12 @@ def plot_scaling(data,lon,lat, out_filename=None, absolute=False, fignum=1):
      
     cs = m.contourf(mapx,mapy,data, clevels, extend='both', cmap='RdBu_r')
     cb = m.colorbar(cs, location='bottom', pad="5%")
+
     if absolute == True:
         cb.set_label('Posterior - prior (kg/m$^{2}$/s)x$10^{9}$')
     else:
         cb.set_label('Scaling of prior')    
+
     #cb.set_label('Posterior - prior (kg/m$^{2}$/s)*1.e9')
     if out_filename is not None:
         plt.savefig(out_filename)
