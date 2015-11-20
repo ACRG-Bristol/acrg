@@ -217,7 +217,7 @@ def get_file_list(site, species, start, end, height,
 
 def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
         height=None, baseline=False, average=None, full_corr=False,
-        network = None, instrument = None, status_flag_unflagged = 0):
+        network = None, instrument = None, status_flag_unflagged = [0]):
     
     start_time = convert.reftime(start)
     end_time = convert.reftime(end)
@@ -237,7 +237,8 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
     data_directory, files = get_file_list(site, species, start_time, end_time,
                                           height, network = network,
                                           instrument = instrument)
-
+    print(data_directory)
+    print(files)
     #Get files
     #####################################
     
@@ -315,7 +316,12 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
                     file_flag=ncf.variables[ncvarname + "_status_flag"]
                     if len(file_flag) > 0:
                         df["status_flag"] = file_flag[:]
-                        df = df[df.status_flag == status_flag_unflagged]
+                        
+                        # Flag out multiple flags
+                        flag = [False for _ in range(len(df.index))]
+                        for f in status_flag_unflagged:
+                            flag = flag | (df.status_flag == f)
+                        df = df[flag]
 
                 if units != "permil":
                     df = df[df.mf > 0.]

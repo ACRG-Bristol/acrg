@@ -56,10 +56,13 @@ crds_header_string_interpret = {"C": "",
 
 def site_info_attributes(site):
     
+    attributes = {}
+    attributes_list = ["longitude", "latitude", "long_name"]
     if site in site_params.keys():
-        return {"site_longitude": site_params[site]["longitude"],
-                "site_latitude": site_params[site]["latitude"],
-                "site_long_name": site_params[site]["long_name"]}
+        for at in attributes_list:
+            if at in site_params[site].keys():
+                attributes["site_" + at] = site_params[site][at]
+        return attributes
     else:
         return None
 
@@ -436,19 +439,33 @@ def gc(site, instrument, network):
     # Get species from scale dictionary
     species = scale.keys()
     
-    # Get inlets
-    inlets = set(ds["Inlet"].values)
-    inlets = [inlet for inlet in inlets if inlet[-1] is "m"]
+#    # Get inlets
+#    inlets = set(ds["Inlet"].values)
+#    inlets = [inlet for inlet in inlets if inlet[-1] is "m"]
 
+    inlets = params["GC"][site]["inlets"]
+        
     for sp in species:
+
+        global_attributes = params["GC"][site.upper()]["global_attributes"]
         
         for inlet in inlets:        
             
             print("Processing " + sp + ", " + inlet + "...")
             
-            ds_sp = ds.where(ds.Inlet == inlet)[[sp,
-                                                 sp + "_repeatability",
-                                                 sp + "_status_flag"]]
+            if inlet == "any":
+                ds_sp = ds[[sp,
+                            sp + "_repeatability",
+                            sp + "_status_flag"]]
+                inlet_label = params["GC"][site.upper()]["inlet_label"][0]
+                global_attributes["inlets"] = ", ".join(set(ds["Inlet"].values))
+                
+            else:
+                ds_sp = ds.where(ds.Inlet == inlet)[[sp,
+                                                     sp + "_repeatability",
+                                                     sp + "_status_flag"]]
+                global_attributes["inlets"] = inlet
+                inlet_label = inlet
 
             # Drop NaNs
             ds_sp = ds_sp.dropna("time")
@@ -460,7 +477,6 @@ def gc(site, instrument, network):
             else:
     
                 # Sort out attributes
-                global_attributes = params["GC"][site.upper()]["global_attributes"]
                 ds_sp = attributes(ds_sp, sp, site.upper(),
                                    global_attributes = global_attributes,
                                    units = units[sp],
@@ -479,7 +495,7 @@ def gc(site, instrument, network):
                                               site.upper(),
                                               str(ds_sp.time.to_pandas().index.to_pydatetime()[0].year),
                                               ds_sp.species,
-                                              inlet)
+                                              inlet_label)
                                               
                 ds_sp.to_netcdf(nc_filename)
                 print("... written " + nc_filename)
@@ -562,7 +578,7 @@ def crds(site, network):
         
         # Write netCDF file for each species
         for sp in species:
-                        
+            
             # Species-specific dataset
             ds_sp = ds[[sp, sp + "_variability", sp + "_number_of_observations"]]
             ds_sp.dropna("time")
@@ -592,29 +608,42 @@ if __name__ == "__main__":
     icos("TTA")
     icos("MHD", network = "LSCE")
 
-    #CRDS data
-    crds("TTA", "DECC")
-    crds("RGL", "DECC")
-    crds("TAC", "DECC")
+    # GAUGE CRDS data
     crds("HFD", "GAUGE")
     crds("BSD", "GAUGE")
-
-    # DECC Medusa
-    gc("TAC", "medusa", "DECC")
 
     # GAUGE GC data
     gc("BSD", "GCMD", "GAUGE")
     gc("HFD", "GCMD", "GAUGE")
 
+    # DECC CRDS data
+    crds("TTA", "DECC")
+    crds("RGL", "DECC")
+    crds("TAC", "DECC")
+
     # DECC GC data    
-    gc("RGL", "GCMD", "DECC")
     gc("TAC", "GCMD", "DECC")
+    gc("RGL", "GCMD", "DECC")
     gc("BSD", "GCMD", "DECC")
 
+    # DECC Medusa
+    gc("TAC", "medusa", "DECC")
+
     # AGAGE GC data    
+    gc("CGO", "GCMD", "AGAGE")
     gc("MHD", "GCMD", "AGAGE")
+    gc("RPB", "GCMD", "AGAGE")
+    gc("SMO", "GCMD", "AGAGE")
+    gc("THD", "GCMD", "AGAGE")
 
     # AGAGE Medusa
     gc("MHD", "medusa", "AGAGE")
+    gc("CGO", "medusa", "AGAGE")
+    gc("GSN", "medusa", "AGAGE")
+    gc("SDZ", "medusa", "AGAGE")
+    gc("THD", "medusa", "AGAGE")
+    gc("RPB", "medusa", "AGAGE")
+    gc("SMO", "medusa", "AGAGE")
+    gc("SIO", "medusa", "AGAGE")
     
     
