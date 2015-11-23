@@ -3,13 +3,14 @@ Shared Python code for the Atmospheric Chemistry Research Group (University of B
 ***First Installation***
 Click on the link in the automated email sent by Matt and set up your bitbucket username and password.
 
-Then check out the code using your bitbucket username. 
+Then check out the code using your bitbucket username. By doing the below:
+
+From the directory where you want the "acrg" directory to live (e.g. for me on my laptop it's /Users/as13988/Documents/Work/Python/), type: 
+
+git clone https://YOUR_USERNAME@bitbucket.org/mrghg/acrg.git
 
 When you check out the code bitbucket automatically creates the "acrg" directory and fails if there's already an "acrg" directory. So if you want to keep your old google based "acrg" directory rename it.
 
-Then from the directory where you want the "acrg" directory to live (e.g. for me on my laptop it's /Users/as13988/Documents/Work/Python/), type: 
-
-git clone https://YOUR_USERNAME@bitbucket.org/mrghg/acrg.git
 
 ***Adding a file to the repo***
 From your directory, first add a file to the SVN library:
