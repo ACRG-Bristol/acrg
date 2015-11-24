@@ -260,7 +260,7 @@ def basis_boundary_conditions(domain, basis_case = 'NESW'):
     return basis_ds
 
 
-def combine_datasets(dsa, dsb, method = "nearest"):
+def combine_datasets(dsa, dsb, method = "nearest", tolerance = None):
     """
     Merge two datasets. Assumes that you want to 
     re-index to the FIRST dataset.
@@ -271,9 +271,12 @@ def combine_datasets(dsa, dsb, method = "nearest"):
 
     ds will have the index of dsa    
     """
-    
-    return dsa.merge(dsb.reindex_like(dsa, method))
-
+    # merge the two datasets within a tolerance and remove times that are NaN
+    ds_temp = dsa.merge(dsb.reindex_like(dsa, method, tolerance = tolerance))
+    if 'fp' in ds_temp.keys():
+        flag = np.where(np.isfinite(ds_temp.fp.mean(dim=["lat","lon"]).values))
+        ds_temp = ds_temp[dict(time = flag[0])]
+    return ds_temp
 
 def timeseries(ds):
     """
@@ -402,20 +405,24 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
                              height = height_site,
                              emissions_name = [emissions_name if calc_timeseries == True \
                                          else None][0])
+                        
         if site_fp is not None:
                         
-            # if there is satellite data, first check that the max_level in the obs
-            # and the max level in the processed FPs are the same            
+        # If satellite data, check that the max_level in the obs and the max level in the processed FPs are the same
+        # Set tolerance tin time to merge footprints and data            
             if "GOSAT" in site.upper():
                 ml_obs = site_df.max_level
                 ml_fp = site_fp.max_level
+                tolerance = 60e9 # footprints must match data with this tolerance in [ns]
                 if ml_obs != ml_fp:
                     print "ERROR: MAX LEVEL OF SAT OBS DOES NOT EQUAL MAX LEVEL IN FP"
                     print "max_level_fp =",ml_fp
                     print "max_level_obs =",ml_obs
                     return None
+            else:
+                tolerance = None
                 
-            site_ds = combine_datasets(site_ds, site_fp, method = "nearest")
+            site_ds = combine_datasets(site_ds, site_fp, method = "nearest", tolerance = tolerance)
             
             # If units are specified, multiply by scaling factor
             if ".units" in attributes:
@@ -537,6 +544,10 @@ def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW'):
 #    attributes = [key for key in fp_and_data.keys() if key[0] == '.']
     basis_func = basis_boundary_conditions(domain = domain,
                                            basis_case = basis_case)
+# sort basis_func into time order    
+    ind = basis_func.time.argsort()                                        
+    timenew = basis_func.time[ind]
+    basis_func = basis_func.reindex({"time":timenew})
     
     for site in sites:
 
@@ -561,7 +572,7 @@ def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW'):
                                 "vmr_s":fp_and_data[site]["vmr_s"],
                                 "vmr_w":fp_and_data[site]["vmr_w"],
                                 "bc":fp_and_data[site]["bc"]})
-                                
+                        
         DS = combine_datasets(DS_temp, basis_func)                                    
 
         part_loc = np.hstack([DS.particle_locations_n,
@@ -777,7 +788,7 @@ def filtering(datasets_in, filters, full_corr=False):
             return dataset[dict(time = ti)]
             
     def local_influence(dataset, full_corr=False):
-        ti = [i for i, local_ratio in enumerate(dataset.local_ratio) if local_ratio < 0.3]
+        ti = [i for i, local_ratio in enumerate(dataset.local_ratio) if local_ratio < 0.4]
         return dataset[dict(time = ti)]
        
        
@@ -1378,7 +1389,7 @@ def animate(fp_data, output_directory,
 
 
 class get_country:
-  def __init__(self, domain, ocean=False):
+  def __init__(self, domain, ocean=False, al=False):
 
         if ocean is False:
 
@@ -1388,10 +1399,16 @@ class get_country:
                  + domain + ".nc")
              
         else:
-            countryDirectory=data_path +'NAME/countries/'
-            filename=glob.glob(countryDirectory + \
-                 "/" + "country_ocean_"\
-                 + domain + ".nc")
+            if al is False:
+                countryDirectory=data_path +'NAME/countries/'
+                filename=glob.glob(countryDirectory + \
+                     "/" + "country_ocean_"\
+                     + domain + ".nc")
+            else:
+                countryDirectory=data_path +'NAME/countries/'
+                filename=glob.glob(countryDirectory + \
+                     "/" + "al_countries_"\
+                     + domain + ".nc")
         
         f = nc.Dataset(filename[0], 'r')
     
@@ -1400,14 +1417,18 @@ class get_country:
     
         #Get country indices and names
         country = f.variables['country'][:, :]
-        name_temp = f.variables['name'][:,:]
-        f.close()
+        if al is False:
+            name_temp = f.variables['name'][:,:]
+            f.close()
     
-        name=[]
-        for ii in range(len(name_temp[:,0])):
-            name.append(''.join(name_temp[ii,:]))
-            
-        name=np.asarray(name)
+            name=[]
+            for ii in range(len(name_temp[:,0])):
+                name.append(''.join(name_temp[ii,:]))
+            name=np.asarray(name)
+        else:
+            name_temp = f.variables['name'][:]  
+            f.close()
+            name=np.asarray(name_temp)
     
     
         self.lon = lon

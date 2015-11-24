@@ -117,7 +117,7 @@ def file_search_and_split(search_string):
 
 def quadratic_sum(x):
     return np.sqrt(np.sum(x**2))/float(len(x))
-
+    
 
 #Get Met Office baseline flags
 def ukmo_flags(site, site_info):
@@ -358,6 +358,10 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
             for key in data_frame.columns:
                 if key == "dmf":
                     how[key] = quadratic_sum
+                elif key == "vmf":
+                    # Calculate std of 1 min mf obs in av period as new vmf 
+                    how[key] = "std"
+                    data_frame["vmf"] = data_frame["mf"]
                 else:
                     how[key] = "median"
             
@@ -451,7 +455,7 @@ def get_gosat(site, species, max_level, start = "1900-01-01", end = "2020-01-01"
 
 def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
             height = None, baseline = False, average = None, full_corr=False,
-            network = None, instrument = None, status_flag_unflagged = 0, max_level = None):
+            network = None, instrument = None, status_flag_unflagged = [0], max_level = None):
 
     # retrieves obervations for a set of sites and species between start and end dates
     # max_level only pertains to satellite data
