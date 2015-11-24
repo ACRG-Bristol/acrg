@@ -68,6 +68,8 @@ met_default = {"time": "             T",
                "release_lon": "xxxxxxx",
                "release_lat": "yyyyyyy"}
 
+timestep_for_output = 0.
+
 def load_NAME(file_lines, namever):
     """
     Loads the Met Office's NAME III grid output files returning
@@ -318,8 +320,8 @@ def define_grid(header, column_headings, satellite = False):
     
     timeStep=(timeEnd - timeRef).total_seconds()/3600./ntime
     
-    # Labelling time steps at END of each time period!
-    time = [timeRef + datetime.timedelta(hours=timeStep*(i+1)) \
+    # Labelling time steps at START of each time period!
+    time = [timeRef + datetime.timedelta(hours=timeStep*i) \
             for i in range(ntime)]
     
     print("Timestep: %d minutes" % round(timeStep*60))
@@ -610,6 +612,7 @@ def footprint_array(fields_file,
     # If time_step is input, overwrite value from NAME output file
     if time_step is not None:
         timeStep = time_step
+        global timestep_for_output
 
     dheights = 1000
     heights = numpy.arange(0, 19001, dheights) + dheights/2.
@@ -643,7 +646,7 @@ def footprint_array(fields_file,
     fp.fp.attrs = {"units": "(mol/mol)/(mol/m2/s)"}
     fp.lon.attrs = {"units": "degrees_east"}
     fp.lat.attrs = {"units": "degrees_north"}
-    fp.time.attrs = {"long_name": "end of time period"}
+    fp.time.attrs = {"long_name": "start of time period"}
     
     
     # Add in met data
@@ -811,6 +814,7 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
     nctime.long_name='time'
     nctime.standard_name='time'
     nctime.units='seconds since ' + numpy.str(time_reference)
+    nctime.comment='start of each averaging period'
     nctime.calendar='gregorian'
 
     nclon[:]=lons
