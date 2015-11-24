@@ -273,8 +273,9 @@ def combine_datasets(dsa, dsb, method = "nearest", tolerance = None):
     """
     # merge the two datasets within a tolerance and remove times that are NaN
     ds_temp = dsa.merge(dsb.reindex_like(dsa, method, tolerance = tolerance))
-    flag = np.where(np.isfinite(ds_temp.fp.mean(dim=["lat","lon"]).values))
-    ds_temp = ds_temp[dict(time = flag[0])]
+    if 'fp' in ds_temp.keys():
+        flag = np.where(np.isfinite(ds_temp.fp.mean(dim=["lat","lon"]).values))
+        ds_temp = ds_temp[dict(time = flag[0])]
     return ds_temp
 
 def timeseries(ds):
