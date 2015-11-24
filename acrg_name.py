@@ -787,7 +787,7 @@ def filtering(datasets_in, filters, full_corr=False):
             return dataset[dict(time = ti)]
             
     def local_influence(dataset, full_corr=False):
-        ti = [i for i, local_ratio in enumerate(dataset.local_ratio) if local_ratio < 0.3]
+        ti = [i for i, local_ratio in enumerate(dataset.local_ratio) if local_ratio < 0.4]
         return dataset[dict(time = ti)]
        
        
@@ -1388,7 +1388,7 @@ def animate(fp_data, output_directory,
 
 
 class get_country:
-  def __init__(self, domain, ocean=False):
+  def __init__(self, domain, ocean=False, al=False):
 
         if ocean is False:
 
@@ -1398,10 +1398,16 @@ class get_country:
                  + domain + ".nc")
              
         else:
-            countryDirectory=data_path +'NAME/countries/'
-            filename=glob.glob(countryDirectory + \
-                 "/" + "country_ocean_"\
-                 + domain + ".nc")
+            if al is False:
+                countryDirectory=data_path +'NAME/countries/'
+                filename=glob.glob(countryDirectory + \
+                     "/" + "country_ocean_"\
+                     + domain + ".nc")
+            else:
+                countryDirectory=data_path +'NAME/countries/'
+                filename=glob.glob(countryDirectory + \
+                     "/" + "al_countries_"\
+                     + domain + ".nc")
         
         f = nc.Dataset(filename[0], 'r')
     
@@ -1410,14 +1416,18 @@ class get_country:
     
         #Get country indices and names
         country = f.variables['country'][:, :]
-        name_temp = f.variables['name'][:,:]
-        f.close()
+        if al is False:
+            name_temp = f.variables['name'][:,:]
+            f.close()
     
-        name=[]
-        for ii in range(len(name_temp[:,0])):
-            name.append(''.join(name_temp[ii,:]))
-            
-        name=np.asarray(name)
+            name=[]
+            for ii in range(len(name_temp[:,0])):
+                name.append(''.join(name_temp[ii,:]))
+            name=np.asarray(name)
+        else:
+            name_temp = f.variables['name'][:]  
+            f.close()
+            name=np.asarray(name_temp)
     
     
         self.lon = lon

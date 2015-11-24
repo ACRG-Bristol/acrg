@@ -16,10 +16,19 @@ import numpy as np
 import tdmcmc_post_process as process
 import glob
 import pandas
+import os
+import json
+import acrg_agage as agage
 
 
 dates=["2014-03-01"]
 species="CH4"
+temp = os.path.split(os.path.realpath(__file__))
+acrg_path=os.path.join(temp[0],"..")
+with open(acrg_path + "/acrg_species_info.json") as f:
+        species_info=json.load(f)
+species_key = agage.synonyms(species, species_info)
+molmass = float(species_info[species_key]['mol_mass'])
 output_directory = "/path/to/tdmcmmc/outputs/"
 #output_directory = "/home/ml12574/work/programs/Python/td-mcmc/outputs/"
 outfile="outfile_name.nc"
@@ -34,6 +43,7 @@ write_outfile=False
 append_outfile=False
 calc_country=True
 plot_scale_map=True
+plot_abs_map=False
 plot_regions = True
 plot_y_timeseries=True
 plot_density = True
@@ -102,8 +112,8 @@ for tt,ti in enumerate(dates):
             #q_agg_it=ds.q_agg_it.values
             k_it=ds.k_it.values
             x_post_vit=ds.x_post_vit.values
-            x_ap_abs=ds.x_ap_abs.values
-            x_ap_abs_v=np.ravel(x_ap_abs)
+            q_ap=ds.q_ap.values
+            q_ap_v=np.ravel(q_ap)
             
     
             x_post_v_mean=np.mean(x_post_vit, axis=0)
@@ -114,23 +124,35 @@ for tt,ti in enumerate(dates):
             x_post_v_95 = np.percentile(x_post_vit, 95, axis=0)
             
 
-            flux_mean[:,:,tt] = np.reshape(x_post_v_mean*x_ap_abs_v, (nlat,nlon))
-            flux_percentile[:,:,tt,0] = np.reshape(x_post_v_05*x_ap_abs_v, (nlat,nlon))
-            flux_percentile[:,:,tt,1] = np.reshape(x_post_v_16*x_ap_abs_v, (nlat,nlon))
-            flux_percentile[:,:,tt,2] = np.reshape(x_post_v_50*x_ap_abs_v, (nlat,nlon))
-            flux_percentile[:,:,tt,3] = np.reshape(x_post_v_84*x_ap_abs_v, (nlat,nlon))
-            flux_percentile[:,:,tt,4] = np.reshape(x_post_v_95*x_ap_abs_v, (nlat,nlon))
+            flux_mean[:,:,tt] = np.reshape(x_post_v_mean*q_ap_v, (nlat,nlon))
+            flux_percentile[:,:,tt,0] = np.reshape(x_post_v_05*q_ap_v, (nlat,nlon))
+            flux_percentile[:,:,tt,1] = np.reshape(x_post_v_16*q_ap_v, (nlat,nlon))
+            flux_percentile[:,:,tt,2] = np.reshape(x_post_v_50*q_ap_v, (nlat,nlon))
+            flux_percentile[:,:,tt,3] = np.reshape(x_post_v_84*q_ap_v, (nlat,nlon))
+            flux_percentile[:,:,tt,4] = np.reshape(x_post_v_95*q_ap_v, (nlat,nlon))
             
             if calc_country == True:
                 country_mean[:,tt], country_05[:,tt], country_16[:,tt], \
-                country_50[:,tt], country_84[:,tt], country_95[:,tt], country_prior[:,tt] \
-                = process.country_emissions(ds,x_post_vit, x_ap_abs_v,countries, species)        
+                country_50[:,tt], country_84[:,tt], country_95[:,tt], country_prior[:,tt], \
+                country_index \
+                = process.country_emissions(ds,x_post_vit, q_ap_v,countries, species, 
+                                            ocean=True, domain='EUROPE', al=False)        
             
             if plot_scale_map == True:
                 lon=np.asarray(ds.lon.values)
                 lat=np.asarray(ds.lat.values)
                 x_post_mean = np.reshape(x_post_v_mean, (nlat,nlon))
                 process.plot_scaling(x_post_mean, lon,lat, fignum=tt, out_filename=None)
+                
+            if plot_abs_map == True:
+                lon=np.asarray(ds.lon.values)
+                lat=np.asarray(ds.lat.values)
+              
+                x_post_mean = np.reshape(x_post_v_mean, (nlat,nlon))
+                q_abs_diff = (x_post_mean*q_ap-q_ap)
+                q_abs_diff = q_abs_diff*molmass*1.e6
+                process.plot_scaling(q_abs_diff, lon,lat, fignum=tt, 
+                                     absolute=True,out_filename=None)
 
             if plot_regions == True:
                 process.regions_histogram(k_it, fignum=tt+20, out_filename=None)
@@ -159,12 +181,24 @@ d0=pandas.to_datetime(dates)
 lon=np.asarray(ds.lon.values)
 lat=np.asarray(ds.lat.values)
 
+# Define flux prior
+# Leave prior percentiles as blank for now
+flux_prior=np.zeros((nlat,nlon,ntime))
+flux_ap_percentile=np.zeros((nlat,nlon,ntime,npercentile))
+for ti in range(len(dates)):
+    flux_prior[:,:,ti] = q_ap.copy()
+ 
+# Define country prior percentiles   - LEAVE BLANK FOR NOW 
+country_ap_percentile=np.zeros((ncountries,ntime,npercentile))
+
 
 #%%
 #outfile="/home/ml12574/work/programs/Python/td-mcmc/flux_NAME-Bristol_ch4.nc"
 outfile="flux_NAME-Bristol_ch4.nc"
 if write_outfile == True:
-    process.write_netcdf(flux_mean, flux_percentile,  country_mean, country_percentile, 
+    process.write_netcdf(flux_mean, flux_percentile, flux_prior, flux_ap_percentile,
+                         country_mean, country_percentile, country_prior, country_ap_percentile,
+                         country_index,
                      lon, lat, d0, countries, percentile, experiment, outfile)
 elif append_outfile == True:
     process.append_netcdf(flux_mean, flux_percentile, country_mean, country_percentile, 
