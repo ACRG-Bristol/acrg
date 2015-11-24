@@ -260,7 +260,7 @@ def basis_boundary_conditions(domain, basis_case = 'NESW'):
     return basis_ds
 
 
-def combine_datasets(dsa, dsb, method = "nearest"):
+def combine_datasets(dsa, dsb, method = "nearest", tolerance = None):
     """
     Merge two datasets. Assumes that you want to 
     re-index to the FIRST dataset.
@@ -271,9 +271,11 @@ def combine_datasets(dsa, dsb, method = "nearest"):
 
     ds will have the index of dsa    
     """
-    
-    return dsa.merge(dsb.reindex_like(dsa, method))
-
+    # merge the two datasets within a tolerance and remove times that are NaN
+    ds_temp = dsa.merge(dsb.reindex_like(dsa, method, tolerance = tolerance))
+    flag = np.where(np.isfinite(ds_temp.fp.mean(dim=["lat","lon"]).values))
+    ds_temp = ds_temp[dict(time = flag[0])]
+    return ds_temp
 
 def timeseries(ds):
     """
@@ -402,20 +404,24 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
                              height = height_site,
                              emissions_name = [emissions_name if calc_timeseries == True \
                                          else None][0])
+                        
         if site_fp is not None:
                         
-            # if there is satellite data, first check that the max_level in the obs
-            # and the max level in the processed FPs are the same            
+        # If satellite data, check that the max_level in the obs and the max level in the processed FPs are the same
+        # Set tolerance tin time to merge footprints and data            
             if "GOSAT" in site.upper():
                 ml_obs = site_df.max_level
                 ml_fp = site_fp.max_level
+                tolerance = 60e9 # footprints must match data with this tolerance in [ns]
                 if ml_obs != ml_fp:
                     print "ERROR: MAX LEVEL OF SAT OBS DOES NOT EQUAL MAX LEVEL IN FP"
                     print "max_level_fp =",ml_fp
                     print "max_level_obs =",ml_obs
                     return None
+            else:
+                tolerance = None
                 
-            site_ds = combine_datasets(site_ds, site_fp, method = "nearest")
+            site_ds = combine_datasets(site_ds, site_fp, method = "nearest", tolerance = tolerance)
             
             # If units are specified, multiply by scaling factor
             if ".units" in attributes:
