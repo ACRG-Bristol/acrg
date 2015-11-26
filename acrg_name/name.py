@@ -21,7 +21,8 @@ import subprocess
 from progressbar import ProgressBar
 import json
 import acrg_agage as agage
-import acrg_regrid as regrid
+#import acrg_regrid as regrid
+import acrg_convert as convert
 from acrg_grid import areagrid
 import xray
 from os.path import split, realpath, join
@@ -913,7 +914,7 @@ def prior_flux(species, domain, basis_case, av_date, emissions_name = None):
     for i in basis_nos:
         basisflux[i-1] = np.sum(awflux[basis0[:,:]==i])
 
-    prior_x = regrid.mol2kg(basisflux,species)*(3600*24*365)
+    prior_x = convert.mol2kg(basisflux,species)*(3600*24*365)
     
     return prior_x
     
