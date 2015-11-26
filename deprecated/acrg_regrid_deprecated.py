@@ -24,7 +24,7 @@ import getpass
 import acrg_time
 import re
 import datetime as dt
-import iris
+#import iris
 
 
 #Read in EDGAR data
@@ -126,16 +126,16 @@ def regrid(filename_of_EDGAR_emissions,
 
     return lat_fp, lon_fp, flux.T, species, units
   
-def iris_regrid(filename_of_EDGAR_emissions, filename_of_footprint):
-    emissions = iris.load_cubes(filename_of_EDGAR_emissions)
-    footprint = iris.load_cubes(filename_of_footprint)
-#    Linear scheme
-#    regridded_emi = emissions.regrid(footprint, iris.analysis.Linear())
-#    Area-weighted scheme
-    scheme = iris.analysis.AreaWeighted(mdtol=0.5)
-    regridded_emi = emissions.regrid(footprint, scheme)
-    
-    return regridded_emi
+#def iris_regrid(filename_of_EDGAR_emissions, filename_of_footprint):
+#    emissions = iris.load_cubes(filename_of_EDGAR_emissions)
+#    footprint = iris.load_cubes(filename_of_footprint)
+##    Linear scheme
+##    regridded_emi = emissions.regrid(footprint, iris.analysis.Linear())
+##    Area-weighted scheme
+#    scheme = iris.analysis.AreaWeighted(mdtol=0.5)
+#    regridded_emi = emissions.regrid(footprint, scheme)
+#    
+#    return regridded_emi
 
 # Find the correct unit converter to give flux in mol/m2/s
 def unit_converter(current_units):
