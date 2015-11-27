@@ -10,6 +10,7 @@ import os
 import netCDF4 as nc
 import getpass
 import acrg_time
+import re
 
 def write(lat, lon, flux, species, domain, year,
           comments = ""):
@@ -82,3 +83,47 @@ def write(lat, lon, flux, species, domain, year,
     ncflux.units='mol/m2/s'
 
     f.close() 
+
+
+class EDGARread:
+    def __init__(self, filename_of_EDGAR_emissions):
+
+        f = nc.Dataset(filename_of_EDGAR_emissions, 'r')
+    
+        #Get grid
+        lon = f.variables['lon'][:]
+        lat = f.variables['lat'][:]
+    
+        #Get flux of species
+#        variables = f.variables.keys()
+#        species = str(variables[2])
+        variables = [str(i) for i in f.variables.keys()]
+        for i in variables:
+            while i not in ['lat','lon','time']:
+                species = i
+                if species is not None:
+                    break
+        flux = f.variables[species][:,:]
+        units = f.variables[species].units
+
+        f.close()
+        
+        #Get year and datetime date of Edgar file
+        filename = os.path.split(filename_of_EDGAR_emissions)[1]
+        match = re.compile(r'_\d{4}_')
+        m = match.findall(filename)
+        if len(m) == 1:
+            year = m[0].strip('_')
+            date = dt.datetime.strptime(year, '%Y')
+        elif len(m) > 1:
+            print "Can't find correct date."
+            year = None
+            date = None
+
+        self.lon = lon
+        self.lat = lat
+        self.flux = flux
+        self.species = species
+        self.units = units
+        self.year = year
+        self.date = date
