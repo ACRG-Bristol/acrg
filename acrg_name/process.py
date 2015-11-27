@@ -48,6 +48,7 @@ import dirsync
 import matplotlib.pyplot as plt
 import time
 import getpass
+import traceback
 
 #Default NAME output file version
 #This is changed depending on presence of "Fields:" line in files
@@ -1261,12 +1262,19 @@ def process(domain, site, height, year, month,
         else:
             particles_prefix = None
 
-        fp_file = footprint_concatenate(fields_prefix,
-                                        datestr = datestr, met = met,
-                                        particle_prefix = particles_prefix,
-                                        satellite = satellite,
-                                        time_step = timeStep)
-                                
+        try:    
+            fp_file = footprint_concatenate(fields_prefix,
+                                            datestr = datestr, met = met,
+                                            particle_prefix = particles_prefix,
+                                            satellite = satellite,
+                                            time_step = timeStep)
+        except:
+            status_log("FAILED when reading footprints and/or " +
+                       "particle location files for %s. Error log: %s" % 
+                       (datestr, traceback.print_exc()),
+                       error_or_warning="error")
+            return None
+        
         # Do satellite process
         if satellite:
             satellite_obs_file = glob.glob(subfolder + "Observations/*" + \
@@ -1318,25 +1326,32 @@ def process(domain, site, height, year, month,
         status_log("Writing file: " + outfile, print_to_screen=False)
         
         # Write outputs
-        write_netcdf(fp.fp.transpose("lat", "lon", "time").values.squeeze(),
-                     fp.lon.values.squeeze(),
-                     fp.lat.values.squeeze(),
-                     fp.lev.values,
-                     fp.time.to_pandas().index.to_pydatetime(),
-                     outfile,
-                     temperature=fp["temp"].values.squeeze(),
-                     pressure=fp["press"].values.squeeze(),
-                     wind_speed=fp["wind"].values.squeeze(),
-                     wind_direction=fp["wind_direction"].values.squeeze(),
-                     PBLH=fp["PBLH"].values.squeeze(),
-                     release_lon=fp["release_lon"].values.squeeze(),
-                     release_lat=fp["release_lat"].values.squeeze(),
-                     particle_locations = pl,
-                     particle_heights = height_out,
-                     global_attributes = fp.attrs)
+        try:
+            write_netcdf(fp.fp.transpose("lat", "lon", "time").values.squeeze(),
+                         fp.lon.values.squeeze(),
+                         fp.lat.values.squeeze(),
+                         fp.lev.values,
+                         fp.time.to_pandas().index.to_pydatetime(),
+                         outfile,
+                         temperature=fp["temp"].values.squeeze(),
+                         pressure=fp["press"].values.squeeze(),
+                         wind_speed=fp["wind"].values.squeeze(),
+                         wind_direction=fp["wind_direction"].values.squeeze(),
+                         PBLH=fp["PBLH"].values.squeeze(),
+                         release_lon=fp["release_lon"].values.squeeze(),
+                         release_lat=fp["release_lat"].values.squeeze(),
+                         particle_locations = pl,
+                         particle_heights = height_out,
+                         global_attributes = fp.attrs)
+        except:
+            status_log("FAILED when writing file %s. Error log: %s" % 
+                       (outfile, traceback.print_exc()),
+                       error_or_warning="error")
+            return None
 
     else:
-        status_log("Couldn't seem to find any files",
+        status_log("FAILED. Couldn't seem to find any files, or some files are missing for %s" %
+                   datestr,
                    error_or_warning="error")
 
     return fp
@@ -1374,9 +1389,8 @@ def process_all(domain, site,
             perturbed_folder = "Perturbed/PARAMETERNAME_VALUE"
     '''
 
-    acrg_path=split(realpath(__file__))
-    
-    with open(acrg_path[0] + "/acrg_site_info.json") as f:
+    acrg_path = os.getenv("ACRG_PATH")
+    with open(os.path.join(acrg_path, "acrg_site_info.json")) as f:
         site_info=json.load(f)
         
     # If no height specified, run all heights
@@ -1477,8 +1491,8 @@ def test_processed_met(domain, site, height,
 if __name__ == "__main__":
 
     domain = "EUROPE"
-    
-    sites = ["BSD", "TTA", "RGL", "MHD", "HFD", "TAC",
+    #"BSD", "TTA",
+    sites = [ "RGL", "MHD", "HFD", "TAC",
              "GAUGE-FERRY", "GAUGE-FAAM",
              "EHL", "TIL", "GLA", "WAO", "HAD", "GSN"]
     for site in sites:
