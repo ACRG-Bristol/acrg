@@ -798,7 +798,8 @@ def filtering(datasets_in, filters, full_corr=False):
                          "noon":noon,
                          "pblh_gt_500": pblh_gt_500,
                          "pblh_gt_250": pblh_gt_250,
-                         "local_influence":local_influence}
+                         "local_influence":local_influence,
+                         "six_hr_mean":six_hr_mean}
 
     # Get list of sites
     sites = [key for key in datasets.keys() if key[0] != '.']
