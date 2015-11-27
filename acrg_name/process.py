@@ -667,12 +667,12 @@ def footprint_array(fields_file,
     z_level=column_headings['z_level'][4:]
     time_column=column_headings['time'][4:]
     
-    
     # Set up footprint dataset
     fp = xray.Dataset({"fp": (["time", "lev", "lat", "lon"],
                               numpy.zeros((ntime, nlev, nlat, nlon)))},
                         coords={"lat": lats, "lon":lons, "lev": levs, 
                                 "time":time})
+
     fp.fp.attrs = {"units": "(mol/mol)/(mol/m2/s)"}
     fp.lon.attrs = {"units": "degrees_east"}
     fp.lat.attrs = {"units": "degrees_north"}
@@ -1306,9 +1306,8 @@ def process(domain, site, height, year, month,
         if len(fp.lev) > 1:
             fp = fp[dict(lev = [0])]
             status_log("ONLY OUTPUTTING FIRST LEVEL!", error_or_warning = "warning")
-        fp = fp.squeeze()
+        fp = fp.squeeze(dim = "lev")
         
-
         #Write netCDF file
         #######################################
         
