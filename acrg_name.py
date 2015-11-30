@@ -401,9 +401,9 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
                                          else None][0], \
                              height = height_site,
                              emissions_name = [emissions_name if calc_timeseries == True \
-                                         else None][0])
+                                         else None][0])      
         if site_fp is not None:
-                        
+            
             # if there is satellite data, first check that the max_level in the obs
             # and the max level in the processed FPs are the same            
             if "GOSAT" in site.upper():
