@@ -271,7 +271,7 @@ def combine_datasets(dsa, dsb, method = "nearest", tolerance = None):
 
     ds will have the index of dsa    
     """
-    # merge the two datasets within a tolerance and remove times that are NaN
+    # merge the two datasets within a tolerance and remove times that are NaN (i.e. when FPs don't exist)
     ds_temp = dsa.merge(dsb.reindex_like(dsa, method, tolerance = tolerance))
     if 'fp' in ds_temp.keys():
         flag = np.where(np.isfinite(ds_temp.fp.mean(dim=["lat","lon"]).values))
@@ -422,7 +422,8 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
             else:
                 tolerance = None
                 
-            site_ds = combine_datasets(site_ds, site_fp, method = "nearest", tolerance = tolerance)
+            site_ds = combine_datasets(site_ds, site_fp,
+                                       method = "nearest", tolerance = tolerance)
             
             # If units are specified, multiply by scaling factor
             if ".units" in attributes:
