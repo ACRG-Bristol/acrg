@@ -21,7 +21,8 @@ import subprocess
 from progressbar import ProgressBar
 import json
 import acrg_agage as agage
-import acrg_regrid as regrid
+#import acrg_regrid as regrid
+import acrg_convert as convert
 from acrg_grid import areagrid
 import xray
 from os.path import split, realpath, join
@@ -260,7 +261,7 @@ def basis_boundary_conditions(domain, basis_case = 'NESW'):
     return basis_ds
 
 
-def combine_datasets(dsa, dsb, method = "nearest"):
+def combine_datasets(dsa, dsb, method = "nearest", tolerance = None):
     """
     Merge two datasets. Assumes that you want to 
     re-index to the FIRST dataset.
@@ -271,9 +272,12 @@ def combine_datasets(dsa, dsb, method = "nearest"):
 
     ds will have the index of dsa    
     """
-    
-    return dsa.merge(dsb.reindex_like(dsa, method))
-
+    # merge the two datasets within a tolerance and remove times that are NaN
+    ds_temp = dsa.merge(dsb.reindex_like(dsa, method, tolerance = tolerance))
+    if 'fp' in ds_temp.keys():
+        flag = np.where(np.isfinite(ds_temp.fp.mean(dim=["lat","lon"]).values))
+        ds_temp = ds_temp[dict(time = flag[0])]
+    return ds_temp
 
 def timeseries(ds):
     """
@@ -401,21 +405,25 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
                                          else None][0], \
                              height = height_site,
                              emissions_name = [emissions_name if calc_timeseries == True \
-                                         else None][0])      
+                                         else None][0])
+                        
         if site_fp is not None:
-            
-            # if there is satellite data, first check that the max_level in the obs
-            # and the max level in the processed FPs are the same            
+                        
+        # If satellite data, check that the max_level in the obs and the max level in the processed FPs are the same
+        # Set tolerance tin time to merge footprints and data            
             if "GOSAT" in site.upper():
                 ml_obs = site_df.max_level
                 ml_fp = site_fp.max_level
+                tolerance = 60e9 # footprints must match data with this tolerance in [ns]
                 if ml_obs != ml_fp:
                     print "ERROR: MAX LEVEL OF SAT OBS DOES NOT EQUAL MAX LEVEL IN FP"
                     print "max_level_fp =",ml_fp
                     print "max_level_obs =",ml_obs
                     return None
+            else:
+                tolerance = None
                 
-            site_ds = combine_datasets(site_ds, site_fp, method = "nearest")
+            site_ds = combine_datasets(site_ds, site_fp, method = "nearest", tolerance = tolerance)
             
             # If units are specified, multiply by scaling factor
             if ".units" in attributes:
@@ -537,6 +545,10 @@ def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW'):
 #    attributes = [key for key in fp_and_data.keys() if key[0] == '.']
     basis_func = basis_boundary_conditions(domain = domain,
                                            basis_case = basis_case)
+# sort basis_func into time order    
+    ind = basis_func.time.argsort()                                        
+    timenew = basis_func.time[ind]
+    basis_func = basis_func.reindex({"time":timenew})
     
     for site in sites:
 
@@ -561,7 +573,7 @@ def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW'):
                                 "vmr_s":fp_and_data[site]["vmr_s"],
                                 "vmr_w":fp_and_data[site]["vmr_w"],
                                 "bc":fp_and_data[site]["bc"]})
-                                
+                        
         DS = combine_datasets(DS_temp, basis_func)                                    
 
         part_loc = np.hstack([DS.particle_locations_n,
@@ -787,7 +799,8 @@ def filtering(datasets_in, filters, full_corr=False):
                          "noon":noon,
                          "pblh_gt_500": pblh_gt_500,
                          "pblh_gt_250": pblh_gt_250,
-                         "local_influence":local_influence}
+                         "local_influence":local_influence,
+                         "six_hr_mean":six_hr_mean}
 
     # Get list of sites
     sites = [key for key in datasets.keys() if key[0] != '.']
@@ -902,7 +915,7 @@ def prior_flux(species, domain, basis_case, av_date, emissions_name = None):
     for i in basis_nos:
         basisflux[i-1] = np.sum(awflux[basis0[:,:]==i])
 
-    prior_x = regrid.mol2kg(basisflux,species)*(3600*24*365)
+    prior_x = convert.mol2kg(basisflux,species)*(3600*24*365)
     
     return prior_x
     
