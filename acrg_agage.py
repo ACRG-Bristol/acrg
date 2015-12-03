@@ -324,10 +324,11 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
                 if units != "permil":
                     df = df[df.mf > 0.]
 
-                data_frames.append(df)
+                if len(df) > 0:
+                    data_frames.append(df)
     
             ncf.close()
-    
+
         if len(data_frames) > 0:
             data_frame = pd.concat(data_frames).sort_index()
             data_frame.index.name = 'time'
@@ -367,8 +368,8 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
                 if min(data_frame.index) > start_time:
                     dum_frame = pd.DataFrame({"status_flag": float('nan')},
                                          index = np.array([start_time]))   
-                    dum_frame["mf"] =  float('nan')                  
-                    dum_frame["dmf"] =  float('nan')  
+                    dum_frame["mf"] =  float('nan')
+                    dum_frame["dmf"] =  float('nan')
                     dum_frame.index.name = 'time'                                                                               
                     data_frame = data_frame.append(dum_frame)
             
