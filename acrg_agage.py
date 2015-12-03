@@ -453,7 +453,8 @@ def get_gosat(site, species, max_level, start = "1900-01-01", end = "2020-01-01"
 
 def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
             height = None, baseline = False, average = None, full_corr=False,
-            network = None, instrument = None, status_flag_unflagged = [0], max_level = None):
+            network = None, instrument = None, status_flag_unflagged = [0],
+            max_level = None):
 
     # retrieves obervations for a set of sites and species between start and end dates
     # max_level only pertains to satellite data
