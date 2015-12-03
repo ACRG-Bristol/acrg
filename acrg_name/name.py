@@ -423,7 +423,9 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
             else:
                 tolerance = None
                 
-            site_ds = combine_datasets(site_ds, site_fp, method = "nearest", tolerance = tolerance)
+            site_ds = combine_datasets(site_ds, site_fp,
+                                       method = "nearest",
+                                       tolerance = tolerance)
             
             # If units are specified, multiply by scaling factor
             if ".units" in attributes:
@@ -1106,7 +1108,9 @@ def plot(fp_data, date, out_filename=None,
          map_data = None, zoom = False,
          map_resolution = "l", 
          map_background = "countryborders",
-         colormap = plt.cm.YlGnBu):
+         colormap = plt.cm.YlGnBu,
+         tolerance = None,
+         interpolate = False):
     """
     Plot footprint using pcolormesh.
     
@@ -1130,8 +1134,15 @@ def plot(fp_data, date, out_filename=None,
     colormap: color map to use for contours
     """
     
+    def fp_nearest(fp, tolerance = None):
+        return fp.reindex_like( \
+                            xray.Dataset(coords = {"time": [date]}),
+                            method = "nearest",
+                            tolerance = tolerance)
+
+    
     # Looks for nearest time point aviable in footprint   
-    date = convert.reftime(date)
+    date = np.datetime64(convert.reftime(date))
 
     # Get sites
     sites = [key for key in fp_data.keys() if key[0] != '.']
@@ -1139,13 +1150,13 @@ def plot(fp_data, date, out_filename=None,
     # Zoom in. Assumes release point is to the East of centre
     if zoom:
         lat_range, lon_range = plot_map_zoom(fp_data)
-        
+    
     # Get map data
     if map_data is None:
         map_data = plot_map_setup(fp_data[sites[0]],
                                   lon_range = lon_range,
                                   lat_range = lat_range,
-                                  bottom_left = True,
+                                  bottom_left=True,
                                   map_resolution = map_resolution)
 
     # Open plot
@@ -1180,20 +1191,45 @@ def plot(fp_data, date, out_filename=None,
 
     data = np.zeros(np.shape(
             fp_data[sites[0]].fp[dict(time = [0])].values.squeeze()))
-
+    
     # Generate plot data
     for site in sites:
     
-        tdelta = fp_data[site].time - np.datetime64(date)
+        time = fp_data[site].time.values.squeeze()
+        
+        if tolerance is None:
+            tolerance = np.median(time[1:] - time[:-1])
+        
+        if interpolate:
+            ti = bisect.bisect(time, date)
+            if (ti > 0) and (ti < len(time)):
+                dt = np.float(date - time[ti-1])/np.float(time[ti] - time[ti-1])
+                fp_ti_0 = fp_data[site][dict(time = ti-1)].fp.values.squeeze()
+                fp_ti_1 = fp_data[site][dict(time = ti)].fp.values.squeeze()
+                fp_ti = fp_ti_0 + (fp_ti_1 - fp_ti_0)*dt
+                
+                data += np.nan_to_num(fp_ti)
 
-        if np.min(np.abs(tdelta)).astype(np.int64) < 1.1*3600.*1e9:
-
-            fp_data_ti = fp_data[site].reindex_like( \
-                            xray.Dataset(coords = {"time": [date]}),
-                            method = "nearest")
-
+                # Store release location to overplot later
+                if "release_lat" in fp_data[site].keys():
+                    lon_0 = fp_data[site][dict(time = ti-1)].release_lon.values.squeeze()
+                    lon_1 = fp_data[site][dict(time = ti)].release_lon.values.squeeze()                
+                    lat_0 = fp_data[site][dict(time = ti-1)].release_lat.values.squeeze()
+                    lat_1 = fp_data[site][dict(time = ti)].release_lat.values.squeeze()
+                    release_lon[site] = lon_0 + (lon_1 - lon_0)*dt
+                    release_lat[site] = lat_0 + (lat_1 - lat_0)*dt
+                    
+            else:
+                fp_data_ti = fp_nearest(fp_data[site], tolerance = tolerance)
+                data += np.nan_to_num(fp_data_ti.fp.values.squeeze())
+                # Store release location to overplot later
+                if "release_lat" in dir(fp_data_ti):
+                    release_lon[site] = fp_data_ti.release_lon.values
+                    release_lat[site] = fp_data_ti.release_lat.values
+        else:
+            fp_data_ti = fp_nearest(fp_data[site], tolerance = tolerance)
             data += np.nan_to_num(fp_data_ti.fp.values.squeeze())
-    
+
             # Store release location to overplot later
             if "release_lat" in dir(fp_data_ti):
                 release_lon[site] = fp_data_ti.release_lon.values
@@ -1357,7 +1393,8 @@ def animate(fp_data, output_directory,
                 if plot_function == "plot":
                     plot(fp_data, t, out_filename = fname, 
                          lon_range = lon_range, lat_range= lat_range,
-                         log_range = log_range, map_data = map_data)
+                         log_range = log_range, map_data = map_data,
+                         interpolate = True)
                 elif plot_function == "plot3d":
                     plot3d(fp_data[sites[0]], t, out_filename = fname,
                            log_range = log_range)
