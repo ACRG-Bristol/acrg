@@ -9,3 +9,4 @@ from areagrid import areagrid
 import haversine
 from hybridcoords import hybridcoords
 import coarsen
+import regrid

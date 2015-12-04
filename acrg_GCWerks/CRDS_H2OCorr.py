@@ -11,6 +11,36 @@ import matplotlib
 import matplotlib.ticker as ticker
 from scipy.optimize import curve_fit
 import pdb
+from os import listdir
+from os.path import isfile, join
+
+# Find the files for a given site
+def find_files(site, dir='/Users/as13988/Documents/Work/Picarro/H2OCorr/', date=None): 
+    
+    onlyfiles = [ f for f in listdir(dir) if isfile(join(dir,f)) ]
+    sitefiles = [n for n in onlyfiles if site in n]
+    dates = [int(a.split('.')[-2]) for a in sitefiles]
+    
+    if date is None:
+        date = max(dates)
+        
+    files = [f for f in sitefiles if str(date) in f]
+
+    dry_files = [dir + f for f in files if 'dry' in f]
+    wet_files = [dir + f for f in files if 'wet' in f]
+    
+    return dry_files, wet_files
+
+# Read multiple runs in
+def read_data_multi(datafilelist): 
+    
+    datalist = []
+    
+    for i in datafilelist:
+        data = acrg_read_GCwerks.read_gcexport_crds(i)   
+        datalist.append(data)
+        
+    return datalist
 
 # Reads in the GCWerks output
 def read_data(datafile): 
