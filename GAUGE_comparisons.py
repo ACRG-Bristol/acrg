@@ -17,6 +17,7 @@ import netCDF4
 import bisect
 from acrg_GCWerks import acrg_ICP
 reload(acrg_agage)
+
 # gases available
 def gases_measured():
     gases = ['co2','CO2','ch4','CH4', 'n2o','N2O','co','CO','sf6','SF6']
@@ -38,8 +39,12 @@ class sites_list():
 def units(gas):
     units = ['ppm', 'ppm', 'ppb','ppb', 'ppb','ppb','ppb','ppb','ppt','ppt']
 
-    index = np.where(np.array(gases_measured()) == gas)[0]    
-    unit = units[index]
+    index = np.where(np.array(gases_measured()) == gas)[0]   
+    if len(index) == 1:
+        unit = units[index]
+    else:
+        unit = ''
+        
     return '['+unit+']'
 
 
@@ -47,12 +52,16 @@ def units(gas):
 # Make the plot and save it    
 def plotagainstother(site, gas, suffix='', yscale=None, xscale=None, other_site='MHD',\
                      alt_dir_site = None, alt_dir_other = None, dateformatter =None, network=None,\
-                     site_name = None, other_site_name = None, outdir = None):
+                     site_name = None, other_site_name = None, outdir = None, n2o_scale_site = None,\
+                     n2o_scale_other = None):
 
     # Check if the given site matches
     if (np.where(np.array(sites_list().sites_tag) == site)[0]).size > 0: 
         if site_name is None:
-            site_name = (sites_list().sites_name)[np.where(np.array(sites_list().sites_tag ) == site)[0]] 
+            site_name = (sites_list().sites_name)[np.where(np.array(sites_list().sites_tag ) == site)[0]]
+            if n2o_scale_site:
+                site_name = site_name + '_scaled'
+                suffix = 'scaled'
     else:
         print 'Site ' + site + ' does not match any listed'
         print 'Please use: ' 
@@ -62,6 +71,8 @@ def plotagainstother(site, gas, suffix='', yscale=None, xscale=None, other_site=
     if (np.where(np.array(sites_list().sites_tag) == other_site)[0]).size > 0:   
         if other_site_name is None:
             other_site_name = (sites_list().sites_name)[np.where(np.array(sites_list().sites_tag) == other_site)[0]]    
+        if n2o_scale_other:
+            other_site_name = other_site_name + '_scaled'
     else:
         print 'Site ' + other_site + ' does not match any listed'
         print 'Please use: ' 
@@ -74,7 +85,7 @@ def plotagainstother(site, gas, suffix='', yscale=None, xscale=None, other_site=
     if site in ['WAO_UCAM']:
         network = 'UCAM-EA' 
     
-    site_data = read_site(site, gas, network=network, alt_dir = alt_dir_site)
+    site_data = read_site(site, gas, network=network, alt_dir = alt_dir_site, n2o_scale = n2o_scale_site)
         
     if (site_data) is not None:
         start = min(site_data.index)
@@ -86,7 +97,7 @@ def plotagainstother(site, gas, suffix='', yscale=None, xscale=None, other_site=
             network = None
             
         other_site_data = read_site(other_site, gas, start = start, end = end, network=network,\
-        alt_dir = alt_dir_other)
+        alt_dir = alt_dir_other, n2o_scale = n2o_scale_other)
              
         if other_site_data is not None:             
              
@@ -128,13 +139,19 @@ def plotagainstother(site, gas, suffix='', yscale=None, xscale=None, other_site=
         print 'Can not find data for ' + gas + ' at ' + site 
 
 # Make the plot and save it    
-def plotagainstflask(site, flasksite, gas, suffix='', yscale=None, xscale=None, network=None, yscale_diff=None, xscale_diff=None):
+def plotagainstflask(site, flasksite, gas, suffix=None, yscale=None, xscale=None, network=None,\
+                 yscale_diff=None, xscale_diff=None, n2o_scale = None, outdir = None, no_bar = None):
     
     site_name = (sites_list().sites_name)[np.where(np.array(sites_list().sites_tag ) == site)[0]] 
+    if n2o_scale:
+        site_name = site_name + '_scaled'  
+        suffix = 'scaled'
+    
     flask_site_name = (sites_list().sites_name)[np.where(np.array(sites_list().sites_tag) == flasksite)[0]]    
     
-    outputdir = '/home/as13988/GAUGE/MHDComparisons/'
-    site_data = read_site(site, gas)
+    if outdir is None:
+        outdir = '/home/as13988/GAUGE/MHDComparisons/'
+    site_data = read_site(site, gas, n2o_scale = n2o_scale)
     
     if (site_data) is not None:
         start = min(site_data.index)
@@ -167,17 +184,19 @@ def plotagainstflask(site, flasksite, gas, suffix='', yscale=None, xscale=None, 
             plt.figtext(0.65, 0.8, flask_site_name + ' flask', verticalalignment='bottom', horizontalalignment='left', fontsize=10,color='red')
             plt.figtext(0.65, 0.75, site_name+ ' in situ', verticalalignment='bottom', horizontalalignment='left', fontsize=10, color='blue')
         
-            if suffix  != '':
-                suffix = '_' + suffix
-            plt.savefig(outputdir+site+'Vs' + flasksite + '_flask_' + gas+suffix + '.png', dpi=200)
+            if suffix is None :
+                plt.savefig(outdir+site+'Vs' + flasksite + '_flask_' + gas + '.png', dpi=200)
+            else:
+                plt.savefig(outdir+site+'Vs' + flasksite + '_flask_' + gas+'_' + suffix + '.png', dpi=200)
+
         
-        # resample the dataframe to get 15min means and then match those
-        #site_data_15 = site_data.resample('15T') 
-        #site_data_15_SD = site_data.resample('15T', how=np.std) 
         # Time match the flask record to the closet in situ record and plot just these
         matchedindex = []
         matcheddiff = []
         extendedindex = []
+        means = []
+        sds = []
+        
         for i in np.arange(len(flask_data.index)):
             # Find the points either side of the flask data point
             after = bisect.bisect_left(site_data.index, flask_data.index[i])
@@ -190,10 +209,14 @@ def plotagainstflask(site, flasksite, gas, suffix='', yscale=None, xscale=None, 
                 matchedindex.append(after)
                 matcheddiff.append(afterdiff) 
                 extendedindex.append(np.arange(30)-15+after) #get the indicies 15 on each side
+                means.append(np.mean(site_data['mf'][np.arange(30)-15+after]))
+                sds.append(np.std(site_data['mf'][np.arange(30)-15+after]))
             else:
                 matchedindex.append(before)
                 matcheddiff.append(beforediff) 
                 extendedindex.append(np.arange(30)-15+before)
+                means.append(np.mean(site_data['mf'][np.arange(30)-15+before]))
+                sds.append(np.std(site_data['mf'][np.arange(30)-15+before]))
                 
         # Extract the data at the matched indicies
         matchedtime = [site_data.index[j] for j in matchedindex]
@@ -208,8 +231,16 @@ def plotagainstflask(site, flasksite, gas, suffix='', yscale=None, xscale=None, 
         # Remove points which are more than 30 mins away from each other
         toofar = np.where(np.array(matcheddiff) > 1800)
         matchedinsitu[toofar[0]] = np.nan
+               
+        # Calculate differences
+        diffs = np.array(means) -  flask_data['mf']
         
-             
+        # Remove differences flasks more than 30mins away from the in situ data
+        for k in toofar[0]:
+            diffs[k] = np.nan        
+            sds[k] = np.nan
+          
+        
         fig = plt.figure()
         f, (ax0, ax, ax1) = plt.subplots(3, sharex = True)
         ax0.plot(extendedtime, extendedinsitu, 'ob', mec='blue', ms =2)
@@ -245,7 +276,12 @@ def plotagainstflask(site, flasksite, gas, suffix='', yscale=None, xscale=None, 
         if xscale != None:
             ax.set_xlim(xscale)
         
-        ax1.plot(matchedtime, matchedinsitu -  flask_data['mf'],'ob', mec='blue', ms =2)
+        #ax1.plot(matchedtime, matchedinsitu -  flask_data['mf'],'ob', mec='blue', ms =2)
+        if no_bar is None:        
+            ax1.errorbar(matchedtime, diffs,yerr=sds,fmt='ob', mec='blue', ms =2)
+        else:
+            ax1.plot(matchedtime, diffs,'ob', mec='blue', ms =2)
+      
         # Adjust the tick number on the x axis
         x_formatter = matplotlib.dates.DateFormatter('%m/%Y')
         x_tickno_formatter = matplotlib.ticker.MaxNLocator(5)
@@ -271,16 +307,19 @@ def plotagainstflask(site, flasksite, gas, suffix='', yscale=None, xscale=None, 
         plt.figtext(0.75, 0.84, 'In situ', verticalalignment='bottom', horizontalalignment='left', fontsize=10, color='blue')
         plt.figtext(0.15, 0.57, 'Closest minute', verticalalignment='bottom', horizontalalignment='left', fontsize=10)
         plt.figtext(0.15, 0.84, 'Closest 30 minutes', verticalalignment='bottom', horizontalalignment='left', fontsize=10)
+        plt.figtext(0.15, 0.3, 'Closest 30 minutes diff', verticalalignment='bottom', horizontalalignment='left', fontsize=10)
         
-        if suffix  != '':
-            suffix = '_' + suffix
-        
-        plt.savefig(outputdir+site+'Vs' + flasksite + '_flaskmatched_' + gas+suffix + '.png', dpi=200)
+
+        if suffix is None :
+            plt.savefig(outdir+site+'Vs' + flasksite + '_flaskmatched_' + gas + '.png', dpi=200)
+        else:
+            plt.savefig(outdir+site+'Vs' + flasksite + '_flaskmatched_' + gas+'_' + suffix + '.png', dpi=200)
+
         plt.close()
         
         # Plot differences against concentration
         ax2 = plt.subplot()        
-        ax2.plot(matchedinsitu, matchedinsitu -  flask_data['mf'],'ob', mec='blue', ms =2)
+        ax2.errorbar(np.array(means), np.array(means) -  flask_data['mf'],yerr = sds,fmt='ob', mec='blue', ms =2)
         
         # Adjust the tick number on the x axis
         ax2.set_ylabel('insitu - flask' + units(gas))
@@ -293,20 +332,20 @@ def plotagainstflask(site, flasksite, gas, suffix='', yscale=None, xscale=None, 
         ax2.plot([extendedinsitu.min(), extendedinsitu.max()], lines.plusline,'--')
         ax2.plot([extendedinsitu.min(), extendedinsitu.max()], lines.minusline,'--')
         plt.figtext(0.15, 0.84, site + ' Vs. ' + flasksite, verticalalignment='bottom', horizontalalignment='left', fontsize=12)
-        pdb.set_trace()
+        
+        if suffix is None :
+            plt.savefig(outdir+site+'Vs' + flasksite + '_flaskconc_' + gas + '.png', dpi=200)
+        else:
+            plt.savefig(outdir+site+'Vs' + flasksite + '_flaskconc_' + gas+'_' + suffix + '.png', dpi=200)
 
-
-        if suffix  != '':
-            suffix = '_' + suffix
-        plt.savefig(outputdir+site+'Vs' + flasksite + '_flaskconc_' + gas+suffix + '.png', dpi=200)
- 
     else:
         print 'Can not find data for ' + gas + ' at ' + site 
 
 
 # READ CODE!
 # Read in the site data for the given gas
-def read_site(site, gas, start = '1900-01-01 00:00:00', end = '2020-01-01 00:00:00', network=None, alt_dir = None):
+def read_site(site, gas, start = '1900-01-01 00:00:00', end = '2020-01-01 00:00:00', network=None, \
+            alt_dir = None, n2o_scale = None):
    
     
     if site in ['WAO','wao']:
@@ -321,9 +360,17 @@ def read_site(site, gas, start = '1900-01-01 00:00:00', end = '2020-01-01 00:00:
     if site in ['WAO_UCAM', 'wao_ucam']:  
         site_data = acrg_agage.get('WAO', gas, start=start, end = end, network=network)
 
+    if site in ['ferry', 'Ferry']:  
+        site_data = acrg_agage.get('ferry', gas, start=start, end = end, network=network, status_flag_unflagged = [0,1,2])
+
     #if site not in ['WAO','wao','GLA','gla','MHD','mhd','WAO_UCAM', 'wao_ucam']:
-    if site not in ['WAO','wao','MHD','mhd','WAO_UCAM', 'wao_ucam']:
+    if site not in ['WAO','wao','MHD','mhd','WAO_UCAM', 'wao_ucam', 'ferry', 'Ferry']:
         site_data = acrg_agage.get(site, gas, start=start, end = end, network=network, alt_dir=alt_dir)
+
+
+    # Temporary scaling to adjust to x2006A using 2014 factor
+    if n2o_scale and gas in ['n2o', 'N2O']:
+        site_data['mf'] = site_data['mf']*1.0009
 
     return site_data
 
