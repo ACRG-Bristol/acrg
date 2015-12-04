@@ -8,6 +8,15 @@
         "longitude": -64.8788,
         "network": "NOAA"
     },
+    "BRW" : {
+        "alt": [],
+        "long_name" : "Barrow, Alaska",
+        "height": ["16.5m", "10.75m", "5m"],
+        "height_name": ["17magl", "11magl", "5magl"],
+        "latitude": 71.323,
+        "longitude": -156.6114,
+        "network": "NOAA"
+    },
     "BSD" : {
         "alt": [],
         "long_name" : "Bilsdale, UK",
@@ -36,8 +45,8 @@
     },
     "CBA" : {
         "alt": [],
-        "long_name" : "Cold Bay, United States",
-        "height": ["36m"],
+        "long_name" : "Cold Bay, Alaska",
+        "height": ["35.7m"],
         "height_name": ["36magl"],
         "latitude": 55.21,
         "longitude": -162.72,
@@ -147,9 +156,18 @@
         "longitude": 0.23048,
         "network": "GAUGE"
     },
+    "HSU" : {
+        "alt": [],
+        "long_name" : "Humboldt State University, United States",
+        "height": ["7.6m"],
+        "height_name": ["8magl"],
+        "latitude": 41.0588,
+        "longitude": -124.75,
+        "network": "NOAA"
+    },
     "KEY" : {
         "alt": [],
-        "long_name" : "Key Biscane, United States",
+        "long_name" : "Key Biscane, Florida",
         "height": ["5m"],
         "height_name": ["5magl"],
         "latitude": 25.6654,
@@ -158,11 +176,20 @@
     },
     "LEF" : {
         "alt": [],
-        "long_name" : "Park Falls, United States",
+        "long_name" : "Park Falls, Wisconsin, United States",
         "height": ["396m"],
         "height_name": ["396magl"],
         "latitude": 45.9451,
         "longitude": -90.2732,
+        "network": "NOAA"
+    },
+    "LLB" : {
+        "alt": [],
+        "long_name" : "Lac La Biche, Alberta, Canada",
+        "height": ["48m"],
+        "height_name": ["48magl"],
+        "latitude": 54.95,
+        "longitude": -112.45,
         "network": "NOAA"
     },
     "MHD" : {
@@ -173,6 +200,22 @@
         "latitude": 53.32611,
         "longitude": -9.90389,
         "network": "AGAGE"
+    },
+    "NWR" : {
+        "alt": [],
+        "long_name" : "Niwot Ridge, Colorado, United States",
+        "height": ["3m"],
+        "height_name": ["3magl"],
+        "latitude": 40.0531,
+        "longitude": -105.5864,
+        "network": "NOAA"
+    },
+    "POC" : {
+        "alt": [],
+        "long_name" : "Pacific Ocean",
+        "height": ["20m"],
+        "height_name": ["20magl"],
+        "network": "NOAA"
     },
     "RGL" : {
         "alt": ["RH"],
@@ -191,6 +234,15 @@
         "latitude": 40.65,
         "longitude": 117.12,
         "network": "AGAGE"
+    },
+    "SGP" : {
+        "alt": [],
+        "long_name" : "Southern Great Plains, Oklahoma, United States",
+        "height": ["60m"],
+        "height_name": ["60magl"],
+        "latitude": 36.607,
+        "longitude": -97.489,
+        "network": "NOAA"
     },
     "SNG" : {
         "alt": [""],
@@ -234,6 +286,15 @@
         "latitude": 56.55511,
         "longitude": -2.98598,
         "network": "DECC"
+    },
+    "UTA" : {
+        "alt": [],
+        "long_name" : "Wendover, Utah, United States",
+        "height": ["5m"],
+        "height_name": ["5magl"],
+        "latitude": 39.9018,
+        "longitude": -113.7181,
+        "network": "NOAA"
     },
     "WAO" : {
         "alt": ["WEYBOURNE"],

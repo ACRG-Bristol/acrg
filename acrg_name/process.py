@@ -1490,10 +1490,10 @@ def test_processed_met(domain, site, height,
 if __name__ == "__main__":
 
     domain = "EUROPE"
-    #"BSD", "TTA",
-    sites = [ "RGL", "MHD", "HFD", "TAC",
+    
+    sites = ["BSD", "TTA", "RGL", "MHD", "HFD", "TAC",
              "GAUGE-FERRY", "GAUGE-FAAM",
-             "EHL", "TIL", "GLA", "WAO", "HAD", "GSN"]
+             "EHL", "TIL", "GLA", "WAO", "HAD"]
     for site in sites:
         process_all(domain, site, force_update = True)
 
