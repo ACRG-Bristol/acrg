@@ -287,7 +287,7 @@ model_error = np.zeros(nmeasure)
 sigma_measure=y_error.copy()
 
 sigma_model0[:] = np.mean(y)*0.025   
-sigma_measure = 0.002*y   # ONLY APPROPRIATE FOR METHANE
+#sigma_measure = 0.002*y   # ONLY APPROPRIATE FOR METHANE
 model_error[:] = sigma_model0[0]	
 
 sigma_y0 = np.sqrt(model_error**2 + sigma_measure**2)
@@ -511,130 +511,6 @@ for ti in range(nmeasure):
     y_post[ti]=np.mean(y_post_it[:,ti])
     y_bg[ti]=np.mean(y_bg_it[:,ti])
 
-#PLOTTING
-
-#data=(x_post_mean*q_ap0-q_ap0)  # mol/m2/s
-#area=areagrid(lat,lon)
-#data=data*area*16.04*3600.*24.*365./1e9
-#
-#
-#
-#lon_range = (lonmin, lonmax)
-#lat_range = (latmin, latmax)
-#
-#m = Basemap(projection='gall',
-#            llcrnrlat=lat_range[0], urcrnrlat=lat_range[1],
-#            llcrnrlon=lon_range[0], urcrnrlon=lon_range[1],
-#            resolution='l')
-#
-#
-#lons, lats = np.meshgrid(lon,lat)
-#mapx, mapy = m(lons, lats)
-#data2=np.log10(x_post_mean)
-#
-#fig = plt.figure(1,figsize=(8,8))
-#fig.add_axes([0.1,0.1,0.8,0.8])
-#
-#m.drawcoastlines()
-#m.drawstates()
-#m.drawcountries() 
-#
-#clevels = np.arange(0., 2., 0.02)  
-#
-#cs = m.contourf(mapx,mapy,x_post_mean, clevels, extend='both', cmap='RdBu_r')
-#cb = m.colorbar(cs, location='bottom', pad="5%")  
-#
-#
-###############################
-## Density plot of nuclei locations 
-#dlon=lon[1]-lon[0]
-#dlat=lat[1]-lat[0]
-#xedges=np.arange(lonmin,lonmax+2.,2.)
-#yedges=np.arange(latmin,latmax+2.,2.)
-#lon_range = (np.min(xedges), xedges[-2])
-#lat_range = (np.min(yedges), yedges[-2])
-#plat_out_v=np.ravel(plat_out)
-#plon_out_v=np.ravel(plon_out)
-#
-#H, yedges, xedges = np.histogram2d(plat_out_v, plon_out_v, bins=(yedges, xedges))
-#
-#m2 = Basemap(projection='gall',
-#            llcrnrlat=lat_range[0], urcrnrlat=lat_range[1],
-#            llcrnrlon=lon_range[0], urcrnrlon=lon_range[1],
-#            resolution='l')
-#
-#lona, latb = np.meshgrid(xedges[:-1],yedges[:-1])
-#mapa, mapb = m(lona, latb)
-#
-#fig = plt.figure(3,figsize=(8,8))
-#ax = fig.add_subplot(111)
-#
-#m2.drawcoastlines()
-#m2.drawcountries() 
-#
-#hlevels=np.arange(np.min(H), np.max(H), 10.) 
-#
-#ds=m2.contourf(mapa,mapb,H, hlevels)
-#db = m2.colorbar(ds, location='bottom')
-#
-#
-#data3=xrange_90/x_post_mean
-#fig = plt.figure(2,figsize=(8,8))
-#fig.add_axes([0.1,0.1,0.8,0.8])
-#
-#m.drawcoastlines()
-#m.drawcountries() 
-#c2levels = np.arange(0., 4.0, 0.05) 
-#cs = m.contourf(mapx,mapy,data3, c2levels, extend='both', cmap='RdBu_r')
-#cb = m.colorbar(cs, location='bottom', pad="5%")  
-#
-#################################################
-## create a histogram by providing the bin edges (unequally spaced)
-##
-#plt.figure(2)
-#
-#bins = [0,100,200,300,400,500,600,700,800,900,1000]
-## the histogram of the data with histtype='step'
-#n, bins, patches = plt.hist(k_it, bins, normed=1, histtype='bar', rwidth=0.8)
-#
-#
-#fig = plt.figure(4,figsize=(8,8))
-#fig.add_axes([0.1,0.1,0.8,0.8])
-#
-#m.drawcoastlines()
-#m.drawstates()
-#m.drawcountries() 
-#levels = np.arange(-10., 10., 0.1) 
-#cs = m.contourf(mapx,mapy,data, levels, extend='both', cmap='RdBu_r')
-#cb = m.colorbar(cs, location='bottom', pad="5%")  
-#plt.show()
-#
-## GET COUNTRY DATA
-#c_object=name.get_country('EUROPE', ocean=True)
-#cds = xray.Dataset({'country': (['lat','lon'], c_object.country), 
-#                    'name' : (['ncountries'],c_object.name) },
-#                                    coords = {'lat': (c_object.lat),
-#                                    'lon': (c_object.lon)})
-#country = cds.country.sel(lon=slice(lonmin,lonmax), 
-#                                    lat=slice(latmin,latmax))
-#
-#country_v=np.ravel(country)
-#
-#name_uk = np.where(cds.name == 'UNITED KINGDOM')
-#uk_index = np.where(country_v == name_uk[0])
-#area_v=np.ravel(area)
-#
-#x_uk = np.sum(x_post_v_mean[uk_index]*area_v[uk_index]*q_ap_v[uk_index]) # in mol/s
-#x_uk = x_uk*16.04/1000.   # in kg/s
-#x_uk = x_uk*365.*24.*3600./1.e9    # in Tg/yr
-#
-#uk_95 = np.sum(x_post_v_95[uk_index]*area_v[uk_index])
-#uk_05 = np.sum(x_post_v_05[uk_index]*area_v[uk_index])
-#uk_ap = np.sum(q_ap_v[uk_index]*area_v[uk_index])
-#
-#uk_95 = uk_95*16.04/1000.*365.*24.*3600./1.e9   # in kg/s
-#uk_05 = uk_05*16.04/1000.*365.*24.*3600./1.e9 
-#uk_ap = uk_ap*16.04/1000.*365.*24.*3600./1.e9 
 
 # SAVE MCMC output in a dataset and write to netcdf
 # Set up post-mcmc dataset
