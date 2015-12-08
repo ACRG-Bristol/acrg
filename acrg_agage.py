@@ -363,7 +363,7 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
                     how[key] = "std"
                     data_frame["vmf"] = data_frame["mf"]
                 else:
-                    how[key] = "median"
+                    how[key] = "mean"
             
             if full_corr == True:
                 if min(data_frame.index) > start_time:
