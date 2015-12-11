@@ -1,4 +1,22 @@
 {
+    "AMT" : {
+        "alt": [],
+        "long_name" : "Argyle, Maine, United States",
+        "height": ["107m"],
+        "height_name": ["107magl"],
+        "latitude": 45.0345,
+        "longitude": -68.6821,
+        "network": "NOAA"
+    },
+    "BCK" : {
+        "alt": [],
+        "long_name" : "Behchoko, Northwest Territories, Canada",
+        "height": ["60m"],
+        "height_name": ["60magl"],
+        "latitude": 62.797934,
+        "longitude": -115.918255,
+        "network": "EC"
+    },
     "BMW" : {
         "alt": [],
         "long_name" : "Tudor Hill, Bermuda",
@@ -164,6 +182,15 @@
         "latitude": 41.0588,
         "longitude": -124.75,
         "network": "NOAA"
+    },
+    "INU" : {
+        "alt": [],
+        "long_name" : "Inuvik, Northwest Territories, Canada",
+        "height": ["10m"],
+        "height_name": ["10magl"],
+        "latitude": 68.317817,
+        "longitude": -133.534232,
+        "network": "EC"
     },
     "KEY" : {
         "alt": [],

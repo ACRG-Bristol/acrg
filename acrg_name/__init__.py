@@ -11,6 +11,7 @@ from name import animate
 from name import fp_sensitivity
 from name import bc_sensitivity
 from name import merge_sensitivity
+from name import boundary_conditions
 import process
 import basis_functions
 import flux
