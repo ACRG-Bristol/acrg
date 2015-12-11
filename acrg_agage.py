@@ -333,6 +333,8 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
             data_frame = pd.concat(data_frames).sort_index()
             data_frame.index.name = 'time'
             data_frame = data_frame[start_time : end_time]
+            if len(data_frame) == 0:
+                return None
         else:
             return None
 
@@ -376,11 +378,10 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
                 if min(data_frame.index) < end_time:
                     dum_frame2 = pd.DataFrame({"status_flag": float('nan')},
                                          index = np.array([end_time]))   
-                    dum_frame2["mf"] =  float('nan')                  
-                    dum_frame2["dmf"] =  float('nan')  
-                    dum_frame2.index.name = 'time'                                                                                    
-                    data_frame = data_frame.append(dum_frame2)  
-            
+                    dum_frame2["mf"] =  float('nan')
+                    dum_frame2["dmf"] =  float('nan')
+                    dum_frame2.index.name = 'time'
+                    data_frame = data_frame.append(dum_frame2)
             
             data_frame=data_frame.resample(average, how=how)
             if full_corr == True:
@@ -389,9 +390,7 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
         # Drop NaNs
         if full_corr == False:
             data_frame.dropna(inplace = True)
-         
-    
-    
+
         data_frame.mf.units = units
     
         return data_frame
@@ -454,7 +453,7 @@ def get_gosat(site, species, max_level, start = "1900-01-01", end = "2020-01-01"
 
 def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
             height = None, baseline = False, average = None, full_corr=False,
-            network = None, instrument = None, status_flag_unflagged = [0],
+            network = None, instrument = None, status_flag_unflagged = None,
             max_level = None):
 
     # retrieves obervations for a set of sites and species between start and end dates
@@ -473,6 +472,13 @@ def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
             var = [None for i in sites]
         return var
 
+    if status_flag_unflagged:
+        if len(status_flag_unflagged) != len(sites):
+            print("Status_flag_unflagged must be a LIST OF LISTS with the same dimension as sites")
+            return None
+    else:
+        status_flag_unflagged = [[0] for _ in sites]
+        print("Assuming status flag = 0 for all sites")
 
     # Prepare inputs
     start_time = convert.reftime(start)
@@ -510,7 +516,7 @@ def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
                        network = network[si],
                        instrument = instrument[si],
                        full_corr = full_corr,
-                       status_flag_unflagged = status_flag_unflagged)
+                       status_flag_unflagged = status_flag_unflagged[si])
                        
         if data is not None:
             obs[site] = data.copy()            
