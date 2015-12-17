@@ -727,6 +727,10 @@ def filtering(datasets_in, filters, full_corr=False):
     def daily_median(dataset, full_corr=False):
         # Calculate daily median
         return dataset.resample("1D", "time", how = "median")
+        
+    def six_hr_mean(dataset, full_corr=False):
+        # Calculate daily median
+        return dataset.resample("6H", "time", how = "mean")
     
     def daytime(dataset, full_corr=False):
         # Subset during daytime hours
