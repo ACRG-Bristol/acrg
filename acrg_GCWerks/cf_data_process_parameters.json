@@ -1,7 +1,8 @@
 {
     "global_attributes": {
         "Processed by": "Matt Rigby, University of Bristol (matt.rigby@bristol.ac.uk)",
-        "Conditions of use": "Ensure that you contact the data owner at the outset of your project."
+        "Conditions of use": "Ensure that you contact the data owner at the outset of your project.",
+        "Source": "In situ measurements of air"
     },
     "GC": {
         "instruments": {
@@ -27,6 +28,16 @@
             "GCMD":   "/dagage2/agage/summary/data/",
             "GCMS":   "/dagage2/agage/summary/data-gcms/",
             "medusa": "/dagage2/agage/summary/data-gcms/"
+        },
+        "integration_period": {
+            "GCMD": "10 minutes",
+            "GCMS": "10 minutes",
+            "medusa": "18 minutes"
+        },
+        "comment": {
+            "GCMD": "Gas chromatograph measurements. Output from GCWerks.",
+            "GCMS": "Gas chromatograph-mass spectrometer measurements. Output from GCWerks.",
+            "medusa": "Medusa measurements. Output from GCWerks. See Miller et al. (2008)."
         },
         "directory_output" : "/dagage2/agage/metoffice/processed_observations",
         "BSD" : {
@@ -144,6 +155,7 @@
     "CRDS": {
         "directory" : "/dagage2/agage/%site-picarro/results-gcwerks/",
         "directory_output" : "/dagage2/agage/metoffice/processed_observations",
+        "comment": "Cavity ring-down measurements. Output from GCWerks",
         "BSD" : {
             "gcwerks_site_name": "bilsdale",
             "global_attributes": {
