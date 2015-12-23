@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 from os.path import join, split
 from datetime import datetime as dt
+from datetime import timedelta as td
 import glob
 import xray
 import json
@@ -57,11 +58,15 @@ crds_header_string_interpret = {"C": "",
 def site_info_attributes(site):
     
     attributes = {}
-    attributes_list = ["longitude", "latitude", "long_name"]
+    attributes_list = {"longitude": "station_longitude",
+                       "latitude": "station_latitude",
+                       "long_name": "station_long_name",
+                       "height_station_masl": "station_height_masl"}
+                       
     if site in site_params.keys():
-        for at in attributes_list:
+        for at in attributes_list.keys():
             if at in site_params[site].keys():
-                attributes["site_" + at] = site_params[site][at]
+                attributes[attributes_list[at]] = site_params[site][at]
         return attributes
     else:
         return None
@@ -179,7 +184,8 @@ def attributes(ds, species, site, global_attributes = None,
     ds.time.encoding = {"units": "seconds since " + \
                         first_year + "-01-01 00:00:00"}
     ds.time.attrs["label"] = "left"
-    ds.time.attrs["comment"] = "time stamp corresponds to beginning of integration period"
+    ds.time.attrs["comment"] = "Time stamp corresponds to beginning of integration period. " + \
+                               "Time since midnight UTC of reference date."
     if integration_period:
         ds.time.attrs["period"] = integration_period
     
@@ -201,6 +207,64 @@ def output_filename(output_directory,
                 year + "0101_" + \
                 species + "-" + \
                 inlet + ".nc")
+
+
+# UCAM
+########################################################
+
+def ucam(site, species):
+    '''
+    Process University of Cambridge data files
+
+    Inputs are site code and species
+
+    Assumes that file names start with a date, routine will pick the latest one
+    '''
+
+    params_ucam = params["UCAM"]
+
+    fnames = glob.glob(join(params_ucam["directory"],
+                            "*_" + site.lower() + "_" + \
+                            species.lower() + \
+                            "_ucam.csv"))
+
+    #Pick most recent file
+    fname = fnames[-1]
+    
+    print("Reading " + fname + "... this can take a while")
+    
+    df = pd.read_csv(fname,
+                     parse_dates = [site.title() + "_date"],
+                     index_col = [site.title() + "_date"]).sort_index()
+    
+    df.rename(columns = {site.title() + "_data_obs_scaled": species.upper(),
+                         site.title() + "_obs_repeatability": species.upper() + "_repeatability",
+                         site.title() + "_cal_uncertainty": species.upper() + "_calibration_uncertainty"},
+              inplace = True)
+    df.index.name = "time"
+    
+    ds = xray.Dataset.from_dataframe(df.sort_index())
+    
+    global_attributes = params_ucam[site]["global_attributes"]
+    
+    ds = attributes(ds,
+                    species.upper(),
+                    site.upper(),
+                    global_attributes=global_attributes)
+    
+    # Write file
+    nc_filename = output_filename(params_ucam["directory_output"],
+                                  "UCAM",
+                                  "GC",
+                                  site.upper(),
+                                  str(ds.time.to_pandas().index.to_pydatetime()[0].year),
+                                  ds.species,
+                                  params_ucam[site]["inlet"])
+    
+    print("Writing " + nc_filename)
+    
+    ds.to_netcdf(nc_filename)
+    
 
 # ICOS
 ########################################################
@@ -454,6 +518,12 @@ def gc(site, instrument, network):
     # Concatenate
     dfs = pd.concat(dfs).sort_index()
     
+    # Apply timestamp offset so that timestamp reflects start of sampling
+    time = dfs.index.values
+    time_offset = np.timedelta64(td(seconds = params["GC"]["timestamp_correct_seconds"][instrument]))
+    time = [t + time_offset for t in time]
+    dfs.index = time
+
     # Label time index
     dfs.index.name = "time"
 
@@ -468,7 +538,7 @@ def gc(site, instrument, network):
     for sp in species:
 
         global_attributes = params["GC"][site.upper()]["global_attributes"]
-        global_attributes["comment"] = params["GC"]["comment"]
+        global_attributes["comment"] = params["GC"]["comment"][instrument]
 
         for inlet in inlets:        
             
@@ -511,7 +581,7 @@ def gc(site, instrument, network):
                     instrument_out = params["GC"]["instruments_out"][instrument][sp]
                 else:
                     instrument_out = params["GC"]["instruments_out"][instrument]["else"]
-    
+
                 # Write file
                 nc_filename = output_filename(params["GC"]["directory_output"],
                                               network,
@@ -675,4 +745,8 @@ if __name__ == "__main__":
     gc("SMO", "medusa", "AGAGE")
     gc("SIO", "medusa", "AGAGE")
     
+    # University of Cambridge GC
+    ucam("WAO", "CH4")
+    ucam("HAD", "CH4")
+    ucam("TIL", "CH4")
     

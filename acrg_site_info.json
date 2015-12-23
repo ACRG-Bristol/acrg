@@ -106,7 +106,7 @@
         "height_name": ["25magl"],
         "latitude": 51.80590,
         "longitude": 1.10790,
-        "network": "UCAM-EA"
+        "network": "UCAM"
     },
     "GAUGE-FAAM" : {
         "alt": ["FAAM"],
@@ -166,7 +166,7 @@
         "height_name": ["20magl"],
         "latitude": 52.35986,
         "longitude": 0.14828,
-        "network": "UCAM-EA"
+        "network": "UCAM"
     },
     "HFD" : {
         "alt": [],
@@ -311,7 +311,7 @@
         "height_name": ["20magl"],
         "latitude": 52.73667,
         "longitude": 0.32127,
-        "network": "UCAM-EA"
+        "network": "UCAM"
     },
     "TTA" : {
         "alt": ["ANGUS"],
@@ -340,6 +340,6 @@
         "height_name": ["20magl"],
         "latitude": 52.95042,
         "longitude": 1.12194,
-        "network": "UCAM-EA"
+        "network": "UCAM"
     }
 }
