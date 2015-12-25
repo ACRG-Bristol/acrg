@@ -222,25 +222,43 @@ def ucam(site, species):
     '''
 
     params_ucam = params["UCAM"]
+    ucam_site = params_ucam[site]["ucam_name"]
 
     fnames = glob.glob(join(params_ucam["directory"],
                             "*_" + site.lower() + "_" + \
                             species.lower() + \
-                            "_ucam.csv"))
+                            "*_ucam.csv"))
 
     #Pick most recent file
     fname = fnames[-1]
     
     print("Reading " + fname + "... this can take a while")
     
+    if params_ucam[site]["instrument"] == "CRDS":
+        date_col = ucam_site + "_pic_date"
+    else:
+        date_col = ucam_site + "_date"
+        
     df = pd.read_csv(fname,
-                     parse_dates = [site.title() + "_date"],
-                     index_col = [site.title() + "_date"]).sort_index()
+                     parse_dates = [date_col],
+                     index_col = [date_col]).sort_index()
     
-    df.rename(columns = {site.title() + "_data_obs_scaled": species.upper(),
-                         site.title() + "_obs_repeatability": species.upper() + "_repeatability",
-                         site.title() + "_cal_uncertainty": species.upper() + "_calibration_uncertainty"},
+    rename_dict_all = {ucam_site + "_data_obs_scaled": species.upper(),
+                       ucam_site + "_obs_repeatability": species.upper() + "_repeatability",
+                       ucam_site + "_cal_uncertainty": species.upper() + "_calibration_uncertainty",
+                       ucam_site + "_pic_" + species.upper(): species.upper(),
+                       ucam_site + "_pic_SD": species.upper() + "_repeatability"}
+
+    rename_dict = {}
+    for key in rename_dict_all.keys():
+        if key in df.keys():
+            rename_dict[key] = rename_dict_all[key]
+                   
+    df.rename(columns = rename_dict,
               inplace = True)
+
+    df.index.name = "index"
+    df = df.reset_index().drop_duplicates(subset='index').set_index('index')              
     df.index.name = "time"
     
     ds = xray.Dataset.from_dataframe(df.sort_index())
@@ -255,7 +273,7 @@ def ucam(site, species):
     # Write file
     nc_filename = output_filename(params_ucam["directory_output"],
                                   "UCAM",
-                                  "GC",
+                                  params_ucam[site]["instrument"],
                                   site.upper(),
                                   str(ds.time.to_pandas().index.to_pydatetime()[0].year),
                                   ds.species,

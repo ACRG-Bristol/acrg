@@ -221,6 +221,8 @@
         "directory" : "/data/shared/obs_raw/UCAM/",
         "directory_output" : "/data/shared/obs/",
         "EHL" : {
+            "ucam_name": "Eh",
+            "instrument": "CRDS",
             "inlet": "25m",
             "global_attributes": {
                 "data_owner": "Neil Harris",
@@ -228,6 +230,8 @@
             }
         },
         "HAD" : {
+            "ucam_name": "Had",
+            "instrument": "GC-FID",
             "inlet": "25m",
             "global_attributes": {
                 "data_owner": "Neil Harris",
@@ -235,6 +239,8 @@
             }
         },
         "TIL" : {
+            "ucam_name": "Til",
+            "instrument": "GC-FID",
             "inlet": "27m",
             "global_attributes": {
                 "data_owner": "Neil Harris",
@@ -242,6 +248,8 @@
             }
         },
         "WAO" : {
+            "ucam_name": "Wao",
+            "instrument": "GC-FID",
             "inlet": "25m",
             "global_attributes": {
                 "data_owner": "Neil Harris",
