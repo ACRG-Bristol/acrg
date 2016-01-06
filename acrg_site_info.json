@@ -3,15 +3,27 @@
         "alt": [],
         "long_name" : "Argyle, Maine, United States",
         "height": ["107m"],
+        "height_station_masl": 53.0,
         "height_name": ["107magl"],
         "latitude": 45.0345,
         "longitude": -68.6821,
+        "network": "NOAA"
+    },
+    "BAO" : {
+        "alt": [],
+        "long_name" : "Boulder Atmospheric Observatory, Colorado, United States",
+        "height": ["300m"],
+        "height_station_masl": 1584.0,
+        "height_name": ["300magl"],
+        "latitude": 40.05,
+        "longitude": -105.004,
         "network": "NOAA"
     },
     "BCK" : {
         "alt": [],
         "long_name" : "Behchoko, Northwest Territories, Canada",
         "height": ["60m"],
+        "height_station_masl": 160.0,
         "height_name": ["60magl"],
         "latitude": 62.797934,
         "longitude": -115.918255,
@@ -21,6 +33,7 @@
         "alt": [],
         "long_name" : "Tudor Hill, Bermuda",
         "height": ["30m"],
+        "height_station_masl": 30.0,
         "height_name": ["30magl"],
         "latitude": 32.2647,
         "longitude": -64.8788,
@@ -30,6 +43,7 @@
         "alt": [],
         "long_name" : "Barrow, Alaska",
         "height": ["16.5m", "10.75m", "5m"],
+        "height_station_masl": 11.0,
         "height_name": ["17magl", "11magl", "5magl"],
         "latitude": 71.323,
         "longitude": -156.6114,
@@ -66,10 +80,21 @@
         "alt": [],
         "long_name" : "Cold Bay, Alaska",
         "height": ["35.7m"],
+        "height_station_masl": 21.34,
         "height_name": ["36magl"],
         "latitude": 55.21,
         "longitude": -162.72,
         "network": "NOAA"
+    },
+    "CBY" : {
+        "alt": [],
+        "long_name" : "Cambridge Bay, Nunavut, Canada",
+        "height": ["12m"],
+        "height_station_masl": 35.0,
+        "height_name": ["12magl"],
+        "latitude": 69.128401,
+        "longitude": -105.057707,
+        "network": "EC"
     },
     "CGO" : {
         "alt": ["CG"],
@@ -77,12 +102,32 @@
         "height": ["10m"],
         "height_name": ["10magl"]
     },
+    "CHL" : {
+        "alt": [],
+        "long_name" : "Churchill, Manitoba, Canada",
+        "height": ["60m"],
+        "height_station_masl": 29.0,
+        "height_name": ["60magl"],
+        "latitude": 58.737902,
+        "longitude": -93.820581,
+        "network": "EC"
+    },
     "CLA" : {
         "alt": [""],
         "long_name" : "Comilla, Bangladesh",
         "height": ["10m"],
         "height_name": ["10magl"],
         "network": "NIES"
+    },
+    "CPS" : {
+        "alt": [],
+        "long_name" : "Chapais, Quebec, Canada",
+        "height": ["8m"],
+        "height_station_masl": 391.0,
+        "height_name": ["8magl"],
+        "latitude": 49.822317,
+        "longitude": -74.975274,
+        "network": "EC"
     },
     "CRI" : {
         "alt": [""],
@@ -98,6 +143,16 @@
         "height_name": ["500magl"],
         "network": "AGAGE"
     },
+    "EGB" : {
+        "alt": [],
+        "long_name" : "Egbert, Ontario, Canada",
+        "height": ["25m"],
+        "height_station_masl": 251.0,
+        "height_name": ["25magl"],
+        "latitude": 44.231006,
+        "longitude": -79.783839,
+        "network": "EC"
+    },
     "EHL" : {
         "alt": ["EARLSHALL"],
         "long_name" : "Earlshall, UK",
@@ -107,6 +162,56 @@
         "latitude": 51.80590,
         "longitude": 1.10790,
         "network": "UCAM"
+    },
+    "ESP" : {
+        "alt": [],
+        "long_name" : "Estevan Point, British Columbia, Canada",
+        "height": ["40m"],
+        "height_station_masl": 7.0,
+        "height_name": ["40magl"],
+        "latitude": 49.382935,
+        "longitude": -126.544097,
+        "network": "EC"
+    },
+    "EST" : {
+        "alt": [],
+        "long_name" : "Esther, Alberta, Canada",
+        "height": ["50m"],
+        "height_station_masl": 707.0,
+        "height_name": ["50magl"],
+        "latitude": 51.669987,
+        "longitude": -110.206175,
+        "network": "EC"
+    },
+    "ETL" : {
+        "alt": [],
+        "long_name" : "East Trout Lake, Saskatchewan, Canada",
+        "height": ["105m"],
+        "height_station_masl": 493.0,
+        "height_name": ["105magl"],
+        "latitude": 54.353743,
+        "longitude": -104.986864,
+        "network": "EC"
+    },
+    "FMS" : {
+        "alt": [],
+        "long_name" : "Fort McKay South, Alberta, Canada",
+        "height": ["10m"],
+        "height_station_masl": 250.0,
+        "height_name": ["10magl"],
+        "latitude": 57.14908,
+        "longitude": -111.64262,
+        "network": "EC"
+    },
+    "FSD" : {
+        "alt": [],
+        "long_name" : "Fraserdale, Ontario, Canada",
+        "height": ["40m"],
+        "height_station_masl": 210.0,
+        "height_name": ["40magl"],
+        "latitude": 49.875168,
+        "longitude": -81.569774,
+        "network": "EC"
     },
     "GAUGE-FAAM" : {
         "alt": ["FAAM"],
@@ -182,6 +287,7 @@
         "alt": [],
         "long_name" : "Humboldt State University, United States",
         "height": ["7.6m"],
+        "height_station_masl": 0.0,
         "height_name": ["8magl"],
         "latitude": 41.0588,
         "longitude": -124.75,
@@ -191,6 +297,7 @@
         "alt": [],
         "long_name" : "Inuvik, Northwest Territories, Canada",
         "height": ["10m"],
+        "height_station_masl": 113.0,
         "height_name": ["10magl"],
         "latitude": 68.317817,
         "longitude": -133.534232,
@@ -200,6 +307,7 @@
         "alt": [],
         "long_name" : "Key Biscane, Florida",
         "height": ["5m"],
+        "height_station_masl": 1.0,
         "height_name": ["5magl"],
         "latitude": 25.6654,
         "longitude": -80.158,
@@ -209,6 +317,7 @@
         "alt": [],
         "long_name" : "Park Falls, Wisconsin, United States",
         "height": ["396m"],
+        "height_station_masl": 472.0,
         "height_name": ["396magl"],
         "latitude": 45.9451,
         "longitude": -90.2732,
@@ -218,6 +327,7 @@
         "alt": [],
         "long_name" : "Lac La Biche, Alberta, Canada",
         "height": ["48m"],
+        "height_station_masl": 540.0,
         "height_name": ["48magl"],
         "latitude": 54.95,
         "longitude": -112.45,
@@ -237,6 +347,7 @@
         "alt": [],
         "long_name" : "Niwot Ridge, Colorado, United States",
         "height": ["3m"],
+        "height_station_masl": 3523.0,
         "height_name": ["3magl"],
         "latitude": 40.0531,
         "longitude": -105.5864,
@@ -246,6 +357,7 @@
         "alt": [],
         "long_name" : "Pacific Ocean",
         "height": ["20m"],
+        "height_station_masl": 0.0,
         "height_name": ["20magl"],
         "network": "NOAA"
     },
@@ -272,6 +384,7 @@
         "alt": [],
         "long_name" : "Southern Great Plains, Oklahoma, United States",
         "height": ["60m"],
+        "height_station_masl": 314.0,
         "height_name": ["60magl"],
         "latitude": 36.607,
         "longitude": -97.489,
@@ -298,6 +411,7 @@
         "alt": ["TH"],
         "long_name" : "Trinidad Head, California",
         "height": ["10m", "5m"],
+        "height_station_masl": 107.0,
         "height_name": ["10magl", "5magl"],
         "latitude": 41.0541,
         "longitude": -124.151,
@@ -313,6 +427,16 @@
         "longitude": 0.32127,
         "network": "UCAM"
     },
+    "TPD" : {
+        "alt": [],
+        "long_name" : "Turkey Point, Ontario, Canada",
+        "height": ["35m"],
+        "height_station_masl": 231.0,
+        "height_name": ["35magl"],
+        "latitude": 42.636451,
+        "longitude": -80.554695,
+        "network": "EC"
+    },
     "TTA" : {
         "alt": ["ANGUS"],
         "long_name" : "Angus Tower, UK",
@@ -327,6 +451,7 @@
         "alt": [],
         "long_name" : "Wendover, Utah, United States",
         "height": ["5m"],
+        "height_station_masl": 1327.0,
         "height_name": ["5magl"],
         "latitude": 39.9018,
         "longitude": -113.7181,
@@ -341,5 +466,15 @@
         "latitude": 52.95042,
         "longitude": 1.12194,
         "network": "UCAM"
+    },
+    "WSA" : {
+        "alt": [],
+        "long_name" : "Sable Island, Nova Scotia, Canada",
+        "height": ["25m"],
+        "height_station_masl": 5.0,
+        "height_name": ["25magl"],
+        "latitude": 43.93227,
+        "longitude": -60.01256,
+        "network": "EC"
     }
 }
