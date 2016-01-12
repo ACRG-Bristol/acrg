@@ -1,7 +1,8 @@
 {
     "global_attributes": {
         "Processed by": "Matt Rigby, University of Bristol (matt.rigby@bristol.ac.uk)",
-        "Conditions of use": "Ensure that you contact the data owner at the outset of your project."
+        "Conditions of use": "Ensure that you contact the data owner at the outset of your project.",
+        "Source": "In situ measurements of air"
     },
     "GC": {
         "instruments": {
@@ -27,6 +28,21 @@
             "GCMD":   "/dagage2/agage/summary/data/",
             "GCMS":   "/dagage2/agage/summary/data-gcms/",
             "medusa": "/dagage2/agage/summary/data-gcms/"
+        },
+        "integration_period": {
+            "GCMD": "14 seconds",
+            "GCMS": "20 minutes",
+            "medusa": "20 minutes"
+        },
+        "timestamp_correct_seconds": {
+            "GCMD": -7,
+            "GCMS": -1680,
+            "medusa": -1680
+        },
+        "comment": {
+            "GCMD": "Gas chromatograph measurements. Output from GCWerks.",
+            "GCMS": "Gas chromatograph-mass spectrometer measurements. Output from GCWerks.",
+            "medusa": "Medusa measurements. Output from GCWerks. See Miller et al. (2008)."
         },
         "directory_output" : "/dagage2/agage/metoffice/processed_observations",
         "BSD" : {
@@ -144,6 +160,7 @@
     "CRDS": {
         "directory" : "/dagage2/agage/%site-picarro/results-gcwerks/",
         "directory_output" : "/dagage2/agage/metoffice/processed_observations",
+        "comment": "Cavity ring-down measurements. Output from GCWerks",
         "BSD" : {
             "gcwerks_site_name": "bilsdale",
             "global_attributes": {
@@ -197,6 +214,46 @@
             "global_attributes": {
                 "data_owner": "Simon O'Doherty",
                 "data_owner_email": "s.odoherty@bristol.ac.uk"
+            }
+        }
+    },
+    "UCAM": {
+        "directory" : "/data/shared/obs_raw/UCAM/",
+        "directory_output" : "/data/shared/obs/",
+        "EHL" : {
+            "ucam_name": "Eh",
+            "instrument": "CRDS",
+            "inlet": "25m",
+            "global_attributes": {
+                "data_owner": "Neil Harris",
+                "data_owner_email": "nrh1000@cam.ac.uk"
+            }
+        },
+        "HAD" : {
+            "ucam_name": "Had",
+            "instrument": "GC-FID",
+            "inlet": "25m",
+            "global_attributes": {
+                "data_owner": "Neil Harris",
+                "data_owner_email": "nrh1000@cam.ac.uk"
+            }
+        },
+        "TIL" : {
+            "ucam_name": "Til",
+            "instrument": "GC-FID",
+            "inlet": "27m",
+            "global_attributes": {
+                "data_owner": "Neil Harris",
+                "data_owner_email": "nrh1000@cam.ac.uk"
+            }
+        },
+        "WAO" : {
+            "ucam_name": "Wao",
+            "instrument": "GC-FID",
+            "inlet": "25m",
+            "global_attributes": {
+                "data_owner": "Neil Harris",
+                "data_owner_email": "nrh1000@cam.ac.uk"
             }
         }
     }

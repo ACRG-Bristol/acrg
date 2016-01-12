@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 from os.path import join, split
 from datetime import datetime as dt
+from datetime import timedelta as td
 import glob
 import xray
 import json
@@ -57,17 +58,22 @@ crds_header_string_interpret = {"C": "",
 def site_info_attributes(site):
     
     attributes = {}
-    attributes_list = ["longitude", "latitude", "long_name"]
+    attributes_list = {"longitude": "station_longitude",
+                       "latitude": "station_latitude",
+                       "long_name": "station_long_name",
+                       "height_station_masl": "station_height_masl"}
+                       
     if site in site_params.keys():
-        for at in attributes_list:
+        for at in attributes_list.keys():
             if at in site_params[site].keys():
-                attributes["site_" + at] = site_params[site][at]
+                attributes[attributes_list[at]] = site_params[site][at]
         return attributes
     else:
         return None
 
 def attributes(ds, species, site, global_attributes = None,
-               units = None, scale = None):
+               units = None, scale = None,
+               integration_period = None):
     """
     Format attributes for netCDF file
     """
@@ -155,6 +161,21 @@ def attributes(ds, species, site, global_attributes = None,
                               "0 = unflagged, 1 = flagged",
                               "standard_name":
                               ds[species_out].attrs["standard_name"] + "_status_flag"}
+
+    # Add integration flag attributes
+    ##################################
+
+    flag_key = [key for key in ds.keys() if "_integration_flag" in key]
+    if len(flag_key) > 0:
+        flag_key = flag_key[0]
+        ds[flag_key] = ds[flag_key].astype(int)
+        ds[flag_key].attrs = {"flag_meaning":
+                              "0 = area, 1 = height",
+                              "standard_name":
+                              ds[species_out].attrs["standard_name"] + "_integration_flag",
+                              "comment":
+                              "GC peak integration method (by height or by area). " + 
+                              "Does not indicate data quality"}
     
     # Set time encoding
     #########################################
@@ -162,7 +183,12 @@ def attributes(ds, species, site, global_attributes = None,
     first_year = str(ds.time.to_pandas().index.to_pydatetime()[0].year)
     ds.time.encoding = {"units": "seconds since " + \
                         first_year + "-01-01 00:00:00"}
-        
+    ds.time.attrs["label"] = "left"
+    ds.time.attrs["comment"] = "Time stamp corresponds to beginning of integration period. " + \
+                               "Time since midnight UTC of reference date."
+    if integration_period:
+        ds.time.attrs["period"] = integration_period
+    
     return ds
 
 def output_filename(output_directory,
@@ -181,6 +207,82 @@ def output_filename(output_directory,
                 year + "0101_" + \
                 species + "-" + \
                 inlet + ".nc")
+
+
+# UCAM
+########################################################
+
+def ucam(site, species):
+    '''
+    Process University of Cambridge data files
+
+    Inputs are site code and species
+
+    Assumes that file names start with a date, routine will pick the latest one
+    '''
+
+    params_ucam = params["UCAM"]
+    ucam_site = params_ucam[site]["ucam_name"]
+
+    fnames = glob.glob(join(params_ucam["directory"],
+                            "*_" + site.lower() + "_" + \
+                            species.lower() + \
+                            "*_ucam.csv"))
+
+    #Pick most recent file
+    fname = fnames[-1]
+    
+    print("Reading " + fname + "... this can take a while")
+    
+    if params_ucam[site]["instrument"] == "CRDS":
+        date_col = ucam_site + "_pic_date"
+    else:
+        date_col = ucam_site + "_date"
+        
+    df = pd.read_csv(fname,
+                     parse_dates = [date_col],
+                     index_col = [date_col]).sort_index()
+    
+    rename_dict_all = {ucam_site + "_data_obs_scaled": species.upper(),
+                       ucam_site + "_obs_repeatability": species.upper() + "_repeatability",
+                       ucam_site + "_cal_uncertainty": species.upper() + "_calibration_uncertainty",
+                       ucam_site + "_pic_" + species.upper(): species.upper(),
+                       ucam_site + "_pic_SD": species.upper() + "_repeatability"}
+
+    rename_dict = {}
+    for key in rename_dict_all.keys():
+        if key in df.keys():
+            rename_dict[key] = rename_dict_all[key]
+                   
+    df.rename(columns = rename_dict,
+              inplace = True)
+
+    df.index.name = "index"
+    df = df.reset_index().drop_duplicates(subset='index').set_index('index')              
+    df.index.name = "time"
+    
+    ds = xray.Dataset.from_dataframe(df.sort_index())
+    
+    global_attributes = params_ucam[site]["global_attributes"]
+    
+    ds = attributes(ds,
+                    species.upper(),
+                    site.upper(),
+                    global_attributes=global_attributes)
+    
+    # Write file
+    nc_filename = output_filename(params_ucam["directory_output"],
+                                  "UCAM",
+                                  params_ucam[site]["instrument"],
+                                  site.upper(),
+                                  str(ds.time.to_pandas().index.to_pydatetime()[0].year),
+                                  ds.species,
+                                  params_ucam[site]["inlet"])
+    
+    print("Writing " + nc_filename)
+    
+    ds.to_netcdf(nc_filename)
+    
 
 # ICOS
 ########################################################
@@ -258,10 +360,13 @@ def icos(site, network = "ICOS"):
         
         # Sort out attributes
         global_attributes = params_icos[site.upper()]["global_attributes"]
+        global_attributes["inlet_height_magl"] = float(inlet[:-1])
+
         ds = attributes(ds,
                         species.upper(),
                         site.upper(),
-                        global_attributes = global_attributes)
+                        global_attributes = global_attributes,
+                        integration_period = "1 minute")
 
         # Write file
         nc_filename = output_filename(out_directory,
@@ -321,10 +426,11 @@ def gc_data_read(dotC_file, scale = {}, units = {}):
                 if flags[1] == "-":
                     area_height_flag.append(0)  # Area
                 else:
-                    area_height_flag.append(0)  # Height
+                    area_height_flag.append(1)  # Height
 
             df = df.rename(columns = {key: df.keys()[i-1] + "_flag"})
             df[df.keys()[i-1] + "_status_flag"] = quality_flag
+            df[df.keys()[i-1] + "_integration_flag"] = area_height_flag
             scale[df.keys()[i-1]] = header[i-1][0]
             units[df.keys()[i-1]] = header[i-1][1]
             species.append(df.keys()[i-1])
@@ -430,25 +536,28 @@ def gc(site, instrument, network):
     # Concatenate
     dfs = pd.concat(dfs).sort_index()
     
+    # Apply timestamp offset so that timestamp reflects start of sampling
+    time = dfs.index.values
+    time_offset = np.timedelta64(td(seconds = params["GC"]["timestamp_correct_seconds"][instrument]))
+    time = [t + time_offset for t in time]
+    dfs.index = time
+
     # Label time index
     dfs.index.name = "time"
 
     # Convert to xray dataset
     ds = xray.Dataset.from_dataframe(dfs)
-
+    
     # Get species from scale dictionary
     species = scale.keys()
     
-#    # Get inlets
-#    inlets = set(ds["Inlet"].values)
-#    inlets = [inlet for inlet in inlets if inlet[-1] is "m"]
-
     inlets = params["GC"][site]["inlets"]
         
     for sp in species:
 
         global_attributes = params["GC"][site.upper()]["global_attributes"]
-        
+        global_attributes["comment"] = params["GC"]["comment"][instrument]
+
         for inlet in inlets:        
             
             print("Processing " + sp + ", " + inlet + "...")
@@ -456,15 +565,17 @@ def gc(site, instrument, network):
             if inlet == "any":
                 ds_sp = ds[[sp,
                             sp + "_repeatability",
-                            sp + "_status_flag"]]
+                            sp + "_status_flag",
+                            sp + "_integration_flag"]]
                 inlet_label = params["GC"][site.upper()]["inlet_label"][0]
-                global_attributes["inlets"] = ", ".join(set(ds["Inlet"].values))
+                global_attributes["inlet_height_magl"] = ", ".join(set(ds["Inlet"].values))
                 
             else:
                 ds_sp = ds.where(ds.Inlet == inlet)[[sp,
                                                      sp + "_repeatability",
-                                                     sp + "_status_flag"]]
-                global_attributes["inlets"] = inlet
+                                                     sp + "_status_flag",
+                                                     sp + "_integration_flag"]]
+                global_attributes["inlet_height_magl"] = float(inlet[:-1])
                 inlet_label = inlet
 
             # Drop NaNs
@@ -480,14 +591,15 @@ def gc(site, instrument, network):
                 ds_sp = attributes(ds_sp, sp, site.upper(),
                                    global_attributes = global_attributes,
                                    units = units[sp],
-                                   scale = scale[sp])
+                                   scale = scale[sp],
+                                   integration_period = params["GC"]["integration_period"][instrument])
     
                 # Get instrument name for output
                 if sp.upper() in params["GC"]["instruments_out"][instrument]:
                     instrument_out = params["GC"]["instruments_out"][instrument][sp]
                 else:
                     instrument_out = params["GC"]["instruments_out"][instrument]["else"]
-    
+
                 # Write file
                 nc_filename = output_filename(params["GC"]["directory_output"],
                                               network,
@@ -580,14 +692,19 @@ def crds(site, network):
         for sp in species:
             
             # Species-specific dataset
-            ds_sp = ds[[sp, sp + "_variability", sp + "_number_of_observations"]]
+            ds_sp = ds[[sp,
+                        sp + "_variability",
+                        sp + "_number_of_observations"]]
             ds_sp.dropna("time")
             
             global_attributes = params_crds[site]["global_attributes"]
+            global_attributes["inlet_height_magl"] = float(inlet[0:-1])
+            global_attributes["comment"] = params_crds["comment"]
     
             ds_sp = attributes(ds_sp, sp, site.upper(),
                                global_attributes = global_attributes,
-                               scale = scales[sp])
+                               scale = scales[sp],
+                               integration_period="1 minute")
             
             # Write file
             nc_filename = output_filename(params["CRDS"]["directory_output"],
@@ -646,4 +763,8 @@ if __name__ == "__main__":
     gc("SMO", "medusa", "AGAGE")
     gc("SIO", "medusa", "AGAGE")
     
+    # University of Cambridge GC
+    ucam("WAO", "CH4")
+    ucam("HAD", "CH4")
+    ucam("TIL", "CH4")
     
