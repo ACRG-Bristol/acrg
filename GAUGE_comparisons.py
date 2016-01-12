@@ -150,7 +150,8 @@ def plotagainstflask(site, flasksite, gas, suffix=None, yscale=None, xscale=None
     flask_site_name = (sites_list().sites_name)[np.where(np.array(sites_list().sites_tag) == flasksite)[0]]    
     
     if outdir is None:
-        outdir = '/home/as13988/GAUGE/MHDComparisons/'
+        outdir = '/home/as13988/GAUGE/FlaskComparisons/'
+        
     site_data = read_site(site, gas, n2o_scale = n2o_scale)
     
     if (site_data) is not None:
@@ -360,6 +361,16 @@ def read_site(site, gas, start = '1900-01-01 00:00:00', end = '2020-01-01 00:00:
     if site in ['WAO_UCAM', 'wao_ucam']:  
         site_data = acrg_agage.get('WAO', gas, start=start, end = end, network=network)
 
+    if site in ['FAAM', 'faam']:
+        if gas in ['co2','CO2', 'ch4', 'CH4']:
+            instrument = 'FGGA'
+        if gas in ['n2o','N2O']:
+            instrument = 'QCL'
+        if gas in ['co','CO']:
+            instrument = 'AL5002'
+            
+        site_data = acrg_agage.get('FAAM', gas, instrument = instrument, start=start, end = end, network='GAUGE')
+
     if site in ['ferry', 'Ferry']:  
         site_data = acrg_agage.get('ferry', gas, start=start, end = end, network=network, status_flag_unflagged = [0,1,2])
 
@@ -386,7 +397,7 @@ def read_MHD(gas, start = '1900-01-01 00:00:00', end = '2020-01-01 00:00:00', al
     return MHD
 
 
-# Read in the WAO files
+# Read in the flask files
 class read_flask():
     def __init__(self, site, gas, start = None, end = None):
         
