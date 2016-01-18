@@ -29,15 +29,15 @@
             "GCMS":   "/dagage2/agage/summary/data-gcms/",
             "medusa": "/dagage2/agage/summary/data-gcms/"
         },
-        "integration_period": {
-            "GCMD": "14 seconds",
-            "GCMS": "20 minutes",
-            "medusa": "20 minutes"
+        "sampling_period": {
+            "GCMD": 75,
+            "GCMS": 1200,
+            "medusa": 1200
         },
         "timestamp_correct_seconds": {
-            "GCMD": -7,
-            "GCMS": -1680,
-            "medusa": -1680
+            "GCMD": -85,
+            "GCMS": -1380,
+            "medusa": -2300
         },
         "comment": {
             "GCMD": "Gas chromatograph measurements. Output from GCWerks.",
@@ -214,46 +214,6 @@
             "global_attributes": {
                 "data_owner": "Simon O'Doherty",
                 "data_owner_email": "s.odoherty@bristol.ac.uk"
-            }
-        }
-    },
-    "UCAM": {
-        "directory" : "/data/shared/obs_raw/UCAM/",
-        "directory_output" : "/data/shared/obs/",
-        "EHL" : {
-            "ucam_name": "Eh",
-            "instrument": "CRDS",
-            "inlet": "25m",
-            "global_attributes": {
-                "data_owner": "Neil Harris",
-                "data_owner_email": "nrh1000@cam.ac.uk"
-            }
-        },
-        "HAD" : {
-            "ucam_name": "Had",
-            "instrument": "GC-FID",
-            "inlet": "25m",
-            "global_attributes": {
-                "data_owner": "Neil Harris",
-                "data_owner_email": "nrh1000@cam.ac.uk"
-            }
-        },
-        "TIL" : {
-            "ucam_name": "Til",
-            "instrument": "GC-FID",
-            "inlet": "27m",
-            "global_attributes": {
-                "data_owner": "Neil Harris",
-                "data_owner_email": "nrh1000@cam.ac.uk"
-            }
-        },
-        "WAO" : {
-            "ucam_name": "Wao",
-            "instrument": "GC-FID",
-            "inlet": "25m",
-            "global_attributes": {
-                "data_owner": "Neil Harris",
-                "data_owner_email": "nrh1000@cam.ac.uk"
             }
         }
     }

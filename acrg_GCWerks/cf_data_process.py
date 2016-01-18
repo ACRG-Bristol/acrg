@@ -71,9 +71,11 @@ def site_info_attributes(site):
     else:
         return None
 
-def attributes(ds, species, site, global_attributes = None,
-               units = None, scale = None,
-               integration_period = None):
+def attributes(ds, species, site,
+               global_attributes = None,
+               units = None,
+               scale = None,
+               sampling_period = None):
     """
     Format attributes for netCDF file
     """
@@ -184,10 +186,11 @@ def attributes(ds, species, site, global_attributes = None,
     ds.time.encoding = {"units": "seconds since " + \
                         first_year + "-01-01 00:00:00"}
     ds.time.attrs["label"] = "left"
-    ds.time.attrs["comment"] = "Time stamp corresponds to beginning of integration period. " + \
-                               "Time since midnight UTC of reference date."
-    if integration_period:
-        ds.time.attrs["period"] = integration_period
+    ds.time.attrs["comment"] = "Time stamp corresponds to beginning of sampling period. " + \
+                               "Time since midnight UTC of reference date. " + \
+                               "Note that sampling periods are approximate."
+    if sampling_period:
+        ds.time.attrs["sampling_period_seconds"] = sampling_period
     
     return ds
 
@@ -207,82 +210,7 @@ def output_filename(output_directory,
                 year + "0101_" + \
                 species + "-" + \
                 inlet + ".nc")
-
-
-# UCAM
-########################################################
-
-def ucam(site, species):
-    '''
-    Process University of Cambridge data files
-
-    Inputs are site code and species
-
-    Assumes that file names start with a date, routine will pick the latest one
-    '''
-
-    params_ucam = params["UCAM"]
-    ucam_site = params_ucam[site]["ucam_name"]
-
-    fnames = glob.glob(join(params_ucam["directory"],
-                            "*_" + site.lower() + "_" + \
-                            species.lower() + \
-                            "*_ucam.csv"))
-
-    #Pick most recent file
-    fname = fnames[-1]
-    
-    print("Reading " + fname + "... this can take a while")
-    
-    if params_ucam[site]["instrument"] == "CRDS":
-        date_col = ucam_site + "_pic_date"
-    else:
-        date_col = ucam_site + "_date"
-        
-    df = pd.read_csv(fname,
-                     parse_dates = [date_col],
-                     index_col = [date_col]).sort_index()
-    
-    rename_dict_all = {ucam_site + "_data_obs_scaled": species.upper(),
-                       ucam_site + "_obs_repeatability": species.upper() + "_repeatability",
-                       ucam_site + "_cal_uncertainty": species.upper() + "_calibration_uncertainty",
-                       ucam_site + "_pic_" + species.upper(): species.upper(),
-                       ucam_site + "_pic_SD": species.upper() + "_repeatability"}
-
-    rename_dict = {}
-    for key in rename_dict_all.keys():
-        if key in df.keys():
-            rename_dict[key] = rename_dict_all[key]
-                   
-    df.rename(columns = rename_dict,
-              inplace = True)
-
-    df.index.name = "index"
-    df = df.reset_index().drop_duplicates(subset='index').set_index('index')              
-    df.index.name = "time"
-    
-    ds = xray.Dataset.from_dataframe(df.sort_index())
-    
-    global_attributes = params_ucam[site]["global_attributes"]
-    
-    ds = attributes(ds,
-                    species.upper(),
-                    site.upper(),
-                    global_attributes=global_attributes)
-    
-    # Write file
-    nc_filename = output_filename(params_ucam["directory_output"],
-                                  "UCAM",
-                                  params_ucam[site]["instrument"],
-                                  site.upper(),
-                                  str(ds.time.to_pandas().index.to_pydatetime()[0].year),
-                                  ds.species,
-                                  params_ucam[site]["inlet"])
-    
-    print("Writing " + nc_filename)
-    
-    ds.to_netcdf(nc_filename)
-    
+                
 
 # ICOS
 ########################################################
@@ -762,9 +690,3 @@ if __name__ == "__main__":
     gc("RPB", "medusa", "AGAGE")
     gc("SMO", "medusa", "AGAGE")
     gc("SIO", "medusa", "AGAGE")
-    
-    # University of Cambridge GC
-    ucam("WAO", "CH4")
-    ucam("HAD", "CH4")
-    ucam("TIL", "CH4")
-    

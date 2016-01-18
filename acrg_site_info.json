@@ -86,6 +86,16 @@
         "longitude": -162.72,
         "network": "NOAA"
     },
+    "CBW" : {
+        "alt": [],
+        "long_name" : "Cabauw Tower, Netherlands",
+        "height": ["120m", "20m", "60m", "200m"],
+        "height_station_masl": 213.0,
+        "height_name": ["120magl", "20magl", "60magl", "200magl"],
+        "latitude": 58.97,
+        "longitude": -4.926,
+        "network": "ECN"
+    },
     "CBY" : {
         "alt": [],
         "long_name" : "Cambridge Bay, Nunavut, Canada",
@@ -99,8 +109,12 @@
     "CGO" : {
         "alt": ["CG"],
         "long_name" : "Cape Grim, Tazmania",
-        "height": ["10m"],
-        "height_name": ["10magl"]
+        "height": ["70m"],
+        "height_station_masl": 94.0,
+        "height_name": ["70magl"],
+        "latitude": -40.683,
+        "longitude": 144.689,
+        "network": "AGAGE"
     },
     "CHL" : {
         "alt": [],
@@ -371,6 +385,16 @@
         "longitude": -2.53990,
         "network": "DECC"
     },
+    "RPB" : {
+        "alt": [],
+        "long_name" : "Ragged Point, Barbados",
+        "height": ["10m"],
+        "height_station_masl": 32.0,
+        "height_name": ["10magl"],
+        "latitude": 13.17,
+        "longitude": -59.43,
+        "network": "AGAGE"
+    },
     "SDZ" : {
         "alt": [""],
         "long_name" : "Shandianzi, China",
@@ -389,6 +413,16 @@
         "latitude": 36.607,
         "longitude": -97.489,
         "network": "NOAA"
+    },
+    "SMO" : {
+        "alt": [],
+        "long_name" : "Cape Matatula, American Samoa",
+        "height": ["10m"],
+        "height_station_masl": 82.0,
+        "height_name": ["10magl"],
+        "latitude": -14.25,
+        "longitude": -170.56,
+        "network": "AGAGE"
     },
     "SNG" : {
         "alt": [""],
@@ -415,7 +449,7 @@
         "height_name": ["10magl", "5magl"],
         "latitude": 41.0541,
         "longitude": -124.151,
-        "network": ["AGAGE", "NOAA"]
+        "network": "AGAGE"
     },
     "TIL" : {
         "alt": ["TILNEY"],
