@@ -17,7 +17,8 @@ import xray
 import json
 from os import getenv
 from acrg_GCWerks.cf_data_process import attributes, output_filename
-
+import calendar
+import re
 
 
 # Site info file
@@ -64,6 +65,9 @@ def ucam(site, species):
     params = {
         "directory" : "/data/shared/obs_raw/UCAM/",
         "directory_output" : "/data/shared/obs/",
+        "scale": {
+            "CH4": "WMOx2004a",
+            "CO2": "WMOx2007"},
         "EHL" : {
             "ucam_name": "Eh",
             "instrument": "CRDS",
@@ -74,15 +78,6 @@ def ucam(site, species):
             }
         },
         "HAD" : {
-            "ucam_name": "Had",
-            "instrument": "GC-FID",
-            "inlet": "25m",
-            "global_attributes": {
-                "data_owner": "Neil Harris",
-                "data_owner_email": "nrh1000@cam.ac.uk"
-            }
-        },
-        "HBD" : {
             "ucam_name": "Had",
             "instrument": "GC-FID",
             "inlet": "25m",
@@ -159,7 +154,8 @@ def ucam(site, species):
     ds = attributes(ds,
                     species.upper(),
                     site.upper(),
-                    global_attributes=global_attributes)
+                    global_attributes = global_attributes,
+                    scale = params["scale"][species.upper()])
     
     # Write file
     nc_filename = output_filename(params["directory_output"],
@@ -269,7 +265,12 @@ def cbw():
         df_inlet_gc.rename(columns = {species + "_variability":
                                       species + "_repeatability"},
                            inplace = True)
-        df_inlet_gc["CH4_repeatability"] = 4.
+        
+        df_inlet_gc["1992":"1997"][species + "_repeatability"] = 10.
+        df_inlet_gc["2000":"2004-10"][species + "_repeatability"] = 3.
+        df_inlet_gc["2004-11":"2009-1"][species + "_repeatability"] = 2.
+        df_inlet_gc["2009-2":][species + "_repeatability"] = 1.
+        
         cbw_write(df_inlet_gc, "GC-FID", inlet)
 
         # CRDS data
@@ -277,3 +278,116 @@ def cbw():
         cbw_write(df_inlet_crds, "CRDS", inlet)
 
 
+def ec(site):
+    """
+    Process Environment Canada data
+    """
+    params = {
+        "directory" : "/data/shared/obs_raw/EC/",
+        "directory_output" : "/data/shared/obs/",
+        "global_attributes" : {
+            "contact": "Doug Worthy",
+            "averaging": "hourly averages of GC data"
+        }
+    }
+    
+    def ec_correct_time(df):
+        time = []
+        for t in df.index:
+            year, month, day, hour, minute = map(int, re.split(" |:|-", t))
+            if hour == 24:
+                hour = 0
+                if day == calendar.monthrange(year, month)[1]:
+                    day = 1
+                    if month == 12:
+                        month = 1
+                        year = year + 1
+                    else:
+                        month = month + 1
+                else:
+                    day = day + 1
+            time.append(dt(year,
+                           month,
+                           day,
+                           hour,
+                           minute))
+        df.index = time
+        df.index.name = "time"
+        return df
+        
+    fnames = sorted(glob.glob(join(params["directory"],
+                                   "*" + site.upper() + "*/*/*/*.dat")))
+
+    df = []
+    
+    for fname in fnames:
+        
+        header_count = 0
+        with open(fname, "r") as f:
+            for line in f:
+                if line[0] == "C":
+                    header_count+=1
+                    last_line = line
+                else:
+                    break
+        
+        header = last_line[5:].split()
+        header[2] += "x"
+        header[3] += "x"
+    
+        dff = pd.read_csv(fname, sep = r"\s+",
+                         skiprows = header_count,
+                         header = None,
+                         names = header,
+                         parse_dates = {"time": ["DATE", "TIME"]},
+                         index_col = "time")
+        
+        dff = dff[["CH4", "ND", "SD"]]
+    
+        dff.rename(columns = {"ND": "CH4_number_of_observations",
+                              "SD": "CH4_variability"},
+                   inplace = True)
+
+        dff = ec_correct_time(dff)
+
+        df.append(dff)
+
+    df = pd.concat(df)
+    
+    # remove duplicates
+    df.index.name = "index"
+    df = df.reset_index().drop_duplicates(subset='index').set_index('index')              
+    df.index.name = "time"
+ 
+    # Convert to xray dataset
+    ds = xray.Dataset.from_dataframe(df)
+
+    # Add attributes
+    ds = attributes(ds,
+                    "CH4",
+                    site.upper(),
+                    global_attributes = params["global_attributes"],
+                    scale = "NOAA-2004")
+    
+    # Write file
+    nc_filename = output_filename(params["directory_output"],
+                                  "EC",
+                                  "GC-FID",
+                                  site.upper(),
+                                  str(ds.time.to_pandas().index.to_pydatetime()[0].year),
+                                  ds.species,
+                                  site_params[site]["height"][0])
+    
+    print("Writing " + nc_filename)
+    
+    ds.to_netcdf(nc_filename)
+
+def ec_run():
+    
+    ec("EGB")
+    ec("ESP")
+    ec("ETL")
+    ec("FSD")
+    ec("LLB")
+    ec("WSA")
+    

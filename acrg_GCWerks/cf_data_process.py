@@ -38,17 +38,42 @@ unit_interpret = {"ppm": "1e-6",
                  "ppt": "1e-12",
                  "else": "unknown"}
 
-# Calibration scales
+# Default calibration scales
 scales = {"CO2": "NOAA-2007",
           "CH4": "NOAA-2004",
           "N2O": "SIO-98",
           "CO": "Unknown"}
 
-# Species long-names for output
-species_long = {"CO2": "carbon_dioxide",
-                "CH4": "methane",
-                "N2O": "nitrous_oxide",
-                "CO": "carbon_monoxide"}
+## Species long-names for output
+#species_long = {"CO2": "carbon_dioxide",
+#                "CH4": "methane",
+#                "N2O": "nitrous_oxide",
+#                "CO": "carbon_monoxide"}
+
+# For species which need more than just a hyphen removing or changing to lower case
+# First element of list is the output variable name,
+# second is the long name for variable standard_name and long_name
+# Keys are upper case
+species_translator = {"CO2": ["co2", "carbon_dioxide"],
+                      "CH4": ["ch4", "methane"],
+                      "ETHANE": ["c2f6", "ethane"],
+                      "PROPANE": ["c3f8", "propane"],
+                      "C-PROPANE": ["cc3f8", "cpropane"],
+                      "BENZENE": ["c6h6", "benzene"],
+                      "TOLUENE": ["c6h5ch3", "methylbenzene"],
+                      "ETHENE": ["c2f4", "ethene"],
+                      "ETHYNE": ["c2f2", "ethyne"],
+                      "N2O": ["n2o", "nitrous_oxide"],
+                      "CO": ["co", "carbon_monoxide"],
+                      "H-1211": ["halon1211", "halon1211"],
+                      "H-1301": ["halon1301", "halon1301"],
+                      "H-2402": ["halon2402", "halon2402"],
+                      "PCE": ["c2cl4", "tetrachloroethylene"],
+                      "TCE": ["c2hcl3", "trichloroethylene"],
+                      "PFC-116": ["c2f6", "hexafluoroethane"],
+                      "PFC-218": ["c3f8", "octafluoropropane"],
+                      "PFC-318": ["c4f8", "cyclooctafluorobutane"]
+                      }
 
 # Translate header strings
 crds_header_string_interpret = {"C": "",
@@ -80,10 +105,15 @@ def attributes(ds, species, site,
     Format attributes for netCDF file
     """
 
-    # Rename species to be lower case and without hyphens
-    species_out = species.lower().replace("-", "")
+    # Rename species
     for key in ds.keys():
         if species in key:
+            if species.upper() in species_translator.keys():
+                # Rename based on species_translator, if available
+                species_out = species_translator[species.upper()][0]
+            else:
+                # Rename species to be lower case and without hyphens
+                species_out = species.lower().replace("-", "")
             ds.rename({key: key.replace(species, species_out)}, inplace = True)
 
     # Global attributes
@@ -107,7 +137,7 @@ def attributes(ds, species, site,
             ds.attrs[key] = values
     
     # Add calibration scale
-    if scale is not None:
+    if scale:
         ds.attrs["Calibration_scale"] = scale
     else:
         if species.upper() in scales.keys():
@@ -122,8 +152,8 @@ def attributes(ds, species, site,
     #############################################
 
     # Long name
-    if species.upper() in species_long.keys():
-        sp_long = "mole_fraction_of_" + species_long[species.upper()] + "_in_air"
+    if species.upper() in species_translator.keys():
+        sp_long = "mole_fraction_of_" + species_translator[species.upper()][1] + "_in_air"
     else:
         sp_long = "mole_fraction_of_" + species_out + "_in_air"
     
@@ -147,8 +177,8 @@ def attributes(ds, species, site,
                         ds[key].attrs["units"] = unit_interpret[units]
                     else:
                         ds[key].attrs["units"] = unit_interpret["else"]
-            
-            ancillary_variables += " " + key
+            if key != species_out:
+                ancillary_variables += " " + key
 
     ds[species_out].attrs["ancilliary_variables"] = ancillary_variables.strip()
 
@@ -288,13 +318,13 @@ def icos(site, network = "ICOS"):
         
         # Sort out attributes
         global_attributes = params_icos[site.upper()]["global_attributes"]
-        global_attributes["inlet_height_magl"] = float(inlet[:-1])
+        global_attributes["inlet_height_magl"] = float(params_icos[site]["inlet_rename"][inlet][:-1])
 
         ds = attributes(ds,
                         species.upper(),
                         site.upper(),
                         global_attributes = global_attributes,
-                        integration_period = "1 minute")
+                        sampling_period = "1 minute")
 
         # Write file
         nc_filename = output_filename(out_directory,
@@ -520,7 +550,7 @@ def gc(site, instrument, network):
                                    global_attributes = global_attributes,
                                    units = units[sp],
                                    scale = scale[sp],
-                                   integration_period = params["GC"]["integration_period"][instrument])
+                                   sampling_period = params["GC"]["sampling_period"][instrument])
     
                 # Get instrument name for output
                 if sp.upper() in params["GC"]["instruments_out"][instrument]:
@@ -632,7 +662,7 @@ def crds(site, network):
             ds_sp = attributes(ds_sp, sp, site.upper(),
                                global_attributes = global_attributes,
                                scale = scales[sp],
-                               integration_period="1 minute")
+                               sampling_period="1 minute")
             
             # Write file
             nc_filename = output_filename(params["CRDS"]["directory_output"],
@@ -645,6 +675,7 @@ def crds(site, network):
     
             ds_sp.to_netcdf(nc_filename)
             print("Written " + nc_filename)
+
 
 
 if __name__ == "__main__":
@@ -680,6 +711,13 @@ if __name__ == "__main__":
     gc("RPB", "GCMD", "AGAGE")
     gc("SMO", "GCMD", "AGAGE")
     gc("THD", "GCMD", "AGAGE")
+
+    # AGAGE GCMS data    
+    gc("CGO", "GCMS", "AGAGE")
+    gc("MHD", "GCMS", "AGAGE")
+    gc("RPB", "GCMS", "AGAGE")
+    gc("SMO", "GCMS", "AGAGE")
+    gc("THD", "GCMS", "AGAGE")
 
     # AGAGE Medusa
     gc("MHD", "medusa", "AGAGE")
