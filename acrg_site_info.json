@@ -39,6 +39,16 @@
         "longitude": -64.8788,
         "network": "NOAA"
     },
+    "BRA" : {
+        "alt": [],
+        "long_name" : "Bratt's Lake, Saskatchewan, Canada",
+        "height": ["35m"],
+        "height_station_masl": 595.0,
+        "height_name": ["35magl"],
+        "latitude": 50.201631,
+        "longitude": -104.711259,
+        "network": "EC"
+    },
     "BRW" : {
         "alt": [],
         "long_name" : "Barrow, Alaska",
@@ -340,12 +350,12 @@
     "LLB" : {
         "alt": [],
         "long_name" : "Lac La Biche, Alberta, Canada",
-        "height": ["48m"],
+        "height": ["48m", "50m"],
         "height_station_masl": 540.0,
-        "height_name": ["48magl"],
-        "latitude": 54.95,
-        "longitude": -112.45,
-        "network": "NOAA"
+        "height_name": ["48magl", "50magl"],
+        "latitude": 54.953809,
+        "longitude": -112.466649,
+        "network": ["NOAA", "EC"]
     },
     "MHD" : {
         "alt" : ["MH"],
