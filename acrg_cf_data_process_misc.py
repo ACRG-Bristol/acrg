@@ -225,6 +225,8 @@ def cbw():
     
     fnames = sorted(glob.glob(join(params["directory"],
                                    "*" + site.upper() + "*.csv")))
+    print("Reading...")
+    print(fnames)
 
     rename_dict = {"CH4_std_20m": "STD_CH4_20m",
                    "CH4_std_60m": "STD_CH4_60m",
@@ -241,7 +243,11 @@ def cbw():
         dfs.append(dff)
 
     # Combine
-    df = dfs[0].combine_first(dfs[1])
+    if len(dfs) > 1:
+        df = dfs[0].combine_first(dfs[1])
+    else:
+        df = dfs[0].copy()
+        del dfs
     
     # remove duplicates
     df.index.name = "index"

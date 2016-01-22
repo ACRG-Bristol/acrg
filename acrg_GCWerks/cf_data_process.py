@@ -662,7 +662,7 @@ def crds(site, network):
             ds_sp = attributes(ds_sp, sp, site.upper(),
                                global_attributes = global_attributes,
                                scale = scales[sp],
-                               sampling_period="1 minute")
+                               sampling_period=60)
             
             # Write file
             nc_filename = output_filename(params["CRDS"]["directory_output"],
@@ -700,12 +700,11 @@ if __name__ == "__main__":
     # DECC GC data    
     gc("TAC", "GCMD", "DECC")
     gc("RGL", "GCMD", "DECC")
-    gc("BSD", "GCMD", "DECC")
 
     # DECC Medusa
     gc("TAC", "medusa", "DECC")
 
-    # AGAGE GC data    
+    # AGAGE GC data
     gc("CGO", "GCMD", "AGAGE")
     gc("MHD", "GCMD", "AGAGE")
     gc("RPB", "GCMD", "AGAGE")
