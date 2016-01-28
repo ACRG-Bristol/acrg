@@ -1152,6 +1152,8 @@ def plot(fp_data, date, out_filename=None,
     map_resolution: resolution of map
     map_background: choice of "countryborders", "shadedrelief"
     colormap: color map to use for contours
+    tolerance: Xray doc "Maximum distance between original and new
+        labels for inexact matches."
     """
     
     def fp_nearest(fp, tolerance = None):
@@ -1248,7 +1250,7 @@ def plot(fp_data, date, out_filename=None,
                     
             else:
 
-                fp_data_ti = fp_nearest(fp_data[site], tolerance = tol)
+                fp_data_ti = fp_nearest(fp_data[site], tolerance = tolerance)
                 data += np.nan_to_num(fp_data_ti.fp.values.squeeze())
                 # Store release location to overplot later
                 if "release_lat" in dir(fp_data_ti):
@@ -1257,7 +1259,7 @@ def plot(fp_data, date, out_filename=None,
 
         else:
 
-            fp_data_ti = fp_nearest(fp_data[site], tolerance = tol)
+            fp_data_ti = fp_nearest(fp_data[site], tolerance = tolerance)
             data += np.nan_to_num(fp_data_ti.fp.values.squeeze())
 
             # Store release location to overplot later
