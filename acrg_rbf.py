@@ -67,7 +67,7 @@ def fibonacci(N, plot = None):
     phi = np.arctan2(y,x) 
     lats = 90.-r2d*theta 
     lons = r2d*phi 
-    
+        
     if plot != None:
         map = Basemap(projection ='ortho',lat_0=0,lon_0=-90) 
         map.drawcoastlines() 
@@ -217,8 +217,8 @@ class rbf_wiE_optimise():
         from scipy import optimize
         
         # Initalise the epsilon value to the inital guess
-        out = optimize.minimize(J_fn_E, [E_0, wi], args = (xi, ci, y), method='Nelder-Mead')
-        
+        #out = optimize.minimize(J_fn_E, [E_0, wi], args = (xi, ci, y), method='Nelder-Mead')
+        out = optimize.minimize(J_fn_E, [E_0, wi], args = (xi, ci, y), method='Powell')
             
         self.out = out
 
@@ -334,7 +334,6 @@ class rbf_gradientdescent():
 #    - fix the number of centres then evenly distribute around the globe
 #    - calculate a first estimate using an inital fixed RBF width (Epsilon) for each centre
 #    - calculate an inital first guess for the weights
-# lats/lons converted to radial coords
 # It then alternates between:
 #   1) using gradient descent to calculate the best multiple epsilon values for the given wieghts
 #   2) recalculates the weights bases on the new epsilon values
@@ -358,11 +357,11 @@ class rbf_4():
         
         yi = y - min(y)         
         
-        reload(haversine)        
+
         
         # Want to start with E = average distance between centres
         # Calculate the distance between the each centre and the rest
-        for i in np.arange(36):
+        for i in np.arange(nocentres):
             temp = np.zeros(len(ci[0,:]))
             
             
@@ -379,12 +378,15 @@ class rbf_4():
         epsilon_i = np.zeros(nocentres)
         epsilon_i[:] = (1/np.mean(dist))**2
         
+        wi = np.zeros(nocentres)
+        wi[:] = 1        
         
         i = 0
         
         J_w = 0
         J_E = 2
              
+        J_out = np.zeros(Iterations)
         
         while abs(J_w - J_E) >= 1 and i <= Iterations-1:
 
@@ -393,15 +395,9 @@ class rbf_4():
             # where wi are the weights of each phi RBF
             
             # Calculate phi(xi,ci) 
-            rbf_i = calc_multi_rbf(xi, ci, epsilon=epsilon_i)
-            
-            #plot_surf(lon_gr, lat_gr, rbf_i.sum.reshape(len(lats), len(lons)))
-            
+            rbf_i = calc_multi_rbf(xi, ci, epsilon=epsilon_i, wi = wi)
             phii = rbf_i.phi
-            
-            #plt.plot(np.arange(13824), phii[0,:])            
-            #plt.show()
-            
+                        
             # we want to solve
             # wi = phii+ yi
             # where phii+ is the pusedoinverse of phii       
@@ -413,6 +409,8 @@ class rbf_4():
             # Calculate the fit       
             fit_w = np.dot(wi,phii) + min(y)
             
+            pdb.set_trace()
+
            
         
             # plot the input and the rbf out for for comparison
@@ -425,36 +423,26 @@ class rbf_4():
                 if i == 0:                    
                     plot_surf(lon_gr, lat_gr, output, title='Input', out_filename='Fits/RBF_4_input.png')
                 
-                plot_surf(lon_gr, lat_gr, fit_w.reshape(len(lats), len(lons)), title = 'Fit - Epsilon = ' + str(epsilon_tag), out_filename='Fits/RBF_4_fit_E_' + str(epsilon_tag) + '.png')
+                plot_surf(lon_gr, lat_gr, fit_w.reshape(len(lats), len(lons)), title = 'Fit_w - Epsilon = ' + str(epsilon_tag), out_filename='Fits/RBF_4_fit_E_' + str(epsilon_tag) + '.png')
         
-            #pdb.set_trace()
              
             J_w = np.mean((y - fit_w)**2)
             
-            B = copy(epsilon_i)            
+            
+            ei_in = copy(epsilon_i)            
             wi_in = copy(wi)            
-            
-            A = rbf_wiE_optimise(B, wi_in, xi, ci, yi)
-            
-            pdb.set_trace()
-            
-            """
-            pdb.set_trace()
-            
-            # Do the gradient descent fit for the Ei's    
-            GD = rbf_gradientdescent(epsilon_i, xi, ci, wi, yi, lats, lons, eta, Iterations, \
-                cost_bound = cost_bound, diff_bound = diff_bound, plot = plot, quiet = None)
     
-            pdb.set_trace()    
+            # optimise for both individual epsilon values and weights
+            A = rbf_wiE_optimise(ei_in, wi_in, xi, ci, yi)
+            
+            wi_out = A.out.x[nocentres:]
+            ei_out = A.out.x[:nocentres]
     
-            fit_GD = GD.fit + min(y)    
-    
-            J_E = np.mean((y - fit_GD)**2)
-        
-            epsilon_i = GD.E
+            
+
+            fit_iter = calc_multi_rbf(xi, ci, epsilon=ei_out, wi=wi_out).sum +min(y)
             
             
-        
             # plot the input and the rbf out for for comparison
             if plot != None:
                 if isinstance(epsilon, np.ndarray):
@@ -462,20 +450,32 @@ class rbf_4():
                 else:
                     epsilon_tag =copy(epsilon)
                 
-                if i == 0:                    
-                    plot_surf(lon_gr, lat_gr, output, title='Input', out_filename='Fits/RBF_4_input.png')
-                
-                plot_surf(lon_gr, lat_gr, fit.reshape(len(lats), len(lons)), title = 'Fit - Epsilon = ' + str(epsilon_tag), out_filename='Fits/RBF_4_fit_E_' + str(epsilon_tag) + '.png')
-                    
+                  
+                plot_surf(lon_gr, lat_gr, fit_iter.reshape(len(lats), len(lons)), title = 'Fit_iter - Epsilon = ' + str(epsilon_tag), out_filename='Fits/RBF_4_fit_E_' + str(epsilon_tag) + '.png')
             
+            pdb.set_trace()            
+            
+            J_E = np.mean((y - fit_iter)**2)
+        
+            epsilon_i = copy(ei_out)
+            wi = copy(wi_out)
+            
+            J_out[i] = J_E
+              
+            #pdb.set_trace()
             
             i = i + 1
-            
+                
 
 
-        self.GD = GD
-        """
-        self.A
+        self.lon_gr = lon_gr
+        self.lat_gr = lat_gr
+        self.A = A
+        self.y = y
+        self.J_out = J_out
+        self.wi = wi_out
+        self.ei = ei_out
+        self.fit = fit_iter.reshape(len(lats), len(lons))
 
 # Third case
 # Fix the number of centres then evenly distribute around the globe
@@ -533,6 +533,9 @@ class rbf_3():
         # Calculate the fit and add back the minimum concentration                
         fit = np.dot(wi,phii) + min_yi
     
+    
+        #pdb.set_trace()
+        
         # plot the input and the rbf out for for comparison
         if plot != None:
             #pdb.set_trace()
@@ -819,7 +822,7 @@ class calc_multi_rbf():
         self.phi = outarray
         self.r = out_r
         self.wi = wi
-        
+        self.epsilon = epsilon
 
 # x = the values
 # xi = the centre
@@ -845,7 +848,8 @@ class calc_rbf():
                    
             
             if len(ci) == 2 :
-                r = (haversine.fn_multipledistances(ci, xi[0,:], xi[1,:], temp))**2
+                index = np.arange(len(xi[0,:]))
+                r = (haversine.fn_multipledistances(ci, xi[0,:], xi[1,:], temp, index))**2
             else:
                 r = calc_r(xi, ci)
                 
@@ -887,6 +891,12 @@ class calc_rbf():
         self.r = r
 
 # The RBF function types
+def fn_gaussian(r, epsilon):
+    
+    out = np.exp(-(r*epsilon)**2)
+    
+    return out
+    
 def fn_multiquadric(r,epsilon):
     
     out = np.sqrt((r/epsilon)**2 + 1)
@@ -896,12 +906,6 @@ def fn_multiquadric(r,epsilon):
 def fn_inverse(r, epsilon):
     
     out = 1.0/np.sqrt((r/epsilon)**2 + 1)
-    
-    return out
-    
-def fn_gaussian(r, epsilon):
-    
-    out = np.exp(-(r*epsilon)**2)
     
     return out
     
@@ -932,18 +936,24 @@ def fn_thin_plate(r, epsilon):
 
 
 # Do a quick surface plot
-def plot_surf(x, y, z, q = None, scale =1, out_filename = None, title = None):
+def plot_surf(x, y, z, q = None, scale =1, out_filename = None, title = None, zlim = None):
     
     plt.rcParams["figure.figsize"] = [6,4]   
     
     fig = plt.figure()
     ax = fig.gca(projection='3d')
     
-     
+
+    
     
     if q is None:
-        surf = ax.plot_surface(x, y, z*scale, rstride=1, cstride=1, cmap=cm.gist_rainbow, \
+        if zlim is not None:
+            surf = ax.plot_surface(x, y, z*scale, rstride=1, cstride=1, cmap=cm.gist_rainbow, \
+            linewidth=0, antialiased=False, vmin = zlim[0], vmax=zlim[1])
+        else:
+            surf = ax.plot_surface(x, y, z*scale, rstride=1, cstride=1, cmap=cm.gist_rainbow, \
             linewidth=0, antialiased=False)
+        
         fig.colorbar(surf, shrink=0.5, aspect=5)
          
         ax.zaxis.set_major_locator(LinearLocator(10))
@@ -966,7 +976,9 @@ def plot_surf(x, y, z, q = None, scale =1, out_filename = None, title = None):
     if title is not None:
         ax.set_title(title, fontsize=16)
 
-    
+        
+    if zlim is not None:
+        ax.set_zlim3d(zlim)
 
     plt.show()
     
