@@ -8,3 +8,5 @@ Created on Fri Nov 21 10:03:36 2014
 from areagrid import areagrid
 import haversine
 from hybridcoords import hybridcoords
+import coarsen
+import regrid

@@ -24,6 +24,7 @@ import getpass
 import acrg_time
 import re
 import datetime as dt
+#import iris
 
 
 #Read in EDGAR data
@@ -37,10 +38,17 @@ class EDGARread:
         lat = f.variables['lat'][:]
     
         #Get flux of species
-        variables = f.variables.keys()
-        species = str(variables[2])
+#        variables = f.variables.keys()
+#        species = str(variables[2])
+        variables = [str(i) for i in f.variables.keys()]
+        for i in variables:
+            while i not in ['lat','lon','time']:
+                species = i
+                if species is not None:
+                    break
         flux = f.variables[species][:,:]
         units = f.variables[species].units
+
         f.close()
 
         self.lon = lon
@@ -72,7 +80,9 @@ def find_EDGAR_year(filename_of_EDGAR_emissions):
     return date, year
     
 #Regridding EDGAR data
-def regrid(filename_of_EDGAR_emissions, filename_of_footprint, input_species_name = None):
+def regrid(filename_of_EDGAR_emissions,
+           filename_of_footprint,
+           input_species_name = None):
 
 #   Read in EDGAR grid
     read_ed = EDGARread(filename_of_EDGAR_emissions)
@@ -103,9 +113,9 @@ def regrid(filename_of_EDGAR_emissions, filename_of_footprint, input_species_nam
     interp1 = sci.RegularGridInterpolator(coord_ed, flux_ed, method = 'linear')
 
 #   Read in footprint grid
-    read_fp = name.read(filename_of_footprint)
-    lon_fp = read_fp.lon
-    lat_fp = read_fp.lat
+    read_fp = name.footprints(filename_of_footprint)
+    lon_fp = read_fp.lon.values
+    lat_fp = read_fp.lat.values
     
     X, Y = np.meshgrid(lat_fp, lon_fp)
     
@@ -116,6 +126,17 @@ def regrid(filename_of_EDGAR_emissions, filename_of_footprint, input_species_nam
 
     return lat_fp, lon_fp, flux.T, species, units
   
+#def iris_regrid(filename_of_EDGAR_emissions, filename_of_footprint):
+#    emissions = iris.load_cubes(filename_of_EDGAR_emissions)
+#    footprint = iris.load_cubes(filename_of_footprint)
+##    Linear scheme
+##    regridded_emi = emissions.regrid(footprint, iris.analysis.Linear())
+##    Area-weighted scheme
+#    scheme = iris.analysis.AreaWeighted(mdtol=0.5)
+#    regridded_emi = emissions.regrid(footprint, scheme)
+#    
+#    return regridded_emi
+
 # Find the correct unit converter to give flux in mol/m2/s
 def unit_converter(current_units):
     if type(current_units) is not str:
@@ -133,12 +154,21 @@ def kg2mol(kgflux, species_in):
         species_info=json.load(f)
         
     species = agage.synonyms(species_in, species_info)
-    
     mol_mass = float(species_info[species]['mol_mass'])
-    
     molflux = kgflux*(1/(mol_mass*10**-3))
     
     return molflux
+
+def mol2kg(molflux, species_in):
+    acrg_path=os.path.split(os.path.realpath(__file__))
+    with open(acrg_path[0] + "/acrg_species_info.json") as f:
+        species_info=json.load(f)
+        
+    species = agage.synonyms(species_in, species_info)
+    mol_mass = float(species_info[species]['mol_mass'])
+    kgflux = molflux*(mol_mass*10**-3)
+    
+    return kgflux
 
 #Write the new grid to a .nc file
 def write(lat, lon, flux, species, domain, year, EDGAR_filename = None, footprint_filename = None):
@@ -206,15 +236,20 @@ def write(lat, lon, flux, species, domain, year, EDGAR_filename = None, footprin
     #Mole fraction variable
     ncflux=f.createVariable('flux', \
         'd', ('lat', 'lon', 'time'))
-    ncflux[:,:]=flux
+    ncflux[:,:,:]=flux
     ncflux.units='mol/m2/s'
 
     f.close() 
 
 #The function that does everything
-def regrid_emissions(filename_of_EDGAR_emissions, filename_of_footprint, input_species_name = None, output_species_name = None):
+def regrid_emissions(filename_of_EDGAR_emissions,
+                     filename_of_footprint,
+                     input_species_name = None,
+                     output_species_name = None):
     
-    lat, lon, flux, species, units = regrid(filename_of_EDGAR_emissions, filename_of_footprint, input_species_name)
+    lat, lon, flux, species, units = regrid(filename_of_EDGAR_emissions,
+                                            filename_of_footprint,
+                                            input_species_name)
     converter = unit_converter(units)
     molflux = converter(flux, species)
     domain = find_domain(filename_of_footprint)
@@ -225,7 +260,9 @@ def regrid_emissions(filename_of_EDGAR_emissions, filename_of_footprint, input_s
     elif output_species_name is not None:
         output_spec = output_species_name
         
-    write(lat, lon, molflux, output_spec, domain, year, EDGAR_filename = filename_of_EDGAR_emissions, footprint_filename = filename_of_footprint)
+    write(lat, lon, molflux, output_spec, domain, year,
+          EDGAR_filename = filename_of_EDGAR_emissions,
+          footprint_filename = filename_of_footprint)
 
 
 

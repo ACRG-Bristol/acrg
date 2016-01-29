@@ -48,7 +48,7 @@
         "print_string": "C$_8$F$_18$", 
         "units": "ppt"
     }, 
-    "CCl4": {"alt": [],
+    "CCl4": {"alt": ["carbon_tetrachloride"],
         "group": "Chloromethanes", 
         "long_name": "Carbon tetrachloride", 
         "mol_mass": "153.8236",
@@ -153,7 +153,7 @@
         "print_string": "CH$_4$", 
         "units": "ppb"
     }, 
-    "CH4C13": {"alt": [],
+    "CH4C13": {"alt": ["d13ch4"],
         "group": "CH4", 
         "long_name": "Methane 13C", 
         "mol_mass": 17.0426, 
@@ -202,7 +202,7 @@
         "print_string": "Desflurane", 
         "units": "ppt"
     }, 
-    "H-1211": {"alt": ["H1211", "Halon-1211", "Halon 1211"],
+    "H-1211": {"alt": ["H1211", "Halon-1211", "Halon 1211", "halon1211"],
         "group": "Halons", 
         "long_name": "Halon-1211", 
         "mol_mass": "165.36", 
