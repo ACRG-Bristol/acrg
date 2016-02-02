@@ -7,8 +7,13 @@
     "GC": {
         "instruments": {
             "GCMD": "",
-            "GCMS": "gcms",
-            "medusa": "medusa"
+            "GCMS": "",
+            "medusa": ""
+        },
+        "instruments_suffix": {
+            "GCMD": ["", "-md"],
+            "GCMS": ["", "-gcms"],
+            "medusa": ["-medusa"]
         },
         "instruments_out": {
             "GCMD": {
@@ -73,10 +78,28 @@
         "GSN" : {
             "gcwerks_site_name": "gosan",
             "inlets": ["any"],
-            "inlet_label": ["10m"],
+            "inlet_label": {"any": "10m"},
             "global_attributes": {
                 "data_owner": "Sunyoung Park",
                 "data_owner_email": "sparky@kpu.ac.kr"
+            }
+        },
+        "JFJ" : {
+            "gcwerks_site_name": "jungfraujoch",
+            "inlets": ["air"],
+            "inlet_label": {"air": "10m"},
+            "global_attributes": {
+                "data_owner": "Stefan Reimann",
+                "data_owner_email": "stefan.reimann@empa.ch"
+            }
+        },
+        "MCI" : {
+            "gcwerks_site_name": "mtecimone",
+            "inlets": ["air"],
+            "inlet_label": {"air": "10m"},
+            "global_attributes": {
+                "data_owner": "Michela Maione",
+                "data_owner_email": "michela.maione@uniurb.it"
             }
         },
         "MHD" : {

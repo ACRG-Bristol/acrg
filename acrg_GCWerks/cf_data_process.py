@@ -56,9 +56,9 @@ scales = {"CO2": "NOAA-2007",
 # Keys are upper case
 species_translator = {"CO2": ["co2", "carbon_dioxide"],
                       "CH4": ["ch4", "methane"],
-                      "ETHANE": ["c2f6", "ethane"],
-                      "PROPANE": ["c3f8", "propane"],
-                      "C-PROPANE": ["cc3f8", "cpropane"],
+                      "ETHANE": ["c2h6", "ethane"],
+                      "PROPANE": ["c3h8", "propane"],
+                      "C-PROPANE": ["cc3h8", "cpropane"],
                       "BENZENE": ["c6h6", "benzene"],
                       "TOLUENE": ["c6h5ch3", "methylbenzene"],
                       "ETHENE": ["c2f4", "ethene"],
@@ -435,32 +435,26 @@ def gc(site, instrument, network):
 
     site_gcwerks = params["GC"][site]["gcwerks_site_name"]
     instrument_gcwerks = params["GC"]["instruments"][instrument]
-    if instrument_gcwerks != "":
-        instrument_gcwerks = "-" + instrument_gcwerks
     
     data_folder = params["GC"]["directory"][instrument]
 
-    # Search string
-    search_string = join(data_folder,
-                         site_gcwerks + \
-                         instrument_gcwerks + ".??.C")
-    # Search string with -md attached
-    search_string_md = join(data_folder,
-                            site_gcwerks + \
-                            instrument_gcwerks + "-md.??.C")
+    search_strings = []
+    for suffix in params["GC"]["instruments_suffix"][instrument]:
+        # Search string
+        search_string = join(data_folder,
+                             site_gcwerks + \
+                             instrument_gcwerks + \
+                             suffix + ".??.C")
+        search_strings.append(search_string)
 
-    # Search for data files
-    # First try to find MD file called site.YY.C
-    data_files = sorted(glob.glob(search_string))
-    if instrument == "GCMD":
-        if len(data_files) == 0:
-            # Else try to look for site-md.YY.C
-            data_files = sorted(glob.glob(search_string_md))
+        data_files = sorted(glob.glob(search_string))
+        if len(data_files) > 0:
+            break
     
     # Error if can't find files
     if len(data_files) == 0.:
-        print("ERROR: can't find any files: " + search_string + " or " + \
-              search_string_md)
+        print("ERROR: can't find any files: " + \
+              ",\r".join(search_strings))
         return None
 
     precision_files = [data_file[0:-2] + ".precisions.C" \
@@ -526,15 +520,22 @@ def gc(site, instrument, network):
                             sp + "_status_flag",
                             sp + "_integration_flag"]]
                 inlet_label = params["GC"][site.upper()]["inlet_label"][0]
-                global_attributes["inlet_height_magl"] = ", ".join(set(ds["Inlet"].values))
+                global_attributes["inlet_height_magl"] = \
+                                    ", ".join(set(ds["Inlet"].values))
                 
             else:
                 ds_sp = ds.where(ds.Inlet == inlet)[[sp,
                                                      sp + "_repeatability",
                                                      sp + "_status_flag",
                                                      sp + "_integration_flag"]]
-                global_attributes["inlet_height_magl"] = float(inlet[:-1])
+
+            # re-label inlet if required
+            if "inlet_label" in params["GC"][site].keys():
+                inlet_label = params["GC"][site]["inlet_label"][inlet]
+            else:
                 inlet_label = inlet
+
+            global_attributes["inlet_height_magl"] = float(inlet_label[:-1])
 
             # Drop NaNs
             ds_sp = ds_sp.dropna("time")
@@ -697,7 +698,7 @@ if __name__ == "__main__":
     crds("RGL", "DECC")
     crds("TAC", "DECC")
 
-    # DECC GC data    
+    # DECC GC data
     gc("TAC", "GCMD", "DECC")
     gc("RGL", "GCMD", "DECC")
 
@@ -717,6 +718,8 @@ if __name__ == "__main__":
     gc("RPB", "GCMS", "AGAGE")
     gc("SMO", "GCMS", "AGAGE")
     gc("THD", "GCMS", "AGAGE")
+    gc("JFJ", "GCMS", "AGAGE")
+    gc("MCI", "GCMS", "AGAGE")
 
     # AGAGE Medusa
     gc("MHD", "medusa", "AGAGE")
@@ -727,3 +730,5 @@ if __name__ == "__main__":
     gc("RPB", "medusa", "AGAGE")
     gc("SMO", "medusa", "AGAGE")
     gc("SIO", "medusa", "AGAGE")
+    gc("JFJ", "medusa", "AGAGE")
+    gc("MCI", "medusa", "AGAGE")
