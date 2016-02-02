@@ -118,7 +118,7 @@
     },
     "CGO" : {
         "alt": ["CG"],
-        "long_name" : "Cape Grim, Tazmania",
+        "long_name" : "Cape Grim, Tasmania",
         "height": ["70m"],
         "height_station_masl": 94.0,
         "height_name": ["70magl"],
