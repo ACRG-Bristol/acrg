@@ -529,7 +529,7 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
                                 'time' : (fp_and_data[site].coords['time'])})
             
             fp_and_data[site] = fp_and_data[site].merge(sub_fp)
-        elif basis_case in ('test', 'alcompare'):
+        elif basis_case in ('test', 'alcompare', 'sense'):
             sub_fp_temp = site_bf.fp.sel(lon=slice(min(site_bf.sub_lon),max(site_bf.sub_lon)), 
                                     lat=slice(min(site_bf.sub_lat),max(site_bf.sub_lat)))   
             sub_fp = xray.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
@@ -1241,11 +1241,7 @@ def plot(fp_data, date, out_filename=None,
     data[np.where(data <  log_range[0])]=np.nan
     
     #Plot footprint
-#    cs = map_data.m.pcolormesh(map_data.x, map_data.y,
-#                               np.ma.masked_where(np.isnan(data), data),
-#                               cmap = cmap, norm = norm)
-    clevels=np.arange(log_range[0],log_range[1], (log_range[1]-log_range[0])/10.)
-    cs = map_data.m.contourf(map_data.x, map_data.y,
+    cs = map_data.m.pcolormesh(map_data.x, map_data.y,
                                np.ma.masked_where(np.isnan(data), data),
                                cmap = cmap, norm = norm)
 
@@ -1266,9 +1262,9 @@ def plot(fp_data, date, out_filename=None,
 
     cb = map_data.m.colorbar(cs, location='bottom', pad="5%")
     
-    #tick_locator = ticker.MaxNLocator(nbins=10)
-    #cb.locator = tick_locator
-    #cb.update_ticks()
+    tick_locator = ticker.MaxNLocator(nbins=10)
+    cb.locator = tick_locator
+    cb.update_ticks()
  
     cb.set_label('log$_{10}$( (nmol/mol) / (mol/m$^2$/s) )', 
                  fontsize=15)
