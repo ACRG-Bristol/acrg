@@ -540,5 +540,15 @@
         "latitude": 43.93227,
         "longitude": -60.01256,
         "network": "EC"
+    },
+    "ZEP" : {
+        "alt": [],
+        "long_name" : "Zeppelin, Ny Alesund, Norway",
+        "height": ["10m"],
+        "height_station_masl": 474.0,
+        "height_name": ["16magl"],
+        "latitude": 78.925,
+        "longitude": 11.92222,
+        "network": "AGAGE"
     }
 }

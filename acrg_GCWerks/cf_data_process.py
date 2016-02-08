@@ -510,7 +510,7 @@ def gc(site, instrument, network):
         global_attributes = params["GC"][site.upper()]["global_attributes"]
         global_attributes["comment"] = params["GC"]["comment"][instrument]
 
-        for inlet in inlets:        
+        for inleti, inlet in enumerate(inlets):        
             
             print("Processing " + sp + ", " + inlet + "...")
             
@@ -531,7 +531,7 @@ def gc(site, instrument, network):
 
             # re-label inlet if required
             if "inlet_label" in params["GC"][site].keys():
-                inlet_label = params["GC"][site]["inlet_label"][inlet]
+                inlet_label = params["GC"][site]["inlet_label"][inleti]
             else:
                 inlet_label = inlet
 
@@ -720,7 +720,8 @@ if __name__ == "__main__":
     gc("THD", "GCMS", "AGAGE")
     gc("JFJ", "GCMS", "AGAGE")
     gc("MCI", "GCMS", "AGAGE")
-
+    gc("ZEP", "GCMS", "AGAGE")
+    
     # AGAGE Medusa
     gc("MHD", "medusa", "AGAGE")
     gc("CGO", "medusa", "AGAGE")
@@ -732,3 +733,5 @@ if __name__ == "__main__":
     gc("SIO", "medusa", "AGAGE")
     gc("JFJ", "medusa", "AGAGE")
     gc("MCI", "medusa", "AGAGE")
+    gc("ZEP", "medusa", "AGAGE")
+    

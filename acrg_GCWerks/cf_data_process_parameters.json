@@ -178,6 +178,15 @@
                 "data_owner": "Simon O'Doherty",
                 "data_owner_email": "s.odoherty@bristol.ac.uk"
             }
+        },
+        "ZEP" : {
+            "gcwerks_site_name": "zeppelin",
+            "inlets": ["air"],
+            "inlet_label": ["16m"],
+            "global_attributes": {
+                "data_owner": "Chris Lunder",
+                "data_owner_email": "chris.lunder@nilu.no"
+            }
         }
     },
     "CRDS": {
