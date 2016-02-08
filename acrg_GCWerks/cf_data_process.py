@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 from os.path import join, split
 from datetime import datetime as dt
+from datetime import timedelta as td
 import glob
 import xray
 import json
@@ -37,17 +38,42 @@ unit_interpret = {"ppm": "1e-6",
                  "ppt": "1e-12",
                  "else": "unknown"}
 
-# Calibration scales
+# Default calibration scales
 scales = {"CO2": "NOAA-2007",
           "CH4": "NOAA-2004",
           "N2O": "SIO-98",
           "CO": "Unknown"}
 
-# Species long-names for output
-species_long = {"CO2": "carbon_dioxide",
-                "CH4": "methane",
-                "N2O": "nitrous_oxide",
-                "CO": "carbon_monoxide"}
+## Species long-names for output
+#species_long = {"CO2": "carbon_dioxide",
+#                "CH4": "methane",
+#                "N2O": "nitrous_oxide",
+#                "CO": "carbon_monoxide"}
+
+# For species which need more than just a hyphen removing or changing to lower case
+# First element of list is the output variable name,
+# second is the long name for variable standard_name and long_name
+# Keys are upper case
+species_translator = {"CO2": ["co2", "carbon_dioxide"],
+                      "CH4": ["ch4", "methane"],
+                      "ETHANE": ["c2h6", "ethane"],
+                      "PROPANE": ["c3h8", "propane"],
+                      "C-PROPANE": ["cc3h8", "cpropane"],
+                      "BENZENE": ["c6h6", "benzene"],
+                      "TOLUENE": ["c6h5ch3", "methylbenzene"],
+                      "ETHENE": ["c2f4", "ethene"],
+                      "ETHYNE": ["c2f2", "ethyne"],
+                      "N2O": ["n2o", "nitrous_oxide"],
+                      "CO": ["co", "carbon_monoxide"],
+                      "H-1211": ["halon1211", "halon1211"],
+                      "H-1301": ["halon1301", "halon1301"],
+                      "H-2402": ["halon2402", "halon2402"],
+                      "PCE": ["c2cl4", "tetrachloroethylene"],
+                      "TCE": ["c2hcl3", "trichloroethylene"],
+                      "PFC-116": ["c2f6", "hexafluoroethane"],
+                      "PFC-218": ["c3f8", "octafluoropropane"],
+                      "PFC-318": ["c4f8", "cyclooctafluorobutane"]
+                      }
 
 # Translate header strings
 crds_header_string_interpret = {"C": "",
@@ -57,25 +83,37 @@ crds_header_string_interpret = {"C": "",
 def site_info_attributes(site):
     
     attributes = {}
-    attributes_list = ["longitude", "latitude", "long_name"]
+    attributes_list = {"longitude": "station_longitude",
+                       "latitude": "station_latitude",
+                       "long_name": "station_long_name",
+                       "height_station_masl": "station_height_masl"}
+                       
     if site in site_params.keys():
-        for at in attributes_list:
+        for at in attributes_list.keys():
             if at in site_params[site].keys():
-                attributes["site_" + at] = site_params[site][at]
+                attributes[attributes_list[at]] = site_params[site][at]
         return attributes
     else:
         return None
 
-def attributes(ds, species, site, global_attributes = None,
-               units = None, scale = None):
+def attributes(ds, species, site,
+               global_attributes = None,
+               units = None,
+               scale = None,
+               sampling_period = None):
     """
     Format attributes for netCDF file
     """
 
-    # Rename species to be lower case and without hyphens
-    species_out = species.lower().replace("-", "")
+    # Rename species
     for key in ds.keys():
         if species in key:
+            if species.upper() in species_translator.keys():
+                # Rename based on species_translator, if available
+                species_out = species_translator[species.upper()][0]
+            else:
+                # Rename species to be lower case and without hyphens
+                species_out = species.lower().replace("-", "")
             ds.rename({key: key.replace(species, species_out)}, inplace = True)
 
     # Global attributes
@@ -99,7 +137,7 @@ def attributes(ds, species, site, global_attributes = None,
             ds.attrs[key] = values
     
     # Add calibration scale
-    if scale is not None:
+    if scale:
         ds.attrs["Calibration_scale"] = scale
     else:
         if species.upper() in scales.keys():
@@ -114,8 +152,8 @@ def attributes(ds, species, site, global_attributes = None,
     #############################################
 
     # Long name
-    if species.upper() in species_long.keys():
-        sp_long = "mole_fraction_of_" + species_long[species.upper()] + "_in_air"
+    if species.upper() in species_translator.keys():
+        sp_long = "mole_fraction_of_" + species_translator[species.upper()][1] + "_in_air"
     else:
         sp_long = "mole_fraction_of_" + species_out + "_in_air"
     
@@ -139,8 +177,8 @@ def attributes(ds, species, site, global_attributes = None,
                         ds[key].attrs["units"] = unit_interpret[units]
                     else:
                         ds[key].attrs["units"] = unit_interpret["else"]
-            
-            ancillary_variables += " " + key
+            if key != species_out:
+                ancillary_variables += " " + key
 
     ds[species_out].attrs["ancilliary_variables"] = ancillary_variables.strip()
 
@@ -155,6 +193,21 @@ def attributes(ds, species, site, global_attributes = None,
                               "0 = unflagged, 1 = flagged",
                               "standard_name":
                               ds[species_out].attrs["standard_name"] + "_status_flag"}
+
+    # Add integration flag attributes
+    ##################################
+
+    flag_key = [key for key in ds.keys() if "_integration_flag" in key]
+    if len(flag_key) > 0:
+        flag_key = flag_key[0]
+        ds[flag_key] = ds[flag_key].astype(int)
+        ds[flag_key].attrs = {"flag_meaning":
+                              "0 = area, 1 = height",
+                              "standard_name":
+                              ds[species_out].attrs["standard_name"] + "_integration_flag",
+                              "comment":
+                              "GC peak integration method (by height or by area). " + 
+                              "Does not indicate data quality"}
     
     # Set time encoding
     #########################################
@@ -162,7 +215,13 @@ def attributes(ds, species, site, global_attributes = None,
     first_year = str(ds.time.to_pandas().index.to_pydatetime()[0].year)
     ds.time.encoding = {"units": "seconds since " + \
                         first_year + "-01-01 00:00:00"}
-        
+    ds.time.attrs["label"] = "left"
+    ds.time.attrs["comment"] = "Time stamp corresponds to beginning of sampling period. " + \
+                               "Time since midnight UTC of reference date. " + \
+                               "Note that sampling periods are approximate."
+    if sampling_period:
+        ds.time.attrs["sampling_period_seconds"] = sampling_period
+    
     return ds
 
 def output_filename(output_directory,
@@ -181,6 +240,7 @@ def output_filename(output_directory,
                 year + "0101_" + \
                 species + "-" + \
                 inlet + ".nc")
+                
 
 # ICOS
 ########################################################
@@ -258,10 +318,13 @@ def icos(site, network = "ICOS"):
         
         # Sort out attributes
         global_attributes = params_icos[site.upper()]["global_attributes"]
+        global_attributes["inlet_height_magl"] = float(params_icos[site]["inlet_rename"][inlet][:-1])
+
         ds = attributes(ds,
                         species.upper(),
                         site.upper(),
-                        global_attributes = global_attributes)
+                        global_attributes = global_attributes,
+                        sampling_period = "1 minute")
 
         # Write file
         nc_filename = output_filename(out_directory,
@@ -321,10 +384,11 @@ def gc_data_read(dotC_file, scale = {}, units = {}):
                 if flags[1] == "-":
                     area_height_flag.append(0)  # Area
                 else:
-                    area_height_flag.append(0)  # Height
+                    area_height_flag.append(1)  # Height
 
             df = df.rename(columns = {key: df.keys()[i-1] + "_flag"})
             df[df.keys()[i-1] + "_status_flag"] = quality_flag
+            df[df.keys()[i-1] + "_integration_flag"] = area_height_flag
             scale[df.keys()[i-1]] = header[i-1][0]
             units[df.keys()[i-1]] = header[i-1][1]
             species.append(df.keys()[i-1])
@@ -371,32 +435,26 @@ def gc(site, instrument, network):
 
     site_gcwerks = params["GC"][site]["gcwerks_site_name"]
     instrument_gcwerks = params["GC"]["instruments"][instrument]
-    if instrument_gcwerks != "":
-        instrument_gcwerks = "-" + instrument_gcwerks
     
     data_folder = params["GC"]["directory"][instrument]
 
-    # Search string
-    search_string = join(data_folder,
-                         site_gcwerks + \
-                         instrument_gcwerks + ".??.C")
-    # Search string with -md attached
-    search_string_md = join(data_folder,
-                            site_gcwerks + \
-                            instrument_gcwerks + "-md.??.C")
+    search_strings = []
+    for suffix in params["GC"]["instruments_suffix"][instrument]:
+        # Search string
+        search_string = join(data_folder,
+                             site_gcwerks + \
+                             instrument_gcwerks + \
+                             suffix + ".??.C")
+        search_strings.append(search_string)
 
-    # Search for data files
-    # First try to find MD file called site.YY.C
-    data_files = sorted(glob.glob(search_string))
-    if instrument == "GCMD":
-        if len(data_files) == 0:
-            # Else try to look for site-md.YY.C
-            data_files = sorted(glob.glob(search_string_md))
+        data_files = sorted(glob.glob(search_string))
+        if len(data_files) > 0:
+            break
     
     # Error if can't find files
     if len(data_files) == 0.:
-        print("ERROR: can't find any files: " + search_string + " or " + \
-              search_string_md)
+        print("ERROR: can't find any files: " + \
+              ",\r".join(search_strings))
         return None
 
     precision_files = [data_file[0:-2] + ".precisions.C" \
@@ -430,25 +488,28 @@ def gc(site, instrument, network):
     # Concatenate
     dfs = pd.concat(dfs).sort_index()
     
+    # Apply timestamp offset so that timestamp reflects start of sampling
+    time = dfs.index.values
+    time_offset = np.timedelta64(td(seconds = params["GC"]["timestamp_correct_seconds"][instrument]))
+    time = [t + time_offset for t in time]
+    dfs.index = time
+
     # Label time index
     dfs.index.name = "time"
 
     # Convert to xray dataset
     ds = xray.Dataset.from_dataframe(dfs)
-
+    
     # Get species from scale dictionary
     species = scale.keys()
     
-#    # Get inlets
-#    inlets = set(ds["Inlet"].values)
-#    inlets = [inlet for inlet in inlets if inlet[-1] is "m"]
-
     inlets = params["GC"][site]["inlets"]
         
     for sp in species:
 
         global_attributes = params["GC"][site.upper()]["global_attributes"]
-        
+        global_attributes["comment"] = params["GC"]["comment"][instrument]
+
         for inlet in inlets:        
             
             print("Processing " + sp + ", " + inlet + "...")
@@ -456,16 +517,25 @@ def gc(site, instrument, network):
             if inlet == "any":
                 ds_sp = ds[[sp,
                             sp + "_repeatability",
-                            sp + "_status_flag"]]
+                            sp + "_status_flag",
+                            sp + "_integration_flag"]]
                 inlet_label = params["GC"][site.upper()]["inlet_label"][0]
-                global_attributes["inlets"] = ", ".join(set(ds["Inlet"].values))
+                global_attributes["inlet_height_magl"] = \
+                                    ", ".join(set(ds["Inlet"].values))
                 
             else:
                 ds_sp = ds.where(ds.Inlet == inlet)[[sp,
                                                      sp + "_repeatability",
-                                                     sp + "_status_flag"]]
-                global_attributes["inlets"] = inlet
+                                                     sp + "_status_flag",
+                                                     sp + "_integration_flag"]]
+
+            # re-label inlet if required
+            if "inlet_label" in params["GC"][site].keys():
+                inlet_label = params["GC"][site]["inlet_label"][inlet]
+            else:
                 inlet_label = inlet
+
+            global_attributes["inlet_height_magl"] = float(inlet_label[:-1])
 
             # Drop NaNs
             ds_sp = ds_sp.dropna("time")
@@ -480,14 +550,15 @@ def gc(site, instrument, network):
                 ds_sp = attributes(ds_sp, sp, site.upper(),
                                    global_attributes = global_attributes,
                                    units = units[sp],
-                                   scale = scale[sp])
+                                   scale = scale[sp],
+                                   sampling_period = params["GC"]["sampling_period"][instrument])
     
                 # Get instrument name for output
                 if sp.upper() in params["GC"]["instruments_out"][instrument]:
                     instrument_out = params["GC"]["instruments_out"][instrument][sp]
                 else:
                     instrument_out = params["GC"]["instruments_out"][instrument]["else"]
-    
+
                 # Write file
                 nc_filename = output_filename(params["GC"]["directory_output"],
                                               network,
@@ -580,14 +651,19 @@ def crds(site, network):
         for sp in species:
             
             # Species-specific dataset
-            ds_sp = ds[[sp, sp + "_variability", sp + "_number_of_observations"]]
+            ds_sp = ds[[sp,
+                        sp + "_variability",
+                        sp + "_number_of_observations"]]
             ds_sp.dropna("time")
             
             global_attributes = params_crds[site]["global_attributes"]
+            global_attributes["inlet_height_magl"] = float(inlet[0:-1])
+            global_attributes["comment"] = params_crds["comment"]
     
             ds_sp = attributes(ds_sp, sp, site.upper(),
                                global_attributes = global_attributes,
-                               scale = scales[sp])
+                               scale = scales[sp],
+                               sampling_period=60)
             
             # Write file
             nc_filename = output_filename(params["CRDS"]["directory_output"],
@@ -600,6 +676,7 @@ def crds(site, network):
     
             ds_sp.to_netcdf(nc_filename)
             print("Written " + nc_filename)
+
 
 
 if __name__ == "__main__":
@@ -621,20 +698,28 @@ if __name__ == "__main__":
     crds("RGL", "DECC")
     crds("TAC", "DECC")
 
-    # DECC GC data    
+    # DECC GC data
     gc("TAC", "GCMD", "DECC")
     gc("RGL", "GCMD", "DECC")
-    gc("BSD", "GCMD", "DECC")
 
     # DECC Medusa
     gc("TAC", "medusa", "DECC")
 
-    # AGAGE GC data    
+    # AGAGE GC data
     gc("CGO", "GCMD", "AGAGE")
     gc("MHD", "GCMD", "AGAGE")
     gc("RPB", "GCMD", "AGAGE")
     gc("SMO", "GCMD", "AGAGE")
     gc("THD", "GCMD", "AGAGE")
+
+    # AGAGE GCMS data    
+    gc("CGO", "GCMS", "AGAGE")
+    gc("MHD", "GCMS", "AGAGE")
+    gc("RPB", "GCMS", "AGAGE")
+    gc("SMO", "GCMS", "AGAGE")
+    gc("THD", "GCMS", "AGAGE")
+    gc("JFJ", "GCMS", "AGAGE")
+    gc("MCI", "GCMS", "AGAGE")
 
     # AGAGE Medusa
     gc("MHD", "medusa", "AGAGE")
@@ -645,5 +730,5 @@ if __name__ == "__main__":
     gc("RPB", "medusa", "AGAGE")
     gc("SMO", "medusa", "AGAGE")
     gc("SIO", "medusa", "AGAGE")
-    
-    
+    gc("JFJ", "medusa", "AGAGE")
+    gc("MCI", "medusa", "AGAGE")

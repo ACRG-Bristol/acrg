@@ -316,7 +316,8 @@ def timeseries_boundary_conditions(ds):
 def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
                           calc_timeseries = True, calc_bc = True,
                           average = None, site_modifier = {}, height = None,
-                          full_corr = False, emissions_name = None):
+                          full_corr = False, emissions_name = None, 
+                          perturbed=False, fp_dir_pert=None, pert_year=None, pert_month=None):
     """
     Output a dictionary of xray footprint datasets, that correspond to a given
     dictionary of Pandas dataframes, containing mole fraction time series.
@@ -398,7 +399,20 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
             height_site = height
         
         # Get footprints
-        site_fp = footprints(site_modifier_fp, start = start, end = end,
+        if perturbed:
+            site_modifier_fp = fp_dir_pert + str(site) + '-' + str(height_site) + 'magl_EUROPE_' + str(pert_year) + str(pert_month) + '.nc'
+            
+            site_fp = footprints(site_modifier_fp, start = start, end = end,
+                             domain = domain,
+                             species = [species if calc_timeseries == True or \
+                                         calc_bc == True \
+                                         else None][0], \
+                             height = height_site,
+                             emissions_name = [emissions_name if calc_timeseries == True \
+                                         else None][0])
+
+        else:
+            site_fp = footprints(site_modifier_fp, start = start, end = end,
                              domain = domain,
                              species = [species if calc_timeseries == True or \
                                          calc_bc == True \
@@ -727,6 +741,10 @@ def filtering(datasets_in, filters, full_corr=False):
     def daily_median(dataset, full_corr=False):
         # Calculate daily median
         return dataset.resample("1D", "time", how = "median")
+        
+    def six_hr_mean(dataset, full_corr=False):
+        # Calculate daily median
+        return dataset.resample("6H", "time", how = "mean")
     
     def daytime(dataset, full_corr=False):
         # Subset during daytime hours
@@ -1111,7 +1129,8 @@ def plot(fp_data, date, out_filename=None,
          map_background = "countryborders",
          colormap = plt.cm.YlGnBu,
          tolerance = None,
-         interpolate = False):
+         interpolate = False,
+         dpi = None):
     """
     Plot footprint using pcolormesh.
     
@@ -1133,6 +1152,8 @@ def plot(fp_data, date, out_filename=None,
     map_resolution: resolution of map
     map_background: choice of "countryborders", "shadedrelief"
     colormap: color map to use for contours
+    tolerance: Xray doc "Maximum distance between original and new
+        labels for inexact matches."
     """
     
     def fp_nearest(fp, tolerance = None):
@@ -1178,7 +1199,7 @@ def plot(fp_data, date, out_filename=None,
                 "AIRCRAFT": "red",
                 "SATELLITE": "green"}
             
-    levels = MaxNLocator(nbins=100).tick_values(log_range[0], log_range[1])
+    levels = MaxNLocator(nbins=256).tick_values(log_range[0], log_range[1])
 
     norm = BoundaryNorm(levels,
                         ncolors=cmap.N,
@@ -1193,41 +1214,51 @@ def plot(fp_data, date, out_filename=None,
     data = np.zeros(np.shape(
             fp_data[sites[0]].fp[dict(time = [0])].values.squeeze()))
     
+    time = None
+
     # Generate plot data
     for site in sites:
     
-        time = fp_data[site].time.values.squeeze()
+        time = fp_data[site].time.values.squeeze().copy()
         
         if tolerance is None:
-            tolerance = np.median(time[1:] - time[:-1])
+            tol = np.median(time[1:] - time[:-1])
         
         if interpolate:
-            ti = bisect.bisect(time, date)
-            if (ti > 0) and (ti < len(time)):
-                dt = np.float(date - time[ti-1])/np.float(time[ti] - time[ti-1])
-                fp_ti_0 = fp_data[site][dict(time = ti-1)].fp.values.squeeze()
-                fp_ti_1 = fp_data[site][dict(time = ti)].fp.values.squeeze()
-                fp_ti = fp_ti_0 + (fp_ti_1 - fp_ti_0)*dt
-                
-                data += np.nan_to_num(fp_ti)
 
-                # Store release location to overplot later
-                if "release_lat" in fp_data[site].keys():
-                    lon_0 = fp_data[site][dict(time = ti-1)].release_lon.values.squeeze()
-                    lon_1 = fp_data[site][dict(time = ti)].release_lon.values.squeeze()                
-                    lat_0 = fp_data[site][dict(time = ti-1)].release_lat.values.squeeze()
-                    lat_1 = fp_data[site][dict(time = ti)].release_lat.values.squeeze()
-                    release_lon[site] = lon_0 + (lon_1 - lon_0)*dt
-                    release_lat[site] = lat_0 + (lat_1 - lat_0)*dt
+            ti = bisect.bisect(time, date)
+            
+            if (ti > 0) and (ti < len(time)):
+
+                if np.float(date - time[ti-1]) < np.float(tol):
+
+                    dt = np.float(date - time[ti-1])/np.float(time[ti] - time[ti-1])
+                    fp_ti_0 = fp_data[site][dict(time = ti-1)].fp.values.squeeze()
+                    fp_ti_1 = fp_data[site][dict(time = ti)].fp.values.squeeze()
+                    fp_ti = fp_ti_0 + (fp_ti_1 - fp_ti_0)*dt
+                    
+                    data += np.nan_to_num(fp_ti)
+    
+                    # Store release location to overplot later
+                    if "release_lat" in fp_data[site].keys():
+                        lon_0 = fp_data[site][dict(time = ti-1)].release_lon.values.squeeze()
+                        lon_1 = fp_data[site][dict(time = ti)].release_lon.values.squeeze()                
+                        lat_0 = fp_data[site][dict(time = ti-1)].release_lat.values.squeeze()
+                        lat_1 = fp_data[site][dict(time = ti)].release_lat.values.squeeze()
+                        release_lon[site] = lon_0 + (lon_1 - lon_0)*dt
+                        release_lat[site] = lat_0 + (lat_1 - lat_0)*dt
                     
             else:
+
                 fp_data_ti = fp_nearest(fp_data[site], tolerance = tolerance)
                 data += np.nan_to_num(fp_data_ti.fp.values.squeeze())
                 # Store release location to overplot later
                 if "release_lat" in dir(fp_data_ti):
                     release_lon[site] = fp_data_ti.release_lon.values
                     release_lat[site] = fp_data_ti.release_lat.values
+
         else:
+
             fp_data_ti = fp_nearest(fp_data[site], tolerance = tolerance)
             data += np.nan_to_num(fp_data_ti.fp.values.squeeze())
 
@@ -1271,7 +1302,7 @@ def plot(fp_data, date, out_filename=None,
     cb.ax.tick_params(labelsize=13) 
     
     if out_filename is not None:
-        plt.savefig(out_filename)
+        plt.savefig(out_filename, dpi = dpi)
         plt.close()
     else:
         plt.show()
@@ -1363,7 +1394,9 @@ def animate(fp_data, output_directory,
             overwrite=True, file_label = 'fp',
             framerate=10, delete_png=False,
             video_os="mac", ffmpeg_only = False,
-            plot_function = "plot", time_regular = "1H"):
+            plot_function = "plot", time_regular = "1H",
+            frame_limit = None,
+            dpi = 150):
     
     sites = [key for key in fp_data.keys() if key[0] != '.']
     
@@ -1375,27 +1408,31 @@ def animate(fp_data, output_directory,
         
         map_data = plot_map_setup(fp_data[sites[0]], 
                                   lon_range = lon_range, 
-                                  lat_range= lat_range, bottom_left = True)
+                                  lat_range = lat_range, bottom_left = True)
         
         # Find unique times
         times = time_unique(fp_data,
                             time_regular = time_regular)
+        
+        if frame_limit:
+            times = times[:min([frame_limit, len(times)])]
 
         # Start progress bar
-        pbar=ProgressBar(maxval=len(times)).start()
+        pbar = ProgressBar(maxval=len(times)).start()
 
         # Plot each timestep
         for ti, t in enumerate(times):
             
             fname=os.path.join(output_directory, 
                                file_label + '_' + str(ti).zfill(5) + '.png')
-                               
+            
             if len(glob.glob(fname)) == 0 or overwrite == True:
                 if plot_function == "plot":
                     plot(fp_data, t, out_filename = fname, 
                          lon_range = lon_range, lat_range= lat_range,
                          log_range = log_range, map_data = map_data,
-                         interpolate = True)
+                         interpolate = True,
+                         dpi = dpi)
                 elif plot_function == "plot3d":
                     plot3d(fp_data[sites[0]], t, out_filename = fname,
                            log_range = log_range)
