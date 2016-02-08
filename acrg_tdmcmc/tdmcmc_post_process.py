@@ -30,6 +30,9 @@ from acrg_time.convert import time2sec
 import os
 import acrg_agage as agage
 import json
+import matplotlib.mlab as mlab
+from matplotlib.patches import Polygon
+from matplotlib.colors import BoundaryNorm
 
 def append_netcdf(flux_mean, flux_percentile, country_mean, country_percentile, 
                  lon, lat, time, country, percentile, experiment, outfile):
@@ -175,7 +178,9 @@ def write_netcdf(flux_mean, flux_percentile, flux_prior, flux_ap_percentile,
     ncF.close()
     print "Written " + experiment + " to " + outfile
 
-def plot_scaling(data,lon,lat, out_filename=None, absolute=False, fignum=1):
+def plot_scaling(data,lon,lat, out_filename=None, absolute=False, 
+                 uncertainty=False, uncertainty_red=False,
+                 stations=None, fignum=None):
     
     """
     Plot 2d scaling map of posterior x
@@ -198,20 +203,80 @@ def plot_scaling(data,lon,lat, out_filename=None, absolute=False, fignum=1):
     m.drawcoastlines()
     m.drawcountries() 
     
-    if absolute == True:
-        clevels = np.arange(-3., 3., 0.1)
-    else:
-        clevels = np.arange(0., 2.0, 0.02)  
-     
-    cs = m.contourf(mapx,mapy,data, clevels, extend='both', cmap='RdBu_r')
-    cb = m.colorbar(cs, location='bottom', pad="5%")
+    def draw_screen_poly( lats, lons, m):
+            x, y = m( lons, lats )
+            xy = zip(x,y)
+            poly = Polygon( xy, facecolor='red', alpha=0.4 )
+            plt.gca().add_patch(poly)
+    
 
     if absolute == True:
+        
+        clevels = np.arange(-2., 2.1, 0.1)
+        #cs = m.contourf(mapx,mapy,data, clevels, extend='both', cmap='RdBu_r')
+        #cb = m.colorbar(cs, location='bottom', pad="5%")
+        cmap = plt.cm.RdBu_r
+        norm = BoundaryNorm(clevels,
+                        ncolors=cmap.N,
+                        clip=True)
+        cs = m.pcolormesh(mapx, mapy,
+                data,cmap =cmap, norm = norm)
+        cb = m.colorbar(cs, location='bottom', pad="5%", extend='both')
+        #cb.set_label('Difference from prior (Tg yr$^{-1}$)')
         cb.set_label('Posterior - prior (kg/m$^{2}$/s)x$10^{9}$')
-    else:
-        cb.set_label('Scaling of prior')    
 
-    #cb.set_label('Posterior - prior (kg/m$^{2}$/s)*1.e9')
+    elif uncertainty == True:
+        clevels = np.arange(0., 4.1, 0.1) 
+        cmap = plt.cm.YlGnBu
+        norm = BoundaryNorm(clevels,
+                        ncolors=cmap.N,
+                        clip=True)
+        cs = m.pcolormesh(mapx, mapy,
+                data,cmap =cmap, norm = norm)
+        cb = m.colorbar(cs, location='bottom', pad="5%", extend='both')
+        cb.set_label('Normalized uncertainty')
+    elif uncertainty_red == True:
+        clevels = np.arange(0., 1.05, 0.05)  
+        cmap = plt.cm.YlGnBu
+        norm = BoundaryNorm(clevels,
+                        ncolors=cmap.N,
+                        clip=True)
+        cs = m.pcolormesh(mapx, mapy,
+                data,cmap =cmap, norm = norm)
+        cb = m.colorbar(cs, location='bottom', pad="5%", extend='both')
+        cb.set_label('Normalized uncertainty reduction')
+    else:
+        clevels = np.arange(0., 2.05, 0.05)  
+        #cs = m.contourf(mapx,mapy,data, clevels, extend='both', cmap='RdBu_r')
+        #cb = m.colorbar(cs, location='bottom', pad="5%") 
+        cmap = plt.cm.RdBu_r
+        norm = BoundaryNorm(clevels,
+                        ncolors=cmap.N,
+                        clip=True)
+        cs = m.pcolormesh(mapx, mapy,
+                data,cmap =cmap, norm = norm)
+        cb = m.colorbar(cs, location='bottom', pad="5%", extend='both')
+        cb.set_label('Scaling of prior') 
+        
+        
+    if stations is not None:
+        
+        nsites=len(stations['sites'])
+        sites=stations['sites']
+        ilon=np.zeros((nsites),dtype=np.uint16)
+        ilat=np.zeros((nsites),dtype=np.uint16)
+        for si,site in enumerate(stations['sites']):
+            ilon[si]=stations[site+'_lon']
+            ilat[si]=stations[site+'_lat']
+        mlon,mlat=m(lon[ilon],lat[ilat])
+        site_loc=m.plot(mlon,mlat, linestyle='None',
+                        marker='o', color='black', markersize=12)
+        yoffset = 0.022*(m.ymax-m.ymin) 
+        xoffset = 0.012*(m.xmax-m.xmin)             
+        for ii in range(nsites):
+            plt.text(mlon[ii]+xoffset,
+                     mlat[ii]+yoffset,sites[ii], fontsize='24', color='black')   
+                     
     if out_filename is not None:
         plt.savefig(out_filename)
         plt.close()
@@ -227,13 +292,22 @@ def regions_histogram(k_it, out_filename=None, fignum=2):
     Use this as a check for whether kmax should be larger
     """
     bin_max=np.ceil((np.max(k_it)+50.)/40.)*40
-    bin_step = bin_max/20
+    #bin_max=100
+    #bin_step = bin_max/40
+    bin_step = 2
     bins=np.arange(0,bin_max,bin_step)    
     
     plt.figure(fignum)
     # the histogram of the data with histtype='step'
-    n, bins, patches = plt.hist(k_it, bins, normed=1, histtype='bar', rwidth=0.8)
-    plt.xlabel('# of regions')
+    n, bins, patches = plt.hist(k_it, bins, histtype='bar', color='mediumblue')
+    #n, bins, patches = plt.hist(k_it, bins, normed=1, histtype='bar', rwidth=0.8)
+    
+    # add a 'best fit' line
+#    y = mlab.normpdf( bins, np.mean(k_it), np.std(k_it))
+#    l = plt.plot(bins, y, 'r--', linewidth=1)
+    
+    plt.xlabel('Number of regions', fontsize=18)
+    plt.ylabel('Number of instances', fontsize=18)
     if out_filename is not None:
         plt.savefig(out_filename)
         plt.close()
@@ -319,98 +393,78 @@ def country_emissions(ds_mcmc, x_post_vit, x_ap_abs_v, countries, species,
         q_country_84[ci]=np.percentile(q_country_it[ci,:],84)*365.*24.*3600./1.e9*molmass/1000.
         
     country_index = np.reshape(country_v_new, (nlat,nlon))   
-    return q_country_mean, q_country_05, q_country_16, q_country_50, q_country_84, \
+    return q_country_it*365.*24.*3600./1.e9*molmass/1000.,\
+    q_country_mean, q_country_05, q_country_16, q_country_50, q_country_84, \
     q_country_95, q_country_ap, country_index
     
-def plot_timeseries(ds, species, out_filename=None, full_corr=False):
+def plot_timeseries(ds, species, out_filename=None, doplot=True):
     
     """
     Plot measurement timeseries of posterior and observed measurements
     Requires post_mcmc xray dataset
     For future: incorporate model & measurement uncertainty
+    Plots separate subplots for each of the measurement sites - hopefully!
     
     Specify an out_filename to write to disk
     """
-    
     x_it=ds.x_it.values
     h_v_all=ds.h_v_all.values
     x_post_vit = ds.x_post_vit.values
+    sigma_y_mean=np.mean(ds.sigma_y_it.values, axis=1)
+    sites=ds.sites.values
+    nsites=len(sites)
     nlon=len(ds.lon)
     nlat=len(ds.lat)
     Ngrid=nlon*nlat
     nIt=len(ds.nIt)
     nIC=ds.nIC.values
     nmeasure=len(ds.nmeasure)
-    
-    if full_corr == True:
-        y_obs = ds.z.values
-    else:
-        y_obs = ds.y.values
-    
+
     x_post_all_it=np.zeros((nIt,Ngrid+nIC))
     y_post_it = np.zeros((nIt,nmeasure))
     y_bg_it = np.zeros((nIt,nmeasure))
-       
     x_post_all_it[:,:nIC]=x_it[:,:nIC]
     x_post_all_it[:,nIC:]=x_post_vit
-    
-    if full_corr == True:
-        
-        nmeasuremax=len(ds.nmeasuremax)
-        y_post_it_temp = np.zeros((nIt,nmeasuremax))
-        y_bg_it_temp = np.zeros((nIt,nmeasuremax))
-        
-        for it in range(nIt):
-            y_post_it_temp[it,:]=np.dot(h_v_all,x_post_all_it[it,:])  
-            y_bg_it_temp[it,:]=np.dot(h_v_all[:,:nIC],x_it[it,:nIC])
-            
-            timeindex_nonzero = ds.timeindex_nonzero.values
-            y_post_it[it,:] = y_post_it_temp[it,timeindex_nonzero]
-            y_bg_it[it,:] = y_bg_it_temp[it,timeindex_nonzero]    
-    
-    else:
-        for it in range(nIt):
-            y_post_it[it,:]=np.dot(h_v_all,x_post_all_it[it,:])  
-            y_bg_it[it,:]=np.dot(h_v_all[:,:nIC],x_it[it,:nIC])
-        
-        
-    
+    for it in range(nIt):
+        y_post_it[it,:]=np.dot(h_v_all,x_post_all_it[it,:])  
+        y_bg_it[it,:]=np.dot(h_v_all[:,:nIC],x_it[it,:nIC])
     y_post_mean=np.mean(y_post_it, axis=0)
-    y_post_05 = np.percentile(y_post_it, 5, axis=0)  
-    y_post_50 = np.percentile(y_post_it, 50, axis=0)
-    y_post_95 = np.percentile(y_post_it, 95, axis=0)
-    
     y_bg_mean=np.mean(y_bg_it, axis=0)
-    y_bg_05 = np.percentile(y_bg_it, 5, axis=0)  
-    y_bg_50 = np.percentile(y_bg_it, 50, axis=0)
-    y_bg_95 = np.percentile(y_bg_it, 95, axis=0)
+    y_time=ds.y_time.values
+    y_site = ds.y_site.values
+    y_obs = ds.y.values
+    upper=y_post_mean+sigma_y_mean
+    lower=y_post_mean-sigma_y_mean
     
-    
-    fig,ax=plt.subplots()
-    #time = pandas.to_datetime(ds.time.values)
-    ax.fill_between(np.arange(nmeasure), y_post_05,y_post_95, alpha=0.2, 
-                facecolor='skyblue', edgecolor='skyblue')
-    ax.plot(np.arange(nmeasure),y_post_mean, color='blue', label='y posterior')
-    
-    ax.plot(np.arange(nmeasure),y_obs, color='green', label='y_obs')
-    
-    ax.set_ylabel('Mole Fraction (ppb)')
-    legend=ax.legend(loc='upper left')
-    # The frame is matplotlib.patches.Rectangle instance surrounding the legend.
-    frame = legend.get_frame()
-    frame.set_facecolor('0.90')
-    
-    # Set the fontsize
-    for label in legend.get_texts():
-        label.set_fontsize('small')
-    
-    for label in legend.get_lines():
-        label.set_linewidth(1.5)  # the legend line width
-    if out_filename is not None:
-        plt.savefig(out_filename)
-        plt.close()
-    else:
-        plt.show()
+    if doplot is True:
+        fig,ax=plt.subplots(nsites,sharex=True)
+        
+        for si,site in enumerate(sites):
+            wh_site = np.where(y_site == site)
+            ax[si].fill_between(y_time[wh_site[0]], upper[wh_site[0]],lower[wh_site[0]], alpha=0.6, 
+                        facecolor='lightskyblue', edgecolor='lightskyblue')
+            ax[si].plot(y_time[wh_site[0]],y_obs[wh_site[0]], 'ro', markersize=4, label='Observations')
+            ax[si].plot(y_time[wh_site[0]],y_post_mean[wh_site[0]], color='blue', label='Modelled observations')
+            ax[si].plot(y_time[wh_site[0]],y_bg_mean[wh_site[0]],color='black', 
+                     label='Modelled baseline')
+            start, end = ax[si].get_ylim()
+            ax[si].yaxis.set_ticks(np.arange(start, end+1, 100))
+            ax[si].set_ylabel(site)
+            if si == 0:
+                legend=ax[si].legend(loc='upper left')
+                for label in legend.get_texts():
+                    label.set_fontsize('small')
+            
+        fig.text(0.01,0.65,'CH$_{4}$ mole fraction (ppb)', rotation=90)
+        fig.autofmt_xdate()
+        
+        if out_filename is not None:
+            plt.savefig(out_filename)
+            plt.close()
+        else:
+            plt.show()
+        
+    return y_post_it, y_bg_it
 
 def open_ds(path):
     
@@ -434,14 +488,17 @@ def plot_nuclei_density(ds, out_filename=None, fignum=3):
     """
     ##############################
     # Density plot of nuclei locations
-    
     lon=ds.lon.values
     lat=ds.lat.values
     plat_it=ds.plat_it.values
     plon_it=ds.plon_it.values
     
-    xedges=np.arange(np.min(lon),np.max(lon)+2.,2.)
-    yedges=np.arange(np.min(lat),np.max(lat)+2.,2.)
+    dlon=lon[1]-lon[0]
+    dlat=lat[1]-lat[0]
+    nIt=len(plat_it[0,:])
+    
+    xedges=np.arange(np.min(lon),np.max(lon)+dlon,dlon)
+    yedges=np.arange(np.min(lat),np.max(lat)+dlat,dlat)
     lon_range = (np.min(xedges), xedges[-2])
     lat_range = (np.min(yedges), yedges[-2])
     plat_it_v=np.ravel(plat_it)
@@ -457,16 +514,51 @@ def plot_nuclei_density(ds, out_filename=None, fignum=3):
     lona, latb = np.meshgrid(xedges[:-1],yedges[:-1])
     mapa, mapb = m2(lona, latb)
     
-    fig = plt.figure(fignum,figsize=(8,8))
-    ax = fig.add_subplot(111)
+    fig = plt.figure(5,figsize=(8,8))
+    #ax = fig.add_subplot(111)
     
     m2.drawcoastlines()
     m2.drawcountries() 
     
-    hlevels=np.arange(np.min(H), np.max(H), (np.max(H)-np.min(H))/20) 
+    hlevels=np.arange(0, nIt/4, nIt/20/4) 
     
-    ds=m2.contourf(mapa,mapb,H, hlevels)
+    ds=m2.contourf(mapa,mapb,H, hlevels, extend='both', cmap='YlGnBu')
     db = m2.colorbar(ds, location='bottom')
+    plt.show()    
+    
+    
+#    lon=ds.lon.values
+#    lat=ds.lat.values
+#    plat_it=ds.plat_it.values
+#    plon_it=ds.plon_it.values
+#    
+#    xedges=np.arange(np.min(lon),np.max(lon)+2.,2.)
+#    yedges=np.arange(np.min(lat),np.max(lat)+2.,2.)
+#    lon_range = (np.min(xedges), xedges[-2])
+#    lat_range = (np.min(yedges), yedges[-2])
+#    plat_it_v=np.ravel(plat_it)
+#    plon_it_v=np.ravel(plon_it)
+#    
+#    H, yedges, xedges = np.histogram2d(plat_it_v, plon_it_v, bins=(yedges, xedges))
+#    
+#    m2 = Basemap(projection='gall',
+#                llcrnrlat=lat_range[0], urcrnrlat=lat_range[1],
+#                llcrnrlon=lon_range[0], urcrnrlon=lon_range[1],
+#                resolution='l')
+#    
+#    lona, latb = np.meshgrid(xedges[:-1],yedges[:-1])
+#    mapa, mapb = m2(lona, latb)
+#    
+#    fig = plt.figure(fignum,figsize=(8,8))
+#    ax = fig.add_subplot(111)
+#    
+#    m2.drawcoastlines()
+#    m2.drawcountries() 
+#    
+#    hlevels=np.arange(np.min(H), np.max(H), (np.max(H)-np.min(H))/20) 
+#    
+#    ds=m2.contourf(mapa,mapb,H, hlevels)
+#    db = m2.colorbar(ds, location='bottom')
 
     if out_filename is not None:
         plt.savefig(out_filename)

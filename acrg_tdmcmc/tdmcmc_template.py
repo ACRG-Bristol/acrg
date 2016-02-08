@@ -42,9 +42,8 @@ def closest_grid(region, lon, lat, plon, plat, pind):
         lai+=1
     return region
 
-def get_nsigma_y(fp_data_H,start_date, end_date, bl_period):
+def get_nsigma_y(fp_data_H,start_date, end_date, bl_period, sites):
     
-    sites = [key for key in fp_data_H.keys() if key[0] != '.']
     nsites = len(sites)    
     
     d0=pandas.to_datetime(start_date)
@@ -266,7 +265,7 @@ nBC=len(fp_data_H[sites[0]].region_bc)
 #nBC=1
 nfixed = len(fp_data_H[sites[0]].region)
 
-R_indices, ydim1, ydim2 = get_nsigma_y(fp_data_H,start_date, end_date, bl_period)
+R_indices, ydim1, ydim2 = get_nsigma_y(fp_data_H,start_date, end_date, bl_period, sites)
 nIC=nBC+nfixed
 
 

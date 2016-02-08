@@ -237,8 +237,6 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
     data_directory, files = get_file_list(site, species, start_time, end_time,
                                           height, network = network,
                                           instrument = instrument)
-    print(data_directory)
-    print(files)
     #Get files
     #####################################
     
@@ -326,10 +324,11 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
                 if units != "permil":
                     df = df[df.mf > 0.]
 
-                data_frames.append(df)
+                if len(df) > 0:
+                    data_frames.append(df)
     
             ncf.close()
-    
+
         if len(data_frames) > 0:
             data_frame = pd.concat(data_frames).sort_index()
             data_frame.index.name = 'time'
@@ -369,8 +368,8 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
                 if min(data_frame.index) > start_time:
                     dum_frame = pd.DataFrame({"status_flag": float('nan')},
                                          index = np.array([start_time]))   
-                    dum_frame["mf"] =  float('nan')                  
-                    dum_frame["dmf"] =  float('nan')  
+                    dum_frame["mf"] =  float('nan')
+                    dum_frame["dmf"] =  float('nan')
                     dum_frame.index.name = 'time'                                                                               
                     data_frame = data_frame.append(dum_frame)
             
@@ -455,7 +454,8 @@ def get_gosat(site, species, max_level, start = "1900-01-01", end = "2020-01-01"
 
 def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
             height = None, baseline = False, average = None, full_corr=False,
-            network = None, instrument = None, status_flag_unflagged = [0], max_level = None):
+            network = None, instrument = None, status_flag_unflagged = [0],
+            max_level = None):
 
     # retrieves obervations for a set of sites and species between start and end dates
     # max_level only pertains to satellite data
