@@ -26,7 +26,7 @@ uncertainties differently (emissions uncertainty > baseline uncertainty).
 @author: ml12574
 """
 import numpy as np
-import template_tdmcmc as acrg_tdmcmc
+import run_tdmcmc as acrg_tdmcmc
 #############################################################
 #parser = argparse.ArgumentParser(description='This is a demo script by Mark.')
 #parser.add_argument("start", help="Start date string yyyy-mm-dd")                  
