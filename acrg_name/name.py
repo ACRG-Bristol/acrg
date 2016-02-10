@@ -316,7 +316,7 @@ def timeseries_boundary_conditions(ds):
 def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
                           calc_timeseries = True, calc_bc = True,
                           average = None, site_modifier = {}, height = None,
-                          full_corr = False, emissions_name = None, 
+                          emissions_name = None, 
                           perturbed=False, fp_dir_pert=None, pert_year=None, pert_month=None):
     """
     Output a dictionary of xray footprint datasets, that correspond to a given
@@ -533,25 +533,24 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
 
         fp_and_data[site] = fp_and_data[site].merge(sensitivity)
         
-        if basis_case == 'transd':
-            
+        if basis_case in ('transd','test', 'alcompare', 'sense'):
+            H_vary = site_bf.fp*site_bf.flux
             sub_fp_temp = site_bf.fp.sel(lon=slice(min(site_bf.sub_lon),max(site_bf.sub_lon)), 
-                                    lat=slice(min(site_bf.sub_lat),max(site_bf.sub_lat)))   
+                                    lat=slice(min(site_bf.sub_lat),max(site_bf.sub_lat))) 
             sub_fp = xray.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
                                coords = {'sub_lat': (site_bf.coords['sub_lat']),
                                          'sub_lon': (site_bf.coords['sub_lon']),
                                 'time' : (fp_and_data[site].coords['time'])})
-            
-            fp_and_data[site] = fp_and_data[site].merge(sub_fp)
-        elif basis_case in ('test', 'alcompare', 'sense'):
-            sub_fp_temp = site_bf.fp.sel(lon=slice(min(site_bf.sub_lon),max(site_bf.sub_lon)), 
-                                    lat=slice(min(site_bf.sub_lat),max(site_bf.sub_lat)))   
-            sub_fp = xray.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
+                                
+            sub_H_temp = H_vary.sel(lon=slice(min(site_bf.sub_lon),max(site_bf.sub_lon)), 
+                                    lat=slice(min(site_bf.sub_lat),max(site_bf.sub_lat)))                             
+            sub_H = xray.Dataset({'sub_H': (['sub_lat','sub_lon','time'], sub_H_temp)},
                                coords = {'sub_lat': (site_bf.coords['sub_lat']),
                                          'sub_lon': (site_bf.coords['sub_lon']),
                                 'time' : (fp_and_data[site].coords['time'])})
-            
+                                
             fp_and_data[site] = fp_and_data[site].merge(sub_fp)
+            fp_and_data[site] = fp_and_data[site].merge(sub_H)
             
     return fp_and_data
 

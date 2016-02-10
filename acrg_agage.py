@@ -216,7 +216,7 @@ def get_file_list(site, species, start, end, height,
 
 
 def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
-        height=None, baseline=False, average=None, full_corr=False,
+        height=None, baseline=False, average=None, keep_missing=False,
         network = None, instrument = None, status_flag_unflagged = [0]):
     
     start_time = convert.reftime(start)
@@ -366,7 +366,7 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
                 else:
                     how[key] = "mean"
             
-            if full_corr == True:
+            if keep_missing == True:
                 if min(data_frame.index) > start_time:
                     dum_frame = pd.DataFrame({"status_flag": float('nan')},
                                          index = np.array([start_time]))   
@@ -375,7 +375,7 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
                     dum_frame.index.name = 'time'                                                                               
                     data_frame = data_frame.append(dum_frame)
             
-                if min(data_frame.index) < end_time:
+                if max(data_frame.index) < end_time:
                     dum_frame2 = pd.DataFrame({"status_flag": float('nan')},
                                          index = np.array([end_time]))   
                     dum_frame2["mf"] =  float('nan')
@@ -384,11 +384,11 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
                     data_frame = data_frame.append(dum_frame2)
             
             data_frame=data_frame.resample(average, how=how)
-            if full_corr == True:
+            if keep_missing == True:
                 data_frame=data_frame.drop(data_frame.index[-1])
               
         # Drop NaNs
-        if full_corr == False:
+        if keep_missing == False:
             data_frame.dropna(inplace = True)
 
         data_frame.mf.units = units
@@ -452,7 +452,7 @@ def get_gosat(site, species, max_level, start = "1900-01-01", end = "2020-01-01"
 
 
 def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
-            height = None, baseline = False, average = None, full_corr=False,
+            height = None, baseline = False, average = None, keep_missing=False,
             network = None, instrument = None, status_flag_unflagged = None,
             max_level = None):
 
@@ -515,7 +515,7 @@ def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
                        average = average[si],
                        network = network[si],
                        instrument = instrument[si],
-                       full_corr = full_corr,
+                       keep_missing = keep_missing,
                        status_flag_unflagged = status_flag_unflagged[si])
                        
         if data is not None:

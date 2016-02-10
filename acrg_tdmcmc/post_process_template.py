@@ -21,7 +21,10 @@ import json
 import acrg_agage as agage
 
 
-dates=["2014-07-01"]
+dates=["2014-03-01"]
+# Or many:
+#dates = ["2013-12-01","2014-01-01","2014-02-01", "2014-03-01", "2014-04-01"]
+#etc. 
 species="CH4"
 temp = os.path.split(os.path.realpath(__file__))
 acrg_path=os.path.join(temp[0],"..")
@@ -29,10 +32,9 @@ with open(acrg_path + "/acrg_species_info.json") as f:
         species_info=json.load(f)
 species_key = agage.synonyms(species, species_info)
 molmass = float(species_info[species_key]['mol_mass'])
-#output_directory = "/path/to/tdmcmmc/outputs/"
-output_directory = "/home/ml12574/work/programs/Python/my_acrg/td_simp/"
+output_directory = "/path/to/tdmcmmc/outputs/"
 outfile="outfile_name.nc"
-network='test_evencorr'
+network='test'
 experiment="MHD_TAC_RGL_TTA"
 countries=np.asarray(['UNITED KINGDOM', 'IRELAND', 'FRANCE', 'GERMANY', 
                       'DENMARK', 'BELGIUM', 'NETHERLANDS', 'LUXEMBOURG'])
@@ -44,7 +46,7 @@ append_outfile=False
 calc_country=True
 plot_scale_map=True
 plot_abs_map=False
-plot_regions = True
+plot_regions = False
 plot_y_timeseries=True
 plot_density = False
 
@@ -79,7 +81,7 @@ if len(f) > 0:
 else:
     raise LookupError("Try a different base file to get nlon and nlat")
 
-sites=ds0.sites.values
+sites=ds0.coords['sites'].values
 flux_mean = np.zeros((nlat,nlon,ntime))
 flux_percentile = np.zeros((nlat,nlon,ntime,npercentile))
 

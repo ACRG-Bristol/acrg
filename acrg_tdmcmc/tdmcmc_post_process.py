@@ -282,6 +282,7 @@ def plot_scaling(data,lon,lat, out_filename=None, absolute=False,
         plt.close()
     else:
         plt.show()
+
     
     
 def regions_histogram(k_it, out_filename=None, fignum=2):
@@ -411,7 +412,7 @@ def plot_timeseries(ds, species, out_filename=None, doplot=True):
     h_v_all=ds.h_v_all.values
     x_post_vit = ds.x_post_vit.values
     sigma_y_mean=np.mean(ds.sigma_y_it.values, axis=1)
-    sites=ds.sites.values
+    sites=ds.coords['sites'].values
     nsites=len(sites)
     nlon=len(ds.lon)
     nlat=len(ds.lat)
