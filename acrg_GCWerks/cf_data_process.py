@@ -324,7 +324,7 @@ def icos(site, network = "ICOS"):
                         species.upper(),
                         site.upper(),
                         global_attributes = global_attributes,
-                        sampling_period = "1 minute")
+                        sampling_period = 60)
 
         # Write file
         nc_filename = output_filename(out_directory,
