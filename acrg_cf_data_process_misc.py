@@ -397,3 +397,139 @@ def ec_run():
     ec("LLB")
     ec("WSA")
     
+
+
+
+# UCAM
+########################################################
+
+def uea(site, species):
+    '''
+    Process University of East Anglia data files
+
+    Inputs are site code and species
+    '''
+
+    params = {
+        "directory" : "/data/shared/obs_raw/UEA/",
+        "directory_output" : "/data/shared/obs/",
+        "scale": {
+            "CH4": "NOAA2004",
+            "CO2": "WMOx2007"},
+        "WAO" : {
+            "instrument": "GC-FID",
+            "inlet": "21m",
+            "global_attributes": {
+                "data_owner": "Grant Forster",
+                "data_owner_email": "g.forster@uea.ac.uk"
+            }
+        }
+    }
+
+
+    fnames = sorted(glob.glob(join(params["directory"],
+                              site.lower() + "*" + \
+                              species.lower() + \
+                              "*.na")))
+    
+    data = []
+    time = []
+    
+    # Read files
+    ###############################
+    
+    for fname in fnames:
+
+        f = open(fname)    
+        line = f.readline()
+        header_lines, dummy = [int(l) for l in line.split()]
+        header = []
+        for i in range(header_lines-2):
+            header.append(f.readline())
+        columns = f.readline().split()
+        lines = f.readlines()
+        f.close()
+
+        time_file = []
+        data_file = []
+        
+        for line in lines:
+            
+            data_line = line.split()
+            
+            time_file.append(dt(int(data_line[columns.index("year")]),
+                                int(data_line[columns.index("month")]),
+                                int(data_line[columns.index("day")]),
+                                int(data_line[columns.index("hour")]),
+                                int(data_line[columns.index("minute")]),
+                                int(data_line[columns.index("second")])))
+
+            data_file.append(data_line)
+
+        data_file = np.array(data_file)
+
+        time.append(time_file)
+        data.append(data_file)
+    
+    time = np.concatenate(time)
+    data = np.concatenate(data)
+
+
+    # Store file in dataframes
+    ch4i = columns.index("CH4_ppb")
+    ch4_flagi = columns.index("CH4_ppb_flag")
+    ch4_df = pd.DataFrame(data = data[:, [ch4i, ch4_flagi]].astype(float),
+                 columns = ["CH4", "CH4_status_flag"],
+                 index = time)
+    ch4_df = ch4_df[ch4_df.CH4_status_flag <= 1]
+
+    ch4i = columns.index("CH4_WT_ppb")
+    ch4_flagi = columns.index("ch4_WT_flag")
+    ch4_wt_df = pd.DataFrame(data = data[:, [ch4i, ch4_flagi]].astype(float),
+                 columns = ["CH4_WT", "CH4_WT_flag"],
+                 index = time)
+    ch4_wt_df = ch4_wt_df[ch4_wt_df.CH4_WT_flag <= 1]
+
+    ch4i = columns.index("CH4_TT_ppb")
+    ch4_flagi = columns.index("ch4_TT_flag")
+    ch4_tt_df = pd.DataFrame(data = data[:, [ch4i, ch4_flagi]].astype(float),
+                 columns = ["CH4_TT", "CH4_TT_flag"],
+                 index = time)
+    ch4_tt_df = ch4_tt_df[ch4_tt_df.CH4_TT_flag <= 1]
+
+    # Calculate sigma and append to dataframe
+    ch4_df["CH4_repeatability"] = \
+        ch4_wt_df.CH4_WT.resample("1D", how = np.std).reindex_like(ch4_df, method = "nearest")
+
+
+    # Drop any duplicates
+    ch4_df.index.name = "index"
+    ch4_df = ch4_df.reset_index().drop_duplicates(subset='index').set_index('index')              
+    ch4_df.index.name = "time"
+    
+    # Sort and convert to dataset
+    ds = xray.Dataset.from_dataframe(ch4_df.sort_index())
+    
+    global_attributes = params[site]["global_attributes"]
+    global_attributes["inlet_height_magl"] = int(params[site]["inlet"][:-1])
+    
+    # Add attributes
+    ds = attributes(ds,
+                    species.upper(),
+                    site.upper(),
+                    global_attributes = global_attributes,
+                    scale = params["scale"][species.upper()],
+                    sampling_period = 60)
+    
+    # Write file
+    nc_filename = output_filename(params["directory_output"],
+                                  "UEA",
+                                  params[site]["instrument"],
+                                  site.upper(),
+                                  str(ds.time.to_pandas().index.to_pydatetime()[0].year),
+                                  ds.species,
+                                  params[site]["inlet"])
+    
+    print("Writing " + nc_filename)
+    
+    ds.to_netcdf(nc_filename)
