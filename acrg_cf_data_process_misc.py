@@ -236,8 +236,8 @@ def cbw():
     dfs = []
     for fname in fnames:
         dff = pd.read_csv(fname, sep = ";",
-                          parse_dates = ["Time"],
-                          index_col = ["Time"],
+                          parse_dates = ["Date"],
+                          index_col = ["Date"],
                           dayfirst = True)
         dff.rename(columns = rename_dict, inplace = True)
         dfs.append(dff)
