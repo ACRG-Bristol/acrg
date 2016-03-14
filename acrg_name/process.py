@@ -49,6 +49,7 @@ import matplotlib.pyplot as plt
 import time
 import getpass
 import traceback
+import sys
 
 #Default NAME output file version
 #This is changed depending on presence of "Fields:" line in files
@@ -1308,6 +1309,16 @@ def process(domain, site, height, year, month,
             status_log("ONLY OUTPUTTING FIRST LEVEL!", error_or_warning = "warning")
         fp = fp.squeeze(dim = "lev")
         
+        
+        # REMOVE ANY ZERO FOOTPRINTS        
+        fp_nonzero = (fp.fp.sum(["lon", "lat"])).values.squeeze() > 0.
+        pl_nonzero = (fp.pl_n.sum(["lon", "height"]) + \
+                      fp.pl_e.sum(["lat", "height"]) + \
+                      fp.pl_s.sum(["lon", "height"]) + \
+                      fp.pl_w.sum(["lat", "height"])).values.squeeze() > 0.
+        indices_nonzero = np.where(fp_nonzero + pl_nonzero)[0]
+        fp = fp[dict(time = indices_nonzero)]
+        
         #Write netCDF file
         #######################################
         
@@ -1423,9 +1434,17 @@ def process_all(domain, site,
             months = copy.copy(months_in)
 
         for year, month in set(zip(years, months)):
-            out = process(domain, site, height, year, month,
-                base_dir = base_dir, force_update = force_update,
-                satellite = satellite, perturbed_folder = perturbed_folder, max_level = max_level)
+            try:
+                out = process(domain, site, height, year, month,
+                    base_dir = base_dir, force_update = force_update,
+                    satellite = satellite, perturbed_folder = perturbed_folder,
+                    max_level = max_level)
+            except:
+                status_log("FAILED in process all " +
+                       "for %s. Error log: %s" % 
+                       (years*100 + months, traceback.print_exc()),
+                       error_or_warning="error")
+                continue
 
 
 def copy_processed(domain):

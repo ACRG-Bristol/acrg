@@ -56,9 +56,9 @@ scales = {"CO2": "NOAA-2007",
 # Keys are upper case
 species_translator = {"CO2": ["co2", "carbon_dioxide"],
                       "CH4": ["ch4", "methane"],
-                      "ETHANE": ["c2f6", "ethane"],
-                      "PROPANE": ["c3f8", "propane"],
-                      "C-PROPANE": ["cc3f8", "cpropane"],
+                      "ETHANE": ["c2h6", "ethane"],
+                      "PROPANE": ["c3h8", "propane"],
+                      "C-PROPANE": ["cc3h8", "cpropane"],
                       "BENZENE": ["c6h6", "benzene"],
                       "TOLUENE": ["c6h5ch3", "methylbenzene"],
                       "ETHENE": ["c2f4", "ethene"],
@@ -79,6 +79,30 @@ species_translator = {"CO2": ["co2", "carbon_dioxide"],
 crds_header_string_interpret = {"C": "",
                                 "stdev": "_variability",
                                 "N": "_number_of_observations"}
+
+
+def get_directories(default_input_directory,
+                    default_output_directory,
+                    user_specified_input_directory = None,
+                    user_specified_output_directory = None):
+    
+    # If an output directory directory is set, use that, otherwise from json file
+    if user_specified_output_directory:
+        output_folder = user_specified_output_directory
+    else:
+        output_folder = default_output_directory
+
+    # If an input directory directory is set, use that, otherwise from json file
+    if user_specified_input_directory:
+        if user_specified_output_directory is None:
+            print("EXITING: You must also specify an output folder if you specify an input")
+            return None
+        data_folder = user_specified_input_directory
+    else:
+        data_folder = default_input_directory
+
+    return data_folder, output_folder
+
 
 def site_info_attributes(site):
     
@@ -296,16 +320,22 @@ def icos_data_read(data_file, species):
     return ds
 
 
-def icos(site, network = "ICOS"):
+def icos(site, network = "ICOS",
+         input_directory = None,
+         output_directory = None):
     
     # Get directories and site strings
     params_icos = params["ICOS"]
     site_string = params_icos[site]["gcwerks_site_name"]
-    data_directory = params_icos["directory"].replace("%site", site_string)
-    out_directory = params_icos["directory_output"]
+
+    data_folder, output_folder = \
+            get_directories(params_icos["directory"].replace("%site", site_string),
+                            params_icos["directory_output"],
+                            user_specified_input_directory = input_directory,
+                            user_specified_output_directory = output_directory)
 
     # Search for species and inlets from file names
-    data_file_search = join(data_directory, site.lower() + ".*.1minute.*.dat")
+    data_file_search = join(data_folder, site.lower() + ".*.1minute.*.dat")
     data_files = glob.glob(data_file_search)
     data_file_names = [split(f)[1] for f in data_files]
     species_and_inlet = [(f.split(".")[1], f.split(".")[-2]) \
@@ -324,10 +354,10 @@ def icos(site, network = "ICOS"):
                         species.upper(),
                         site.upper(),
                         global_attributes = global_attributes,
-                        sampling_period = "1 minute")
+                        sampling_period = 60)
 
         # Write file
-        nc_filename = output_filename(out_directory,
+        nc_filename = output_filename(output_folder,
                                       network,
                                       "CRDS",
                                       site.upper(),
@@ -422,7 +452,9 @@ def gc_precisions_read(precisions_file):
     return precision, precision_species
 
 
-def gc(site, instrument, network):
+def gc(site, instrument, network,
+       input_directory = None,
+       output_directory = None):
     """
     Process GC data per site and instrument
     Instruments can be:
@@ -435,32 +467,30 @@ def gc(site, instrument, network):
 
     site_gcwerks = params["GC"][site]["gcwerks_site_name"]
     instrument_gcwerks = params["GC"]["instruments"][instrument]
-    if instrument_gcwerks != "":
-        instrument_gcwerks = "-" + instrument_gcwerks
     
-    data_folder = params["GC"]["directory"][instrument]
+    data_folder, output_folder = \
+            get_directories(params["GC"]["directory"][instrument],
+                            params["GC"]["directory_output"],
+                            user_specified_input_directory = input_directory,
+                            user_specified_output_directory = output_directory)
 
-    # Search string
-    search_string = join(data_folder,
-                         site_gcwerks + \
-                         instrument_gcwerks + ".??.C")
-    # Search string with -md attached
-    search_string_md = join(data_folder,
-                            site_gcwerks + \
-                            instrument_gcwerks + "-md.??.C")
+    search_strings = []
+    for suffix in params["GC"]["instruments_suffix"][instrument]:
+        # Search string
+        search_string = join(data_folder,
+                             site_gcwerks + \
+                             instrument_gcwerks + \
+                             suffix + ".??.C")
+        search_strings.append(search_string)
 
-    # Search for data files
-    # First try to find MD file called site.YY.C
-    data_files = sorted(glob.glob(search_string))
-    if instrument == "GCMD":
-        if len(data_files) == 0:
-            # Else try to look for site-md.YY.C
-            data_files = sorted(glob.glob(search_string_md))
+        data_files = sorted(glob.glob(search_string))
+        if len(data_files) > 0:
+            break
     
     # Error if can't find files
     if len(data_files) == 0.:
-        print("ERROR: can't find any files: " + search_string + " or " + \
-              search_string_md)
+        print("ERROR: can't find any files: " + \
+              ",\r".join(search_strings))
         return None
 
     precision_files = [data_file[0:-2] + ".precisions.C" \
@@ -516,7 +546,7 @@ def gc(site, instrument, network):
         global_attributes = params["GC"][site.upper()]["global_attributes"]
         global_attributes["comment"] = params["GC"]["comment"][instrument]
 
-        for inlet in inlets:        
+        for inleti, inlet in enumerate(inlets):        
             
             print("Processing " + sp + ", " + inlet + "...")
             
@@ -526,15 +556,22 @@ def gc(site, instrument, network):
                             sp + "_status_flag",
                             sp + "_integration_flag"]]
                 inlet_label = params["GC"][site.upper()]["inlet_label"][0]
-                global_attributes["inlet_height_magl"] = ", ".join(set(ds["Inlet"].values))
+                global_attributes["inlet_height_magl"] = \
+                                    ", ".join(set(ds["Inlet"].values))
                 
             else:
                 ds_sp = ds.where(ds.Inlet == inlet)[[sp,
                                                      sp + "_repeatability",
                                                      sp + "_status_flag",
                                                      sp + "_integration_flag"]]
-                global_attributes["inlet_height_magl"] = float(inlet[:-1])
+
+            # re-label inlet if required
+            if "inlet_label" in params["GC"][site].keys():
+                inlet_label = params["GC"][site]["inlet_label"][inleti]
+            else:
                 inlet_label = inlet
+
+            global_attributes["inlet_height_magl"] = float(inlet_label[:-1])
 
             # Drop NaNs
             ds_sp = ds_sp.dropna("time")
@@ -559,16 +596,16 @@ def gc(site, instrument, network):
                     instrument_out = params["GC"]["instruments_out"][instrument]["else"]
 
                 # Write file
-                nc_filename = output_filename(params["GC"]["directory_output"],
+                nc_filename = output_filename(output_folder,
                                               network,
                                               instrument_out,
                                               site.upper(),
                                               str(ds_sp.time.to_pandas().index.to_pydatetime()[0].year),
                                               ds_sp.species,
                                               inlet_label)
-                                              
+                print("Writing... " + nc_filename)
                 ds_sp.to_netcdf(nc_filename)
-                print("... written " + nc_filename)
+                print("... written.")
             
 
 
@@ -624,7 +661,9 @@ def crds_data_read(data_file):
     return ds, species
 
 
-def crds(site, network):
+def crds(site, network,
+         input_directory = None,
+         output_directory = None):
     """
     Process CRDS data
     
@@ -634,10 +673,15 @@ def crds(site, network):
     params_crds = params["CRDS"]
 
     site_string = params_crds[site]["gcwerks_site_name"]
-    data_directory = params_crds["directory"].replace("%site", site_string)
+
+    data_folder, output_folder = \
+            get_directories(params_crds["directory"].replace("%site", site_string),
+                            params["CRDS"]["directory_output"],
+                            user_specified_input_directory = input_directory,
+                            user_specified_output_directory = output_directory)
 
     # Search for species and inlets from file names
-    data_file_search = join(data_directory, site.lower() + ".*.1minute.*.dat")
+    data_file_search = join(data_folder, site.lower() + ".*.1minute.*.dat")
     data_files = glob.glob(data_file_search)
     inlets = [f.split(".")[-2] for f in data_files]
     
@@ -665,16 +709,56 @@ def crds(site, network):
                                sampling_period=60)
             
             # Write file
-            nc_filename = output_filename(params["CRDS"]["directory_output"],
+            nc_filename = output_filename(output_folder,
                                           network,
                                           "CRDS",
                                           site.upper(),
                                           str(ds_sp.time.to_pandas().index.to_pydatetime()[0].year),
                                           ds_sp.species,
                                           inlet)
-    
+            print("Writing " + nc_filename)
             ds_sp.to_netcdf(nc_filename)
-            print("Written " + nc_filename)
+            print("... written.")
+
+
+def decc_data_freeze():
+
+    input_directory = "/dagage2/agage/summary/gccompare-net/snapshot/current-frozendata/data-net/"
+    output_directory = "/dagage2/agage/summary/gccompare-net/snapshot/current-frozendata/data-net/processed/"
+
+    # ICOS
+    icos("MHD", network = "LSCE", input_directory = input_directory, output_directory = output_directory)
+
+    # GAUGE CRDS data
+    crds("HFD", "GAUGE", input_directory = input_directory, output_directory = output_directory)
+    crds("BSD", "GAUGE", input_directory = input_directory, output_directory = output_directory)
+
+    # GAUGE GC data
+    gc("BSD", "GCMD", "GAUGE", input_directory = input_directory, output_directory = output_directory)
+    gc("HFD", "GCMD", "GAUGE", input_directory = input_directory, output_directory = output_directory)
+
+    # DECC CRDS data
+    crds("TTA", "DECC", input_directory = input_directory, output_directory = output_directory)
+    crds("RGL", "DECC", input_directory = input_directory, output_directory = output_directory)
+    crds("TAC", "DECC", input_directory = input_directory, output_directory = output_directory)
+
+    # DECC GC data
+    gc("TAC", "GCMD", "DECC", input_directory = input_directory, output_directory = output_directory)
+    gc("RGL", "GCMD", "DECC", input_directory = input_directory, output_directory = output_directory)
+
+    # DECC Medusa
+    gc("TAC", "medusa", "DECC", input_directory = input_directory, output_directory = output_directory)
+
+    # AGAGE GC data
+    gc("MHD", "GCMD", "AGAGE", input_directory = input_directory, output_directory = output_directory)
+
+    # AGAGE GCMS data    
+    gc("MHD", "GCMS", "AGAGE", input_directory = input_directory, output_directory = output_directory)
+
+    # AGAGE Medusa
+    gc("MHD", "medusa", "AGAGE", input_directory = input_directory, output_directory = output_directory)
+
+    
 
 
 
@@ -697,7 +781,7 @@ if __name__ == "__main__":
     crds("RGL", "DECC")
     crds("TAC", "DECC")
 
-    # DECC GC data    
+    # DECC GC data
     gc("TAC", "GCMD", "DECC")
     gc("RGL", "GCMD", "DECC")
 
@@ -717,7 +801,10 @@ if __name__ == "__main__":
     gc("RPB", "GCMS", "AGAGE")
     gc("SMO", "GCMS", "AGAGE")
     gc("THD", "GCMS", "AGAGE")
-
+    gc("JFJ", "GCMS", "AGAGE")
+    gc("MCI", "GCMS", "AGAGE")
+    gc("ZEP", "GCMS", "AGAGE")
+    
     # AGAGE Medusa
     gc("MHD", "medusa", "AGAGE")
     gc("CGO", "medusa", "AGAGE")
@@ -727,3 +814,9 @@ if __name__ == "__main__":
     gc("RPB", "medusa", "AGAGE")
     gc("SMO", "medusa", "AGAGE")
     gc("SIO", "medusa", "AGAGE")
+    gc("JFJ", "medusa", "AGAGE")
+    gc("MCI", "medusa", "AGAGE")
+    gc("ZEP", "medusa", "AGAGE")
+    
+    
+    

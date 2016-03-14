@@ -11,7 +11,10 @@ from name import animate
 from name import fp_sensitivity
 from name import bc_sensitivity
 from name import merge_sensitivity
+from name import get_country
+from name import footprints
 from name import boundary_conditions
+from name import basis
 import process
 import basis_functions
 import flux

@@ -327,6 +327,16 @@
         "longitude": -133.534232,
         "network": "EC"
     },
+    "JFJ" : {
+        "alt": [],
+        "long_name" : "Jungfraujoch, Switzerland",
+        "height": ["10m"],
+        "height_station_masl": 3570.0,
+        "height_name": ["10magl"],
+        "latitude": 46.5475,
+        "longitude": 7.979167,
+        "network": "AGAGE"
+    },
     "KEY" : {
         "alt": [],
         "long_name" : "Key Biscane, Florida",
@@ -356,6 +366,16 @@
         "latitude": 54.953809,
         "longitude": -112.466649,
         "network": ["EC", "NOAA"]
+    },
+    "MCI" : {
+        "alt" : [],
+        "long_name" : "Monte Cimone, Italy",
+        "height": ["10m"],
+        "height_station_masl": 2155.0,
+        "height_name": ["10magl"],
+        "latitude": 44.193889,
+        "longitude": 10.701389,
+        "network": "AGAGE"
     },
     "MHD" : {
         "alt" : ["MH"],
@@ -520,5 +540,15 @@
         "latitude": 43.93227,
         "longitude": -60.01256,
         "network": "EC"
+    },
+    "ZEP" : {
+        "alt": [],
+        "long_name" : "Zeppelin, Ny Alesund, Norway",
+        "height": ["10m"],
+        "height_station_masl": 474.0,
+        "height_name": ["16magl"],
+        "latitude": 78.925,
+        "longitude": 11.92222,
+        "network": "AGAGE"
     }
 }
