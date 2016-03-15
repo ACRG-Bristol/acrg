@@ -62,7 +62,7 @@
     "BRW" : {
         "alt": [],
         "long_name" : "Barrow, Alaska",
-        "height": ["16.5m", "10.75m", "5m"],
+        "height": ["17m", "11m", "5m"],
         "height_station_masl": 11.0,
         "height_name": ["17magl", "11magl", "5magl"],
         "latitude": 71.323,
@@ -99,7 +99,7 @@
     "CBA" : {
         "alt": [],
         "long_name" : "Cold Bay, Alaska",
-        "height": ["35.7m"],
+        "height": ["36m"],
         "height_station_masl": 21.34,
         "height_name": ["36magl"],
         "latitude": 55.21,
@@ -320,7 +320,7 @@
     "HSU" : {
         "alt": [],
         "long_name" : "Humboldt State University, United States",
-        "height": ["7.6m"],
+        "height": ["8m"],
         "height_station_masl": 0.0,
         "height_name": ["8magl"],
         "latitude": 41.0588,
