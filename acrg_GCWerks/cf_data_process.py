@@ -72,7 +72,8 @@ species_translator = {"CO2": ["co2", "carbon_dioxide"],
                       "TCE": ["c2hcl3", "trichloroethylene"],
                       "PFC-116": ["c2f6", "hexafluoroethane"],
                       "PFC-218": ["c3f8", "octafluoropropane"],
-                      "PFC-318": ["c4f8", "cyclooctafluorobutane"]
+                      "PFC-318": ["c4f8", "cyclooctafluorobutane"],
+                      "F-113": ["cfc113", "cfc113"]
                       }
 
 # Translate header strings
@@ -697,7 +698,7 @@ def crds(site, network,
             ds_sp = ds[[sp,
                         sp + "_variability",
                         sp + "_number_of_observations"]]
-            ds_sp.dropna("time")
+            ds_sp = ds_sp.dropna("time")
             
             global_attributes = params_crds[site]["global_attributes"]
             global_attributes["inlet_height_magl"] = float(inlet[0:-1])
@@ -719,6 +720,116 @@ def crds(site, network,
             print("Writing " + nc_filename)
             ds_sp.to_netcdf(nc_filename)
             print("... written.")
+
+
+def ale_gage(site, network):
+    
+    import fortranformat as ff
+    
+    ale_directory = "/dagage2/agage/summary/git/ale_new/complete/"
+    gage_directory = "/dagage2/agage/summary/git/gage_new/complete/"
+    
+    output_directory = "/dagage2/agage/metoffice/processed_observations/"
+    
+    site_translate = {"ADR": "adrigole",
+                      "RPB": "barbados",
+                      "ORG": "oregon",
+                      "SMO": "samoa",
+                      "CGO": "tasmania",
+                      "MHD": "macehead"}
+
+    if network == "ALE":
+        data_directory = ale_directory
+    if network == "GAGE":
+        data_directory = gage_directory
+        
+
+    fnames = sorted(glob.glob(join(data_directory,
+                                   site_translate[site] + "/" + site + "*.dap")))
+
+
+    formatter = ff.FortranRecordReader('(F10.5, 2I4,I6, 2I4,I6,1X,10(F10.3,a1))')
+    
+
+    dfs = []
+    for fname in fnames:
+
+        print("Reading... " + fname)
+
+        header = []
+                
+        with open(fname) as f:
+            for i in range(6):
+                header.append(f.readline())
+            
+            lines = f.readlines()
+    
+        scales = header[-3].split()
+        units = header[-2].split()
+        species = header[-1].split()
+        
+        dayi = species.index("DD")
+        monthi = species.index("MM")
+        yeari = species.index("YYYY")
+        houri = species.index("hh")
+        mini = species.index("min")
+        
+        data = []
+        time = []
+    
+        for line in lines:
+            data_line = formatter.read(line)
+            
+            if data_line[mini] < 60 and data_line[houri] < 24:
+                data.append([d for d in data_line if d != " " and \
+                                                     d != None and \
+                                                     d != "P"])
+                time.append(dt(data_line[yeari],
+                               data_line[monthi],
+                               data_line[dayi],
+                               data_line[houri],
+                               data_line[mini]))
+    
+        data = np.vstack(data)
+        data = data[:, 7:]
+    
+        df = pd.DataFrame(data = data, columns = species[7:], index = time)
+        df.replace(to_replace = 0., value=np.NaN, inplace = True)
+        dfs.append(df)
+
+    scales = scales[7:]
+    units = units[7:]
+    species = species[7:]
+
+    df = pd.concat(dfs)
+
+    # Write netCDF file for each species
+    for si, sp in enumerate(species):
+
+        # Remove duplicate indices
+        df_sp = df[sp].reset_index().drop_duplicates(subset='index').set_index('index')
+        
+        # Convert to Dataset
+        df_sp.index.name = "time"
+        ds = xray.Dataset.from_dataframe(df_sp.sort_index())
+        ds = ds.dropna("time")
+
+        ds = attributes(ds, sp, site.upper(),
+                       scale = scales[si],
+                       sampling_period=60,
+                       units = units[si])
+        
+        # Write file
+        nc_filename = output_filename(output_directory,
+                                      network,
+                                      "GC-ECD",
+                                      site.upper(),
+                                      str(ds.time.to_pandas().index.to_pydatetime()[0].year),
+                                      ds.species,
+                                      site_params[site]["height"][0])
+        print("Writing " + nc_filename)
+        ds.to_netcdf(nc_filename)
+        print("... written.")
 
 
 def decc_data_freeze():

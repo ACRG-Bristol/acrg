@@ -1,4 +1,14 @@
 {
+    "ADR" : {
+        "alt": [],
+        "long_name" : "Adrigole, Ireland",
+        "height": ["10m"],
+        "height_station_masl": 10,
+        "height_name": ["10magl"],
+        "latitude": 51.7,
+        "longitude": -9.72,
+        "network": "ALE"
+    },
     "AMT" : {
         "alt": [],
         "long_name" : "Argyle, Maine, United States",
@@ -396,6 +406,16 @@
         "latitude": 40.0531,
         "longitude": -105.5864,
         "network": "NOAA"
+    },
+    "ORG" : {
+        "alt": [],
+        "long_name" : "Cape Meares, Oregon",
+        "height": ["10m"],
+        "height_station_masl": 10,
+        "height_name": ["10magl"],
+        "latitude": 45.49,
+        "longitude": -124,
+        "network": "ALE"
     },
     "POC" : {
         "alt": [],
