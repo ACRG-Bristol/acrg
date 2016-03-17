@@ -119,6 +119,8 @@ class EDGARread:
             print "Can't find correct date."
             year = None
             date = None
+        
+        species = species.split('_')[1]
 
         self.lon = lon
         self.lat = lat
