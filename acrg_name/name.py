@@ -85,7 +85,10 @@ def filenames(site, domain, start, end, height = None, flux=None, basis=None):
     for ym in yearmonth:
         f=glob.glob(baseDirectory + \
             domain + "/" + \
-            site + "*" + height + "*" + domain + "*" + ym + "*.nc")
+            site + "*" + "-" + height + "*" + domain + "*" + ym + "*.nc")
+#        f=glob.glob(baseDirectory + \
+#            domain + "/" + \
+#            site + "*" + height + "*" + domain + "*" + ym + "*.nc")
         if len(f) > 0:
             files += f
 
@@ -95,7 +98,6 @@ def filenames(site, domain, start, end, height = None, flux=None, basis=None):
         print("Can't find file: " + baseDirectory + \
             domain + "/" + \
             site + "*" + height + "*" + domain + "*" + "*.nc")
-    
     return files
 
 def read_netcdfs(files, dim = "time", transform_func=None):
@@ -158,7 +160,6 @@ def footprints(sitecode_or_filename, start = "2010-01-01", end = "2016-01-01",
         return None
 
     else:
-        
         fp=read_netcdfs(files)
         
         # If a species is specified, also get flux and vmr at domain edges
@@ -434,6 +435,8 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
                     print "max_level_fp =",ml_fp
                     print "max_level_obs =",ml_obs
                     return None
+            elif "GAUGE-FERRY" in site.upper():
+                tolerance = '5min'
             else:
                 tolerance = None
                 
@@ -735,6 +738,17 @@ def filtering(datasets_in, filters, full_corr=False):
         filters = [filters]
 
     datasets = datasets_in.copy()
+    def ferry_loc(dataset, full_corr=False):
+        # Subset during daytime hours
+        lats = dataset.release_lat.values
+        ti = [i for i, h in enumerate(lats) if h >= 52.2 and h < 55.8 ]
+        
+        if full_corr:
+            dataset_temp = dataset[dict(time = ti)]   
+            dataset_out = dataset_temp.reindex_like(dataset)
+            return dataset_out
+        else:
+            return dataset[dict(time = ti)]
 
     # Filter functions
     def daily_median(dataset, full_corr=False):
@@ -809,7 +823,7 @@ def filtering(datasets_in, filters, full_corr=False):
             return dataset[dict(time = ti)]
             
     def local_influence(dataset, full_corr=False):
-        ti = [i for i, local_ratio in enumerate(dataset.local_ratio) if local_ratio < 0.4]
+        ti = [i for i, local_ratio in enumerate(dataset.local_ratio) if local_ratio < 0.25]
         return dataset[dict(time = ti)]
        
        
@@ -820,15 +834,17 @@ def filtering(datasets_in, filters, full_corr=False):
                          "pblh_gt_500": pblh_gt_500,
                          "pblh_gt_250": pblh_gt_250,
                          "local_influence":local_influence,
-                         "six_hr_mean":six_hr_mean}
+                         "six_hr_mean":six_hr_mean,
+                         "ferry_loc":ferry_loc}
 
     # Get list of sites
     sites = [key for key in datasets.keys() if key[0] != '.']
     
     # Do filtering
     for site in sites:
-        for filt in filters:
-            datasets[site] = filtering_functions[filt](datasets[site], full_corr=full_corr)
+        if site == 'GAUGE-FERRY':
+            for filt in filters:
+                datasets[site] = filtering_functions[filt](datasets[site], full_corr=full_corr)
 
     return datasets
 
@@ -1465,7 +1481,7 @@ def animate(fp_data, output_directory,
 
 
 class get_country:
-  def __init__(self, domain, ocean=False, al=False):
+  def __init__(self, domain, ocean=False, al=False, uk_split=False):
 
         if ocean is False:
 
@@ -1475,16 +1491,22 @@ class get_country:
                  + domain + ".nc")
              
         else:
-            if al is False:
+            if uk_split is True:
                 countryDirectory=data_path +'NAME/countries/'
                 filename=glob.glob(countryDirectory + \
-                     "/" + "country_ocean_"\
-                     + domain + ".nc")
+                     "/" + "country_"\
+                     + domain + "_uk_split" + ".nc")
             else:
-                countryDirectory=data_path +'NAME/countries/'
-                filename=glob.glob(countryDirectory + \
-                     "/" + "al_countries_"\
-                     + domain + ".nc")
+                if al is False:
+                    countryDirectory=data_path +'NAME/countries/'
+                    filename=glob.glob(countryDirectory + \
+                         "/" + "country_ocean_"\
+                         + domain + ".nc")
+                else:
+                    countryDirectory=data_path +'NAME/countries/'
+                    filename=glob.glob(countryDirectory + \
+                         "/" + "al_countries_"\
+                         + domain + ".nc")
         
         f = nc.Dataset(filename[0], 'r')
     
@@ -1493,7 +1515,17 @@ class get_country:
     
         #Get country indices and names
         country = f.variables['country'][:, :]
-        if al is False:
+        if al is True:
+            name_temp = f.variables['name'][:]  
+            f.close()
+            name=np.asarray(name_temp)
+        elif uk_split is True:
+            name_temp = f.variables['name'][:]  
+            f.close()
+            name=np.asarray(name_temp)
+            
+        else:
+        #if al is False:
             name_temp = f.variables['name'][:,:]
             f.close()
     
@@ -1501,10 +1533,10 @@ class get_country:
             for ii in range(len(name_temp[:,0])):
                 name.append(''.join(name_temp[ii,:]))
             name=np.asarray(name)
-        else:
-            name_temp = f.variables['name'][:]  
-            f.close()
-            name=np.asarray(name_temp)
+#        else:
+#            name_temp = f.variables['name'][:]  
+#            f.close()
+#            name=np.asarray(name_temp)
     
     
         self.lon = lon

@@ -582,6 +582,8 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     
     fname=os.path.join(output_directory,
                         "output_" + network + "_" + species + "_" + start_date + ".nc")
+    for key in post_mcmc.keys():
+        post_mcmc[key].encoding['zlib'] = True
     post_mcmc.to_netcdf(path=fname, mode='w')
 
     return post_mcmc
