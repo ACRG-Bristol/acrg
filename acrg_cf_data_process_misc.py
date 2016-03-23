@@ -533,3 +533,169 @@ def uea(site, species):
     print("Writing " + nc_filename)
     
     ds.to_netcdf(nc_filename)
+
+
+def noaa_montzka_usa(species, network = "NOAA"):
+    '''
+    Process Steve Montzka's USA files
+
+    '''
+
+    def date_parser(year, month, day, hour, minute, second):
+        return dt(year, month, day, hour, minute, second)
+
+    params = {
+        "directory" : "/data/shared/obs_raw/NOAA/montzka/",
+        "directory_output" : "/data/shared/obs/",
+        "scale": {
+            "HFC-134a": "NOAA1995"
+            },
+        "species_noaa": {
+            "HFC-134a": "HFC_134a"
+            },
+        "global_attributes": {
+            "data_owner": "Steve Montzka",
+            "data_owner_email": "stephen.a.montzka@noaa.gov"
+            }
+        }
+
+    fnames = glob.glob(join(params["directory"], params["species_noaa"][species] + "*.csv"))
+    fname = fnames[0]
+
+    with open(fname) as f:
+        header = f.readline().split(",")
+        lines = f.readlines()
+    
+    section_description_start = []
+    section_description_end = []
+    section_description = []
+
+    header_section = False
+    for li, l in enumerate(lines):
+        if l[0] == "*" and not header_section:
+            header_section = True
+            section_description_start.append(li)
+        if l[0:2] == "* " and header_section:
+            section_description.append(l[1:])
+        if l[0] != "*" and header_section:
+            section_description_end.append(li)
+            header_section = False
+
+    platforms = []
+    for desc in section_description:
+        if "Daily" in desc and "Ground" in desc:
+            platforms.append("-tower")
+        elif "Biweekly" in desc and "Aircraft" in desc:
+            platforms.append("-aircraft")
+        elif "Weekly" in desc and "Ground" in desc:
+            platforms.append("")
+    
+    for pi, platform in enumerate(platforms):
+
+        if pi == len(platforms)-1:
+            lastrow = None
+        else:
+            lastrow = section_description_start[pi+1] - section_description_end[pi]
+            
+        df = pd.read_csv(fname, skiprows = section_description_end[pi] + 1,
+                         names = header, nrows = lastrow,
+                         parse_dates = {"time": ["sample_year", "sample_month", "sample_day",
+                                        "sample_hour", "sample_minute", "sample_second"]},
+                         dtype = {"sample_year": np.int,
+                                  "sample_month": np.int,
+                                  "sample_day": np.int,
+                                  "sample_hour": np.int,
+                                  "sample_minute": np.int,
+                                  "sample_second": np.int},
+                         index_col = "time",
+                         date_parser = date_parser,
+                         skipinitialspace = True)
+    
+        df = df[["site", "sample_latitude", "sample_longitude", "sample_altitude",
+                 "sample_terrain_height", "mole_fraction"]]
+    
+        df.rename(columns = {"mole_fraction": species}, inplace = True)
+        
+        for site in set(df.site.values):
+            
+            dfs = df[df.site == site]
+            dfs.drop(["site"], axis = 1, inplace = True)
+    
+            dfs.index.name = "index"
+            dfs = dfs.reset_index().drop_duplicates(subset='index').set_index('index')              
+            dfs.index.name = "time"
+            
+            global_attributes = params["global_attributes"]
+            inlet_heights = set(np.round((dfs["sample_altitude"] - \
+                                          dfs["sample_terrain_height"]).values/10.)*10)
+    
+            if len(inlet_heights) > 4:
+    
+                global_attributes_site = global_attributes.copy()
+                global_attributes_site["inlet_height_magl"] = int(-999)
+    
+                # Sort and convert to dataset
+                ds = xray.Dataset.from_dataframe(dfs.sort_index())
+                
+                # Add attributes
+                ds = attributes(ds,
+                                species,
+                                site.upper(),
+                                global_attributes = global_attributes_site,
+                                scale = params["scale"][species],
+                                sampling_period = 60,
+                                units = "ppt")
+                
+                # Write file
+                nc_filename = output_filename(params["directory_output"],
+                                              "NOAA",
+                                              "GCMS" + platform,
+                                              site.upper(),
+                                              str(ds.time.to_pandas().index.to_pydatetime()[0].year),
+                                              ds.species,
+                                              "various")
+                
+                print("Writing " + nc_filename)
+                
+                ds.to_netcdf(nc_filename)
+    
+            else:
+                
+                inlet_heights_rounded = np.round((dfs["sample_altitude"] - \
+                                          dfs["sample_terrain_height"]).values/10.)*10
+                
+                inlet_str = [str(int(ih)) + "m" for ih in inlet_heights]
+                
+                for inlet_i, inlet in enumerate(inlet_heights):
+    
+                    dfs_inlet = dfs[inlet_heights_rounded == inlet]
+    
+                    # Sort and convert to dataset
+                    ds = xray.Dataset.from_dataframe(dfs_inlet.sort_index())
+                    
+                    global_attributes_site = global_attributes.copy()
+                    global_attributes_site["inlet_height_magl"] = int(inlet)
+                    
+                    # Add attributes
+                    ds = attributes(ds,
+                                    species,
+                                    site.upper(),
+                                    global_attributes = global_attributes_site,
+                                    scale = params["scale"][species],
+                                    sampling_period = 60,
+                                    units = "ppt")
+                    
+                    # Write file
+                    nc_filename = output_filename(params["directory_output"],
+                                                  "NOAA",
+                                                  "GCMS" + platform,
+                                                  site.upper(),
+                                                  str(ds.time.to_pandas().index.to_pydatetime()[0].year),
+                                                  ds.species,
+                                                  inlet_str[inlet_i])
+                    
+                    print("Writing " + nc_filename)
+                    
+                    ds.to_netcdf(nc_filename)
+                    
+                    
