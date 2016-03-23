@@ -47,25 +47,28 @@ flux_directory = join(data_path, 'NAME/emissions/')
 basis_directory = join(data_path, 'NAME/basis_functions/')
 bc_directory = join(data_path, 'NAME/bc/')
 bc_basis_directory = join(data_path,'NAME/bc_basis_functions/')
+fp_HiTRes_directory = join(data_path,'NAME/fp_high_time_res/')
 
 # Get acrg_site_info file
 with open(join(acrg_path, "acrg_site_info.json")) as f:
     site_info=json.load(f)
 
-def filenames(site, domain, start, end, height = None, flux=None, basis=None):
+def filenames(site, domain, start, end, height = None, flux=None, basis=None, HiTRes = False):
     """
     Output a list of available footprint file names,
     for given site, domain, directory and date range.
 
     Doesn't work for flux or basis functions yet.
     """
-    if flux is None and basis is None:
+    if flux is None and basis is None and HiTRes is False:
         baseDirectory = fp_directory
     else:
         if flux is not None:
             baseDirectory = flux_directory
         if basis is not None:
             baseDirectory = basis_directory
+        if HiTRes is not False:
+            baseDirectory = fp_HiTRes_directory
     
     # Get height
     #Get site info for heights
@@ -115,7 +118,7 @@ def read_netcdfs(files, dim = "time", transform_func=None):
 
 
 def footprints(sitecode_or_filename, start = "2010-01-01", end = "2016-01-01",
-        domain="EUROPE", height = None, species = None, emissions_name = None):
+        domain="EUROPE", height = None, species = None, emissions_name = None, HiTRes = False):
     """
     Load a NAME footprint netCDF files into an xray dataset.
     Either specify:
@@ -175,7 +178,14 @@ def footprints(sitecode_or_filename, start = "2010-01-01", end = "2016-01-01",
             bc_ds = boundary_conditions(domain, species)
             if bc_ds is not None:
                 fp = combine_datasets(fp, bc_ds)
-          
+        
+        if HiTRes == True:
+            HiTRes_files = filenames(site, domain, start, end, height = height, HiTRes=True)
+            HiTRes_ds = read_netcdfs(HiTRes_files)
+#            Will remove this next line when all files are named with correct
+#            variable name
+            HiTRes_ds = HiTRes_ds.rename({'fp':'fp_HiTRes'})
+            fp = combine_datasets(fp, HiTRes_ds)
 
         return fp
 
@@ -299,6 +309,38 @@ def timeseries(ds):
               "no fluxes. Check flux file.")
         return None
 
+def timeseries_HiTRes(fp_HiTRes_ds, domain, HiTRes_flux_name, Resid_flux_name,
+                      output_TS = True, output_fpXflux = True):
+    flux_HiTRes = flux(domain, HiTRes_flux_name)
+    flux_resid = flux(domain, Resid_flux_name)
+    
+    fp_HiTRes = fp_HiTRes_ds.fp_HiTRes.to_dataset()
+    fpXflux = np.zeros((len(fp_HiTRes.lat), len(fp_HiTRes.lon), len(fp_HiTRes.time)))
+    
+    for ti, time in enumerate(fp_HiTRes.time):
+        fp = fp_HiTRes.sel(time=time).fp_HiTRes.to_dataset()
+        time_back = [fp.time.values - np.timedelta64(i,'h') for i in fp.H_back.values]
+        fp = fp.update({'H_back':time_back})
+        fp = fp.drop('time')
+        fp = fp.rename({'H_back':'time'})
+        #To make  Hour Back' time go forward
+        fp= fp.update({'fp_HiTRes' : fp.fp_HiTRes[:,:,::-1], 'time' : fp.time[::-1]})
+        em = flux_HiTRes.reindex_like(fp, method='ffill')
+        #Use end of hours back as closest point for finding the emissions file
+        emend = flux_resid.sel(time = fp.time[0], method = 'nearest')
+        em.flux[:,:,0] = emend.flux
+        fpXflux[:,:,ti] = (fp.fp_HiTRes*em.flux).sum(["time"])
+        
+    timeseries= np.sum(fpXflux, axis = (0,1))
+    
+    if output_fpXflux == True and output_TS ==True:
+        return timeseries, fpXflux
+    
+    elif output_fpXflux == False and output_TS ==True:
+        return timeseries
+        
+    elif output_fpXflux == True and output_TS ==False:
+        return fpXflux       
 
 def timeseries_boundary_conditions(ds):
     """
@@ -314,7 +356,7 @@ def timeseries_boundary_conditions(ds):
 
     
 def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
-                          calc_timeseries = True, calc_bc = True,
+                          calc_timeseries = True, calc_bc = True, HiTRes = False,
                           average = None, site_modifier = {}, height = None,
                           emissions_name = None, 
                           perturbed=False, fp_dir_pert=None, pert_year=None, pert_month=None):
@@ -409,7 +451,8 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
                                          else None][0], \
                              height = height_site,
                              emissions_name = [emissions_name if calc_timeseries == True \
-                                         else None][0])
+                                         else None][0],
+                             HiTRes = HiTRes)
 
         else:
             site_fp = footprints(site_modifier_fp, start = start, end = end,
@@ -419,7 +462,8 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
                                          else None][0], \
                              height = height_site,
                              emissions_name = [emissions_name if calc_timeseries == True \
-                                         else None][0])
+                                         else None][0],
+                             HiTRes = HiTRes)
                         
         if site_fp is not None:
                         
@@ -452,6 +496,9 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
                                             (site_ds[key].dims, site_ds[key] / \
                                             data[".units"])})
 
+                if HiTRes:
+                    site_ds.update({'fp_HiTRes' : (site_ds.fp_HiTRes.dims, site_ds.fp_HiTRes / data[".units"])})
+
                
             # Calculate model time series, if required
             if calc_timeseries:
@@ -473,7 +520,8 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
     return fp_and_data
 
 
-def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
+def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi',
+                   HiTRes_flux_name = None, Resid_flux_name=None):
     """
     Adds a sensitivity matrix, H, to each site xray dataframe in fp_and_data.
     
@@ -493,9 +541,14 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
 #        site_bf = combine_datasets(fp_and_data[site]["fp", "flux", "mf_mod"],
 #                                   basis_func)
 
-        site_bf_temp = xray.Dataset({"fp":fp_and_data[site]["fp"],
-                                "flux":fp_and_data[site]["flux"],
-                                "mf_mod":fp_and_data[site]["mf_mod"]})
+        if 'fp_HiTRes' in fp_and_data[site].keys():
+            site_bf_temp = xray.Dataset({"fp":fp_and_data[site]["fp"],
+                                         "fp_HiTRes":fp_and_data[site]["fp_HiTRes"],
+                                         "flux":fp_and_data[site]["flux"]})
+        else:
+            site_bf_temp = xray.Dataset({"fp":fp_and_data[site]["fp"],
+                                         "flux":fp_and_data[site]["flux"]})
+        
         site_bf = combine_datasets(site_bf_temp,basis_func)
 
         basis_scale = xray.Dataset({'basis_scale': (['lat','lon','time'],
@@ -503,11 +556,15 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
                                    coords = site_bf.coords)
         site_bf = site_bf.merge(basis_scale)
 
-        H = np.zeros((int(np.max(site_bf.basis)),len(site_bf.mf_mod)))
+        H = np.zeros((int(np.max(site_bf.basis)),len(site_bf.time)))
         
-        fp=site_bf.fp.values
-        flux=site_bf.flux.values
-        H_all=fp*flux 
+        if 'fp_HiTRes' in site_bf.keys():
+            H_all_arr=timeseries_HiTRes(site_bf, domain, HiTRes_flux_name, Resid_flux_name, output_TS = False, output_fpXflux = True)
+            H_all = xray.DataArray(H_all_arr, coords=[site_bf.lat, site_bf.lon, site_bf.time], dims = ['lat','lon','time'])
+        else:
+            H_all=site_bf.fp*site_bf.flux 
+            H_all_arr = H_all.values
+            
         H_all_v=np.zeros((len(site_bf.lat)*len(site_bf.lon),len(site_bf.time)))
         for ti in range(len(site_bf.time)):
             H_all_v[:,ti]=np.ravel(H_all[:,:,ti])
@@ -534,7 +591,6 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
         fp_and_data[site] = fp_and_data[site].merge(sensitivity)
         
         if basis_case in ('transd','test', 'alcompare', 'sense'):
-            H_vary = site_bf.fp*site_bf.flux
             sub_fp_temp = site_bf.fp.sel(lon=slice(min(site_bf.sub_lon),max(site_bf.sub_lon)), 
                                     lat=slice(min(site_bf.sub_lat),max(site_bf.sub_lat))) 
             sub_fp = xray.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
@@ -542,7 +598,7 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi'):
                                          'sub_lon': (site_bf.coords['sub_lon']),
                                 'time' : (fp_and_data[site].coords['time'])})
                                 
-            sub_H_temp = H_vary.sel(lon=slice(min(site_bf.sub_lon),max(site_bf.sub_lon)), 
+            sub_H_temp = H_all.sel(lon=slice(min(site_bf.sub_lon),max(site_bf.sub_lon)), 
                                     lat=slice(min(site_bf.sub_lat),max(site_bf.sub_lat)))                             
             sub_H = xray.Dataset({'sub_H': (['sub_lat','sub_lon','time'], sub_H_temp)},
                                coords = {'sub_lat': (site_bf.coords['sub_lat']),
