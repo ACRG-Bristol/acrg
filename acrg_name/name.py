@@ -182,9 +182,6 @@ def footprints(sitecode_or_filename, start = "2010-01-01", end = "2016-01-01",
         if HiTRes == True:
             HiTRes_files = filenames(site, domain, start, end, height = height, HiTRes=True)
             HiTRes_ds = read_netcdfs(HiTRes_files)
-#            Will remove this next line when all files are named with correct
-#            variable name
-            HiTRes_ds = HiTRes_ds.rename({'fp':'fp_HiTRes'})
             fp = combine_datasets(fp, HiTRes_ds)
 
         return fp
