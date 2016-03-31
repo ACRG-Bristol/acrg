@@ -352,7 +352,7 @@ def timeseries_boundary_conditions(ds):
            (ds.particle_locations_w*ds.vmr_w).sum(["height", "lat"])
 
     
-def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
+def footprints_data_merge(data, domain = "EUROPE", species = "CH4", load_flux = True,
                           calc_timeseries = True, calc_bc = True, HiTRes = False,
                           average = None, site_modifier = {}, height = None,
                           emissions_name = None, 
@@ -443,22 +443,26 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
             
             site_fp = footprints(site_modifier_fp, start = start, end = end,
                              domain = domain,
-                             species = [species if calc_timeseries == True or \
+                             species = [species if load_flux == True or \
+                                         calc_timeseries == True or \
                                          calc_bc == True \
                                          else None][0], \
                              height = height_site,
-                             emissions_name = [emissions_name if calc_timeseries == True \
+                             emissions_name = [emissions_name if load_flux == True or \
+                                         calc_timeseries == True \
                                          else None][0],
                              HiTRes = HiTRes)
 
         else:
             site_fp = footprints(site_modifier_fp, start = start, end = end,
                              domain = domain,
-                             species = [species if calc_timeseries == True or \
+                             species = [species if load_flux == True or \
+                                         calc_timeseries == True or \
                                          calc_bc == True \
                                          else None][0], \
                              height = height_site,
-                             emissions_name = [emissions_name if calc_timeseries == True \
+                             emissions_name = [emissions_name if load_flux == True or \
+                                         calc_timeseries == True \
                                          else None][0],
                              HiTRes = HiTRes)
                         
