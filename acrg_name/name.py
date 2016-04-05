@@ -1452,7 +1452,7 @@ def animate(fp_data, output_directory,
             video_os="mac", ffmpeg_only = False,
             plot_function = "plot", time_regular = "1H",
             frame_limit = None,
-            dpi = 150):
+            dpi = 150, interpolate = True):
     
     sites = [key for key in fp_data.keys() if key[0] != '.']
     
@@ -1487,7 +1487,7 @@ def animate(fp_data, output_directory,
                     plot(fp_data, t, out_filename = fname, 
                          lon_range = lon_range, lat_range= lat_range,
                          log_range = log_range, map_data = map_data,
-                         interpolate = True,
+                         interpolate = interpolate,
                          dpi = dpi)
                 elif plot_function == "plot3d":
                     plot3d(fp_data[sites[0]], t, out_filename = fname,
