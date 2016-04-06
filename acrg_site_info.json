@@ -62,7 +62,7 @@
     "BSD" : {
         "alt": [],
         "long_name" : "Bilsdale, UK",
-        "height": ["108m", "48m", "248m"],
+        "height": ["108m", "42m", "248m"],
         "height_station_masl": 380.0,
         "height_name": ["110magl", "50magl", "250magl"],
         "latitude": 54.35858,
