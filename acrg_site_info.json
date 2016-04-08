@@ -317,6 +317,16 @@
         "longitude": 0.23048,
         "network": "GAUGE"
     },
+    "HFM" : {
+        "alt": [],
+        "long_name" : "Harvard Forest, Massachusetts, United States",
+        "height": ["29m"],
+        "height_station_masl": 311.0,
+        "height_name": ["29magl"],
+        "latitude": 42.48,
+        "longitude": -72.18,
+        "network": "NOAA"
+    },
     "HSU" : {
         "alt": [],
         "long_name" : "Humboldt State University, United States",
@@ -397,6 +407,16 @@
         "longitude": -9.90389,
         "network": "AGAGE"
     },
+    "MWO" : {
+        "alt": [],
+        "long_name" : "Mt. Wilson Observatory, United States",
+        "height": ["46m"],
+        "height_station_masl": 1728.0,
+        "height_name": ["46magl"],
+        "latitude": 34.2246,
+        "longitude": -118.0586,
+        "network": "NOAA"
+    },
     "NWR" : {
         "alt": [],
         "long_name" : "Niwot Ridge, Colorado, United States",
@@ -445,6 +465,16 @@
         "longitude": -59.43,
         "network": "AGAGE"
     },
+    "SCT" : {
+        "alt": [],
+        "long_name" : "Beech Island, South Carolina, United States",
+        "height": ["305m"],
+        "height_station_masl": 115.2,
+        "height_name": ["305magl"],
+        "latitude": 33.4057,
+        "longitude": -81.8334,
+        "network": "NOAA"
+    },
     "SDZ" : {
         "alt": [""],
         "long_name" : "Shandianzi, China",
@@ -489,6 +519,16 @@
         "height_name": ["10magl"],
         "network": "NOAA"
     },
+    "STR" : {
+        "alt": [],
+        "long_name" : "Sutro Tower, San Francisco, United States",
+        "height": ["232m"],
+        "height_station_masl": 254.0,
+        "height_name": ["232magl"],
+        "latitude": 37.7553,
+        "longitude": -122.4517,
+        "network": "NOAA"
+    },
     "TAC" : {
         "alt": [],
         "long_name" : "Tacolneston Tower, UK",
@@ -502,12 +542,12 @@
     "THD" : {
         "alt": ["TH"],
         "long_name" : "Trinidad Head, California",
-        "height": ["10m", "5m"],
+        "height": ["13m", "10m", "5m"],
         "height_station_masl": 107.0,
-        "height_name": ["10magl", "5magl"],
+        "height_name": ["13magl", "10magl", "5magl"],
         "latitude": 41.0541,
         "longitude": -124.151,
-        "network": "AGAGE"
+        "network": ["NOAA", "AGAGE", "NOAA"]
     },
     "TIL" : {
         "alt": ["TILNEY"],
@@ -558,6 +598,36 @@
         "latitude": 52.95042,
         "longitude": 1.12194,
         "network": "UCAM"
+    },
+    "WBI" : {
+        "alt": [],
+        "long_name" : "West Branch, Iowa, United States",
+        "height": ["379m"],
+        "height_station_masl": 241.7,
+        "height_name": ["379magl"],
+        "latitude": 41.7248,
+        "longitude": -91.3529,
+        "network": "NOAA"
+    },
+    "WGC" : {
+        "alt": [],
+        "long_name" : "Walnut Grove, California, United States",
+        "height": ["91m"],
+        "height_station_masl": 0.0,
+        "height_name": ["91magl"],
+        "latitude": 38.265,
+        "longitude": -121.4911,
+        "network": "NOAA"
+    },
+    "WKT" : {
+        "alt": [],
+        "long_name" : "Moody, Texas, United States",
+        "height": ["457m"],
+        "height_station_masl": 251.0,
+        "height_name": ["457magl"],
+        "latitude": 31.3149,
+        "longitude": -97.3269,
+        "network": "NOAA"
     },
     "WSA" : {
         "alt": [],
