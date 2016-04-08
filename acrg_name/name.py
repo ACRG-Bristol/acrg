@@ -352,7 +352,7 @@ def timeseries_boundary_conditions(ds):
            (ds.particle_locations_w*ds.vmr_w).sum(["height", "lat"])
 
     
-def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
+def footprints_data_merge(data, domain = "EUROPE", species = "CH4", load_flux = True,
                           calc_timeseries = True, calc_bc = True, HiTRes = False,
                           average = None, site_modifier = {}, height = None,
                           emissions_name = None, 
@@ -443,22 +443,26 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4",
             
             site_fp = footprints(site_modifier_fp, start = start, end = end,
                              domain = domain,
-                             species = [species if calc_timeseries == True or \
+                             species = [species if load_flux == True or \
+                                         calc_timeseries == True or \
                                          calc_bc == True \
                                          else None][0], \
                              height = height_site,
-                             emissions_name = [emissions_name if calc_timeseries == True \
+                             emissions_name = [emissions_name if load_flux == True or \
+                                         calc_timeseries == True \
                                          else None][0],
                              HiTRes = HiTRes)
 
         else:
             site_fp = footprints(site_modifier_fp, start = start, end = end,
                              domain = domain,
-                             species = [species if calc_timeseries == True or \
+                             species = [species if load_flux == True or \
+                                         calc_timeseries == True or \
                                          calc_bc == True \
                                          else None][0], \
                              height = height_site,
-                             emissions_name = [emissions_name if calc_timeseries == True \
+                             emissions_name = [emissions_name if load_flux == True or \
+                                         calc_timeseries == True \
                                          else None][0],
                              HiTRes = HiTRes)
                         
@@ -1448,7 +1452,7 @@ def animate(fp_data, output_directory,
             video_os="mac", ffmpeg_only = False,
             plot_function = "plot", time_regular = "1H",
             frame_limit = None,
-            dpi = 150):
+            dpi = 150, interpolate = True):
     
     sites = [key for key in fp_data.keys() if key[0] != '.']
     
@@ -1483,7 +1487,7 @@ def animate(fp_data, output_directory,
                     plot(fp_data, t, out_filename = fname, 
                          lon_range = lon_range, lat_range= lat_range,
                          log_range = log_range, map_data = map_data,
-                         interpolate = True,
+                         interpolate = interpolate,
                          dpi = dpi)
                 elif plot_function == "plot3d":
                     plot3d(fp_data[sites[0]], t, out_filename = fname,
