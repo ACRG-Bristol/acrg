@@ -150,12 +150,14 @@ def ucam(site, species):
     ds = xray.Dataset.from_dataframe(df.sort_index())
     
     global_attributes = params[site]["global_attributes"]
+    global_attributes["inlet_height_magl"] = float(params[site]["inlet"][:-1])
     
     ds = attributes(ds,
                     species.upper(),
                     site.upper(),
                     global_attributes = global_attributes,
-                    scale = params["scale"][species.upper()])
+                    scale = params["scale"][species.upper()],
+                    sampling_period = 60)
     
     # Write file
     nc_filename = output_filename(params["directory_output"],
@@ -559,7 +561,8 @@ def noaa_montzka_usa(species, network = "NOAA"):
             }
         }
 
-    fnames = glob.glob(join(params["directory"], params["species_noaa"][species] + "*.csv"))
+    fnames = glob.glob(join(params["directory"],
+                            params["species_noaa"][species] + "*.csv"))
     fname = fnames[0]
 
     with open(fname) as f:
@@ -698,4 +701,112 @@ def noaa_montzka_usa(species, network = "NOAA"):
                     
                     ds.to_netcdf(nc_filename)
                     
-                    
+
+def noaa_ccgg(species):
+
+    def date_parser(year, month, day, hour, minute, second):
+        return dt(year, month, day, hour, minute, second)
+    
+    params = {
+        "directory" : "/data/shared/obs_raw/NOAA/CCGG/surface",
+        "directory_output" : "/data/shared/obs/",
+        "units": {"CH4": "ppb",
+                  "CO2": "ppm",
+                  "CH4C13": "permil"},
+        "instrument": {"CH4": "GC-FID",
+                       "CO2": "NDIR",
+                       "CH4C13": "IRMS"},
+        "scale": {"CH4": "NOAA04",
+                  "CO2": "WMO_X2007",
+                  "CH4C13": "NOAA-INSTAAR"},
+        "global_attributes": {
+            "data_owner": "Ed Dlugokencky",
+            "data_owner_email": "ed.dlugokencky@noaa.gov"
+            }
+        }
+
+    
+    fnames=glob.glob(join(params["directory"],
+                          species.upper(),
+                          "event",
+                          '*event.txt'))
+
+    for fname in fnames:
+    
+        header = []
+        with open(fname, "r") as f:
+            for line in f:
+                if line[0] == "#":
+                    header.append(line)
+                else:
+                    break
+    
+        columns = header[-1][14:].split()
+        
+        df = pd.read_csv(fname, skiprows = len(header), sep = r"\s+",
+                         names = columns,
+                         parse_dates = {"time": ["sample_year", "sample_month", "sample_day",
+                                        "sample_hour", "sample_minute", "sample_seconds"]},
+                         dtype = {"sample_year": np.int,
+                                  "sample_month": np.int,
+                                  "sample_day": np.int,
+                                  "sample_hour": np.int,
+                                  "sample_minute": np.int,
+                                  "sample_seconds": np.int},
+                         index_col = "time",
+                         date_parser = date_parser,
+                         skipinitialspace = True)
+        
+        site = df["sample_site_code"][0]
+        
+        flag = []
+        selection_flag = []
+        for flag_str in df.analysis_flag:
+            flag.append(flag_str[0] == '.')
+            selection_flag.append(int(flag_str[1] != '.'))
+            
+        df[species + "_status_flag"] = flag
+        df[species + "_selection_flag"] = selection_flag
+    
+        df = df[df[species + "_status_flag"]]
+        
+        df = df[["sample_latitude", "sample_longitude", "sample_altitude",
+                 "analysis_value", "analysis_uncertainty",
+                 species + "_selection_flag"]]
+        
+        df.rename(columns = {"analysis_value": species,
+                             "analysis_uncertainty": species + "_repeatability",
+                             "sample_longitude": "longitude",
+                             "sample_latitude": "latitude",
+                             "sample_altitude": "altitude"}, inplace = True)
+        
+        df.index.name = "index"
+        df = df.reset_index().drop_duplicates(subset='index').set_index('index')              
+        df.index.name = "time"
+        
+        global_attributes = params["global_attributes"]
+    
+        # Sort and convert to dataset
+        ds = xray.Dataset.from_dataframe(df.sort_index())
+        
+        # Add attributes
+        ds = attributes(ds,
+                        species,
+                        site.upper(),
+                        global_attributes = global_attributes,
+                        scale = params["scale"][species],
+                        sampling_period = 60)
+    
+        # Write file
+        nc_filename = output_filename(params["directory_output"],
+                                      "NOAA-CCGG",
+                                      params["instrument"][species],
+                                      site.upper(),
+                                      str(ds.time.to_pandas().index.to_pydatetime()[0].year),
+                                      ds.species,
+                                      "various")
+        
+        print("Writing " + nc_filename)
+        
+        ds.to_netcdf(nc_filename)
+    

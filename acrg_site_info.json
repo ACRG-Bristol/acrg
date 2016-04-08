@@ -481,6 +481,14 @@
         "height_name": ["10magl"],
         "network": "IITM"
     },
+    "STM" : {
+        "alt": [""],
+        "long_name" : "Ocean Station M",
+        "height": ["5m"],
+        "height_station_masl": 0.0,
+        "height_name": ["10magl"],
+        "network": "NOAA"
+    },
     "TAC" : {
         "alt": [],
         "long_name" : "Tacolneston Tower, UK",
