@@ -49,7 +49,6 @@ REAL latmax
 REAL sigma_bd
 REAL sigma_clon
 REAL sigma_clat
-REAL stepsize_sigma_y
 REAL stepsize_tau
 INTEGER sigma_model_pdf
 INTEGER pdf_param1_pdf
@@ -75,6 +74,7 @@ REAL h_agg(nmeasure,kICmax,nbeta)
 REAL y(nmeasure) 
 REAL n0(nmeasure, nbeta) 
 REAL sigma_model(ydim2, nbeta)
+REAL stepsize_sigma_y(ydim2)
 INTEGER R_indices(ydim1,ydim2)
 REAL sigma_measure(nmeasure)
 REAl sigma_model_hparam1(ydim2)
@@ -1479,7 +1479,7 @@ REAL sigma_model_ap(dim2)
 REAl sigma_y_current(nmeasure)
 INTEGER R_indices(dim1,dim2)
 REAL Rinv_current(nmeasure,nmeasure), Qinv(nmeasure,nmeasure)
-REAL stepsize_sigma_y
+REAL stepsize_sigma_y(dim2)
 REAL sigma_model_hparam1(dim2)
 REAL sigma_model_hparam2(dim2)
 INTEGER sigma_model_pdf
@@ -1504,7 +1504,7 @@ REAL Rinv_new(nmeasure,nmeasure), C(nmeasure)
     yi = FLOOR(dim2*u)+1
 		
     ! Generate new value of sigma_y
-    dsigma_y = random_normal()*stepsize_sigma_y*sigma_model_ap(yi)
+    dsigma_y = random_normal()*stepsize_sigma_y(yi)*sigma_model_ap(yi)
     sigma_model_new = sigma_model_current(yi) + dsigma_y       
 
     call calc_pdf(sigma_model_current(yi), sigma_model_hparam1(yi), sigma_model_hparam2(yi), sigma_model_pdf, p0_sigma_y)

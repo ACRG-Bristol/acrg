@@ -771,6 +771,18 @@ def filtering(datasets_in, filters, full_corr=False):
         else:
             return dataset[dict(time = ti)]
             
+    def nighttime(dataset, full_corr=False):
+        # Subset during daytime hours
+        hours = dataset.time.to_pandas().index.hour
+        ti = [i for i, h in enumerate(hours) if h >= 22 or h <= 3]
+        
+        if full_corr:
+            dataset_temp = dataset[dict(time = ti)]   
+            dataset_out = dataset_temp.reindex_like(dataset)
+            return dataset_out
+        else:
+            return dataset[dict(time = ti)]
+            
     def noon(dataset, full_corr=False):
         # Subset during daytime hours
         hours = dataset.time.to_pandas().index.hour
@@ -830,6 +842,7 @@ def filtering(datasets_in, filters, full_corr=False):
         
     filtering_functions={"daily_median":daily_median,
                          "daytime":daytime,
+                         "nighttime":nighttime,
                          "noon":noon,
                          "pblh_gt_500": pblh_gt_500,
                          "pblh_gt_250": pblh_gt_250,
@@ -842,7 +855,6 @@ def filtering(datasets_in, filters, full_corr=False):
     
     # Do filtering
     for site in sites:
-        if site == 'GAUGE-FERRY':
             for filt in filters:
                 datasets[site] = filtering_functions[filt](datasets[site], full_corr=full_corr)
 
