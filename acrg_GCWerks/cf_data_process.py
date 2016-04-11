@@ -31,7 +31,8 @@ with open(site_info_file) as sf:
 unit_species = {"CO2": "1e-6",
                 "CH4": "1e-9",
                 "N2O": "1e-9",
-                "CO": "1e-6"}
+                "CO": "1e-6",
+                "CH4C13": "permil"}
 
 unit_interpret = {"ppm": "1e-6",
                  "ppb": "1e-9",
