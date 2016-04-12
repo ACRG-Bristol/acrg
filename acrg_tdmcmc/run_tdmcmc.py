@@ -321,6 +321,10 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
         # DEFINE TAU PARAMS AND DELTATIME
         deltatime=[float(s) for s in re.findall(r'\d+', av_period[0])]
         nsite_max=np.max(nmeasure_site)
+        
+        
+    stepsize_sigma_y_all=np.zeros((ydim2))
+    stepsize_sigma_y_all[:]=stepsize_sigma_y
     #%%
     
     # Define prior model and regions with uniform distribution
@@ -405,7 +409,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
         accept_swap, accept_sigma_y, reject_sigma_y = tdmcmc_uncorr.hbtdmcmc(
         beta,k, x, h_agg,y,n0, plon, plat, regions_v, 
         pdf_param1, pdf_param2, lon,lat, h_v, sigma_model, sigma_measure, 
-        R_indices, sigma_model_hparams, stepsize_sigma_y, sigma_model_pdf, 
+        R_indices, sigma_model_hparams, stepsize_sigma_y_all, sigma_model_pdf, 
         sigma_clon, sigma_clat, rjmcmc, 
         lonmin, lonmax, latmin,latmax, sigma_bd, kmin, x_pdf, burn_in, 
         pdf_p1_hparam1, pdf_p1_hparam2, pdf_p2_hparam1, pdf_p2_hparam2, pdf_param1_pdf, 
@@ -421,7 +425,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
         accept_tau, reject_tau = tdmcmc_evencorr.transd_evencorr.hbtdmcmc(beta,k, x,
         h_agg,y,n0, plon, plat, regions_v, 
         pdf_param1, pdf_param2, lon,lat, h_v, sigma_model, sigma_measure, 
-        R_indices, sigma_model_hparam1, sigma_model_hparam2, stepsize_sigma_y, sigma_model_pdf, 
+        R_indices, sigma_model_hparam1, sigma_model_hparam2, stepsize_sigma_y_all, sigma_model_pdf, 
         tau, tau_hparams, stepsize_tau, tau_pdf, deltatime,
         sigma_clon, sigma_clat, rjmcmc, nmeasure_site, nsite_max, 
         lonmin, lonmax, latmin,latmax, sigma_bd, kmin, x_pdf, burn_in, 
@@ -580,8 +584,10 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     #Output files from tdmcmc_template.py stored in the form:
     # "output_" + network + "_" + species +  "_" + date + ".nc"
     
-    fname=os.path.join(output_directory,
+    fname=os.path.join(output_dir,
                         "output_" + network + "_" + species + "_" + start_date + ".nc")
+    for key in post_mcmc.keys():
+        post_mcmc[key].encoding['zlib'] = True
     post_mcmc.to_netcdf(path=fname, mode='w')
 
     return post_mcmc
