@@ -193,10 +193,14 @@ def cbw():
         
         ds = xray.Dataset.from_dataframe(df.sort_index())
 
+        global_attributes_inlet = params["global_attributes"].copy()
+        global_attributes_inlet["inlet_height_magl"] = inlet[:-1]
+
         ds = attributes(ds,
                         species.upper(),
                         site.upper(),
-                        global_attributes=params["global_attributes"])
+                        global_attributes=global_attributes_inlet,
+                        sampling_period = 60)
         
         # Write file
         nc_filename = output_filename(params["directory_output"],
@@ -217,7 +221,7 @@ def cbw():
         "directory_output" : "/data/shared/obs/",
         "inlets": ["20m", "60m", "120m", "200m"],
         "global_attributes" : {
-            "contact": "Danielle van Dinther"
+            "Data_owner": "Danielle van Dinther"
         }
     }
 
@@ -809,4 +813,48 @@ def noaa_ccgg(species):
         print("Writing " + nc_filename)
         
         ds.to_netcdf(nc_filename)
+    
+
+def gla(species):
+    
+    fnames = glob.glob("/data/shared/obs_raw/GAUGE/*GLA*" + species.lower() + "*10m.nc")
+    
+    ds = []
+    for fname in fnames:
+        with xray.open_dataset(fname) as f:
+            dsf = f.load()
+        if species.lower() in dsf.variables.keys():
+            dsf.rename({species.lower(): species.upper()}, inplace = True)
+        dsf.rename({"uncertainty": species.upper() + "_variability"}, inplace = True)
+        ds.append(dsf)
+    
+    ds = xray.concat(ds, dim = "time")
+
+    # Change time stamp (currently the middle)
+    ds.time -= np.median(ds.time.values[1:] - ds.time.values[0:-1])/2.
+    ds.attrs["comment"] = "Time stamp used to be middle of averaging period, " + \
+                    "now subtracted half the " + \
+                    "median to approximate the start"
+
+    # Add attributes
+    ds = attributes(ds,
+                    species,
+                    "GLA",
+                    global_attributes = {"inlet_height_magl": 10.},
+                    sampling_period = 3*60)
+
+    # Write file
+    nc_filename = output_filename("/data/shared/obs/",
+                                  "GAUGE",
+                                  "FTS",
+                                  "GLA",
+                                  str(ds.time.to_pandas().index.to_pydatetime()[0].year),
+                                  ds.species,
+                                  "10m")
+    
+    print("Writing " + nc_filename)
+    
+    ds.to_netcdf(nc_filename)
+    
+    
     
