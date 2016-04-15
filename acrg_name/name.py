@@ -1524,8 +1524,8 @@ def animate(fp_data, output_directory,
             pbar.update(ti)
         pbar.finish()
     
-    print ""
-    print "... running ffmpeg"
+    print("")
+    print("... running ffmpeg")
 
     if video_os.lower() == "mac":
         ffmpeg_status = subprocess.call("ffmpeg -r " + str(framerate) + \
@@ -1534,15 +1534,17 @@ def animate(fp_data, output_directory,
             "-pix_fmt yuv420p -intra -qscale 0 -y " + \
             os.path.join(output_directory, file_label) + ".mp4", shell=True)
     elif video_os.lower() == "pc":
+        os.remove(os.path.join(output_directory, file_label) + ".wmv")
         ffmpeg_status = subprocess.call("ffmpeg -r " + str(framerate) + \
             " -i '" + os.path.join(output_directory, file_label) + "_%05d.png' " + \
             " -b 5000k -f asf -vcodec wmv2 -acodec wmav2 " + \
             os.path.join(output_directory, file_label) + ".wmv", shell=True)
     else:
         print("ERROR: video_os must be mac or pc")
-        
-    print(ffmpeg_status)
+        return None
     
+    print("... done with status " + str(ffmpeg_status))
+
     if delete_png:
         filelist = glob.glob(os.path.join(output_directory, "*.png"))
         for f in filelist:
