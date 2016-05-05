@@ -24,7 +24,6 @@ uncertainties differently (emissions uncertainty > baseline uncertainty).
 
 @author: ml12574
 """
-
 import tdmcmc_uncorr
 import tdmcmc_evencorr
 import acrg_name as name
@@ -406,7 +405,8 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
         k_it, x_out, regions_out, plon_out, plat_out, sigma_model_out,sigma_y_out, \
         n0T_out,pdf_param1_out,pdf_param2_out, accept, reject, \
         accept_birth, reject_birth, accept_death, reject_death, accept_move, reject_move, \
-        accept_swap, accept_sigma_y, reject_sigma_y = tdmcmc_uncorr.hbtdmcmc(
+        accept_swap, accept_sigma_y, reject_sigma_y, \
+        tot_acc_x, tot_acc_p1, tot_acc_p2, tot_acc_sigma_y = tdmcmc_uncorr.hbtdmcmc(
         beta,k, x, h_agg,y,n0, plon, plat, regions_v, 
         pdf_param1, pdf_param2, lon,lat, h_v, sigma_model, sigma_measure, 
         R_indices, sigma_model_hparams, stepsize_sigma_y_all, sigma_model_pdf, 
@@ -557,7 +557,11 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
                             "accepts": (["proposal"],
                             accepts),
                             "rejects": (["proposal"],
-                            rejects),
+                            rejects),                          
+                            "stepsize": (["nIC1"], tot_acc_x),
+                            "stepsize_pdf_p1": (["nIC1"], tot_acc_p1),
+                            "stepsize_pdf_p2": (["nIC1"], tot_acc_p2),
+                            "stepsize_sigma_y": (["ydim2"], tot_acc_sigma_y),
                             "h_v_all": (["nmeasure","NgridIC"],
                             h_v_all), 
                             "q_ap": (["lat", "lon"],
