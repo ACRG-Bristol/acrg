@@ -83,6 +83,10 @@ crds_header_string_interpret = {"C": "",
                                 "N": "_number_of_observations"}
 
 
+def parser_YYMMDD(yymmdd):
+    return dt.strptime(yymmdd, '%y%m%d')
+
+
 def get_directories(default_input_directory,
                     default_output_directory,
                     user_specified_input_directory = None,
@@ -443,7 +447,8 @@ def gc_precisions_read(precisions_file):
                             header = None,
                             sep=r"\s+", dtype = str,
                             index_col = 0,
-                            parse_dates = True)
+                            parse_dates = True,
+                            date_parser = parser_YYMMDD)
     
     # Rename index column
     precision.index.names = ["index"]
@@ -513,7 +518,7 @@ def gc(site, instrument, network,
 
         # Get precision
         precision, precision_species = gc_precisions_read(precision_files[fi])
-
+        
         # Merge precisions into dataframe
         for sp in species:
             precision_index = precision_species.index(sp)*2+1
@@ -876,34 +881,11 @@ def decc_data_freeze():
 
 if __name__ == "__main__":
 
-    # ICOS
-    icos("TTA")
-    icos("MHD", network = "LSCE")
-
-    # GAUGE CRDS data
-    crds("HFD", "GAUGE")
-    crds("BSD", "GAUGE")
-
-    # GAUGE GC data
-    gc("BSD", "GCMD", "GAUGE")
-    gc("HFD", "GCMD", "GAUGE")
-
-    # DECC CRDS data
-    crds("TTA", "DECC")
-    crds("RGL", "DECC")
-    crds("TAC", "DECC")
-
-    # DECC GC data
-    gc("TAC", "GCMD", "DECC")
-    gc("RGL", "GCMD", "DECC")
-
-    # DECC Medusa
-    gc("TAC", "medusa", "DECC")
 
     # AGAGE GC data
+    gc("RPB", "GCMD", "AGAGE")
     gc("CGO", "GCMD", "AGAGE")
     gc("MHD", "GCMD", "AGAGE")
-    gc("RPB", "GCMD", "AGAGE")
     gc("SMO", "GCMD", "AGAGE")
     gc("THD", "GCMD", "AGAGE")
 
@@ -930,5 +912,30 @@ if __name__ == "__main__":
     gc("MCI", "medusa", "AGAGE")
     gc("ZEP", "medusa", "AGAGE")
     
-    
+  
+    # ICOS
+    icos("TTA")
+    icos("MHD", network = "LSCE")
+
+    # GAUGE CRDS data
+    crds("HFD", "GAUGE")
+    crds("BSD", "GAUGE")
+
+    # GAUGE GC data
+    gc("BSD", "GCMD", "GAUGE")
+    gc("HFD", "GCMD", "GAUGE")
+
+    # DECC CRDS data
+    crds("TTA", "DECC")
+    crds("RGL", "DECC")
+    crds("TAC", "DECC")
+
+    # DECC GC data
+    gc("TAC", "GCMD", "DECC")
+    gc("RGL", "GCMD", "DECC")
+
+    # DECC Medusa
+    gc("TAC", "medusa", "DECC")
+
+  
     

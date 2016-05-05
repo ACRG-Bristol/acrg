@@ -9,6 +9,16 @@
         "longitude": -9.72,
         "network": "ALE"
     },
+    "ALT" : {
+        "alt": [],
+        "long_name" : "Alert, Canada",
+        "height": ["10m"],
+        "height_station_masl": 200.0,
+        "height_name": ["10magl"],
+        "latitude": 82.451,
+        "longitude": -62.506,
+        "network": "NOAA"
+    },
     "AMT" : {
         "alt": [],
         "long_name" : "Argyle, Maine, United States",
@@ -367,6 +377,15 @@
         "longitude": -80.158,
         "network": "NOAA"
     },
+    "KUM" : {
+        "alt": [],
+        "long_name" : "Cape Kumukahi, Hawaii",
+        "height": ["10m"],
+        "height_station_masl": 3.0,
+        "latitude": 19.520,
+        "longitude": -154.820,
+        "network": "NOAA"
+    },
     "LEF" : {
         "alt": [],
         "long_name" : "Park Falls, Wisconsin, United States",
@@ -407,6 +426,15 @@
         "longitude": -9.90389,
         "network": "AGAGE"
     },
+    "MLO" : {
+        "alt" : [],
+        "long_name" : "Mauna Loa, Hawaii",
+        "height": ["10m"],
+        "height_station_masl": 3397.0,
+        "latitude": 19.536,
+        "longitude": -155.576,
+        "network": "NOAA"
+    },
     "MWO" : {
         "alt": [],
         "long_name" : "Mt. Wilson Observatory, United States",
@@ -443,6 +471,15 @@
         "height": ["20m"],
         "height_station_masl": 0.0,
         "height_name": ["20magl"],
+        "network": "NOAA"
+    },
+    "PSA" : {
+        "alt": [],
+        "long_name" : "Palmer Station, Antarctica",
+        "height": ["10m"],
+        "height_station_masl": 10.0,
+        "latitude": -64.920,
+        "longitude": -64.000,
         "network": "NOAA"
     },
     "RGL" : {
@@ -511,6 +548,15 @@
         "height_name": ["10magl"],
         "network": "IITM"
     },
+    "SPO" : {
+        "alt": [],
+        "long_name" : "South Pole, Antarctica",
+        "height": ["10m"],
+        "height_station_masl": 2810.0,
+        "latitude": -89.980,
+        "longitude": -24.8,
+        "network": "NOAA"
+    },
     "STM" : {
         "alt": [""],
         "long_name" : "Ocean Station M",
@@ -529,6 +575,15 @@
         "longitude": -122.4517,
         "network": "NOAA"
     },
+    "SUM" : {
+        "alt": [],
+        "long_name" : "Summit, Greenland",
+        "height": ["10m"],
+        "height_station_masl": 3209.5,
+        "latitude": 72.596,
+        "longitude": -38.422,
+        "network": "NOAA"
+    },    
     "TAC" : {
         "alt": [],
         "long_name" : "Tacolneston Tower, UK",
