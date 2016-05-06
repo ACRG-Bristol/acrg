@@ -557,7 +557,7 @@ def gc(site, instrument, network,
             
             print("Processing " + sp + ", " + inlet + "...")
             
-            if inlet == "any":
+            if (inlet == "any") or (inlet == "air"):
                 ds_sp = ds[[sp,
                             sp + "_repeatability",
                             sp + "_status_flag",
@@ -571,12 +571,13 @@ def gc(site, instrument, network,
                                                      sp + "_repeatability",
                                                      sp + "_status_flag",
                                                      sp + "_integration_flag"]]
-
-            # re-label inlet if required
-            if "inlet_label" in params["GC"][site].keys():
-                inlet_label = params["GC"][site]["inlet_label"][inleti]
-            else:
                 inlet_label = inlet
+
+#            # re-label inlet if required
+#            if "inlet_label" in params["GC"][site].keys():
+#                inlet_label = params["GC"][site]["inlet_label"][inleti]
+#            else:
+#               inlet_label = inlet
 
             global_attributes["inlet_height_magl"] = float(inlet_label[:-1])
 
@@ -881,6 +882,18 @@ def decc_data_freeze():
 
 if __name__ == "__main__":
 
+    # AGAGE Medusa
+    gc("MHD", "medusa", "AGAGE")
+    gc("CGO", "medusa", "AGAGE")
+    gc("GSN", "medusa", "AGAGE")
+    gc("SDZ", "medusa", "AGAGE")
+    gc("THD", "medusa", "AGAGE")
+    gc("RPB", "medusa", "AGAGE")
+    gc("SMO", "medusa", "AGAGE")
+    gc("SIO", "medusa", "AGAGE")
+    gc("JFJ", "medusa", "AGAGE")
+    gc("MCI", "medusa", "AGAGE")
+    gc("ZEP", "medusa", "AGAGE")
 
     # AGAGE GC data
     gc("RPB", "GCMD", "AGAGE")
@@ -898,20 +911,7 @@ if __name__ == "__main__":
     gc("JFJ", "GCMS", "AGAGE")
     gc("MCI", "GCMS", "AGAGE")
     gc("ZEP", "GCMS", "AGAGE")
-    
-    # AGAGE Medusa
-    gc("MHD", "medusa", "AGAGE")
-    gc("CGO", "medusa", "AGAGE")
-    gc("GSN", "medusa", "AGAGE")
-    gc("SDZ", "medusa", "AGAGE")
-    gc("THD", "medusa", "AGAGE")
-    gc("RPB", "medusa", "AGAGE")
-    gc("SMO", "medusa", "AGAGE")
-    gc("SIO", "medusa", "AGAGE")
-    gc("JFJ", "medusa", "AGAGE")
-    gc("MCI", "medusa", "AGAGE")
-    gc("ZEP", "medusa", "AGAGE")
-    
+        
   
     # ICOS
     icos("TTA")
