@@ -83,6 +83,10 @@ crds_header_string_interpret = {"C": "",
                                 "N": "_number_of_observations"}
 
 
+def parser_YYMMDD(yymmdd):
+    return dt.strptime(yymmdd, '%y%m%d')
+
+
 def get_directories(default_input_directory,
                     default_output_directory,
                     user_specified_input_directory = None,
@@ -443,7 +447,8 @@ def gc_precisions_read(precisions_file):
                             header = None,
                             sep=r"\s+", dtype = str,
                             index_col = 0,
-                            parse_dates = True)
+                            parse_dates = True,
+                            date_parser = parser_YYMMDD)
     
     # Rename index column
     precision.index.names = ["index"]
@@ -513,7 +518,7 @@ def gc(site, instrument, network,
 
         # Get precision
         precision, precision_species = gc_precisions_read(precision_files[fi])
-
+        
         # Merge precisions into dataframe
         for sp in species:
             precision_index = precision_species.index(sp)*2+1
@@ -552,7 +557,7 @@ def gc(site, instrument, network,
             
             print("Processing " + sp + ", " + inlet + "...")
             
-            if inlet == "any":
+            if (inlet == "any") or (inlet == "air"):
                 ds_sp = ds[[sp,
                             sp + "_repeatability",
                             sp + "_status_flag",
@@ -566,12 +571,13 @@ def gc(site, instrument, network,
                                                      sp + "_repeatability",
                                                      sp + "_status_flag",
                                                      sp + "_integration_flag"]]
-
-            # re-label inlet if required
-            if "inlet_label" in params["GC"][site].keys():
-                inlet_label = params["GC"][site]["inlet_label"][inleti]
-            else:
                 inlet_label = inlet
+
+#            # re-label inlet if required
+#            if "inlet_label" in params["GC"][site].keys():
+#                inlet_label = params["GC"][site]["inlet_label"][inleti]
+#            else:
+#               inlet_label = inlet
 
             global_attributes["inlet_height_magl"] = float(inlet_label[:-1])
 
@@ -876,6 +882,37 @@ def decc_data_freeze():
 
 if __name__ == "__main__":
 
+    # AGAGE Medusa
+    gc("MHD", "medusa", "AGAGE")
+    gc("CGO", "medusa", "AGAGE")
+    gc("GSN", "medusa", "AGAGE")
+    gc("SDZ", "medusa", "AGAGE")
+    gc("THD", "medusa", "AGAGE")
+    gc("RPB", "medusa", "AGAGE")
+    gc("SMO", "medusa", "AGAGE")
+    gc("SIO", "medusa", "AGAGE")
+    gc("JFJ", "medusa", "AGAGE")
+    gc("MCI", "medusa", "AGAGE")
+    gc("ZEP", "medusa", "AGAGE")
+
+    # AGAGE GC data
+    gc("RPB", "GCMD", "AGAGE")
+    gc("CGO", "GCMD", "AGAGE")
+    gc("MHD", "GCMD", "AGAGE")
+    gc("SMO", "GCMD", "AGAGE")
+    gc("THD", "GCMD", "AGAGE")
+
+    # AGAGE GCMS data    
+    gc("CGO", "GCMS", "AGAGE")
+    gc("MHD", "GCMS", "AGAGE")
+    gc("RPB", "GCMS", "AGAGE")
+    gc("SMO", "GCMS", "AGAGE")
+    gc("THD", "GCMS", "AGAGE")
+    gc("JFJ", "GCMS", "AGAGE")
+    gc("MCI", "GCMS", "AGAGE")
+    gc("ZEP", "GCMS", "AGAGE")
+        
+  
     # ICOS
     icos("TTA")
     icos("MHD", network = "LSCE")
@@ -900,35 +937,5 @@ if __name__ == "__main__":
     # DECC Medusa
     gc("TAC", "medusa", "DECC")
 
-    # AGAGE GC data
-    gc("CGO", "GCMD", "AGAGE")
-    gc("MHD", "GCMD", "AGAGE")
-    gc("RPB", "GCMD", "AGAGE")
-    gc("SMO", "GCMD", "AGAGE")
-    gc("THD", "GCMD", "AGAGE")
-
-    # AGAGE GCMS data    
-    gc("CGO", "GCMS", "AGAGE")
-    gc("MHD", "GCMS", "AGAGE")
-    gc("RPB", "GCMS", "AGAGE")
-    gc("SMO", "GCMS", "AGAGE")
-    gc("THD", "GCMS", "AGAGE")
-    gc("JFJ", "GCMS", "AGAGE")
-    gc("MCI", "GCMS", "AGAGE")
-    gc("ZEP", "GCMS", "AGAGE")
-    
-    # AGAGE Medusa
-    gc("MHD", "medusa", "AGAGE")
-    gc("CGO", "medusa", "AGAGE")
-    gc("GSN", "medusa", "AGAGE")
-    gc("SDZ", "medusa", "AGAGE")
-    gc("THD", "medusa", "AGAGE")
-    gc("RPB", "medusa", "AGAGE")
-    gc("SMO", "medusa", "AGAGE")
-    gc("SIO", "medusa", "AGAGE")
-    gc("JFJ", "medusa", "AGAGE")
-    gc("MCI", "medusa", "AGAGE")
-    gc("ZEP", "medusa", "AGAGE")
-    
-    
+  
     

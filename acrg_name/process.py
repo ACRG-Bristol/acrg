@@ -1443,7 +1443,7 @@ def process_all(domain, site,
             except:
                 status_log("FAILED in process all " +
                        "for %s. Error log: %s" % 
-                       (years*100 + months, traceback.print_exc()),
+                       (year*100 + month, traceback.print_exc()),
                        error_or_warning="error")
                 continue
 
