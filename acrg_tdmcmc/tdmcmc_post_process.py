@@ -440,21 +440,34 @@ def plot_timeseries(ds, species, out_filename=None, doplot=True):
     if doplot is True:
         fig,ax=plt.subplots(nsites,sharex=True)
         
-        for si,site in enumerate(sites):
-            wh_site = np.where(y_site == site)
-            ax[si].fill_between(y_time[wh_site[0]], upper[wh_site[0]],lower[wh_site[0]], alpha=0.6, 
+        if nsites > 1:
+            for si,site in enumerate(sites):
+                wh_site = np.where(y_site == site)
+                ax[si].fill_between(y_time[wh_site[0]], upper[wh_site[0]],lower[wh_site[0]], alpha=0.6, 
+                            facecolor='lightskyblue', edgecolor='lightskyblue')
+                ax[si].plot(y_time[wh_site[0]],y_obs[wh_site[0]], 'ro', markersize=4, label='Observations')
+                ax[si].plot(y_time[wh_site[0]],y_post_mean[wh_site[0]], color='blue', label='Modelled observations')
+                ax[si].plot(y_time[wh_site[0]],y_bg_mean[wh_site[0]],color='black', 
+                         label='Modelled baseline')
+                start, end = ax[si].get_ylim()
+                ax[si].yaxis.set_ticks(np.arange(start, end+1, 100))
+                ax[si].set_ylabel(site)
+                if si == 0:
+                    legend=ax[si].legend(loc='upper left')
+                    for label in legend.get_texts():
+                        label.set_fontsize('small')
+        else:
+            ax.fill_between(y_time, upper,lower, alpha=0.6, 
                         facecolor='lightskyblue', edgecolor='lightskyblue')
-            ax[si].plot(y_time[wh_site[0]],y_obs[wh_site[0]], 'ro', markersize=4, label='Observations')
-            ax[si].plot(y_time[wh_site[0]],y_post_mean[wh_site[0]], color='blue', label='Modelled observations')
-            ax[si].plot(y_time[wh_site[0]],y_bg_mean[wh_site[0]],color='black', 
+            ax.plot(y_time,y_obs, 'ro', markersize=4, label='Observations')
+            ax.plot(y_time,y_post_mean, color='blue', label='Modelled observations')
+            ax.plot(y_time,y_bg_mean,color='black', 
                      label='Modelled baseline')
-            start, end = ax[si].get_ylim()
-            ax[si].yaxis.set_ticks(np.arange(start, end+1, 100))
-            ax[si].set_ylabel(site)
-            if si == 0:
-                legend=ax[si].legend(loc='upper left')
-                for label in legend.get_texts():
-                    label.set_fontsize('small')
+            start, end = ax.get_ylim()
+            ax.yaxis.set_ticks(np.arange(start, end+1, (end-start)/5))
+            legend=ax.legend(loc='upper left')
+            for label in legend.get_texts():
+                label.set_fontsize('small')
             
         fig.text(0.01,0.65,'CH$_{4}$ mole fraction (ppb)', rotation=90)
         fig.autofmt_xdate()
@@ -566,8 +579,3 @@ def plot_nuclei_density(ds, out_filename=None, fignum=3):
         plt.close()
     else:
         plt.show()
-
-
-
-
-
