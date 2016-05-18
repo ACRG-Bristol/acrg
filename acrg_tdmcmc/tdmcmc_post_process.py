@@ -178,14 +178,23 @@ def write_netcdf(flux_mean, flux_percentile, flux_prior, flux_ap_percentile,
     ncF.close()
     print "Written " + experiment + " to " + outfile
 
-def plot_scaling(data,lon,lat, out_filename=None, absolute=False, 
-                 uncertainty=False, uncertainty_red=False,
-                 stations=None, fignum=None):
+def plot_scaling(data,lon,lat, clevels=None, cmap=plt.cm.RdBu_r, label=None,
+                 smooth = False, out_filename=None, stations=None, fignum=None):
     
     """
     Plot 2d scaling map of posterior x
     i.e. degree of scaling applied to prior emissions 
-    data = mean or median of x_post_vit
+    Inputs:
+    data = 2D (lat,lon) array of whatever you want
+    clevels = Contour levels; defaults to np.arange(-2., 2.1, 0.1)
+    cmap = Colormap - defaults to Red Blue reverse
+    label = String - to appear at bottom
+    smooth = If true plot smooth contours, otherwise use pcolormesh
+    stations = Default is None. If true needs to be a dictionary containing:
+                sites: 'MHD', 'TAC'
+                MHD_lon: -9.02
+                MHHD_lat: 55.2
+                TAC_lon: etc...
     """    
     lon_range = (np.min(lon), np.max(lon))
     lat_range = (np.min(lat), np.max(lat))
@@ -209,68 +218,38 @@ def plot_scaling(data,lon,lat, out_filename=None, absolute=False,
             poly = Polygon( xy, facecolor='red', alpha=0.4 )
             plt.gca().add_patch(poly)
     
-
-    if absolute == True:
-        
+    if clevels is None:
+        print "Warning: using default contour levels. Include clevels keyword to change"
         clevels = np.arange(-2., 2.1, 0.1)
-        #cs = m.contourf(mapx,mapy,data, clevels, extend='both', cmap='RdBu_r')
-        #cb = m.colorbar(cs, location='bottom', pad="5%")
-        cmap = plt.cm.RdBu_r
-        norm = BoundaryNorm(clevels,
-                        ncolors=cmap.N,
-                        clip=True)
-        cs = m.pcolormesh(mapx, mapy,
-                data,cmap =cmap, norm = norm)
-        cb = m.colorbar(cs, location='bottom', pad="5%", extend='both')
-        #cb.set_label('Difference from prior (Tg yr$^{-1}$)')
-        cb.set_label('Posterior - prior (kg/m$^{2}$/s)x$10^{9}$')
 
-    elif uncertainty == True:
-        clevels = np.arange(0., 4.1, 0.1) 
-        cmap = plt.cm.YlGnBu
-        norm = BoundaryNorm(clevels,
-                        ncolors=cmap.N,
-                        clip=True)
-        cs = m.pcolormesh(mapx, mapy,
-                data,cmap =cmap, norm = norm)
-        cb = m.colorbar(cs, location='bottom', pad="5%", extend='both')
-        cb.set_label('Normalized uncertainty')
-    elif uncertainty_red == True:
-        clevels = np.arange(0., 1.05, 0.05)  
-        cmap = plt.cm.YlGnBu
-        norm = BoundaryNorm(clevels,
-                        ncolors=cmap.N,
-                        clip=True)
-        cs = m.pcolormesh(mapx, mapy,
-                data,cmap =cmap, norm = norm)
-        cb = m.colorbar(cs, location='bottom', pad="5%", extend='both')
-        cb.set_label('Normalized uncertainty reduction')
+    if smooth == True:
+        
+        cs = m.contourf(mapx,mapy,data, clevels, extend='both', cmap=cmap)
+        cb = m.colorbar(cs, location='bottom', pad="5%")
+        
     else:
-        clevels = np.arange(0., 2.05, 0.05)  
-        #cs = m.contourf(mapx,mapy,data, clevels, extend='both', cmap='RdBu_r')
-        #cb = m.colorbar(cs, location='bottom', pad="5%") 
-        cmap = plt.cm.RdBu_r
         norm = BoundaryNorm(clevels,
                         ncolors=cmap.N,
                         clip=True)
         cs = m.pcolormesh(mapx, mapy,
-                data,cmap =cmap, norm = norm)
+                data,cmap=cmap, norm=norm)
         cb = m.colorbar(cs, location='bottom', pad="5%", extend='both')
-        cb.set_label('Scaling of prior') 
         
-        
+    if label is not None:        
+        cb.set_label(label) 
+               
     if stations is not None:
         
         nsites=len(stations['sites'])
         sites=stations['sites']
-        ilon=np.zeros((nsites),dtype=np.uint16)
-        ilat=np.zeros((nsites),dtype=np.uint16)
+        ilon=np.zeros((nsites))
+        ilat=np.zeros((nsites))
         for si,site in enumerate(stations['sites']):
             ilon[si]=stations[site+'_lon']
             ilat[si]=stations[site+'_lat']
-        mlon,mlat=m(lon[ilon],lat[ilat])
+        mlon,mlat=m(ilon,ilat)
         site_loc=m.plot(mlon,mlat, linestyle='None',
-                        marker='o', color='black', markersize=12)
+                        marker='o', color='gold', markersize=12)
         yoffset = 0.022*(m.ymax-m.ymin) 
         xoffset = 0.012*(m.xmax-m.xmin)             
         for ii in range(nsites):
@@ -315,27 +294,50 @@ def regions_histogram(k_it, out_filename=None, fignum=2):
     else:
         plt.show()
     
-def country_emissions(ds_mcmc, x_post_vit, x_ap_abs_v, countries, species,
-                      ocean=True, domain='EUROPE', al=False):
+def country_emissions(ds_mcmc, x_post_vit, q_ap_abs_v, countries, species,
+                      units = None, ocean=True, domain='EUROPE', uk_split=False):
         
     """
     Generates national totals for a given list of countries
-    Requires post_mcmc xray dataset
+    Requires: 
+    ds_mcmc - post_mcmc xray dataset
+    countries - list of countries (see data_path/countries files for names)
+                In general names are all capitalized
+    species - CH4, CO2 etc.
     
-    Units are hard-wired at the moment, need to make non-methane specific
+    Optional:
+    units - Need to specify to get something sensible out, otherwise returns in g/yr
+            Options are Pg/yr, Tg/yr,Gg/yr Mg/yr
+    ocean - Default is true, If false only include emissions from land surface
+    uk_split - Break UK into devolved administrations
+                Country names then have to be ['Eng', 'Sco', 'Wales',
+                NIre', 'IRELAND', 'BENELUX']. Horribly inconsistent I know!
+    
     Returns: mean, 5th,16th,median,84th,95th percentiles and prior for each country
-    
+       
     Output in Tg/yr
     """
-    temp = os.path.split(os.path.realpath(__file__))
-    acrg_path=os.path.join(temp[0],"..")
+    
+    if units == 'Tg/yr':
+        unit_factor=1.e12
+    elif units == 'Gg/yr': 
+        unit_factor=1.e9
+    elif units == 'Pg/yr': 
+        unit_factor=1.e15
+    elif units == 'Mg/yr': 
+        unit_factor=1.e6
+    else:
+        print 'Undefined units: outputting in g/yr - let this be a lesson to define your units'
+        unit_factor=1.
+        
+    acrg_path = os.getenv('ACRG_PATH')
     with open(acrg_path + "/acrg_species_info.json") as f:
         species_info=json.load(f)
             
     species_key = agage.synonyms(species, species_info)
     
     molmass = float(species_info[species_key]['mol_mass'])
-    units = species_info[species_key]['units']    
+    #units = species_info[species_key]['units']    
     
 
     lonmin=np.min(ds_mcmc.lon.values)
@@ -344,8 +346,10 @@ def country_emissions(ds_mcmc, x_post_vit, x_ap_abs_v, countries, species,
     latmax=np.max(ds_mcmc.lat.values)
     area=areagrid(ds_mcmc.lat.values,ds_mcmc.lon.values)
     # GET COUNTRY DATA
-    if ocean==True:
-        c_object=name.get_country(domain, ocean=True, al=al)
+    if uk_split == True:
+        c_object=name.get_country(domain, ocean=True, al=True, uk_split=uk_split)
+    elif ocean==True:
+        c_object=name.get_country(domain, ocean=True, al=False, uk_split=False)
     else:
         c_object=name.get_country(domain, ocean=False)
     cds = xray.Dataset({'country': (['lat','lon'], c_object.country), 
@@ -380,31 +384,35 @@ def country_emissions(ds_mcmc, x_post_vit, x_ap_abs_v, countries, species,
         for it in range(nIt):
             x_vit_temp=x_post_vit[it,:]
             q_country_it[ci,it]=np.sum(x_vit_temp[c_index[0]]*area_v[c_index[0]]
-                                *x_ap_abs_v[c_index[0]]) 
+                                *q_ap_abs_v[c_index[0]]) 
         
-        q_country_ap[ci] = np.sum(area_v[c_index[0]]*x_ap_abs_v[c_index[0]]
-                                *365.*24.*3600./1.e9*molmass/1000.) # in Tg/yr
+        q_country_ap[ci] = np.sum(area_v[c_index[0]]*q_ap_abs_v[c_index[0]]
+                                *365.*24.*3600.*molmass/unit_factor) # in Tg/yr
         
         
-        q_country_mean[ci]=np.mean(q_country_it[ci,:])*365.*24.*3600./1.e9*molmass/1000. # in Tg/yr
-        q_country_50[ci]=np.percentile(q_country_it[ci,:],50)*365.*24.*3600./1.e9*molmass/1000.
-        q_country_05[ci]=np.percentile(q_country_it[ci,:],5)*365.*24.*3600./1.e9*molmass/1000.
-        q_country_95[ci]=np.percentile(q_country_it[ci,:],95)*365.*24.*3600./1.e9*molmass/1000.
-        q_country_16[ci]=np.percentile(q_country_it[ci,:],16)*365.*24.*3600./1.e9*molmass/1000.
-        q_country_84[ci]=np.percentile(q_country_it[ci,:],84)*365.*24.*3600./1.e9*molmass/1000.
+        q_country_mean[ci]=np.mean(q_country_it[ci,:])*365.*24.*3600.*molmass/unit_factor # in Tg/yr
+        q_country_50[ci]=np.percentile(q_country_it[ci,:],50)*365.*24.*3600.*molmass/unit_factor
+        q_country_05[ci]=np.percentile(q_country_it[ci,:],5)*365.*24.*3600.*molmass/unit_factor
+        q_country_95[ci]=np.percentile(q_country_it[ci,:],95)*365.*24.*3600.*molmass/unit_factor
+        q_country_16[ci]=np.percentile(q_country_it[ci,:],16)*365.*24.*3600.*molmass/unit_factor
+        q_country_84[ci]=np.percentile(q_country_it[ci,:],84)*365.*24.*3600.*molmass/unit_factor
         
     country_index = np.reshape(country_v_new, (nlat,nlon))   
-    return q_country_it*365.*24.*3600./1.e9*molmass/1000.,\
+    return q_country_it*365.*24.*3600.*molmass/unit_factor,\
     q_country_mean, q_country_05, q_country_16, q_country_50, q_country_84, \
     q_country_95, q_country_ap, country_index
     
-def plot_timeseries(ds, species, out_filename=None, doplot=True):
+def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True):
     
     """
     Plot measurement timeseries of posterior and observed measurements
     Requires post_mcmc xray dataset
     For future: incorporate model & measurement uncertainty
     Plots separate subplots for each of the measurement sites - hopefully!
+    
+    ds = dataset output from run_tdmcmc script
+    fig_text = String e.g. "CH$_{4}$ mole fraction (ppb)"
+    ylim = array [ymin,ymax]
     
     Specify an out_filename to write to disk
     """
@@ -449,8 +457,10 @@ def plot_timeseries(ds, species, out_filename=None, doplot=True):
                 ax[si].plot(y_time[wh_site[0]],y_post_mean[wh_site[0]], color='blue', label='Modelled observations')
                 ax[si].plot(y_time[wh_site[0]],y_bg_mean[wh_site[0]],color='black', 
                          label='Modelled baseline')
+                if ylim is not None:
+                    ax[si].set_ylim(ylim)
                 start, end = ax[si].get_ylim()
-                ax[si].yaxis.set_ticks(np.arange(start, end+1, 100))
+                ax[si].yaxis.set_ticks(np.arange(start, end+1, (end-start)/5))
                 ax[si].set_ylabel(site)
                 if si == 0:
                     legend=ax[si].legend(loc='upper left')
@@ -468,8 +478,9 @@ def plot_timeseries(ds, species, out_filename=None, doplot=True):
             legend=ax.legend(loc='upper left')
             for label in legend.get_texts():
                 label.set_fontsize('small')
-            
-        fig.text(0.01,0.65,'CH$_{4}$ mole fraction (ppb)', rotation=90)
+        
+        if fig_text is not None:
+            fig.text(0.01,0.65,fig_text, rotation=90)
         fig.autofmt_xdate()
         
         if out_filename is not None:

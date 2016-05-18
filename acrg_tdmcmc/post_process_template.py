@@ -19,6 +19,7 @@ import pandas
 import os
 import json
 import acrg_agage as agage
+import matplotlib.pyplot as plt
 
 
 dates=["2014-03-01"]
@@ -26,15 +27,16 @@ dates=["2014-03-01"]
 #dates = ["2013-12-01","2014-01-01","2014-02-01", "2014-03-01", "2014-04-01"]
 #etc. 
 species="CH4"
-temp = os.path.split(os.path.realpath(__file__))
-acrg_path=os.path.join(temp[0],"..")
+acrg_path=os.getenv('ACRG_PATH')
 with open(acrg_path + "/acrg_species_info.json") as f:
         species_info=json.load(f)
 species_key = agage.synonyms(species, species_info)
 molmass = float(species_info[species_key]['mol_mass'])
-output_directory = "/path/to/tdmcmmc/outputs/"
+#output_directory = "/path/to/tdmcmmc/outputs/"
+output_directory = "/data/ml12574/transd/thesis/GAUGE/"
 outfile="outfile_name.nc"
-network='test'
+#network='test'
+network='GAUGE_evencorr'
 experiment="MHD_TAC_RGL_TTA"
 countries=np.asarray(['UNITED KINGDOM', 'IRELAND', 'FRANCE', 'GERMANY', 
                       'DENMARK', 'BELGIUM', 'NETHERLANDS', 'LUXEMBOURG'])
@@ -45,7 +47,7 @@ write_outfile=False
 append_outfile=False
 calc_country=True
 plot_scale_map=True
-plot_abs_map=False
+plot_abs_map=True
 plot_regions = False
 plot_y_timeseries=True
 plot_density = False
@@ -134,10 +136,8 @@ for tt,ti in enumerate(dates):
             for si, site in enumerate(sites):
                 dlon=lon[1]-lon[0]
                 dlat=lat[1]-lat[0]
-                wh_rlon = np.where(abs(lon-ds.release_lons[si].values) < dlon/2.)
-                wh_rlat = np.where(abs(lat-ds.release_lats[si].values) < dlat/2.)
-                stations[site+'_lon']=wh_rlon[0]
-                stations[site+'_lat']=wh_rlat[0]
+                stations[site+'_lon']=ds.release_lons[si].values
+                stations[site+'_lat']=ds.release_lats[si].values
             stations['sites']=sites                    
             
             if calc_country == True:
@@ -145,14 +145,17 @@ for tt,ti in enumerate(dates):
                 country_50[:,tt], country_84[:,tt], country_95[:,tt], country_prior[:,tt], \
                 country_index \
                 = process.country_emissions(ds,x_post_vit, q_ap_v,countries, species, 
-                                            ocean=True, domain='EUROPE', al=False)                
+                                            units='Tg/yr',
+                                            ocean=True, domain='EUROPE', uk_split=False)                
             
             
             if plot_scale_map == True:
                 lon=np.asarray(ds.lon.values)
                 lat=np.asarray(ds.lat.values)
                 x_post_mean = np.reshape(x_post_v_mean, (nlat,nlon))
-                process.plot_scaling(x_post_mean, lon,lat, fignum=None, 
+                process.plot_scaling(x_post_mean, lon,lat, clevels=np.arange(0.,2.1,0.1), 
+                                     cmap=plt.cm.RdBu_r, label=None,
+                                     smooth = True,fignum=None, 
                                      stations=stations, out_filename=None)
                 
             if plot_abs_map == True:
@@ -162,15 +165,18 @@ for tt,ti in enumerate(dates):
                 x_post_mean = np.reshape(x_post_v_mean, (nlat,nlon))
                 q_abs_diff = (x_post_mean*q_ap-q_ap)
                 q_abs_diff = q_abs_diff*molmass*1.e6
-                process.plot_scaling(q_abs_diff, lon,lat, fignum=None, 
-                                     absolute=True,stations=stations, 
+                process.plot_scaling(q_abs_diff, lon,lat, clevels=np.arange(-1.,1.05,0.05), 
+                                     cmap=plt.cm.RdBu_r, label=None,
+                                     smooth = False, fignum=None, 
+                                     stations=stations, 
                                      out_filename=None)
 
             if plot_regions == True:
                 process.regions_histogram(k_it, fignum=None, out_filename=None)
                 
             if plot_y_timeseries == True:
-                y_post_it,y_bg_it=process.plot_timeseries(ds, species, out_filename=None)
+                y_post_it,y_bg_it=process.plot_timeseries(ds, fig_text=None, 
+                                                          ylim=None, out_filename=None)
                 
             if plot_density == True:
                 process.plot_nuclei_density(ds, out_filename=None, fignum=None)
