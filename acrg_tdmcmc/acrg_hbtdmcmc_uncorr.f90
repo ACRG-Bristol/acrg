@@ -129,9 +129,10 @@ REAL sigma_y_it(nmeasure,nit_sub), sigma_model_it(ydim2,nit_sub)
 REAL n0T_it(nit_sub)
 REAL sigma_y_temp(nmeasure), y_error_temp(nmeasure)
 REAL av_acc_sigma_y(ydim2,2)
-REAL acc_prob_x(nIC1,2)
-REAL acc_prob_p1(nIC1,2)
-REAL acc_prob_p2(nIC1,2)
+REAL acc_h_batch(nIC1)
+REAL rej_h_batch(nIC1)
+INTEGER accept_batch(nIC1)
+INTEGER reject_batch(nIC1)
 ! SUBROUTINE INPUTS
 REAL betaib, n0Tib
 REAL xib(kICmax), plonib(kmax), platib(kmax), n0ib(nmeasure)           
@@ -147,18 +148,16 @@ REAL pdf_param1ib1(kICmax), pdf_param2ib1(kICmax)
 REAL h_aggib1(nmeasure,kICmax)
 REAL sigma_yib1(nmeasure), sigma_modelib1(ydim2)
 INTEGER kib1, rejectib1, acceptib1, reject_yib1, accept_yib1
-INTEGER acceptxib1(nIC1), rejectxib1(nIC1)
+INTEGER acceptxib1(nIC1), rejectxib1(nIC1), acc_bxib1(nIC1), rej_bxib1(nIC1)
 INTEGER regions_vib1(Ngrid)
 REAL detval(nbeta)
 REAL detvalib, detvalib1
 REAL stepsize_sig_ib1(ydim2)
-REAL av_accep_ib1(ydim2,2)
 REAL stepsize_ib1(nIC1)     
-REAL acc_prob_ib1(nIC1,2)
 REAL stepsize_p1_ib1(nIC1)
-REAL acc_prob_p1_ib1(nIC1,2)
+REAL acc_prob_p1_ib1(nIC1)
 REAL stepsize_p2_ib1(nIC1)
-REAL acc_prob_p2_ib1(nIC1,2)
+REAL rej_prob_p1_ib1(nIC1)
 
 !! F2PY IN/OUT COMMANDS !!!!!!!
 !f2py intent(in) beta,k, x, h_agg,y,n0, plon, plat, regions_v
@@ -198,9 +197,10 @@ reject_sigma_y=0
 it_sub=1
 
 av_acc_sigma_y(:,:)=0.
-acc_prob_x(:,:)=0.
-acc_prob_p1(:,:)=0.
-acc_prob_p2(:,:)=0.
+acc_h_batch(:)=0.
+rej_h_batch(:)=0.
+accept_batch(:)=0
+reject_batch(:) = 0
 
  do jj=1,ydim2   
         y_error_temp(R_indices(:,jj)) = sigma_model(jj,1)    ! Provided dim2 isn't too big then should be fine
@@ -266,14 +266,14 @@ do it=1,(nIt+burn_in)
             call x_hparam_update(kib, xib, pdf_param1ib,pdf_param2ib, &
                  pdf_p1_hparam1, pdf_p1_hparam2, stepsize_pdf_p1, pdf_param1_pdf, &
                  pdf_p2_hparam1, pdf_p2_hparam2, stepsize_pdf_p2, pdf_param2_pdf, &
-                 acc_prob_p1, acc_prob_p2, x_pdf_all, it, burn_in, nIC, kICmax, nIC1, &
-                 pdf_param1ib1, pdf_param2ib1, stepsize_p1_ib1, stepsize_p2_ib1, acc_prob_p1_ib1, acc_prob_p2_ib1) 
+                 acc_h_batch, rej_h_batch, x_pdf_all, it, burn_in, nIC, kICmax, nIC1, &
+                 pdf_param1ib1, pdf_param2ib1, stepsize_p1_ib1, stepsize_p2_ib1, acc_prob_p1_ib1, rej_prob_p1_ib1) 
 
 
             call x_update(betaib,kib, xib, pdf_param1ib1,pdf_param2ib1, &
-                         h_aggib,n0ib,n0Tib,sigma_yib, stepsize, acc_prob_x, &
-                         accept,reject,x_pdf_all, it, burn_in, nIC, kICmax, nmeasure, nIC1, &
-                         xib1, n0ib1, n0Tib1, acceptxib1, rejectxib1, stepsize_ib1, acc_prob_ib1)
+                         h_aggib,n0ib,n0Tib,sigma_yib, stepsize, &
+                         accept,reject,accept_batch, reject_batch, x_pdf_all, it, burn_in, nIC, kICmax, nmeasure, nIC1, &
+                         xib1, n0ib1, n0Tib1, acceptxib1, rejectxib1, stepsize_ib1, acc_bxib1, rej_bxib1)
 
 
             x(:,ibeta) = xib1
@@ -284,9 +284,10 @@ do it=1,(nIt+burn_in)
             stepsize=stepsize_ib1
             stepsize_pdf_p1=stepsize_p1_ib1
             stepsize_pdf_p2=stepsize_p2_ib1
-            acc_prob_x=acc_prob_ib1
-            acc_prob_p1=acc_prob_p1_ib1
-            acc_prob_p2=acc_prob_p2_ib1
+            acc_h_batch=acc_prob_p1_ib1
+            rej_h_batch=rej_prob_p1_ib1
+            accept_batch=acc_bxib1
+            reject_batch=rej_bxib1
 
 
             if (betaib .EQ. 1.) then 
@@ -374,10 +375,9 @@ do it=1,(nIt+burn_in)
               call sigma_y_update(betaib, sigma_modelib, sigma_model_ap, sigma_measure, sigma_yib, detvalib, &
                  sigma_model_hparams, stepsize_sigma_y, sigma_model_pdf, R_indices, &
                  n0ib,n0Tib, accept_sigma_y, reject_sigma_y, av_acc_sigma_y, it, burn_in, nmeasure, ydim1, ydim2, &
-                 av_accep_ib1, n0Tib1, accept_yib1, reject_yib1, sigma_yib1, sigma_modelib1, detvalib1, stepsize_sig_ib1) 
+                 n0Tib1, accept_yib1, reject_yib1, sigma_yib1, sigma_modelib1, detvalib1, stepsize_sig_ib1) 
 
               stepsize_sigma_y=stepsize_sig_ib1
-              av_acc_sigma_y=av_accep_ib1
 
               sigma_y(:,ibeta) = sigma_yib1
               sigma_model(:,ibeta) = sigma_modelib1
@@ -471,26 +471,27 @@ END SUBROUTINE hbtdmcmc
 SUBROUTINE x_hparam_update(k, x, pdf_param1_all,pdf_param2_all, &
 pdf_p1_hparam1_all, pdf_p1_hparam2_all, stepsize_pdf_p1, pdf_param1_pdf, &
 pdf_p2_hparam1_all, pdf_p2_hparam2_all, stepsize_pdf_p2, pdf_param2_pdf, &
-accep_prob_p1, accep_prob_p2, x_pdf_all, it, burn_in, nIC, kICmax, nIC1, &
-pdf_param1_out, pdf_param2_out, stepsize_p1_out, stepsize_p2_out, acc_prob_p1_out, acc_prob_p2_out) 
+accept_batch, reject_batch, x_pdf_all, it, burn_in, nIC, kICmax, nIC1, &
+pdf_param1_out, pdf_param2_out, stepsize_p1_out, stepsize_p2_out, accept_batch_out, reject_batch_out) 
 
 
 Implicit none
 INTEGER k, nIC, kICmax, nIC1, burn_in, it
-REAL av_acc, av_acc1, av_acc2
+REAL av_acc
 REAL x(kICmax) 
 INTEGER x_pdf_all(nIC1)
-REAL accep_prob_p1(nIC1,2), accep_prob_p2(nIC1,2)
+INTEGER accept_batch(nIC1), reject_batch(nIC1)
 REAL pdf_param1_all(kICmax), pdf_param2_all(kICmax)
 REAL pdf_p1_hparam1_all(nIC1), pdf_p1_hparam2_all(nIC1) 
 REAL  pdf_p2_hparam1_all(nIC1), pdf_p2_hparam2_all(nIC1)
 REAL pdf_param1_out(kICmax), pdf_param2_out(kICmax)
 REAL stepsize_p1_out(nIC1), stepsize_p2_out(nIC1)
-REAL acc_prob_p1_out(nIC1,2), acc_prob_p2_out(nIC1,2)
+REAL accept_batch_out(nIC1), reject_batch_out(nIC1)
 INTEGER elem(5)
 REAL u(5)
 REAL pdf_param1        
 REAL pdf_param2
+REAL accep_prob(nIC1)
 !INTEGER accept(nIC1), reject(nIC1)
 REAL stepsize_pdf_p2(nIC1), stepsize_pdf_p1(nIC1)
 INTEGER xi, x_pdf, xx
@@ -574,48 +575,76 @@ REAL stepsize_pdf_p10, stepsize_pdf_p20
          endif   ! randomu condition
 
          if(it .le. burn_in) then
-             if (xi .LE. nIC) then
-                 accep_prob_p1(xi,1) = accep_prob_p1(xi,1) + min(exp(pT),1.0)
-                 accep_prob_p1(xi,2) = accep_prob_p1(xi,2) + 1.0
-                 accep_prob_p2(xi,1) = accep_prob_p2(xi,1) + min(exp(pT),1.0)
-                 accep_prob_p2(xi,2) = accep_prob_p2(xi,2) + 1.0
-                 av_acc1 = accep_prob_p1(xi,1)/accep_prob_p1(xi,2)
-                 av_acc2 = accep_prob_p2(xi,1)/accep_prob_p2(xi,2)
-                 av_acc=(av_acc1+av_acc2)/2.0
-                 if(av_acc .lt. 0.1 .and. pT .ne. -1.e20) stepsize_pdf_p1(xi) = stepsize_pdf_p1(xi)*0.5
-                 if(av_acc .gt. 0.9) stepsize_pdf_p1(xi) = stepsize_pdf_p1(xi)*1.5
-                 if(av_acc .lt. 0.1 .and. pT .ne. -1.e20) stepsize_pdf_p2(xi) = stepsize_pdf_p2(xi)*0.5
-                 if(av_acc .gt. 0.9) stepsize_pdf_p2(xi) = stepsize_pdf_p2(xi)*1.5
-             else if (xi .GT. nIC) then
-                 accep_prob_p1(nIC1,1) = accep_prob_p1(nIC1,1) + min(exp(pT),1.0)
-                 accep_prob_p1(nIC1,2) = accep_prob_p1(nIC1,2) + 1.0
-                 accep_prob_p2(nIC1,1) = accep_prob_p2(nIC1,1) + min(exp(pT),1.0)
-                 accep_prob_p2(nIC1,2) = accep_prob_p2(nIC1,2) + 1.0
-                 av_acc1 = accep_prob_p1(nIC1,1)/accep_prob_p1(nIC1,2)
-                 av_acc2 = accep_prob_p2(nIC1,1)/accep_prob_p2(nIC1,2)
-                 av_acc=(av_acc1+av_acc2)/2.0
-                 if(av_acc .lt. 0.1 .and. pT .ne. -1.e20) stepsize_pdf_p1(nIC1) = stepsize_pdf_p1(nIC1)*0.5
-                 if(av_acc .gt. 0.9) stepsize_pdf_p1(nIC1) = stepsize_pdf_p1(nIC1)*1.5 
-                 if(av_acc .lt. 0.1 .and. pT .ne. -1.e20) stepsize_pdf_p2(nIC1) = stepsize_pdf_p2(nIC1)*0.5
-                 if(av_acc .gt. 0.9) stepsize_pdf_p2(nIC1) = stepsize_pdf_p2(nIC1)*1.5
+             if (alog(randomu) .LE. pT) THEN
+
+                 if (xi .LE. nIC) then
+                    if (it .GT. burn_in) accept_batch(xi) = accept_batch(xi) + 1
+                 else if (xi .GT. nIC) then
+                    if (it .GT. burn_in) accept_batch(nIC1) = accept_batch(nIC1) + 1
+                 endif
+             else
+                 if (xi .LE. nIC) then 
+                     reject_batch(xi) = reject_batch(xi) + 1
+                 else
+                     reject_batch(nIC1) = reject_batch(nIC1) + 1  
+                 endif
+
              endif
 
          endif
 
+         if(it .le. burn_in .and. modulo(it,500) .eq. 0) then
+             if (xi .LE. nIC) then
+                 if(accept_batch(xi)+reject_batch(xi) .gt. 0) then
+                     accep_prob(xi) = accept_batch(xi)/(accept_batch(xi)+reject_batch(xi))
+                     av_acc = min(0.01,1.0/sqrt(real(it/500))) !1.0/sqrt(real(accept(xi)+reject(xi)))
+                     if(accep_prob(xi) .lt. 0.2) then
+                         stepsize_pdf_p1(xi) = exp(alog(stepsize_pdf_p1(xi)) - av_acc)
+                         stepsize_pdf_p2(xi) = exp(alog(stepsize_pdf_p2(xi)) - av_acc)
+                     endif
+                     if(accep_prob(xi) .gt. 0.6) then
+                         stepsize_pdf_p1(xi) = exp(alog(stepsize_pdf_p1(xi)) + av_acc)
+                         stepsize_pdf_p2(xi) = exp(alog(stepsize_pdf_p2(xi)) + av_acc)
+                     endif
+                     accept_batch(xi) = 0
+                     reject_batch(xi) = 0
+                 endif
+             else if (xi .GT. nIC) then
+                 if(accept_batch(nIC1)+reject_batch(nIC1) .gt. 0) then    
+                      accep_prob(nIC1) = accept_batch(nIC1)/(accept_batch(nIC1)+reject_batch(nIC1))
+                      av_acc = min(0.01,1.0/sqrt(real(it/500))) !1.0/sqrt(real(accept(nIC1)+reject(nIC1)))
+                      if(accep_prob(nIC1) .lt. 0.2) then
+                         stepsize_pdf_p1(nIC1) = exp(alog(stepsize_pdf_p1(nIC1)) - av_acc)
+                         stepsize_pdf_p2(nIC1) = exp(alog(stepsize_pdf_p2(nIC1)) - av_acc)
+                      endif
+                      if(accep_prob(nIC1) .gt. 0.6) then
+                         stepsize_pdf_p1(nIC1) = exp(alog(stepsize_pdf_p1(nIC1)) + av_acc)
+                         stepsize_pdf_p2(nIC1) = exp(alog(stepsize_pdf_p2(nIC1)) + av_acc)
+                      endif
+                      accept_batch(nIC1) = 0
+                      reject_batch(nIC1) = 0
+                 endif
+             endif
+
+          endif
+
   enddo
+
+
+
 
 pdf_param1_out=pdf_param1_all
 pdf_param2_out=pdf_param2_all
 stepsize_p1_out=stepsize_pdf_p1
 stepsize_p2_out=stepsize_pdf_p2
-acc_prob_p1_out=accep_prob_p1
-acc_prob_p2_out=accep_prob_p2
+accept_batch_out=accept_batch
+reject_batch_out=reject_batch
 END SUBROUTINE x_hparam_update
 
 SUBROUTINE x_update(beta,k, x, pdf_param1_all,pdf_param2_all,  &
-h_agg,n0,n0T,sigma_y, stepsize, accep_prob, &
-accept, reject, x_pdf_all, it, burn_in, nIC, kICmax, nmeasure, nIC1, &
-x_out, n0_out, n0T_out, accept_out, reject_out, stepsize_out, acc_prob_out) 
+h_agg,n0,n0T,sigma_y, stepsize,&
+accept, reject, accept_batch, reject_batch, x_pdf_all, it, burn_in, nIC, kICmax, nmeasure, nIC1, &
+x_out, n0_out, n0T_out, accept_out, reject_out, stepsize_out, acc_batch_out, rej_batch_out) 
 
 Implicit none 
 INTEGER nmeasure, it, burn_in, k, nIC, kICmax, nIC1
@@ -636,15 +665,18 @@ REAL u(5)
 REAL pdf_param1        
 REAL pdf_param2
 REAL stepsize(nIC1)
-REAL accep_prob(nIC1,2)
+REAL accep_prob(nIC1)
 INTEGER accept(nIC1), reject(nIC1)
+INTEGER accept_batch(nIC1)
+INTEGER reject_batch(nIC1)
 INTEGER accept_out(nIC1), reject_out(nIC1)
 REAL stepsize_out(nIC1)
-REAL acc_prob_out(nIC1,2)
 INTEGER xi, x_pdf, xx
 REAL dx, n1T, pT, randomu, random_normal, p0,p1
 REAL x_new(kICmax)
 REAL stepsize0
+INTEGER acc_batch_out(nIC1)
+INTEGER rej_batch_out(nIC1)
 
 ! Propose new x values
 ! Currently this is done for all fixed x values and 5 elements of the variable regions
@@ -723,22 +755,45 @@ REAL stepsize0
                      reject(nIC1) = reject(nIC1) + 1  
                  endif
              endif
-                              
          endif   ! randomu condition
-
          if(beta .eq. 1 .and. it .le. burn_in) then
+             if (alog(randomu) .LE. pT) THEN
+
+                 if (xi .LE. nIC) then
+                    if (beta .EQ. 1. .and. it .GT. burn_in) accept_batch(xi) = accept_batch(xi) + 1
+                 else if (xi .GT. nIC) then
+                    if (beta .EQ. 1. .and. it .GT. burn_in) accept_batch(nIC1) = accept_batch(nIC1) + 1
+                 endif
+             else
+                 if (xi .LE. nIC) then 
+                     reject_batch(xi) = reject_batch(xi) + 1
+                 else
+                     reject_batch(nIC1) = reject_batch(nIC1) + 1  
+                 endif
+
+             endif
+
+         endif
+
+         if(beta .eq. 1 .and. it .le. burn_in .and. modulo(it,500) .eq. 0) then
              if (xi .LE. nIC) then
-                 accep_prob(xi,1) = accep_prob(xi,1) + min(exp(pT),1.0)
-                 accep_prob(xi,2) = accep_prob(xi,2) + 1.0
-                 av_acc = accep_prob(xi,1)/accep_prob(xi,2)
-                 if(av_acc .lt. 0.1 .and. pT .ne. -1.e20) stepsize(xi) = stepsize(xi)*0.5
-                 if(av_acc .gt. 0.9) stepsize(xi) = stepsize(xi)*1.5
+                 if(accept_batch(xi)+reject_batch(xi) .gt. 0) then
+                     accep_prob(xi) = accept_batch(xi)/(accept_batch(xi)+reject_batch(xi))
+                     av_acc = min(0.01,1.0/sqrt(real(it/500))) !1.0/sqrt(real(accept(xi)+reject(xi)))
+                     if(accep_prob(xi) .lt. 0.2) stepsize(xi) = exp(alog(stepsize(xi)) - av_acc)
+                     if(accep_prob(xi) .gt. 0.6) stepsize(xi) = exp(alog(stepsize(xi)) + av_acc)
+                     accept_batch(xi) = 0
+                     reject_batch(xi) = 0
+                 endif
              else if (xi .GT. nIC) then
-                 accep_prob(nIC1,1) = accep_prob(nIC1,1) + min(exp(pT),1.0)
-                 accep_prob(nIC1,2) = accep_prob(nIC1,2) + 1.0
-                 av_acc = accep_prob(nIC1,1)/accep_prob(nIC1,2)
-                 if(av_acc .lt. 0.1 .and. pT .ne. -1.e20) stepsize(nIC1) = stepsize(nIC1)*0.5
-                 if(av_acc .gt. 0.9) stepsize(nIC1) = stepsize(nIC1)*1.5 
+                 if(accept_batch(nIC1)+reject_batch(nIC1) .gt. 0) then    
+                      accep_prob(nIC1) = accept_batch(nIC1)/(accept_batch(nIC1)+reject_batch(nIC1))
+                      av_acc = min(0.01,1.0/sqrt(real(it/500))) !1.0/sqrt(real(accept(nIC1)+reject(nIC1)))
+                      if(accep_prob(nIC1) .lt. 0.2) stepsize(nIC1) = exp(alog(stepsize(nIC1)) - av_acc)
+                      if(accep_prob(nIC1) .gt. 0.6) stepsize(nIC1) = exp(alog(stepsize(nIC1)) + av_acc)
+                      accept_batch(nIC1) = 0
+                      reject_batch(nIC1) = 0
+                 endif
              endif
 
          endif
@@ -752,7 +807,8 @@ n0T_out=n0T
 accept_out=accept
 reject_out=reject
 stepsize_out=stepsize
-acc_prob_out=accep_prob
+acc_batch_out = accept_batch
+rej_batch_out = reject_batch
 END SUBROUTINE x_update
 
 
@@ -1389,7 +1445,7 @@ END SUBROUTINE move
 SUBROUTINE sigma_y_update(beta, sigma_model_current, sigma_model_ap, sigma_measure, sigma_y_current, &
 detval_current,sigma_model_hparams, stepsize_sigma_y, sigma_model_pdf, R_indices, &
 n0,n0T, accept, reject, accep_prob, it, burn_in, nmeasure, dim1, dim2, &
-av_accep_out, n0T_out, accept_out, reject_out, sigma_y_out, sigma_model_out, detval_out, stepsize_sig_out) 
+n0T_out, accept_out, reject_out, sigma_y_out, sigma_model_out, detval_out, stepsize_sig_out) 
 
 IMPLICIT NONE
 
@@ -1407,7 +1463,7 @@ REAL sigma_model_ap(dim2)
 REAl sigma_y_current(nmeasure)
 INTEGER R_indices(dim1,dim2)
 REAL stepsize_sigma_y(dim2)
-REAL accep_prob(dim2,2)
+REAL accep_prob(dim2)
 REAL sigma_model_hparams(2)
 INTEGER sigma_model_pdf
 ! Outputs
@@ -1421,7 +1477,6 @@ REAL randomu, random_normal, dsigma_y, sigma_model_new, u, av_acc
 REAL p0_sigma_y, p1_sigma_y, n1T, detval_new, pT
 REAL y_error_new(nmeasure)
 REAL sigma_y_new(nmeasure)
-REAL av_accep_out(dim2,2)
 REAL stepsize_sig_out(dim2)
 
 
@@ -1471,13 +1526,13 @@ REAL stepsize_sig_out(dim2)
        if(beta .eq. 1. .and. it .gt. burn_in) reject=reject + 1
     endif
 
-    if(beta .eq. 1 .and. it .le. burn_in) then
-        accep_prob(yi,1) = accep_prob(yi,1) + min(exp(pT),1.0)
-        accep_prob(yi,2) = accep_prob(yi,2) + 1.0
-        av_acc = accep_prob(yi,1)/accep_prob(yi,2)
-        if(av_acc .lt. 0.1 .and. pT .ne. -1.e20) stepsize_sigma_y(yi) = stepsize_sigma_y(yi)*0.5
-        if(av_acc .gt. 0.9) stepsize_sigma_y(yi) = stepsize_sigma_y(yi)*1.5
-
+    if(beta .eq. 1 .and. it .le. burn_in .and. modulo(it,500)==0) then
+        if(accept+reject .gt. 0) then          
+            accep_prob(yi) = accept/(accept+reject)
+            av_acc =  1.0/sqrt(real(it/500))
+            if(av_acc .lt. 0.2) stepsize_sigma_y(yi) = exp(alog(stepsize_sigma_y(yi)) - av_acc)
+            if(av_acc .gt. 0.6) stepsize_sigma_y(yi) = exp(alog(stepsize_sigma_y(yi)) + av_acc)
+        endif
     endif
 
 n0T_out=n0T
@@ -1486,7 +1541,6 @@ sigma_model_out=sigma_model_current
 accept_out=accept
 reject_out=reject
 detval_out=detval_current
-av_accep_out=accep_prob
 stepsize_sig_out=stepsize_sigma_y
 END SUBROUTINE sigma_y_update
 
