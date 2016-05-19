@@ -69,7 +69,7 @@ kmax=400           # Maximum number of regions
 k_ap = 50         # Starting number of regions
 nIt=25000          # of iterations
 burn_in=25000      # of discarded burn-in iterations 
-nsub=100           # nsub=100=store every 100th iteration)
+nsub=10         # nsub=100=store every 100th iteration)
    
 ############################################################
 # LOCALNESS THRESHOLD
@@ -151,6 +151,7 @@ stepsize_all=np.zeros((nIC1))+stepsize
 stepsize_pdf_p1_all=np.zeros((nIC1))+(stepsize_pdf_p1*pdf_param10)
 stepsize_pdf_p2_all=np.zeros((nIC1))+(stepsize_pdf_p2*pdf_param20)
 stepsize_all[:nBC]=stepsize_all[:nBC]/200.
+stepsize_all[1:3]=stepsize_all[1:3]*70.
 stepsize_pdf_p1_all[:nBC]=stepsize_pdf_p1_all[:nBC]/10.
 stepsize_pdf_p2_all[:nBC]=stepsize_pdf_p2_all[:nBC]/10.
 
