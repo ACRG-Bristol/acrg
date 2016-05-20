@@ -512,6 +512,16 @@
         "longitude": -81.8334,
         "network": "NOAA"
     },
+    "SIO" : {
+        "alt": [],
+        "long_name" : "Scripps Institue of Oceanography, California",
+        "height": ["10m"],
+        "height_station_masl": 10.0,
+        "height_name": ["10magl"],
+        "latitude": 32.8328,
+        "longitude": -117.2713,
+        "network": "AGAGE"
+    },
     "SDZ" : {
         "alt": [""],
         "long_name" : "Shandianzi, China",
