@@ -86,7 +86,7 @@
         },
         "JFJ" : {
             "gcwerks_site_name": "jungfraujoch",
-            "inlets": ["air"],
+            "inlets": ["any"],
             "inlet_label": ["10m"],
             "global_attributes": {
                 "data_owner": "Stefan Reimann",
