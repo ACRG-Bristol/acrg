@@ -259,7 +259,7 @@ def basis(domain, basis_case = 'voronoi'):
 def basis_boundary_conditions(domain, basis_case = 'NESW'):
     
     files = sorted(glob.glob(bc_basis_directory + domain + "/" +
-                    basis_case + "*.nc"))
+                    basis_case + "_*.nc"))
     if len(files) == 0:
         print("Can't find boundary condition basis functions: " + domain + " " + basis_case)
         return None
@@ -594,7 +594,7 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi',
 
         fp_and_data[site] = fp_and_data[site].merge(sensitivity)
         
-        if basis_case in ('transd','test', 'alcompare', 'sense'):
+        if basis_case in ('transd','test', 'alcompare', 'sense', 'mcf'):
             sub_fp_temp = site_bf.fp.sel(lon=slice(min(site_bf.sub_lon),max(site_bf.sub_lon)), 
                                     lat=slice(min(site_bf.sub_lat),max(site_bf.sub_lat))) 
             sub_fp = xray.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
@@ -1284,7 +1284,7 @@ def plot(fp_data, date, out_filename=None,
                 "SATELLITE": "green"}
             
     levels = MaxNLocator(nbins=256).tick_values(log_range[0], log_range[1])
-
+    #levels=np.arange(log_range[0],log_range[1], 0.2)
     norm = BoundaryNorm(levels,
                         ncolors=cmap.N,
                         clip=True)

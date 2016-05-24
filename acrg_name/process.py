@@ -1375,7 +1375,8 @@ def process_all(domain, site,
                 force_update = False,
                 satellite = False,
                 perturbed_folder = None,
-                max_level = None):
+                max_level = None,
+                force_met_empty=False):
     '''
     For a given domain and site, process all available fields files (including
     multiple heights).
@@ -1438,7 +1439,7 @@ def process_all(domain, site,
                 out = process(domain, site, height, year, month,
                     base_dir = base_dir, force_update = force_update,
                     satellite = satellite, perturbed_folder = perturbed_folder,
-                    max_level = max_level)
+                    max_level = max_level, force_met_empty = force_met_empty)
             except:
                 status_log("FAILED in process all " +
                        "for %s. Error log: %s" % 
