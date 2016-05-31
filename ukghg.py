@@ -18,12 +18,13 @@ proj = "OSGB" # only option is OSGB at the he moment but should be "OSGB" and "L
 unitType = "mol" #choice of "mol", "g"
 unitSIprefix = "nano" #choice of "kilo", "none", "milli", "micro", "nano", "pico"
 sectorList = 'None' # default 1:10
+flux_type='combined'    #options 'combined', 'anthro', 'bio'
 
 # Define command and arguments
 command = 'Rscript'
 path2script = '/home/'+usr+'/acrg/ukghg.R'    #assumes repository is in your home directory
 # Variable number of args in a list
-args = [start,end,tz,ntimes,ghgName,proj,unitType,unitSIprefix ,sectorList]
+args = [start,end,tz,ntimes,ghgName,proj,unitType,unitSIprefix ,sectorList,flux_type]
 
 # Build subprocess command
 cmd = [command, path2script] + args
