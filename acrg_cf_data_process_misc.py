@@ -857,4 +857,91 @@ def gla(species):
     ds.to_netcdf(nc_filename)
     
     
+def wdcgg(network, site,
+          global_attributes = {},
+          instrument = ""):
+
+    params = {
+        "directory_output" : "/data/shared/obs/"
+        }
+
     
+    directories = glob.glob("/data/shared/obs_raw/" + network + \
+                            "/" + site + "/*/*")
+
+    species = []
+    fnames = []
+    for directory in directories:
+        species.append(directory.split("/")[-1])
+        fnames.append(glob.glob("/data/shared/obs_raw/" + network + \
+                                "/" + site + "/*/" + species[-1] + "/event/*.dat")[0])
+                                
+    for sp, fname in zip(species, fnames):
+        skip = 0
+        with open(fname, 'r') as f:
+            for li in range(200):
+                line = f.readline()
+                if line[0] == "C":
+                    skip += 1
+                    header_line = line
+                else:
+                    break
+        
+        columns = header_line[4:].split()
+        columns[2] = columns[2] + "_2"
+        columns[3] = columns[3] + "_2"
+        
+        df = pd.read_csv(fname, skiprows = skip,
+                         sep = r"\s+", names = columns,
+                         parse_dates = {"time": ["DATE", "TIME"]},
+                         index_col = "time",
+                         infer_datetime_format=True)
+        
+        sp_file = sp[:-1].upper() + sp[-1].lower()
+
+        df = df.rename(columns = {sp_file: sp})
+        df = df[[sp]]
+        df = df[df[sp] > 0.]
+        
+        # Drop duplicates
+        df.index.name = "index"
+        df = df.reset_index().drop_duplicates(subset='index').set_index('index')              
+        df.index.name = "time"
+        
+        # Sort and convert to dataset
+        ds = xray.Dataset.from_dataframe(df.sort_index())
+        
+        # Add attributes
+        ds = attributes(ds,
+                        sp,
+                        site.upper(),
+                        global_attributes = global_attributes,
+                        sampling_period = 60,
+                        units = "ppt")
+    
+        # Write file
+        nc_filename = output_filename(params["directory_output"],
+                                      network,
+                                      instrument,
+                                      site.upper(),
+                                      str(ds.time.to_pandas().index.to_pydatetime()[0].year),
+                                      ds.species,
+                                      "various")
+        
+        print("Writing " + nc_filename)
+        
+        ds.to_netcdf(nc_filename)
+
+
+def nies():
+
+    global_attributes = {"data_owner": "NIES",
+                         "data_owner_email": "lnmukaih@nies.go.jp"
+                         }
+    
+    wdcgg("NIES", "HAT",
+          global_attributes = global_attributes,
+          instrument = "GCMS")
+    wdcgg("NIES", "COI",
+          global_attributes = global_attributes,
+          instrument = "GCMS")
