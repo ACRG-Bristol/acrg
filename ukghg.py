@@ -32,8 +32,8 @@ cmd = [command, path2script] + args
 # there currently seems to be no option to put them elsewhere so will need to move
 x = subprocess.check_call(cmd)
 
-sector='total'  #choose which of the sector ncdf files you want to import
+sector='offshore'  #choose which of the sector ncdf files you want to import
 
-path='/home/'+usr+'/acrg/uk_flux_'+sector+'_'+ghgName+'_OSGB.nc' #path to ncdf file
+path='/home/'+usr+'/acrg/uk_flux_'+sector+'_'+ghgName+'_'+proj+'.nc' #path to ncdf file
 with xray.open_dataset(path) as ds:
             ds.load()
