@@ -166,10 +166,10 @@
     "COI" : {
         "alt": [""],
         "long_name" : "Cape Oshi-Ishi, Japan",
-        "height": ["10m"],
-        "height_station_masl": 32.0,
-        "height_name": ["10magl"],
-        "latitude": 43.16,
+        "height": ["55m"],
+        "height_station_masl": 41.0,
+        "height_name": ["46magl"],
+        "latitude": 43.167,
         "longitude": 145.50,
         "network": "NIES"
     },
@@ -331,8 +331,8 @@
     "HAT" : {
         "alt": [""],
         "long_name" : "Hateruma, Japan",
-        "height": ["10m"],
-        "height_station_masl": 0.0,
+        "height": ["39m"],
+        "height_station_masl": 8.0,
         "height_name": ["10magl"],
         "latitude": 24.06,
         "longitude": 123.81,

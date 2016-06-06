@@ -859,7 +859,8 @@ def gla(species):
     
 def wdcgg(network, site,
           global_attributes = {},
-          instrument = ""):
+          instrument = "",
+          assume_repeatability = None):
 
     params = {
         "directory_output" : "/data/shared/obs/"
@@ -908,6 +909,10 @@ def wdcgg(network, site,
         df = df.reset_index().drop_duplicates(subset='index').set_index('index')              
         df.index.name = "time"
         
+        if assume_repeatability:
+            df[sp + "_repeatability"] = df[sp]*assume_repeatability
+            global_attributes["Assumed_repeatability_%"] = int(assume_repeatability*100.)
+        
         # Sort and convert to dataset
         ds = xray.Dataset.from_dataframe(df.sort_index())
         
@@ -918,6 +923,10 @@ def wdcgg(network, site,
                         global_attributes = global_attributes,
                         sampling_period = 60,
                         units = "ppt")
+                        
+        if assume_repeatability:
+            ds[sp.lower() + "_repeatability"].attrs["Comment"] = \
+                "NOTE: This is an assumed value. Contact data owner."
     
         # Write file
         nc_filename = output_filename(params["directory_output"],
@@ -941,7 +950,9 @@ def nies():
     
     wdcgg("NIES", "HAT",
           global_attributes = global_attributes,
-          instrument = "GCMS")
+          instrument = "GCMS",
+          assume_repeatability = 0.03)
     wdcgg("NIES", "COI",
           global_attributes = global_attributes,
-          instrument = "GCMS")
+          instrument = "GCMS",
+          assume_repeatability = 0.03)
