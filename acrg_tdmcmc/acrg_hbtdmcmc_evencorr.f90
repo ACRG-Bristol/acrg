@@ -7,16 +7,18 @@ contains
 SUBROUTINE hbtdmcmc(beta,k, x, h_agg,y,n0, plon, plat, regions_v, &
 pdf_param1, pdf_param2, lon,lat, h_v, sigma_model, sigma_measure, &
 R_indices, sigma_model_hparam1, sigma_model_hparam2, stepsize_sigma_y, sigma_model_pdf, &
-tau, tau_hparams, stepsize_tau, tau_pdf, deltatime,  &
+tau, tau_hparams, stepsize_tau, tau_pdf, deltatime, &
+y_hparam1, y_hparam2, stepsize_y, y_pdf, timeindex_zero, &
 sigma_clon, sigma_clat, rjmcmc, nmeasure_site, nsite_max, & 
 lonmin, lonmax, latmin,latmax, sigma_bd, kmin, x_pdf_all, burn_in, &
 pdf_p1_hparam1, pdf_p1_hparam2, pdf_p2_hparam1, pdf_p2_hparam2, pdf_param1_pdf, pdf_param2_pdf, &
 stepsize, stepsize_pdf_p1,stepsize_pdf_p2, nIt, nsub, nit_sub, nIC, &
-nbeta, kmax, kICmax, nmeasure, Ngrid, nlon,nlat, ydim1, ydim2, numsites,nIC1,  &
+nbeta, kmax, kICmax, nmeasure, Ngrid, nlon,nlat, ydim1, ydim2, numsites,nIC1, nzero,  &
 k_out, x_out, regions_out, plon_out, plat_out, sigma_y_out, sigma_model_out, n0T_out, &
-pdf_param1_out, pdf_param2_out, tau_out, accept, reject, &
+pdf_param1_out, pdf_param2_out, tau_out, y_it,accept, reject, &
 accept_birth, reject_birth, accept_death, reject_death, accept_move, reject_move, &
-accept_swap, reject_swap, accept_sigma_y, reject_sigma_y, accept_tau, reject_tau)
+accept_swap, reject_swap, accept_sigma_y, reject_sigma_y, accept_tau, reject_tau, &
+accept_y, reject_y,tot_acc_x, tot_acc_p1, tot_acc_p2, tot_acc_sigma_y)
 
 
 
@@ -41,6 +43,7 @@ INTEGER ydim1
 INTEGER ydim2
 INTEGER nIC1
 INTEGER numsites
+INTEGER nzero
 ! Single Variables
 REAL lonmin
 REAL lonmax
@@ -49,6 +52,7 @@ REAL latmax
 REAL sigma_bd
 REAL sigma_clon
 REAL sigma_clat
+REAL stepsize_sigma_y(ydim2)
 REAL stepsize_tau
 INTEGER sigma_model_pdf
 INTEGER pdf_param1_pdf
@@ -56,6 +60,10 @@ INTEGER pdf_param2_pdf
 INTEGER tau_pdf
 INTEGER rjmcmc
 INTEGER nsite_max
+INTEGER y_pdf
+REAL stepsize_y
+REAL y_hparam1
+REAL y_hparam2
 ! Input arrays
 REAL stepsize(nIC1)
 REAL stepsize_pdf_p1(nIC1)
@@ -74,7 +82,6 @@ REAL h_agg(nmeasure,kICmax,nbeta)
 REAL y(nmeasure) 
 REAL n0(nmeasure, nbeta) 
 REAL sigma_model(ydim2, nbeta)
-REAL stepsize_sigma_y(ydim2)
 INTEGER R_indices(ydim1,ydim2)
 REAL sigma_measure(nmeasure)
 REAl sigma_model_hparam1(ydim2)
@@ -89,6 +96,7 @@ REAL tau(numsites,nbeta)
 REAL tau_hparams(2)
 REAL deltatime
 INTEGER nmeasure_site(numsites)
+INTEGER timeindex_zero(nzero)
 ! Outputs
 INTEGER k_out(nit_sub)
 REAL x_out(kICmax,nit_sub)  
@@ -103,9 +111,15 @@ REAL n0T_out(nit_sub)
 REAL tau_out(numsites,nit_sub)
 INTEGER accept(nIC1)
 INTEGER reject(nIC1)
+REAL tot_acc_x(nIC1)
+REAL tot_acc_p1(nIC1)
+REAL tot_acc_p2(nIC1)
+REAL tot_acc_sigma_y(ydim2)
 INTEGER accept_birth, reject_birth
 INTEGER accept_death, reject_death, accept_move, reject_move, accept_swap
 INTEGER accept_sigma_y, reject_sigma_y, accept_tau, reject_tau, reject_swap
+INTEGER accept_y, reject_y
+REAL y_it(nmeasure,nit_sub)
 ! INTERMEDIATE VARIABLES
 INTEGER it, ibeta, remain_it, pair1,pair2, ib, it_sub, remain, kIC       !remain_dim
 INTEGER remain_swap
@@ -126,10 +140,15 @@ REAL Rinv(nmeasure,nmeasure,nbeta), Qinv(nmeasure,nmeasure,nbeta)
 REAL detval(nbeta), detval_Q(nbeta), n0T(nbeta)
 REAL sigma_y(nmeasure,nbeta)
 REAL detval_Q_block(numsites,nbeta)
+REAL av_acc_sigma_y(ydim2,2)
+REAL acc_h_batch(nIC1)
+REAL rej_h_batch(nIC1)
+INTEGER accept_batch(nIC1)
+INTEGER reject_batch(nIC1)
 ! INTERMEDIATE TEMP VARIABLES
 INTEGER ti,jj
 REAL Rinv_temp(nmeasure,nmeasure), Qinv_temp(nmeasure,nmeasure)
-REAL Q_temp(nmeasure,nmeasure)
+!REAL Q_temp(nmeasure,nmeasure)
 REAL detval_temp, detval_Q_temp, n0T_temp
 REAL n0_temp(nmeasure), sigma_y_temp(nmeasure), y_error(nmeasure)
 REAL sigma_yinv(nmeasure), C(nmeasure)
@@ -149,17 +168,24 @@ REAL pdf_param1ib1(kICmax), pdf_param2ib1(kICmax)
 REAL h_aggib1(nmeasure,kICmax)
 REAL sigma_yib1(nmeasure), sigma_modelib1(ydim2)
 INTEGER kib1, rejectib1, acceptib1, reject_yib1, accept_yib1
-INTEGER acceptxib1(nIC1), rejectxib1(nIC1)
+INTEGER acceptxib1(nIC1), rejectxib1(nIC1), acc_bxib1(nIC1), rej_bxib1(nIC1)
 INTEGER regions_vib1(Ngrid)
 REAL detvalib, detvalib1, detval_Qib, detval_Qib1
 REAL detval_Q_blockib(numsites), detval_Q_blockib1(numsites)
 REAL Rinvib1(nmeasure,nmeasure), Qinvib1(nmeasure,nmeasure)
+REAL y_out(nmeasure)
+REAL stepsize_sig_ib1(ydim2)
+REAL stepsize_ib1(nIC1)     
+REAL stepsize_p1_ib1(nIC1)
+REAL acc_prob_p1_ib1(nIC1)
+REAL stepsize_p2_ib1(nIC1)
+REAL rej_prob_p1_ib1(nIC1)
 ! BLOCK INTERMEDIATES
 INTEGER cum_nmeas, si, ii
-REAL Q_block_temp(nsite_max,nsite_max)
-REAL Q_block_inv_temp(nsite_max,nsite_max)
+!REAL Q_block_temp(nsite_max,nsite_max)
+!REAL Q_block_inv_temp(nsite_max,nsite_max)
 REAL detval_Q_block_temp(numsites)
-REAL n0T_block(numsites)
+!REAL n0T_block(numsites)
 REAL aa, bb, q_small
 
 
@@ -177,11 +203,13 @@ REAL aa, bb, q_small
 !f2py intent(in) pdf_p1_hparam1, pdf_p1_hparam2, stepsize_pdf_p1, pdf_param1_pdf
 !f2py intent(in) stepsize, nIt,nsub,nit_sub, nIC1, numsites
 !f2py intent(in) nIC, nbeta, kmax, kICmax, nmeasure, Ngrid, nlon,nlat, ydim1, ydim2
+!f2py intent(in) y_hparam1,y_hparam2,y_pdf,stepsize_y,timeindex_zero, nzero
 !f2py intent(out) k_out, x_out, regions_out, plon_out, plat_out, sigma_y_out, n0T_out
 !f2py intent(out) pdf_param2_out, pdf_param1_out, sigma_model_out
 !f2py intent(out) accept, reject, accept_swap, accept_birth, accept_death, accept_move
 !f2py intent(out) reject_birth, reject_death, reject_move, accept_sigma_y, reject_sigma_y
-!f2py intent(out) reject_swap, accept_tau, reject_tau, tau_out
+!f2py intent(out) reject_swap, accept_tau, reject_tau, tau_out, y_it, accept_y, reject_y
+!f2py intent(out) tot_acc_x, tot_acc_p1, tot_acc_p2, tot_acc_sigma_y
 
  ! call OMP_SET_NUM_THREADS(nbeta)      ! Uncomment for Parallel Tempering
 
@@ -206,6 +234,13 @@ reject_swap=0
 accept_tau=0
 reject_tau=0
 it_sub=1
+
+av_acc_sigma_y(:,:)=0.
+acc_h_batch(:)=0.
+rej_h_batch(:)=0.
+accept_batch(:)=0
+reject_batch(:) = 0
+
 
  cum_nmeas=0
  Qinv_temp(:,:)=0.
@@ -316,7 +351,7 @@ do it=1,(nIt+burn_in)
    call random_number(u) 
 
    if (rjmcmc .EQ. 1) then
-       remain_it = FLOOR(6*u) + 1    ! Choose random number between 1 and 5 to chose what to update
+       remain_it = FLOOR(7*u) + 1    ! Choose random number between 1 and 7 to chose what to update
    else
 
        if (modulo(it,8) .EQ. 5) then
@@ -367,16 +402,17 @@ do it=1,(nIt+burn_in)
        
        if (remain_it .EQ. 1) then              ! X UPDATE
 
-            call x_hparam_update(kib, xib, pdf_param1ib,pdf_param2ib,  &
-                    pdf_p1_hparam1, pdf_p1_hparam2, stepsize_pdf_p1, pdf_param1_pdf, &
-                    pdf_p2_hparam1, pdf_p2_hparam2, stepsize_pdf_p2, pdf_param2_pdf, &
-                    x_pdf_all, it, burn_in, nIC, kICmax, nIC1, &
-                    pdf_param1ib1, pdf_param2ib1) 
+
+            call x_hparam_update(kib, xib, pdf_param1ib,pdf_param2ib, &
+                 pdf_p1_hparam1, pdf_p1_hparam2, stepsize_pdf_p1, pdf_param1_pdf, &
+                 pdf_p2_hparam1, pdf_p2_hparam2, stepsize_pdf_p2, pdf_param2_pdf, &
+                 acc_h_batch, rej_h_batch, x_pdf_all, it, burn_in, nIC, kICmax, nIC1, &
+                 pdf_param1ib1, pdf_param2ib1, stepsize_p1_ib1, stepsize_p2_ib1, acc_prob_p1_ib1, rej_prob_p1_ib1) 
 
             call x_update(betaib,kib, xib, pdf_param1ib1,pdf_param2ib1, &
                          h_aggib,n0ib,n0Tib,Rinvib, stepsize, &
-                         accept,reject,x_pdf_all, it, burn_in, nIC, kICmax, nmeasure, nIC1, &
-                         xib1, n0ib1, n0Tib1, acceptxib1, rejectxib1)
+                         accept,reject,accept_batch, reject_batch, x_pdf_all, it, burn_in, nIC, kICmax, nmeasure, nIC1, &
+                         xib1, n0ib1, n0Tib1, acceptxib1, rejectxib1, stepsize_ib1, acc_bxib1, rej_bxib1)
 
 
             x(:,ibeta) = xib1
@@ -384,6 +420,13 @@ do it=1,(nIt+burn_in)
             n0T(ibeta) = n0Tib1 
             pdf_param1(:,ibeta) = pdf_param1ib1
             pdf_param2(:,ibeta) = pdf_param2ib1
+            stepsize=stepsize_ib1
+            stepsize_pdf_p1=stepsize_p1_ib1
+            stepsize_pdf_p2=stepsize_p2_ib1
+            acc_h_batch=acc_prob_p1_ib1
+            rej_h_batch=rej_prob_p1_ib1
+            accept_batch=acc_bxib1
+            reject_batch=rej_bxib1
             
             if (betaib .EQ. 1.) then 
                accept(:) = acceptxib1
@@ -392,12 +435,11 @@ do it=1,(nIt+burn_in)
             
            
 
-       elseif (remain_it .EQ. 4) then       ! BIRTH
+       elseif (remain_it .EQ. 5) then       ! BIRTH
                
                call birth(betaib,kib, xib, h_aggib,y,n0ib,n0Tib,Rinvib, plonib, platib, regions_vib, lon,lat, & 
                           h_v, pdf_param1ib, pdf_param2ib, x_pdf_all(nIC1), &
-                          lonmin, lonmax, &
-                          latmin,latmax, sigma_bd,accept_birth, reject_birth,it,burn_in,nIC,kICmax,kmax, &
+                          sigma_bd,accept_birth, reject_birth,it,burn_in,nIC,kICmax,kmax, &
                           nmeasure,Ngrid,nlon,nlat, &
                           kib1, xib1, h_aggib1, n0ib1, n0Tib1, regions_vib1, plonib1, platib1, acceptib1, rejectib1, &
                           pdf_param1ib1, pdf_param2ib1)
@@ -419,7 +461,7 @@ do it=1,(nIt+burn_in)
                    reject_birth=rejectib1
                endif
 
-           elseif (remain_it .EQ. 5) then    ! DEATH
+           elseif (remain_it .EQ. 6) then    ! DEATH
 
                call death(betaib,kib, xib, h_aggib, y,n0ib,n0Tib,Rinvib, plonib, platib, regions_vib, lon,lat, & 
                           h_v, pdf_param1ib, pdf_param2ib, x_pdf_all(nIC1), sigma_bd, &
@@ -444,7 +486,7 @@ do it=1,(nIt+burn_in)
                    reject_death=rejectib1
                endif
 
-           elseif (remain_it .EQ. 6) then    ! MOVE
+           elseif (remain_it .EQ. 7) then    ! MOVE
                 
                
                call move(betaib,kib, xib, h_aggib, y,n0ib,n0Tib,Rinvib, plonib, platib, regions_vib, lon,lat, & 
@@ -467,13 +509,15 @@ do it=1,(nIt+burn_in)
 
           elseif (remain_it .EQ. 2) then  ! SIGMA_Y UPDATE
              
-              call sigma_y_update(betaib, sigma_modelib, sigma_model_ap, sigma_measure, sigma_yib, detvalib, &
+              call sigma_y_update(betaib, sigma_modelib, sigma_measure, sigma_yib, detvalib, &
                  detval_Qib, Rinvib, Qinvib, sigma_model_hparam1, sigma_model_hparam2, stepsize_sigma_y, &
                  sigma_model_pdf, R_indices, &
-                 n0ib,n0Tib, accept_sigma_y, reject_sigma_y, it, burn_in, nmeasure, ydim1, ydim2, &
-                 n0Tib1, accept_yib1, reject_yib1, sigma_yib1, sigma_modelib1, Rinvib1, detvalib1) 
+                 n0ib,n0Tib, accept_sigma_y, reject_sigma_y, av_acc_sigma_y, it, burn_in, nmeasure, ydim1, ydim2, &
+                 n0Tib1, accept_yib1, reject_yib1, sigma_yib1, sigma_modelib1, Rinvib1, detvalib1, stepsize_sig_ib1) 
 
-              
+
+              stepsize_sigma_y=stepsize_sig_ib1
+                      
               n0T(ibeta) = n0Tib1
               sigma_y(:,ibeta) = sigma_yib1
               sigma_model(:,ibeta) = sigma_modelib1
@@ -491,7 +535,7 @@ do it=1,(nIt+burn_in)
               call tau_update(betaib, tauib, sigma_yib, detvalib, detval_Qib, detval_Q_blockib, &
                               tau_hparams(1), tau_hparams(2), stepsize_tau, tau_pdf,  &
                               Rinvib, Qinvib, deltatime, nmeasure_site, n0ib, n0Tib, &
-                              accept_tau, reject_tau, it, burn_in, nmeasure, numsites, nsite_max, &
+                              accept_tau, reject_tau, it, burn_in, nmeasure, numsites, &
                               n0Tib1, acceptib1, rejectib1, tauib1, Rinvib1, Qinvib1, detvalib1, &
                               detval_Qib1, detval_Q_blockib1) 
 
@@ -508,6 +552,24 @@ do it=1,(nIt+burn_in)
                reject_tau = rejectib1
               endif
 
+           elseif (remain_it .EQ. 4) then  ! Y_UPDATE
+
+              if (timeindex_zero(1) .NE. -999) then
+                  call y_update(betaib, y, n0ib, n0Tib, &
+                            Rinvib, y_hparam1, y_hparam2, timeindex_zero, &
+                            stepsize_y, y_pdf, accept_y, reject_y, it, burn_in, nmeasure, nzero, &
+                            n0ib1, n0Tib1, y_out, acceptib1, rejectib1) 
+
+             
+                 n0T(ibeta) = n0Tib1
+                 n0(:,ibeta) = n0ib1
+                 y = y_out 
+             
+                 if (betaib .EQ. 1.) then 
+                   accept_y = acceptib1
+                   reject_y = rejectib1
+                 endif
+              endif            ! timeindex_zero .NE. -999
 
            endif     ! remain_it
            
@@ -563,7 +625,8 @@ do it=1,(nIt+burn_in)
                   n0T_it(it_sub)=n0T(ib)
                   tau_it(:,it_sub) = tau(:,ib)
                   pdf_param1_it(:,it_sub)=pdf_param1(:,ib)
-                  pdf_param2_it(:,it_sub)=pdf_param2(:,ib)       
+                  pdf_param2_it(:,it_sub)=pdf_param2(:,ib) 
+                  y_it(:,it_sub)=y      
                   it_sub=it_sub+1
        !        endif                                  ! UNCOMMENT IF DOING PT
        !     enddo                                     ! UNCOMMENT IF DOING PT
@@ -584,32 +647,40 @@ n0T_out=n0T_it
 tau_out=tau_it
 pdf_param1_out=pdf_param1_it
 pdf_param2_out=pdf_param2_it
-
+tot_acc_sigma_y=stepsize_sigma_y
+tot_acc_x=stepsize
+tot_acc_p1=stepsize_pdf_p1
+tot_acc_p2=stepsize_pdf_p2
 END SUBROUTINE hbtdmcmc
 
 
 
-SUBROUTINE x_hparam_update(k, x, pdf_param1_all,pdf_param2_all,  &
+SUBROUTINE x_hparam_update(k, x, pdf_param1_all,pdf_param2_all, &
 pdf_p1_hparam1_all, pdf_p1_hparam2_all, stepsize_pdf_p1, pdf_param1_pdf, &
 pdf_p2_hparam1_all, pdf_p2_hparam2_all, stepsize_pdf_p2, pdf_param2_pdf, &
-x_pdf_all, it, burn_in, nIC, kICmax, nIC1, &
-pdf_param1_out, pdf_param2_out) 
+accept_batch, reject_batch, x_pdf_all, it, burn_in, nIC, kICmax, nIC1, &
+pdf_param1_out, pdf_param2_out, stepsize_p1_out, stepsize_p2_out, accept_batch_out, reject_batch_out) 
 
 Implicit none
 INTEGER it, burn_in, k, nIC, kICmax, nIC1
+REAL av_acc
 REAL x(kICmax) 
 INTEGER x_pdf_all(nIC1)
+REAL accept_batch(nIC1), reject_batch(nIC1)
 REAL pdf_param1_all(kICmax), pdf_param2_all(kICmax)
 REAL pdf_p1_hparam1_all(nIC1), pdf_p1_hparam2_all(nIC1) 
 REAL  pdf_p2_hparam1_all(nIC1), pdf_p2_hparam2_all(nIC1)
 REAL pdf_param1_out(kICmax), pdf_param2_out(kICmax)
+REAL stepsize_p1_out(nIC1), stepsize_p2_out(nIC1)
+REAL accept_batch_out(nIC1), reject_batch_out(nIC1)
 INTEGER elem(5)
 REAL u(5)
 REAL pdf_param1        
 REAL pdf_param2
-INTEGER accept(nIC1), reject(nIC1)
+REAL accep_prob(nIC1)
+!INTEGER accept(nIC1), reject(nIC1)
 REAL stepsize_pdf_p2(nIC1), stepsize_pdf_p1(nIC1)
-INTEGER xi, x_pdf, ki,xx
+INTEGER xi, x_pdf, xx
 REAL pT, randomu, p0,p1
 INTEGER pdf_param2_pdf, pdf_param1_pdf
 REAL pdf_p2_hparam1, pdf_p2_hparam2, pdf_p1_hparam1, pdf_p1_hparam2
@@ -656,7 +727,6 @@ REAL stepsize_pdf_p10, stepsize_pdf_p20
   dpdf_param2 = random_normal()*stepsize_pdf_p20
   pdf_param2_new = pdf_param2 + dpdf_param2
   
-         ! hyperparams are fixed below to be a single number - will only apply when x is a scaling of the prior
 
          call calc_pdf(pdf_param1,pdf_p1_hparam1,pdf_p1_hparam2,pdf_param1_pdf, p0_pdf_param1) 
          call  calc_pdf(pdf_param1_new, pdf_p1_hparam1,pdf_p1_hparam2,pdf_param1_pdf, p1_pdf_param1)
@@ -687,20 +757,80 @@ REAL stepsize_pdf_p10, stepsize_pdf_p20
              pdf_param2_all(xi)=pdf_param2_new                     
          endif   ! randomu condition
 
+          if(it .le. burn_in) then
+             if (alog(randomu) .LE. pT) THEN
+
+                 if (xi .LE. nIC) then
+                    if (it .GT. burn_in) accept_batch(xi) = accept_batch(xi) + 1
+                 else if (xi .GT. nIC) then
+                    if (it .GT. burn_in) accept_batch(nIC1) = accept_batch(nIC1) + 1
+                 endif
+             else
+                 if (xi .LE. nIC) then 
+                     reject_batch(xi) = reject_batch(xi) + 1
+                 else
+                     reject_batch(nIC1) = reject_batch(nIC1) + 1  
+                 endif
+
+             endif
+
+         endif
+
+         if(it .le. burn_in .and. modulo(it,500) .eq. 0) then
+             if (xi .LE. nIC) then
+                 if(accept_batch(xi)+reject_batch(xi) .gt. 0) then
+                     accep_prob(xi) = accept_batch(xi)/(accept_batch(xi)+reject_batch(xi))
+                     av_acc = min(0.01,1.0/sqrt(real(it/500))) !1.0/sqrt(real(accept(xi)+reject(xi)))
+                     if(accep_prob(xi) .lt. 0.2) then
+                         stepsize_pdf_p1(xi) = exp(alog(stepsize_pdf_p1(xi)) - av_acc)
+                         stepsize_pdf_p2(xi) = exp(alog(stepsize_pdf_p2(xi)) - av_acc)
+                     endif
+                     if(accep_prob(xi) .gt. 0.6) then
+                         stepsize_pdf_p1(xi) = exp(alog(stepsize_pdf_p1(xi)) + av_acc)
+                         stepsize_pdf_p2(xi) = exp(alog(stepsize_pdf_p2(xi)) + av_acc)
+                     endif
+                     accept_batch(xi) = 0
+                     reject_batch(xi) = 0
+                 endif
+             else if (xi .GT. nIC) then
+                 if(accept_batch(nIC1)+reject_batch(nIC1) .gt. 0) then    
+                      accep_prob(nIC1) = accept_batch(nIC1)/(accept_batch(nIC1)+reject_batch(nIC1))
+                      av_acc = min(0.01,1.0/sqrt(real(it/500))) !1.0/sqrt(real(accept(nIC1)+reject(nIC1)))
+                      if(accep_prob(nIC1) .lt. 0.2) then
+                         stepsize_pdf_p1(nIC1) = exp(alog(stepsize_pdf_p1(nIC1)) - av_acc)
+                         stepsize_pdf_p2(nIC1) = exp(alog(stepsize_pdf_p2(nIC1)) - av_acc)
+                      endif
+                      if(accep_prob(nIC1) .gt. 0.6) then
+                         stepsize_pdf_p1(nIC1) = exp(alog(stepsize_pdf_p1(nIC1)) + av_acc)
+                         stepsize_pdf_p2(nIC1) = exp(alog(stepsize_pdf_p2(nIC1)) + av_acc)
+                      endif
+                      accept_batch(nIC1) = 0
+                      reject_batch(nIC1) = 0
+                 endif
+             endif
+
+          endif
+
   enddo
 
 pdf_param1_out=pdf_param1_all
 pdf_param2_out=pdf_param2_all
+stepsize_p1_out=stepsize_pdf_p1
+stepsize_p2_out=stepsize_pdf_p2
+accept_batch_out=accept_batch
+reject_batch_out=reject_batch
 END SUBROUTINE x_hparam_update
 
 SUBROUTINE x_update(beta,k, x, pdf_param1_all,pdf_param2_all,  &
 h_agg,n0,n0T,Rinv, stepsize, &
-accept, reject, x_pdf_all, it, burn_in, nIC, kICmax, nmeasure, nIC1, &
-x_out, n0_out, n0T_out, accept_out, reject_out) 
+accept, reject, accept_batch, reject_batch, x_pdf_all, it, burn_in, nIC, kICmax, nmeasure, nIC1, &
+x_out, n0_out, n0T_out, accept_out, reject_out, stepsize_out, acc_batch_out, rej_batch_out) 
+
 
 Implicit none 
 INTEGER nmeasure, it, burn_in, k, nIC, kICmax, nIC1
 REAL beta, n0T, n0T_out 
+REAL av_acc
 REAL x(kICmax) 
 REAL x_out(kICmax) 
 REAL h_agg(nmeasure,kICmax)   
@@ -716,13 +846,19 @@ REAL u(5),u2(5)
 REAL pdf_param1        
 REAL pdf_param2
 REAL stepsize(nIC1)
-REAL C(nmeasure)
+REAL accep_prob(nIC1)
 INTEGER accept(nIC1), reject(nIC1)
+INTEGER accept_batch(nIC1)
+INTEGER reject_batch(nIC1)
 INTEGER accept_out(nIC1), reject_out(nIC1)
-INTEGER xi, x_pdf, ki,xx
+REAL stepsize_out(nIC1)
+REAL C(nmeasure)
+INTEGER xi, x_pdf,xx
 REAL dx, n1T, pT, randomu, p0,p1
 REAL x_new(kICmax)
 REAL stepsize0
+INTEGER acc_batch_out(nIC1)
+INTEGER rej_batch_out(nIC1)
 
    ! CHANGE OF EMISSIONS VALUES
   call random_number(u)   
@@ -804,10 +940,54 @@ REAL stepsize0
                  else
                      reject(nIC1) = reject(nIC1) + 1  
                  endif
-             endif
-                              
+             endif                    
          endif   ! randomu condition
 
+         ! Stepsize tuning
+         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+         if(beta .eq. 1 .and. it .le. burn_in) then
+             if (alog(randomu) .LE. pT) THEN
+
+                 if (xi .LE. nIC) then
+                    if (beta .EQ. 1. .and. it .GT. burn_in) accept_batch(xi) = accept_batch(xi) + 1
+                 else if (xi .GT. nIC) then
+                    if (beta .EQ. 1. .and. it .GT. burn_in) accept_batch(nIC1) = accept_batch(nIC1) + 1
+                 endif
+             else
+                 if (xi .LE. nIC) then 
+                     reject_batch(xi) = reject_batch(xi) + 1
+                 else
+                     reject_batch(nIC1) = reject_batch(nIC1) + 1  
+                 endif
+
+             endif
+
+         endif
+
+         if(beta .eq. 1 .and. it .le. burn_in .and. modulo(it,500) .eq. 0) then
+             if (xi .LE. nIC) then
+                 if(accept_batch(xi)+reject_batch(xi) .gt. 0) then
+                     accep_prob(xi) = accept_batch(xi)/(accept_batch(xi)+reject_batch(xi))
+                     av_acc = min(0.01,1.0/sqrt(real(it/500))) !1.0/sqrt(real(accept(xi)+reject(xi)))
+                     if(accep_prob(xi) .lt. 0.2) stepsize(xi) = exp(alog(stepsize(xi)) - av_acc)
+                     if(accep_prob(xi) .gt. 0.6) stepsize(xi) = exp(alog(stepsize(xi)) + av_acc)
+                     accept_batch(xi) = 0
+                     reject_batch(xi) = 0
+                 endif
+             else if (xi .GT. nIC) then
+                 if(accept_batch(nIC1)+reject_batch(nIC1) .gt. 0) then    
+                      accep_prob(nIC1) = accept_batch(nIC1)/(accept_batch(nIC1)+reject_batch(nIC1))
+                      av_acc = min(0.01,1.0/sqrt(real(it/500))) !1.0/sqrt(real(accept(nIC1)+reject(nIC1)))
+                      if(accep_prob(nIC1) .lt. 0.2) stepsize(nIC1) = exp(alog(stepsize(nIC1)) - av_acc)
+                      if(accep_prob(nIC1) .gt. 0.6) stepsize(nIC1) = exp(alog(stepsize(nIC1)) + av_acc)
+                      accept_batch(nIC1) = 0
+                      reject_batch(nIC1) = 0
+                 endif
+             endif
+
+         endif
+         ! End of stepsize tuning
+         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   enddo
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -816,13 +996,15 @@ n0_out=n0
 n0T_out=n0T
 accept_out=accept
 reject_out=reject
+stepsize_out=stepsize
+acc_batch_out = accept_batch
+rej_batch_out = reject_batch
 END SUBROUTINE x_update
 
 
 
 SUBROUTINE birth(beta,k, x, h_agg,y,n0,n0T,Rinv, plon, plat, regions_v, lon,lat, & 
-h_v,pdf_param1, pdf_param2, x_pdf,  &
-lonmin, lonmax, latmin,latmax, sigma_bd, &
+h_v,pdf_param1, pdf_param2, x_pdf, sigma_bd, &
 accept_birth, reject_birth, it, burn_in, nIC, kICmax, kmax, nmeasure, Ngrid,nlon,nlat, &
 k_out, x_out, h_agg_out, n0_out, n0T_out, regions_v_out, plon_out, plat_out, accept_out, reject_out, &
 pdf_param1_out, pdf_param2_out)
@@ -830,7 +1012,8 @@ pdf_param1_out, pdf_param2_out)
 IMPLICIT NONE
 ! Dimensions
 INTEGER nmeasure, Ngrid, nlon,nlat, k,kmax, nIC, kICmax
-REAL lonmin,lonmax,latmin,latmax,sigma_bd
+!REAL lonmin,lonmax,latmin,latmax
+REAL sigma_bd
 ! Single Variables
 INTEGER accept_birth, reject_birth, it, burn_in, x_pdf 
 REAL beta, n0T
@@ -953,7 +1136,6 @@ if (k1 .LT. kmax) THEN
           pT_birth = alog(sqrt(2*pi)*sigma_bd/(pdf_param2_new-pdf_param1_new)) &
               + ((x_new-c_new)**2)/2./sigma_bd**2 - 0.5*(n1Tb - n0T)*beta
        
-
          call random_number(randomu)             
          if (alog(randomu) .LE. pT_birth) THEN
            !ACCEPT
@@ -1458,10 +1640,12 @@ reject_out=reject_move
 
 END SUBROUTINE move
 
-SUBROUTINE sigma_y_update(beta, sigma_model_current, sigma_model_ap, sigma_measure, sigma_y_current, &
+SUBROUTINE sigma_y_update(beta, sigma_model_current, sigma_measure, sigma_y_current, &
 detval_current, detval_Q, Rinv_current, Qinv, sigma_model_hparam1, sigma_model_hparam2, &
-stepsize_sigma_y, sigma_model_pdf, R_indices,n0,n0T, accept, reject, it, burn_in, nmeasure, dim1, dim2, &
-n0T_out, accept_out, reject_out, sigma_y_out, sigma_model_out, Rinv_out, detval_out) 
+stepsize_sigma_y, sigma_model_pdf, R_indices,n0,n0T, accept, reject, accep_prob, &
+it, burn_in, nmeasure, dim1, dim2, &
+n0T_out, accept_out, reject_out, sigma_y_out, sigma_model_out, Rinv_out, detval_out, stepsize_sig_out) 
+
 
 IMPLICIT NONE
 
@@ -1475,13 +1659,13 @@ REAL n0T
 REAL detval_current, detval_Q
 REAL sigma_measure(nmeasure)
 REAL sigma_model_current(dim2)
-REAL sigma_model_ap(dim2)
 REAl sigma_y_current(nmeasure)
 INTEGER R_indices(dim1,dim2)
 REAL Rinv_current(nmeasure,nmeasure), Qinv(nmeasure,nmeasure)
 REAL stepsize_sigma_y(dim2)
 REAL sigma_model_hparam1(dim2)
 REAL sigma_model_hparam2(dim2)
+REAL accep_prob(dim2)
 INTEGER sigma_model_pdf
 ! Outputs
 REAL n0T_out, detval_out
@@ -1491,11 +1675,12 @@ REAL Rinv_out(nmeasure,nmeasure)
 INTEGER accept_out, reject_out
 ! Intermediate variables
 INTEGER  yi, jj, ti
-REAL randomu, dsigma_y, sigma_model_new, u
+REAL randomu, dsigma_y, sigma_model_new, u, av_acc
 REAL p0_sigma_y, p1_sigma_y, n1T, detval_new, pT
 REAL y_error_new(nmeasure), autocorr_vec(nmeasure)
 REAL sigma_y_new(nmeasure), sigma_yinv_new(nmeasure)
 REAL Rinv_new(nmeasure,nmeasure), C(nmeasure)
+REAL stepsize_sig_out(dim2)
 
 
 
@@ -1504,7 +1689,7 @@ REAL Rinv_new(nmeasure,nmeasure), C(nmeasure)
     yi = FLOOR(dim2*u)+1
 		
     ! Generate new value of sigma_y
-    dsigma_y = random_normal()*stepsize_sigma_y(yi)*sigma_model_ap(yi)
+    dsigma_y = random_normal()*stepsize_sigma_y(yi)
     sigma_model_new = sigma_model_current(yi) + dsigma_y       
 
     call calc_pdf(sigma_model_current(yi), sigma_model_hparam1(yi), sigma_model_hparam2(yi), sigma_model_pdf, p0_sigma_y)
@@ -1555,6 +1740,15 @@ REAL Rinv_new(nmeasure,nmeasure), C(nmeasure)
        !;REJECT					
        if(beta .eq. 1. .and. it .gt. burn_in) reject=reject + 1
     endif
+  
+     if(beta .eq. 1 .and. it .le. burn_in .and. modulo(it,500)==0) then
+        if(accept+reject .gt. 0) then          
+            accep_prob(yi) = accept/(accept+reject)
+            av_acc =  1.0/sqrt(real(it/500))
+            if(av_acc .lt. 0.2) stepsize_sigma_y(yi) = exp(alog(stepsize_sigma_y(yi)) - av_acc)
+            if(av_acc .gt. 0.6) stepsize_sigma_y(yi) = exp(alog(stepsize_sigma_y(yi)) + av_acc)
+        endif
+    endif
 
   !enddo   ! yi loop
 
@@ -1565,20 +1759,21 @@ detval_out=detval_current
 Rinv_out=Rinv_current
 accept_out=accept
 reject_out=reject
+stepsize_sig_out=stepsize_sigma_y
 END SUBROUTINE sigma_y_update
 
 
 SUBROUTINE tau_update(beta, tau_current, sigma_y,  &
 detval_current, detval_Q_current, detval_Q_block, tau_hparam1, tau_hparam2,  &
 stepsize_tau, tau_pdf, Rinv_current, Qinv_current, deltatime, nmeasure_site, &
-n0, n0T, accept, reject, it, burn_in, nmeasure, numsites, nsite_max, &
+n0, n0T, accept, reject, it, burn_in, nmeasure, numsites,  &
 n0T_out, accept_out, reject_out, tau_out, Rinv_out, Qinv_out, detval_out, &
 detval_Q_out, detval_Q_block_out) 
 
 IMPLICIT NONE
 
 ! Dimensions
-INTEGER nmeasure, accept, reject, it, burn_in, numsites, nsite_max
+INTEGER nmeasure, accept, reject, it, burn_in, numsites
 ! Single Variables
 REAL beta 
 REAL tau_current(numsites)
@@ -1605,12 +1800,12 @@ REAL randomu, dtau, tau_new(numsites), u
 REAL p0_tau, p1_tau, n1T, detval_new, pT
 REAL detval_Q_new
 REAL Rinv_new(nmeasure, nmeasure)
-REAL Qinv_new(nmeasure, nmeasure), Q_new(nmeasure,nmeasure)
+REAL Qinv_new(nmeasure, nmeasure)
 REAL C(nmeasure), autocorr_vec(nmeasure)
 REAL sigma_yinv(nmeasure)
 INTEGER cum_nmeas
-REAL Q_block_new(nsite_max,nsite_max)
-REAL Q_block_inv_new(nsite_max,nsite_max)
+!REAL Q_block_new(nsite_max,nsite_max)
+!REAL Q_block_inv_new(nsite_max,nsite_max)
 REAL detval_Q_block_new(numsites)
 REAL q_small
 
@@ -1711,7 +1906,95 @@ reject_out=reject
 END SUBROUTINE tau_update
 
 
+SUBROUTINE y_update(beta, y_current, n0, n0T, &
+Rinv, y_hparam1, y_hparam2, timeindex_zero, &
+stepsize_y, y_pdf, accept, reject, it, burn_in, nmeasure, nzero, &
+n0_out, n0T_out, y_out, accept_out, reject_out) 
 
+IMPLICIT NONE
+
+! Dimensions
+INTEGER nmeasure, accept, reject, it, burn_in, nzero
+! Single Variables
+REAL beta 
+! Input arrays
+INTEGER timeindex_zero(nzero)
+REAL y_current(nmeasure)
+REAL n0(nmeasure) 
+REAL n0T
+REAL Rinv(nmeasure,nmeasure)
+REAL stepsize_y
+REAL y_hparam1
+REAL y_hparam2
+INTEGER y_pdf
+! Outputs
+REAL n0T_out, n0_out(nmeasure)
+REAL y_out(nmeasure)
+INTEGER accept_out, reject_out
+! Intermediate variables
+INTEGER  yi, xi
+REAL randomu, dy, y_new
+REAL p0_y, p1_y, n1T, pT
+REAL n1(nmeasure) 
+REAL dum, dumb,dumc,dumd
+REAL dumx(nmeasure), dumy(nmeasure)
+
+ do yi=1,nzero
+		
+    ! Generate new value of sigma_y
+    n1=n0
+    xi = timeindex_zero(yi)
+    dy = random_normal()*stepsize_y
+    y_new = y_current(xi) + dy       
+
+    call calc_pdf(y_current(xi), y_hparam1, y_hparam2, y_pdf, p0_y)
+    call calc_pdf(y_new, y_hparam1, y_hparam2, y_pdf, p1_y)
+	
+    !n1=matmul(h_agg2,x1)-y 
+    n1(xi)=n0(xi)-dy
+
+    dumx = n0(xi)*Rinv(:,xi)
+    dumy = n1(xi)*Rinv(:,xi)
+
+   dum  = dot_product(n0,dumx)  
+   dumb = dot_product(n1,dumy)
+   dumc = dot_product(n0,Rinv(:,xi))
+   dumd = dot_product(n1,Rinv(:,xi))
+
+   n1T = n0T - dum + dumb - n0(xi)*dumc + n1(xi)*dumd - n1(xi)*n1(xi)*Rinv(xi,xi) + n0(xi)*n0(xi)*Rinv(xi,xi)
+
+    !C = matmul(n1,Rinv)
+    !n1T= dot_product(n1,C)
+    
+    ! Compute P1/P0 	
+    pT= p1_y-p0_y - 0.5*(n1T - n0T)*beta       !*beta      
+
+    if (y_pdf .eq. 1) then
+       if (y_new .lt. y_hparam1) pT = -1.e20
+       if (y_new .gt. y_hparam2) pT = -1.e20
+    endif
+  
+    call random_number(randomu)     ! Generates uniformly distributed random number
+    
+    if(alog(randomu) .le. pT) then      
+       !ACCEPT	
+       y_current(xi) = y_new
+       n0=n1
+       n0T=n1T
+       if(beta .eq. 1. .and. it .gt. burn_in) accept=accept + 1
+    else
+       !;REJECT					
+       if(beta .eq. 1. .and. it .gt. burn_in) reject=reject + 1
+    endif
+
+  enddo   ! yi loop
+
+n0_out=n0
+n0T_out=n0T
+y_out=y_current
+accept_out=accept
+reject_out=reject
+END SUBROUTINE y_update
 
 
 FUNCTION random_normal() RESULT(fn_val)

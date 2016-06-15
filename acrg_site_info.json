@@ -163,6 +163,16 @@
         "height_name": ["10magl"],
         "network": "NIES"
     },
+    "COI" : {
+        "alt": [""],
+        "long_name" : "Cape Oshi-Ishi, Japan",
+        "height": ["55m"],
+        "height_station_masl": 41.0,
+        "height_name": ["46magl"],
+        "latitude": 43.167,
+        "longitude": 145.50,
+        "network": "NIES"
+    },
     "CPS" : {
         "alt": [],
         "long_name" : "Chapais, Quebec, Canada",
@@ -302,6 +312,7 @@
         "alt": ["GOSAN"],
         "long_name" : "Gosan, Korea",
         "height": ["10m"],
+        "height_station_masl": 72.0,
         "height_name": ["10magl"],
         "latitude": 126.1618,
         "longitude": 33.29244,
@@ -316,6 +327,16 @@
         "latitude": 52.35986,
         "longitude": 0.14828,
         "network": "UCAM"
+    },
+    "HAT" : {
+        "alt": [""],
+        "long_name" : "Hateruma, Japan",
+        "height": ["39m"],
+        "height_station_masl": 8.0,
+        "height_name": ["10magl"],
+        "latitude": 24.06,
+        "longitude": 123.81,
+        "network": "NIES"
     },
     "HFD" : {
         "alt": [],
@@ -526,6 +547,7 @@
         "alt": [""],
         "long_name" : "Shandianzi, China",
         "height": ["10m"],
+        "height_station_masl": 287.0,
         "height_name": ["10magl"],
         "latitude": 40.65,
         "longitude": 117.12,
