@@ -11,6 +11,7 @@ import netCDF4 as nc
 import getpass
 import acrg_time
 import re
+import numpy as np 
 
 def write(lat, lon, flux, species, domain, year,
           comments = ""):
@@ -19,14 +20,16 @@ def write(lat, lon, flux, species, domain, year,
     
     TODO: Add some error checking (e.g. check that domain is correct)
     '''
-    
     if type(year) == dt.date:
         time = year
         year = str(year.year)
     elif type(year) == str:
         time = dt.datetime.strptime(year, '%Y')
         year = year
-    
+    if isinstance(year[0], dt.date):
+        time = year
+        year = str(year[0].year)
+        
     species = species.lower()    
     
     #Open netCDF file
@@ -43,7 +46,7 @@ def write(lat, lon, flux, species, domain, year,
         f=nc.Dataset(ncname, 'w')
         
     #Create dimensions
-    f.createDimension('time', len([time]))
+    f.createDimension('time', len(time))
     f.createDimension('lat', len(lat))
     f.createDimension('lon', len(lon))
     
@@ -77,11 +80,15 @@ def write(lat, lon, flux, species, domain, year,
     nclat.units='degrees_north'
     
     #Mole fraction variable
-    ncflux=f.createVariable('flux', \
-        'd', ('lat', 'lon', 'time'))
-    ncflux[:,:,:]=flux
-    ncflux.units='mol/m2/s'
-
+    # Check that the flux is in the correct shape
+    if np.shape(flux) == tuple((np.shape(lat)[0], np.shape(lon)[0], np.shape(time)[0])):
+        ncflux=f.createVariable('flux', \
+            'd', ('lat', 'lon', 'time'))
+        ncflux[:,:,:]=flux
+        ncflux.units='mol/m2/s'
+    else:
+        print 'The flux needs to be lat x lon x time which it is not'
+        print 'Reshape your flux array and try again'
     f.close() 
 
 
