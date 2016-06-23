@@ -594,7 +594,7 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi',
 
         fp_and_data[site] = fp_and_data[site].merge(sensitivity)
         
-        if basis_case in ('transd','test', 'alcompare', 'sense', 'mcf'):
+        if any([word in basis_case for word in ['transd','test', 'alcompare', 'sense', 'mcf']]):
             sub_fp_temp = site_bf.fp.sel(lon=slice(min(site_bf.sub_lon),max(site_bf.sub_lon)), 
                                     lat=slice(min(site_bf.sub_lat),max(site_bf.sub_lat))) 
             sub_fp = xray.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
