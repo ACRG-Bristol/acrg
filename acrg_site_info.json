@@ -29,6 +29,15 @@
         "longitude": -68.6821,
         "network": "NOAA"
     },
+    "ARH" : {
+        "alt": [],
+        "long_name" : "Arrival Heights, New Zealand",
+        "height": ["5m"],
+        "height_station_masl": 104.0,
+        "latitude": -77.8,
+        "longitude": 166.67,
+        "network": "NIWA"
+    },
     "BAO" : {
         "alt": [],
         "long_name" : "Boulder Atmospheric Observatory, Colorado, United States",
@@ -48,6 +57,15 @@
         "latitude": 62.797934,
         "longitude": -115.918255,
         "network": "EC"
+    },
+    "BHD" : {
+        "alt": [],
+        "long_name" : "Baring Head, New Zealand",
+        "height": ["10m"],
+        "height_station_masl": 85.0,
+        "latitude": -41.41,
+        "longitude": 174.87,
+        "network": "NIWA"
     },
     "BMW" : {
         "alt": [],
@@ -378,6 +396,15 @@
         "longitude": -133.534232,
         "network": "EC"
     },
+    "IZA" : {
+        "alt": [],
+        "long_name" : "Izana, Tenerife",
+        "height": ["10m"],
+        "height_station_masl": 2367.0,
+        "latitude": 28.3,
+        "longitude": 16.5,
+        "network": "UHei"
+    },
     "JFJ" : {
         "alt": [],
         "long_name" : "Jungfraujoch, Switzerland",
@@ -437,6 +464,15 @@
         "longitude": 10.701389,
         "network": "AGAGE"
     },
+    "MDO" : {
+        "alt" : [],
+        "long_name" : "Montana de Oro, USA",
+        "height": ["10m"],
+        "height_station_masl": 10.0,
+        "latitude": 35.2639,
+        "longitude": -120.8622,
+        "network": "UCI"
+    },
     "MHD" : {
         "alt" : ["MH"],
         "long_name" : "Mace Head, Ireland",
@@ -475,6 +511,15 @@
         "latitude": 40.0531,
         "longitude": -105.5864,
         "network": "NOAA"
+    },
+    "NMY" : {
+        "alt": [],
+        "long_name" : "Neumayer, Antarctica",
+        "height": ["10m"],
+        "height_station_masl": 42.0,
+        "latitude": -70.65,
+        "longitude": -8.25,
+        "network": "UHei"
     },
     "ORG" : {
         "alt": [],
