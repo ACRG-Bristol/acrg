@@ -42,7 +42,7 @@ unit_interpret = {"ppm": "1e-6",
 
 # Default calibration scales
 scales = {"CO2": "NOAA-2007",
-          "CH4": "NOAA-2004",
+          "CH4": "NOAA-2004A",
           "N2O": "SIO-98",
           "CO": "Unknown"}
 
