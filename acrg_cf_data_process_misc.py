@@ -718,12 +718,15 @@ def noaa_ccgg(species):
         "directory" : "/data/shared/obs_raw/NOAA/CCGG/surface",
         "directory_output" : "/data/shared/obs/",
         "units": {"CH4": "ppb",
+                  "C2H6": "ppb",
                   "CO2": "ppm",
                   "CH4C13": "permil"},
         "instrument": {"CH4": "GC-FID",
+                       "C2H6": "GC-FID",
                        "CO2": "NDIR",
                        "CH4C13": "IRMS"},
         "scale": {"CH4": "NOAA04",
+                  "C2H6": "NOAA12",
                   "CO2": "WMO_X2007",
                   "CH4C13": "NOAA-INSTAAR"},
         "global_attributes": {
@@ -1062,16 +1065,16 @@ def uci_13ch4():
                              na_values = "NM")
 
         df.index = df.index.tz_localize("US/Pacific")
-        df.index = df.index.tz_convert("UTC")
+        df.index = [np.datetime64(t) for t in df.index.tz_convert("UTC")]
+        df.index.name = "time"
 
         df = df[["13ch4"]]
         df["13ch4_repeatability"] = 0.1
         df = df[np.isfinite(df["13ch4"])]
 
-
         # Sort and convert to dataset
         ds = xray.Dataset.from_dataframe(df.sort_index())
-    
+        
         # Add attributes
         ds = attributes(ds,
                         "13ch4",
