@@ -22,7 +22,7 @@ from progressbar import ProgressBar
 import json
 import acrg_agage as agage
 #import acrg_regrid as regrid
-import acrg_convert as convert
+import acrg_convert as unit_convert
 from acrg_grid import areagrid
 import xray
 from os.path import split, realpath, join
@@ -1020,7 +1020,7 @@ def prior_flux(species, domain, basis_case, av_date, emissions_name = None):
     for i in basis_nos:
         basisflux[i-1] = np.sum(awflux[basis0[:,:]==i])
 
-    prior_x = convert.mol2kg(basisflux,species)*(3600*24*365)
+    prior_x = unit_convert.mol2kg(basisflux,species)*(3600*24*365)
     
     return prior_x
     
@@ -1098,7 +1098,7 @@ class analytical_inversion:
         posterior, uncertainty = scaling_to_post_flux(prior, x[:len(x0)], P[:len(x0),:len(x0)])   
         
 #       Find baseline solution
-        BL = H[:,len(H_bc[0,:]):]*x[len(H_bc[0,:]):]
+        BL = H[:,len(x0):]*x[len(x0):] #H[:,len(H_bc[0,:]):]*x[len(H_bc[0,:]):]
     
         self.prior_scal = xa
         self.model = H
@@ -1396,7 +1396,9 @@ def time_unique(fp_data, time_regular = False):
     
     sites = [key for key in fp_data.keys() if key[0] != '.']
     
-    time = fp_data[sites[0]].time.to_dataset()
+    time_array = fp_data[sites[0]].time
+    time_array.name = "times"
+    time = time_array.to_dataset()
     if len(sites) > 1:
         for site in sites[1:]:
             time.merge(fp_data[site].time.to_dataset(), inplace = True)
@@ -1534,7 +1536,7 @@ def animate(fp_data, output_directory,
             "-pix_fmt yuv420p -intra -qscale 0 -y " + \
             os.path.join(output_directory, file_label) + ".mp4", shell=True)
     elif video_os.lower() == "pc":
-        os.remove(os.path.join(output_directory, file_label) + ".wmv")
+#        os.remove(os.path.join(output_directory, file_label) + ".wmv")
         ffmpeg_status = subprocess.call("ffmpeg -r " + str(framerate) + \
             " -i '" + os.path.join(output_directory, file_label) + "_%05d.png' " + \
             " -b 5000k -f asf -vcodec wmv2 -acodec wmav2 " + \
