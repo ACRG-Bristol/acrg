@@ -101,7 +101,7 @@ def ucam(site, species):
         "WAO" : {
             "ucam_name": "Wao",
             "instrument": "GC-FID",
-            "inlet": "25m",
+            "inlet": "21m",
             "global_attributes": {
                 "data_owner": "Neil Harris",
                 "data_owner_email": "nrh1000@cam.ac.uk"
