@@ -440,7 +440,8 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4", load_flux = 
         
         # Get footprints
         if perturbed:
-            site_modifier_fp = fp_dir_pert + str(site) + '-' + str(height_site) + 'magl_EUROPE_' + str(pert_year) + str(pert_month) + '.nc'
+            fp_dir_pert2=fp_dir_pert[site]
+            site_modifier_fp = fp_dir_pert2 + str(site) + '-' + str(height_site) + 'magl_EUROPE_' + str(pert_year) + str(pert_month) + '.nc'
             
             site_fp = footprints(site_modifier_fp, start = start, end = end,
                              domain = domain,
