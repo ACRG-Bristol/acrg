@@ -1080,7 +1080,7 @@ class analytical_inversion:
         prior_bl = np.dot(H_bc,np.ones(len(H_bc[0,:])))
         
 #       Inversion
-        xa = np.append(x0,np.zeros(len(xerror_bl)))
+        xa = np.append(x0,np.ones(len(xerror_bl)))
         xerror = np.ones(len(x0))*float(prior_error)
         P = np.diagflat(np.append(xerror**2, xerror_bl**2))
         if y_error == None:
