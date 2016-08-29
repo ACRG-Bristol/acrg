@@ -62,5 +62,5 @@ def regrid2d(array_in, lat_in, lon_in,
                                     AreaWeighted(mdtol=1.))
     print(cube_regridded.summary(shorten=True))
 
-    return cube_regridded.data
+    return cube_regridded.data,cube_regridded
     
