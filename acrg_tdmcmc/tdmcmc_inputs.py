@@ -27,6 +27,7 @@ uncertainties differently (emissions uncertainty > baseline uncertainty).
 """
 import numpy as np
 import run_tdmcmc as acrg_tdmcmc
+import acrg_name as name
 #############################################################
 #parser = argparse.ArgumentParser(description='This is a demo script by Mark.')
 #parser.add_argument("start", help="Start date string yyyy-mm-dd")                  
@@ -117,7 +118,7 @@ stepsize_bd=2.        # Stepsize for change in x during birth step
 ################################################
 # TUNING OF INDIVIDUAL PARAMETER STEPSIZES AND UNCERTAINTIES
 
-if fp_basis_case in('transd'):
+if fp_basis_case in('transd', 'INTEM'):
     nfixed = 8
 
 if bc_basis_case in('NESW'):
@@ -133,6 +134,10 @@ nIC1=nIC+1
 kICmax=kmax+nIC    
 pdf_param1 = np.zeros((kICmax,nbeta))
 pdf_param2 = np.zeros((kICmax,nbeta))
+
+if fp_basis_case in("INTEM"):
+    basis_func = name.name.basis(domain = domain, basis_case = fp_basis_case)
+    k_ap=len(np.unique(basis_func.basis.values))
 
 ##########################################################
 # TUNE INDIVIDUAL STEPSIZES AND HYPERPARAMETER VALUES

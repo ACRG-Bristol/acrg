@@ -152,8 +152,12 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     
     
     fp_all = name.footprints_data_merge(data, domain=domain, species=species, calc_bc=True)
-                                        
-    fp_data_H2 = name.fp_sensitivity(fp_all, domain=domain, basis_case=fp_basis_case)
+    
+    if fp_basis_case in("INTEM"):    
+        fp_data_H2 = name.fp_sensitivity(fp_all, domain=domain, basis_case='transd')
+        basis_func = name.name.basis(domain = domain, basis_case = 'INTEM')
+    else:                            
+        fp_data_H2 = name.fp_sensitivity(fp_all, domain=domain, basis_case=fp_basis_case)
     fp_data_H2=name.bc_sensitivity(fp_data_H2, domain=domain,basis_case=bc_basis_case)
     
     ###########################################################################
@@ -163,8 +167,8 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     for si, site in enumerate(sites):
         release_lons[si]=fp_data_H2[site].release_lon[0].values
         release_lats[si]=fp_data_H2[site].release_lat[0].values
-        dlon=fp_data_H2[site].sub_lon[1].values-fp_data_H2[site].sub_lon[0].values
-        dlat=fp_data_H2[site].sub_lat[1].values-fp_data_H2[site].sub_lat[0].values
+        dlon=fp_data_H2[site].lon[1].values-fp_data_H2[site].lon[0].values
+        dlat=fp_data_H2[site].lat[1].values-fp_data_H2[site].lat[0].values
         wh_rlon = np.where(abs(fp_data_H2[site].sub_lon.values-release_lons[si]) < dlon/2.)
         wh_rlat = np.where(abs(fp_data_H2[site].sub_lat.values-release_lats[si]) < dlat/2.)
         local_sum=np.zeros((len(fp_data_H2[site].mf)))
@@ -348,11 +352,22 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
         plon[:k_ap,ib] = plon0
         plat[:k_ap,ib] = plat0
         
-        region = np.zeros((nlat, nlon), dtype=np.uint16)
-        regions0=closest_grid(region, lon, lat, plon[:k_ap,ib], plat[:k_ap,ib], \
-                np.arange(0, k_ap, dtype=np.uint16))
-        regions_v0 = np.ravel(regions0)
-        regions_v[:,ib]=regions_v0.copy()+1
+        if fp_basis_case in("INTEM"):
+            basis_func.coords['lon']=fp_data_H3.lon
+            basis_func.coords['lat']=fp_data_H3.lat
+            regions_temp = basis_func.basis.sel(lon=slice(lonmin,lonmax), 
+                                            lat=slice(latmin,latmax))
+            regions0 = regions_temp[:,:,0].values
+        #    regions0 = basis_func.basis[:,:,0].values
+            regions_v0 = np.ravel(regions0)  
+            regions_v[:,ib]=regions_v0.copy() 
+        
+        else:
+            region = np.zeros((nlat, nlon), dtype=np.uint16)
+            regions0=closest_grid(region, lon, lat, plon[:k_ap,ib], plat[:k_ap,ib], \
+                    np.arange(0, k_ap, dtype=np.uint16))
+            regions_v0 = np.ravel(regions0)
+            regions_v[:,ib]=regions_v0.copy()+1
     
         for ri in range(k_ap):
             wh_ri = np.where(regions_v0 == ri)      
