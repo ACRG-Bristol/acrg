@@ -819,7 +819,7 @@ def filtering(datasets_in, filters, full_corr=False):
     def daytime(dataset, full_corr=False):
         # Subset during daytime hours
         hours = dataset.time.to_pandas().index.hour
-        ti = [i for i, h in enumerate(hours) if h >= 10 and h <= 15]
+        ti = [i for i, h in enumerate(hours) if h >= 11 and h <= 15]
         
         if full_corr:
             dataset_temp = dataset[dict(time = ti)]   
