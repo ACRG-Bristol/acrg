@@ -29,6 +29,51 @@
         "longitude": -68.6821,
         "network": "NOAA"
     },
+    "AMS" : {
+        "alt": [],
+        "long_name" : "Amsterdam Island, France",
+        "height": ["10m"],
+        "height_station_masl": 55.0,
+        "latitude": -37.798,
+        "longitude": 77.538,
+        "network": "NOAA"
+    },
+    "ARH" : {
+        "alt": [],
+        "long_name" : "Arrival Heights, New Zealand",
+        "height": ["5m"],
+        "height_station_masl": 104.0,
+        "latitude": -77.8,
+        "longitude": 166.67,
+        "network": "NIWA"
+    },
+    "ASC" : {
+        "alt": [],
+        "long_name" : "Ascension Island, UK",
+        "height": ["10m"],
+        "height_station_masl": 54.0,
+        "latitude": -7.92,
+        "longitude": -14.42,
+        "network": "RHUL"
+    },
+    "ASK" : {
+        "alt": [],
+        "long_name" : "Assekrem, Algeria",
+        "height": ["10m"],
+        "height_station_masl": 2710.0,
+        "latitude": 23.262,
+        "longitude": 5.632,
+        "network": "NOAA"
+    },
+    "AZR" : {
+        "alt": [],
+        "long_name" : "Terceira Island, Azores, Portugal",
+        "height": ["10m"],
+        "height_station_masl": 19.0,
+        "latitude": 38.766,
+        "longitude": -27.375,
+        "network": "NOAA"
+    },
     "BAO" : {
         "alt": [],
         "long_name" : "Boulder Atmospheric Observatory, Colorado, United States",
@@ -48,6 +93,15 @@
         "latitude": 62.797934,
         "longitude": -115.918255,
         "network": "EC"
+    },
+    "BHD" : {
+        "alt": [],
+        "long_name" : "Baring Head, New Zealand",
+        "height": ["10m"],
+        "height_station_masl": 85.0,
+        "latitude": -41.41,
+        "longitude": 174.87,
+        "network": "NIWA"
     },
     "BMW" : {
         "alt": [],
@@ -163,6 +217,15 @@
         "height_name": ["10magl"],
         "network": "NIES"
     },
+    "CMO" : {
+        "alt": [],
+        "long_name" : "Cape Mears, Oregon",
+        "height": ["10m"],
+        "height_station_masl": 30.0,
+        "latitude": 45.478,
+        "longitude": -123.969,
+        "network": "NOAA"
+    },
     "COI" : {
         "alt": [""],
         "long_name" : "Cape Oshi-Ishi, Japan",
@@ -190,6 +253,15 @@
         "height_name": ["10magl"],
         "network": "CSIRO"
     },
+    "CRZ" : {
+        "alt": [],
+        "long_name" : "Crozet Island, France",
+        "height": ["10m"],
+        "height_station_masl": 197.0,
+        "latitude": -46.434,
+        "longitude": 51.848,
+        "network": "NOAA"
+    },
     "DJI" : {
         "alt": [""],
         "long_name" : "Darjeeling, India",
@@ -216,6 +288,15 @@
         "latitude": 51.80590,
         "longitude": 1.10790,
         "network": "UCAM"
+    },
+    "EIC" : {
+        "alt": [],
+        "long_name" : "Easter Island, Chile",
+        "height": ["10m"],
+        "height_station_masl": 47.0,
+        "latitude": -27.160,
+        "longitude": -109.428,
+        "network": "NOAA"
     },
     "ESP" : {
         "alt": [],
@@ -368,6 +449,15 @@
         "longitude": -124.75,
         "network": "NOAA"
     },
+    "ICE" : {
+        "alt": [],
+        "long_name" : "Storhofdi, Vestmannaeyjar, Iceland",
+        "height": ["10m"],
+        "height_station_masl": 118.0,
+        "latitude": 63.4,
+        "longitude": -20.288,
+        "network": "NOAA"
+    },
     "INU" : {
         "alt": [],
         "long_name" : "Inuvik, Northwest Territories, Canada",
@@ -377,6 +467,24 @@
         "latitude": 68.317817,
         "longitude": -133.534232,
         "network": "EC"
+    },
+    "IZA" : {
+        "alt": [],
+        "long_name" : "Izana, Tenerife",
+        "height": ["10m"],
+        "height_station_masl": 2367.0,
+        "latitude": 28.3,
+        "longitude": 16.5,
+        "network": "UHei"
+    },
+    "IZO" : {
+        "alt": [],
+        "long_name" : "Izana, Tenerife",
+        "height": ["10m"],
+        "height_station_masl": 2372.0,
+        "latitude": 28.309,
+        "longitude": 16.499,
+        "network": "NOAA"
     },
     "JFJ" : {
         "alt": [],
@@ -427,6 +535,24 @@
         "longitude": -112.466649,
         "network": ["EC", "NOAA"]
     },
+    "MBC" : {
+        "alt": [],
+        "long_name" : "Mould Bay, Canada",
+        "height": ["10m"],
+        "height_station_masl": 30.0,
+        "latitude": 76.247,
+        "longitude": -119.353,
+        "network": "NOAA"
+    },
+    "MBO" : {
+        "alt": [],
+        "long_name" : "Mt. Bachelor Observatory, USA",
+        "height": ["10m"],
+        "height_station_masl": 2731.0,
+        "latitude": 43.977,
+        "longitude": -121.686,
+        "network": "NOAA"
+    },
     "MCI" : {
         "alt" : [],
         "long_name" : "Monte Cimone, Italy",
@@ -436,6 +562,15 @@
         "latitude": 44.193889,
         "longitude": 10.701389,
         "network": "AGAGE"
+    },
+    "MDO" : {
+        "alt" : [],
+        "long_name" : "Montana de Oro, USA",
+        "height": ["10m"],
+        "height_station_masl": 10.0,
+        "latitude": 35.2639,
+        "longitude": -120.8622,
+        "network": "UCI"
     },
     "MHD" : {
         "alt" : ["MH"],
@@ -475,6 +610,15 @@
         "latitude": 40.0531,
         "longitude": -105.5864,
         "network": "NOAA"
+    },
+    "NMY" : {
+        "alt": [],
+        "long_name" : "Neumayer, Antarctica",
+        "height": ["10m"],
+        "height_station_masl": 42.0,
+        "latitude": -70.65,
+        "longitude": -8.25,
+        "network": "UHei"
     },
     "ORG" : {
         "alt": [],
@@ -563,6 +707,15 @@
         "longitude": -97.489,
         "network": "NOAA"
     },
+    "SHM" : {
+        "alt": [],
+        "long_name" : "Shemya Island, Alaska",
+        "height": ["10m"],
+        "height_station_masl": 23.0,
+        "latitude": 52.711,
+        "longitude": 174.126,
+        "network": "NOAA"
+    },
     "SMO" : {
         "alt": [],
         "long_name" : "Cape Matatula, American Samoa",
@@ -616,6 +769,15 @@
         "longitude": -38.422,
         "network": "NOAA"
     },    
+    "SYO" : {
+        "alt": [],
+        "long_name" : "Syowa Station, Antarctica",
+        "height": ["10m"],
+        "height_station_masl": 14.0,
+        "latitude": -69.013,
+        "longitude": 39.590,
+        "network": "NOAA"
+    },    
     "TAC" : {
         "alt": [],
         "long_name" : "Tacolneston Tower, UK",
@@ -625,6 +787,15 @@
         "latitude": 52.51775,
         "longitude": 1.13872,
         "network": "DECC"
+    },
+    "TAP" : {
+        "alt": [],
+        "long_name" : "Tae-ahn Peninsula, Korea",
+        "height": ["10m"],
+        "height_station_masl": 20.0,
+        "latitude": 36.72,
+        "longitude": 126.12,
+        "network": "NOAA"
     },
     "THD" : {
         "alt": ["TH"],
@@ -666,6 +837,15 @@
         "longitude": -2.98598,
         "network": "DECC"
     },
+    "USH" : {
+        "alt": [],
+        "long_name" : "Ushaia, Argentina",
+        "height": ["10m"],
+        "height_station_masl": 12.0,
+        "latitude": -54.848,
+        "longitude": -68.311,
+        "network": "NOAA"
+    },   
     "UTA" : {
         "alt": [],
         "long_name" : "Wendover, Utah, United States",
@@ -676,6 +856,15 @@
         "longitude": -113.7181,
         "network": "NOAA"
     },
+    "UUM" : {
+        "alt": [],
+        "long_name" : "Ulaan Uul, Mongolia",
+        "height": ["10m"],
+        "height_station_masl": 1007.0,
+        "latitude": 44.452,
+        "longitude": 111.096,
+        "network": "NOAA"
+    },   
     "WAO" : {
         "alt": ["WEYBOURNE"],
         "long_name" : "Weybourne Observatory, UK",
@@ -714,6 +903,15 @@
         "height_name": ["457magl"],
         "latitude": 31.3149,
         "longitude": -97.3269,
+        "network": "NOAA"
+    },
+    "WLG" : {
+        "alt": [],
+        "long_name" : "Mt. Waliguan, China",
+        "height": ["10m"],
+        "height_station_masl": 3810.0,
+        "latitude": 36.28,
+        "longitude": 100.90,
         "network": "NOAA"
     },
     "WSA" : {

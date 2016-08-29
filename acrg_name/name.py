@@ -22,7 +22,7 @@ from progressbar import ProgressBar
 import json
 import acrg_agage as agage
 #import acrg_regrid as regrid
-import acrg_convert as convert
+import acrg_convert as unit_convert
 from acrg_grid import areagrid
 import xray
 from os.path import split, realpath, join
@@ -440,7 +440,8 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4", load_flux = 
         
         # Get footprints
         if perturbed:
-            site_modifier_fp = fp_dir_pert + str(site) + '-' + str(height_site) + 'magl_EUROPE_' + str(pert_year) + str(pert_month) + '.nc'
+            fp_dir_pert2=fp_dir_pert[site]
+            site_modifier_fp = fp_dir_pert2 + str(site) + '-' + str(height_site) + 'magl_EUROPE_' + str(pert_year) + str(pert_month) + '.nc'
             
             site_fp = footprints(site_modifier_fp, start = start, end = end,
                              domain = domain,
@@ -594,7 +595,7 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi',
 
         fp_and_data[site] = fp_and_data[site].merge(sensitivity)
         
-        if basis_case in ('transd','test', 'alcompare', 'sense', 'mcf'):
+        if any([word in basis_case for word in ['transd','test', 'alcompare', 'sense', 'mcf']]):
             sub_fp_temp = site_bf.fp.sel(lon=slice(min(site_bf.sub_lon),max(site_bf.sub_lon)), 
                                     lat=slice(min(site_bf.sub_lat),max(site_bf.sub_lat))) 
             sub_fp = xray.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
@@ -1020,7 +1021,7 @@ def prior_flux(species, domain, basis_case, av_date, emissions_name = None):
     for i in basis_nos:
         basisflux[i-1] = np.sum(awflux[basis0[:,:]==i])
 
-    prior_x = convert.mol2kg(basisflux,species)*(3600*24*365)
+    prior_x = unit_convert.mol2kg(basisflux,species)*(3600*24*365)
     
     return prior_x
     
@@ -1080,7 +1081,7 @@ class analytical_inversion:
         prior_bl = np.dot(H_bc,np.ones(len(H_bc[0,:])))
         
 #       Inversion
-        xa = np.append(x0,np.zeros(len(xerror_bl)))
+        xa = np.append(x0,np.ones(len(xerror_bl)))
         xerror = np.ones(len(x0))*float(prior_error)
         P = np.diagflat(np.append(xerror**2, xerror_bl**2))
         if y_error == None:
@@ -1098,7 +1099,7 @@ class analytical_inversion:
         posterior, uncertainty = scaling_to_post_flux(prior, x[:len(x0)], P[:len(x0),:len(x0)])   
         
 #       Find baseline solution
-        BL = H[:,len(H_bc[0,:]):]*x[len(H_bc[0,:]):]
+        BL = H[:,len(x0):]*x[len(x0):] #H[:,len(H_bc[0,:]):]*x[len(H_bc[0,:]):]
     
         self.prior_scal = xa
         self.model = H
@@ -1396,7 +1397,9 @@ def time_unique(fp_data, time_regular = False):
     
     sites = [key for key in fp_data.keys() if key[0] != '.']
     
-    time = fp_data[sites[0]].time.to_dataset()
+    time_array = fp_data[sites[0]].time
+    time_array.name = "times"
+    time = time_array.to_dataset()
     if len(sites) > 1:
         for site in sites[1:]:
             time.merge(fp_data[site].time.to_dataset(), inplace = True)
@@ -1534,7 +1537,7 @@ def animate(fp_data, output_directory,
             "-pix_fmt yuv420p -intra -qscale 0 -y " + \
             os.path.join(output_directory, file_label) + ".mp4", shell=True)
     elif video_os.lower() == "pc":
-        os.remove(os.path.join(output_directory, file_label) + ".wmv")
+#        os.remove(os.path.join(output_directory, file_label) + ".wmv")
         ffmpeg_status = subprocess.call("ffmpeg -r " + str(framerate) + \
             " -i '" + os.path.join(output_directory, file_label) + "_%05d.png' " + \
             " -b 5000k -f asf -vcodec wmv2 -acodec wmav2 " + \

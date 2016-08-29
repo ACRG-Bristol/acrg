@@ -12,6 +12,7 @@ import netCDF4 as nc
 import getpass
 import acrg_time
 import re
+import numpy as np 
 
 def write(lat, lon, time, flux, species, domain, year,
           comments = "", title="EDGAR emissions"):
@@ -20,13 +21,15 @@ def write(lat, lon, time, flux, species, domain, year,
     
     TODO: Add some error checking (e.g. check that domain is correct)
     '''
-    
     if type(year) == dt.date:
         #time = year
         year = str(year.year)
     elif type(year) == str:
         #time = dt.datetime.strptime(year, '%Y')
         year = year
+    elif isinstance(year[0], dt.date):
+        time = year
+        year = str(year[0].year)
     else:
         raise ValueError('Year needs to be in datetime.date or string format')
         
@@ -43,6 +46,8 @@ def write(lat, lon, time, flux, species, domain, year,
         time = time
        # raise ValueError('Time needs to be in datetime.date or string format')
     
+        
+
     species = species.lower()    
     
     #Open netCDF file
@@ -93,11 +98,15 @@ def write(lat, lon, time, flux, species, domain, year,
     nclat.units='degrees_north'
     
     #Mole fraction variable
-    ncflux=f.createVariable('flux', \
-        'd', ('lat', 'lon', 'time'))
-    ncflux[:,:,:]=flux
-    ncflux.units='mol/m2/s'
-
+    # Check that the flux is in the correct shape
+    if np.shape(flux) == tuple((np.shape(lat)[0], np.shape(lon)[0], np.shape(time)[0])):
+        ncflux=f.createVariable('flux', \
+            'd', ('lat', 'lon', 'time'))
+        ncflux[:,:,:]=flux
+        ncflux.units='mol/m2/s'
+    else:
+        print 'The flux needs to be lat x lon x time which it is not'
+        print 'Reshape your flux array and try again'
     f.close() 
 
 
