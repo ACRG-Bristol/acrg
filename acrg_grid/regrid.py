@@ -133,4 +133,4 @@ def regrid3d(array_in, lat_in, lon_in,
         array_out[:,:,i]= cube_regridded.data
 
     return array_out          
->>>>>>> 75d2d16e07ea307e5d348f0bf248e45e0d3e9bc1
+
