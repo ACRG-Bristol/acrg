@@ -64,7 +64,6 @@ rjmcmc=1           # 1 = do reversible jump; any other number = don't
 # DO YOU WANT CORRELATED MEASUREMENTS OR NOT??
 inv_type = 'uncorrelated'    # Options are 'correlated', 'evencorr', 'corr'
 
-bl_period = 7      # No. of days for which each sigma_model value applies
 kmin=4             # Minimum number of regions
 kmax=400           # Maximum number of regions
 k_ap = 50         # Starting number of regions
@@ -72,10 +71,6 @@ nIt=25000          # of iterations
 burn_in=25000      # of discarded burn-in iterations 
 nsub=10         # nsub=100=store every 100th iteration)
    
-############################################################
-# LOCALNESS THRESHOLD
-threshold=0.4         # Fraction above which air is considered "local"
-                      # Change to 1 if you don't want to separate high local times
        
 #####################################################
 # PARALLEL TEMPERING PARAMETERS          
@@ -102,7 +97,12 @@ pdf_p2_hparam20=0.5    # Upper bound of uniform distribution of pdf_param2
 ######################################################################
 # Model-Measurement starting value and uncertainty parameters
 sigma_model_ap = 20.   # Initial starting value of sigma_model (in same units as y, e.g ppb)
-sigma_model_hparams = np.array([0.1*sigma_model_ap,5.*sigma_model_ap]) # upper and lower bounds of uniform dist. 
+sigma_model_hparams = np.array([0.1*sigma_model_ap,5.*sigma_model_ap]) # upper and lower bounds of uniform dist.
+
+bl_period = 7      # No. of days for which each sigma_model value applies 
+bl_split=False     # Set to true if want to split sigma_model values by BL depth rather than days
+levels=None        # Banding of bL depths to solve for different sigma_model
+                   # e.g. levels=[0.,500.,1000.,10000.] Set if bl_split = True
 ####################################################################
 # DEFINE STEPSIZE FOR PROPOSAL DISTRIBUTIONS 
 # TO TUNE INDIVIDUAL ELEMENTS SEE LINE 
@@ -187,7 +187,7 @@ pdf_param2[nIC:,:]=1.
 
 post_mcmc=acrg_tdmcmc.run_tdmcmc(sites,meas_period,av_period,species,start_date,end_date, 
     domain,network,fp_basis_case ,bc_basis_case,rjmcmc,bl_period,kmin,kmax,
-    k_ap,nIt,burn_in,nsub,threshold,nbeta,beta,sigma_model_pdf,sigma_model_ap, 
+    k_ap,nIt,burn_in,nsub,nbeta,beta,sigma_model_pdf,sigma_model_ap, 
     sigma_model_hparams,stepsize_sigma_y,stepsize_clon,stepsize_clat,
     stepsize_bd,stepsize_all,stepsize_pdf_p1_all,stepsize_pdf_p2_all,
     pdf_param1,pdf_param2,pdf_p1_hparam1,pdf_p1_hparam2,pdf_p2_hparam1,

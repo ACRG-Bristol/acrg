@@ -54,10 +54,28 @@ def closest_grid(region, lon, lat, plon, plat, pind):
         lai+=1
     return region
 
-def get_nsigma_y(fp_data_H,start_date, end_date, bl_period, sites, 
-                  nmeasure,threshold):
-    
-    nsites = len(sites)    
+def get_nsigma_y(fp_data_H,start_date, end_date, sites, 
+                  nmeasure, sigma_values, bl_period=10, bl_split=False,
+                  levels=None):      
+    """
+    Defines the indices of the measurement vector which are described by different 
+    uncertainty hyperparameters (sigma_model)
+    By default all sigma_models are split by site and time.
+    Alternative option for subdivision by site and boundary layer depth. Can be set
+    when calling the function.
+    E.g.
+    To split by 10 day periods:
+        R_indices, ydim1,ydim2, sigma_model0 = get_nsigma_y(fp_data_H,start_date, end_date,
+        sites, nmeasure, bl_split = False, bl_period=10,
+        sigma_values=50.)
+        
+    To split by BL depth:
+        R_indices, ydim1,ydim2, sigma_model0 = get_nsigma_y(fp_data_H,start_date, end_date,
+        sites, nmeasure, bl_split = True, bl_period=None,
+        sigma_values=50.)
+        
+    """  
+    nsites = len(sites)      
     d0=pandas.to_datetime(start_date)
     d1=pandas.to_datetime(end_date)
     delta = d1 - d0
@@ -68,54 +86,70 @@ def get_nsigma_y(fp_data_H,start_date, end_date, bl_period, sites,
     nsigma=0
     nsigma_max = np.int(np.ceil(ndays/np.float(bl_period)))
     ntime_stn=np.zeros((nsites))
-    
+    if levels is not None:
+        ngroups=len(levels)-1
+        
     ydim1=0
+    sigma_models=[]
     
     for si in range(nsites):
         fp_data_H3 = fp_data_H[sites[si]].dropna("time", how="all")        
         nsigma_stn=0
-        mf_time_temp=fp_data_H3.time.values       
+        
+        mf_time_temp=fp_data_H3.time.values
         mf_time_temp2=pandas.to_datetime(mf_time_temp)
-        
+        pblh_temp=fp_data_H3.PBLH.values
+        mf_mod_temp=fp_data_H3.mf_mod.values
         ntime_stn[si]=len(mf_time_temp)
-        for ji in range(2):
-            bl_start=d0
-            if ji == 0:
         
-                for ti in range(nsigma_max):
-                    bl_end=bl_start+dt.timedelta(days=bl_period)
+        bl_start=d0
+        
+        if bl_split is True:
+            for ti in range(ngroups):
+                 
+                wh = np.where(np.logical_and(pblh_temp>=levels[ti],
+                                           pblh_temp<levels[ti+1]))
+                                                                       
+                if len(wh[0]) > 0:
+                    y_bl[wh+np.sum(ntime_stn[:si],dtype=np.uint16)]=nsigma_stn+nsigma
                     
-                    wh=np.where(np.logical_and(np.logical_and(mf_time_temp2>=bl_start,
-                                           mf_time_temp2<bl_end),
-                                           fp_data_H3.local_ratio < threshold))
-                    # NEED ANOTHER INDEX IF ABOVE LOCAL RATIO THRESHOLD                               
-                    if len(wh[0]) > 0:
-                        y_bl[wh+np.sum(ntime_stn[:si],dtype=np.uint16)]=nsigma_stn+nsigma
-                        nsigma_stn+=1
-                        
-                    bl_start=bl_start+dt.timedelta(days=bl_period)
-                    n_obs = len(wh[0])
-                    if n_obs > ydim1:
-                        ydim1 = n_obs*1
-                        
-            elif ji ==1:
-                 for ti in range(nsigma_max):
-                    bl_end=bl_start+dt.timedelta(days=bl_period)
+                    #sigma_models.append(sigma_values[ti])
+                    if levels[ti]<499:
+                        #if levels[ti]>499:
+                        sigma_models.append(sigma_values)
+                    else:
+                        if len(wh[0]) > 1:
+                            sigma_models.append(np.std(mf_mod_temp[wh[0]]))
+                        else: 
+                            sigma_models.append(20.)
+                    nsigma_stn+=1
                     
-                    wh=np.where(np.logical_and(np.logical_and(mf_time_temp2>=bl_start,
-                                           mf_time_temp2<bl_end),
-                                           fp_data_H3.local_ratio >= threshold))
-                    # NEED ANOTHER INDEX IF ABOVE LOCAL RATIO THRESHOLD                               
-                    if len(wh[0]) > 0:
-                        y_bl[wh+np.sum(ntime_stn[:si],dtype=np.uint16)]=nsigma_stn+nsigma
-                        nsigma_stn+=1
-                        
-                    bl_start=bl_start+dt.timedelta(days=bl_period)
-                    n_obs = len(wh[0])
-                    if n_obs > ydim1:
-                        ydim1 = n_obs*1
+                n_obs = len(wh[0])
+                if n_obs > ydim1:
+                    ydim1 = n_obs*1
+                                      
     
-        nsigma+=nsigma_stn
+            nsigma+=nsigma_stn
+        
+        else:
+            for ti in range(nsigma_max):
+                    bl_end=bl_start+dt.timedelta(days=bl_period)
+                    
+                    wh=np.where(np.logical_and(mf_time_temp2>=bl_start,
+                                           mf_time_temp2<bl_end))
+                    #                                
+                    if len(wh[0]) > 0:
+                        y_bl[wh+np.sum(ntime_stn[:si],dtype=np.uint16)]=nsigma_stn+nsigma
+                        sigma_models.append(sigma_values)
+                        nsigma_stn+=1
+                        
+                    bl_start=bl_start+dt.timedelta(days=bl_period)
+                    n_obs = len(wh[0])
+                    if n_obs > ydim1:
+                        ydim1 = n_obs*1
+                                          
+        
+            nsigma+=nsigma_stn
     
     # INDEX R
     print ydim1, nsigma
@@ -129,18 +163,18 @@ def get_nsigma_y(fp_data_H,start_date, end_date, bl_period, sites,
     
     ydim2=nsigma*1
     
-    return R_indices, ydim1, ydim2
-
+    return R_indices, ydim1, ydim2, np.asarray(sigma_models)
 
 
 def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date, 
     domain,network,fp_basis_case ,bc_basis_case,rjmcmc,bl_period,kmin,kmax,
-    k_ap,nIt,burn_in,nsub,threshold,nbeta,beta,sigma_model_pdf,sigma_model_ap, 
+    k_ap,nIt,burn_in,nsub,nbeta,beta,sigma_model_pdf,sigma_model_ap, 
     sigma_model_hparams,stepsize_sigma_y,stepsize_clon,stepsize_clat,
     stepsize_bd,stepsize_all,stepsize_pdf_p1_all,stepsize_pdf_p2_all,
     pdf_param1,pdf_param2,pdf_p1_hparam1,pdf_p1_hparam2,pdf_p2_hparam1,
     pdf_p2_hparam2,x_pdf ,pdf_param1_pdf,pdf_param2_pdf,inv_type,
-    output_dir,tau=None, tau_hparams=None, stepsize_tau=None, tau_pdf=None):
+    output_dir,tau=None, tau_hparams=None, stepsize_tau=None, tau_pdf=None,
+    bl_split=False, bl_levels=None):
     #%%
     #########################################
     # READ IN DATA AND FOOTPRINTS THEN MERGE
@@ -167,31 +201,31 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     for si, site in enumerate(sites):
         release_lons[si]=fp_data_H2[site].release_lon[0].values
         release_lats[si]=fp_data_H2[site].release_lat[0].values
-        dlon=fp_data_H2[site].lon[1].values-fp_data_H2[site].lon[0].values
-        dlat=fp_data_H2[site].lat[1].values-fp_data_H2[site].lat[0].values
-        wh_rlon = np.where(abs(fp_data_H2[site].sub_lon.values-release_lons[si]) < dlon/2.)
-        wh_rlat = np.where(abs(fp_data_H2[site].sub_lat.values-release_lats[si]) < dlat/2.)
-        local_sum=np.zeros((len(fp_data_H2[site].mf)))
-        sub_lon=fp_data_H2[site].sub_lon.values
-        sub_lat=fp_data_H2[site].sub_lat.values
-        sub_flux_temp = fp_data_H2[site].flux.sel(lon=slice(np.min(sub_lon),np.max(sub_lon)), 
-                                        lat=slice(np.min(sub_lat),np.max(sub_lat)))
-        for ti in range(len(fp_data_H2[site].mf)):      
-            local_sum[ti] = np.sum(fp_data_H2[site].sub_fp[
-            wh_rlat[0]-1:wh_rlat[0]+2,wh_rlon[0]-1:wh_rlon[0]+2,ti].values*
-            sub_flux_temp[
-            wh_rlat[0]-1:wh_rlat[0]+2,wh_rlon[0]-1:wh_rlon[0]+2,ti].values)/np.sum(
-            fp_data_H2[site].sub_fp[:,:,ti].values*sub_flux_temp[:,:,ti])
-            
-        local_ds = xray.Dataset({'local_ratio': (['time'], local_sum)},
-                                        coords = {'time' : (fp_data_H2[site].coords['time'])})
-    
-        fp_data_H2[site] = fp_data_H2[site].merge(local_ds)
-    
+#        dlon=fp_data_H2[site].lon[1].values-fp_data_H2[site].lon[0].values
+#        dlat=fp_data_H2[site].lat[1].values-fp_data_H2[site].lat[0].values
+#        wh_rlon = np.where(abs(fp_data_H2[site].sub_lon.values-release_lons[si]) < dlon/2.)
+#        wh_rlat = np.where(abs(fp_data_H2[site].sub_lat.values-release_lats[si]) < dlat/2.)
+#        local_sum=np.zeros((len(fp_data_H2[site].mf)))
+#        sub_lon=fp_data_H2[site].sub_lon.values
+#        sub_lat=fp_data_H2[site].sub_lat.values
+#        sub_flux_temp = fp_data_H2[site].flux.sel(lon=slice(np.min(sub_lon),np.max(sub_lon)), 
+#                                        lat=slice(np.min(sub_lat),np.max(sub_lat)))
+#        for ti in range(len(fp_data_H2[site].mf)):      
+#            local_sum[ti] = np.sum(fp_data_H2[site].sub_fp[
+#            wh_rlat[0]-1:wh_rlat[0]+2,wh_rlon[0]-1:wh_rlon[0]+2,ti].values*
+#            sub_flux_temp[
+#            wh_rlat[0]-1:wh_rlat[0]+2,wh_rlon[0]-1:wh_rlon[0]+2,ti].values)/np.sum(
+#            fp_data_H2[site].sub_fp[:,:,ti].values*sub_flux_temp[:,:,ti])
+#            
+#        local_ds = xray.Dataset({'local_ratio': (['time'], local_sum)},
+#                                        coords = {'time' : (fp_data_H2[site].coords['time'])})
+#    
+#        fp_data_H2[site] = fp_data_H2[site].merge(local_ds)
+    fp_data_H5 = name.filtering(fp_data_H2, ["pblh_gt_500"])
     fp_data_H = {}
     
     for si, site in enumerate(sites):
-        site_ds = fp_data_H2[site].resample(av_period[si], dim = "time")
+        site_ds = fp_data_H5[site].resample(av_period[si], dim = "time")
         site_ds2= site_ds.dropna("time", how="all")
         fp_data_H[site] = site_ds2
         
@@ -214,7 +248,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     y_time = []
     y_error=[]
     H_bc5=[]
-    local_ratio=[]
+    #local_ratio=[]
     
     for si, site in enumerate(sites):
               
@@ -226,7 +260,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
         H_bc5.append(fp_data_H3.bc.values)
         sub_flux_temp = fp_data_H3.flux.sel(lon=slice(lonmin,lonmax), 
                                         lat=slice(latmin,latmax))
-        local_ratio.append(fp_data_H3.local_ratio.values)
+        #local_ratio.append(fp_data_H3.local_ratio.values)
         if 'dmf' in attributes:    
             y_error.append(fp_data_H3.dmf.values)
         elif 'vmf' in attributes:   
@@ -262,14 +296,14 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     y_time = np.hstack(y_time)
     y_error=np.hstack(y_error)
     H_bc5 = np.hstack(H_bc5)
-    local_ratio=np.hstack(local_ratio)
+    #local_ratio=np.hstack(local_ratio)
     
     q_ap0=q_ap[0,:,:].copy()
     #q_ap_v = np.ravel(q_ap0)
     nmeasure=len(y)
     print nmeasure
     h_v = np.zeros((nmeasure,Ngrid))
-    local_sum=np.zeros((nmeasure))
+    #local_sum=np.zeros((nmeasure))
     for ti in range(nmeasure):                        
         # Already multiplied by q in fp_senitivity            
         h_v[ti,:] = np.ravel(H_vary[ti,:,:])   #*q_ap_v   # Create sensitivty matrix spatially vectorised
@@ -299,8 +333,11 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
      
     ################################################
     # CALCULATE INDICES OF Y CORRESPONDING TO DIFFERENT SIGMA_Ys   
-    R_indices, ydim1, ydim2 = get_nsigma_y(fp_data_H,start_date, end_date, bl_period, sites, 
-                      nmeasure,threshold)
+#    R_indices, ydim1, ydim2,sigma_model0 = get_nsigma_y(fp_data_H,start_date, end_date, bl_period, sites, 
+#                      nmeasure,threshold)
+    R_indices, ydim1, ydim2,sigma_model0 = get_nsigma_y(fp_data_H,start_date, end_date, sites, 
+                  nmeasure, sigma_model_ap, bl_period=bl_period, bl_split=bl_split, 
+                  levels=bl_levels)     
     nIC=nBC+nfixed
     
     
@@ -312,9 +349,9 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     #%%
     # Define prior model uncertainty
     ####################################################
-    sigma_model0 = np.zeros((ydim2)) 
+    #sigma_model0 = np.zeros((ydim2)) 
     model_error = np.zeros(nmeasure)
-    sigma_model0[:]=sigma_model_ap
+    #sigma_model0[:]=sigma_model_ap
     sigma_measure=y_error.copy()
     model_error[:] = sigma_model0[0]	
     
