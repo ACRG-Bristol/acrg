@@ -15,6 +15,7 @@ from name import get_country
 from name import footprints
 from name import boundary_conditions
 from name import basis
+from name import filtering
 import process
 import basis_functions
 import flux
