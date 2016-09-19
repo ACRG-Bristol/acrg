@@ -220,7 +220,7 @@ def get_file_list(site, species, start, end, height,
 
 def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
         height=None, baseline=False, average=None, keep_missing=False,
-        network = None, instrument = None, status_flag_unflagged = [0]):
+        network = None, instrument = None, status_flag_unflagged = [0], data_directory=None):
     
     start_time = convert.reftime(start)
     end_time = convert.reftime(end)
@@ -241,7 +241,8 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
 
     data_directory, files = get_file_list(site, species, start_time, end_time,
                                           height, network = network,
-                                          instrument = instrument)
+                                          instrument = instrument, data_directory=data_directory)
+
     #Get files
     #####################################
     if files is not None:
