@@ -154,15 +154,18 @@ def ukmo_flags(site, site_info):
 
 
 def get_file_list(site, species, start, end, height,
-                  network = None, instrument = None):
-        
+                  network = None, instrument = None, data_directory=None):
+             
     if network is None:
         file_network_string = site_info[site]["network"]
     else:
         file_network_string = network
-
-    data_directory=join(root_directory, file_network_string)
     
+    if data_directory is None:
+        data_directory=join(root_directory, file_network_string)
+    else:
+        data_directory = data_directory + '/'+file_network_string
+        
     if height is None:
         file_height_string = site_info[site]["height"][0]
     else:
@@ -187,7 +190,7 @@ def get_file_list(site, species, start, end, height,
     file_site = [f[1] for f in file_info]
     file_species = [re.split("-|\.", f[-1])[0] for f in file_info]
     file_height = [re.split("-|\.", f[-1])[1] for f in file_info]
-    
+
     #Get file list
     file_species_string = listsearch(file_species, species, species_info)
     if file_species_string is None:
@@ -217,12 +220,13 @@ def get_file_list(site, species, start, end, height,
 
 def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
         height=None, baseline=False, average=None, keep_missing=False,
-        network = None, instrument = None, status_flag_unflagged = [0]):
+        network = None, instrument = None, status_flag_unflagged = [0], data_directory=None):
     
     start_time = convert.reftime(start)
     end_time = convert.reftime(end)
-    
+
     site = synonyms(site_in, site_info)
+    
     if site is None:
         print("No site called " + site_in +
             ". Either try a different name, or add name to site_info.json.")
@@ -233,13 +237,14 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
         print("No species called " + species_in +
             ". Either try a different name, or add name to species_info.json.")
         return
-        
+    
+
     data_directory, files = get_file_list(site, species, start_time, end_time,
                                           height, network = network,
-                                          instrument = instrument)
+                                          instrument = instrument, data_directory=data_directory)
+
     #Get files
     #####################################
-    
     if files is not None:
     
         data_frames = []
@@ -397,6 +402,7 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
             data_frame.dropna(inplace = True)
 
         data_frame.mf.units = units
+        data_frame.files = files
     
         return data_frame
 
@@ -500,7 +506,7 @@ def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
     average = check_list_and_length(average, sites, "average")
     network = check_list_and_length(network, sites, "network")
     instrument = check_list_and_length(instrument, sites, "instrument")
-
+    
     if height == None or average == None or network == None or instrument == None:
         return None
 
