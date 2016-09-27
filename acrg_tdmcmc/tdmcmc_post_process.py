@@ -33,8 +33,10 @@ import json
 import matplotlib.mlab as mlab
 from matplotlib.patches import Polygon
 from matplotlib.colors import BoundaryNorm
+from matplotlib import ticker
 
-def append_netcdf(flux_mean, flux_percentile, country_mean, country_percentile, 
+def append_netcdf(flux_mean, flux_percentile, country_mean, country_percentile,
+                  country_it, k_mean, k_percentile,
                  lon, lat, time, country, percentile, experiment, outfile):
       
     """
@@ -48,6 +50,8 @@ def append_netcdf(flux_mean, flux_percentile, country_mean, country_percentile,
     fpc_name = "_".join(['flux_percentile', experiment])
     countrym_name = "_".join(['country_mean', experiment])
     countrypc_name = "_".join(['country_percentile', experiment])
+    regionsm_name = "_".join(['regions_mean', experiment])
+    regionspc_name = "_".join(['regions_percentile', experiment])
               
     ncF=Dataset(outfile, 'a')
     
@@ -55,6 +59,8 @@ def append_netcdf(flux_mean, flux_percentile, country_mean, country_percentile,
     ncfluxpc=ncF.createVariable(fpc_name, 'f', ('lat', 'lon', 'time', 'percentile'))    
     nccountrym=ncF.createVariable(countrym_name, 'f', ('country', 'time'))   
     nccountrypc=ncF.createVariable(countrypc_name, 'f', ('country', 'time', 'percentile'))
+    ncregionsm=ncF.createVariable(regionsm_name, 'f', ('time'))   
+    ncregionspc=ncF.createVariable(regionspc_name, 'f', ('time', 'percentile'))
     
     ncfluxm[:, :, :]=flux_mean
     ncfluxm.units='mol/m2/s'
@@ -71,14 +77,22 @@ def append_netcdf(flux_mean, flux_percentile, country_mean, country_percentile,
     nccountrypc[:, :, :]=country_percentile
     nccountrypc.units='Tg/yr'
     nccountrypc.long_name='Posterior percentile emissions from individaul countries'
+    
+    ncregionsm[:]=k_mean
+    #ncregionsm.units=' '
+    ncregionsm.long_name='Posterior mean number of regions'
+    
+    ncregionspc[:,:]=k_percentile
+    #ncregionspc.units='
+    ncregionspc.long_name='Posterior percentile number of regions'
         
     ncF.close()
     print "Appended " + experiment + " to " + outfile 
 
 def write_netcdf(flux_mean, flux_percentile, flux_prior, flux_ap_percentile,
                  country_mean, country_percentile, country_prior, country_ap_percentile,
-                 country_index,
-                 lon, lat, time, country, percentile, experiment, outfile):
+                 country_it, country_index, k_mean, k_percentile,
+                 lon, lat, time, country, percentile, nIt, experiment, outfile):
     
     """
     Function for writing all flux and country output to file
@@ -93,6 +107,9 @@ def write_netcdf(flux_mean, flux_percentile, flux_prior, flux_ap_percentile,
     fpc_name = "_".join(['flux_percentile', experiment])
     countrym_name = "_".join(['country_mean', experiment])
     countrypc_name = "_".join(['country_percentile', experiment])
+    regionsm_name = "_".join(['regions_mean', experiment])
+    regionspc_name = "_".join(['regions_percentile', experiment])
+    countryit_name = "_".join(['country_it', experiment])
     
     #Write NetCDF file
     ncF=Dataset(outfile, 'w')
@@ -101,6 +118,7 @@ def write_netcdf(flux_mean, flux_percentile, flux_prior, flux_ap_percentile,
     ncF.createDimension('lat', len(lat))
     ncF.createDimension('country', len(country))
     ncF.createDimension('percentile', len(percentile))
+    ncF.createDimension('nIt', nIt)
     
     nctime=ncF.createVariable('time', 'i', ('time',))
     nclon=ncF.createVariable('lon', 'f', ('lon',))
@@ -116,6 +134,9 @@ def write_netcdf(flux_mean, flux_percentile, flux_prior, flux_ap_percentile,
     ncfluxap=ncF.createVariable('flux_prior', 'f', ('lat', 'lon', 'time'))  
     ncfluxappc=ncF.createVariable('flux_prior_percentile', 'f', ('lat', 'lon', 'time', 'percentile'))  
     nccountryid=ncF.createVariable('country_index', 'i', ('lat', 'lon'))    
+    ncregionsm=ncF.createVariable(regionsm_name, 'f', ('time'))   
+    ncregionspc=ncF.createVariable(regionspc_name, 'f', ('time', 'percentile'))
+    nccountryit=ncF.createVariable(countryit_name, 'f', ('country', 'nIt','time'))   
 
     
     nctime[:]=time_seconds
@@ -174,6 +195,18 @@ def write_netcdf(flux_mean, flux_percentile, flux_prior, flux_ap_percentile,
     nccountryid[:,:]=country_index
     #ncfluxap.units='mol/m2/s'
     nccountryid.long_name='Index corresponding to each country'
+    
+    ncregionsm[:]=k_mean
+    #ncregionsm.units=' '
+    ncregionsm.long_name='Posterior mean number of regions'
+    
+    ncregionspc[:,:]=k_percentile
+    #ncregionspc.units='
+    ncregionspc.long_name='Posterior percentile number of regions'
+    
+    nccountryit[:, :]=country_it
+    nccountryit.units='Tg/yr'
+    nccountryit.long_name='Posterior emissions distribution from individual countries'
     
     ncF.close()
     print "Written " + experiment + " to " + outfile
@@ -236,7 +269,7 @@ def plot_scaling(data,lon,lat, clevels=None, cmap=plt.cm.RdBu_r, label=None,
         cb = m.colorbar(cs, location='bottom', pad="5%", extend='both')
         
     if label is not None:        
-        cb.set_label(label) 
+        cb.set_label(label,fontsize=16) 
                
     if stations is not None:
         
@@ -249,13 +282,15 @@ def plot_scaling(data,lon,lat, clevels=None, cmap=plt.cm.RdBu_r, label=None,
             ilat[si]=stations[site+'_lat']
         mlon,mlat=m(ilon,ilat)
         site_loc=m.plot(mlon,mlat, linestyle='None',
-                        marker='o', color='gold', markersize=12)
+                        marker='o', color='gold', markersize=8)
         yoffset = 0.022*(m.ymax-m.ymin) 
         xoffset = 0.012*(m.xmax-m.xmin)             
-        for ii in range(nsites):
-            plt.text(mlon[ii]+xoffset,
-                     mlat[ii]+yoffset,sites[ii], fontsize='24', color='black')   
-                     
+        #for ii in range(nsites):
+        #    plt.text(mlon[ii]+xoffset,
+        #             mlat[ii]+yoffset,sites[ii], fontsize='24', color='black')   
+    tick_locator = ticker.MaxNLocator(nbins=5)
+    cb.locator = tick_locator
+    cb.update_ticks()                 
     if out_filename is not None:
         plt.savefig(out_filename)
         plt.close()
@@ -373,6 +408,7 @@ def country_emissions(ds_mcmc, x_post_vit, q_ap_abs_v, countries, species,
     q_country_16=np.zeros((ncountries))
     q_country_84=np.zeros((ncountries))
     q_country_ap=np.zeros((ncountries))
+    q_country_mode=np.zeros((ncountries))
     
     nlon=len(ds_mcmc.lon)
     nlat=len(ds_mcmc.lat)
@@ -389,6 +425,9 @@ def country_emissions(ds_mcmc, x_post_vit, q_ap_abs_v, countries, species,
         q_country_ap[ci] = np.sum(area_v[c_index[0]]*q_ap_abs_v[c_index[0]]
                                 *365.*24.*3600.*molmass/unit_factor) # in Tg/yr
         
+                
+        dum=np.histogram(q_country_it[ci,:], bins=100)                
+        q_country_mode[ci] = dum[1][dum[0]==np.max(dum[0])][0]
         
         q_country_mean[ci]=np.mean(q_country_it[ci,:])*365.*24.*3600.*molmass/unit_factor # in Tg/yr
         q_country_50[ci]=np.percentile(q_country_it[ci,:],50)*365.*24.*3600.*molmass/unit_factor
@@ -400,7 +439,7 @@ def country_emissions(ds_mcmc, x_post_vit, q_ap_abs_v, countries, species,
     country_index = np.reshape(country_v_new, (nlat,nlon))   
     return q_country_it*365.*24.*3600.*molmass/unit_factor,\
     q_country_mean, q_country_05, q_country_16, q_country_50, q_country_84, \
-    q_country_95, q_country_ap, country_index
+    q_country_95, q_country_ap, country_index,q_country_mode
     
 def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True):
     
@@ -437,6 +476,7 @@ def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True
     for it in range(nIt):
         y_post_it[it,:]=np.dot(h_v_all,x_post_all_it[it,:])  
         y_bg_it[it,:]=np.dot(h_v_all[:,:nIC],x_it[it,:nIC])
+        #y_bg_it[it,:]=np.dot(h_v_all[:,:10],x_it[it,:10])
     y_post_mean=np.mean(y_post_it, axis=0)
     y_bg_mean=np.mean(y_bg_it, axis=0)
     y_time=ds.y_time.values
