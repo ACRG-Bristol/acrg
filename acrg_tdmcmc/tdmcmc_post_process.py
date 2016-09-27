@@ -400,46 +400,94 @@ def country_emissions(ds_mcmc, x_post_vit, q_ap_abs_v, countries, species,
     ncountries=len(countries)
     #nIt=len(ds_mcmc.k_it.values)
     nIt=len(x_post_vit[:,0])
-    q_country_it = np.zeros((ncountries, nIt))
-    q_country_mean=np.zeros((ncountries))
-    q_country_50=np.zeros((ncountries))
-    q_country_05=np.zeros((ncountries))
-    q_country_95=np.zeros((ncountries))
-    q_country_16=np.zeros((ncountries))
-    q_country_84=np.zeros((ncountries))
-    q_country_ap=np.zeros((ncountries))
-    q_country_mode=np.zeros((ncountries))
-    
+
     nlon=len(ds_mcmc.lon)
     nlat=len(ds_mcmc.lat)
     country_v_new=np.zeros((nlon*nlat))
-    for ci,cc in enumerate(countries):
-        name_country = np.where(cds.name == cc)
-        c_index = np.where(country_v == name_country[0])
-        country_v_new[c_index[0]]=ci+1
-        for it in range(nIt):
-            x_vit_temp=x_post_vit[it,:]
-            q_country_it[ci,it]=np.sum(x_vit_temp[c_index[0]]*area_v[c_index[0]]
+
+    if len(np.shape(q_ap_abs_v)) == 1:
+
+        q_country_it = np.zeros((ncountries, nIt))
+        q_country_mean=np.zeros((ncountries))
+        q_country_50=np.zeros((ncountries))
+        q_country_05=np.zeros((ncountries))
+        q_country_95=np.zeros((ncountries))
+        q_country_16=np.zeros((ncountries))
+        q_country_84=np.zeros((ncountries))
+        q_country_ap=np.zeros((ncountries))
+    
+        for ci,cc in enumerate(countries):
+            name_country = np.where(cds.name == cc)
+            c_index = np.where(country_v == name_country[0])
+            country_v_new[c_index[0]]=ci+1
+            for it in range(nIt):
+                x_vit_temp=x_post_vit[it,:]
+                q_country_it[ci,it]=np.sum(x_vit_temp[c_index[0]]*area_v[c_index[0]]
                                 *q_ap_abs_v[c_index[0]]) 
         
-        q_country_ap[ci] = np.sum(area_v[c_index[0]]*q_ap_abs_v[c_index[0]]
+            q_country_ap[ci] = np.sum(area_v[c_index[0]]*q_ap_abs_v[c_index[0]]
                                 *365.*24.*3600.*molmass/unit_factor) # in Tg/yr
         
                 
         dum=np.histogram(q_country_it[ci,:], bins=100)                
         q_country_mode[ci] = dum[1][dum[0]==np.max(dum[0])][0]
         
-        q_country_mean[ci]=np.mean(q_country_it[ci,:])*365.*24.*3600.*molmass/unit_factor # in Tg/yr
-        q_country_50[ci]=np.percentile(q_country_it[ci,:],50)*365.*24.*3600.*molmass/unit_factor
-        q_country_05[ci]=np.percentile(q_country_it[ci,:],5)*365.*24.*3600.*molmass/unit_factor
-        q_country_95[ci]=np.percentile(q_country_it[ci,:],95)*365.*24.*3600.*molmass/unit_factor
-        q_country_16[ci]=np.percentile(q_country_it[ci,:],16)*365.*24.*3600.*molmass/unit_factor
-        q_country_84[ci]=np.percentile(q_country_it[ci,:],84)*365.*24.*3600.*molmass/unit_factor
+            q_country_mean[ci]=np.mean(q_country_it[ci,:])*365.*24.*3600.*molmass/unit_factor # in Tg/yr
+            q_country_50[ci]=np.percentile(q_country_it[ci,:],50)*365.*24.*3600.*molmass/unit_factor
+            q_country_05[ci]=np.percentile(q_country_it[ci,:],5)*365.*24.*3600.*molmass/unit_factor
+            q_country_95[ci]=np.percentile(q_country_it[ci,:],95)*365.*24.*3600.*molmass/unit_factor
+            q_country_16[ci]=np.percentile(q_country_it[ci,:],16)*365.*24.*3600.*molmass/unit_factor
+            q_country_84[ci]=np.percentile(q_country_it[ci,:],84)*365.*24.*3600.*molmass/unit_factor
         
+        country_index = np.reshape(country_v_new, (nlat,nlon))   
+        return q_country_it*365.*24.*3600.*molmass/unit_factor,\
+        q_country_mean, q_country_05, q_country_16, q_country_50, q_country_84, \
+        q_country_95, q_country_ap, country_index
+        
+    elif len(np.shape(q_ap_abs_v)) == 2:
+
+        q_ap_abs_v = q_ap_abs_v.T
+        ntimes = np.shape(q_ap_abs_v)[1]        
+        
+        q_country_it = np.zeros((ncountries, ntimes, nIt))
+        q_country_mean=np.zeros((ncountries, ntimes))
+        q_country_50=np.zeros((ncountries, ntimes))
+        q_country_05=np.zeros((ncountries, ntimes))
+        q_country_95=np.zeros((ncountries, ntimes))
+        q_country_16=np.zeros((ncountries, ntimes))
+        q_country_84=np.zeros((ncountries, ntimes))
+        q_country_ap=np.zeros((ncountries, ntimes))
+    
+        for ci,cc in enumerate(countries):
+            name_country = np.where(cds.name == cc)
+            c_index = np.where(country_v == name_country[0])
+            country_v_new[c_index[0]]=ci+1
+            for it in range(nIt):
+                x_vit_temp=x_post_vit[it,:]
+                q_country_it[ci,:,it]=np.sum(x_vit_temp[c_index[0],None]*area_v[c_index[0],None]
+                                *q_ap_abs_v[c_index[0],:], axis = 0) 
+        
+            q_country_ap[ci,:] = np.sum(area_v[c_index[0],None]*q_ap_abs_v[c_index[0],:]
+                                *365.*24.*3600.*molmass/unit_factor, axis = 0) # in Tg/yr
+        
+            q_country_mean[ci,:]=np.mean(q_country_it[ci,:,:], axis =1)*365.*24.*3600.*molmass/unit_factor # in Tg/yr
+            q_country_50[ci,:]=np.percentile(q_country_it[ci,:,:],50, axis =1)*365.*24.*3600.*molmass/unit_factor
+            q_country_05[ci,:]=np.percentile(q_country_it[ci,:,:],5, axis =1)*365.*24.*3600.*molmass/unit_factor
+            q_country_95[ci,:]=np.percentile(q_country_it[ci,:,:],95, axis =1)*365.*24.*3600.*molmass/unit_factor
+            q_country_16[ci,:]=np.percentile(q_country_it[ci,:,:],16, axis =1)*365.*24.*3600.*molmass/unit_factor
+            q_country_84[ci,:]=np.percentile(q_country_it[ci,:,:],84, axis =1)*365.*24.*3600.*molmass/unit_factor
+        
+<<<<<<< HEAD
     country_index = np.reshape(country_v_new, (nlat,nlon))   
     return q_country_it*365.*24.*3600.*molmass/unit_factor,\
     q_country_mean, q_country_05, q_country_16, q_country_50, q_country_84, \
     q_country_95, q_country_ap, country_index,q_country_mode
+=======
+        country_index = np.reshape(country_v_new, (nlat,nlon))   
+        return q_country_it*365.*24.*3600.*molmass/unit_factor,\
+        q_country_mean, q_country_05, q_country_16, q_country_50, q_country_84, \
+        q_country_95, q_country_ap, country_index
+>>>>>>> a6ed6cb32c660a6fafacdb1ef2af3b3e9990d75c
     
 def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True):
     
