@@ -429,9 +429,9 @@ def country_emissions(ds_mcmc, x_post_vit, q_ap_abs_v, countries, species,
                                 *365.*24.*3600.*molmass/unit_factor) # in Tg/yr
         
                 
-        dum=np.histogram(q_country_it[ci,:], bins=100)                
-        q_country_mode[ci] = dum[1][dum[0]==np.max(dum[0])][0]
-        
+            #dum=np.histogram(q_country_it[ci,:], bins=100)                
+            #q_country_mode[ci] = dum[1][dum[0]==np.max(dum[0])][0]
+            
             q_country_mean[ci]=np.mean(q_country_it[ci,:])*365.*24.*3600.*molmass/unit_factor # in Tg/yr
             q_country_50[ci]=np.percentile(q_country_it[ci,:],50)*365.*24.*3600.*molmass/unit_factor
             q_country_05[ci]=np.percentile(q_country_it[ci,:],5)*365.*24.*3600.*molmass/unit_factor
@@ -477,17 +477,11 @@ def country_emissions(ds_mcmc, x_post_vit, q_ap_abs_v, countries, species,
             q_country_16[ci,:]=np.percentile(q_country_it[ci,:,:],16, axis =1)*365.*24.*3600.*molmass/unit_factor
             q_country_84[ci,:]=np.percentile(q_country_it[ci,:,:],84, axis =1)*365.*24.*3600.*molmass/unit_factor
         
-<<<<<<< HEAD
-    country_index = np.reshape(country_v_new, (nlat,nlon))   
-    return q_country_it*365.*24.*3600.*molmass/unit_factor,\
-    q_country_mean, q_country_05, q_country_16, q_country_50, q_country_84, \
-    q_country_95, q_country_ap, country_index,q_country_mode
-=======
+
         country_index = np.reshape(country_v_new, (nlat,nlon))   
         return q_country_it*365.*24.*3600.*molmass/unit_factor,\
         q_country_mean, q_country_05, q_country_16, q_country_50, q_country_84, \
         q_country_95, q_country_ap, country_index
->>>>>>> a6ed6cb32c660a6fafacdb1ef2af3b3e9990d75c
     
 def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True):
     
