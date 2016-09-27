@@ -128,7 +128,6 @@ INTEGER regions_it(Ngrid,nit_sub)
 REAL sigma_y_it(nmeasure,nit_sub), sigma_model_it(ydim2,nit_sub)     
 REAL n0T_it(nit_sub)
 REAL sigma_y_temp(nmeasure), y_error_temp(nmeasure)
-REAL av_acc_sigma_y(ydim2,2)
 INTEGER acc_h_batch(nIC1)
 INTEGER rej_h_batch(nIC1)
 INTEGER accept_batch(nIC1)
@@ -178,7 +177,7 @@ INTEGER rej_prob_p1_ib1(nIC1)
 !f2py intent(out) reject_birth, reject_death, reject_move, accept_sigma_y, reject_sigma_y
 !f2py intent(out) tot_acc_sigma_y, tot_acc_x, tot_acc_p1, tot_acc_p2
 
- ! call OMP_SET_NUM_THREADS(nbeta)     ! UNCOMMENT IF PARALLEL TEMPERING REQUIRED
+  call OMP_SET_NUM_THREADS(nbeta)     ! UNCOMMENT IF PARALLEL TEMPERING REQUIRED
 
   call init_random_seed()          ! Ensure random number generation starts from new point each time program is run
                                   ! Random seed only needs to be called once in a program.  
@@ -199,7 +198,6 @@ accept_sigma_y=0
 reject_sigma_y=0
 it_sub=1
 
-av_acc_sigma_y(:,:)=0.
 acc_h_batch(:)=0.
 rej_h_batch(:)=0.
 accept_batch(:)=0
@@ -242,10 +240,13 @@ do it=1,(nIt+burn_in)
 !$OMP& private(u, kib1, h_aggib1, plonib1, platib1, acceptxib1, rejectxib1), &
 !$OMP& private(sigma_yib, sigma_modelib, sigma_yib1, sigma_modelib1, accept_yib1, reject_yib1), &
 !$OMP& private(pdf_param1ib1, pdf_param2ib1, detvalib, detvalib1),&
+!$OMP& private(stepsize_ib1, acc_bxib1, rej_bxib1),&
+!$OMP& private(stepsize_p1_ib1, acc_prob_p1_ib1,rej_prob_p1_ib1),&
+!$OMP& private(stepsize_p2_ib1, stepsize_sig_ib1, acc_byib1, rej_byib1),&
 !$OMP& shared(x,n0,n0T, k, pdf_param1, pdf_param2, h_agg, plon,plat, regions_v)
-   !do ibeta=1,nbeta
+   do ibeta=1,nbeta
 
-       ibeta=1                 ! By default don't do Parallel tempering so beta is always 1
+       !ibeta=1                 ! By default don't do Parallel tempering so beta is always 1
 
        ! The following ib variables are necessary for PT
        betaib = beta(ibeta)
@@ -407,7 +408,7 @@ do it=1,(nIt+burn_in)
 
            endif     ! remain_it
            
-   !enddo    ! beta loop
+   enddo    ! beta loop
 !$OMP END PARALLEL DO
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! Store xit and swap betas
@@ -432,8 +433,8 @@ do it=1,(nIt+burn_in)
             pT_chain = (beta2-beta1)*(n0T(pair2)/2.-n0T(pair1)/2.+detval(pair2)-detval(pair1))  ! detvals should be inverse determinants so signs this way round
             call random_number(randomu)
             if (alog(randomu) .LE. pT_chain) then
-      !          beta(pair2)=beta1*1.         ! Uncomment for PT
-      !          beta(pair1)=beta2*1.         ! Uncomment for PT
+                beta(pair2)=beta1*1.         ! Uncomment for PT
+                beta(pair1)=beta2*1.         ! Uncomment for PT
                 accept_swap=accept_swap+1
             endif      ! pT_chain if      
          ENDIF      ! reamin_it =0 if
@@ -444,9 +445,9 @@ do it=1,(nIt+burn_in)
    IF (it .GT. burn_in) THEN     
         remain = modulo(it,nsub)          ! nsub typically = 100
         if (remain .EQ. 0) then
-          ! do ib=1,nbeta                             ! uncomment for PT
-          !     if (beta(ib) .EQ. 1.) then            ! uncomment for PT
-                  ib=1                   ! DEFAULT - AGAIN ib=1 comment and uncomment if statement if doing PT
+           do ib=1,nbeta                             ! uncomment for PT
+               if (beta(ib) .EQ. 1.) then            ! uncomment for PT
+          !        ib=1                   ! DEFAULT - AGAIN ib=1 comment and uncomment if statement if doing PT
                   ! STORE THE FOLLOWING VARIABLES AT THINNED nsub FREQUENCY
                   x_it(:,it_sub)=x(:,ib)
                   plon_it(:,it_sub)=plon(:,ib)
@@ -459,8 +460,8 @@ do it=1,(nIt+burn_in)
                   pdf_param1_it(:,it_sub)=pdf_param1(:,ib)
                   pdf_param2_it(:,it_sub)=pdf_param2(:,ib)       
                   it_sub=it_sub+1
-          !     endif                         ! uncomment for PT
-          !  enddo                            ! uncomment for PT
+               endif                         ! uncomment for PT
+            enddo                            ! uncomment for PT
         endif
    ENDIF           ! it >= burn_in
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
