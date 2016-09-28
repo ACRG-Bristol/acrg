@@ -796,7 +796,7 @@ def filtering(datasets_in, filters, full_corr=False):
         filters = [filters]
 
     datasets = datasets_in.copy()
-    def ferry_loc(dataset, full_corr=False):
+    def ferry_loc(dataset, full_corr=full_corr):
         # Subset during daytime hours
         lats = dataset.release_lat.values
         ti = [i for i, h in enumerate(lats) if h >= 52.2 and h < 55.8 ]
@@ -817,7 +817,7 @@ def filtering(datasets_in, filters, full_corr=False):
         # Calculate daily median
         return dataset.resample("6H", "time", how = "mean")
     
-    def daytime(dataset, full_corr=False):
+    def daytime(dataset, full_corr=full_corr):
         # Subset during daytime hours
         hours = dataset.time.to_pandas().index.hour
         ti = [i for i, h in enumerate(hours) if h >= 11 and h <= 15]
@@ -829,7 +829,7 @@ def filtering(datasets_in, filters, full_corr=False):
         else:
             return dataset[dict(time = ti)]
             
-    def nighttime(dataset, full_corr=False):
+    def nighttime(dataset, full_corr=full_corr):
         # Subset during daytime hours
         hours = dataset.time.to_pandas().index.hour
         ti = [i for i, h in enumerate(hours) if h >= 22 or h <= 3]
@@ -841,7 +841,7 @@ def filtering(datasets_in, filters, full_corr=False):
         else:
             return dataset[dict(time = ti)]
             
-    def noon(dataset, full_corr=False):
+    def noon(dataset, full_corr=full_corr):
         # Subset during daytime hours
         hours = dataset.time.to_pandas().index.hour
         ti = [i for i, h in enumerate(hours) if h >= 12 and h < 14]
@@ -854,7 +854,7 @@ def filtering(datasets_in, filters, full_corr=False):
             return dataset[dict(time = ti)] 
         
 
-    def pblh_gt_500(dataset, full_corr=False):
+    def pblh_gt_500(dataset, full_corr=full_corr):
         # Subset for times when boundary layer height is > 500m
         ti = [i for i, pblh in enumerate(dataset.PBLH) if pblh > 500.]
         
@@ -873,7 +873,7 @@ def filtering(datasets_in, filters, full_corr=False):
         else:
             return dataset[dict(time = ti)]
             
-    def pblh_gt_250(dataset, full_corr=False):
+    def pblh_gt_250(dataset, full_corr=full_corr):
         # Subset for times when boundary layer height is > 500m
         ti = [i for i, pblh in enumerate(dataset.PBLH) if pblh > 250.]
         
@@ -1004,6 +1004,19 @@ def prior_flux(species, domain, basis_case, av_date, emissions_name = None):
 
     flux_data= flux(domain, emissions_name)
     basis_data = basis(domain, basis_case)
+    
+    print av_date
+    
+#    fi = np.argmin(np.abs(flux_data.time.values.to_pydatetime() - av_date))  
+#    bi = np.argmin(np.abs(basis_data.time.values.to_pydatetime() - av_date)) 
+#    
+#    print fi, bi
+#    
+#    flux_timestamp = flux_data.time.values[fi]
+#    basis_timestamp = basis_data.time.values[bi]
+    
+#    print flux_timestamp
+#    print basis_timestamp
     
     flux_timestamp = pd.DatetimeIndex(flux_data.time.values).asof(av_date)
     basis_timestamp = pd.DatetimeIndex(basis_data.time.values).asof(av_date)
