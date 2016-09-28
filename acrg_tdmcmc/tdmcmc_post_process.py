@@ -429,16 +429,15 @@ def country_emissions(ds_mcmc, x_post_vit, q_ap_abs_v, countries, species,
             q_country_ap[ci] = np.sum(area_v[c_index[0]]*q_ap_abs_v[c_index[0]]
                                 *365.*24.*3600.*molmass/unit_factor) # in Tg/yr
         
-                
-        dum=np.histogram(q_country_it[ci,:], bins=100)                
-        q_country_mode[ci] = dum[1][dum[0]==np.max(dum[0])][0]
-        
-        q_country_mean[ci]=np.mean(q_country_it[ci,:])*365.*24.*3600.*molmass/unit_factor # in Tg/yr
-        q_country_50[ci]=np.percentile(q_country_it[ci,:],50)*365.*24.*3600.*molmass/unit_factor
-        q_country_05[ci]=np.percentile(q_country_it[ci,:],5)*365.*24.*3600.*molmass/unit_factor
-        q_country_95[ci]=np.percentile(q_country_it[ci,:],95)*365.*24.*3600.*molmass/unit_factor
-        q_country_16[ci]=np.percentile(q_country_it[ci,:],16)*365.*24.*3600.*molmass/unit_factor
-        q_country_84[ci]=np.percentile(q_country_it[ci,:],84)*365.*24.*3600.*molmass/unit_factor
+            #dum=np.histogram(q_country_it[ci,:], bins=100)                
+            #q_country_mode[ci] = dum[1][dum[0]==np.max(dum[0])][0]
+            
+            q_country_mean[ci]=np.mean(q_country_it[ci,:])*365.*24.*3600.*molmass/unit_factor # in Tg/yr
+            q_country_50[ci]=np.percentile(q_country_it[ci,:],50)*365.*24.*3600.*molmass/unit_factor
+            q_country_05[ci]=np.percentile(q_country_it[ci,:],5)*365.*24.*3600.*molmass/unit_factor
+            q_country_95[ci]=np.percentile(q_country_it[ci,:],95)*365.*24.*3600.*molmass/unit_factor
+            q_country_16[ci]=np.percentile(q_country_it[ci,:],16)*365.*24.*3600.*molmass/unit_factor
+            q_country_84[ci]=np.percentile(q_country_it[ci,:],84)*365.*24.*3600.*molmass/unit_factor
         
         country_index = np.reshape(country_v_new, (nlat,nlon))   
         return q_country_it*365.*24.*3600.*molmass/unit_factor,\
