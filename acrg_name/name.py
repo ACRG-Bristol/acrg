@@ -797,7 +797,7 @@ def filtering(datasets_in, filters, keep_missing=False):
 
     datasets = datasets_in.copy()
 
-    def ferry_loc(dataset, site,keep_missing=False):
+    def ferry_loc(dataset, site,keep_missing=keep_missing):
         # Subset during daytime hours
         if site == 'GAUGE-FERRY':
                     
@@ -817,11 +817,11 @@ def filtering(datasets_in, filters, keep_missing=False):
             return dataset
 
     # Filter functions
-    def daily_median(dataset, full_corr=full_corr):
+    def daily_median(dataset, keep_missing=False):
         # Calculate daily median
         return dataset.resample("1D", "time", how = "median")
         
-    def six_hr_mean(dataset, full_corr=full_corr):
+    def six_hr_mean(dataset, keep_missing=False):
         # Calculate daily median
         return dataset.resample("6H", "time", how = "mean")
     
