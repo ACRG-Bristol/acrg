@@ -809,11 +809,11 @@ def filtering(datasets_in, filters, full_corr=False):
             return dataset[dict(time = ti)]
 
     # Filter functions
-    def daily_median(dataset, full_corr=False):
+    def daily_median(dataset, full_corr=full_corr):
         # Calculate daily median
         return dataset.resample("1D", "time", how = "median")
         
-    def six_hr_mean(dataset, full_corr=False):
+    def six_hr_mean(dataset, full_corr=full_corr):
         # Calculate daily median
         return dataset.resample("6H", "time", how = "mean")
     
@@ -892,8 +892,9 @@ def filtering(datasets_in, filters, full_corr=False):
         else:
             return dataset[dict(time = ti)]
             
-    def local_influence(dataset, full_corr=False):
-        ti = [i for i, local_ratio in enumerate(dataset.local_ratio) if local_ratio < 0.25]
+    def local_influence(dataset, full_corr=full_corr):
+        ti = [i for i, local_ratio in enumerate(dataset.local_ratio) if local_ratio < 0.05]
+        print ti[0:10]
         return dataset[dict(time = ti)]
        
        
