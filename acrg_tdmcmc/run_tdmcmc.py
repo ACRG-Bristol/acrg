@@ -24,8 +24,8 @@ uncertainties differently (emissions uncertainty > baseline uncertainty).
 
 @author: ml12574
 """
-import tdmcmc_uncorr
-import tdmcmc_evencorr
+#import tdmcmc_uncorr
+#import tdmcmc_evencorr
 import acrg_name as name
 import numpy as np
 import acrg_agage as agage
@@ -167,19 +167,26 @@ def get_nsigma_y(fp_data_H,start_date, end_date, sites,
 
 
 def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date, 
-    domain,network,fp_basis_case ,bc_basis_case,rjmcmc,bl_period,kmin,kmax,
-    k_ap,nIt,burn_in,nsub,nbeta,beta,sigma_model_pdf,sigma_model_ap, 
+    domain,network,fp_basis_case ,bc_basis_case,rjmcmc,para_temp,
+    bl_period,kmin,kmax,k_ap,nIt,burn_in,nsub,
+    nbeta,beta,sigma_model_pdf,sigma_model_ap, 
     sigma_model_hparams,stepsize_sigma_y,stepsize_clon,stepsize_clat,
     stepsize_bd,stepsize_all,stepsize_pdf_p1_all,stepsize_pdf_p2_all,
     pdf_param1,pdf_param2,pdf_p1_hparam1,pdf_p1_hparam2,pdf_p2_hparam1,
     pdf_p2_hparam2,x_pdf ,pdf_param1_pdf,pdf_param2_pdf,inv_type,
-    output_dir,tau=None, tau_hparams=None, stepsize_tau=None, tau_pdf=None,
-    bl_split=False, bl_levels=None):
+    output_dir,tau_ap=None, tau_hparams=None, stepsize_tau=None, tau_pdf=None,
+    bl_split=False, bl_levels=None, filters=None):
     #%%
+    
+    if para_temp is True:
+        print ("Parallel tempering is true: have you remembered to uncomment " 
+                "call OMP_SET_NUM_THREADS in the .f90 script? ")
+        print ("No? Well do it and recompile with fopenmp otherwise this will take nbeta x longer")
+    
     #########################################
     # READ IN DATA AND FOOTPRINTS THEN MERGE
     corr_type={"uncorrelated":False,
-              "correlated":False,
+              "corr":False,
               "evencorr":True}
     data = agage.get_obs(sites, species, start = start_date, end = end_date, average = meas_period, 
                           keep_missing=corr_type[inv_type])
@@ -201,29 +208,30 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     for si, site in enumerate(sites):
         release_lons[si]=fp_data_H2[site].release_lon[0].values
         release_lats[si]=fp_data_H2[site].release_lat[0].values
-#        dlon=fp_data_H2[site].lon[1].values-fp_data_H2[site].lon[0].values
-#        dlat=fp_data_H2[site].lat[1].values-fp_data_H2[site].lat[0].values
-#        wh_rlon = np.where(abs(fp_data_H2[site].sub_lon.values-release_lons[si]) < dlon/2.)
-#        wh_rlat = np.where(abs(fp_data_H2[site].sub_lat.values-release_lats[si]) < dlat/2.)
-#        local_sum=np.zeros((len(fp_data_H2[site].mf)))
-#        sub_lon=fp_data_H2[site].sub_lon.values
-#        sub_lat=fp_data_H2[site].sub_lat.values
-#        sub_flux_temp = fp_data_H2[site].flux.sel(lon=slice(np.min(sub_lon),np.max(sub_lon)), 
-#                                        lat=slice(np.min(sub_lat),np.max(sub_lat)))
-#        for ti in range(len(fp_data_H2[site].mf)):      
-#            local_sum[ti] = np.sum(fp_data_H2[site].sub_fp[
-#            wh_rlat[0]-1:wh_rlat[0]+2,wh_rlon[0]-1:wh_rlon[0]+2,ti].values*
-#            sub_flux_temp[
-#            wh_rlat[0]-1:wh_rlat[0]+2,wh_rlon[0]-1:wh_rlon[0]+2,ti].values)/np.sum(
-#            fp_data_H2[site].sub_fp[:,:,ti].values*sub_flux_temp[:,:,ti])
-#            
-#        local_ds = xray.Dataset({'local_ratio': (['time'], local_sum)},
-#                                        coords = {'time' : (fp_data_H2[site].coords['time'])})
-#    
-#        fp_data_H2[site] = fp_data_H2[site].merge(local_ds)
-    fp_data_H5 = name.filtering(fp_data_H2, ["pblh_gt_500"])
-    fp_data_H = {}
+        dlon=fp_data_H2[site].sub_lon[1].values-fp_data_H2[site].sub_lon[0].values
+        dlat=fp_data_H2[site].sub_lat[1].values-fp_data_H2[site].sub_lat[0].values
+        local_sum=np.zeros((len(fp_data_H2[site].mf)))
+       
+        for ti in range(len(fp_data_H2[site].mf)):
+            release_lon=fp_data_H2[site].release_lon[ti].values
+            release_lat=fp_data_H2[site].release_lat[ti].values
+            wh_rlon = np.where(abs(fp_data_H2[site].sub_lon.values-release_lon) < dlon/2.)
+            wh_rlat = np.where(abs(fp_data_H2[site].sub_lat.values-release_lat) < dlat/2.)
+            local_sum[ti] = np.sum(fp_data_H2[site].sub_fp[
+            wh_rlat[0]-2:wh_rlat[0]+3,wh_rlon[0]-2:wh_rlon[0]+3,ti].values)/np.sum(
+            fp_data_H2[site].fp[:,:,ti].values)  
+            
+        local_ds = xray.Dataset({'local_ratio': (['time'], local_sum)},
+                                        coords = {'time' : (fp_data_H2[site].coords['time'])})
     
+        fp_data_H2[site] = fp_data_H2[site].merge(local_ds)
+    
+    if filters is not None:
+        fp_data_H5 = name.filtering(fp_data_H2, filters,keep_missing=corr_type[inv_type])
+    else:
+        fp_data_H5 = fp_data_H2.copy()
+        
+    fp_data_H = {}    
     for si, site in enumerate(sites):
         site_ds = fp_data_H5[site].resample(av_period[si], dim = "time")
         site_ds2= site_ds.dropna("time", how="all")
@@ -248,7 +256,9 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     y_time = []
     y_error=[]
     H_bc5=[]
-    #local_ratio=[]
+    local_ratio=[]
+    pblh=[]
+    wind_speed=[]
     
     for si, site in enumerate(sites):
               
@@ -260,12 +270,16 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
         H_bc5.append(fp_data_H3.bc.values)
         sub_flux_temp = fp_data_H3.flux.sel(lon=slice(lonmin,lonmax), 
                                         lat=slice(latmin,latmax))
-        #local_ratio.append(fp_data_H3.local_ratio.values)
+        local_ratio.append(fp_data_H3.local_ratio.values)
+        pblh.append(fp_data_H3.PBLH.values)
+        wind_speed.append(fp_data_H3.wind_speed.values)
+        
         if 'dmf' in attributes:    
             y_error.append(fp_data_H3.dmf.values)
         elif 'vmf' in attributes:   
             y_error.append(fp_data_H3.vmf.values)
         else:
+            print "No variability or repeatability in data file - use a default value"
             y_error.append(0.002*fp_data_H3.mf.values) # 0.002 only appropriate for methane
         if si ==0:
             H_fixed2=fp_data_H3.H
@@ -296,7 +310,9 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     y_time = np.hstack(y_time)
     y_error=np.hstack(y_error)
     H_bc5 = np.hstack(H_bc5)
-    #local_ratio=np.hstack(local_ratio)
+    local_ratio=np.hstack(local_ratio)
+    pblh=np.hstack(pblh)
+    wind_speed=np.hstack(wind_speed)
     
     q_ap0=q_ap[0,:,:].copy()
     #q_ap_v = np.ravel(q_ap0)
@@ -310,7 +326,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     
     #%%
     #################################################
-    if inv_type is 'evencorr':
+    if inv_type in ('evencorr', 'corr'):
         # Define obs only where finite data exists         
         wh_temp=np.where(np.logical_and(np.isfinite(y_error),np.isfinite(y)))
         timeindex_nonzero=wh_temp[0]
@@ -333,8 +349,6 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
      
     ################################################
     # CALCULATE INDICES OF Y CORRESPONDING TO DIFFERENT SIGMA_Ys   
-#    R_indices, ydim1, ydim2,sigma_model0 = get_nsigma_y(fp_data_H,start_date, end_date, bl_period, sites, 
-#                      nmeasure,threshold)
     R_indices, ydim1, ydim2,sigma_model0 = get_nsigma_y(fp_data_H,start_date, end_date, sites, 
                   nmeasure, sigma_model_ap, bl_period=bl_period, bl_split=bl_split, 
                   levels=bl_levels)     
@@ -355,13 +369,32 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     sigma_measure=y_error.copy()
     model_error[:] = sigma_model0[0]	
     
-    if inv_type is 'evencorr':
+    if inv_type is 'uncorrelated':
+        sigma_model_hparams= sigma_model_hparams*sigma_model_ap
+    elif inv_type is 'evencorr':
         sigma_model_hparam1=sigma_model0*sigma_model_hparams[0]
         sigma_model_hparam2=sigma_model0*sigma_model_hparams[1]
         # DEFINE TAU PARAMS AND DELTATIME
         deltatime=[float(s) for s in re.findall(r'\d+', av_period[0])]
         nsite_max=np.max(nmeasure_site)
+        error_structure=np.zeros((nmeasure))+1.
         
+    elif inv_type is 'corr':
+        sigma_model_hparam1=sigma_model0*sigma_model_hparams[0]
+        sigma_model_hparam2=sigma_model0*sigma_model_hparams[1]
+        deltatime=np.zeros((nmeasure,nmeasure))+1.e12
+
+        for ss, si in enumerate(sites):
+            wh_site = np.ravel(np.where(y_site == si))
+            nmeasure_site[ss]=len(wh_site)
+            
+            for whi in wh_site:
+                tdelta = np.absolute(y_time[wh_site]-y_time[whi]).astype('timedelta64[m]')
+                deltatime_site=tdelta/np.timedelta64(1, 'h')
+                deltatime[whi,wh_site] = deltatime_site
+
+        nsite_max=np.max(nmeasure_site)
+        error_structure=np.zeros((nmeasure))+1.
         
     stepsize_sigma_y_all=np.zeros((ydim2))
     stepsize_sigma_y_all[:]=stepsize_sigma_y
@@ -379,15 +412,15 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     n0=np.zeros((nmeasure,nbeta))    
     
     
-    plon0 = np.random.uniform(lonmin, lonmax, k_ap) # Lon locs of nuclei
-    plat0 = np.random.uniform(latmin, latmax, k_ap) # Lat locs of nuclei
+    #plon0 = np.random.uniform(lonmin, lonmax, k_ap) # Lon locs of nuclei
+    #plat0 = np.random.uniform(latmin, latmax, k_ap) # Lat locs of nuclei
     
     for ib in range(nbeta):
     
-        #plon[:k_ap,ib] = np.random.uniform(lonmin, lonmax, k_ap) # Lon locs of nuclei
-        #plat[:k_ap,ib] = np.random.uniform(latmin, latmax, k_ap) # Lat locs of nuclei
-        plon[:k_ap,ib] = plon0
-        plat[:k_ap,ib] = plat0
+        plon[:k_ap,ib] = np.random.uniform(lonmin, lonmax, k_ap) # Lon locs of nuclei
+        plat[:k_ap,ib] = np.random.uniform(latmin, latmax, k_ap) # Lat locs of nuclei
+        #plon[:k_ap,ib] = plon0
+        #plat[:k_ap,ib] = plat0
         
         if fp_basis_case in("INTEM"):
             basis_func.coords['lon']=fp_data_H3.lon
@@ -418,16 +451,12 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
         h_agg[:,:k_ap+nIC,ib] = h_agg0.copy()
         n0[:,ib]=n0_ap.copy()
        
-        
-    
     #################################
            
     #%%
     # MCMC Parameters
     #########################################
     nit_sub=nIt/nsub
-    
-    
     k=np.zeros((nbeta),dtype=np.int)+k_ap
     
     x=np.zeros((kICmax,nbeta))
@@ -446,23 +475,49 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     sigma_clat = stepsize_clat*1.
     sigma_bd=np.mean(x_agg[nIC:])*stepsize_bd
     
-    
+    if inv_type in ('evencorr', 'corr'):
+        tau=np.zeros((numsites,nbeta))+tau_ap
+        y_pdf=1
+        y_hparam1=np.min(y)*0.8
+        y_hparam2=np.max(y)*1.25
+        stepsize_y = 40.
+        nzero=len(timeindex_zero)
+        
+        if nzero > 0:
+            timeindex_zero_in=timeindex_zero+1
+        else:
+            timeindex_zero_in=[-999]
+            nzero=1       
+        
+    if rjmcmc == True:
+        rjmcmc_in=1
+    else:
+        rjmcmc_in=0
+        
+    if para_temp == True:
+        para_temp_in=1
+    else:
+        para_temp_in=0
     #BEGIN ITERATIONS
-    
     ##################################################
     print 'Starting MCMC...'
     startt = run_time.time()
     
     if inv_type is 'uncorrelated':
+        from acrg_tdmcmc import tdmcmc_uncorr
+
         k_it, x_out, regions_out, plon_out, plat_out, sigma_model_out,sigma_y_out, \
         n0T_out,pdf_param1_out,pdf_param2_out, accept, reject, \
         accept_birth, reject_birth, accept_death, reject_death, accept_move, reject_move, \
-        accept_swap, accept_sigma_y, reject_sigma_y, \
-        tot_acc_x, tot_acc_p1, tot_acc_p2, tot_acc_sigma_y = tdmcmc_uncorr.hbtdmcmc(
+        accept_sigma_y, reject_sigma_y, accept_swap, reject_swap, \
+        stepsize_x_out, stepsize_p1_out, stepsize_p2_out, \
+        stepsize_sigma_y_out, accept_all, reject_all, accept_birth_all, reject_birth_all, \
+        accept_death_all, reject_death_all, accept_move_all, reject_move_all, \
+        accept_sigma_y_all, reject_sigma_y_all = tdmcmc_uncorr.hbtdmcmc(
         beta,k, x, h_agg,y,n0, plon, plat, regions_v, 
         pdf_param1, pdf_param2, lon,lat, h_v, sigma_model, sigma_measure, 
         R_indices, sigma_model_hparams, stepsize_sigma_y_all, sigma_model_pdf, 
-        sigma_clon, sigma_clat, rjmcmc, 
+        sigma_clon, sigma_clat, rjmcmc_in, para_temp_in,
         lonmin, lonmax, latmin,latmax, sigma_bd, kmin, x_pdf, burn_in, 
         pdf_p1_hparam1, pdf_p1_hparam2, pdf_p2_hparam1, pdf_p2_hparam2, pdf_param1_pdf, 
         pdf_param2_pdf,stepsize_all, stepsize_pdf_p1_all,stepsize_pdf_p2_all, 
@@ -470,39 +525,63 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
         nbeta, kmax, kICmax, nmeasure, Ngrid, nlon,nlat, ydim1, ydim2, nIC1)
     
     elif inv_type is 'evencorr':
+        from acrg_tdmcmc import tdmcmc_evencorr
+        
         k_it, x_out, regions_out, plon_out, plat_out, sigma_y_out, sigma_model_out, \
-        n0T_out,pdf_param1_out,pdf_param2_out, tau_out, accept, reject, \
+        n0T_out,pdf_param1_out,pdf_param2_out, tau_out, y_out,accept, reject, \
         accept_birth, reject_birth, accept_death, reject_death, accept_move, reject_move, \
         accept_swap, reject_swap, accept_sigma_y, reject_sigma_y, \
-        accept_tau, reject_tau = tdmcmc_evencorr.transd_evencorr.hbtdmcmc(beta,k, x,
+        accept_tau, reject_tau, accept_y, reject_y, \
+        stepsize_x_out, stepsize_p1_out, stepsize_p2_out, stepsize_sigma_y_out, \
+        stepsize_tau_out, accept_all, reject_all, accept_birth_all, reject_birth_all, \
+        accept_death_all, reject_death_all, accept_move_all, reject_move_all, \
+        accept_sigma_y_all, reject_sigma_y_all, accept_tau_all, \
+        reject_tau_all = tdmcmc_evencorr.transd_evencorr.hbtdmcmc(beta,k, x,
         h_agg,y,n0, plon, plat, regions_v, 
-        pdf_param1, pdf_param2, lon,lat, h_v, sigma_model, sigma_measure, 
+        pdf_param1, pdf_param2, lon,lat, h_v, sigma_model, sigma_measure, error_structure,
         R_indices, sigma_model_hparam1, sigma_model_hparam2, stepsize_sigma_y_all, sigma_model_pdf, 
         tau, tau_hparams, stepsize_tau, tau_pdf, deltatime,
-        sigma_clon, sigma_clat, rjmcmc, nmeasure_site, nsite_max, 
+        y_hparam1, y_hparam2, stepsize_y, y_pdf, timeindex_zero_in,
+        sigma_clon, sigma_clat, rjmcmc_in, para_temp_in, nmeasure_site, nsite_max, 
         lonmin, lonmax, latmin,latmax, sigma_bd, kmin, x_pdf, burn_in, 
         pdf_p1_hparam1, pdf_p1_hparam2, pdf_p2_hparam1, pdf_p2_hparam2, pdf_param1_pdf, 
         pdf_param2_pdf,stepsize_all, stepsize_pdf_p1_all,stepsize_pdf_p2_all, 
         nIt, nsub, nit_sub, nIC,
-        nbeta, kmax, kICmax, nmeasure, Ngrid, nlon,nlat, ydim1, ydim2, numsites,nIC1)
+        nbeta, kmax, kICmax, nmeasure, Ngrid, nlon,nlat, ydim1, ydim2, numsites,nIC1,nzero)
+     
+    
+    
+    elif inv_type is 'corr':
+        from acrg_tdmcmc import tdmcmc_corr
+        
+        k_it, x_out, regions_out, plon_out, plat_out, sigma_y_out, sigma_model_out, \
+        n0T_out,pdf_param1_out,pdf_param2_out, tau_out, y_out,accept, reject, \
+        accept_birth, reject_birth, accept_death, reject_death, accept_move, reject_move, \
+        accept_swap, reject_swap, accept_sigma_y, reject_sigma_y, \
+        accept_tau, reject_tau, accept_y, reject_y, \
+        stepsize_x_out, stepsize_p1_out, stepsize_p2_out, stepsize_sigma_y_out, \
+        stepsize_tau_out, accept_all, reject_all, accept_birth_all, reject_birth_all, \
+        accept_death_all, reject_death_all, accept_move_all, reject_move_all, \
+        accept_sigma_y_all, reject_sigma_y_all, accept_tau_all, \
+        reject_tau_all= tdmcmc_corr.transd_corr.hbtdmcmc(beta,k, x,
+        h_agg,y,n0, plon, plat, regions_v, 
+        pdf_param1, pdf_param2, lon,lat, h_v, sigma_model, sigma_measure, error_structure,
+        R_indices, sigma_model_hparam1, sigma_model_hparam2, stepsize_sigma_y_all, sigma_model_pdf, 
+        tau, tau_hparams, stepsize_tau, tau_pdf, deltatime,
+        y_hparam1, y_hparam2, stepsize_y, y_pdf, timeindex_zero_in,
+        sigma_clon, sigma_clat, rjmcmc_in, para_temp_in, nmeasure_site, nsite_max, 
+        lonmin, lonmax, latmin,latmax, sigma_bd, kmin, x_pdf, burn_in, 
+        pdf_p1_hparam1, pdf_p1_hparam2, pdf_p2_hparam1, pdf_p2_hparam2, pdf_param1_pdf, 
+        pdf_param2_pdf,stepsize_all, stepsize_pdf_p1_all,stepsize_pdf_p2_all, 
+        nIt, nsub, nit_sub, nIC,
+        nbeta, kmax, kICmax, nmeasure, Ngrid, nlon,nlat, ydim1, ydim2, numsites,nIC1,nzero)
     
     endt=run_time.time()
     
     print 'Finished MCMC in ', endt-startt
-    
-    
+        
     print 'Beginning post processing'
-    x_post_vit=np.zeros((nit_sub,Ngrid))
-    x_post_v_mean=np.zeros((Ngrid))
-    x_post_v_95=np.zeros((Ngrid))
-    x_post_v_05=np.zeros((Ngrid))
-    
-    # Having run MCMC then need to map regions back onto grid
-    sigma_y_mean=np.zeros((nmeasure))
-    
-    for yi in range(nmeasure):
-        sigma_y_mean[yi] = np.mean(sigma_y_out[yi,:])
-    
+    x_post_vit=np.zeros((nit_sub,Ngrid))    
     regions_it=np.transpose(regions_out)-1
     x_it=np.transpose(x_out)
     
@@ -511,57 +590,23 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
             wh_reg = np.where(regions_it[it,:] == zz)
             x_post_vit[it,wh_reg] = x_it[it,zz+nIC]
     
-    endt3 = run_time.time()
-    print endt3-endt
-    for ii in range(Ngrid):
-        x_post_v_mean[ii] = np.mean(x_post_vit[:,ii]) 
-        x_post_v_95[ii] = np.percentile(x_post_vit[:,ii],95)
-        x_post_v_05[ii] = np.percentile(x_post_vit[:,ii],5)
-    
-    x_post_mean = np.reshape(x_post_v_mean, (nlat,nlon))
-    xrange_90v=x_post_v_95-x_post_v_05
-    xrange_90=np.reshape(xrange_90v, (nlat,nlon))
-    
     print 'Everything done'
     endt2 = run_time.time()
     print endt2-endt
     
     ##########################################
-    # y_post
-    h_v_all=np.zeros((nmeasure,Ngrid+nIC))
-    x_post_all = np.zeros(Ngrid+nIC)
-    
-    for xi in range(nIC):
-        x_post_all[xi]=np.mean(x_it[:,xi])
-    
-    x_post_all[nIC:]=x_post_v_mean    
+    h_v_all=np.zeros((nmeasure,Ngrid+nIC))  
     h_v_all[:,:nIC]=h_agg0[:,:nIC]
     h_v_all[:,nIC:]=h_v
-    
-    x_post_all_it=np.zeros((nit_sub,Ngrid+nIC))
-    y_post_it = np.zeros((nit_sub,nmeasure))
-    y_post=np.zeros(nmeasure)
-    y_bg_it = np.zeros((nit_sub,nmeasure))
-    y_bg=np.zeros(nmeasure)
-    
-    x_post_all_it[:,:nIC]=x_it[:,:nIC]
-    x_post_all_it[:,nIC:]=x_post_vit
-    
-    for it in range(nit_sub):
-        y_post_it[it,:]=np.dot(h_v,x_post_all_it[it,nIC:])  
-        y_bg_it[it,:]=np.dot(h_v_all[:,:nBC],x_it[it,:nBC])
-    
-    y_post_it=y_post_it+y_bg_it
-    
-    for ti in range(nmeasure):
-        y_post[ti]=np.mean(y_post_it[:,ti])
-        y_bg[ti]=np.mean(y_bg_it[:,ti])
-    
+      
     ##################################################################################
     # SAVE MCMC output in a dataset and write to netcdf
     # Set up post-mcmc dataset
-    
-    props_temp=["birth", "death", "move", "sigma_y", "swap"]
+    if inv_type is 'uncorrelated':
+        props_temp=["birth", "death", "move", "sigma_y", "swap"]
+    else:
+        props_temp=["birth", "death", "move", "sigma_y", "tau", "swap"]
+        
     props = np.zeros((nIC1+len(props_temp)),dtype=object)
     accepts = np.zeros((nIC1+len(props_temp)))
     rejects = np.zeros((nIC1+len(props_temp)))
@@ -575,12 +620,16 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     accepts[:nIC1]=accept
     rejects[:nIC1]=reject
     
-    accepts[nIC1:] = [accept_birth,accept_death,
-                             accept_move,accept_sigma_y, accept_swap]
-    
-    reject_swap = (nIt/2-accept_swap)
-    rejects[nIC1:] = [reject_birth,reject_death,
-                             reject_move,reject_sigma_y, reject_swap]
+    if inv_type is 'uncorrelated':
+        accepts[nIC1:] = [accept_birth,accept_death,
+                                 accept_move,accept_sigma_y, accept_swap]
+        rejects[nIC1:] = [reject_birth,reject_death,
+                                 reject_move,reject_sigma_y, reject_swap]
+    else:
+         accepts[nIC1:] = [accept_birth,accept_death,
+                             accept_move,accept_sigma_y, accept_tau, accept_swap]
+         rejects[nIC1:] = [reject_birth,reject_death,
+                             reject_move,reject_sigma_y, reject_tau, reject_swap]                        
     
     #Do I need to store both x_it and x_post_vit. Can't I just store x_post_vit_all[nit,NgridIC]?
     if inv_type is 'evencorr':    
@@ -610,29 +659,43 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
                             accepts),
                             "rejects": (["proposal"],
                             rejects),                          
-                            "stepsize": (["nIC1"], tot_acc_x),
-                            "stepsize_pdf_p1": (["nIC1"], tot_acc_p1),
-                            "stepsize_pdf_p2": (["nIC1"], tot_acc_p2),
-                            "stepsize_sigma_y": (["ydim2"], tot_acc_sigma_y),
+                            "stepsize": (["nIC1"], stepsize_x_out),
+                            "stepsize_pdf_p1": (["nIC1"], stepsize_p1_out),
+                            "stepsize_pdf_p2": (["nIC1"], stepsize_p2_out),
+                            "stepsize_sigma_y": (["ydim2"], stepsize_sigma_y_out),
                             "h_v_all": (["nmeasure","NgridIC"],
                             h_v_all), 
                             "q_ap": (["lat", "lon"],
                             q_ap0),
                             "dates": (["ndates"], [start_date,end_date]),
                             "measure_av": (["sites"], av_period),
+                            "PBLH":  (["nmeasure"], pblh),
+                            "wind_speed":  (["nmeasure"], wind_speed),
+                            "local_ratio":  (["nmeasure"], local_ratio),
                             "nIC": nIC,
                             "nfixed": nfixed},
                             coords={"lon":lon, "lat": lat})
     
-    if inv_type in ('evencorr', 'correlated'):
-        post_mcmc.update({'tau_it': (["numsites","nIt"], tau_out)})   
-    
+    if inv_type in ('evencorr', 'corr'):
+        # could use assign?
+        post_mcmc.update({'tau_it': (["sites","nIt"], tau_out),
+                          'stepsize_tau': stepsize_tau_out})
+        
+    # Add some global attributes with all further info about the run:    
     post_mcmc.attrs["bc_basis_case"]=bc_basis_case
     post_mcmc.attrs["fp_basis_case"]=fp_basis_case
     post_mcmc.attrs["iterations"]=str(nIt)
     post_mcmc.attrs["burn-in"]=str(burn_in)
+    post_mcmc.attrs['Start date'] = start_date
+    post_mcmc.attrs['End date'] = end_date
+    post_mcmc.attrs['Filters'] = filters
+    post_mcmc.attrs['Parallel tempering?'] = str(para_temp)
+    post_mcmc.attrs['Inversion type'] = inv_type
+        
     post_mcmc.coords["proposal"]=props
     post_mcmc.coords["sites"]=sites
+    
+   
     # Also:
     #Attributes: Sites, av_period, basis_case, accepts and rejects names
     #output_directory="/home/ml12574/work/programs/Python/my_acrg/td_uncorr/"
