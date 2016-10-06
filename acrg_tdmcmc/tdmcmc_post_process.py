@@ -415,6 +415,7 @@ def country_emissions(ds_mcmc, x_post_vit, q_ap_abs_v, countries, species,
         q_country_16=np.zeros((ncountries))
         q_country_84=np.zeros((ncountries))
         q_country_ap=np.zeros((ncountries))
+        q_country_mode=np.zeros((ncountries))
     
         for ci,cc in enumerate(countries):
             name_country = np.where(cds.name == cc)
@@ -428,7 +429,6 @@ def country_emissions(ds_mcmc, x_post_vit, q_ap_abs_v, countries, species,
             q_country_ap[ci] = np.sum(area_v[c_index[0]]*q_ap_abs_v[c_index[0]]
                                 *365.*24.*3600.*molmass/unit_factor) # in Tg/yr
         
-                
             #dum=np.histogram(q_country_it[ci,:], bins=100)                
             #q_country_mode[ci] = dum[1][dum[0]==np.max(dum[0])][0]
             

@@ -796,6 +796,7 @@ def filtering(datasets_in, filters, keep_missing=False):
         filters = [filters]
 
     datasets = datasets_in.copy()
+
     def ferry_loc(dataset, site,keep_missing=False):
         # Subset during daytime hours
         if site == 'GAUGE-FERRY':
@@ -824,6 +825,7 @@ def filtering(datasets_in, filters, keep_missing=False):
         # Calculate daily median
         return dataset.resample("6H", "time", how = "mean")
     
+
     def daytime(dataset, site,keep_missing=False):
         # Subset during daytime hours
         hours = dataset.time.to_pandas().index.hour
@@ -860,6 +862,7 @@ def filtering(datasets_in, filters, keep_missing=False):
         else:
             return dataset[dict(time = ti)] 
         
+
 
     def pblh_gt_500(dataset,site, keep_missing=False):
         # Subset for times when boundary layer height is > 500m
@@ -1102,6 +1105,19 @@ def prior_flux(species, domain, basis_case, av_date, emissions_name = None):
 
     flux_data= flux(domain, emissions_name)
     basis_data = basis(domain, basis_case)
+    
+    print av_date
+    
+#    fi = np.argmin(np.abs(flux_data.time.values.to_pydatetime() - av_date))  
+#    bi = np.argmin(np.abs(basis_data.time.values.to_pydatetime() - av_date)) 
+#    
+#    print fi, bi
+#    
+#    flux_timestamp = flux_data.time.values[fi]
+#    basis_timestamp = basis_data.time.values[bi]
+    
+#    print flux_timestamp
+#    print basis_timestamp
     
     flux_timestamp = pd.DatetimeIndex(flux_data.time.values).asof(av_date)
     basis_timestamp = pd.DatetimeIndex(basis_data.time.values).asof(av_date)
