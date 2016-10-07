@@ -332,7 +332,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
         timeindex_nonzero=wh_temp[0]
         tindex_zero_temp = np.arange(nmeasure)
         timeindex_zero=np.delete(tindex_zero_temp, timeindex_nonzero)
-        if len(timeindex_zero > 0):
+        if len(timeindex_zero) > 0:
             y[timeindex_zero]=0.
             y_error[timeindex_zero]=1.e12
             
@@ -485,6 +485,8 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
         
         if nzero > 0:
             timeindex_zero_in=timeindex_zero+1
+            y[timeindex_zero]=y_model[timeindex_zero]*0.95
+            sigma_measure[timeindex_zero]=np.nanmean(sigma_measure)
         else:
             timeindex_zero_in=[-999]
             nzero=1       
