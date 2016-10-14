@@ -322,7 +322,12 @@ def timeseries_HiTRes(fp_HiTRes_ds, domain, HiTRes_flux_name, Resid_flux_name,
         fp = fp.drop('time')
         fp = fp.rename({'H_back':'time'})
         #To make  Hour Back' time go forward
-        fp= fp.update({'fp_HiTRes' : fp.fp_HiTRes[:,:,::-1], 'time' : fp.time[::-1]})
+#        fp= fp.update({'fp_HiTRes' : fp.fp_HiTRes[:,:,::-1], 'time' : fp.time[::-1]})  - DEPRECATED??
+        new_fp = fp.fp_HiTRes[:,:,::-1]
+        new_time = fp.time[::-1]
+        fp = fp.update({'fp_HiTRes' : new_fp})
+        fp = fp.update({'time' : new_time})
+
         em = flux_HiTRes.reindex_like(fp, method='ffill')
         #Use end of hours back as closest point for finding the emissions file
         emend = flux_resid.sel(time = fp.time[0], method = 'nearest')
