@@ -358,11 +358,12 @@ def timeseries_boundary_conditions(ds):
            (ds.particle_locations_w*ds.vmr_w).sum(["height", "lat"])
 
     
-def footprints_data_merge(data, domain = "EUROPE", species = "CH4", load_flux = True,
+def footprints_data_merge(data, domain = "EUROPE", species = None, load_flux = True,
                           calc_timeseries = True, calc_bc = True, HiTRes = False,
                           average = None, site_modifier = {}, height = None,
                           emissions_name = None, 
-                          perturbed=False, fp_dir_pert=None, pert_year=None, pert_month=None):
+                          perturbed=False, fp_dir_pert=None,
+                          pert_year=None, pert_month=None):
     """
     Output a dictionary of xray footprint datasets, that correspond to a given
     dictionary of Pandas dataframes, containing mole fraction time series.
