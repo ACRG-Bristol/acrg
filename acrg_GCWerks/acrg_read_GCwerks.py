@@ -22,6 +22,9 @@ def read_gcexport_crds(datafile):
         elif type(datafile) == str:
             #data=np.genfromtxt(datafile, dtype=str, skip_header=3)
             data=np.genfromtxt(datafile, dtype=str, skip_header=1)
+        elif type(datafile) == list:
+            datafile = datafile[0]
+            data=np.genfromtxt(datafile, dtype=str, skip_header=1)
         
               
         
