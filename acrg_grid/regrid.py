@@ -117,6 +117,7 @@ def regrid3d(array_in, lat_in, lon_in,
         return cube_out
     
     # Regrid
+    print("Getting cube in and cube out")
     cube_in = get_cube_in(array_in, lat_in, lon_in, 0)    
     cube_out = get_cube_out(lat_out, lon_out)     
     

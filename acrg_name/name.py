@@ -322,7 +322,12 @@ def timeseries_HiTRes(fp_HiTRes_ds, domain, HiTRes_flux_name, Resid_flux_name,
         fp = fp.drop('time')
         fp = fp.rename({'H_back':'time'})
         #To make  Hour Back' time go forward
-        fp= fp.update({'fp_HiTRes' : fp.fp_HiTRes[:,:,::-1], 'time' : fp.time[::-1]})
+#        fp= fp.update({'fp_HiTRes' : fp.fp_HiTRes[:,:,::-1], 'time' : fp.time[::-1]})  - DEPRECATED??
+        new_fp = fp.fp_HiTRes[:,:,::-1]
+        new_time = fp.time[::-1]
+        fp = fp.update({'fp_HiTRes' : new_fp})
+        fp = fp.update({'time' : new_time})
+
         em = flux_HiTRes.reindex_like(fp, method='ffill')
         #Use end of hours back as closest point for finding the emissions file
         emend = flux_resid.sel(time = fp.time[0], method = 'nearest')
@@ -353,11 +358,12 @@ def timeseries_boundary_conditions(ds):
            (ds.particle_locations_w*ds.vmr_w).sum(["height", "lat"])
 
     
-def footprints_data_merge(data, domain = "EUROPE", species = "CH4", load_flux = True,
+def footprints_data_merge(data, domain = "EUROPE", species = None, load_flux = True,
                           calc_timeseries = True, calc_bc = True, HiTRes = False,
                           average = None, site_modifier = {}, height = None,
                           emissions_name = None, 
-                          perturbed=False, fp_dir_pert=None, pert_year=None, pert_month=None):
+                          perturbed=False, fp_dir_pert=None,
+                          pert_year=None, pert_month=None):
     """
     Output a dictionary of xray footprint datasets, that correspond to a given
     dictionary of Pandas dataframes, containing mole fraction time series.
@@ -777,7 +783,7 @@ def merge_sensitivity(fp_data_H,
         return out_variables
 
 
-def filtering(datasets_in, filters, full_corr=False):
+def filtering(datasets_in, filters, keep_missing=False):
     """
     Apply filtering (in time dimension) to entire dataset.
     
@@ -796,57 +802,66 @@ def filtering(datasets_in, filters, full_corr=False):
         filters = [filters]
 
     datasets = datasets_in.copy()
-    def ferry_loc(dataset, full_corr=False):
+
+    def ferry_loc(dataset, site,keep_missing=keep_missing):
         # Subset during daytime hours
-        lats = dataset.release_lat.values
-        ti = [i for i, h in enumerate(lats) if h >= 52.2 and h < 55.8 ]
-        
-        if full_corr:
-            dataset_temp = dataset[dict(time = ti)]   
-            dataset_out = dataset_temp.reindex_like(dataset)
-            return dataset_out
+        if site == 'GAUGE-FERRY':
+                    
+            lats = dataset.release_lat
+            lons = dataset.release_lon
+            ti = [i for i, h in enumerate(lons) if h > 0. and lats[i] > 54.4]
+            ti2=np.arange(len(lons))
+            ti3=np.delete(ti2,ti)
+            
+            if keep_missing:
+                dataset_temp = dataset[dict(time = ti3)]   
+                dataset_out = dataset_temp.reindex_like(dataset)
+                return dataset_out
+            else:
+                return dataset[dict(time = ti3)]
         else:
-            return dataset[dict(time = ti)]
+            return dataset
 
     # Filter functions
-    def daily_median(dataset, full_corr=False):
+    def daily_median(dataset, keep_missing=False):
         # Calculate daily median
         return dataset.resample("1D", "time", how = "median")
         
-    def six_hr_mean(dataset, full_corr=False):
+    def six_hr_mean(dataset, keep_missing=False):
         # Calculate daily median
         return dataset.resample("6H", "time", how = "mean")
     
-    def daytime(dataset, full_corr=False):
+
+    def daytime(dataset, site,keep_missing=False):
         # Subset during daytime hours
         hours = dataset.time.to_pandas().index.hour
         ti = [i for i, h in enumerate(hours) if h >= 11 and h <= 15]
         
-        if full_corr:
+        if keep_missing:
             dataset_temp = dataset[dict(time = ti)]   
             dataset_out = dataset_temp.reindex_like(dataset)
             return dataset_out
         else:
             return dataset[dict(time = ti)]
             
-    def nighttime(dataset, full_corr=False):
+    def nighttime(dataset, site,keep_missing=False):
         # Subset during daytime hours
         hours = dataset.time.to_pandas().index.hour
-        ti = [i for i, h in enumerate(hours) if h >= 22 or h <= 3]
+        ti = [i for i, h in enumerate(hours) if h >= 23 or h <= 3]
         
-        if full_corr:
+        if keep_missing:
             dataset_temp = dataset[dict(time = ti)]   
             dataset_out = dataset_temp.reindex_like(dataset)
             return dataset_out
         else:
             return dataset[dict(time = ti)]
             
-    def noon(dataset, full_corr=False):
+    def noon(dataset, site,keep_missing=False):
         # Subset during daytime hours
         hours = dataset.time.to_pandas().index.hour
-        ti = [i for i, h in enumerate(hours) if h >= 12 and h < 14]
+        ti = [i for i, h in enumerate(hours) if h >= 12 and h < 13]
         
-        if full_corr:
+        if keep_missing:
             dataset_temp = dataset[dict(time = ti)]   
             dataset_out = dataset_temp.reindex_like(dataset)
             return dataset_out
@@ -854,11 +869,12 @@ def filtering(datasets_in, filters, full_corr=False):
             return dataset[dict(time = ti)] 
         
 
-    def pblh_gt_500(dataset, full_corr=False):
+
+    def pblh_gt_500(dataset,site, keep_missing=False):
         # Subset for times when boundary layer height is > 500m
         ti = [i for i, pblh in enumerate(dataset.PBLH) if pblh > 500.]
         
-        if full_corr:
+        if keep_missing:
             mf_data_array = dataset.mf            
             dataset_temp = dataset.drop('mf')
             
@@ -873,11 +889,11 @@ def filtering(datasets_in, filters, full_corr=False):
         else:
             return dataset[dict(time = ti)]
             
-    def pblh_gt_250(dataset, full_corr=False):
+    def pblh_gt_250(dataset,site, keep_missing=False):
         # Subset for times when boundary layer height is > 500m
         ti = [i for i, pblh in enumerate(dataset.PBLH) if pblh > 250.]
         
-        if full_corr:
+        if keep_missing:
             mf_data_array = dataset.mf            
             dataset_temp = dataset.drop('mf')
             
@@ -892,10 +908,98 @@ def filtering(datasets_in, filters, full_corr=False):
         else:
             return dataset[dict(time = ti)]
             
-    def local_influence(dataset, full_corr=False):
-        ti = [i for i, local_ratio in enumerate(dataset.local_ratio) if local_ratio < 0.25]
-        return dataset[dict(time = ti)]
-       
+
+    def blxws_gt_5000(dataset,site, keep_missing=False):
+        # Subset for times when boundary layer height is > 500m
+        blxws = dataset.PBLH*dataset.wind_speed
+        ti = [i for i, dum in enumerate(blxws) if dum > 5000.]
+        
+        if keep_missing:
+            mf_data_array = dataset.mf            
+            dataset_temp = dataset.drop('mf')
+            
+            dataarray_temp = mf_data_array[dict(time = ti)]   
+            #dataarray_temp2 = dataarray_temp.reindex_like(dataset)
+            
+            mf_ds = xray.Dataset({'mf': (['time'], dataarray_temp)}, 
+                                  coords = {'time' : (dataarray_temp.coords['time'])})
+            
+            dataset_out = combine_datasets(dataset_temp, mf_ds, method=None)
+            return dataset_out
+        else:
+            return dataset[dict(time = ti)]   
+            
+    def ferry_mf(dataset,site, keep_missing=False):
+        # Subset for times when ferry mole fraction < 2400 ppb
+        # Filter should only apply to ferry
+        if site == 'GAUGE-FERRY':
+            ti = [i for i, mf in enumerate(dataset.mf) if mf < 2400.]
+            
+            if keep_missing:
+                mf_data_array = dataset.mf            
+                dataset_temp = dataset.drop('mf')
+                
+                dataarray_temp = mf_data_array[dict(time = ti)]   
+                #dataarray_temp2 = dataarray_temp.reindex_like(dataset)
+                
+                mf_ds = xray.Dataset({'mf': (['time'], dataarray_temp)}, 
+                                      coords = {'time' : (dataarray_temp.coords['time'])})
+                
+                dataset_out = combine_datasets(dataset_temp, mf_ds, method=None)
+                return dataset_out
+            else:
+                return dataset[dict(time = ti)]
+        else:
+            return dataset
+            
+    def ferry_fp_zero(dataset,site, keep_missing=False):
+        # For some reason some ferry fps are zero - so filter them out
+        # Filter should only apply to ferry
+        if site == 'GAUGE-FERRY':
+            fp_sum = dataset.fp.sum(["lat","lon"])
+            ti = [i for i, mf in enumerate(fp_sum) if mf > 0.]
+            
+            if keep_missing:
+                mf_data_array = dataset.mf            
+                dataset_temp = dataset.drop('mf')
+                
+                dataarray_temp = mf_data_array[dict(time = ti)]   
+                #dataarray_temp2 = dataarray_temp.reindex_like(dataset)
+                
+                mf_ds = xray.Dataset({'mf': (['time'], dataarray_temp)}, 
+                                      coords = {'time' : (dataarray_temp.coords['time'])})
+                
+                dataset_out = combine_datasets(dataset_temp, mf_ds, method=None)
+                return dataset_out
+            else:
+                return dataset[dict(time = ti)]
+        else:
+            return dataset
+            
+    def local_influence(dataset,site, keep_missing=False):
+        
+        #lr = dataset.local_ratio - np.min(dataset.local_ratio)
+        #lr = dataset.local_ratio/np.percentile(dataset.local_ratio,5)
+        lr = dataset.local_ratio
+        pc = np.percentile(lr,5)*2
+        ti = [i for i, local_ratio in enumerate(lr) if local_ratio <= pc]
+        #ti = [i for i, local_ratio in enumerate(lr) if local_ratio < 0.04]
+        #ti = [i for i, local_ratio in enumerate(lr) if local_ratio < 0.1]
+        #ti = [i for i, local_ratio in enumerate(lr) if local_ratio < 0.05]
+        if keep_missing is True: 
+            mf_data_array = dataset.mf            
+            dataset_temp = dataset.drop('mf')
+            
+            dataarray_temp = mf_data_array[dict(time = ti)]   
+            #dataarray_temp2 = dataarray_temp.reindex_like(dataset)
+            
+            mf_ds = xray.Dataset({'mf': (['time'], dataarray_temp)}, 
+                                  coords = {'time' : (dataarray_temp.coords['time'])})
+            
+            dataset_out = combine_datasets(dataset_temp, mf_ds, method=None)
+            return dataset_out
+        else:
+            return dataset[dict(time = ti)]
        
         
     filtering_functions={"daily_median":daily_median,
@@ -906,15 +1010,19 @@ def filtering(datasets_in, filters, full_corr=False):
                          "pblh_gt_250": pblh_gt_250,
                          "local_influence":local_influence,
                          "six_hr_mean":six_hr_mean,
-                         "ferry_loc":ferry_loc}
+                         "ferry_loc":ferry_loc,
+                         "ferry_mf":ferry_mf,
+                         "ferry_fp_zero":ferry_fp_zero,
+                         "blxws_gt_5000":blxws_gt_5000}
 
     # Get list of sites
     sites = [key for key in datasets.keys() if key[0] != '.']
     
     # Do filtering
     for site in sites:
+    
             for filt in filters:
-                datasets[site] = filtering_functions[filt](datasets[site], full_corr=full_corr)
+                datasets[site] = filtering_functions[filt](datasets[site], site, keep_missing=keep_missing)
 
     return datasets
 
@@ -1004,6 +1112,19 @@ def prior_flux(species, domain, basis_case, av_date, emissions_name = None):
 
     flux_data= flux(domain, emissions_name)
     basis_data = basis(domain, basis_case)
+    
+    print av_date
+    
+#    fi = np.argmin(np.abs(flux_data.time.values.to_pydatetime() - av_date))  
+#    bi = np.argmin(np.abs(basis_data.time.values.to_pydatetime() - av_date)) 
+#    
+#    print fi, bi
+#    
+#    flux_timestamp = flux_data.time.values[fi]
+#    basis_timestamp = basis_data.time.values[bi]
+    
+#    print flux_timestamp
+#    print basis_timestamp
     
     flux_timestamp = pd.DatetimeIndex(flux_data.time.values).asof(av_date)
     basis_timestamp = pd.DatetimeIndex(basis_data.time.values).asof(av_date)
