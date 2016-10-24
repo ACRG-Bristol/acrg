@@ -318,14 +318,19 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
                 if ncvarname + "_status_flag" in ncf.variables.keys():
                     file_flag=ncf.variables[ncvarname + "_status_flag"]
                     if len(file_flag) > 0:
-                        df["status_flag"] = file_flag[:]
-                        
+                        df["status_flag"] = file_flag[:]                  
                         # Flag out multiple flags
                         flag = [False for _ in range(len(df.index))]
                         for f in status_flag_unflagged:
                             flag = flag | (df.status_flag == f)
                         df = df[flag]
-
+                        
+                 #If FAAM get altitude data
+                if "alt" in ncf.variables.keys():
+                    file_alt=ncf.variables["alt"]
+                    if len(file_alt) > 0:
+                        df["altitude"] = file_alt[:]
+                        
                 if units != "permil":
                     df = df[df.mf > 0.]
 
