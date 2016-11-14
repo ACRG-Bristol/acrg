@@ -553,9 +553,7 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi',
 #                                   basis_func)
 
         if 'fp_HiTRes' in fp_and_data[site].keys():
-            site_bf_temp = xray.Dataset({"fp":fp_and_data[site]["fp"],
-                                         "fp_HiTRes":fp_and_data[site]["fp_HiTRes"],
-                                         "flux":fp_and_data[site]["flux"]})
+            site_bf_temp = xray.Dataset({"fp_HiTRes":fp_and_data[site]["fp_HiTRes"]})
         else:
             site_bf_temp = xray.Dataset({"fp":fp_and_data[site]["fp"],
                                          "flux":fp_and_data[site]["flux"]})
