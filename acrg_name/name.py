@@ -144,7 +144,6 @@ def footprints(sitecode_or_filename, start = "2010-01-01", end = "2016-01-01",
     EMISSIONS_NAME allows emissions files such as co2nee_EUROPE_2012.nc
     to be read in. In this case EMISSIONS_NAME would be 'co2nee'
     """
-    
     #Chose whether we've input a site code or a file name
     #If it's a three-letter site code, assume it's been processed
     # into an annual footprint file in (mol/mol) / (mol/m2/s)
@@ -163,8 +162,7 @@ def footprints(sitecode_or_filename, start = "2010-01-01", end = "2016-01-01",
         return None
 
     else:
-        fp=read_netcdfs(files)
-        
+        fp=read_netcdfs(files)    
         # If a species is specified, also get flux and vmr at domain edges
         if emissions_name is not None:
             flux_ds = flux(domain, emissions_name)
@@ -179,7 +177,6 @@ def footprints(sitecode_or_filename, start = "2010-01-01", end = "2016-01-01",
             bc_ds = boundary_conditions(domain, species)
             if bc_ds is not None:
                 fp = combine_datasets(fp, bc_ds)
-        
         if HiTRes == True:
             HiTRes_files = filenames(site, domain, start, end, height = height, HiTRes=True)
             HiTRes_ds = read_netcdfs(HiTRes_files)
@@ -325,14 +322,16 @@ def timeseries_HiTRes(fp_HiTRes_ds, domain, HiTRes_flux_name, Resid_flux_name,
 #        fp= fp.update({'fp_HiTRes' : fp.fp_HiTRes[:,:,::-1], 'time' : fp.time[::-1]})  - DEPRECATED??
         new_fp = fp.fp_HiTRes[:,:,::-1]
         new_time = fp.time[::-1]
-        fp = fp.update({'fp_HiTRes' : new_fp})
-        fp = fp.update({'time' : new_time})
+        new_ds = xray.Dataset({'fp_HiTRes':(['lat','lon','time'], new_fp)},
+                               coords={'lat':fp.lat,
+                                       'lon':fp.lon,
+                                       'time':new_time})
 
-        em = flux_HiTRes.reindex_like(fp, method='ffill')
+        em = flux_HiTRes.reindex_like(new_ds, method='ffill')
         #Use end of hours back as closest point for finding the emissions file
-        emend = flux_resid.sel(time = fp.time[0], method = 'nearest')
+        emend = flux_resid.sel(time = new_ds.time[0], method = 'nearest')
         em.flux[:,:,0] = emend.flux
-        fpXflux[:,:,ti] = (fp.fp_HiTRes*em.flux).sum(["time"])
+        fpXflux[:,:,ti] = (new_ds.fp_HiTRes*em.flux).sum(["time"])
         
     timeseries= np.sum(fpXflux, axis = (0,1))
     
