@@ -153,6 +153,13 @@
         "print_string": "CH$_4$", 
         "units": "ppb"
     }, 
+    "C2H6": {"alt": ["ethane"],
+        "group": "Hydrocarbons", 
+        "long_name": "Ethane", 
+        "mol_mass": 30.07, 
+        "print_string": "C$_2$H$_6$", 
+        "units": "ppt"
+    }, 
     "CH4C13": {"alt": ["d13ch4"],
         "group": "CH4", 
         "long_name": "Methane 13C", 
