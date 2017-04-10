@@ -28,6 +28,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
 from matplotlib import ticker
 import pandas as pd
+import dateutil.relativedelta
 # ___________________________________________________________________________________________________________________
 # CODE TO READ THE DIFFERENT DATA TYPES
 # ___________________________________________________________________________________________________________________
@@ -46,6 +47,7 @@ class read:
         
         if 'h0' in filename:
             conc_tag = '_VMR_avrg'
+            #conc_tag = 'HFC23_VMR_avrg'
         
         if 'h1' in filename:        
             conc_tag = '_13:30_LT'
@@ -123,8 +125,13 @@ class read:
             self.emisnames = emis_varname
         
         if 'h2' in filename:
+        #if 'h0' in filename:
+        
             start_date = data.variables['nbdate'][:]
             dt_start_date = dt.datetime.strptime(str(start_date),'%Y%m%d')
+#            start_date = data.variables['date'][:]
+#            dt_start_date = dt.datetime.strptime(str(start_date[0]),'%Y%m%d')\
+#            - dateutil.relativedelta.relativedelta(months=1)
             self.start_date = dt_start_date
         data.close()
         

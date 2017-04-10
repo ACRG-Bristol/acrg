@@ -30,7 +30,7 @@ import getpass
 import collections as c
 
 mzt_dir = '/shared_data/air/shared/MOZART/mzt_output/'
-filename = mzt_dir + 'CH4/FWDModelComparison_NewEDGAR.mz4.h2.2014-01.nc'
+#filename = mzt_dir + 'CH4/FWDModelComparison_NewEDGAR.mz4.h2.2014-01.nc'
 
 
 def MOZART_filenames(species, start = "2010-01-01", end = "2016-01-01"):
@@ -46,7 +46,7 @@ def MOZART_filenames(species, start = "2010-01-01", end = "2016-01-01"):
     files = []
     for ym in yearmonth:
         f=glob.glob(baseDirectory + \
-            species.upper() + "/" + "*" + ym + "*.nc")
+            species + "/" + "*" + ym + "*.nc")
         if len(f) > 0:
             files += f
 

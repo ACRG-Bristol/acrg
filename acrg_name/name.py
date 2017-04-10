@@ -29,6 +29,7 @@ from os.path import split, realpath, join
 from acrg_time import convert
 import calendar
 import pickle
+from scipy import interpolate
 
 acrg_path = os.getenv("ACRG_PATH")
 data_path = os.getenv("DATA_PATH")
@@ -118,9 +119,43 @@ def read_netcdfs(files, dim = "time", transform_func=None):
     combined = xray.concat(datasets, dim)
     return combined   
 
+def interp_time(bc_ds,vmr_var_names, new_times):
+    """
+    Created to convert MOZART monthly averages same frequency as NAME footprints.
+    Interpolates the times of the VMR variable 'vmr_var_name' in the xray dataset
+    'bc_ds' to the times specified in 'interp_times'. The variable must have dimensions
+    (height, lat_or_lon, time) in that order. 
+    Returns a new dataset with the VMRs recalculated at interpolated times.
+    """
+
+    vmr_dict={}
+
+    for vi,vmr_var_name in enumerate(vmr_var_names):
+
+        x_id= np.arange(len(bc_ds.time))
+        new_times_id = np.linspace(0.,np.max(x_id), num=len(new_times)) 
+        vmr_new = np.zeros((len(bc_ds.height),len(bc_ds[vmr_var_name][0,:,0]),len(new_times)))
+        for j in range(len(bc_ds.height)):
+            for i in range(len(bc_ds[vmr_var_name][0,:,0])):
+                y = bc_ds[vmr_var_name][j,i,:]
+                f = interpolate.interp1d(x_id,y, bounds_error = False,kind='linear', 
+                                         fill_value = np.max(y))
+                vmr_new[j,i,:] = f(new_times_id)
+
+        vmr_dict[vmr_var_name]=vmr_new
+        
+    ds2 = xray.Dataset({"vmr_n": (["height", "lon", "time"],vmr_dict["vmr_n"]),
+                        "vmr_e": (["height", "lat", "time"],vmr_dict["vmr_e"]),
+                        "vmr_s": (["height", "lon", "time"],vmr_dict["vmr_s"]),
+                        "vmr_w": (["height", "lat", "time"],vmr_dict["vmr_w"])},
+                        coords={"lon":bc_ds.lon, "lat": bc_ds.lat, "time": new_times,
+                                "height":bc_ds.height})
+
+    return ds2
 
 def footprints(sitecode_or_filename, start = "2010-01-01", end = "2016-01-01",
-        domain="EUROPE", height = None, species = None, emissions_name = None, HiTRes = False):
+        domain="EUROPE", height = None, species = None, emissions_name = None, 
+        HiTRes = False, interp_vmr=True):
     """
     Load a NAME footprint netCDF files into an xray dataset.
     Either specify:
@@ -174,11 +209,6 @@ def footprints(sitecode_or_filename, start = "2010-01-01", end = "2016-01-01",
             flux_ds = flux(domain, species)
             if flux_ds is not None:
                 fp = combine_datasets(fp, flux_ds)
-        
-        if species is not None:
-            bc_ds = boundary_conditions(domain, species)
-            if bc_ds is not None:
-                fp = combine_datasets(fp, bc_ds)
         
         if HiTRes == True:
             HiTRes_files = filenames(site, domain, start, end, height = height, HiTRes=True)
@@ -356,7 +386,7 @@ def timeseries_boundary_conditions(ds):
 def footprints_data_merge(data, domain = "EUROPE", species = "CH4", load_flux = True,
                           calc_timeseries = True, calc_bc = True, HiTRes = False,
                           average = None, site_modifier = {}, height = None,
-                          emissions_name = None, 
+                          emissions_name = None, interp_vmr_freq = None,
                           perturbed=False, fp_dir_pert=None, pert_year=None, pert_month=None):
     """
     Output a dictionary of xray footprint datasets, that correspond to a given
@@ -405,6 +435,25 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4", load_flux = 
 
     # Output array
     fp_and_data = {}
+    
+    # Read in emissions and vmrs only once per domain
+    # If a species is specified, also get flux and vmr at domain edges
+    if emissions_name is not None:
+        flux_ds = flux(domain, emissions_name)        
+    elif species is not None:
+        flux_ds = flux(domain, species)
+        
+    if species is not None:    
+        bc_ds = boundary_conditions(domain, species)    
+        if bc_ds is not None:            
+            if interp_vmr_freq is not None:
+            # Interpolate bc_ds between months
+            # Interpolate to same timescale as footprints
+                dum_ds = bc_ds.resample(interp_vmr_freq, "time")
+                new_times=dum_ds.time            
+                vmr_var_names=["vmr_n", "vmr_e", "vmr_s", "vmr_w"]
+                bc_ds = interp_time(bc_ds,vmr_var_names, new_times)    
+    
     
     for si, site in enumerate(sites):
 
@@ -483,14 +532,23 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4", load_flux = 
                     return None
             elif "GAUGE-FERRY" in site.upper():
                 tolerance = '5min'
+            elif "GAUGE-FAAM" in site.upper():
+                tolerance = '1min'    
             else:
                 tolerance = None
                 
             site_ds = combine_datasets(site_ds, site_fp,
                                        method = "nearest",
                                        tolerance = tolerance)
-
-            
+        
+            # Merge flux field to footprints
+            if flux_ds is not None:
+                site_ds = combine_datasets(site_ds, flux_ds)
+    
+            # Merge vmr field with footprints
+            if bc_ds is not None:      
+                site_ds = combine_datasets(site_ds, bc_ds)  
+                
             # If units are specified, multiply by scaling factor
             if ".units" in attributes:
                 site_ds.update({'fp' : (site_ds.fp.dims, site_ds.fp / data[".units"])})
@@ -500,11 +558,10 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4", load_flux = 
                             site_ds.update({key :
                                             (site_ds[key].dims, site_ds[key] / \
                                             data[".units"])})
-
                 if HiTRes:
-                    site_ds.update({'fp_HiTRes' : (site_ds.fp_HiTRes.dims, site_ds.fp_HiTRes / data[".units"])})
-
-               
+                    site_ds.update({'fp_HiTRes' : (site_ds.fp_HiTRes.dims, 
+                                                   site_ds.fp_HiTRes / data[".units"])})
+                                                   
             # Calculate model time series, if required
             if calc_timeseries:
                 site_ds["mf_mod"] = timeseries(site_ds)
@@ -595,7 +652,8 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi',
 
         fp_and_data[site] = fp_and_data[site].merge(sensitivity)
         
-        if any([word in basis_case for word in ['transd','test', 'alcompare', 'sense', 'mcf']]):
+        if any([word in basis_case for word in ['transd','test', 'alcompare', 'sense', 
+                                                'pseudo','pseudo2','mcf', 'small', 'country_mask']]):
             sub_fp_temp = site_bf.fp.sel(lon=slice(min(site_bf.sub_lon),max(site_bf.sub_lon)), 
                                     lat=slice(min(site_bf.sub_lat),max(site_bf.sub_lat))) 
             sub_fp = xray.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
@@ -657,13 +715,7 @@ def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW'):
                                 DS.particle_locations_e,
                                 DS.particle_locations_s,
                                 DS.particle_locations_w])
-        # Added by ML but not yet uploaded to repository:
-        for ii in range(len(DS.time)):
-            DS.vmr_n[:,:,ii]=DS.vmr_n[:,:,0].values
-            DS.vmr_e[:,:,ii]=DS.vmr_e[:,:,0].values
-            DS.vmr_s[:,:,ii]=DS.vmr_s[:,:,0].values
-            DS.vmr_w[:,:,ii]=DS.vmr_w[:,:,0].values
-            #########################################
+       
         vmr_ed = np.hstack([DS.vmr_n,
                            DS.vmr_e,
                            DS.vmr_s,
@@ -864,16 +916,16 @@ def filtering(datasets_in, filters, keep_missing=False):
         
 
 
-    def pblh_gt_500(dataset,site, keep_missing=False):
-        # Subset for times when boundary layer height is > 500m
-        ti = [i for i, pblh in enumerate(dataset.PBLH) if pblh > 500.]
+    def pblh_gt_100(dataset,site, keep_missing=False):
+        # Subset for times when boundary layer height minus is > 100m
+        inlet=dataset.attrs['inlet']
+        ti = [i for i, pblh in enumerate(dataset.PBLH) if pblh-inlet > 100.]
         
         if keep_missing:
             mf_data_array = dataset.mf            
             dataset_temp = dataset.drop('mf')
             
             dataarray_temp = mf_data_array[dict(time = ti)]   
-            #dataarray_temp2 = dataarray_temp.reindex_like(dataset)
             
             mf_ds = xray.Dataset({'mf': (['time'], dataarray_temp)}, 
                                   coords = {'time' : (dataarray_temp.coords['time'])})
@@ -884,15 +936,15 @@ def filtering(datasets_in, filters, keep_missing=False):
             return dataset[dict(time = ti)]
             
     def pblh_gt_250(dataset,site, keep_missing=False):
-        # Subset for times when boundary layer height is > 500m
-        ti = [i for i, pblh in enumerate(dataset.PBLH) if pblh > 250.]
+        # Subset for times when boundary layer height minus inlet is > 250m
+        inlet=dataset.attrs['inlet']
+        ti = [i for i, pblh in enumerate(dataset.PBLH) if pblh-inlet > 250.]
         
         if keep_missing:
             mf_data_array = dataset.mf            
             dataset_temp = dataset.drop('mf')
             
             dataarray_temp = mf_data_array[dict(time = ti)]   
-            #dataarray_temp2 = dataarray_temp.reindex_like(dataset)
             
             mf_ds = xray.Dataset({'mf': (['time'], dataarray_temp)}, 
                                   coords = {'time' : (dataarray_temp.coords['time'])})
@@ -901,27 +953,59 @@ def filtering(datasets_in, filters, keep_missing=False):
             return dataset_out
         else:
             return dataset[dict(time = ti)]
-            
-
-    def blxws_gt_5000(dataset,site, keep_missing=False):
-        # Subset for times when boundary layer height is > 500m
-        blxws = dataset.PBLH*dataset.wind_speed
-        ti = [i for i, dum in enumerate(blxws) if dum > 5000.]
+                           
+    def lapse_rate(dataset,site, keep_missing=False):
+        # Subset for times when boundary layer height minus inlet is > 250m
+        #lp_err=dataset.lapse_error
+        slope_cut=dataset.slope_cut
+        #std_cut=dataset.std_cut
+        #ti = [i for i, lr in enumerate(dataset.lapse_rate) if lr < slope_cut and lp_err[i] < std_cut]
+        ti = [i for i, lr in enumerate(dataset.lapse_rate) if lr < slope_cut]
         
-        if keep_missing:
-            mf_data_array = dataset.mf            
-            dataset_temp = dataset.drop('mf')
-            
-            dataarray_temp = mf_data_array[dict(time = ti)]   
-            #dataarray_temp2 = dataarray_temp.reindex_like(dataset)
-            
-            mf_ds = xray.Dataset({'mf': (['time'], dataarray_temp)}, 
-                                  coords = {'time' : (dataarray_temp.coords['time'])})
-            
-            dataset_out = combine_datasets(dataset_temp, mf_ds, method=None)
-            return dataset_out
+        if len(ti) > 0:
+            if keep_missing:
+                mf_data_array = dataset.mf            
+                dataset_temp = dataset.drop('mf')
+                
+                dataarray_temp = mf_data_array[dict(time = ti)]   
+                
+                mf_ds = xray.Dataset({'mf': (['time'], dataarray_temp)}, 
+                                      coords = {'time' : (dataarray_temp.coords['time'])})
+                
+                dataset_out = combine_datasets(dataset_temp, mf_ds, method=None)
+                return dataset_out
+            else:
+                return dataset[dict(time = ti)]   
         else:
-            return dataset[dict(time = ti)]   
+            return None
+            
+    def local_lapse(dataset,site, keep_missing=False):
+        
+        in_height = dataset.inlet
+        lapse_norm = dataset.lapse_rate*(in_height/10.)/325.
+        #lr_norm = dataset.local_ratio/(in_height/10.)*80.
+        lr_norm = dataset.local_ratio*6.
+        comb_norm = lr_norm + lapse_norm
+        cutoff=0.5
+        ti = [i for i, lr in enumerate(comb_norm) if lr < cutoff]
+        
+        if len(ti) > 0:
+            if keep_missing:
+                mf_data_array = dataset.mf            
+                dataset_temp = dataset.drop('mf')
+                
+                dataarray_temp = mf_data_array[dict(time = ti)]   
+                
+                mf_ds = xray.Dataset({'mf': (['time'], dataarray_temp)}, 
+                                      coords = {'time' : (dataarray_temp.coords['time'])})
+                
+                dataset_out = combine_datasets(dataset_temp, mf_ds, method=None)
+                return dataset_out
+            else:
+                return dataset[dict(time = ti)]   
+        else:
+            return None       
+            
             
     def ferry_mf(dataset,site, keep_missing=False):
         # Subset for times when ferry mole fraction < 2400 ppb
@@ -970,16 +1054,14 @@ def filtering(datasets_in, filters, keep_missing=False):
         else:
             return dataset
             
+            
     def local_influence(dataset,site, keep_missing=False):
         
-        #lr = dataset.local_ratio - np.min(dataset.local_ratio)
-        #lr = dataset.local_ratio/np.percentile(dataset.local_ratio,5)
         lr = dataset.local_ratio
-        pc = np.percentile(lr,5)*2
+        pc = 1.e9
+        #pc = 0.1
+        
         ti = [i for i, local_ratio in enumerate(lr) if local_ratio <= pc]
-        #ti = [i for i, local_ratio in enumerate(lr) if local_ratio < 0.04]
-        #ti = [i for i, local_ratio in enumerate(lr) if local_ratio < 0.1]
-        #ti = [i for i, local_ratio in enumerate(lr) if local_ratio < 0.05]
         if keep_missing is True: 
             mf_data_array = dataset.mf            
             dataset_temp = dataset.drop('mf')
@@ -994,20 +1076,21 @@ def filtering(datasets_in, filters, keep_missing=False):
             return dataset_out
         else:
             return dataset[dict(time = ti)]
-       
+                     
         
     filtering_functions={"daily_median":daily_median,
                          "daytime":daytime,
                          "nighttime":nighttime,
                          "noon":noon,
-                         "pblh_gt_500": pblh_gt_500,
+                         "pblh_gt_100": pblh_gt_100,
                          "pblh_gt_250": pblh_gt_250,
                          "local_influence":local_influence,
                          "six_hr_mean":six_hr_mean,
                          "ferry_loc":ferry_loc,
                          "ferry_mf":ferry_mf,
                          "ferry_fp_zero":ferry_fp_zero,
-                         "blxws_gt_5000":blxws_gt_5000}
+                         "lapse_rate":lapse_rate,
+                         "local_lapse":local_lapse}
 
     # Get list of sites
     sites = [key for key in datasets.keys() if key[0] != '.']
@@ -1413,6 +1496,7 @@ def plot(fp_data, date, out_filename=None,
 
     data = np.zeros(np.shape(
             fp_data[sites[0]].fp[dict(time = [0])].values.squeeze()))
+
     
     time = None
 
@@ -1458,7 +1542,6 @@ def plot(fp_data, date, out_filename=None,
                     release_lat[site] = fp_data_ti.release_lat.values
 
         else:
-
             fp_data_ti = fp_nearest(fp_data[site], tolerance = tolerance)
             data += np.nan_to_num(fp_data_ti.fp.values.squeeze())
 

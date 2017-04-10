@@ -242,7 +242,7 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
     data_directory, files = get_file_list(site, species, start_time, end_time,
                                           height, network = network,
                                           instrument = instrument, data_directory=data_directory)
-
+                                          
     #Get files
     #####################################
     if files is not None:
@@ -313,7 +313,25 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
                     file_vmf=ncf.variables[ncvarname + "_variability"]
                     if len(file_vmf) > 0:
                         df["vmf"] = file_vmf[:]
-        
+                
+                #If FERRY read lat and lon data
+#                if site_in == 'GAUGE-FERRY':
+#                    file_lat=ncf.variables["latitude"]
+#                    if len(file_lat) > 0:
+#                                 
+#                        df["meas_lat"] = file_lat[:]
+#                        
+#                    file_lon=ncf.variables["longitude"]
+#                    if len(file_lon) > 0:
+#                        df["meas_lon"] = file_lon[:]
+                       
+                
+                #If FAAM get altitude data
+                if "alt" in ncf.variables.keys():
+                    file_alt=ncf.variables["alt"]
+                    if len(file_alt) > 0:
+                        df["altitude"] = file_alt[:]        
+                        
                 #Get status flag
                 if ncvarname + "_status_flag" in ncf.variables.keys():
                     file_flag=ncf.variables[ncvarname + "_status_flag"]
@@ -324,12 +342,7 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
                         for f in status_flag_unflagged:
                             flag = flag | (df.status_flag == f)
                         df = df[flag]
-                        
-                 #If FAAM get altitude data
-                if "alt" in ncf.variables.keys():
-                    file_alt=ncf.variables["alt"]
-                    if len(file_alt) > 0:
-                        df["altitude"] = file_alt[:]
+               
                         
                 if units != "permil":
                     df = df[df.mf > 0.]
