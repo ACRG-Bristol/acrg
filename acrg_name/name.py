@@ -311,6 +311,10 @@ def combine_datasets(dsa, dsb, method = "nearest", tolerance = None):
     ds will have the index of dsa    
     """
     # merge the two datasets within a tolerance and remove times that are NaN (i.e. when FPs don't exist)
+    
+    #dsb_temp = dsb.sel(time=dsa.time, method=method, tolerance=tolerance)
+    #ds_temp = dsa.merge(dsb_temp)
+    
     ds_temp = dsa.merge(dsb.reindex_like(dsa, method, tolerance = tolerance))
     if 'fp' in ds_temp.keys():
         flag = np.where(np.isfinite(ds_temp.fp.mean(dim=["lat","lon"]).values))
@@ -438,10 +442,10 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4", load_flux = 
     
     # Read in emissions and vmrs only once per domain
     # If a species is specified, also get flux and vmr at domain edges
-    if emissions_name is not None:
-        flux_ds = flux(domain, emissions_name)        
-    elif species is not None:
-        flux_ds = flux(domain, species)
+#    if emissions_name is not None:
+#        flux_ds = flux(domain, emissions_name)        
+#    elif species is not None:
+#        flux_ds = flux(domain, species)
         
     if species is not None:    
         bc_ds = boundary_conditions(domain, species)    
@@ -542,8 +546,8 @@ def footprints_data_merge(data, domain = "EUROPE", species = "CH4", load_flux = 
                                        tolerance = tolerance)
         
             # Merge flux field to footprints
-            if flux_ds is not None:
-                site_ds = combine_datasets(site_ds, flux_ds)
+#            if flux_ds is not None:
+#                site_ds = combine_datasets(site_ds, flux_ds)
     
             # Merge vmr field with footprints
             if bc_ds is not None:      
@@ -646,31 +650,49 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi',
 #                                                        site_bf.basis_scale)
 #            H[i,:] = (fpalign*fluxalign*scalealign).sum(["lat", "lon"])
         
-        sensitivity = xray.Dataset({'H': (['region','time'], H)},
-                                    coords = {'region' : range(1,np.max(site_bf.basis)+1),
-                                              'time' : (fp_and_data[site].coords['time'])})
+#        sensitivity = xray.Dataset({'H': (['region','time'], H)},
+#                                    coords = {'region' : range(1,np.max(site_bf.basis)+1),
+#                                              'time' : (fp_and_data[site].coords['time'])})
 
-        fp_and_data[site] = fp_and_data[site].merge(sensitivity)
+        
+        sensitivity = xray.DataArray(H, 
+                              coords=[('region', range(1,np.max(site_bf.basis)+1)), 
+                                      ('time', fp_and_data[site].coords['time'])])
+                                     
+        fp_and_data[site]['H'] = sensitivity                             
+        #fp_and_data[site] = fp_and_data[site].merge(sensitivity)
         
         if any([word in basis_case for word in ['transd','test', 'alcompare', 'sense', 
-                                                'pseudo','pseudo2','mcf', 'small', 'country_mask']]):
+                                                'pseudo','pseudo2','mcf', 'small']]):
             sub_fp_temp = site_bf.fp.sel(lon=slice(min(site_bf.sub_lon),max(site_bf.sub_lon)), 
                                     lat=slice(min(site_bf.sub_lat),max(site_bf.sub_lat))) 
-            sub_fp = xray.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
-                               coords = {'sub_lat': (site_bf.coords['sub_lat']),
-                                         'sub_lon': (site_bf.coords['sub_lon']),
-                                'time' : (fp_and_data[site].coords['time'])})
+#            sub_fp = xray.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
+#                               coords = {'sub_lat': (site_bf.coords['sub_lat']),
+#                                         'sub_lon': (site_bf.coords['sub_lon']),
+#                                'time' : (fp_and_data[site].coords['time'])})
                                 
             sub_H_temp = H_all.sel(lon=slice(min(site_bf.sub_lon),max(site_bf.sub_lon)), 
                                     lat=slice(min(site_bf.sub_lat),max(site_bf.sub_lat)))                             
-            sub_H = xray.Dataset({'sub_H': (['sub_lat','sub_lon','time'], sub_H_temp)},
-                               coords = {'sub_lat': (site_bf.coords['sub_lat']),
-                                         'sub_lon': (site_bf.coords['sub_lon']),
-                                'time' : (fp_and_data[site].coords['time'])})
-                                
-            fp_and_data[site] = fp_and_data[site].merge(sub_fp)
-            fp_and_data[site] = fp_and_data[site].merge(sub_H)
+#            sub_H = xray.Dataset({'sub_H': (['sub_lat','sub_lon','time'], sub_H_temp)},
+#                               coords = {'sub_lat': (site_bf.coords['sub_lat']),
+#                                         'sub_lon': (site_bf.coords['sub_lon']),
+#                                'time' : (fp_and_data[site].coords['time'])})
             
+            sub_fp = xray.DataArray(sub_fp_temp, 
+                              coords=[('sub_lat', site_bf.coords['sub_lat']), 
+                                      ('sub_lon', site_bf.coords['sub_lon']),
+                                      ('time', fp_and_data[site].coords['time'])])
+            sub_H = xray.DataArray(sub_H_temp, 
+                              coords=[('sub_lat', site_bf.coords['sub_lat']), 
+                                      ('sub_lon', site_bf.coords['sub_lon']),
+                                      ('time', fp_and_data[site].coords['time'])])
+            
+            fp_and_data[site]['sub_fp'] = sub_fp
+            fp_and_data[site]['sub_H'] = sub_H  
+                    
+#            fp_and_data[site] = fp_and_data[site].merge(sub_fp)
+#            fp_and_data[site] = fp_and_data[site].merge(sub_H)
+                    
     return fp_and_data
 
 
@@ -960,7 +982,7 @@ def filtering(datasets_in, filters, keep_missing=False):
         slope_cut=dataset.slope_cut
         #std_cut=dataset.std_cut
         #ti = [i for i, lr in enumerate(dataset.lapse_rate) if lr < slope_cut and lp_err[i] < std_cut]
-        ti = [i for i, lr in enumerate(dataset.lapse_rate) if lr < slope_cut]
+        ti = [i for i, lr in enumerate(dataset.theta_slope) if lr < slope_cut]
         
         if len(ti) > 0:
             if keep_missing:
@@ -982,9 +1004,9 @@ def filtering(datasets_in, filters, keep_missing=False):
     def local_lapse(dataset,site, keep_missing=False):
         
         in_height = dataset.inlet
-        lapse_norm = dataset.lapse_rate*(in_height/10.)/325.
+        lapse_norm = dataset.theta_slope*in_height/500.
         #lr_norm = dataset.local_ratio/(in_height/10.)*80.
-        lr_norm = dataset.local_ratio*6.
+        lr_norm = dataset.local_ratio*500./in_height
         comb_norm = lr_norm + lapse_norm
         cutoff=0.5
         ti = [i for i, lr in enumerate(comb_norm) if lr < cutoff]
