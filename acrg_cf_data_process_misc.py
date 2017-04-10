@@ -1289,5 +1289,52 @@ def uhei_13ch4():
 
 
 
+def saws():
+    ''' 
+    South African Weather Service observations
+    
+    '''
+    
+    
+    fname = "/data/shared/obs_raw/SAWS/CPT_CH4_1983_2015_All data.txt"
+    df = pd.read_csv(fname, skiprows=10,
+                     delimiter="\t", names = ["Time", "CH4"],
+                     index_col = "Time", parse_dates=["Time"],
+                     dayfirst=True)
+    
+    # remove duplicates
+    df.index.name = "index"
+    df = df.reset_index().drop_duplicates(subset='index').set_index('index')              
+    df.index.name = "time"
+
+    # remove NaN
+    df = df[np.isfinite(df["CH4"])]
+    
+    # Sort and convert to dataset
+    ds = xray.Dataset.from_dataframe(df.sort_index())
+    
+    
+    # Add attributes
+    ds = attributes(ds,
+                    "CH4",
+                    "CPT",
+                    global_attributes = {"inlet_height_magl": 30.,
+                                         "data owner": "Casper Labuschagne (casper.labuschagne@weathersa.co.za)"},
+                    sampling_period = 30)
+
+    # Write file
+    nc_filename = output_filename("/data/shared/obs/",
+                                  "SAWS",
+                                  "GC-FID-CRDS",
+                                  "CPT",
+                                  str(ds.time.to_pandas().index.to_pydatetime()[0].year),
+                                  ds.species,
+                                  "30m")
+    
+    print("Writing " + nc_filename)
+    
+    ds.to_netcdf(nc_filename)
+    
+
 
 

@@ -14,6 +14,7 @@ import glob
 import xray
 import json
 from os import getenv
+import shutil
 
 
 # Read site info file
@@ -882,7 +883,7 @@ def decc_data_freeze():
 
 
 if __name__ == "__main__":
-
+    
     # AGAGE Medusa
     gc("MHD", "medusa", "AGAGE")
     gc("CGO", "medusa", "AGAGE")
@@ -893,7 +894,7 @@ if __name__ == "__main__":
     gc("SMO", "medusa", "AGAGE")
     gc("SIO", "medusa", "AGAGE")
     gc("JFJ", "medusa", "AGAGE")
-    gc("MCI", "medusa", "AGAGE")
+    gc("CMN", "medusa", "AGAGE")
     gc("ZEP", "medusa", "AGAGE")
 
     # AGAGE GC data
@@ -910,7 +911,7 @@ if __name__ == "__main__":
     gc("SMO", "GCMS", "AGAGE")
     gc("THD", "GCMS", "AGAGE")
     gc("JFJ", "GCMS", "AGAGE")
-    gc("MCI", "GCMS", "AGAGE")
+    gc("CMN", "GCMS", "AGAGE")
     gc("ZEP", "GCMS", "AGAGE")
         
   
@@ -938,5 +939,14 @@ if __name__ == "__main__":
     # DECC Medusa
     gc("TAC", "medusa", "DECC")
 
-  
-    
+
+    # Copy files
+    networks = ["AGAGE", "GAUGE", "DECC", "LSCE"]
+    src_dir = "/dagage2/agage/metoffice/processed_observations"
+    dest_dir = "/data/shared/obs"
+
+    for network in networks:
+        files = glob.glob(join(src_dir, network, "*.nc"))
+        for f in files:
+            print("Copying %s..." % (split(f)[-1]))
+            shutil.copy(f, join(dest_dir, network))

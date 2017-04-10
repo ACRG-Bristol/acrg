@@ -93,7 +93,7 @@
                 "data_owner_email": "stefan.reimann@empa.ch"
             }
         },
-        "MCI" : {
+        "CMN" : {
             "gcwerks_site_name": "mtecimone",
             "inlets": ["air"],
             "inlet_label": ["10m"],

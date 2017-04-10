@@ -217,6 +217,16 @@
         "height_name": ["10magl"],
         "network": "NIES"
     },
+    "CMN" : {
+        "alt" : [],
+        "long_name" : "Monte Cimone, Italy",
+        "height": ["10m"],
+        "height_station_masl": 2155.0,
+        "height_name": ["10magl"],
+        "latitude": 44.193889,
+        "longitude": 10.701389,
+        "network": "AGAGE"
+    },    
     "CMO" : {
         "alt": [],
         "long_name" : "Cape Mears, Oregon",
@@ -245,6 +255,16 @@
         "latitude": 49.822317,
         "longitude": -74.975274,
         "network": "EC"
+    },
+    "CPT" : {
+        "alt": [],
+        "long_name" : "Cape Point, South Africa",
+        "height": ["30m"],
+        "height_station_masl": 230.0,
+        "height_name": ["30magl"],
+        "latitude": -34.3534812927,
+        "longitude": 18.4896831512,
+        "network": "SAWS"
     },
     "CRI" : {
         "alt": [""],
@@ -552,16 +572,6 @@
         "latitude": 43.977,
         "longitude": -121.686,
         "network": "NOAA"
-    },
-    "MCI" : {
-        "alt" : [],
-        "long_name" : "Monte Cimone, Italy",
-        "height": ["10m"],
-        "height_station_masl": 2155.0,
-        "height_name": ["10magl"],
-        "latitude": 44.193889,
-        "longitude": 10.701389,
-        "network": "AGAGE"
     },
     "MDO" : {
         "alt" : [],

@@ -179,7 +179,6 @@ def footprints(sitecode_or_filename, start = "2010-01-01", end = "2016-01-01",
     EMISSIONS_NAME allows emissions files such as co2nee_EUROPE_2012.nc
     to be read in. In this case EMISSIONS_NAME would be 'co2nee'
     """
-    
     #Chose whether we've input a site code or a file name
     #If it's a three-letter site code, assume it's been processed
     # into an annual footprint file in (mol/mol) / (mol/m2/s)
@@ -198,8 +197,7 @@ def footprints(sitecode_or_filename, start = "2010-01-01", end = "2016-01-01",
         return None
 
     else:
-        fp=read_netcdfs(files)
-        
+        fp=read_netcdfs(files)    
         # If a species is specified, also get flux and vmr at domain edges
         if emissions_name is not None:
             flux_ds = flux(domain, emissions_name)
@@ -210,6 +208,11 @@ def footprints(sitecode_or_filename, start = "2010-01-01", end = "2016-01-01",
             if flux_ds is not None:
                 fp = combine_datasets(fp, flux_ds)
         
+        if species is not None:
+            bc_ds = boundary_conditions(domain, species)
+            if bc_ds is not None:
+                fp = combine_datasets(fp, bc_ds)
+
         if HiTRes == True:
             HiTRes_files = filenames(site, domain, start, end, height = height, HiTRes=True)
             HiTRes_ds = read_netcdfs(HiTRes_files)
@@ -356,12 +359,19 @@ def timeseries_HiTRes(fp_HiTRes_ds, domain, HiTRes_flux_name, Resid_flux_name,
         fp = fp.drop('time')
         fp = fp.rename({'H_back':'time'})
         #To make  Hour Back' time go forward
-        fp= fp.update({'fp_HiTRes' : fp.fp_HiTRes[:,:,::-1], 'time' : fp.time[::-1]})
-        em = flux_HiTRes.reindex_like(fp, method='ffill')
+#        fp= fp.update({'fp_HiTRes' : fp.fp_HiTRes[:,:,::-1], 'time' : fp.time[::-1]})  - DEPRECATED??
+        new_fp = fp.fp_HiTRes[:,:,::-1]
+        new_time = fp.time[::-1]
+        new_ds = xray.Dataset({'fp_HiTRes':(['lat','lon','time'], new_fp)},
+                               coords={'lat':fp.lat,
+                                       'lon':fp.lon,
+                                       'time':new_time})
+
+        em = flux_HiTRes.reindex_like(new_ds, method='ffill')
         #Use end of hours back as closest point for finding the emissions file
-        emend = flux_resid.sel(time = fp.time[0], method = 'nearest')
+        emend = flux_resid.sel(time = new_ds.time[0], method = 'nearest')
         em.flux[:,:,0] = emend.flux
-        fpXflux[:,:,ti] = (fp.fp_HiTRes*em.flux).sum(["time"])
+        fpXflux[:,:,ti] = (new_ds.fp_HiTRes*em.flux).sum(["time"])
         
     timeseries= np.sum(fpXflux, axis = (0,1))
     
@@ -387,11 +397,12 @@ def timeseries_boundary_conditions(ds):
            (ds.particle_locations_w*ds.vmr_w).sum(["height", "lat"])
 
     
-def footprints_data_merge(data, domain = "EUROPE", species = "CH4", load_flux = True,
+def footprints_data_merge(data, domain = "EUROPE", species = None, load_flux = True,
                           calc_timeseries = True, calc_bc = True, HiTRes = False,
                           average = None, site_modifier = {}, height = None,
                           emissions_name = None, interp_vmr_freq = None,
                           perturbed=False, fp_dir_pert=None, pert_year=None, pert_month=None):
+
     """
     Output a dictionary of xray footprint datasets, that correspond to a given
     dictionary of Pandas dataframes, containing mole fraction time series.
@@ -608,9 +619,8 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi',
 #                                   basis_func)
 
         if 'fp_HiTRes' in fp_and_data[site].keys():
-            site_bf_temp = xray.Dataset({"fp":fp_and_data[site]["fp"],
-                                         "fp_HiTRes":fp_and_data[site]["fp_HiTRes"],
-                                         "flux":fp_and_data[site]["flux"]})
+            site_bf_temp = xray.Dataset({"fp_HiTRes":fp_and_data[site]["fp_HiTRes"],
+                                         "fp":fp_and_data[site]["fp"]})
         else:
             site_bf_temp = xray.Dataset({"fp":fp_and_data[site]["fp"],
                                          "flux":fp_and_data[site]["flux"]})

@@ -22,6 +22,9 @@ def read_gcexport_crds(datafile):
         elif type(datafile) == str:
             #data=np.genfromtxt(datafile, dtype=str, skip_header=3)
             data=np.genfromtxt(datafile, dtype=str, skip_header=1)
+        elif type(datafile) == list:
+            datafile = datafile[0]
+            data=np.genfromtxt(datafile, dtype=str, skip_header=1)
         
               
         
@@ -68,7 +71,7 @@ class read_gcexport_crds_flexi:
         co2_orig = data[:, np.where(headers == 'co2_C')[0]][:,0]
         co2wet_orig = data[:,np.where(headers == 'co2_wet')[0]][:,0]
         co2dry_orig = data[:,np.where(headers == 'co2_dry')[0]][:,0]
-        co2sd_orig = data[:np.where(headers == 'co2_stdev')[0]][:,0]
+        co2sd_orig = data[:,np.where(headers == 'co2_stdev')[0]][:,0]
         co2_n = data[:,np.where(headers == 'co2_N')[0]][:,0]
         
         ch4_orig = data[:, np.where(headers == 'ch4_C')[0]][:,0]
