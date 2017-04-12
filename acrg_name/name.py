@@ -673,35 +673,35 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi',
         #fp_and_data[site] = fp_and_data[site].merge(sensitivity)
         
         if any([word in basis_case for word in ['transd','test', 'alcompare', 'sense', 
-                                                'pseudo','pseudo2','mcf', 'small']]):
+                                                'pseudo','pseudo2','mcf', 'small', 'intem']]):
             sub_fp_temp = site_bf.fp.sel(lon=slice(min(site_bf.sub_lon),max(site_bf.sub_lon)), 
                                     lat=slice(min(site_bf.sub_lat),max(site_bf.sub_lat))) 
-#            sub_fp = xray.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
-#                               coords = {'sub_lat': (site_bf.coords['sub_lat']),
-#                                         'sub_lon': (site_bf.coords['sub_lon']),
-#                                'time' : (fp_and_data[site].coords['time'])})
+            sub_fp = xray.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
+                               coords = {'sub_lat': (site_bf.coords['sub_lat']),
+                                         'sub_lon': (site_bf.coords['sub_lon']),
+                                'time' : (fp_and_data[site].coords['time'])})
                                 
             sub_H_temp = H_all.sel(lon=slice(min(site_bf.sub_lon),max(site_bf.sub_lon)), 
                                     lat=slice(min(site_bf.sub_lat),max(site_bf.sub_lat)))                             
-#            sub_H = xray.Dataset({'sub_H': (['sub_lat','sub_lon','time'], sub_H_temp)},
-#                               coords = {'sub_lat': (site_bf.coords['sub_lat']),
-#                                         'sub_lon': (site_bf.coords['sub_lon']),
-#                                'time' : (fp_and_data[site].coords['time'])})
+            sub_H = xray.Dataset({'sub_H': (['sub_lat','sub_lon','time'], sub_H_temp)},
+                               coords = {'sub_lat': (site_bf.coords['sub_lat']),
+                                         'sub_lon': (site_bf.coords['sub_lon']),
+                                'time' : (fp_and_data[site].coords['time'])})
             
-            sub_fp = xray.DataArray(sub_fp_temp, 
-                              coords=[('sub_lat', site_bf.coords['sub_lat']), 
-                                      ('sub_lon', site_bf.coords['sub_lon']),
-                                      ('time', fp_and_data[site].coords['time'])])
-            sub_H = xray.DataArray(sub_H_temp, 
-                              coords=[('sub_lat', site_bf.coords['sub_lat']), 
-                                      ('sub_lon', site_bf.coords['sub_lon']),
-                                      ('time', fp_and_data[site].coords['time'])])
+#            sub_fp = xray.DataArray(sub_fp_temp, 
+#                              coords=[('sub_lat', site_bf.coords['sub_lat']), 
+#                                      ('sub_lon', site_bf.coords['sub_lon']),
+#                                      ('time', fp_and_data[site].coords['time'])])
+#            sub_H = xray.DataArray(sub_H_temp, 
+#                              coords=[('sub_lat', site_bf.coords['sub_lat']), 
+#                                      ('sub_lon', site_bf.coords['sub_lon']),
+#                                      ('time', fp_and_data[site].coords['time'])])
             
-            fp_and_data[site]['sub_fp'] = sub_fp
-            fp_and_data[site]['sub_H'] = sub_H  
+#            fp_and_data[site]['sub_fp'] = sub_fp
+#            fp_and_data[site]['sub_H'] = sub_H  
                     
-#            fp_and_data[site] = fp_and_data[site].merge(sub_fp)
-#            fp_and_data[site] = fp_and_data[site].merge(sub_H)
+            fp_and_data[site] = fp_and_data[site].merge(sub_fp)
+            fp_and_data[site] = fp_and_data[site].merge(sub_H)
                     
     return fp_and_data
 
