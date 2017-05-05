@@ -34,7 +34,7 @@ import pandas as pd
 
  # Class to read in the data
 class read:
-    def __init__(self, filename):
+    def __init__(self, filename, conc_tag = None):
     
         print 'Reading file : ' + filename
         
@@ -44,14 +44,15 @@ class read:
         data=netCDF4.Dataset(filename)
         
         
-        if 'h0' in filename:
-            conc_tag = '_VMR_avrg'
-        
-        if 'h1' in filename:        
-            conc_tag = '_13:30_LT'
-        
-        if 'h2' in filename:        
-            conc_tag = '_VMR_avrg'
+        if not conc_tag:
+            if 'h0' in filename:
+                conc_tag = '_VMR_avrg'
+            
+            if 'h1' in filename:        
+                conc_tag = '_13:30_LT'
+            
+            if 'h2' in filename:        
+                conc_tag = '_VMR_avrg'
 
         # Might be multiple tracers
         conc_varname = [i for i in data.variables.keys() if conc_tag in i]      
@@ -565,8 +566,6 @@ class extract_site_info:
 # Class to match to the closeest lat/lon using bisect 
 class match_latlon:
     def __init__(self, lat, lon, lat_array, lon_array):
-        
-        import bisect
         
         # NB: Assuming evenly spaced grid
         lat_spacing = lat_array[1] - lat_array[0]
