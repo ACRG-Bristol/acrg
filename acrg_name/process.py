@@ -46,7 +46,6 @@ from scipy.interpolate import interp1d
 import copy
 import dirsync
 import matplotlib.pyplot as plt
-import time
 import getpass
 import traceback
 import sys
@@ -843,7 +842,7 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
     nctime=ncF.createVariable('time', 'd', ('time',))
     nclon=ncF.createVariable('lon', 'f', ('lon',))
     nclat=ncF.createVariable('lat', 'f', ('lat',))
-    nclev=ncF.createVariable('lev', 'str', ('lev',))
+    nclev=ncF.createVariable('lev', str, ('lev',))
     ncfp=ncF.createVariable(varname, 'f', ('lat', 'lon', 'time'), zlib = True,
                             least_significant_digit = 5)
     
@@ -1263,18 +1262,12 @@ def process(domain, site, height, year, month,
         else:
             particles_prefix = None
 
-        try:    
-            fp_file = footprint_concatenate(fields_prefix,
+           
+        fp_file = footprint_concatenate(fields_prefix,
                                             datestr = datestr, met = met,
                                             particle_prefix = particles_prefix,
                                             satellite = satellite,
                                             time_step = timeStep)
-        except:
-            status_log("FAILED when reading footprints and/or " +
-                       "particle location files for %s. Error log: %s" % 
-                       (datestr, traceback.print_exc()),
-                       error_or_warning="error")
-            return None
         
         # Do satellite process
         if satellite:
@@ -1336,8 +1329,8 @@ def process(domain, site, height, year, month,
         status_log("Writing file: " + outfile, print_to_screen=False)
         
         # Write outputs
-        try:
-            write_netcdf(fp.fp.transpose("lat", "lon", "time").values.squeeze(),
+        #try:
+        write_netcdf(fp.fp.transpose("lat", "lon", "time").values.squeeze(),
                          fp.lon.values.squeeze(),
                          fp.lat.values.squeeze(),
                          fp.lev.values,
@@ -1353,11 +1346,6 @@ def process(domain, site, height, year, month,
                          particle_locations = pl,
                          particle_heights = height_out,
                          global_attributes = fp.attrs)
-        except:
-            status_log("FAILED when writing file %s. Error log: %s" % 
-                       (outfile, traceback.print_exc()),
-                       error_or_warning="error")
-            return None
 
     else:
         status_log("FAILED. Couldn't seem to find any files, or some files are missing for %s" %
@@ -1435,17 +1423,11 @@ def process_all(domain, site,
             months = copy.copy(months_in)
 
         for year, month in set(zip(years, months)):
-            try:
-                out = process(domain, site, height, year, month,
+            #try:
+            out = process(domain, site, height, year, month,
                     base_dir = base_dir, force_update = force_update,
                     satellite = satellite, perturbed_folder = perturbed_folder,
                     max_level = max_level, force_met_empty = force_met_empty)
-            except:
-                status_log("FAILED in process all " +
-                       "for %s. Error log: %s" % 
-                       (year*100 + month, traceback.print_exc()),
-                       error_or_warning="error")
-                continue
 
 
 def copy_processed(domain):

@@ -99,12 +99,13 @@ def get_nsigma_y(fp_data_H,start_date, end_date, sites,
         mf_time_temp=fp_data_H3.time.values
         mf_time_temp2=pandas.to_datetime(mf_time_temp)
         pblh_temp=fp_data_H3.PBLH.values
-        mf_mod_temp=fp_data_H3.mf_mod.values
+        #mf_mod_temp=fp_data_H3.mf_mod.values
         ntime_stn[si]=len(mf_time_temp)
         
         bl_start=d0
         
         if bl_split is True:
+            mf_mod_temp=fp_data_H3.mf_mod.values
             for ti in range(ngroups):
                  
                 wh = np.where(np.logical_and(pblh_temp>=levels[ti],
@@ -225,6 +226,8 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
                                         coords = {'time' : (fp_data_H2[site].coords['time'])})
     
         fp_data_H2[site] = fp_data_H2[site].merge(local_ds)
+        fp_data_H2[site].attrs['Domain']=domain
+        fp_data_H2[site].attrs['Height']=fp_heights[site]
     
     if filters is not None:
         fp_data_H5 = name.filtering(fp_data_H2, filters,keep_missing=corr_type[inv_type])

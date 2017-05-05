@@ -38,8 +38,6 @@ To compile using intel compiler use:
 
 f2py -c -m tdmcmc_uncorr --fcompiler=intelem acrg_hbtdmcmc_uncorr.f90
 
-*********** WARNING - INTELEM DOES NOT WORK WITH OPENMP - it compiles but won't run. ***************
-
 If you get a segmentation fault for an OMP run, then you will need to set the memory allocation using:
 
 export KMP_STACKSIZE=512m
@@ -59,6 +57,17 @@ Exactly the same as before, just change the file names. So:
 
 f2py -c -m tdmcmc_evencorr acrg_hbtdmcmc_evencorr.f90
 
+***************** Compiling correlated hierarchical version with f2py ****************************************
+
+f2py -L/usr/lib64 -llapack -c -m tdmcmc_corr_s acrg_hbtdmcmc_corr.f90
+
+f2py -L/usr/lib64 -llapack -c -m tdmcmc_corr_pt --f90flags='-fopenmp' -lgomp acrg_hbtdmcmc_corr.f90
+
+***************** Compiling correlated hierarchical version with ifort ****************************************
+
+f2py -L/opt/intel/mkl/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -c -m tdmcmc_corr_pt --fcompiler=intelem --f90flags='-fast -openmp' -liomp5 acrg_hbtdmcmc_corr.f90
+
+This should be faster than gfortran, my test have shown run time improvements of ~2x to 4x faster.
 
 ********************************* Running from python *************************************************
 

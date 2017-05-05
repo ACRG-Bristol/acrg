@@ -47,7 +47,7 @@ def MOZART_filenames(species, start = "2010-01-01", end = "2016-01-01"):
     files = []
     for ym in yearmonth:
         f=glob.glob(baseDirectory + \
-            species.upper() + "/" + "*" + ym + "*.nc")
+            species + "/" + "*" + ym + "*.nc")
         if len(f) > 0:
             files += f
 
