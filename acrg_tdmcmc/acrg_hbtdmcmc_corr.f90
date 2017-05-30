@@ -232,7 +232,7 @@ REAL aa, bb
 !f2py intent(out) accept_sigma_y_all, reject_sigma_y_all, accept_tau_all, reject_tau_all
 
 
- ! call OMP_SET_NUM_THREADS(nbeta)      ! Uncomment for Parallel Tempering
+  call OMP_SET_NUM_THREADS(nbeta)      ! Uncomment for Parallel Tempering
 
  call init_random_seed()          ! Ensure random number generation starts from new point each time program is run
                                   ! Random seed only needs to be called once in a program.  
@@ -903,6 +903,10 @@ REAL x_new(kICmax)
 REAL stepsize0
 INTEGER acc_batch_out(nIC1)
 INTEGER rej_batch_out(nIC1)
+REAL aa,bb
+
+ aa = 1
+ bb = 0
 
 accept=0
 reject=0
@@ -951,7 +955,8 @@ reject=0
          dy=h_agg(:,xi)*dx 
          n1=n0+dy
 
-         C = matmul(n1,Rinv)
+        ! C = matmul(n1,Rinv)
+         call sgemm ('N', 'N', nmeasure, 1, nmeasure, aa, Rinv, nmeasure, n1, nmeasure, bb, C, nmeasure) 
          n1T= dot_product(n1,C)
           
          ! hyperparams are fixed below to be a single number - will only apply when x is a scaling of the prior
@@ -1104,9 +1109,16 @@ INTEGER regions_v1b(Ngrid)
 REAL n1b(nmeasure), C(nmeasure)     
 INTEGER ilon,ilat, reject_stat,zi       
 ! Allocatable arrays
-REAL, DIMENSION(:),ALLOCATABLE :: plon1b, plat1b, x1b
-REAL, DIMENSION(:,:), ALLOCATABLE :: h_agg2
+REAL plon1b(kmax), plat1b(kmax)
+REAL x1b (kICmax)
+REAL h_agg2(nmeasure, kICmax)
+!REAL, DIMENSION(:),ALLOCATABLE :: plon1b, plat1b, x1b
+!REAL, DIMENSION(:,:), ALLOCATABLE :: h_agg2
 REAL,PARAMETER     :: pi = 3.14159265 
+REAL aa,bb
+
+ aa = 1
+ bb = 0
 
 accept_birth=0
 reject_birth=0
@@ -1116,10 +1128,14 @@ kIC=k1+nIC
 
 if (k1 .LT. kmax) THEN            
   
-  allocate(plon1b(k1))     
-  allocate(plat1b(k1))     
-  allocate(h_agg2(nmeasure, kIC))
-  allocate(x1b(kIC))               
+  !allocate(plon1b(k1))     
+  !allocate(plat1b(k1))     
+  !allocate(h_agg2(nmeasure, kIC))
+  !allocate(x1b(kIC))       
+  plon1b(:)=0.      
+  plat1b(:)=0. 
+  h_agg2(:,:)=0.
+  x1b(:) =0.           
 
   ! 1. Select new cell location - needs to be different to current locations
   !call random_number(u)
@@ -1153,7 +1169,7 @@ if (k1 .LT. kmax) THEN
 
   call closest_grid(regions_v1b,lon,lat, plon1b(1:k1),plat1b(1:k1), k1, nlon,nlat)
 
-   h_agg2(:,:)=0.
+   !h_agg2(:,:)=0.
 
    if (nIC .GT. 0) then 
        h_agg2(:,1:nIC)=h_agg(:,1:nIC)
@@ -1184,8 +1200,10 @@ if (k1 .LT. kmax) THEN
           x1b(1:k+nIC)=x(1:k+nIC)
           x1b(kIC) = x_new
 
-          n1b=matmul(h_agg2,x1b)-y 
-          C = matmul(n1b,Rinv)
+          n1b=matmul(h_agg2(:,1:kIC),x1b(1:kIC))-y 
+          !C = matmul(n1b,Rinv)
+          call sgemm ('N', 'N', nmeasure, 1, nmeasure, aa, Rinv, nmeasure, n1b, nmeasure, bb, C, nmeasure)
+    
           n1Tb= dot_product(n1b,C)                   
           !n1Tb=sum((n1b/nmeasure)**2)
 
@@ -1228,8 +1246,10 @@ if (k1 .LT. kmax) THEN
           x1b(1:k+nIC)=x(1:k+nIC)
           x1b(kIC) = x_new
           
-          n1b=matmul(h_agg2,x1b)-y  
-          C = matmul(n1b,Rinv)
+          
+          n1b=matmul(h_agg2(:,1:kIC),x1b(1:kIC))-y 
+          call sgemm ('N', 'N', nmeasure, 1, nmeasure, aa, Rinv, nmeasure, n1b, nmeasure, bb, C, nmeasure)
+          !C = matmul(n1b,Rinv)
           n1Tb= dot_product(n1b,C)                                       
           !n1Tb=sum((n1b/sigma_y)**2)
 
@@ -1293,14 +1313,14 @@ endif
 
 
 !! Deallocate arrays in each loop
-if(allocated(plon1b))  deallocate(plon1b,stat=errstat)
-  if (errstat /= 0) stop
-if(allocated(plat1b))  deallocate(plat1b,stat=errstat)
-  if (errstat /= 0) stop
-if(allocated(h_agg2))  deallocate(h_agg2,stat=errstat)
-  if (errstat /= 0) stop
-if(allocated(x1b))  deallocate(x1b,stat=errstat)
-  if (errstat /= 0) stop
+!if(allocated(plon1b))  deallocate(plon1b,stat=errstat)
+!  if (errstat /= 0) stop
+!if(allocated(plat1b))  deallocate(plat1b,stat=errstat)
+!  if (errstat /= 0) stop
+!if(allocated(h_agg2))  deallocate(h_agg2,stat=errstat)
+!  if (errstat /= 0) stop
+!if(allocated(x1b))  deallocate(x1b,stat=errstat)
+!  if (errstat /= 0) stop
 
 k_out=k
 x_out=x
@@ -1364,9 +1384,18 @@ REAL mu,sigma, pdf_param1_rm, pdf_param2_rm
 INTEGER regions_v1d(Ngrid)      
 REAL n1d(nmeasure), C(nmeasure)             
 ! Allocatable arrays
-REAL, DIMENSION(:),ALLOCATABLE :: plon1d, plat1d, x1d, pdf_param1d, pdf_param2d 
-REAL, DIMENSION(:,:), ALLOCATABLE :: h_agg2d
+!REAL, DIMENSION(:),ALLOCATABLE :: plon1d, plat1d, x1d, pdf_param1d, pdf_param2d 
+!REAL, DIMENSION(:,:), ALLOCATABLE :: h_agg2d
+REAL plon1d(kmax), plat1d(kmax)
+REAL x1d(kICmax)
+REAL pdf_param1d(kICmax), pdf_param2d(kICmax)
+REAL h_agg2d(nmeasure, kICmax)
 REAL,PARAMETER     :: pi = 3.14159265 
+REAL aa,bb
+
+ aa = 1
+ bb = 0
+
 
 accept_death=0
 reject_death=0
@@ -1378,12 +1407,19 @@ kIC=k1d+nIC
 
 if (k1d .GE. kmin) THEN            
 
-  allocate(plon1d(k1d))     
-  allocate(plat1d(k1d))     
-  allocate(h_agg2d(nmeasure, kIC))
-  allocate(x1d(kIC))  
-  allocate(pdf_param1d(kIC)) 
-  allocate(pdf_param2d(kIC))  
+  !allocate(plon1d(k1d))     
+  !allocate(plat1d(k1d))     
+  !allocate(h_agg2d(nmeasure, kIC))
+  !allocate(x1d(kIC))  
+  !allocate(pdf_param1d(kIC)) 
+  !allocate(pdf_param2d(kIC))  
+
+  plon1d(:) = 0.
+  plat1d(:) = 0.
+  h_agg2d(:,:) = 0.
+  x1d(:) = 0
+  pdf_param1d(:) = 0.
+  pdf_param2d(:) = 0. 
            
   ! 1. Select new cell location - needs to be different to current locations
    
@@ -1436,7 +1472,7 @@ if (k1d .GE. kmin) THEN
 
   call closest_grid(regions_v1d,lon,lat, plon1d,plat1d, k1d, nlon,nlat)
 
-   h_agg2d(:,:)=0.
+   !h_agg2d(:,:)=0.
   
    if (nIC .GT. 0) then
        h_agg2d(:,1:nIC)=h_agg(:,1:nIC)
@@ -1456,8 +1492,8 @@ if (k1d .GE. kmin) THEN
                                   
   x_cell = x1d(rid+nIC)
                     
-  n1d=matmul(h_agg2d,x1d)-y
-  C = matmul(n1d,Rinv)
+  n1d=matmul(h_agg2d(:,1:kIC),x1d(1:kIC))-y
+  call sgemm ('N', 'N', nmeasure, 1, nmeasure, aa, Rinv, nmeasure, n1d, nmeasure, bb, C, nmeasure)
   n1Td= dot_product(n1d,C)
   !n1Td=sum((n1d/sigma_y)**2)                           
   ! ACCEPTANCE PROBABILITY  
@@ -1494,20 +1530,20 @@ if (k1d .GE. kmin) THEN
           !ACCEPT
            k=k1d
            x(:)=0.
-           x(1:kIC)=x1d
+           x(1:kIC)=x1d(1:kIC)
            pdf_param1(:)=0.
-           pdf_param1(1:kIC)=pdf_param1d
+           pdf_param1(1:kIC)=pdf_param1d(1:kIC)
            pdf_param2(:)=0.
-           pdf_param2(1:kIC)=pdf_param2d
+           pdf_param2(1:kIC)=pdf_param2d(1:kIC)
            h_agg(:,:)=0.
-           h_agg(:,1:kIC)=h_agg2d
+           h_agg(:,1:kIC)=h_agg2d(:,1:kIC)
            n0=n1d
            n0T=n1Td
            regions_v(:)=regions_v1d
            plon(:)=0.
            plat(:)=0.
-           plon(1:k1d)=plon1d
-           plat(1:k1d)=plat1d
+           plon(1:k1d)=plon1d(1:k1d)
+           plat(1:k1d)=plat1d(1:k1d)
            !if (beta .EQ. 1. .and. it .GT. burn_in) accept_death=accept_death+1   
            if (it .GT. burn_in) accept_death=accept_death+1   
 
@@ -1524,18 +1560,18 @@ else
 endif
 
 !! Deallocate arrays in each loop
-if(allocated(plon1d))  deallocate(plon1d,stat=errstat)
-  if (errstat /= 0) stop
-if(allocated(plat1d))  deallocate(plat1d,stat=errstat)
-  if (errstat /= 0) stop
-if(allocated(h_agg2d))  deallocate(h_agg2d,stat=errstat)
-  if (errstat /= 0) stop
-if(allocated(x1d))  deallocate(x1d,stat=errstat)
-  if (errstat /= 0) stop
-if(allocated(pdf_param1d))  deallocate(pdf_param1d,stat=errstat)
-  if (errstat /= 0) stop
-if(allocated(pdf_param2d))  deallocate(pdf_param2d,stat=errstat)
-  if (errstat /= 0) stop
+!if(allocated(plon1d))  deallocate(plon1d,stat=errstat)
+!  if (errstat /= 0) stop
+!if(allocated(plat1d))  deallocate(plat1d,stat=errstat)
+!  if (errstat /= 0) stop
+!if(allocated(h_agg2d))  deallocate(h_agg2d,stat=errstat)
+!  if (errstat /= 0) stop
+!if(allocated(x1d))  deallocate(x1d,stat=errstat)
+!  if (errstat /= 0) stop
+!if(allocated(pdf_param1d))  deallocate(pdf_param1d,stat=errstat)
+!  if (errstat /= 0) stop
+!if(allocated(pdf_param2d))  deallocate(pdf_param2d,stat=errstat)
+!  if (errstat /= 0) stop
 
 
 k_out=k
@@ -1600,8 +1636,11 @@ REAL n1m(nmeasure), C(nmeasure)
 INTEGER reject_stat, zi
 ! Allocatable arrays
 ! None
-
+REAL aa,bb
 REAL,PARAMETER     :: pi = 3.14159265 
+
+ aa = 1
+ bb = 0
 
 accept_move=0
 reject_move=0
@@ -1668,7 +1707,8 @@ reject_move=0
  !#######################################################################
      
      n1m=matmul(h_agg2m,x1m)-y
-     C = matmul(n1m,Rinv)
+     !C = matmul(n1m,Rinv)
+      call sgemm ('N', 'N', nmeasure, 1, nmeasure, aa, Rinv, nmeasure, n1m, nmeasure, bb, C, nmeasure)
      n1Tm= dot_product(n1m,C)
      !n1Tm=sum((n1m/sigma_y)**2)
                                      
@@ -1761,6 +1801,11 @@ REAL y_error_new(nmeasure), autocorr_vec(nmeasure)
 REAL sigma_y_new(nmeasure), sigma_yinv_new(nmeasure)
 REAL Rinv_new(nmeasure,nmeasure), C(nmeasure)
 REAL accep_prob
+REAL aa,bb
+
+ aa = 1
+ bb = 0
+
 
 accept=0
 reject=0
@@ -1796,8 +1841,8 @@ reject=0
     ! caluclate new determinant by scaling
     detval_new = sum(alog(sigma_y_new)) + detval_Q
 
- 
-    C = matmul(n0,Rinv_new)
+     call sgemm ('N', 'N', nmeasure, 1, nmeasure, aa, Rinv_new, nmeasure, n0, nmeasure, bb, C, nmeasure)
+    !C = matmul(n0,Rinv_new)
     n1T= dot_product(n0,C)
     
 
@@ -1908,6 +1953,10 @@ REAL Q_block_new(nsite_max,nsite_max)
 REAL Q_block_inv_new(nsite_max,nsite_max)
 REAL detval_Q_block_new(numsites)
 REAL accep_prob, av_acc
+REAL aa,bb
+
+ aa = 1
+ bb = 0
 
 accept=0
 reject=0
@@ -1958,7 +2007,8 @@ if (tau_new(yi) .GT. tau_hparam1 .and. tau_new(yi) .LT. tau_hparam2) THEN
 
     detval_new =  sum(alog(sigma_y)) + detval_Q_new  ! DETERMINANT IN LOG SPACE log of sqrt of determinant
 
-    C = matmul(n0,Rinv_new)
+    call sgemm ('N', 'N', nmeasure, 1, nmeasure, aa, Rinv_new, nmeasure, n0, nmeasure, bb, C, nmeasure)
+    !C = matmul(n0,Rinv_new)
     n1T = dot_product(n0,C)
 		
     ! compute P1/P0 

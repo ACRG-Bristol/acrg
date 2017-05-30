@@ -201,7 +201,7 @@ def get_file_list(site, species, start, end, height,
     if file_site_string is None:
         print("Can't find files for site " + site + " in " + data_directory)
         return data_directory, None
-
+    
     files = [f for f, si, sp, hi in \
              zip(fnames, file_site, file_species, file_height) if \
                  si.upper() == file_site_string.upper() and
@@ -237,12 +237,10 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
         print("No species called " + species_in +
             ". Either try a different name, or add name to species_info.json.")
         return
-    
-
+        
     data_directory, files = get_file_list(site, species, start_time, end_time,
                                           height, network = network,
-                                          instrument = instrument, data_directory=data_directory)
-                                          
+                                          instrument = instrument, data_directory=data_directory)                                 
     #Get files
     #####################################
     if files is not None:
@@ -327,10 +325,11 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
                        
                 
                 #If FAAM get altitude data
-                if "alt" in ncf.variables.keys():
-                    file_alt=ncf.variables["alt"]
-                    if len(file_alt) > 0:
-                        df["altitude"] = file_alt[:]        
+                if site_in == 'GAUGE-FAAM':
+                    if "alt" in ncf.variables.keys():
+                        file_alt=ncf.variables["alt"]
+                        if len(file_alt) > 0:
+                            df["altitude"] = file_alt[:]        
                         
                 #Get status flag
                 if ncvarname + "_status_flag" in ncf.variables.keys():
@@ -351,11 +350,11 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
                     data_frames.append(df)
     
             ncf.close()
-
+    
         if len(data_frames) > 0:
             data_frame = pd.concat(data_frames).sort_index()
             data_frame.index.name = 'time'
-            data_frame = data_frame[start_time : end_time]
+            data_frame = data_frame[start_time : end_time]            
             if len(data_frame) == 0:
                 return None
         else:
@@ -411,16 +410,15 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
                 data_frame=data_frame.drop(data_frame.index[-1])
               
         # Drop NaNs
-        if keep_missing == False:
+        if keep_missing == False:  
             data_frame.dropna(inplace = True)
-
+            
         data_frame.mf.units = units
         data_frame.files = files
     
         return data_frame
 
     else:
-        
         return None
 
 
@@ -540,7 +538,7 @@ def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
                        network = network[si],
                        instrument = instrument[si],
                        keep_missing = keep_missing,
-                       status_flag_unflagged = status_flag_unflagged[si])
+                       status_flag_unflagged = status_flag_unflagged[si])                       
                        
         if data is not None:
             obs[site] = data.copy()            

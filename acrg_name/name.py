@@ -555,14 +555,6 @@ def footprints_data_merge(data, domain = "EUROPE", species = None, load_flux = T
             site_ds = combine_datasets(site_ds, site_fp,
                                        method = "nearest",
                                        tolerance = tolerance)
-        
-            # Merge flux field to footprints
-#            if flux_ds is not None:
-#                site_ds = combine_datasets(site_ds, flux_ds)
-    
-            # Merge vmr field with footprints
-            if bc_ds is not None:      
-                site_ds = combine_datasets(site_ds, bc_ds)  
                 
             # If units are specified, multiply by scaling factor
             if ".units" in attributes:
@@ -1090,8 +1082,7 @@ def filtering(datasets_in, filters, keep_missing=False):
     def local_influence(dataset,site, keep_missing=False):
         
         lr = dataset.local_ratio
-        pc = 1.e9
-        #pc = 0.1
+        pc = 0.1
         
         ti = [i for i, local_ratio in enumerate(lr) if local_ratio <= pc]
         if keep_missing is True: 

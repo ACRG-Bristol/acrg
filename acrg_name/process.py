@@ -195,8 +195,8 @@ def load_NAME(file_lines, namever):
         # cast the x and y grid positions to floats and convert them to zero based indices
         # (the numbers are 1 based grid positions where 0.5 represents half a grid point.)
         if namever == 2:
-            x = float(vals[0]) - 1.5
-            y = float(vals[1]) - 1.5
+            x = int(float(vals[0]) - 1.5)
+            y = int(float(vals[1]) - 1.5)
         elif namever == 3:
             x = float(vals[0]) - 1
             y = float(vals[1]) - 1
