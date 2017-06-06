@@ -14,6 +14,7 @@ import glob
 import xray
 import json
 from os import getenv
+import shutil
 
 
 # Read site info file
@@ -30,6 +31,7 @@ with open(site_info_file) as sf:
 # Output unit strings
 unit_species = {"CO2": "1e-6",
                 "CH4": "1e-9",
+                "C2H6": "1e-9",
                 "N2O": "1e-9",
                 "CO": "1e-6",
                 "CH4C13": "permil"}
@@ -41,7 +43,7 @@ unit_interpret = {"ppm": "1e-6",
 
 # Default calibration scales
 scales = {"CO2": "NOAA-2007",
-          "CH4": "NOAA-2004",
+          "CH4": "NOAA-2004A",
           "N2O": "SIO-98",
           "CO": "Unknown"}
 
@@ -81,6 +83,10 @@ species_translator = {"CO2": ["co2", "carbon_dioxide"],
 crds_header_string_interpret = {"C": "",
                                 "stdev": "_variability",
                                 "N": "_number_of_observations"}
+
+
+def parser_YYMMDD(yymmdd):
+    return dt.strptime(yymmdd, '%y%m%d')
 
 
 def get_directories(default_input_directory,
@@ -443,7 +449,8 @@ def gc_precisions_read(precisions_file):
                             header = None,
                             sep=r"\s+", dtype = str,
                             index_col = 0,
-                            parse_dates = True)
+                            parse_dates = True,
+                            date_parser = parser_YYMMDD)
     
     # Rename index column
     precision.index.names = ["index"]
@@ -513,7 +520,7 @@ def gc(site, instrument, network,
 
         # Get precision
         precision, precision_species = gc_precisions_read(precision_files[fi])
-
+        
         # Merge precisions into dataframe
         for sp in species:
             precision_index = precision_species.index(sp)*2+1
@@ -552,7 +559,7 @@ def gc(site, instrument, network,
             
             print("Processing " + sp + ", " + inlet + "...")
             
-            if inlet == "any":
+            if (inlet == "any") or (inlet == "air"):
                 ds_sp = ds[[sp,
                             sp + "_repeatability",
                             sp + "_status_flag",
@@ -566,12 +573,13 @@ def gc(site, instrument, network,
                                                      sp + "_repeatability",
                                                      sp + "_status_flag",
                                                      sp + "_integration_flag"]]
-
-            # re-label inlet if required
-            if "inlet_label" in params["GC"][site].keys():
-                inlet_label = params["GC"][site]["inlet_label"][inleti]
-            else:
                 inlet_label = inlet
+
+#            # re-label inlet if required
+#            if "inlet_label" in params["GC"][site].keys():
+#                inlet_label = params["GC"][site]["inlet_label"][inleti]
+#            else:
+#               inlet_label = inlet
 
             global_attributes["inlet_height_magl"] = float(inlet_label[:-1])
 
@@ -875,7 +883,38 @@ def decc_data_freeze():
 
 
 if __name__ == "__main__":
+    
+    # AGAGE Medusa
+    gc("MHD", "medusa", "AGAGE")
+    gc("CGO", "medusa", "AGAGE")
+    gc("GSN", "medusa", "AGAGE")
+    gc("SDZ", "medusa", "AGAGE")
+    gc("THD", "medusa", "AGAGE")
+    gc("RPB", "medusa", "AGAGE")
+    gc("SMO", "medusa", "AGAGE")
+    gc("SIO", "medusa", "AGAGE")
+    gc("JFJ", "medusa", "AGAGE")
+    gc("CMN", "medusa", "AGAGE")
+    gc("ZEP", "medusa", "AGAGE")
 
+    # AGAGE GC data
+    gc("RPB", "GCMD", "AGAGE")
+    gc("CGO", "GCMD", "AGAGE")
+    gc("MHD", "GCMD", "AGAGE")
+    gc("SMO", "GCMD", "AGAGE")
+    gc("THD", "GCMD", "AGAGE")
+
+    # AGAGE GCMS data    
+    gc("CGO", "GCMS", "AGAGE")
+    gc("MHD", "GCMS", "AGAGE")
+    gc("RPB", "GCMS", "AGAGE")
+    gc("SMO", "GCMS", "AGAGE")
+    gc("THD", "GCMS", "AGAGE")
+    gc("JFJ", "GCMS", "AGAGE")
+    gc("CMN", "GCMS", "AGAGE")
+    gc("ZEP", "GCMS", "AGAGE")
+        
+  
     # ICOS
     icos("TTA")
     icos("MHD", network = "LSCE")
@@ -900,35 +939,14 @@ if __name__ == "__main__":
     # DECC Medusa
     gc("TAC", "medusa", "DECC")
 
-    # AGAGE GC data
-    gc("CGO", "GCMD", "AGAGE")
-    gc("MHD", "GCMD", "AGAGE")
-    gc("RPB", "GCMD", "AGAGE")
-    gc("SMO", "GCMD", "AGAGE")
-    gc("THD", "GCMD", "AGAGE")
 
-    # AGAGE GCMS data    
-    gc("CGO", "GCMS", "AGAGE")
-    gc("MHD", "GCMS", "AGAGE")
-    gc("RPB", "GCMS", "AGAGE")
-    gc("SMO", "GCMS", "AGAGE")
-    gc("THD", "GCMS", "AGAGE")
-    gc("JFJ", "GCMS", "AGAGE")
-    gc("MCI", "GCMS", "AGAGE")
-    gc("ZEP", "GCMS", "AGAGE")
-    
-    # AGAGE Medusa
-    gc("MHD", "medusa", "AGAGE")
-    gc("CGO", "medusa", "AGAGE")
-    gc("GSN", "medusa", "AGAGE")
-    gc("SDZ", "medusa", "AGAGE")
-    gc("THD", "medusa", "AGAGE")
-    gc("RPB", "medusa", "AGAGE")
-    gc("SMO", "medusa", "AGAGE")
-    gc("SIO", "medusa", "AGAGE")
-    gc("JFJ", "medusa", "AGAGE")
-    gc("MCI", "medusa", "AGAGE")
-    gc("ZEP", "medusa", "AGAGE")
-    
-    
-    
+    # Copy files
+    networks = ["AGAGE", "GAUGE", "DECC", "LSCE"]
+    src_dir = "/dagage2/agage/metoffice/processed_observations"
+    dest_dir = "/data/shared/obs"
+
+    for network in networks:
+        files = glob.glob(join(src_dir, network, "*.nc"))
+        for f in files:
+            print("Copying %s..." % (split(f)[-1]))
+            shutil.copy(f, join(dest_dir, network))

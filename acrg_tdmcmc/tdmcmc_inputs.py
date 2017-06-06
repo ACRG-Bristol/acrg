@@ -26,7 +26,14 @@ uncertainties differently (emissions uncertainty > baseline uncertainty).
 @author: ml12574
 """
 import numpy as np
-import run_tdmcmc as acrg_tdmcmc
+from acrg_tdmcmc import run_tdmcmc 
+import acrg_name as name
+from acrg_tdmcmc import tdmcmc_post_process as process
+import os
+import glob
+
+acrg_path = os.getenv("ACRG_PATH")
+data_path = os.getenv("DATA_PATH")
 #############################################################
 #parser = argparse.ArgumentParser(description='This is a demo script by Mark.')
 #parser.add_argument("start", help="Start date string yyyy-mm-dd")                  
@@ -58,28 +65,53 @@ output_dir="/path/to/output/directory/"
 
 #######################################################
 # DO YOU WANT TO DO REVERSIBLE JUMP OR NOT?????
-rjmcmc=1           # 1 = do reversible jump; any other number = don't
+reversible_jump = True          # True = do reversible jump; False = don't
+parallel_tempering = True      # True = do parallel tempering
 
 # DO YOU WANT CORRELATED MEASUREMENTS OR NOT??
-inv_type = 'uncorrelated'    # Options are 'correlated', 'evencorr', 'corr'
+inv_type = 'evencorr'    # Options are 'uncorrelated', 'evencorr', 'corr'
 
-bl_period = 7      # No. of days for which each sigma_model value applies
 kmin=4             # Minimum number of regions
 kmax=400           # Maximum number of regions
 k_ap = 50         # Starting number of regions
-nIt=25000          # of iterations
-burn_in=25000      # of discarded burn-in iterations 
-nsub=100           # nsub=100=store every 100th iteration)
-   
+nIt=2000          # of iterations
+burn_in=2000      # of discarded burn-in iterations 
+nsub=100         # nsub=100=store every 100th iteration)
+
 ############################################################
-# LOCALNESS THRESHOLD
-threshold=0.4         # Fraction above which air is considered "local"
-                      # Change to 1 if you don't want to separate high local times
+# FILTERS
+"""
+# Include a list of filters you want to include here to filter the data
+# Purpose is to remove observation times with potential biases
+
+Options are:
+"daily_median": What it says
+ "daytime": Only between 11:00 - 15:00 inclusive 
+ "nighttime": Only b/w 23:00 - 03:00 inclusive
+ "noon": Only 12:00 fp and obs used
+ "pblh_gt_500":
+ "pblh_gt_250": 
+ "local_influence": Only keep times when localness is low
+ "six_hr_mean":
+ "ferry_loc": GAUGE-FERRY specific - Used to filter out dodgy ferry locations
+ "ferry_mf": GAUGE-FERRY specific - Used to filter out dodg ferry 
+ "ferry_fp_zero": GAUGE-FERRY specific 
+
+"""
+filters = ["local_influence"]   
        
 #####################################################
-# PARALLEL TEMPERING PARAMETERS          
-nbeta=2            # Number of parallel chains - needs to be defined even if no Parallel tempering
-beta= np.array((1.,1./2.)) # Values of beta for tempered chains 
+# PARALLEL TEMPERING PARAMETERS     
+# PARALLEL TEMPERING PARAMETERS     
+if parallel_tempering == False:          
+    nbeta=2            # Number of parallel chains - needs to be defined even if no Parallel tempering
+    beta= np.array((1.,1./2.)) # Values of beta for tempered chains 
+elif parallel_tempering == True: 
+    nbeta=8            # Number of parallel chains - needs to be defined even if no Parallel tempering
+    series = np.linspace(0.,1.,num=nbeta)
+    beta_1 = np.exp(0 + (np.log(250)-0)*series)
+    beta= 1./beta_1
+
 
 #################################################################################
 # DEFINE FORM OF PDFs FOR EMISSIONS, EMISSIONS UNCERTAINTIES AND MODEL UNCERTAINTY
@@ -101,7 +133,12 @@ pdf_p2_hparam20=0.5    # Upper bound of uniform distribution of pdf_param2
 ######################################################################
 # Model-Measurement starting value and uncertainty parameters
 sigma_model_ap = 20.   # Initial starting value of sigma_model (in same units as y, e.g ppb)
-sigma_model_hparams = np.array([0.1*sigma_model_ap,5.*sigma_model_ap]) # upper and lower bounds of uniform dist. 
+sigma_model_hparams = np.array([0.1,10.]) # upper and lower bounds of uniform dist.
+
+bl_period = 7      # No. of days for which each sigma_model value applies 
+bl_split=False     # Set to true if want to split sigma_model values by BL depth rather than days
+levels=None        # Banding of bL depths to solve for different sigma_model
+                   # e.g. levels=[0.,500.,1000.,10000.] Set if bl_split = True
 ####################################################################
 # DEFINE STEPSIZE FOR PROPOSAL DISTRIBUTIONS 
 # TO TUNE INDIVIDUAL ELEMENTS SEE LINE 
@@ -115,13 +152,38 @@ stepsize_clat = 5.    # Stepsize for latitude for move
 stepsize_bd=2.        # Stepsize for change in x during birth step
 
 ################################################
+# TAU
+#"Only need if inv_type = ('evencorr', 'correlated'):"
+tau_ap=12. 
+tau_hparams=np.array([1., 120.])
+stepsize_tau=4. 
+tau_pdf=1 
+
+
 # TUNING OF INDIVIDUAL PARAMETER STEPSIZES AND UNCERTAINTIES
+################################################
+# SET DIMENSIONS of nBC and nIC
+f_list=glob.glob(data_path + "/NAME/basis_functions/" 
+                    + domain + "/" + fp_basis_case + 
+                    "_" + domain + "_*.nc") 
 
-if fp_basis_case in('transd'):
-    nfixed = 8
+if len(f_list) > 0:
+    ds = process.open_ds(f_list[0]) 
+    if fp_basis_case in('transd'):
+        nfixed = len(np.unique(ds.basis))-1
+    else:
+        nfixed = len(np.unique(ds.basis))
+else:
+    raise LookupError("No file exists for that fp_basis_case and domain")
 
-if bc_basis_case in('NESW'):
-    nBC = 4
+f_list2=glob.glob(data_path + "/NAME/bc_basis_functions/" 
+                    + domain + "/" + bc_basis_case + 
+                    "_" + domain + "_*.nc") 
+if len(f_list2) > 0:                    
+    ds2 = process.open_ds(f_list2[0]) 
+    nBC = len(ds2.region)
+else:
+    raise LookupError("No file exists for that bc_basis_case and domain")
 
 if 'GOSAT' in(sites):
     nBias = 1           # Change as needed 
@@ -134,9 +196,17 @@ kICmax=kmax+nIC
 pdf_param1 = np.zeros((kICmax,nbeta))
 pdf_param2 = np.zeros((kICmax,nbeta))
 
+if fp_basis_case in("INTEM"):
+    basis_func = name.name.basis(domain = domain, basis_case = fp_basis_case)
+    k_ap=len(np.unique(basis_func.basis.values))
+
 ##########################################################
 # TUNE INDIVIDUAL STEPSIZES AND HYPERPARAMETER VALUES
 """
+Stepsize tuning occurs automatically during the burn-in period. 
+However, some manual tuning may be required to start with so step sizes 
+are at least of the right order of magnitude.
+
 You'll need to run the inversion once first and then check the output file
 for the acceptance ratios to see which elements need their stepsizes altered.
 You should be able to get away with a few thousand iterations to get a good 
@@ -151,6 +221,7 @@ stepsize_all=np.zeros((nIC1))+stepsize
 stepsize_pdf_p1_all=np.zeros((nIC1))+(stepsize_pdf_p1*pdf_param10)
 stepsize_pdf_p2_all=np.zeros((nIC1))+(stepsize_pdf_p2*pdf_param20)
 stepsize_all[:nBC]=stepsize_all[:nBC]/200.
+stepsize_all[1:3]=stepsize_all[1:3]*70.
 stepsize_pdf_p1_all[:nBC]=stepsize_pdf_p1_all[:nBC]/10.
 stepsize_pdf_p2_all[:nBC]=stepsize_pdf_p2_all[:nBC]/10.
 
@@ -179,10 +250,16 @@ pdf_p2_hparam1[-1]=0.2
 pdf_p2_hparam2[-1]=2.
 pdf_param2[nIC:,:]=1.
 
-post_mcmc=acrg_tdmcmc.run_tdmcmc(sites,meas_period,av_period,species,start_date,end_date, 
-    domain,network,fp_basis_case ,bc_basis_case,rjmcmc,bl_period,kmin,kmax,
-    k_ap,nIt,burn_in,nsub,threshold,nbeta,beta,sigma_model_pdf,sigma_model_ap, 
-    sigma_model_hparams,stepsize_sigma_y,stepsize_clon,stepsize_clat,
-    stepsize_bd,stepsize_all,stepsize_pdf_p1_all,stepsize_pdf_p2_all,
-    pdf_param1,pdf_param2,pdf_p1_hparam1,pdf_p1_hparam2,pdf_p2_hparam1,
-    pdf_p2_hparam2,x_pdf ,pdf_param1_pdf,pdf_param2_pdf, inv_type, output_dir)
+post_mcmc=run_tdmcmc.run_tdmcmc(sites, meas_period, av_period, species, start_date, end_date,  
+    domain, network, fp_basis_case, bc_basis_case, reversible_jump, parallel_tempering,    
+    bl_period, kmin, kmax, k_ap, nIt, burn_in ,nsub,    
+    nbeta, beta, sigma_model_pdf, sigma_model_ap,     
+    sigma_model_hparams, stepsize_sigma_y, stepsize_clon, stepsize_clat,    
+    stepsize_bd, stepsize_all, stepsize_pdf_p1_all, stepsize_pdf_p2_all,    
+    pdf_param1, pdf_param2, pdf_p1_hparam1, pdf_p1_hparam2, pdf_p2_hparam1,    
+    pdf_p2_hparam2, x_pdf, pdf_param1_pdf, pdf_param2_pdf, inv_type,     
+    output_dir,filters=filters,bl_split=bl_split, bl_levels=levels,
+    tau_ap=tau_ap, tau_hparams=tau_hparams, stepsize_tau=stepsize_tau, tau_pdf=tau_pdf)
+
+
+

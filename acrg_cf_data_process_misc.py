@@ -19,6 +19,9 @@ from os import getenv
 from acrg_GCWerks.cf_data_process import attributes, output_filename
 import calendar
 import re
+import dateutil
+from acrg_time import convert
+
 
 
 # Site info file
@@ -98,7 +101,7 @@ def ucam(site, species):
         "WAO" : {
             "ucam_name": "Wao",
             "instrument": "GC-FID",
-            "inlet": "25m",
+            "inlet": "21m",
             "global_attributes": {
                 "data_owner": "Neil Harris",
                 "data_owner_email": "nrh1000@cam.ac.uk"
@@ -193,10 +196,14 @@ def cbw():
         
         ds = xray.Dataset.from_dataframe(df.sort_index())
 
+        global_attributes_inlet = params["global_attributes"].copy()
+        global_attributes_inlet["inlet_height_magl"] = inlet[:-1]
+
         ds = attributes(ds,
                         species.upper(),
                         site.upper(),
-                        global_attributes=params["global_attributes"])
+                        global_attributes=global_attributes_inlet,
+                        sampling_period = 60)
         
         # Write file
         nc_filename = output_filename(params["directory_output"],
@@ -217,7 +224,7 @@ def cbw():
         "directory_output" : "/data/shared/obs/",
         "inlets": ["20m", "60m", "120m", "200m"],
         "global_attributes" : {
-            "contact": "Danielle van Dinther"
+            "Data_owner": "Danielle van Dinther"
         }
     }
 
@@ -711,12 +718,15 @@ def noaa_ccgg(species):
         "directory" : "/data/shared/obs_raw/NOAA/CCGG/surface",
         "directory_output" : "/data/shared/obs/",
         "units": {"CH4": "ppb",
+                  "C2H6": "ppb",
                   "CO2": "ppm",
                   "CH4C13": "permil"},
         "instrument": {"CH4": "GC-FID",
+                       "C2H6": "GC-FID",
                        "CO2": "NDIR",
                        "CH4C13": "IRMS"},
         "scale": {"CH4": "NOAA04",
+                  "C2H6": "NOAA12",
                   "CO2": "WMO_X2007",
                   "CH4C13": "NOAA-INSTAAR"},
         "global_attributes": {
@@ -810,3 +820,521 @@ def noaa_ccgg(species):
         
         ds.to_netcdf(nc_filename)
     
+
+def gla(species):
+    
+    fnames = glob.glob("/data/shared/obs_raw/GAUGE/*GLA*" + species.lower() + "*10m.nc")
+    
+    ds = []
+    for fname in fnames:
+        with xray.open_dataset(fname) as f:
+            dsf = f.load()
+        if species.lower() in dsf.variables.keys():
+            dsf.rename({species.lower(): species.upper()}, inplace = True)
+        dsf.rename({"uncertainty": species.upper() + "_variability"}, inplace = True)
+        ds.append(dsf)
+    
+    ds = xray.concat(ds, dim = "time")
+
+    # Change time stamp (currently the middle)
+    ds['time'] -= np.median(ds.time.values[1:] - ds.time.values[0:-1])/2.
+    ds.attrs["comment"] = "Time stamp used to be middle of averaging period, " + \
+                    "now subtracted half the " + \
+                    "median to approximate the start"
+
+    # Add attributes
+    ds = attributes(ds,
+                    species,
+                    "GLA",
+                    global_attributes = {"inlet_height_magl": 10.},
+                    sampling_period = 3*60)
+
+    # Write file
+    nc_filename = output_filename("/data/shared/obs/",
+                                  "GAUGE",
+                                  "FTS",
+                                  "GLA",
+                                  str(ds.time.to_pandas().index.to_pydatetime()[0].year),
+                                  ds.species,
+                                  "10m")
+    
+    print("Writing " + nc_filename)
+    
+    ds.to_netcdf(nc_filename)
+    
+
+def wdcgg_read(fname, species,
+               permil = False,
+               repeatability_column = None):
+        
+    skip = 0
+    with open(fname, 'r') as f:
+        for li in range(200):
+            line = f.readline()
+            if line[0] == "C":
+                skip += 1
+                header_line = line
+            else:
+                break
+    
+    columns = header_line[4:].split()
+    columns[2] = columns[2] + "_2"
+    columns[3] = columns[3] + "_2"
+    
+    df = pd.read_csv(fname, skiprows = skip,
+                     sep = r"\s+", names = columns,
+                     parse_dates = {"time": ["DATE", "TIME"]},
+                     index_col = "time")
+    
+    sp_file = species[:-1].upper() + species[-1].lower()
+    
+    df = df.rename(columns = {sp_file: species})
+    
+    output_columns = {species: species}
+    if repeatability_column:
+        output_columns[repeatability_column] = species.lower() + "_repeatability"
+    
+    df = df[output_columns.keys()]
+
+    df.rename(columns = output_columns, inplace = True)
+
+    if not permil:
+        df = df[df[species] > 0.]
+    
+    # Drop duplicates
+    df.index.name = "index"
+    df = df.reset_index().drop_duplicates(subset='index').set_index('index')              
+    df.index.name = "time"
+
+    if type(df.index) != pd.tseries.index.DatetimeIndex:
+        # Index is not of type time. This is sometimes because time is 99:99
+        keep_row = []
+        for i in df.index:
+            d, t = i.split(" ")
+            if t[0:2] == "99":
+                keep_row.append(False)
+            else:
+                keep_row.append(True)
+
+        df = df[keep_row]
+        df.index = pd.to_datetime(df.index)
+
+    return df
+
+
+def nies_read(network, site,
+              global_attributes = {},
+              instrument = "",
+              assume_repeatability = None):
+
+    params = {
+        "directory_output" : "/data/shared/obs/"
+        }
+
+    
+    directories = glob.glob("/data/shared/obs_raw/" + network + \
+                            "/" + site + "/*/*")
+
+    species = []
+    fnames = []
+    for directory in directories:
+        species.append(directory.split("/")[-1])
+        fnames.append(glob.glob("/data/shared/obs_raw/" + network + \
+                                "/" + site + "/*/" + species[-1] + "/event/*.dat")[0])
+                                
+    for sp, fname in zip(species, fnames):
+
+        df = wdcgg_read(fname, sp)
+        
+        if assume_repeatability:
+            df[sp + "_repeatability"] = df[sp]*assume_repeatability
+            global_attributes["Assumed_repeatability_%"] = int(assume_repeatability*100.)
+        
+        # Sort and convert to dataset
+        ds = xray.Dataset.from_dataframe(df.sort_index())
+        
+        # Add attributes
+        ds = attributes(ds,
+                        sp,
+                        site.upper(),
+                        global_attributes = global_attributes,
+                        sampling_period = 60,
+                        units = "ppt")
+
+        if assume_repeatability:
+            ds[sp.lower() + "_repeatability"].attrs["Comment"] = \
+                "NOTE: This is an assumed value. Contact data owner."
+    
+        # Write file
+        nc_filename = output_filename(params["directory_output"],
+                                      network,
+                                      instrument,
+                                      site.upper(),
+                                      str(ds.time.to_pandas().index.to_pydatetime()[0].year),
+                                      ds.species,
+                                      "various")
+        
+        print("Writing " + nc_filename)
+        
+        ds.to_netcdf(nc_filename)
+
+
+def nies():
+
+    global_attributes = {"data_owner": "NIES",
+                         "data_owner_email": "lnmukaih@nies.go.jp"
+                         }
+    
+    nies_read("NIES", "HAT",
+              global_attributes = global_attributes,
+              instrument = "GCMS",
+              assume_repeatability = 0.03)
+    nies_read("NIES", "COI",
+              global_attributes = global_attributes,
+              instrument = "GCMS",
+              assume_repeatability = 0.03)
+
+
+def niwa(site, species):
+
+    global_attributes = {"data_owner": "NIWA",
+                         "data_owner_email": "sylvia.nichol@niwa.co.nz gordon.brailsford@niwa.co.nz",
+                         "calibration_scale": "V-PDB derived from IAEA value for NBS19"
+                         }
+
+    fname = glob.glob("/data/shared/obs_raw/NIWA/" + \
+                      site.lower() + "*" + species.lower() + "*.txt")[0]
+    
+    df = wdcgg_read(fname, species,
+                    permil = True,
+                    repeatability_column="SD")
+
+    # Sort and convert to dataset
+    ds = xray.Dataset.from_dataframe(df.sort_index())
+
+    # Only post-1992 data is good
+    ds = ds.loc[dict(time = slice("1992-01-01", "2020-01-01"))]
+
+    # Add attributes
+    ds = attributes(ds,
+                    species,
+                    site.upper(),
+                    global_attributes = global_attributes,
+                    sampling_period = 60,
+                    units = "permil")
+
+    # Write file
+    nc_filename = output_filename("/data/shared/obs/",
+                                  "NIWA",
+                                  "GCMS",
+                                  site.upper(),
+                                  str(ds.time.to_pandas().index.to_pydatetime()[0].year),
+                                  ds.species,
+                                  "various")
+    
+    print("Writing " + nc_filename)
+    
+    ds.to_netcdf(nc_filename)
+
+def niwa_run():
+    
+    niwa("ARH", "13ch4")
+    niwa("BHD", "13ch4")
+
+
+def uci_13ch4():
+
+
+    for site in ["NWR", "MDO"]:
+        
+        if site == "NWR":
+            df = pd.read_csv("/data/shared/obs_raw/UCI/nwrch4_edited.dat",
+                             skiprows = 29,
+                             sep = r"\s+",
+                             names = ["date", "time_local", "ch4", "13ch4", "ch3d", "unknown1", "w1", "w2", "w3"],
+                             parse_dates = {"time": ["date", "time_local"]},
+                             index_col = "time",
+                             na_values = "NM")
+        elif site == "MDO":
+            df = pd.read_csv("/data/shared/obs_raw/UCI/mdoch4_edited.dat",
+                             skiprows = 24,
+                             sep = r"\s+",
+                             names = ["date", "time_local", "am_pm", "n", "ch4", "13ch4", "ch3d", "unknown1", "w1", "w2", "w3", "w4"],
+                             parse_dates = {"time": ["date", "time_local", "am_pm"]},
+                             index_col = "time",
+                             na_values = "NM")
+
+        df.index = df.index.tz_localize("US/Pacific")
+        df.index = [np.datetime64(t) for t in df.index.tz_convert("UTC")]
+        df.index.name = "time"
+
+        df = df[["13ch4"]]
+        df["13ch4_repeatability"] = 0.1
+        df = df[np.isfinite(df["13ch4"])]
+
+        # Sort and convert to dataset
+        ds = xray.Dataset.from_dataframe(df.sort_index())
+        
+        # Add attributes
+        ds = attributes(ds,
+                        "13ch4",
+                        site.upper(),
+                        global_attributes = {"data_owner": "S. Tyler (UC. Irvine)"},
+                        sampling_period = 60,
+                        units = "permil")
+    
+        # Write file
+        nc_filename = output_filename("/data/shared/obs/",
+                                      "UCI",
+                                      "GCMS",
+                                      site.upper(),
+                                      str(ds.time.to_pandas().index.to_pydatetime()[0].year),
+                                      ds.species,
+                                      "various")
+        
+        print("Writing " + nc_filename)
+        
+        ds.to_netcdf(nc_filename)
+
+
+
+def uw_13ch4():
+    
+    sites = {"CGO": "CG",
+             "OPW": "CP",
+             "MLO": "ML",
+             "BHD": "NZ",
+             "BRW": "PB",
+             "SMO": "SM"}
+    
+    for site in sites.keys():
+        
+        fname = glob.glob("/data/shared/obs_raw/UW/" + sites[site] + "Extract.prn.txt")[0]
+
+        with open(fname, 'r') as f:
+            lines = f.readlines()
+                
+        data = []
+        
+        data_started = False
+        for li, line in enumerate(lines):
+            if "Date" in line and "SIL ID #" in line:
+                data_start = li
+                data_started = True
+            if data_started == True and len(line) < 5:
+                data_end = li
+                break
+    
+        data = lines[data_start+1:data_end]
+    
+        date = []
+        ch4c13 = []
+        
+        for d in data:
+            dsp = d.split()
+            if len(dsp) > 1:
+                date.append(dsp[1])
+                ch4c13.append(float(dsp[-1]))
+    
+        df = pd.DataFrame(data = {"13ch4": np.array(ch4c13)}, index= pd.to_datetime(date))
+        df.index.name = "time"
+    
+        df = df.groupby(level = 0, axis = 0).mean()
+    
+        df["13ch4_repeatability"] = 0.1
+    
+        # Sort and convert to dataset
+        ds = xray.Dataset.from_dataframe(df.sort_index())
+    
+        # Add attributes
+        ds = attributes(ds,
+                        "13ch4",
+                        site.upper(),
+                        global_attributes = {"data_owner": "Quay, P.D. (UW)"},
+                        sampling_period = 60,
+                        units = "permil")
+    
+        # Write file
+        nc_filename = output_filename("/data/shared/obs/",
+                                      "UW",
+                                      "GCMS",
+                                      site.upper(),
+                                      str(ds.time.to_pandas().index.to_pydatetime()[0].year),
+                                      ds.species,
+                                      "various")
+        
+        print("Writing " + nc_filename)
+        
+        ds.to_netcdf(nc_filename)
+    
+    
+def uhei_13ch4():
+
+    
+    sites = {"ALT": "/data/shared/obs_raw/UHei/d13Cdata_Alert.txt",
+             "IZA": "/data/shared/obs_raw/UHei/d13Cdata_Izana.txt"}
+
+    for site, fname in sites.iteritems():
+        with open(fname, "r") as f:
+            lines = f.readlines()
+
+        data_started = False
+        for li, line in enumerate(lines):
+            if "start" in line and "stop" in line and "CH4" in line:
+                data_start = li
+                data_started = True
+            if data_started == True and line[0:4] == "----":
+                data_end = li
+                break
+
+        columns = lines[data_start].split()
+        columns[3] = columns[3] + "CH4"
+        data_lines = lines[data_start+1:data_end]
+        
+        data = []
+        date = []
+        for line in data_lines:
+            dsp = line.split()
+            date.append(convert.decimal2time(float(dsp[0])))
+            data.append([float(d) if d != "n.m." else np.NaN for d in dsp[2:]])
+    
+        df = pd.DataFrame(data = data, index = date, columns=columns[2:], dtype = float)
+
+        df.rename(columns = {"d13CH4": "13ch4", "1sig": "13ch4_repeatability"},
+                  inplace = True)
+        df = df[["13ch4", "13ch4_repeatability"]]
+        df.index.name = "time"
+    
+        # Sort and convert to dataset
+        ds = xray.Dataset.from_dataframe(df.sort_index())
+    
+        # Add attributes
+        ds = attributes(ds,
+                        "13ch4",
+                        site,
+                        global_attributes = {"data_owner": "Ingeborg Levin (U. Heidelberg)"},
+                        sampling_period = 60,
+                        units = "permil")
+    
+        # Write file
+        nc_filename = output_filename("/data/shared/obs/",
+                                      "UHei",
+                                      "GCMS",
+                                      site,
+                                      str(ds.time.to_pandas().index.to_pydatetime()[0].year),
+                                      ds.species,
+                                      "various")
+        
+        print("Writing " + nc_filename)
+        
+        ds.to_netcdf(nc_filename)
+
+
+    # Neumayer 
+    #########################################################################
+
+    with open("/data/shared/obs_raw/UHei/d13Cdata_Neumayer.txt", "r") as f:
+        lines = f.readlines()
+
+    data_started = False
+    for li, line in enumerate(lines):
+        if "year" in line and "month" in line and "day" in line:
+            data_start = li
+            data_started = True
+        if data_started == True and line[0:4] == "----":
+            data_end = li
+            break
+
+    columns = lines[data_start].split()
+    columns[4] = columns[4] + "CH4"
+    data_lines = lines[data_start+1:data_end]
+
+    data = []
+    date = []
+    for line in data_lines:
+        dsp = line.split()
+        date.append(dt(int(dsp[0]), int(dsp[1]), int(dsp[2])))
+        data.append([float(d) if d != "n.m." else np.NaN for d in dsp[3:]])
+
+    df = pd.DataFrame(data = data, index = date, columns=columns[3:], dtype = float)
+
+    df.rename(columns = {"d13CH4": "13ch4", "1sig": "13ch4_repeatability"},
+              inplace = True)
+    df = df[["13ch4", "13ch4_repeatability"]]
+    df.index.name = "time"
+
+    # Sort and convert to dataset
+    ds = xray.Dataset.from_dataframe(df.sort_index())
+
+    # Add attributes
+    ds = attributes(ds,
+                    "13ch4",
+                    "NMY",
+                    global_attributes = {"data_owner": "Ingeborg Levin (U. Heidelberg)"},
+                    sampling_period = 60,
+                    units = "permil")
+
+    # Write file
+    nc_filename = output_filename("/data/shared/obs/",
+                                  "UHei",
+                                  "GCMS",
+                                  "NMY",
+                                  str(ds.time.to_pandas().index.to_pydatetime()[0].year),
+                                  ds.species,
+                                  "various")
+    
+    print("Writing " + nc_filename)
+    
+    ds.to_netcdf(nc_filename)
+
+
+
+def saws():
+    ''' 
+    South African Weather Service observations
+    
+    '''
+    
+    
+    fname = "/data/shared/obs_raw/SAWS/CPT_CH4_1983_2015_All data.txt"
+    df = pd.read_csv(fname, skiprows=10,
+                     delimiter="\t", names = ["Time", "CH4"],
+                     index_col = "Time", parse_dates=["Time"],
+                     dayfirst=True)
+    
+    # remove duplicates
+    df.index.name = "index"
+    df = df.reset_index().drop_duplicates(subset='index').set_index('index')              
+    df.index.name = "time"
+
+    # remove NaN
+    df = df[np.isfinite(df["CH4"])]
+    
+    # Sort and convert to dataset
+    ds = xray.Dataset.from_dataframe(df.sort_index())
+    
+    
+    # Add attributes
+    ds = attributes(ds,
+                    "CH4",
+                    "CPT",
+                    global_attributes = {"inlet_height_magl": 30.,
+                                         "data owner": "Casper Labuschagne (casper.labuschagne@weathersa.co.za)"},
+                    sampling_period = 30)
+
+    # Write file
+    nc_filename = output_filename("/data/shared/obs/",
+                                  "SAWS",
+                                  "GC-FID-CRDS",
+                                  "CPT",
+                                  str(ds.time.to_pandas().index.to_pydatetime()[0].year),
+                                  ds.species,
+                                  "30m")
+    
+    print("Writing " + nc_filename)
+    
+    ds.to_netcdf(nc_filename)
+    
+
+
+

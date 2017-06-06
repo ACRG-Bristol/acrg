@@ -46,7 +46,6 @@ from scipy.interpolate import interp1d
 import copy
 import dirsync
 import matplotlib.pyplot as plt
-import time
 import getpass
 import traceback
 import sys
@@ -196,8 +195,8 @@ def load_NAME(file_lines, namever):
         # cast the x and y grid positions to floats and convert them to zero based indices
         # (the numbers are 1 based grid positions where 0.5 represents half a grid point.)
         if namever == 2:
-            x = float(vals[0]) - 1.5
-            y = float(vals[1]) - 1.5
+            x = int(float(vals[0]) - 1.5)
+            y = int(float(vals[1]) - 1.5)
         elif namever == 3:
             x = float(vals[0]) - 1
             y = float(vals[1]) - 1
@@ -843,7 +842,7 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
     nctime=ncF.createVariable('time', 'd', ('time',))
     nclon=ncF.createVariable('lon', 'f', ('lon',))
     nclat=ncF.createVariable('lat', 'f', ('lat',))
-    nclev=ncF.createVariable('lev', 'str', ('lev',))
+    nclev=ncF.createVariable('lev', str, ('lev',))
     ncfp=ncF.createVariable(varname, 'f', ('lat', 'lon', 'time'), zlib = True,
                             least_significant_digit = 5)
     
@@ -1263,18 +1262,12 @@ def process(domain, site, height, year, month,
         else:
             particles_prefix = None
 
-        try:    
-            fp_file = footprint_concatenate(fields_prefix,
+           
+        fp_file = footprint_concatenate(fields_prefix,
                                             datestr = datestr, met = met,
                                             particle_prefix = particles_prefix,
                                             satellite = satellite,
                                             time_step = timeStep)
-        except:
-            status_log("FAILED when reading footprints and/or " +
-                       "particle location files for %s. Error log: %s" % 
-                       (datestr, traceback.print_exc()),
-                       error_or_warning="error")
-            return None
         
         # Do satellite process
         if satellite:
@@ -1336,8 +1329,8 @@ def process(domain, site, height, year, month,
         status_log("Writing file: " + outfile, print_to_screen=False)
         
         # Write outputs
-        try:
-            write_netcdf(fp.fp.transpose("lat", "lon", "time").values.squeeze(),
+        #try:
+        write_netcdf(fp.fp.transpose("lat", "lon", "time").values.squeeze(),
                          fp.lon.values.squeeze(),
                          fp.lat.values.squeeze(),
                          fp.lev.values,
@@ -1353,11 +1346,6 @@ def process(domain, site, height, year, month,
                          particle_locations = pl,
                          particle_heights = height_out,
                          global_attributes = fp.attrs)
-        except:
-            status_log("FAILED when writing file %s. Error log: %s" % 
-                       (outfile, traceback.print_exc()),
-                       error_or_warning="error")
-            return None
 
     else:
         status_log("FAILED. Couldn't seem to find any files, or some files are missing for %s" %
@@ -1375,7 +1363,8 @@ def process_all(domain, site,
                 force_update = False,
                 satellite = False,
                 perturbed_folder = None,
-                max_level = None):
+                max_level = None,
+                force_met_empty=False):
     '''
     For a given domain and site, process all available fields files (including
     multiple heights).
@@ -1434,17 +1423,11 @@ def process_all(domain, site,
             months = copy.copy(months_in)
 
         for year, month in set(zip(years, months)):
-            try:
-                out = process(domain, site, height, year, month,
+            #try:
+            out = process(domain, site, height, year, month,
                     base_dir = base_dir, force_update = force_update,
                     satellite = satellite, perturbed_folder = perturbed_folder,
-                    max_level = max_level)
-            except:
-                status_log("FAILED in process all " +
-                       "for %s. Error log: %s" % 
-                       (years*100 + months, traceback.print_exc()),
-                       error_or_warning="error")
-                continue
+                    max_level = max_level, force_met_empty = force_met_empty)
 
 
 def copy_processed(domain):

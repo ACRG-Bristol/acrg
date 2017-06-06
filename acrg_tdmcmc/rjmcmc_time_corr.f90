@@ -1,27 +1,27 @@
 
-Module transd_evencorr
+Module transd_corr
 
 contains
 
 
-SUBROUTINE hbtdmcmc(beta,k, x, h_agg,y,n0, plon, plat, regions_v, &
-pdf_param1, pdf_param2, lon,lat, h_v, sigma_model, sigma_measure, error_structure, &
+SUBROUTINE hbtdmcmc(beta,k, x, h_agg,y,n0, phour, regions_v, &
+pdf_param1, pdf_param2, y_hour, h_raw, sigma_model, sigma_measure, error_structure, &
 R_indices, sigma_model_hparam1, sigma_model_hparam2, stepsize_sigma_y, sigma_model_pdf, &
 tau, tau_hparams, stepsize_tau, tau_pdf, deltatime, &
-y_hparam1, y_hparam2, stepsize_y, y_pdf, timeindex_zero, &
-sigma_clon, sigma_clat, rjmcmc, para_temp, nmeasure_site, nsite_max, & 
-lonmin, lonmax, latmin,latmax, sigma_bd, kmin, x_pdf_all, burn_in, &
+sigma_chour, k_sector, sector_index, rjmcmc, para_temp, nmeasure_site, nsite_max, & 
+hour_min, hour_max, sigma_bd, kmin, x_pdf_all, burn_in, &
 pdf_p1_hparam1, pdf_p1_hparam2, pdf_p2_hparam1, pdf_p2_hparam2, pdf_param1_pdf, pdf_param2_pdf, &
 stepsize, stepsize_pdf_p1,stepsize_pdf_p2, nIt, nsub, nit_sub, nIC, &
-nbeta, kmax, kICmax, nmeasure, Ngrid, nlon,nlat, ydim1, ydim2, numsites,nIC1, nzero,  &
-k_out, x_out, regions_out, plon_out, plat_out, sigma_y_out, sigma_model_out, n0T_out, &
-pdf_param1_out, pdf_param2_out, tau_out, y_it,accept, reject, &
+nbeta, kmax, kICmax, nmeasure, ydim1, ydim2, numsites,nIC1, k_raw, kmax_all, &
+k_out, x_out, regions_out, phour_out, sigma_y_out, sigma_model_out, n0T_out, &
+pdf_param1_out, pdf_param2_out, k_sector_it, sector_index_it, tau_out, accept, reject, &
 accept_birth, reject_birth, accept_death, reject_death, accept_move, reject_move, &
 accept_swap, reject_swap, accept_sigma_y, reject_sigma_y, accept_tau, reject_tau, &
-accept_y, reject_y,tot_acc_x, tot_acc_p1, tot_acc_p2, tot_acc_sigma_y, tot_acc_tau, &
+tot_acc_x, tot_acc_p1, tot_acc_p2, tot_acc_sigma_y, tot_acc_tau, &
 accept_all, reject_all, accept_birth_all, reject_birth_all, &
 accept_death_all, reject_death_all, accept_move_all, reject_move_all, &
 accept_sigma_y_all, reject_sigma_y_all, accept_tau_all, reject_tau_all)
+
 
 
 IMPLICIT NONE
@@ -32,9 +32,6 @@ INTEGER nbeta
 INTEGER kmax
 INTEGER kICmax
 INTEGER nmeasure
-INTEGER Ngrid
-INTEGER nlon
-INTEGER nlat
 INTEGER nit_sub
 INTEGER nIt
 INTEGER burn_in
@@ -45,15 +42,13 @@ INTEGER ydim1
 INTEGER ydim2
 INTEGER nIC1
 INTEGER numsites
-INTEGER nzero
+INTEGER k_raw
+INTEGER kmax_all
 ! Single Variables
-REAL lonmin
-REAL lonmax
-REAL latmin
-REAL latmax
+REAL hour_min
+REAL hour_max
 REAL sigma_bd
-REAL sigma_clon
-REAL sigma_clat
+REAL sigma_chour
 REAL stepsize_sigma_y(ydim2)
 REAL stepsize_tau
 INTEGER sigma_model_pdf
@@ -63,10 +58,6 @@ INTEGER tau_pdf
 INTEGER rjmcmc
 INTEGER para_temp
 INTEGER nsite_max
-INTEGER y_pdf
-REAL stepsize_y
-REAL y_hparam1
-REAL y_hparam2
 ! Input arrays
 REAL stepsize(nIC1)
 REAL stepsize_pdf_p1(nIC1)
@@ -90,47 +81,44 @@ REAL sigma_measure(nmeasure)
 REAL error_structure(nmeasure) 
 REAl sigma_model_hparam1(ydim2)
 REAl sigma_model_hparam2(ydim2)
-REAL plon(kmax,nbeta)
-REAL plat(kmax,nbeta)
-INTEGER regions_v(Ngrid,nbeta)
-REAL lon(nlon)
-REAL lat(nlat)
-REAL h_v(nmeasure, Ngrid)
+REAL phour(kmax,k_raw,nbeta)
+INTEGER regions_v(nmeasure,k_raw,nbeta)
+REAL y_hour(nmeasure)
+REAL h_raw(nmeasure,k_raw)
+INTEGER k_sector(k_raw,nbeta)
+INTEGER sector_index(kmax_all, nbeta)
 REAL tau(numsites,nbeta)
 REAL tau_hparams(2)
-REAL deltatime
+REAL deltatime(nmeasure,nmeasure)
 INTEGER nmeasure_site(numsites)
-INTEGER timeindex_zero(nzero)
 ! Outputs
 INTEGER k_out(nit_sub)
 REAL x_out(kICmax,nit_sub)  
 REAL pdf_param1_out(kICmax,nit_sub)             
-REAL pdf_param2_out(kICmax,nit_sub)   
-REAL plon_out(kmax,nit_sub)
-REAL plat_out(kmax,nit_sub)
-INTEGER regions_out(Ngrid,nit_sub)
+REAL pdf_param2_out(kICmax,nit_sub) 
+REAL phour_out(kmax,k_raw,nit_sub)  
+INTEGER regions_out(nmeasure,k_raw,nit_sub)
 REAL sigma_y_out(nmeasure, nit_sub)
 REAL sigma_model_out(ydim2, nit_sub)
 REAL n0T_out(nit_sub)
 REAL tau_out(numsites,nit_sub)
 INTEGER accept(nIC1)
 INTEGER reject(nIC1)
-INTEGER accept_all(nIC1,nbeta)
-INTEGER reject_all(nIC1,nbeta)
 REAL tot_acc_x(nIC1)
 REAL tot_acc_p1(nIC1)
 REAL tot_acc_p2(nIC1)
 REAL tot_acc_sigma_y(ydim2)
 REAL tot_acc_tau
+INTEGER accept_birth, reject_birth
+INTEGER accept_death, reject_death, accept_move, reject_move, accept_swap
+INTEGER accept_sigma_y, reject_sigma_y, accept_tau, reject_tau, reject_swap
+INTEGER accept_all(nIC1,nbeta)
+INTEGER reject_all(nIC1,nbeta)
 INTEGER accept_birth_all(nbeta), reject_birth_all(nbeta)
 INTEGER accept_death_all(nbeta), reject_death_all(nbeta)
 INTEGER accept_move_all(nbeta), reject_move_all(nbeta)
 INTEGER accept_sigma_y_all(nbeta), reject_sigma_y_all(nbeta)
 INTEGER accept_tau_all(nbeta), reject_tau_all(nbeta)
-INTEGER accept_birth, reject_birth
-INTEGER accept_death, reject_death, accept_move, reject_move, accept_swap
-INTEGER accept_sigma_y, reject_sigma_y, accept_tau, reject_tau, reject_swap
-INTEGER accept_y, reject_y
 REAL y_it(nmeasure,nit_sub)
 ! INTERMEDIATE VARIABLES
 INTEGER it, ibeta, remain_it, pair1,pair2, ib, it_sub, remain, kIC       !remain_dim
@@ -139,11 +127,10 @@ REAL u, u1,u2, randomu,pT_chain, beta1,beta2
 INTEGER k_it(nit_sub)
 REAL x_it(kICmax,nit_sub)                             
 REAL pdf_param1_it(kICmax,nit_sub)   
-REAL pdf_param2_it(kICmax,nit_sub)   
-REAL plon_it(kmax,nit_sub)               
-REAL plat_it(kmax,nit_sub)              
+REAL pdf_param2_it(kICmax,nit_sub) 
+REAL phour_it(kmax,k_raw,nit_sub) 
+INTEGER regions_it(nmeasure,k_raw,nit_sub)        
 REAL sigma_model_ap(ydim2)            
-INTEGER regions_it(Ngrid,nit_sub)
 REAL sigma_y_it(nmeasure,nit_sub)
 REAL sigma_model_it(ydim2, nit_sub) 
 REAL n0T_it(nit_sub)
@@ -160,25 +147,28 @@ INTEGER acc_y_batch(ydim2)
 INTEGER rej_y_batch(ydim2)
 INTEGER acc_tau_batch
 INTEGER rej_tau_batch
+INTEGER k_sector_it(k_raw,nit_sub)
+INTEGER sector_index_it(kmax_all,nit_sub)
 ! INTERMEDIATE TEMP VARIABLES
 INTEGER ti,jj
 REAL Rinv_temp(nmeasure,nmeasure), Qinv_temp(nmeasure,nmeasure)
-!REAL Q_temp(nmeasure,nmeasure)
+REAL Q_temp(nmeasure,nmeasure)
 REAL detval_temp, detval_Q_temp, n0T_temp
 REAL n0_temp(nmeasure), sigma_y_temp(nmeasure), y_error(nmeasure)
 REAL sigma_yinv(nmeasure), C(nmeasure)
 ! SUBROUTINE INPUTS
 REAL betaib, n0Tib, tauib(numsites)
-REAL xib(kICmax), plonib(kmax), platib(kmax), n0ib(nmeasure)           
+REAL xib(kICmax), phourib(kmax,k_raw), n0ib(nmeasure)           
 REAL pdf_param1ib(kICmax), pdf_param2ib(kICmax)
 REAL h_aggib(nmeasure,kICmax)
 REAL sigma_yib(nmeasure), sigma_modelib(ydim2)
 REAL Rinvib(nmeasure,nmeasure), Qinvib(nmeasure,nmeasure)
 INTEGER kib
-INTEGER regions_vib(Ngrid)
+INTEGER regions_vib(nmeasure,k_raw)
+INTEGER k_sectorib(k_raw), sector_indexib(kmax_all)
 ! SUBROUTINE OUTPUTS
 REAL n0Tib1, tauib1(numsites)                     
-REAL xib1(kICmax), plonib1(kmax), platib1(kmax), n0ib1(nmeasure)      
+REAL xib1(kICmax), phourib1(kmax,k_raw), n0ib1(nmeasure)      
 REAL pdf_param1ib1(kICmax), pdf_param2ib1(kICmax)
 REAL h_aggib1(nmeasure,kICmax)
 REAL sigma_yib1(nmeasure), sigma_modelib1(ydim2)
@@ -186,11 +176,10 @@ INTEGER kib1, rejectib1, acceptib1, reject_yib1, accept_yib1
 INTEGER acceptxib1(nIC1), rejectxib1(nIC1), acc_bxib1(nIC1), rej_bxib1(nIC1)
 INTEGER acc_byib1(ydim2), rej_byib1(ydim2)
 INTEGER acc_tauib1, rej_tauib1
-INTEGER regions_vib1(Ngrid)
+INTEGER regions_vib1(nmeasure,k_raw)
 REAL detvalib, detvalib1, detval_Qib, detval_Qib1
 REAL detval_Q_blockib(numsites), detval_Q_blockib1(numsites)
 REAL Rinvib1(nmeasure,nmeasure), Qinvib1(nmeasure,nmeasure)
-REAL y_out(nmeasure)
 REAL stepsize_sig_ib1(ydim2)
 REAL stepsize_tau_ib1
 REAL stepsize_ib1(nIC1)     
@@ -198,40 +187,43 @@ REAL stepsize_p1_ib1(nIC1)
 INTEGER acc_prob_p1_ib1(nIC1)
 REAL stepsize_p2_ib1(nIC1)
 INTEGER rej_prob_p1_ib1(nIC1)
+INTEGER k_sectorib1(k_raw), sector_indexib1(kmax_all)
 ! BLOCK INTERMEDIATES
-INTEGER cum_nmeas, si, ii
-!REAL Q_block_temp(nsite_max,nsite_max)
-!REAL Q_block_inv_temp(nsite_max,nsite_max)
+INTEGER cum_nmeas, si
+REAL Q_block_temp(nsite_max,nsite_max)
+REAL Q_block_inv_temp(nsite_max,nsite_max)
 REAL detval_Q_block_temp(numsites)
 !REAL n0T_block(numsites)
-REAL aa, bb, q_small
+REAL aa, bb
 
 
 ! OTHER INTERMEDIATES
 
-!f2py intent(in) beta,k, x, h_agg,y,n0, plon, plat, regions_v
-!f2py intent(in) pdf_param1, pdf_param2, lon,lat, h_v, sigma_clon, sigma_clat  
+!f2py intent(in) beta,k, x, h_agg,y,n0, phour, regions_v
+!f2py intent(in) phour, y_hour, sigma_chour, hour_min, hour_max
+!f2py intent(in) pdf_param1, pdf_param2, h_raw
 !f2py intent(in) tau, tau_hparams, stepsize_tau, tau_pdf, deltatime, error_structure 
 !f2py intent(in) sigma_model, sigma_measure, rjmcmc, para_temp, nmeasure_site, nsite_max
 !f2py intent(in) R_indices, sigma_model_hparam1, sigma_model_hparam2 ,stepsize_sigma_y
-!f2py intent(in) sigma_model_pdf, lonmin, lonmax, latmin,latmax, sigma_bd, kmin, x_pdf_all, burn_in
+!f2py intent(in) sigma_model_pdf, sigma_bd, kmin, x_pdf_all, burn_in
 !f2py intent(in) pdf_p2_hparam1, pdf_p2_hparam2, stepsize_pdf_p2, pdf_param2_pdf
 !f2py intent(in) pdf_p1_hparam1, pdf_p1_hparam2, stepsize_pdf_p1, pdf_param1_pdf
+!f2py intent(in) k_sector, sector_index, k_raw, kmax_all
 !f2py intent(in) stepsize, nIt,nsub,nit_sub, nIC1, numsites
-!f2py intent(in) nIC, nbeta, kmax, kICmax, nmeasure, Ngrid, nlon,nlat, ydim1, ydim2
-!f2py intent(in) y_hparam1,y_hparam2,y_pdf,stepsize_y,timeindex_zero, nzero
-!f2py intent(out) k_out, x_out, regions_out, plon_out, plat_out, sigma_y_out, n0T_out
+!f2py intent(in) nIC, nbeta, kmax, kICmax, nmeasure, ydim1, ydim2
+!f2py intent(out) k_out, x_out, regions_out, phour_out, sigma_y_out, n0T_out
 !f2py intent(out) pdf_param2_out, pdf_param1_out, sigma_model_out
+!f2py intent(out) k_sector_it, sector_index_it
 !f2py intent(out) accept, reject, accept_swap, accept_birth, accept_death, accept_move
 !f2py intent(out) reject_birth, reject_death, reject_move, accept_sigma_y, reject_sigma_y
-!f2py intent(out) reject_swap, accept_tau, reject_tau, tau_out, y_it, accept_y, reject_y
+!f2py intent(out) reject_swap, accept_tau, reject_tau, tau_out
 !f2py intent(out) tot_acc_x, tot_acc_p1, tot_acc_p2, tot_acc_sigma_y, tot_acc_tau
 !f2py intent(out) accept_all, reject_all, accept_birth_all, reject_birth_all
 !f2py intent(out) accept_death_all, reject_death_all, accept_move_all, reject_move_all
 !f2py intent(out) accept_sigma_y_all, reject_sigma_y_all, accept_tau_all, reject_tau_all
 
 
-  !call OMP_SET_NUM_THREADS(nbeta)      ! Uncomment for Parallel Tempering
+  call OMP_SET_NUM_THREADS(nbeta)      ! Uncomment for Parallel Tempering
 
  call init_random_seed()          ! Ensure random number generation starts from new point each time program is run
                                   ! Random seed only needs to be called once in a program.  
@@ -290,51 +282,26 @@ sigma_model_ap=sigma_model(:,1)
   sigma_y_temp=sqrt(y_error**2 + sigma_measure**2)   
   sigma_yinv = 1./sigma_y_temp
 
-  !Q_temp = exp((-1.)*deltatime/tau(1,1))
-  q_small = exp((-1.)*deltatime/tau(1,1))   ! Assumes all tau start from the same value
+  Q_temp = exp((-1.)*deltatime/tau(1,1))
 
   do si=1,numsites
 
-    !Q_block_temp(:,:)=0.
-    !Q_block_inv_temp(:,:)=0.
+    Q_block_temp(:,:)=0.
+    Q_block_inv_temp(:,:)=0.
 
-    !Q_block_temp(1:nmeasure_site(si),1:nmeasure_site(si)) = &
-    !Q_temp(cum_nmeas+1:cum_nmeas+nmeasure_site(si), cum_nmeas+1:cum_nmeas+nmeasure_site(si))
+    Q_block_temp(1:nmeasure_site(si),1:nmeasure_site(si)) = &
+    Q_temp(cum_nmeas+1:cum_nmeas+nmeasure_site(si), cum_nmeas+1:cum_nmeas+nmeasure_site(si))
     
-    !Q_block_inv_temp(1:nmeasure_site(si),1:nmeasure_site(si)) = Ainv(Q_block_temp(1:nmeasure_site(si),1:nmeasure_site(si)))
+    Q_block_inv_temp(1:nmeasure_site(si),1:nmeasure_site(si)) = Ainv(Q_block_temp(1:nmeasure_site(si),1:nmeasure_site(si)))
 
-    !detval_Q_block_temp(si) = det(Q_block_temp(1:nmeasure_site(si),1:nmeasure_site(si)))
+    detval_Q_block_temp(si) = det(Q_block_temp(1:nmeasure_site(si),1:nmeasure_site(si)))
 
-    !Qinv_temp(cum_nmeas+1:cum_nmeas+nmeasure_site(si), cum_nmeas+1:cum_nmeas+nmeasure_site(si)) = &
-    !Q_block_inv_temp(1:nmeasure_site(si),1:nmeasure_site(si))
+    Qinv_temp(cum_nmeas+1:cum_nmeas+nmeasure_site(si), cum_nmeas+1:cum_nmeas+nmeasure_site(si)) = &
+    Q_block_inv_temp(1:nmeasure_site(si),1:nmeasure_site(si))
 
-    !cum_nmeas = cum_nmeas + nmeasure_site(si)
-
-    Qinv_temp(cum_nmeas+1,cum_nmeas+1) = 1.
-    Qinv_temp(cum_nmeas+nmeasure_site(si),cum_nmeas+nmeasure_site(si)) = 1.
-    Qinv_temp(cum_nmeas+1,cum_nmeas+2) = q_small*(-1.)
-    Qinv_temp(cum_nmeas+nmeasure_site(si),cum_nmeas+nmeasure_site(si)-1) = q_small*(-1.)
-
-    do ii=2, nmeasure_site(si)-1
-         Qinv_temp(cum_nmeas+ii,cum_nmeas+ii) = 1. + q_small**2
-         Qinv_temp(cum_nmeas+ii,cum_nmeas+ii+1) = q_small*(-1.)
-         Qinv_temp(cum_nmeas+ii,cum_nmeas+ii-1) = q_small*(-1.)
-    enddo
-   
-    detval_Q_block_temp(si) = alog(1-q_small**2)*((nmeasure_site(si)-1)/2.)   ! DETERMINANT IN LOG SPACE log of sqrt of determinant
-   
     cum_nmeas = cum_nmeas + nmeasure_site(si)
 
   enddo
-
-  Qinv_temp = Qinv_temp/(1.-q_small**2)   ! Assumes all taus start at smae value
-
-
-  !Qinv_temp = Ainv(Q_temp)
-  !detval_Q_temp = det(Q_temp)
-
-  !write(*,*) detval_Q_block
-  !stop
 
   detval_Q_temp = sum(detval_Q_block_temp)
 
@@ -343,20 +310,8 @@ sigma_model_ap=sigma_model(:,1)
   enddo
 	
   detval_temp =  sum(alog(sigma_y_temp)) + detval_Q_temp  ! DETERMINANT IN LOG SPACE log of sqrt of determinant
-
+ 
   n0_temp = n0(:,1)
-
-!  cum_nmeas = 0
-!  do si=1, numsites
-!
-!  C_temp(cum_nmeas+1:cum_nmeas+nmeasure_site(si)) = matmul(n0_temp(cum_nmeas+1:cum_nmeas+nmeasure_site(si)), &
-!           Rinv_temp(cum_nmeas+1:cum_nmeas+nmeasure_site(si), cum_nmeas+1:cum_nmeas+nmeasure_site(si)))
-!
-!  n0T_block(si) = dot_product(n0_temp(cum_nmeas+1:cum_nmeas+nmeasure_site(si)),C_temp(cum_nmeas+1:cum_nmeas+nmeasure_site(si)))
-!
-!  cum_nmeas = cum_nmeas + nmeasure_site(si)
-!  enddo
-
 
   C = matmul(n0_temp,Rinv_temp)
   n0T_temp = dot_product(n0_temp,C)
@@ -385,14 +340,14 @@ sigma_model_ap=sigma_model(:,1)
 !###############################################################
 do it=1,(nIt+burn_in)
    
-  ! call random_number(u) 
+   call random_number(u) 
 
    if (rjmcmc .EQ. 1) then
-       remain_it= modulo(it,7)+1
-       !remain_it = FLOOR(7*u) + 1    ! Choose random number between 1 and 7 to choose what to update
+       remain_it= modulo(it,6)+1
+       !remain_it = FLOOR(6*u) + 1    ! Choose random number between 1 and 7 to choose what to update
    else
-  
-       remain_it= modulo(it,4)+1
+
+       remain_it= modulo(it,3)+1
        !if (modulo(it,8) .EQ. 5) then
        !    remain_it=3
        !elseif (modulo(it,8) .GE. 6) then
@@ -404,31 +359,34 @@ do it=1,(nIt+burn_in)
    endif
 
 
-!$OMP PARALLEL DO DEFAULT(SHARED) private(ibeta, betaib,kib,xib,pdf_param1ib,pdf_param2ib, plonib, platib), &
+!$OMP PARALLEL DO DEFAULT(SHARED) private(ibeta, betaib,kib,xib,pdf_param1ib,pdf_param2ib, phourib), &
 !$OMP& private(regions_vib,h_aggib,n0ib,n0Tib,kIC,xib1,n0ib1,n0Tib1,acceptib1,rejectib1,regions_vib1), &
-!$OMP& private(u, kib1, h_aggib1, plonib1, platib1, acceptxib1, rejectxib1), &
+!$OMP& private(u, kib1, h_aggib1, phourib1, acceptxib1, rejectxib1), &
 !$OMP& private(sigma_yib, sigma_modelib, sigma_yib1, sigma_modelib1, accept_yib1, reject_yib1), &
 !$OMP& private(pdf_param1ib1, pdf_param2ib1, detvalib, detvalib1, detval_Qib, detval_Qib1), &
 !$OMP& private(Rinvib, Qinvib, tauib, Rinvib1, Qinvib1, tauib1), &
-!$OMP& private(detval_Q_blockib, detval_Q_blockib1), & 
+!$OMP& private(detval_Q_blockib, detval_Q_blockib1), &     
 !$OMP& private(stepsize_ib1, acc_bxib1, rej_bxib1),&
 !$OMP& private(stepsize_p1_ib1, acc_prob_p1_ib1,rej_prob_p1_ib1),&
 !$OMP& private(stepsize_p2_ib1, stepsize_sig_ib1, acc_byib1, rej_byib1),& 
-!$OMP& private(stepsize_tau_ib1, acc_tauib1, rej_tauib1),&             
-!$OMP& shared(x,n0,n0T, k, pdf_param1, pdf_param2, h_agg, plon,plat, regions_v)
+!$OMP& private(stepsize_tau_ib1, acc_tauib1, rej_tauib1),&   
+!$OMP& private(k_sectorib, sector_indexib, k_sectorib1, sector_indexib1),&          
+!$OMP& shared(x,n0,n0T, k, pdf_param1, pdf_param2, h_agg, phour, regions_v)
+
+
    do ibeta=1,nbeta
 
      if (para_temp .EQ. 1 .or. ibeta .EQ. 1) then 
-      
+
        betaib = beta(ibeta)
        kib = k(ibeta)
        xib  = x(:,ibeta)
        pdf_param1ib = pdf_param1(:,ibeta)
        pdf_param2ib = pdf_param2(:,ibeta)
 
-       plonib = plon(:,ibeta)
-       platib = plat(:,ibeta)
-       regions_vib = regions_v(:,ibeta)
+       
+       phourib = phour(:,:,ibeta)
+       regions_vib = regions_v(:,:,ibeta)
        h_aggib = h_agg(:,:,ibeta)
        n0ib = n0(:,ibeta)
        n0Tib = n0T(ibeta)
@@ -443,6 +401,9 @@ do it=1,(nIt+burn_in)
        detval_Q_blockib = detval_Q_block(:,ibeta)
        tauib = tau(:,ibeta)
 
+       k_sectorib = k_sector(:,ibeta)
+       sector_indexib = sector_index(:,ibeta)
+
        kIC = kib+nIC
        
        
@@ -452,11 +413,12 @@ do it=1,(nIt+burn_in)
             call x_hparam_update(betaib,kib, xib, pdf_param1ib,pdf_param2ib, &
                  pdf_p1_hparam1, pdf_p1_hparam2, stepsize_pdf_p1, pdf_param1_pdf, &
                  pdf_p2_hparam1, pdf_p2_hparam2, stepsize_pdf_p2, pdf_param2_pdf, &
+                 sector_indexib, k_sectorib, kmax_all, k_raw, &
                  acc_h_batch, rej_h_batch, x_pdf_all, it, burn_in, nIC, kICmax, nIC1, &
                  pdf_param1ib1, pdf_param2ib1, stepsize_p1_ib1, stepsize_p2_ib1, acc_prob_p1_ib1, rej_prob_p1_ib1) 
 
             call x_update(betaib,kib, xib, pdf_param1ib1,pdf_param2ib1, &
-                         h_aggib,n0ib,n0Tib,Rinvib, stepsize, &
+                         h_aggib,n0ib,n0Tib,Rinvib, stepsize, sector_indexib, k_sectorib, kmax_all, k_raw, &
                          accept_batch, reject_batch, x_pdf_all, it, burn_in, nIC, kICmax, nmeasure, nIC1, &
                          xib1, n0ib1, n0Tib1, acceptxib1, rejectxib1, stepsize_ib1, acc_bxib1, rej_bxib1)
 
@@ -469,6 +431,7 @@ do it=1,(nIt+burn_in)
             
             accept_all(:,ibeta) = accept_all(:,ibeta) + acceptxib1
             reject_all(:,ibeta) = reject_all(:,ibeta) + rejectxib1
+            
             if (betaib .EQ. 1.) then 
                accept(:) = accept(:) + acceptxib1
                reject(:) = reject(:) + rejectxib1
@@ -483,77 +446,82 @@ do it=1,(nIt+burn_in)
             
            
 
-       elseif (remain_it .EQ. 5) then       ! BIRTH
-               
-               call birth(betaib,kib, xib, h_aggib,y,n0ib,n0Tib,Rinvib, plonib, platib, regions_vib, lon,lat, & 
-                          h_v, pdf_param1ib, pdf_param2ib, x_pdf_all(nIC1), &
-                          sigma_bd,it,burn_in,nIC,kICmax,kmax, &
-                          nmeasure,Ngrid,nlon,nlat, &
-                          kib1, xib1, h_aggib1, n0ib1, n0Tib1, regions_vib1, plonib1, platib1, acceptib1, rejectib1, &
-                          pdf_param1ib1, pdf_param2ib1)
+       elseif (remain_it .EQ. 5) then       ! BIRTH           
+
+               call birth(betaib,kib, xib, h_aggib,y,n0ib,n0Tib,Rinvib, phourib, regions_vib, y_hour, & 
+                          pdf_param1ib, pdf_param2ib, x_pdf_all, &
+                          hour_min,hour_max, sigma_bd, stepsize,  &
+                          h_raw, k_sectorib, sector_indexib, &
+                          it,burn_in,nIC,kICmax,kmax, nmeasure, k_raw, kmax_all, nIC1, &
+                          kib1, xib1, h_aggib1, n0ib1, n0Tib1, regions_vib1, phourib1, acceptib1, rejectib1,&
+                          pdf_param1ib1, pdf_param2ib1, k_sectorib1, sector_indexib1)
 
                 k(ibeta) = kib1
                 x(:,ibeta) = xib1
-                plon(:,ibeta) = plonib1
-                plat(:,ibeta) = platib1
-                regions_v(:,ibeta) = regions_vib1
+                phour(:,:,ibeta) = phourib1
+                regions_v(:,:,ibeta) = regions_vib1
                 h_agg(:,:,ibeta) = h_aggib1
                 n0(:,ibeta) = n0ib1
                 n0T(ibeta) = n0Tib1
                 pdf_param1(:,ibeta) = pdf_param1ib1
                 pdf_param2(:,ibeta) = pdf_param2ib1
+                k_sector(:,ibeta) = k_sectorib1
+                sector_index(:,ibeta) = sector_indexib1
 
                 accept_birth_all(ibeta)= accept_birth_all(ibeta) + acceptib1
                 reject_birth_all(ibeta)= reject_birth_all(ibeta) + rejectib1
-                if (betaib .EQ. 1.) then 
+
+               if (betaib .EQ. 1.) then 
                    accept_birth= accept_birth + acceptib1
                    reject_birth= reject_birth + rejectib1
-                endif
+               endif
 
            elseif (remain_it .EQ. 6) then    ! DEATH
 
-               call death(betaib,kib, xib, h_aggib, y,n0ib,n0Tib,Rinvib, plonib, platib, regions_vib, lon,lat, & 
-                          h_v, pdf_param1ib, pdf_param2ib, x_pdf_all(nIC1), sigma_bd, &
-                          it, burn_in,nIC, kICmax, kmin, kmax, nmeasure, &
-                          Ngrid,nlon,nlat, &
-                          kib1, xib1, h_aggib1,n0ib1, n0Tib1, regions_vib1, plonib1, platib1, acceptib1, rejectib1,&
-                          pdf_param1ib1, pdf_param2ib1)
+               call death(betaib,kib, xib, h_aggib, y,n0ib,n0Tib,Rinvib, phourib, regions_vib, y_hour, & 
+                          pdf_param1ib, pdf_param2ib, x_pdf_all, sigma_bd, stepsize, &
+                          h_raw, k_sectorib, sector_indexib, &
+                          it, burn_in,nIC, kICmax, kmin, kmax, nmeasure, k_raw, kmax_all, nIC1, &
+                          kib1, xib1, h_aggib1,n0ib1, n0Tib1, regions_vib1, phourib1, acceptib1, rejectib1, &
+                          pdf_param1ib1, pdf_param2ib1, k_sectorib1, sector_indexib1)
                      
                k(ibeta) = kib1
                x(:,ibeta) = xib1
-               plon(:,ibeta) = plonib1
-               plat(:,ibeta) = platib1
-               regions_v(:,ibeta) = regions_vib1
+               phour(:,:,ibeta) = phourib1
+               regions_v(:,:,ibeta) = regions_vib1
                h_agg(:,:,ibeta) = h_aggib1
                n0(:,ibeta) = n0ib1
                n0T(ibeta) = n0Tib1
                pdf_param1(:,ibeta) = pdf_param1ib1
                pdf_param2(:,ibeta) = pdf_param2ib1
-          
+               k_sector(:,ibeta) = k_sectorib1
+               sector_index(:,ibeta) = sector_indexib1
+
                accept_death_all(ibeta)= accept_death_all(ibeta) + acceptib1
                reject_death_all(ibeta)= reject_death_all(ibeta) + rejectib1
+
                if (betaib .EQ. 1.) then 
                    accept_death= accept_death + acceptib1
                    reject_death= reject_death + rejectib1
                endif
 
-           elseif (remain_it .EQ. 7) then    ! MOVE
-                
-               
-               call move(betaib,kib, xib, h_aggib, y,n0ib,n0Tib,Rinvib, plonib, platib, regions_vib, lon,lat, & 
-                         h_v, lonmin, lonmax, latmin,latmax, sigma_clon, sigma_clat, it, &
-                         burn_in, nIC, kICmax, kIC, kmax, nmeasure, Ngrid,nlon,nlat, &
-                         h_aggib1, n0ib1, n0Tib1, regions_vib1, plonib1, platib1, acceptib1, rejectib1)
-               
-               plon(:,ibeta) = plonib1
-               plat(:,ibeta) = platib1
-               regions_v(:,ibeta) = regions_vib1
+           elseif (remain_it .EQ. 4) then    ! MOVE
+
+               call move(betaib,kib, xib, h_aggib, y,n0ib,n0Tib,Rinvib, phourib, regions_vib, y_hour, & 
+                         hour_min, hour_max, sigma_chour, it, &
+                         h_raw, k_sectorib, sector_indexib, &
+                         burn_in, nIC, kICmax, kIC, kmax, nmeasure, k_raw, kmax_all, &
+                         h_aggib1, n0ib1, n0Tib1, regions_vib1, phourib1, acceptib1, rejectib1)
+                         
+               phour(:,:,ibeta) = phourib1
+               regions_v(:,:,ibeta) = regions_vib1
                h_agg(:,:,ibeta) = h_aggib1
                n0(:,ibeta) = n0ib1
                n0T(ibeta) = n0Tib1
                
                accept_move_all(ibeta)= accept_move_all(ibeta) + acceptib1
                reject_move_all(ibeta)= reject_move_all(ibeta) + rejectib1
+  
                if (betaib .EQ. 1.) then 
                   accept_move= accept_move + acceptib1
                   reject_move= reject_move + rejectib1
@@ -564,7 +532,8 @@ do it=1,(nIt+burn_in)
               call sigma_y_update(betaib, sigma_modelib, sigma_measure, sigma_yib, error_structure, detvalib, &
                  detval_Qib, Rinvib, Qinvib, sigma_model_hparam1, sigma_model_hparam2, stepsize_sigma_y, &
                  sigma_model_pdf, R_indices, &
-                 n0ib,n0Tib, acc_y_batch, rej_y_batch, it, burn_in, nmeasure, ydim1, ydim2, &
+                 n0ib,n0Tib, acc_y_batch, rej_y_batch, &
+                 it, burn_in, nmeasure, ydim1, ydim2, &
                  n0Tib1, accept_yib1, reject_yib1, sigma_yib1, sigma_modelib1, Rinvib1, detvalib1, &
                  stepsize_sig_ib1, acc_byib1, rej_byib1) 
                       
@@ -591,7 +560,8 @@ do it=1,(nIt+burn_in)
               call tau_update(betaib, tauib, sigma_yib, detvalib, detval_Qib, detval_Q_blockib, &
                               tau_hparams(1), tau_hparams(2), stepsize_tau, tau_pdf,  &
                               Rinvib, Qinvib, deltatime, nmeasure_site, n0ib, n0Tib, &
-                              acc_tau_batch, rej_tau_batch, it, burn_in, nmeasure, numsites, &
+                              acc_tau_batch, rej_tau_batch, & 
+                              it, burn_in, nmeasure, numsites, nsite_max,&
                               n0Tib1, acceptib1, rejectib1, tauib1, Rinvib1, Qinvib1, detvalib1, &
                               detval_Qib1, detval_Q_blockib1, stepsize_tau_ib1, acc_tauib1, rej_tauib1) 
 
@@ -605,41 +575,23 @@ do it=1,(nIt+burn_in)
 
               accept_tau_all(ibeta) = accept_tau_all(ibeta) + acceptib1
               reject_tau_all(ibeta) = reject_tau_all(ibeta) + rejectib1
+              
               if (betaib .EQ. 1.) then 
-                accept_tau = accept_tau + acceptib1
-                reject_tau = reject_tau + rejectib1
-                stepsize_tau=stepsize_tau_ib1
-                acc_tau_batch=acc_tauib1
-                rej_tau_batch=rej_tauib1
+               accept_tau = accept_tau + acceptib1
+               reject_tau = reject_tau + rejectib1
+               stepsize_tau=stepsize_tau_ib1
+               acc_tau_batch=acc_tauib1
+               rej_tau_batch=rej_tauib1
               endif
 
-           elseif (remain_it .EQ. 4) then  ! Y_UPDATE
-
-              if (timeindex_zero(1) .NE. -999) then
-
-                if (betaib .EQ. 1.) then
-                  call y_update(betaib, y, n0ib, n0Tib, &
-                            Rinvib, y_hparam1, y_hparam2, timeindex_zero, &
-                            stepsize_y, y_pdf, accept_y, reject_y, it, burn_in, nmeasure, nzero, &
-                            n0ib1, n0Tib1, y_out, acceptib1, rejectib1) 
-
-             
-                 n0T(ibeta) = n0Tib1
-                 n0(:,ibeta) = n0ib1
-                 y = y_out 
-             
-                 !if (betaib .EQ. 1.) then 
-                   accept_y = acceptib1
-                   reject_y = rejectib1
-                 endif
-              endif            ! timeindex_zero .NE. -999
-
            endif     ! remain_it
-        
-       endif     !para_temp .EQ. 1 .or. ibeta .EQ. 1)    
 
-   enddo    ! beta loop  UNCOMMENT IF DOING PT
+        endif     !para_temp .EQ. 1 .or. ibeta .EQ. 1) 
+      
+   enddo    ! beta loop
 !$OMP END PARALLEL DO
+
+!!!!END PARALLEL DO
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! Store xit and swap betas
   
@@ -670,10 +622,9 @@ do it=1,(nIt+burn_in)
             else
                 reject_swap=reject_swap+1
             endif      ! pT_chain if      
-           else
+          else
                 reject_swap=reject_swap+1
-           endif   ! para_temp=1  
-
+          endif   ! para_temp=1  
          ENDIF      ! reamin_it =0 if
    ENDIF          ! it > burn_in/2
     
@@ -682,14 +633,15 @@ do it=1,(nIt+burn_in)
    IF (it .GT. burn_in) THEN     
         remain = modulo(it,nsub)          ! nsub typically = 100
         if (remain .EQ. 0) then
-      !            ib=1
+      !            ib=1                                ! COMMENT IF DOING PT
             do ib=1,nbeta                             ! UNCOMMENT IF DOING PT
                if (beta(ib) .EQ. 1.) then             ! UNCOMMENT IF DOING PT
                   x_it(:,it_sub)=x(:,ib)
-                  plon_it(:,it_sub)=plon(:,ib)
-                  plat_it(:,it_sub)=plat(:,ib)
+                  phour_it(:,:,it_sub)=phour(:,:,ib)
+                  k_sector_it(:,it_sub)=k_sector(:,ib)
                   k_it(it_sub)=k(ib)
-                  regions_it(:,it_sub)=regions_v(:,ib)
+                  sector_index_it(:,it_sub)=sector_index(:,ib)
+                  regions_it(:,:,it_sub)=regions_v(:,:,ib)          
                   sigma_y_it(:,it_sub)=sigma_y(:,ib)
                   sigma_model_it(:,it_sub)=sigma_model(:,ib)
                   n0T_it(it_sub)=n0T(ib)
@@ -709,8 +661,7 @@ enddo  ! It loop    ! END OF MCMC LOOP
 k_out = k_it
 x_out=x_it
 regions_out = regions_it
-plon_out = plon_it
-plat_out=plat_it
+phour_out = phour_it
 sigma_y_out=sigma_y_it
 sigma_model_out=sigma_model_it
 n0T_out=n0T_it
@@ -725,16 +676,16 @@ tot_acc_tau=stepsize_tau
 END SUBROUTINE hbtdmcmc
 
 
-
 SUBROUTINE x_hparam_update(beta,k, x, pdf_param1_all,pdf_param2_all, &
 pdf_p1_hparam1_all, pdf_p1_hparam2_all, stepsize_pdf_p1, pdf_param1_pdf, &
 pdf_p2_hparam1_all, pdf_p2_hparam2_all, stepsize_pdf_p2, pdf_param2_pdf, &
+sector_index, k_sector, kmax_all, k_raw, &
 accept_batch, reject_batch, x_pdf_all, it, burn_in, nIC, kICmax, nIC1, &
 pdf_param1_out, pdf_param2_out, stepsize_p1_out, stepsize_p2_out, accept_batch_out, reject_batch_out) 
 
 Implicit none
-INTEGER it, burn_in, k, nIC, kICmax, nIC1
-REAL av_acc,beta
+INTEGER it, burn_in, k, nIC, kICmax, nIC1, kmax_all,k_raw
+REAL av_acc, beta
 REAL x(kICmax) 
 INTEGER x_pdf_all(nIC1)
 INTEGER accept_batch(nIC1), reject_batch(nIC1)
@@ -744,31 +695,53 @@ REAL  pdf_p2_hparam1_all(nIC1), pdf_p2_hparam2_all(nIC1)
 REAL pdf_param1_out(kICmax), pdf_param2_out(kICmax)
 REAL stepsize_p1_out(nIC1), stepsize_p2_out(nIC1)
 INTEGER accept_batch_out(nIC1), reject_batch_out(nIC1)
-INTEGER elem(5)
-REAL u(5)
+INTEGER sector_index(kmax_all)
+INTEGER k_sector(k_raw)
 REAL pdf_param1        
 REAL pdf_param2
 REAL accep_prob(nIC1)
 REAL stepsize_pdf_p2(nIC1), stepsize_pdf_p1(nIC1)
-INTEGER xi, x_pdf, xx
+INTEGER xi, x_pdf, si
 REAL pT, randomu, p0,p1
 INTEGER pdf_param2_pdf, pdf_param1_pdf
 REAL pdf_p2_hparam1, pdf_p2_hparam2, pdf_p1_hparam1, pdf_p1_hparam2
 REAL dpdf_param2, pdf_param2_new, dpdf_param1, pdf_param1_new
 REAL p0_pdf_param2, p1_pdf_param2, p0_pdf_param1, p1_pdf_param1
 REAL stepsize_pdf_p10, stepsize_pdf_p20
+REAL u
+INTEGER xx, ri, ind,xi2
 
-   call random_number(u)   
+   !call random_number(u)   
     
-  elem = FLOOR(k*u)+1+nIC
+  !elem = FLOOR(k*u)+1+nIC
 
-  do xx=1,nIC+5
+  !do xx=1,nIC+(k/4)
   
-  if (xx .LE. nIC) then
-     xi = xx
-  else
-     xi=elem(xx-nIC)
-  endif
+  !if (xx .LE. nIC) then
+  !   xi = xx
+  !else
+  !   xi=elem(xx-nIC)
+  !endif
+
+   do xx=1,k_raw+nIC
+     if (xx .LE. nIC) then
+         xi = xx
+     else
+         call random_number(u) 
+         xi2 = FLOOR(k_sector(xx)*u)+1
+
+         ind=1
+         do ri =1,k
+            if (sector_index(ri) .EQ. (xx-nIC)) then
+               if (ind .EQ. xi2) then
+                   xi = ri+nIC 
+               endif
+            ind = ind+1
+            endif
+         enddo 
+     endif
+
+  !do xi=1,nIC+k
 
   if (xi .LE. nIC) then
      x_pdf = x_pdf_all(xi)
@@ -781,15 +754,16 @@ REAL stepsize_pdf_p10, stepsize_pdf_p20
      stepsize_pdf_p10 = stepsize_pdf_p1(xi)
      stepsize_pdf_p20 = stepsize_pdf_p2(xi)
   else if (xi .GT. nIC) then
-     x_pdf = x_pdf_all(nIC1)
+     si = sector_index(xi-nIC)
      pdf_param1 = pdf_param1_all(xi)
      pdf_param2 = pdf_param2_all(xi)
-     pdf_p1_hparam1 = pdf_p1_hparam1_all(nIC1)
-     pdf_p1_hparam2 = pdf_p1_hparam2_all(nIC1)
-     pdf_p2_hparam1 = pdf_p2_hparam1_all(nIC1)
-     pdf_p2_hparam2 = pdf_p2_hparam2_all(nIC1) 
-     stepsize_pdf_p10 = stepsize_pdf_p1(nIC1)
-     stepsize_pdf_p20 = stepsize_pdf_p2(nIC1)
+     x_pdf = x_pdf_all(si+nIC)
+     pdf_p1_hparam1 = pdf_p1_hparam1_all(si+nIC)
+     pdf_p1_hparam2 = pdf_p1_hparam2_all(si+nIC)
+     pdf_p2_hparam1 = pdf_p2_hparam1_all(si+nIC)
+     pdf_p2_hparam2 = pdf_p2_hparam2_all(si+nIC) 
+     stepsize_pdf_p10 = stepsize_pdf_p1(si+nIC)
+     stepsize_pdf_p20 = stepsize_pdf_p2(si+nIC)
   endif
   dpdf_param1 = random_normal()*stepsize_pdf_p10
   pdf_param1_new = pdf_param1 + dpdf_param1
@@ -824,29 +798,28 @@ REAL stepsize_pdf_p10, stepsize_pdf_p20
          if (alog(randomu) .LE. pT) THEN
              !ACCEPT   
              pdf_param1_all(xi)=pdf_param1_new
-             pdf_param2_all(xi)=pdf_param2_new    
-              !if(it .le. burn_in) then
-              if(beta .eq. 1. .and. it .le. burn_in) then  
-                  if (xi .LE. nIC) then
+             pdf_param2_all(xi)=pdf_param2_new 
+             if(beta .eq. 1. .and. it .le. burn_in) then
+                 if (xi .LE. nIC) then
                     accept_batch(xi) = accept_batch(xi) + 1
                  else if (xi .GT. nIC) then
-                    accept_batch(nIC1) = accept_batch(nIC1) + 1
+                    accept_batch(si+nIC) = accept_batch(si+nIC) + 1
                  endif  ! xi lt nIC
-              endif  ! it lt burn_in
+             endif  ! it lt burn_in
          else
-              if(beta .eq. 1. .and. it .le. burn_in) then  
-              !if(it .le. burn_in) then                 
+              if(beta .eq. 1. .and. it .le. burn_in) then                 
                  if (xi .LE. nIC) then 
                      reject_batch(xi) = reject_batch(xi) + 1
                  else
-                     reject_batch(nIC1) = reject_batch(nIC1) + 1  
+                     reject_batch(si+nIC) = reject_batch(si+nIC) + 1  
                  endif   ! xi lt nIC
               endif ! it lt burn_in
-                 
+                       
          endif   ! randomu condition
 
-         if(beta .eq. 1.) then
-         if(it .le. burn_in .and. modulo(it,560) .eq. 0) then
+        
+          if(beta .eq. 1.) then
+          if(it .le. burn_in .and. modulo(it,600) .eq. 0) then
              if (it .gt. 100) then
              if (xi .LE. nIC) then
                  if(accept_batch(xi)+reject_batch(xi) .gt. 0) then
@@ -864,25 +837,25 @@ REAL stepsize_pdf_p10, stepsize_pdf_p20
                      reject_batch(xi) = 0
                  endif
              else if (xi .GT. nIC) then
-                 if(accept_batch(nIC1)+reject_batch(nIC1) .gt. 0) then    
-                      accep_prob(nIC1) = real(accept_batch(nIC1))/(accept_batch(nIC1)+reject_batch(nIC1))
-                      av_acc = max(0.01,1.0/sqrt(real(it)/500.)) !1.0/sqrt(real(accept(nIC1)+reject(nIC1)))
-                      if(accep_prob(nIC1) .lt. 0.2) then
-                         stepsize_pdf_p1(nIC1) = exp(alog(stepsize_pdf_p1(nIC1)) - av_acc)
-                         stepsize_pdf_p2(nIC1) = exp(alog(stepsize_pdf_p2(nIC1)) - av_acc)
+                 if(accept_batch(si+nIC)+reject_batch(si+nIC) .gt. 0) then    
+                      accep_prob(si+nIC) = real(accept_batch(si+nIC))/(accept_batch(si+nIC)+reject_batch(si+nIC))
+                      av_acc = max(0.01,1.0/sqrt(real(it/500))) !1.0/sqrt(real(accept(nIC1)+reject(nIC1)))
+                      if(accep_prob(si+nIC) .lt. 0.2) then
+                         stepsize_pdf_p1(si+nIC) = exp(alog(stepsize_pdf_p1(si+nIC)) - av_acc)
+                         stepsize_pdf_p2(si+nIC) = exp(alog(stepsize_pdf_p2(si+nIC)) - av_acc)
                       endif
-                      if(accep_prob(nIC1) .gt. 0.6) then
-                         stepsize_pdf_p1(nIC1) = exp(alog(stepsize_pdf_p1(nIC1)) + av_acc)
-                         stepsize_pdf_p2(nIC1) = exp(alog(stepsize_pdf_p2(nIC1)) + av_acc)
+                      if(accep_prob(si+nIC) .gt. 0.6) then
+                         stepsize_pdf_p1(si+nIC) = exp(alog(stepsize_pdf_p1(si+nIC)) + av_acc)
+                         stepsize_pdf_p2(si+nIC) = exp(alog(stepsize_pdf_p2(si+nIC)) + av_acc)
                       endif
-                      accept_batch(nIC1) = 0
-                      reject_batch(nIC1) = 0
+                      accept_batch(si+nIC) = 0
+                      reject_batch(si+nIC) = 0
                  endif
              endif
              endif
 
           endif
-          endif
+          endif   ! beta=1
   enddo
 
 pdf_param1_out=pdf_param1_all
@@ -894,13 +867,13 @@ reject_batch_out=reject_batch
 END SUBROUTINE x_hparam_update
 
 SUBROUTINE x_update(beta,k, x, pdf_param1_all,pdf_param2_all,  &
-h_agg,n0,n0T,Rinv, stepsize, &
+h_agg,n0,n0T,Rinv, stepsize, sector_index, k_sector, kmax_all, k_raw, &
 accept_batch, reject_batch, x_pdf_all, it, burn_in, nIC, kICmax, nmeasure, nIC1, &
 x_out, n0_out, n0T_out, accept_out, reject_out, stepsize_out, acc_batch_out, rej_batch_out) 
 
 
 Implicit none 
-INTEGER nmeasure, it, burn_in, k, nIC, kICmax, nIC1
+INTEGER nmeasure, it, burn_in, k, nIC, kICmax, nIC1, kmax_all, k_raw
 REAL beta, n0T, n0T_out 
 REAL av_acc
 REAL x(kICmax) 
@@ -912,9 +885,9 @@ REAL Rinv(nmeasure,nmeasure)
 REAL dy(nmeasure)
 REAL n1(nmeasure) 
 INTEGER x_pdf_all(nIC1)
+INTEGER sector_index(kmax_all)
+INTEGER k_sector(k_raw)
 REAL pdf_param1_all(kICmax), pdf_param2_all(kICmax)
-INTEGER elem(5), elem2(5)
-REAL u(5),u2(5)
 REAL pdf_param1        
 REAL pdf_param2
 REAL stepsize(nIC1)
@@ -925,33 +898,62 @@ INTEGER reject_batch(nIC1)
 INTEGER accept_out(nIC1), reject_out(nIC1)
 REAL stepsize_out(nIC1)
 REAL C(nmeasure)
-INTEGER xi, x_pdf,xx
+INTEGER xi, x_pdf, si
 REAL dx, n1T, pT, randomu, p0,p1
 REAL x_new(kICmax)
 REAL stepsize0
 INTEGER acc_batch_out(nIC1)
 INTEGER rej_batch_out(nIC1)
+REAL aa,bb,u
+INTEGER ind, xi2, xx,ri
+
+! Constants for Intel fortran matrix multiplication routines
+ aa = 1
+ bb = 0
+
 
 accept=0
 reject=0
 
    ! CHANGE OF EMISSIONS VALUES
-  call random_number(u)   
-  call random_number(u2)  
-  elem = FLOOR(k*u)+1+nIC
-  elem2 = FLOOR(nIC*u2)+1
+  !call random_number(u)   
+  !call random_number(u2)  
+  !elem = FLOOR(k*u)+1+nIC
+  !elem2 = FLOOR(nIC*u2)+1
   
   !do xx=1,nIC+5
-  do xx=1,10
+  !do xx=1,10
+  !do xx=1,(k/4)+nIC
+  !do xi=1,k+nIC
   
-  if (xx .LE. 5) then
+  !if (xx .LE. 5) then
   !if (xx .LE. nIC) then
-     !xi = xx
-     xi=elem2(xx)
-  else
-     !xi=elem(xx-nIC)
-     xi=elem(xx-5)
-  endif
+  !   xi = xx
+     !xi=elem2(xx)
+  !else
+  !   xi=elem(xx-nIC)
+     !xi=elem(xx-5)
+  !endif
+
+  do xx=1,k_raw+nIC
+     if (xx .LE. nIC) then
+         xi = xx
+     else
+         call random_number(u) 
+         xi2 = FLOOR(k_sector(xx)*u)+1
+
+         ind=1
+         do ri =1,k
+            if (sector_index(ri) .EQ. (xx-nIC)) then
+               if (ind .EQ. xi2) then
+                   xi = ri+nIC 
+               endif
+            ind = ind+1
+            endif
+         enddo 
+     endif
+
+  !do xi=1,nIC+k
 
   if (xi .LE. nIC) then
      x_pdf = x_pdf_all(xi)
@@ -960,10 +962,12 @@ reject=0
      stepsize0 = stepsize(xi)
 
   else if (xi .GT. nIC) then
-     x_pdf = x_pdf_all(nIC1)
+
+     si = sector_index(xi-nIC)
+     stepsize0 = stepsize(si+nIC)
+     x_pdf = x_pdf_all(si+nIC)
      pdf_param1 = pdf_param1_all(xi)
      pdf_param2 = pdf_param2_all(xi)
-     stepsize0 = stepsize(nIC1)
     
   endif
   dx = random_normal()*stepsize0
@@ -972,12 +976,21 @@ reject=0
   x_new(xi) =x(xi)+dx
   p0=0.
   p1=0.
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   
          dy=h_agg(:,xi)*dx 
          n1=n0+dy
 
-         C = matmul(n1,Rinv)
+         !(TRANSA, TRANSB, M, N, K, ALPHA, A, LDA, B, LDB,BETA, C, LDC )
+  
+  !double precision A(dim1, dim2), B(dim2, dim3), C(dim1, dim3)
+ !call dgemm('N','N',dim1,dim3,dim2,alpha,A,dim1,B,dim2,beta,C,dim1)
+
+
+         call sgemm ('N', 'N', nmeasure, 1, nmeasure, aa, Rinv, nmeasure, n1, nmeasure, bb, C, nmeasure) 
+          ! This is more efficient for larger matrices than matmul
+         !C = matmul(n1,Rinv)
          n1T= dot_product(n1,C)
           
          ! hyperparams are fixed below to be a single number - will only apply when x is a scaling of the prior
@@ -1000,49 +1013,51 @@ reject=0
              n0=n1
              n0T=n1T
              if (xi .LE. nIC) then
-                !if (beta .EQ. 1. .and. it .GT. burn_in) accept(xi) = accept(xi) + 1
+                
                 if (it .GT. burn_in) accept(xi) = accept(xi) + 1
              else if (xi .GT. nIC) then
-                !if (beta .EQ. 1. .and. it .GT. burn_in) accept(nIC1) = accept(nIC1) + 1
-                if (it .GT. burn_in) accept(nIC1) = accept(nIC1) + 1
+                
+                if (it .GT. burn_in) accept(si+nIC) = accept(si+nIC) + 1
              endif
              
              !if (beta .EQ. 1. .and. it .GT. burn_in) accept = accept + 1
                                 
          else
              !REJECT
-             !if (beta .EQ. 1. .and. it .GT. burn_in) then
-             if (it .GT. burn_in) then  
+             !if (beta .EQ. 1. .and. it .GT. burn_in) then 
+             if (it .GT. burn_in) then 
                  if (xi .LE. nIC) then 
                      reject(xi) = reject(xi) + 1
                  else
-                     reject(nIC1) = reject(nIC1) + 1  
+                     reject(si+nIC) = reject(si+nIC) + 1  
                  endif
              endif                    
          endif   ! randomu condition
 
          ! Stepsize tuning
          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-         if(beta .eq. 1. .and. it .le. burn_in) then
+        if(beta .eq. 1. .and. it .le. burn_in) then
              if (alog(randomu) .LE. pT) THEN
 
                  if (xi .LE. nIC) then
                      accept_batch(xi) = accept_batch(xi) + 1
                  else if (xi .GT. nIC) then
-                    accept_batch(nIC1) = accept_batch(nIC1) + 1
+                     accept_batch(si+nIC) = accept_batch(si+nIC) + 1
+                    !accept_batch(nIC1) = accept_batch(nIC1) + 1
                  endif
              else
                  if (xi .LE. nIC) then 
                      reject_batch(xi) = reject_batch(xi) + 1
                  else
-                     reject_batch(nIC1) = reject_batch(nIC1) + 1  
+                     !reject_batch(nIC1) = reject_batch(nIC1) + 1  
+                     reject_batch(si+nIC) = reject_batch(si+nIC) + 1  
                  endif
 
              endif
 
          endif
 
-         if(beta .eq. 1. .and. it .le. burn_in .and. modulo(it,560) .eq. 0) then
+         if(beta .eq. 1. .and. it .le. burn_in .and. modulo(it,600) .eq. 0) then
              if (it .gt. 100) then
              if (xi .LE. nIC) then
                  if(accept_batch(xi)+reject_batch(xi) .gt. 0) then
@@ -1054,13 +1069,14 @@ reject=0
                      reject_batch(xi) = 0
                  endif
              else if (xi .GT. nIC) then
-                 if(accept_batch(nIC1)+reject_batch(nIC1) .gt. 0) then    
-                      accep_prob(nIC1) = real(accept_batch(nIC1))/(accept_batch(nIC1)+reject_batch(nIC1))
-                      av_acc = max(0.01,1.0/sqrt(real(it/500))) !1.0/sqrt(real(accept(nIC1)+reject(nIC1)))
-                      if(accep_prob(nIC1) .lt. 0.2) stepsize(nIC1) = exp(alog(stepsize(nIC1)) - av_acc)
-                      if(accep_prob(nIC1) .gt. 0.6) stepsize(nIC1) = exp(alog(stepsize(nIC1)) + av_acc)
-                      accept_batch(nIC1) = 0
-                      reject_batch(nIC1) = 0
+                 if(accept_batch(si+nIC)+reject_batch(si+nIC) .gt. 0) then    
+                      accep_prob(si+nIC) = real(accept_batch(si+nIC))/(accept_batch(si+nIC)+reject_batch(si+nIC))
+                      !av_acc = min(0.01,1.0/sqrt(real(it/500))) !1.0/sqrt(real(accept(nIC1)+reject(nIC1)))
+                      av_acc = max(0.01,1.0/sqrt(real(it/500))) !1.0/sqrt(real(accept(xi)+reject(xi)))
+                      if(accep_prob(si+nIC) .lt. 0.2) stepsize(si+nIC) = exp(alog(stepsize(si+nIC)) - av_acc)
+                      if(accep_prob(si+nIC) .gt. 0.6) stepsize(si+nIC) = exp(alog(stepsize(si+nIC)) + av_acc)
+                      accept_batch(si+nIC) = 0
+                      reject_batch(si+nIC) = 0
                  endif
              endif
              endif
@@ -1082,22 +1098,23 @@ rej_batch_out = reject_batch
 END SUBROUTINE x_update
 
 
-
-SUBROUTINE birth(beta,k, x, h_agg,y,n0,n0T,Rinv, plon, plat, regions_v, lon,lat, & 
-h_v,pdf_param1, pdf_param2, x_pdf, sigma_bd, &
-it, burn_in, nIC, kICmax, kmax, nmeasure, Ngrid,nlon,nlat, &
-k_out, x_out, h_agg_out, n0_out, n0T_out, regions_v_out, plon_out, plat_out, accept_out, reject_out, &
-pdf_param1_out, pdf_param2_out)
+SUBROUTINE birth(beta,k, x, h_agg,y,n0,n0T,Rinv, phour, regions_v, y_hour, & 
+pdf_param1, pdf_param2, x_pdf,  &
+hour_min, hour_max, step_bd, stepsize, &
+h_raw, k_sector, sector_index, &
+it, burn_in, nIC, kICmax, kmax, nmeasure, k_raw, kmax_all, nIC1, &
+k_out, x_out, h_agg_out, n0_out, n0T_out, regions_v_out, phour_out, accept_out, reject_out, &
+pdf_param1_out,pdf_param2_out, k_sector_out, sector_index_out)
 
 IMPLICIT NONE
 ! Dimensions
-INTEGER nmeasure, Ngrid, nlon,nlat, k,kmax, nIC, kICmax
-!REAL lonmin,lonmax,latmin,latmax
-REAL sigma_bd
+INTEGER nmeasure, k,kmax, nIC, kICmax, k_raw,kmax_all, nIC1
+REAL hour_min,hour_max,step_bd
 ! Single Variables
-INTEGER accept_birth, reject_birth, it, burn_in, x_pdf 
+INTEGER accept_birth, reject_birth, it, burn_in
 REAL beta, n0T
 ! Input arrays
+INTEGER x_pdf(nIC1)
 REAL x(kICmax) 
 REAL pdf_param1(kICmax) 
 REAL pdf_param2(kICmax)
@@ -1105,119 +1122,173 @@ REAL h_agg(nmeasure,kICmax)
 REAL y(nmeasure) 
 REAL n0(nmeasure) 
 REAL Rinv(nmeasure,nmeasure)
-REAL plon(kmax)
-REAL plat(kmax)
-INTEGER regions_v(Ngrid)
-REAL lon(nlon)
-REAL lat(nlat)
-REAL h_v(nmeasure, Ngrid)
+REAL phour(kmax,k_raw)
+INTEGER regions_v(nmeasure,k_raw)
+REAL y_hour(nmeasure)
+REAL h_raw(nmeasure,k_raw)
+INTEGER k_sector(k_raw)
+INTEGER sector_index(kmax_all)
+REAL stepsize(nIC1)
 ! Outputs
 INTEGER k_out
 REAL x_out(kICmax) 
-REAL pdf_param1_out(kICmax), pdf_param2_out(kICmax)
+REAL pdf_param1_out(kICmax), pdf_param2_out(kICmax)  
 REAL h_agg_out(nmeasure,kICmax)
 REAL n0_out(nmeasure) 
 REAL n0T_out
-INTEGER regions_v_out(Ngrid)
-REAL plon_out(kmax)
-REAL plat_out(kmax)
+INTEGER regions_v_out(nmeasure,k_raw)
+REAL phour_out(kmax,k_raw)
 INTEGER accept_out, reject_out
+INTEGER k_sector_out(k_raw), sector_index_out(kmax_all)
 ! Intermediate variables
-INTEGER ri, rib, k1, errstat,jj, kIC      
-REAL u, u2, plon_new, plat_new, c_new, x_new, n1Tb, pT_birth, randomu
-REAL mu, sigma, pdf_param1_new, pdf_param2_new
-INTEGER regions_v1b(Ngrid)       
+INTEGER ri, rib, rib2, k1, jj, kIC,k1_sector, ind, ind2,si      
+REAL u, phour_new, c_new, x_new, n1Tb, pT_birth, randomu
+REAL mu, sigma, pdf_param1_new, pdf_param2_new, sigma_bd
+INTEGER regions_v1b(nmeasure)       
 REAL n1b(nmeasure), C(nmeasure)     
-INTEGER ilon,ilat, reject_stat,zi       
+INTEGER reject_stat,zi    
+REAL phour1b(kmax)
+REAL h_agg2_sector(nmeasure,kmax)
+REAL h_agg2(nmeasure,kICmax)
+REAL x1b(kICmax)
+INTEGER sector_index1(kmax_all)
+INTEGER day_max, day_min
+REAL aa,bb
+REAL n1_temp(nmeasure)
 ! Allocatable arrays
-REAL, DIMENSION(:),ALLOCATABLE :: plon1b, plat1b, x1b
-REAL, DIMENSION(:,:), ALLOCATABLE :: h_agg2
+
 REAL,PARAMETER     :: pi = 3.14159265 
+
+ aa=1
+ bb=0
 
 accept_birth=0
 reject_birth=0
 
-k1=k+1
-kIC=k1+nIC
+day_min = FLOOR(hour_min/24)
+day_max = FLOOR(hour_max/24)
 
-if (k1 .LT. kmax) THEN            
-  
-  allocate(plon1b(k1))     
-  allocate(plat1b(k1))     
-  allocate(h_agg2(nmeasure, kIC))
-  allocate(x1b(kIC))               
+!write(*,*) "Fine location 1, k_sector:", k_sector
 
-  ! 1. Select new cell location - needs to be different to current locations
-  !call random_number(u)
-  !plon_new = lonmin+(lonmax-lonmin)*u
-  !call random_number(u2)
-  !plat_new = latmin+(latmax-latmin)*u2
+do si=1,k_raw
+   !si=1
+
+   ! Propose new voronoi cell and increase dimension size of k by 1
+   k1=k+1
+   kIC=k1+nIC
+   k1_sector = k_sector(si) +1
+
+   if (k1_sector .LE. kmax) THEN            
   
-  ! 1. Select new nucleus location - different from current locations and on hte underlying grid
-  call random_number(u) 
-  call random_number(u2)
-  ilon=FLOOR(nlon*u)+1   ! Choose random number between 1 and nlon
-  ilat=FLOOR(nlat*u2)+1   ! Choose random number between 1 and nlat
-        
-  plon_new = lon(ilon)
-  plat_new = lat(ilat)
-  reject_stat=0
-  do zi=1,k
-     if (plon(zi) .EQ. plon_new .and. plat(zi) .eq. plat_new) then
-        reject_stat=1  
+     ! 1. Select new nucleus location - different from current locations and on the underlying time grid
+
+     !call random_number(u)
+     !phour_new = hour_min+(hour_max-hour_min)*u
+  
+     call random_number(u)
+     phour_new = FLOOR(u*day_max)*24.+(day_min*24.)      ! Choose new node location to be on whole multiples of 24 hours or similar
+ 
+     !ihour=FLOOR(nhour*u)+1   ! Choose random number between 1 and nhour
+     !phour_new = hour(ihour)
+
+     phour1b(:) = 0.
+     phour1b(1:k_sector(si)) = phour(1:k_sector(si),si)
+     phour1b(k1_sector) = phour_new
+
+     reject_stat=0
+     do zi=1,k_sector(si)
+        if (phour1b(zi) .EQ. phour_new) then
+           reject_stat=1  
+        endif
+     enddo
+
+     if (reject_stat .ne. 1) then
+
+     sector_index1(1:k) = sector_index(1:k)
+     sector_index1(k1) = si                                  
+     ! 2. Recalculate voronoi cells
+     !call closest_point(regions_v1b,y_hour, phour1b, k1_sector, nmeasure)
+     call closest_point(regions_v1b,y_hour, phour1b(1:k1_sector), k1_sector, nmeasure)
+  
+
+      h_agg2(:,:)=0.
+
+      !if (nIC .GT. 0) then 
+      !    h_agg2(:,1:nIC)=h_agg(:,1:nIC)
+      !endif
+       
+      h_agg2(:,1:kIC-1)=h_agg(:,1:kIC-1)
+     
+ ! First loop through k1_sector and assign sector specific H_matrix
+   h_agg2_sector(:,:)=0
+   do ri=1,k1_sector                 ! Loop through all elements of this sector
+       do jj=1,nmeasure
+          if (regions_v1b(jj) .EQ. ri) then   ! This will be problematic since regions will start from 1 for each sector
+             h_agg2_sector(jj,ri) = h_raw(jj,si)
+          endif
+       enddo
+   enddo
+
+! Now map this new h_agg2_sector back into h_agg2
+ ind=1
+    do ri=1,k1                 ! Loop through all x elements
+        if (sector_index1(ri) .EQ. si) then       ! Only proceed for elements in the correct sector
+            h_agg2(:,ri+nIC) = h_agg2_sector(:,ind)
+            ind = ind +1  
+        endif
+    enddo     
+
+   !write(*,*) sum(regions_v1b-regions_v(:,si))
+
+ !#######################################################################
+  !call closest_point_sng(rib,phour_new, phour(1:k), k)    
+
+  call closest_point_sng(rib,phour_new, phour1b(1:k_sector(si)), k_sector(si))    
+
+  ! Have a definite problem assigning this nearest nucleus from before. Need to maintain the sector-specific nature.
+  ind2=1
+  do ri =1,k
+
+     if (sector_index1(ri) .EQ. si) then
+
+         if (ind2 .EQ. rib) then
+            rib2 = ri 
+            !exit
+         endif
+            ind2 = ind2+1
      endif
   enddo
 
-  if (reject_stat .ne. 1) then
+  sigma_bd = step_bd*stepsize(si+nIC)
 
-  plon1b(1:k) = plon(1:k)
-  plon1b(k1) = plon_new
-  plat1b(1:k) = plat(1:k)
-  plat1b(k1) = plat_new
-                                  
-  ! 2. Recalculate voronoi cells
-
-  call closest_grid(regions_v1b,lon,lat, plon1b(1:k1),plat1b(1:k1), k1, nlon,nlat)
-
-   h_agg2(:,:)=0.
-
-   if (nIC .GT. 0) then 
-       h_agg2(:,1:nIC)=h_agg(:,1:nIC)
-   endif
-       
-    do ri=1,k1
-       do jj=1,Ngrid
-         if (regions_v1b(jj) .EQ. ri) then
-            h_agg2(:,ri+nIC) = h_agg2(:,ri+nIC)+h_v(:,jj)
-         endif
-      enddo
-   enddo
- 
- !#######################################################################
-                    
-  call closest_grid_sng(rib,plon_new,plat_new, plon(1:k),plat(1:k), k) 
-                                  
-  c_new = x(rib+nIC)
+  c_new = x(rib2+nIC)
   x_new = random_normal()*sigma_bd+c_new
 
-  pdf_param1_new = pdf_param1(rib+nIC)
-  pdf_param2_new = pdf_param2(rib+nIC)
-  
-  if (x_pdf .EQ. 1) THEN  ! 1=UNIFORM  
+  pdf_param1_new = pdf_param1(rib2+nIC)
+  pdf_param2_new = pdf_param2(rib2+nIC)
+
+  if (x_pdf(si+nIC) .EQ. 1) THEN  ! 1=UNIFORM  
                 
       if (x_new .GT. pdf_param1_new .and. x_new .LT. pdf_param2_new) THEN
                        
           x1b(1:k+nIC)=x(1:k+nIC)
           x1b(kIC) = x_new
 
-          n1b=matmul(h_agg2,x1b)-y 
-          C = matmul(n1b,Rinv)
-          n1Tb= dot_product(n1b,C)                   
-          !n1Tb=sum((n1b/nmeasure)**2)
+          !n1b=matmul(h_agg2(:,1:kIC),x1b(1:kIC))-y  
+          !n1b=matmul(h_agg2,x1b)-y                    
+          !n1Tb=sum((n1b/sigma_y)**2)
+      
+          n1b=matmul(h_agg2(:,1:kIC),x1b(1:kIC))-y   
+          !C = matmul(n1b,Rinv)
+          !n1Tb= dot_product(n1b,C)   
+
+          call sgemm ('N', 'N', nmeasure, 1, nmeasure, aa, Rinv, nmeasure, n1b, nmeasure, bb, C, nmeasure)
+          n1Tb= dot_product(n1b,C)  
 
           pT_birth = alog(sqrt(2*pi)*sigma_bd/(pdf_param2_new-pdf_param1_new)) &
               + ((x_new-c_new)**2)/2./sigma_bd**2 - 0.5*(n1Tb - n0T)*beta
        
+
          call random_number(randomu)             
          if (alog(randomu) .LE. pT_birth) THEN
            !ACCEPT
@@ -1230,16 +1301,17 @@ if (k1 .LT. kmax) THEN
            h_agg(:,1:kIC)=h_agg2(:,1:kIC)
            n0=n1b
            n0T=n1Tb
-           regions_v(:)=regions_v1b
-           plon(:)=0.
-           plat(:)=0.
-           plon(1:k1)=plon1b(1:k1)
-           plat(1:k1)=plat1b(1:k1)
-           !if (beta .EQ. 1. .and. it .GT. burn_in) accept_birth=accept_birth+1 
-           if (it .GT. burn_in) accept_birth=accept_birth+1       
+           regions_v(:,si)=regions_v1b
+           !phour(:)=0.          
+           phour(1:k1_sector,si)=phour1b(1:k1_sector)
+           sector_index(k1)=si
+           k_sector(si) = k1_sector
+           
+           !if (beta .EQ. 1. .and. it .GT. burn_in) accept_birth=accept_birth+1   
+           if (it .GT. burn_in) accept_birth=accept_birth+1    
          else 
            !REJECT
-           !if (beta .EQ. 1. .and. it .GT. burn_in) reject_birth=reject_birth+1  
+           !if (beta .EQ. 1. .and. it .GT. burn_in) reject_birth=reject_birth+1 
            if (it .GT. burn_in) reject_birth=reject_birth+1  
          endif
 
@@ -1249,23 +1321,33 @@ if (k1 .LT. kmax) THEN
           if (it .GT. burn_in) reject_birth=reject_birth+1
       endif   
 
-  else if (x_pdf .GE. 2) THEN     ! 2=GAUSSIAN 3=LOGNORMAL 
+  else if (x_pdf(si+nIC) .GE. 2) THEN     ! 2=GAUSSIAN 3=LOGNORMAL 
 
           x1b(1:k+nIC)=x(1:k+nIC)
           x1b(kIC) = x_new
           
-          n1b=matmul(h_agg2,x1b)-y  
-          C = matmul(n1b,Rinv)
-          n1Tb= dot_product(n1b,C)                                       
+          !n1b=matmul(h_agg2(:,1:kIC),x1b(1:kIC))-y  
+          !n1b=matmul(h_agg2,x1b)-y                                         
           !n1Tb=sum((n1b/sigma_y)**2)
 
-          if (x_pdf .EQ. 2) THEN   !2=GAUSSIAN
+          !n1b=matmul(h_agg2(:,1:kIC),x1b(1:kIC))-y  
+
+          call sgemm ('N', 'N', nmeasure, 1, kIC, aa, h_agg2(:,1:kIC), nmeasure, x1b(1:kIC), kIC, bb, n1_temp, nmeasure)
+
+          n1b = n1_temp-y
+
+          call sgemm ('N', 'N', nmeasure, 1, nmeasure, aa, Rinv, nmeasure, n1b, nmeasure, bb, C, nmeasure)
+
+          !C = matmul(n1b,Rinv)
+          n1Tb= dot_product(n1b,C)     
+
+          if (x_pdf(si+nIC) .EQ. 2) THEN   !2=GAUSSIAN
 
               pT_birth = alog(sigma_bd/pdf_param2_new) + ((x_new-c_new)**2)/2./sigma_bd**2 - &
                          ((x_new-pdf_param1_new)**2)/2./pdf_param2_new**2 &
                          - 0.5*(n1Tb - n0T)*beta  
 
-          else if (x_pdf .EQ. 3) THEN
+          else if (x_pdf(si+nIC) .EQ. 3) THEN
  
               mu = alog(pdf_param1_new) - 0.5*alog(1. + pdf_param2_new**2/pdf_param1_new**2)
               sigma=sqrt(alog((pdf_param2_new/pdf_param1_new)**2 + 1.))
@@ -1277,7 +1359,7 @@ if (k1 .LT. kmax) THEN
          else
              stop
          endif
-       
+
          call random_number(randomu)             
          if (alog(randomu) .LE. pT_birth) THEN
            !ACCEPT
@@ -1290,12 +1372,14 @@ if (k1 .LT. kmax) THEN
            h_agg(:,1:kIC)=h_agg2(:,1:kIC)
            n0=n1b
            n0T=n1Tb
-           regions_v(:)=regions_v1b
-           plon(:)=0.
-           plat(:)=0.
-           plon(1:k1)=plon1b(1:k1)
-           plat(1:k1)=plat1b(1:k1)
-          !if (beta .EQ. 1. .and. it .GT. burn_in) accept_birth=accept_birth+1    
+           regions_v(:,si)=regions_v1b
+           !phour(:)=0.          
+           phour(1:k1_sector,si)=phour1b(1:k1_sector)
+           sector_index(k1) = si
+           k_sector(si) = k1_sector
+
+
+           !if (beta .EQ. 1. .and. it .GT. burn_in) accept_birth=accept_birth+1    
            if (it .GT. burn_in) accept_birth=accept_birth+1    
          else 
            !REJECT
@@ -1304,58 +1388,53 @@ if (k1 .LT. kmax) THEN
          endif
 
   endif       ! x_pdf
-
  else
     !REJECT if plon_new and plat_new are the same as any other point
-    !if (beta .EQ. 1. .and. it .GT. burn_in) reject_birth=reject_birth+1
+    !if (beta .EQ. 1. .and. it .GT. burn_in) reject_birth=reject_birth+1 
     if (it .GT. burn_in) reject_birth=reject_birth+1  
  endif
         
 else
     !REJECT if k1 > kmax
-    !if (beta .EQ. 1. .and. it .GT. burn_in) reject_birth=reject_birth+1
+    !if (beta .EQ. 1. .and. it .GT. burn_in) reject_birth=reject_birth+1 
     if (it .GT. burn_in) reject_birth=reject_birth+1  
 endif
+       
 
-
-!! Deallocate arrays in each loop
-if(allocated(plon1b))  deallocate(plon1b,stat=errstat)
-  if (errstat /= 0) stop
-if(allocated(plat1b))  deallocate(plat1b,stat=errstat)
-  if (errstat /= 0) stop
-if(allocated(h_agg2))  deallocate(h_agg2,stat=errstat)
-  if (errstat /= 0) stop
-if(allocated(x1b))  deallocate(x1b,stat=errstat)
-  if (errstat /= 0) stop
+enddo   ! si sector index loop
 
 k_out=k
 x_out=x
+pdf_param1_out=pdf_param1
+pdf_param2_out=pdf_param2
 h_agg_out=h_agg
 n0_out=n0
 n0T_out=n0T
 regions_v_out=regions_v
-plon_out=plon
-plat_out=plat
+phour_out=phour
 accept_out=accept_birth
 reject_out=reject_birth
-pdf_param1_out=pdf_param1
-pdf_param2_out=pdf_param2
-
+sector_index_out = sector_index
+k_sector_out=k_sector
 END SUBROUTINE birth
 
 
-SUBROUTINE death(beta,k, x, h_agg,y,n0,n0T,Rinv, plon, plat, regions_v, lon,lat, & 
-h_v, pdf_param1, pdf_param2, x_pdf, sigma_bd, &
-it, burn_in, nIC, kICmax, kmin, kmax, nmeasure, Ngrid,nlon,nlat, &
+
+SUBROUTINE death(beta,k, x, h_agg,y,n0,n0T,Rinv, phour, regions_v, y_hour, & 
+pdf_param1, pdf_param2, x_pdf, step_bd, stepsize, &
+h_raw, k_sector, sector_index, &
+it, burn_in, nIC, kICmax, kmin, kmax, nmeasure, k_raw, kmax_all, nIC1, &
 k_out, x_out, h_agg_out, n0_out, n0T_out, regions_v_out, &
-plon_out, plat_out, accept_out, reject_out, pdf_param1_out, pdf_param2_out)
+phour_out, accept_out, reject_out, pdf_param1_out, pdf_param2_out, &
+k_sector_out, sector_index_out)
 
 
 
 IMPLICIT NONE
 ! Dimensions
-INTEGER kmax,nmeasure,Ngrid,nlon,nlat, accept_death, reject_death, it, burn_in, kmin, k, nIC, kICmax
-REAL sigma_bd, beta, n0T 
+INTEGER kmax,nmeasure,accept_death, reject_death, it, burn_in, kmin, k, nIC, kICmax
+INTEGER k_raw,kmax_all, nIC1
+REAL step_bd, beta, n0T 
 ! Input arrays
 REAL x(kICmax) 
 REAL pdf_param1(kICmax)
@@ -1364,13 +1443,14 @@ REAL h_agg(nmeasure,kICmax)
 REAL y(nmeasure) 
 REAL n0(nmeasure) 
 REAL Rinv(nmeasure,nmeasure)
-REAL plon(kmax)
-REAL plat(kmax)
-INTEGER regions_v(Ngrid)
-REAL lon(nlon)
-REAL lat(nlat)
-REAL h_v(nmeasure, Ngrid)
-INTEGER x_pdf
+REAL phour(kmax,k_raw)
+INTEGER regions_v(nmeasure,k_raw)
+REAL y_hour(nmeasure)
+REAL h_raw(nmeasure,k_raw)
+INTEGER k_sector(k_raw)
+INTEGER sector_index(kmax_all)
+INTEGER x_pdf(nIC1)
+REAL stepsize(nIC1)
 ! Outputs
 INTEGER k_out 
 REAL n0T_out
@@ -1378,50 +1458,80 @@ REAL x_out(kICmax)
 REAL pdf_param1_out(kICmax), pdf_param2_out(kICmax)
 REAL h_agg_out(nmeasure,kICmax)
 REAL n0_out(nmeasure) 
-INTEGER regions_v_out(Ngrid)
-REAL plon_out(kmax)
-REAL plat_out(kmax)
+INTEGER regions_v_out(nmeasure,k_raw)
+REAL phour_out(kmax,k_raw)
 INTEGER accept_out, reject_out
+INTEGER k_sector_out(k_raw), sector_index_out(kmax_all) 
 ! Intermediate variables
-INTEGER ri, rid, k1d, jj, ci_rm, errstat, kIC     
-REAL u, plon_rm, plat_rm, x_cell, x_rm, n1Td, pT_death, randomu
-REAL mu,sigma, pdf_param1_rm, pdf_param2_rm
-INTEGER regions_v1d(Ngrid)      
-REAL n1d(nmeasure), C(nmeasure)             
-! Allocatable arrays
-REAL, DIMENSION(:),ALLOCATABLE :: plon1d, plat1d, x1d, pdf_param1d, pdf_param2d 
-REAL, DIMENSION(:,:), ALLOCATABLE :: h_agg2d
+INTEGER ri, rid, k1d, jj, ci_rm, kIC 
+INTEGER ind,ind2,ind3,si,ci,rid2,ci_rm_sector, k1d_sector    
+REAL u, phour_rm, x_cell, x_rm, n1Td, pT_death, randomu
+REAL mu,sigma, pdf_param1_rm, pdf_param2_rm, sigma_bd
+INTEGER regions_v1d(nmeasure)      
+REAL n1d(nmeasure), C(nmeasure)          
+REAL phour1d(kmax)
+REAL h_agg2d_sector(nmeasure,kmax)
+REAL h_agg2d(nmeasure,kICmax)
+REAL x1d(kICmax)
+INTEGER sector_index1d(kmax_all)
+REAL pdf_param1d(kICmax), pdf_param2d(kICmax)  
+REAL aa,bb 
+REAL n1_temp(nmeasure)
 
 REAL,PARAMETER     :: pi = 3.14159265 
+
+ aa=1
+ bb=0
 
 accept_death=0
 reject_death=0
 
+
+do si=1,k_raw
+!si=1
+
 !DEATH
 k1d=k-1
 
+k1d_sector=k_sector(si)-1
+
 kIC=k1d+nIC
 
-if (k1d .GE. kmin) THEN            
+sigma_bd = step_bd*stepsize(si+nIC)
 
-  allocate(plon1d(k1d))     
-  allocate(plat1d(k1d))     
-  allocate(h_agg2d(nmeasure, kIC))
-  allocate(x1d(kIC))  
-  allocate(pdf_param1d(kIC)) 
-  allocate(pdf_param2d(kIC))  
-           
+if (k1d_sector .GE. kmin) THEN            
+            
   ! 1. Select new cell location - needs to be different to current locations
    
   call random_number(u)   
-  ci_rm = FLOOR((k1d+1)*u) + 1
+  ci_rm_sector = FLOOR((k1d_sector+1)*u) + 1
+
+  ind=1
+  do ci = 1,k
+     if (sector_index(ci) .EQ. si) then
+          if (ci_rm_sector .EQ. ind) then
+              ci_rm = ci
+              !exit
+          endif
+          ind = ind+1
+     endif
+  enddo
   
-  plon_rm = plon(ci_rm)
-  plat_rm = plat(ci_rm)
+ ! ci_rm needs to be defined for k, but need to select sector specific locations, so remove from k_sector first
+
+
+  phour_rm = phour(ci_rm_sector,si)
   x_rm = x(ci_rm+nIC)
+
   pdf_param1_rm = pdf_param1(ci_rm+nIC)  
   pdf_param2_rm = pdf_param2(ci_rm+nIC) 
-  
+
+  x1d(:) = 0.
+  pdf_param1d(:) = 0.
+  pdf_param2d(:) = 0.
+  h_agg2d(:,:) = 0.
+  sector_index1d(:) = 0
+  phour1d(:) = 0.
 
   IF (nIC .GT. 0) THEN
      x1d(1:nIC) = x(1:nIC)
@@ -1430,80 +1540,121 @@ if (k1d .GE. kmin) THEN
   ENDIF
 
   IF (ci_rm .EQ. 1) THEN
-      plon1d(1:k1d) = plon(2:(k1d+1))
-      plat1d(1:k1d) = plat(2:(k1d+1))
       x1d(nIC+1:kIC) = x(nIC+2:(kIC+1))
       pdf_param1d(nIC+1:kIC) = pdf_param1(nIC+2:(kIC+1))  
-      pdf_param2d(nIC+1:kIC) = pdf_param2(nIC+2:(kIC+1))  
-  
+      pdf_param2d(nIC+1:kIC) = pdf_param2(nIC+2:(kIC+1))
+      h_agg2d(:,1:kIC)=h_agg(:,2:kIC+1)  
+      sector_index1d(1:kIC) = sector_index(2:k1d+1)
+
   ELSEIF (ci_rm .EQ. (k1d+1)) THEN
-      plon1d(1:k1d) = plon(1:k1d)
-      plat1d(1:k1d) = plat(1:k1d)
       x1d(nIC+1:kIC) = x(nIC+1:kIC)
       pdf_param1d(nIC+1:kIC) = pdf_param1(nIC+1:kIC)  
-      pdf_param2d(nIC+1:kIC) = pdf_param2(nIC+1:kIC)  
+      pdf_param2d(nIC+1:kIC) = pdf_param2(nIC+1:kIC)
+      h_agg2d(:,1:kIC)=h_agg(:,1:kIC)  
+      sector_index1d(1:kIC) = sector_index(1:k1d)  
 
   ELSE   
-      plon1d(1:(ci_rm-1)) = plon(1:(ci_rm-1))                   
-      plon1d(ci_rm:k1d) = plon((ci_rm+1):(k1d+1))
-      plat1d(1:(ci_rm-1)) = plat(1:(ci_rm-1))                   
-      plat1d(ci_rm:k1d) = plat((ci_rm+1):(k1d+1)) 
-
       x1d(nIC+1:(ci_rm+nIC-1)) = x(nIC+1:(ci_rm+nIC-1)) 
       x1d(ci_rm+nIC:kIC) = x((ci_rm+nIC+1):(kIC+1))
       pdf_param1d(nIC+1:(ci_rm+nIC-1)) = pdf_param1(nIC+1:(ci_rm+nIC-1)) 
       pdf_param1d(ci_rm+nIC:kIC) = pdf_param1((ci_rm+nIC+1):(kIC+1))
       pdf_param2d(nIC+1:(ci_rm+nIC-1)) = pdf_param2(nIC+1:(ci_rm+nIC-1)) 
       pdf_param2d(ci_rm+nIC:kIC) = pdf_param2((ci_rm+nIC+1):(kIC+1))
+      h_agg2d(:,1:(ci_rm+nIC-1))=h_agg(:,1:(ci_rm+nIC-1))    
+      h_agg2d(:,ci_rm+nIC:kIC)=h_agg(:,(ci_rm+nIC+1):(kIC+1))  
+      sector_index1d(1:(ci_rm-1)) = sector_index(1:(ci_rm-1))                   
+      sector_index1d(ci_rm:k1d) = sector_index((ci_rm+1):(k1d+1))  
 
   ENDIF
-                                            
-  ! 2. Recalculate voronoi cells
 
-  call closest_grid(regions_v1d,lon,lat, plon1d,plat1d, k1d, nlon,nlat)
-
-   h_agg2d(:,:)=0.
+  IF (ci_rm_sector .EQ. 1) THEN
+     phour1d(1:k1d_sector) = phour(2:(k1d_sector+1),si) 
+  ELSEIF (ci_rm .EQ. (k1d+1)) THEN
+      phour1d(1:k1d_sector) = phour(1:k1d_sector,si)
+  ELSE   
+      phour1d(1:(ci_rm_sector-1)) = phour(1:(ci_rm_sector-1),si)                   
+      phour1d(ci_rm_sector:k1d_sector) = phour((ci_rm_sector+1):(k1d_sector+1),si)
+  ENDIF
   
-   if (nIC .GT. 0) then
-       h_agg2d(:,1:nIC)=h_agg(:,1:nIC)
-   endif
-
-   do ri=1,k1d
-      do jj=1,Ngrid
-         if (regions_v1d(jj) .EQ. ri) then
-            h_agg2d(:,ri+nIC) = h_agg2d(:,ri+nIC)+h_v(:,jj)
-         endif
-      enddo
+   ! 2. Recalculate voronoi cells
+  
+   !call closest_point(regions_v1d,y_hour, phour1d, k1d_sector, nmeasure)
+   call closest_point(regions_v1d,y_hour, phour1d(1:k1d_sector), k1d_sector, nmeasure)
+  
+     
+ 
+ ! First loop through k1_sector and assign sector specific H_matrix
+   h_agg2d_sector(:,:)=0
+   do ri=1,k1d_sector                 ! Loop through all elements of this sector
+       do jj=1,nmeasure
+          if (regions_v1d(jj) .EQ. ri) then   ! This will be problematic since regions will start from 1 for each sector
+             h_agg2d_sector(jj,ri) = h_raw(jj,si)
+          endif
+       enddo
    enddo
 
- !#######################################################################
+! Now map this new h_agg2_sector back into h_agg2
+ ind2=1
+    do ri=1,k1d                 ! Loop through all x elements
+        if (sector_index1d(ri) .EQ. si) then       ! Only proceed for elements in the correct sector
+            h_agg2d(:,ri+nIC) = h_agg2d_sector(:,ind2)
+            ind2 = ind2 +1  
+        endif
+    enddo     
+  
+ !#######################################################################                        
+  !call closest_point_sng(rid,phour_rm, phour1d, k1d_sector)  
+
+  call closest_point_sng(rid,phour_rm, phour1d(1:k1d_sector), k1d_sector)    
+
+  ! Have a definite problem assigning this nearest nucleus from before. Need to maintain the sector-specific nature.
+  ind3=1
+  do ri =1,k1d
+
+     if (sector_index1d(ri) .EQ. si) then
+
+         if (ind3 .EQ. rid) then
+            rid2 = ri 
+            !exit
+         endif
+            ind3 = ind3+1
+     endif
+  enddo
+                                                 
+  x_cell = x1d(rid2+nIC)
                     
-  call closest_grid_sng(rid,plon_rm,plat_rm, plon1d,plat1d, k1d) 
-                                  
-  x_cell = x1d(rid+nIC)
-                    
-  n1d=matmul(h_agg2d,x1d)-y
-  C = matmul(n1d,Rinv)
+  !n1d=matmul(h_agg2d(:,1:kIC),x1d(1:kIC))-y
+  !n1d=matmul(h_agg2d,x1d)-y
+  !n1Td=sum((n1d/sigma_y)**2)
+
+  !n1d=matmul(h_agg2d(:,1:kIC),x1d(1:kIC))-y
+
+  call sgemm ('N', 'N', nmeasure, 1, kIC, aa, h_agg2d(:,1:kIC), nmeasure, x1d(1:kIC), kIC, bb, n1_temp, nmeasure)
+
+  n1d = n1_temp-y
+
+  call sgemm ('N', 'N', nmeasure, 1, nmeasure, aa, Rinv, nmeasure, n1d, nmeasure, bb, C, nmeasure)
+  !C = matmul(n1d,Rinv)
   n1Td= dot_product(n1d,C)
-  !n1Td=sum((n1d/sigma_y)**2)                           
+                           
   ! ACCEPTANCE PROBABILITY  
 
-  IF (x_pdf .EQ. 1) THEN  ! 1 = UNIFORM
+  IF (x_pdf(si+nIC) .EQ. 1) THEN  ! 1 = UNIFORM
      pT_death = alog((pdf_param2_rm-pdf_param1_rm)/sqrt(2.*pi)/sigma_bd) &
       - ((x_cell-x_rm)**2)/2./sigma_bd**2 -0.5*(n1Td - n0T)*beta
 
-  ELSE IF (x_pdf .EQ. 2) THEN   ! 2=GAUSSIAN
+  ELSE IF (x_pdf(si+nIC) .EQ. 2) THEN   ! 2=GAUSSIAN
 
       pT_death = alog(pdf_param2_rm/sigma_bd) - ((x_cell-x_rm)**2)/2./sigma_bd**2 + &
                          ((x_rm-pdf_param1_rm)**2)/2./pdf_param2_rm**2 &
                           - 0.5*(n1Td - n0T)*beta
 
 
-  ELSE IF (x_pdf .EQ. 3) THEN   ! 3=LOGNORMAL
+  ELSE IF (x_pdf(si+nIC) .EQ. 3) THEN   ! 3=LOGNORMAL
 
       mu = alog(pdf_param1_rm) - 0.5*alog(1. + pdf_param2_rm**2/pdf_param1_rm**2)
       sigma=sqrt(alog((pdf_param2_rm/pdf_param1_rm)**2 + 1.))
-     
+  
       pT_death = alog(sigma*x_rm/sigma_bd) - ((x_cell-x_rm)**2)/2./sigma_bd**2 + &
                          ((alog(x_rm)-mu)**2)/2./sigma**2 &
                           - 0.5*(n1Td - n0T)*beta
@@ -1514,33 +1665,35 @@ if (k1d .GE. kmin) THEN
       stop
   ENDIF 
 
+  !write(*,*) pT_death, n1Td, n0T
+
   !write(*,*) pT_death                             
   call random_number(randomu)             
   if (alog(randomu) .LE. pT_death) THEN
           !ACCEPT
            k=k1d
            x(:)=0.
-           x(1:kIC)=x1d
+           x(1:kIC)=x1d(1:kIC)
            pdf_param1(:)=0.
-           pdf_param1(1:kIC)=pdf_param1d
+           pdf_param1(1:kIC)=pdf_param1d(1:kIC)
            pdf_param2(:)=0.
-           pdf_param2(1:kIC)=pdf_param2d
+           pdf_param2(1:kIC)=pdf_param2d(1:kIC)
            h_agg(:,:)=0.
-           h_agg(:,1:kIC)=h_agg2d
+           h_agg(:,1:kIC)=h_agg2d(:,1:kIC)
            n0=n1d
            n0T=n1Td
-           regions_v(:)=regions_v1d
-           plon(:)=0.
-           plat(:)=0.
-           plon(1:k1d)=plon1d
-           plat(1:k1d)=plat1d
+           regions_v(:,si)=regions_v1d
+           !phour(:)=0.
+           phour(1:k1d_sector,si)=phour1d(1:k1d_sector)
+           sector_index(1:k1d) = sector_index1d(1:k1d)
+           k_sector(si) = k1d_sector
            !if (beta .EQ. 1. .and. it .GT. burn_in) accept_death=accept_death+1   
            if (it .GT. burn_in) accept_death=accept_death+1   
 
        else 
            !REJECT
-           !if (beta .EQ. 1. .and. it .GT. burn_in) reject_death=reject_death+1
-           if (it .GT. burn_in) reject_death=reject_death+1    
+           !if (beta .EQ. 1. .and. it .GT. burn_in) reject_death=reject_death+1  
+           if (it .GT. burn_in) reject_death=reject_death+1  
        endif
         
 else
@@ -1549,20 +1702,8 @@ else
     if (it .GT. burn_in) reject_death=reject_death+1 
 endif
 
-!! Deallocate arrays in each loop
-if(allocated(plon1d))  deallocate(plon1d,stat=errstat)
-  if (errstat /= 0) stop
-if(allocated(plat1d))  deallocate(plat1d,stat=errstat)
-  if (errstat /= 0) stop
-if(allocated(h_agg2d))  deallocate(h_agg2d,stat=errstat)
-  if (errstat /= 0) stop
-if(allocated(x1d))  deallocate(x1d,stat=errstat)
-  if (errstat /= 0) stop
-if(allocated(pdf_param1d))  deallocate(pdf_param1d,stat=errstat)
-  if (errstat /= 0) stop
-if(allocated(pdf_param2d))  deallocate(pdf_param2d,stat=errstat)
-  if (errstat /= 0) stop
 
+enddo  ! End of si, k_raw loop
 
 k_out=k
 x_out=x
@@ -1572,27 +1713,27 @@ h_agg_out=h_agg
 n0_out=n0
 n0T_out=n0T
 regions_v_out=regions_v
-plon_out=plon
-plat_out=plat
+phour_out=phour
 accept_out=accept_death
 reject_out=reject_death
-
+k_sector_out= k_sector
+sector_index_out = sector_index
 
 END SUBROUTINE death
 
 
-SUBROUTINE move(beta,k, x, h_agg, y,n0,n0T,Rinv, plon, plat, regions_v, lon,lat, & 
-h_v, lonmin, lonmax, latmin,latmax, sigma_clon, sigma_clat, it, &
-burn_in, nIC, kICmax, kIC, kmax, nmeasure, Ngrid,nlon,nlat, &
-h_agg_out, n0_out, n0T_out, regions_v_out, plon_out, plat_out, accept_out, reject_out)
-
-
+SUBROUTINE move(beta,k, x, h_agg, y,n0,n0T,Rinv, phour, regions_v, y_hour, & 
+hour_min, hour_max, sigma_chour, it, &
+h_raw, k_sector, sector_index, &
+burn_in, nIC, kICmax, kIC, kmax, nmeasure, k_raw, kmax_all, &
+h_agg_out, n0_out, n0T_out, regions_v_out, phour_out, accept_out, reject_out)
 
 IMPLICIT NONE
 ! Dimensions
-INTEGER kmax, nmeasure, Ngrid, nlon,nlat, accept_move, reject_move, it, burn_in,k, nIC, kIC, kICmax
+INTEGER kmax, nmeasure, accept_move, reject_move, it, burn_in
+INTEGER k, nIC, kIC, kICmax, k_raw, kmax_all
 ! Single Variables
-REAL lonmin,lonmax,latmin,latmax, sigma_clon, sigma_clat, beta 
+REAL hour_min,hour_max, sigma_chour, beta 
 ! Input arrays
 REAL x(kICmax) 
 REAL h_agg(nmeasure,kICmax)  
@@ -1600,106 +1741,158 @@ REAL y(nmeasure)
 REAL n0(nmeasure) 
 REAL n0T
 REAL Rinv(nmeasure,nmeasure)
-REAL plon(kmax)
-REAL plat(kmax)
-INTEGER regions_v(Ngrid)
-REAL lon(nlon)
-REAL lat(nlat)
-REAL h_v(nmeasure, Ngrid)
-REAL plon1m(k)
-REAL plat1m(k)
+REAL phour(kmax,k_raw)
+INTEGER regions_v(nmeasure,k_raw)
+REAL y_hour(nmeasure)
+REAL h_raw(nmeasure,k_raw)
 REAL x1m(kIC)
-REAL h_agg2m(nmeasure,kIC)
+INTEGER k_sector(k_raw)
+INTEGER sector_index(kmax_all)
 ! Outputs
 REAL h_agg_out(nmeasure,kICmax)
 REAL n0_out(nmeasure) 
 REAL n0T_out
-INTEGER regions_v_out(Ngrid)
-REAL plon_out(kmax)
-REAL plat_out(kmax)
+INTEGER regions_v_out(nmeasure,k_raw)
+REAL phour_out(kmax,k_raw)
 INTEGER accept_out, reject_out
 ! Intermediate variables
-INTEGER  ri, k1, jj, ci_mv    
+INTEGER  ri, k1, jj, ci_mv, ci_mv_sector
+INTEGER ind, ind2, ci,si    
 REAL u, n1Tm, pT_move, randomu
-INTEGER regions_v1m(Ngrid)      
+INTEGER regions_v1m(nmeasure)      
 REAL n1m(nmeasure), C(nmeasure) 
 INTEGER reject_stat, zi
+INTEGER k1_sector
+REAL h_agg2m(nmeasure,kIC)
+REAL h_agg2m_sector(nmeasure,kmax)
+REAL phour1m(kmax)
+INTEGER day_min,day_max
+REAL aa,bb
+REAL n1_temp(nmeasure)
 ! Allocatable arrays
+!REAL, DIMENSION(:,:), ALLOCATABLE :: h_agg2m_sector
 ! None
 REAL,PARAMETER     :: pi = 3.14159265 
+
+ aa=1
+ bb=0
+
+!write(*,*) it
+
+day_min = FLOOR(hour_min/24)
+day_max = FLOOR(hour_max/24)
 
 accept_move=0
 reject_move=0
 
+   do si = 1,k_raw
+   !si=1
+
    !MOVE
    k1=k
            
-   ! 1. Select new cell location - needs to be different to current locations
+   k1_sector = k_sector(si)
 
+   !allocate(h_agg2m_sector(nmeasure, k1_sector))
+
+   ! 1. Select new cell location - needs to be different to current locations
+   phour1m = 0.
    x1m=x(1:kIC)               
-   plon1m = plon(1:k1)
-   plat1m = plat(1:k1)
+   phour1m(1:k1_sector) = phour(1:k1_sector,si)    
    call random_number(u)   
-   ci_mv = FLOOR((k1)*u) + 1
-                
+   
+  !ci_mv = FLOOR((k1)*u) + 1  
+   ci_mv_sector = FLOOR(k1_sector*u) + 1
+
+   ind=1
+   do ci = 1,k
+      if (sector_index(ci) .EQ. si) then
+          if (ci_mv_sector .EQ. ind) then
+              ci_mv = ci
+              !exit
+          endif
+          ind = ind+1
+      endif
+   enddo 
+
    ! 2. Move voronoi cell to new random location
    ! Location based on gaussian PDF about current position
     
-   !plon1m(ci_mv) = random_normal()*sigma_clon+plon1m(ci_mv)
-   !plat1m(ci_mv) = random_normal()*sigma_clat+plat1m(ci_mv)
+   !phour1m(ci_mv_sector) = random_normal()*sigma_chour+phour1m(ci_mv_sector)    
 
    ! Move onto centre of underlying grid 
-   plon1m(ci_mv) = FLOOR(random_normal()*sigma_clon)*(lon(2)-lon(1))+plon1m(ci_mv)
-   plat1m(ci_mv) = FLOOR(random_normal()*sigma_clat)*(lat(2)-lat(1))+plat1m(ci_mv)
+   phour1m(ci_mv_sector) = FLOOR(random_normal()*sigma_chour)*24.+phour1m(ci_mv_sector)
             
    reject_stat=0
    do zi=1,k
-     if (plon(zi) .EQ. plon1m(ci_mv) .and. plat(zi) .eq. plat1m(ci_mv)) then
+     if (phour(zi,si) .EQ. phour1m(ci_mv)) then
         reject_stat=1  
      endif
-  enddo    
+   enddo    
 
-   if (reject_stat .ne. 1) then
-
+   if (reject_stat .ne. 1) then      
+         
    ! Need to reject if outside of lon/lat range.
-   IF (plon1m(ci_mv) .GT. lonmax .OR. plon1m(ci_mv) .LT. lonmin) THEN
+   IF (phour1m(ci_mv_sector) .GT. hour_max .OR. phour1m(ci_mv_sector) .LT. hour_min) THEN
        !if (beta .EQ. 1. .and. it .GT. burn_in) reject_move=reject_move+1
-       if (it .GT. burn_in) reject_move=reject_move+1
-                         
-   ELSEIF (plat1m(ci_mv) .GT. latmax .OR. plat1m(ci_mv) .LT. latmin) THEN           
-       !if (beta .EQ. 1. .and. it .GT. burn_in) reject_move=reject_move+1 
-       if (it .GT. burn_in) reject_move=reject_move+1 
+       if (it .GT. burn_in) reject_move=reject_move+1        
 
    ELSE    
                                               
       ! 2. Recalculate voronoi cells
 
-      call closest_grid(regions_v1m,lon,lat, plon1m,plat1m, k1, nlon,nlat)
+      call closest_point(regions_v1m,y_hour, phour1m(1:k1_sector), k1_sector, nmeasure)
+    
+      h_agg2m=h_agg(:,1:kIC)
 
-      h_agg2m(:,:)=0.
-      
-      if (nIC .GT. 0) then 
-          h_agg2m(:,1:nIC)=h_agg(:,1:nIC)
-      endif
-
-      do ri=1,k1
-         do jj=1,Ngrid
-            if (regions_v1m(jj) .EQ. ri) then
-                h_agg2m(:,ri+nIC) = h_agg2m(:,ri+nIC)+h_v(:,jj)
-            endif
-         enddo
+      ! First loop through k1_sector and assign sector specific H_matrix
+      h_agg2m_sector(:,:)=0
+      do ri=1,k1_sector                 ! Loop through all elements of this sector
+          do jj=1,nmeasure
+             if (regions_v1m(jj) .EQ. ri) then   ! This will be problematic since regions will start from 1 for each sector
+                h_agg2m_sector(jj,ri) = h_raw(jj,si)
+             endif
+          enddo
       enddo
 
+      ! Now map this new h_agg2_sector back into h_agg2
+      ind2=1
+      do ri=1,k1                 ! Loop through all x elements
+         if (sector_index(ri) .EQ. si) then       ! Only proceed for elements in the correct sector
+            h_agg2m(:,ri+nIC) = h_agg2m_sector(:,ind2)
+            ind2 = ind2 +1  
+         endif
+      enddo     
+
+    !write(*,*) sum(h_raw(:,si)),sum(h_agg2m_sector)
  !#######################################################################
      
-     n1m=matmul(h_agg2m,x1m)-y
-     C = matmul(n1m,Rinv)
-     n1Tm= dot_product(n1m,C)
+     !n1m=matmul(h_agg2m,x1m)-y
      !n1Tm=sum((n1m/sigma_y)**2)
-                                     
+
+     !n1m=matmul(h_agg2m,x1m)-y
+
+
+  !REAL h_agg2m(nmeasure,kIC)
+ !double precision A(dim1, dim2), B(dim2, dim3), C(dim1, dim3)
+ !call dgemm('N','N',dim1,dim3,dim2,alpha,A,dim1,B,dim2,beta,C,dim1)
+
+
+     call sgemm ('N', 'N', nmeasure, 1, kIC, aa, h_agg2m, nmeasure, x1m, kIC, bb, n1_temp, nmeasure)
+
+     n1m = n1_temp-y
+
+     call sgemm ('N', 'N', nmeasure, 1, nmeasure, aa, Rinv, nmeasure, n1m, nmeasure, bb, C, nmeasure)
+
+
+     !C = matmul(n1m,Rinv)
+     n1Tm= dot_product(n1m,C)
+       
      ! ACCEPTANCE PROBABILITY   
      pT_move = (n1Tm - n0T)*(-0.5)*beta  
-                              
+          
+     !write(*,*) n1Tm, n0T
+          
      call random_number(randomu)             
      if (alog(randomu) .LE. pT_move) THEN
            !ACCEPT
@@ -1707,39 +1900,40 @@ reject_move=0
            h_agg(:,1:kIC)=h_agg2m
            n0=n1m
            n0T=n1Tm
-           regions_v=regions_v1m
-           plon(:)=0.
-           plat(:)=0.
-           plon(1:k1)=plon1m
-           plat(1:k1)=plat1m
+           regions_v(:,si)=regions_v1m
+           !phour(:)=0.
+           phour(1:k1_sector,si)=phour1m
            !if (beta .EQ. 1. .and. it .GT. burn_in) accept_move=accept_move+1   
-           if (it .GT. burn_in) accept_move=accept_move+1  
-
+           if (it .GT. burn_in) accept_move=accept_move+1   
       else 
            !REJECT
            !if (beta .EQ. 1. .and. it .GT. burn_in) reject_move=reject_move+1  
-           if (it .GT. burn_in) reject_move=reject_move+1  
+           if (it .GT. burn_in) reject_move=reject_move+1
       endif
         
    
-  ENDIF    ! plon & lat within range
-
-  else   ! lon_new, lat_new on same location as another point
+  ENDIF    ! phour within range
+   
+else   ! lon_new, lat_new on same location as another point
       !REJECT
        !if (beta .EQ. 1. .and. it .GT. burn_in) reject_move=reject_move+1  
-       if (it .GT. burn_in) reject_move=reject_move+1  
-endif   
+       if (it .GT. burn_in) reject_move=reject_move+1
+endif     
+
+  !if(allocated(h_agg2m_sector))  deallocate(h_agg2m_sector,stat=errstat)
+  !if (errstat /= 0) stop
+ 
+enddo   ! End of si k_raw loop
 
 h_agg_out=h_agg
 n0_out=n0
 n0T_out=n0T
 regions_v_out=regions_v
-plon_out=plon
-plat_out=plat
+phour_out=phour
 accept_out=accept_move
 reject_out=reject_move
-
 END SUBROUTINE move
+
 
 SUBROUTINE sigma_y_update(beta, sigma_model_current, sigma_measure, sigma_y_current, error_structure, &
 detval_current, detval_Q, Rinv_current, Qinv, sigma_model_hparam1, sigma_model_hparam2, &
@@ -1769,12 +1963,15 @@ REAL stepsize_sigma_y(dim2)
 REAL sigma_model_hparam1(dim2)
 REAL sigma_model_hparam2(dim2)
 INTEGER sigma_model_pdf
+INTEGER accept_batch(dim2), reject_batch(dim2)
 ! Outputs
 REAL n0T_out, detval_out
 REAL sigma_y_out(nmeasure)
 REAL sigma_model_out(dim2)
 REAL Rinv_out(nmeasure,nmeasure)
 INTEGER accept_out, reject_out
+INTEGER accept_batch_out(dim2), reject_batch_out(dim2)
+REAL stepsize_sig_out(dim2)
 ! Intermediate variables
 INTEGER  yi, jj, ti,ii
 REAL randomu, dsigma_y, sigma_model_new, u, av_acc
@@ -1782,10 +1979,12 @@ REAL p0_sigma_y, p1_sigma_y, n1T, detval_new, pT
 REAL y_error_new(nmeasure), autocorr_vec(nmeasure)
 REAL sigma_y_new(nmeasure), sigma_yinv_new(nmeasure)
 REAL Rinv_new(nmeasure,nmeasure), C(nmeasure)
-REAL stepsize_sig_out(dim2)
-INTEGER accept_batch(dim2), reject_batch(dim2)
-INTEGER accept_batch_out(dim2), reject_batch_out(dim2)
 REAL accep_prob
+REAL aa,bb
+
+! Constants for Intel fortran matrix multiplication routines
+ aa = 1
+ bb = 0
 
 accept=0
 reject=0
@@ -1821,8 +2020,9 @@ reject=0
     ! caluclate new determinant by scaling
     detval_new = sum(alog(sigma_y_new)) + detval_Q
 
- 
-    C = matmul(n0,Rinv_new)
+    call sgemm ('N', 'N', nmeasure, 1, nmeasure, aa, Rinv_new, nmeasure, n0, nmeasure, bb, C, nmeasure)
+    
+    !C = matmul(n0,Rinv_new)
     n1T= dot_product(n0,C)
     
 
@@ -1842,15 +2042,17 @@ reject=0
        detval_current = detval_new
        Rinv_current = Rinv_new
        n0T=n1T
-       if(beta .eq. 1. .and. it .gt. burn_in) accept=accept + 1
+       !if(beta .eq. 1. .and. it .gt. burn_in) accept=accept + 1
+       if(it .gt. burn_in) accept=accept + 1
        if(beta .eq. 1. .and. it .le. burn_in) accept_batch(yi)=accept_batch(yi) + 1
     else
        !;REJECT					
-       if(beta .eq. 1. .and. it .gt. burn_in) reject=reject + 1
+       !if(beta .eq. 1. .and. it .gt. burn_in) reject=reject + 1
+       if(it .gt. burn_in) reject=reject + 1
        if(beta .eq. 1. .and. it .le. burn_in) reject_batch(yi)=reject_batch(yi) + 1
     endif
-  
-     if(beta .eq. 1. .and. it .le. burn_in .and. modulo(it,560) .eq. 1) then
+    
+    if(beta .eq. 1. .and. it .le. burn_in .and. modulo(it,600) .eq. 1) then
        if (it .gt. 100) then
         av_acc =  max(0.01,1.0/sqrt(real(it)/500.))
         do ii=1,dim2 
@@ -1864,6 +2066,7 @@ reject=0
         enddo
        endif   ! it .gt. 1
     endif
+   
 
   !enddo   ! yi loop
 
@@ -1883,7 +2086,8 @@ END SUBROUTINE sigma_y_update
 SUBROUTINE tau_update(beta, tau_current, sigma_y,  &
 detval_current, detval_Q_current, detval_Q_block, tau_hparam1, tau_hparam2,  &
 stepsize_tau, tau_pdf, Rinv_current, Qinv_current, deltatime, nmeasure_site, &
-n0, n0T, accept_batch, reject_batch, it, burn_in, nmeasure, numsites,  &
+n0, n0T, accept_batch, reject_batch, &
+it, burn_in, nmeasure, numsites, nsite_max, &
 n0T_out, accept_out, reject_out, tau_out, Rinv_out, Qinv_out, detval_out, &
 detval_Q_out, detval_Q_block_out, &
 stepsize_tau_out, accept_batch_out,reject_batch_out) 
@@ -1891,7 +2095,7 @@ stepsize_tau_out, accept_batch_out,reject_batch_out)
 IMPLICIT NONE
 
 ! Dimensions
-INTEGER nmeasure, accept, reject, it, burn_in, numsites
+INTEGER nmeasure, accept, reject, it, burn_in, numsites, nsite_max
 ! Single Variables
 REAL beta 
 REAL tau_current(numsites)
@@ -1901,10 +2105,11 @@ INTEGER tau_pdf
 REAL n0T
 REAL detval_current, detval_Q_current 
 REAL detval_Q_block(numsites)
+INTEGER accept_batch, reject_batch
 ! Input arrays
 REAL n0(nmeasure), sigma_y(nmeasure) 
 REAL Rinv_current(nmeasure,nmeasure), Qinv_current(nmeasure,nmeasure)
-REAL deltatime
+REAL deltatime(nmeasure,nmeasure)
 INTEGER nmeasure_site(numsites)
 ! Outputs
 REAL n0T_out, detval_out, tau_out(numsites), detval_Q_out
@@ -1912,8 +2117,10 @@ INTEGER accept_out, reject_out
 REAL Rinv_out(nmeasure,nmeasure) 
 REAL Qinv_out(nmeasure, nmeasure)
 REAL detval_Q_block_out(numsites)
+INTEGER accept_batch_out, reject_batch_out
+REAL stepsize_tau_out
 ! Intermediate variables
-INTEGER ti, yi, ii
+INTEGER ti, yi
 REAL randomu, dtau, tau_new(numsites), u
 REAL p0_tau, p1_tau, n1T, detval_new, pT
 REAL detval_Q_new
@@ -1922,21 +2129,21 @@ REAL Qinv_new(nmeasure, nmeasure)
 REAL C(nmeasure), autocorr_vec(nmeasure)
 REAL sigma_yinv(nmeasure)
 INTEGER cum_nmeas
-!REAL Q_block_new(nsite_max,nsite_max)
-!REAL Q_block_inv_new(nsite_max,nsite_max)
+REAL Q_block_new(nsite_max,nsite_max)
+REAL Q_block_inv_new(nsite_max,nsite_max)
 REAL detval_Q_block_new(numsites)
-REAL q_small
-REAL stepsize_tau_out
-INTEGER accept_batch, reject_batch
-INTEGER accept_batch_out, reject_batch_out
 REAL accep_prob, av_acc
+REAL aa,bb
+
+ aa=1
+ bb=0
+
+accept=0
+reject=0
 
 Qinv_new=Qinv_current
 detval_Q_block_new=detval_Q_block
 tau_new=tau_current
-
-accept=0
-reject=0
 
  call random_number(u)   
  yi = FLOOR(numsites*u)+1
@@ -1944,7 +2151,7 @@ reject=0
 dtau = random_normal()*stepsize_tau
 tau_new(yi) = tau_current(yi) + dtau 
 
-!if (tau_new(yi) .GT. tau_hparam1 .and. tau_new(yi) .LT. tau_hparam2) THEN
+if (tau_new(yi) .GT. tau_hparam1 .and. tau_new(yi) .LT. tau_hparam2) THEN
 
 ! Compute P1 for new value of tau
    call calc_pdf(tau_current(yi), tau_hparam1, tau_hparam2, tau_pdf, p0_tau)
@@ -1960,29 +2167,17 @@ tau_new(yi) = tau_current(yi) + dtau
         cum_nmeas = sum(nmeasure_site(1:yi-1))
     endif
 
+    Q_block_new(1:nmeasure_site(yi),1:nmeasure_site(yi)) = &
+       exp((-1.)*deltatime(cum_nmeas+1:cum_nmeas+nmeasure_site(yi), cum_nmeas+1:cum_nmeas+nmeasure_site(yi))/tau_new(yi))
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-       q_small = exp(-1.*deltatime/tau_new(yi))    ! deltatime = single number; q_small=single number
+    Q_block_inv_new(1:nmeasure_site(yi),1:nmeasure_site(yi)) = Ainv(Q_block_new(1:nmeasure_site(yi),1:nmeasure_site(yi)))
 
-       Qinv_new(cum_nmeas+1,cum_nmeas+1) = 1.
-       Qinv_new(cum_nmeas+nmeasure_site(yi),cum_nmeas+nmeasure_site(yi)) = 1.
-       Qinv_new(cum_nmeas+1,cum_nmeas+2) = q_small*(-1.)
-       Qinv_new(cum_nmeas+nmeasure_site(yi),cum_nmeas+nmeasure_site(yi)-1) = q_small*(-1.)
+    detval_Q_block_new(yi) = det(Q_block_new(1:nmeasure_site(yi),1:nmeasure_site(yi)))
 
-       do ii=2, nmeasure_site(yi)-1
-           Qinv_new(cum_nmeas+ii,cum_nmeas+ii) = 1. + q_small**2
-           Qinv_new(cum_nmeas+ii,cum_nmeas+ii+1) = q_small*(-1.)
-           Qinv_new(cum_nmeas+ii,cum_nmeas+ii-1) = q_small*(-1.)
-       enddo
-   
-       detval_Q_block_new(yi) = alog(1-q_small**2)*((nmeasure_site(yi)-1)/2.)   ! DETERMINANT IN LOG SPACE log of sqrt of determinant
-   
-       !cum_nmeas = cum_nmeas + nmeasure_site(yi)
-     
-       Qinv_new(cum_nmeas+1:cum_nmeas+nmeasure_site(yi), cum_nmeas+1:cum_nmeas+nmeasure_site(yi)) = &
-       Qinv_new(cum_nmeas+1:cum_nmeas+nmeasure_site(yi), cum_nmeas+1:cum_nmeas+nmeasure_site(yi))/(1.-q_small**2)
-       detval_Q_new = sum(detval_Q_block_new)
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    Qinv_new(cum_nmeas+1:cum_nmeas+nmeasure_site(yi), cum_nmeas+1:cum_nmeas+nmeasure_site(yi)) = &
+       Q_block_inv_new(1:nmeasure_site(yi),1:nmeasure_site(yi))
+
+    detval_Q_new = sum(detval_Q_block_new)
 
 
     do ti=1,nmeasure
@@ -1992,7 +2187,8 @@ tau_new(yi) = tau_current(yi) + dtau
 
     detval_new =  sum(alog(sigma_y)) + detval_Q_new  ! DETERMINANT IN LOG SPACE log of sqrt of determinant
 
-    C = matmul(n0,Rinv_new)
+    call sgemm ('N', 'N', nmeasure, 1, nmeasure, aa, Rinv_new, nmeasure, n0, nmeasure, bb, C, nmeasure)
+    !C = matmul(n0,Rinv_new)
     n1T = dot_product(n0,C)
 		
     ! compute P1/P0 
@@ -2013,16 +2209,25 @@ tau_new(yi) = tau_current(yi) + dtau
        detval_Q_current = detval_Q_new
        detval_Q_block = detval_Q_block_new
        n0T=n1T
-       if(beta .eq. 1. .and. it .gt. burn_in) accept=accept + 1
+
+       !if(beta .eq. 1. .and. it .gt. burn_in) accept=accept + 1
+       if(it .gt. burn_in) accept=accept + 1
        if(beta .eq. 1. .and. it .le. burn_in) accept_batch=accept_batch + 1
     else 
        !;REJECT	
-        if(beta .eq. 1. .and. it .gt. burn_in) reject=reject + 1
+        !if(beta .eq. 1. .and. it .gt. burn_in) reject=reject + 1
+        if(it .gt. burn_in) reject=reject + 1
         if(beta .eq. 1. .and. it .le. burn_in) reject_batch=reject_batch + 1
     endif
 
+ 
+else
+   !if(beta .eq. 1. .and. it .gt. burn_in) reject=reject + 1
+   if(it .gt. burn_in) reject=reject + 1
+   if(beta .eq. 1. .and. it .le. burn_in) reject_batch=reject_batch + 1
+endif
 
-   if(beta .eq. 1 .and. it .le. burn_in .and. modulo(it,560) .eq. 2) then
+ if(beta .eq. 1 .and. it .le. burn_in .and. modulo(it,600) .eq. 2) then
        if (it .gt. 100) then
         av_acc =  max(0.01,1.0/sqrt(real(it)/500.))       
           if(accept_batch+reject_batch .gt. 0) then          
@@ -2048,97 +2253,6 @@ stepsize_tau_out=stepsize_tau
 accept_batch_out=accept_batch
 reject_batch_out=reject_batch
 END SUBROUTINE tau_update
-
-
-SUBROUTINE y_update(beta, y_current, n0, n0T, &
-Rinv, y_hparam1, y_hparam2, timeindex_zero, &
-stepsize_y, y_pdf, accept, reject, it, burn_in, nmeasure, nzero, &
-n0_out, n0T_out, y_out, accept_out, reject_out) 
-
-IMPLICIT NONE
-
-! Dimensions
-INTEGER nmeasure, accept, reject, it, burn_in, nzero
-! Single Variables
-REAL beta 
-! Input arrays
-INTEGER timeindex_zero(nzero)
-REAL y_current(nmeasure)
-REAL n0(nmeasure) 
-REAL n0T
-REAL Rinv(nmeasure,nmeasure)
-REAL stepsize_y
-REAL y_hparam1
-REAL y_hparam2
-INTEGER y_pdf
-! Outputs
-REAL n0T_out, n0_out(nmeasure)
-REAL y_out(nmeasure)
-INTEGER accept_out, reject_out
-! Intermediate variables
-INTEGER  yi, xi
-REAL randomu, dy, y_new
-REAL p0_y, p1_y, n1T, pT
-REAL n1(nmeasure) 
-REAL dum, dumb,dumc,dumd
-REAL dumx(nmeasure), dumy(nmeasure)
-
- do yi=1,nzero
-		
-    ! Generate new value of sigma_y
-    n1=n0
-    xi = timeindex_zero(yi)
-    dy = random_normal()*stepsize_y
-    y_new = y_current(xi) + dy       
-
-    call calc_pdf(y_current(xi), y_hparam1, y_hparam2, y_pdf, p0_y)
-    call calc_pdf(y_new, y_hparam1, y_hparam2, y_pdf, p1_y)
-	
-    !n1=matmul(h_agg2,x1)-y 
-    n1(xi)=n0(xi)-dy
-
-    dumx = n0(xi)*Rinv(:,xi)
-    dumy = n1(xi)*Rinv(:,xi)
-
-   dum  = dot_product(n0,dumx)  
-   dumb = dot_product(n1,dumy)
-   dumc = dot_product(n0,Rinv(:,xi))
-   dumd = dot_product(n1,Rinv(:,xi))
-
-   n1T = n0T - dum + dumb - n0(xi)*dumc + n1(xi)*dumd - n1(xi)*n1(xi)*Rinv(xi,xi) + n0(xi)*n0(xi)*Rinv(xi,xi)
-
-    !C = matmul(n1,Rinv)
-    !n1T= dot_product(n1,C)
-    
-    ! Compute P1/P0 	
-    pT= p1_y-p0_y - 0.5*(n1T - n0T)*beta       !*beta      
-
-    if (y_pdf .eq. 1) then
-       if (y_new .lt. y_hparam1) pT = -1.e20
-       if (y_new .gt. y_hparam2) pT = -1.e20
-    endif
-  
-    call random_number(randomu)     ! Generates uniformly distributed random number
-    
-    if(alog(randomu) .le. pT) then      
-       !ACCEPT	
-       y_current(xi) = y_new
-       n0=n1
-       n0T=n1T
-       if(beta .eq. 1. .and. it .gt. burn_in) accept=accept + 1
-    else
-       !;REJECT					
-       if(beta .eq. 1. .and. it .gt. burn_in) reject=reject + 1
-    endif
-
-  enddo   ! yi loop
-
-n0_out=n0
-n0T_out=n0T
-y_out=y_current
-accept_out=accept
-reject_out=reject
-END SUBROUTINE y_update
 
 
 FUNCTION random_normal() RESULT(fn_val)
@@ -2186,55 +2300,46 @@ RETURN
 
 END FUNCTION random_normal
 
-SUBROUTINE closest_grid(region_v,lon,lat, plon,plat, np, nlon,nlat)
+SUBROUTINE closest_point(region,hour, phour, np, nmeasure)
 implicit none
 
-integer :: region_v(nlon*nlat)
-real    :: lon(nlon), lat(nlat), plon(np), plat(np)
-integer :: lai, loi, la,lo,pi
-integer :: nlon,nlat,np
+integer :: region(nmeasure)
+real    :: hour(nmeasure), phour(np)
+integer :: hri, hi,pi
+integer :: nmeasure,np
 real    :: maxdist, dist
-    lai=1
-    do la =1,nlat
-    !do lo =1,nlon
-        loi=1
-        do lo=1, nlon
-            maxdist=1.e6
-            do pi=1,np 
-                dist=(lat(la) - plat(pi))*(lat(la) - plat(pi)) + (lon(lo) - plon(pi))*(lon(lo) - plon(pi))  
-                ! Can't work out which way round??????????????
-                if (dist .LT. maxdist) THEN
-                    !!region(lai, loi)=pi
-                    region_v(loi+(lai-1)*nlon)=pi
-                    !region_v(lai+(loi-1)*nlat)=pi
-                    maxdist=dist
-                endif
-            enddo
-            loi=loi+1
+    hri=1
+    do hi =1, nmeasure
+        maxdist=1.e12
+        do pi =1, np
+            dist= (hour(hi) - phour(pi))*(hour(hi) - phour(pi))
+            if (dist .LT. maxdist) then
+                region(hri)=pi
+                maxdist=dist
+            endif
         enddo
-        lai=lai+1
-    enddo
+        hri=hri+1    
+     enddo    
+ 
+END SUBROUTINE closest_point
 
-END SUBROUTINE closest_grid
-
-
-SUBROUTINE closest_grid_sng(region,lon,lat, plon,plat, np)
+SUBROUTINE closest_point_sng(region,hour, phour, np)
 implicit none
 
   integer :: region, pi, np
-  real    :: plon(np), plat(np)
-  real    :: lon, lat, maxdist, dist
+  real    :: phour(np) 
+  real    :: hour, maxdist, dist
 
-  maxdist=1.e6
+  maxdist=1.e12
   do pi=1,np 
-     dist=(lat - plat(pi))*(lat - plat(pi)) + (lon - plon(pi))*(lon - plon(pi))
+     dist=(hour - phour(pi))*(hour - phour(pi))
      if (dist .LT. maxdist) THEN  
         region=pi
         maxdist=dist
      endif
   enddo
 
-END SUBROUTINE closest_grid_sng
+END SUBROUTINE closest_point_sng
 
 subroutine calc_pdf(x,pdf_param1,pdf_param2,pdf,p1)     ! Subroutine for calculating P1 for specified PDF
 
@@ -2336,5 +2441,64 @@ subroutine init_random_seed()
             call random_seed(put=seed)
 end subroutine init_random_seed
 
-End Module transd_evencorr
+function Ainv(A) 
+  real, dimension(:,:), intent(in) :: A
+  real, dimension(size(A,1),size(A,2)) :: Ainv
+
+  real, dimension(size(A,1)) :: work  ! work array for LAPACK
+  integer, dimension(size(A,1)) :: ipiv   ! pivot indices
+  integer :: n, info
+
+  ! External procedures defined in LAPACK
+  external SGETRF
+  external SGETRI
+
+  ! Store A in Ainv to prevent it from being overwritten by LAPACK
+  Ainv = A
+  n = size(A,1)
+
+  ! DGETRF computes an LU factorization of a general M-by-N matrix A
+  ! using partial pivoting with row interchanges.
+  call SGETRF(n, n, Ainv, n, ipiv, info)
+
+  if (info /= 0) then
+     stop 'In Ainv: Matrix is numerically singular!'
+  end if
+
+  ! DGETRI computes the inverse of a matrix using the LU factorization
+  ! computed by DGETRF.
+  call SGETRI(n, Ainv, n, ipiv, work, n, info)
+
+  if (info /= 0) then
+     stop 'Matrix inversion failed!'
+  end if
+end function Ainv
+
+
+function det(A)
+  !Returns the log of the "square root of the determinant" of a postive definite matrix calculated from the Cholesky decomposition
+  ! Uses LAPACK routines
+  real, dimension(:,:), intent(in) :: A
+  real, dimension(size(A,1),size(A,2)) :: Adum
+  integer, dimension(size(A,1)) :: ipiv   ! pivot indices
+  real :: det
+  integer :: n, info,j
+
+  ! External procedures defined in LAPACK
+  external SPOTRF
+
+  ! Store A in Adum to prevent it from being overwritten by LAPACK
+  Adum = A
+  n = size(A,1)
+
+  call SPOTRF('U',n,Adum,n,info)
+  det = 0
+
+  do j = 1,n
+  det = det + alog(Adum(j,j))
+  enddo
+
+end function det
+
+End Module transd_corr
 

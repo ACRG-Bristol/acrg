@@ -28,9 +28,10 @@ import glob
 import datetime as dt
 import getpass
 import collections as c
+import pdb
 
 mzt_dir = '/shared_data/air/shared/MOZART/mzt_output/'
-filename = mzt_dir + 'CH4/FWDModelComparison_NewEDGAR.mz4.h2.2014-01.nc'
+#filename = mzt_dir + 'CH4/FWDModelComparison_NewEDGAR.mz4.h2.2014-01.nc'
 
 
 def MOZART_filenames(species, start = "2010-01-01", end = "2016-01-01"):
@@ -46,7 +47,7 @@ def MOZART_filenames(species, start = "2010-01-01", end = "2016-01-01"):
     files = []
     for ym in yearmonth:
         f=glob.glob(baseDirectory + \
-            species.upper() + "/" + "*" + ym + "*.nc")
+            species + "/" + "*" + ym + "*.nc")
         if len(f) > 0:
             files += f
 
@@ -241,19 +242,18 @@ def MOZART_boundaries(MZ, domain):
     return MZT_edges
     
 
-def MOZART_BC_nc(start = '2012-01-01', end = "2014-09-01", species = 'CH4', domain = 'EUROPE', freq = 'M'):   
+def MOZART_BC_nc(start = '2012-01-01', end = "2014-09-01", species = 'CH4', filename = None, domain = 'EUROPE', freq = 'M'):   
     """
     Specify end date as 2 months after the month of the last file
     (because the date specified is actually the first day of the next month and
     the range goes up to but doesn't include the last date). Only monthly
     frequency because this is the frequency of the mozart files we have so far.
     """
-
     start_dates = pd.DatetimeIndex(start=start, end = end, freq=freq, closed='left')
 
     for i in start_dates:
-        MZ = MOZART_vmr(species, start = i, end = i, freq=freq)
+        MZ = MOZART_vmr(species, start = i, end = i, freq=freq, filename = filename)
         MZ_edges = MOZART_boundaries(MZ, domain)
         yearmonth = str(i.year) + str(i.month).zfill(2)
         MZ_edges.to_netcdf(path = '/data/shared/NAME/bc/%s/%s_%s_%s.nc'
-                                                    %(domain,species.lower(),domain,yearmonth), mode = 'w')    
+                                                    %(domain,species.lower(),domain,yearmonth), mode = 'w')

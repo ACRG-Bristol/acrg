@@ -28,13 +28,14 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
 from matplotlib import ticker
 import pandas as pd
+import dateutil.relativedelta
 # ___________________________________________________________________________________________________________________
 # CODE TO READ THE DIFFERENT DATA TYPES
 # ___________________________________________________________________________________________________________________
 
  # Class to read in the data
 class read:
-    def __init__(self, filename):
+    def __init__(self, filename, conc_tag = None):
     
         print 'Reading file : ' + filename
         
@@ -43,15 +44,16 @@ class read:
         
         data=netCDF4.Dataset(filename)
         
-        
-        if 'h0' in filename:
-            conc_tag = '_VMR_avrg'
-        
-        if 'h1' in filename:        
-            conc_tag = '_13:30_LT'
-        
-        if 'h2' in filename:        
-            conc_tag = '_VMR_avrg'
+        if not conc_tag:
+            if 'h0' in filename:
+                conc_tag = '_VMR_avrg'
+            
+            if 'h1' in filename:        
+                conc_tag = '_13:30_LT'
+            
+            if 'h2' in filename:        
+                conc_tag = '_VMR_avrg'
+
 
         # Might be multiple tracers
         conc_varname = [i for i in data.variables.keys() if conc_tag in i]      
@@ -123,8 +125,13 @@ class read:
             self.emisnames = emis_varname
         
         if 'h2' in filename:
+        #if 'h0' in filename:
+        
             start_date = data.variables['nbdate'][:]
             dt_start_date = dt.datetime.strptime(str(start_date),'%Y%m%d')
+#            start_date = data.variables['date'][:]
+#            dt_start_date = dt.datetime.strptime(str(start_date[0]),'%Y%m%d')\
+#            - dateutil.relativedelta.relativedelta(months=1)
             self.start_date = dt_start_date
         data.close()
         
@@ -158,7 +165,7 @@ variables:
 		:Created = "Sun Apr 27 15:22:18 2014" ;
 """
 class read_flux:
-    def __init__(self, filename):
+    def __init__(self, filename, emissions_tag_ncdf = 'emissions', time_tag = 'time', emiss_varname = None):
     
         print 'Reading file : ' + filename
         
@@ -167,7 +174,8 @@ class read_flux:
         
         data=netCDF4.Dataset(filename)
         
-        emiss_varname = (str(data.__getattribute__('Title'))).strip()[0:3]
+        if emiss_varname is None:
+            emiss_varname = (str(data.__getattribute__('Title'))).strip()[0:3]
         
         # convert from upper to lowercase
         name_dict = {'CO2' : 'co2',\
@@ -175,18 +183,30 @@ class read_flux:
                     'N2O' : 'n2o'}
         emiss_varname = name_dict[emiss_varname]
         
-        emiss = data.variables['emissions'][:]
+        emiss = data.variables[emissions_tag_ncdf][:]
         date = data.variables['date'][:] # Date YYYYMMDD
         lon = data.variables['lon'][:].astype('float')
         lat = data.variables['lat'][:].astype('float')
-        time = data.variables['time'][:].astype('float')
+        time = data.variables[time_tag][:].astype('float')
         
         # Split up the date based on position        
-        year = np.asarray([int(((date.astype('str'))[i])[0:4]) for i in np.arange(len(date))])
-        month = np.asarray([int(((date.astype('str'))[i])[4:6]) for i in np.arange(len(date))])
-        day = np.asarray([int(((date.astype('str'))[i])[6:8]) for i in np.arange(len(date))])
-        
-        dt_date = [dt.datetime(year[i],month[i],day[i]) for i in np.arange(len(date))]
+        if (date[0] == 1) and (len(date) == 12):
+            # we're dealing with a climatology 
+            print 'This appears to be a climatology. Using 2000 as a default year.'
+            year = np.arange(12)
+            year[:] = 2000
+            month = date
+            day = np.arange(12)
+            day[:] = 15
+            
+            dt_date = [dt.datetime(year[i],month[i],day[i]) for i in np.arange(len(date))]
+            
+        else:
+            year = np.asarray([int(((date.astype('str'))[i])[0:4]) for i in np.arange(len(date))])
+            month = np.asarray([int(((date.astype('str'))[i])[4:6]) for i in np.arange(len(date))])
+            day = np.asarray([int(((date.astype('str'))[i])[6:8]) for i in np.arange(len(date))])
+            
+            dt_date = [dt.datetime(year[i],month[i],day[i]) for i in np.arange(len(date))]
         
         
         # Calculate monthly means use xray
@@ -199,7 +219,7 @@ class read_flux:
         dt_monthly = [pd.to_datetime(str(i)).replace(tzinfo=None) for i in monthly_means.date.values]        
         
         self.time = time
-        self.time_units = data.variables['time'].__getattribute__('units')
+        self.time_units = data.variables[time_tag].__getattribute__('units')
         self.dt_date = dt_date
         self.year = year
         self.month = month
@@ -208,7 +228,7 @@ class read_flux:
         self.monthly_time = dt_monthly
         self.monthly_means = monthly_means.values
         self.species = emiss_varname
-        self.emis_units = data.variables['emissions'].__getattribute__('units')  
+        self.emis_units = data.variables[emissions_tag_ncdf].__getattribute__('units')  
         self.lon = lon
         self.lat = lat
         self.filename = filename     
@@ -552,8 +572,6 @@ class extract_site_info:
 # Class to match to the closeest lat/lon using bisect 
 class match_latlon:
     def __init__(self, lat, lon, lat_array, lon_array):
-        
-        import bisect
         
         # NB: Assuming evenly spaced grid
         lat_spacing = lat_array[1] - lat_array[0]

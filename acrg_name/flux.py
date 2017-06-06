@@ -5,28 +5,49 @@ Created on Thu Nov 26 18:13:48 2015
 @author: chxmr
 """
 
+import numpy as np
 import datetime as dt
 import os
 import netCDF4 as nc
 import getpass
 import acrg_time
 import re
+import numpy as np 
 
-def write(lat, lon, flux, species, domain, year,
-          comments = ""):
+def write(lat, lon, time, flux, species, domain, year,
+          comments = "", title="EDGAR emissions"):
     '''
     Write a flux file
     
     TODO: Add some error checking (e.g. check that domain is correct)
     '''
-    
     if type(year) == dt.date:
-        time = year
+        #time = year
         year = str(year.year)
     elif type(year) == str:
-        time = dt.datetime.strptime(year, '%Y')
+        #time = dt.datetime.strptime(year, '%Y')
         year = year
+    elif isinstance(year[0], dt.date):
+        time = year
+        year = str(year[0].year)
+    else:
+        raise ValueError('Year needs to be in datetime.date or string format')
+        
+    if type(time) == dt.date:
+        time = time
+    elif type(time) == str:
+        time = dt.datetime.strptime(time, '%Y')
+    elif type(time) == np.ndarray:
+        if type(time[0]) == dt.date:
+            time = time
+        else:
+            raise ValueError('Time format not correct')
+    else:
+        time = time
+       # raise ValueError('Time needs to be in datetime.date or string format')
     
+        
+
     species = species.lower()    
     
     #Open netCDF file
@@ -43,12 +64,12 @@ def write(lat, lon, flux, species, domain, year,
         f=nc.Dataset(ncname, 'w')
         
     #Create dimensions
-    f.createDimension('time', len([time]))
+    f.createDimension('time', len(time))
     f.createDimension('lat', len(lat))
     f.createDimension('lon', len(lon))
     
     #Header attributes
-    f.title = "EDGAR emissions"
+    f.title = title
     f.author = getpass.getuser()
     f.date_created = str(dt.datetime.today())
     f.comments = comments
@@ -77,11 +98,15 @@ def write(lat, lon, flux, species, domain, year,
     nclat.units='degrees_north'
     
     #Mole fraction variable
-    ncflux=f.createVariable('flux', \
-        'd', ('lat', 'lon', 'time'))
-    ncflux[:,:,:]=flux
-    ncflux.units='mol/m2/s'
-
+    # Check that the flux is in the correct shape
+    if np.shape(flux) == tuple((np.shape(lat)[0], np.shape(lon)[0], np.shape(time)[0])):
+        ncflux=f.createVariable('flux', \
+            'd', ('lat', 'lon', 'time'))
+        ncflux[:,:,:]=flux
+        ncflux.units='mol/m2/s'
+    else:
+        print 'The flux needs to be lat x lon x time which it is not'
+        print 'Reshape your flux array and try again'
     f.close() 
 
 
