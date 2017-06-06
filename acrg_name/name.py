@@ -259,7 +259,7 @@ def basis(domain, basis_case = 'voronoi'):
 def basis_boundary_conditions(domain, basis_case = 'NESW'):
     
     files = sorted(glob.glob(bc_basis_directory + domain + "/" +
-                    basis_case + "*.nc"))
+                    basis_case + '_' + domain + "*.nc"))
     if len(files) == 0:
         print("Can't find boundary condition basis functions: " + domain + " " + basis_case)
         return None
