@@ -841,6 +841,58 @@ def ale_gage(site, network):
         print("... written.")
 
 
+def mhd_o3():
+    
+    channels = ["channel1", "channel0", "channel2"]
+    base_directory = "/dagage2/agage/macehead-ozone/results/export/"
+    
+    df = []
+
+    for channel in channels:
+        
+        files_channel = sorted(glob.glob(join(base_directory, channel, "*.csv")))
+                
+        for f in files_channel:
+            
+            df.append(pd.read_csv(f, sep=",",
+                                  names = ["datetime",
+                                           "ozone",
+                                           "ozone_variability",
+                                           "ozone_number_samples"],
+                                  na_values = "NA",
+                                  index_col = "datetime",
+                                  parse_dates = ["datetime"]))
+            df[-1].dropna(inplace = True)
+
+    df = pd.concat(df)
+    df.index.name = "index"
+    df = df.reset_index().drop_duplicates(subset='index').set_index('index')
+    df.sort_index(inplace = True)
+        
+    # Convert to Dataset
+    df.index.name = "time"
+    ds = xray.Dataset.from_dataframe(df)
+
+    ds = attributes(ds,
+                    "ozone",
+                    "MHD",
+                    scale = "SCALE",
+                    sampling_period=60*60,
+                    units = "ppb")
+    
+    # Write file
+    nc_filename = output_filename("/dagage2/agage/metoffice/processed_observations",
+                                  "AURN",
+                                  "thermo",
+                                  "MHD",
+                                  str(ds.time.to_pandas().index.to_pydatetime()[0].year),
+                                  ds.species,
+                                  site_params["MHD"]["height"][0])
+    print("Writing " + nc_filename)
+    ds.to_netcdf(nc_filename)
+    print("... written.")
+    
+    
 def decc_data_freeze():
 
     input_directory = "/dagage2/agage/summary/gccompare-net/snapshot/current-frozendata/data-net/"
