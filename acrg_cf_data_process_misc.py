@@ -837,7 +837,7 @@ def gla(species):
     ds = xray.concat(ds, dim = "time")
 
     # Change time stamp (currently the middle)
-    ds.time -= np.median(ds.time.values[1:] - ds.time.values[0:-1])/2.
+    ds['time'] -= np.median(ds.time.values[1:] - ds.time.values[0:-1])/2.
     ds.attrs["comment"] = "Time stamp used to be middle of averaging period, " + \
                     "now subtracted half the " + \
                     "median to approximate the start"

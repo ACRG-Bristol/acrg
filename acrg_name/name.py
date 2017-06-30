@@ -292,7 +292,8 @@ def basis(domain, basis_case = 'voronoi'):
 def basis_boundary_conditions(domain, basis_case = 'NESW'):
     
     files = sorted(glob.glob(bc_basis_directory + domain + "/" +
-                    basis_case + "_*.nc"))
+                    basis_case + '_' + domain + "*.nc"))
+
     if len(files) == 0:
         print("Can't find boundary condition basis functions: " + domain + " " + basis_case)
         return None
@@ -555,14 +556,6 @@ def footprints_data_merge(data, domain = "EUROPE", species = None, load_flux = T
             site_ds = combine_datasets(site_ds, site_fp,
                                        method = "nearest",
                                        tolerance = tolerance)
-        
-            # Merge flux field to footprints
-#            if flux_ds is not None:
-#                site_ds = combine_datasets(site_ds, flux_ds)
-    
-            # Merge vmr field with footprints
-            if bc_ds is not None:      
-                site_ds = combine_datasets(site_ds, bc_ds)  
                 
             # If units are specified, multiply by scaling factor
             if ".units" in attributes:
@@ -1090,8 +1083,7 @@ def filtering(datasets_in, filters, keep_missing=False):
     def local_influence(dataset,site, keep_missing=False):
         
         lr = dataset.local_ratio
-        pc = 1.e9
-        #pc = 0.1
+        pc = 0.1
         
         ti = [i for i, local_ratio in enumerate(lr) if local_ratio <= pc]
         if keep_missing is True: 

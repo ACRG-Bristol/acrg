@@ -3,7 +3,8 @@ README file for acrg_tdmcmc
 Files in this directory:
 
 acrg_hbtdmcmc_uncorr.f90  - Fortran script for running uncorrelated transdimensional, hierarchical reversible jump mcmc
-acrg_hbtdmcmc_evencorr.f90  - Fortran script for running temporally correlated transdimensional, hierarchical reversible jump mcmc
+acrg_hbtdmcmc_evencorr.f90  - Fortran script for running temporally correlated transdimensional, hierarchical reversible jump mcmc. Assumes every data point is evenly spaced in time.
+acrg_hbtdmcmc_corr.f90  - Fortran script for running temporally correlated transdimensional, hierarchical reversible jump mcmc. Suitable for any separation of data points.
 
 tdmcmc_inputs.py - Python template script to create right inputs for template_tdmcmc.f90
 
@@ -19,8 +20,9 @@ post_process_template.py - Template file to show how you might call functions co
 
 In order for the run_tdmcmc.py script to work you need to have compiled both Fortran subroutines using f2py.
 By default the .so files must be called:
-tdmcmc_uncorr.so and tdmcmc_evencorr.so
+tdmcmc_uncorr.so, tdmcmc_evencorr.so, tdmcmc_corr.so 
 
+But you don't have to stick with these defaults
 
 ***************** Compiling uncorrelated version with f2py ****************************************
 
@@ -67,7 +69,17 @@ f2py -L/usr/lib64 -llapack -c -m tdmcmc_corr_pt --f90flags='-fopenmp' -lgomp acr
 
 f2py -L/opt/intel/mkl/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -c -m tdmcmc_corr_pt --fcompiler=intelem --f90flags='-fast -openmp' -liomp5 acrg_hbtdmcmc_corr.f90
 
-This should be faster than gfortran, my test have shown run time improvements of ~2x to 4x faster.
+To get this to work on air you'll need to copy the following into a terminal, or put in your bashrc:
+
+export LD_PRELOAD=/opt/intel/mkl/lib/intel64/libmkl_core.so:/opt/intel/mkl/lib/intel64/libmkl_sequential.so
+
+For some reason it works on snowy without this. Not sure about non-Bristol servers...
+
+Also make sure you've got the following line in your .bashrc to set up the correct intle environments:
+
+source /opt/intel/bin/compilervars.sh intel64
+
+This should be faster than gfortran, my tests have shown run time improvements of ~2x to 4x faster.
 
 ********************************* Running from python *************************************************
 

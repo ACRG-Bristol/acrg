@@ -55,6 +55,20 @@
         "print_string": "CCl$_4$", 
         "units": "ppt"
     }, 
+    "C2HCl3": {"alt": ["TCE"],
+        "group": "Chloromethanes", 
+        "long_name": "Trichloroethylene", 
+        "mol_mass": "131.4",
+        "print_string": "C$_2$HCl$_3$", 
+        "units": "ppt"
+    }, 
+    "C2Cl4": {"alt": ["PCE"],
+        "group": "Chloromethanes", 
+        "long_name": "Perchloroethylene", 
+        "mol_mass": "165.83",
+        "print_string": "C$_2$Cl$_4$", 
+        "units": "ppt"
+    }, 
     "CF4": {"alt": ["PFC-14", "PFC14"],
         "group": "PFCs", 
         "long_name": "CF$_4$", 

@@ -256,4 +256,4 @@ def MOZART_BC_nc(start = '2012-01-01', end = "2014-09-01", species = 'CH4', file
         MZ_edges = MOZART_boundaries(MZ, domain)
         yearmonth = str(i.year) + str(i.month).zfill(2)
         MZ_edges.to_netcdf(path = '/data/shared/NAME/bc/%s/%s_%s_%s.nc'
-                                                    %(domain,species.lower(),domain,yearmonth), mode = 'w')    
+                                                    %(domain,species.lower(),domain,yearmonth), mode = 'w')

@@ -239,7 +239,7 @@
     "COI" : {
         "alt": [""],
         "long_name" : "Cape Oshi-Ishi, Japan",
-        "height": ["55m"],
+        "height": ["10m"],
         "height_station_masl": 41.0,
         "height_name": ["46magl"],
         "latitude": 43.167,
@@ -432,7 +432,7 @@
     "HAT" : {
         "alt": [""],
         "long_name" : "Hateruma, Japan",
-        "height": ["39m"],
+        "height": ["10m"],
         "height_station_masl": 8.0,
         "height_name": ["10magl"],
         "latitude": 24.06,
@@ -600,6 +600,14 @@
         "latitude": 19.536,
         "longitude": -155.576,
         "network": "NOAA"
+    },
+     "MONSOON-FAAM" : {
+        "alt": ["FAAM"],
+        "long_name" : "MONSOON flights, India",
+        "height": ["various"],
+        "height_name": ["various"],
+        "network": "MONSOON",
+        "platform": "aircraft"
     },
     "MWO" : {
         "alt": [],
