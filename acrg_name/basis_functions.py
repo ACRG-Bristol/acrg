@@ -8,7 +8,7 @@ Creat basis functions for domain
 """
 
 import numpy as np
-import xray
+import xarray as xray
 import glob
 import pandas as pd
 import acrg_name as name

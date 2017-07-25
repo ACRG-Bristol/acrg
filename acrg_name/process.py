@@ -40,7 +40,7 @@ from acrg_time.convert import time2sec, sec2time
 import os
 import json
 from os.path import split, realpath, exists
-import xray
+import xarray as xray
 import shutil
 from scipy.interpolate import interp1d
 import copy

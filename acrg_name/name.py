@@ -20,12 +20,12 @@ import bisect
 import subprocess
 from progressbar import ProgressBar
 import json
-import xray
 from os.path import join
+import xarray as xray
 from acrg_time import convert
 import calendar
 import pickle
-from scipy import interpolate
+
 
 acrg_path = os.getenv("ACRG_PATH")
 data_path = os.getenv("DATA_PATH")
