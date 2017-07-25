@@ -24,7 +24,7 @@ import acrg_agage as agage
 #import acrg_regrid as regrid
 import acrg_convert as unit_convert
 from acrg_grid import areagrid
-import xray
+import xarray as xray
 from os.path import split, realpath, join
 from acrg_time import convert
 import calendar
