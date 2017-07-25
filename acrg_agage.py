@@ -35,7 +35,7 @@ from netCDF4 import Dataset
 from acrg_time import convert
 import json
 import datetime as dt
-import xray
+import xarray as xray
 import pdb
 
 acrg_path = getenv("ACRG_PATH")
