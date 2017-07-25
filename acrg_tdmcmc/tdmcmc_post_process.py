@@ -22,7 +22,7 @@ country_emissions - calculate emissions from given list of countries
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
-import xray
+import xarray as xray
 import acrg_name as name
 from acrg_grid import areagrid
 from netCDF4 import Dataset
