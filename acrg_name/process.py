@@ -375,6 +375,7 @@ def read_met(fnames, met_def_dict=None, vertical_profile=False):
         fnames=[fnames]
 
     if met_def_dict is not None:
+        # overwrite met_default with custom list for prcessing vertical profile met
         met_default2 = met_def_dict
     else:
         met_default2 = met_default
@@ -1183,6 +1184,9 @@ def process(domain, site, height, year, month,
             perturbed_folder = "Perturbed/PARAMETERNAME_VALUE"
     max_level: specified only for satellite data and indicates the max level to
         process the foorprints. levels above are replaced by the prior profile
+    vertical_profile: If set to true will look for vertical potential temperature met file
+        and incorporate into footprint file. 
+        NB. This is a separate file from the normal met file, and is not mandatory.
         
     Outputs:
     This routine outputs a copy of the xray dataset that is written to file.
@@ -1314,25 +1318,6 @@ def process(domain, site, height, year, month,
                  
         if fp_file is not None:
             fp.append(fp_file)
-
-#    # Get vertical profile met file
-#        if vertical_profile is True:
-#            #met_search_str = subfolder + met_folder + "/*.txt*"
-#            vp_search_str = "/dagage2/agage/metoffice/vertical_profiles/UKV/" + site + "*.txt*"
-#      
-#            vp_files = sorted(glob.glob(vp_search_str))
-#        
-#            if len(vp_files) == 0:
-#                status_log("Can't file Vertical Profile files: " + vp_search_str,
-#                           error_or_warning="error")
-#                return None
-#            else:
-#                    vp_met = process_vertical_profile(vp_files)
-#                    
-#                    # Merge vetical profile met into footprint file
-#                                      
-#        else:
-#            vp_met = None
             
     if len(fp) > 0:
         
@@ -1357,9 +1342,7 @@ def process(domain, site, height, year, month,
         
         # Get vertical profile met file
         if vertical_profile is True:
-            vp_search_str = subfolder + "vertical_profile" + "/*.txt*"
-            #vp_search_str = "/dagage2/agage/metoffice/vertical_profiles/UKV/" + site + "*.txt*"
-      
+            vp_search_str = subfolder + "vertical_profile" + "/*.txt*"     
             vp_files = sorted(glob.glob(vp_search_str))
         
             if len(vp_files) == 0:
@@ -1369,8 +1352,7 @@ def process(domain, site, height, year, month,
             else:
                     vp_met = process_vertical_profile(vp_files[0])
                     
-                    # Merge vetical profile met into footprint file
-                    #fp = fp.merge(vp_met.reindex_like(fp,"nearest", tolerance =None))
+                    # Merge vetical profile met into footprint file with same time index
                     vp_reindex = vp_met.reindex_like(fp,"nearest", tolerance =None)
                     lapse_in = vp_reindex.theta_slope.values
                     lapse_error_in=vp_reindex.slope_error.values
@@ -1571,6 +1553,17 @@ if __name__ == "__main__":
         process_all(domain, site, force_update = True)
         
 def process_vertical_profile(vp_fname):
+    """
+    Function to process the site specific vertical pressure and temperature gradients.
+    Relies on the process_met function
+    In order to fit into this function the header information needs to be edited
+    in the output files NAME generates. 
+    Required structure given in vp_met_dict
+    
+    Outputs: xarray dataset containing:
+        theta_slope - the potential temperature gradient at each time point
+        slope_error - the error in this calculated gradient
+    """
     
     vp_met_dict = {"time": "             T","temp20": "TEMP-Z = 20.00000 m agl",
                "temp40": "TEMP-Z = 40.00000 m agl","temp60": "TEMP-Z = 60.00000 m agl",
