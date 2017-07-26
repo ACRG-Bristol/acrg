@@ -421,8 +421,7 @@ def timeseries_boundary_conditions(ds):
 def footprints_data_merge(data, domain = "EUROPE", load_flux = True,
                           calc_timeseries = True, calc_bc = True, HiTRes = False,
                           average = None, site_modifier = {}, height = None,
-#                          emissions_name = None, interp_vmr_freq = None,
-                          emissions_name = None,
+                          emissions_name = None, interp_vmr_freq = None,
                           fp_directory = fp_directory,
                           flux_directory = flux_directory,
                           bc_directory = bc_directory):
@@ -484,19 +483,6 @@ def footprints_data_merge(data, domain = "EUROPE", load_flux = True,
     # Output array
     fp_and_data = {}
     
-## anita note: i don't think this is used for anything   
-#    if species is not None:    
-#        bc_ds = boundary_conditions(domain, species, bc_directory)    
-#        if bc_ds is not None:            
-#            if interp_vmr_freq is not None:
-#            # Interpolate bc_ds between months
-#            # Interpolate to same timescale as footprints
-#                dum_ds = bc_ds.resample(interp_vmr_freq, "time")
-#                new_times=dum_ds.time            
-#                vmr_var_names=["vmr_n", "vmr_e", "vmr_s", "vmr_w"]
-#                bc_ds = interp_time(bc_ds,vmr_var_names, new_times)    
-    
-    
     for si, site in enumerate(sites):
 
         # Dataframe for this site            
@@ -551,7 +537,8 @@ def footprints_data_merge(data, domain = "EUROPE", load_flux = True,
                             emissions_name = [emissions_name if load_flux == True or \
                                      calc_timeseries == True \
                                      else None][0],
-                            HiTRes = HiTRes)
+                            HiTRes = HiTRes,
+                            interp_vmr_freq=interp_vmr_freq)
                          
                         
         if site_fp is not None:                        
