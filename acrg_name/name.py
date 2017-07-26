@@ -674,6 +674,12 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi',
 
         
         if basis_case.startswith('sub'):
+            """
+            To genrate sub_lon and sub_lat grids basis case must start with 'sub'
+            e.g.
+            'sub-transd', 'sub_transd', sub-intem' will work
+            'transd' or 'transd-sub' won't work
+            """
             sub_fp_temp = site_bf.fp.sel(lon=slice(min(site_bf.sub_lon),max(site_bf.sub_lon)), 
                                     lat=slice(min(site_bf.sub_lat),max(site_bf.sub_lat))) 
             sub_fp = xray.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
