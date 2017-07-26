@@ -42,12 +42,14 @@ if data_path is None:
 
 # These are the default directories if no optional arguments are specified in footprints_data_merge,
 # bc_sensitivity or fp_sensitivity
-fp_directory = join(data_path, 'NAME/fp/')
+fp_integrated_directory = join(data_path, 'NAME/fp/')
+fp_HiTRes_directory = join(data_path,'NAME/fp_high_time_res/')
 flux_directory = join(data_path, 'NAME/emissions/')
 basis_directory = join(data_path, 'NAME/basis_functions/')
 bc_directory = join(data_path, 'NAME/bc/')
 bc_basis_directory = join(data_path,'NAME/bc_basis_functions/')
-fp_HiTRes_directory = join(data_path,'NAME/fp_high_time_res/')
+fp_directory = {'integrated': fp_integrated_directory,
+               'HiTRes': fp_HiTRes_directory}
 
 # Get acrg_site_info file
 with open(join(acrg_path, "acrg_site_info.json")) as f:
@@ -238,7 +240,7 @@ def footprints(sitecode_or_filename, fp_directory = fp_directory,
         return fp
 
 
-def flux(domain, species, flux_directory):
+def flux(domain, species, flux_directory=flux_directory):
     """
     Read in a flux dataset.
     
@@ -277,7 +279,7 @@ def flux(domain, species, flux_directory):
     return flux_ds
 
 
-def boundary_conditions(domain, species, bc_directory):
+def boundary_conditions(domain, species, bc_directory=bc_directory):
     """
     Read in the files with the global model vmrs at the domain edges to give
     the boundary conditions.
@@ -366,9 +368,21 @@ def timeseries(ds):
         return None
 
 def timeseries_HiTRes(fp_HiTRes_ds, domain, HiTRes_flux_name, Resid_flux_name,
-                      output_TS = True, output_fpXflux = True):
-    flux_HiTRes = flux(domain, HiTRes_flux_name)
-    flux_resid = flux(domain, Resid_flux_name)
+                      output_TS = True, output_fpXflux = True, flux_directory=flux_directory):
+    """
+    Compute flux * HiTRes footprints
+    
+    HiTRes footprints record the footprint at each 2 hour period back in time for the first 24 hours.
+    
+    Need a high time resolution (HiTRes) flux to multiply the first 24 hours back of footprints.
+    
+    Need a residual (Resid) flux to multiply the residual integrated footprint for the remainder of the 20 day period.
+    
+    Can output the timeseries (output_TS = True) and/or the sensitivity map (output_fpXflux = True)
+    """
+    
+    flux_HiTRes = flux(domain, HiTRes_flux_name, flux_directory)
+    flux_resid = flux(domain, Resid_flux_name, flux_directory)
     
     fp_HiTRes = fp_HiTRes_ds.fp_HiTRes.to_dataset()
     fpXflux = np.zeros((len(fp_HiTRes.lat), len(fp_HiTRes.lon), len(fp_HiTRes.time)))
