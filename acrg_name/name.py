@@ -42,13 +42,13 @@ if data_path is None:
 
 # These are the default directories if no optional arguments are specified in footprints_data_merge,
 # bc_sensitivity or fp_sensitivity
-fp_directory = join(data_path, 'NAME/fp/')
+fp_integrated_directory = join(data_path, 'NAME/fp/')
+fp_HiTRes_directory = join(data_path,'NAME/fp_high_time_res/')
 flux_directory = join(data_path, 'NAME/emissions/')
 basis_directory = join(data_path, 'NAME/basis_functions/')
 bc_directory = join(data_path, 'NAME/bc/')
 bc_basis_directory = join(data_path,'NAME/bc_basis_functions/')
-fp_HiTRes_directory = join(data_path,'NAME/fp_high_time_res/')
-fp_dir_dict = {'integrated': fp_directory,
+fp_directory = {'integrated': fp_integrated_directory,
                'HiTRes': fp_HiTRes_directory}
 
 # Get acrg_site_info file
@@ -147,7 +147,7 @@ def interp_time(bc_ds,vmr_var_names, new_times):
     return ds2
 
 
-def footprints(sitecode_or_filename, fp_directory = fp_dir_dict, 
+def footprints(sitecode_or_filename, fp_directory = fp_directory, 
                flux_directory = flux_directory, bc_directory = bc_directory,
                start = "2010-01-01", end = "2016-01-01", domain="EUROPE", height = None,
                species = None, emissions_name = None, HiTRes = False,interp_vmr_freq=None):
