@@ -49,6 +49,7 @@ import matplotlib.pyplot as plt
 import getpass
 import traceback
 import sys
+import scipy
 
 #Default NAME output file version
 #This is changed depending on presence of "Fields:" line in files
@@ -358,7 +359,7 @@ def met_empty():
     return met
 
 
-def read_met(fnames):
+def read_met(fnames, met_def_dict=None, vertical_profile=False):
     '''
     For a given list of filenames, extract site meteorology and concatenate
     into a Pandas dataframe.
@@ -373,7 +374,13 @@ def read_met(fnames):
     else:
         fnames=[fnames]
 
-    column_indices = {key: -1 for key, value in met_default.iteritems()}
+    if met_def_dict is not None:
+        met_default2 = met_def_dict
+    else:
+        met_default2 = met_default
+        #column_indices = {key: -1 for key, value in met_def_dict.iteritems()}
+    #else:
+    column_indices = {key: -1 for key, value in met_default2.iteritems()}
     
     output_df = []
         
@@ -409,8 +416,8 @@ def read_met(fnames):
                 if type(col) is str:
                     
                     #Work out column indices by searching through met_default
-                    for key in met_default.keys():
-                        if met_default[key] in col:
+                    for key in met_default2.keys():
+                        if met_default2[key] in col:
                             column_indices[key] = coli
 
                     # Check whether there is an X and Y column
@@ -442,7 +449,7 @@ def read_met(fnames):
         
         #Construct dictionary
         met_dict = {}
-        for key in met_default.keys():
+        for key in met_default2.keys():
             if column_indices[key] != -1 and key != "time":
                 met_dict[key] = m2[:, column_indices[key]].astype(float)
         met_dict["release_lon"] = X
@@ -461,7 +468,10 @@ def read_met(fnames):
     output_df = pandas.concat(output_df)
     
     # Check for missing values
-    output_df = output_df[output_df["press"] > 0.]
+    if vertical_profile == True:
+        output_df = output_df[output_df["press20"] > 0.]
+    else:
+        output_df = output_df[output_df["press"] > 0.]
     output_df.drop_duplicates(inplace = True)
     
     # Remove duplicate indices (if found)
@@ -815,7 +825,7 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
             PBLH=None, varname="fp",
             release_lon = None, release_lat = None,
             particle_locations=None, particle_heights=None,
-            global_attributes = {}):
+            global_attributes = {}, lapse_rate=None, lapse_error=None):
     '''
     This routine writes a netCDF file with footprints, particle locations
     meteorology, and release locations.
@@ -938,6 +948,20 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
         ncPartS.long_name='Fraction of total particles leaving domain (S side)'
         ncPartW.units=''
         ncPartW.long_name='Fraction of total particles leaving domain (W side)'
+    
+    if lapse_rate is not None:
+        nclapse=ncF.createVariable('lapse_rate', 'f', ('time',), zlib = True,
+                            least_significant_digit = 4)
+        nclapse[:]=lapse_rate
+        nclapse.long_name="Potential temperature gradient from 60 - 300 m"
+        nclapse.units='K/km'
+        
+    if lapse_error is not None:
+        nclerror=ncF.createVariable('lapse_error', 'f', ('time',), zlib = True,
+                            least_significant_digit = 4)
+        nclerror[:]=lapse_error
+        nclerror.long_name="Error in potential temperature gradient"
+        nclerror.units='K/km'
     
     ncF.close()
     status_log("Written... " + os.path.split(outfile)[1])
@@ -1132,7 +1156,8 @@ def process(domain, site, height, year, month,
             satellite = False,
             max_level = None,
             force_update = False,
-            perturbed_folder = None):
+            perturbed_folder = None,
+            vertical_profile=False):
     '''
     Process a single month of footprints for a given domain, site, height,
     year, month. If you want to process all files for a given domain + site
@@ -1290,7 +1315,25 @@ def process(domain, site, height, year, month,
         if fp_file is not None:
             fp.append(fp_file)
 
-    
+#    # Get vertical profile met file
+#        if vertical_profile is True:
+#            #met_search_str = subfolder + met_folder + "/*.txt*"
+#            vp_search_str = "/dagage2/agage/metoffice/vertical_profiles/UKV/" + site + "*.txt*"
+#      
+#            vp_files = sorted(glob.glob(vp_search_str))
+#        
+#            if len(vp_files) == 0:
+#                status_log("Can't file Vertical Profile files: " + vp_search_str,
+#                           error_or_warning="error")
+#                return None
+#            else:
+#                    vp_met = process_vertical_profile(vp_files)
+#                    
+#                    # Merge vetical profile met into footprint file
+#                                      
+#        else:
+#            vp_met = None
+            
     if len(fp) > 0:
         
         # Concatentate
@@ -1311,6 +1354,30 @@ def process(domain, site, height, year, month,
                       fp.pl_w.sum(["lat", "height"])).values.squeeze() > 0.
         indices_nonzero = np.where(fp_nonzero + pl_nonzero)[0]
         fp = fp[dict(time = indices_nonzero)]
+        
+        # Get vertical profile met file
+        if vertical_profile is True:
+            vp_search_str = subfolder + "vertical_profile" + "/*.txt*"
+            #vp_search_str = "/dagage2/agage/metoffice/vertical_profiles/UKV/" + site + "*.txt*"
+      
+            vp_files = sorted(glob.glob(vp_search_str))
+        
+            if len(vp_files) == 0:
+                status_log("Can't file Vertical Profile files: " + vp_search_str,
+                           error_or_warning="error")
+                return None
+            else:
+                    vp_met = process_vertical_profile(vp_files[0])
+                    
+                    # Merge vetical profile met into footprint file
+                    #fp = fp.merge(vp_met.reindex_like(fp,"nearest", tolerance =None))
+                    vp_reindex = vp_met.reindex_like(fp,"nearest", tolerance =None)
+                    lapse_in = vp_reindex.theta_slope.values
+                    lapse_error_in=vp_reindex.slope_error.values
+                                      
+        else:
+            lapse_in=None
+            lapse_error_in=None
         
         #Write netCDF file
         #######################################
@@ -1345,7 +1412,9 @@ def process(domain, site, height, year, month,
                          release_lat=fp["release_lat"].values.squeeze(),
                          particle_locations = pl,
                          particle_heights = height_out,
-                         global_attributes = fp.attrs)
+                         global_attributes = fp.attrs,
+                         lapse_rate = lapse_in,
+                         lapse_error = lapse_error_in)
 
     else:
         status_log("FAILED. Couldn't seem to find any files, or some files are missing for %s" %
@@ -1364,7 +1433,8 @@ def process_all(domain, site,
                 satellite = False,
                 perturbed_folder = None,
                 max_level = None,
-                force_met_empty=False):
+                force_met_empty=False,
+                vertical_profile=False):
     '''
     For a given domain and site, process all available fields files (including
     multiple heights).
@@ -1427,7 +1497,8 @@ def process_all(domain, site,
             out = process(domain, site, height, year, month,
                     base_dir = base_dir, force_update = force_update,
                     satellite = satellite, perturbed_folder = perturbed_folder,
-                    max_level = max_level, force_met_empty = force_met_empty)
+                    max_level = max_level, force_met_empty = force_met_empty,
+                    vertical_profile=vertical_profile)
 
 
 def copy_processed(domain):
@@ -1498,4 +1569,61 @@ if __name__ == "__main__":
              "EHL", "TIL", "GLA", "WAO", "HAD"]
     for site in sites:
         process_all(domain, site, force_update = True)
+        
+def process_vertical_profile(vp_fname):
+    
+    vp_met_dict = {"time": "             T","temp20": "TEMP-Z = 20.00000 m agl",
+               "temp40": "TEMP-Z = 40.00000 m agl","temp60": "TEMP-Z = 60.00000 m agl",
+               "temp80": "TEMP-Z = 80.00000 m agl","temp100": "TEMP-Z = 100.0000 m agl",
+               "temp120": "TEMP-Z = 120.0000 m agl","temp140": "TEMP-Z = 140.0000 m agl",
+               "temp160": "TEMP-Z = 160.0000 m agl","temp180": "TEMP-Z = 180.0000 m agl",
+               "temp200": "TEMP-Z = 200.0000 m agl","temp220": "TEMP-Z = 220.0000 m agl",
+               "temp240": "TEMP-Z = 240.0000 m agl","temp260": "TEMP-Z = 260.0000 m agl",
+               "temp280": "TEMP-Z = 280.0000 m agl","temp300": "TEMP-Z = 300.0000 m agl",
+               "press20": "PRES-Z = 20.00000 m agl","press40": "PRES-Z = 40.00000 m agl",
+               "press60": "PRES-Z = 60.00000 m agl","press80": "PRES-Z = 80.00000 m agl",
+               "press100": "PRES-Z = 100.0000 m agl","press120": "PRES-Z = 120.0000 m agl",
+               "press140": "PRES-Z = 140.0000 m agl","press160": "PRES-Z = 160.0000 m agl",
+               "press180": "PRES-Z = 180.0000 m agl","press200": "PRES-Z = 200.0000 m agl",
+               "press220": "PRES-Z = 220.0000 m agl","press240": "PRES-Z = 240.0000 m agl",
+               "press260": "PRES-Z = 260.0000 m agl","press280": "PRES-Z = 280.0000 m agl",
+               "press300": "PRES-Z = 300.0000 m agl",
+               "theta20": "THETA-Z = 20.00000 m agl","theta40": "THETA-Z = 40.00000 m agl",
+               "theta60": "THETA-Z = 60.00000 m agl","theta80": "THETA-Z = 80.00000 m agl",
+               "theta100": "THETA-Z = 100.0000 m agl","theta120": "THETA-Z = 120.0000 m agl",
+               "theta140": "THETA-Z = 140.0000 m agl","theta160": "THETA-Z = 160.0000 m agl",
+               "theta180": "THETA-Z = 180.0000 m agl","theta200": "THETA-Z = 200.0000 m agl",
+               "theta220": "THETA-Z = 220.0000 m agl","theta240": "THETA-Z = 240.0000 m agl",
+               "theta260": "THETA-Z = 260.0000 m agl","theta280": "THETA-Z = 280.0000 m agl",
+               "theta300": "THETA-Z = 300.0000 m agl"}
+    #vp_fname = "/dagage2/agage/metoffice/vertical_profiles/UKV/GLATTON_Vertical_Profile.txt.gz"  
+
+    vp_met_df=read_met(vp_fname, met_def_dict=vp_met_dict, vertical_profile=True)
+    lapse_ds=xray.Dataset.from_dataframe(vp_met_df)
+    
+    v_all = np.arange(60,320,20)
+    x_all = np.asarray([
+     lapse_ds.theta60.values,lapse_ds.theta80.values,lapse_ds.theta100.values,
+     lapse_ds.theta120.values,lapse_ds.theta140.values,lapse_ds.theta160.values,
+     lapse_ds.theta180.values,lapse_ds.theta200.values,lapse_ds.theta220.values,
+     lapse_ds.theta240.values,lapse_ds.theta260.values,lapse_ds.theta280.values,
+     lapse_ds.theta300.values])
+
+    slope_all=np.zeros((len(lapse_ds.time)))
+    std_all=np.zeros((len(lapse_ds.time)))
+    for ti in range(len(lapse_ds.time)):                                                              
+        slope_all[ti], dum, dum2, dum3, std_all[ti] = scipy.stats.linregress(
+                                                    v_all,x_all[:,ti])
+    
+    lapse_time=lapse_ds.time
+            
+    lapse_ds2 = xray.Dataset({'theta_slope': (['time'], slope_all*1000.),
+                              'slope_error': (['time'], std_all*1000.)},
+                                    coords = {'time' : (lapse_time)})
+    #ost_mcmc.coords["sites"]=sites
+    lapse_ds2.theta_slope.attrs['units'] = "K/km"
+    lapse_ds2.slope_error.attrs['units'] = "K/km"    
+    lapse_ds2.theta_slope.attrs['comment'] = "Potential temperature gradient from 60 - 300 m"
+    
+    return lapse_ds2
 
