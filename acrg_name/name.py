@@ -614,7 +614,7 @@ def footprints_data_merge(data, domain = "EUROPE", load_flux = True,
 
 def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi',
                    basis_directory = basis_directory,
-                   HiTRes_flux_name = None, Resid_flux_name=None):
+                   HiTRes_flux_name = None, Resid_flux_name=None, flux_directory=flux_directory):
     """
     Adds a sensitivity matrix, H, to each site xray dataframe in fp_and_data.
     
@@ -649,7 +649,7 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi',
         H = np.zeros((int(np.max(site_bf.basis)),len(site_bf.time)))
         
         if 'fp_HiTRes' in site_bf.keys():
-            H_all_arr=timeseries_HiTRes(site_bf, domain, HiTRes_flux_name, Resid_flux_name, output_TS = False, output_fpXflux = True)
+            H_all_arr=timeseries_HiTRes(site_bf, domain, HiTRes_flux_name, Resid_flux_name, output_TS = False, output_fpXflux = True, flux_directory=flux_directory)
             H_all = xray.DataArray(H_all_arr, coords=[site_bf.lat, site_bf.lon, site_bf.time], dims = ['lat','lon','time'])
         else:
             H_all=site_bf.fp*site_bf.flux 
