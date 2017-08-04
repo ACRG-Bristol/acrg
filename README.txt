@@ -62,7 +62,7 @@ git push origin master
 Git will ask you for a password every time you want to connect using https.
 You can get around this by adding your RSA key to your account. Instructions
 are here:
-https://confluence.atlassian.com/display/BITBUCKET/Set+up+SSH+for+Git.
+https://confluence.atlassian.com/display/BITBUCKET/Set+up+SSH+for+Git
 You can probably start at step 6.
 
 ***Conflicts***
