@@ -57,13 +57,43 @@ git commit -m "ADD_SOME_DESCRIPTIVE_COMMENTS_HERE_IN_QUOTES"
 
 git push origin master
 
-*Adding an ssh key*
+***Adding an ssh key***
 
 Git will ask you for a password every time you want to connect using https.
 You can get around this by adding your RSA key to your account. Instructions
 are here:
+
 https://confluence.atlassian.com/display/BITBUCKET/Set+up+SSH+for+Git
-You can probably start at step 6.
+
+Start from Step 1.
+
+1. Check contents of ~/.ssh and if you already have id_rsa and id_rsa.pub 
+can skip to step 4:
+
+ls -a ~/.ssh
+
+2. Set up keys:
+
+ssh-keygen
+
+3. Start ssh-agent if it is not already running (check with ps -e | grep [s]sh-agent):
+
+ssh-agent /bin/bash (skip this if it is already running)
+
+ssh-add ~/.ssh/id_rsa
+
+ssh-add -l
+
+4. Copy contents of id_rsa.pub (cat ~/.ssh/id_rsa.pub) to your account on bitbucket.org 
+-> Avatar (i.e. person icon) -> Bitbucket Settings -> SSH Keys and Add Key
+
+5. Open <path_to_repo>/.git/config and change the url under [remote "origin"] to:
+
+url=git@bitbucket.org:mrghg/acrg.it
+
+This will change to SSH from HTTPS.  It is important that the username is mrghg (the owner of the repo) 
+not your account.
+
 
 ***Conflicts***
 
