@@ -1616,6 +1616,7 @@ class plot_ncdf_fixed:
         
         import matplotlib.ticker as ticker
         import matplotlib.pyplot as plt
+        import acrg_plottools as plottools
         
         # Extract the model data for the given site
         sites = data.sitenames
@@ -1667,7 +1668,7 @@ class plot_ncdf_fixed:
             
                     
             
-            colours = generatecolours(n_colours).RGB
+            colours = plottools.generatecolours(n_colours).RGB
             
             # Plot model ooutput for fixed site data
             fig = plt.figure()
@@ -1929,20 +1930,6 @@ class plot_ncdf_mobile:
             
             
             plt.show()      
-
-
-
-# Generates a given number of HSV or RGB tuples spread over colour space 
-class generatecolours:
-    def __init__(self, N):
-        
-        import colorsys        
-        
-        HSV_tuples = [(x*1.0/N, 0.5, 0.5) for x in range(N)]
-        RGB_tuples = map(lambda x: colorsys.hsv_to_rgb(*x), HSV_tuples)
-        
-        self.RGB = RGB_tuples
-        self.HSV = HSV_tuples
 
 
 # Code to set up input for contour plotting
