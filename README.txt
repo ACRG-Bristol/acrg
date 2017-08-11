@@ -89,7 +89,7 @@ ssh-add -l
 
 5. Open <path_to_repo>/.git/config and change the url under [remote "origin"] to:
 
-url=git@bitbucket.org:mrghg/acrg.it
+url=git@bitbucket.org:mrghg/acrg.git
 
 This will change to SSH from HTTPS.  It is important that the username is mrghg (the owner of the repo) 
 not your account.
