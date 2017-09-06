@@ -512,14 +512,14 @@ def particle_locations(particle_file, time, lats, lons, levs, heights,
     hist = []
     particles = []
     
-    hist = xray.Dataset(variables = {"pl_n":(["time", "lev", "lon", "height"],
-                                     np.zeros((len(time), len(levs), len(lons), len(heights)))),
-                                     "pl_e":(["time", "lev", "lat", "height"],
-                                     np.zeros((len(time), len(levs), len(lats), len(heights)))),
-                                     "pl_s":(["time", "lev", "lon", "height"],
-                                     np.zeros((len(time), len(levs), len(lons), len(heights)))),
-                                     "pl_w":(["time", "lev", "lat", "height"],
-                                     np.zeros((len(time), len(levs), len(lats), len(heights))))},
+    hist = xray.Dataset({"pl_n":(["time", "lev", "lon", "height"],
+                         np.zeros((len(time), len(levs), len(lons), len(heights)))),
+                         "pl_e":(["time", "lev", "lat", "height"],
+                         np.zeros((len(time), len(levs), len(lats), len(heights)))),
+                         "pl_s":(["time", "lev", "lon", "height"],
+                         np.zeros((len(time), len(levs), len(lons), len(heights)))),
+                         "pl_w":(["time", "lev", "lat", "height"],
+                         np.zeros((len(time), len(levs), len(lats), len(heights))))},
                         coords={"lat": lats, "lon":lons, "lev":levs, "height":heights, "time":time})
 
     #Variables to check domain extents
