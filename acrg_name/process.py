@@ -27,6 +27,7 @@ in the Processed_Fields_files directory.
 
 import numpy
 from netCDF4 import Dataset
+import netCDF4
 import glob
 import gzip
 import datetime
@@ -37,6 +38,7 @@ import numpy as np
 import scipy.constants as const
 from acrg_grid import areagrid
 from acrg_time.convert import time2sec, sec2time
+import acrg_time.convert
 import os
 import json
 from os.path import split, realpath, exists
@@ -50,6 +52,7 @@ import getpass
 import traceback
 import sys
 import scipy
+
 
 #Default NAME output file version
 #This is changed depending on presence of "Fields:" line in files
@@ -1657,3 +1660,29 @@ def process_vertical_profile(vp_fname):
     
     return lapse_ds2
 
+
+def release_point(nc):
+    """
+    Extract the time and location of release from STILT output based on the
+    identifier string. nc should be a netCDF4.Dataset in STILT format.    
+    """
+    ident = netCDF4.chartostring(nc.variables['ident'][:])[0]
+    ident = ident.split('x')
+
+    if ident[4][-1] == 'N':
+        release_lat = float(ident[4][:-1])
+    elif ident[4][-1] == 'S':
+        release_lat = -float(ident[4][:-1])
+    
+    if ident[5][-1] == 'E':
+        release_lon = float(ident[5][:-1])
+    elif ident[5][-1] == 'W':
+        release_lon = -float(ident[5][:-1])
+        
+    release_ht = float(ident[6])
+        
+    time = "-".join(ident[0:3]) + " " + ident[3] + ":00"
+    time = [acrg_time.convert.dateutil.parser.parse(time)]
+    time_seconds, time_reference = time2sec(time)
+    
+    return release_lat, release_lon, release_ht, time, time_seconds, time_reference
