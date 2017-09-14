@@ -1,13 +1,19 @@
 {
     "global_attributes": {
         "Processed by": "Matt Rigby, University of Bristol (matt.rigby@bristol.ac.uk)",
-        "Conditions of use": "Ensure that you contact the data owner at the outset of your project."
+        "Conditions of use": "Ensure that you contact the data owner at the outset of your project.",
+        "Source": "In situ measurements of air"
     },
     "GC": {
         "instruments": {
             "GCMD": "",
-            "GCMS": "gcms",
-            "medusa": "medusa"
+            "GCMS": "",
+            "medusa": ""
+        },
+        "instruments_suffix": {
+            "GCMD": ["", "-md"],
+            "GCMS": ["", "-gcms"],
+            "medusa": ["-medusa"]
         },
         "instruments_out": {
             "GCMD": {
@@ -27,6 +33,21 @@
             "GCMD":   "/dagage2/agage/summary/data/",
             "GCMS":   "/dagage2/agage/summary/data-gcms/",
             "medusa": "/dagage2/agage/summary/data-gcms/"
+        },
+        "sampling_period": {
+            "GCMD": 75,
+            "GCMS": 1200,
+            "medusa": 1200
+        },
+        "timestamp_correct_seconds": {
+            "GCMD": -85,
+            "GCMS": -1380,
+            "medusa": -2300
+        },
+        "comment": {
+            "GCMD": "Gas chromatograph measurements. Output from GCWerks.",
+            "GCMS": "Gas chromatograph-mass spectrometer measurements. Output from GCWerks.",
+            "medusa": "Medusa measurements. Output from GCWerks. See Miller et al. (2008)."
         },
         "directory_output" : "/dagage2/agage/metoffice/processed_observations",
         "BSD" : {
@@ -61,6 +82,24 @@
             "global_attributes": {
                 "data_owner": "Sunyoung Park",
                 "data_owner_email": "sparky@kpu.ac.kr"
+            }
+        },
+        "JFJ" : {
+            "gcwerks_site_name": "jungfraujoch",
+            "inlets": ["any"],
+            "inlet_label": ["10m"],
+            "global_attributes": {
+                "data_owner": "Stefan Reimann",
+                "data_owner_email": "stefan.reimann@empa.ch"
+            }
+        },
+        "CMN" : {
+            "gcwerks_site_name": "mtecimone",
+            "inlets": ["air"],
+            "inlet_label": ["10m"],
+            "global_attributes": {
+                "data_owner": "Michela Maione",
+                "data_owner_email": "michela.maione@uniurb.it"
             }
         },
         "MHD" : {
@@ -139,11 +178,21 @@
                 "data_owner": "Simon O'Doherty",
                 "data_owner_email": "s.odoherty@bristol.ac.uk"
             }
+        },
+        "ZEP" : {
+            "gcwerks_site_name": "zeppelin",
+            "inlets": ["air"],
+            "inlet_label": ["16m"],
+            "global_attributes": {
+                "data_owner": "Chris Lunder",
+                "data_owner_email": "chris.lunder@nilu.no"
+            }
         }
     },
     "CRDS": {
         "directory" : "/dagage2/agage/%site-picarro/results-gcwerks/",
         "directory_output" : "/dagage2/agage/metoffice/processed_observations",
+        "comment": "Cavity ring-down measurements. Output from GCWerks",
         "BSD" : {
             "gcwerks_site_name": "bilsdale",
             "global_attributes": {

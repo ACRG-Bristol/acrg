@@ -27,6 +27,7 @@ import datetime as dt
 import time as tm
 import calendar
 import dateutil
+from matplotlib.dates import (julian2num, num2date)
 
 def check_iter(var):
     
@@ -148,3 +149,18 @@ def decimal2time(frac):
         dates.append(yeardatetime + dt.timedelta(days = daysPerYear*(f - year)))
     
     return return_iter(dates, notIter)
+
+
+def julian2time(dates):
+    '''
+    Convert Julian dates (e.g. from IDL) to datetime
+    '''
+    
+    dates, notIter = check_iter(dates)
+
+    dates_julian = []
+    for date in dates:
+        dates_julian.append(num2date(julian2num(date)))
+    
+    return return_iter(dates_julian, notIter)
+    

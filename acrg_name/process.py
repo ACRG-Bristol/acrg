@@ -40,12 +40,16 @@ from acrg_time.convert import time2sec, sec2time
 import os
 import json
 from os.path import split, realpath, exists
-import xray
+import xarray as xray
 import shutil
 from scipy.interpolate import interp1d
 import copy
 import dirsync
 import matplotlib.pyplot as plt
+import getpass
+import traceback
+import sys
+import scipy
 
 #Default NAME output file version
 #This is changed depending on presence of "Fields:" line in files
@@ -67,6 +71,11 @@ met_default = {"time": "             T",
                "wind_direction": "Wind direction",
                "release_lon": "xxxxxxx",
                "release_lat": "yyyyyyy"}
+
+timestep_for_output = 0.
+
+# Default to home directory, but update if proper directory is specified
+directory_status_log = os.getenv("HOME")
 
 def load_NAME(file_lines, namever):
     """
@@ -187,15 +196,15 @@ def load_NAME(file_lines, namever):
         # cast the x and y grid positions to floats and convert them to zero based indices
         # (the numbers are 1 based grid positions where 0.5 represents half a grid point.)
         if namever == 2:
-            x = float(vals[0]) - 1.5
-            y = float(vals[1]) - 1.5
+            x = int(float(vals[0]) - 1.5)
+            y = int(float(vals[1]) - 1.5)
         elif namever == 3:
             x = float(vals[0]) - 1
             y = float(vals[1]) - 1
         
         # populate the data arrays (i.e. all columns but the leading 4) 
         for i, data_array in enumerate(data_arrays):
-            data_array[y, x] = float(vals[i + 4])
+            data_array[y, x] = float(vals[int(i) + 4])
 
     return headers, column_headings, data_arrays
     
@@ -282,8 +291,9 @@ def define_grid(header, column_headings, satellite = False):
     else:
         return None
     
-    print("Bottom-left grid point (CENTRE): " + str(lons[0]) + "E, " + \
-        str(lats[0]) + "N")
+    status_log("Bottom-left grid point (CENTRE): " + str(lons[0]) + "E, " + \
+               str(lats[0]) + "N",
+               print_to_screen=False)
 
     if satellite == False:
         
@@ -316,15 +326,19 @@ def define_grid(header, column_headings, satellite = False):
     timeRef=datetime.datetime.strptime(header['End of release'], timeFormat)
     timeEnd=datetime.datetime.strptime(header['Start of release'], timeFormat)
     
+    # Timestep in hours
     timeStep=(timeEnd - timeRef).total_seconds()/3600./ntime
     
-    # Labelling time steps at END of each time period!
-    time = [timeRef + datetime.timedelta(hours=timeStep*(i+1)) \
+    # Labelling time steps at START of each time period!
+    time = [timeRef + datetime.timedelta(hours=timeStep*i) \
             for i in range(ntime)]
     
-    print("Timestep: %d minutes" % round(timeStep*60))
-    print("Levels: %d " % nlevs)
-    print("NAME version: %d" % namever)
+    status_log("Timestep: %d minutes" % round(timeStep*60),
+               print_to_screen=False)
+    status_log("Levels: %d " % nlevs,
+               print_to_screen=False)
+    status_log("NAME version: %d" % namever,
+               print_to_screen=False)
         
     return lons, lats, levs, time, timeStep
 
@@ -340,12 +354,12 @@ def met_empty():
     met["press"] = [100000., 100000.] #Pa
     met["temp"] = [10., 10.]    #C
     
-    print("WARNING: NO MET")
+    status_log("NO MET", error_or_warning="warning")
 
     return met
 
 
-def read_met(fnames):
+def read_met(fnames, met_def_dict=None, vertical_profile=False):
     '''
     For a given list of filenames, extract site meteorology and concatenate
     into a Pandas dataframe.
@@ -360,7 +374,14 @@ def read_met(fnames):
     else:
         fnames=[fnames]
 
-    column_indices = {key: -1 for key, value in met_default.iteritems()}
+    if met_def_dict is not None:
+        # overwrite met_default with custom list for prcessing vertical profile met
+        met_default2 = met_def_dict
+    else:
+        met_default2 = met_default
+        #column_indices = {key: -1 for key, value in met_def_dict.iteritems()}
+    #else:
+    column_indices = {key: -1 for key, value in met_default2.iteritems()}
     
     output_df = []
         
@@ -396,8 +417,8 @@ def read_met(fnames):
                 if type(col) is str:
                     
                     #Work out column indices by searching through met_default
-                    for key in met_default.keys():
-                        if met_default[key] in col:
+                    for key in met_default2.keys():
+                        if met_default2[key] in col:
                             column_indices[key] = coli
 
                     # Check whether there is an X and Y column
@@ -429,7 +450,7 @@ def read_met(fnames):
         
         #Construct dictionary
         met_dict = {}
-        for key in met_default.keys():
+        for key in met_default2.keys():
             if column_indices[key] != -1 and key != "time":
                 met_dict[key] = m2[:, column_indices[key]].astype(float)
         met_dict["release_lon"] = X
@@ -442,20 +463,23 @@ def read_met(fnames):
 
         output_df.append(output_df_file)
     
-        print("Read Met file " + fname)
+        status_log("Read Met file... " + os.path.split(fname)[1])
     
     # Concatenate list of data frames
     output_df = pandas.concat(output_df)
     
     # Check for missing values
-    output_df = output_df[output_df["press"] > 0.]
+    if vertical_profile == True:
+        output_df = output_df[output_df["press20"] > 0.]
+    else:
+        output_df = output_df[output_df["press"] > 0.]
     output_df.drop_duplicates(inplace = True)
     
     # Remove duplicate indices (if found)
     output_df = output_df.groupby(level = 0).last()
 
     # Sort the dataframe by time
-    output_df.sort(inplace = True)
+    output_df.sort_index(inplace = True)
     
     output_df.index.name = "time"
     
@@ -488,20 +512,20 @@ def particle_locations(particle_file, time, lats, lons, levs, heights,
     hist = []
     particles = []
     
-    hist = xray.Dataset(variables = {"pl_n":(["time", "lev", "lon", "height"],
-                                     np.zeros((len(time), len(levs), len(lons), len(heights)))),
-                                     "pl_e":(["time", "lev", "lat", "height"],
-                                     np.zeros((len(time), len(levs), len(lats), len(heights)))),
-                                     "pl_s":(["time", "lev", "lon", "height"],
-                                     np.zeros((len(time), len(levs), len(lons), len(heights)))),
-                                     "pl_w":(["time", "lev", "lat", "height"],
-                                     np.zeros((len(time), len(levs), len(lats), len(heights))))},
+    hist = xray.Dataset({"pl_n":(["time", "lev", "lon", "height"],
+                         np.zeros((len(time), len(levs), len(lons), len(heights)))),
+                         "pl_e":(["time", "lev", "lat", "height"],
+                         np.zeros((len(time), len(levs), len(lats), len(heights)))),
+                         "pl_s":(["time", "lev", "lon", "height"],
+                         np.zeros((len(time), len(levs), len(lons), len(heights)))),
+                         "pl_w":(["time", "lev", "lat", "height"],
+                         np.zeros((len(time), len(levs), len(lats), len(heights))))},
                         coords={"lat": lats, "lon":lons, "lev":levs, "height":heights, "time":time})
 
     #Variables to check domain extents
     particle_extremes = {"N": -90., "E": -360. ,"S": 90.,"W": 360.}
     
-    print("Particle locations " + particle_file)
+    status_log("Particle locations " + particle_file, print_to_screen=False)
     
     if particle_file[-3:].upper() == '.GZ':
         compression="gzip"
@@ -509,6 +533,8 @@ def particle_locations(particle_file, time, lats, lons, levs, heights,
         compression=None
     
     df = pandas.read_csv(particle_file, compression=compression, sep=r"\s+")
+    
+    particles_record = []
     
     for i in set(numpy.array(df["Id"])):
         
@@ -544,16 +570,21 @@ def particle_locations(particle_file, time, lats, lons, levs, heights,
 
         #Calculate total particles and normalise
         hist_sum = hist[slice_dict].sum()
-        particles = sum([hist_sum[key].values for key in hist_sum.keys()])
-        print("Number of particles reaching edge: %f02" %particles)
+        particles = int(sum([hist_sum[key].values for key in hist_sum.keys()]))
+        particles_record.append(str(particles))
+
+#        print("Number of particles reaching edge: %f02" %particles)
+
         if particles > 0.:
             for key in hist.data_vars.keys():
                 hist[key][slice_dict] = hist[key][slice_dict]/\
                                                 particles
         else:
-            print("WARNING: No particles have reached edge")
+            status_log("No particles have reached edge",
+                       error_or_warning="warning")
             if i > 1:
-                print("WARNING: Copying lower level/previous time step")
+                status_log("Copying lower level/previous time step",
+                           error_or_warning="warning")
                 if id_is_lev:
                     slice_dict_prev = {"time": [0], "lev": [i-2]}
                 else:
@@ -570,16 +601,23 @@ def particle_locations(particle_file, time, lats, lons, levs, heights,
             particle_extremes["E"] = max(df["Long"])
         if min(df["Long"]) < particle_extremes["W"]:
             particle_extremes["W"] = min(df["Long"])
+
+    status_log("Number of particles reaching edge: " + ", ".join(particles_record),
+               print_to_screen = False)
     
     #Check extremes
     if particle_extremes["N"] < edge_lats[1] - dlats/2.:
-        print("WARNING: CHECK DOMAIN EDGE TO NORTH")
+        status_log("CHECK DOMAIN EDGE TO NORTH", error_or_warning="warning",
+                   print_to_screen=False)
     if particle_extremes["E"] < edge_lons[1] - dlons/2.:
-        print("WARNING: CHECK DOMAIN EDGE TO EAST")
+        status_log("CHECK DOMAIN EDGE TO EAST", error_or_warning="warning",
+                   print_to_screen=False)
     if particle_extremes["S"] > edge_lats[0] + dlats/2.:
-        print("WARNING: CHECK DOMAIN EDGE TO SOUTH")
+        status_log("CHECK DOMAIN EDGE TO SOUTH", error_or_warning="warning",
+                   print_to_screen=False)
     if particle_extremes["W"] > edge_lons[0] + dlons/2.:
-        print("WARNING: CHECK DOMAIN EDGE TO WEST")
+        status_log("CHECK DOMAIN EDGE TO WEST", error_or_warning="warning",
+                   print_to_screen=False)
 
     return hist
 
@@ -594,7 +632,10 @@ def footprint_array(fields_file,
     xray dataset.
     '''
 
-    print("Reading ... " + fields_file)
+    global timestep_for_output
+
+    status_log("Reading... " + os.path.split(fields_file)[1])
+    
     header, column_headings, data_arrays = read_file(fields_file)
 
     if met is None:
@@ -606,10 +647,12 @@ def footprint_array(fields_file,
     # Define grid, including output heights    
     lons, lats, levs, time, timeStep = define_grid(header, column_headings,
                                                    satellite = satellite)
-                                              
+                                 
     # If time_step is input, overwrite value from NAME output file
     if time_step is not None:
         timeStep = time_step
+    
+    timestep_for_output = timeStep
 
     dheights = 1000
     heights = numpy.arange(0, 19001, dheights) + dheights/2.
@@ -623,27 +666,28 @@ def footprint_array(fields_file,
                                            time, lats, lons, levs,
                                            heights, id_is_lev = satellite)
     else:
-        print("Warning: no particle location file corresponding to " + fields_file)
+        status_log("No particle location file corresponding to " + fields_file,
+                   error_or_warning="error")
     
     nlon=len(lons)
     nlat=len(lats)
     nlev=len(levs)
     ntime=len(time)
-    print("Time steps in file: %d" % ntime)
+    status_log("Time steps in file: %d" % ntime, print_to_screen = False)
     
     z_level=column_headings['z_level'][4:]
     time_column=column_headings['time'][4:]
-    
     
     # Set up footprint dataset
     fp = xray.Dataset({"fp": (["time", "lev", "lat", "lon"],
                               numpy.zeros((ntime, nlev, nlat, nlon)))},
                         coords={"lat": lats, "lon":lons, "lev": levs, 
                                 "time":time})
+
     fp.fp.attrs = {"units": "(mol/mol)/(mol/m2/s)"}
     fp.lon.attrs = {"units": "degrees_east"}
     fp.lat.attrs = {"units": "degrees_north"}
-    fp.time.attrs = {"long_name": "end of time period"}
+    fp.time.attrs = {"long_name": "start of time period"}
     
     
     # Add in met data
@@ -659,8 +703,10 @@ def footprint_array(fields_file,
         # for all NAME levels. This is probably a bad idea.
         if len(met) == 1:
             levi_met = 0
-            print("WARNING: ONLY ONE MET LEVEL. " + \
-                  "ASSUMING MET CONSTANT WITH HEIGHT!")
+            if len(levs) > 1:
+                status_log("ONLY ONE MET LEVEL. " + \
+                           "ASSUMING MET CONSTANT WITH HEIGHT!",
+                           error_or_warning="error")
         else:
             levi_met = levi
 
@@ -740,7 +786,7 @@ def footprint_concatenate(fields_prefix,
             particle_file_search = \
                 glob.glob(particle_file_search_string)
 
-            if not particle_file_search is False:
+            if particle_file_search:
                 particle_files.append(particle_file_search[0])
             else:
                 print("Can't find particle file " + \
@@ -748,7 +794,8 @@ def footprint_concatenate(fields_prefix,
                 return None
                 
         if len(particle_files) != len(fields_files):
-            print("Particle files don't match fields files")
+            status_log("Particle files don't match fields files. SKIPPING.",
+                       error_or_warning="error")
             return None
     else:
         particle_files = [None for f in fields_files]
@@ -779,7 +826,7 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
             PBLH=None, varname="fp",
             release_lon = None, release_lat = None,
             particle_locations=None, particle_heights=None,
-            global_attributes = {}):
+            global_attributes = {}, lapse_rate=None, lapse_error=None):
     '''
     This routine writes a netCDF file with footprints, particle locations
     meteorology, and release locations.
@@ -799,11 +846,14 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
     # pass any global attributes in fp to the netcdf file
     for key in global_attributes.keys():
         ncF.__setattr__(key,global_attributes[key])
+    ncF.__setattr__("author", getpass.getuser())
+    ncF.__setattr__("created", str(dt.datetime.now()))
+    
     
     nctime=ncF.createVariable('time', 'd', ('time',))
     nclon=ncF.createVariable('lon', 'f', ('lon',))
     nclat=ncF.createVariable('lat', 'f', ('lat',))
-    nclev=ncF.createVariable('lev', 'str', ('lev',))
+    nclev=ncF.createVariable('lev', str, ('lev',))
     ncfp=ncF.createVariable(varname, 'f', ('lat', 'lon', 'time'), zlib = True,
                             least_significant_digit = 5)
     
@@ -811,6 +861,9 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
     nctime.long_name='time'
     nctime.standard_name='time'
     nctime.units='seconds since ' + numpy.str(time_reference)
+    nctime.label='left'
+    nctime.period = str(timestep_for_output) + " hours"
+    nctime.comment = 'time stamp corresponds to the beginning of each averaging period'
     nctime.calendar='gregorian'
 
     nclon[:]=lons
@@ -897,8 +950,22 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
         ncPartW.units=''
         ncPartW.long_name='Fraction of total particles leaving domain (W side)'
     
+    if lapse_rate is not None:
+        nclapse=ncF.createVariable('lapse_rate', 'f', ('time',), zlib = True,
+                            least_significant_digit = 4)
+        nclapse[:]=lapse_rate
+        nclapse.long_name="Potential temperature gradient from 60 - 300 m"
+        nclapse.units='K/km'
+        
+    if lapse_error is not None:
+        nclerror=ncF.createVariable('lapse_error', 'f', ('time',), zlib = True,
+                            least_significant_digit = 4)
+        nclerror[:]=lapse_error
+        nclerror.long_name="Error in potential temperature gradient"
+        nclerror.units='K/km'
+    
     ncF.close()
-    print "Written " + outfile
+    status_log("Written... " + os.path.split(outfile)[1])
 
 
 def satellite_vertical_profile(fp, satellite_obs_file, max_level):
@@ -942,30 +1009,37 @@ def satellite_vertical_profile(fp, satellite_obs_file, max_level):
     '''
     
     if max_level is None:
-        print "ERROR: MAX LEVEL REQUIRED TO PROCESS SATELLITE FOOTPRINTS"
+        status_log("MAX LEVEL REQUIRED TO PROCESS SATELLITE FOOTPRINTS",
+                   error_or_warning="error")
         return None
     
-    print("Reading satellite obs file: " + satellite_obs_file)
+    status_log("Reading satellite obs file: " + satellite_obs_file)
     with xray.open_dataset(satellite_obs_file) as f:
         sat = f.load()
         
     if np.abs(sat.lon.values[0] - fp.release_lon.values[0,0]) > 1.:
-        print("WARNING: Satellite longitude doesn't match footprints")
+        status_log("Satellite longitude doesn't match footprints",
+                   error_or_warning="error")
     if np.abs(sat.lat.values[0] - fp.release_lat.values[0,0]) > 1:
-        print("WARNING: Satellite latitude doesn't match footprints")
+        status_log("Satellite latitude doesn't match footprints",
+                   error_or_warning="error")
     if np.abs(sat.time.values[0] - fp.time.values[0]).astype(int) > 60*1e9:
-        print("WARNING: Satellite time doesn't match footprints")
+        status_log("Satellite time doesn't match footprints",
+                   error_or_warning="error")
     if len(fp.time.values) > 1:
-        print("ERROR: satellite comparison only for one time step at the moment")
+        status_log("satellite comparison only for one time step at the moment",
+                   error_or_warning="error")
         return fp
     if len(sat.time.values) > 1:
-        print("ERROR: satellite comparison only for one time step at the moment")
+        status_log("ERROR: satellite comparison only for one time step at the moment",
+                   error_or_warning="error")
         return fp
 
     if not np.allclose((fp.pl_n.sum() + fp.pl_e.sum() + \
                         fp.pl_s.sum() + fp.pl_w.sum()), \
                         len(fp.lev)):
-        print("ERROR: Particle histograms dont add up to 1 (or nlev)")
+        status_log("Particle histograms dont add up to 1 (or nlev)",
+                   error_or_warning="error")
         return None
 
     # Change timestamp to that from obs file
@@ -1002,8 +1076,9 @@ def satellite_vertical_profile(fp, satellite_obs_file, max_level):
 
     # Check whether particle sum makes sense
     if not np.allclose(sum_particle_count, sum_ak_pw):
-        print("ERROR: Particle fractions don't match averaging_kernel * " + \
-              "pressure_weight")
+        status_log("ERROR: Particle fractions don't match averaging_kernel * " + \
+                   "pressure_weight",
+                   error_or_warning = "error")
         return None
     
     # Compress dataset to one level and store column totals
@@ -1016,6 +1091,47 @@ def satellite_vertical_profile(fp, satellite_obs_file, max_level):
     
     return fp
 
+
+def status_log(message,
+               directory = None,
+               error_or_warning = "status",
+               print_to_screen = True):
+    '''
+    Write a log of an error or a warning to file. Will append to a file 
+    '''
+
+    if directory is None:
+        directory = directory_status_log
+
+    date = dt.datetime.now()
+    year = date.year
+    month = date.month
+    day = date.day
+    
+    if error_or_warning == "error":
+        fname = os.path.join(directory,
+                             "PROCESS_ERROR_LOG_%04d%02d%02d.txt" % 
+                             (year, month, day))
+    else:
+        fname = os.path.join(directory,
+                             "PROCESS_STATUS_LOG_%04d%02d%02d.txt" % 
+                             (year, month, day))
+
+    with open(fname, "a") as f:
+        if error_or_warning == "warning":
+            f.write("WARNING: %s: %s\r\n" %(str(date), message))
+        elif error_or_warning == "error":
+            f.write("ERROR: %s: %s\r\n" %(str(date), message))
+        else:
+            f.write("%s: %s\r\n" %(str(date), message))
+            
+    if print_to_screen:
+        if error_or_warning == "warning":
+            print("WARNING: " + message)
+        elif error_or_warning == "error":
+            print("ERROR: " + message)
+        else:
+            print(message)
 
 def process_basic(fields_folder, outfile):
     """
@@ -1041,7 +1157,8 @@ def process(domain, site, height, year, month,
             satellite = False,
             max_level = None,
             force_update = False,
-            perturbed_folder = None):
+            perturbed_folder = None,
+            vertical_profile=False):
     '''
     Process a single month of footprints for a given domain, site, height,
     year, month. If you want to process all files for a given domain + site
@@ -1067,12 +1184,19 @@ def process(domain, site, height, year, month,
             perturbed_folder = "Perturbed/PARAMETERNAME_VALUE"
     max_level: specified only for satellite data and indicates the max level to
         process the foorprints. levels above are replaced by the prior profile
+    vertical_profile: If set to true will look for vertical potential temperature met file
+        and incorporate into footprint file. 
+        NB. This is a separate file from the normal met file, and is not mandatory.
         
     Outputs:
     This routine outputs a copy of the xray dataset that is written to file.
     '''
     
+    global directory_status_log
+        
     subfolder = base_dir + domain + "_" + site + "_" + height + "/"
+    
+    directory_status_log = subfolder
     
     if perturbed_folder is not None:
         if perturbed_folder[-1] == "/":
@@ -1097,7 +1221,8 @@ def process(domain, site, height, year, month,
 
         # Check that we've found something
         if len(datestrs) == 0:
-            print("Error, can't find files in " + file_search_string)
+            status_log("can't find files in " + file_search_string,
+                       error_or_warning="error")
             return None
 
     else:
@@ -1109,7 +1234,7 @@ def process(domain, site, height, year, month,
     
     # Check whether outfile needs updating
     if not force_update:
-        print("Testing whether file exists or needs updating: " + outfile)
+        status_log("Testing whether file exists or needs updating: " + outfile)
         if os.path.exists(outfile):
             ncf = Dataset(outfile)
             time_test = sec2time(ncf.variables["time"][:],
@@ -1133,8 +1258,8 @@ def process(domain, site, height, year, month,
 
     for datestr in datestrs:
 
-        print("Looking for files with date string: " + datestr + " in " + \
-              subfolder)
+        status_log("Looking for files with date string: " + datestr + " in " + \
+                   subfolder)
 
         # Get Met files
         if force_met_empty is not True:
@@ -1146,7 +1271,8 @@ def process(domain, site, height, year, month,
             met_files = sorted(glob.glob(met_search_str))
         
             if len(met_files) == 0:
-                print("Can't file MET files: " + met_search_str)
+                status_log("Can't file MET files: " + met_search_str,
+                           error_or_warning="error")
                 return None
             else:
                 if satellite:
@@ -1165,20 +1291,23 @@ def process(domain, site, height, year, month,
         else:
             particles_prefix = None
 
+           
         fp_file = footprint_concatenate(fields_prefix,
-                                        datestr = datestr, met = met,
-                                        particle_prefix = particles_prefix,
-                                        satellite = satellite,
-                                        time_step = timeStep)
-                                
+                                            datestr = datestr, met = met,
+                                            particle_prefix = particles_prefix,
+                                            satellite = satellite,
+                                            time_step = timeStep)
+        
         # Do satellite process
         if satellite:
             satellite_obs_file = glob.glob(subfolder + "Observations/*" + \
                                            datestr + "*.nc")
             if len(satellite_obs_file) != 1:
-                print("ERROR: There must be exactly one matching satellite " + 
-                        "file in the Observations/ folder")
-                print("Files: " + satellite_obs_file)
+                status_log("There must be exactly one matching satellite " + 
+                           "file in the Observations/ folder",
+                           error_or_warning="error")
+                status_log("Files: " + satellite_obs_file,
+                           error_or_warning="error")
                 return None
 
             fp_file = satellite_vertical_profile(fp_file,
@@ -1189,8 +1318,7 @@ def process(domain, site, height, year, month,
                  
         if fp_file is not None:
             fp.append(fp_file)
-
-    
+            
     if len(fp) > 0:
         
         # Concatentate
@@ -1199,10 +1327,40 @@ def process(domain, site, height, year, month,
         # ONLY OUTPUT FIRST LEVEL FOR NOW
         if len(fp.lev) > 1:
             fp = fp[dict(lev = [0])]
-            print("WARNING: ONLY OUTPUTTING FIRST LEVEL!")
-        fp = fp.squeeze()
+            status_log("ONLY OUTPUTTING FIRST LEVEL!", error_or_warning = "warning")
+        fp = fp.squeeze(dim = "lev")
         
-
+        
+        # REMOVE ANY ZERO FOOTPRINTS        
+        fp_nonzero = (fp.fp.sum(["lon", "lat"])).values.squeeze() > 0.
+        pl_nonzero = (fp.pl_n.sum(["lon", "height"]) + \
+                      fp.pl_e.sum(["lat", "height"]) + \
+                      fp.pl_s.sum(["lon", "height"]) + \
+                      fp.pl_w.sum(["lat", "height"])).values.squeeze() > 0.
+        indices_nonzero = np.where(fp_nonzero + pl_nonzero)[0]
+        fp = fp[dict(time = indices_nonzero)]
+        
+        # Get vertical profile met file
+        if vertical_profile is True:
+            vp_search_str = subfolder + "vertical_profile" + "/*.txt*"     
+            vp_files = sorted(glob.glob(vp_search_str))
+        
+            if len(vp_files) == 0:
+                status_log("Can't file Vertical Profile files: " + vp_search_str,
+                           error_or_warning="error")
+                return None
+            else:
+                    vp_met = process_vertical_profile(vp_files[0])
+                    
+                    # Merge vetical profile met into footprint file with same time index
+                    vp_reindex = vp_met.reindex_like(fp,"nearest", tolerance =None)
+                    lapse_in = vp_reindex.theta_slope.values
+                    lapse_error_in=vp_reindex.slope_error.values
+                                      
+        else:
+            lapse_in=None
+            lapse_error_in=None
+        
         #Write netCDF file
         #######################################
         
@@ -1217,28 +1375,33 @@ def process(domain, site, height, year, month,
             pl = None
             height_out = None
 
-        print("Writing file: " + outfile)
+        status_log("Writing file: " + outfile, print_to_screen=False)
         
         # Write outputs
+        #try:
         write_netcdf(fp.fp.transpose("lat", "lon", "time").values.squeeze(),
-                     fp.lon.values.squeeze(),
-                     fp.lat.values.squeeze(),
-                     fp.lev.values,
-                     fp.time.to_pandas().index.to_pydatetime(),
-                     outfile,
-                     temperature=fp["temp"].values.squeeze(),
-                     pressure=fp["press"].values.squeeze(),
-                     wind_speed=fp["wind"].values.squeeze(),
-                     wind_direction=fp["wind_direction"].values.squeeze(),
-                     PBLH=fp["PBLH"].values.squeeze(),
-                     release_lon=fp["release_lon"].values.squeeze(),
-                     release_lat=fp["release_lat"].values.squeeze(),
-                     particle_locations = pl,
-                     particle_heights = height_out,
-                     global_attributes = fp.attrs)
+                         fp.lon.values.squeeze(),
+                         fp.lat.values.squeeze(),
+                         fp.lev.values,
+                         fp.time.to_pandas().index.to_pydatetime(),
+                         outfile,
+                         temperature=fp["temp"].values.squeeze(),
+                         pressure=fp["press"].values.squeeze(),
+                         wind_speed=fp["wind"].values.squeeze(),
+                         wind_direction=fp["wind_direction"].values.squeeze(),
+                         PBLH=fp["PBLH"].values.squeeze(),
+                         release_lon=fp["release_lon"].values.squeeze(),
+                         release_lat=fp["release_lat"].values.squeeze(),
+                         particle_locations = pl,
+                         particle_heights = height_out,
+                         global_attributes = fp.attrs,
+                         lapse_rate = lapse_in,
+                         lapse_error = lapse_error_in)
 
     else:
-        print("Couldn't seem to find any files")
+        status_log("FAILED. Couldn't seem to find any files, or some files are missing for %s" %
+                   datestr,
+                   error_or_warning="error")
 
     return fp
     
@@ -1251,7 +1414,9 @@ def process_all(domain, site,
                 force_update = False,
                 satellite = False,
                 perturbed_folder = None,
-                max_level = None):
+                max_level = None,
+                force_met_empty=False,
+                vertical_profile=False):
     '''
     For a given domain and site, process all available fields files (including
     multiple heights).
@@ -1275,9 +1440,8 @@ def process_all(domain, site,
             perturbed_folder = "Perturbed/PARAMETERNAME_VALUE"
     '''
 
-    acrg_path=split(realpath(__file__))
-    
-    with open(acrg_path[0] + "/acrg_site_info.json") as f:
+    acrg_path = os.getenv("ACRG_PATH")
+    with open(os.path.join(acrg_path, "acrg_site_info.json")) as f:
         site_info=json.load(f)
         
     # If no height specified, run all heights
@@ -1311,9 +1475,12 @@ def process_all(domain, site,
             months = copy.copy(months_in)
 
         for year, month in set(zip(years, months)):
+            #try:
             out = process(domain, site, height, year, month,
-                base_dir = base_dir, force_update = force_update,
-                satellite = satellite, perturbed_folder = perturbed_folder, max_level = max_level)
+                    base_dir = base_dir, force_update = force_update,
+                    satellite = satellite, perturbed_folder = perturbed_folder,
+                    max_level = max_level, force_met_empty = force_met_empty,
+                    vertical_profile=vertical_profile)
 
 
 def copy_processed(domain):
@@ -1378,9 +1545,78 @@ def test_processed_met(domain, site, height,
 if __name__ == "__main__":
 
     domain = "EUROPE"
+    
     sites = ["BSD", "TTA", "RGL", "MHD", "HFD", "TAC",
              "GAUGE-FERRY", "GAUGE-FAAM",
-             "EHL", "TIL", "GLA", "WAO", "HAD", "GSN"]
+             "EHL", "TIL", "GLA", "WAO", "HAD"]
     for site in sites:
         process_all(domain, site, force_update = True)
+        
+def process_vertical_profile(vp_fname):
+    """
+    Function to process the site specific vertical pressure and temperature gradients.
+    Relies on the process_met function
+    In order to fit into this function the header information needs to be edited
+    in the output files NAME generates. 
+    Required structure given in vp_met_dict
+    
+    Outputs: xarray dataset containing:
+        theta_slope - the potential temperature gradient at each time point
+        slope_error - the error in this calculated gradient
+    """
+    
+    vp_met_dict = {"time": "             T","temp20": "TEMP-Z = 20.00000 m agl",
+               "temp40": "TEMP-Z = 40.00000 m agl","temp60": "TEMP-Z = 60.00000 m agl",
+               "temp80": "TEMP-Z = 80.00000 m agl","temp100": "TEMP-Z = 100.0000 m agl",
+               "temp120": "TEMP-Z = 120.0000 m agl","temp140": "TEMP-Z = 140.0000 m agl",
+               "temp160": "TEMP-Z = 160.0000 m agl","temp180": "TEMP-Z = 180.0000 m agl",
+               "temp200": "TEMP-Z = 200.0000 m agl","temp220": "TEMP-Z = 220.0000 m agl",
+               "temp240": "TEMP-Z = 240.0000 m agl","temp260": "TEMP-Z = 260.0000 m agl",
+               "temp280": "TEMP-Z = 280.0000 m agl","temp300": "TEMP-Z = 300.0000 m agl",
+               "press20": "PRES-Z = 20.00000 m agl","press40": "PRES-Z = 40.00000 m agl",
+               "press60": "PRES-Z = 60.00000 m agl","press80": "PRES-Z = 80.00000 m agl",
+               "press100": "PRES-Z = 100.0000 m agl","press120": "PRES-Z = 120.0000 m agl",
+               "press140": "PRES-Z = 140.0000 m agl","press160": "PRES-Z = 160.0000 m agl",
+               "press180": "PRES-Z = 180.0000 m agl","press200": "PRES-Z = 200.0000 m agl",
+               "press220": "PRES-Z = 220.0000 m agl","press240": "PRES-Z = 240.0000 m agl",
+               "press260": "PRES-Z = 260.0000 m agl","press280": "PRES-Z = 280.0000 m agl",
+               "press300": "PRES-Z = 300.0000 m agl",
+               "theta20": "THETA-Z = 20.00000 m agl","theta40": "THETA-Z = 40.00000 m agl",
+               "theta60": "THETA-Z = 60.00000 m agl","theta80": "THETA-Z = 80.00000 m agl",
+               "theta100": "THETA-Z = 100.0000 m agl","theta120": "THETA-Z = 120.0000 m agl",
+               "theta140": "THETA-Z = 140.0000 m agl","theta160": "THETA-Z = 160.0000 m agl",
+               "theta180": "THETA-Z = 180.0000 m agl","theta200": "THETA-Z = 200.0000 m agl",
+               "theta220": "THETA-Z = 220.0000 m agl","theta240": "THETA-Z = 240.0000 m agl",
+               "theta260": "THETA-Z = 260.0000 m agl","theta280": "THETA-Z = 280.0000 m agl",
+               "theta300": "THETA-Z = 300.0000 m agl"}
+    #vp_fname = "/dagage2/agage/metoffice/vertical_profiles/UKV/GLATTON_Vertical_Profile.txt.gz"  
+
+    vp_met_df=read_met(vp_fname, met_def_dict=vp_met_dict, vertical_profile=True)
+    lapse_ds=xray.Dataset.from_dataframe(vp_met_df)
+    
+    v_all = np.arange(60,320,20)
+    x_all = np.asarray([
+     lapse_ds.theta60.values,lapse_ds.theta80.values,lapse_ds.theta100.values,
+     lapse_ds.theta120.values,lapse_ds.theta140.values,lapse_ds.theta160.values,
+     lapse_ds.theta180.values,lapse_ds.theta200.values,lapse_ds.theta220.values,
+     lapse_ds.theta240.values,lapse_ds.theta260.values,lapse_ds.theta280.values,
+     lapse_ds.theta300.values])
+
+    slope_all=np.zeros((len(lapse_ds.time)))
+    std_all=np.zeros((len(lapse_ds.time)))
+    for ti in range(len(lapse_ds.time)):                                                              
+        slope_all[ti], dum, dum2, dum3, std_all[ti] = scipy.stats.linregress(
+                                                    v_all,x_all[:,ti])
+    
+    lapse_time=lapse_ds.time
+            
+    lapse_ds2 = xray.Dataset({'theta_slope': (['time'], slope_all*1000.),
+                              'slope_error': (['time'], std_all*1000.)},
+                                    coords = {'time' : (lapse_time)})
+    #ost_mcmc.coords["sites"]=sites
+    lapse_ds2.theta_slope.attrs['units'] = "K/km"
+    lapse_ds2.slope_error.attrs['units'] = "K/km"    
+    lapse_ds2.theta_slope.attrs['comment'] = "Potential temperature gradient from 60 - 300 m"
+    
+    return lapse_ds2
 

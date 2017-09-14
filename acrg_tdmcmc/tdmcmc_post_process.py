@@ -22,7 +22,7 @@ country_emissions - calculate emissions from given list of countries
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
-import xray
+import xarray as xray
 import acrg_name as name
 from acrg_grid import areagrid
 from netCDF4 import Dataset
@@ -30,10 +30,15 @@ from acrg_time.convert import time2sec
 import os
 import acrg_agage as agage
 import json
+import matplotlib.mlab as mlab
+from matplotlib.patches import Polygon
+from matplotlib.colors import BoundaryNorm
+from matplotlib import ticker
 
-def append_netcdf(flux_mean, flux_percentile, country_mean, country_percentile, 
-                 lon, lat, time, country, percentile, experiment, outfile):
-      
+def append_netcdf(flux_mean, flux_percentile, flux_it, country_mean, country_percentile,
+                  k_mean, k_percentile,
+                 lon, lat, time, country, percentile, nIt, experiment, outfile):
+    #country_it,  
     """
     Function for appending flux and country output to file
     
@@ -43,8 +48,12 @@ def append_netcdf(flux_mean, flux_percentile, country_mean, country_percentile,
       
     fm_name = "_".join(['flux_mean', experiment])
     fpc_name = "_".join(['flux_percentile', experiment])
+    fit_name = "_".join(['flux_it', experiment])
     countrym_name = "_".join(['country_mean', experiment])
     countrypc_name = "_".join(['country_percentile', experiment])
+    regionsm_name = "_".join(['regions_mean', experiment])
+    regionspc_name = "_".join(['regions_percentile', experiment])
+    #countryit_name = "_".join(['country_it', experiment])
               
     ncF=Dataset(outfile, 'a')
     
@@ -52,29 +61,51 @@ def append_netcdf(flux_mean, flux_percentile, country_mean, country_percentile,
     ncfluxpc=ncF.createVariable(fpc_name, 'f', ('lat', 'lon', 'time', 'percentile'))    
     nccountrym=ncF.createVariable(countrym_name, 'f', ('country', 'time'))   
     nccountrypc=ncF.createVariable(countrypc_name, 'f', ('country', 'time', 'percentile'))
+    ncregionsm=ncF.createVariable(regionsm_name, 'f', ('time'))   
+    ncregionspc=ncF.createVariable(regionspc_name, 'f', ('time', 'percentile'))
+    ncfluxit=ncF.createVariable(fit_name, 'f', ('lat', 'lon', 'time', 'nIt'))    
+    #nccountryit=ncF.createVariable(countryit_name, 'f', ('country', 'nIt','time'))   
     
     ncfluxm[:, :, :]=flux_mean
     ncfluxm.units='mol/m2/s'
-    ncfluxm.long_name='Mean flux from each grid-cell'
+    ncfluxm.long_name='Posterior mean flux from each grid-cell'
     
     ncfluxpc[:, :, :,:]=flux_percentile
     ncfluxpc.units='mol/m2/s'
-    ncfluxpc.long_name='Mean flux from each grid-cell'
+    ncfluxpc.long_name='Posterior mean flux from each grid-cell'
+    
+    ncfluxit[:, :, :,:]=flux_it
+    ncfluxit.units='mol/m2/s'
+    ncfluxit.long_name='Posterior it flux from each grid-cell'
     
     nccountrym[:, :]=country_mean
     nccountrym.units='Tg/yr'
-    nccountrym.long_name='Mean emissions from individual countries'
+    nccountrym.long_name='Posterior mean emissions from individual countries'
     
     nccountrypc[:, :, :]=country_percentile
     nccountrypc.units='Tg/yr'
-    nccountrypc.long_name='Percentile emissions from individaul countries'
-        
+    nccountrypc.long_name='Posterior percentile emissions from individaul countries'
+    
+    ncregionsm[:]=k_mean
+    #ncregionsm.units=' '
+    ncregionsm.long_name='Posterior mean number of regions'
+    
+    ncregionspc[:,:]=k_percentile
+    #ncregionspc.units='
+    ncregionspc.long_name='Posterior percentile number of regions'
+    
+    #nccountryit[:,:,:]=country_it
+    #nccountryit.units='Tg/yr'
+    #nccountryit.long_name='Posterior emissions distribution from individual countries'
+    
     ncF.close()
     print "Appended " + experiment + " to " + outfile 
 
-def write_netcdf(flux_mean, flux_percentile, country_mean, country_percentile, country_prior, 
-                 lon, lat, time, country, percentile, experiment, outfile):
-    
+def write_netcdf(flux_mean, flux_percentile, flux_it, flux_prior, flux_ap_percentile,
+                 country_mean, country_percentile, country_prior, country_ap_percentile,
+                 country_index, k_mean, k_percentile,
+                 lon, lat, time, country, percentile, nIt, experiment, outfile):
+    #country_it,
     """
     Function for writing all flux and country output to file
     
@@ -86,9 +117,12 @@ def write_netcdf(flux_mean, flux_percentile, country_mean, country_percentile, c
     
     fm_name = "_".join(['flux_mean', experiment])
     fpc_name = "_".join(['flux_percentile', experiment])
+    fit_name = "_".join(['flux_it', experiment])
     countrym_name = "_".join(['country_mean', experiment])
     countrypc_name = "_".join(['country_percentile', experiment])
-    countryP_name = "_".join(['country_prior', experiment])
+    regionsm_name = "_".join(['regions_mean', experiment])
+    regionspc_name = "_".join(['regions_percentile', experiment])
+    #countryit_name = "_".join(['country_it', experiment])
     
     #Write NetCDF file
     ncF=Dataset(outfile, 'w')
@@ -97,17 +131,27 @@ def write_netcdf(flux_mean, flux_percentile, country_mean, country_percentile, c
     ncF.createDimension('lat', len(lat))
     ncF.createDimension('country', len(country))
     ncF.createDimension('percentile', len(percentile))
+    ncF.createDimension('nIt', nIt)
     
     nctime=ncF.createVariable('time', 'i', ('time',))
     nclon=ncF.createVariable('lon', 'f', ('lon',))
     nclat=ncF.createVariable('lat', 'f', ('lat',))
-    nccountry=ncF.createVariable('country_name', 'str', ('country',))
+    nccountry=ncF.createVariable('country_name', str, ('country',))
     ncpercent=ncF.createVariable('percentile', 'i', ('percentile',))
     ncfluxm=ncF.createVariable(fm_name, 'f', ('lat', 'lon', 'time'))    
     ncfluxpc=ncF.createVariable(fpc_name, 'f', ('lat', 'lon', 'time', 'percentile'))    
+    ncfluxit=ncF.createVariable(fit_name, 'f', ('lat', 'lon', 'time', 'nIt'))    
     nccountrym=ncF.createVariable(countrym_name, 'f', ('country', 'time'))   
     nccountrypc=ncF.createVariable(countrypc_name, 'f', ('country', 'time', 'percentile'))
-    nccountryP=ncF.createVariable(countryP_name, 'f', ('country', 'time'))
+    nccountryap=ncF.createVariable('country_prior', 'f', ('country', 'time'))
+    nccountryappc=ncF.createVariable('country_prior_percentile', 'f', ('country', 'time', 'percentile'))
+    ncfluxap=ncF.createVariable('flux_prior', 'f', ('lat', 'lon', 'time'))  
+    ncfluxappc=ncF.createVariable('flux_prior_percentile', 'f', ('lat', 'lon', 'time', 'percentile'))  
+    nccountryid=ncF.createVariable('country_index', 'i', ('lat', 'lon'))    
+    ncregionsm=ncF.createVariable(regionsm_name, 'f', ('time'))   
+    ncregionspc=ncF.createVariable(regionspc_name, 'f', ('time', 'percentile'))
+    #nccountryit=ncF.createVariable(countryit_name, 'f', ('country', 'nIt','time'))   
+
     
     nctime[:]=time_seconds
     nctime.long_name='time'
@@ -131,33 +175,78 @@ def write_netcdf(flux_mean, flux_percentile, country_mean, country_percentile, c
     
     ncfluxm[:, :, :]=flux_mean
     ncfluxm.units='mol/m2/s'
-    ncfluxm.long_name='Mean flux from each grid-cell'
+    ncfluxm.long_name='Posterior mean flux from each grid-cell'
     
     ncfluxpc[:, :, :,:]=flux_percentile
     ncfluxpc.units='mol/m2/s'
-    ncfluxpc.long_name='Mean flux from each grid-cell'
+    ncfluxpc.long_name='Posterior percentile flux from each grid-cell'
+    
+    ncfluxit[:, :, :,:]=flux_it
+    ncfluxit.units='mol/m2/s'
+    ncfluxit.long_name='Posterior it flux from each grid-cell'
     
     nccountrym[:, :]=country_mean
     nccountrym.units='Tg/yr'
-    nccountrym.long_name='Mean emissions from individual countries'
+    nccountrym.long_name='Posterior mean emissions from individual countries'
     
     nccountrypc[:, :, :]=country_percentile
     nccountrypc.units='Tg/yr'
-    nccountrypc.long_name='Percentile emissions from individaul countries'
+
+    nccountrypc.long_name='Posterior percentile emissions from individual countries'
     
-    nccountryP[:, :]=country_prior
-    nccountryP.units='Tg/yr'
-    nccountryP.long_name='Prior emissions from individual countries'
+    ncfluxap[:,:,:]=flux_prior
+    ncfluxap.units='mol/m2/s'
+    ncfluxap.long_name='Prior mean flux from each grid-cell'
+    
+    ncfluxappc[:, :, :,:]=flux_ap_percentile
+    ncfluxappc.units='mol/m2/s'
+    ncfluxappc.long_name='Prior percentile flux from each grid-cell'
+    
+    nccountryap[:, :]=country_prior
+    nccountryap.units='Tg/yr'
+    nccountryap.long_name='Prior mean emissions from individual countries'
+    
+    nccountryappc[:, :, :]=country_ap_percentile
+    nccountryappc.units='Tg/yr'
+    nccountryappc.long_name='Prior percentile emissions from individual countries'
         
+    nccountryid[:,:]=country_index
+    #ncfluxap.units='mol/m2/s'
+    nccountryid.long_name='Index corresponding to each country'
+    
+    ncregionsm[:]=k_mean
+    #ncregionsm.units=' '
+    ncregionsm.long_name='Posterior mean number of regions'
+    
+    ncregionspc[:,:]=k_percentile
+    #ncregionspc.units='
+    ncregionspc.long_name='Posterior percentile number of regions'
+    
+#    nccountryit[:,:,:]=country_it
+#    nccountryit.units='Tg/yr'
+#    nccountryit.long_name='Posterior emissions distribution from individual countries'
+    
     ncF.close()
     print "Written " + experiment + " to " + outfile
 
-def plot_scaling(data,lon,lat, out_filename=None, absolute=False, fignum=1):
+def plot_scaling(data,lon,lat, clevels=None, cmap=plt.cm.RdBu_r, label=None,
+                 smooth = False, out_filename=None, stations=None, fignum=None,
+                 title=None):
     
     """
     Plot 2d scaling map of posterior x
     i.e. degree of scaling applied to prior emissions 
-    data = mean or median of x_post_vit
+    Inputs:
+    data = 2D (lat,lon) array of whatever you want
+    clevels = Contour levels; defaults to np.arange(-2., 2.1, 0.1)
+    cmap = Colormap - defaults to Red Blue reverse
+    label = String - to appear at bottom
+    smooth = If true plot smooth contours, otherwise use pcolormesh
+    stations = Default is None. If true needs to be a dictionary containing:
+                sites: 'MHD', 'TAC'
+                MHD_lon: -9.02
+                MHHD_lat: 55.2
+                TAC_lon: etc...
     """    
     lon_range = (np.min(lon), np.max(lon))
     lat_range = (np.min(lat), np.max(lat))
@@ -175,20 +264,64 @@ def plot_scaling(data,lon,lat, out_filename=None, absolute=False, fignum=1):
     m.drawcoastlines()
     m.drawcountries() 
     
-    if absolute == True:
-        clevels = np.arange(-4., 4., 0.1)
+    def draw_screen_poly( lats, lons, m):
+            x, y = m( lons, lats )
+            xy = zip(x,y)
+            poly = Polygon( xy, facecolor='red', alpha=0.4 )
+            plt.gca().add_patch(poly)
+    
+    if clevels is None:
+        print "Warning: using default contour levels. Include clevels keyword to change"
+        clevels = np.arange(-2., 2.1, 0.1)
+
+    if smooth == True:
+        
+        cs = m.contourf(mapx,mapy,data, clevels, extend='both', cmap=cmap)
+        cb = m.colorbar(cs, location='bottom', pad="5%")
+        
     else:
-        clevels = np.arange(0., 2.0, 0.02)  
-     
-    cs = m.contourf(mapx,mapy,data, clevels, extend='both', cmap='RdBu_r')
-    cb = m.colorbar(cs, location='bottom', pad="5%")
-    cb.set_label('Scaling of prior')  
-    #cb.set_label('Posterior - prior (kg/m$^{2}$/s)*1.e9')
+        norm = BoundaryNorm(clevels,
+                        ncolors=cmap.N,
+                        clip=True)
+        cs = m.pcolormesh(mapx, mapy,
+                data,cmap=cmap, norm=norm)
+        cb = m.colorbar(cs, location='bottom', pad="5%", extend='both')
+        
+    if label is not None:        
+        cb.set_label(label,fontsize=14) 
+    if title is not None:
+        plt.title(title, fontsize=16) 
+               
+    if stations is not None:
+        
+        nsites=len(stations['sites'])
+        sites=stations['sites']
+        #ilon=np.zeros((nsites))
+        #ilat=np.zeros((nsites))
+        for si,site in enumerate(stations['sites']):
+            #ilon[si]=stations[site+'_lon']
+            #ilat[si]=stations[site+'_lat']
+            ilon=stations[site+'_lon']
+            ilat=stations[site+'_lat']
+            
+            mlon,mlat=m(ilon,ilat)
+            site_loc=m.plot(mlon,mlat, linestyle='None',  
+                            marker='o', color='black', markersize=8)
+            #markeredgewidth=0.0,                 
+            yoffset = 0.022*(m.ymax-m.ymin) 
+            xoffset = 0.012*(m.xmax-m.xmin)             
+        #for ii in range(nsites):
+        #    plt.text(mlon[ii]+xoffset,
+        #             mlat[ii]+yoffset,sites[ii], fontsize='24', color='black')   
+    tick_locator = ticker.MaxNLocator(nbins=5)
+    cb.locator = tick_locator
+    cb.update_ticks()                 
     if out_filename is not None:
         plt.savefig(out_filename)
         plt.close()
     else:
         plt.show()
+
     
     
 def regions_histogram(k_it, out_filename=None, fignum=2):
@@ -199,39 +332,72 @@ def regions_histogram(k_it, out_filename=None, fignum=2):
     Use this as a check for whether kmax should be larger
     """
     bin_max=np.ceil((np.max(k_it)+50.)/40.)*40
-    bin_step = bin_max/20
+    #bin_max=100
+    #bin_step = bin_max/40
+    bin_step = 2
     bins=np.arange(0,bin_max,bin_step)    
     
     plt.figure(fignum)
     # the histogram of the data with histtype='step'
-    n, bins, patches = plt.hist(k_it, bins, normed=1, histtype='bar', rwidth=0.8)
-    plt.xlabel('# of regions')
+    n, bins, patches = plt.hist(k_it, bins, histtype='bar', color='mediumblue')
+    #n, bins, patches = plt.hist(k_it, bins, normed=1, histtype='bar', rwidth=0.8)
+    
+    # add a 'best fit' line
+#    y = mlab.normpdf( bins, np.mean(k_it), np.std(k_it))
+#    l = plt.plot(bins, y, 'r--', linewidth=1)
+    
+    plt.xlabel('Number of regions', fontsize=18)
+    plt.ylabel('Number of instances', fontsize=18)
     if out_filename is not None:
         plt.savefig(out_filename)
         plt.close()
     else:
         plt.show()
     
-def country_emissions(ds_mcmc, x_post_vit, x_ap_abs_v, countries, species, domain='EUROPE'):
+def country_emissions(ds_mcmc, x_post_vit, q_ap_abs_v, countries, species,
+                      units = None, ocean=True, domain='EUROPE', uk_split=False):
         
     """
     Generates national totals for a given list of countries
-    Requires post_mcmc xray dataset
+    Requires: 
+    ds_mcmc - post_mcmc xray dataset
+    countries - list of countries (see data_path/countries files for names)
+                In general names are all capitalized
+    species - CH4, CO2 etc.
     
-    Units are hard-wired at the moment, need to make non-methane specific
+    Optional:
+    units - Need to specify to get something sensible out, otherwise returns in g/yr
+            Options are Pg/yr, Tg/yr,Gg/yr Mg/yr
+    ocean - Default is true, If false only include emissions from land surface
+    uk_split - Break UK into devolved administrations
+                Country names then have to be ['Eng', 'Sco', 'Wales',
+                NIre', 'IRELAND', 'BENELUX']. Horribly inconsistent I know!
+    
     Returns: mean, 5th,16th,median,84th,95th percentiles and prior for each country
-    
+       
     Output in Tg/yr
     """
-    temp = os.path.split(os.path.realpath(__file__))
-    acrg_path=os.path.join(temp[0],"..")
+    
+    if units == 'Tg/yr':
+        unit_factor=1.e12
+    elif units == 'Gg/yr': 
+        unit_factor=1.e9
+    elif units == 'Pg/yr': 
+        unit_factor=1.e15
+    elif units == 'Mg/yr': 
+        unit_factor=1.e6
+    else:
+        print 'Undefined units: outputting in g/yr - let this be a lesson to define your units'
+        unit_factor=1.
+        
+    acrg_path = os.getenv('ACRG_PATH')
     with open(acrg_path + "/acrg_species_info.json") as f:
         species_info=json.load(f)
             
     species_key = agage.synonyms(species, species_info)
     
     molmass = float(species_info[species_key]['mol_mass'])
-    units = species_info[species_key]['units']    
+    #units = species_info[species_key]['units']    
     
 
     lonmin=np.min(ds_mcmc.lon.values)
@@ -240,7 +406,12 @@ def country_emissions(ds_mcmc, x_post_vit, x_ap_abs_v, countries, species, domai
     latmax=np.max(ds_mcmc.lat.values)
     area=areagrid(ds_mcmc.lat.values,ds_mcmc.lon.values)
     # GET COUNTRY DATA
-    c_object=name.get_country(domain, ocean=False)
+    if uk_split == True:
+        c_object=name.get_country(domain, ocean=True, ukmo=True, uk_split=uk_split)
+    elif ocean==True:
+        c_object=name.get_country(domain, ocean=True, ukmo=True, uk_split=False)
+    else:
+        c_object=name.get_country(domain, ocean=False)
     cds = xray.Dataset({'country': (['lat','lon'], c_object.country), 
                         'name' : (['ncountries'],c_object.name) },
                                         coords = {'lat': (c_object.lat),
@@ -252,128 +423,181 @@ def country_emissions(ds_mcmc, x_post_vit, x_ap_abs_v, countries, species, domai
     country_v=np.ravel(country)
     
     ncountries=len(countries)
-    nIt=len(ds_mcmc.k_it.values)
-    q_country_it = np.zeros((ncountries, nIt))
-    q_country_mean=np.zeros((ncountries))
-    q_country_50=np.zeros((ncountries))
-    q_country_05=np.zeros((ncountries))
-    q_country_95=np.zeros((ncountries))
-    q_country_16=np.zeros((ncountries))
-    q_country_84=np.zeros((ncountries))
-    q_country_ap=np.zeros((ncountries))
+    #nIt=len(ds_mcmc.k_it.values)
+    nIt=len(x_post_vit[:,0])
+
+    nlon=len(ds_mcmc.lon)
+    nlat=len(ds_mcmc.lat)
+    country_v_new=np.zeros((nlon*nlat))
+
+    if len(np.shape(q_ap_abs_v)) == 1:
+
+        q_country_it = np.zeros((ncountries, nIt))
+        q_country_mean=np.zeros((ncountries))
+        q_country_50=np.zeros((ncountries))
+        q_country_05=np.zeros((ncountries))
+        q_country_95=np.zeros((ncountries))
+        q_country_16=np.zeros((ncountries))
+        q_country_84=np.zeros((ncountries))
+        q_country_ap=np.zeros((ncountries))
+        q_country_mode=np.zeros((ncountries))
     
-    for ci,cc in enumerate(countries):
-        name_country = np.where(cds.name == cc)
-        c_index = np.where(country_v == name_country[0])
+        for ci,cc in enumerate(countries):
+            name_country = np.where(cds.name == cc)
+            c_index = np.where(country_v == name_country[0])
+            country_v_new[c_index[0]]=ci+1
+            for it in range(nIt):
+                x_vit_temp=x_post_vit[it,:]
+                q_country_it[ci,it]=np.sum(x_vit_temp[c_index[0]]*area_v[c_index[0]]
+                                *q_ap_abs_v[c_index[0]]) 
         
-        for it in range(nIt):
-            x_vit_temp=x_post_vit[it,:]
-            q_country_it[ci,it]=np.sum(x_vit_temp[c_index[0]]*area_v[c_index[0]]
-                                *x_ap_abs_v[c_index[0]]) 
+            q_country_ap[ci] = np.sum(area_v[c_index[0]]*q_ap_abs_v[c_index[0]]
+                                *365.*24.*3600.*molmass/unit_factor) # in Tg/yr
         
-        q_country_ap[ci] = np.sum(area_v[c_index[0]]*x_ap_abs_v[c_index[0]]
-                                *365.*24.*3600./1.e9*molmass/1000.) # in Tg/yr
+            #dum=np.histogram(q_country_it[ci,:], bins=100)                
+            #q_country_mode[ci] = dum[1][dum[0]==np.max(dum[0])][0]
+            
+            q_country_mean[ci]=np.mean(q_country_it[ci,:])*365.*24.*3600.*molmass/unit_factor # in Tg/yr
+            q_country_50[ci]=np.percentile(q_country_it[ci,:],50)*365.*24.*3600.*molmass/unit_factor
+            q_country_05[ci]=np.percentile(q_country_it[ci,:],5)*365.*24.*3600.*molmass/unit_factor
+            q_country_95[ci]=np.percentile(q_country_it[ci,:],95)*365.*24.*3600.*molmass/unit_factor
+            q_country_16[ci]=np.percentile(q_country_it[ci,:],16)*365.*24.*3600.*molmass/unit_factor
+            q_country_84[ci]=np.percentile(q_country_it[ci,:],84)*365.*24.*3600.*molmass/unit_factor
         
+        country_index = np.reshape(country_v_new, (nlat,nlon))   
+        return q_country_it*365.*24.*3600.*molmass/unit_factor,\
+        q_country_mean, q_country_05, q_country_16, q_country_50, q_country_84, \
+        q_country_95, q_country_ap, country_index
         
-        q_country_mean[ci]=np.mean(q_country_it[ci,:])*365.*24.*3600./1.e9*molmass/1000. # in Tg/yr
-        q_country_50[ci]=np.percentile(q_country_it[ci,:],50)*365.*24.*3600./1.e9*molmass/1000.
-        q_country_05[ci]=np.percentile(q_country_it[ci,:],5)*365.*24.*3600./1.e9*molmass/1000.
-        q_country_95[ci]=np.percentile(q_country_it[ci,:],95)*365.*24.*3600./1.e9*molmass/1000.
-        q_country_16[ci]=np.percentile(q_country_it[ci,:],16)*365.*24.*3600./1.e9*molmass/1000.
-        q_country_84[ci]=np.percentile(q_country_it[ci,:],84)*365.*24.*3600./1.e9*molmass/1000.
+    elif len(np.shape(q_ap_abs_v)) == 2:
+
+        q_ap_abs_v = q_ap_abs_v.T
+        ntimes = np.shape(q_ap_abs_v)[1]        
         
-        
-    return q_country_mean, q_country_05, q_country_16, q_country_50, q_country_84, q_country_95, q_country_ap
+        q_country_it = np.zeros((ncountries, ntimes, nIt))
+        q_country_mean=np.zeros((ncountries, ntimes))
+        q_country_50=np.zeros((ncountries, ntimes))
+        q_country_05=np.zeros((ncountries, ntimes))
+        q_country_95=np.zeros((ncountries, ntimes))
+        q_country_16=np.zeros((ncountries, ntimes))
+        q_country_84=np.zeros((ncountries, ntimes))
+        q_country_ap=np.zeros((ncountries, ntimes))
     
-def plot_timeseries(ds, species, out_filename=None, full_corr=False):
+        for ci,cc in enumerate(countries):
+            name_country = np.where(cds.name == cc)
+            c_index = np.where(country_v == name_country[0])
+            country_v_new[c_index[0]]=ci+1
+            for it in range(nIt):
+                x_vit_temp=x_post_vit[it,:]
+                q_country_it[ci,:,it]=np.sum(x_vit_temp[c_index[0],None]*area_v[c_index[0],None]
+                                *q_ap_abs_v[c_index[0],:], axis = 0) 
+        
+            q_country_ap[ci,:] = np.sum(area_v[c_index[0],None]*q_ap_abs_v[c_index[0],:]
+                                *365.*24.*3600.*molmass/unit_factor, axis = 0) # in Tg/yr
+        
+            q_country_mean[ci,:]=np.mean(q_country_it[ci,:,:], axis =1)*365.*24.*3600.*molmass/unit_factor # in Tg/yr
+            q_country_50[ci,:]=np.percentile(q_country_it[ci,:,:],50, axis =1)*365.*24.*3600.*molmass/unit_factor
+            q_country_05[ci,:]=np.percentile(q_country_it[ci,:,:],5, axis =1)*365.*24.*3600.*molmass/unit_factor
+            q_country_95[ci,:]=np.percentile(q_country_it[ci,:,:],95, axis =1)*365.*24.*3600.*molmass/unit_factor
+            q_country_16[ci,:]=np.percentile(q_country_it[ci,:,:],16, axis =1)*365.*24.*3600.*molmass/unit_factor
+            q_country_84[ci,:]=np.percentile(q_country_it[ci,:,:],84, axis =1)*365.*24.*3600.*molmass/unit_factor
+        
+
+        country_index = np.reshape(country_v_new, (nlat,nlon))   
+        return q_country_it*365.*24.*3600.*molmass/unit_factor,\
+        q_country_mean, q_country_05, q_country_16, q_country_50, q_country_84, \
+        q_country_95, q_country_ap, country_index
+    
+def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True):
     
     """
     Plot measurement timeseries of posterior and observed measurements
     Requires post_mcmc xray dataset
     For future: incorporate model & measurement uncertainty
+    Plots separate subplots for each of the measurement sites - hopefully!
+    
+    ds = dataset output from run_tdmcmc script
+    fig_text = String e.g. "CH$_{4}$ mole fraction (ppb)"
+    ylim = array [ymin,ymax]
     
     Specify an out_filename to write to disk
     """
-    
     x_it=ds.x_it.values
     h_v_all=ds.h_v_all.values
     x_post_vit = ds.x_post_vit.values
+    sigma_y_mean=np.mean(ds.sigma_y_it.values, axis=1)
+    sites=ds.coords['sites'].values
+    nsites=len(sites)
     nlon=len(ds.lon)
     nlat=len(ds.lat)
     Ngrid=nlon*nlat
     nIt=len(ds.nIt)
     nIC=ds.nIC.values
     nmeasure=len(ds.nmeasure)
-    
-    if full_corr == True:
-        y_obs = ds.z.values
-    else:
-        y_obs = ds.y.values
-    
+
     x_post_all_it=np.zeros((nIt,Ngrid+nIC))
     y_post_it = np.zeros((nIt,nmeasure))
     y_bg_it = np.zeros((nIt,nmeasure))
-       
     x_post_all_it[:,:nIC]=x_it[:,:nIC]
     x_post_all_it[:,nIC:]=x_post_vit
-    
-    if full_corr == True:
-        
-        nmeasuremax=len(ds.nmeasuremax)
-        y_post_it_temp = np.zeros((nIt,nmeasuremax))
-        y_bg_it_temp = np.zeros((nIt,nmeasuremax))
-        
-        for it in range(nIt):
-            y_post_it_temp[it,:]=np.dot(h_v_all,x_post_all_it[it,:])  
-            y_bg_it_temp[it,:]=np.dot(h_v_all[:,:nIC],x_it[it,:nIC])
-            
-            timeindex_nonzero = ds.timeindex_nonzero.values
-            y_post_it[it,:] = y_post_it_temp[it,timeindex_nonzero]
-            y_bg_it[it,:] = y_bg_it_temp[it,timeindex_nonzero]    
-    
-    else:
-        for it in range(nIt):
-            y_post_it[it,:]=np.dot(h_v_all,x_post_all_it[it,:])  
-            y_bg_it[it,:]=np.dot(h_v_all[:,:nIC],x_it[it,:nIC])
-        
-        
-    
+    for it in range(nIt):
+        y_post_it[it,:]=np.dot(h_v_all,x_post_all_it[it,:])  
+        y_bg_it[it,:]=np.dot(h_v_all[:,:nIC],x_it[it,:nIC])
+        #y_bg_it[it,:]=np.dot(h_v_all[:,:10],x_it[it,:10])
     y_post_mean=np.mean(y_post_it, axis=0)
-    y_post_05 = np.percentile(y_post_it, 5, axis=0)  
-    y_post_50 = np.percentile(y_post_it, 50, axis=0)
-    y_post_95 = np.percentile(y_post_it, 95, axis=0)
-    
     y_bg_mean=np.mean(y_bg_it, axis=0)
-    y_bg_05 = np.percentile(y_bg_it, 5, axis=0)  
-    y_bg_50 = np.percentile(y_bg_it, 50, axis=0)
-    y_bg_95 = np.percentile(y_bg_it, 95, axis=0)
+    y_time=ds.y_time.values
+    y_site = ds.y_site.values
+    y_obs = ds.y.values
+    upper=y_post_mean+sigma_y_mean
+    lower=y_post_mean-sigma_y_mean
     
-    
-    fig,ax=plt.subplots()
-    #time = pandas.to_datetime(ds.time.values)
-    ax.fill_between(np.arange(nmeasure), y_post_05,y_post_95, alpha=0.2, 
-                facecolor='skyblue', edgecolor='skyblue')
-    ax.plot(np.arange(nmeasure),y_post_mean, color='blue', label='y posterior')
-    
-    ax.plot(np.arange(nmeasure),y_obs, color='green', label='y_obs')
-    
-    ax.set_ylabel('Mole Fraction (ppb)')
-    legend=ax.legend(loc='upper left')
-    # The frame is matplotlib.patches.Rectangle instance surrounding the legend.
-    frame = legend.get_frame()
-    frame.set_facecolor('0.90')
-    
-    # Set the fontsize
-    for label in legend.get_texts():
-        label.set_fontsize('small')
-    
-    for label in legend.get_lines():
-        label.set_linewidth(1.5)  # the legend line width
-    if out_filename is not None:
-        plt.savefig(out_filename)
-        plt.close()
-    else:
-        plt.show()
+    if doplot is True:
+        fig,ax=plt.subplots(nsites,sharex=True)
+        
+        if nsites > 1:
+            for si,site in enumerate(sites):
+                wh_site = np.where(y_site == site)
+                ax[si].fill_between(y_time[wh_site[0]], upper[wh_site[0]],lower[wh_site[0]], alpha=0.6, 
+                            facecolor='lightskyblue', edgecolor='lightskyblue')
+                ax[si].plot(y_time[wh_site[0]],y_obs[wh_site[0]], 'ro', markersize=4, label='Observations')
+                ax[si].plot(y_time[wh_site[0]],y_post_mean[wh_site[0]], color='blue', label='Modelled observations')
+                ax[si].plot(y_time[wh_site[0]],y_bg_mean[wh_site[0]],color='black', 
+                         label='Modelled baseline')
+                if ylim is not None:
+                    ax[si].set_ylim(ylim)
+                start, end = ax[si].get_ylim()
+                ax[si].yaxis.set_ticks(np.arange(start, end+1, (end-start)/5))
+                ax[si].set_ylabel(site)
+                if si == 0:
+                    legend=ax[si].legend(loc='upper left')
+                    for label in legend.get_texts():
+                        label.set_fontsize('small')
+                        
+        else:
+            ax.fill_between(y_time, upper,lower, alpha=0.6, 
+                        facecolor='lightskyblue', edgecolor='lightskyblue')
+            ax.plot(y_time,y_obs, 'ro', markersize=4, label='Observations')
+            ax.plot(y_time,y_post_mean, color='blue', label='Modelled observations')
+            ax.plot(y_time,y_bg_mean,color='black', 
+                     label='Modelled baseline')
+            start, end = ax.get_ylim()
+            ax.yaxis.set_ticks(np.arange(start, end+1, (end-start)/5))
+            legend=ax.legend(loc='upper left')
+            for label in legend.get_texts():
+                label.set_fontsize('small')
+        
+        if fig_text is not None:
+            fig.text(0.01,0.65,fig_text, rotation=90)
+        fig.autofmt_xdate()
+        
+        if out_filename is not None:
+            plt.savefig(out_filename)
+            plt.close()
+        else:
+            plt.show()
+        
+    return y_post_it, y_bg_it
 
 def open_ds(path):
     
@@ -397,14 +621,17 @@ def plot_nuclei_density(ds, out_filename=None, fignum=3):
     """
     ##############################
     # Density plot of nuclei locations
-    
     lon=ds.lon.values
     lat=ds.lat.values
     plat_it=ds.plat_it.values
     plon_it=ds.plon_it.values
     
-    xedges=np.arange(np.min(lon),np.max(lon)+2.,2.)
-    yedges=np.arange(np.min(lat),np.max(lat)+2.,2.)
+    dlon=lon[1]-lon[0]
+    dlat=lat[1]-lat[0]
+    nIt=len(plat_it[0,:])
+    
+    xedges=np.arange(np.min(lon),np.max(lon)+dlon,dlon)
+    yedges=np.arange(np.min(lat),np.max(lat)+dlat,dlat)
     lon_range = (np.min(xedges), xedges[-2])
     lat_range = (np.min(yedges), yedges[-2])
     plat_it_v=np.ravel(plat_it)
@@ -420,24 +647,54 @@ def plot_nuclei_density(ds, out_filename=None, fignum=3):
     lona, latb = np.meshgrid(xedges[:-1],yedges[:-1])
     mapa, mapb = m2(lona, latb)
     
-    fig = plt.figure(fignum,figsize=(8,8))
-    ax = fig.add_subplot(111)
+    fig = plt.figure(5,figsize=(8,8))
+    #ax = fig.add_subplot(111)
     
     m2.drawcoastlines()
     m2.drawcountries() 
     
-    hlevels=np.arange(np.min(H), np.max(H), (np.max(H)-np.min(H))/20) 
+    hlevels=np.arange(0, nIt/4, nIt/20/4) 
     
-    ds=m2.contourf(mapa,mapb,H, hlevels)
+    ds=m2.contourf(mapa,mapb,H, hlevels, extend='both', cmap='YlGnBu')
     db = m2.colorbar(ds, location='bottom')
+    plt.show()    
+    
+    
+#    lon=ds.lon.values
+#    lat=ds.lat.values
+#    plat_it=ds.plat_it.values
+#    plon_it=ds.plon_it.values
+#    
+#    xedges=np.arange(np.min(lon),np.max(lon)+2.,2.)
+#    yedges=np.arange(np.min(lat),np.max(lat)+2.,2.)
+#    lon_range = (np.min(xedges), xedges[-2])
+#    lat_range = (np.min(yedges), yedges[-2])
+#    plat_it_v=np.ravel(plat_it)
+#    plon_it_v=np.ravel(plon_it)
+#    
+#    H, yedges, xedges = np.histogram2d(plat_it_v, plon_it_v, bins=(yedges, xedges))
+#    
+#    m2 = Basemap(projection='gall',
+#                llcrnrlat=lat_range[0], urcrnrlat=lat_range[1],
+#                llcrnrlon=lon_range[0], urcrnrlon=lon_range[1],
+#                resolution='l')
+#    
+#    lona, latb = np.meshgrid(xedges[:-1],yedges[:-1])
+#    mapa, mapb = m2(lona, latb)
+#    
+#    fig = plt.figure(fignum,figsize=(8,8))
+#    ax = fig.add_subplot(111)
+#    
+#    m2.drawcoastlines()
+#    m2.drawcountries() 
+#    
+#    hlevels=np.arange(np.min(H), np.max(H), (np.max(H)-np.min(H))/20) 
+#    
+#    ds=m2.contourf(mapa,mapb,H, hlevels)
+#    db = m2.colorbar(ds, location='bottom')
 
     if out_filename is not None:
         plt.savefig(out_filename)
         plt.close()
     else:
         plt.show()
-
-
-
-
-

@@ -27,13 +27,23 @@ import os
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
 from matplotlib import ticker
+import pandas as pd
+import dateutil.relativedelta
+import sys
 # ___________________________________________________________________________________________________________________
 # CODE TO READ THE DIFFERENT DATA TYPES
 # ___________________________________________________________________________________________________________________
 
- # Class to read in the data
+ # Class to read in the MOZART output data
+ 
+ # Filename: the full name and file path of the file you want to read in
+ # conc_tag: the suffix of the variable of interest that you want to read in.
+ # e.g for the variable CO2_VMR_avrg the suffix is '_VMR_avrg' 
+ 
+ # Please not this DOES NOT read in all the variables.
+ # If you want a variable that it doesn't read in then add it!
 class read:
-    def __init__(self, filename):
+    def __init__(self, filename, conc_tag = '_VMR_avrg'):
     
         print 'Reading file : ' + filename
         
@@ -42,68 +52,96 @@ class read:
         
         data=netCDF4.Dataset(filename)
         
-        if 'h0' in filename:
-            conc_varname = (str(data.__getattribute__('title'))).strip()+'_VMR_avrg'
-        
-        if 'h1' in filename:        
-            conc_varname = (str(data.__getattribute__('title'))).strip()+'_13:30_LT'
-        
-        if 'h2' in filename:        
-            conc_varname = (str(data.__getattribute__('title'))).strip()+'_VMR_avrg'
 
+        # Might be multiple tracers
+        conc_varname = [i for i in data.variables.keys() if conc_tag in i]      
+
+        # Check that the conc_tag is actually in the list of variables
+        if len(conc_varname) == 0:
+            print 'The concentration tag you gave was not found in the given file'
+            print 'Please retry using one of the below variables:'
+            for i in data.variables.keys():
+                print i
         
-        conc = data.variables[conc_varname][:]
-        date = data.variables['date'][:] # Date YYYYMMDD
-        secs = data.variables['datesec'][:] # Seconds to be added to above date to make date-time variable
-        lon = data.variables['lon'][:].astype('float')
-        lat = data.variables['lat'][:].astype('float')
-        lev = data.variables['lev'][:].astype('int')
-        PS=data.variables['PS'][:].astype('float')
-        P0=data.variables['P0'][:].astype('float')
-        hyai=data.variables['hyai'][:].astype('float')
-        hybi=data.variables['hybi'][:].astype('float')
+        else:
+
+            conc = []
+            conc_units = []
+            
+            for i in conc_varname:     
+                conc.append(data.variables[i][:]) 
+                conc_units.append(data.variables[i].getncattr('units'))
+            
+            
+            if 'h0' in filename:
+                # Might be multiple tracers
+                emis_varname = [i for i in data.variables.keys() if '_SRF_EMIS_avrg' in i]      
+        
+                emis = []
+                emis_units = []
+                for i in emis_varname:        
+                    emis.append(data.variables[i][:]) 
+                    emis_units.append(data.variables[i].getncattr('units'))
                 
-        # Split up the date using datetime.strptime
-        dt_time = [dt.timedelta(seconds=(secs[i]).astype('int')) for i in np.arange(len(date))]
-        dt_date = [dt.datetime.strptime(str(date[i]),'%Y%m%d') for i in np.arange(len(date))]
+                
+            date = data.variables['date'][:] # Date YYYYMMDD
+            secs = data.variables['datesec'][:] # Seconds to be added to above date to make date-time variable
+            lon = data.variables['lon'][:].astype('float')
+            lat = data.variables['lat'][:].astype('float')
+            lev = data.variables['lev'][:].astype('int')
+            PS=data.variables['PS'][:].astype('float')
+            P0=data.variables['P0'][:].astype('float')
+            hyai=data.variables['hyai'][:].astype('float')
+            hybi=data.variables['hybi'][:].astype('float')
+                    
+            # Split up the date using datetime.strptime
+            dt_time = [dt.timedelta(seconds=(secs[i]).astype('int')) for i in np.arange(len(date))]
+            dt_date = [dt.datetime.strptime(str(date[i]),'%Y%m%d') for i in np.arange(len(date))]
+            
+            time_t = [dt_time[i] + dt_date[i] for i in np.arange(len(date))]
+            
+            P = np.empty((len(date), len(hyai)-1, len(lat), len(lon)))
+    
+            for i in np.arange(len(date)):         
+                P_i = hybrid_coords(hyai, PS[i,:,:],  B=hybi, P0=P0, half=1)
+                P[i,:,:,:] = P_i
+                print 'date ' + str(date[i]) + ' processed'
+             
+            self.time = time_t
+            self.conc = conc
+            self.lon = lon
+            self.lat = lat
+            self.lev = lev
+            self.P0 =P0
+            self.PS =PS
+            self.hyai=hyai
+            self.hybi=hybi
+            self.pressure = P
+            self.date = date
+            self.filename = filename     
+            
+            self.species = str(data.__getattribute__('title')).strip()
+            self.case = str(data.__getattribute__('case')).strip()
+            self.concunits = conc_units
+            self.pressureunits = data.variables['P0'].getncattr('units')
+            self.concnames = conc_varname
+            
+            if 'h0' in filename:
+                self.emis = emis             
+                self.emissunits = emis_units
+                self.emisnames = emis_varname
+            
+            if 'h2' in filename:
+            #if 'h0' in filename:
+            
+                start_date = data.variables['nbdate'][:]
+                dt_start_date = dt.datetime.strptime(str(start_date),'%Y%m%d')
+    #            start_date = data.variables['date'][:]
+    #            dt_start_date = dt.datetime.strptime(str(start_date[0]),'%Y%m%d')\
+    #            - dateutil.relativedelta.relativedelta(months=1)
+                self.start_date = dt_start_date
+            data.close()
         
-        time_t = [dt_time[i] + dt_date[i] for i in np.arange(len(date))]
-        
-        P = np.empty((len(date), len(hyai)-1, len(lat), len(lon)))
-
-        for i in np.arange(len(date)):         
-            P_i = hybrid_coords(hyai, PS[i,:,:],  B=hybi, P0=P0, half=1)
-            P[i,:,:,:] = P_i
-            print 'date ' + str(date[i]) + ' processed'
-         
-        self.time = time_t
-        self.conc = conc
-        self.lon = lon
-        self.lat = lat
-        self.lev = lev
-        self.P0 =P0
-        self.PS =PS
-        self.hyai=hyai
-        self.hybi=hybi
-        self.pressure = P
-        self.date = date
-        self.filename = filename     
-        
-        self.species = str(data.__getattribute__('title')).strip()
-        self.case = str(data.__getattribute__('case')).strip()
-        self.concunits = data.variables[conc_varname].getncattr('units')
-        self.pressureunits = data.variables['P0'].getncattr('units')
-        
-        if 'h0' in filename:
-            emiss_varname = (str(data.__getattribute__('title'))).strip()+'_SRF_EMIS_avrg'
-            emis = data.variables[emiss_varname][:]
-            self.emis = emis             
-            self.emissunits = data.variables[emiss_varname].getncattr('units')
-        if 'h2' in filename:
-            start_date = data.variables['nbdate'][:]
-            dt_start_date = dt.datetime.strptime(str(start_date),'%Y%m%d')
-            self.start_date = dt_start_date
-
 # Class to read in the data
 """
 format
@@ -133,8 +171,17 @@ variables:
 		:Author = "Ann Stavert" ;
 		:Created = "Sun Apr 27 15:22:18 2014" ;
 """
+ # Class to read in the MOZART input emissions data file
+ 
+ # Filename: the full name and file path of the file you want to read in
+ # emissions_tag: the suffix of the emissions variable
+ # time_tag: the name of the time variable
+ # emiss_varname: name of the gas of interest e.g. CO2 or CH4 (optional)
+     
+ # Please not this DOES NOT read in all the variables.
+ # If you want a variable that it doesn't read in then add it!
 class read_flux:
-    def __init__(self, filename):
+    def __init__(self, filename, emissions_tag_ncdf = 'emissions', time_tag = 'time', emiss_varname = None):
     
         print 'Reading file : ' + filename
         
@@ -143,7 +190,8 @@ class read_flux:
         
         data=netCDF4.Dataset(filename)
         
-        emiss_varname = (str(data.__getattribute__('Title'))).strip()[0:3]
+        if emiss_varname is None:
+            emiss_varname = (str(data.__getattribute__('Title'))).strip()[0:3]
         
         # convert from upper to lowercase
         name_dict = {'CO2' : 'co2',\
@@ -151,18 +199,31 @@ class read_flux:
                     'N2O' : 'n2o'}
         emiss_varname = name_dict[emiss_varname]
         
-        emiss = data.variables[emiss_varname+'emissions'][:]
+        emiss = data.variables[emissions_tag_ncdf][:]
         date = data.variables['date'][:] # Date YYYYMMDD
         lon = data.variables['lon'][:].astype('float')
         lat = data.variables['lat'][:].astype('float')
-        time = data.variables['time'][:].astype('float')
+        time = data.variables[time_tag][:].astype('float')
         
         # Split up the date based on position        
-        year = np.asarray([int(((date.astype('str'))[i])[0:4]) for i in np.arange(len(date))])
-        month = np.asarray([int(((date.astype('str'))[i])[4:6]) for i in np.arange(len(date))])
-        day = np.asarray([int(((date.astype('str'))[i])[6:8]) for i in np.arange(len(date))])
+        if (date[0] == 1) and (len(date) == 12):
+            # we're dealing with a climatology 
+            print 'This appears to be a climatology. Using 2000 as a default year.'
+            year = np.arange(12)
+            year[:] = 2000
+            month = date
+            day = np.arange(12)
+            day[:] = 15
+            
+            dt_date = [dt.datetime(year[i],month[i],day[i]) for i in np.arange(len(date))]
+            
+        else:
+            year = np.asarray([int(((date.astype('str'))[i])[0:4]) for i in np.arange(len(date))])
+            month = np.asarray([int(((date.astype('str'))[i])[4:6]) for i in np.arange(len(date))])
+            day = np.asarray([int(((date.astype('str'))[i])[6:8]) for i in np.arange(len(date))])
+            
+            dt_date = [dt.datetime(year[i],month[i],day[i]) for i in np.arange(len(date))]
         
-        dt_date = [dt.datetime(year[i],month[i],day[i]) for i in np.arange(len(date))]
         
         # Calculate monthly means use xray
         import xray
@@ -170,120 +231,47 @@ class read_flux:
         x_data = xray.DataArray(emiss, [('date', dt_date), ('lat', lat), ('lon', lon)])
         monthly_means = x_data.resample('MS', dim='date', how='mean')
         
-         
+        # Convert the xray datetime to a normal datetime        
+        dt_monthly = [pd.to_datetime(str(i)).replace(tzinfo=None) for i in monthly_means.date.values]        
+        
         self.time = time
-        self.time_units = data.variables['time'].__getattribute__('units')
+        self.time_units = data.variables[time_tag].__getattribute__('units')
         self.dt_date = dt_date
         self.year = year
         self.month = month
         self.day = day
         self.emiss = emiss
-        self.monthly_time = monthly_means.date.values
+        self.monthly_time = dt_monthly
         self.monthly_means = monthly_means.values
         self.species = emiss_varname
-        self.emis_units = data.variables[emiss_varname+'emissions'].__getattribute__('units')  
+        self.emis_units = data.variables[emissions_tag_ncdf].__getattribute__('units')  
         self.lon = lon
         self.lat = lat
         self.filename = filename     
         
                  
              
- # Class to read in the site file GONZI netcdf version       
-class read_sitefile_GONZI_nc:
-    def __init__(self, sitefile):
-        
-        if type(sitefile) == tuple:
-            data=netCDF4.Dataset(sitefile[0], 'r')
-        elif  type(sitefile) == str:
-            data=netCDF4.Dataset(sitefile, 'r')
-        
-        # Set flag for ferry which has no ALT
-        if type(sitefile) == tuple:        
-            if 'acf' in sitefile[0]:
-                ferry_flag =0
-            if 'ferry' in sitefile[0]:
-                ferry_flag = 1
-        
-        if type(sitefile) == str:        
-            if 'acf' in sitefile:
-                ferry_flag = 0
-            if 'ferry' in sitefile:
-                ferry_flag = 1
-      
-        
-        # Extract the variable names
-        keys = np.array((data.variables.keys()))
-       
-        
-        # Extract the data   
-        lat = data.variables['LAT'][:]
-        lon = data.variables['LONG'][:]
-        if ferry_flag == 0:
-            alt = data.variables['ALTI'][:] # Date YYYYMMDD
-            alt_units = data.variables['ALTI'].units
-        if ferry_flag == 1:
-             alt = np.empty(len(lat))
-             alt_units = ''
-             
-        Year = data.variables['YYYY'][:] # Seconds to be added to above date to make date-time variable
-        Month = data.variables['MM'][:]
-        Day = data.variables['DD'][:]
-        SecSinceMidnight=data.variables['Time_Slots'][:]
-        
-        CH4 = data.variables['CH4'][:]        
-        CO2 = data.variables['CO2'][:]     
-        
-        # only do this if N2O is given
-        if len(np.where(keys == 'N2O')[0]) > 0:
-            N2O = data.variables['N2O'][:]          
-        else:
-            N2O = np.empty((len(CO2),3))
-            N2O[:] = 'nan'
-        
-        model_CH4 = data.variables['Model_CH4'][:]
-        model_CO2 = data.variables['Model_CO2'][:]        
-        model_N2O = data.variables['Model_N2O'][:]
-        
-        # Create the time variable
-        time_t = [dt.datetime(Year[i],Month[i],Day[i]) + dt.timedelta(seconds=(SecSinceMidnight[i]).astype('int')) for i in np.arange(len(Day))]
-
-        # Remove the superfluous points
-        good_i = (np.where(lat[:,0] != -9999))[0]
-        
-        self.time = [time_t[good_i[i]] for i in np.arange(len(good_i))]
-        self.lat = lat[good_i]
-        self.lon = lon[good_i]
-        self.alt = alt[good_i]
-        self.filename = sitefile
-        self.conc = np.squeeze(np.array([[CH4[good_i]],[CO2[good_i]],[N2O[good_i]]]))
-        self.species_tags = np.array(['CH4','CO2','N2O'])
-        self.good_index = good_i
-        self.alt_units = alt_units
-        self.model_CH4 = model_CH4[good_i]
-        self.model_CO2 = model_CO2[good_i]
-        self.model_N2O= model_N2O[good_i]
 
 
- # Class to read in the netcdf site file written by matt listing the fixed sites    
+
+ # Class to read in the netcdf site file written by matt listing the fixed sites 
+
+# sitefile: full name and file path of the file you want to read in
+# species: the gas species of interest.
+# dir: file path to file of interest
+
 class read_fixed_sitefile_nc:
-    def __init__(self, sitefile = 0, species = 'CH4', dir = '/data/shared/GAUGE/'):
+    def __init__(self, sitefile = None, species = 'CH4', dir = '/shared_data/snowy/shared/GAUGE/'):
         
-        if type(sitefile) == int:
-            sitefile = dir + species + '/global_obs_stationary*.nc'
-        
+        if sitefile == None:
+            sitefile = dir + species.upper() + '/global_obs_stationary.nc'
+            if species in ['CH4','ch4']:
+                sitefile = dir + species.upper() + '/global_obs_stationary_ch4.nc'
+            
         print 'Using site file : ' + sitefile
         
         data=netCDF4.Dataset(sitefile, 'r')
 
-        if species == 'CH4':
-            species_lc = 'ch4'
-        
-        if species == 'CO2':
-            species_lc = 'co2'
-        
-        if species == 'N2O':
-            species_lc = 'n2o'
-        
         
         # Extract the data    
         time = data.variables['time'][:] # "seconds since 2004-01-01 00:00:00" ;
@@ -292,8 +280,8 @@ class read_fixed_sitefile_nc:
         lon = data.variables['longitude'][:]
         lat = data.variables['latitude'][:]
         alt = data.variables['altitude'] # "m  above 1.9x2.5 MOZART surface level (m)" ;
-        conc = data.variables[species_lc]
-        repeatability = data.variables[species_lc+'_repeatability']
+        conc = data.variables[species.lower()]
+        repeatability = data.variables[species.lower()+'_repeatability']
 	      
         # Create the time variable
         dateunits = data.variables['time'].getncattr('units')
@@ -310,7 +298,7 @@ class read_fixed_sitefile_nc:
         self.alt_units = alt.units
         self.site = site
         self.species = species
-        self.species_lc = species_lc
+        self.species_lc = species.lower()
         self.conc = conc[:]
         self.repeatability = repeatability[:]
         self.units = conc.units
@@ -319,30 +307,28 @@ class read_fixed_sitefile_nc:
 
 
  # Class to read in the netcdf site file written by matt listing the column sites (satelite + TCON)  
+ 
+ # sitefile: full name and file path of the file you want to read in
+ # species: the gas species of interest.
+ # dir: file path to file of interest
+ # month: the number month file you want to read in e.g. for Jan set = 1
+ # year: the year you want to read in 
 class read_column_sitefile_nc:
-    def __init__(self, sitefile = 0, species = 'CH4', dir = '/data/shared/GAUGE/global_obs_column*/', month = 1, year = 2009):
+    def __init__(self, sitefile = 0, species = 'CH4', dir = '/shared_data/snowy/shared/GAUGE/', month = 1, year = 2009):
         
         if type(sitefile) == int:
-            sitefile = dir + species + '/global_obs_column*' + str(month).zfill(2) +str(year)+ '.nc'
+            #sitefile = dir + species + '/global_obs_column_CH4' + str(month).zfill(2) +str(year)+ '.nc'
+            sitefile = dir + species.upper() + '/global_obs_column_'+ species.upper() +'/global_obs_column_'+species.upper() + '_'+ str(year)+ str(month).zfill(2) +'.nc'
         
         data=netCDF4.Dataset(sitefile, 'r')
-
-        if species == 'CH4':
-            species_lc = 'ch4'
-        
-        if species == 'CO2':
-            species_lc = 'co2'
-        
-        if species == 'N2O':
-            species_lc = 'n2o'
         
         # Extract the data    
         time = data.variables['time'][:] # "seconds since 2004-01-01 00:00:00" ;
         network = data.variables['network'][:]
         lon = data.variables['longitude'][:]
         lat = data.variables['latitude'][:]
-        gas_data = data.variables[species_lc]
-        gas_repeatability = data.variables[species_lc+'_repeatability']
+        gas_data = data.variables[species.lower()]
+        gas_repeatability = data.variables[species.lower()+'_repeatability']
         averaging_kernel = data.variables['averaging_kernel'][:]
         pressure = data.variables['pressure']
        
@@ -358,7 +344,7 @@ class read_column_sitefile_nc:
         self.lat = lat
         self.lon = lon
         self.no_lev = np.shape(pressure[:])[1]
-        self.gasname = species_lc
+        self.gasname = species.lower()
         self.conc = gas_data[:]
         self.repeatability = gas_repeatability[:]
         self.units = gas_data.units
@@ -370,12 +356,22 @@ class read_column_sitefile_nc:
  
 
 # Class to read in the netcdf site file written by matt listing the mobile GAUGE sites (ferry and aircraft)  
+
+ # sitefile: full name and file path of the file you want to read in
+ # species: the gas species of interest.
+ # dir: file path to file of interest
+ # month: the number month file you want to read in e.g. for Jan set = 1
+ # year: the year you want to read in 
 class read_mobile_sitefile_nc:
-    def __init__(self, sitefile = 0, species = 'CH4', dir = '/data/shared/GAUGE/', month = 1, year = 2003):
+    def __init__(self, sitefile = 0, species = 'CH4', dir = '/shared_data/snowy/shared/GAUGE/', month = 1, year = 2003):
         
-        if type(sitefile) == type(0):
-            sitefile = dir + species + '/global_obs_mobile_*/global_obs_mobile_*' +str(year)+ str(month).zfill(2)+'.nc'
+        if sitefile is None:
+            if species == 'CH4':
+                sitefile = dir + species.upper() + '/global_obs_mobile_' +species.upper()+'/global_obs_mobile_' +species.upper()+'_'+str(year)+ str(month).zfill(2)+'.nc'
         
+            else:
+                sitefile = dir + species.upper() + '/global_obs_mobile/global_obs_mobile_'+str(year)+ str(month).zfill(2)+'.nc'
+
         # Check if the site file exists
         exists = os.path.isfile(sitefile)
                 
@@ -385,15 +381,6 @@ class read_mobile_sitefile_nc:
             print sitefile
             
             data=netCDF4.Dataset(sitefile, 'r')
-    
-            if species == 'CH4':
-                species_lc = 'ch4'
-            
-            if species == 'CO2':
-                species_lc = 'co2'
-            
-            if species == 'N2O':
-                species_lc = 'n2o'
             
             # Extract the data    
             time = data.variables['time'][:] # "seconds since 2004-01-01 00:00:00" ;
@@ -403,8 +390,8 @@ class read_mobile_sitefile_nc:
             lon = data.variables['longitude'][:]
             lat = data.variables['latitude'][:]
             alt = data.variables['altitude']
-            gas_data = data.variables[species_lc]
-            gas_repeatability = data.variables[species_lc+'_repeatability']
+            gas_data = data.variables[species.lower()]
+            gas_repeatability = data.variables[species.lower()+'_repeatability']
             pressure = data.variables['pressure']
             
             # Create the time variable
@@ -423,7 +410,7 @@ class read_mobile_sitefile_nc:
             self.alt_units = alt.units
             self.scale = scale
             
-            self.gasname = species_lc
+            self.gasname = species.lower()
             self.conc = gas_data[:]
             self.repeatability = gas_repeatability[:]
             self.units = gas_data.units
@@ -474,8 +461,10 @@ class calc_pressure:
         
         self.pressure = pressure
  
-#Calculates altitude from pressures using the standard scale height 7.64 km.
-#Pressure in Pa.       
+ # Calculates altitude from pressures using the standard scale height 7.64 km.
+ # Pressure in Pa.       
+ # P0 = surface pressure in Pa
+ # P =  pressure in Pa
 def calc_altitude(P, P0, h0=7.64e3):
     alt = -h0*np.log(P/P0)
     return alt
@@ -516,11 +505,15 @@ class extract_site_info:
         self.lon = sitedata.lon[site_i]
         self.alt = sitedata.alt[site_i]
 
-# Class to match to the closeest lat/lon using bisect 
+# Class to match a point to the closest lat/lon in an array of lat/lons using bisect
+
+# lat: the latitude in degrees of your point of interest
+# lon: the longitude in degrees of your point of interest
+# lat_array: 2D array of latitudes in degress
+# lon_array: 2D array of longitudes in degress
+
 class match_latlon:
     def __init__(self, lat, lon, lat_array, lon_array):
-        
-        import bisect
         
         # NB: Assuming evenly spaced grid
         lat_spacing = lat_array[1] - lat_array[0]
@@ -568,31 +561,42 @@ class match_latlon:
 # ___________________________________________________________________________________________________________________
 
         
-# Class to filter the data
+# Class to filter the data for fixed locations
+# e.g. towers NOT mobile locations
 # This uses an individual MOZART history file
 # and matt's netcdf site file which contains the lat, lon and alt for fixed sites
+
+# mzfile: full name and path for the MOZART file of interest
+# conc_tag: the suffix of the variable of interest that you want to read in.
+# e.g for the variable CO2_VMR_avrg the suffix is '_VMR_avrg' 
+# sitefile: file listing the fixed sites
+# Ave: set if you want to take the average of the bottom 7 levels rather than try and match the height to the pressure levels
+
+# NB: returns a 3D array (3x3x3) where the central point is the closest to the given fixed location
 class data_filter_fixed:
-    def __init__(self, mzfile, sitefile, Ave=0):
+    def __init__(self, mzfile, conc_tag = '_VMR_avrg', sitefile=None, Ave=0):
         
-     
         # Read MOZART file name
-        data = read(mzfile)
-        
+        data = read(mzfile, conc_tag=conc_tag)
         
         # Read site info file
         # siteinfo = read_sitefile_txt(sitefile)
         species = data.species
-        siteinfo = read_fixed_sitefile_nc(species=species)    
-        
+        siteinfo = read_fixed_sitefile_nc(species=species, sitefile=sitefile)    
+         
         # create parameters to store output
         # initialise to nans
         pressures = np.empty((len(siteinfo.site), len(data.time), 3, 3, 3))*np.nan  
-        concs = np.empty((len(siteinfo.site), len(data.time), 3, 3, 3))*np.nan 
-        concs_sd = np.empty((len(siteinfo.site), len(data.time), 3, 3, 3))*np.nan 
+
+        # need to determine how many tracers there are in the file
+        conc_no  = len(data.concnames)    
+        
+        concs = np.empty((conc_no, len(siteinfo.site), len(data.time), 3, 3, 3))*np.nan 
+        concs_sd = np.empty((conc_no, len(siteinfo.site), len(data.time), 3, 3, 3))*np.nan 
         
         levs = np.empty((len(siteinfo.site),len(data.time),3))*np.nan 
         
-        emissions = np.empty((len(siteinfo.site), len(data.time), 3, 3))*np.nan 
+        emissions = np.empty((conc_no, len(siteinfo.site), len(data.time), 3, 3))*np.nan 
         
         matched_lats = np.empty((len(siteinfo.site), 3))*np.nan 
         matched_lons = np.empty((len(siteinfo.site), 3))*np.nan 
@@ -600,6 +604,10 @@ class data_filter_fixed:
         
         site_pressure = np.empty(len(siteinfo.site))*np.nan         
         
+        #Convert to an array for ease of access
+        allconcs = np.array(data.conc)
+        allemis = np.array(data.emis)
+
         
         # loop through each lat/lon in the siteinfo
         for j in np.arange(len(siteinfo.lat)):
@@ -641,7 +649,7 @@ class data_filter_fixed:
 
             
             # Adjustments for hitting the edge of the grid
-            # lon index = 0 i.e. weastern edge
+            # lon index = 0 i.e. western edge
             if latlon_index.closestindex[1] == 0:
                 lon_range = [143,0,1]
             
@@ -666,7 +674,6 @@ class data_filter_fixed:
             column_P = np.squeeze(data.pressure[:,:,latlon_index.closestindex[0], latlon_index.closestindex[1]])        
             
             
-            
             if Ave != 0:
                 # Just take the average of the bottom 7 levels that's all the data roughly < 1 km
     
@@ -678,9 +685,9 @@ class data_filter_fixed:
                 pressures[j,:] = np.mean(np.squeeze(column_P[:,[index]]), axis=1)
                 
                 # Extract the corresponding concentrations and emissions
-                conc_j = np.squeeze(data.conc[:,:, latlon_index.closestindex[0], latlon_index.closestindex[1]])
-                concs[j,:] = np.mean(np.squeeze(conc_j[:,[index]]), axis=1)
-                concs_sd[j,:] = np.std(np.squeeze(conc_j[:,[index]]), axis=1)
+                conc_j = allconcs[:,:, latlon_index.closestindex[0], latlon_index.closestindex[1]]
+                concs[j,:] = np.mean(conc_j[:,:,[index]], axis=2)
+                concs_sd[j,:] = np.std(conc_j[:,:,[index]], axis=2)
                 
     
             else:
@@ -702,18 +709,18 @@ class data_filter_fixed:
                     # As I'm using "fancy' indexing rather than slicing I need to do each dimension separately 
                     # Extract data for time = i
                     pressures_i = np.squeeze(data.pressure[i,:,:,:])
-                    concs_i = np.squeeze(data.conc[i,:,:,:])
-                    emissions_i = np.squeeze(data.emis[i,:,:])
+                    concs_i = allconcs[:,i,:,:,:]
+                    emissions_i = allemis[:,i,:,:]
                     
                     # Extract data for lat range
                     pressures_lat = pressures_i[:,lat_range,:]
-                    concs_lat = concs_i[:,lat_range,:]
-                    emissions_lat = emissions_i[lat_range,:]
+                    concs_lat = concs_i[:,:,lat_range,:]
+                    emissions_lat = emissions_i[:,lat_range,:]
                     
                     # Extract data for lon range  
                     pressures_lon = pressures_lat[:,:,lon_range]
-                    concs_lon = concs_lat[:,:,lon_range]
-                    emissions_lon = emissions_lat[:,lon_range]
+                    concs_lon = concs_lat[:,:,:,lon_range]
+                    emissions_lon = emissions_lat[:,:,lon_range]
                     
                     #pdb.set_trace()
                     
@@ -730,11 +737,11 @@ class data_filter_fixed:
                         
                         # extract and store the pressure levels used and corresponding concs
                         if len(lat_range) == 2:
-                            pressures[j,i,0:2,0:2,:] = pressures_lon[lev_i,:,:]
-                            concs[j,i,0:2,0:2,:] = concs_lon[lev_i,:,:]
+                            pressures[j,i,1:3,0:2,:] = pressures_lon[lev_i,:,:]
+                            concs[:,j,i,1:3,0:2,:] = concs_lon[:,lev_i,:,:]
                         else:
-                            pressures[j,i,0:2,:,:] = pressures_lon[lev_i,:,:]
-                            concs[j,i,0:2,:,:] = concs_lon[lev_i,:,:]
+                            pressures[j,i,1:3,:,:] = pressures_lon[lev_i,:,:]
+                            concs[:,j,i,1:3,:,:] = concs_lon[:,lev_i,:,:]
                     
                         
                     else:
@@ -750,16 +757,15 @@ class data_filter_fixed:
                         # extract and store the pressure levels used and corresponding concs
                         if len(lat_range) == 2:
                             pressures[j,i,:,0:2,:] = np.squeeze(pressures_lon[lev_i,:,:])
-                            concs[j,i,:,0:2,:]  = np.squeeze(concs_lon[lev_i,:,:])
+                            concs[:j,i,:,0:2,:]  = np.squeeze(concs_lon[:,lev_i,:,:])
                         else:
                             pressures[j,i,:,:,:] = np.squeeze(pressures_lon[lev_i,:,:])
-                            concs[j,i,:,:,:]  = np.squeeze(concs_lon[lev_i,:,:])
-                    
-                    
-                if len(lat_range) == 2 :
-                    emissions[j,:,0:2,:] = emissions_lon
-                else:
-                    emissions[j,:,:,:] = emissions_lon
+                            concs[:,j,i,:,:,:]  = np.squeeze(concs_lon[:,lev_i,:,:])
+                
+                    if len(lat_range) == 2 :
+                        emissions[:,j,i,0:2,:] = emissions_lon
+                    else:
+                        emissions[:,j,i,:,:] = emissions_lon
                        
                
                     
@@ -779,6 +785,8 @@ class data_filter_fixed:
         self.conc = np.squeeze(concs)
         self.conc_sd = np.squeeze(concs_sd)
         self.emis = np.squeeze(emissions)
+        self.concnames = data.concnames
+        self.emisnames = data.emisnames
         
         self.case = data.case.strip()
         self.species = data.species.strip()
@@ -794,125 +802,112 @@ class data_filter_fixed:
 # Class to filter the data
 # This uses an individual MOZART history file
 # and Matt's netcdf site file which contains the lat, lon and alt for column sites
+
+# mzfile: full name and path for the MOZART file of interest
+# conc_tag: the suffix of the variable of interest that you want to read in.
+# e.g for the variable CO2_VMR_avrg the suffix is '_VMR_avrg' 
+# sitefile: file listing the fixed sites
+# singlesite: set to the three letter acronym of a single site if you just want a single site
+
 class data_filter_column:
-    def __init__(self, mzfile, sitefile, month=1, year=2009):
+    def __init__(self, mzfile, sitefile, conc_tag = '_VMR_avrg', singlesite = None):
         
         # Read MOZART file name
-        data = read(mzfile)
-        
+        data = read(mzfile, conc_tag = conc_tag) 
         
         # Read site info file
         species = data.species
-        columndata = read_column_sitefile_nc(species=species, sitefile=sitefile, month=month, year=year)
+        columndata = read_fixed_sitefile_nc(species=species, sitefile=sitefile)
         
-        # Only want to look at time points that are within the range of the data file
-        # Convert model time to seconds since 1/1/2009 00:00:00
-        # compare that to Matt's timestamps which are already seconds since 1/1/2009 00:00:00
-        model_secs = [(i - dt.datetime(2009,1,1,0,0,0)).total_seconds() for i in data.time]
-        # model_secs = [(i - dt.datetime(2003,1,1,0,0,0)).total_seconds() for i in data.time]
-        
-        good_index = np.where( (columndata.time_secs >= model_secs[0]) & (columndata.time_secs <= model_secs[-1]) )[0]
-        
-        if len(good_index) != 0:
-            
-            # create parameters to store output
-            # initialise to nans
-            model_pressures = np.empty((len(columndata.time), len(data.lev)))*np.nan  
-            
-            print "model pressures shape"
-            print np.shape(model_pressures)
-            
-            model_concs = np.empty((len(good_index), len(data.lev)))*np.nan 
-            model_times = []
-            matched_lats = np.empty(len(good_index))*np.nan 
-            matched_lons = np.empty(len(good_index))*np.nan 
-            
-            
-            # loop through each time and lat/lon in the siteinfo
-            for j in np.arange(len(good_index)):
-                
-                # Use the haverseine code to determine the closest surface grid point to the given location
-                # haversine =  haver.multipledistances([columndata.lat[good_index[j]], columndata.lon[good_index[j]]] , data.lat, data.lon)     
-                
-                # Use the match_latlon which is based on bisect
-                latlon_index = match_latlon(columndata.lat[j],columndata.lon[j],data.lat, data.lon)      
-
-                    
-                # Match the column timestamp to the closest model timestamp
-                time_index = np.where( abs(model_secs - columndata.time_secs[good_index[j]]) == np.nanmin(abs(model_secs - columndata.time_secs[good_index[j]] ) ) )[0]
-                
-                # Sometimes can be halfway between two timestamps default to the first one
-                if len(time_index) > 1:
-                    time_index = time_index[0]
-                                
-                print 'time index: ' + str(time_index)
-    
-                print 'j: ' + str(j)
-                
-                print 'column time: ' + str(columndata.time[good_index[j]])
-                print 'model time: ' + str(data.time[time_index])
-                print 'column postion: ' + str(columndata.lat[good_index[j]]) + ', ' + str(columndata.lon[good_index[j]])
-                  
-                
-                matched_lats[j] = data.lat[latlon_index.closestindex[0]]
-                matched_lons[j] = data.lon[latlon_index.closestindex[1]]
-                
-                
-                print 'model lats: ' + str(matched_lats[j])
-                print 'model lons: ' + str(matched_lons[j])
-    
-                
-                
-                # Extract the column pressure at the matching time point for the matching lat/lon
-                # Pressure is time x lev x lat x lon
-                model_times.append(data.time[time_index])         
-                model_pressures[j,:] = np.squeeze(data.pressure[time_index,:, latlon_index.closestindex[0], latlon_index.closestindex[1]])        
-                model_concs[j,:] = np.squeeze(data.conc[time_index,:, latlon_index.closestindex[0], latlon_index.closestindex[1]])
-        
-                            
-           
-                        
-            self.sitetype = 'Column'
-            self.site_lat = columndata.lat[good_index]
-            self.site_lon = columndata.lon[good_index]
-            self.site_pressure = columndata.pressure[good_index]
-            self.site_time = [columndata.time[k] for k in good_index]
-            
-            self.model_time =np.array(model_times)
-            self.model_pressure = np.squeeze(model_pressures)
-            self.model_lat = matched_lats
-            self.model_lon = matched_lons
-            self.conc = np.squeeze(model_concs)
-            
-            self.case = data.case.strip()
-            self.species = species
-            self.mzfile = data.filename.strip()
-            self.sitefile = sitefile        
-            self.concunits = data.concunits
-            self.pressureunits = data.pressureunits    
-            self.good_index = good_index
-        
+        # Determine how many sites we're extracting for
+        if singlesite != None:
+            sites = [singlesite]
         else:
-            self.good_index = 0                             
+            sites = columndata.site
+        
+        # create parameters to store output
+        # initialise to nans
+        # need to determine how many tracers there are in the file
+        conc_no  = len(data.concnames)    
+
+        model_pressures = np.empty((len(sites), len(data.time), len(data.lev),))*np.nan 
+        model_concs = np.empty((conc_no, len(sites), len(data.time), len(data.lev)))*np.nan 
+        
+        # Lats and Lon are not going to change with time
+        matched_lats = np.empty((len(sites)))*np.nan 
+        matched_lons = np.empty((len(sites)))*np.nan 
+
+        # Model times will be identical for all locations        
+        model_times = data.time
+        
+
+        # loop through each site
+        for j in np.arange(len(sites)):
+            
+            # Extract the index for that site in the column data file
+            CD_j = np.where(columndata.site == sites[j])[0]
+
+            # Use the match_latlon which is based on bisect
+            # To identify the closest model point
+            latlon_index = match_latlon(columndata.lat[CD_j],columndata.lon[CD_j],data.lat, data.lon)      
+
+            print 'Matching site ' + sites[j]
+            print 'Actual location: ' + str(columndata.lat[CD_j]) + ', ' + str(columndata.lon[CD_j])
+            print 'Model matched location: ' + str(latlon_index.closestpoint[0]) + ', ' + str(latlon_index.closestpoint[1])
+
+            # Extract the matched location                
+            matched_lats[j] = data.lat[latlon_index.closestindex[0]]
+            matched_lons[j] = data.lon[latlon_index.closestindex[1]]
+            
+            # Extract the column pressure at the matching time point for the matching lat/lon
+            # Pressure and conc are time x lev x lat x lon
+            model_pressures[j,:] = np.squeeze(data.pressure[:,:, latlon_index.closestindex[0], latlon_index.closestindex[1]])     
+            model_concs[:,j,:] = np.squeeze(data.conc[:,:,:, latlon_index.closestindex[0], latlon_index.closestindex[1]])
+        
+                    
+        self.sitetype = 'Column'
+        self.site_lat = columndata.lat
+        self.site_lon = columndata.lon
+        self.site = sites
+        self.concnames = data.concnames
+        
+        self.model_time = np.array(model_times)
+        self.model_pressure = model_pressures
+        self.model_lat = matched_lats
+        self.model_lon = matched_lons
+        self.conc = model_concs
+        
+        self.case = data.case.strip()
+        self.species = species
+        self.mzfile = data.filename.strip()
+        self.sitefile = sitefile        
+        self.concunits = data.concunits
+        self.pressureunits = data.pressureunits    
 
 
 
 # Class to filter the data
 # This uses an individual MOZART history file
 # and a site file which contains the lat, lon, alt and time for moving sites
+
+# mzfile: full name and path for the MOZART file of interest
+# conc_tag: the suffix of the variable of interest that you want to read in.
+# e.g for the variable CO2_VMR_avrg the suffix is '_VMR_avrg' 
+# sitefile: file listing the fixed sites
+
 class data_filter_mobile:
-    def __init__(self, mzfile, sitefile = '/data/shared/GAUGE/CH4/global_obs_mobile_*/global_obs_mobile_*_200301.nc'):   
+    def __init__(self, mzfile, conc_tag = '_VMR_avrg', sitefile = None):   
                 
     
         # Read MOZART file name
-        data = read(mzfile)
+        data = read(mzfile, conc_tag = conc_tag)
         
         species = data.species
         #print 'reading site file : ' 
         print sitefile
         
         # Read site info file        
-        siteinfo = read_mobile_sitefile_nc(species = species, month = data.time[0].month, year = data.time[0].year)
+        siteinfo = read_mobile_sitefile_nc(sitefile = sitefile, species = species, month = data.time[0].month, year = data.time[0].year)
         
         # only proceed if the site file exists
         if siteinfo.fileexists :
@@ -932,7 +927,8 @@ class data_filter_mobile:
                                             obs_pressure = siteinfo.pressure, \
                                             obs_alt = siteinfo.alt, \
                                             obs_alt_units = siteinfo.alt_units, \
-                                            quiet = 1)
+                                            quiet = 1, \
+                                            concnames = data.concnames)
          
                 
             self.network = siteinfo.network
@@ -958,6 +954,7 @@ class data_filter_mobile:
             self.model_lat = matched_data.matched_lat
             self.model_lon = matched_data.matched_lon
             self.model_time = matched_data.matched_time
+            self.model_units = data.concunits
             
             self.conc = matched_data.matched_conc
             
@@ -989,7 +986,8 @@ class data_match_mobile:
                 obs_pressure = 0, \
                 obs_alt = 0, \
                 obs_alt_units = 0, \
-                quiet = 1):   
+                quiet = 1, \
+                concnames = ''):   
                 
             # check if the matching will be using alt or P
             if type(obs_pressure) == type(0):
@@ -1031,15 +1029,17 @@ class data_match_mobile:
             
             obs_secs = np.asarray([(i - dt.datetime(2009,1,1,0,0,0)).total_seconds() for i in obs_time])
 
-              
+            # need to determine how many tracers there are in the file
+            conc_no  = len(concnames)    
+
  
             # create parameters to store output
             matched_pressure = np.empty(len(obs_time))      
-            matched_conc = np.empty(len(obs_time))
+            matched_conc = np.empty(len(conc_no, obs_time))
             matched_time = []
             matched_lat = np.empty(len(obs_time))
             matched_lon = np.empty(len(obs_time))
-            matched_emissions = np.empty(len(obs_time))
+            matched_emissions = np.empty(len(conc_no, obs_time))
             
             # loop through each lat/lon in the same time range as the model output
             for j in np.arange(len(obs_time)):
@@ -1106,10 +1106,10 @@ class data_match_mobile:
                 # Extract the corresponding concentrations and emission
                 # Put data for each lat/lon (i.e. j value) into output arrays            
                 
-                matched_conc[j] = np.squeeze(model_conc[timeindex_j,lev_i, latlon_index[0],latlon_index[1]])
+                matched_conc[:,j] = np.squeeze(model_conc[:,timeindex_j,lev_i, latlon_index[0],latlon_index[1]])
                 
                 if type(model_emission) != type(1):
-                    matched_emissions[j] = np.squeeze(model_emission[timeindex_j,lev_i, latlon_index[0],latlon_index[1]])
+                    matched_emissions[:,j] = np.squeeze(model_emission[:,timeindex_j,lev_i, latlon_index[0],latlon_index[1]])
     
     
                 if quiet != 0 :
@@ -1133,6 +1133,7 @@ class data_match_mobile:
             self.obs_alt = obs_alt
             self.obs_pressure = obs_pressure
             self.obs_conc = obs_conc
+            self.concnames = concnames
 
             self.model_time = model_time
             self.model_lat = model_lat
@@ -1159,14 +1160,17 @@ class data_match_mobile:
             
             
 # Class to write out the data from a moving platform
-# Uses the h0 file 
+
+# filtereddata: the output of data_match_mobile
+# outdir: the directory you wish to write the file to. Defaults to the directory containing the original MOZART file.
+# filename: name for output file defaults to "species"_"casename".mzt.h0."Timestamp"_"sitetype".nc
+
 class write_ncdf_mobile:
-    def __init__(self, filtereddata, outdir = 0, filename=0, mzfile=0):
+    def __init__(self, filtereddata, outdir = 0, filename=0):
         
         import os
         
-        if mzfile == 0:
-            mzfile = filtereddata.mzfile
+        mzfile = filtereddata.mzfile
         
         if type(outdir) == int:
             outdir = os.path.dirname(mzfile)
@@ -1211,8 +1215,11 @@ class write_ncdf_mobile:
         ncmodel_lat = ncF.createVariable('model_lat', 'f', ('time',))
         ncmodel_press = ncF.createVariable('model_pressure', 'f', ('time',))
 
-        ncmodel_conc = ncF.createVariable('model_conc', 'f', ('time'))
-        
+
+        for i in np.arange(len(filterdata.concnames)):
+            ncmodel_conc = ncF.createVariable(filtereddata.concnames[i], 'f', ('time'))
+            ncmodel_conc[:] = filtereddata.conc[i,:]
+            ncmodel_conc.units = filtereddata.model_units[i]
         
         # Fill the variables
         ncsitenames[:] = filtereddata.site        
@@ -1234,7 +1241,7 @@ class write_ncdf_mobile:
         ncmodel_lat[:] = filtereddata.model_lat
         ncmodel_press[:] = filtereddata.model_pressure
 
-        ncmodel_conc[:] = filtereddata.conc
+        
         
         
         # Give the variables some attributes        
@@ -1251,6 +1258,11 @@ class write_ncdf_mobile:
 
 
 # Class to write out the data from a stationary platform
+
+# filtereddata: the output of data_match_fixed
+# outdir: the directory you wish to write the file to. Defaults to the directory containing the original MOZART file.
+# filename: name for output file defaults to "species"_"casename".mzt.h0."Timestamp"_"sitetype".nc
+
 class write_ncdf_fixed:
     def __init__(self, filtereddata, outdir = 0, filename=0):
         
@@ -1294,8 +1306,6 @@ class write_ncdf_fixed:
         nclon = ncF.createVariable('lon', 'f', ('sitenames','boxwidth'))
         nclat = ncF.createVariable('lat', 'f', ('sitenames','boxwidth'))
         ncpress = ncF.createVariable('pressure', 'f', ('sitenames','time','boxwidth','boxwidth','boxwidth',))
-        ncconc = ncF.createVariable('conc', 'f', ('sitenames','time','boxwidth','boxwidth','boxwidth',))
-        ncemiss = ncF.createVariable('emiss', 'f', ('sitenames','time','boxwidth','boxwidth',))
         
         # Fill the variables
         ncsitenames[:] = filtereddata.sitenames        
@@ -1307,15 +1317,20 @@ class write_ncdf_fixed:
         nclon[:] = filtereddata.model_lon
         nclat[:] = filtereddata.model_lat
         ncpress[:] = filtereddata.model_pressure
-        ncconc[:] = filtereddata.conc
-        ncemiss[:] = filtereddata.emis
+        
+        for i in np.arange(len(filtereddata.concnames)):
+            ncconc = ncF.createVariable(filtereddata.concnames[i], 'f', ('sitenames','time','boxwidth','boxwidth','boxwidth',))        
+            ncconc[:] = filtereddata.conc[i,:,:,:,:,:]
+            ncconc.units = filtereddata.concunits[i]
         
         
+            ncemiss = ncF.createVariable(filtereddata.emisnames[i], 'f', ('sitenames','time','boxwidth','boxwidth'))        
+            ncemiss[:] = filtereddata.emis[i,:]
+            ncemiss.units = filtereddata.emissunits[i]
+
         # Give the variables some attributes        
         nclon.units = 'Degrees east'
         nclat.units = 'Degrees north'
-        ncconc.units = filtereddata.concunits
-        ncemiss.units = filtereddata.emissunits
         ncpress.units = filtereddata.pressureunits
         nctime.units = 'seconds since 2009-01-01 00:00:00'
         
@@ -1324,20 +1339,27 @@ class write_ncdf_fixed:
 
 
 # Class to write out the data from a stationary platform
+
+# filtereddata: the output of data_match_column
+# outdir: the directory you wish to write the file to. Defaults to the directory containing the original MOZART file.
+# filename: name for output file defaults to "species"_"casename".mzt.h0."Timestamp"_"sitetype".nc
+
 class write_ncdf_column:
     def __init__(self, filtereddata, outdir = 0, filename=0):
         
         import os
+        
+        
         
         if type(outdir) == int:
             outdir = os.path.dirname(filtereddata.mzfile)
     
         if type(filename) == int:
             if type(filtereddata.mzfile) == tuple:            
-                filetimestamp = filtereddata.mzfile[0][filtereddata.mzfile[0].find('h1')+ 2: filtereddata.mzfile[0].find('.nc')]
+                filetimestamp = filtereddata.mzfile[0][filtereddata.mzfile[0].find('h0')+ 2: filtereddata.mzfile[0].find('.nc')]
             if type(filtereddata.mzfile) == str:
-                filetimestamp = filtereddata.mzfile[filtereddata.mzfile.find('h1')+ 2: filtereddata.mzfile.find('.nc')]
-            filename = filtereddata.species + '_' + filtereddata.case + '.mzt.h1'+  filetimestamp + '_' + filtereddata.sitetype+'.nc'
+                filetimestamp = filtereddata.mzfile[filtereddata.mzfile.find('h0')+ 2: filtereddata.mzfile.find('.nc')]
+            filename = filtereddata.species + '_' + filtereddata.case + '.mzt.h0'+  filetimestamp + '_' + filtereddata.sitetype+'.nc'
 
         print 'writing file: ' + outdir + '/'+ filename
         
@@ -1346,7 +1368,8 @@ class write_ncdf_column:
         
         # Create the dimensions
         ncF.createDimension('time', len(filtereddata.model_time))
-        ncF.createDimension('lev', np.shape(filtereddata.model_pressure)[1])
+        ncF.createDimension('lev', np.shape(filtereddata.model_pressure)[2])
+        ncF.createDimension('site', len(filtereddata.site))
         
         
         # Make some global attributes
@@ -1357,30 +1380,34 @@ class write_ncdf_column:
         ncF.sitetype = filtereddata.sitetype
         
         # Create the variables 
+        # time variable the same as the number of time points
         nctime = ncF.createVariable('time', 'i', ('time',))   
         
-        nclon = ncF.createVariable('lon', 'f', ('time',))
-        nclat = ncF.createVariable('lat', 'f', ('time',))
+        # Lats and lons - one per site
+        nclon = ncF.createVariable('lon', 'f', ('site',))
+        nclat = ncF.createVariable('lat', 'f', ('site',))
         
-        ncpress = ncF.createVariable('pressure', 'f', ('time', 'lev',))
-        ncconc = ncF.createVariable('conc', 'f', ('time', 'lev',))
+        # Pressure and concs
+        # Sites by time by lev
+        ncpress = ncF.createVariable('pressure', 'f', ('site','time', 'lev',))
+        
+        for i in np.arange(len(filtereddata.concnames)):
+            ncconc = ncF.createVariable(filtereddata.concnames[i], 'f', ('site','time', 'lev',))
+            ncconc[:] = filtereddata.conc[i,:]    
+            ncconc.units = filtereddata.concunits[i]
         
         # Fill the variables               
         # times as seconds since 1/1/2009
         nctime[:] = [(t - dt.datetime(2009,1,1,0,0,0)).total_seconds() for t in filtereddata.model_time]     
    
-        
-   
         nclon[:] = filtereddata.model_lon
         nclat[:] = filtereddata.model_lat
         ncpress[:,:] = filtereddata.model_pressure
-        ncconc[:,:] = filtereddata.conc
         
         
         # Give the variables some attributes        
         nclon.units = 'Degrees east'
         nclat.units = 'Degrees north'
-        ncconc.units = filtereddata.concunits
         nctime.units = 'seconds since 2009-01-01 00:00:00'
         ncpress.units = filtereddata.pressureunits
 
@@ -1389,227 +1416,26 @@ class write_ncdf_column:
         print "Written " + outdir + '/'+ filename
 
 
-# Class to write out the data for the mobile platforms in the GONZI format
-# this format has a lot of -9999's in the obs 
-# need to filter these out first
-# Extracts from the h0 files and fills in the Model_species variable in the GONZI file
-
-class write_GONZI:
-    def __init__(self, species = 'N2O', \
-        modeloutput_dir = '/data/as13988/MOZART/', \
-        obs_dir = '/shared_data/snowy/shared/GAUGE/', \
-        outdir = 0, filename=0, scaling = 1e06):
-        
-        import os
-        import shutil
-        import fnmatch
-        
-        
-        gonzifile_acf = '/data/as13988/GAUGE/model_protocol_acf_v3.nc'      
-        gonzifile_ferry = '/data/as13988/GAUGE/model_protocol_ferry_v3.nc'
-         
-        # Copy the original gonzi files
-        # check if a copy already exists
-        if os.path.exists(gonzifile_acf[:-3] + '_MZT.nc') != True:
-            shutil.copy2(gonzifile_acf,  gonzifile_acf[:-3] + '_MZT.nc')
-
-        if os.path.exists(gonzifile_ferry[:-3] + '_MZT.nc') != True:
-            shutil.copy2(gonzifile_ferry,  gonzifile_ferry[:-3] + '_MZT.nc')         
-         
-         
-        # Read in the gonzi aircraft file 
-        gonzi_acf = read_sitefile_GONZI_nc(gonzifile_acf[:-3] + '_MZT.nc')        
-        gonzi_ferry = read_sitefile_GONZI_nc(gonzifile_ferry[:-3] + '_MZT.nc')  
-        
-        # Find all the model h0 output files
-        filepattern = 'FWDModelComparison_NewEDGAR*h0*'
-             
-        matches = []
-        for root, dirnames, filenames in os.walk(modeloutput_dir+species+'/output/FWDModelComparison_NewEDGAR/'):
-            for filename in fnmatch.filter(filenames, filepattern):
-                matches.append(os.path.join(root, filename))   
-                
-        filenames = matches
-        filenames.sort()
-        
-        
-        # determine the years and months of these files and calculate a corresponding date
-        years = [int(i[-19:-15]) for i in filenames]
-        months = [int(i[-14:-12]) for i in filenames]
-                
-        filedates = [dt.datetime(years[j], months[j], 1) for j in np.arange(len(years))]
-        
-        
-        # Only want to read in the model output for months/years in the obs
-        # use bisect to find where the min and max dates intersect with the filedates
-        start = bisect.bisect_left(filedates, min(gonzi_acf.time)) -1
-        finish = bisect.bisect_right(filedates, max(gonzi_acf.time))
-        
-        modelfiles = filenames[start:finish]
-        
-        
-        # create lists to store the model data
-        model_time = []
-        model_conc = []
-        model_lat = []
-        model_lon = []      
-        model_pressure = []
-        
-        
-        # Read in the model output files
-        for i in modelfiles:
-            modeltemp = read(i)
-         
-            model_time.extend(modeltemp.time)
-            model_conc.extend(modeltemp.conc)
-            model_pressure.extend(modeltemp.pressure)
-        
-        model_lat = modeltemp.lat
-        model_lon = modeltemp.lon
-        model_P0 = modeltemp.P0
-        
-         
-        conc_index = np.where(gonzi_acf.species_tags == species)[0]      
-         
-        # Use the data matching code to extract the matching data
-        matched_data = data_match_mobile(species = species, \
-                                        model_conc = np.array(model_conc), \
-                                        model_lat = np.array(model_lat), \
-                                        model_lon = np.array(model_lon), \
-                                        model_time = model_time, \
-                                        model_P0 = model_P0, \
-                                        model_pressure = np.array(model_pressure), \
-                                        obs_conc = np.squeeze(np.array(gonzi_acf.conc[conc_index,:,0])), \
-                                        obs_lat = np.squeeze(np.array(gonzi_acf.lat[:,0])), \
-                                        obs_lon = np.squeeze(np.array(gonzi_acf.lon[:,0])), \
-                                        obs_time = gonzi_acf.time, \
-                                        obs_pressure = 0, \
-                                        obs_alt = np.squeeze(np.array(gonzi_acf.alt[:,0])), \
-                                        obs_alt_units = gonzi_acf.alt_units, \
-                                        quiet = 1)   
-                
-
-        
-       
-        
-        print 'Writing to file: ' + gonzifile_acf[:-3] + '_MZT.nc'
-        
-        #Write NetCDF file
-        ncF = netCDF4.Dataset(gonzifile_acf[:-3] + '_MZT.nc', 'a')
-        
-        # Extract the species variable
-        species_var = ncF.variables['Model_'+species][:]
-        
-        # check that the length of the variable matches the length of the extracted data
-        if len(species_var[gonzi_acf.good_index]) != len(matched_data.matched_conc):
-            print 'Something has gone horribly wrong with the matching'
-            print 'Data not inserted into the gonzi file'
-        
-        else:
-            
-            # Put the matched data into the non NAN sections of the variables 
-           # pdb.set_trace()            
-            
-            
-            species_var[[gonzi_acf.good_index],0] = matched_data.matched_conc*scaling
-            ncF.variables['Model_' + species][:] = species_var
-        
-            ncF.close()
-            print'"Written file: ' + gonzifile_acf[:-3] + '_MZT.nc'
-
-
-        # Match to the ferry file
-
-        # Only want to read in the model output for months/years in the obs
-        # use bisect to find where the min and max dates intersect with the filedates
-        start = bisect.bisect_left(filedates, min(gonzi_ferry.time)) -1
-        finish = bisect.bisect_right(filedates, max(gonzi_ferry.time))
-        
-        modelfiles = filenames[start:finish]
-        
-        
-        # create lists to store the model data
-        model_time = []
-        model_conc = []
-        model_lat = []
-        model_lon = []      
-        model_pressure = []
-        
-        
-        # Read in the model output files
-        for i in modelfiles:
-            modeltemp = read(i)
-         
-            model_time.extend(modeltemp.time)
-            model_conc.extend(modeltemp.conc)
-            model_pressure.extend(modeltemp.pressure)
-        
-        model_lat = modeltemp.lat
-        model_lon = modeltemp.lon
-        model_P0 = modeltemp.P0
-        
-         
-        conc_index = np.where(gonzi_ferry.species_tags == species)[0]      
-         
-        # Use the data matching code to extract the matching data
-        matched_data = data_match_mobile(species = species, \
-                                        model_conc = np.array(model_conc), \
-                                        model_lat = np.array(model_lat), \
-                                        model_lon = np.array(model_lon), \
-                                        model_time = model_time, \
-                                        model_P0 = model_P0, \
-                                        model_pressure = np.array(model_pressure), \
-                                        obs_conc = np.squeeze(np.array(gonzi_ferry.conc[conc_index,:,0])), \
-                                        obs_lat = np.squeeze(np.array(gonzi_ferry.lat[:,0])), \
-                                        obs_lon = np.squeeze(np.array(gonzi_ferry.lon[:,0])), \
-                                        obs_time = gonzi_ferry.time, \
-                                        obs_pressure = 0, \
-                                        obs_alt = 0, \
-                                        obs_alt_units = gonzi_ferry.alt_units, \
-                                        quiet = 1)   
-                
-
-        
-       
-        
-        print 'Writing to file: ' + gonzifile_ferry[:-3] + '_MZT.nc'
-        
-        #Write NetCDF file
-        ncF = netCDF4.Dataset(gonzifile_ferry[:-3] + '_MZT.nc', 'a')
-        
-        # Extract the species variable
-        species_var = ncF.variables['Model_'+species][:]
-        
-        # check that the length of the variable matches the length of the extracted data
-        if len(species_var[gonzi_ferry.good_index]) != len(matched_data.matched_conc):
-            print 'Something has gone horribly wrong with the matching'
-            print 'Data not inserted into the gonzi file'
-        
-        else:
-            
-            # Put the matched data into the non NAN sections of the variables 
-            species_var[[gonzi_ferry.good_index],0] = matched_data.matched_conc*scaling
-            ncF.variables['Model_' + species][:] = species_var
-        
-            ncF.close()
-            print'"Written file: ' + gonzifile_ferry[:-3] + '_MZT.nc'
-            
             
 # ___________________________________________________________________________________________________________________
 # CODE TO READ THE DIFFERENT DATA TYPES
 # ___________________________________________________________________________________________________________________
 # Class to read in the filtered output
+
+# filename: files you'd like to read in. This overides setting the filepattern variable.
+# filepattern: suffix on end of files that you'd like to read in
+# species: speies of interest (set this if using filepattern)
 class read_ncdf_fixed:
-    def __init__(self, filepattern = '*_TT.nc', filenames = 0, species='CH4', directory = 1):
+    def __init__(self, filenames = None, filepattern = '*_TT.nc',  species='CH4', directory = None):
         
-        if type(filenames) == type(0):
+        if filenames is None:
             import fnmatch
             import os
             
-            if type(directory) == type(1):
-                directory = '/data/as13988/MOZART/'+species+'/output/FWDModelComparison_NewEDGAR/'
+            if directory is None :
+                directory = '/data/as13988/MOZART/'+species.upper()+'/output/FWDModelComparison_NewEDGAR/'
             
-            filepattern = '*'+species+filepattern
+            filepattern = '*'+species.upper()+filepattern
             
             matches = []
             for root, dirnames, filenames in os.walk(directory):
@@ -1638,8 +1464,6 @@ class read_ncdf_fixed:
                 sitenames = data.variables['sitename'][:] 
                 
                 time_j = np.transpose(data.variables['time'][:])
-                conc_j = np.transpose(data.variables['conc'][:])
-                emis_j = np.transpose(data.variables['emiss'][:])
                 pressure_j = np.transpose(data.variables['pressure'][:])
                 
                 # Create the time variable
@@ -1647,7 +1471,36 @@ class read_ncdf_fixed:
                 sincedate = dateunits[dateunits.find('seconds since ') +14:-1] # seconds since 2014-01-01 00:00:00
                     
                 dt_date_j = [ dt.datetime.strptime(sincedate, "%Y-%m-%d %H:%M:%S") + dt.timedelta(seconds=(i).astype('int')) for i in time_j]
+
+                if 'h0' in filenames[j]:
+                    conc_tag = '_VMR_avrg'
                 
+                if 'h1' in filenames[j]:        
+                    conc_varname = '_13:30_LT'
+                
+                if 'h2' in filenames[j]:        
+                    conc_varname = '_VMR_avrg'
+        
+                # Might be multiple tracers
+                conc_varname = [i for i in data.variables.keys() if conc_tag in i]      
+                conc_j = []
+                if j == 0: conc_units = []
+                
+                for i in conc_varname:        
+                    conc_j.append(data.variables[i][:]) 
+                    if j == 0: conc_units = data.variables[i].units
+                    
+                if 'h0' in filename:
+                    # Might be multiple tracers
+                    emis_varname = [i for i in data.variables.keys() if '_SRF_EMIS_avrg' in i]      
+                    
+                    emis_j = []
+                    if j==0 : emis_units = []
+                    
+                    
+                    for i in emis_varname:        
+                        emis_j.append(data.variables[i][:]) 
+                        if j==0: emis_units = data.variables[i].units
                 
                 if j == 0:
                 
@@ -1655,16 +1508,20 @@ class read_ncdf_fixed:
                     emis = emis_j
                     pressure =  pressure_j
                     dt_date = dt_date_j              
-                    
+                    case = str(data.__getattribute__('case')).strip()
+                    sitetype = str(data.__getattribute__('sitetype')).strip()
+                    sitefile = str(data.__getattribute__('sitefile')).strip()
+                    pressureunits = data.variables['pressure'].getncattr('units')
                 else:
                     
-                    
-                    conc = np.concatenate((conc, conc_j), axis=3)
+                    conc = np.concatenate((conc, conc_j), axis=2)
                     emis = np.concatenate((emis, emis_j), axis=2)
                     pressure = np.concatenate((pressure, pressure_j), axis=3)                
                     dt_date = np.concatenate((dt_date, dt_date_j))
-          
-                    
+                
+                data.close()
+            
+            
             self.time = dt_date
             self.emis = emis
             self.conc = conc
@@ -1673,26 +1530,30 @@ class read_ncdf_fixed:
             self.lat = lat
             self.sitenames = sitenames
             self.filenames = filenames         
-            self.species = str(data.__getattribute__('species')).strip()
-            self.case = str(data.__getattribute__('case')).strip()
-            self.sitetype = str(data.__getattribute__('sitetype')).strip()
-            self.sitefile = str(data.__getattribute__('sitefile')).strip()
+            self.species = species
+            self.case = case
+            self.sitetype = sitetype
+            self.sitefile = sitefile
             
-            self.concunits = data.variables['conc'].getncattr('units')
-            self.emissunits = data.variables['emiss'].getncattr('units')
-            self.pressureunits = data.variables['pressure'].getncattr('units')
+            self.concnames =conc_varname
+            self.units = conc_units
+            self.pressureunits = pressureunits
  
 
-# Class to read in the filtered output
+# Class to read in the filtered output for mobile platforms
+
+# filename: files you'd like to read in this overides setting the filepattern variable
+# filepattern: suffix on end of files that you'd like to read in
+# species: speies of interest (set this if using filepattern)
 class read_ncdf_mobile:
-    def __init__(self, species = 'CH4', filepattern = '*_mobile.nc', filenames = 0, \
-        directory = 1):
+    def __init__(self,  filenames = None, species = 'CH4', filepattern = '*_mobile.nc',\
+        directory = None):
         
-        if type(filenames) == type(0):
+        if filename is None:
             import fnmatch
             import os
             
-            if type(directory) == type(1):
+            if directory is None:
                 directory = '/data/as13988/MOZART/'+species+'/output/FWDModelComparison_NewEDGAR/'
             
             filepattern = '*'+species+filepattern
@@ -1807,17 +1668,30 @@ class read_ncdf_mobile:
 # ___________________________________________________________________________________________________________________
 
 # Class to plot the filtered output
-# Plots the output of read_ncdf_fixed
+# Plots the output of read_ncdf_fixed against the obs at the given site
+
+# data: output of read_necdf_fixed
+# sitename: 3 letter acronym of the site of interest
+# scaling: a scaling factoras the MOZART output is in mol/mol not ppm or ppb
+# x_range: set a fixed range for the x axis 
+# save_plot: set if you'd like to save the plot. Saves the pot to a new subdirectory 'plots' in the same location as the data file
+# network: set the network of the obs you wish to compare to
+# height: set the height of the intake you wish to plot
+# speciesname: set if you wish to plot of a single species only. Otherwise default to plotting all species given in the file.
+# diff: set to plot the difference between the MOZART output and the observations
+
 class plot_ncdf_fixed:
-    def __init__(self, data, sitename = 'mhd', scaling = 1e06, x_range = 1, save_plot = 0):
+    def __init__(self, data, sitename = 'mhd', scaling = 1e06, x_range = None, save_plot = 0, network = None, height = None, speciesname = None, diff=None):
         
         import matplotlib.ticker as ticker
         import matplotlib.pyplot as plt
+        import acrg_plottools as plottools
         
         # Extract the model data for the given site
         sites = data.sitenames
         matched = np.where(sites == sitename)[0]
-        
+          
+        print matched          
           
         if len(matched) > 1:
             # This means that the site was listed twice in the site file as two measurement networks share it.
@@ -1831,22 +1705,39 @@ class plot_ncdf_fixed:
             print 'Check the sitename or try using lowercase'
         else: 
             time = data.time
-            
             # conc is lon x lat x lev x time x site
-            conc = np.squeeze(data.conc[:,:,:,:,matched])
-            #pressure = np.squeeze(data.pressure[:,:,:,:,matched])
-                       
+            #conc = np.squeeze(data.conc[:,:,:,:,matched])
+            pressure = np.squeeze(data.pressure[:,:,:,:,matched])
             
-            reshapedconc = np.reshape(conc,(27,np.shape(conc)[-1]))
+            # Plot for the given species only at multiple gridboxes
+            if speciesname != None:
+                species_no = (np.where(speciesname in data.concnames))[0]
+                # conc is species x site x time x lev x lon x lat
+                conc = np.squeeze(data.conc[species_no,matched,:,:,:])
+                reshapedconc = np.reshape(conc,(np.shape(conc)[0],27))
+                reshapedpressure = np.reshape(pressure, (27,np.shape(pressure)[-1]))
+                
+                n_colours = 27
+                
+            # PLot all the species/tracers at the central point only
+            else:
+                # conc is species x site x time x lev x lon x lat
+                conc = np.squeeze(data.conc[:,matched,:,1,1,1])
+                reshapedconc = np.transpose(conc)
+                reshapedpressure = np.squeeze(pressure[1,1,1,:])
+
+                n_colours = len(data.concnames)
             
+            
+             
             # Indicies for lats, lons and levs
             lat_i = [1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3]
             lon_i = [1,1,1,2,2,2,3,3,3,1,1,1,2,2,2,3,3,3,1,1,1,2,2,2,3,3,3]
             lev_i = [1,2,3,1,2,3,1,2,3,1,2,3,1,2,3,1,2,3,1,2,3,1,2,3,1,2,3]  
             
-            n_colours = 27        
+                    
             
-            colours = generatecolours(n_colours).RGB
+            colours = plottools.generatecolours(n_colours).RGB
             
             # Plot model ooutput for fixed site data
             fig = plt.figure()
@@ -1858,11 +1749,16 @@ class plot_ncdf_fixed:
             
             for i in np.arange(n_colours):      
                 
-                conc_i = reshapedconc[i]        
-    
+                conc_i = reshapedconc[:,i]        
+                yaxislabel = data.species + '(' + data.units + '*' + str(scaling) + ')'
+               
+                if diff is not None:
+                    conc_i = conc_i - reshapedconc[:,diff]
+                    yaxislabel = data.species + '- '+data.concnames[diff] + ' (' + data.units + '*' + str(scaling) + ')'
+                    
                 # Plot the data
                 plt1 = plt.subplot()
-                            
+                
                 plt1.plot(time, conc_i*scaling, "-", color = colours[i], markersize = 3)
                     
                 y_formatter = ticker.ScalarFormatter(useOffset=False)
@@ -1872,22 +1768,24 @@ class plot_ncdf_fixed:
                 plt1.xaxis.set_major_locator(x_tickno_formatter)
                 
                 plt1.set_title('Model output at '+ sitename)
-                plt1.set_ylabel(data.species + '(' + data.concunits + '*' + str(scaling) + ')')
+                plt1.set_ylabel(yaxislabel)
                 plt1.set_xlabel('Time')
     
-                legend_i = str(data.lat[matched,lat_i[i]-1][0]) + ', ' +str(data.lon[matched,lon_i[i]-1][0]) + ', ' + str(lev_i[i]-1)
-    
+                if speciesname != None: legend_i = str(data.lat[matched, lat_i[i]-1][0]) + ', ' +str(data.lon[matched,lon_i[i]-1][0]) + ', ' + str(lev_i[i]-1)
+                if speciesname is None: legend_i = data.concnames[i]
+                    
                 plt.figtext(0.82, 0.85-(0.03*legend_spacing[i]), legend_i, verticalalignment='bottom', \
                 horizontalalignment='left', color=colours[i], fontsize=8)
                     
-            plt1.plot(time, reshapedconc[13]*scaling, "--", color = 'black', markersize = 3)
     
-    
-            plt.figtext(0.82, 0.88, 'Lat, Lon, Lev', verticalalignment='bottom', horizontalalignment='left', color='black', fontsize=8)
-            plt.figtext(0.6, 0.2, 'Central point ---', verticalalignment='bottom', horizontalalignment='left', color='black', fontsize=8)
-               
+            if speciesname != None: 
+                plt1.plot(time, reshapedconc[:,13]*scaling, "--", color = 'black', markersize = 3)
+                plt.figtext(0.82, 0.88, 'Lat, Lon, Lev', verticalalignment='bottom', horizontalalignment='left', color='black', fontsize=8)
+                plt.figtext(0.6, 0.2, 'Central point ---', verticalalignment='bottom', horizontalalignment='left', color='black', fontsize=8)
+              
             
-            if type(x_range) != type(1):
+            
+            if x_range != None:
                 plt1.set_xlim(x_range)            
             
             if save_plot != 0:
@@ -1900,115 +1798,45 @@ class plot_ncdf_fixed:
         
             plt.close()
             
-            
-            #pdb.set_trace()
-            
-            # Plot model output and obs    
-            # Read in the obs
-            if data.species == 'CH4' :
-                obs = read_fixed_sitefile_nc(species = data.species, dir = '/data/shared/GAUGE/')
-        
-                # Extract the data for the given site
-                index = np.where(obs.site == sitename)[0] 
-                
-                # loop through each network at each site
-                for j in index:
-                    
-                    print 'Plotting site ' + obs.site[j]
-                    print 'Plotting data from ' + obs.network[j]                
-                    
-                    # find where the obs exist i.e. != nan   
-                    obs_index = np.where(np.isfinite(np.squeeze(obs.conc[j,:])))[0]      
-                    
-                    print 'Number of finite elements in obs data = ' + str(len(obs_index))
-                    
-                    if len(obs_index) != 0:   
-                    
-                        obs_conc = np.squeeze(obs.conc[j,:])[obs_index]
-                        obs_time = [obs.time[i] for i in obs_index]
-                        
-                        # Only plot model output for the same time range as the obs
-                        start = bisect.bisect_left(time, min(obs_time)) -1
-                        finish = bisect.bisect_right(time, max(obs_time))
-                    
-                        model_time = time[start:finish]
-                        model_conc = reshapedconc[13][start:finish]
-        
-                    else:
-                        model_time = time
-                        model_conc = reshapedconc[13]
-                        obs_conc = []
-                        obs_time = []
-                        
-                        
-                    #pdb.set_trace()  
-                    
-                    fig = plt.figure()
-                     
-                    # Plot the data
-                    plt1 = plt.subplot()
-                                
-                    plt1.plot(model_time, model_conc*scaling, "bo-", markersize = 3, markeredgecolor = 'blue')
-                    plt1.plot(obs_time, np.squeeze(obs_conc), "ro-", markersize = 3, markeredgecolor = 'red')
-                     
-                    y_formatter = ticker.ScalarFormatter(useOffset=False)
-                    plt1.yaxis.set_major_formatter(y_formatter)
-                    
-                    x_tickno_formatter = ticker.MaxNLocator(5)
-                    plt1.xaxis.set_major_locator(x_tickno_formatter)
-                    
-                    plt1.set_title('Model output and obsservations at '+ sitename + '(' + obs.network[j] + ')' )
-                    plt1.set_ylabel(data.species + '(' + data.concunits + '*' + str(scaling) + ')')
-                    plt1.set_xlabel('Time')
-        
-                    
-                    if save_plot != 0:
-                        outdir = os.path.dirname(os.path.dirname(data.filenames[0]))
-                        fig.savefig(outdir + '/plots/' + data.species+ '_'+ obs.network[j] + '_'+ sitename+ '.png', dpi=100)
-                        print'Figure saved as : ' + outdir + '/plots/' + data.species+ '_'+ obs.network[j] + '_'+ sitename+ '.png'
-                    
-                    
-                    plt.show()
-                
-                    plt.close()
-             
-            # read in the AGAGE_UKMO files
-            else :
-                
+            if speciesname != None:
+                 # Plot model output and obs    
+                # Read in the obs
                 import acrg_agage
                 import json
                 
                 print 'Plotting site ' + sitename
-                print 'Plotting data from UKMO'            
+                print 'Plotting data from /dagage2/agage/metoffice/processed_obs/'            
                 
                 # check if there is UKMO data for that site
                 acrg_path=os.path.split(os.path.realpath(__file__))
     
-                with open(acrg_path[0] + "/acrg_site_info_UKMO.json") as f:
+                with open(acrg_path[0] + "/acrg_site_info.json") as f:
                     site_info=json.load(f)
                 
                 site = acrg_agage.synonyms(sitename, site_info)
+                
                 if site is None:
-                    print("Site " + sitename + ' is not listed in UKMO data')
+                    print("Site " + sitename + ' is not listed')
                 
                 else:
                     
-                    obs_time, obs_conc, obs_sigma = acrg_agage.get(sitename, data.species)                
+                    obs = acrg_agage.get(sitename, data.species, network = network, height = height)         
+                    
+                                   
                     
                     # Only plot model output for the same time range as the obs
                     #start = bisect.bisect_left(time, min(obs_time)) -1
                     #finish = bisect.bisect_right(time, max(obs_time))
                     
                     model_time = time
-                    model_conc = reshapedconc[13]
+                    model_conc = reshapedconc[:,13]
                     
                     fig = plt.figure()
                      
                     # Plot the data
                     plt1 = plt.subplot()
-                                
                     
-                    plt1.plot(obs_time, np.squeeze(obs_conc), "r-", markersize = 3, markeredgecolor = 'red')
+                    plt1.plot(obs.index, obs['mf'], "r-", markersize = 3, markeredgecolor = 'red')
                     plt1.plot(model_time, model_conc*scaling, "b-", markersize = 3, markeredgecolor = 'blue')
                      
                     y_formatter = ticker.ScalarFormatter(useOffset=False)
@@ -2017,11 +1845,13 @@ class plot_ncdf_fixed:
                     x_tickno_formatter = ticker.MaxNLocator(5)
                     plt1.xaxis.set_major_locator(x_tickno_formatter)
                     
-                    plt1.set_title('Model output and obsservations at '+ sitename + '(UKMO)' )
-                    plt1.set_ylabel(data.species + '(' + data.concunits + '*' + str(scaling) + ')')
+                    plt1.set_title('Model output and observations at '+ sitename )
+                    plt1.set_ylabel(data.species + '(' + data.units + '*' + str(scaling) + ')')
                     plt1.set_xlabel('Time')
         
-                    
+                    if x_range != None:
+                        plt1.set_xlim(x_range)
+                        
                     if save_plot != 0:
                         outdir = os.path.dirname(os.path.dirname(data.filenames[0]))
                         fig.savefig(outdir + '/plots/' + data.species+ '_UKMO_'+ sitename+ '.png', dpi=100)
@@ -2033,13 +1863,20 @@ class plot_ncdf_fixed:
                 
                     plt.close()
                  
-                 
+                                         
         
         
         
 # Class to plot the filtered output
 # Plots the output of read_ncdf_mobile
 # defaults to not plotting the obs concentrations as we only have these for CH4 at the moment
+
+# data: output of read_necdf_fixed
+# sitename: 3 letter acronym of the site of interest
+# scaling: a scaling factoras the MOZART output is in mol/mol not ppm or ppb
+# save_plot: set if you'd like to save the plot. Saves the pot to a new subdirectory 'plots' in the same location as the data file
+# no_obs: set if you don't want to plot the observations
+
 class plot_ncdf_mobile:
     def __init__(self, data, sitename = 'ferry', save_plot = 0, scaling = 1e06, no_obs=1):
         
@@ -2172,50 +2009,46 @@ class plot_ncdf_mobile:
 
 
 
-# Generates a given number of HSV or RGB tuples spread over colour space 
-class generatecolours:
-    def __init__(self, N):
-        
-        import colorsys        
-        
-        HSV_tuples = [(x*1.0/N, 0.5, 0.5) for x in range(N)]
-        RGB_tuples = map(lambda x: colorsys.hsv_to_rgb(*x), HSV_tuples)
-        
-        self.RGB = RGB_tuples
-        self.HSV = HSV_tuples
-
-
-# Code to set up input for contour plotting
-class plot_map_setup:
-    def __init__(self, data, 
-                 lon_range = None, lat_range = None):
-
-        if lon_range is None:
-            lon_range = (min(data.lon), max(data.lon))
-        if lat_range is None:
-            lat_range = (min(data.lat), max(data.lat))
-        
-        m = Basemap(projection='gall',
-            llcrnrlat=lat_range[0], urcrnrlat=lat_range[1],
-            llcrnrlon=lon_range[0], urcrnrlon=lon_range[1],
-            resolution='l')
-
-        lons, lats = np.meshgrid(data.lon, data.lat)
-        x, y = m(lons, lats)
-        
-        self.x = x
-        self.y = y
-        self.m = m
-
-
 # Plot a filled contour map of a given MZT output
 # Defaults to plotting the first timestep at ground level
-def plotlevel_MZT(data, level = -1, timestep = 0, out_filename=None, 
-         lon_range=None, lat_range=None,
-         map_data = None, nlevels = 10, minconc = None, maxconc = None):
 
+# data: output of read
+# lat: 1D array of latitudes (optinal)
+# lon: 1D array of longitudes (optinal)
+# time: 1D array of time values (optinal)
+# timestep: which timestep you want to plot e.g. set to 3 to plot the third timestep either a pandas time variable or a string '%d/%m/%y
+# out_filename: name of output file defaults to 'MZT_' + species + '_L'+str(level)+ '_'+time.strftime('%y%m%d_%H%M')+'.png' (optinal)
+# range_all: base the range of the contour colours on all the data rather than just the data for that timestep (optinal)
+# lon_range : set lon range (optinal)
+# lat_range: set lat_range (optinal)
+# species: set to species or defaults to data.species (optinal)
+# scale: set optional scaling factor (optinal)
+# rangescale: scaling factor for range (optinal)
+# colourbar_label: label for colourbar  defaults to  species + ' [' + units + ']' (optinal)
+# savefig: set if you want to save the figure(optinal)
+# map_data: precalculated output of acrg_plottools.plot_map_setup instead of calculating it each time(optinal)
+# nlevels: set to the number of levels you want to use in the contours defaults to 10 (optinal)
+# levels: imput specific contour levels to use (optinal)
+# minconc: minimum concentration used to calculate the levels (optinal)
+# maxconc: maximim concentration used to calculate the levels (optinal)
+# title: plot title
+# outdir: where the plots are saved    
+def plotlevel_MZT(data, lat = None, lon = None, time = None, level = -1, timestep = 0, out_filename=None, range_all = None,
+         lon_range=None, lat_range=None, species = None, scale = None, rangescale = 100, colourbar_label = None, savefig =None,
+         map_data = None, nlevels = 10, levels = None, minconc = None, maxconc = None, title = None, outdir = '/home/as13988/Plots/'):
+
+    
+    import acrg_plottools as plottools
+    
     if map_data is None:
-        map_data = plot_map_setup(data, 
+        
+        if lat == None:
+            lat = data.lat
+        
+        if lon == None:
+            lon = data.lon
+
+        map_data = acrg_plottools.plot_map_setup(data, lat, lon, 
                                   lon_range = lon_range,
                                   lat_range = lat_range)
     
@@ -2223,18 +2056,17 @@ def plotlevel_MZT(data, level = -1, timestep = 0, out_filename=None,
     fig.add_axes([0.1,0.1,0.8,0.8])
 
     map_data.m.drawcoastlines()
-#    map_data.m.drawstates()
-#    map_data.m.drawcountries()
-#    map_data.m.shadedrelief()
     
-    species = data.species
+    if species == None:           
+        species = data.species
     
-    species_options = ['CO2', 'CH4', 'N2O']    
-    scale_options = [1e6, 1e9, 1e9]
-    unit_options = ['ppm', 'ppb', 'ppb']    
+    species_options = ['CO2', 'CH4', 'N2O','Error', 'Flux']    
+    scale_options = [1e6, 1e9, 1e9, 1, 1]
+    unit_options = ['ppm', 'ppb', 'ppb', '%', '']    
     
     index = np.where(np.array(species_options) == species)[0]
-    scale = scale_options[index]
+    if scale == None:    
+        scale = scale_options[index]
     units = unit_options[index]    
     
     if level < 0 :
@@ -2242,37 +2074,60 @@ def plotlevel_MZT(data, level = -1, timestep = 0, out_filename=None,
     
     # make range for conc contours
     # Rounds to the nearest 100
-    conc = np.squeeze(data.conc[timestep, level, :,:])*scale
+    if isinstance(data, np.ndarray):
+        conc = data[timestep, :,:]
+    else:
+        conc = data.conc[timestep, level, :,:]
+        
+    conc = np.squeeze(conc)*scale
+    
+    if np.shape(conc) != np.shape(map_data.x):
+        conc = np.transpose(conc)
+    
+    
     if minconc == None:
-        minconc = np.floor(np.min(conc)/100)*100
+        if range_all == None:
+            minconc = np.floor(np.nanmin(conc)/rangescale)*rangescale
+        else:
+            minconc = np.floor(np.nanmin(data)/rangescale)*rangescale
+            
     if maxconc == None:
-       maxconc = np.ceil(np.max(conc)/100)*100
+        if range_all == None:
+            maxconc = np.ceil(np.nanmax(conc)/rangescale)*rangescale
+        else:
+            maxconc = np.ceil(np.nanmax(data)/rangescale)*rangescale
+    
     
     step = (maxconc - minconc)/nlevels
     
-    levels = np.arange(minconc, maxconc+step, step)
-    
-    #pdb.set_trace()
-    
-    #Plot map
-    cs = map_data.m.contourf(map_data.x, map_data.y, conc, levels, cmap = plt.cm.Spectral_r)
-    """     
-    # Alter this at some point to plot the tall tower sites ?
-                       
-    #Plot release location
-    if "release_lat" in dir(fp_data):
-        rplons, rplats = np.meshgrid(fp_data.release_lon[time_index],
-                                     fp_data.release_lat[time_index])
-        rpx, rpy = map_data.m(rplons, rplats)
-        rp = map_data.m.scatter(rpx, rpy, 100, color = 'black')
-        
-    """
-    time = data.time[timestep]
+    if levels == None:
+        levels = np.arange(minconc, maxconc+step, step)
+   
 
-    # Determine the average pressure at that level in kPa
-    P = np.round(np.mean(np.squeeze(data.pressure[timestep, level, :,:]))/1000.0)
+    #Plot map
+    #cs = map_data.m.contourf(map_data.x, map_data.y, conc, levels, cmap = plt.cm.Spectral_r    
+    cs = map_data.m.contourf(map_data.x, map_data.y, conc, levels, cmap = plt.cm.RdYlBu)
+
+
+    if time == None:    
+        time = data.time
+        
+    time = time[timestep]
     
-    plt.title('MOZART output P = ' + str(P) + ' at ' + str(time), fontsize=16)
+    if isinstance(time, pd.tslib.Timestamp):
+       time = (time).strftime('%d/%m/%y')
+       
+    # Determine the average pressure at that level in kPa
+    if isinstance(data, np.ndarray):
+        P = 'Ground'
+    else:        
+        P = np.round(np.mean(np.squeeze(data.pressure[timestep, level, :,:]))/1000.0)
+    
+    if title == None:
+        'MOZART output P = ' + str(P) + ' at ' + str(time)
+    
+    
+    plt.title(title, fontsize=16)
 
     cb = map_data.m.colorbar(cs, location='bottom', pad="5%")
     
@@ -2280,23 +2135,35 @@ def plotlevel_MZT(data, level = -1, timestep = 0, out_filename=None,
     cb.locator = tick_locator
     cb.update_ticks()
  
-    cb.set_label(species + ' [' + units + ']', 
+    if colourbar_label == None:
+        colourbar_label = species + ' [' + units + ']' 
+ 
+    cb.set_label(colourbar_label, 
                  fontsize=12)
     cb.ax.tick_params(labelsize=13) 
     
-    if out_filename is not None:
+    if out_filename == None:
         out_filename = 'MZT_' + species + '_L'+str(level)+ '_'+time.strftime('%y%m%d_%H%M')+'.png'
-        plt.savefig('/home/as13988/Plots/' + out_filename)
+        
+    if savefig is not None:
+        plt.savefig(outdir + out_filename)
         plt.show()
         plt.close()
     else:
         plt.show()
         
-      
+    return levels
+    
 # Plot multiple profile plots for a given MZT output file at a given lon against lat and then at a given lat against lon
 # Defaults to plotting the first timestep at lat = 0.94 and lon = 0
-def plotprofiles_MZT(data, timestep = 0, latindex = 48, lonindex = 0, out_filename=None, 
-         minconc = None, maxconc = None):
+
+# data: output of read
+# timestep: the number of the timestep you want to plot
+# latindex: the index of the latitude you want to plot. Defaults to 48 = 0.947 degrees North
+# lonindex: the index of the longitude you want to plot. Defaults to 0 = 0 degrees
+# out_filename: outfile name
+# outdir: where to save output file
+def plotprofiles_MZT(data, timestep = 0, latindex = 48, lonindex = 0, out_filename=None, outdir='/home/as13988/Plots/'):
 
     species = data.species
     
@@ -2343,7 +2210,7 @@ def plotprofiles_MZT(data, timestep = 0, latindex = 48, lonindex = 0, out_filena
     
     if out_filename is not None:
         out_filename = 'MZT_' + species + '_Lat'+str(np.round(data.lat[latindex]))+ '_'+data.time[timestep].strftime('%y%m%d_%H%M')+'.png'
-        fig.savefig('/home/as13988/Plots/' + out_filename)
+        fig.savefig(outdir + out_filename)
     
     plt.close()
 
@@ -2372,6 +2239,6 @@ def plotprofiles_MZT(data, timestep = 0, latindex = 48, lonindex = 0, out_filena
     
     if out_filename is not None:
         out_filename = 'MZT_' + species + '_Lon'+ str(np.round(data.lon[lonindex]))+ '_'+data.time[timestep].strftime('%y%m%d_%H%M')+'.png'
-        fig.savefig('/home/as13988/Plots/' + out_filename)
+        fig.savefig(outdir + out_filename)
     
     plt.close()
