@@ -1697,3 +1697,183 @@ def stilt_part(nc, Id):
     part.columns = partnames
     part['Id'] = Id
     return part, partnames
+
+def stiltfoot_array(prefix, 
+                    exitfile="stilt_particle_data_temp.csv",
+                    met=None,
+                    satellite=False,
+                    time_step=None):
+    """
+    Read data from STILT netcdf output files into arrays in an xray dataset.
+    The corresponding function for NAME output is footprint_array.
+    This function reads multiple files at once because STILT output is stored
+    as a separate file for each release time. To read a month of output, give
+    a prefix like stilt2016x07x.
+    Arguments:
+        prefix: file pattern prefix (including path) for output files to read
+        exitfile: file in which to temporarily store particle data
+        met: not used to interpret STILT footprints, which are already given
+            in ppm/(mol/m^2/s), but can be included if available.
+        satellite: not implemented; will produce error if True
+        time_step: ignored; not needed to interpret STILT footprints.
+    Returns:
+        fp: an xray dataset as from footprint_concatenate
+    """
+    if satellite:
+        status_log("stiltfoot_concatenate is not set up for satellite data!" +\
+                   " Levels will be wrong!", error_or_warning="error")
+    
+    stiltfiles = glob.glob(prefix + "*.nc")
+    stiltfiles.sort()
+    patternfile = stiltfiles[0]
+    
+    # set up lat/lon grid and release location
+    
+    ncin = netCDF4.Dataset(patternfile)
+    
+    lats = ncin.variables['footlat'][:]
+    lons = ncin.variables['footlon'][:]
+    nlon=len(lons)
+    nlat=len(lats)
+    
+    domain_N = max(lats)
+    domain_S = min(lats)
+    domain_E = max(lons)
+    domain_W = min(lons)
+    
+    release_lat, release_lon, _, time, _, time_reference = release_point(ncin)
+    
+    levs=[0]
+    nlev=len(levs)
+    
+    # set up footprint array and particle dataframe
+    
+    fparrays = [numpy.sum(ncin.variables['foot'][:], axis=0)]
+    
+    part, partnames = stilt_part(ncin, 1)
+    
+    # extract data from remaining files
+    
+    iterfiles = enumerate(stiltfiles)
+    next(iterfiles)
+    for n,f in iterfiles:
+        ncin = netCDF4.Dataset(f)
+        
+        this_lat, this_lon, _, this_time, _, this_reference = release_point(ncin)
+        if this_reference != time_reference:
+            status_log("Warning! Inconsistent time reference in " + f, \
+                               error_or_warning="warning")
+        
+        if (this_lat != release_lat) or (this_lon != release_lon):
+            status_log("Warning! Inconsistent release location in " + f + \
+                               ". Skipping.", error_or_warning="warning")
+            continue
+        
+        this_grid_lats = ncin.variables['footlat'][:]
+        this_grid_lons = ncin.variables['footlon'][:]
+        if (any(lats!=this_grid_lats) or any(lons!=this_grid_lons)):
+            status_log("Warning! Inconsistent domain in " + f + \
+                               ". Skipping.", error_or_warning="warning")
+            continue
+        
+        p, pnames = stilt_part(ncin, n+1)
+        if pnames!=partnames:
+            status_log("Warning! Inconsistent particle variables in " + \
+                               f + ".", error_or_warning="warning")
+            
+        time.extend(this_time)
+        part = part.append(p, ignore_index=True)
+        fparrays.append(numpy.sum(ncin.variables['foot'][:], axis=0))
+    
+    fparrays = map(lambda x: x/1000000, fparrays) # convert ppm to mol/mol 
+    
+    # clean up particle dataframe
+    
+    part=part.rename(columns = {'index':'partno'})
+    part['partno'] = part['partno'].astype('category')
+    
+    # set up domain boundaries
+    
+    north = (part['lat']>domain_N)
+    south = (part['lat']<domain_S)
+    east = (part['lon']>domain_E) 
+    west = (part['lon']<domain_W)
+    out = north | south | east | west
+    part['out'] = out
+    
+    # compute domain exit timestep for particles that exit
+    outpart = part.loc[out,:]
+    exittime = outpart.groupby(['Id', 'partno']).agg({'time' : numpy.argmax})
+    
+    # compute last timestep for particles that do not exit
+    gp = part.groupby(['Id', 'partno'])
+    lasttime = gp.agg({'time' : numpy.argmin})
+    leaves = gp.agg({'out' : any})
+    lasttime = lasttime[~leaves['out']]
+    
+    # combine particles that do and do not exit
+    
+    end = pandas.concat([exittime, lasttime])
+    part = part.iloc[end['time']]
+    part = part.loc[:,['Id','lat','lon','agl']]
+    part.columns = ['Id','Lat','Long','Ht']
+    
+    # write particle locations to csv
+    part.to_csv(exitfile, index=False, sep=" ")
+    
+    # compute particle domain exit statistics
+    
+    dheights = 1000
+    heights = numpy.arange(0, 19001, dheights) + dheights/2.
+    
+    particle_hist = particle_locations(exitfile,
+                                       time, lats, lons, levs,
+                                       heights, id_is_lev = False)
+    
+    # set up footprint dataset 
+    ntime=len(time)
+    fp = xray.Dataset({"fp": (["time", "lev", "lat", "lon"],
+                              numpy.zeros((ntime, nlev, nlat, nlon)))},
+                        coords={"lat": lats, "lon":lons, "lev": levs, 
+                                "time":time})
+    
+    fp.fp.attrs = {"units": "(mol/mol)/(mol/m2/s)"}
+    fp.lon.attrs = {"units": "degrees_east"}
+    fp.lat.attrs = {"units": "degrees_north"}
+    fp.time.attrs = {"long_name": "start of time period"}
+    
+    # assign dummy met variables 
+    # This met information is not from observations and is not used to interpret 
+    # STILT output, which is already given in ppm. It is here only to maintain the
+    # expected format.
+    if met is None:
+        met = met_empty()
+    if type(met) is not list:
+        met = [met]
+    
+    met_dict = {key : (["time", "lev"], numpy.zeros((len(time), len(levs))))
+                for key in met[0].keys()}
+    met_ds = xray.Dataset(met_dict,
+                          coords = {"time": (["time"], time),
+                                    "lev": (["lev"], levs)})
+    levi = 0
+    levi_met = 0
+    
+    metr = met[levi_met].reindex(index = time, method = "pad")
+    
+    for key in met[levi_met].keys():
+        met_ds[key][dict(lev = [levi])] = \
+        metr[key].values.reshape((len(time), 1))
+    
+    # merge datasets
+        
+    fp.merge(met_ds, inplace = True)
+    fp.merge(particle_hist, inplace = True)
+    
+    # insert footprint arrays into dataset
+    
+    for i in range(len(time)):
+        slice_dict = dict(time = [i], lev = [0])
+        fp.fp[slice_dict] = fparrays[i]
+        
+    return fp
