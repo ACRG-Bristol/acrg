@@ -33,7 +33,7 @@ import pandas
 import datetime as dt
 from numba import jit
 import time as run_time
-import xray
+import xarray as xray
 import os
 import re
 
@@ -193,7 +193,9 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
                           keep_missing=corr_type[inv_type])
     
     
-    fp_all = name.footprints_data_merge(data, domain=domain, species=species, calc_bc=True)
+    #fp_all = name.footprints_data_merge(data, domain=domain, species=species, calc_bc=True)
+    # Commented out and replaced by rt17603 on 11/08 - no species argument in this function.
+    fp_all = name.footprints_data_merge(data, domain=domain, calc_bc=True)
     
     if fp_basis_case in("INTEM"):    
         fp_data_H2 = name.fp_sensitivity(fp_all, domain=domain, basis_case='transd')
@@ -219,7 +221,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
             wh_rlon = np.where(abs(fp_data_H2[site].sub_lon.values-release_lon) < dlon/2.)
             wh_rlat = np.where(abs(fp_data_H2[site].sub_lat.values-release_lat) < dlat/2.)
             local_sum[ti] = np.sum(fp_data_H2[site].sub_fp[
-            wh_rlat[0]-2:wh_rlat[0]+3,wh_rlon[0]-2:wh_rlon[0]+3,ti].values)/np.sum(
+            wh_rlat[0][0]-2:wh_rlat[0][0]+3,wh_rlon[0][0]-2:wh_rlon[0][0]+3,ti].values)/np.sum(
             fp_data_H2[site].fp[:,:,ti].values)  
             
         local_ds = xray.Dataset({'local_ratio': (['time'], local_sum)},
@@ -227,7 +229,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     
         fp_data_H2[site] = fp_data_H2[site].merge(local_ds)
         fp_data_H2[site].attrs['Domain']=domain
-        fp_data_H2[site].attrs['Height']=fp_heights[site]
+        fp_data_H2[site].attrs['Height']=fp_heights[site] # ** fp_heights needs to be defined **
     
     if filters is not None:
         fp_data_H5 = name.filtering(fp_data_H2, filters,keep_missing=corr_type[inv_type])

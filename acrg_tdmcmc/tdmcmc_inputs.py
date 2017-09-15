@@ -56,12 +56,12 @@ end_date = '2014-04-01'
 domain='EUROPE'
 network="test"
 
-fp_basis_case = 'transd'
+fp_basis_case = 'sub-transd'
 bc_basis_case = 'NESW'
 
 ################################################################
 # SET OUTPUT DIRECTORY
-output_dir="/path/to/output/directory/"
+output_dir="/path/to/output/directory/" # *** UPDATE OUTPUT DIRECTORY **
 
 #######################################################
 # DO YOU WANT TO DO REVERSIBLE JUMP OR NOT?????
@@ -169,7 +169,7 @@ f_list=glob.glob(data_path + "/NAME/basis_functions/"
 
 if len(f_list) > 0:
     ds = process.open_ds(f_list[0]) 
-    if fp_basis_case in('transd'):
+    if fp_basis_case in('sub-transd'):
         nfixed = len(np.unique(ds.basis))-1
     else:
         nfixed = len(np.unique(ds.basis))
