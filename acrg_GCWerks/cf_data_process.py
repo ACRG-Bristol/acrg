@@ -211,7 +211,7 @@ def attributes(ds, species, site,
                         ds[key].attrs["units"] = unit_interpret["else"]
             if key != species_out:
                 ancillary_variables += " " + key
-
+    print(ds)
     ds[species_out].attrs["ancilliary_variables"] = ancillary_variables.strip()
 
     # Add quality flag attributes

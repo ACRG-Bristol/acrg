@@ -21,7 +21,7 @@ import calendar
 import re
 import dateutil
 from acrg_time import convert
-
+import pytz
 
 
 # Site info file
@@ -979,7 +979,7 @@ def nies_read(network, site,
         ds.to_netcdf(nc_filename)
 
 
-def nies():
+def nies_wdcgg():
 
     global_attributes = {"data_owner": "NIES",
                          "data_owner_email": "lnmukaih@nies.go.jp"
@@ -993,6 +993,77 @@ def nies():
               global_attributes = global_attributes,
               instrument = "GCMS",
               assume_repeatability = 0.03)
+
+
+
+def nies(fname, species, site, units = "ppt"):
+    '''
+    Examples of files that this will process:
+        fname = "/data/shared/obs_raw/NIES/HAT/HAT_20170804_PFC-318.xlsx"
+        species = "PFC-318"
+        site = "HAT"
+        
+        fname = "/data/shared/obs_raw/NIES/HAT/HAT_20170628_CHCl3.txt"
+        species = "CHCl3"
+        site = "HAT"
+    '''
+
+    global_attributes = {"data_owner": "Takuya Saito",
+                         "data_owner_email": "saito.takuya@nies.go.jp"
+                         }    
+    
+    
+    if fname.split(".")[1] == "xlsx":
+        df = pd.read_excel(fname, parse_dates = [0], index_col = [0])
+    else:
+        df = pd.read_csv(fname, sep = "\t", parse_dates = [0], index_col = [0])
+    
+    print("Assuming data is in JST. Check input file. CONVERTING TO UTC.")
+    df.index = df.index.tz_localize(pytz.timezone("Japan")).tz_convert(pytz.utc)
+
+    # Sort
+    df.sort_index(inplace = True)
+
+    # Rename columns to species
+    df.rename(columns = {df.columns[0]: species}, inplace = True)
+    
+    # Drop duplicates and rename index
+    df.index.name = "index"
+    df = df.reset_index().drop_duplicates(subset='index').set_index('index')              
+    df.index.name = "time"
+
+    
+    # Add a repeatability column
+    df[species + "_repeatability"] = df[species]*0.05
+
+    # Convert to dataset
+    ds = xray.Dataset.from_dataframe(df)
+
+    ds[species + "_repeatability"].attrs["Comment"] = \
+        "NOTE: This is an assumed value. Contact data owner."
+    
+    
+    # Add attributes
+    ds = attributes(ds,
+                    species,
+                    site,
+                    scale = "Check raw data file or contact data owner",
+                    global_attributes = global_attributes,
+                    sampling_period = 60,
+                    units = units)
+
+    # Write file
+    nc_filename = output_filename("/data/shared/obs/",
+                                  "NIES",
+                                  "GCMS",
+                                  site.upper(),
+                                  str(ds.time.to_pandas().index.to_pydatetime()[0].year),
+                                  ds.species,
+                                  "various")
+    print("Writing " + nc_filename)
+    
+    ds.to_netcdf(nc_filename)
+
 
 
 def niwa(site, species):
