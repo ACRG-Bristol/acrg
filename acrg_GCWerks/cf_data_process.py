@@ -11,7 +11,7 @@ from os.path import join, split
 from datetime import datetime as dt
 from datetime import timedelta as td
 import glob
-import xray
+import xarray as xray
 import json
 from os import getenv
 import shutil
@@ -211,7 +211,7 @@ def attributes(ds, species, site,
                         ds[key].attrs["units"] = unit_interpret["else"]
             if key != species_out:
                 ancillary_variables += " " + key
-    print(ds)
+    
     ds[species_out].attrs["ancilliary_variables"] = ancillary_variables.strip()
 
     # Add quality flag attributes
@@ -245,6 +245,7 @@ def attributes(ds, species, site,
     #########################################
 
     first_year = str(ds.time.to_pandas().index.to_pydatetime()[0].year)
+    
     ds.time.encoding = {"units": "seconds since " + \
                         first_year + "-01-01 00:00:00"}
     ds.time.attrs["label"] = "left"

@@ -13,7 +13,7 @@ from os.path import join, split
 from datetime import datetime as dt
 from datetime import timedelta as td
 import glob
-import xray
+import xarray as xray
 import json
 from os import getenv
 from acrg_GCWerks.cf_data_process import attributes, output_filename
@@ -1406,6 +1406,7 @@ def saws():
     
     ds.to_netcdf(nc_filename)
     
+    return(ds, df)
 
 
 
