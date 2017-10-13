@@ -126,7 +126,7 @@ def basis_bc_blocks(domain = "SOUTHASIA", basis_case = "NESW", time = "2012-01-0
     
 # creates uniform blocks for each direction (NESW). 
 # Each direction is split into vertical slabs with number specified by input 'vertical'
-
+    
     files = glob.glob(fields_file_path + domain + "/*")
     
     time = pd.to_datetime(time)

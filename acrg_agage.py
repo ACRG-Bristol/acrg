@@ -190,7 +190,9 @@ def get_file_list(site, species, start, end, height,
     file_site = [f[1] for f in file_info]
     file_species = [re.split("-|\.", f[-1])[0] for f in file_info]
     file_height = [re.split("-|\.", f[-1])[1] for f in file_info]
-
+    
+    print 'site,species,height in filenames',file_site,file_species,file_height
+    
     #Get file list
     file_species_string = listsearch(file_species, species, species_info)
     if file_species_string is None:
@@ -207,7 +209,9 @@ def get_file_list(site, species, start, end, height,
                  si.upper() == file_site_string.upper() and
                  sp.upper() == file_species_string.upper() and
                  hi.upper() == file_height_string.upper()]
-
+    print 'file_height_string',file_height_string
+    print 'matched files',files
+    
     if instrument is not None:
         files = [f for f in files if instrument.upper() in f.upper()]
 
@@ -242,6 +246,7 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
     data_directory, files = get_file_list(site, species, start_time, end_time,
                                           height, network = network,
                                           instrument = instrument, data_directory=data_directory)                                 
+    
     #Get files
     #####################################
     if files is not None:
@@ -525,7 +530,7 @@ def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
     # Get data
     obs = {}
     for si, site in enumerate(sites):
-        print(site)
+        print('site',site)
         if "GOSAT" in site.upper():
             data = get_gosat(site, species,
                        start = start_time, end = end_time, max_level = max_level)
@@ -539,7 +544,7 @@ def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
                        network = network[si],
                        instrument = instrument[si],
                        keep_missing = keep_missing,
-                       status_flag_unflagged = status_flag_unflagged[si])                       
+                       status_flag_unflagged = status_flag_unflagged[si])                     
                        
         if data is not None:
             obs[site] = data.copy()            

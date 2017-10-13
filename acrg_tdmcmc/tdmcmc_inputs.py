@@ -51,8 +51,8 @@ meas_period = ['2H', '2H']   # Frequency to read in measurements
 av_period=['24H', '24H']   # Frequency to average footprints and measuerements for inversion
 
 species='CH4'
-start_date = '2014-03-01'
-end_date = '2014-04-01'
+start_date = '2014-02-01'
+end_date = '2014-03-01'
 domain='EUROPE'
 network="test"
 
@@ -61,7 +61,8 @@ bc_basis_case = 'NESW'
 
 ################################################################
 # SET OUTPUT DIRECTORY
-output_dir="/path/to/output/directory/" # *** UPDATE OUTPUT DIRECTORY **
+#output_dir="/path/to/output/directory/" # *** UPDATE OUTPUT DIRECTORY **
+output_dir="/home/rt17603/Documents/Test_files/tdmcmc_output/"
 
 #######################################################
 # DO YOU WANT TO DO REVERSIBLE JUMP OR NOT?????

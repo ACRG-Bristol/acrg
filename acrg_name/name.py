@@ -1109,7 +1109,7 @@ def plot(fp_data, date, out_filename=None,
     """
     
     def fp_nearest(fp, tolerance = None):
-        return fp.reindex_like( \
+        return fp.l_like( \
                             xray.Dataset(coords = {"time": [date]}),
                             method = "nearest",
                             tolerance = tolerance)

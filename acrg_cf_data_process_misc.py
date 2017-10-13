@@ -26,6 +26,7 @@ import pytz
 
 # Site info file
 acrg_path = getenv("ACRG_PATH")
+data_path = getenv("DATA_PATH")
 site_info_file = join(acrg_path, "acrg_site_info.json")
 with open(site_info_file) as sf:
     site_params = json.load(sf)
@@ -1019,7 +1020,9 @@ def nies(fname, species, site, units = "ppt"):
         df = pd.read_csv(fname, sep = "\t", parse_dates = [0], index_col = [0])
     
     print("Assuming data is in JST. Check input file. CONVERTING TO UTC.")
-    df.index = df.index.tz_localize(pytz.timezone("Japan")).tz_convert(pytz.utc)
+    
+   # df.index = df.index.tz_localize(pytz.timezone("Japan")).tz_convert(pytz.utc).tz_localize(None) # Previous solution
+    df.index = df.index.tz_localize(pytz.timezone("Japan")).tz_convert(None) # Simpler solution
 
     # Sort
     df.sort_index(inplace = True)
@@ -1053,7 +1056,9 @@ def nies(fname, species, site, units = "ppt"):
                     units = units)
 
     # Write file
-    nc_filename = output_filename("/data/shared/obs/",
+    #output_path = "/data/shared/obs/"
+    output_path = join(data_path,"obs/")
+    nc_filename = output_filename(output_path,
                                   "NIES",
                                   "GCMS",
                                   site.upper(),
