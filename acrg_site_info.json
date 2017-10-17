@@ -141,7 +141,7 @@
         "height_name": ["110magl", "50magl", "250magl"],
         "latitude": 54.35858,
         "longitude": -1.15033,
-        "network": "GAUGE"
+        "network": "DECC"
     },
     "BTT" : {
         "alt": ["BTTOWER", "BT TOWER", "BT_TOWER"],
