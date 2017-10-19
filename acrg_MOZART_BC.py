@@ -17,7 +17,7 @@ agree with NAME output.
 @author: ew14860
 """
 
-import xray
+import xarray as xray
 import numpy as np
 import bisect
 from scipy import interpolate
