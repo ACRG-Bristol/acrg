@@ -47,7 +47,7 @@ def MOZART_filenames(species, start = "2010-01-01", end = "2016-01-01"):
     files = []
     for ym in yearmonth:
         f=glob.glob(baseDirectory + \
-            species + "/" + "*" + ym + "*.nc")
+            species.upper() + "/" + "*" + ym + "*.nc")
         if len(f) > 0:
             files += f
 
@@ -155,6 +155,7 @@ def MOZART_vmr(species, filename=None, start = "2010-01-01", end = "2016-01-01",
         files.sort()
         mzt = []
         
+        
         for fi in files:
             f = mz.read(fi)
             Alt = mz.calc_altitude(f.pressure,f.P0)
@@ -182,7 +183,7 @@ def MOZART_vmr(species, filename=None, start = "2010-01-01", end = "2016-01-01",
         attributes = {"title":"MOZART volume mixing ratios",
                       "author" : getpass.getuser(),
                         "date_created" : np.str(dt.datetime.today()),
-                        "species" : "CH4"}
+                        "species" : "%s" %species.upper()}
         mzt.attrs = c.OrderedDict(attributes)
         return mzt
 
