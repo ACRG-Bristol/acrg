@@ -34,7 +34,7 @@ mzt_dir = '/shared_data/air/shared/MOZART/mzt_output/'
 #filename = mzt_dir + 'CH4/FWDModelComparison_NewEDGAR.mz4.h2.2014-01.nc'
 
 
-def MOZART_filenames(species, start = "2010-01-01", end = "2016-01-01"):
+def MOZART_filenames(species, start = "2010-01-01", end = "2016-01-01", runname ='NewEDGAR'):
     """
     Gets a list of files given a species, start date and end date.
     """
@@ -47,7 +47,7 @@ def MOZART_filenames(species, start = "2010-01-01", end = "2016-01-01"):
     files = []
     for ym in yearmonth:
         f=glob.glob(baseDirectory + \
-            species.upper() + "/" + "*" + ym + "*.nc")
+            species.upper() + "/" + "*" +runname+'*'+ ym + "*.nc")
         if len(f) > 0:
             files += f
 
@@ -132,7 +132,7 @@ def interp_lonlat(DS,vmr_var_name, lat_or_lon):
     return DS
 
 
-def MOZART_vmr(species, filename=None, start = "2010-01-01", end = "2016-01-01", freq='M'):
+def MOZART_vmr(species, filename=None, start = "2010-01-01", end = "2016-01-01", freq='M', runname='NewEDGAR'):
     """
     Returns an xray dataset with (height,lat,lon,time) coordinates and 2 data variables:
     concentration of species (SPECIES_vmr_mozart) and an array of altitudes calculated
@@ -146,7 +146,7 @@ def MOZART_vmr(species, filename=None, start = "2010-01-01", end = "2016-01-01",
         else:
             files=[filename]
     else:
-        files = MOZART_filenames(species, start, end)
+        files = MOZART_filenames(species, start, end, runname)
             
     if len(files) == 0:
         print("Can't find files, exiting")
@@ -183,7 +183,8 @@ def MOZART_vmr(species, filename=None, start = "2010-01-01", end = "2016-01-01",
         attributes = {"title":"MOZART volume mixing ratios",
                       "author" : getpass.getuser(),
                         "date_created" : np.str(dt.datetime.today()),
-                        "species" : "%s" %species.upper()}
+                        "species" : "%s" %species.upper(),
+                        "run name": "%s" %runname}
         mzt.attrs = c.OrderedDict(attributes)
         return mzt
 
@@ -243,7 +244,7 @@ def MOZART_boundaries(MZ, domain):
     return MZT_edges
     
 
-def MOZART_BC_nc(start = '2012-01-01', end = "2014-09-01", species = 'CH4', filename = None, domain = 'EUROPE', freq = 'M'):   
+def MOZART_BC_nc(start = '2012-01-01', end = "2014-09-01", species = 'CH4', filename = None, domain = 'EUROPE', freq = 'M', runname = 'NewEDGAR'):   
     """
     Specify end date as 2 months after the month of the last file
     (because the date specified is actually the first day of the next month and
