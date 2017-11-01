@@ -21,7 +21,7 @@ import pandas as pd
 def write(lat, lon, time, flux, species, domain,
           source, title, prior_info_dict,
           regridder_used = 'acrg_grid.regrid.regrid_3D',
-          copy_from_year = None, flux_comments = None):
+          copy_from_year = None, climatology = False, flux_comments = None):
     '''
     Write a flux file
     
@@ -38,9 +38,9 @@ def write(lat, lon, time, flux, species, domain,
     
     prior_info_dict = {'NAME_OF_PRIOR' : ['VERSION','RAW RESOLUTION', 'REFERENCE']}
     
-    -lat_lon_cell- specify whether the coordinates are 'centre' of cell or 'bottom left' etc..
+    -copy_from_year- if the data is the same as another year but with a different timestamp give the original year here as a string
     
-    -time_period- specify whether timestamp is 'beginning', 'end', 'centre' of time period.
+    -climatology- if the data is a climatology set this to True and give detail using flux_comments 
     
     TODO: Add some error checking (e.g. check that domain is correct)
     '''
@@ -74,10 +74,12 @@ def write(lat, lon, time, flux, species, domain,
         
     #Open netCDF file
     year = pd.DatetimeIndex([time[0]]).year[0]
-    if copy_from_year == None:
-        ncname = '/data/shared/NAME/emissions/%s/%s_%s_%s.nc' %(domain, file_source, domain, year)
-    else:
+    if copy_from_year != None:
         ncname = '/data/shared/NAME/emissions/%s/%s_%s_%s_copy-from-%s.nc' %(domain, file_source, domain, year, copy_from_year)
+    if climatology == True:
+        ncname = '/data/shared/NAME/emissions/%s/%s_%s_%s_climatology.nc' %(domain, file_source, domain, year)
+    else:
+        ncname = '/data/shared/NAME/emissions/%s/%s_%s_%s.nc' %(domain, file_source, domain, year)
 
     if os.path.isfile(ncname) == True:
         answer = raw_input("You are about to overwrite an existing file, do you want to continue? Y/N")
