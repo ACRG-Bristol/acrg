@@ -191,7 +191,6 @@ def get_file_list(site, species, start, end, height,
     file_species = [re.split("-|\.", f[-1])[0] for f in file_info]
     file_height = [re.split("-|\.", f[-1])[1] for f in file_info]
     
-    print 'site,species,height in filenames',file_site,file_species,file_height
     
     #Get file list
     file_species_string = listsearch(file_species, species, species_info)
@@ -530,7 +529,7 @@ def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
     # Get data
     obs = {}
     for si, site in enumerate(sites):
-        print('site',site)
+
         if "GOSAT" in site.upper():
             data = get_gosat(site, species,
                        start = start_time, end = end_time, max_level = max_level)
