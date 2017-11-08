@@ -26,6 +26,7 @@ uncertainties differently (emissions uncertainty > baseline uncertainty).
 @author: ml12574
 """
 import numpy as np
+import pandas as pd
 from acrg_tdmcmc import run_tdmcmc 
 import acrg_name as name
 from acrg_tdmcmc import tdmcmc_post_process as process
@@ -61,8 +62,7 @@ bc_basis_case = 'NESW'
 
 ################################################################
 # SET OUTPUT DIRECTORY
-#output_dir="/path/to/output/directory/" # *** UPDATE OUTPUT DIRECTORY **
-output_dir="/home/rt17603/Documents/Test_files/tdmcmc_output/"
+output_dir="/path/to/output/directory/" # *** UPDATE OUTPUT DIRECTORY **
 
 #######################################################
 # DO YOU WANT TO DO REVERSIBLE JUMP OR NOT?????
@@ -182,7 +182,8 @@ f_list2=glob.glob(data_path + "/NAME/bc_basis_functions/"
                     "_" + domain + "_*.nc") 
 if len(f_list2) > 0:                    
     ds2 = process.open_ds(f_list2[0]) 
-    nBC = len(ds2.region)
+    #nBC = len(ds2.region)
+    nBC_basis = len(ds2.region)
 else:
     raise LookupError("No file exists for that bc_basis_case and domain")
 
@@ -190,6 +191,19 @@ if 'GOSAT' in(sites):
     nBias = 1           # Change as needed 
 else: 
     nBias=0
+
+## Define nBC based on time, so each month is scaled individually
+pd_start=pd.to_datetime(start_date)
+pd_end=pd.to_datetime(end_date)
+
+# Calculate number of months in inversion period
+if pd_end.day == 1:
+    nmonths = pd_end.to_period('M') - pd_start.to_period('M')   
+else:
+    nmonths = pd_end.to_period('M') - pd_start.to_period('M')+1
+    
+#nBC_basis = len(fp_data_H[sites[0]].region_bc)
+nBC = nBC_basis*nmonths   # No. of bc_basis functions x nmonths
 
 nIC=nfixed+nBC+nBias
 nIC1=nIC+1
