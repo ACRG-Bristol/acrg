@@ -511,7 +511,10 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     startt = run_time.time()
     
     if inv_type is 'uncorrelated':
-        from acrg_tdmcmc import tdmcmc_uncorr
+        if para_temp:
+            import acrg_tdmcmc.tdmcmc_uncorr_pt as tdmcmc_uncorr
+        else:
+            from acrg_tdmcmc import tdmcmc_uncorr
 
         k_it, x_out, regions_out, plon_out, plat_out, sigma_model_out,sigma_y_out, \
         n0T_out,pdf_param1_out,pdf_param2_out, accept, reject, \
@@ -532,7 +535,10 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
         nbeta, kmax, kICmax, nmeasure, Ngrid, nlon,nlat, ydim1, ydim2, nIC1)
     
     elif inv_type is 'evencorr':
-        from acrg_tdmcmc import tdmcmc_evencorr
+        if para_temp:
+            import acrg_tdmcmc.tdmcmc_evencorr_pt as tdmcmc_evencorr
+        else:
+            from acrg_tdmcmc import tdmcmc_evencorr
         
         k_it, x_out, regions_out, plon_out, plat_out, sigma_y_out, sigma_model_out, \
         n0T_out,pdf_param1_out,pdf_param2_out, tau_out, y_out,accept, reject, \
@@ -559,7 +565,10 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     
     
     elif inv_type is 'corr':
-        from acrg_tdmcmc import tdmcmc_corr
+        if para_temp:
+            import acrg_tdmcmc.tdmcmc_corr_pt as tdmcmc_corr
+        else:
+            from acrg_tdmcmc import tdmcmc_corr
         
         k_it, x_out, regions_out, plon_out, plat_out, sigma_y_out, sigma_model_out, \
         n0T_out,pdf_param1_out,pdf_param2_out, tau_out, y_out,accept, reject, \
