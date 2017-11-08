@@ -32,19 +32,11 @@ import acrg_name as name
 from acrg_tdmcmc import tdmcmc_post_process as process
 import os
 import glob
+import argparse
 
 acrg_path = os.getenv("ACRG_PATH")
 data_path = os.getenv("DATA_PATH")
-#############################################################
-#parser = argparse.ArgumentParser(description='This is a demo script by Mark.')
-#parser.add_argument("start", help="Start date string yyyy-mm-dd")                  
-#parser.add_argument("end", help="End date sting yyyy-mm-dd")
-#args = parser.parse_args()
-#
-#start_date = args.start
-#end_date = args.end
-  
-##############################################################
+
 # Variables and definitions that need to be set
   
 sites=['MHD', 'TAC']
@@ -59,6 +51,15 @@ network="test"
 
 fp_basis_case = 'sub-transd'
 bc_basis_case = 'NESW'
+
+#############################################################
+parser = argparse.ArgumentParser(description='Running mcmc script')
+parser.add_argument("start", help="Start date string yyyy-mm-dd",default=start_date,nargs="?")                  
+parser.add_argument("end", help="End date sting yyyy-mm-dd",default=end_date,nargs="?")
+args = parser.parse_args()
+
+start_date = args.start
+end_date = args.end
 
 ################################################################
 # SET OUTPUT DIRECTORY
