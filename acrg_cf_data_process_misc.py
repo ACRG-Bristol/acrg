@@ -1415,3 +1415,71 @@ def saws():
 
 
 
+def globalview_co2_obspack(site, height):
+
+    height = str(height)
+    site = str(site)
+    
+    if height == 'surface':
+        fname = glob.glob("/data/shared/obs_raw/EUROCOM/co2_" + site.lower() + "*" + ".nc" )
+    else:
+        fname = glob.glob("/data/shared/obs_raw/EUROCOM/co2_" + site.lower() + "*" + "-" + height +"magl.nc" )
+    
+    instrument_dict = {'MHD':'CRDS',
+                       'RGL':'CRDS',
+                       'TAC':'CRDS',
+                       'TTA':'CRDS',
+                       'CBW':'NDIR',
+                       'HUN':'NDIR'}
+
+    if len(fname) == 0:
+        print "Can't find file for site %s and height %s" %(site, height)
+    elif len(fname) > 1:
+        print "Ambiguous filename for site %s and height %s" %(site, height)
+    elif len(fname) == 1:
+        ds = xray.open_dataset(fname[0])
+        
+        species = ds.dataset_parameter
+        if site in ['ces', 'CES']:
+            site = 'CBW'
+        else:
+            site = ds.site_code
+        
+        ds2 = xray.Dataset({species.upper(): (['time'],ds.value.values),
+                            species.upper() + "_repeatability": (['time'],ds.value_unc.values),
+                            species.upper() + "_status_flag": (['time'],ds.obs_flag.values)},
+                            coords = {'time': ds.time.values})
+
+    
+        global_attributes = {'origin': ds.obspack_name,
+                             'original_filename': ds.dataset_name,
+                             'citation': ds.obspack_citation,
+                             'inlet_height_%s' %ds.dataset_intake_ht_unit : ds.dataset_intake_ht,
+                             'main_provider_name' : ds.provider_1_name,
+                             'main_provider_affiliation': ds.provider_1_affiliation,
+                             'main_provider_email': ds.provider_1_email,
+                             'fair_usage': ds.obspack_fair_use}
+    
+        ds2 = attributes(ds2,
+                        species.upper(),
+                        site.upper(),
+                        global_attributes = global_attributes,
+                        scale = ds.dataset_calibration_scale,
+                        sampling_period = None)
+    
+        # Write file
+        directory_output = "/data/shared/obs/"
+        instrument = instrument_dict[site.upper()]
+        inlet = "%im" %(int(float(ds.dataset_intake_ht)))
+        
+        nc_filename = output_filename(directory_output,
+                                  "EUROCOM",
+                                  instrument,
+                                  site.upper(),
+                                  str(ds2.time.to_pandas().index.to_pydatetime()[0].year),
+                                  ds2.species,
+                                  inlet)
+    
+        print("Writing " + nc_filename)
+        
+        ds2.to_netcdf(nc_filename)
