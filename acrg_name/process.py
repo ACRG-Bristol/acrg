@@ -1168,7 +1168,8 @@ def process(domain, site, height, year, month,
             max_level = None,
             force_update = False,
             perturbed_folder = None,
-            vertical_profile=False):
+            vertical_profile=False,
+            transport_model="NAME"):
     '''
     Process a single month of footprints for a given domain, site, height,
     year, month. If you want to process all files for a given domain + site
@@ -1197,11 +1198,14 @@ def process(domain, site, height, year, month,
     vertical_profile: If set to true will look for vertical potential temperature met file
         and incorporate into footprint file. 
         NB. This is a separate file from the normal met file, and is not mandatory.
+    transport_model: Defaults to "NAME". If "STILT", reads footprints in the
+        ncdf format created by the STILT model. Other values are invalid. Not
+        set up to read satellite column footprints from STILT format.
         
     Outputs:
     This routine outputs a copy of the xray dataset that is written to file.
     '''
-    
+ 
     global directory_status_log
         
     subfolder = base_dir + domain + "_" + site + "_" + height + "/"
@@ -1214,6 +1218,20 @@ def process(domain, site, height, year, month,
         else:
             subfolder += perturbed_folder + "/"
     
+    # Check that the specified transport model is valid.
+    if transport_model is "STILT":
+        if satellite:
+            status_log("stiltfoot_array is not set up for satellite data!" +\
+                       " Levels will be wrong!", error_or_warning="error")
+        if not force_met_empty:
+            status_log("STILT neither provides nor requires met information" +\
+                       " to interpret footprints. Met will probably be set" +\
+                       " to default values. Don't rely on these values!")
+    elif transport_model is not "NAME":
+        status_log(transport_model + " is not a valid transport model!" +\
+                   " Unable to read footprint information!", 
+                   error_or_warning="error")
+    
     # Check for manual timestep (if footprints are for < 1min,
     # which is the min resolution of the NAME output file)    
     if os.path.exists(subfolder + "/time_step.txt"):
@@ -1221,7 +1239,7 @@ def process(domain, site, height, year, month,
             timeStep = float(f.read())
     else:
         timeStep = None
-    
+
     # Get date strings for file search
     if satellite:
         file_search_string = subfolder + fields_folder +"/*" + str(year) \
@@ -1234,14 +1252,16 @@ def process(domain, site, height, year, month,
             status_log("can't find files in " + file_search_string,
                        error_or_warning="error")
             return None
-
     else:
-        datestrs = [str(year) + str(month).zfill(2)]
+        if transport_model is "STILT":
+            datestrs = ["stilt" + str(year) + "x" + str(month).zfill(2) + "x"]
+        else:
+            datestrs = [str(year) + str(month).zfill(2)]
 
     # Output filename
     outfile = subfolder + processed_folder + "/" + site + "-" + height + \
                 "_" + domain + "_" + str(year) + str(month).zfill(2) + ".nc"
-    
+ 
     # Check whether outfile needs updating
     if not force_update:
         status_log("Testing whether file exists or needs updating: " + outfile)
@@ -1263,9 +1283,9 @@ def process(domain, site, height, year, month,
                         for fields_file in fields_files]
                 if maxday >= max(days):
                     return None
-
+                
     fp = []
-
+     
     for datestr in datestrs:
 
         status_log("Looking for files with date string: " + datestr + " in " + \
@@ -1296,20 +1316,23 @@ def process(domain, site, height, year, month,
         else:
             met = None
 
-        # Get footprints
-        fields_prefix = subfolder + fields_folder + "/"
-        if particles_folder is not None:
-            particles_prefix = subfolder + particles_folder + "/"
-        else:
-            particles_prefix = None
-
-           
-        fp_file = footprint_concatenate(fields_prefix,
+            # Get footprints
+        if transport_model is "STILT":
+            fp_file = stiltfoot_array(subfolder+datestr, met=met,
+                                      satellite=satellite,
+                                      time_step=timeStep)
+        else: # for NAME
+            fields_prefix = subfolder + fields_folder + "/"
+            if particles_folder is not None:
+                particles_prefix = subfolder + particles_folder + "/"
+            else:
+                particles_prefix = None
+            fp_file = footprint_concatenate(fields_prefix,
                                             datestr = datestr, met = met,
                                             particle_prefix = particles_prefix,
                                             satellite = satellite,
                                             time_step = timeStep)
-        
+            
         # Do satellite process
         if satellite:
             #satellite_obs_file = glob.glob(subfolder + "Observations/*" + \
@@ -1720,7 +1743,7 @@ def stiltfoot_array(prefix,
         fp: an xray dataset as from footprint_concatenate
     """
     if satellite:
-        status_log("stiltfoot_concatenate is not set up for satellite data!" +\
+        status_log("stiltfoot_array is not set up for satellite data!" +\
                    " Levels will be wrong!", error_or_warning="error")
     
     stiltfiles = glob.glob(prefix + "*.nc")
@@ -1743,7 +1766,7 @@ def stiltfoot_array(prefix,
     
     release_lat, release_lon, _, time, _, time_reference = release_point(ncin)
     
-    levs=[0]
+    levs=["0"]
     nlev=len(levs)
     
     # set up footprint array and particle dataframe
@@ -1757,6 +1780,7 @@ def stiltfoot_array(prefix,
     iterfiles = enumerate(stiltfiles)
     next(iterfiles)
     for n,f in iterfiles:
+        status_log("Loading " + f)
         ncin = netCDF4.Dataset(f)
         
         this_lat, this_lon, _, this_time, _, this_reference = release_point(ncin)
@@ -1768,9 +1792,12 @@ def stiltfoot_array(prefix,
             status_log("Warning! Inconsistent release location in " + f + \
                                ". Skipping.", error_or_warning="warning")
             continue
-        
-        this_grid_lats = ncin.variables['footlat'][:]
-        this_grid_lons = ncin.variables['footlon'][:]
+        this_grid_lats = ncin.variables.get('footlat', [])[:]
+        this_grid_lons = ncin.variables.get('footlon', [])[:]
+        if (len(this_grid_lats)==0) or (len(this_grid_lons)==0):
+            status_log("Warning! Footprint grid missing in " + f + \
+                       ". Skipping.", error_or_warning="warning")
+            continue
         if (any(lats!=this_grid_lats) or any(lons!=this_grid_lons)):
             status_log("Warning! Inconsistent domain in " + f + \
                                ". Skipping.", error_or_warning="warning")
