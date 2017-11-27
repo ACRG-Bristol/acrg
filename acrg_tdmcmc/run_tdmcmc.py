@@ -357,14 +357,35 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     R_indices, ydim1, ydim2,sigma_model0 = get_nsigma_y(fp_data_H,start_date, end_date, sites, 
                   nmeasure, sigma_model_ap, bl_period=bl_period, bl_split=bl_split, 
                   levels=bl_levels)     
+    
+    ## Define H_bc based on time, so each month is scaled individually
+    
+    pd_start=pandas.to_datetime(start_date)
+    pd_end=pandas.to_datetime(end_date)
+
+    # Calculate number of months in inversion period
+    if pd_end.day == 1:
+        nmonths = pd_end.to_period('M') - pd_start.to_period('M')   
+    else:
+        nmonths = pd_end.to_period('M') - pd_start.to_period('M')+1
+        
+    nBC_basis = len(fp_data_H[sites[0]].region_bc)
+    nBC = nBC_basis*nmonths   # No. of bc_basis functions x nmonths
+    
     nIC=nBC+nfixed
-    
-    
     h_agg0 = np.zeros((nmeasure,k_ap+nIC))
-    x_agg=np.zeros((k_ap+nIC))+1.  
-    h_agg0[:,:nBC]=H_bc.copy()
-    h_agg0[:,nBC:nIC]=H_fixed.copy()
+    pdy_time = pandas.to_datetime(y_time)
+    months = np.arange(pd_start.to_period('M').month, pd_start.to_period('M').month +nmonths)
+    months2 = months.copy()
+    months2[months>12]=months2[months>12]-12    # Make sure all months in range 1-12
     
+    for mn,month in enumerate(months2):
+        wh_month = np.where(pdy_time.to_period('M').month == month)[0]
+        if len(wh_month > 0):
+            h_agg0[wh_month,mn*nBC_basis:(mn+1)*nBC_basis] = H_bc[wh_month,:]  # Assign H_agg separately for each month
+   
+    x_agg=np.zeros((k_ap+nIC))+1.  
+
     #%%
     # Define prior model uncertainty
     ####################################################
@@ -511,7 +532,10 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     startt = run_time.time()
     
     if inv_type is 'uncorrelated':
-        from acrg_tdmcmc import tdmcmc_uncorr
+        if para_temp:
+            import acrg_tdmcmc.tdmcmc_uncorr_pt as tdmcmc_uncorr
+        else:
+            from acrg_tdmcmc import tdmcmc_uncorr
 
         k_it, x_out, regions_out, plon_out, plat_out, sigma_model_out,sigma_y_out, \
         n0T_out,pdf_param1_out,pdf_param2_out, accept, reject, \
@@ -532,7 +556,10 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
         nbeta, kmax, kICmax, nmeasure, Ngrid, nlon,nlat, ydim1, ydim2, nIC1)
     
     elif inv_type is 'evencorr':
-        from acrg_tdmcmc import tdmcmc_evencorr
+        if para_temp:
+            import acrg_tdmcmc.tdmcmc_evencorr_pt as tdmcmc_evencorr
+        else:
+            from acrg_tdmcmc import tdmcmc_evencorr
         
         k_it, x_out, regions_out, plon_out, plat_out, sigma_y_out, sigma_model_out, \
         n0T_out,pdf_param1_out,pdf_param2_out, tau_out, y_out,accept, reject, \
@@ -559,7 +586,10 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     
     
     elif inv_type is 'corr':
-        from acrg_tdmcmc import tdmcmc_corr
+        if para_temp:
+            import acrg_tdmcmc.tdmcmc_corr_pt as tdmcmc_corr
+        else:
+            from acrg_tdmcmc import tdmcmc_corr
         
         k_it, x_out, regions_out, plon_out, plat_out, sigma_y_out, sigma_model_out, \
         n0T_out,pdf_param1_out,pdf_param2_out, tau_out, y_out,accept, reject, \

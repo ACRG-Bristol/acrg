@@ -2009,8 +2009,27 @@ class plot_ncdf_mobile:
 
 
 
-# Plot a filled contour map of a given MZT output
-# Defaults to plotting the first timestep at ground level
+# Code to set up input for contour plotting
+class plot_map_setup:
+    def __init__(self, data, lat, lon, 
+                 lon_range = None, lat_range = None):
+
+        if lon_range is None:
+            lon_range = (min(lon), max(lon))
+        if lat_range is None:
+            lat_range = (min(lat), max(lat))
+        
+        m = Basemap(projection='gall',
+            llcrnrlat=lat_range[0], urcrnrlat=lat_range[1],
+            llcrnrlon=lon_range[0], urcrnrlon=lon_range[1],
+            resolution='l')
+
+        lons, lats = np.meshgrid(lon, lat)
+        x, y = m(lons, lats)
+        
+        self.x = x
+        self.y = y
+        self.m = m
 
 # data: output of read
 # lat: 1D array of latitudes (optinal)
@@ -2033,22 +2052,21 @@ class plot_ncdf_mobile:
 # maxconc: maximim concentration used to calculate the levels (optinal)
 # title: plot title
 # outdir: where the plots are saved    
+# Plot a filled contour map of a given MZT output
+# Defaults to plotting the first timestep at ground level
 def plotlevel_MZT(data, lat = None, lon = None, time = None, level = -1, timestep = 0, out_filename=None, range_all = None,
-         lon_range=None, lat_range=None, species = None, scale = None, rangescale = 100, colourbar_label = None, savefig =None,
-         map_data = None, nlevels = 10, levels = None, minconc = None, maxconc = None, title = None, outdir = '/home/as13988/Plots/'):
+         lon_range=None, lat_range=None, species = None, species_choice = 0, scale = None, rangescale = 100, colourbar_label = None, savefig =None,
+         map_data = None, nlevels = 10, levels = None, minconc = None, maxconc = None, title = None, outdir = '/home/as16992/MOZART/plots/'):
 
-    
-    import acrg_plottools as plottools
-    
     if map_data is None:
-        
+
         if lat == None:
             lat = data.lat
         
         if lon == None:
             lon = data.lon
 
-        map_data = acrg_plottools.plot_map_setup(data, lat, lon, 
+        map_data = plot_map_setup(data, lat, lon, 
                                   lon_range = lon_range,
                                   lat_range = lat_range)
     
@@ -2056,16 +2074,19 @@ def plotlevel_MZT(data, lat = None, lon = None, time = None, level = -1, timeste
     fig.add_axes([0.1,0.1,0.8,0.8])
 
     map_data.m.drawcoastlines()
+#    map_data.m.drawstates()
+#    map_data.m.drawcountries()
+#    map_data.m.shadedrelief()
     
     if species == None:           
         species = data.species
     
-    species_options = ['CO2', 'CH4', 'N2O','Error', 'Flux']    
-    scale_options = [1e6, 1e9, 1e9, 1, 1]
-    unit_options = ['ppm', 'ppb', 'ppb', '%', '']    
+    species_options = np.array(['CO2', 'CH4', 'N2O', 'C2H6','Error', 'Flux']) 
+    scale_options = [1e6, 1e9, 1e9, 1e9, 1, 1]
+    unit_options = ['ppm', 'ppb', 'ppb', 'ppb', '%', '']    
     
-    index = np.where(np.array(species_options) == species)[0]
-    if scale == None:    
+    index = np.where(np.array(species_options) == species)[0][0]
+    if scale == None:
         scale = scale_options[index]
     units = unit_options[index]    
     
@@ -2077,13 +2098,16 @@ def plotlevel_MZT(data, lat = None, lon = None, time = None, level = -1, timeste
     if isinstance(data, np.ndarray):
         conc = data[timestep, :,:]
     else:
-        conc = data.conc[timestep, level, :,:]
+        conc = data.conc[species_choice]
+        conc = conc[timestep,level,:,:]
         
     conc = np.squeeze(conc)*scale
     
     if np.shape(conc) != np.shape(map_data.x):
         conc = np.transpose(conc)
     
+    
+    #pdb.set_trace()
     
     if minconc == None:
         if range_all == None:
@@ -2108,7 +2132,17 @@ def plotlevel_MZT(data, lat = None, lon = None, time = None, level = -1, timeste
     #cs = map_data.m.contourf(map_data.x, map_data.y, conc, levels, cmap = plt.cm.Spectral_r    
     cs = map_data.m.contourf(map_data.x, map_data.y, conc, levels, cmap = plt.cm.RdYlBu)
 
-
+    """     
+    # Alter this at some point to plot the tall tower sites ?
+                       
+    #Plot release location
+    if "release_lat" in dir(fp_data):
+        rplons, rplats = np.meshgrid(fp_data.release_lon[time_index],
+                                     fp_data.release_lat[time_index])
+        rpx, rpy = map_data.m(rplons, rplats)
+        rp = map_data.m.scatter(rpx, rpy, 100, color = 'black')
+        
+    """
     if time == None:    
         time = data.time
         
@@ -2124,7 +2158,7 @@ def plotlevel_MZT(data, lat = None, lon = None, time = None, level = -1, timeste
         P = np.round(np.mean(np.squeeze(data.pressure[timestep, level, :,:]))/1000.0)
     
     if title == None:
-        'MOZART output P = ' + str(P) + ' at ' + str(time)
+        title = 'MOZART output P = ' + str(P) + 'kPa at ' + str(time)
     
     
     plt.title(title, fontsize=16)
@@ -2149,10 +2183,10 @@ def plotlevel_MZT(data, lat = None, lon = None, time = None, level = -1, timeste
         plt.savefig(outdir + out_filename)
         plt.show()
         plt.close()
-    else:
+    else:        
         plt.show()
         
-    return levels
+    return map_data, conc, levels
     
 # Plot multiple profile plots for a given MZT output file at a given lon against lat and then at a given lat against lon
 # Defaults to plotting the first timestep at lat = 0.94 and lon = 0
