@@ -13,7 +13,7 @@ from datetime import timedelta as td
 import glob
 import xarray as xray
 import json
-from os import getenv
+from os import getenv, stat
 import shutil
 
 
@@ -282,42 +282,47 @@ def icos_data_read(data_file, species):
 
     print("Reading " + data_file)
 
-    df =  pd.read_csv(data_file,
-                      sep = r"\s+")
-    
-    # Sometimes header appears in middle of file
-    if not "int" in str(df.Year.dtype):
-        df = df[df.Year != "Year"]
+    # Find out how many header lines there are
+    nheader = 0
+    with open(data_file, "rb") as f:
+        for l in f:
+            if l[0] != "#":
+                break
+            nheader += 1
 
-    df[[species.lower(), "Stdev"]] = df[[species.lower(), "Stdev"]].astype(float)
+    # Read CSV file
+    df =  pd.read_csv(data_file,
+                      skiprows = nheader-1,
+                      parse_dates = {"time": ["Year", "Month", "Day", "Hour", "Minute"]},
+#                      date_parser = lambda s: pd.to_datetime(s, format = "%Y %m %d %H %M"),
+                      index_col = "time",
+                      sep = ";",
+                      usecols = ["Day", "Month", "Year", "Hour", "Minute",
+                                 str(species.lower()), "SamplingHeight",
+                                 "Stdev", "NbPoints"],
+                      dtype = {"Day": np.int,
+                               "Month": np.int,
+                               "Year": np.int,
+                               "Hour": np.int,
+                               "Minute": np.int,
+                               species.lower(): np.float,
+                               "Stdev": np.float,
+                               "SamplingHeight": np.float,
+                               "NbPoints": np.int},
+                      na_values = "-999.99")
+    
+    # Format time
+    df.index = pd.to_datetime(df.index, format = "%Y %m %d %H %M")
 
     df = df[df[species.lower()] >= 0.]
     
-    df.reset_index(inplace = True)
-
-    df[["Year", "Month", "Day", "Hour", "Minute"]] = \
-        df[["Year", "Month", "Day", "Hour", "Minute"]].astype(int)
-    
-    time = []
-    for y, m, d, h, mi in zip(df.Year, df.Month, df.Day, df.Hour, df.Minute):
-        time.append(dt(y, m, d, h, mi))
-
-    df.index = time
-    
-    # Remove unwanted columns
-    df.drop(["Year", "Month", "Day", "Hour", "Minute", "index",
-             "Site", "Date", 'Flag', 'QualityId',
-             u'LastModifiedYear', u'LastModifiedMonth', u'LastModifiedDay',
-             u'LastModifiedHour', u'LastModifiedMinute', u'AutoDescriptiveFlag',
-             u'ManualDescriptiveFlag'],
-            1,
-            inplace = True)
-
     # Remove duplicate indices
+    df.reset_index(inplace = True)
     df = df.reset_index().drop_duplicates(subset='index').set_index('index')
     
     # Rename columns
-    df.rename(columns = {"Stdev": species.upper() + "_variability",
+    df.rename(columns = {species.lower(): species.upper(),
+                         "Stdev": species.upper() + "_variability",
                          "NbPoints": species.upper() + "_number_of_observations"},
                inplace = True)
 
@@ -351,33 +356,37 @@ def icos(site, network = "ICOS",
                          for f in data_file_names]
     
     for i, (species, inlet) in enumerate(species_and_inlet):
-        
-        # Create Pandas dataframe
-        ds = icos_data_read(data_files[i], species.upper())
-        
-        # Sort out attributes
-        global_attributes = params_icos[site.upper()]["global_attributes"]
-        global_attributes["inlet_height_magl"] = float(params_icos[site]["inlet_rename"][inlet][:-1])
 
-        ds = attributes(ds,
-                        species.upper(),
-                        site.upper(),
-                        global_attributes = global_attributes,
-                        sampling_period = 60)
+        if stat(data_files[i]).st_size > 0:
 
-        # Write file
-        nc_filename = output_filename(output_folder,
-                                      network,
-                                      "CRDS",
-                                      site.upper(),
-                                      str(ds.time.to_pandas().index.to_pydatetime()[0].year),
-                                      ds.species,
-                                      params_icos[site]["inlet_rename"][inlet])
-        
-        ds.to_netcdf(nc_filename)
-        
-        print("Written " + nc_filename)
+            # Create Pandas dataframe
+            ds = icos_data_read(data_files[i], species.upper())
+            
+            # Sort out attributes
+            global_attributes = params_icos[site.upper()]["global_attributes"]
+            global_attributes["inlet_height_magl"] = float(params_icos[site]["inlet_rename"][inlet][:-1])
+    
+            ds = attributes(ds,
+                            species.upper(),
+                            site.upper(),
+                            global_attributes = global_attributes,
+                            sampling_period = 60)
+    
+            # Write file
+            nc_filename = output_filename(output_folder,
+                                          network,
+                                          "CRDS",
+                                          site.upper(),
+                                          str(ds.time.to_pandas().index.to_pydatetime()[0].year),
+                                          ds.species,
+                                          params_icos[site]["inlet_rename"][inlet])
+            
+            ds.to_netcdf(nc_filename)
+            
+            print("Written " + nc_filename)
 
+        else:
+            print("Skipping empty file: %s" % data_files[i])
 
 # GC FUNCTIONS
 ###############################################################
