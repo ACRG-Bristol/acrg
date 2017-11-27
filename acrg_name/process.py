@@ -1277,10 +1277,17 @@ def process(domain, site, height, year, month,
                 if maxday >= max(days):
                     return None
             else:
-                fields_files = glob.glob(subfolder + fields_folder + "/*" + \
-                                         datestrs[0] + "*.txt*")
-                days = [int(os.path.split(fields_file)[1].split("_")[-1][6:8]) \
-                        for fields_file in fields_files]
+                if transport_model is "STILT":
+                    stilt_files = glob.glob(subfolder + "stilt" + str(year) + \
+                                            "x" + str(month).zfill(2) + "*.nc")
+                    days = [int(os.path.split(stilt_file)[1].split("x")[2]) \
+                            for stilt_file in stilt_files]
+                else:
+                    fields_files = glob.glob(subfolder + fields_folder + "/*" + \
+                                             datestrs[0] + "*.txt*")
+                    days = [int(os.path.split(fields_file)[1].split("_")[-1][6:8]) \
+                            for fields_file in fields_files]
+
                 if maxday >= max(days):
                     return None
                 
