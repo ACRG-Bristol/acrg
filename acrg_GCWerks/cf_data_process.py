@@ -978,7 +978,7 @@ if __name__ == "__main__":
         
   
     # ICOS
-    icos("TTA")
+#    icos("TTA")
     icos("MHD", network = "LSCE")
 
     # GAUGE CRDS data
