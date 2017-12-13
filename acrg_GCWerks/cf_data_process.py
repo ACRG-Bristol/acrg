@@ -977,7 +977,7 @@ if __name__ == "__main__":
     gc("ZEP", "GCMS", "AGAGE")
 
     # AGAGE CRDS data
-    crds("RPB", "CRDS", "AGAGE")
+    crds("RPB", "AGAGE")
 
     # ICOS
 #    icos("TTA")
