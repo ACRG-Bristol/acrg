@@ -199,8 +199,8 @@ def load_NAME(file_lines, namever):
             x = int(float(vals[0]) - 1.5)
             y = int(float(vals[1]) - 1.5)
         elif namever == 3:
-            x = float(vals[0]) - 1
-            y = float(vals[1]) - 1
+            x = int(float(vals[0]) - 1)
+            y = int(float(vals[1]) - 1)
         
         # populate the data arrays (i.e. all columns but the leading 4) 
         for i, data_array in enumerate(data_arrays):
@@ -1306,7 +1306,7 @@ def process(domain, site, height, year, month,
                 status_log("There must be exactly one matching satellite " + 
                            "file in the Observations/ folder",
                            error_or_warning="error")
-                status_log("Files: " + satellite_obs_file,
+                status_log("Files: " + ','.join(satellite_obs_file),
                            error_or_warning="error")
                 return None
 
