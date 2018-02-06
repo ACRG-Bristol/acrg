@@ -19,10 +19,20 @@ post_process_template.py - Template file to show how you might call functions co
 ****** They exist for reference only, at some point you have to actually do some work yourself!!!!! *************************
 
 In order for the run_tdmcmc.py script to work you need to have compiled both Fortran subroutines using f2py.
-By default the .so files must be called:
-tdmcmc_uncorr.so, tdmcmc_evencorr.so, tdmcmc_corr.so 
 
-But you don't have to stick with these defaults
+It is suggested that each fortran code is compiled twice - once for use with parallel tempering and one without.
+The difference to make to the fortran before compiling is simply the inclusion (or exclusion) of the line:
+
+call OMP_SET_NUM_THREADS(nbeta)      ! Uncomment for Parallel Tempering
+
+This needs to be included for parallel tempering but should be commented out otherwise.
+
+By default the .so files must be called:
+tdmcmc_uncorr.so, tdmcmc_uncorr_pt.so, tdmcmc_evencorr.so, tdmcmc_evencorr_pt.so, tdmcmc_corr.so, tdmcmc_corr_pt.so
+
+("_pt" - for parallel tempering versions i.e. with OMP_SET_NUM_THREADS line included).
+
+But you don't have to stick with these defaults.
 
 ***************** Compiling uncorrelated version with f2py ****************************************
 
