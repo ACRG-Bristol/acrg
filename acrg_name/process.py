@@ -404,6 +404,8 @@ def read_met(fnames, met_def_dict=None, vertical_profile=False):
 
         m = pandas.read_csv(fname, skiprows = a, 
                             compression=compression)
+        m = m.fillna('')
+        
         m = numpy.array(m)
 
         Xcol = None
@@ -1565,7 +1567,33 @@ def process_vertical_profile(vp_fname):
         slope_error - the error in this calculated gradient
     """
     
-    vp_met_dict = {"time": "             T","temp20": "TEMP-Z = 20.00000 m agl",
+#    vp_met_dict = {"time": "             T","temp20": "TEMP-Z = 20.00000 m agl",
+#               "temp40": "TEMP-Z = 40.00000 m agl","temp60": "TEMP-Z = 60.00000 m agl",
+#               "temp80": "TEMP-Z = 80.00000 m agl","temp100": "TEMP-Z = 100.0000 m agl",
+#               "temp120": "TEMP-Z = 120.0000 m agl","temp140": "TEMP-Z = 140.0000 m agl",
+#               "temp160": "TEMP-Z = 160.0000 m agl","temp180": "TEMP-Z = 180.0000 m agl",
+#               "temp200": "TEMP-Z = 200.0000 m agl","temp220": "TEMP-Z = 220.0000 m agl",
+#               "temp240": "TEMP-Z = 240.0000 m agl","temp260": "TEMP-Z = 260.0000 m agl",
+#               "temp280": "TEMP-Z = 280.0000 m agl","temp300": "TEMP-Z = 300.0000 m agl",
+#               "press20": "PRES-Z = 20.00000 m agl","press40": "PRES-Z = 40.00000 m agl",
+#               "press60": "PRES-Z = 60.00000 m agl","press80": "PRES-Z = 80.00000 m agl",
+#               "press100": "PRES-Z = 100.0000 m agl","press120": "PRES-Z = 120.0000 m agl",
+#               "press140": "PRES-Z = 140.0000 m agl","press160": "PRES-Z = 160.0000 m agl",
+#               "press180": "PRES-Z = 180.0000 m agl","press200": "PRES-Z = 200.0000 m agl",
+#               "press220": "PRES-Z = 220.0000 m agl","press240": "PRES-Z = 240.0000 m agl",
+#               "press260": "PRES-Z = 260.0000 m agl","press280": "PRES-Z = 280.0000 m agl",
+#               "press300": "PRES-Z = 300.0000 m agl",
+#               "theta20": "THETA-Z = 20.00000 m agl","theta40": "THETA-Z = 40.00000 m agl",
+#               "theta60": "THETA-Z = 60.00000 m agl","theta80": "THETA-Z = 80.00000 m agl",
+#               "theta100": "THETA-Z = 100.0000 m agl","theta120": "THETA-Z = 120.0000 m agl",
+#               "theta140": "THETA-Z = 140.0000 m agl","theta160": "THETA-Z = 160.0000 m agl",
+#               "theta180": "THETA-Z = 180.0000 m agl","theta200": "THETA-Z = 200.0000 m agl",
+#               "theta220": "THETA-Z = 220.0000 m agl","theta240": "THETA-Z = 240.0000 m agl",
+#               "theta260": "THETA-Z = 260.0000 m agl","theta280": "THETA-Z = 280.0000 m agl",
+#               "theta300": "THETA-Z = 300.0000 m agl"}
+    #vp_fname = "/dagage2/agage/metoffice/vertical_profiles/UKV/GLATTON_Vertical_Profile.txt.gz"  
+    
+    vp_met_dict = {"time": "T","temp20": "TEMP-Z = 20.00000 m agl",
                "temp40": "TEMP-Z = 40.00000 m agl","temp60": "TEMP-Z = 60.00000 m agl",
                "temp80": "TEMP-Z = 80.00000 m agl","temp100": "TEMP-Z = 100.0000 m agl",
                "temp120": "TEMP-Z = 120.0000 m agl","temp140": "TEMP-Z = 140.0000 m agl",
@@ -1589,7 +1617,6 @@ def process_vertical_profile(vp_fname):
                "theta220": "THETA-Z = 220.0000 m agl","theta240": "THETA-Z = 240.0000 m agl",
                "theta260": "THETA-Z = 260.0000 m agl","theta280": "THETA-Z = 280.0000 m agl",
                "theta300": "THETA-Z = 300.0000 m agl"}
-    #vp_fname = "/dagage2/agage/metoffice/vertical_profiles/UKV/GLATTON_Vertical_Profile.txt.gz"  
 
     vp_met_df=read_met(vp_fname, met_def_dict=vp_met_dict, vertical_profile=True)
     lapse_ds=xray.Dataset.from_dataframe(vp_met_df)
