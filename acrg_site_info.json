@@ -101,7 +101,7 @@
         "height_station_masl": 85.0,
         "latitude": -41.41,
         "longitude": 174.87,
-        "network": "NIWA"
+        "network": "NOAA"
     },
     "BMW" : {
         "alt": [],
@@ -281,6 +281,15 @@
         "latitude": -46.434,
         "longitude": 51.848,
         "network": "NOAA"
+    },
+    "CVO" : {
+        "alt": [],
+        "long_name" : "Cape Verde, Africa",
+        "height": ["30m"],
+        "height_station_masl": 10.0,
+        "latitude": 16.8636,
+        "longitude": -24.8672,
+        "network": "WMO"        
     },
     "DJI" : {
         "alt": [""],
