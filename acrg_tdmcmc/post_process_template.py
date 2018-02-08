@@ -32,18 +32,21 @@ with open(acrg_path + "/acrg_species_info.json") as f:
         species_info=json.load(f)
 species_key = agage.synonyms(species, species_info)
 molmass = float(species_info[species_key]['mol_mass'])
-#output_directory = "/path/to/tdmcmmc/outputs/"
-output_directory = "/data/ml12574/transd/thesis/GAUGE/"
-outfile="outfile_name.nc"
-#network='test'
-network='GAUGE_evencorr'
-experiment="MHD_TAC_RGL_TTA"
+
+output_directory = "/path/to/tdmcmc/outputs/" # ** UPDATE OUTPUT DIRECTORY **
+
+#outfile="/home/ml12574/work/programs/Python/td-mcmc/flux_NAME-Bristol_ch4.nc"
+outfile="flux_NAME-Bristol_ch4.nc"
+
+network='test'
+#network='GAUGE_evencorr'
+experiment="MHD_TAC"
 countries=np.asarray(['UNITED KINGDOM', 'IRELAND', 'FRANCE', 'GERMANY', 
                       'DENMARK', 'BELGIUM', 'NETHERLANDS', 'LUXEMBOURG'])
 percentile = [5,16,50,84,95]
 
 # POST-PROCESSING OPTIONS
-write_outfile=False
+write_outfile=True
 append_outfile=False
 calc_country=True
 plot_scale_map=True
@@ -80,12 +83,16 @@ if len(f) > 0:
     ds0 = process.open_ds(f[0]) 
     nlon=len(ds0.lon)
     nlat=len(ds0.lat)
+    nIt = len(ds0.nIt)
 else:
     raise LookupError("Try a different base file to get nlon and nlat")
 
 sites=ds0.coords['sites'].values
 flux_mean = np.zeros((nlat,nlon,ntime))
 flux_percentile = np.zeros((nlat,nlon,ntime,npercentile))
+flux_it = np.zeros((nlat, nlon, ntime, nIt))
+k_mean = np.zeros(ntime)
+k_percentile = np.zeros((ntime,npercentile))
 
 files = []
 q_country={}
@@ -111,10 +118,17 @@ for tt,ti in enumerate(dates):
             regions_it=ds.regions_it.values
             x_it=ds.x_it.values
             k_it=ds.k_it.values
+            
+            k_mean[tt] = np.mean(k_it)
+            k_percentile[tt,0] = np.percentile(k_it, 5, axis=0)
+            k_percentile[tt,1] = np.percentile(k_it, 16, axis=0)
+            k_percentile[tt,2] = np.percentile(k_it, 50, axis=0)
+            k_percentile[tt,3] = np.percentile(k_it, 84, axis=0)
+            k_percentile[tt,4] = np.percentile(k_it, 95, axis=0)
+
             x_post_vit=ds.x_post_vit.values
             q_ap=ds.q_ap.values
             q_ap_v=np.ravel(q_ap)
-            
     
             x_post_v_mean=np.mean(x_post_vit, axis=0)
             x_post_v_05 = np.percentile(x_post_vit, 5, axis=0)
@@ -123,7 +137,6 @@ for tt,ti in enumerate(dates):
             x_post_v_84 = np.percentile(x_post_vit, 84, axis=0)
             x_post_v_95 = np.percentile(x_post_vit, 95, axis=0)
             
-
             flux_mean[:,:,tt] = np.reshape(x_post_v_mean*q_ap_v, (nlat,nlon))
             flux_percentile[:,:,tt,0] = np.reshape(x_post_v_05*q_ap_v, (nlat,nlon))
             flux_percentile[:,:,tt,1] = np.reshape(x_post_v_16*q_ap_v, (nlat,nlon))
@@ -131,6 +144,10 @@ for tt,ti in enumerate(dates):
             flux_percentile[:,:,tt,3] = np.reshape(x_post_v_84*q_ap_v, (nlat,nlon))
             flux_percentile[:,:,tt,4] = np.reshape(x_post_v_95*q_ap_v, (nlat,nlon))
             
+            f_it = x_post_vit*q_ap_v # Create flux iterations from x_post_vit*q_ap_v
+            f_it = np.array([np.reshape(it,(nlat,nlon)) for it in f_it]) # Reshaping to nlat and nlon
+            f_it = np.moveaxis(f_it,0,2) # Rearranging axes to make nIt last dimension
+            flux_it[:,:,tt,:] = f_it
             
             stations={}
             for si, site in enumerate(sites):
@@ -195,7 +212,7 @@ country_percentile[:,:,2] = country_50
 country_percentile[:,:,3] = country_84
 country_percentile[:,:,4] = country_95
 
-d0=pandas.to_datetime(dates)
+time=pandas.to_datetime(dates)
 lon=np.asarray(ds.lon.values)
 lat=np.asarray(ds.lat.values)
 
@@ -211,13 +228,12 @@ country_ap_percentile=np.zeros((ncountries,ntime,npercentile))
 
 
 #%%
-#outfile="/home/ml12574/work/programs/Python/td-mcmc/flux_NAME-Bristol_ch4.nc"
-outfile="flux_NAME-Bristol_ch4.nc"
 if write_outfile == True:
-    process.write_netcdf(flux_mean, flux_percentile, flux_prior, flux_ap_percentile,
+    process.write_netcdf(flux_mean, flux_percentile, flux_it, flux_prior, flux_ap_percentile,
                          country_mean, country_percentile, country_prior, country_ap_percentile,
-                         country_index,
-                     lon, lat, d0, countries, percentile, experiment, outfile)
+                         country_index, k_mean, k_percentile,
+                     lon, lat, time, countries, percentile, nIt, experiment, outfile)
 elif append_outfile == True:
-    process.append_netcdf(flux_mean, flux_percentile, country_mean, country_percentile, 
-                     lon, lat, d0, countries, percentile, experiment, outfile)
+    process.append_netcdf(flux_mean, flux_percentile, flux_it, country_mean, country_percentile,
+                     k_mean, k_percentile,
+                     lon, lat, time, countries, percentile, experiment, outfile)

@@ -214,6 +214,13 @@
                 "data_owner_email": "s.odoherty@bristol.ac.uk"
             }
         },
+        "RPB" : {
+            "gcwerks_site_name": "barbados",
+            "global_attributes": {
+                "data_owner": "Simon O'Doherty",
+                "data_owner_email": "s.odoherty@bristol.ac.uk"
+            }
+        },
         "TAC" : {
             "gcwerks_site_name": "tacolneston",
             "global_attributes": {

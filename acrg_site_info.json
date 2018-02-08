@@ -141,7 +141,7 @@
         "height_name": ["110magl", "50magl", "250magl"],
         "latitude": 54.35858,
         "longitude": -1.15033,
-        "network": "GAUGE"
+        "network": "DECC"
     },
     "BTT" : {
         "alt": ["BTTOWER", "BT TOWER", "BT_TOWER"],
@@ -171,7 +171,7 @@
         "network": "NOAA"
     },
     "CBW" : {
-        "alt": [],
+        "alt": ["CES"],
         "long_name" : "Cabauw Tower, Netherlands",
         "height": ["120m", "20m", "60m", "200m"],
         "height_station_masl": 213.0,
@@ -477,6 +477,16 @@
         "latitude": 41.0588,
         "longitude": -124.75,
         "network": "NOAA"
+    },
+    "HUN" : {
+        "alt": [],
+        "long_name" : "Hegyhatsal, Hungary",
+        "height": ["115m"],
+        "height_station_masl": 248.0,
+        "height_name": ["115magl"],
+        "latitude": 46.95,
+        "longitude": 16.65,
+        "network": "EUROCOM"
     },
     "ICE" : {
         "alt": [],

@@ -22,7 +22,7 @@ country_emissions - calculate emissions from given list of countries
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
-import xray
+import xarray as xray
 import acrg_name as name
 from acrg_grid import areagrid
 from netCDF4 import Dataset
@@ -35,9 +35,9 @@ from matplotlib.patches import Polygon
 from matplotlib.colors import BoundaryNorm
 from matplotlib import ticker
 
-def append_netcdf(flux_mean, flux_percentile, country_mean, country_percentile,
+def append_netcdf(flux_mean, flux_percentile, flux_it, country_mean, country_percentile,
                   k_mean, k_percentile,
-                 lon, lat, time, country, percentile, experiment, outfile):
+                 lon, lat, time, country, percentile, nIt, experiment, outfile):
     #country_it,  
     """
     Function for appending flux and country output to file
@@ -48,6 +48,7 @@ def append_netcdf(flux_mean, flux_percentile, country_mean, country_percentile,
       
     fm_name = "_".join(['flux_mean', experiment])
     fpc_name = "_".join(['flux_percentile', experiment])
+    fit_name = "_".join(['flux_it', experiment])
     countrym_name = "_".join(['country_mean', experiment])
     countrypc_name = "_".join(['country_percentile', experiment])
     regionsm_name = "_".join(['regions_mean', experiment])
@@ -62,6 +63,7 @@ def append_netcdf(flux_mean, flux_percentile, country_mean, country_percentile,
     nccountrypc=ncF.createVariable(countrypc_name, 'f', ('country', 'time', 'percentile'))
     ncregionsm=ncF.createVariable(regionsm_name, 'f', ('time'))   
     ncregionspc=ncF.createVariable(regionspc_name, 'f', ('time', 'percentile'))
+    ncfluxit=ncF.createVariable(fit_name, 'f', ('lat', 'lon', 'time', 'nIt'))    
     #nccountryit=ncF.createVariable(countryit_name, 'f', ('country', 'nIt','time'))   
     
     ncfluxm[:, :, :]=flux_mean
@@ -71,6 +73,10 @@ def append_netcdf(flux_mean, flux_percentile, country_mean, country_percentile,
     ncfluxpc[:, :, :,:]=flux_percentile
     ncfluxpc.units='mol/m2/s'
     ncfluxpc.long_name='Posterior mean flux from each grid-cell'
+    
+    ncfluxit[:, :, :,:]=flux_it
+    ncfluxit.units='mol/m2/s'
+    ncfluxit.long_name='Posterior it flux from each grid-cell'
     
     nccountrym[:, :]=country_mean
     nccountrym.units='Tg/yr'
@@ -95,7 +101,7 @@ def append_netcdf(flux_mean, flux_percentile, country_mean, country_percentile,
     ncF.close()
     print "Appended " + experiment + " to " + outfile 
 
-def write_netcdf(flux_mean, flux_percentile, flux_prior, flux_ap_percentile,
+def write_netcdf(flux_mean, flux_percentile, flux_it, flux_prior, flux_ap_percentile,
                  country_mean, country_percentile, country_prior, country_ap_percentile,
                  country_index, k_mean, k_percentile,
                  lon, lat, time, country, percentile, nIt, experiment, outfile):
@@ -111,6 +117,7 @@ def write_netcdf(flux_mean, flux_percentile, flux_prior, flux_ap_percentile,
     
     fm_name = "_".join(['flux_mean', experiment])
     fpc_name = "_".join(['flux_percentile', experiment])
+    fit_name = "_".join(['flux_it', experiment])
     countrym_name = "_".join(['country_mean', experiment])
     countrypc_name = "_".join(['country_percentile', experiment])
     regionsm_name = "_".join(['regions_mean', experiment])
@@ -124,7 +131,7 @@ def write_netcdf(flux_mean, flux_percentile, flux_prior, flux_ap_percentile,
     ncF.createDimension('lat', len(lat))
     ncF.createDimension('country', len(country))
     ncF.createDimension('percentile', len(percentile))
-    #ncF.createDimension('nIt', nIt)
+    ncF.createDimension('nIt', nIt)
     
     nctime=ncF.createVariable('time', 'i', ('time',))
     nclon=ncF.createVariable('lon', 'f', ('lon',))
@@ -133,6 +140,7 @@ def write_netcdf(flux_mean, flux_percentile, flux_prior, flux_ap_percentile,
     ncpercent=ncF.createVariable('percentile', 'i', ('percentile',))
     ncfluxm=ncF.createVariable(fm_name, 'f', ('lat', 'lon', 'time'))    
     ncfluxpc=ncF.createVariable(fpc_name, 'f', ('lat', 'lon', 'time', 'percentile'))    
+    ncfluxit=ncF.createVariable(fit_name, 'f', ('lat', 'lon', 'time', 'nIt'))    
     nccountrym=ncF.createVariable(countrym_name, 'f', ('country', 'time'))   
     nccountrypc=ncF.createVariable(countrypc_name, 'f', ('country', 'time', 'percentile'))
     nccountryap=ncF.createVariable('country_prior', 'f', ('country', 'time'))
@@ -172,6 +180,10 @@ def write_netcdf(flux_mean, flux_percentile, flux_prior, flux_ap_percentile,
     ncfluxpc[:, :, :,:]=flux_percentile
     ncfluxpc.units='mol/m2/s'
     ncfluxpc.long_name='Posterior percentile flux from each grid-cell'
+    
+    ncfluxit[:, :, :,:]=flux_it
+    ncfluxit.units='mol/m2/s'
+    ncfluxit.long_name='Posterior it flux from each grid-cell'
     
     nccountrym[:, :]=country_mean
     nccountrym.units='Tg/yr'
@@ -294,7 +306,7 @@ def plot_scaling(data,lon,lat, clevels=None, cmap=plt.cm.RdBu_r, label=None,
             
             mlon,mlat=m(ilon,ilat)
             site_loc=m.plot(mlon,mlat, linestyle='None',  
-                            marker='o', color='gold', markersize=8)
+                            marker='o', color='black', markersize=8)
             #markeredgewidth=0.0,                 
             yoffset = 0.022*(m.ymax-m.ymin) 
             xoffset = 0.012*(m.xmax-m.xmin)             
@@ -343,7 +355,7 @@ def regions_histogram(k_it, out_filename=None, fignum=2):
         plt.show()
     
 def country_emissions(ds_mcmc, x_post_vit, q_ap_abs_v, countries, species,
-                      units = None, ocean=True, domain='EUROPE', uk_split=False):
+                      units = None, ocean=True, domain='EUROPE', uk_split=False, fixed_map = False):
         
     """
     Generates national totals for a given list of countries
@@ -395,10 +407,9 @@ def country_emissions(ds_mcmc, x_post_vit, q_ap_abs_v, countries, species,
     area=areagrid(ds_mcmc.lat.values,ds_mcmc.lon.values)
     # GET COUNTRY DATA
     if uk_split == True:
-        c_object=name.get_country(domain, ocean=True, al=True, uk_split=uk_split)
+        c_object=name.get_country(domain, ocean=True, ukmo=True, uk_split=uk_split)
     elif ocean==True:
-        #c_object=name.get_country(domain, ocean=True, al=False, uk_split=False)
-        c_object=name.get_country(domain, ocean=True, al=True, uk_split=False)
+        c_object=name.get_country(domain, ocean=True, ukmo=True, uk_split=False)
     else:
         c_object=name.get_country(domain, ocean=False)
     cds = xray.Dataset({'country': (['lat','lon'], c_object.country), 
@@ -437,9 +448,12 @@ def country_emissions(ds_mcmc, x_post_vit, q_ap_abs_v, countries, species,
             country_v_new[c_index[0]]=ci+1
             for it in range(nIt):
                 x_vit_temp=x_post_vit[it,:]
-                q_country_it[ci,it]=np.sum(x_vit_temp[c_index[0]]*area_v[c_index[0]]
-                                *q_ap_abs_v[c_index[0]]) 
-        
+                if fixed_map == False:
+                    q_country_it[ci,it]=np.sum(x_vit_temp[c_index[0]]*area_v[c_index[0]]
+                                    *q_ap_abs_v[c_index[0]]) 
+                elif fixed_map == True:
+                    q_country_it[ci,it]=np.sum(x_vit_temp*area_v[c_index[0]]
+                                    *q_ap_abs_v[c_index[0]]) 
             q_country_ap[ci] = np.sum(area_v[c_index[0]]*q_ap_abs_v[c_index[0]]
                                 *365.*24.*3600.*molmass/unit_factor) # in Tg/yr
         
@@ -478,9 +492,12 @@ def country_emissions(ds_mcmc, x_post_vit, q_ap_abs_v, countries, species,
             country_v_new[c_index[0]]=ci+1
             for it in range(nIt):
                 x_vit_temp=x_post_vit[it,:]
-                q_country_it[ci,:,it]=np.sum(x_vit_temp[c_index[0],None]*area_v[c_index[0],None]
-                                *q_ap_abs_v[c_index[0],:], axis = 0) 
-        
+                if fixed_map == False:
+                    q_country_it[ci,:,it]=np.sum(x_vit_temp[c_index[0],None]*area_v[c_index[0],None]
+                                    *q_ap_abs_v[c_index[0],:], axis = 0) 
+                elif fixed_map == True:
+                    q_country_it[ci,:,it]=np.sum(x_vit_temp*area_v[c_index[0],None]
+                                    *q_ap_abs_v[c_index[0],:], axis = 0)
             q_country_ap[ci,:] = np.sum(area_v[c_index[0],None]*q_ap_abs_v[c_index[0],:]
                                 *365.*24.*3600.*molmass/unit_factor, axis = 0) # in Tg/yr
         

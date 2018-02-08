@@ -13,101 +13,121 @@ import getpass
 import acrg_time
 import re
 import numpy as np 
+import xarray as xray
+import collections as c
+import sys
+import pandas as pd
 
-def write(lat, lon, time, flux, species, domain, year,
-          comments = "", title="EDGAR emissions"):
+def write(lat, lon, time, flux, species, domain,
+          source, title, prior_info_dict,
+          regridder_used = 'acrg_grid.regrid.regrid_3D',
+          copy_from_year = None, climatology = False, flux_comments = None):
     '''
     Write a flux file
     
+    -time- should be in numpy.datetime64 format in either an array (format from xarray) or a datetime index (format from pandas).
+    See 'Creating datetime64 data' : http://xarray.pydata.org/en/stable/time-series.html
+    
+    -flux- should be in mol/m2/s and -units- should be mol/m2/s.
+    
+    -source- is the sources in file. E.g. 'ff' (fossil fuel), 'agriculture'.
+    source = None if the file contains all sources of a species. 
+    If multiple sources: -source- is a chain of sources: 'waste-and-agriculture' (with hyphens between words).
+    
+    -title- gives more information about what is in the file, e.g. Fossil Fuel CO2.
+    
+    prior_info_dict = {'NAME_OF_PRIOR' : ['VERSION','RAW RESOLUTION', 'REFERENCE']}
+    
+    -copy_from_year- if the data is the same as another year but with a different timestamp give the original year here as a string
+    
+    -climatology- if the data is a climatology set this to True and give detail using flux_comments 
+    
     TODO: Add some error checking (e.g. check that domain is correct)
     '''
-    if type(year) == dt.date:
-        #time = year
-        year = str(year.year)
-    elif type(year) == str:
-        #time = dt.datetime.strptime(year, '%Y')
-        year = year
-    elif isinstance(year[0], dt.date):
-        time = year
-        year = str(year[0].year)
-    else:
-        raise ValueError('Year needs to be in datetime.date or string format')
-        
-    if type(time) == dt.date:
-        time = time
-    elif type(time) == str:
-        time = dt.datetime.strptime(time, '%Y')
-    elif type(time) == np.ndarray:
-        if type(time[0]) == dt.date:
-            time = time
-        else:
-            raise ValueError('Time format not correct')
-    else:
-        time = time
-       # raise ValueError('Time needs to be in datetime.date or string format')
     
+    print "WARNING: Make sure time stamp is centre of time period (i.e. 15th of month\
+            for monthly data or 15th June for yearly data)."
+    print "WARNING: Make sure coordinates are centre of the gridbox."
+    print "WARNING: Make sure fluxes are in mol/m2/s."
         
+    if source == None:
+        file_source = species
+        source_name = species + '-total'
+    else:
+        file_source = species + '-' + source
+        source_name = file_source
+    
+    file_source = file_source.lower()
+    species = species.lower()  
+        
+    # Check that the flux is in the correct shape
+    if np.shape(flux) != tuple((np.shape(lat)[0], np.shape(lon)[0], np.shape(time)[0])):
+        print "Flux doesn't have dimensions lat x lon x time"
+        print "Reshape your flux array and try again"
+        return
+        
+    if type(time[0]) == np.datetime64:
+        time=time
+    else:
+        sys.exit('Time format not correct, needs to be type numpy.datetime64')
 
-    species = species.lower()    
-    
+        
     #Open netCDF file
-    ncname = '/data/shared/NAME/emissions/%s/%s_%s_%s.nc' %(domain, species, domain, year)
+    year = pd.DatetimeIndex([time[0]]).year[0]
+    if copy_from_year != None:
+        ncname = '/data/shared/NAME/emissions/%s/%s_%s_%s_copy-from-%s.nc' %(domain, file_source, domain, year, copy_from_year)
+    if climatology == True:
+        ncname = '/data/shared/NAME/emissions/%s/%s_%s_%s_climatology.nc' %(domain, file_source, domain, year)
+    else:
+        ncname = '/data/shared/NAME/emissions/%s/%s_%s_%s.nc' %(domain, file_source, domain, year)
 
     if os.path.isfile(ncname) == True:
         answer = raw_input("You are about to overwrite an existing file, do you want to continue? Y/N")
         if answer == 'N':
-            return
+            sys.exit()
         elif answer == 'Y':
-            f=nc.Dataset(ncname, 'w')
-   
-    elif os.path.isfile(ncname) == False:
-        f=nc.Dataset(ncname, 'w')
-        
-    #Create dimensions
-    f.createDimension('time', len(time))
-    f.createDimension('lat', len(lat))
-    f.createDimension('lon', len(lon))
+            pass
     
-    #Header attributes
-    f.title = title
-    f.author = getpass.getuser()
-    f.date_created = str(dt.datetime.today())
-    f.comments = comments
+    flux_attrs = {"source" : source_name,
+                  "units" : 'mol/m2/s',
+                  "species" : species} 
+    
+    lat_attrs = {"long_name" : "latitude",
+                 "units" : "degrees_north",
+                 "notes" : "centre of cell"}
+    
+    lon_attrs = {"long_name" : "longitude",
+                 "units" : "degrees_east",
+                 "notes" : "centre of cell"}
+    
 
-    #Time variable
-    time_seconds, time_reference = acrg_time.convert.time2sec(time)
-    nctime=f.createVariable('time', 'i', ('time',))
-    nctime[:]= time_seconds
-    nctime.long_name='time'
-    nctime.standard_name='time'
-    nctime.units='seconds since ' + str(time_reference)
-    nctime.calendar='gregorian'
+    glob_attrs = {"title":title,
+                  "author" : getpass.getuser(),
+                  "date_created" : np.str(dt.datetime.today()),
+                  "prior_used" : ["%s: Version %s, raw resolution %s, reference %s. " %(i, prior_info_dict[i][0], prior_info_dict[i][1], prior_info_dict[i][2]) for i in prior_info_dict.keys()],
+                  "regridder" : "Created using %s" %regridder_used}
 
-    #Longitude variable
-    nclon=f.createVariable('lon', 'd', ('lon',))
-    nclon[:]=lon
-    nclon.long_name='longitude'
-    nclon.standard_name='longitude'
-    nclon.units='degrees_east'
+    if flux_comments != None:
+        glob_attrs['comments'] = flux_comments
+        if copy_from_year != None:
+            glob_attrs['comments'] = "Fluxes copied from year %s." %copy_from_year + glob_attrs['comments']
     
-    #Latitude variable
-    nclat=f.createVariable('lat', 'd', ('lat',))
-    nclat[:]=lat
-    nclat.long_name='latitude'
-    nclat.standard_name='latitude'
-    nclat.units='degrees_north'
+    if copy_from_year != None:
+        glob_attrs['comments'] = "Fluxes copied from year %s." %copy_from_year
+
+    flux_ds = xray.Dataset({'flux':(['lat','lon','time'], flux, flux_attrs)},
+                              coords = {'lat' : lat,
+                                        'lon' : lon,
+                                        'time' : time},
+                              attrs = c.OrderedDict(glob_attrs))
     
-    #Mole fraction variable
-    # Check that the flux is in the correct shape
-    if np.shape(flux) == tuple((np.shape(lat)[0], np.shape(lon)[0], np.shape(time)[0])):
-        ncflux=f.createVariable('flux', \
-            'd', ('lat', 'lon', 'time'))
-        ncflux[:,:,:]=flux
-        ncflux.units='mol/m2/s'
-    else:
-        print 'The flux needs to be lat x lon x time which it is not'
-        print 'Reshape your flux array and try again'
-    f.close() 
+    flux_ds.lat.attrs = lat_attrs
+    flux_ds.lon.attrs = lon_attrs
+    flux_ds.time.attrs['notes'] = "centre of time period"
+    
+
+    flux_ds.flux.encoding = {'zlib':True}                        
+    flux_ds.to_netcdf(ncname, mode='w')    
 
 
 class EDGARread:
