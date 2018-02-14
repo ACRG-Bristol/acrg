@@ -339,7 +339,7 @@ def ec(site):
     for fname in fnames:
         
         header_count = 0
-        with open(fname, "r") as f:
+        with odffpen(fname, "r") as f:
             for line in f:
                 if line[0] == "C":
                     header_count+=1
@@ -1414,6 +1414,78 @@ def saws():
     return(ds, df)
 
 
+def uex():
+    params = {
+            "site" : "CVO",
+            "directory" : "/data/shared/obs_raw/UEX/",
+            "directory_output" : "/data/shared/obs/",
+            "global_attributes" : {
+                    "contact": "Elena Kozlova",
+                    "averaging": "minute averaged OA-ICOS"
+                    }
+            }
+    
+    fnames = sorted(glob.glob(join(params["directory"],"*.txt")))
+
+    df = []
+    
+    for fname in fnames:
+        
+        header_count = 0
+        with open(fname, "r") as f:
+            for line in f:
+                if line[0] == "D":
+                    header_count+=1
+                    header = line.split()
+                else:
+                    break
+    
+        dff = pd.read_csv(fname, sep = r"\s+",
+                         skiprows = header_count,
+                         header = None,
+                         names = header,
+                         parse_dates = {"time": ["DATE", "TIME"]},
+                         index_col = "time")
+        
+        dff = dff[["DATA", "ND", "SD"]]
+    
+        dff.rename(columns = {"DATA" : "CH4",
+                                "ND": "CH4_number_of_observations",
+                                "SD": "CH4_variability"},
+                   inplace = True)
+
+        df.append(dff)
+
+    df = pd.concat(df)
+    
+    # remove duplicates
+    df.index.name = "index"
+    df = df.reset_index().drop_duplicates(subset='index').set_index('index')              
+    df.index.name = "time"
+ 
+    # Convert to xray dataset
+    ds = xray.Dataset.from_dataframe(df)
+
+    # Add attributes
+    ds = attributes(ds,
+                    "CH4",
+                    params['site'].upper(),
+                    global_attributes = params["global_attributes"],
+                    scale = "NOAA-2004")
+    
+    # Write file
+    nc_filename = output_filename(params["directory_output"],
+                                  "UEX",
+                                  "OA-ICOS",
+                                  params["site"],
+                                  str(ds.time.to_pandas().index.to_pydatetime()[0].year),
+                                  ds.species,
+                                  site_params[params["site"]]["height"][0])
+    
+    print("Writing " + nc_filename)
+    
+    ds.to_netcdf(nc_filename)
+
 
 def globalview_co2_obspack(site, height):
 
@@ -1483,3 +1555,4 @@ def globalview_co2_obspack(site, height):
         print("Writing " + nc_filename)
         
         ds2.to_netcdf(nc_filename)
+

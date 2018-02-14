@@ -401,7 +401,7 @@ def timeseries_HiTRes(fp_HiTRes_ds, domain, HiTRes_flux_name, Resid_flux_name,
                                        'lon':fp.lon,
                                        'time':new_time})
 
-        em = flux_HiTRes.reindex_like(new_ds, method='ffill')
+        em = flux_HiTRes.reindex_like(new_ds, method='nearest')
         
         #Use end of hours back as closest point for finding the emissions file
         emend = flux_resid.sel(time = new_ds.time[0], method = 'nearest')
