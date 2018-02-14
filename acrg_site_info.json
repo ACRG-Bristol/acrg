@@ -401,6 +401,14 @@
         "network": "GOSAT/GOSAT-INDIA",
         "platform": "satellite"
     },
+    "GOSAT-BRAZIL" : {
+        "alt": ["GOSAT"],
+        "long_name" : "GOSAT, Brazil",
+        "height": ["column"],
+        "height_name": ["column"],
+        "network": "GOSAT/GOSAT-BRAZIL",
+        "platform": "satellite"
+    },
     "GOSAT-UK" : {
         "alt": ["GOSAT"],
         "long_name" : "GOSAT, UK",
