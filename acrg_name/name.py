@@ -629,7 +629,6 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi',
     sites = [key for key in fp_and_data.keys() if key[0] != '.']
     
     basis_func = basis(domain = domain, basis_case = basis_case, basis_directory = basis_directory)
-    print basis_func
     
     for site in sites:
 
@@ -652,7 +651,8 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi',
         
         if 'region' in basis_func.dims.keys():
             
-            basis_func = basis_func.isel(time=0)
+            if 'time' in basis_func.basis.coords():
+                basis_func = basis_func.isel(time=0)
             
             site_bf = xray.merge([site_bf, basis_func])
             
