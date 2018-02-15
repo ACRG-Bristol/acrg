@@ -101,7 +101,7 @@
         "height_station_masl": 85.0,
         "latitude": -41.41,
         "longitude": 174.87,
-        "network": "NIWA"
+        "network": "NOAA"
     },
     "BMW" : {
         "alt": [],
@@ -282,6 +282,15 @@
         "longitude": 51.848,
         "network": "NOAA"
     },
+    "CVO" : {
+        "alt": [],
+        "long_name" : "Cape Verde, Africa",
+        "height": ["30m"],
+        "height_station_masl": 10.0,
+        "latitude": 16.8636,
+        "longitude": -24.8672,
+        "network": "WMO"        
+    },
     "DJI" : {
         "alt": [""],
         "long_name" : "Darjeeling, India",
@@ -399,6 +408,14 @@
         "height": ["column"],
         "height_name": ["column"],
         "network": "GOSAT/GOSAT-INDIA",
+        "platform": "satellite"
+    },
+    "GOSAT-BRAZIL" : {
+        "alt": ["GOSAT"],
+        "long_name" : "GOSAT, Brazil",
+        "height": ["column"],
+        "height_name": ["column"],
+        "network": "GOSAT/GOSAT-BRAZIL",
         "platform": "satellite"
     },
     "GOSAT-UK" : {
