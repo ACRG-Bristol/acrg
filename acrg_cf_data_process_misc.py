@@ -1444,10 +1444,18 @@ def globalview_co2_obspack(site, height):
             site = 'CBW'
         else:
             site = ds.site_code
+            
+        if ds.value.units == "mol mol-1":
+            print ds.value.values[0], float(unit_species[species.upper()])
+            values = ds.value.values/float(unit_species[species.upper()])
+            unc_values = ds.value_unc.values/float(unit_species[species.upper()])
+            print values[0], unc_values[0]
+        else:
+            print "You need to create a unit conversion for the input units"
         
-        ds2 = xray.Dataset({species.upper(): (['time'],ds.value.values),
-                            species.upper() + "_repeatability": (['time'],ds.value_unc.values),
-                            species.upper() + "_status_flag": (['time'],ds.obs_flag.values)},
+        ds2 = xray.Dataset({species.upper(): (['time'],values),
+                            species.upper() + "_repeatability": (['time'],unc_values)},
+#                            species.upper() + "_status_flag": (['time'],ds.obs_flag.values)},
                             coords = {'time': ds.time.values})
 
     
@@ -1464,13 +1472,17 @@ def globalview_co2_obspack(site, height):
                         species.upper(),
                         site.upper(),
                         global_attributes = global_attributes,
+                        units = 'ppm',
                         scale = ds.dataset_calibration_scale,
                         sampling_period = None)
     
         # Write file
         directory_output = "/data/shared/obs/"
         instrument = instrument_dict[site.upper()]
-        inlet = "%im" %(int(float(ds.dataset_intake_ht)))
+        if site == 'MHD':
+            inlet = "10m"
+        else:
+            inlet = "%im" %(int(float(ds.dataset_intake_ht)))
         
         nc_filename = output_filename(directory_output,
                                   "EUROCOM",
