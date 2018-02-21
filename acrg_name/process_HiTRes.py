@@ -108,6 +108,8 @@ def process_HiTRes(domain, site, height, year, month, user_max_hour_back,
     else:
         totfp = nm.footprints(site, start="%s-%s-01" %(year,month), end = "%s-%02d-01" %(year, int(month)+1), domain=domain, height = height+'m')
 
+    user_max_hour_back = int(user_max_hour_back)
+
     for fi, f in enumerate(fnames):
         update_release_time(f)
         fp0 = proc.footprint_array(f,met=met)
@@ -119,11 +121,8 @@ def process_HiTRes(domain, site, height, year, month, user_max_hour_back,
         release_hr = splitfile[-3]
         hr_back = int(splitfile[-1].split('.')[0])
         
-        file_max_hour_back = 0
-        
         if hr_back <= user_max_hour_back:
         
-            file_max_hour_back = hr_back
             fp_droplev = fp0.fp.mean(dim='lev')
             fp0 = fp0.update({'fp':fp_droplev})
             fp_addH = np.expand_dims(fp0.fp.values, 3)
@@ -151,11 +150,11 @@ def process_HiTRes(domain, site, height, year, month, user_max_hour_back,
                     FDS0 = xray.concat([FDS0, FDS1], dim='time')
 
     
-    if file_max_hour_back != user_max_hour_back:
+    if np.max(FDS.H_back.values) != user_max_hour_back:
         print "WARNING: The maximum number of hours back specified by the user (%s)\
         is greater than the maximum number of hours back available in the high\
         time resolution footprint file (%s). Creating a footprint file with the\
-        available number of hours back (%s)." %(user_max_hour_back, file_max_hour_back, file_max_hour_back)
+        available number of hours back (%s)." %(user_max_hour_back, np.max(FDS.H_back.values), np.max(FDS.H_back.values))
     
     FDS = FDS0.copy()
     addfp = FDS.sum(dim='H_back')
@@ -186,7 +185,7 @@ def process_HiTRes(domain, site, height, year, month, user_max_hour_back,
     FDS = xray.concat([FDS, remfp], dim = 'H_back')
     FDS = FDS.rename({'fp':'fp_HiTRes'})
             
-    FDSattrs = {"title":" NAME footprints, %s, particles recorded two hourly for first %d hours" %(site, file_max_hour_back),
+    FDSattrs = {"title":" NAME footprints, %s, particles recorded two hourly for first %d hours" %(site, np.max(FDS.H_back.values)),
                       "author" : getpass.getuser(),
                         "date_created" : np.str(dt.datetime.today()),
                         "fp_units" : "mol/mol/mol/m2/s",
@@ -197,7 +196,7 @@ def process_HiTRes(domain, site, height, year, month, user_max_hour_back,
 
     #MAKE NETCDF FILE!!
     
-    out_folder = subfolder + "Processed_%sHrBk_Fields_files/" %(file_max_hour_back)
+    out_folder = subfolder + "Processed_%sHrBk_Fields_files/" %(np.max(FDS.H_back.values))
     
     if not os.path.exists(out_folder):
         os.makedirs(out_folder)
