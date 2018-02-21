@@ -89,15 +89,19 @@ def process_HiTRes(domain, site, height, year, month, user_max_hour_back,
 
     subfolder = base_dir + domain + "_" + site + "_" + height + "magl"+ "/"
     
-    fnames = glob.glob(subfolder+HiTRes_fields_folder+"/*_"+year+month)
+    HiTRes_search_string = subfolder+HiTRes_fields_folder+"/*_"+year+month+"*"
+    fnames = glob.glob(HiTRes_search_string)
     fnames.sort()
+
+    if len(fnames) == 0:
+        print "Can't find high time resolution footprint files " + HiTRes_search_string
 
     met_search_str = subfolder + met_folder + "/*.txt*"
       
     met_files = sorted(glob.glob(met_search_str))
         
     if len(met_files) == 0:
-        print("Can't file MET files: " + met_search_str)
+        print("Can't find MET files: " + met_search_str)
         return None
     
     else:
@@ -108,20 +112,26 @@ def process_HiTRes(domain, site, height, year, month, user_max_hour_back,
     else:
         totfp = nm.footprints(site, start="%s-%s-01" %(year,month), end = "%s-%02d-01" %(year, int(month)+1), domain=domain, height = height+'m')
 
+    totfp = totfp.fp.to_dataset()
+
     user_max_hour_back = int(user_max_hour_back)
 
     for fi, f in enumerate(fnames):
         update_release_time(f)
-        fp0 = proc.footprint_array(f,met=met)
-        if fi == 0:
-            time0 = fp0.time[0]
 
         filename = os.path.split(f)[1]
         splitfile = filename.split('_')
         release_hr = splitfile[-3]
         hr_back = int(splitfile[-1].split('.')[0])
         
+        print hr_back
+        print user_max_hour_back
+        
         if hr_back <= user_max_hour_back:
+            
+            fp0 = proc.footprint_array(f,met=met)
+            if fi == 0:
+                time0 = fp0.time[0]
         
             fp_droplev = fp0.fp.mean(dim='lev')
             fp0 = fp0.update({'fp':fp_droplev})
@@ -170,6 +180,7 @@ def process_HiTRes(domain, site, height, year, month, user_max_hour_back,
         time resolution in 'time' dimension of HiTRes footprints (%d hourly).\
         Averaging total footprints to match time resolution of HiTRes footprints." %(tot_fp_time_period, HiTRes_fp_time_period)
         totfp = totfp.resample('%dH' %HiTRes_fp_time_period,'time', how='mean')
+        totfp = totfp.transpose('lat','lon','time')
     
     elif HiTRes_fp_time_period < tot_fp_time_period:
         print "Time resolution of total footprints (%d hourly) is too low for\
