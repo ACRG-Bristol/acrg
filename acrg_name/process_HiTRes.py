@@ -95,6 +95,7 @@ def process_HiTRes(domain, site, height, year, month, user_max_hour_back,
 
     if len(fnames) == 0:
         print "Can't find high time resolution footprint files " + HiTRes_search_string
+        return None
 
     met_search_str = subfolder + met_folder + "/*.txt*"
       
