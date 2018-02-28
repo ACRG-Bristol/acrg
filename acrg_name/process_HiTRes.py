@@ -159,8 +159,9 @@ def process_HiTRes(domain, site, height, year, month, user_max_hour_back,
                 if FDS.H_back == np.max(FDS0.H_back):
                     FDS0 = xray.concat([FDS0, FDS1], dim='time')
 
+    file_max_hour_back = np.max(FDS.H_back.values)
     
-    if np.max(FDS.H_back.values) != user_max_hour_back:
+    if file_max_hour_back != user_max_hour_back:
         print "WARNING: The maximum number of hours back specified by the user (%s)\
         is greater than the maximum number of hours back available in the high\
         time resolution footprint file (%s). Creating a footprint file with the\
@@ -196,7 +197,7 @@ def process_HiTRes(domain, site, height, year, month, user_max_hour_back,
     FDS = xray.concat([FDS, remfp], dim = 'H_back')
     FDS = FDS.rename({'fp':'fp_HiTRes'})
             
-    FDSattrs = {"title":" NAME footprints, %s, particles recorded two hourly for first %d hours" %(site, np.max(FDS.H_back.values)),
+    FDSattrs = {"title":" NAME footprints, %s, particles recorded two hourly for first %d hours" %(site, file_max_hour_back),
                       "author" : getpass.getuser(),
                         "date_created" : np.str(dt.datetime.today()),
                         "fp_units" : "mol/mol/mol/m2/s",
@@ -207,7 +208,7 @@ def process_HiTRes(domain, site, height, year, month, user_max_hour_back,
 
     #MAKE NETCDF FILE!!
     
-    out_folder = subfolder + "Processed_%sHrBk_Fields_files/" %(np.max(FDS.H_back.values))
+    out_folder = subfolder + "Processed_%sHrBk_Fields_files/" %(file_max_hour_back)
     
     if not os.path.exists(out_folder):
         os.makedirs(out_folder)
