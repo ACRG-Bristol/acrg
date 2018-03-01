@@ -1493,9 +1493,9 @@ def globalview_co2_obspack(site, height):
     site = str(site)
     
     if height == 'surface':
-        fname = glob.glob("/data/shared/obs_raw/EUROCOM/co2_" + site.lower() + "*" + ".nc" )
+        fname = glob.glob("/data/shared/obs_raw/EUROCOM/ObsPack/co2_" + site.lower() + "*" + ".nc" )
     else:
-        fname = glob.glob("/data/shared/obs_raw/EUROCOM/co2_" + site.lower() + "*" + "-" + height +"magl.nc" )
+        fname = glob.glob("/data/shared/obs_raw/EUROCOM/ObsPack/co2_" + site.lower() + "*" + "-" + height +"magl.nc" )
     
     instrument_dict = {'MHD':'CRDS',
                        'RGL':'CRDS',
