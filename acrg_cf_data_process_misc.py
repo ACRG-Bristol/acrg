@@ -1487,15 +1487,24 @@ def uex():
     ds.to_netcdf(nc_filename)
 
 
-def globalview_co2_obspack(site, height):
+def obspack_co2(site, height, obspack_name):
+    
+    """
+    obspack_name is one of: 'GLOBALVIEW', 'preICOS' or 'WDCGG'
+    """
 
     height = str(height)
     site = str(site)
+    obspack_name = str(obspack_name).lower()
+    
+    obspack_name_dict = {'globalview': 'GLOBALVIEW',
+                         'preicos':'preICOS',
+                         'wdcgg':'WDCGG'}
     
     if height == 'surface':
-        fname = glob.glob("/data/shared/obs_raw/EUROCOM/ObsPack/co2_" + site.lower() + "*" + ".nc" )
+        fname = glob.glob("/data/shared/obs_raw/EUROCOM_ObsPack/"+obspack_name_dict[obspack_name]+"/co2_" + site.lower() + "*" + ".nc" )
     else:
-        fname = glob.glob("/data/shared/obs_raw/EUROCOM/ObsPack/co2_" + site.lower() + "*" + "-" + height +"magl.nc" )
+        fname = glob.glob("/data/shared/obs_raw/EUROCOM_ObsPack/"+obspack_name_dict[obspack_name]+"/co2_" + site.lower() + "*" + "-" + height +"magl.nc" )
     
     instrument_dict = {'MHD':'CRDS',
                        'RGL':'CRDS',
@@ -1508,12 +1517,15 @@ def globalview_co2_obspack(site, height):
                        'LUT':'GC-FID',
                        'PAL':'NDIR',
                        'SMR':'CRDS',
-                       'SSL':'NDIR'}
+                       'SSL':'NDIR',
+                       'LMP':'NDIR',
+                       'OPE':'CRDS',
+                       'TRN':'GC-FID'}
 
     if len(fname) == 0:
-        print "Can't find file for site %s and height %s" %(site, height)
+        print "Can't find file for obspack %s, site %s and height %s" %(obspack_name, site, height)
     elif len(fname) > 1:
-        print "Ambiguous filename for site %s and height %s" %(site, height)
+        print "Ambiguous filename for obspack %s, site %s and height %s" %(obspack_name,site, height)
     elif len(fname) == 1:
         ds = xray.open_dataset(fname[0])
         
