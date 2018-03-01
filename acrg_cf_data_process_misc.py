@@ -1502,7 +1502,13 @@ def globalview_co2_obspack(site, height):
                        'TAC':'CRDS',
                        'TTA':'CRDS',
                        'CBW':'NDIR',
-                       'HUN':'NDIR'}
+                       'HUN':'NDIR',
+                       'HEI':'GC-FID',
+                       'KAS':'GC-FID',
+                       'LUT':'GC-FID',
+                       'PAL':'NDIR',
+                       'SMR':'CRDS',
+                       'SSL':'NDIR'}
 
     if len(fname) == 0:
         print "Can't find file for site %s and height %s" %(site, height)
