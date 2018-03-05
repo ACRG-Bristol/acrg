@@ -633,44 +633,61 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi',
     for site in sites:
 
         if 'fp_HiTRes' in fp_and_data[site].keys():
-            site_bf_temp = xray.Dataset({"fp_HiTRes":fp_and_data[site]["fp_HiTRes"],
+            site_bf = xray.Dataset({"fp_HiTRes":fp_and_data[site]["fp_HiTRes"],
                                          "fp":fp_and_data[site]["fp"]})
-        else:
-            site_bf_temp = xray.Dataset({"fp":fp_and_data[site]["fp"],
-                                         "flux":fp_and_data[site]["flux"]})
-        
-        site_bf = combine_datasets(site_bf_temp,basis_func)
-
-        basis_scale = xray.Dataset({'basis_scale': (['lat','lon','time'],
-                                                    np.zeros(np.shape(site_bf.basis)))},
-                                   coords = site_bf.coords)
-        site_bf = site_bf.merge(basis_scale)
-
-        H = np.zeros((int(np.max(site_bf.basis)),len(site_bf.time)))
-        
-        if 'fp_HiTRes' in site_bf.keys():
             H_all_arr=timeseries_HiTRes(site_bf, domain, HiTRes_flux_name, Resid_flux_name, output_TS = False, output_fpXflux = True, flux_directory=flux_directory)
             H_all = xray.DataArray(H_all_arr, coords=[site_bf.lat, site_bf.lon, site_bf.time], dims = ['lat','lon','time'])
-        else:
-            H_all=site_bf.fp*site_bf.flux 
-            H_all_arr = H_all.values
-            
-        H_all_v=np.zeros((len(site_bf.lat)*len(site_bf.lon),len(site_bf.time)))
-        for ti in range(len(site_bf.time)):
-            H_all_v[:,ti]=np.ravel(H_all[:,:,ti])
-            
-        base_temp = np.ravel(site_bf.basis.values[:,:,0])
-        for i in range(int(np.max(site_bf.basis))):
-            wh_ri = np.where(base_temp == i+1)
-             
-            for ti in range(len(site_bf.time)):
-                 H[i,ti]=np.sum(H_all_v[wh_ri,ti])        
 
         
-        sensitivity = xray.DataArray(H, 
+        else:
+            site_bf = xray.Dataset({"fp":fp_and_data[site]["fp"],
+                                         "flux":fp_and_data[site]["flux"]})
+            H_all=site_bf.fp*site_bf.flux 
+            H_all_arr = H_all.values
+        
+            
+        H_all_v=H_all.values.reshape((len(site_bf.lat)*len(site_bf.lon),len(site_bf.time)))        
+        
+        
+        if 'region' in basis_func.dims.keys():
+            
+            if 'time' in basis_func.basis.dims:
+                basis_func = basis_func.isel(time=0)
+            
+            site_bf = xray.merge([site_bf, basis_func])
+            
+            H = np.zeros((len(site_bf.region),len(site_bf.time)))
+            
+            base_v = site_bf.basis.values.reshape((len(site_bf.lat)*len(site_bf.lon), len(site_bf.region)))
+            
+            for i in range(len(site_bf.region)):
+                H[i,:] = np.sum(H_all_v*base_v[:,i,np.newaxis], axis = 0) 
+
+            sensitivity = xray.DataArray(H, 
+                              coords=[('region', site_bf.region), 
+                                      ('time', fp_and_data[site].coords['time'])])
+        
+        else:
+        
+            site_bf = combine_datasets(site_bf,basis_func)
+            
+            H = np.zeros((int(np.max(site_bf.basis)),len(site_bf.time)))
+
+            basis_scale = xray.Dataset({'basis_scale': (['lat','lon','time'],
+                                                    np.zeros(np.shape(site_bf.basis)))},
+                                   coords = site_bf.coords)
+            site_bf = site_bf.merge(basis_scale)
+
+            base_v = np.ravel(site_bf.basis.values[:,:,0])
+            for i in range(int(np.max(site_bf.basis))):
+                wh_ri = np.where(base_v == i+1)
+                H[i,:]=np.sum(H_all_v[wh_ri[0],:], axis = 0)        
+            
+            sensitivity = xray.DataArray(H, 
                               coords=[('region', range(1,np.max(site_bf.basis)+1)), 
                                       ('time', fp_and_data[site].coords['time'])])
                                      
+
         fp_and_data[site]['H'] = sensitivity                             
 
         
