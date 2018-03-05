@@ -23,8 +23,9 @@ network = "AGAGE"
      - Values can be specified with the same syntax as when creating a python object e.g. '' for string, [] for lists (and also for np.array - will be converted if their type has been set as an array)
  - ; and # symbols can be used to create new line and inline comments
 
-Section headings can be of the form [NAME] or [CLASS.NAME]. This allows paramaters to be seperated into several
-section headings in the configuration file for clarity but grouped into one classification when inputted.
+Section headings can be of the form [NAME] or [GROUP.NAME]. This allows paramaters to be separated into several
+section headings in the configuration file for clarity but grouped into one overall classification when inputted based on the GROUP
+name.
 
 param_type dictionary
 +++++++++++++++++++++
@@ -32,11 +33,10 @@ param_type dictionary
 To specify inputs and the types they should be cast to (e.g. str, array, boolean etc) a nested dictionary should be created.
 This can be passed into several functions as the param_type argument.
 
-This should be of the form:
-
-    {'CLASS1':{'param1':str,'param2':float},'CLASS2':{'param3':list,'param4':np.array}}
+This should be of the form of one of the following:
+    {'SECTION_GROUP1':{'param1':str,'param2':float},'SECTION_GROUP2':{'param3':list,'param4':np.array}}
     {'SECTION1':{'param1':str},'SECTION2':'{param2':float},'SECTION3':{'param3':list},'SECTION4':{'param4':np.array}}
-    OrderedDict(['CLASS1':OrderedDict([('param1':str),('param2':float)]),'CLASS2':OrderedDict([('param3':list),('param4':np.array)]))
+    OrderedDict(['SECTION_GROUP1':OrderedDict([('param1':str),('param2':float)]),'SECTION_GROUP2':OrderedDict([('param3':list),('param4':np.array)]))
     OrderedDict(['SECTION1':{'param1':str},'SECTION2':{'param2':float},'SECTION3':{'param3':list},'SECTION4':{'param4':np.array}])
 
 Note: if param_type is not defined, the code will attempt to cast the inputs to the most sensible type.
@@ -57,6 +57,18 @@ By default this includes three classifications:
 See mcmc_param_type() function for full list of pre-defined parameters and types
 
 Extracted parameters are returned as an OrderedDict object (from collections module).
+
+How to run
+++++++++++
+
+The main functions to use for reading in parameters from a config file are:
+    
+    * all_param(config_file,...) - Extract all parameters from a configuration file.
+    * extract_params(config_file,...) - Extract specific parameters from a file either based on parameter names, sections or groups.
+    * all_mcmc_param(config_file,...) - Extract MCMC parameters specifically based on a pre-defined param_type dictionary (see above)
+
+For the top two functions, a param_type dictionary can be defined both to fix expected inputs and to explictly specify the parameter 
+types (a specific param_type dictionary is already defined for the final function).
 
 @author: rt17603
 """
@@ -255,22 +267,23 @@ def convert(string,value_type=None):
 #    
 #    return True
 
-def find_param_key(param_type,section=None,param_class=None):
+def find_param_key(param_type,section=None,section_group=None):
     '''
-    The find_param_key function checks whether the keys within the param_type dictionary are for sections (e.g. 'MCMC.MEASUREMENTS') or classification (e.g. 'MCMC') and returns the relevant key.
-    One of section or param_class should be specified.
-    Returned key_type is one of 'section' or 'param_class'.
+    The find_param_key function checks whether the keys within the param_type dictionary are for sections (e.g. 'MCMC.MEASUREMENTS') 
+    or groups (e.g. 'MCMC') and returns the relevant key.
+    One of section or section_group should be specified.
+    Returned key_type is one of 'section' or 'section_group'.
     
     Args:
-        param_type         : nested dictionary of parameter classes and expected parameter names and types.
-                             Key for each parameter dictionary can be the section heading or the overall classification (e.g. for [MCMC.MEASUREMENTS], classification should be 'MCMC').
-                             If param_type is explicly specified should be of form:
-                                 {'CLASS1':{'param1':str,'param2':float},'CLASS2':{'param3':list,'param4':np.array}}
-                                 {'SECTION1':{'param1':str},'SECTION2':'{param2':float},'SECTION3':{'param3':list},'SECTION4':{'param4':np.array}}
-                                 OrderedDict(['CLASS1':OrderedDict([('param1':str),('param2':float)]),'CLASS2':OrderedDict([('param3':list),('param4':np.array)]))
-                                 OrderedDict(['SECTION1':{'param1':str},'SECTION2':{'param2':float},'SECTION3':{'param3':list},'SECTION4':{'param4':np.array}])
-        section (str)     : name of section in config file for the parameter
-        param_class (str) : extract parameters from all sections with this classification name
+        param_type          : nested dictionary of expected parameter names and types.
+                              Key for each parameter dictionary can be the section heading or the overall group (e.g. for [MCMC.MEASUREMENTS], section group should be 'MCMC').
+                              If param_type is explicly specified should be of form of one of the following:
+                                  {'SECTION_GROUP1':{'param1':str,'param2':float},'SECTION_GROUP2':{'param3':list,'param4':np.array}}
+                                  {'SECTION1':{'param1':str},'SECTION2':'{param2':float},'SECTION3':{'param3':list},'SECTION4':{'param4':np.array}}
+                                  OrderedDict(['SECTION_GROUP1':OrderedDict([('param1':str),('param2':float)]),'SECTION_GROUP2':OrderedDict([('param3':list),('param4':np.array)]))
+                                  OrderedDict(['SECTION1':{'param1':str},'SECTION2':{'param2':float},'SECTION3':{'param3':list},'SECTION4':{'param4':np.array}])
+        section (str)       : name of section in config file for the parameter
+        section_group (str) : name of group in config file for the parameter
     
     Returns:
         str,str: key, key_type                      
@@ -279,26 +292,26 @@ def find_param_key(param_type,section=None,param_class=None):
     types = param_type # Get dictionary containing parameter names and types
     keys = types.keys() # Extract all section/classification keys
     
-    # Find oarameter class if not specified (should be defined as first part of section split by '.' e.g. MCMC.MEASUREMENTS, param_class='MCMC')
-    if not param_class:
-        param_class = section.split('.')[0]
+    # Find oarameter class if not specified (should be defined as first part of section split by '.' e.g. MCMC.MEASUREMENTS, section_group='MCMC')
+    if not section_group:
+        section_group = section.split('.')[0]
         
     if section in keys:
         key = section
         key_type = 'section'
-    elif param_class in keys:
-        key = param_class
-        key_type = 'param_class'
-    elif param_class in [k.split('.')[0] for k in keys]:
+    elif section_group in keys:
+        key = section_group
+        key_type = 'section_group'
+    elif section_group in [k.split('.')[0] for k in keys]:
         keys_starter = [k.split('.')[0] for k in keys]
-        key = keys[keys_starter.index(param_class)]
+        key = keys[keys_starter.index(section_group)]
         key_type = 'section'
     else:
         key = None
         key_type = None
-        #raise Exception('Section/Classification {0}/{1} does not match to any key in input param_type'.format(param_class,section))
-        #print 'Param class cannot be found i for section of parameters not defined. Using {0} as default'.format(param_classes[0])
-        #param_class = param_classes[0]
+        #raise Exception('Section/Classification {0}/{1} does not match to any key in input param_type'.format(section_group,section))
+        #print 'Param class cannot be found i for section of parameters not defined. Using {0} as default'.format(section_groups[0])
+        #section_group = section_groups[0]
     
     return key,key_type
     
@@ -316,16 +329,16 @@ def get_value(name,config,section,param_type=None):
         param_type (dict)     : nested dictionary of parameter classes and expected parameter names and types.
                                 Key for each parameter dictionary can be the section heading or the overall classification (e.g. for [MCMC.MEASUREMENTS], classification should be 'MCMC').
                                 If param_type is explicly specified should be of form:
-                                    {'CLASS1':{'param1':str,'param2':float},'CLASS2':{'param3':list,'param4':np.array}}
+                                    {'SECTION_GROUP1':{'param1':str,'param2':float},'SECTION_GROUP2':{'param3':list,'param4':np.array}}
                                     {'SECTION1':{'param1':str},'SECTION2':'{param2':float},'SECTION3':{'param3':list},'SECTION4':{'param4':np.array}}
-                                    OrderedDict(['CLASS1':OrderedDict([('param1':str),('param2':float)]),'CLASS2':OrderedDict([('param3':list),('param4':np.array)]))
+                                    OrderedDict(['SECTION_GROUP1':OrderedDict([('param1':str),('param2':float)]),'SECTION_GROUP2':OrderedDict([('param3':list),('param4':np.array)]))
                                     OrderedDict(['SECTION1':{'param1':str},'SECTION2':{'param2':float},'SECTION3':{'param3':list},'SECTION4':{'param4':np.array}])
                                 
     Returns:
         value
         
         If param_type is specified
-            If neither section nor param_class can be identified within param_type dictionary:
+            If neither section nor section_group can be identified within param_type dictionary:
                 Exception raised and program exited
             If parameter name cannot be identified within param_type dictionary:
                 Exception raised and program exited
@@ -359,24 +372,24 @@ def get_value(name,config,section,param_type=None):
     return value
 
 
-def extract_params(config_file,section=None,param_class=None,names=[],optional_param=[],param_type=None):
+def extract_params(config_file,section=None,section_group=None,names=[],optional_param=[],param_type=None):
     '''
     The extract_params function extracts parameter names and values from a configuration file.
-    The parameters which are extracted is dependent on whether the section, param_class and/or names variables are specified.
+    The parameters which are extracted is dependent on whether the section, section_group and/or names variables are specified.
     A param_type dictionary can be defined to ensure variables are cast to the correct types.
     
     Args:
         config_file           : filename for input configuration file.
         section (str)         : extract parameters from section name.
-        param_class (str)     : extract parameters from all sections with this classification name.
-                                If section and param_class are both specified - section takes precedence.
-        names (list)          : which parameter names to extract (within section or param_class)
+        section_group (str)   : extract parameters from all sections with this group.
+                                If section and section_group are both specified - section takes precedence.
+        names (list)          : which parameter names to extract (within section or section_group)
         optional_param (list) : parameters which are optional. If the param cannot be found value will be set to None
-        param_type (dict)     : nested dictionary of parameter classes and expected parameter names and types.
+        param_type (dict)     : nested dictionary of sections or groups and expected parameter names and types.
                                 If param_type is explicly specified should be of form:
-                                    {'CLASS1':{'param1':str,'param2':float},'CLASS2':{'param3':list,'param4':np.array}}
+                                    {'SECTION_GROUP1':{'param1':str,'param2':float},'SECTION_GROUP2':{'param3':list,'param4':np.array}}
                                     {'SECTION1':{'param1':str},'SECTION2':'{param2':float},'SECTION3':{'param3':list},'SECTION4':{'param4':np.array}}
-                                    OrderedDict(('CLASS1':OrderedDict(('param1':str),('param2':float)),'CLASS2':OrderedDict(('param3':list),('param4':np.array)))
+                                    OrderedDict(('SECTION_GROUP1':OrderedDict(('param1':str),('param2':float)),'SECTION_GROUP2':OrderedDict(('param3':list),('param4':np.array)))
                                     OrderedDict(('SECTION1':{'param1':str},'SECTION2':{'param2':float}'SECTION3':{'param3':list},'SECTION4':{'param4':np.array}))        
         
     Returns:
@@ -397,13 +410,15 @@ def extract_params(config_file,section=None,param_class=None,names=[],optional_p
     
     if section:
         if section in all_sections:
-            select_sections = [section]
+            select_sections = [section] # Only look with selected section
         else:
-            #raise Exception('Specified section {0} could not be found in configuration file: {1}'.format(section,config_file[0]))
-            select_sections = []
-    elif param_class:
+            raise KeyError('Specified section {0} could not be found in configuration file: {1}'.format(section,config_file[0]))
+            #select_sections = []
+    elif section_group:
         sections = all_sections
-        select_sections = [s for s in sections if s.split('.')[0].lower() == param_class.lower()] # Find all sections covered by param_class (param_class.name)
+        select_sections = [s for s in sections if s.split('.')[0].lower() == section_group.lower()] # Find all sections covered by section_group (section_group.name)
+        if not select_sections:
+            raise KeyError('No sections could be found for specified section_group {0} in configuration file: {1}'.format(section_group,config_file[0]))
     else:
         select_sections = all_sections # Find all sections
     
@@ -418,8 +433,8 @@ def extract_params(config_file,section=None,param_class=None,names=[],optional_p
        
     if not names:
         if param_type:
-            if param_class:
-                key_value,key_type = find_param_key(param_class=param_class,param_type=param_type)
+            if section_group:
+                key_value,key_type = find_param_key(section_group=section_group,param_type=param_type)
                 keys = [key_value]
             elif section:
                 key_value,key_type = find_param_key(section=section,param_type=param_type)
@@ -428,7 +443,7 @@ def extract_params(config_file,section=None,param_class=None,names=[],optional_p
                 keys = param_type.keys()
             #print 'Keys to extract input names from param_type: {0}'.format(keys)
             names = []
-            if (param_class and key_type == 'param_class') or (section and key_type == 'section') or (param_class and key_type == 'section'):
+            if (section_group and key_type == 'section_group') or (section and key_type == 'section') or (section_group and key_type == 'section'):
                for key in keys:
                    names.extend(param_type[key].keys())
             else:
@@ -448,27 +463,27 @@ def extract_params(config_file,section=None,param_class=None,names=[],optional_p
             try:
                 index = param_names.index(name)
             except ValueError:
-                print "Parameter '{0}' not found in configuration file (check specified section {1} or param_class {2} is correct).".format(name,section,param_class)
+                print "Parameter '{0}' not found in configuration file (check specified section {1} or section_group {2} is correct).".format(name,section,section_group)
             else:
                 param[name] = get_value(name,config,match_section[index],param_type)
         else:
             if name in optional_param:
                 param[name] = None
             elif not param_type:
-                print "Parameter '{0}' not found in configuration file (check specified section {1} or param_class {2} is correct).".format(name,section,param_class)
+                print "Parameter '{0}' not found in configuration file (check specified section {1} or section_group {2} is correct).".format(name,section,section_group)
             else:
                 if section:
-                    raise Exception("Parameter '{0}' not found in input configuration file in section '{1}'".format(name,section))
-                elif param_class:
-                    raise Exception("Parameter '{0}' not found in input configuration file within param_class '{1}'".format(name,param_class))
+                    raise KeyError("Parameter '{0}' not found in input configuration file in section '{1}'".format(name,section))
+                elif section_group:
+                    raise KeyError("Parameter '{0}' not found in input configuration file within section_group '{1}'".format(name,section_group))
                 else:
-                    raise Exception("Parameter '{0}' not found in specified in input configuration file.".format(name))
+                    raise KeyError("Parameter '{0}' not found in specified in input configuration file.".format(name))
     #else:
     #    for name in names:
     #        try:
     #            index = param_names.index(name)
     #        except ValueError:
-    #            print "Parameter '{0}' not found in configuration file (check specified section {1} or param_class {2} is correct).".format(name,section,param_class)
+    #            print "Parameter '{0}' not found in configuration file (check specified section {1} or section_group {2} is correct).".format(name,section,section_group)
     #        else:
     #            section = match_section[index]
     #            param[name] = get_value(name,config,section,param_type)
@@ -483,11 +498,11 @@ def all_param(config_file,optional_param=[],param_type=None):
     Args:
         config_file    : filename for input configuration file
         optional_param : parameters which are optional. If the param cannot be found in input file, value will be set to None
-        param_type     : nested dictionary of parameter classes and expected parameter names and types.
+        param_type     : nested dictionary of sections or groups and expected parameter names and types.
                          If param_type is specified should be of form:
-                             {'CLASS1':{'param1':str,'param2':float},'CLASS2':{'param3':list,'param4':np.array}}
+                             {'SECTION_GROUP1':{'param1':str,'param2':float},'SECTION_GROUP2':{'param3':list,'param4':np.array}}
                              {'SECTION1':{'param1':str},'SECTION2':'{param2':float},'SECTION3':{'param3':list},'SECTION4':{'param4':np.array}}
-                             OrderedDict(('CLASS1':OrderedDict(('param1':str),('param2':float)),'CLASS2':OrderedDict(('param3':list),('param4':np.array)))
+                             OrderedDict(('SECTION_GROUP1':OrderedDict(('param1':str),('param2':float)),'SECTION_GROUP2':OrderedDict(('param3':list),('param4':np.array)))
                              OrderedDict(('SECTION1':{'param1':str},'SECTION2':{'param2':float}'SECTION3':{'param3':list},'SECTION4':{'param4':np.array}))        
     
     Returns:
@@ -504,15 +519,15 @@ def all_param(config_file,optional_param=[],param_type=None):
 def mcmc_param_type():
     '''
     The mcmc_param_type function specifies the names of expected input parameters from the config file and the required Python object types.
-    This includes three classifications for the input parameter:
+    This includes three section groups for the input parameter:
         'MEASUREMENTS' - details related to the measurements made
         'MCMC'         - parameters for running the mcmc model
         'TDMCMC'       - parameters for running the tdmcmc model (in addition to mcmc parameters needed)
     
     
     Returns:
-        OrderedDict of parameter classifications:
-            Each super section contains a OrderedDict of parameter names and associated type:
+        OrderedDict of section groups:
+            Each section group contains a OrderedDict of parameter names and associated type:
             'MEASUREMENTS' ('sites',list),('species',str),('start_date',str),('end_date',str),('domain',str),
                            ('network',str)
             'MCMC'         ('meas_period',list),('av_period',list),('nIt',int),('burn_in',int),
@@ -591,9 +606,9 @@ def mcmc_param_type():
 
 def get_meas_params():
     '''
-    The get_meas_param function returns all parameter names associated the the 'MEASUREMENTS' classification
+    The get_meas_param function returns all parameter names associated the the 'MEASUREMENTS' group
     Returns:
-        OrderedDict: parameter names, str: classification name
+        OrderedDict: parameter names, str: group name
     '''
     key = 'MEASUREMENTS'
     return mcmc_param_type()[key].keys(),key
@@ -601,9 +616,9 @@ def get_meas_params():
 
 def get_mcmc_params():
     '''
-    The get_meas_param function returns all parameter names associated the the 'MCMC' classification
+    The get_meas_param function returns all parameter names associated the the 'MCMC' group
     Returns:
-        OrderedDict: parameter names, str: classification name
+        OrderedDict: parameter names, str: group name
     '''
     key = 'MCMC'
     return mcmc_param_type()[key].keys(),key
@@ -611,9 +626,9 @@ def get_mcmc_params():
 
 def get_tdmcmc_params():
     '''
-    The get_meas_param function returns all parameter names associated the the 'TDMCMC' classification
+    The get_meas_param function returns all parameter names associated the the 'TDMCMC' group
     Returns:
-        OrderedDict: parameter names, str: classification name
+        OrderedDict: parameter names, str: group name
     '''
     key = 'TDMCMC'
     return mcmc_param_type()[key].keys(),key
@@ -625,7 +640,7 @@ def measurements_param(config_file,optional_param=[]):
     
     Args:
         config_file (str)     : filename for input configuration file
-        optional_param (list) : parameters which are optional. If the param cannot be found value will be set to None
+        optional_param (list) : parameters which are optional. If the param cannot be found value will be set to None.
     
     Returns:
         OrderedDict: parameter names and values
@@ -679,11 +694,11 @@ def mcmc_param(config_file,optional_param=[]):
             Exception raised and program exited
     '''
     
-    names,param_class = get_mcmc_params()
+    names,section_group = get_mcmc_params()
     optional_param += ['unique_copy']
     param_type = mcmc_param_type()
     
-    param = extract_params(config_file,param_class=param_class,names=names,optional_param=optional_param,param_type=param_type)
+    param = extract_params(config_file,section_group=section_group,names=names,optional_param=optional_param,param_type=param_type)
     
     if param['unique_copy'] is None:
         param['unique_copy'] = False
@@ -705,10 +720,10 @@ def tdmcmc_param(config_file,optional_param=[]):
             Exception raised and program exited
     '''
     
-    names,param_class = get_tdmcmc_params()
+    names,section_group = get_tdmcmc_params()
     param_type = mcmc_param_type()
     
-    param = extract_params(config_file,param_class=param_class,names=names,optional_param=optional_param,param_type=param_type)
+    param = extract_params(config_file,section_group=section_group,names=names,optional_param=optional_param,param_type=param_type)
     
     return param
 
@@ -744,11 +759,8 @@ def all_mcmc_param(config_file,optional_param=[]):
         if key not in known_keys:
             # Extract the extra parameters but print a warning as these values should really be incorporated into code
             print 'WARNING: Additional unknown key {0} extracted from mcmc_param_type. May be worth adding additional functions for this?'.format(key)
-            extra_parameters = extract_params(config_file,param_class=key,optional_param=optional_param,param_type=param_type)
+            extra_parameters = extract_params(config_file,section_group=key,optional_param=optional_param,param_type=param_type)
             param.update(extra_parameters)
     
     return param
     
-
-
-
