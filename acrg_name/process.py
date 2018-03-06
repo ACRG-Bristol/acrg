@@ -771,8 +771,11 @@ def footprint_concatenate(fields_prefix,
 
     # Find footprint files and MATCHING particle location files
     # These files are identified by their date string. Make sure this is right!
+    #fields_files = sorted(glob.glob(fields_prefix + "*" +
+    #                         datestr + "*.txt*"))
+    # Modified: 06/03/2018 - problems when # files > 100, point 10 was matching multiple
     fields_files = sorted(glob.glob(fields_prefix + "*" +
-                             datestr + "*.txt*"))
+                             datestr + ".txt*"))
                              
 
     # Search for particle files                             
@@ -1266,7 +1269,9 @@ def process(domain, site, height, year, month,
         # Get Met files
         if force_met_empty is not True:
             if satellite:
-                met_search_str = subfolder + met_folder + "/*" + datestr + "*/*.txt*"
+                #met_search_str = subfolder + met_folder + "/*" + datestr + "*/*.txt*"
+                # Modified: 06/03/2018 - problems when # files > 100, point 10 was matching multiple
+                met_search_str = subfolder + met_folder + "/*" + datestr + "/*.txt*"
             else:
                 met_search_str = subfolder + met_folder + "/*.txt*"
       
@@ -1302,8 +1307,11 @@ def process(domain, site, height, year, month,
         
         # Do satellite process
         if satellite:
+            #satellite_obs_file = glob.glob(subfolder + "Observations/*" + \
+            #                               datestr + "*.nc")
+            # Modified: 06/03/2018 - problems when # files > 100, point 10 was matching multiple
             satellite_obs_file = glob.glob(subfolder + "Observations/*" + \
-                                           datestr + "*.nc")
+                                           datestr + "_" + "*.nc")
             if len(satellite_obs_file) != 1:
                 status_log("There must be exactly one matching satellite " + 
                            "file in the Observations/ folder",
