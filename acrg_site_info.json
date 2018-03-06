@@ -456,6 +456,16 @@
         "longitude": 123.81,
         "network": "NIES"
     },
+    "HEI" : {
+        "alt": [],
+        "long_name" : "Heidelberg, Germany",
+        "height": ["30m"],
+        "height_station_masl": 116.0,
+        "height_name": ["30magl"],
+        "latitude": 49.417,
+        "longitude": 8.674,
+        "network": "EUROCOM"
+    },
     "HFD" : {
         "alt": [],
         "long_name" : "Heathfield, UK",
@@ -581,6 +591,16 @@
         "latitude": 54.953809,
         "longitude": -112.466649,
         "network": ["EC", "NOAA"]
+    },
+    "LUT" : {
+        "alt": [],
+        "long_name" : "Lutjewad, Netherlands",
+        "height": ["60m"],
+        "height_station_masl": 1.0,
+        "height_name": ["60magl"],
+        "latitude": 53.404,
+        "longitude": 6.353,
+        "network": ["EUROCOM"]
     },
     "MBC" : {
         "alt": [],
@@ -871,6 +891,16 @@
         "latitude": 42.636451,
         "longitude": -80.554695,
         "network": "EC"
+    },
+    "TRN" : {
+        "alt": [],
+        "long_name" : "Trainou, France",
+        "height": ["180m"],
+        "height_station_masl": 131.0,
+        "height_name": ["180magl"],
+        "latitude": 47.965,
+        "longitude": 2.112,
+        "network": "EUROCOM"
     },
     "TTA" : {
         "alt": ["ANGUS"],
