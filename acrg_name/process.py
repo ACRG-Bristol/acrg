@@ -1686,3 +1686,14 @@ def release_point(nc):
     time_seconds, time_reference = time2sec(time)
     
     return release_lat, release_lon, release_ht, time, time_seconds, time_reference
+
+def stilt_part(nc, Id):
+    """
+    Extract particle data from STILT output and assign it the given Id.
+    nc should be a netCDF4.Dataset in STILT format; Id should be an integer.
+    """
+    part = pandas.DataFrame(nc.variables['part'][:].T)
+    partnames = list(netCDF4.chartostring(nc.variables['partnames'][:]))
+    part.columns = partnames
+    part['Id'] = Id
+    return part, partnames
