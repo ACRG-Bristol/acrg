@@ -1837,18 +1837,18 @@ def stiltfoot_array(prefix,
     
     # compute domain exit timestep for particles that exit
     outpart = part.loc[out,:]
-    exittime = outpart.groupby(['Id', 'partno']).agg({'time' : numpy.argmax})
+    exittime = outpart.groupby(['Id', 'partno']).apply(lambda df:df.time.argmin())
     
     # compute last timestep for particles that do not exit
     gp = part.groupby(['Id', 'partno'])
-    lasttime = gp.agg({'time' : numpy.argmin})
+    lasttime = gp.apply(lambda df:df.time.argmin())
     leaves = gp.agg({'out' : any})
     lasttime = lasttime[~leaves['out']]
     
     # combine particles that do and do not exit
     
     end = pandas.concat([exittime, lasttime])
-    part = part.iloc[end['time']]
+    part = part.iloc[end.tolist()]
     part = part.loc[:,['Id','lat','lon','agl']]
     part.columns = ['Id','Lat','Long','Ht']
     
