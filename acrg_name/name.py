@@ -1099,7 +1099,8 @@ def plot(fp_data, date, out_filename=None,
          colormap = plt.cm.YlGnBu,
          tolerance = None,
          interpolate = False,
-         dpi = None):
+         dpi = None,
+         bottom_left = False):
     """
     Plot footprint using pcolormesh.
     
@@ -1147,7 +1148,7 @@ def plot(fp_data, date, out_filename=None,
         map_data = plot_map_setup(fp_data[sites[0]],
                                   lon_range = lon_range,
                                   lat_range = lat_range,
-                                  bottom_left=True,
+                                  bottom_left=bottom_left,
                                   map_resolution = map_resolution)
 
     # Open plot
