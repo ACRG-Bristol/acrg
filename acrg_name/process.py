@@ -1907,10 +1907,13 @@ def stiltfoot_array(prefix,
     
     metr = met[levi_met].reindex(index = time, method = "pad")
     
+    metr['release_lat'] = release_lat
+    metr['release_lon'] = release_lon
+    
     for key in met[levi_met].keys():
         met_ds[key][dict(lev = [levi])] = \
         metr[key].values.reshape((len(time), 1))
-    
+            
     # merge datasets
         
     fp.merge(met_ds, inplace = True)
