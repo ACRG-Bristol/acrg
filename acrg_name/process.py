@@ -1278,8 +1278,8 @@ def process(domain, site, height, year, month,
                     return None
             else:
                 if transport_model is "STILT":
-                    stilt_files = glob.glob(subfolder + "stilt" + str(year) + \
-                                            "x" + str(month).zfill(2) + "*.nc")
+                    stilt_files = glob.glob(subfolder + fields_folder + "/stilt" + \
+                                            str(year) + "x" + str(month).zfill(2) + "*.nc")
                     days = [int(os.path.split(stilt_file)[1].split("x")[2]) \
                             for stilt_file in stilt_files]
                 else:
@@ -1325,8 +1325,8 @@ def process(domain, site, height, year, month,
 
             # Get footprints
         if transport_model is "STILT":
-            fp_file = stiltfoot_array(subfolder+datestr, met=met,
-                                      satellite=satellite,
+            fp_file = stiltfoot_array(subfolder + fields_folder + "/" + datestr, 
+                                      met=met, satellite=satellite,
                                       time_step=timeStep)
         else: # for NAME
             fields_prefix = subfolder + fields_folder + "/"
@@ -1461,7 +1461,8 @@ def process_all(domain, site,
                 perturbed_folder = None,
                 max_level = None,
                 force_met_empty=False,
-                vertical_profile=False):
+                vertical_profile=False,
+                transport_model="NAME"):
     '''
     For a given domain and site, process all available fields files (including
     multiple heights).
@@ -1506,15 +1507,23 @@ def process_all(domain, site,
         
         if years_in is None:
             #Find all years and months available
-            #Assumes fields files are processes with _YYYYMMDD.txt.gz at the end    
+            #Assumes fields files are processes with _YYYYMMDD.txt.gz at the end (NAME)
+            #or ncdf files starting stiltYYYYxMMx (STILT)
             years = []
             months = []
             
-            fields_files = sorted(glob.glob(subfolder + "/Fields_files/*.txt*"))
-            for fields_file in fields_files:
-                f = split(fields_file)[1].split("_")[-1].split('.')[0]
-                years.append(int(f[0:4]))
-                months.append(int(f[4:6]))
+            if transport_model is "STILT":
+                fields_files = sorted(glob.glob(subfolder + "/Fields_files/stilt*.nc"))
+                for fields_file in fields_files:
+                    f = split(fields_file)[1]
+                    years.append(int(f[5:9]))
+                    months.append(int(f[10:12]))
+            else:
+                fields_files = sorted(glob.glob(subfolder + "/Fields_files/*.txt*"))
+                for fields_file in fields_files:
+                    f = split(fields_file)[1].split("_")[-1].split('.')[0]
+                    years.append(int(f[0:4]))
+                    months.append(int(f[4:6]))
         else:
             years = copy.copy(years_in)
             months = copy.copy(months_in)
@@ -1525,7 +1534,8 @@ def process_all(domain, site,
                     base_dir = base_dir, force_update = force_update,
                     satellite = satellite, perturbed_folder = perturbed_folder,
                     max_level = max_level, force_met_empty = force_met_empty,
-                    vertical_profile=vertical_profile)
+                    vertical_profile=vertical_profile,
+                    transport_model=transport_model)
 
 
 def copy_processed(domain):
@@ -1799,12 +1809,14 @@ def stiltfoot_array(prefix,
             status_log("Warning! Inconsistent release location in " + f + \
                                ". Skipping.", error_or_warning="warning")
             continue
+
         this_grid_lats = ncin.variables.get('footlat', [])[:]
         this_grid_lons = ncin.variables.get('footlon', [])[:]
         if (len(this_grid_lats)==0) or (len(this_grid_lons)==0):
             status_log("Warning! Footprint grid missing in " + f + \
                        ". Skipping.", error_or_warning="warning")
             continue
+
         if (any(lats!=this_grid_lats) or any(lons!=this_grid_lons)):
             status_log("Warning! Inconsistent domain in " + f + \
                                ". Skipping.", error_or_warning="warning")
