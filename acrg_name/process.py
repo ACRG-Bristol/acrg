@@ -1727,7 +1727,7 @@ def release_point(nc):
     
     return release_lat, release_lon, release_ht, time, time_seconds, time_reference
 
-def stilt_part(nc, Id):
+def stilt_part(nc, Id, domain_N, domain_S, domain_E, domain_W, exitfile, append):
     """
     Extract particle data from STILT output and assign it the given Id.
     nc should be a netCDF4.Dataset in STILT format; Id should be an integer.
@@ -1736,6 +1736,47 @@ def stilt_part(nc, Id):
     partnames = list(netCDF4.chartostring(nc.variables['partnames'][:]))
     part.columns = partnames
     part['Id'] = Id
+            
+    # clean up particle dataframe
+    
+    part=part.rename(columns = {'index':'partno'})
+    part['partno'] = part['partno'].astype('category')
+    
+    # set up domain boundaries
+    
+    north = (part['lat']>domain_N)
+    south = (part['lat']<domain_S)
+    east = (part['lon']>domain_E) 
+    west = (part['lon']<domain_W)
+    out = north | south | east | west
+    part['out'] = out
+    
+    # compute domain exit timestep for particles that exit
+    outpart = part.loc[out,:]
+    exittime = outpart.groupby(['Id', 'partno']).apply(lambda df:df.time.argmin())
+    
+    # compute last timestep for particles that do not exit
+    gp = part.groupby(['Id', 'partno'])
+    lasttime = gp.apply(lambda df:df.time.argmin())
+    leaves = gp.agg({'out' : any})
+    lasttime = lasttime[~leaves['out']]
+    
+    # combine particles that do and do not exit
+    
+    end = pandas.concat([exittime, lasttime])
+    part = part.iloc[end.tolist()]
+    part = part.loc[:,['Id','lat','lon','agl']]
+    part.columns = ['Id','Lat','Long','Ht']
+    
+    # write particle locations to csv
+    if append:
+        header = False
+        mode='a'
+    else:
+        header=True
+        mode='w'
+    part.to_csv(exitfile, index=False, sep=" ", header=header, mode=mode)
+
     return part, partnames
 
 def stiltfoot_array(prefix, 
@@ -1790,7 +1831,8 @@ def stiltfoot_array(prefix,
     
     fparrays = [numpy.sum(ncin.variables['foot'][:], axis=0)]
     
-    part, partnames = stilt_part(ncin, 1)
+    part, partnames = stilt_part(ncin, 1, domain_N, domain_S, domain_E, domain_W,
+                                 exitfile, append=False)
     
     # extract data from remaining files
     
@@ -1822,50 +1864,17 @@ def stiltfoot_array(prefix,
                                ". Skipping.", error_or_warning="warning")
             continue
         
-        p, pnames = stilt_part(ncin, n+1)
+        p, pnames = stilt_part(ncin, n+1, domain_N, domain_S, domain_E, domain_W,
+                               exitfile, append=True)
         if pnames!=partnames:
             status_log("Warning! Inconsistent particle variables in " + \
                                f + ".", error_or_warning="warning")
             
         time.extend(this_time)
-        part = part.append(p, ignore_index=True)
+#        part = part.append(p, ignore_index=True)
         fparrays.append(numpy.sum(ncin.variables['foot'][:], axis=0))
     
     fparrays = map(lambda x: x/1000000, fparrays) # convert ppm to mol/mol 
-    
-    # clean up particle dataframe
-    
-    part=part.rename(columns = {'index':'partno'})
-    part['partno'] = part['partno'].astype('category')
-    
-    # set up domain boundaries
-    
-    north = (part['lat']>domain_N)
-    south = (part['lat']<domain_S)
-    east = (part['lon']>domain_E) 
-    west = (part['lon']<domain_W)
-    out = north | south | east | west
-    part['out'] = out
-    
-    # compute domain exit timestep for particles that exit
-    outpart = part.loc[out,:]
-    exittime = outpart.groupby(['Id', 'partno']).apply(lambda df:df.time.argmin())
-    
-    # compute last timestep for particles that do not exit
-    gp = part.groupby(['Id', 'partno'])
-    lasttime = gp.apply(lambda df:df.time.argmin())
-    leaves = gp.agg({'out' : any})
-    lasttime = lasttime[~leaves['out']]
-    
-    # combine particles that do and do not exit
-    
-    end = pandas.concat([exittime, lasttime])
-    part = part.iloc[end.tolist()]
-    part = part.loc[:,['Id','lat','lon','agl']]
-    part.columns = ['Id','Lat','Long','Ht']
-    
-    # write particle locations to csv
-    part.to_csv(exitfile, index=False, sep=" ")
     
     # compute particle domain exit statistics
     
