@@ -771,11 +771,13 @@ def footprint_concatenate(fields_prefix,
 
     # Find footprint files and MATCHING particle location files
     # These files are identified by their date string. Make sure this is right!
-    #fields_files = sorted(glob.glob(fields_prefix + "*" +
-    #                         datestr + "*.txt*"))
-    # Modified: 06/03/2018 - problems when # files > 100, point 10 was matching multiple
-    fields_files = sorted(glob.glob(fields_prefix + "*" +
+    if satellite:
+        # Modified: 06/03/2018 - problems when # files > 100, point 10 was matching multiple
+        fields_files = sorted(glob.glob(fields_prefix + "*" +
                              datestr + ".txt*"))
+    else:
+        fields_files = sorted(glob.glob(fields_prefix + "*" +
+                             datestr + "*.txt*"))
                              
 
     # Search for particle files                             
