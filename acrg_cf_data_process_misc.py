@@ -1541,10 +1541,25 @@ def obspack_co2(site, height, obspack_name):
         if ds.value.units == "mol mol-1":
             print ds.value.values[0], float(unit_species[species.upper()])
             values = ds.value.values/float(unit_species[species.upper()])
-            unc_values = ds.value_unc.values/float(unit_species[species.upper()])
+            if 'value_unc' in ds.keys(): 
+                unc_values = ds.value_unc.values/float(unit_species[species.upper()])
+            else:
+                print "Can't find data error in file. Using data*0.001 as error"
+                unc_values = values*0.001
             print values[0], unc_values[0]
         else:
             print "You need to create a unit conversion for the input units"
+        
+        if 'dataset_intake_ht' in ds.attrs.keys():
+            intake_ht = ds.dataset_intake_ht
+        elif 'intake_height' in ds.keys():
+            intake_ht = str(ds.intake_height.values[0])
+            
+        if 'dataset_intake_ht_unit' in ds.attrs.keys():
+            intake_ht_unit = ds.dataset_intake_ht_unit
+        elif 'intake_height' in ds.keys():
+            intake_ht_unit = ds.intake_height.units
+        
         
         ds2 = xray.Dataset({species.upper(): (['time'],values),
                             species.upper() + "_repeatability": (['time'],unc_values)},
@@ -1555,7 +1570,7 @@ def obspack_co2(site, height, obspack_name):
         global_attributes = {'origin': ds.obspack_name,
                              'original_filename': ds.dataset_name,
                              'citation': ds.obspack_citation,
-                             'inlet_height_%s' %ds.dataset_intake_ht_unit : ds.dataset_intake_ht,
+                             'inlet_height_%s' %intake_ht_unit : intake_ht,
                              'main_provider_name' : ds.provider_1_name,
                              'main_provider_affiliation': ds.provider_1_affiliation,
                              'main_provider_email': ds.provider_1_email,
@@ -1575,7 +1590,7 @@ def obspack_co2(site, height, obspack_name):
         if site == 'MHD':
             inlet = "10m"
         else:
-            inlet = "%im" %(int(float(ds.dataset_intake_ht)))
+            inlet = "%im" %(int(float(intake_ht)))
         
         nc_filename = output_filename(directory_output,
                                   "EUROCOM",
