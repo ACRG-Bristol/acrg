@@ -1498,12 +1498,15 @@ def obspack_co2(site, height, obspack_name):
     obspack_name = str(obspack_name).lower()
     
     obspack_name_dict = {'globalview': 'GLOBALVIEW',
-                         'preicos':'preICOS',
+                         'preicos':'PreICOS',
                          'wdcgg':'WDCGG'}
     
     if height == 'surface':
-        fname = glob.glob("/data/shared/obs_raw/EUROCOM_ObsPack/"+obspack_name_dict[obspack_name]+"/co2_" + site.lower() + "*" + ".nc" )
-    else:
+        if site == "PAL":
+            fname = glob.glob("/data/shared/obs_raw/EUROCOM_ObsPack/"+obspack_name_dict[obspack_name]+"/co2_" + site.lower() + "*" + "nonlocal.nc" )
+        else:
+            fname = glob.glob("/data/shared/obs_raw/EUROCOM_ObsPack/"+obspack_name_dict[obspack_name]+"/co2_" + site.lower() + "*" + ".nc" )
+    else:    
         fname = glob.glob("/data/shared/obs_raw/EUROCOM_ObsPack/"+obspack_name_dict[obspack_name]+"/co2_" + site.lower() + "*" + "-" + height +"magl.nc" )
     
     instrument_dict = {'MHD':'CRDS',
