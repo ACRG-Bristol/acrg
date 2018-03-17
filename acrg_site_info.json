@@ -553,6 +553,16 @@
         "longitude": 7.979167,
         "network": "AGAGE"
     },
+    "KAS" : {
+        "alt": [],
+        "long_name" : "Kasprowy, Poland",
+        "height": ["5m"],
+        "height_station_masl": 1989.0,
+        "height_name": ["5magl"],
+        "latitude": 49.232,
+        "longitude": 19.982,
+        "network": "EUROCOM"
+    },
     "KEY" : {
         "alt": [],
         "long_name" : "Key Biscane, Florida",
@@ -591,6 +601,16 @@
         "latitude": 54.953809,
         "longitude": -112.466649,
         "network": ["EC", "NOAA"]
+    },
+    "LMP" : {
+        "alt": [],
+        "long_name" : "Lampedusa, Italy",
+        "height": ["8m"],
+        "height_station_masl": 45.0,
+        "height_name": ["8magl"],
+        "latitude": 35.520,
+        "longitude": 12.620,
+        "network": "EUROCOM"
     },
     "LUT" : {
         "alt": [],
@@ -685,6 +705,16 @@
         "longitude": -8.25,
         "network": "UHei"
     },
+    "OPE" : {
+        "alt": [],
+        "long_name" : "Observatoire Perenne de l'Environnement, France",
+        "height": ["120m"],
+        "height_station_masl": 390.0,
+        "height_name": ["120magl"],
+        "latitude": 48.562,
+        "longitude": 5.504,
+        "network": "EUROCOM"
+    },
     "ORG" : {
         "alt": [],
         "long_name" : "Cape Meares, Oregon",
@@ -694,6 +724,16 @@
         "latitude": 45.49,
         "longitude": -124,
         "network": "ALE"
+    },
+    "PAL" : {
+        "alt": [],
+        "long_name" : "Pallas, Finland",
+        "height": ["5m"],
+        "height_station_masl": 565.0,
+        "height_name": ["5magl"],
+        "latitude": 67.973,
+        "longitude": 24.116,
+        "network": "EUROCOM"
     },
     "POC" : {
         "alt": [],
@@ -791,6 +831,16 @@
         "longitude": -170.56,
         "network": "AGAGE"
     },
+    "SMR" : {
+        "alt": [],
+        "long_name" : "Smear/Hyytiala, Finland",
+        "height": ["125m"],
+        "height_station_masl": 181.0,
+        "height_name": ["125magl"],
+        "latitude": 61.847,
+        "longitude": 24.295,
+        "network": "EUROCOM"
+    },
     "SNG" : {
         "alt": [""],
         "long_name" : "Sinhagad, India",
@@ -806,6 +856,16 @@
         "latitude": -89.980,
         "longitude": -24.8,
         "network": "NOAA"
+    },
+    "SSL" : {
+        "alt": [],
+        "long_name" : "Schauinsland, Germany",
+        "height": ["12m"],
+        "height_station_masl": 1205.0,
+        "height_name": ["12magl"],
+        "latitude": 47.920,
+        "longitude": 7.920,
+        "network": "EUROCOM"
     },
     "STM" : {
         "alt": [""],
