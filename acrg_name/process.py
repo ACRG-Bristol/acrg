@@ -1708,6 +1708,9 @@ def release_point(nc):
     """
     ident = netCDF4.chartostring(nc.variables['ident'][:])[0]
     ident = ident.split('x')
+    
+    if len(ident)==8:
+        ident = ident[0:4] + ident[5:8]
 
     if ident[4][-1] == 'N':
         release_lat = float(ident[4][:-1])
@@ -1754,12 +1757,16 @@ def stilt_part(nc, Id, domain_N, domain_S, domain_E, domain_W, exitfile, append)
     # compute domain exit timestep for particles that exit
     outpart = part.loc[out,:]
     exittime = outpart.groupby(['Id', 'partno']).apply(lambda df:df.time.argmin())
+    if exittime.empty:
+        exittime = pandas.Series(None) #otherwise it will become a DataFrame
     
     # compute last timestep for particles that do not exit
     gp = part.groupby(['Id', 'partno'])
     lasttime = gp.apply(lambda df:df.time.argmin())
     leaves = gp.agg({'out' : any})
     lasttime = lasttime[~leaves['out']]
+    if lasttime.empty:
+        lasttime = pandas.Series(None) #otherwise it will become a DataFrame
     
     # combine particles that do and do not exit
     
@@ -1780,7 +1787,7 @@ def stilt_part(nc, Id, domain_N, domain_S, domain_E, domain_W, exitfile, append)
     return part, partnames
 
 def stiltfoot_array(prefix, 
-                    exitfile="stilt_particle_data_temp.csv",
+                    exitfile=None,
                     met=None,
                     satellite=False,
                     time_step=None):
@@ -1800,6 +1807,9 @@ def stiltfoot_array(prefix,
     Returns:
         fp: an xray dataset as from footprint_concatenate
     """
+    if exitfile is None:
+        exitfile = prefix + "stilt_particle_data_temp.csv"
+
     if satellite:
         status_log("stiltfoot_array is not set up for satellite data!" +\
                    " Levels will be wrong!", error_or_warning="error")
