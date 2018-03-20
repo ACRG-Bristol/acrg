@@ -1846,9 +1846,8 @@ def stiltfoot_array(prefix,
     
     # extract data from remaining files
     
-    iterfiles = enumerate(stiltfiles)
-    next(iterfiles)
-    for n,f in iterfiles:
+    n=1
+    for f in stiltfiles[1:]:
         status_log("Loading " + f)
         ncin = netCDF4.Dataset(f)
         
@@ -1881,6 +1880,7 @@ def stiltfoot_array(prefix,
                                f + ".", error_or_warning="warning")
             
         time.extend(this_time)
+        n=n+1
 #        part = part.append(p, ignore_index=True)
         fparrays.append(numpy.sum(ncin.variables['foot'][:], axis=0))
     
