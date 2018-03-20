@@ -1867,7 +1867,12 @@ def stiltfoot_array(prefix,
             status_log("Warning! Footprint grid missing in " + f + \
                        ". Skipping.", error_or_warning="warning")
             continue
-
+        
+        if (len(this_grid_lats)!=len(lats) or len(this_grid_lons)!=len(lons)):
+            status_log("Warning! Inconsistent domain in " + f + \
+                               ". Skipping.", error_or_warning="warning")
+            continue
+        
         if (any(lats!=this_grid_lats) or any(lons!=this_grid_lons)):
             status_log("Warning! Inconsistent domain in " + f + \
                                ". Skipping.", error_or_warning="warning")
