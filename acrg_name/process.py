@@ -27,6 +27,7 @@ in the Processed_Fields_files directory.
 
 import numpy
 from netCDF4 import Dataset
+import netCDF4
 import glob
 import gzip
 import datetime
@@ -37,6 +38,7 @@ import numpy as np
 import scipy.constants as const
 from acrg_grid import areagrid
 from acrg_time.convert import time2sec, sec2time
+import acrg_time.convert
 import os
 import json
 from os.path import split, realpath, exists
@@ -50,6 +52,7 @@ import getpass
 import traceback
 import sys
 import scipy
+
 
 #Default NAME output file version
 #This is changed depending on presence of "Fields:" line in files
@@ -1165,7 +1168,8 @@ def process(domain, site, height, year, month,
             max_level = None,
             force_update = False,
             perturbed_folder = None,
-            vertical_profile=False):
+            vertical_profile=False,
+            transport_model="NAME"):
     '''
     Process a single month of footprints for a given domain, site, height,
     year, month. If you want to process all files for a given domain + site
@@ -1194,11 +1198,14 @@ def process(domain, site, height, year, month,
     vertical_profile: If set to true will look for vertical potential temperature met file
         and incorporate into footprint file. 
         NB. This is a separate file from the normal met file, and is not mandatory.
+    transport_model: Defaults to "NAME". If "STILT", reads footprints in the
+        ncdf format created by the STILT model. Other values are invalid. Not
+        set up to read satellite column footprints from STILT format.
         
     Outputs:
     This routine outputs a copy of the xray dataset that is written to file.
     '''
-    
+ 
     global directory_status_log
         
     subfolder = base_dir + domain + "_" + site + "_" + height + "/"
@@ -1211,6 +1218,20 @@ def process(domain, site, height, year, month,
         else:
             subfolder += perturbed_folder + "/"
     
+    # Check that the specified transport model is valid.
+    if transport_model is "STILT":
+        if satellite:
+            status_log("stiltfoot_array is not set up for satellite data!" +\
+                       " Levels will be wrong!", error_or_warning="error")
+        if not force_met_empty:
+            status_log("STILT neither provides nor requires met information" +\
+                       " to interpret footprints. Met will probably be set" +\
+                       " to default values. Don't rely on these values!")
+    elif transport_model is not "NAME":
+        status_log(transport_model + " is not a valid transport model!" +\
+                   " Unable to read footprint information!", 
+                   error_or_warning="error")
+    
     # Check for manual timestep (if footprints are for < 1min,
     # which is the min resolution of the NAME output file)    
     if os.path.exists(subfolder + "/time_step.txt"):
@@ -1218,7 +1239,7 @@ def process(domain, site, height, year, month,
             timeStep = float(f.read())
     else:
         timeStep = None
-    
+
     # Get date strings for file search
     if satellite:
         file_search_string = subfolder + fields_folder +"/*" + str(year) \
@@ -1231,14 +1252,16 @@ def process(domain, site, height, year, month,
             status_log("can't find files in " + file_search_string,
                        error_or_warning="error")
             return None
-
     else:
-        datestrs = [str(year) + str(month).zfill(2)]
+        if transport_model is "STILT":
+            datestrs = ["stilt" + str(year) + "x" + str(month).zfill(2) + "x"]
+        else:
+            datestrs = [str(year) + str(month).zfill(2)]
 
     # Output filename
     outfile = subfolder + processed_folder + "/" + site + "-" + height + \
                 "_" + domain + "_" + str(year) + str(month).zfill(2) + ".nc"
-    
+ 
     # Check whether outfile needs updating
     if not force_update:
         status_log("Testing whether file exists or needs updating: " + outfile)
@@ -1254,15 +1277,22 @@ def process(domain, site, height, year, month,
                 if maxday >= max(days):
                     return None
             else:
-                fields_files = glob.glob(subfolder + fields_folder + "/*" + \
-                                         datestrs[0] + "*.txt*")
-                days = [int(os.path.split(fields_file)[1].split("_")[-1][6:8]) \
-                        for fields_file in fields_files]
+                if transport_model is "STILT":
+                    stilt_files = glob.glob(subfolder + fields_folder + "/stilt" + \
+                                            str(year) + "x" + str(month).zfill(2) + "*.nc")
+                    days = [int(os.path.split(stilt_file)[1].split("x")[2]) \
+                            for stilt_file in stilt_files]
+                else:
+                    fields_files = glob.glob(subfolder + fields_folder + "/*" + \
+                                             datestrs[0] + "*.txt*")
+                    days = [int(os.path.split(fields_file)[1].split("_")[-1][6:8]) \
+                            for fields_file in fields_files]
+
                 if maxday >= max(days):
                     return None
-
+                
     fp = []
-
+     
     for datestr in datestrs:
 
         status_log("Looking for files with date string: " + datestr + " in " + \
@@ -1293,20 +1323,23 @@ def process(domain, site, height, year, month,
         else:
             met = None
 
-        # Get footprints
-        fields_prefix = subfolder + fields_folder + "/"
-        if particles_folder is not None:
-            particles_prefix = subfolder + particles_folder + "/"
-        else:
-            particles_prefix = None
-
-           
-        fp_file = footprint_concatenate(fields_prefix,
+            # Get footprints
+        if transport_model is "STILT":
+            fp_file = stiltfoot_array(subfolder + fields_folder + "/" + datestr, 
+                                      met=met, satellite=satellite,
+                                      time_step=timeStep)
+        else: # for NAME
+            fields_prefix = subfolder + fields_folder + "/"
+            if particles_folder is not None:
+                particles_prefix = subfolder + particles_folder + "/"
+            else:
+                particles_prefix = None
+            fp_file = footprint_concatenate(fields_prefix,
                                             datestr = datestr, met = met,
                                             particle_prefix = particles_prefix,
                                             satellite = satellite,
                                             time_step = timeStep)
-        
+            
         # Do satellite process
         if satellite:
             #satellite_obs_file = glob.glob(subfolder + "Observations/*" + \
@@ -1428,7 +1461,8 @@ def process_all(domain, site,
                 perturbed_folder = None,
                 max_level = None,
                 force_met_empty=False,
-                vertical_profile=False):
+                vertical_profile=False,
+                transport_model="NAME"):
     '''
     For a given domain and site, process all available fields files (including
     multiple heights).
@@ -1473,15 +1507,23 @@ def process_all(domain, site,
         
         if years_in is None:
             #Find all years and months available
-            #Assumes fields files are processes with _YYYYMMDD.txt.gz at the end    
+            #Assumes fields files are processes with _YYYYMMDD.txt.gz at the end (NAME)
+            #or ncdf files starting stiltYYYYxMMx (STILT)
             years = []
             months = []
             
-            fields_files = sorted(glob.glob(subfolder + "/Fields_files/*.txt*"))
-            for fields_file in fields_files:
-                f = split(fields_file)[1].split("_")[-1].split('.')[0]
-                years.append(int(f[0:4]))
-                months.append(int(f[4:6]))
+            if transport_model is "STILT":
+                fields_files = sorted(glob.glob(subfolder + "/Fields_files/stilt*.nc"))
+                for fields_file in fields_files:
+                    f = split(fields_file)[1]
+                    years.append(int(f[5:9]))
+                    months.append(int(f[10:12]))
+            else:
+                fields_files = sorted(glob.glob(subfolder + "/Fields_files/*.txt*"))
+                for fields_file in fields_files:
+                    f = split(fields_file)[1].split("_")[-1].split('.')[0]
+                    years.append(int(f[0:4]))
+                    months.append(int(f[4:6]))
         else:
             years = copy.copy(years_in)
             months = copy.copy(months_in)
@@ -1492,7 +1534,8 @@ def process_all(domain, site,
                     base_dir = base_dir, force_update = force_update,
                     satellite = satellite, perturbed_folder = perturbed_folder,
                     max_level = max_level, force_met_empty = force_met_empty,
-                    vertical_profile=vertical_profile)
+                    vertical_profile=vertical_profile,
+                    transport_model=transport_model)
 
 
 def copy_processed(domain):
@@ -1657,3 +1700,253 @@ def process_vertical_profile(vp_fname):
     
     return lapse_ds2
 
+
+def release_point(nc):
+    """
+    Extract the time and location of release from STILT output based on the
+    identifier string. nc should be a netCDF4.Dataset in STILT format.    
+    """
+    ident = netCDF4.chartostring(nc.variables['ident'][:])[0]
+    ident = ident.split('x')
+    
+    if len(ident)==8:
+        ident = ident[0:4] + ident[5:8]
+
+    if ident[4][-1] == 'N':
+        release_lat = float(ident[4][:-1])
+    elif ident[4][-1] == 'S':
+        release_lat = -float(ident[4][:-1])
+    
+    if ident[5][-1] == 'E':
+        release_lon = float(ident[5][:-1])
+    elif ident[5][-1] == 'W':
+        release_lon = -float(ident[5][:-1])
+        
+    release_ht = float(ident[6])
+        
+    time = "-".join(ident[0:3]) + " " + ident[3] + ":00"
+    time = [acrg_time.convert.dateutil.parser.parse(time)]
+    time_seconds, time_reference = time2sec(time)
+    
+    return release_lat, release_lon, release_ht, time, time_seconds, time_reference
+
+def stilt_part(nc, Id, domain_N, domain_S, domain_E, domain_W, exitfile, append):
+    """
+    Extract particle data from STILT output and assign it the given Id.
+    nc should be a netCDF4.Dataset in STILT format; Id should be an integer.
+    """
+    part = pandas.DataFrame(nc.variables['part'][:].T)
+    partnames = list(netCDF4.chartostring(nc.variables['partnames'][:]))
+    part.columns = partnames
+    part['Id'] = Id
+            
+    # clean up particle dataframe
+    
+    part=part.rename(columns = {'index':'partno'})
+    part['partno'] = part['partno'].astype('category')
+    
+    # set up domain boundaries
+    
+    north = (part['lat']>domain_N)
+    south = (part['lat']<domain_S)
+    east = (part['lon']>domain_E) 
+    west = (part['lon']<domain_W)
+    out = north | south | east | west
+    part['out'] = out
+    
+    # compute domain exit timestep for particles that exit
+    outpart = part.loc[out,:]
+    exittime = outpart.groupby(['Id', 'partno']).apply(lambda df:df.time.argmin())
+    if exittime.empty:
+        exittime = pandas.Series(None) #otherwise it will become a DataFrame
+    
+    # compute last timestep for particles that do not exit
+    gp = part.groupby(['Id', 'partno'])
+    lasttime = gp.apply(lambda df:df.time.argmin())
+    leaves = gp.agg({'out' : any})
+    lasttime = lasttime[~leaves['out']]
+    if lasttime.empty:
+        lasttime = pandas.Series(None) #otherwise it will become a DataFrame
+    
+    # combine particles that do and do not exit
+    
+    end = pandas.concat([exittime, lasttime])
+    part = part.iloc[end.tolist()]
+    part = part.loc[:,['Id','lat','lon','agl']]
+    part.columns = ['Id','Lat','Long','Ht']
+    
+    # write particle locations to csv
+    if append:
+        header = False
+        mode='a'
+    else:
+        header=True
+        mode='w'
+    part.to_csv(exitfile, index=False, sep=" ", header=header, mode=mode)
+
+    return part, partnames
+
+def stiltfoot_array(prefix, 
+                    exitfile=None,
+                    met=None,
+                    satellite=False,
+                    time_step=None):
+    """
+    Read data from STILT netcdf output files into arrays in an xray dataset.
+    The corresponding function for NAME output is footprint_array.
+    This function reads multiple files at once because STILT output is stored
+    as a separate file for each release time. To read a month of output, give
+    a prefix like stilt2016x07x.
+    Arguments:
+        prefix: file pattern prefix (including path) for output files to read
+        exitfile: file in which to temporarily store particle data
+        met: not used to interpret STILT footprints, which are already given
+            in ppm/(mol/m^2/s), but can be included if available.
+        satellite: not implemented; will produce error if True
+        time_step: ignored; not needed to interpret STILT footprints.
+    Returns:
+        fp: an xray dataset as from footprint_concatenate
+    """
+    if exitfile is None:
+        exitfile = prefix + "stilt_particle_data_temp.csv"
+
+    if satellite:
+        status_log("stiltfoot_array is not set up for satellite data!" +\
+                   " Levels will be wrong!", error_or_warning="error")
+    
+    stiltfiles = glob.glob(prefix + "*.nc")
+    stiltfiles.sort()
+    patternfile = stiltfiles[0]
+    
+    # set up lat/lon grid and release location
+    
+    ncin = netCDF4.Dataset(patternfile)
+    
+    lats = ncin.variables['footlat'][:]
+    lons = ncin.variables['footlon'][:]
+    nlon=len(lons)
+    nlat=len(lats)
+    
+    domain_N = max(lats)
+    domain_S = min(lats)
+    domain_E = max(lons)
+    domain_W = min(lons)
+    
+    release_lat, release_lon, _, time, _, time_reference = release_point(ncin)
+    
+    levs=["0"]
+    nlev=len(levs)
+    
+    # set up footprint array and particle dataframe
+    
+    fparrays = [numpy.sum(ncin.variables['foot'][:], axis=0)]
+    
+    part, partnames = stilt_part(ncin, 1, domain_N, domain_S, domain_E, domain_W,
+                                 exitfile, append=False)
+    
+    # extract data from remaining files
+    
+    n=1
+    for f in stiltfiles[1:]:
+        status_log("Loading " + f)
+        ncin = netCDF4.Dataset(f)
+        
+        this_lat, this_lon, _, this_time, _, this_reference = release_point(ncin)
+        if this_reference != time_reference:
+            status_log("Warning! Inconsistent time reference in " + f, \
+                               error_or_warning="warning")
+        
+        if (this_lat != release_lat) or (this_lon != release_lon):
+            status_log("Warning! Inconsistent release location in " + f + \
+                               ". Skipping.", error_or_warning="warning")
+            continue
+
+        this_grid_lats = ncin.variables.get('footlat', [])[:]
+        this_grid_lons = ncin.variables.get('footlon', [])[:]
+        if (len(this_grid_lats)==0) or (len(this_grid_lons)==0):
+            status_log("Warning! Footprint grid missing in " + f + \
+                       ". Skipping.", error_or_warning="warning")
+            continue
+        
+        if (len(this_grid_lats)!=len(lats) or len(this_grid_lons)!=len(lons)):
+            status_log("Warning! Inconsistent domain in " + f + \
+                               ". Skipping.", error_or_warning="warning")
+            continue
+        
+        if (any(lats!=this_grid_lats) or any(lons!=this_grid_lons)):
+            status_log("Warning! Inconsistent domain in " + f + \
+                               ". Skipping.", error_or_warning="warning")
+            continue
+        
+        p, pnames = stilt_part(ncin, n+1, domain_N, domain_S, domain_E, domain_W,
+                               exitfile, append=True)
+        if pnames!=partnames:
+            status_log("Warning! Inconsistent particle variables in " + \
+                               f + ".", error_or_warning="warning")
+            
+        time.extend(this_time)
+        n=n+1
+#        part = part.append(p, ignore_index=True)
+        fparrays.append(numpy.sum(ncin.variables['foot'][:], axis=0))
+    
+    fparrays = map(lambda x: x/1000000, fparrays) # convert ppm to mol/mol 
+    
+    # compute particle domain exit statistics
+    
+    dheights = 1000
+    heights = numpy.arange(0, 19001, dheights) + dheights/2.
+    
+    particle_hist = particle_locations(exitfile,
+                                       time, lats, lons, levs,
+                                       heights, id_is_lev = False)
+    
+    # set up footprint dataset 
+    ntime=len(time)
+    fp = xray.Dataset({"fp": (["time", "lev", "lat", "lon"],
+                              numpy.zeros((ntime, nlev, nlat, nlon)))},
+                        coords={"lat": lats, "lon":lons, "lev": levs, 
+                                "time":time})
+    
+    fp.fp.attrs = {"units": "(mol/mol)/(mol/m2/s)"}
+    fp.lon.attrs = {"units": "degrees_east"}
+    fp.lat.attrs = {"units": "degrees_north"}
+    fp.time.attrs = {"long_name": "start of time period"}
+    
+    # assign dummy met variables 
+    # This met information is not from observations and is not used to interpret 
+    # STILT output, which is already given in ppm. It is here only to maintain the
+    # expected format.
+    if met is None:
+        met = met_empty()
+    if type(met) is not list:
+        met = [met]
+    
+    met_dict = {key : (["time", "lev"], numpy.zeros((len(time), len(levs))))
+                for key in met[0].keys()}
+    met_ds = xray.Dataset(met_dict,
+                          coords = {"time": (["time"], time),
+                                    "lev": (["lev"], levs)})
+    levi = 0
+    levi_met = 0
+    
+    metr = met[levi_met].reindex(index = time, method = "pad")
+    
+    metr['release_lat'] = release_lat
+    metr['release_lon'] = release_lon
+    
+    for key in met[levi_met].keys():
+        met_ds[key][dict(lev = [levi])] = \
+        metr[key].values.reshape((len(time), 1))
+            
+    # merge datasets
+        
+    fp.merge(met_ds, inplace = True)
+    fp.merge(particle_hist, inplace = True)
+    
+    # insert footprint arrays into dataset
+    
+    for i in range(len(time)):
+        slice_dict = dict(time = [i], lev = [0])
+        fp.fp[slice_dict] = fparrays[i]
+        
+    return fp
