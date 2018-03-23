@@ -1,0 +1,290 @@
+
+The NWP met definition 'ECMWF ERA40 NEurope' is a specific definition for the use of GRIB met products
+from the ECMWF ERA40 reanalysis system (T159 L60). This specific description uses a domain over the
+Northern Europe/Atlantic area (045W - 063E; 54N - 85.5N) and uses model levels 20 to 60 (inclusive)
+extending to ~ 35 hPa.
+
+The domain 'ECMWF ERA40 NEurope' covers the whole area covered by the met data grid (note that there
+is only one grid used here as all ERA40 fields are output on a single regular lat-lon grid - the
+native model is spectral). 
+
+The remaining definitions are intended only for use here in defining the above NWP met 
+definition and domain (although there is no reason why they cannot be used elsewhere).
+
+NWP Met Definitions:
+Name,                Binary Format, File Type,    Dt, Day Per File, Prefix,               Suffix, Next Heat Flux, Next Precipitation, Mesoscale SigU, Mesoscale TauU, Met File Structure Definition, Z-Coord - W, Z-Coord - Cloud Height,              Z-Grid,         Z-Grid - UV,          Z-Grid - W,          Z-Grid - P,              H-Grid,          H-Grid - U,          H-Grid - V,          Topography File
+ECMWF ERA40 NEurope,              ,      GRIB, 03:00,           No,  ECMWF, ERA40_045W54N063E85N,             No,                Yes,           0.95,        10000.0,                   ECMWF ERA40,          Pa,                  m agl, ERA40 NEurope ZGrid, ERA40 NEurope ZGrid, ERA40 NEurope ZGrid, ERA40 NEurope ZGrid, ERA40 NEurope HGrid, ERA40 NEurope HGrid, ERA40 NEurope HGrid, TopogECMWF_ERA40_NEurope
+
+Domains: 
+Name,                H Unbounded?,  H-Coord,  X Min, X Max, Y Min, Y Max, Z Unbounded?,      Z-Coord, Z Max, T Unbounded?, Max Travel Time
+ECMWF ERA40 NEurope,           No, Lat-Long,  -45.0,  63.0,  54.0,  85.5,           No, ERA40 ZCoord, 0.035,          Yes,        infinity
+
+Horizontal Coordinate Systems:
+Name
+Lat-Long
+
+Horizontal Grids:
+Name,                 H-Coord,  nx,  ny,    dx,     dy, x min, y min, Wrap?
+ERA40 NEurope HGrid, Lat-Long,  97,  29, 1.125, -1.125, -45.0,  85.5,    No
+
+Vertical Coordinate Systems:
+Name,         Type, Unit,         Eta Definition,
+ERA40 ZCoord,    5,  1.0, ECMWF60L ZCoord Levels,
+m agl,            ,     ,                       ,
+Pa,               ,     ,                       ,
+
+Vertical Grids:
+Name,                     Z-Coord,                     Z-Array,                        Index-Array
+ERA40 NEurope ZGrid, ERA40 ZCoord, ECMWF60L ZGrid Levels 20-60, ECMWF60L ZGrid Level Indices 20-60
+
+---------------------------------------------------------------------------------
+Definition of model levels in the 60-level version of the ECMWF atmospheric model
+---------------------------------------------------------------------------------
+
+Important note: uses approximate values of A and B obtained from ECMWF web page.
+Need to update to definitive values provided in grid definition section of GRIB products?
+
+The A and B values defining the Eta vertical coord are specified in the Eta Definition
+ECMWF60L ZCoord Levels. These are the half-pressure values (i.e. at the interfaces of
+the model layers). The corresponding Eta values, defined by eta = A/p0 + B where p0 is
+the reference pressure 10^5 Pa, are included for reference in the notes section.
+
+Full-pressure eta values (at the centre of each model layer) define the vertical grid
+and are specified in the array ECMWF60L ZGrid Levels.
+
+Reference pressures ph and pf for the model levels are based on a surface pressure
+p_surface = 1013.25 hPa.
+
+The 'level numbers' given in the notes section of the Eta Definition and Array refer to
+the ECMWF model level numbers (1 = highest level, 60 = lowest level).
+
+Note that eta is given in these definitions in decreasing order (i.e. increasing height).
+
+---------------------------------------------------------------------------------
+
+Eta Definition: ECMWF60L ZCoord Levels
+B,                      A, ! Notes:  Eta_h          -  ph[hPa]   -  level number N
+1.00000000,      0.000000,           1.00000000000     1013.250     60 (Surface)
+0.99763012,      0.000000,           0.99763012000     1010.849     59
+0.99401945,      7.367743,           0.99409312743     1007.264     58
+0.98827010,     65.889244,           0.98892899244     1002.024     57
+0.97966272,    210.393890,           0.98176665890      994.747     56
+0.96764523,    467.333588,           0.97231856588      985.140     55
+0.95182151,    855.361755,           0.96037512755      972.987     54
+0.93194032,   1385.912598,           0.94579944598      958.148     53
+0.90788388,   2063.779785,           0.92852167785      940.551     52
+0.87965691,   2887.696533,           0.90853387533      920.189     51
+0.84737492,   3850.913330,           0.88588405330      897.112     50
+0.81125343,   4941.778320,           0.86067121320      871.420     49
+0.77159661,   6144.314941,           0.83303975941      843.263     48
+0.72878581,   7438.803223,           0.80317384223      812.830     47
+0.68326861,   8802.356445,           0.77129217445      780.346     46
+0.63554746,  10209.500977,           0.73764246977      746.064     45
+0.58616841,  11632.758789,           0.70249599789      710.263     44
+0.53570992,  13043.218750,           0.66614210750      673.240     43
+0.48477158,  14411.124023,           0.62888282023      635.306     42
+0.43396294,  15706.447266,           0.59102741266      596.777     41
+0.38389215,  16899.468750,           0.55288683750      557.973     40
+0.33515489,  17961.357422,           0.51476846422      519.209     39
+0.28832296,  18864.750000,           0.47697046000      480.791     38
+0.24393314,  19584.330078,           0.43977644078      443.009     37
+0.20247594,  20097.402344,           0.40344996344      406.133     36
+0.16438432,  20384.480469,           0.36822912469      370.407     35
+0.13002251,  20429.863281,           0.33432114281      336.044     34
+0.09967469,  20222.205078,           0.30189674078      303.217     33
+0.07353383,  19755.109375,           0.27108492375      272.059     32
+0.05169041,  19027.695313,           0.24196736313      242.652     31
+0.03412116,  18045.183594,           0.21457299594      215.025     30
+0.02067788,  16819.474609,           0.18887262609      189.147     29
+0.01114291,  15379.805664,           0.16494096664      165.089     28
+0.00508112,  13775.325195,           0.14283437195      142.902     27
+0.00181516,  12077.446289,           0.12258962289      122.614     26
+0.00046139,  10376.126953,           0.10422265953      104.229     25
+0.00007582,   8765.053711,           0.08772635711       87.727     24
+0.00000000,   7306.631348,           0.07306631348       73.066     23
+0.00000000,   6018.019531,           0.06018019531       60.180     22
+0.00000000,   4906.708496,           0.04906708496       49.067     21
+0.00000000,   3960.291504,           0.03960291504       39.603     20
+0.00000000,   3196.421631,           0.03196421631       31.964     19
+0.00000000,   2579.888672,           0.02579888672       25.799     18
+0.00000000,   2082.273926,           0.02082273926       20.823     17
+0.00000000,   1680.640259,           0.01680640259       16.806     16
+0.00000000,   1356.474609,           0.01356474609       13.565     15
+0.00000000,   1094.834717,           0.01094834717       10.948     14
+0.00000000,    883.660522,           0.00883660522        8.837     13
+0.00000000,    713.218079,           0.00713218079        7.132     12
+0.00000000,    575.651001,           0.00575651001        5.757     11
+0.00000000,    464.618134,           0.00464618134        4.646     10
+0.00000000,    373.971924,           0.00373971924        3.740      9
+0.00000000,    298.495789,           0.00298495789        2.985      8
+0.00000000,    234.779053,           0.00234779053        2.348      7
+0.00000000,    180.584351,           0.00180584351        1.806      6
+0.00000000,    134.483307,           0.00134483307        1.345      5
+0.00000000,     95.636963,           0.00095636963        0.956      4
+0.00000000,     63.647804,           0.00063647804        0.636      3
+0.00000000,     38.425343,           0.00038425343        0.384      2
+0.00000000,     20.000000,           0.00020000000        0.200      1
+0.00000000,      0.000000,           0.00000000000        0.000      0
+
+Array: ECMWF60L ZGrid Levels 20-60
+ Array Values, ! Notes:  pf[hPa]   -  level number N
+1.00000000000,           1013.250     Surface
+0.99881506000,           1012.049     60
+0.99586162372,           1009.056     59
+0.99151105994,           1004.644     58
+0.98534782567,            998.385     57
+0.97704261239,            989.944     56
+0.96634684672,            979.063     55
+0.95308728677,            965.567     54
+0.93716056192,            949.349     53
+0.91852777659,            930.370     52
+0.89720896432,            908.651     51
+0.87327763325,            884.266     50
+0.84685548631,            857.342     49
+0.81810680082,            828.047     48
+0.78723300834,            796.588     47
+0.75446732211,            763.205     46
+0.72006923383,            728.163     45
+0.68431905270,            691.752     44
+0.64751246387,            654.273     43
+0.60995511645,            616.042     42
+0.57195712508,            577.375     41
+0.53382765086,            538.591     40
+0.49586946211,            500.000     39
+0.45837345039,            461.900     38
+0.42161320211,            424.571     37
+0.38583954407,            388.270     36
+0.35127513375,            353.226     35
+0.31810894180,            319.631     34
+0.28649083227,            287.638     33
+0.25652614344,            257.356     32
+0.22827017954,            228.839     31
+0.20172281102,            202.086     30
+0.17690679637,            177.118     29
+0.15388766930,            153.995     28
+0.13271199742,            132.758     27
+0.11340614121,            113.421     26
+0.09597450832,             95.978     25
+0.08039633530,             80.397     24
+0.06662325440,             66.623     23
+0.05462364014,             54.624     22
+0.04433500000,             44.335     21
+0.03578356568,             35.784     20
+
+0.02888155152,             28.882     19
+0.02331081299,             23.311     18
+0.01881457093,             18.815     17
+0.01518557434,             15.186     16
+0.01225654663,             12.257     15
+0.00989247620,              9.892     14
+0.00798439301,              7.984     13
+0.00644434540,              6.444     12
+0.00520134568,              5.201     11
+0.00419295029,              4.193     10
+0.00336233857,              3.362      9
+0.00266637421,              2.666      8
+0.00207681702,              2.077      7
+0.00157533829,              1.575      6
+0.00115060135,              1.151      5
+0.00079642384,              0.796      4
+0.00051036574,              0.510      3
+0.00029212672,              0.292      2
+0.00010000000,              0.100      1
+
+! End of levels definition
+---------------------------------------------------------------------------------
+
+Array: ECMWF60L ZGrid Level Indices 20-60
+Array Values
+0
+60
+59
+58
+57
+56
+55
+54
+53
+52
+51
+50
+49
+48
+47
+46
+45
+44
+43
+42
+41
+40
+39
+38
+37
+36
+35
+34
+33
+32
+31
+30
+29
+28
+27
+26
+25
+24
+23
+22
+21
+20
+
+19
+18
+17
+16
+15
+14
+13
+12
+11
+10
+ 9
+ 8
+ 7
+ 6
+ 5
+ 4
+ 3
+ 2
+ 1
+
+! Note that other fields are available in the met files, but these are not currently used in NAME.
+
+NWP Met File Structure Definition: ECMWF ERA40
+                       Field Name, Lowest Level, Highest Level, Field Code, 3-d?, Field Qualifiers,
+                     wind (u-cpt),            2,           Top,        131,  Yes,                 ,
+                     wind (v-cpt),            2,           Top,        132,  Yes,                 ,
+                     wind (w-cpt),            2,           Top,        135,  Yes,                 ,
+                  temperature (K),            2,           Top,        130,  Yes,                 ,
+                specific humidity,            2,           Top,        133,  Yes,                 ,
+       cloud liquid water (kg/kg),            2,           Top,        246,  Yes,            Total,
+                cloud ice (kg/kg),            2,           Top,        247,  Yes,            Total,
+   surface stress (u-cpt) (N/m^2),            1,             1,        229,   No,                 ,
+   surface stress (v-cpt) (N/m^2),            1,             1,        230,   No,                 ,
+       surface sensible heat flux,            1,             1,        231,   No,                 ,
+          sea level pressure (Pa),            1,             1,        151,   No,                 ,
+                    pressure (Pa),            1,             1,        134,   No,                 ,
+                  temperature (K),            1,             1,        167,   No,                 ,
+    convective cloud amount (0-1),            1,             1,        110,   No,                 ,
+            convective cloud base,            1,             1,        111,   No,                 ,
+             convective cloud top,            1,             1,        112,   No,                 ,
+   dynamic rain rate (kg/(m^2 s)),            1,             1,        100,   No,                 ,
+convective rain rate (kg/(m^2 s)),            1,             1,        101,   No,                 ,
+   dynamic snow rate (kg/(m^2 s)),            1,             1,        102,   No,                 ,
+convective snow rate (kg/(m^2 s)),            1,             1,        103,   No,                 ,
+          high cloud amount (0-1),            1,             1,        188,   No,            Total,
+        medium cloud amount (0-1),            1,             1,        187,   No,            Total,
+           low cloud amount (0-1),            1,             1,        186,   No,            Total,
+                 roughness length,            1,             1,        244,   No,                 ,
+             boundary layer depth,            1,             1,        159,   No,                 ,

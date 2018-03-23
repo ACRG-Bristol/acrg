@@ -1,0 +1,180 @@
+# ******************************************************************************
+#
+# Project: NAME III documentation --> User Guides --> Testing Runs
+#
+# File:    NAME input file for a test run reading Global NWP met (every 3 hours) 
+#          and UKPP Analysis hourly precipitation accumulations once every hour.
+#
+# Author:  Ian Edmond, ADAQ, Met Office
+#
+# Date:    29/09/2014
+#
+# Notes:   The UKPP datasets read by this run are stored on the Met Office 
+#          systems under /project/NAME/apnm/UKPP_datafiles/
+#
+# ******************************************************************************
+
+Main Options:
+Absolute or Relative Time?, Fixed Met?, Flat Earth?,               Run Name,  Random Seed, Max # Sources
+                  Absolute,         No,          No, Test Run using UKPP,        Fixed,             1
+
+Restart File Options:
+# Cases Between Writes, Time Between Writes, Delete Old Files?, Write On Suspend?,
+                      ,                    ,                  ,                  ,
+
+Multiple Case Options:
+Dispersion Options Ensemble Size, Met Ensemble Size,
+                               1,                 1,
+
+Output Options:
+Folder
+./Output
+
+Input Files:
+File names
+../Resources/Defns/RadarDefnUKPP_Mk1_Accum1hr_Nimrod.txt
+../Resources/Defns/MetDefnUMG_Mk7_L59PTpp.txt
+
+
+Horizontal Coordinate Systems:
+Name,        Type, Pole Lat, Pole Long, Angle,   x-Origin,  y-Origin,    x-unit,  y-unit, Scale Factor
+Lat-Long,        ,         ,          ,      ,           ,          ,          ,       ,  ,
+
+Vertical Coordinate Systems:
+Name
+m agl
+
+Locations: Release Locations
+Name,                   H-Coord,     X,     Y
+Somewhere Factory,     Lat-Long, -3.64, 50.45
+
+Locations: Output Locations
+Name,         H-Coord,     X,     Y
+Bristol,     Lat-Long, -2.60, 51.45
+Cardiff,     Lat-Long, -3.18, 51.48
+Exeter,      Lat-Long, -3.53, 50.72
+London,      Lat-Long, -0.10, 51.52
+Plymouth,    Lat-Long, -4.14, 50.36
+Southampton, Lat-Long, -1.40, 50.90
+Taunton,     Lat-Long, -3.10, 51.02
+
+Horizontal Grids:
+Name,            H-Coord,   nX,   nY,  X Min,  X Max,  Y Min,  Y Max
+HGridForFields, Lat-Long,  181,  151, -15.00,  15.00,  45.00,  60.00
+
+Horizontal Grids:
+Name,                 dX,   dY, Set of Locations
+HGridForTimeSeries, 0.16, 0.10, Output Locations
+HGridForMet,        0.01, 0.01, Output Locations
+
+
+Vertical Grids:
+Name,            Z-Coord,  nZ,    dZ,    Z0
+ZGrid_0-100m,      m agl,   1, 100.0,  50.0
+ZGrid_10m,         m agl,   1,   0.0,  10.0
+
+Temporal Grids:
+Name,          nt,       dt,                  t0
+TGrid5Min,    108, 00:05:00, 11/02/2014 09:05:00
+TGrid15Min,    36, 00:15:00, 11/02/2014 09:15:00
+TGridHourly,    9, 01:00:00, 11/02/2014 10:00:00
+TGrid3Hourly,   3, 03:00:00, 11/02/2014 12:00:00
+TGridEndOfRun,  1, 09:00:00, 11/02/2014 18:00:00
+
+Domains:
+Name,              H Unbounded?,  H-Coord,  X Min, X Max, Y Min, Y Max, Z Unbounded?, Z-Coord,   Z Max, T Unbounded?,       Start Time,          End Time, Max Travel Time
+Dispersion Domain,           No, Lat-Long, -20.00, 20.00, 40.00, 65.00,           No,   m agl, 20000.0,           No, 11/02/2014 09:00,  11/02/2014 18:00,        infinity
+
+Species:
+Name,              Category, Half Life, UV Loss Rate, Surface Resistance, Deposition Velocity, Mean aerosol diameter, A rain - BC, B rain - BC, A snow - BC, B snow - BC, A rain - IC, B rain - IC, A snow - IC, B snow - IC, Molecular Weight, Material Unit
+DepositingTracer,    Tracer,    Stable,     0.00E+00,           1.50E+02,                    ,                      ,      8.4E-5,        0.79,      8.0E-5,       0.305,     3.36E-4,        0.79,      5.2E-5,        0.79,                0,             g
+
+Species Uses:
+Species,         On Particles?, On Fields?, Advect Field?
+DepositingTracer,          Yes,         No,            No
+
+Sources:
+Name,         Shape,  H-Coord, Z-Coord,  Set of Locations,          Location,     Z,   dX,   dY,    dZ, dH-Metres?, dZ-Metres?, Angle,            Source Strength, Time Dependency, Plume Rise?, Temperature, Flow Velocity, # Particles,  Max Age, Top Hat,          Start Time,            Stop Time
+Source A, Ellipsoid, Lat-Long,   m agl, Release Locations, Somewhere Factory, 250.0, 10.0, 10.0, 500.0,        Yes,        Yes,   0.0,  DepositingTracer 1.0 g/hr,                ,          No,       273.0,           0.0,      500/hr, infinity,     Yes, 11/02/2014 09:00:00,  11/02/2014 18:00:00
+
+Output Requirements - Fields:
+Name,                          Quantity,            Species, Source,         H-Grid,        Z-Grid,        T-Grid, BL Average, T Av or Int, Av Time, # Av Times, Sync?, Output Route, Across, Separate File, Output Format,  Output Group
+Precipitation Rate (mm/hr), Precipitation Rate (mm/hr),    ,       , HGridForFields,     ZGrid_10m,    TGrid5Min,            ,          Av,   00:05,          1,   Yes,            D,     TZ,             T,            IA,  Fields_grid1
+
+
+Output Requirements - Fields:
+Name,                       Quantity,            Species, Source,             H-Grid,       Z-Grid,        T-Grid, BL Average, T Av or Int, Av Time, # Av Times, Sync?, Output Route, Across, Separate File, Output Format,  Output Group
+Air Conc at Sites, Air Concentration,   DepositingTracer,       , HGridForTimeSeries, ZGrid_0-100m,  TGrid3Hourly,         No,          Av,   03:00,         18,    No,            D,    XYZ,              ,           ZAE,  TimeSeries
+
+Output Requirements - Fields: 
+Quantity,                   Species, Source,      H-Grid,    Z-Grid,      T-Grid,  H-Coord, Z-Coord, T Av Or Int, Av Time, # Av Times, Sync?, Output Route, Across, Separate File, Output Format, Output Group
+Wind speed,                        ,       , HGridForMet, ZGrid_10m, TGridHourly,         ,        ,          No,        ,           ,   Yes,            D,    XYZ,            XY,           ZAE,    MetOutput
+Wind direction (degrees),          ,       , HGridForMet, ZGrid_10m, TGridHourly, Lat-Long,        ,          No,        ,           ,   Yes,            D,    XYZ,            XY,           ZAE,    MetOutput
+Cloud Amount (oktas),              ,       , HGridForMet, ZGrid_10m, TGridHourly,         ,        ,          No,        ,           ,   Yes,            D,    XYZ,            XY,           ZAE,    MetOutput
+Temperature (C),                   ,       , HGridForMet, ZGrid_10m, TGridHourly,         ,        ,          No,        ,           ,   Yes,            D,    XYZ,            XY,           ZAE,    MetOutput
+Sensible heat flux,                ,       , HGridForMet, ZGrid_10m, TGridHourly,         ,        ,          No,        ,           ,   Yes,            D,    XYZ,            XY,           ZAE,    MetOutput
+Boundary layer depth,              ,       , HGridForMet, ZGrid_10m, TGridHourly,         ,        ,          No,        ,           ,   Yes,            D,    XYZ,            XY,           ZAE,    MetOutput
+Precipitation rate (mm/hr),        ,       , HGridForMet, ZGrid_10m, TGridHourly,         ,        ,          No,        ,           ,   Yes,            D,    XYZ,            XY,           ZAE,    MetOutput
+Relative Humidity (%),             ,       , HGridForMet, ZGrid_10m, TGridHourly,         ,        ,          No,        ,           ,   Yes,            D,    XYZ,            XY,           ZAE,    MetOutput
+Pasquill Stability,                ,       , HGridForMet, ZGrid_10m, TGridHourly,         ,        ,          No,        ,           ,   Yes,            D,    XYZ,            XY,           ZAE,    MetOutput
+
+Output Requirements - Fields:
+               Name,     Quantity, Species,      T-Grid, T Av Or Int, Sync?, Output Route, Output Format, Output Group
+ % of run completed, Progress (%),        , TGridHourly,          No,   Yes,            D,            AF,         Info
+ Count of particles,  # Particles,        , TGridHourly,          No,   Yes,            D,            AF,         Info
+
+
+
+
+Sets of Dispersion Options:
+Max # Particles, Max # Full Particles, Max # Puffs, Max # Original Puffs, Skew Time, Velocity Memory Time, Mesoscale Velocity Memory Time, Inhomogeneous Time, DeltaOpt, Puff Time, Sync Time, Time of Fixed Met, Computational Domain, Puff Interval, Deep Convection?, Radioactive Decay?, Agent Decay?, Dry Deposition?, Wet Deposition?, Turbulence?, Mesoscale Motions?, Chemistry? 
+         500000,                    2,           2,                    2,     00:00,                00:00,                          00:00,              00:00,        1,     00:00,  00:05:00,                  ,    Dispersion Domain,         00:30,               No,                Yes,           No,             Yes,             Yes,         Yes,                Yes,         No 
+
+NWP Met Module Instances: 
+Name,                  Min B L Depth, Max B L Depth, Use NWP BL Depth?,                                                    Restore Met Script, Delete Met?,            Met Folder,     Topography Folder, Met Definition Name
+UM Global over Europe,          80.0,        4000.0,               Yes, /home/h03/apdg/bin/metcopy_and_restore_dir/metcopyrestore_general,          No, /data/local/hadie/r514_Radar_mods/NWP_Met_Data, /data/local/hadie/r514_Radar_mods/Resources/Topog,    UMG_Mk7_L59PT2pp
+
+NWP Flow Module Instances: 
+Name,                       Met Module,                   Met,                 Domain
+UM Global over Europe Flow,    NWP Met, UM Global over Europe, UMG_Mk6_L59PT2pp Whole 
+
+Radar Met Module Instances:
+Name,        Restore Met Script, Delete Met?,           Met Folder,                Met Definition Name
+UKPP nimrod,                   ,          No,  /project/NAME/apnm/UKPP_datafiles/, UKPP_Mk1_Accum1hr_Nimrod
+
+ 
+Radar Flow Module Instances:
+Name,        Met Module,    Met,          Domain
+UKPP Flow,    Radar Met,   UKPP nimrod,   UKPP_Mk1 Domain
+
+
+
+Flow Order: Update
+Flow Module, Flow
+Radar Flow,  UKPP Flow
+NWP Flow,    UM Global over Europe Flow
+
+Flow Order: Convert
+Flow Module, Flow
+NWP Flow,    UM Global over Europe Flow
+
+Flow Order: Flow
+Flow Module, Flow
+NWP Flow,    UM Global over Europe Flow
+
+Flow Order: Cloud
+Flow Module, Flow
+NWP Flow,    UM Global over Europe Flow
+
+Flow Order: Rain
+Flow Module, Flow
+Radar Flow,  UKPP Flow
+NWP Flow,    UM Global over Europe Flow
+
+Flow Attributes:
+Name,    Flow Order
+Update,  Update
+Convert, Convert
+Flow,    Flow
+Cloud,   Cloud
+Rain,    Rain

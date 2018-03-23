@@ -1,0 +1,235 @@
+Changes to NAME III
+
+Note: For information on detailed changes to the various components, see the 
+Changes.txt files in the various subfolders. 
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 5.4 of NAME III released 27/11/09.
+Changes prior to version 5.4 not recorded.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+28/1/10
+ 
+Changes to MakeExternalUsersVersion.sh to include more files at the top folder level. 
+Also output folder made a subfolder of NAMEIIIExternalVersions.
+
+Dave Thomson
+
+!-------------------------------------------------------------------------------------
+
+8/4/10
+
+References to PV-Wave removed from MakeExternalUsersVersion.sh.
+
+Dave Thomson
+
+!-------------------------------------------------------------------------------------
+24/08/2010
+
+Ticket #11: Porting to IBM.
+
+I added an (empty) subdirectory /Executables_Unix for storing the executables
+on the IBM supercomputer.
+   
+Eike Mueller
+
+!-------------------------------------------------------------------------------------
+07/01/2011
+
+Ticket #32: Upgrade GRIB support in NAME to use the ECMWF GRIB_API library package.
+
+Addition of GRIB_API software to NAME library (including some additional local files
+and directories).
+   
+   a) Added a new directory /Code_GribAPI into the NAME directory structure
+      containing GRIB_API source files.
+   
+   b) Added a new directory /SharedLibraries_Linux into the NAME directory structure
+      for the compiled GRIB_API libraries, etc.
+   
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+16/12/2011
+
+Ticket #55: Python Code
+
+Added a directory /Code_Python into the NAME directory structure to store python code.
+Currently only contains code for converting NAME field output files to NetCDF.
+
+Susan Leadbetter
+
+!-------------------------------------------------------------------------------------
+31/01/2012
+
+Ticket #63: Add a User Guides directory and installation test suite.
+
+Added a new directory /User_Guides into the NAME directory structure to store
+user guide documentation and a basic test suite for verifying the NAME installation.
+
+This directory contains two subdirectories
+
+ - User_Guides/Docs (intended for the storage of user guide documentation), and
+ - User_Guides/Test_Runs (for the installation test suite).
+
+A collection of files and folders have been added for running an installation test
+on Linux and Windows systems.
+
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+17/02/2012
+
+Ticket #34: Restructure MakeExternalUsersVersion code to isolate external software in
+            separate top-level directories.
+
+Added a new directory /MakeExternalUsersVersion in the top-level NAME structure
+to store files involved in the creation of external code versions. The existing
+build script MakeExternalUsersVersion.sh has been moved into this new subdirectory.
+
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+
+17/02/12
+
+Ticket #64: Activities associated with freezing of version 6.1.
+
+Added Windows Visual Studio project file NameIII.sln for use in compiling NAME
+with the Intel Fortran compiler on Windows systems. Eike Mueller had previously
+produced this file for version 6.0 (see ticket #16: Porting to Windows)
+but it was not copied into the main code trunk.
+
+Updated the Compaq Visual Studio file NameIII.opt for use in compiling NAME with
+the Compaq compiler on Windows (as used by David Thomson).
+
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 6.1 of NAME III released 20/02/2012.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+22/10/12
+
+Ticket #76: Activities associated with freezing of version 6.2.
+
+Updated the top-level ReadMe.txt with details of the Intel Fortran v12 compiler
+on Linux.
+
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 6.2 of NAME III released 22/10/2012.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+22/03/2013
+
+Ticket #82: Activities associated with freezing of version 6.3.
+
+NameIII.sln
+Revised solution file for Intel Fortran compiler on Windows following a correction to
+the solution configurations (some of the Debug and Release project compilations were
+stored the wrong way around in the corresponding solution configurations).
+
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 6.3 of NAME III released 26/03/2013.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+13/12/2013
+
+Ticket #90: Combining Chemistry and Eulerian Model.
+
+NameIII.sln and associated .vfproj files updated to Microsoft Visual Studio 2010
+using the Visual Studio wizard.
+
+Dave Thomson
+
+!-------------------------------------------------------------------------------------
+
+07/01/2014
+
+Ticket #90: Combining Chemistry and Eulerian Model.
+
+.opt and .plg files removed. These files are produced by Microsoft Developer Studio 
+and/or Compaq Visual Fortran, but don't need to be kept and in fact are best not kept
+when Name's location is moved.
+
+Dave Thomson
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 6.4 beta of NAME III released 29/10/2014.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 6.4 of NAME III released 18/12/2014.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+23/12/2014
+
+Ticket #108: Activities associated with freezing of version 6.4.
+
+The author and date have been removed from the top header in this Changes file
+and in the ReadMe file for this folder. Authors are now listed collectively in the
+file Contributors.txt in the top-level NAME folder.
+
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+
+30/06/2015
+
+Ticket #134: Activities associated with freezing of version 6.5.
+
+Added Maff Glover and Douglas Boyd to the Contributors file for their contributions
+with compiling NAME on Cray HPC.
+
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 6.5 beta of NAME III released 01/07/2015.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+31/07/2015
+
+Ticket #134: Activities associated with freezing of version 6.5.
+
+NameIII.sln
+Updated the Visual Studio solution file for compiling with the Intel Fortran compiler
+under Windows. 64-bit configurations have been added to the existing 32-bit options.
+
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 6.5 of NAME III released 31/07/2015.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------

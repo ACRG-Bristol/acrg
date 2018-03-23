@@ -1,0 +1,22 @@
+# Copyright 2005-2007 ECMWF
+#
+# Licensed under the GNU Lesser General Public License which
+# incorporates the terms and conditions of version 3 of the GNU
+# General Public License.
+# See LICENSE and gpl-3.0.txt for details.
+
+transient dummyc=0: hidden;
+constant conceptsMasterDir="grib2" : hidden;
+constant conceptsLocalDirAll="grib2/localConcepts/[centre:s]" : hidden;
+constant conceptsLocalDirECMF="grib2/localConcepts/ecmf" : hidden;
+
+_if ( subCentre == 98 ) {
+  alias conceptsLocalDir=conceptsLocalDirECMF;
+} else {
+  alias conceptsLocalDir=conceptsLocalDirAll;
+}
+
+template_nofail names "grib2/products_[productionStatusOfProcessedData].def";
+
+meta ifsParam ifs_param(paramId,type);
+

@@ -1,0 +1,128 @@
+! Using UMG_Mk6PT met data (UM GLOBAL Mk6)
+
+NWP Met Module Instances:
+Name,            Min B L Depth, Max B L Depth, Use NWP BL Depth?, Restore Met Script, Delete Met?, Met Folder, Topography Folder, Met Definition Name, Update on Demand?
+Global_Mk6_PT1,           40.0,        4000.0,               Yes, %MetRestoreScript%,          No,   %MetDir%,        %TopogDir%,    UMG_Mk6_L59PT1pp,               Yes
+Global_Mk6_PT2,           40.0,        4000.0,               Yes, %MetRestoreScript%,          No,   %MetDir%,        %TopogDir%,    UMG_Mk6_L59PT2pp,               Yes
+Global_Mk6_PT3,           40.0,        4000.0,               Yes, %MetRestoreScript%,          No,   %MetDir%,        %TopogDir%,    UMG_Mk6_L59PT3pp,               Yes
+Global_Mk6_PT4,           40.0,        4000.0,               Yes, %MetRestoreScript%,          No,   %MetDir%,        %TopogDir%,    UMG_Mk6_L59PT4pp,               Yes
+Global_Mk6_PT5,           40.0,        4000.0,               Yes, %MetRestoreScript%,          No,   %MetDir%,        %TopogDir%,    UMG_Mk6_L59PT5pp,               Yes
+Global_Mk6_PT6,           40.0,        4000.0,               Yes, %MetRestoreScript%,          No,   %MetDir%,        %TopogDir%,    UMG_Mk6_L59PT6pp,               Yes
+Global_Mk6_PT7,           40.0,        4000.0,               Yes, %MetRestoreScript%,          No,   %MetDir%,        %TopogDir%,    UMG_Mk6_L59PT7pp,               Yes
+Global_Mk6_PT8,           40.0,        4000.0,               Yes, %MetRestoreScript%,          No,   %MetDir%,        %TopogDir%,    UMG_Mk6_L59PT8pp,               Yes
+Global_Mk6_PT9,           40.0,        4000.0,               Yes, %MetRestoreScript%,          No,   %MetDir%,        %TopogDir%,    UMG_Mk6_L59PT9pp,               Yes
+Global_Mk6_PT10,          40.0,        4000.0,               Yes, %MetRestoreScript%,          No,   %MetDir%,        %TopogDir%,    UMG_Mk6_L59PT10pp,              Yes
+Global_Mk6_PT11,          40.0,        4000.0,               Yes, %MetRestoreScript%,          No,   %MetDir%,        %TopogDir%,    UMG_Mk6_L59PT11pp,              Yes
+Global_Mk6_PT12,          40.0,        4000.0,               Yes, %MetRestoreScript%,          No,   %MetDir%,        %TopogDir%,    UMG_Mk6_L59PT12pp,              Yes
+Global_Mk6_PT13,          40.0,        4000.0,               Yes, %MetRestoreScript%,          No,   %MetDir%,        %TopogDir%,    UMG_Mk6_L59PT13pp,              Yes
+Global_Mk6_PT14,          40.0,        4000.0,               Yes, %MetRestoreScript%,          No,   %MetDir%,        %TopogDir%,    UMG_Mk6_L59PT14pp,              Yes
+
+NWP Flow Module Instances: 
+Name,                 Met Module,            Met,                  Domain, Update on Demand?
+Global_Mk6_PT1 Flow,     NWP Met, Global_Mk6_PT1,  UMG_Mk6_L59PT1pp Whole,               Yes
+Global_Mk6_PT2 Flow,     NWP Met, Global_Mk6_PT2,  UMG_Mk6_L59PT2pp Whole,               Yes
+Global_Mk6_PT3 Flow,     NWP Met, Global_Mk6_PT3,  UMG_Mk6_L59PT3pp Whole,               Yes
+Global_Mk6_PT4 Flow,     NWP Met, Global_Mk6_PT4,  UMG_Mk6_L59PT4pp Whole,               Yes
+Global_Mk6_PT5 Flow,     NWP Met, Global_Mk6_PT5,  UMG_Mk6_L59PT5pp Whole,               Yes
+Global_Mk6_PT6 Flow,     NWP Met, Global_Mk6_PT6,  UMG_Mk6_L59PT6pp Whole,               Yes
+Global_Mk6_PT7 Flow,     NWP Met, Global_Mk6_PT7,  UMG_Mk6_L59PT7pp Whole,               Yes
+Global_Mk6_PT8 Flow,     NWP Met, Global_Mk6_PT8,  UMG_Mk6_L59PT8pp Whole,               Yes
+Global_Mk6_PT9 Flow,     NWP Met, Global_Mk6_PT9,  UMG_Mk6_L59PT9pp Whole,               Yes
+Global_Mk6_PT10 Flow,    NWP Met, Global_Mk6_PT10, UMG_Mk6_L59PT10pp Whole,              Yes
+Global_Mk6_PT11 Flow,    NWP Met, Global_Mk6_PT11, UMG_Mk6_L59PT11pp Whole,              Yes
+Global_Mk6_PT12 Flow,    NWP Met, Global_Mk6_PT12, UMG_Mk6_L59PT12pp Whole,              Yes
+Global_Mk6_PT13 Flow,    NWP Met, Global_Mk6_PT13, UMG_Mk6_L59PT13pp Whole,              Yes
+Global_Mk6_PT14 Flow,    NWP Met, Global_Mk6_PT14, UMG_Mk6_L59PT14pp Whole,              Yes
+
+Flow Order: Update
+Flow Module, Flow
+NWP Flow,    Global_Mk6_PT1 Flow
+NWP Flow,    Global_Mk6_PT2 Flow
+NWP Flow,    Global_Mk6_PT3 Flow
+NWP Flow,    Global_Mk6_PT4 Flow
+NWP Flow,    Global_Mk6_PT5 Flow
+NWP Flow,    Global_Mk6_PT6 Flow
+NWP Flow,    Global_Mk6_PT7 Flow
+NWP Flow,    Global_Mk6_PT8 Flow
+NWP Flow,    Global_Mk6_PT9 Flow
+NWP Flow,    Global_Mk6_PT10 Flow
+NWP Flow,    Global_Mk6_PT11 Flow
+NWP Flow,    Global_Mk6_PT12 Flow
+NWP Flow,    Global_Mk6_PT13 Flow
+NWP Flow,    Global_Mk6_PT14 Flow
+
+Flow Order: Convert
+Flow Module, Flow
+NWP Flow,    Global_Mk6_PT1 Flow
+NWP Flow,    Global_Mk6_PT2 Flow
+NWP Flow,    Global_Mk6_PT3 Flow
+NWP Flow,    Global_Mk6_PT4 Flow
+NWP Flow,    Global_Mk6_PT5 Flow
+NWP Flow,    Global_Mk6_PT6 Flow
+NWP Flow,    Global_Mk6_PT7 Flow
+NWP Flow,    Global_Mk6_PT8 Flow
+NWP Flow,    Global_Mk6_PT9 Flow
+NWP Flow,    Global_Mk6_PT10 Flow
+NWP Flow,    Global_Mk6_PT11 Flow
+NWP Flow,    Global_Mk6_PT12 Flow
+NWP Flow,    Global_Mk6_PT13 Flow
+NWP Flow,    Global_Mk6_PT14 Flow
+
+Flow Order: Flow
+Flow Module, Flow
+NWP Flow,    Global_Mk6_PT1 Flow
+NWP Flow,    Global_Mk6_PT2 Flow
+NWP Flow,    Global_Mk6_PT3 Flow
+NWP Flow,    Global_Mk6_PT4 Flow
+NWP Flow,    Global_Mk6_PT5 Flow
+NWP Flow,    Global_Mk6_PT6 Flow
+NWP Flow,    Global_Mk6_PT7 Flow
+NWP Flow,    Global_Mk6_PT8 Flow
+NWP Flow,    Global_Mk6_PT9 Flow
+NWP Flow,    Global_Mk6_PT10 Flow
+NWP Flow,    Global_Mk6_PT11 Flow
+NWP Flow,    Global_Mk6_PT12 Flow
+NWP Flow,    Global_Mk6_PT13 Flow
+NWP Flow,    Global_Mk6_PT14 Flow
+
+Flow Order: Cloud
+Flow Module, Flow
+NWP Flow,    Global_Mk6_PT1 Flow
+NWP Flow,    Global_Mk6_PT2 Flow
+NWP Flow,    Global_Mk6_PT3 Flow
+NWP Flow,    Global_Mk6_PT4 Flow
+NWP Flow,    Global_Mk6_PT5 Flow
+NWP Flow,    Global_Mk6_PT6 Flow
+NWP Flow,    Global_Mk6_PT7 Flow
+NWP Flow,    Global_Mk6_PT8 Flow
+NWP Flow,    Global_Mk6_PT9 Flow
+NWP Flow,    Global_Mk6_PT10 Flow
+NWP Flow,    Global_Mk6_PT11 Flow
+NWP Flow,    Global_Mk6_PT12 Flow
+NWP Flow,    Global_Mk6_PT13 Flow
+NWP Flow,    Global_Mk6_PT14 Flow
+
+Flow Order: Rain
+Flow Module, Flow
+NWP Flow,    Global_Mk6_PT1 Flow
+NWP Flow,    Global_Mk6_PT2 Flow
+NWP Flow,    Global_Mk6_PT3 Flow
+NWP Flow,    Global_Mk6_PT4 Flow
+NWP Flow,    Global_Mk6_PT5 Flow
+NWP Flow,    Global_Mk6_PT6 Flow
+NWP Flow,    Global_Mk6_PT7 Flow
+NWP Flow,    Global_Mk6_PT8 Flow
+NWP Flow,    Global_Mk6_PT9 Flow
+NWP Flow,    Global_Mk6_PT10 Flow
+NWP Flow,    Global_Mk6_PT11 Flow
+NWP Flow,    Global_Mk6_PT12 Flow
+NWP Flow,    Global_Mk6_PT13 Flow
+NWP Flow,    Global_Mk6_PT14 Flow
+
+Flow Attributes:
+Name,    Flow Order
+Update,  Update
+Convert, Convert
+Flow,    Flow
+Cloud,   Cloud
+Rain,    Rain

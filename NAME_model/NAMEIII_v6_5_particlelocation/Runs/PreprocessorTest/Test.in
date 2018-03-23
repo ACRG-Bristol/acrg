@@ -1,0 +1,34 @@
+! Normal code (including any comments and blank lines) should be written
+! with an identical layout in the output file.
+ 
+ 
+! Dollar lines should be treated in the appropriate manner.
+
+$  BeginBlock  blockname1
+ Blockline 1
+ Blockline 2 var1
+ Blockline 3 var2
+ Blockline 4 var1
+$  EndBlock  blockname1
+ 
+$  UseBlock  blockname1    var1    x
+$  UseBlock  blockname1    var1    y
+ 
+! More ordinary code here !!!
+ 
+$  BeginBlock  blockname2
+ Blockline 5
+ Blockline 6 var1
+ Blockline 7 var2  some other text ... var2 
+ Blockline 8 var1
+ Blockline 9
+ Blockline 10 var2
+$  EndBlock  blockname2
+ 
+$  UseBlock  blockname2     var2    x
+$  UseBlock  blockname2     var2    y
+ 
+! More ordinary code again !!
+ 
+ CALL SomeSubroutine(a, b, c) ........
+ 

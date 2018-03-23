@@ -1,0 +1,26 @@
+# Copyright 2005-2007 ECMWF
+# 
+# Licensed under the GNU Lesser General Public License which
+# incorporates the terms and conditions of version 3 of the GNU
+# General Public License.
+# See LICENSE and gpl-3.0.txt for details.
+
+position startOfHeaders;
+ascii[4] identifier               ;
+
+alias ls.msgtype=identifier;
+transient missingValue   = 9999;
+constant  ieeeFloats   = 0;
+template  section1 "tide/section.1.def"        ;
+template  mars     "tide/mars_labeling.def"    ;
+
+# Used to mark end of headers. Can be accessed with grib_get_offset()
+position   endOfHeadersMaker;
+meta lengthOfHeaders evaluate( endOfHeadersMaker-startOfHeaders);
+meta md5Headers md5(startOfHeaders,lengthOfHeaders);
+
+
+template  section4 "tide/section.4.def"        ;
+ascii[4]  endMark  ;
+
+position   totalLength; 
