@@ -229,7 +229,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     
         fp_data_H2[site] = fp_data_H2[site].merge(local_ds)
         fp_data_H2[site].attrs['Domain']=domain
-        fp_data_H2[site].attrs['Height']=fp_heights[site] # ** fp_heights needs to be defined **
+#        fp_data_H2[site].attrs['Height']=fp_heights[site] # ** fp_heights needs to be defined **
     
     if filters is not None:
         fp_data_H5 = name.filtering(fp_data_H2, filters,keep_missing=corr_type[inv_type])
@@ -273,8 +273,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
         y_site.append([site for i in range(len(fp_data_H3.coords['time']))])
         y_time.append(fp_data_H3.coords['time'].values)
         H_bc5.append(fp_data_H3.bc.values)
-        sub_flux_temp = fp_data_H3.flux.sel(lon=slice(lonmin,lonmax), 
-                                        lat=slice(latmin,latmax))
+        sub_flux_temp = fp_data_H3.flux.sel(lon=lon, lat=lat, method="nearest")
         local_ratio.append(fp_data_H3.local_ratio.values)
         pblh.append(fp_data_H3.PBLH.values)
         wind_speed.append(fp_data_H3.wind_speed.values)
@@ -451,8 +450,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
         if fp_basis_case in("INTEM"):
             basis_func.coords['lon']=fp_data_H3.lon
             basis_func.coords['lat']=fp_data_H3.lat
-            regions_temp = basis_func.basis.sel(lon=slice(lonmin,lonmax), 
-                                            lat=slice(latmin,latmax))
+            regions_temp = basis_func.basis.sel(lon=lon, lat=lat, method='nearest')
             regions0 = regions_temp[:,:,0].values
         #    regions0 = basis_func.basis[:,:,0].values
             regions_v0 = np.ravel(regions0)  

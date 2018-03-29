@@ -698,15 +698,15 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi',
             'sub-transd', 'sub_transd', sub-intem' will work
             'transd' or 'transd-sub' won't work
             """
-            sub_fp_temp = site_bf.fp.sel(lon=slice(min(site_bf.sub_lon),max(site_bf.sub_lon)), 
-                                    lat=slice(min(site_bf.sub_lat),max(site_bf.sub_lat))) 
+            sub_fp_temp = site_bf.fp.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
+                                         method="nearest") 
             sub_fp = xray.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
                                coords = {'sub_lat': (site_bf.coords['sub_lat']),
                                          'sub_lon': (site_bf.coords['sub_lon']),
                                 'time' : (fp_and_data[site].coords['time'])})
                                 
-            sub_H_temp = H_all.sel(lon=slice(min(site_bf.sub_lon),max(site_bf.sub_lon)), 
-                                    lat=slice(min(site_bf.sub_lat),max(site_bf.sub_lat)))                             
+            sub_H_temp = H_all.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
+                                         method="nearest")                             
             sub_H = xray.Dataset({'sub_H': (['sub_lat','sub_lon','time'], sub_H_temp)},
                                coords = {'sub_lat': (site_bf.coords['sub_lat']),
                                          'sub_lon': (site_bf.coords['sub_lon']),
@@ -1099,7 +1099,8 @@ def plot(fp_data, date, out_filename=None,
          colormap = plt.cm.YlGnBu,
          tolerance = None,
          interpolate = False,
-         dpi = None):
+         dpi = None,
+         bottom_left = False):
     """
     Plot footprint using pcolormesh.
     
@@ -1147,7 +1148,7 @@ def plot(fp_data, date, out_filename=None,
         map_data = plot_map_setup(fp_data[sites[0]],
                                   lon_range = lon_range,
                                   lat_range = lat_range,
-                                  bottom_left=True,
+                                  bottom_left=bottom_left,
                                   map_resolution = map_resolution)
 
     # Open plot

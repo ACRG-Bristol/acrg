@@ -21,7 +21,8 @@ import pandas as pd
 def write(lat, lon, time, flux, species, domain,
           source, title, prior_info_dict,
           regridder_used = 'acrg_grid.regrid.regrid_3D',
-          copy_from_year = None, climatology = False, flux_comments = None):
+          copy_from_year = None, climatology = False, flux_comments = None,
+          output_directory = '/data/shared/NAME/emissions/'):
     '''
     Write a flux file
     
@@ -75,11 +76,11 @@ def write(lat, lon, time, flux, species, domain,
     #Open netCDF file
     year = pd.DatetimeIndex([time[0]]).year[0]
     if copy_from_year != None:
-        ncname = '/data/shared/NAME/emissions/%s/%s_%s_%s_copy-from-%s.nc' %(domain, file_source, domain, year, copy_from_year)
+        ncname = output_directory + '%s/%s_%s_%s_copy-from-%s.nc' %(domain, file_source, domain, year, copy_from_year)
     if climatology == True:
-        ncname = '/data/shared/NAME/emissions/%s/%s_%s_%s_climatology.nc' %(domain, file_source, domain, year)
+        ncname = output_directory + '%s/%s_%s_%s_climatology.nc' %(domain, file_source, domain, year)
     else:
-        ncname = '/data/shared/NAME/emissions/%s/%s_%s_%s.nc' %(domain, file_source, domain, year)
+        ncname = output_directory + '%s/%s_%s_%s.nc' %(domain, file_source, domain, year)
 
     if os.path.isfile(ncname) == True:
         answer = raw_input("You are about to overwrite an existing file, do you want to continue? Y/N")
