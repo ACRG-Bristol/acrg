@@ -39,44 +39,81 @@ This should be of the form of one of the following:
     OrderedDict(['SECTION_GROUP1':OrderedDict([('param1':str),('param2':float)]),'SECTION_GROUP2':OrderedDict([('param3':list),('param4':np.array)]))
     OrderedDict(['SECTION1':{'param1':str},'SECTION2':{'param2':float},'SECTION3':{'param3':list},'SECTION4':{'param4':np.array}])
 
+This can either be created directly or a template configuration file can be created and a param_type dictionary created 
+from this using the generate_param_dict() function.
+These template files should be kept within the acrg_config/templates/ directory and, after creation, should not be altered
+unless you wish to change the format for all config files of this type.
+
 Note: if param_type is not defined, the code will attempt to cast the inputs to the most sensible type.
 This should be fine in most cases but could cause issues.
-This also means the inputs will not be checked for any missing values. 
+This also means the inputs will not be checked for any missing values.
 
-MCMC
-++++
-
-For the MCMC inputs an input parameter dictionary is pre-defined (mcmc_param_type()) and separates the parameters by classifications.
-This dictionary allows us to define which inputs we expect and the associated types.
-Unless specified as optional parameters an error is returned if those parameters aren't present.
-
-By default this includes three classifications:
-    - MEASUREMENTS - defines expected parameters from [MEASUREMENTS] section
-    - MCMC         - defines expected parameters from all [MCMC.***] sections collected together
-    - TDMCMC       - defines expected parameters from all [TDMCMC.***] sections collected together
-See mcmc_param_type() function for full list of pre-defined parameters and types
-
-Extracted parameters are returned as an OrderedDict object (from collections module).
 
 How to run
 ++++++++++
 
 The main functions to use for reading in parameters from a config file are:
     
-    * all_param(config_file,...) - Extract all parameters from a configuration file.
-    * extract_params(config_file,...) - Extract specific parameters from a file either based on parameter names, sections or groups.
-    * all_mcmc_param(config_file,...) - Extract MCMC parameters specifically based on a pre-defined param_type dictionary (see above)
+    * all_param(config_file,...)      - Extract all parameters from a configuration file.
+    * extract_params(config_file,...) - Extract specific parameters from a file either based on parameter 
+    names, sections or groups.
 
-For the top two functions, a param_type dictionary can be defined both to fix expected inputs and to explictly specify the parameter 
-types (a specific param_type dictionary is already defined for the final function).
+A param_type dictionary can be defined both to fix expected inputs and to explictly specify the parameter types.
 
 @author: rt17603
 """
 
 import configparser
-import acrg_agage as agage
 from collections import OrderedDict
 import numpy as np
+
+def open_config(config_file):
+    '''
+    The open_config function is used to open configuration files in the ini format.
+    
+    Args:
+        config_file : filename for input configuration file (str).
+    
+    Returns
+        configparser.ConfigParser object
+    '''
+    config = configparser.ConfigParser(inline_comment_prefixes=(';','#'))
+    config.optionxform=str # Keeps case when inputting option names
+    
+    with open(config_file) as fp:
+        config.readfp(fp)
+    
+    return config
+
+def generate_param_dict(config_file):
+    '''
+    The generate_param_dict function creates a param_type nested dictionary from an input configuration file.
+    This could be used on some fixed example config file to generate the parameter type dictionary which can then be applied
+    to other configuration files of the same type.
+    
+    Args:
+        config_file : filename for input configuration file (str).
+    
+    Returns:
+        nested OrderedDict : parameter type dictionary from configuration file input
+    '''
+    config = open_config(config_file)
+    
+    sections = config.sections() # Extract all section names from the config file
+    
+    param_type = OrderedDict([])
+    
+    for section in sections:
+        section_param = config[section].keys()
+        if section_param:
+            print section_param
+            types = [type(convert(value)) for value in config[section].values()]
+            print types
+            section_types = OrderedDict([(key,value) for key,value in zip(section_param,types)])
+            param_type[section] = section_types
+    
+    return param_type
+
 
 def str_check(string,error=True):
     '''
@@ -267,6 +304,31 @@ def convert(string,value_type=None):
 #    
 #    return True
 
+def all_parameters_in_param_type(param_type):
+    '''
+    The all_parameters_in_param_type function extracts all parameters (regardless of section/section_group) for a given 
+    param_type nested dictionary.
+    
+    Args:
+        param_type : nested dictionary of expected parameter names and types.
+                     Key for each parameter dictionary can be the section heading or the overall group (e.g. for [MCMC.MEASUREMENTS], section group should be 'MCMC').
+                     If param_type is explictly specified should be of form of one of the following:
+                          {'SECTION_GROUP1':{'param1':str,'param2':float},'SECTION_GROUP2':{'param3':list,'param4':np.array}}
+                          {'SECTION1':{'param1':str},'SECTION2':'{param2':float},'SECTION3':{'param3':list},'SECTION4':{'param4':np.array}}
+                           OrderedDict(['SECTION_GROUP1':OrderedDict([('param1':str),('param2':float)]),'SECTION_GROUP2':OrderedDict([('param3':list),('param4':np.array)]))
+                           OrderedDict(['SECTION1':{'param1':str},'SECTION2':{'param2':float},'SECTION3':{'param3':list},'SECTION4':{'param4':np.array}])
+
+    Returns:
+        list : list of all parameters in param_type dictionary
+    '''
+    types = param_type # Get dictionary containing parameter names and types
+    keys = types.keys() # Extract all section/section_group headings
+    parameters = []
+    for key in keys:
+        parameters.extend(types[key].keys()) # For each section/section_group extract all the associated parameters
+    
+    return parameters
+
 def find_param_key(param_type,section=None,section_group=None):
     '''
     The find_param_key function checks whether the keys within the param_type dictionary are for sections (e.g. 'MCMC.MEASUREMENTS') 
@@ -372,25 +434,27 @@ def get_value(name,config,section,param_type=None):
     return value
 
 
-def extract_params(config_file,section=None,section_group=None,names=[],optional_param=[],param_type=None):
+def extract_params(config_file,section=None,section_group=None,names=[],optional_param=[],remove_not_found=False,
+                   param_type=None):
     '''
     The extract_params function extracts parameter names and values from a configuration file.
     The parameters which are extracted is dependent on whether the section, section_group and/or names variables are specified.
     A param_type dictionary can be defined to ensure variables are cast to the correct types.
     
     Args:
-        config_file           : filename for input configuration file.
-        section (str)         : extract parameters from section name.
-        section_group (str)   : extract parameters from all sections with this group.
-                                If section and section_group are both specified - section takes precedence.
-        names (list)          : which parameter names to extract (within section or section_group)
-        optional_param (list) : parameters which are optional. If the param cannot be found value will be set to None
-        param_type (dict)     : nested dictionary of sections or groups and expected parameter names and types.
-                                If param_type is explicly specified should be of form:
-                                    {'SECTION_GROUP1':{'param1':str,'param2':float},'SECTION_GROUP2':{'param3':list,'param4':np.array}}
-                                    {'SECTION1':{'param1':str},'SECTION2':'{param2':float},'SECTION3':{'param3':list},'SECTION4':{'param4':np.array}}
-                                    OrderedDict(('SECTION_GROUP1':OrderedDict(('param1':str),('param2':float)),'SECTION_GROUP2':OrderedDict(('param3':list),('param4':np.array)))
-                                    OrderedDict(('SECTION1':{'param1':str},'SECTION2':{'param2':float}'SECTION3':{'param3':list},'SECTION4':{'param4':np.array}))        
+        config_file             : filename for input configuration file.
+        section (str)           : extract parameters from section name.
+        section_group (str)     : extract parameters from all sections with this group.
+                                  If section and section_group are both specified - section takes precedence.
+        names (list)            : which parameter names to extract (within section or section_group)
+        optional_param (list)   : parameters which are optional. If the param cannot be found value will be set to None
+        param_type (dict)       : nested dictionary of sections or groups and expected parameter names and types.
+                                  If param_type is explicly specified should be of form:
+                                      {'SECTION_GROUP1':{'param1':str,'param2':float},'SECTION_GROUP2':{'param3':list,'param4':np.array}}
+                                      {'SECTION1':{'param1':str},'SECTION2':'{param2':float},'SECTION3':{'param3':list},'SECTION4':{'param4':np.array}}
+                                      OrderedDict(('SECTION_GROUP1':OrderedDict(('param1':str),('param2':float)),'SECTION_GROUP2':OrderedDict(('param3':list),('param4':np.array)))
+                                      OrderedDict(('SECTION1':{'param1':str},'SECTION2':{'param2':float}'SECTION3':{'param3':list},'SECTION4':{'param4':np.array}))        
+        remove_not_found (bool) : whether to remove parameters which are not found in the input file or include them as None.
         
     Returns:
         OrderedDict : parameter names and values
@@ -400,17 +464,13 @@ def extract_params(config_file,section=None,section_group=None,names=[],optional
     '''
     
     # Open config file with configparser
-    config = configparser.ConfigParser(inline_comment_prefixes=(';','#'))
-    config.optionxform=str # Keeps case when inputting option names
-    
-    with open(config_file) as fp:
-        config.readfp(fp)
+    config = open_config(config_file)
     
     all_sections = config.sections() # Extract all section names from the config file
     
     if section:
         if section in all_sections:
-            select_sections = [section] # Only look with selected section
+            select_sections = [section] # Only look within selected section
         else:
             raise KeyError('Specified section {0} could not be found in configuration file: {1}'.format(section,config_file[0]))
             #select_sections = []
@@ -423,13 +483,13 @@ def extract_params(config_file,section=None,section_group=None,names=[],optional
         select_sections = all_sections # Find all sections
     
     # Finding all parameter names in the sections we want to extract
-    param_names = []
+    extracted_names = []
     match_section = []
     for sect in select_sections:
         k = config[sect].keys()
         s = [sect]*len(k)
-        param_names.extend(k)   # List of the parameter names
-        match_section.extend(s) # Associated list with the section heading for each parameter
+        extracted_names.extend(k) # List of the parameter names within the input file, within specified sections
+        match_section.extend(s)   # Associated list with the section heading for each parameter
        
     if not names:
         if param_type:
@@ -446,22 +506,24 @@ def extract_params(config_file,section=None,section_group=None,names=[],optional
             if (section_group and key_type == 'section_group') or (section and key_type == 'section') or (section_group and key_type == 'section'):
                for key in keys:
                    names.extend(param_type[key].keys())
-            else:
+            elif (section and key_type == 'section_group'):
                 print 'Cannot create list of necessary input parameters created based on param_type input. Please check all inputs are included manually.'
-                names = param_names               
+                names = extracted_names # Set to just match names extracted from file           
+            else:
+                names = all_parameters_in_param_type(param_type) # Extract all parameter names from param_type dictionary
         else:
-            names = param_names # Set to just match names extracted from file
+            names = extracted_names # Set to just match names extracted from file
     
     #print 'Parameter names to extract from configuration file: {0}'.format(names)
-   # print 'Relevant parameter names within configuration file: {0}'.format(param_names)
+    #print 'Relevant parameter names within configuration file: {0}'.format(extracted_names)
     
     param = OrderedDict({})
     
     #if param_type:
     for name in names:
-        if name in param_names:
+        if name in extracted_names:
             try:
-                index = param_names.index(name)
+                index = extracted_names.index(name)
             except ValueError:
                 print "Parameter '{0}' not found in configuration file (check specified section {1} or section_group {2} is correct).".format(name,section,section_group)
             else:
@@ -481,286 +543,41 @@ def extract_params(config_file,section=None,section_group=None,names=[],optional
     #else:
     #    for name in names:
     #        try:
-    #            index = param_names.index(name)
+    #            index = extracted_names.index(name)
     #        except ValueError:
     #            print "Parameter '{0}' not found in configuration file (check specified section {1} or section_group {2} is correct).".format(name,section,section_group)
     #        else:
     #            section = match_section[index]
     #            param[name] = get_value(name,config,section,param_type)
     
+    if remove_not_found:
+        param = OrderedDict([(key,value) for key,value in param.iteritems() if value != None])
+    
     return param
 
-def all_param(config_file,optional_param=[],param_type=None):
+def all_param(config_file,optional_param=[],param_type=None,remove_not_found=False):
     '''
     The all_param function extracts all parameters from a config file.
     If param_type specified will cast to the specified types, otherwise will attempt to discern the parameter types from the form of the values.
     
     Args:
-        config_file    : filename for input configuration file
-        optional_param : parameters which are optional. If the param cannot be found in input file, value will be set to None
-        param_type     : nested dictionary of sections or groups and expected parameter names and types.
-                         If param_type is specified should be of form:
-                             {'SECTION_GROUP1':{'param1':str,'param2':float},'SECTION_GROUP2':{'param3':list,'param4':np.array}}
-                             {'SECTION1':{'param1':str},'SECTION2':'{param2':float},'SECTION3':{'param3':list},'SECTION4':{'param4':np.array}}
-                             OrderedDict(('SECTION_GROUP1':OrderedDict(('param1':str),('param2':float)),'SECTION_GROUP2':OrderedDict(('param3':list),('param4':np.array)))
-                             OrderedDict(('SECTION1':{'param1':str},'SECTION2':{'param2':float}'SECTION3':{'param3':list},'SECTION4':{'param4':np.array}))        
-    
+        config_file             : filename for input configuration file
+        optional_param          : parameters which are optional. If the param cannot be found in input file, value will be set to None
+        param_type              : nested dictionary of sections or groups and expected parameter names and types.
+                                  If param_type is specified should be of form:
+                                   {'SECTION_GROUP1':{'param1':str,'param2':float},'SECTION_GROUP2':{'param3':list,'param4':np.array}}
+                                   {'SECTION1':{'param1':str},'SECTION2':'{param2':float},'SECTION3':{'param3':list},'SECTION4':{'param4':np.array}}
+                                    OrderedDict(('SECTION_GROUP1':OrderedDict(('param1':str),('param2':float)),'SECTION_GROUP2':OrderedDict(('param3':list),('param4':np.array)))
+                                    OrderedDict(('SECTION1':{'param1':str},'SECTION2':{'param2':float}'SECTION3':{'param3':list},'SECTION4':{'param4':np.array}))        
+        remove_not_found (bool) : whether to remove parameters which are not found in the input file or include them as None.    
     Returns:
         OrderedDict: parameter names and values 
     '''
     
     param = OrderedDict({})
-    param = extract_params(config_file,optional_param=optional_param,param_type=param_type)
+    param = extract_params(config_file,optional_param=optional_param,param_type=param_type,remove_not_found=remove_not_found)
     
     return param
 
-## Functions below are specifically related to the MCMC code which build on the functions above
 
-def mcmc_param_type():
-    '''
-    The mcmc_param_type function specifies the names of expected input parameters from the config file and the required Python object types.
-    This includes three section groups for the input parameter:
-        'MEASUREMENTS' - details related to the measurements made
-        'MCMC'         - parameters for running the mcmc model
-        'TDMCMC'       - parameters for running the tdmcmc model (in addition to mcmc parameters needed)
-    
-    
-    Returns:
-        OrderedDict of section groups:
-            Each section group contains a OrderedDict of parameter names and associated type:
-            'MEASUREMENTS' ('sites',list),('species',str),('start_date',str),('end_date',str),('domain',str),
-                           ('network',str)
-            'MCMC'         ('meas_period',list),('av_period',list),('nIt',int),('burn_in',int),
-                           ('nsub',int),('fp_basis_case',str),('bc_basis_case',str),('x_pdf0',int),
-                           ('pdf_param1_pdf0',int),('pdf_param2_pdf0',int),('sigma_model_pdf',int),
-                           ('pdf_param10',float),('pdf_param20',float),('pdf_p1_hparam10',float),
-                           ('pdf_p1_hparam20',float),('pdf_p2_hparam10',float),('pdf_p2_hparam20',float),
-                           ('sigma_model_ap',float),('sigma_model_hparams',list),('bl_period',int),
-                           ('bl_split',bool),('levels',int),('stepsize',float),('stepsize_pdf_p1',float),
-                           ('stepsize_pdf_p2',float),('stepsize_sigma_y',float),('stepsize_clon',float),
-                           ('stepsize_clat',float),('stepsize_bd',int),('inv_type',str),('tau_ap',float),
-                           ('tau_hparams',list),('tau_pdf',int),('stepsize_tau',float), ('filters',list),
-                           ('parallel_tempering',bool),('nbeta',int),('output_dir',str),('unique_copy',boolean)
-            'TDMCMC'       ('reversible_jump',bool),('kmin',int),('kmax',int),('k_ap',int)
-    
-    '''
-    
-    measurements = OrderedDict([('sites',list),
-                                ('species',str),
-                                ('start_date',str),
-                                ('end_date',str),
-                                ('domain',str),
-                                ('network',str)])
-    
-    mcmc = OrderedDict([('meas_period',list),
-                        ('av_period',list),
-                        ('nIt',int),
-                        ('burn_in',int),
-                        ('nsub',int),
-                        ('fp_basis_case',str),
-                        ('bc_basis_case',str),
-                        ('x_pdf0',int),
-                        ('pdf_param1_pdf0',int),
-                        ('pdf_param2_pdf0',int),
-                        ('sigma_model_pdf',int),
-                        ('pdf_param10',float),
-                        ('pdf_param20',float),
-                        ('pdf_p1_hparam10',float),
-                        ('pdf_p1_hparam20',float),
-                        ('pdf_p2_hparam10',float),
-                        ('pdf_p2_hparam20',float),
-                        ('sigma_model_ap',float),
-                        ('sigma_model_hparams',np.ndarray),
-                        ('bl_period',int),
-                        ('bl_split',bool),
-                        ('levels',list),
-                        ('stepsize',float),
-                        ('stepsize_pdf_p1',float),
-                        ('stepsize_pdf_p2',float),
-                        ('stepsize_sigma_y',float),
-                        ('stepsize_clon',float),
-                        ('stepsize_clat',float),
-                        ('stepsize_bd',int),
-                        ('inv_type',str),
-                        ('tau_ap',float),
-                        ('tau_hparams',np.ndarray),
-                        ('tau_pdf',int),
-                        ('stepsize_tau',float), 
-                        ('filters',list),
-                        ('parallel_tempering',bool),
-                        ('nbeta',int),
-                        ('output_dir',str),
-                        ('unique_copy',bool)])
-    
-    tdmcmc = OrderedDict([('reversible_jump',bool),
-                       ('kmin',int),
-                       ('kmax',int),
-                       ('k_ap',int)])
-    
-    param_dict = OrderedDict([('MEASUREMENTS', measurements),
-                              ('MCMC', mcmc),
-                              ('TDMCMC', tdmcmc)])
-                          
-    
-    return param_dict
-
-def get_meas_params():
-    '''
-    The get_meas_param function returns all parameter names associated the the 'MEASUREMENTS' group
-    Returns:
-        OrderedDict: parameter names, str: group name
-    '''
-    key = 'MEASUREMENTS'
-    return mcmc_param_type()[key].keys(),key
-
-
-def get_mcmc_params():
-    '''
-    The get_meas_param function returns all parameter names associated the the 'MCMC' group
-    Returns:
-        OrderedDict: parameter names, str: group name
-    '''
-    key = 'MCMC'
-    return mcmc_param_type()[key].keys(),key
-
-
-def get_tdmcmc_params():
-    '''
-    The get_meas_param function returns all parameter names associated the the 'TDMCMC' group
-    Returns:
-        OrderedDict: parameter names, str: group name
-    '''
-    key = 'TDMCMC'
-    return mcmc_param_type()[key].keys(),key
-  
-
-def measurements_param(config_file,optional_param=[]):
-    '''
-    The measurements_param function extracts all parameters relevant to measurement details (see mcmc_param_type for full list)
-    
-    Args:
-        config_file (str)     : filename for input configuration file
-        optional_param (list) : parameters which are optional. If the param cannot be found value will be set to None.
-    
-    Returns:
-        OrderedDict: parameter names and values
-        
-        If any measurement parameter cannot be found (not specified as an optional param):
-            Exception raised and program exited
-    '''
-    
-    meas_names,meas_section = get_meas_params()
-    can_calculate = ['network'] # Allow values which can be calculated to be optional parameters (currently only 'network')
-    optional_param += ['start_date','end_date']
-    param_type = mcmc_param_type()
-    
-    param = extract_params(config_file,meas_section,names=meas_names,optional_param=can_calculate+optional_param,param_type=param_type)
-    
-    for key in can_calculate:
-        if key == 'network': # If network is not specified, extract from site_info file
-            try:
-                param['network']
-            except KeyError:
-                site1 = param['sites'][0]
-                param[key] = agage.site_info[site1]["network"]
-                print 'Extracting network for first site from json file'
-        else:
-            pass # Can add in extra checks here if value can be extracted from another source
-    
-    #sites = param['sites']
-    #species = param['species']
-    #domain = param['domain']
-    #network = param['network']
-    #start_date = param['start_date']
-    #end_date = param['end_date']
-    
-    #return sites,species,domain,network,start_date,end_date
-    
-    return param
-
-   
-def mcmc_param(config_file,optional_param=[]):
-    '''
-    The mcmc_param function extracts all parameters for the MCMC run (see mcmc_param_type for full list)
-     
-    Args:
-        config_file (str)     : filename for input configuration file
-        optional_param (list) : parameters which are optional. If the param cannot be found value will be set to None
-    
-    Returns:
-        OrderedDict: parameter names and values   
-        
-        If any MCMC parameter cannot be found (not specified as an optional param):
-            Exception raised and program exited
-    '''
-    
-    names,section_group = get_mcmc_params()
-    optional_param += ['unique_copy']
-    param_type = mcmc_param_type()
-    
-    param = extract_params(config_file,section_group=section_group,names=names,optional_param=optional_param,param_type=param_type)
-    
-    if param['unique_copy'] is None:
-        param['unique_copy'] = False
-    
-    return param
-
-def tdmcmc_param(config_file,optional_param=[]):
-    '''
-    The tdmcmc_param function extracts all parameters for the MCMC run (see mcmc_param_type for full list)
-     
-    Args:
-        config_file (str)     : filename for input configuration file
-        optional_param (list) : parameters which are optional. If the param cannot be found value will be set to None
-    
-    Returns:
-        OrderedDict: parameter names and values   
-        
-        If any MCMC parameter cannot be found (not specified as an optional param):
-            Exception raised and program exited
-    '''
-    
-    names,section_group = get_tdmcmc_params()
-    param_type = mcmc_param_type()
-    
-    param = extract_params(config_file,section_group=section_group,names=names,optional_param=optional_param,param_type=param_type)
-    
-    return param
-
-def all_mcmc_param(config_file,optional_param=[]):
-    '''
-    The all_mcmc_param function extracts all parameters related to running the tdmcmc code as defined in mcmc_param_type()
-    
-    Args:
-        config_file    : filename for input configuration file
-        optional_param : parameters which are optional. If the param cannot be found in input file, value will be set to None
-    
-    Returns:
-        OrderedDict: parameter names and values 
-        
-        If any parameter defined in mcmc_param_type() cannot be found (not specified as an optional param):
-            Exception raised and program exited    
-    '''
-    
-    meas_parameters = measurements_param(config_file,optional_param)
-    mcmc_parameters = mcmc_param(config_file,optional_param)
-    tdmcmc_parameters = tdmcmc_param(config_file,optional_param)
-    
-    param = OrderedDict({})
-    param.update(meas_parameters)
-    param.update(mcmc_parameters)
-    param.update(tdmcmc_parameters)
-    
-    # Checking if any additional keys are present except those explictly used above
-    known_keys = [get_meas_params()[1],get_mcmc_params()[1],get_tdmcmc_params()[1]]
-    param_type = mcmc_param_type()
-    
-    for key in param_type:
-        if key not in known_keys:
-            # Extract the extra parameters but print a warning as these values should really be incorporated into code
-            print 'WARNING: Additional unknown key {0} extracted from mcmc_param_type. May be worth adding additional functions for this?'.format(key)
-            extra_parameters = extract_params(config_file,section_group=key,optional_param=optional_param,param_type=param_type)
-            param.update(extra_parameters)
-    
-    return param
     
