@@ -1,0 +1,59 @@
+# Name III source files
+#
+
+SOURCES= \
+PhysicalUnits.F90 \
+OpenMP.F90 \
+IOThread.F90 \
+GlobalParameters.F90 \
+ErrorAndMessage.F90 \
+String.F90 \
+System.F90 \
+Timers.F90 \
+Screen.F90 \
+Unit.F90 \
+Time.F90 \
+Maths.F90 \
+Physics.F90 \
+HeadedFile.F90 \
+ErrorAndMessageII.F90 \
+CoordinateSystem.F90 \
+GridAndDomain.F90 \
+Sort.F90 \
+Service.F90 \
+FlowAndFlowProfile.F90 \
+SingleSite.F90 \
+Building.F90 \
+CommonMet.F90 \
+PrototypeMet.F90 \
+SingleSiteMet.F90 \
+NWPUtilities.F90 \
+NWPMet.F90 \
+RadarMet.F90 \
+AncillaryMet.F90 \
+Mets.F90 \
+CommonFlow.F90 \
+PrototypeFlow.F90 \
+SingleSiteFlow.F90 \
+NWPFlow.F90 \
+BuildingFlow.F90 \
+RadarFlow.F90 \
+LincomFlow.F90 \
+Flows.F90 \
+ParticleSizeDistribution.F90 \
+Species.F90 \
+Source.F90 \
+Fluctuation.F90 \
+Output.F90 \
+PlumeRise.F90 \
+IterativePlumeRiseModel.F90\
+Particle.F90 \
+SemiLagrangian.F90 \
+EulerianInterface.F90 \
+Puff.F90 \
+ChemistryScheme.F90 \
+Chemistry.F90 \
+Case.F90 \
+Restart.F90 \
+Input.F90 \
+MainNameIII.F90

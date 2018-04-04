@@ -1,0 +1,25 @@
+# Script for compiling code on Linux PCs with Intel compiler
+
+ifort -Wp,-macro=no -C -w -extend_source -nbs -Vaxlib \
+-DIntelLinCompiler -DExtraChecks \
+../Code_NameIII/GlobalParameters.F90 \
+../Code_NameIII/ErrorAndMessage.F90  \
+../Code_NameIII/String.F90           \
+../Code_NameIII/System.F90           \
+Preprocessor.F90 \
+MainPreprocessor.F90 \
+-o PreprocessorDebug.exe
+
+if test `uname` = 'Linux'
+then
+ if test `uname -p` = 'x86_64'
+ then
+   mv PreprocessorDebug.exe ../Executables_Linux/PreprocessorDebug_64bit.exe
+   chmod 744 ../Executables_Linux/PreprocessorDebug_64bit.exe
+ else
+   mv PreprocessorDebug.exe ../Executables_Linux/PreprocessorDebug.exe
+   chmod 744 ../Executables_Linux/PreprocessorDebug.exe
+ fi
+fi
+
+rm *.mod

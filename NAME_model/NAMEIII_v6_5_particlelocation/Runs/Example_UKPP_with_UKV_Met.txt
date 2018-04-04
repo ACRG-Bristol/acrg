@@ -1,0 +1,299 @@
+# ******************************************************************************
+#
+# Project: NAME III documentation --> User Guides --> Testing Runs
+#
+# File:    NAME input file for a test run reading UKV NWP met (hourly) and UKPP
+#          Analysis precipitation data every 15 mins.
+#
+# Author:  Ian Edmond, ADAQ, Met Office
+#
+# Date:    29/09/2014
+#
+# Notes:   The UKPP datasets read by this run are stored on the Met Office 
+#          systems under /project/NAME/apnm/UKPP_datafiles/
+#
+# ******************************************************************************
+
+Main Options:
+Absolute or Relative Time?, Fixed Met?, Flat Earth?,               Run Name,  Random Seed, Max # Sources
+                  Absolute,         No,          No, Test Run using UKPP dataset,        Fixed,             1
+
+Restart File Options:
+# Cases Between Writes, Time Between Writes, Delete Old Files?, Write On Suspend?,
+                      ,                    ,                  ,                  ,
+
+Multiple Case Options:
+Dispersion Options Ensemble Size, Met Ensemble Size,
+                               1,                 1,
+
+Output Options:
+Folder
+./Output
+
+Input Files:
+File names
+../Resources/Defns/RadarDefnUKPP_Mk1_Inst15min_Nimrod.txt
+../Resources/Defns/MetDefnUM1p5km_Mk2_L57PTpp.txt
+../Resources/Defns/MetDefnUMG_Mk7_L59PT2pp.txt
+
+Horizontal Coordinate Systems:
+Name
+Lat-Long
+
+Vertical Coordinate Systems:
+Name
+m agl
+
+Locations: Release Locations
+Name,                   H-Coord,     X,     Y
+Somewhere Factory,     Lat-Long, -3.64, 50.45
+
+Locations: Output Locations
+Name,         H-Coord,     X,     Y
+Bristol,     Lat-Long, -2.60, 51.45
+Cardiff,     Lat-Long, -3.18, 51.48
+Exeter,      Lat-Long, -3.53, 50.72
+London,      Lat-Long, -0.10, 51.52
+Plymouth,    Lat-Long, -4.14, 50.36
+Southampton, Lat-Long, -1.40, 50.90
+Taunton,     Lat-Long, -3.10, 51.02
+
+Horizontal Grids:
+Name,            H-Coord,   nX,   nY,  X Min,  X Max,  Y Min,  Y Max
+HGridForFields, Lat-Long,  181,  151, -15.00,  15.00,  45.00,  60.00
+
+
+Horizontal Grids:
+Name,                 dX,   dY, Set of Locations
+HGridForTimeSeries, 0.16, 0.10, Output Locations
+HGridForMet,        0.01, 0.01, Output Locations
+
+Vertical Grids:
+Name,            Z-Coord,  nZ,    dZ,    Z0
+ZGrid_0-100m,      m agl,   1, 100.0,  50.0
+ZGrid_10m,         m agl,   1,   0.0,  10.0
+
+Temporal Grids:
+Name,          nt,       dt,                  t0
+TGrid15Min,    48, 00:15:00, 11/02/2014 03:15:00
+TGridHourly,   12, 01:00:00, 11/02/2014 04:00:00
+TGrid3Hourly,   4, 03:00:00, 11/02/2014 06:00:00
+TGridEndOfRun,  1, 12:00:00, 11/02/2014 15:00:00
+
+Domains:
+Name,              H Unbounded?,  H-Coord,  X Min, X Max, Y Min, Y Max, Z Unbounded?, Z-Coord,   Z Max, T Unbounded?,       Start Time,          End Time, Max Travel Time
+Dispersion Domain,           No, Lat-Long, -20.00, 20.00, 40.00, 65.00,           No,   m agl, 20000.0,           No, 11/02/2014 03:00,  11/02/2014 15:00,        infinity
+
+Species:
+Name,              Category, Half Life, UV Loss Rate, Surface Resistance, Deposition Velocity, Mean aerosol diameter, A rain - BC, B rain - BC, A snow - BC, B snow - BC, A rain - IC, B rain - IC, A snow - IC, B snow - IC, Molecular Weight, Material Unit
+DepositingTracer,    Tracer,    Stable,     0.00E+00,           1.50E+02,                    ,                      ,      8.4E-5,        0.79,      8.0E-5,       0.305,     3.36E-4,        0.79,      5.2E-5,        0.79,                0,             g
+
+Species Uses:
+Species,         On Particles?, On Fields?, Advect Field?
+DepositingTracer,          Yes,         No,            No
+
+Sources:
+Name,         Shape,  H-Coord, Z-Coord,  Set of Locations,          Location,     Z,   dX,   dY,    dZ, dH-Metres?, dZ-Metres?, Angle,            Source Strength, Time Dependency, Plume Rise?, Temperature, Flow Velocity, # Particles,  Max Age, Top Hat,          Start Time,            Stop Time
+Source A, Ellipsoid, Lat-Long,   m agl, Release Locations, Somewhere Factory, 250.0, 10.0, 10.0, 500.0,        Yes,        Yes,   0.0,  DepositingTracer 1.0 g/hr,                ,          No,       273.0,           0.0,      500/hr, infinity,     Yes, 11/02/2014 03:00:00,  11/02/2014 15:00:00
+
+
+
+Output Requirements - Fields:
+Name,                          Quantity,            Species, Source,         H-Grid,        Z-Grid,        T-Grid, BL Average, T Av or Int, Av Time, # Av Times, Sync?, Output Route, Across, Separate File, Output Format,  Output Group
+0-100m Av Air Conc,   Air Concentration,   DepositingTracer,       , HGridForFields,  ZGrid_0-100m,  TGrid3Hourly,         No,          Av,   03:00,         36,    No,            D,     TZ,             T,            IA,  Fields_grid1
+BL Av Air Conc,       Air Concentration,   DepositingTracer,       , HGridForFields,              ,  TGrid3Hourly,        Yes,          Av,   03:00,         36,    No,            D,     TZ,             T,            IA,  Fields_grid1
+BL Int Air Conc,      Air Concentration,   DepositingTracer,       , HGridForFields,              ,  TGrid15Min,        Yes,         Int,   12:00,        144,    No,            D,     TZ,             T,            IA,  Fields_grid2
+Dry Deposition,     Dry deposition rate,   DepositingTracer,       , HGridForFields,              ,  TGrid15Min,           ,         Int,   12:00,        144,    No,            D,     TZ,             T,            IA,  Fields_grid2
+Wet Deposition,     Wet deposition rate,   DepositingTracer,       , HGridForFields,              ,  TGrid15Min,           ,         Int,   12:00,        144,    No,            D,     TZ,             T,            IA,  Fields_grid2
+Total Deposition,       Deposition Rate,   DepositingTracer,       , HGridForFields,              ,  TGrid15Min,           ,         Int,   12:00,        144,    No,            D,     TZ,             T,            IA,  Fields_grid2
+Precipitation Rate (mm/hr), Precipitation Rate (mm/hr),    ,       , HGridForFields,     ZGrid_10m,    TGrid15Min,           ,          Av,   00:15,          3,   Yes,            D,     TZ,             T,            IA,  Fields_grid3
+BL Total Dosage,      Air Concentration,   DepositingTracer,       , HGridForFields,              , TGridEndOfRun,        Yes,         Int,   12:00,        144,    No,            D,     TZ,             T,            IA,  Fields_grid4
+
+
+Output Requirements - Fields:
+Name,                       Quantity,            Species, Source,             H-Grid,       Z-Grid,        T-Grid, BL Average, T Av or Int, Av Time, # Av Times, Sync?, Output Route, Across, Separate File, Output Format,  Output Group
+Air Conc at Sites, Air Concentration,   DepositingTracer,       , HGridForTimeSeries, ZGrid_0-100m,  TGrid3Hourly,         No,          Av,   03:00,         36,    No,            D,    XYZ,              ,           ZAE,  TimeSeries
+
+Output Requirements - Fields: 
+Quantity,                   Species, Source,      H-Grid,    Z-Grid,      T-Grid,  H-Coord, Z-Coord, T Av Or Int, Av Time, # Av Times, Sync?, Output Route, Across, Separate File, Output Format, Output Group
+Wind speed,                        ,       , HGridForMet, ZGrid_10m, TGridHourly,         ,        ,          No,        ,           ,   Yes,            D,    XYZ,            XY,           ZAE,    MetOutput
+Wind direction (degrees),          ,       , HGridForMet, ZGrid_10m, TGridHourly, Lat-Long,        ,          No,        ,           ,   Yes,            D,    XYZ,            XY,           ZAE,    MetOutput
+Cloud Amount (oktas),              ,       , HGridForMet, ZGrid_10m, TGridHourly,         ,        ,          No,        ,           ,   Yes,            D,    XYZ,            XY,           ZAE,    MetOutput
+Temperature (C),                   ,       , HGridForMet, ZGrid_10m, TGridHourly,         ,        ,          No,        ,           ,   Yes,            D,    XYZ,            XY,           ZAE,    MetOutput
+Sensible heat flux,                ,       , HGridForMet, ZGrid_10m, TGridHourly,         ,        ,          No,        ,           ,   Yes,            D,    XYZ,            XY,           ZAE,    MetOutput
+Boundary layer depth,              ,       , HGridForMet, ZGrid_10m, TGridHourly,         ,        ,          No,        ,           ,   Yes,            D,    XYZ,            XY,           ZAE,    MetOutput
+Precipitation rate (mm/hr),        ,       , HGridForMet, ZGrid_10m, TGridHourly,         ,        ,          No,        ,           ,   Yes,            D,    XYZ,            XY,           ZAE,    MetOutput
+Relative Humidity (%),             ,       , HGridForMet, ZGrid_10m, TGridHourly,         ,        ,          No,        ,           ,   Yes,            D,    XYZ,            XY,           ZAE,    MetOutput
+Pasquill Stability,                ,       , HGridForMet, ZGrid_10m, TGridHourly,         ,        ,          No,        ,           ,   Yes,            D,    XYZ,            XY,           ZAE,    MetOutput
+
+Output Requirements - Fields:
+               Name,     Quantity, Species,      T-Grid, T Av Or Int, Sync?, Output Route, Output Format, Output Group
+ % of run completed, Progress (%),        , TGridHourly,          No,   Yes,            D,            AF,         Info
+ Count of particles,  # Particles,        , TGridHourly,          No,   Yes,            D,            AF,         Info
+
+Sets of Dispersion Options:
+Max # Particles, Max # Full Particles, Max # Puffs, Max # Original Puffs, Skew Time, Velocity Memory Time, Mesoscale Velocity Memory Time, Inhomogeneous Time, DeltaOpt, Puff Time, Sync Time, Time of Fixed Met, Computational Domain, Puff Interval, Deep Convection?, Radioactive Decay?, Agent Decay?, Dry Deposition?, Wet Deposition?, Turbulence?, Mesoscale Motions?, Chemistry? 
+         500000,                    2,           2,                    2,     00:00,                00:00,                          00:00,              00:00,        1,     00:00,  00:05:00,                  ,    Dispersion Domain,         00:30,               No,                Yes,           No,             Yes,             Yes,         Yes,                Yes,         No 
+
+NWP Met Module Instances: 
+Name,                  Min B L Depth, Max B L Depth, Use NWP BL Depth?,                                                    Restore Met Script, Delete Met?,            Met Folder,     Topography Folder, Met Definition Name
+UM UKVPT1,          80.0,        4000.0,               Yes,                /home/h03/apdg/bin/metcopy_and_restore_dir/metcopyrestore_general ,          Yes,              /data/local/hadie/r514_Radar_tmp/Output_NWPMet, /home/h03/apdg/NameIII/NameIIILibrary/Data/UMTopogData,    UM1p5km_Mk2_L57PT1pp
+UM UKVPT2,          80.0,        4000.0,               Yes,                /home/h03/apdg/bin/metcopy_and_restore_dir/metcopyrestore_general ,          Yes,              /data/local/hadie/r514_Radar_tmp/Output_NWPMet, /home/h03/apdg/NameIII/NameIIILibrary/Data/UMTopogData,    UM1p5km_Mk2_L57PT2pp
+UM UKVPT3,          80.0,        4000.0,               Yes,                /home/h03/apdg/bin/metcopy_and_restore_dir/metcopyrestore_general ,          Yes,              /data/local/hadie/r514_Radar_tmp/Output_NWPMet, /home/h03/apdg/NameIII/NameIIILibrary/Data/UMTopogData,    UM1p5km_Mk2_L57PT3pp
+UM UKVPT4,          80.0,        4000.0,               Yes,                /home/h03/apdg/bin/metcopy_and_restore_dir/metcopyrestore_general ,          Yes,              /data/local/hadie/r514_Radar_tmp/Output_NWPMet, /home/h03/apdg/NameIII/NameIIILibrary/Data/UMTopogData,    UM1p5km_Mk2_L57PT4pp
+UM UKVPT5,          80.0,        4000.0,               Yes,                /home/h03/apdg/bin/metcopy_and_restore_dir/metcopyrestore_general ,          Yes,              /data/local/hadie/r514_Radar_tmp/Output_NWPMet, /home/h03/apdg/NameIII/NameIIILibrary/Data/UMTopogData,    UM1p5km_Mk2_L57PT5pp
+UM UKVPT6,          80.0,        4000.0,               Yes,                /home/h03/apdg/bin/metcopy_and_restore_dir/metcopyrestore_general ,          Yes,              /data/local/hadie/r514_Radar_tmp/Output_NWPMet, /home/h03/apdg/NameIII/NameIIILibrary/Data/UMTopogData,    UM1p5km_Mk2_L57PT6pp
+UM UKVPT7,          80.0,        4000.0,               Yes,                /home/h03/apdg/bin/metcopy_and_restore_dir/metcopyrestore_general ,          Yes,              /data/local/hadie/r514_Radar_tmp/Output_NWPMet, /home/h03/apdg/NameIII/NameIIILibrary/Data/UMTopogData,    UM1p5km_Mk2_L57PT7pp
+UM UKVPT8,          80.0,        4000.0,               Yes,                /home/h03/apdg/bin/metcopy_and_restore_dir/metcopyrestore_general ,          Yes,              /data/local/hadie/r514_Radar_tmp/Output_NWPMet, /home/h03/apdg/NameIII/NameIIILibrary/Data/UMTopogData,    UM1p5km_Mk2_L57PT8pp
+UM UKVPT9,          80.0,        4000.0,               Yes,                /home/h03/apdg/bin/metcopy_and_restore_dir/metcopyrestore_general ,          Yes,              /data/local/hadie/r514_Radar_tmp/Output_NWPMet, /home/h03/apdg/NameIII/NameIIILibrary/Data/UMTopogData,    UM1p5km_Mk2_L57PT9pp
+UM UKVPT10,         80.0,        4000.0,               Yes,                /home/h03/apdg/bin/metcopy_and_restore_dir/metcopyrestore_general ,          Yes,              /data/local/hadie/r514_Radar_tmp/Output_NWPMet, /home/h03/apdg/NameIII/NameIIILibrary/Data/UMTopogData,    UM1p5km_Mk2_L57PT10pp
+UM UKVPT11,         80.0,        4000.0,               Yes,                /home/h03/apdg/bin/metcopy_and_restore_dir/metcopyrestore_general ,          Yes,              /data/local/hadie/r514_Radar_tmp/Output_NWPMet, /home/h03/apdg/NameIII/NameIIILibrary/Data/UMTopogData,    UM1p5km_Mk2_L57PT11pp
+UM UKVPT12,         80.0,        4000.0,               Yes,                /home/h03/apdg/bin/metcopy_and_restore_dir/metcopyrestore_general ,          Yes,              /data/local/hadie/r514_Radar_tmp/Output_NWPMet, /home/h03/apdg/NameIII/NameIIILibrary/Data/UMTopogData,    UM1p5km_Mk2_L57PT12pp
+UM UKVPT13,         80.0,        4000.0,               Yes,                /home/h03/apdg/bin/metcopy_and_restore_dir/metcopyrestore_general ,          Yes,              /data/local/hadie/r514_Radar_tmp/Output_NWPMet, /home/h03/apdg/NameIII/NameIIILibrary/Data/UMTopogData,    UM1p5km_Mk2_L57PT13pp
+UM UKVPT14,         80.0,        4000.0,               Yes,                /home/h03/apdg/bin/metcopy_and_restore_dir/metcopyrestore_general ,          Yes,              /data/local/hadie/r514_Radar_tmp/Output_NWPMet, /home/h03/apdg/NameIII/NameIIILibrary/Data/UMTopogData,    UM1p5km_Mk2_L57PT14pp
+UM UKVPT15,         80.0,        4000.0,               Yes,                /home/h03/apdg/bin/metcopy_and_restore_dir/metcopyrestore_general ,          Yes,              /data/local/hadie/r514_Radar_tmp/Output_NWPMet, /home/h03/apdg/NameIII/NameIIILibrary/Data/UMTopogData,    UM1p5km_Mk2_L57PT15pp
+UM UKVPT16,         80.0,        4000.0,               Yes,                /home/h03/apdg/bin/metcopy_and_restore_dir/metcopyrestore_general ,          Yes,              /data/local/hadie/r514_Radar_tmp/Output_NWPMet, /home/h03/apdg/NameIII/NameIIILibrary/Data/UMTopogData,    UM1p5km_Mk2_L57PT16pp
+UM Global over Europe,          80.0,        4000.0,               Yes,    /home/h03/apdg/bin/metcopy_and_restore_dir/metcopyrestore_general,           Yes,              /data/local/hadie/r514_Radar_tmp/Output_NWPMet, /home/h03/apdg/NameIII/NameIIILibrary/Data/UMTopogData,     UMG_Mk7_L59PT2pp
+
+
+NWP Flow Module Instances: 
+Name,                       Met Module,                   Met,                 Domain
+UM UKV Flow PT1,                   NWP Met,               UM UKVPT1 , UM1p5km_Mk1_L57PT1pp Whole
+UM UKV Flow PT2,                   NWP Met,               UM UKVPT2 , UM1p5km_Mk1_L57PT2pp Whole
+UM UKV Flow PT3,                   NWP Met,               UM UKVPT3 , UM1p5km_Mk1_L57PT3pp Whole
+UM UKV Flow PT4,                   NWP Met,               UM UKVPT4 , UM1p5km_Mk1_L57PT4pp Whole
+UM UKV Flow PT5,                   NWP Met,               UM UKVPT5 , UM1p5km_Mk1_L57PT5pp Whole
+UM UKV Flow PT6,                   NWP Met,               UM UKVPT6 , UM1p5km_Mk1_L57PT6pp Whole
+UM UKV Flow PT7,                   NWP Met,               UM UKVPT7 , UM1p5km_Mk1_L57PT7pp Whole
+UM UKV Flow PT8,                   NWP Met,               UM UKVPT8 , UM1p5km_Mk1_L57PT8pp Whole
+UM UKV Flow PT9,                   NWP Met,               UM UKVPT9 , UM1p5km_Mk1_L57PT9pp Whole
+UM UKV Flow PT10,                   NWP Met,               UM UKVPT10 , UM1p5km_Mk1_L57PT10pp Whole
+UM UKV Flow PT11,                   NWP Met,               UM UKVPT11 , UM1p5km_Mk1_L57PT11pp Whole
+UM UKV Flow PT12,                   NWP Met,               UM UKVPT12 , UM1p5km_Mk1_L57PT12pp Whole
+UM UKV Flow PT13,                   NWP Met,               UM UKVPT13 , UM1p5km_Mk1_L57PT13pp Whole
+UM UKV Flow PT14,                   NWP Met,               UM UKVPT14 , UM1p5km_Mk1_L57PT14pp Whole
+UM UKV Flow PT15,                   NWP Met,               UM UKVPT15 , UM1p5km_Mk1_L57PT15pp Whole
+UM UKV Flow PT16,                   NWP Met,               UM UKVPT16 , UM1p5km_Mk1_L57PT16pp Whole
+UM Global over Europe Flow,         NWP Met,     UM Global over Europe, UMG_Mk6_L59PT2pp Whole 
+
+
+Radar Met Module Instances:
+Name,                      Restore Met Script, Delete Met?,                            Met Folder,         Met Definition Name
+UKPP nimrod,                                 ,          No,    /project/NAME/apnm/UKPP_datafiles/,   UKPP_Mk1_Inst15min_Nimrod  
+
+ 
+Radar Flow Module Instances:
+Name,   Met Module,           Met,        Domain
+UKPP Flow,    Radar Met,   UKPP nimrod,   UKPP_Mk1 Domain   
+
+
+
+Flow Order: Update
+Flow Module, Flow
+Radar Flow,  UKPP Flow
+NWP Flow,    UM UKV Flow PT1
+NWP Flow,    UM UKV Flow PT2
+NWP Flow,    UM UKV Flow PT3
+NWP Flow,    UM UKV Flow PT4
+NWP Flow,    UM UKV Flow PT5
+NWP Flow,    UM UKV Flow PT6
+NWP Flow,    UM UKV Flow PT7
+NWP Flow,    UM UKV Flow PT8
+NWP Flow,    UM UKV Flow PT9
+NWP Flow,    UM UKV Flow PT10
+NWP Flow,    UM UKV Flow PT11
+NWP Flow,    UM UKV Flow PT12
+NWP Flow,    UM UKV Flow PT13
+NWP Flow,    UM UKV Flow PT14
+NWP Flow,    UM UKV Flow PT15
+NWP Flow,    UM UKV Flow PT16
+NWP Flow,    UM Global over Europe Flow
+
+Flow Order: Convert
+Flow Module, Flow
+NWP Flow,    UM UKV Flow PT1
+NWP Flow,    UM UKV Flow PT2
+NWP Flow,    UM UKV Flow PT3
+NWP Flow,    UM UKV Flow PT4
+NWP Flow,    UM UKV Flow PT5
+NWP Flow,    UM UKV Flow PT6
+NWP Flow,    UM UKV Flow PT7
+NWP Flow,    UM UKV Flow PT8
+NWP Flow,    UM UKV Flow PT9
+NWP Flow,    UM UKV Flow PT10
+NWP Flow,    UM UKV Flow PT11
+NWP Flow,    UM UKV Flow PT12
+NWP Flow,    UM UKV Flow PT13
+NWP Flow,    UM UKV Flow PT14
+NWP Flow,    UM UKV Flow PT15
+NWP Flow,    UM UKV Flow PT16
+NWP Flow,    UM Global over Europe Flow
+
+Flow Order: Flow
+Flow Module, Flow
+NWP Flow,    UM UKV Flow PT1
+NWP Flow,    UM UKV Flow PT2
+NWP Flow,    UM UKV Flow PT3
+NWP Flow,    UM UKV Flow PT4
+NWP Flow,    UM UKV Flow PT5
+NWP Flow,    UM UKV Flow PT6
+NWP Flow,    UM UKV Flow PT7
+NWP Flow,    UM UKV Flow PT8
+NWP Flow,    UM UKV Flow PT9
+NWP Flow,    UM UKV Flow PT10
+NWP Flow,    UM UKV Flow PT11
+NWP Flow,    UM UKV Flow PT12
+NWP Flow,    UM UKV Flow PT13
+NWP Flow,    UM UKV Flow PT14
+NWP Flow,    UM UKV Flow PT15
+NWP Flow,    UM UKV Flow PT16
+NWP Flow,    UM Global over Europe Flow
+
+Flow Order: Cloud
+Flow Module, Flow
+NWP Flow,    UM UKV Flow PT1
+NWP Flow,    UM UKV Flow PT2
+NWP Flow,    UM UKV Flow PT3
+NWP Flow,    UM UKV Flow PT4
+NWP Flow,    UM UKV Flow PT5
+NWP Flow,    UM UKV Flow PT6
+NWP Flow,    UM UKV Flow PT7
+NWP Flow,    UM UKV Flow PT8
+NWP Flow,    UM UKV Flow PT9
+NWP Flow,    UM UKV Flow PT10
+NWP Flow,    UM UKV Flow PT11
+NWP Flow,    UM UKV Flow PT12
+NWP Flow,    UM UKV Flow PT13
+NWP Flow,    UM UKV Flow PT14
+NWP Flow,    UM UKV Flow PT15
+NWP Flow,    UM UKV Flow PT16
+NWP Flow,    UM Global over Europe Flow
+
+Flow Order: Rain
+Flow Module, Flow
+Radar Flow,  UKPP Flow
+NWP Flow,    UM UKV Flow PT1
+NWP Flow,    UM UKV Flow PT2
+NWP Flow,    UM UKV Flow PT3
+NWP Flow,    UM UKV Flow PT4
+NWP Flow,    UM UKV Flow PT5
+NWP Flow,    UM UKV Flow PT6
+NWP Flow,    UM UKV Flow PT7
+NWP Flow,    UM UKV Flow PT8
+NWP Flow,    UM UKV Flow PT9
+NWP Flow,    UM UKV Flow PT10
+NWP Flow,    UM UKV Flow PT11
+NWP Flow,    UM UKV Flow PT12
+NWP Flow,    UM UKV Flow PT13
+NWP Flow,    UM UKV Flow PT14
+NWP Flow,    UM UKV Flow PT15
+NWP Flow,    UM UKV Flow PT16
+NWP Flow,    UM Global over Europe Flow
+
+Flow Attributes:
+Name,    Flow Order
+Update,  Update
+Convert, Convert
+Flow,    Flow
+Cloud,   Cloud
+Rain,    Rain

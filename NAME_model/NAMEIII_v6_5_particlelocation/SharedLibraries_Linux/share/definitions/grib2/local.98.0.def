@@ -1,0 +1,5 @@
+# mars labeling
+label "empty section";
+
+constant productDefinitionTemplateNumberInternal=0 : hidden,no_copy;
+

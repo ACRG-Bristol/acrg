@@ -1,0 +1,71 @@
+# Copyright 2005-2007 ECMWF
+#
+# Licensed under the GNU Lesser General Public License which
+# incorporates the terms and conditions of version 3 of the GNU
+# General Public License.
+# See LICENSE and gpl-3.0.txt for details.
+
+# START 1/local.98.11 ----------------------------------------------------------------------
+# LOCAL 98 11
+#
+# localDefinitionTemplate_011
+# ---------------------------
+#
+# Description                Octet    Code    Ksec1    Count
+# -----------                -----    ----    -----    -----
+#localDefinitionNumber                   41      I1      37      -
+#class                                   42      I1      38      -
+#type                                    43      I1      39      -
+#stream                                  44      I2      40      -
+#experimentVersionNumber                 46      A4      41      -
+#classOfAnalysis                         50      I1      42      -
+#typeOfAnalysis                          51      I1      43      -
+#streamOfAnalysis                        52      I2      44      -
+#experimentVersionNumberOfAnalysis       54      A4      45      -
+#yearOfAnalysis                          58      I1      46      -
+#monthOfAnalysis                         59      I1      47      -
+#dayOfAnalysis                           60      I1      48      -
+#hourOfAnalysis                          61      I1      49      -
+#minuteOfAnalysis                        62      I1      50      -
+#centuryOfAnalysis                       63      I1      51      -
+#originatingCentreOfAnalysis             64      I1      52      -
+#subcentreOfAnalysis                     65      I1      53      -
+#spareSetToZero                          66      PAD     n/a     7
+#
+
+template mars_labeling "grib1/mars_labeling.def";
+
+unsigned[1] classOfAnalysis = marsClass : dump;
+unsigned[1] typeOfAnalysis  = marsType : dump;
+unsigned[2] streamOfAnalysis = marsStream : dump;
+ksec1expver[4] experimentVersionNumberOfAnalysis = expver : dump;
+
+unsigned[1] yearOfAnalysis  = yearOfCentury : dump;
+unsigned[1] monthOfAnalysis = month : dump;
+unsigned[1] dayOfAnalysis = day : dump;
+
+unsigned[1] hourOfAnalysis = hour : dump;
+
+unsigned[1] minuteOfAnalysis = minute : dump;
+
+unsigned[1] centuryOfAnalysis = centuryOfReferenceTimeOfData : dump;
+
+unsigned[1] originatingCentreOfAnalysis = originatingCentre : dump;
+
+unsigned[1] subcentreOfAnalysis = subCentre : dump;
+
+# spareSetToZero
+pad padding_local11_1(7);
+
+constant secondsOfAnalysis = 0;
+
+meta dateOfAnalysis  g1date(centuryOfAnalysis,yearOfAnalysis,monthOfAnalysis,dayOfAnalysis) : dump;
+meta timeOfAnalysis  time(hourOfAnalysis,minuteOfAnalysis,secondsOfAnalysis) : dump;
+
+alias date = dateOfAnalysis;
+alias time = timeOfAnalysis;
+
+
+# ---------------------------------------------------------
+
+# END   1/local.98.11 ----------------------------------------------------------------------

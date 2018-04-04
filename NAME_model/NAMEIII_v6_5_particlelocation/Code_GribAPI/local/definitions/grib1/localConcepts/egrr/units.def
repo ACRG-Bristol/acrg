@@ -1,0 +1,96 @@
+# Created by Andrew Jones, ADG, UK Met Office
+#mean surface solar radiation flux since last output (downwards)
+'W m**-2' = {
+	 table2Version = 137 ;
+	 indicatorOfParameter = 81 ;
+	}
+#mean surface sensible heat flux since last output (upwards)
+'W m**-2' = {
+	 table2Version = 137 ;
+	 indicatorOfParameter = 85 ;
+	}
+#mean East-West surface stress since last output
+'N m**-2' = {
+	 table2Version = 137 ;
+	 indicatorOfParameter = 86 ;
+	}
+#mean North-South surface stress since last output
+'N m**-2' = {
+	 table2Version = 137 ;
+	 indicatorOfParameter = 87 ;
+	}
+#topography
+'m' = {
+	 table2Version = 137 ;
+	 indicatorOfParameter = 90 ;
+	}
+#mean dynamic rain rate since last output
+'kg m**-2 s**-1' = {
+	 table2Version = 137 ;
+	 indicatorOfParameter = 100 ;
+	}
+#mean convective rain rate since last output
+'kg m**-2 s**-1' = {
+	 table2Version = 137 ;
+	 indicatorOfParameter = 101 ;
+	}
+#mean dynamic snow rate since last output
+'kg m**-2 s**-1' = {
+	 table2Version = 137 ;
+	 indicatorOfParameter = 102 ;
+	}
+#mean convective snow rate since last output
+'kg m**-2 s**-1' = {
+	 table2Version = 137 ;
+	 indicatorOfParameter = 103 ;
+	}
+#mean dynamic precipitation rate since last output
+'kg m**-2 s**-1' = {
+	 table2Version = 137 ;
+	 indicatorOfParameter = 104 ;
+	}
+#mean convective precipitation rate since last output
+'kg m**-2 s**-1' = {
+	 table2Version = 137 ;
+	 indicatorOfParameter = 105 ;
+	}
+#mean total precipitation rate since last output
+'kg m**-2 s**-1' = {
+	 table2Version = 137 ;
+	 indicatorOfParameter = 106 ;
+	}
+#mean total snowfall rate since last output
+'kg m**-2 s**-1' = {
+	 table2Version = 137 ;
+	 indicatorOfParameter = 107 ;
+	}
+#mean total rainfall rate since last output
+'kg m**-2 s**-1' = {
+	 table2Version = 137 ;
+	 indicatorOfParameter = 108 ;
+	}
+#convective cloud amount
+'(0-1)' = {
+	 table2Version = 137 ;
+	 indicatorOfParameter = 110 ;
+	}
+#convective cloud base
+'m' = {
+	 table2Version = 137 ;
+	 indicatorOfParameter = 111 ;
+	}
+#convective cloud top
+'m' = {
+	 table2Version = 137 ;
+	 indicatorOfParameter = 112 ;
+	}
+#mean turbulent diffusion coefficient for heat since last output
+'m2 s**-1' = {
+	 table2Version = 137 ;
+	 indicatorOfParameter = 120 ;
+	}
+#surface pressure
+'Pa' = {
+	 table2Version = 137 ;
+	 indicatorOfParameter = 134 ;
+	}

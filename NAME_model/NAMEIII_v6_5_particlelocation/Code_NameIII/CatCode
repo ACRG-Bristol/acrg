@@ -1,0 +1,35 @@
+# Linux script for concatenating NAME III code
+
+cat \
+MainNameIII.F90 \
+Input.F90 \
+Restart.F90 \
+Case.F90 \
+Chemistry.F90 ChemistryScheme.F90 \
+Puff.F90 Particle.F90 IterativePlumeRiseModel.F90 PlumeRise.F90 \
+EulerianInterface.F90 SemiLagrangian.F90 \
+Output.F90 \
+Fluctuation.F90 \
+Source.F90 Species.F90 ParticleSizeDistribution.F90 \
+Flows.F90 \
+LincomFlow.F90 \
+RadarFlow.F90 BuildingFlow.F90 NWPFlow.F90 SingleSiteFlow.F90 PrototypeFlow.F90 \
+CommonFlow.F90 \
+IOThread.F90 \
+Mets.F90 \
+AncillaryMet.F90 RadarMet.F90 NWPMet.F90 NWPUtilities.F90 SingleSiteMet.F90 PrototypeMet.F90 \
+OpenMP.F90 \
+CommonMet.F90 \
+Building.F90 SingleSite.F90 FlowAndFlowProfile.F90 \
+Service.F90 \
+Sort.F90 \
+GridAndDomain.F90 CoordinateSystem.F90 \
+ErrorAndMessageII.F90 HeadedFile.F90 \
+Physics.F90 Maths.F90 \
+Timers.F90 \
+PhysicalUnits.F90 \
+Time.F90 Unit.F90 Screen.F90 System.F90 String.F90 \
+ErrorAndMessage.F90 \
+GlobalParameters.F90 \
+CompilerInfo.F90 \
+>NAMEIII.F90

@@ -1,0 +1,4 @@
+grib_fortran_kinds.o: grib_fortran_kinds.c \
+ /usr/lib/gcc/x86_64-redhat-linux/4.4.6/include/stddef.h
+
+/usr/lib/gcc/x86_64-redhat-linux/4.4.6/include/stddef.h:

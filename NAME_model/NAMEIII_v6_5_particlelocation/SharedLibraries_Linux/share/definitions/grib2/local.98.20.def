@@ -1,0 +1,27 @@
+# Copyright 2005-2007 ECMWF
+#
+# Licensed under the GNU Lesser General Public License which
+# incorporates the terms and conditions of version 3 of the GNU
+# General Public License.
+# See LICENSE and gpl-3.0.txt for details.
+
+
+template mars_labeling "grib2/mars_labeling.def";
+
+unsigned[1] iterationNumber  : dump;
+alias number=iterationNumber;
+
+unsigned[1] totalNumberOfIterations  : dump;
+alias totalNumber=totalNumberOfIterations;
+
+alias mars.iteration = iterationNumber;
+
+alias local.iteration =iterationNumber;
+alias local.totalNumberOfIterations=totalNumberOfIterations;
+
+_if (stepType is "instant" ) {
+	constant productDefinitionTemplateNumberInternal=0;
+} else {
+	constant productDefinitionTemplateNumberInternal=8;
+}
+

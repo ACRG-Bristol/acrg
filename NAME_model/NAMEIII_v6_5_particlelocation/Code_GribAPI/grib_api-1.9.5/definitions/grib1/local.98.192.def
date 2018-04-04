@@ -1,0 +1,60 @@
+# Copyright 2005-2007 ECMWF
+#
+# Licensed under the GNU Lesser General Public License which
+# incorporates the terms and conditions of version 3 of the GNU
+# General Public License.
+# See LICENSE and gpl-3.0.txt for details.
+
+
+# START 1/local.98.192 ----------------------------------------------------------------------
+# LOCAL 98 192
+#
+# localDefinitionTemplate_192
+# ---------------------------
+#
+# Description            Octet    Code    Ksec1    Count
+# -----------            -----    ----    -----    -----
+#localDefinitionNumber           41  I1  37  -
+#class                           42  I1  38  -
+#type                            43  I1  39  -
+#stream                          44  I2  40  -
+#experimentVersionNumber         46  A4  41  -
+#zeroForCompatibilityWithMars    50  PAD 42  2
+#numberOfLocalDefinitions        52  I1  44  -
+#listOfLocalDefinitions          -   LIST    -   numberOfLocalDefinitions
+#localDefinitionLength           -   I2  -   -
+#localDefinition                 -   LOCAL   -   -
+#endListOfLocalDefinitions       -   ENDLIST -   listOfLocalDefinitions
+#
+
+# The mars labeling must be inline
+# template mars_labeling "grib1/mars_labeling.def";
+
+
+codetable[1]   thisMarsClass   "mars/class.table" = "od" : dump,lowercase;
+codetable[1]   thisMarsType   "mars/type.table" = "an" : dump,string_type,lowercase;
+codetable[2]   thisMarsStream "mars/stream.table" = "oper" : dump,lowercase ;
+ksec1expver[4] thisExperimentVersionNumber = "0001" : dump;
+
+
+# zeroForCompatibilityWithMars
+pad padding_loc192_1(2);
+
+unsigned[1] numberOfLocalDefinitions  : dump;
+
+
+subLocalDefinitions list(numberOfLocalDefinitions){
+    unsigned[2] subLocalDefinitionLength  : dump;
+    unsigned[1] subLocalDefinitionNumber  : dump;
+  template  subDefinitions  "grib1/local.98.[subLocalDefinitionNumber:l].def";
+# add subcenter
+    }
+
+
+# Overwrit aliases
+
+alias ls.dataType = thisMarsType;
+alias mars.class  = thisMarsClass;
+alias mars.type   = thisMarsType;
+alias mars.stream = thisMarsStream;
+alias mars.expver = thisExperimentVersionNumber;

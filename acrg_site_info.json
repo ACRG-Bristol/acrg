@@ -933,12 +933,12 @@
     "THD" : {
         "alt": ["TH"],
         "long_name" : "Trinidad Head, California",
-        "height": ["13m", "10m", "5m"],
+        "height": ["10m"],
         "height_station_masl": 107.0,
-        "height_name": ["13magl", "10magl", "5magl"],
+        "height_name": ["10magl"],
         "latitude": 41.0541,
         "longitude": -124.151,
-        "network": ["NOAA", "AGAGE", "NOAA"]
+        "network": "AGAGE"
     },
     "TIL" : {
         "alt": ["TILNEY"],

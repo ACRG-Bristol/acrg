@@ -1,0 +1,227 @@
+Changes to Name to Adms
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 4.0 of NAME III released 2/4/06.
+Changes prior to version 4.0 not recorded.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+31/10/06 
+
+NAG / HP scripts removed. Fortran preprocessor symbols NAGHPCompiler and HPHPCompiler
+removed, with NAGHPCompiler replaced by IntelLinCompiler (previously one needed 
+NAGHPCompiler set as well as IntelLinCompiler when running on Linux with the Intel
+compiler).
+
+Scripts LinuxIntelRelease and LinuxIntelDebug updated to use version 9 of the 
+compiler.
+
+Fortran preprocessor symbol Linux64Intel renamed LinuxIntelV9.
+
+The compile option -Wp,-macro=no has been added to the Linux Intel compiler scripts. 
+This ensures fpp doesn't do macro expansion outside of pre-processor lines (the -Wp 
+bit passes what follows to fpp; the -macro=no bit seems undocumented by Intel but is
+what worked with the NAG compiler). 
+
+Fortran preprocessor symbol ExtraChecks added to the Windows Compaq compiler treatment 
+(release version) for consistency with the LinuxIntelRelease script.
+
+Dave Thomson
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 4.1 of NAME III released 6/11/06.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+22/1/07
+
+LinuxIntelRelease and LinuxIntelDebug altered to test whether compilation is on a 
+64-bit or 32-bit machine and to name the exe file appropriately.
+
+Error and message II module added.
+
+Dave Thomson
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 4.2 of NAME III released 14/2/07.
+Version 4.3 of NAME III released 18/5/07.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+31/5/07
+
+Compilation order changed with the time module moved to before the headed file module.
+See changes.txt in Code_NameIII folder for motivation.
+
+Dave Thomson
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 5.0 of NAME III released 24/8/07.
+Version 5.1 of NAME III released 11/7/08.
+Note a number of earlier changes (listed below) were not included in 5.1.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+6/5/08
+
+ADMS keywords changed to capitals.
+
+Also heat flux changed so its always >= -99.9 and a comment added to the ADMS met 
+file.
+
+Dave Thomson and Doug Middleton
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 5.2 of NAME III released 28/7/08.
+Version 5.3 of NAME III released 25/2/09.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+24/10/09
+
+Preprocessor symbol LinuxIntelV9 no longer used and removed from compilation scripts.
+
+Dave Thomson
+
+!-------------------------------------------------------------------------------------
+
+27/11/09
+
+Sort.F90 added to Name2Adms (from Code_NameIII).
+
+Dave Thomson
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 5.4 of NAME III released 27/11/09.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 6.0 of NAME III released 02/08/2010.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+17/02/12
+
+Ticket #64: Activities associated with freezing of version 6.1.
+
+Added Windows Visual Studio project file Name2Adms.vfproj for use in compiling
+Name2Adms with the Intel Fortran compiler on Windows systems. Eike Mueller had
+previously produced this file for version 6.0 (see ticket #16: Porting to Windows)
+but it was not copied into the main code trunk.
+
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 6.1 of NAME III released 20/02/2012.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+08/03/2012
+
+Ticket #66: Post-release activities following the freeze of version 6.1.
+
+Updated the Linux compilation scripts and the various files for compiling on Windows
+PCs to include the PhysicalUnits module in the compilation list for the Name2Adms
+program. The functionality provided by this module is not used directly by the
+Name2Adms program but this module is a part of the Service module and so needs
+to be present.
+
+Also updated the ReadMe.txt file to include recent changes.
+
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 6.2 of NAME III released 22/10/2012.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 6.3 of NAME III released 26/03/2013.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 6.4 beta of NAME III released 29/10/2014.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 6.4 of NAME III released 18/12/2014.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+23/12/2014
+
+Ticket #108: Activities associated with freezing of version 6.4.
+
+LinuxIntelDebug
+LinuxIntelRelease
+MainName2Adms.F90
+Removed author and date information from the header section of these files.
+
+The author and date have also been removed from the top header in this Changes file
+and in the ReadMe file for this folder. Authors are now listed collectively in the
+file Contributors.txt in the top-level NAME folder.
+
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 6.5 beta of NAME III released 01/07/2015.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+31/07/2015
+
+Ticket #134: Activities associated with freezing of version 6.5.
+
+Name2Adms.vfproj
+Updated the Visual Studio project file for compiling with the Intel Fortran compiler
+under Windows. 64-bit configurations have been added to the existing 32-bit options.
+The folder configuration has also been changed to use separate "Win32" and "x64"
+compilation directories (each with subdirectories "Release" and "Debug"). The names
+of the executables in /Executables_Win have also been revised for consistency with
+the Linux filename convention (e.g., use of "_64bit" for 64-bit executables).
+
+Also revised the compiler directives, replacing the directive "CompaqPCCompiler"
+with "IntelLinCompiler,IntelWin" (as had been previously done for NAME itself).
+
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 6.5 of NAME III released 31/07/2015.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------

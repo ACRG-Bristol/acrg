@@ -1,0 +1,105 @@
+Listing of species used in chemistry scheme
+(derived from file /input/species.txt in NAME v8.11 but with a reordered sequence of species)
+$$ Issues:
+$$ Note deposition values for H2S have been mapped to SO2.  In reality H2S is less
+   soluble than SO2 so it's wet deposition is probably between 2 to 10 times less.
+$$ Mean aerosol diameter (in um) for PM10 is an estimate and will need to be revised.
+   A value below 1um does not need to be specific. PM25 estimated at 0.6 see HW's documentation.
+
+Species:
+Name,              Category,             Half Life,UV Loss Rate, Surface Resistance, Deposition Velocity, Mean aerosol diameter, Land use dependent dry dep, A rain - BC, B rain - BC, A snow - BC, B snow - BC, A rain - IC, B rain - IC, A snow - IC, B snow - IC, Molecular Weight, Material Unit
+SULPHUR-DIOXIDE,   CHEMISTRY-SPECIES,       Stable,    0.00E+00,           1.00E+02,                    ,                      ,                           ,      1.2E-4,        0.79,      1.2E-4,       0.305,      1.0E-4,        0.79,      1.5E-5,        0.79,            64.00,             g
+AMMONIA,           CHEMISTRY-SPECIES,       Stable,    0.00E+00,           5.00E+01,                    ,                      ,                           ,      1.2E-4,        0.79,      1.2E-4,       0.305,      3.5E-4,        0.79,      3.5E-4,        0.79,            17.00,             g
+NO,                CHEMISTRY-SPECIES,       Stable,    0.00E+00,           1.00E+02,                    ,                      ,                           ,            ,            ,            ,            ,            ,            ,            ,            ,            30.00,             g
+NH42SO4,           CHEMISTRY-SPECIES,       Stable,    0.00E+00,                   ,                    ,                   0.4,                           ,      8.4E-5,        0.79,      8.0E-5,       0.305,     3.36E-4,        0.79,      5.2E-5,        0.79,           132.00,             g
+SULPHATE,          CHEMISTRY-SPECIES,       Stable,    0.00E+00,                   ,                    ,                   0.4,                           ,      8.4E-5,        0.79,      8.0E-5,       0.305,     3.36E-4,        0.79,      5.2E-5,        0.79,            96.00,             g
+NO2,               CHEMISTRY-SPECIES,       Stable,    0.00E+00,           1.00E+02,                    ,                      ,                           ,            ,            ,            ,            ,            ,            ,            ,            ,            46.00,             g
+NO3,               CHEMISTRY-SPECIES,       Stable,    0.00E+00,           1.00E+02,                    ,                      ,                           ,            ,            ,            ,            ,            ,            ,            ,            ,            62.00,             g
+N2O5,              CHEMISTRY-SPECIES,       Stable,    0.00E+00,           1.00E+02,                    ,                      ,                           ,            ,            ,            ,            ,            ,            ,            ,            ,           108.00,             g
+HNO3,              CHEMISTRY-SPECIES,       Stable,    0.00E+00,           1.00E+02,                    ,                      ,                           ,      1.0E-4,        0.79,      1.0E-4,       0.305,      3.5E-4,        0.79,      3.5E-4,        0.79,            63.00,             g
+NAER,              CHEMISTRY-SPECIES,       Stable,    0.00E+00,                   ,                    ,                   3.0,                           ,      8.4E-5,        0.79,      8.0E-5,       0.305,     3.36E-4,        0.79,      5.2E-5,        0.79,            62.00,             g
+NH4NO3,            CHEMISTRY-SPECIES,       Stable,    0.00E+00,                   ,                    ,                   0.4,                           ,      8.4E-5,        0.79,      8.0E-5,       0.305,     3.36E-4,        0.79,      5.2E-5,        0.79,            80.00,             g
+O3,                CHEMISTRY-SPECIES,       Stable,    0.00E+00,                   ,              4.0E-3,                      ,                           ,            ,            ,            ,            ,            ,            ,            ,            ,            48.00,             g
+CO,                CHEMISTRY-SPECIES,       Stable,    0.00E+00,                   ,                 0.0,                      ,                           ,            ,            ,            ,            ,            ,            ,            ,            ,            28.00,             g
+HCHO,              CHEMISTRY-SPECIES,       Stable,    0.00E+00,                   ,                 0.0,                      ,                           ,            ,            ,            ,            ,            ,            ,            ,            ,            30.00,             g
+C2H4,              CHEMISTRY-SPECIES,       Stable,    0.00E+00,                   ,                 0.0,                      ,                           ,            ,            ,            ,            ,            ,            ,            ,            ,            28.00,             g
+C3H6,              CHEMISTRY-SPECIES,       Stable,    0.00E+00,                   ,                 0.0,                      ,                           ,            ,            ,            ,            ,            ,            ,            ,            ,            42.00,             g
+C5H8,              CHEMISTRY-SPECIES,       Stable,    0.00E+00,                   ,                 0.0,                      ,                           ,            ,            ,            ,            ,            ,            ,            ,            ,            68.00,             g
+OXYL,              CHEMISTRY-SPECIES,       Stable,    0.00E+00,                   ,                 0.0,                      ,                           ,            ,            ,            ,            ,            ,            ,            ,            ,           106.00,             g
+TOLUEN,            CHEMISTRY-SPECIES,       Stable,    0.00E+00,                   ,                 0.0,                      ,                           ,            ,            ,            ,            ,            ,            ,            ,            ,            92.00,             g
+BD,                CHEMISTRY-SPECIES,       Stable,    0.00E+00,                   ,                 0.0,                      ,                           ,            ,            ,            ,            ,            ,            ,            ,            ,            54.00,             g
+CH3CHO,            CHEMISTRY-SPECIES,       Stable,    0.00E+00,                   ,                 0.0,                      ,                           ,            ,            ,            ,            ,            ,            ,            ,            ,            44.00,             g
+PAN,               CHEMISTRY-SPECIES,       Stable,    0.00E+00,                   ,                 0.0,                      ,                           ,            ,            ,            ,            ,            ,            ,            ,            ,           121.00,             g
+HONO,              CHEMISTRY-SPECIES,       Stable,    0.00E+00,           1.00E+02,                    ,                      ,                           ,      1.0E-4,        0.79,      1.0E-4,       0.305,      3.5E-4,        0.79,      3.5E-4,        0.79,            47.00,             g
+PM10,              CHEMISTRY-SPECIES,       Stable,    0.00E+00,                   ,                    ,                   0.8,                           ,      8.4E-5,        0.79,      8.0E-5,       0.305,     3.36E-4,        0.79,      5.2E-5,        0.79,           100.00,             g
+H2S,               CHEMISTRY-SPECIES,       Stable,    0.00E+00,           1.00E+02,                    ,                      ,                           ,      2.0E-5,        0.79,      2.0E-5,       0.305,      1.7E-5,        0.79,      2.6E-6,        0.79,            34.00,             g
+C5H8BIO,           CHEMISTRY-SPECIES,       Stable,    0.00E+00,                   ,                 0.0,                      ,                           ,            ,            ,            ,            ,            ,            ,            ,            ,            68.00,             g
+C10H16BIO,         CHEMISTRY-SPECIES,       Stable,    0.00E+00,                   ,                 0.0,                      ,                           ,            ,            ,            ,            ,            ,            ,            ,            ,           136.00,             g
+SOA,               CHEMISTRY-SPECIES,       Stable,    0.00E+00,                   ,                    ,                   0.4,                           ,      8.4E-5,        0.79,      8.0E-5,       0.305,     3.36E-4,        0.79,      5.2E-5,        0.79,           195.47,             g
+SOAP,              CHEMISTRY-SPECIES,       Stable,    0.00E+00,           1.00E+02,                    ,                      ,                           ,            ,            ,            ,            ,            ,            ,            ,            ,           195.47,             g
+AROPREC,           CHEMISTRY-SPECIES,       Stable,    0.00E+00,                   ,                    ,                   0.4,                           ,      8.4E-5,        0.79,      8.0E-5,       0.305,     3.36E-4,        0.79,      5.2E-5,        0.79,           111.13,             g
+NAMEARO,           CHEMISTRY-SPECIES,       Stable,    0.00E+00,                   ,                    ,                   0.4,                           ,      8.4E-5,        0.79,      8.0E-5,       0.305,     3.36E-4,        0.79,      5.2E-5,        0.79,           111.13,             g
+PM25,              CHEMISTRY-SPECIES,       Stable,    0.00E+00,                   ,                    ,                   0.6,                           ,      8.4E-5,        0.79,      8.0E-5,       0.305,     3.36E-4,        0.79,      5.2E-5,        0.79,           100.00,             g
+H2O2,              CHEMISTRY-SPECIES,       Stable,    0.00E+00,           1.00E+02,                    ,                      ,                           ,      1.0E-4,        0.79,      1.0E-4,       0.305,      3.5E-4,        0.79,      3.5E-4,        0.79,            34.00,             g
+
+
+Listing of species used in chemistry scheme that are carried on the field
+$$ Issues:
+keeping the same structure as the species on particles for now, even though most things are currently blank and not used.
+
+Species:
+Name,              Category,          Half Life,UV Loss Rate, Surface Resistance, Deposition Velocity, Mean aerosol diameter, A rain - BC, B rain - BC, A snow - BC, B snow - BC, A rain - IC, B rain - IC, A snow - IC, B snow - IC, Molecular Weight, Material Unit
+OH,                CHEMISTRY-FIELD,            ,            ,                   ,                    ,                      ,            ,            ,            ,            ,            ,            ,            ,            ,            17.00,             g
+HO2,               CHEMISTRY-FIELD,            ,            ,                   ,                    ,                      ,            ,            ,            ,            ,            ,            ,            ,            ,            33.00,             g
+CH3OOH,            CHEMISTRY-FIELD,            ,            ,                   ,                    ,                      ,            ,            ,            ,            ,            ,            ,            ,            ,            48.00,             g
+MVK,               CHEMISTRY-FIELD,            ,            ,                   ,                    ,                      ,            ,            ,            ,            ,            ,            ,            ,            ,            70.00,             g
+ISOPOOH,           CHEMISTRY-FIELD,            ,            ,                   ,                    ,                      ,            ,            ,            ,            ,            ,            ,            ,            ,           108.00,             g
+MVKOOH,            CHEMISTRY-FIELD,            ,            ,                   ,                    ,                      ,            ,            ,            ,            ,            ,            ,            ,            ,            96.00,             g
+MGLYOX,            CHEMISTRY-FIELD,            ,            ,                   ,                    ,                      ,            ,            ,            ,            ,            ,            ,            ,            ,            68.00,             g
+GLYOX,             CHEMISTRY-FIELD,            ,            ,                   ,                    ,                      ,            ,            ,            ,            ,            ,            ,            ,            ,            56.00,             g
+MEMALD,            CHEMISTRY-FIELD,            ,            ,                   ,                    ,                      ,            ,            ,            ,            ,            ,            ,            ,            ,            98.00,             g
+
+Species Uses:
+Species,         On Particles?, On Fields?, Advect Field?
+SULPHUR-DIOXIDE,           Yes,         No,            No
+AMMONIA,                   Yes,         No,            No
+NO,                        Yes,         No,            No
+NH42SO4,                   Yes,         No,            No
+SULPHATE,                  Yes,         No,            No
+NO2,                       Yes,         No,            No
+NO3,                       Yes,         No,            No
+N2O5,                      Yes,         No,            No
+HNO3,                      Yes,         No,            No
+NAER,                      Yes,         No,            No
+NH4NO3,                    Yes,         No,            No
+O3,                        Yes,         No,            No
+CO,                        Yes,         No,            No
+HCHO,                      Yes,         No,            No
+C2H4,                      Yes,         No,            No
+C3H6,                      Yes,         No,            No
+C5H8,                      Yes,         No,            No
+OXYL,                      Yes,         No,            No
+TOLUEN,                    Yes,         No,            No
+BD,                        Yes,         No,            No
+CH3CHO,                    Yes,         No,            No
+PAN,                       Yes,         No,            No
+HONO,                      Yes,         No,            No
+PM10,                      Yes,         No,            No
+H2S,                       Yes,         No,            No
+C5H8BIO,                   Yes,         No,            No
+C10H16BIO,                 Yes,         No,            No
+SOA,                       Yes,         No,            No
+SOAP,                      Yes,         No,            No
+AROPREC,                   Yes,         No,            No
+NAMEARO,                   Yes,         No,            No
+PM25,                      Yes,         No,            No
+H2O2,                      Yes,         No,            No
+OH,                         No,        Yes,            No
+HO2,                        No,        Yes,            No
+CH3OOH,                     No,        Yes,            No
+MVK,                        No,        Yes,            No
+ISOPOOH,                    No,        Yes,            No
+MVKOOH,                     No,        Yes,            No
+MGLYOX,                     No,        Yes,            No
+GLYOX,                      No,        Yes,            No
+MEMALD,                     No,        Yes,            No

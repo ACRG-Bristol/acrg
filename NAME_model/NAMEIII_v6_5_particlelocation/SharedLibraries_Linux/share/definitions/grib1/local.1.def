@@ -1,0 +1,10 @@
+# Copyright 2005-2007 ECMWF
+#
+# Licensed under the GNU Lesser General Public License which
+# incorporates the terms and conditions of version 3 of the GNU
+# General Public License.
+# See LICENSE and gpl-3.0.txt for details.
+
+# Definition for BOM , same as ECWF
+unsigned[1] localDefinitionNumber = 1 : dump;
+template  localDefinition  "grib1/local.98.[localDefinitionNumber:l].def";
