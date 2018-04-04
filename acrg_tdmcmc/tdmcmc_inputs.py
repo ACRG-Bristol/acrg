@@ -41,7 +41,8 @@ import datetime as dt
 import acrg_name as name
 from acrg_tdmcmc import run_tdmcmc 
 from acrg_tdmcmc import tdmcmc_post_process as process
-import acrg_config as configread
+import tdmcmc_config
+#import acrg_config as configread
 
 acrg_path = os.getenv("ACRG_PATH")
 data_path = os.getenv("DATA_PATH")
@@ -69,7 +70,7 @@ if verbose:
     print 'Input configuration file: {0}'.format(config_file)
 
 # Extract parameters from configuration file
-param = configread.all_mcmc_param(config_file)
+param = tdmcmc_config.all_mcmc_param(config_file)
 
 # Variables and definitions that need to be set
 
