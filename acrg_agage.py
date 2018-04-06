@@ -425,7 +425,7 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
         return None
 
 
-def get_gosat(site, species, max_level, start = "1900-01-01", end = "2020-01-01"):
+def get_gosat(site, species, max_level, start = "1900-01-01", end = "2020-01-01", data_directory = None):
     
     if max_level is None:
         print "ERROR: MAX LEVEL REQUIRED FOR SATELLITE OBS DATA"
@@ -435,7 +435,7 @@ def get_gosat(site, species, max_level, start = "1900-01-01", end = "2020-01-01"
     end_time = convert.reftime(end)
 
     data_directory, files = get_file_list(site, species, start_time, end_time,
-                                          None)
+                                          None, data_directory = data_directory)
     files_date = [convert.reftime(f.split("_")[2][0:8]) for f in files]
     files_keep = [True if d >= start_time and d < end_time else False for d in files_date]
     files = [f for (f, k) in zip(files, files_keep) if k == True]
@@ -479,7 +479,7 @@ def get_gosat(site, species, max_level, start = "1900-01-01", end = "2020-01-01"
 def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
             height = None, baseline = False, average = None, keep_missing=False,
             network = None, instrument = None, status_flag_unflagged = None,
-            max_level = None):
+            max_level = None, data_directory = None):
 
     # retrieves obervations for a set of sites and species between start and end dates
     # max_level only pertains to satellite data
@@ -530,7 +530,8 @@ def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
 
         if "GOSAT" in site.upper():
             data = get_gosat(site, species,
-                       start = start_time, end = end_time, max_level = max_level)
+                       start = start_time, end = end_time, max_level = max_level,
+                       data_directory = data_directory)
             if data is None:
                 return
                 
@@ -541,7 +542,8 @@ def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
                        network = network[si],
                        instrument = instrument[si],
                        keep_missing = keep_missing,
-                       status_flag_unflagged = status_flag_unflagged[si])                     
+                       status_flag_unflagged = status_flag_unflagged[si],
+                       data_directory = data_directory)                     
                        
         if data is not None:
             obs[site] = data.copy()            
