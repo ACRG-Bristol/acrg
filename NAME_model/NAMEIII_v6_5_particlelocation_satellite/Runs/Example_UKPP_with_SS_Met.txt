@@ -1,0 +1,120 @@
+
+Main Options: 
+Absolute or relative time?, Fixed met?, Flat Earth?, Max # Sources
+                  absolute,         No,          No,             1
+
+Restart File Options: 
+# Cases Between Writes, Time Between Writes, Delete Old Files?,
+                      ,                    ,                  , 
+
+Multiple Case Options:
+Dispersion Options Ensemble Size, Met Ensemble Size,
+                               1,                 1,
+
+Output Options: 
+Folder
+.\Output\
+
+Horizontal Coordinate Systems:
+Name,        Type, Pole Lat, Pole Long, Angle,  x-Origin,  y-Origin, x-unit,  y-unit
+NimrodCoord,    4,     49.0,      -2.0,   0.0, -638000.0, 1322000.0, 2000.0, -2000.0   
+Lat-Long,        ,         ,          ,      ,          ,          ,       ,        ,
+
+Vertical Coordinate Systems:
+Name
+m agl 
+
+Horizontal Grids:
+Name,              H-Coord,    nx,     ny,     dx,     dy,  x min, y min
+Nimrod_Output,    Lat-Long,   340,    371,   0.05,  0.035,  -11.0,  48.0
+
+May be preferential if not plotting output in PV WAVE.
+Nimrod_Output, NimrodCoord,   548,    704,    1.0,    1.0,    1.0,   1.0
+
+Vertical Grids:
+Name,   Z-Coord,  nz,     dz,    z0    
+ZGrid1,   m agl,   1,  100.0, 50.00
+ZGrid2,   m agl,   1,    0.0,  0.00
+
+Temporal Grids:
+Name,     nt,        dt,                  t0    
+TGrid1,    1,  00:15:00, 10/11/2008 12:15:00 
+
+Domains: 
+Name,          H Unbounded?,     H-Coord,  X Min,  X Max,  Y Min,  Y Max, Z Unbounded?, Z-Coord,   Z Max, T Unbounded?,       Start Time,  End Time, Max Travel Time
+Nimrod Domain,           No, NimrodCoord,    1.0,  548.0,    1.0,  704.0,          Yes,        ,        ,          Yes,                 ,          ,        infinity
+
+Locations: Source Locations
+Name,              H-Coord,     X,    Y
+Release_Point, NimrodCoord,   274,  352
+
+Species:
+Name,            Category, Half Life, UV Loss Rate, Surface Resistance, Deposition Velocity, A rain - BC, B rain - BC, A snow - BC, B snow - BC, A rain - IC, B rain - IC, A snow - IC, B snow - IC, Molecular Weight, Material Unit
+CAESIUM-137, RADIONUCLIDE,  9.46E+08,     0.00E+00,                   ,            1.00E-03,      8.4E-5,        0.79,      8.0E-5,       0.305,     3.36E-4,        0.79,      5.2E-5,        0.79,                0,            Bq
+
+Species Uses:
+Species,         On Particles?, On Fields?, Advect Field?
+CAESIUM-137,               Yes,         No,            No
+
+Sources:
+Name,          Set of Locations,      Location,  Shape,     H-Coord,  Z-Coord,     dX,    dY,    Z,  dZ, Angle, dH-Metres?, dZ-Metres?,          Source Strength, Time Dependency, Plume Rise?, Temperature, Volume Flow Rate, Flow Velocity, # Particles,  Max Age, Top Hat,       Start Time,        Stop Time
+Release_Point, Source Locations, Release_Point, Cuboid, NimrodCoord,    m agl,  548.0, 704.0, 10.0, 4.0,   0.0,         No,         No,   CAESIUM-137 1.0E+10 Bq,                ,          No,         0.0,              0.0,              ,     5000000, infinity,      No, 10/11/2008 12:00, 10/11/2008 12:00
+
+Output Requirements - Fields: 
+Name,             Quantity,   Decay deposition?,      Species, Source,        H-Grid, Z-Grid, T-Grid, BL Average, T Av Or Int, Av Time, # Av Times, Sync?,  Graph?, Screen?, Disk?, Across, Separate File,  Output Format,  Output Group
+Req 3,   Air Concentration,                    ,  CAESIUM-137,       , Nimrod_Output, ZGrid1, TGrid1,           ,         Int,   00:15,         15,    No,      No,      No,   Yes,     TZ,             T,             IA,  Fields_grid5
+Req 4, Wet Deposition Rate,                  No,  CAESIUM-137,       , Nimrod_Output,       , TGrid1,           ,         Int,   00:15,         15,    No,      No,      No,   Yes,     TZ,             T,             IA,  Fields_grid5
+
+Output Requirements - Fields: 
+Name,                    Quantity,  Species, Source,        H-Grid, Z-Grid, T-Grid, BL Average, T Av Or Int, Av Time, # Av Times, Sync?,  Graph?, Screen?, Disk?, Across, Separate File,  Output Format,  Output Group
+Req 5, Precipitation Rate (mm/hr),         ,       , Nimrod_Output, ZGrid2, TGrid1,         No,            ,        ,           ,   Yes,      No,      No,   Yes,     TZ,             T,             AZ,  Fields_grid6
+
+Sets of Dispersion Options: 
+Max # Particles, Max # Full Particles, Max # Puffs, Max # Original Puffs, Skew Time, Velocity Memory Time, Inhomogeneous Time, Mesoscale Velocity Memory Time, DeltaOpt, Puff Time, Sync Time, Computational Domain, Puff Interval, Deep Convection?, Radioactive Decay?, Agent Decay?, Dry Deposition?, Wet Deposition?, Turbulence?, Mesoscale Motions?, Chemistry?
+        5000000,              5000000,      300000,                10000,     00:00,                00:00,              00:00,                          00:00,        1,     00:00,  00:05:00,        Nimrod Domain,         00:15,               No,                 No,           No,             Yes,             Yes,         Yes,                 No,         No
+ 
+Radar Met Module Instances:
+Name,       H-Coord,             Nimrod Folder,  nX,  nY,    dT
+Nimrod, NimrodCoord, /home/h05/appb/RADAR/UKPP, 548, 704, 00:15                        
+     
+Radar Flow Module Instances:
+Name,   Met Module,    Met,      H-Coord,        Domain
+Nimrod,  Radar Met, Nimrod,  NimrodCoord, Nimrod Domain   
+
+Single Site Met Module Instances:
+Name,          H-Coord,   Long,    Lat, Height,   z0, z0d, Representative?,                                                      Met File, Ignore Fixed Met Time?
+Met Station,  Lat-Long,  -2.00,  53.20,   10.0,  0.1, 0.1,             Yes, /home/h05/appb/Version5_2h/Executables_Linux/Run1/NAMEIII.MET,                    Yes
+
+Single Site Flow Module Instances:
+Name,             Met Module,         Met,        Domain
+Met Station, Single Site Met, Met Station, Nimrod Domain
+
+Flow Order: Update
+Flow Module,      Flow
+Radar Flow,       Nimrod
+Single Site Flow, Met Station
+
+Flow Order: Convert
+Flow Module,      Flow
+Single Site Flow, Met Station
+
+Flow Order: Flow
+Flow Module,      Flow
+Single Site Flow, Met Station
+
+Flow Order: Cloud
+Flow Module,      Flow
+Single Site Flow, Met Station
+
+Flow Order: Rain
+Flow Module,      Flow
+Radar Flow,       Nimrod
+Single Site Flow, Met Station
+
+Flow Attributes:
+Name,    Flow Order
+Update,  Update
+Convert, Convert
+Flow,    Flow
+Cloud,   Cloud
+Rain,    Rain

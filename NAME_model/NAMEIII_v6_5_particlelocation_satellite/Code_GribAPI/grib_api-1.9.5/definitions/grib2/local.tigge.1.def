@@ -1,0 +1,3 @@
+# tigge LAM labeling
+
+codetable[2] suiteName "grib2/tigge_suiteName.table" : dump;

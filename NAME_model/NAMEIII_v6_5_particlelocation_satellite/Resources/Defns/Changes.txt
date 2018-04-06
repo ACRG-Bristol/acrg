@@ -1,0 +1,1615 @@
+Changes to NAME III definitions
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 4.0 of NAME III released 2/4/06.
+Changes prior to version 4.0 not recorded.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+18/10/06 
+
+MetDefnUM6Mpp.txt renamed to MetDefnUM6M4kmpp_1stDomain.txt to emphasis that this is
+the 4km model not the old mesoscale model, and to indicate that this is the original
+domain size which has now been increased.
+
+TopogUM6M.pp renamed to TopogUM6M4km_1stDomain.pp for the same reasons. 
+MetDefnUM6M4kmpp_1stDomain.txt edited to refer to this topography file.
+
+MetDefnUM6M4kmpp.txt created for new expanded 4km domain size. File is currently 
+identical to MetDefnUM6M4kmpp_1stDomain.txt except for reference to TopogUM6M4km.pp
+and will need editing to reflect expanded domain. TopogUM6M4km.pp also needs creating.
+
+Matthew Hort
+
+!-------------------------------------------------------------------------------------
+
+18/10/06
+
+File MetDefnUMV3M.txt corrected to replace references to UMHH2001M HCoord and 
+UMHH2001M ZCoord with UMV3M HCoord and UMV3M ZCoord.
+
+Matthew Hort
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 4.1 of NAME III released 6/11/06.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+12/2/07
+
+Various changes to met definition files:
+
+File types 'Fields File' and 'PP File' replaced by 'Name II' and 'PP'.
+
+Index arrays for NWP level numbers added and referred to in vertical grid definitions. 
+This is needed for Name III to check the level numbers in the met files or, for GRIB 
+met files, for Name III to find the correct data (because the NWP level numbers don't 
+always match the Name III level numbers).
+
+Field codes and 3-d flag added to each line of the NWP met file structure definitions. 
+For NWP data from the Unified Model, the field codes are the stash codes. 
+
+Dave Thomson
+
+!-------------------------------------------------------------------------------------
+
+12/2/07
+
+In experimenting with code to check level indices on reading Name II format met files,
+it became apparent that some H2001 regional files have headers which suggest they have
+level 18 instead of level 19 data on the main (UV) vertical grid. 
+
+Further investigation found four GPCS request files (we call them GPCS request files 
+because such files are used by software used to request NWP data via the GPCS) in 
+/home/name-dev/apnm/bin/wgdos called regh2001.reqff, gloh2001.reqff, reghv4.reqff and 
+glohv4.reqff. Interpreting hv4 as H, these suggest that level 18 data was requested 
+for H2001 regional and global and for H regional (but not H global which has a more 
+drastic reduction in levels). 
+
+Looking further at H and H2001 regional files, it seems that:
+  01/01/99 - 29/03/99 inclusive (H) has level 18
+  30/03/99 - 31/12/00 inclusive (i.e. until the end of H) has level 19
+  01/01/01 - 04/08/02 inclusive (i.e. H2001 complete) has level 18.
+So it looks like the error in level numbers was corrected on 30/03/99 but that the 
+error was reintroduced for H2001 data. In addition H2001 global has level 18. (These 
+findings are based on looking at just a sample of files, but comparing some field 
+values with the WGOS archive as well as looking at the headers.)
+
+As a result we have changed level 19 to 18 in MetDefnUMH2001R.txt and 
+MetDefnUMH2001G.txt (and in the related files MetDefnUMH2001R_No10m.txt and 
+MetDefnUMH2001R014074028082.txt), but not in MetDefnUMHR.txt as the majority of the H 
+regional data has level 19. We have also changed the names of some grids etc as 
+MetDefnUMHR.txt used the same names. We've done this by changing UMHRH2001GR to 
+UMH2001GR18 everywhere except in the W Levels and ZGridW Indices, and by changing 
+UMHH2001R to UMH2001R18 in the regional domain name. We have left MetDefnUMHR.txt 
+unchanged, with UMHRH2001GR and UMHH2001R indicating that the HR grids etc are related 
+to those in H2001G and H2001R.  
+
+Note the above regards HR as ending at 31/12/00 when HG and HM ended, but in fact 
+there are HR files overlapping in time with the whole of the H2001 period (these files 
+were made from H2001R files). Over the whole of the HR period the periods of level 18 
+and level 19 are about equal.
+
+Dave Thomson, Helen Webster, Maria Athanassiadou and Helen Champion
+
+!-------------------------------------------------------------------------------------
+
+14/2/07
+
+Spacing within met definition files adjusted to make it easier to find differences 
+between files.
+
+The "Whole-4.5" domains serve no purpose for cut down met and so have been deleted in 
+the cut down met definitions.
+
+Comments in V3, H and H2001 met definitions corrected. The 10m specific humidity and 
+10m cloud ice / water fields are proper model levels not extra diagnostics. Also the
+diagnostic temperature level is 1.5m not 10m.
+
+MetDefnUM5CammSahara.txt renamed MetDefnUM5CammSaharapp.txt as it contains a met 
+definition involving PP files.
+
+MetDefnUM6NAE.txt deleted as there is a pp version of this and there are no plans to 
+produce a non-pp data feed or non-pp topography file.
+
+A number of met definitions corrected so that the horizontal grid definitions involve
+"x min", "y min" and "wrap?", not "x0", "y0" and "wrap", and so that the domain 
+definitions involve "T Unbounded?".
+
+Horizontal coords and grids in MetDefnUM6GL40.txt renamed to match those in 
+MetDefnUM6G.txt. 
+
+Some items in NAE and 4km definitions renamed for consistency and to avoid different 
+met definitons, domains or horizontal grids with the same name.
+
+PP versions of UM6R, UM6G and UM6GL40 created.
+
+Dave Thomson
+
+!-------------------------------------------------------------------------------------
+
+14/2/07
+
+MetDefnUM6M4kmpp.txt edited to reflect expanded region covered (see 18/10/06) above. In 
+addition the names associated with the 4km model have been rationalised (we've dropped 
+any reference to M or mesoscale and used numbers for the various regions (2) covered 
+by the model at different times). Also the domain sizes (i.e. the domain definitions 
+not the grid definitions) for the original region have been corrected.
+
+Matthew Hort and Dave Thomson
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 4.2 of NAME III released 14/2/07.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+23/2/07
+
+Met definition file MetDefnUM6SAMpp.txt added for the South Asian model.
+
+Met definition file MetDefnUM6NAEpp.txt corrected - the origin of the coordinate 
+system (bottom left grid point on the main grid) was incorrect.
+
+Matthew Hort
+
+!-------------------------------------------------------------------------------------
+
+18/5/07
+
+Half life of Krypton-85 corrected.
+
+Species.txt edited to include new radionuclides required by HPA-RPD. Added 
+radionuclides are
+  1. Noble gases: ARGON-41, KRYPTON-87, RADON-222, XENON-135M 
+  2. Others: BARIUM-137M, BISMUTH-214, CARBON-14, HYDROGEN-3, IODINE-129, Lead-214, 
+     PLUTONIUM-242, POLONIUM-218, PRASEODYMIUM-144, RADIUM-226, RUBIDIUM-88, 
+     SELENIUM-75, SULPHUR-35, URANIUM-234, YTTERBIUM-169.
+
+Iodine isotopes split into organic (IODINE_O) and inorganic (IODINE_E).
+
+List broken into three sections:
+  1. Chemistry Species (no changes).
+  2. Radionuclides defined with surface resistances. Surface resistances for new items 
+     not known so set to zero (max deposition) except for noble gases (deposition 
+     velocity set to zero) and IODINE-129 (value set to value for IODINE-131). All old
+     items were previously defined with surface resistance or zero deposition 
+     velocity and so fit into the list with no change needed. Note IODINE_O and 
+     IODINE_E properties are identical in this section which will be incorrect for 
+     deposition. The wet deposition type for the new items has been set to 1 except 
+     for the noble gases where it has been set to zero.
+  3. Radionuclides defined with deposition velocities. Velocities defined by HPA-RPD.
+     0 for noble gases, 1.00E-05 for organic iodine, 1.0E-02 for inorganic iodine, 
+     1.0E-03 for everything else.
+
+Matthew Hort and Dave Thomson
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 4.3 of NAME III released 18/5/07.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+15/8/07
+
+Corrections to MetDefnUM6_4km2pp.txt: stash codes for dynamic cloud liquid water and 
+ice corrected; 'Suffix' changed from 4KM2_UM6.PP to 4KM2_UM6.pp; Name of 'Met File 
+Structure Definition' changed to UM6_4km.
+
+Also the name of the 'Met File Structure Definition' in MetDefnUM6_4km1pp.txt changed 
+from UM5 to UM6. This is for consistency only - Met File Structure Definitions called 
+UM5 and UM6 exist in other met definition files and are identical.
+
+Maria Athanassiadou and Dave Thomson
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 5.0 of NAME III released 24/8/07.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+27/9/07
+
+MetDefnUM6SAMpp.txt copied, renamed MetDefnUM6SAMpp_dt3.txt, and edited for use with 3 
+hourly data.
+
+Matthew Hort
+
+!-------------------------------------------------------------------------------------
+
+9/11/07
+
+MetDefnUM6NAEpp.txt copied and renamed MetDefnUM6NAEpp_old_large.txt (to indicate the 
+older larger NAE domain).
+
+MetDefnUM6NAEpp.txt edited to refer to the newer smaller NAE domain (H-Coords and 
+H-Grids changed).
+
+Matthew Hort and Claire Witham
+
+!-------------------------------------------------------------------------------------
+
+26/11/07
+
+MetDefnUM6_4km50Lpp.txt created. This is based on MetDefnUM6_4km2pp.txt but has 
+changed met file suffix, topography file, and vertical coords, grids and arrays. Also
+a second roughness length field (Field code - i.e. "stash code" - 3026) has been added 
+at the end of the NWP met file structure definition. In the domain which excludes a 
+region round the edge, the excluded region has been extended from 4.5 to 8.5 grid 
+lengths.
+
+Matthew Hort
+
+!-------------------------------------------------------------------------------------
+
+19/12/07
+
+MetDefnUM6NAEpp_old_large.txt edited to refer to the topography file as 
+TopogUM6NAE_old_large.pp.
+
+MetDefnUM6NAEpp.txt edited to refer to the correct horizontal domains (i.e. the things
+in the "Domains:" block, not grids or coord systems).
+
+Claire Witham
+
+!-------------------------------------------------------------------------------------
+
+31/12/07
+
+Met definition file MetDefnUM6REGNAEpp.txt added for the cut-out of the NAE.
+
+Claire Witham
+
+!-------------------------------------------------------------------------------------
+
+28/1/08
+
+MetDefnUM6SAMpp_dt3_z38.txt created. This is like MetDefnUM6SAMpp_dt3.txt but 
+extending to 38 levels rather than 31.
+
+Matthew Hort
+
+!-------------------------------------------------------------------------------------
+
+29/1/08
+
+MetDefnUM6_4km50Lpp.txt
+
+Array names in this met definition file have been made unique to this definition to 
+allow the met to be nested.  The previous version was incompatible with using other 
+met definition files.
+
+Claire Witham
+
+!-------------------------------------------------------------------------------------
+
+8/3/08
+
+MetDefnUM6SAMpp_dt3.txt and MetDefnUM6SAMpp_dt3_z38.txt renamed 
+MetDefnUM6SAM_dt3pp.txt and MetDefnUM6SAML38_dt3pp.txt. Domain top of the latter 
+increased to reflect the 38 levels.
+
+MetDefnUM6_4km50Lpp.txt: horizontal coords and grids given the same name as in 
+MetDefnUM6_4km2pp.txt as they are the same coords/grids.
+
+Name of 'met file structure definition' in SAM and NAE definitions changed to UM6 for 
+consistency. Both UM5 and UM6 structures are the same, but we now call it UM5/6 in all 
+UM5/6 definitions.
+
+MetDefnUM6REGNAEpp.txt altered to use the same horizontal coord system as 
+MetDefnUM6NAEpp.txt and the horizontal grid and domain definitions have been altered
+accordingly.
+
+Dave Thomson
+
+!-------------------------------------------------------------------------------------
+
+12/3/08
+
+Renaming of 4km and NAE met definition and topography files. 
+
+The following changes have been made to the met definition names:
+MetDefnUM6_4km1pp.txt         -> MetDefnUM4kmMk1pp.txt
+MetDefnUM6_4km2pp.txt         -> MetDefnUM4kmMk2pp.txt
+MetDefnUM6_4km50Lpp.txt       -> MetDefnUM4kmMk3_L50pp.txt
+MetDefnUM6NAEpp_old_large.txt -> MetDefnUMNAEMk1pp.txt
+MetDefnUM6NAEpp.txt           -> MetDefnUMNAEMk2pp.txt
+
+The idea is to drop the '6' in 'UM6' since the met definitions are not tied to UM 
+versions and introduce 'Mk1' (Mark 1) etc to denote successive UM configurations. The 
+bit after the underscore (e.g. 'L50' here) does not indicate anything about the UM 
+configuration but indicates what we extract from the UM. These names should provide a 
+template for future changes. The bit after the underscore is optional and is used 
+either if there is some feature we want reminding of or if we take two data feeds from 
+the same UM configuration. E.g. the future global 70 level model might generate two 
+met definitions MetDefnUMGMk2_L50.txt and MetDefnUMGMk2_L70.txt (or we could use 'Mk6'
+to allow the possibility of extending this naming convention back to 'V3' data at some 
+point in the future). Similarly a cut out from the global could be 
+MetDefnUMGMk2_L50Zone4.txt or MetDefnUMGMk2_L50Reg4.txt (Reg4 = 'region 4').
+
+No other met definitions have been renamed, nor have any of the met file 'suffices'. 
+The aim is to provide a consistent approach for the future rather than to cause 
+unnecessary hassle by changing historical names. 
+
+Similarly most of the internal names used within these 5 met definition files haven't 
+been altered, although there is an exception for the met definitions themselves and 
+the domains. Other aspects could be rationalised later. 
+
+The topography files for these 5 met definitions have been renamed to be consistent:
+TopogUM6_4km1.pp         -> TopogUM4kmMk1.pp 
+TopogUM6_4km2.pp         -> TopogUM4kmMk2.pp
+TopogUM6_4km50L.pp       -> TopogUM4kmMk3_L50.pp
+TopogUM6NAE_old_large.pp -> TopogUMNAEMk1.pp
+TopogUM6NAE.pp           -> TopogUMNAEMk2.pp
+
+Dave Thomson
+
+!-------------------------------------------------------------------------------------
+
+29/5/08
+
+Met definitions added:
+
+MetDefnUMNAEMk1pp_dt3.txt   :   For NAE 
+				full horizontal Mk1 domain 
+				21 vertical levels	
+				reading every 3 hrs
+                                useful for most of 2006 data that are 3 hrly.
+
+MetDefnUMNAEMk1pp_21vl.txt  :   Like above for 1 hrly data
+                                
+Maria Athanassiadou      
+                          
+!-------------------------------------------------------------------------------------
+
+12/6/08
+
+Met definition MetDefnUMREGNAEdt3pp.txt added.
+
+Matthew Hort
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 5.1 of NAME III released 11/7/08.
+Note a number of earlier changes (listed below) were not included in 5.1.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+27/11/07
+
+Species.txt - changed surface resistance and deposition velocity for O3 so that 
+it doesn't deposit. The chemistry scheme has a seperate method for ozone dry 
+deposition under the 'Plume Particles' ozone method. If however using the 'Background 
+Particles' method the old values should be used and these values are recorded in 
+comments at the start of the file. For the 'Ozone Field' method deposition isn't 
+currently treated and so the values are not significant.
+
+Alison Redington
+
+!-------------------------------------------------------------------------------------
+
+28/3/08
+
+Species PM10_MINERAL and PM10_SEA_SALT added to species file for dust and sea salt
+simulations.
+
+Dave Thomson
+
+!-------------------------------------------------------------------------------------
+
+1/5/08
+
+NAMEChemistrySpecies.txt
+
+Removed the O3 surface resistance value and set Deposition Velocity to 0.0
+to bring into line with the new definition in Species.txt following the
+addition of the new ozone scheme.
+
+Claire Witham
+
+!-------------------------------------------------------------------------------------
+
+15/7/08
+
+Met definitions renamed for consistency:
+
+MetDefnUMNAEMk1pp_dt3.txt  -> MetDefnUMNAEMk1_L21dt3pp.txt
+MetDefnUMNAEMk1pp_21vl.txt -> MetDefnUMNAEMk1_L21pp.txt
+                                
+Dave Thomson      
+                          
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 5.2 of NAME III released 28/7/08.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+5/8/08
+
+NAMEChemistryGridDefn.txt
+
+Updated to have 100m levels up to 4km as this seems to work best with the 
+new ozone chemistry and reduce the errors of high ozone in the upper levels
+
+Claire Witham
+
+!-------------------------------------------------------------------------------------
+
+29/10/08
+
+Extra stashes for correct roughness length (3026) and soil moisture (8223) 
+added to met definition files
+
+MetDefnUM6Gpp.txt
+MetDefnUM6GL40pp.txt
+MetDefnUMNAEMk2pp.txt
+MetDefnUM6Rpp.txt
+MetDefnUM6REGNAEpp.txt
+MetDefnUM6SAM_dt3pp.txt
+MetDefnUM4kmMk3_L50pp.txt
+
+Helen Webster
+
+!-------------------------------------------------------------------------------------
+
+25/11/08
+
+NAMEChemistrySpecies.txt
+Species.txt
+
+H2S added to the species list.  Deposition values have been mapped to SO2.  In
+reality H2S is less soluble than SO2 so it's wet deposition is probably between
+2 to 10 times less.
+
+Claire Witham and Alex Archibald
+
+!-------------------------------------------------------------------------------------
+
+27/1/09
+
+New met defns added for cut-up domains of GLOUM6pp files (MetDefnUM6Gpp_PT1.txt
+to MetDefnUM6Gpp_PT14.txt) The domains are described in 
+md17_1_v1(Global_cutoutdomains).pdf
+
+Lucy Davis
+
+!-------------------------------------------------------------------------------------
+
+10/2/09
+
+Half life added for U-235 and U-238 (previously these were given as stable).
+
+Species.txt has been revised to include daughter and branching ratio information for 
+radioactive decay chain modelling. Also added are additional radionuclides arising 
+from the decay of other radionuclides. Where there are more than one possible 
+(unstable) daughter species (with branching ratio > 0.01), multiple lines have been 
+added to the species file (although modelling multiple daughter species is not 
+currently possible in NAME). A separate block has been added containing the original
+radionuclides without the daughter species (and without multiple lines for multiple 
+branches) for use when full decay chain modelling is not required. This file has been 
+fully tested by the HPA.
+
+Caesium 137A/137B have been removed. These were identical to Caesium 137 (apart from 
+the name) and are no longer needed.
+
+A Cloud_Gamma_Params.txt has been added which includes all the required
+parameters for the Cloud Gamma Parameters block required in NAME input
+files when estimating cloud gamma dose. Note that this file has not yet been
+tested by HPA. This has been highlighted in the file. When HPA have tested this
+file they will inform the Dispersion Group, who should update
+Cloud_Gamma_Params.txt accordingly.
+
+A column for cloud gamma information has been added to species.txt but is currently 
+blank.
+
+Peter Bedwell
+
+!-------------------------------------------------------------------------------------
+
+23/2/09
+
+Extra stashes for new roughness length (3026) and soil moisture (8223) 
+added to the cut-up-global met definition files.
+
+Dave Thomson
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 5.3 of NAME III released 25/2/09.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+29/6/09
+
+MetDefnUM6REGNAEpp.txt
+
+Changed name of 'Met File Structure Definition' to 'UM6NAE' to allow
+nested run with UM6R. Previously both had been called 'UM6'.
+
+Alistair Manning
+
+!-------------------------------------------------------------------------------------
+
+30/6/09
+
+Species.txt
+
+Added HYDROGEN as an allowed species.  The Deposition velocity is a global mean 
+derived from Price et al (2007, JGR 112), but has since been superceded by 
+EuroHydros values that are hardwired in Particle.F90.  The hard-wired values
+will be used on any species that has a name starting with "HYDROGEN".
+
+Claire Witham
+
+!-------------------------------------------------------------------------------------
+
+30/6/09
+
+NAMEChemistrySpecies_BackgroundPart.txt
+
+Added this new species definition file for use with the "Background Particles"
+chemistry option, where a deposition velocity for ozone needs to be specified.
+For all other chemistry options the original NAMEChemistrySpecies.txt file 
+should be used.
+
+(Note: This may not be the ideal solution for this problem in the long-run, 
+       but is included here so this information isn't lost)
+
+Claire Witham
+
+!-------------------------------------------------------------------------------------
+
+21/7/09
+
+MetDefnUM1p5kmpp.txt
+
+Added new met definition for 1.5km met (MetDefnUM1p5kmpp.txt)
+
+Helen Webster
+
+!-------------------------------------------------------------------------------------
+
+8/10/09
+
+Met definitions added for 70 level global and NAE models:
+
+MetDefnUMG_Mk5_L52pp.txt
+MetDefnUMG_Mk5_L59pp.txt
+MetDefnUMNAE_Mk3_L42Rpp.txt
+MetDefnUMNAE_Mk3_L52pp.txt
+MetDefnUMNAE_Mk3_L6UKpp.txt
+MetDefnUMR_Mk5_L52pp.txt (regional cut out of global model)
+    
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+
+21/10/09
+
+NAMEChemistrySpecies.txt and NAMEChemistrySpecies_BackgroundPart.txt
+
+Added C5H8BIO, C10H16BIO, SOA, SOAP species (related to changes made to NAME
+III code for biogenics by Ali)
+
+Helen Webster 
+
+!-------------------------------------------------------------------------------------
+
+26/11/09
+
+The provisional met definition file 'MetDefnUM1p5kmpp.txt' for use with data from the 
+1.5 km version of the Unified Model has been updated to use the new naming conventions 
+(inclusion of a Mk number and level/local processing information where appropriate). 
+The file has been renamed as 'MetDefnUM1p5km_Mk1_L57pp.txt'. The changes are largely 
+in the names of the met definition, domains, grids, etc. but there is one material 
+change with the 'Z Max' value in the domain definition being reduced to the value 
+appropriate for the 57 levels contained in the met files.
+
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+
+26/11/09
+
+Various 'Met File Structure Definition's renamed for consistency across met 
+definitions. The changes are as follows:
+
+The following files now have Met File Structure Definition = UM5:
+MetDefnUM4kmMk1pp.txt
+MetDefnUM6G.txt
+MetDefnUM6GL40.txt
+MetDefnUM6R.txt
+MetDefnUM6REGNAEDt3pp.txt
+MetDefnUM6SAML38_dt3pp.txt
+MetDefnUM6SAMpp.txt
+MetDefnUMNAEMk1_L21dt3pp.txt
+MetDefnUMNAEMk1_L21pp.txt
+MetDefnUMNAEMk1pp.txt
+The following file now has Met File Structure Definition = UM6:
+MetDefnUM6REGNAEpp.txt
+
+Dave Thomson
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 5.4 of NAME III released 27/11/09.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+10/12/09
+
+NAMEChemistrySpecies.txt and NAMEChemistrySpecies_BackgroundPart.txt
+
+Correct surface resistance for NAER and NH4NO3 to 1.00E+03 (aerosol value). 
+(Note that revisions to the dry deposition scheme mean that the surface
+resistance of aerosols is assumed to be zero in the code)
+
+Helen Webster (on behalf of Alison Redington)
+
+!-------------------------------------------------------------------------------------
+
+18/12/09
+
+MetDefnUMNAE_Mk3_L52pp.txt, MetDefnUMNAE_Mk3_L6UKpp.txt,
+MetDefnUMG_Mk5_L52pp.txt, MetDefnUMR_Mk5_L52pp.txt,
+MetDefnUM1p5km_Mk1_L57pp.txt, MetDefnUMG_Mk5_L59pp.txt,
+MetDefnUMNAE_Mk3_L42Rpp.txt.
+
+NAME code now adapted to read extra stashes in UM met file (canopy water,
+canopy height and stomatal conductance) so fields added to end of NWP Met File
+Structure Definition.
+
+Helen Webster
+
+!-------------------------------------------------------------------------------------
+
+25/01/2010
+
+Species.txt, NAMEChemistrySpecies.txt and
+NAMEChemistrySpecies_BackgroundPart.txt - Mean aerosol diameter added for
+aerosols (PM10, sulphate, particulate, SOA, NH4NO3, NH42SO4, NAER). Surface
+resistance and deposition velocity columns must be blank for aerosols. Note
+that PM10 and particulate values are currently estimated and awaiting
+further input from Roy Harrison.
+
+Species_LandUseDryDep.txt, NAMEChemistrySpecies_LandUseDryDep.txt and
+NAMEChemistrySpecies_BackgroundPart_LandUseDryDep.txt - Addition of mean aerosol
+diameter as above. CH4 (methane) added to Species_LandUseDryDep.txt. "Land use 
+dependent dry dep" column added to denote whether the new land use dependent dry
+deposition scheme is used. This column is given the value "Yes" for species: 
+sulphur dioxide, ammonia, NO, NO2, HNO3, O3, CO, HCHO, CH4 and PAN. For cases 
+where "Land use dependent dry dep" is set to "Yes", the "Surface Resistance", 
+"Deposition Velocity" and "Mean aerosol diameter" columns must be blank.
+
+Helen Webster
+
+!-------------------------------------------------------------------------------------
+
+11/02/10
+
+Met definitions added for 25 km global model (Mk 6) and 70-level South Asia (Mk 2)
+models:
+
+MetDefnUMG_Mk6_L59pp.txt   (full-domain global met)
+MetDefnUMG_Mk6_L59PTpp.txt (domain-decomposed global met)
+MetDefnUMSAM_Mk2_L52pp.txt
+
+Note that '_01' versions have also been added for back-compatibility with earlier
+versions of NAME unable to read the extra UM stash fields (canopy water,
+canopy height and stomatal conductance).
+
+Also note that a slight amendment has been made to the existing met definition files
+(including _01 versions) for the 70-level NAE (Mk 3) model. This is to reflect the
+new start date for the 70-level NAE (originally introduced at PS22 but then deferred
+to PS23 instead). It was felt this correction was sufficiently minor not to warrant
+a new version of the met definitions.
+
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+
+12/02/2010
+
+Met definitions added for 52 level 25km global model (Mk6):
+
+MetDefnUMG_Mk6_L52PTpp.txt
+
+This MetDefn includes dummy fields for the top 7 UM levels to allow only 52 levels of
+the 59 level met data files to be used. 
+
+Note that '_01' version has also been added for back-compatibility with earlier
+versions of NAME unable to read the extra UM stash fields (canopy water,
+canopy height and stomatal conductance).
+
+Lucy Davis
+
+!-------------------------------------------------------------------------------------
+
+19/02/10
+
+Met definition added for 12 km UK met data (Mk 2) cut-out from REGNAE pp files:
+
+MetDefnUMNAE_Mk2_L4UKpp.txt
+
+This contains the lowest 4 model levels and is intended for fast met-extraction runs.
+
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+
+24/02/10
+
+NAMEChemistrySpecies files changed to update deposition for SOAP to be as a gaseous species
+
+Alison Redington
+
+
+!-------------------------------------------------------------------------------------
+
+02/03/10
+
+MetDefnUMG_Mk6_L52PTpp.txt and MetDefnUMG_Mk6_L52PTpp.txt_01
+
+Changed wind (u-cpt) and wind (v-cpt) dummy grids from 'dummy' to 
+'dummy (u-grid)' and 'dummy (v-grid)' respectively.
+
+Lucy Davis
+
+!-------------------------------------------------------------------------------------
+
+15/03/2010
+
+NAMEChemistrySpecies files updated with changes for wet deposition. The column
+keyword "Wet Type" has been removed and replaced with three new column headers
+"Wet Dep?", "A" and "B". "Wet Dep?" is compulsory whereas "A" and "B" are
+optional. For Wet Type 0 (no deposition), set "Wet Dep?" to be "No". Any values 
+given for A and B will be ignored. For Wet Type 1 (standard scheme based on work
+by Tom Choularton), set "Wet Dep?" to "Yes" and leave "A" and "B" blank. For Wet
+Type 2 (SO2), set "Wet Dep?" to "Yes", "A" to "2.4E-5" and "B" to "0.79". Note 
+the user can input any other wet deposition coefficients in the same way as for 
+Wet Type 2 described above.
+
+Helen Webster
+
+!-------------------------------------------------------------------------------------
+
+13/04/2010
+
+Met definition added for use with the ECMWF ERA-Interim met files in our long-term
+archive:
+
+MetDefnECMWF_ERAInt_Regional.txt
+
+The met files are in GRIB Edition 1 format and are created specifically for NAME.
+Met data extends over an area 105W - 60E, 9N - 81N (approximately equivalent to
+the old 'REG' domain) at 0.75 degree resolution and to model level 24 (~ 80 hPa).
+The ERA-Interim met archive starts from 01/01/1989.
+
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+
+30/06/2010
+
+a) Met definitions added for use with additional sets of ECMWF ERA-Interim met files
+retrieved for volcanic ash case studies:
+
+MetDefnECMWF_ERAInt_Alaska.txt
+MetDefnECMWF_ERAInt_WPacific.txt
+
+The met files are in GRIB Edition 1 format and are created specifically for NAME.
+For Alaska: met data extends over an area 150E - 90W, 30N - 90N  at 0.75 degree
+resolution and extending to model level 20 (~ 35 hPa).
+For WPacific: met data extends over an area 90E - 180E, 45S - 45N  at 0.75 degree
+resolution and using all model vertical levels.
+
+b) Met definitions added for use with ECMWF ERA40 met files:
+
+MetDefnECMWF_ERA40_Regional.txt
+MetDefnECMWF_ERA40_WPacific.txt
+
+The met files are in GRIB Edition 1 format and are created specifically for NAME.
+For Regional: met data extends over an area 108W - 63E, 9N - 81N (approximately
+equivalent to the old 'REG' domain) at 1.125 degree resolution and extending to
+model level 24 (~ 80 hPa).
+For WPacific: met data extends over an area 45E - 180E, 45S - 45N  at 1.125 degree
+resolution and extending to model level 20 (~ 35 hPa).
+
+c) Met definitions added for routine ECMWF met data feeds ('Mk 1' files for the
+EPS ensemble forecast and OPERATIONAL deterministic forecast):
+
+MetDefnECMWF_OPER_Mk1_L55R.txt
+MetDefnECMWF_OPER_Mk1_L55RDt6.txt
+
+MetDefnECMWF_EPS_Mk1_L26R.txt
+
+d) Met definitions added for MOGREPS-R forecast data (full NAE domain and cutout
+'REGNAE' domain). 'Mk 1' up to 09/03/2010 and 'Mk 2' after that date.
+
+MetDefnUM_MOGREPS-R_Mk1pp.txt
+MetDefnUM_MOGREPS-R_REGNAE_Mk1pp.txt
+
+MetDefnUMMOGREPS-R_Mk2_L28Rpp.txt
+MetDefnUMMOGREPS-R_Mk2_L28pp.txt
+
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+
+03/11/2010
+
+Ticket #24: Revised NAME met definitions for GLOBAL UM at PS25
+
+The UM STASH code for the dynamic rain rate field in our GPCS met data feed is
+changing from 4203 to 20068 for GLOBAL UM files at PS25 (Nov 2010). The new code
+takes output from a filtered precipitation field, which is designed to remove
+excessive drizzle from the GLOBAL UM. It is a temporary filtering until raw model
+output can be improved and the change will then be reversed at some stage in
+the future.
+
+NAME can handle the new STASH code by duplicating a second met field with the
+alternative STASH code in the Met File Structure definition. NAME will only use
+the field that is present in the met file and will ignore the other STASH code.
+This approach will enable NAME to run seamlessly on either of the two above codes.
+
+The following met definition files have been updated with this change:
+
+ - MetDefnUMG_Mk6_L59pp.txt
+ - MetDefnUMG_Mk6_L59PTpp.txt
+ - MetDefnUMG_Mk6_L52PTpp.txt
+
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+
+06/01/2011
+
+Ticket #32: Upgrade GRIB support in NAME to use the ECMWF GRIB_API library package.
+
+The following changes have been made to each met definition file for GRIB-formatted
+NWP met data:
+
+a) In the "NWP Met Definitions:" block, the value of the column keyword "File Type"
+   has been changed from 'GRIB Edition 1' to 'GRIB' (as the GRIB_API is able to
+   handle different GRIB editions in a seamless way).
+
+b) The NWP Z-Grid level index corresponding to a NAME level index of 1 (i.e. for a
+   surface or single-level field) has been changed from '-1' to '0'. An NWP level
+   index of 0 causes the field to be read in using the single-level index of the
+   met file (i.e. where the level index is not explicitly matched against).
+
+c) Removed the parameter table part of the field codes given in the NWP Met File
+   Structure Definition. The field code is now simply the parameter identifier
+   (e.g. '128131' becomes '131').
+
+The following met definition files have been updated with these three changes:
+
+ - MetDefnECMWF_EPS_Mk1_L26R.txt
+ - MetDefnECMWF_OPER_Mk1_L55R.txt
+ - MetDefnECMWF_OPER_Mk1_L55RDt6.txt
+ - MetDefnECMWF_ERA40_Regional.txt
+ - MetDefnECMWF_ERA40_WPacific.txt
+ - MetDefnECMWF_ERAInt_Regional.txt
+ - MetDefnECMWF_ERAInt_WPacific.txt
+ - MetDefnECMWF_ERAInt_Alaska.txt
+
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+
+18/05/2011
+
+Ticket #46: Revised NAME met definitions for ECMWF forecast data at IFS cycle 37r2.
+
+a) Revised the three 'Mk1' ECMWF met definition files to include an '_Mk1' in the
+   respective topography filenames. This reflects a renaming of the topography files
+   (which are stored separately from the NAME code library) to improve their
+   identification, viz.
+   
+   - TopogECMWF_OPER_T1279L91_Regional --> TopogECMWF_OPER_Mk1_T1279L91_Regional
+   - TopogECMWF_EPS_T639L62_Regional   --> TopogECMWF_EPS_Mk1_T639L62_Regional
+
+b) Added three new met definition files for use with 'Mk2' ECMWF forecast data:
+   
+   - MetDefnECMWF_EPS_Mk2_L26R.txt
+   - MetDefnECMWF_OPER_Mk2_L55R.txt
+   - MetDefnECMWF_OPER_Mk2_L55RDt6.txt
+
+   The 'Mk2' met data files have model-level fields encoded in GRIB-2 format.
+   This change to GRIB-2 does not require any change in the met definitions, per se,
+   however a new Mk is sensible here given the change in file structure.
+   
+   Separately to the change to GRIB-2, the opportunity has also been taken to
+   revise the parameter codes of any fields that undergo prior processing for use
+   in NAME (such as precipitation fields). The GRIB keys of these processed fields
+   are now being modified to better identify their contents.
+   
+   i)  For OPER forecasts, the field codes have been modified for:
+         - dynamic rain rate (kg/(m^2 s))    set to 104
+         - convective rain rate (kg/(m^2 s)) set to 105
+   ii) For EPS forecasts, the field codes have been modified for:
+         - surface stress (u-cpt) (N/m^2)    set to 086
+         - surface stress (v-cpt) (N/m^2)    set to 087
+         - surface sensible heat flux        set to 085
+         - dynamic rain rate (kg/(m^2 s))    set to 104
+         - convective rain rate (kg/(m^2 s)) set to 105
+   Note that 104/105 are actually the dynamic/convective precipitation rates
+   (i.e. no discrimination between rain and snow) and by using the rain components
+   here, NAME will assume that any precipitation here is rainfall.
+
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+
+19/05/2011
+
+Ticket #47: Additional NAME met definitions for use with ECMWF ERA40 met data
+
+Met definitions added for use with additional sets of ECMWF ERA40 met files:
+
+MetDefnECMWF_ERA40_NEurope.txt
+MetDefnECMWF_ERA40_NAmerica.txt
+
+The met files are in GRIB Edition 1 format and are created specifically for NAME.
+For NEurope: met data extends over an area 45W - 63E, 54N - 85.5N  at 1.125 degree
+resolution and extending to model level 20 (~ 35 hPa).
+For NAmerica: met data extends over an area 180W - 63W, 18N - 63N  at 1.125 degree
+resolution and extending to model level 20 (~ 35 hPa).
+
+These met definitions were created for use in volcanic ash case studies, although
+there is no reason why they cannot be used more generally for the specified domains.
+
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+
+27/07/2011
+
+Ticket #49: REGNAE topography file change.
+
+The topography file listed in the met definition file MetDefnUM6REGNAEpp.txt
+was incorrect and has now been updated.
+   
+Lois Huggett
+
+!-------------------------------------------------------------------------------------
+
+18/01/2012
+
+Ticket #59: Chemistry SOA update and PM25 added.
+
+Anthropogenic SOA and pm2.5 added to species definition files:
+
+NAMEChemistrySpecies.txt
+NAMEChemistrySpecies_BackgroundPart.txt
+NAMEChemistrySpecies_BackgroundPart_LandUseDryDep.txt
+NAMEChemistrySpecies_LandUseDryDep.txt
+Species.txt
+Species_LandUseDryDep.txt
+
+Alison Redington
+
+!-------------------------------------------------------------------------------------
+
+20/01/2012
+
+Ticket #62: Remove or restructure obsolete met definition files.
+
+The existing set of NAME met definition files was reviewed by Andrew Jones and
+Helen Champion in December 2011.
+
+a) Some met definitions were found to be deprecated (in the sense that we no longer
+   have any actual met files relevant to that definition file, and would need to
+   recreate such met files either from old WGOS archives or from our ADG archives,
+   e.g. area cutouts).
+   
+   The following deprecated met definitions have been moved into a new subfolder
+   'Resources/Defns/Deprecated':
+   
+     - MetDefnUMV3G.txt
+     - MetDefnUM6GL40.txt
+     - MetDefnUM6GL40pp.txt
+     - MetDefnUMG_Mk5_L59pp.txt
+     - MetDefnUMNAEMk1pp.txt
+     - MetDefnUMNAEMk1_L21pp.txt
+     - MetDefnUMNAEMk1_L21dt3pp.txt
+     - MetDefnUMNAEMk2pp.txt
+     - MetDefnUM4kmMk1pp.txt
+     - MetDefnUM6SAMpp.txt
+     - MetDefnUMHR013075028084.txt
+     - MetDefnUMH2001R014074028082.txt
+     - MetDefnUMHM013097043135.txt
+     - MetDefnUMHM014098044137.txt
+     - MetDefnUM5CammSaharapp.txt
+   
+b) Two met definition files were found to be redundant as they have never been used.
+   The 'pp' definitions corresponding to the 'UM5R' and 'UM5MDt1' met types have
+   been removed completely:
+   
+     - MetDefnUM5Rpp.txt
+     - MetDefnUM5MDt1pp.txt
+   
+c) The treatment of 10-metre diagnostic wind fields in the met definitions for
+   'UMHR' and 'UMH2001R' has been revised so that these are no longer used.
+   It is thought that this will give better mass consistency near the ground surface.
+   The revised met definition files  
+   
+     - MetDefnUMHR.txt
+     - MetDefnUMH2001R.txt
+   
+   do not use the 10-metre diagnostic wind fields that are present in the met files.
+   If required, met definitions using the 10-metre diagnostic wind fields are
+   available in the subfolder 'Resources/Defns/Deprecated' and are renamed as
+   
+     - MetDefnUMHR_With10mWinds.txt
+     - MetDefnUMH2001R_With10mWinds.txt
+   
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 6.1 of NAME III released 20/02/2012.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+03/09/2012
+
+Ticket #54
+
+Removal of 'Wet Dep?' column keyword and introduction of 8 new scavenging
+coefficient column keywords: 'A rain - BC', 'B rain - BC', 'A snow - BC', 
+'B snow - BC', 'A rain - IC', 'B rain - IC', 'A snow - IC', 'B snow - IC'.
+
+Updated all Species.txt files with appropriate wet deposition coefficients.
+Specific values for gases (SULPHUR-DIOXIDE, AMMONIA, HNO3, HONO and H2S) have 
+been chosen. Values for particulates are based on the original NAME wet 
+deposition scheme. Note that these values may need to be revised.
+
+Rolled out updated surface resistance for AMMONIA (Ali) to other species files.
+
+Helen Webster
+
+!-------------------------------------------------------------------------------------
+
+19/09/2012
+
+Ticket #60: Correction to NAME met definition for full-domain UK 1.5 km.
+
+MetDefnUM1p5km_Mk1_L57pp.txt:
+
+Revised the met definition 'UM1p5km_Mk1_L57pp' to account for a minor correction in
+the origin of its underlying horizontal coordinate system, and for the removal of
+the easternmost column of the met grid (which was found to be outside the uniform
+resolution section of the UKV model domain).
+
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+
+19/09/2012
+
+Ticket #61: Add new met definitions for domain-decomposed UK 1.5 km met data.
+
+Added new met definition file for use with domain-decomposed UK 1.5 km met data:
+ 
+ - MetDefnUM1p5km_Mk1_L57PTpp.txt
+ 
+This file describes the met definitions 'UM1p5km_Mk1_L57PT*pp' for 16 subdomains
+that collectively cover the full extent of the UK 1.5 km met data area. Their
+(approximate) geographical areas are given here:
+ 
+ PT1  : Sea Area Hebrides
+ PT2  : Northern Scotland
+ PT3  : Sea Area Forties
+ PT4  : Sea Area Malin
+ PT5  : South West Scotland and Northern Ireland
+ PT6  : South Scotland and Northern England
+ PT7  : Sea Area Dogger
+ PT8  : Western Ireland
+ PT9  : Eastern Ireland
+ PT10 : North Wales and Central England
+ PT11 : Eastern England
+ PT12 : Sea Area Fastnet
+ PT13 : South Wales and South West England
+ PT14 : Southern England
+ PT15 : Sea Area Plymouth
+ PT16 : English Channel and Northern France
+
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+
+26/09/2012
+
+Ticket #71
+
+Creation of new global and ukv met definitions for use with new met data feeds
+(2 met files per timestep and mean cloud and precipitation values). New met
+definitions are 
+MetDefnUMG_Mk7_L52PTpp.txt
+MetDefnUMG_Mk7_L59PTpp.txt
+MetDefnUMG_Mk7_L59pp.txt
+MetDefnUM1p5km_Mk2_L57pp.txt
+for reading met data with suffixs UMG_Mk7_I_L59PT*.pp and UMG_Mk7_M_L59PT*.pp
+(global) and UM1p5km_Mk2_I_L57.pp and UM1p5km_Mk2_M_L57.pp (ukv).
+
+Helen Webster
+
+!-------------------------------------------------------------------------------------
+
+28/09/2012
+
+Ticket #71
+
+Creation of new cut-up ukv met definition for use with new met data feeds
+(2 met files per timestep and mean cloud and precipitation values). New met
+definition is 
+MetDefnUM1p5km_Mk2_L57PTpp.txt
+for reading met data with suffixs UM1p5km_Mk2_I_L57PT*.pp and
+UM1p5km_Mk2_M_L57PT*.pp (ukv).
+
+Correction to comment in MetDefnUM1p5km_Mk2_L57PTpp.txt (referred to Mk1 data
+instead of Mk2)
+
+Helen Webster
+
+!-------------------------------------------------------------------------------------
+
+17/10/2012
+
+Ticket #76: Activities associated with freezing of version 6.2.
+
+Correction to met file structure definition UMG_Mk7_M in MetDefnUMG_Mk7_L59pp.txt
+(the field 'roughness length' had been included accidentally).
+
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 6.2 of NAME III released 22/10/2012.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+13/10/2012
+
+Ticket #79 Chemistry update
+
+H2O2 has now been added to the 4 NAMEChemistrySpecies files as there is now
+the option to model H2O2 on particles and hence it can then be deposited.
+
+Alison Redington
+
+!-------------------------------------------------------------------------------------
+
+06/03/2013
+
+Ticket #81: Minor tweaks to wet scavenging coefficients for in-cloud ice
+
+In-cloud ice A scavenging parameter changed to A = 5.2 * 10^-5 for aerosols in the
+various species files. In line with this, the in-cloud ice A scavenging parameters
+for SO2 and H2S have been modified since they were based on the EMEP ratio of
+the scavenging coefficients between SO4 (an aerosol) and SO2 and a view as to the 
+relative sizes of the SO2 and H2S scavenging coefficients. The in-cloud ice value A =
+5.2 * 10^-5 has also been used for various other species in Species.txt and 
+Species_LandUseDryDep.txt (e.g. radionuclides) in the absence of any better estimates.
+
+NAMEChemistrySpecies_LandUseDryDep.txt
+Bug fix to remove old dry deposition parameters, as no more than one of the dry
+deposition velocity, the surface resistance, the land use dry deposition flag
+and the mean aerosol diameter should be specified for each species.
+
+Helen Webster
+
+!-------------------------------------------------------------------------------------
+
+20/03/2013
+
+Ticket #82: Activities associated with freezing of version 6.3.
+
+MetDefnUMG_Mk6_L59PT2pp.txt
+MetDefnUMG_Mk7_L59PT2pp.txt
+Added new NWP met definition files for UM Global met data (Mk6 and Mk7)
+for the Part 2 region only. These versions are primarily intended for use
+when nesting with UKV met files (where loading the usual set of global
+cut-out definitions in addition to the UKV cut-out definitions would cause
+various limits on NWP definitions and domains to be exceeded).
+
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 6.3 of NAME III released 26/03/2013.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+17/07/2013
+
+Ticket #85: Chemistry restructure.
+
+Various changes made to species files to reflect restructuring of Chemistry.
+
+"FieldSpecies:" blocks added to the following files to record information on the
+species stored on fields:
+ NAMEChemistrySpecies.txt
+ NAMEChemistrySpecies_BackgroundPart.txt
+ NAMEChemistrySpecies_LandUseDryDep.txt
+ NAMEChemistrySpecies_BackgroundPart_LandUseDryDep.txt
+
+O3 and H2O2 removed from Species block in the non-'BackgroundPart' files.
+
+NAMEChemistrySpecies_BackgroundPart.txt already gave SOA and SOAP a molecular weight
+of 195.47. Other species files have now been aligned with this.
+
+"Land use dependent dry dep" column added to non-'LandUseDryDep' files and some other
+minor differences between files (e.g. spacing) removed, in order to make it easier to
+look at differences between files.
+
+"Land use dependent dry dep" value for H2O2 corrected to "no".
+
+Species.txt and Species_LandUse.txt changed to give non-zero O3 deposition velocity
+(Species.txt only) and to add H2O2.
+
+The NAMEChemistryGridDefn.txt file has been changed to a commonly used set up for
+policy support work. The grid is ~ 10km by 10km and extends across a limited European
+domain from ~ 14W to 20E and 42N to 62N, with 100m levels in the vertical up to
+1000m and 500m levels up to 5000m.
+
+Alison Redington and Dave Thomson
+
+!-------------------------------------------------------------------------------------
+
+10/09/2013
+
+Ticket #84: Update NAME to treat cloud properly under PC2.
+
+The "NWP Met File Structure Definition" blocks in the NWP met definition files were
+changed to remove 'dynamic' from the following field names
+  dynamic cloud liquid water (kg/kg)
+  dynamic cloud ice (kg/kg)
+  dynamic high cloud amount (0-1)
+  dynamic medium cloud amount (0-1)
+  dynamic low cloud amount (0-1)
+and to add the 'Field Qualifiers' variable. For the 5 cloud fields listed above,
+Field Qualifiers is equal to 'total' for UM global cases from Mk6 onwards, for ECMWF
+cases, and for UM UKV cases, and is equal to 'dynamic' for the other cases. The value
+doesn't matter for the UKV as there is no parametrised convection. Note the global
+model actually changed to total cloud mid way through Mk6 (on 14 July 2010). For more
+details of the motivation for this change see the Code_NameIII changes file entry
+dated 10/09/2013.
+
+Helen Webster
+
+!-------------------------------------------------------------------------------------
+
+11/09/2014
+
+Ticket #105: Update met definition files following recent UM changes (PS33/PS34).
+
+Added new met definition files for Global (Mk8) and Euro4 (Mk1) datasets from
+the Unified Model. These definition files are based on those included in vn6.3.1
+but with modifications for the PC2 scheme (the 'Field Qualifier' variable, etc.).
+
+ MetDefnUMG_Mk8_L52PTpp.txt
+ MetDefnUMG_Mk8_L59PT2pp.txt
+ MetDefnUMG_Mk8_L59PTpp.txt
+ MetDefnUMG_Mk8_L59pp.txt
+
+ MetDefnUME4_Mk1_L57ICEpp.txt
+ MetDefnUME4_Mk1_L57NWpp.txt
+
+The following list of met definition files have also been updated to include in
+their header description the correct start and end dates for the met files (typically
+the start date indicates the date on which the UM met feed became operational but
+this is not always the case).
+
+ MetDefnUM1p5km_Mk1_L57PTpp.txt
+ MetDefnUM1p5km_Mk1_L57pp.txt
+ MetDefnUM1p5km_Mk2_L57PTpp.txt
+ MetDefnUM1p5km_Mk2_L57pp.txt
+ MetDefnUMG_Mk5_L52pp.txt
+ MetDefnUMG_Mk6_L52PTpp.txt
+ MetDefnUMG_Mk6_L59PT2pp.txt
+ MetDefnUMG_Mk6_L59PTpp.txt
+ MetDefnUMG_Mk6_L59pp.txt
+ MetDefnUMG_Mk7_L52PTpp.txt
+ MetDefnUMG_Mk7_L59PT2pp.txt
+ MetDefnUMG_Mk7_L59PTpp.txt
+ MetDefnUMG_Mk7_L59pp.txt
+ MetDefnUMNAE_Mk2_L4UKpp.txt
+ MetDefnUMNAE_Mk3_L42Rpp.txt
+ MetDefnUMNAE_Mk3_L52pp.txt
+ MetDefnUMNAE_Mk3_L6UKpp.txt
+ MetDefnUMR_Mk5_L52pp.txt
+ MetDefnUMSAM_Mk2_L52pp.txt
+
+Andrew Jones and Helen Webster
+
+!-------------------------------------------------------------------------------------
+
+10/10/2014
+
+Ticket #104: Read UKPP and EuroPP Precipitation
+
+Added radar definition files to enable NAME to use precipitation analyses from the
+Met Office's UKPP and EuroPP nowcasting systems:
+
+ RadarDefnUKPP_Mk1_Inst5min_Nimrod.txt
+ RadarDefnUKPP_Mk1_Inst15min_Nimrod.txt
+ RadarDefnUKPP_Mk1_Accum1hr_Nimrod.txt
+
+ RadarDefnEuroPP_Mk1_Inst15min_Nimrod.txt
+ RadarDefnEuroPP_Mk1_Inst15min_UK_Nimrod.txt
+
+The definition files associated with the UKPP give the options to read instantaneous
+precipitation rate at 5 minute or 15 minute frequency, or alternatively, to use hourly
+accumulated precipitation (which can be interpreted as an hourly time-mean rate).
+The definition that might be used in practice will depend on data availability.
+Instantaneous precipitation rate is available at 15 minute intervals for EuroPP fields.
+The "_UK" version of the EuroPP radar definition gives a precipitation cut-out field
+over the UK (referred to historically as "Nimrod radar files" as they were provided
+from an old nowcasting system at the Met Office called Nimrod). The "Nimrod" reference
+in the above radar definition files refers to the bespoke data format that has been
+retained from the old Nimrod nowcasting system.
+
+Note that UKPP fields are at a spatial resolution of 2 km and EuroPP fields are 5 km.
+
+The corresponding changes to the model code are general enough so that we are able
+to read precipitation, precipitation type, cloud, snow probability, etc. from the UKPP
+and EuroPP datasets into NAME. The radar definition files listed above, however, are
+set up to enable the model to read instantaneous precipitation rate or one-hour
+accumulations (time means) only. This is because, at present, NAME can only utilise
+these precipitation fields and, although the mechanism is now in place to read other
+fields, there is no NAME code yet in place to use them.
+
+Ian Edmond
+
+!-------------------------------------------------------------------------------------
+
+21/10/2014
+
+Ticket #90: Combining Chemistry and Eulerian Model.
+
+This changes item is a summary of changes made from 21/01/2014 to date associated with
+rationalising the chemistry and Eulerian models and the way they work together.
+
+"FieldSpecies:" blocks changed to "Species:" blocks and "Species Uses:" blocks added 
+in the following files, consistent with changes to the model code:
+NAMEChemistrySpecies.txt, 
+NAMEChemistrySpecies_BackgroundPart.txt,
+NAMEChemistrySpecies_LandUseDryDep.txt and
+NAMEChemistrySpecies_BackgroundPart_LandUseDryDep.txt.
+
+NAMEChemistryGridDefn.txt changed to work with the new grid structures required by the 
+Eulerian fields. Also NameChemistryGridDefn.txt split into two versions - 
+NameChemistryGridDefn_ZAGL.txt using the usual vertical m agl coordinate system and 
+NameChemistryGridDefn_Eta.txt using a vertical eta coordinate system.
+
+Dave Thomson
+
+!-------------------------------------------------------------------------------------
+
+28/10/2014
+
+Ticket #109: Add Mk3 met definition files for real-time ECMWF forecast data.
+
+Added new met definition files intended for use with the current forecast model
+configurations at ECMWF (these are labelled as Mk3 in our naming convention):
+
+ MetDefnECMWF_OPER_Mk3_L72R.txt
+ MetDefnECMWF_EPS_Mk3_L36R.txt
+
+The 'OPER' definition is for use with the routine feed of forecast met files from
+the operational (deterministic) global forecast model. The Met Office receives fields
+for a regional domain covering 90 W to 90 E and 20 N to 90 N (for the North Atlantic
+and Europe) on a selection of 72 model levels. The 'EPS' definition is for use with
+ensemble forecast data from the ECMWF Ensemble Prediction System over the same domain
+on a selection of 36 model vertical levels.
+
+Note that the precipitation input parameters have been changed between 'Mk2' and 'Mk3'.
+At 'Mk2', NAME read the "dynamic precipitation" and "convective precipitation" fields
+(allocated to the 'rainfall' components). So there was a dynamic/convective partition,
+but all precipitation was treated as rain. At 'Mk3', NAME reads the "total rainfall"
+and "total snowfall" fields (allocated to 'dynamic' components). So there is now a
+rain/snow discrimination but no dynamic/convective split. This is more consistent for
+the modelling of wet deposition under the PC2 changes (given the lack of convective
+cloud information in these ECMWF data sets).
+
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+
+28/10/2014
+
+Ticket #107: Functionality and efficiency changes requested by PHE.
+
+Update to cloud gamma parameters file.
+
+Cloud_Gamma_Params.txt
+The cloud gamma parameters definitions supplied by PHE have been updated to include
+the nuclide Ba-137m.
+
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 6.4 beta of NAME III released 29/10/2014.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+10/12/2014
+
+Ticket #108: Activities associated with freezing of version 6.4.
+
+Added the met definition file MetDefnECMWF_ERAInt_Australia.txt for use with ECMWF
+ERA-Interim reanalysis meteorology for the Australian region.
+
+The met files are in GRIB Edition 1 format and are created specifically for NAME.
+The met data covers a domain over Australia and the Pacific Ocean, which extends over
+the area 45E - 120W, 75S - 30N  at 0.75 degree resolution, up to model level 22
+(~ 55 hPa).
+
+This met definition file had been overlooked when the ERA-Interim met definition files
+were originally included in the NAME trunk.
+
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 6.4 of NAME III released 18/12/2014.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+23/12/2014
+
+Ticket #108: Activities associated with freezing of version 6.4.
+
+The author and date have been removed from the top header in this Changes file.
+Authors are now listed collectively in the file Contributors.txt in the top-level
+NAME folder.
+
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+
+17/01/2015
+
+Ticket #113: Met dependent meander scheme
+
+Default values for variables (sigma_u and tau_u) in the parametrization of unresolved 
+mesoscale motions (previously referred to as the meander parametrization) have been 
+added to the NWP Met Definition block in the met definition files using the column 
+headers "Mesoscale SigU" and "Mesoscale TauU". The default values are NWP resolution 
+dependent (spatial and temporal) and are roughly taken from Webster et al. (2015): 
+"Parametrizing unresolved low-frequency mesoscale motions in NAME."
+
+4km / UKV / <= 4 km, hourly: sigma_u = 0.55 m/s, tau_u = 6500 s
+Mesoscale / ~10km, hourly: sigma_u = 0.7 m/s, tau_u = 8000 s
+Global / ~20 km, 3-hourly: sigma_u = 0.8 m/s, tau_u = 10000 s
+Global / ~40 km, 3-hourly: sigma_u = 0.9 m/s, tau_u = 10000 s
+Global / >=60 km, 3- or 6-hourly: sigma_u = 0.95 m/s, tau_u = 10000 s
+
+Helen Webster
+
+!-------------------------------------------------------------------------------------
+
+17/04/2015
+
+Ticket #128: Add met definitions for ENDGame version of UKV and Euro4.
+
+Added met definition files for the ENDGame version of the UKV (Mk3) and Euro4 (Mk2)
+introduced at PS35.
+
+ MetDefnUM1p5km_Mk3_L57PTpp.txt
+ MetDefnUM1p5km_Mk3_L57pp.txt
+
+ MetDefnUME4_Mk2_L57ICEpp.txt
+ MetDefnUME4_Mk2_L57NWpp.txt
+
+The met definition files for the previous Mks have also been updated to include
+the end date of their met files in the header description.
+
+ MetDefnUM1p5km_Mk2_L57PTpp.txt
+ MetDefnUM1p5km_Mk2_L57pp.txt
+
+ MetDefnUME4_Mk1_L57ICEpp.txt
+ MetDefnUME4_Mk1_L57NWpp.txt
+
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+
+05/06/2015
+
+Ticket #132: Add 'Mk9' global met definition files.
+
+Added met definition files for use with Mk9 Global UM met data introduced at PS36.
+
+ MetDefnUMG_Mk9_L52PTpp.txt
+ MetDefnUMG_Mk9_L59PT2pp.txt
+ MetDefnUMG_Mk9_L59PTpp.txt
+ MetDefnUMG_Mk9_L59pp.txt
+
+These are associated with the introduction of a revised orography field.
+
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+
+08/06/2015
+
+Ticket #133: Correction to vertical coordinate definition for 50-level 'UM6' global data.
+
+Minor tweak to the 'interface height' in met definition files relevant to the "UM6G/R"
+global met data sets. The interface height should be set at rho-level 30 (17410.000 m)
+and not, as previously defined, at theta-level 30 (18000.00 m). This minor bug fix
+affects the following primary met definition files:
+
+ MetDefnUM6G.txt
+ MetDefnUM6Gpp.txt
+ MetDefnUM6R.txt
+ MetDefnUM6Rpp.txt
+
+and one supplementary chemistry grid definition based on the "UM6R" met definition:
+
+ NAMEChemistryGridDefn_Eta.txt
+
+The correction is unlikely to have a significant impact in terms of NAME results
+when using these historic met data sets.
+
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 6.5 beta of NAME III released 01/07/2015.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+31/07/2015
+
+Ticket #134: Activities associated with freezing of version 6.5.
+
+MetDefnECMWF_ERAInt_Australia.txt
+Updated met definition file to take account of the earlier 'PC2' changes
+(see above entry for 10/09/2013) as it had been missed.
+
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 6.5 of NAME III released 31/07/2015.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------

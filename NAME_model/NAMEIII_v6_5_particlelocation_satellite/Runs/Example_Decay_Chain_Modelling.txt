@@ -1,0 +1,104 @@
+
+Main Options:
+Absolute or Relative Time?, Fixed Met?, Flat Earth?,              Run Name,  Random Seed, Max # Sources
+                  Absolute,         No,          No, Decay_Chain_Modelling,        Fixed,             1
+
+Restart File Options:
+# Cases Between Writes, Time Between Writes, Write On Suspend?, Delete Old Files?,
+                      ,                    ,                No,                  ,
+
+Multiple Case Options:
+Dispersion Options Ensemble Size, Met Ensemble Size,
+                               1,                 1,
+
+Output Options:
+Folder
+.\Output\
+
+Horizontal Coordinate Systems:
+Name
+Lat-Long
+UK National Grid (m)
+
+Vertical Coordinate Systems:
+Name
+m agl
+
+Horizontal Grids:
+Name,                    H-Coord,  nX,  nY,    dx,    dy,  X Min, Y Centre
+HGrid_100m, UK National Grid (m), 200, 199, 100.0, 100.0, 470267,   122766
+
+Vertical Grids:
+Name,   Z-Coord,  nZ,  dZ,    Z0
+ZGrid3,   m agl,   1, 10.0,  5.0
+
+Temporal Grids:
+Name,   nt,        dt,                   t0
+TGrid1,  1,  01:00:00,  29/06/2006 12:00:00
+
+Domains:
+Name,                H Unbounded?,               H-Coord,   X Min,   X Max,  Y Min,  Y Max, Z Unbounded?, Z-Coord,   Z Max, T Unbounded?,          Start Time,  End Time, Max Travel Time
+Dispersion Domain,             No,  UK National Grid (m),  400000, 1000000, 100000, 140000,           No,   m agl, 15000.0,           No, 01/01/2005 00:00:00,  infinity,        infinity
+
+Locations: Source Locations
+Name,                        H-Coord,        X,     Y
+Release_Point,  UK National Grid (m),   470267, 122766
+
+Species:
+Name,            Category, Half Life,    Daughter, Branching Ratio, UV Loss Rate, Surface Resistance, Deposition Velocity,  Molecular Weight, Material Unit
+CAESIUM-137, RADIONUCLIDE,  9.46E+08, BARIUM-137M,        9.46E-01,     0.00E+00,                   ,                    ,                 0,            Bq
+BARIUM-137M, RADIONUCLIDE,  1.53E+02,            ,                ,     0.00E+00,                   ,                    ,                 0,            Bq
+
+Species Uses:
+Species,         On Particles?, On Fields?, Advect Field?
+CAESIUM-137,               Yes,         No,            No
+BARIUM-137M,               Yes,         No,            No
+
+Sources:
+Name,      Set of Locations,        Location,       Shape,  H-Coord,             Z-Coord, dH-Metres?, dZ-Metres?,    dX,    dY,     Z,     dZ,  Angle,              Source Strength,  Particle Diameter, Particle Density, Time Dependency, Plume Rise?, Temperature, Flow Velocity,  # Particles,  Max Age, Top Hat,          Start Time,      Stop Time
+Source A,  Source Locations,   Release_Point,   Ellipsoid, UK National Grid (m),   m agl,        Yes,        Yes,   0.0,   0.0,  10.0,    0.0,    0.0, CAESIUM-137             1 Bq,                1.0,           1879.0,                ,          No,       273.0,           0.0,            1, infinity,     Yes, 29/06/2006 11:00:00,  29/06/2006 11:00:00
+
+Output Requirements - Fields:
+Name,                Quantity,        Species,   Source,     H-Grid,  Z-Grid,  T-Grid, BL Average, T Av or Int, Av Time, # Av Times, Sync?, Graph?, Screen?, Disk?,  Across, Separate File,  Output Format,  Output Group
+Req 15,     Air Concentration,    CAESIUM-137,         , HGrid_100m,  ZGrid3,  TGrid1,           ,          Av,   01:00,         60,    No,     No,      No,   Yes,      TZ,             T,             IA,  Fields_grid1
+Req 16,     Air Concentration,    BARIUM-137M,         , HGrid_100m,  ZGrid3,  TGrid1,           ,          Av,   01:00,         60,    No,     No,      No,   Yes,      TZ,             T,             IA,  Fields_grid1
+
+Sets of Dispersion Options:
+Max # Particles, Max # Full Particles, Max # Puffs, Max # Original Puffs, Skew Time, Velocity Memory Time, Mesoscale Velocity Memory Time, Inhomogeneous Time, DeltaOpt,    Puff Time,    Sync Time, Time of Fixed Met, Computational Domain, Puff Interval, Deep Convection?, Radioactive Decay?, Agent Decay?, Dry Deposition?, Wet Deposition?, Max deposition height, Turbulence?, Mesoscale Motions?, Chemistry? 
+        5000000,                    2,        1000,                  100,      0:00,                 0:00,                           0:00,               0:00,        1,        00:00,     00:00:30,                  ,    Dispersion Domain,      00:00:30,               No,                Yes,           No,              No,              No,                    50,         Yes,                Yes,         No 
+
+Single Site Met Module Instances:
+Name,         H-Coord,     Long,    Lat, Height,   z0, z0d, Representative?,                                   Met File, Ignore Fixed Met Time?
+Met Station, Lat-Long,  51.0000,  -1.00,   10.0,  0.1, 0.1,             Yes, /home/h05/appb/Version5_2/Runs/NAMEIII.MET,                    Yes
+
+Single Site Flow Module Instances:
+Name,             Met Module,         Met, Domain
+Met Station, Single Site Met, Met Station, Dispersion Domain
+
+Flow Order: Update
+Flow Module,      Flow
+Single Site Flow, Met Station
+
+Flow Order: Convert
+Flow Module,      Flow
+Single Site Flow, Met Station
+
+Flow Order: Flow
+Flow Module,      Flow
+Single Site Flow, Met Station
+
+Flow Order: Cloud
+Flow Module,      Flow
+Single Site Flow, Met Station
+
+Flow Order: Rain
+Flow Module,      Flow
+Single Site Flow, Met Station
+
+Flow Attributes:
+Name,    Flow Order
+Update,  Update
+Convert, Convert
+Flow,    Flow
+Cloud,   Cloud
+Rain,    Rain

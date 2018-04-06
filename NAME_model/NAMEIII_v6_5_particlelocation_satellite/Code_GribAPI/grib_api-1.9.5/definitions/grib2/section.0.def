@@ -1,0 +1,20 @@
+# Copyright 2005-2007 ECMWF
+#
+# Licensed under the GNU Lesser General Public License which
+# incorporates the terms and conditions of version 3 of the GNU
+# General Public License.
+# See LICENSE and gpl-3.0.txt for details.
+
+position   offsetSection0;
+constant section0Length=16;
+ascii[4]     identifier       = "GRIB"              : read_only;
+unsigned[2]  reserved          = missing()          : can_be_missing,hidden,read_only,edition_specific;
+codetable[1] discipline       ('0.0.table',masterDir,localDir) : dump;
+unsigned[1]  editionNumber = 2 : edition_specific,dump;
+
+alias ls.edition = editionNumber;
+length[8]    totalLength;
+position startOfHeaders;
+
+
+meta section0Pointer section_pointer(offsetSection0,section0Length,0);

@@ -1,0 +1,143 @@
+
+Chemistry test run - NAME Chemistry scheme set up via the headed input files
+"NAMEChemistrySpecies.txt", "NAMEChemistryGridDefn.txt" and "STOCHEMGridDefn.txt".
+
+Main Options: 
+Absolute or relative time?, Fixed met?, Flat Earth?, Max # Sources
+                  absolute,         No,          No,             1 
+
+Restart File Options: 
+# Cases Between Writes, Time Between Writes, Delete Old Files?,
+                      ,                    ,                  , 
+
+Multiple Case Options:
+Dispersion Options Ensemble Size, Met Ensemble Size,
+                               1,                 1,
+
+Chemistry Options:
+Chemistry Folder
+..\Resources\Stochem
+
+Output Options: 
+Folder
+.\Output\ 
+
+Input Files:
+File names
+..\Resources\Defns\MetDefnUMH2001R.txt
+..\Resources\Defns\NAMEChemistrySpecies.txt
+..\Resources\Defns\STOCHEMGridDefn.txt
+..\Resources\Defns\TestGridDefn.txt
+
+Array: ZGridArray
+Array Values
+250.0
+500.0
+750.0
+
+Horizontal Coordinate Systems:
+Name
+Lat-Long
+
+Vertical Coordinate Systems:
+Name
+m agl
+
+Horizontal Grids:
+Name,    H-Coord, nx, ny,   dx,   dy, x min, y min
+HGrid1, Lat-Long,  4,  4,  0.1,  0.1,  -3.2,  50.8
+
+Vertical Grids:
+Name,   Z-Coord,  nz,   dz,    z0    
+ZGrid1,   m agl,   5, 50.0, 100.0
+
+Temporal Grids:
+Name,     nt,       dt,                 t0    
+TGrid1,    2, 00:15:00, 19/1/2001 15:15:00
+
+Domains: 
+Name, H Unbounded?,  H-Coord,     X Min,    X Max,     Y Min,    Y Max, Z Unbounded?, Z-Coord,   Z Max, T Unbounded?,      Start Time,        End Time, Max Travel Time
+D1,            Yes,         ,          ,         ,          ,         ,           No,   m agl, 10000.0,           No, 19/1/2001 15:00,        infinity,   00:00:10000.0
+D2,            Yes,         ,          ,         ,          ,         ,           No,   m agl, 10000.0,           No, 19/1/2001 15:00, 19/1/2001 18:00,        infinity
+
+These particle mass limits are based on Ali's recommendations for puma, except for ozone. 
+
+Particle Mass Limits:
+Species Name,    Particle Mass Limit
+SULPHUR-DIOXIDE,             30000.0
+AMMONIA,                     17500.0
+NO,                          17500.0
+NO2,                          1750.0
+O3,                          40000.0
+CO,                          70000.0
+HCHO,                         1400.0
+C2H4,                         3500.0
+C3H6,                         1400.0
+C5H8,                          175.0
+OXYL,                         1400.0
+TOLUEN,                       5600.0
+BD,                            420.0
+PM10,                         9000.0
+                
+Sources:
+Name,  Shape,  H-Coord, Z-Coord,     X,    Y,     Z,  dX,  dY,   dZ, dH-Metres?, dZ-Metres?, Angle, Source Strength, Source Strength,              Source Strength,      Source Strength, Time Dependency, Plume Rise?, Temperature, Volume Flow Rate, Flow Velocity, # Particles,  Max Age, Top Hat,      Start Time,       Stop Time
+Drax, Cuboid, Lat-Long,   m agl,  -3.0, 51.0, 200.0, 0.0, 0.0, 10.0,        Yes,        Yes,   0.0,  NO 1000000.0 g, C3H6 100000.0 g,   SULPHUR-DIOXIDE 500000.0 g,   AMMONIA 100000.0 g,                ,          No,         0.0,              0.0,              ,        5000, infinity,      No, 19/1/2001 15:00, 19/1/2001 15:00
+
+Output Requirements - Fields: 
+Name,  Quantity,            Decay deposition?, Species, Source, H-Grid, Z-Grid, T-Grid, BL Average, T Av Or Int, Sync?, Output Route, Separate File, Output Format, Output Group
+Req 1, Air Concentration,                    ,      NO,       , HGrid1, ZGrid1, TGrid1,         No,          No,   Yes,            D,              ,             A, Conc
+Req 2, Air Concentration,                    ,     NO2,       , HGrid1, ZGrid1, TGrid1,         No,          No,   Yes,            D,              ,             A, Conc
+Req 3, Air Concentration,                    ,     NO3,       , HGrid1, ZGrid1, TGrid1,         No,          No,   Yes,            D,              ,             A, Conc
+Req 4, Chemistry Field,                      ,      OH,       , HGrid1, ZGrid1, TGrid1,         No,          No,   Yes,            D,              ,             A, Conc
+Req 5, Air Concentration,                    ,      O3,       , HGrid1, ZGrid1, TGrid1,         No,          No,   Yes,            D,              ,             A, Conc
+Req 6, Chemistry Field,                      ,    H2O2,       , HGrid1, ZGrid1, TGrid1,         No,          No,   Yes,            D,              ,             A, Conc
+Req 7, Dry Deposition Rate,                No,      NO,       , HGrid1,       , TGrid1,         No,          No,    No,            D,              ,             A, DryDep
+Req 8, Wet Deposition Rate,                No,      NO,       , HGrid1,       , TGrid1,         No,          No,    No,            D,              ,             A, WetDep
+Req 9, Deposition Rate,                    No,      NO,       , HGrid1,       , TGrid1,         No,          No,    No,            D,              ,             A, TotDep
+
+Output Requirements - Fields: 
+Name,   Quantity,    Species, Source, T-Grid, H-Coord, Z-Coord, T Av Or Int, Sync?, Output Route, Output Format, Output Group
+Req 10, # Particles,        ,       , TGrid1,        ,        ,          No,   Yes,            D,             A, Numbers
+Req 11, # Puffs,            ,       , TGrid1,        ,        ,          No,   Yes,            D,             A, Numbers
+Req 12, # Particle Steps,   ,       , TGrid1,        ,        ,          No,   Yes,            D,             A, Numbers
+Req 13, # Puff Steps,       ,       , TGrid1,        ,        ,          No,   Yes,            D,             A, Numbers
+
+Sets of Dispersion Options: 
+Max # Particles, Max # Full Particles, Max # Puffs, Max # Original Puffs, Skew Time, Velocity Memory Time, Inhomogeneous Time, Mesoscale Velocity Memory Time, DeltaOpt, Puff Time, Sync Time, Computational Domain, Puff Interval, Deep Convection?, Radioactive Decay?, Agent Decay?, Dry Deposition?, Wet Deposition?, Turbulence?, Mesoscale Motions?, Chemistry?
+2000000,                       100000,      300000,                10000,     00:00,                00:00,           infinity,                          00:00,        1,     00:00,  00:15:00,                   D1,         00:15,               No,                 No,           No,             Yes,             Yes,         Yes,                 No,       Yes
+
+NWP Met Module Instances: 
+Name,     Min B L Depth, Max B L Depth, Use NWP BL Depth?, Restore Met Script, Delete Met?,       Met Folder,  Topography Folder, Met Definition Name
+Regional,          80.0,        4000.0,                No,                   ,          No, ..\Resources\Met, ..\Resources\Topog,            UMH2001R
+
+NWP Flow Module Instances: 
+Name,     Met Module,      Met, Domain
+Regional,    NWP Met, Regional,     D2 
+
+Flow Order: Update
+Flow Module, Flow
+NWP Flow,    Regional
+
+Flow Order: Convert
+Flow Module, Flow
+NWP Flow,    Regional
+
+Flow Order: Flow
+Flow Module, Flow
+NWP Flow,    Regional
+
+Flow Order: Cloud
+Flow Module, Flow
+NWP Flow,    Regional
+
+Flow Order: Rain
+Flow Module, Flow
+NWP Flow,    Regional
+
+Flow Attributes:
+Name,    Flow Order
+Update,  Update
+Convert, Convert
+Flow,    Flow
+Cloud,   Cloud
+Rain,    Rain
