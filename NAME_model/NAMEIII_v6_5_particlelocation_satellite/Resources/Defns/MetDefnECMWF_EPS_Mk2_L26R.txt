@@ -1,0 +1,221 @@
+
+The NWP met definition 'ECMWF EPS Mk2 L26R' is a specific definition for the use of GRIB met products
+from the T639 L62 version of the ECMWF EPS (Mk 2 in our indexing system). This specific description
+uses a regional domain (20N-90N; 90W-90E) and uses a subset of 26 model levels between levels 10 - 62
+extending to ~ 90 hPa ( ~ 16.5 km). Model-level fields are encoded in GRIB-2 format.
+
+The domain 'ECMWF EPS Mk2 L26R' covers the whole area covered by the met data grid (note that
+there is only one grid used here as all EPS fields are output on a single regular lat-lon grid - the
+native model is spectral). 
+
+The remaining definitions are intended only for use here in defining the above NWP met 
+definition and domain (although there is no reason why they cannot be used elsewhere).
+
+NWP Met Definitions:
+Name,               Binary Format, File Type,   Dt, Day Per File, Prefix,                         Suffix, Next Heat Flux, Next Precipitation, Mesoscale SigU, Mesoscale TauU, Met File Structure Definition, Z-Coord - W, Z-Coord - Cloud Height,              Z-Grid,         Z-Grid - UV,          Z-Grid - W,          Z-Grid - P,              H-Grid,          H-Grid - U,          H-Grid - V,                     Topography File
+ECMWF EPS Mk2 L26R,              ,      GRIB, 6:00,           No,  ECMWF, EPS_Mk2_L26R090W20N090E90N.grb,            Yes,                Yes,           0.95,        10000.0,            ECMWF EPS Mk2 L26R,          Pa,                     Pa, ECMWF EPS Mk1 ZGrid, ECMWF EPS Mk1 ZGrid, ECMWF EPS Mk1 ZGrid, ECMWF EPS Mk1 ZGrid, ECMWF EPS Mk1 HGrid, ECMWF EPS Mk1 HGrid, ECMWF EPS Mk1 HGrid, TopogECMWF_EPS_Mk2_T639L62_Regional
+
+Domains: 
+Name,               H Unbounded?,  H-Coord, X Min, X Max, Y Min, Y Max, Z Unbounded?,                  Z-Coord,         Z Max, T Unbounded?, Max Travel Time
+ECMWF EPS Mk2 L26R,           No, Lat-Long, -90.0,  90.0,  20.0,  90.0,           No, ECMWF EPS T639L62 ZCoord, 0.08899407031,          Yes,        infinity
+
+Horizontal Coordinate Systems:
+Name
+Lat-Long
+
+Horizontal Grids:
+Name,                 H-Coord,  nx,  ny,   dx,    dy, x min, y min, Wrap?
+ECMWF EPS Mk1 HGrid, Lat-Long, 361, 141, 0.50, -0.50, -90.0,  90.0,    No
+
+Vertical Coordinate Systems:
+Name,                     Type, Unit,         Eta Definition,
+ECMWF EPS T639L62 ZCoord,    5,  1.0, ECMWF62L ZCoord Levels,
+Pa,                           ,     ,                       ,
+
+Vertical Grids:
+Name,                                  Z-Coord,                   Z-Array,                      Index-Array
+ECMWF EPS Mk1 ZGrid,  ECMWF EPS T639L62 ZCoord, ECMWF62L Mk1 ZGrid Levels, ECMWF62L Mk1 ZGrid Level Indices
+
+---------------------------------------------------------------------------------
+Definition of model levels in the 62-level version of the ECMWF atmospheric model
+---------------------------------------------------------------------------------
+
+Important note: uses approximate values of A and B obtained from ECMWF web page.
+Need to update to definitive values provided in grid definition section of GRIB products?
+
+The A and B values defining the Eta vertical coord are specified in the Eta Definition
+ECMWF62L ZCoord Levels. These are the half-pressure values (i.e. at the interfaces of
+the model layers). The corresponding Eta values, defined by eta = A/p0 + B where p0 is
+the reference pressure 10^5 Pa, are included for reference in the notes section.
+
+Full-pressure eta values (at the centre of each model layer) define the vertical grid
+and are specified in the array ECMWF62L ZGrid Levels.
+
+Reference pressures ph and pf for the model levels are based on a surface pressure
+p_surface = 1013.25 hPa.
+
+The 'level numbers' given in the notes section of the Eta Definition and Array refer to
+the ECMWF model level numbers (1 = highest level, 62 = lowest level).
+
+Note that eta is given in these definitions in decreasing order (i.e. increasing height).
+
+---------------------------------------------------------------------------------
+
+Eta Definition: ECMWF62L ZCoord Levels
+B,                    A, ! Notes:  Eta_h          -  ph[hPa]    -  level number N
+1.000000,      0.000000,           1.00000000000     1013.2500     62 (Surface)
+0.997630,      0.003160,           0.99763003160     1010.8488     61
+0.994204,      6.575628,           0.99426975628     1007.4431     60
+0.989153,     54.208336,           0.98969508336     1002.8013     59
+0.982238,    162.043427,           0.98385843427      996.8732     58
+0.973466,    336.772369,           0.97683372369      989.7322     57
+0.963007,    576.314148,           0.96877014148      981.5301     56
+0.950274,    895.193542,           0.95922593542      971.8169     55
+0.935157,   1297.656128,           0.94813356128      960.5245     54
+0.917651,   1784.854614,           0.93549954614      947.6584     53
+0.897767,   2356.202637,           0.92132902637      933.2247     52
+0.875518,   3010.146973,           0.90561946973      917.2205     51
+0.850950,   3743.464355,           0.88838464355      899.6602     50
+0.824185,   4550.215820,           0.86968715820      880.6080     49
+0.795385,   5422.802734,           0.84961302734      860.1516     48
+0.764679,   6353.920898,           0.82821820898      838.3507     47
+0.732224,   7335.164551,           0.80557564551      815.2774     46
+0.698224,   8356.252930,           0.78178652930      791.0376     45
+0.662934,   9405.222656,           0.75698622656      765.7697     44
+0.626559,  10471.310547,           0.73127210547      739.5739     43
+0.589317,  11543.166992,           0.70474866992      712.5573     42
+0.551458,  12608.383789,           0.67754183789      684.8491     41
+0.513280,  13653.219727,           0.64981219727      656.6129     40
+0.475016,  14665.645508,           0.62167245508      627.9669     39
+0.436906,  15633.566406,           0.59324166406      599.0310     38
+0.399205,  16544.585938,           0.56465085938      569.9401     37
+0.362203,  17385.595703,           0.53605895703      540.8577     36
+0.326329,  18141.296875,           0.50774196875      512.0662     35
+0.291993,  18798.822266,           0.47998122266      483.8506     34
+0.259554,  19348.775391,           0.45304175391      456.4813     33
+0.229315,  19785.357422,           0.42716857422      430.2069     32
+0.201520,  20107.031250,           0.40259031250      405.2606     31
+0.176091,  20319.011719,           0.37928111719      381.6144     30
+0.152934,  20426.218750,           0.35719618750      359.2221     29
+0.131935,  20434.158203,           0.33627658203      338.0245     28
+0.112979,  20348.916016,           0.31646816016      317.9651     27
+0.095964,  20175.394531,           0.29771794531      298.9895     26
+0.080777,  19919.796875,           0.27997496875      281.0456     25
+0.067316,  19587.513672,           0.26319113672      264.0833     24
+0.055474,  19184.544922,           0.24731944922      248.0547     23
+0.045146,  18716.968750,           0.23231568750      232.9140     22
+0.036227,  18191.029297,           0.21813729297      218.6172     21
+0.028610,  17613.281250,           0.20474281250      205.1223     20
+0.022189,  16990.623047,           0.19209523047      192.3889     19
+0.016860,  16329.560547,           0.18015560547      180.3786     18
+0.012508,  15638.053711,           0.16888853711      169.0545     17
+0.009035,  14922.685547,           0.15826185547      158.3816     16
+0.006322,  14192.009766,           0.14824209766      148.3260     15
+0.004187,  13419.463867,           0.13838163867      138.4376     14
+0.002565,  12595.006836,           0.12851506836      128.5492     13
+0.001415,  11722.749023,           0.11864249023      118.6608     12
+0.000685,  10807.783203,           0.10876283203      108.7724     11
+0.000275,   9860.528320,           0.09888028320       98.8840     10
+0.000087,   8890.707031,           0.08899407031       88.9956      9
+0.000013,   7909.441406,           0.07910741406       79.1072      8
+0.000000,   6921.870117,           0.06921870117       69.2188      7
+0.000000,   5933.037598,           0.05933037598       59.3304      6
+0.000000,   4944.197266,           0.04944197266       49.4420      5
+0.000000,   3955.356934,           0.03955356934       39.5536      4
+0.000000,   2966.516602,           0.02966516602       29.6652      3
+0.000000,   1977.676270,           0.01977676270       19.7768      2
+0.000000,    988.835876,           0.00988835876        9.8884      1
+0.000000,      0.000000,           0.00000000000        0.0000      0
+
+Array: ECMWF62L Mk1 ZGrid Levels
+ Array Values, ! Notes:  pf[hPa]    -  level number N
+1.00000000000,           1013.2500     Surface
+0.99881501580,           1012.0494     62
+0.99594989394,           1009.1459     61
+0.99198241982,           1005.1222     60
+0.98677675882,            999.8373     59
+0.98034607898,            993.3027     58
+0.96399803845,            976.6735     56
+0.94181655371,            954.0914     54
+0.91347424805,            925.2226     52
+0.87903590088,            890.1340     50
+0.83891561816,            849.2512     48
+0.79368108741,            803.1575     46
+0.74412916602,            752.6718     44
+0.69114525391,            698.7032     42
+0.63574232618,            642.2899     40
+0.57894626172,            584.4855     38
+0.52190046289,            526.4620     36
+0.46651148829,            470.1659     34
+0.41487944336,            417.7338     32
+0.36823865235,            370.4182     30
+0.32637237110,            327.9948     28
+0.27158305274,            272.5644     25
+0.22522649024,            225.7656     22
+0.18612541797,            186.3837     19
+0.15325197657,            153.3538     16
+0.12357877930,            123.6050     13
+0.09393717676,             93.9398     10
+
+! End of levels definition
+---------------------------------------------------------------------------------
+
+Array: ECMWF62L Mk1 ZGrid Level Indices
+Array Values
+0
+62
+61
+60
+59
+58
+56
+54
+52
+50
+48
+46
+44
+42
+40
+38
+36
+34
+32
+30
+28
+25
+22
+19
+16
+13
+10
+
+NWP Met File Structure Definition: ECMWF EPS Mk2 L26R
+                       Field Name, Lowest Level, Highest Level, Field Code, 3-d?, Field Qualifiers,
+                     wind (u-cpt),            2,           Top,        131,  Yes,                 ,
+                     wind (v-cpt),            2,           Top,        132,  Yes,                 ,
+                     wind (w-cpt),            2,           Top,        135,  Yes,                 ,
+                  temperature (K),            2,           Top,        130,  Yes,                 ,
+                specific humidity,            2,           Top,        133,  Yes,                 ,
+       cloud liquid water (kg/kg),            2,           Top,        246,  Yes,            Total,
+                cloud ice (kg/kg),            2,           Top,        247,  Yes,            Total,
+   surface stress (u-cpt) (N/m^2),            1,             1,        086,   No,                 ,
+   surface stress (v-cpt) (N/m^2),            1,             1,        087,   No,                 ,
+       surface sensible heat flux,            1,             1,        085,   No,                 ,
+          sea level pressure (Pa),            1,             1,        151,   No,                 ,
+                    pressure (Pa),            1,             1,        134,   No,                 ,
+                  temperature (K),            1,             1,        167,   No,                 ,
+   dynamic rain rate (kg/(m^2 s)),            1,             1,        104,   No,                 ,
+convective rain rate (kg/(m^2 s)),            1,             1,        105,   No,                 ,
+   dynamic snow rate (kg/(m^2 s)),            1,             1,    -999999,   No,                 ,
+convective snow rate (kg/(m^2 s)),            1,             1,    -999999,   No,                 ,
+          high cloud amount (0-1),            1,             1,        188,   No,            Total,
+        medium cloud amount (0-1),            1,             1,        187,   No,            Total,
+           low cloud amount (0-1),            1,             1,        186,   No,            Total,
+                 roughness length,            1,             1,        244,   No,                 ,
+             boundary layer depth,            1,             1,        159,   No,                 ,
+  soil moisture in layer (kg/m^2),            1,             1,        039,   No,                 ,
+
+    convective cloud amount (0-1),            1,             1,    -999999,   No,                 ,
+            convective cloud base,            1,             1,    -999999,   No,                 ,
+             convective cloud top,            1,             1,    -999999,   No,                 ,

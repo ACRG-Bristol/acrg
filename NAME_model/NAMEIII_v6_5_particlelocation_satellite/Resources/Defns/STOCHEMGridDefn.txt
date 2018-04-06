@@ -1,0 +1,47 @@
+** STOCHEM Chemistry Grid Definition **
+Note:
+The 'interface levels' define the bottom and top of each slab.
+The 'grid levels' are taken as the centre of each slab, and should be
+defined at slab midpoints consistent with these interface heights.
+
+Array: InterfaceLevelsForSTOCHEM
+Array Values
+    0.0
+  900.0
+ 1900.0
+ 3000.0
+ 4300.0
+ 5700.0
+ 7500.0
+ 9500.0
+12200.0
+32000.0
+
+Array: GridLevelsForSTOCHEM
+Array Values
+  450.0
+ 1400.0
+ 2450.0
+ 3650.0
+ 5000.0
+ 6600.0
+ 8500.0
+10850.0
+22100.0
+
+Horizontal Coordinate Systems:
+Name        
+Lat-Long 
+
+Vertical Coordinate Systems:
+Name
+m agl
+
+Horizontal Grids:
+Name,                       H-Coord,  nX,  nY,   dX,   dY, x min, y min
+STOCHEM - horizontal grid, Lat-Long,  72,  36,  5.0,  5.0,   0.0, -90.0
+
+Vertical Grids:
+Name,                       Z-Coord,     nZ,  dZ,  Z0, Z-Array    
+STOCHEM - interface levels,   m agl,       ,    ,    , InterfaceLevelsForSTOCHEM
+STOCHEM - vertical grid,      m agl,       ,    ,    , GridLevelsForSTOCHEM

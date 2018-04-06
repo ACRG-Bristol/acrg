@@ -1,0 +1,14 @@
+#!/bin/sh
+
+# Now done in the setup.py
+#swig -python gribapi_swig.i
+
+# Manual building of the python swig interface to gribapi
+#gcc -c -fpic gribapi_swig_wrap.c -I/usr/local/lib/metops/current_python/include/python2.5
+#gcc -shared gribapi_swig_wrap.o .libs/libgrib_api.a -o _gribapi_swig.so
+
+# Building using the python distutils
+# I need the proper path of the python executable
+# as 'python' is a symbolic link and distutils is
+# not able to detect the location of the python library
+/usr/local/lib/metops/current_python/bin/python setup.py build_ext --inplace

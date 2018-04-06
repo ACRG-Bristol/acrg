@@ -1,0 +1,165 @@
+# Copyright 2005-2007 ECMWF
+#
+# Licensed under the GNU Lesser General Public License which
+# incorporates the terms and conditions of version 3 of the GNU
+# General Public License.
+# See LICENSE and gpl-3.0.txt for details.
+
+# Tigge
+constant marsExpver = 'prod';
+constant marsClass = 'ti';
+constant marsModel = 'glob';
+
+concept paramId (defaultParameter,"paramId.def",conceptsMasterDir,conceptsLocalDir) : long_type ;
+concept ls.shortName (defaultShortName,"shortName.def",conceptsMasterDir,conceptsLocalDir) : no_copy;
+concept cfName (defaultShortName,"cfName.def",conceptsMasterDir,conceptsLocalDir) : no_copy;
+
+concept units (defaultName,"units.def",conceptsMasterDir,conceptsLocalDir) : no_copy;
+concept name (defaultName,"name.def",conceptsMasterDir,conceptsLocalDir) : no_copy;
+
+alias tigge_short_name=shortName;
+alias short_name=shortName;
+alias parameter=paramId;
+alias tigge_name=name;
+
+alias parameter.paramId=paramId;
+alias parameter.shortName=shortName;
+alias parameter.units=units;
+alias parameter.name=name;
+
+if(levtype is "sfc")
+{
+	unalias mars.levelist;
+}
+
+alias mars.expver = marsExpver;
+alias mars.class  = marsClass;
+alias mars.param = paramId;
+alias mars.model = marsModel;
+alias mars.origin = centre;
+
+concept marsType {
+
+   an = {
+     typeOfProcessedData = 0;
+   }
+   "2" = {
+     typeOfProcessedData = 0;
+	}
+
+   fc = {
+     typeOfProcessedData = 2;
+   }
+   
+   "9" = {
+     typeOfProcessedData = 2;
+   }
+
+   cf = {
+     typeOfProcessedData = 3;
+   }
+
+   "10" = {
+     typeOfProcessedData = 3;
+   }
+
+   pf = {
+     typeOfProcessedData = 4;
+   }
+   
+   "11" = {
+     typeOfProcessedData = 4;
+   }
+
+   ep = {
+     typeOfProcessedData = 8;
+   }
+   
+   "30" = {
+     typeOfProcessedData = 8;
+   }
+
+   fcmean = {
+     typeOfStatisticalProcessing=0;
+     typeOfProcessedData=5;
+   }
+
+   "80" = {
+     typeOfStatisticalProcessing=0;
+     typeOfProcessedData=5;
+   }
+
+
+    em = {
+      productDefinitionTemplateNumber=12;
+      derivedForecast=0;
+    }
+
+    "17" = {
+      productDefinitionTemplateNumber=12;
+      derivedForecast=0;
+    }
+    
+    "default" = {
+     dummyc = 0;
+    }
+}
+
+concept marsStream {
+
+    oper = {
+      typeOfProcessedData = 0;
+    }
+
+    oper = {
+      typeOfProcessedData = 2;
+    }
+
+    wave = {
+      discipline=10;
+      typeOfProcessedData = 0;
+    }
+
+    wave = {
+      discipline=10;
+      typeOfProcessedData = 2;
+    }
+
+    enfo = {
+      typeOfProcessedData = 3;
+    }
+
+    enfo = {
+      typeOfProcessedData = 4;
+    }
+
+    enfo = {
+      typeOfProcessedData = 8;
+    }
+
+    waef = {
+      discipline=10;
+      typeOfProcessedData = 3;
+    }
+
+    waefs = {
+      discipline=10;
+      typeOfProcessedData = 4;
+    }
+
+    mmsa = {
+      typeOfStatisticalProcessing=0;
+      indicatorOfUnitForTimeRange=3;
+      lengthOfTimeRange=1;
+      productDefinitionTemplateNumber=11;
+    }
+    "default" = {
+          dummyc = 0;
+    }
+
+}
+
+alias mars.stream = marsStream;
+alias mars.type   = marsType;
+
+

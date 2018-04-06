@@ -1,0 +1,39 @@
+!-------------------------------------------------------------------------------
+!
+! Radar met definition file: RadarDefnEuroPP_Mk1_Inst15min_UK_Nimrod.txt
+!
+! Created by: Ian Edmond (ADAQ) 17/09/2014
+!
+! The Radar met definition "EuroPP_Mk1_Inst15min_UK_Nimrod" is suitable for
+! EuroPP precipitation rate analysis datasets cutout over a region covering
+! the UK created on/after 12:00 UTC on 16/01/2013 with a 15 min temporal
+! resolution between files using the Nimrod format.
+! The "Inst" part of the name refers to the instantaneous precipitation field
+! (field code 213) read from the dataset.
+!
+! The cutout EuroPP precipitation rate analysis dataset has the naming
+! convention: yyyymmddhhmm_nimrod_ng_rainanl_rainrate
+!
+! There is a data feed of EuroPP UK cutout files at name-b:/name/data/input/nimrod
+!
+!-------------------------------------------------------------------------------
+
+Radar Met Definitions:
+Name,                             Binary Format, File Type,     Dt, Day Per File,  Prefix,                       Suffix, Next Precipitation, Met File Structure Definition,             H-Grid
+EuroPP_Mk1_Inst15min_UK_Nimrod,      BIG_ENDIAN,    Nimrod,  00:15,           No,        ,  _nimrod_ng_rainanl_rainrate,                 No,                    UKPP_Mk1_I, EuroPPUK_Mk1 HGrid
+
+Horizontal Coordinate Systems:
+Name,                 Type, Pole Lat, Pole Long, Angle,   x-Origin,  y-Origin,    x-unit,  y-unit
+EuroPPUK_Mk1 HCoord,     4,     49.0,      -2.0,   0.0,  -802500.0, 1647500.0,    5000.0, -5000.0
+
+Domains:
+Name,                  H Unbounded?,              H-Coord, X Min,  X Max, Y Min, Y Max, Z Unbounded?, Z-Coord,   Z Max, T Unbounded?,       Start Time,  End Time, Max Travel Time
+EuroPPUK_Mk1 Domain,             No,  EuroPPUK_Mk1 HCoord,   0.0,  344.0,   0.0, 434.0,          Yes,        ,        ,          Yes,                 ,          ,        infinity
+
+Horizontal Grids:
+Name,                           H-Coord,   nX,   nY,   dx,  dy, X Min,  Y Min
+EuroPPUK_Mk1 HGrid, EuroPPUK_Mk1 HCoord,  345,  435,  1.0, 1.0,   0.0,    0.0
+
+Radar Met File Structure Definition: UKPP_Mk1_I
+                Field Name, Lowest Level, Highest Level, Field Code, 3-d?
+precipitation rate (mm/hr),            1,             1,        213,   No

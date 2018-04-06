@@ -1,0 +1,52 @@
+!-------------------------------------------------------------------------------
+!
+! Radar met definition file: RadarDefnUKPP_Mk1_Inst15min_Nimrod.txt
+!
+! Created by: Ian Edmond (ADAQ) 17/09/2014
+!
+! The Radar met definition "UKPP_Mk1_Inst15min_Nimrod" is suitable for UKPP
+! precipitation rate analysis datasets created on/after 12:00 UTC on 16/01/2013
+! with a 15 min temporal resolution between files using the Nimrod format.
+! The "Inst" part of the name refers to the instantaneous precipitation field
+! (field code 213) read from the dataset.
+!
+! Notes on the UKPP dataset:
+!
+! Precipitation rate analysis datasets have 83 fields in them consisting of
+! instantaneous rates, max and min rates over an hour, accumulations over
+! 15 minutes and over an hour. These are identified by field code 213 and 214
+! and processing code 0, 128, 4096, 8192 and time period 0, 15, 45, 60 or 75.
+!
+! UKPP precipitation rate analysis dataset has the naming convention:
+! yyyymmddhhmm_u1096_ng_pp_precip_2km.Z
+!
+! The web page http://fcm9/projects/PostProc/wiki/PostProcDocArchiveRetrival
+! describes the tools available for retrieving the analysis data from MASS.
+!
+! The apdg script process_radar.py exists to extract instantaneous precip rate
+! from the UKPP precipitation rate analysis dataset into new files with the
+! naming convention {YYYYMMDDhhmm}_u1096_ng_pp_precip_2km_rate suitable for
+! use in NAME reading this definition file.
+!
+!-------------------------------------------------------------------------------
+
+Radar Met Definitions:
+Name,                        Binary Format, File Type,     Dt, Day Per File,  Prefix,                        Suffix, Next Precipitation, Met File Structure Definition,         H-Grid
+UKPP_Mk1_Inst15min_Nimrod,      BIG_ENDIAN,    Nimrod,  00:15,           No,        ,  _u1096_ng_pp_precip_2km_rate,                 No,                    UKPP_Mk1_I, UKPP_Mk1 HGrid
+
+Horizontal Coordinate Systems:
+Name,            Type, Pole Lat, Pole Long, Angle,   x-Origin,  y-Origin,    x-unit,  y-unit, Scale Factor
+UKPP_Mk1 HCoord,    4,     49.0,      -2.0,   0.0,  -638000.0, 1322000.0,    2000.0, -2000.0, 0.9996012717
+
+Domains:
+Name,              H Unbounded?,          H-Coord, X Min, X Max, Y Min, Y Max, Z Unbounded?, Z-Coord,   Z Max, T Unbounded?,       Start Time,  End Time, Max Travel Time
+UKPP_Mk1 Domain,             No,  UKPP_Mk1 HCoord,   0.0, 547.0,   0.0, 703.0,          Yes,        ,        ,          Yes,                 ,          ,        infinity
+
+Horizontal Grids:
+Name,                   H-Coord,   nX,   nY,   dx,  dy, X Min,  Y Min
+UKPP_Mk1 HGrid, UKPP_Mk1 HCoord,  548,  704,  1.0, 1.0,   0.0,    0.0
+
+
+Radar Met File Structure Definition: UKPP_Mk1_I
+                Field Name, Lowest Level, Highest Level, Field Code, 3-d?
+precipitation rate (mm/hr),            1,             1,        213,   No

@@ -1,0 +1,32 @@
+# Copyright 2005-2007 ECMWF
+#
+# Licensed under the GNU Lesser General Public License which
+# incorporates the terms and conditions of version 3 of the GNU
+# General Public License.
+# See LICENSE and gpl-3.0.txt for details.
+
+template mars_labeling "grib2/mars_labeling.def";
+
+codetable[1] dataOrigin "grib1/0.table" : dump;
+alias mars.origin=dataOrigin;
+
+ascii[4] modelIdentifier : dump ;
+
+unsigned[1] consensusCount : dump ;
+
+consensus list(consensusCount)
+{
+  ascii[4] ccccIdentifiers  : dump;
+}
+
+alias local.dataOrigin=dataOrigin;
+alias local.modelIdentifier=modelIdentifier;
+alias local.consensusCount=consensusCount;
+
+_if (stepType is "instant" ) {
+	constant productDefinitionTemplateNumberInternal=1;
+} else {
+	constant productDefinitionTemplateNumberInternal=11;
+}
+
+

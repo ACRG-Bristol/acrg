@@ -1,0 +1,24 @@
+# Copyright 2005-2007 ECMWF
+# 
+# Licensed under the GNU Lesser General Public License which
+# incorporates the terms and conditions of version 3 of the GNU
+# General Public License.
+# See LICENSE and gpl-3.0.txt for details.
+
+# Predefined grid 25
+
+constant Ni = 72;
+constant Nj = 19;
+
+constant longitudeOfFirstGridPoint = 0;
+constant longitudeOfLastGridPoint = 355000;
+
+constant latitudeOfFirstGridPoint = 0;
+constant latitudeOfLastGridPoint = 90000;
+
+constant iDirectionIncrement = 5000;
+constant jDirectionIncrement = 5000;
+
+constant numberOfDataPoints=1368;
+constant numberOfValues=1297 ;
+

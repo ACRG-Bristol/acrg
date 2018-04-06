@@ -1,0 +1,42 @@
+# Copyright 2005-2007 ECMWF
+#
+# Licensed under the GNU Lesser General Public License which
+# incorporates the terms and conditions of version 3 of the GNU
+# General Public License.
+# See LICENSE and gpl-3.0.txt for details.
+
+
+# START 1/local.98.3 ----------------------------------------------------------------------
+# LOCAL 98 3
+#
+# localDefinitionTemplate_003
+# ---------------------------
+#
+# Description            Octet    Code    Ksec1    Count
+# -----------            -----    ----    -----    -----
+#localDefinitionNumber       41  I1  37  -
+#class                       42  I1  38  -
+#type                        43  I1  39  -
+#stream                      44  I2  40  -
+#experimentVersionNumber     46  A4  41  -
+#band                        50  I1  42  -
+#functionCode                51  I1  43  -
+#spareSetToZero              52  PAD n/a 1
+#
+
+template mars_labeling "grib1/mars_labeling.def";
+constant operStream = "oper";
+alias mars.stream = operStream;
+
+
+unsigned[1] band  : dump;
+alias mars.obstype = band;
+
+meta  marsIdent   sprintf("%d",indicatorOfTypeOfLevel) : dump;
+alias mars.ident = marsIdent;
+
+unsigned[1] functionCode  : dump;
+
+pad padding_loc3_1(1);
+
+# END   1/local.98.3 ----------------------------------------------------------------------

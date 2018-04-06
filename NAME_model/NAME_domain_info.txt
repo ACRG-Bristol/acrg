@@ -1,0 +1,18 @@
+#EUROPE
+# Output Grid 1 and Grid 2
+Grid1_nX='391'
+Grid1_nY='293'
+Grid1_dX='0.352'
+Grid1_dY='0.234'
+Grid1_Xmin='-97.9'
+Grid1_Ymin='10.729'
+
+
+# NORTHAFRICA
+# Output Grid 1 and Grid 2
+Grid1_nX=391
+Grid1_nY=240
+Grid1_dX='0.352'
+Grid1_dY='0.234'
+Grid1_Xmin='-50'
+Grid1_Ymin='-15'

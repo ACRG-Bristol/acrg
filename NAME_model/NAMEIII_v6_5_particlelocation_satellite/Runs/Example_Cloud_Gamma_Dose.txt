@@ -1,0 +1,107 @@
+
+Main Options:
+Absolute or Relative Time?, Fixed Met?, Flat Earth?,                     Run Name,  Random Seed, Max # Sources
+                  Absolute,         No,          No, Inv_Noise_for_Cld_Gamma_Runs,        Fixed,             1
+
+Restart File Options:
+# Cases Between Writes, Time Between Writes, Write On Suspend?, Delete Old Files?,
+                      ,                    ,                No,                  ,
+
+Multiple Case Options:
+Dispersion Options Ensemble Size, Met Ensemble Size,
+                               1,                 1,
+
+Output Options:
+Folder
+.\Output\
+
+Horizontal Coordinate Systems:
+Name
+Lat-Long
+UK National Grid (m)
+
+Vertical Coordinate Systems:
+Name
+m agl
+
+Horizontal Grids:
+Name,          H-Coord,   nX,   nY,        dx,       dy,  X Min,  Y Centre
+CG_Grid1,     Lat-Long,  101,   51,  1.43E-02, 9.07E-03,   -1.0,      51.0
+
+Vertical Grids:
+Name,      Z-Coord,  nZ,     dZ,    Z0
+CG_Grid1,    m agl,   1,    2.0,   1.0
+AC_Grid1,    m agl,   1,  100.0,  50.0
+
+Temporal Grids:
+Name,   nt,       dt,                   t0
+TGrid1,  1, 06:00:00,  29/06/2006 17:00:00
+
+Domains:
+Name,                H Unbounded?,   H-Coord,   X Min,  X Max,  Y Min,  Y Max, Z Unbounded?, Z-Coord,   Z Max, T Unbounded?,          Start Time,  End Time, Max Travel Time
+Dispersion Domain,             No,  Lat-Long,    -1.1,    3.0,   50.7,   51.3,           No,   m agl, 15000.0,           No, 01/01/2005 00:00:00,  infinity,        infinity
+
+Locations: Source Locations
+Name,            H-Coord,      X,     Y
+Release_Point,  Lat-Long,   -1.0,  51.0
+
+Species:
+Name,              Category,  Half Life,   Daughter, Branching Ratio, Set of Cloud Gamma Parameters, UV Loss Rate, Surface Resistance, Deposition Velocity, Molecular Weight, Material Unit
+KRYPTON-85,    RADIONUCLIDE,   3.37E+08,           ,                ,                         Kr-85,     0.00E+00,                   ,            0.00E+00,                0,            Bq
+
+Species Uses:
+Species,         On Particles?, On Fields?, Advect Field?
+KRYPTON-85,                Yes,         No,            No
+
+Cloud Gamma Parameters: Kr-85
+Photon Energy, Photon Intensity, Linear Attenuation Coefficient, B Build-up Factor a, B Build-up Factor b, Air kerma pu fluence, Adult effective dose pu air kerma, Adult thyroid dose pu air kerma, Adult lung dose pu air kerma, Adult bone surface dose pu air kerma
+5.14E-01,              4.30E-03,                       1.12E-02,            1.73E+00,            9.91E-02,             2.45E-16,                          6.76E-01,                        7.49E-01,                     7.21E-01,                             7.06E-01
+
+Sources:
+Name,      Set of Locations,        Location,       Shape,  H-Coord,             Z-Coord, dH-Metres?, dZ-Metres?,   dX,   dY,   Z,   dZ,  Angle,          Source Strength,  Particle Diameter, Particle Density, Time Dependency, Plume Rise?, Temperature, Flow Velocity,  # Particles,  Max Age, Top Hat,          Start Time,            Stop Time
+Source A,  Source Locations,   Release_Point,   Ellipsoid, UK National Grid (m),   m agl,        Yes,        Yes, 0.01, 0.01, 0.0,  0.0,    0.0,    KRYPTON-85 1.0E+10 Bq,                1.0,           1879.0,                ,          No,       273.0,           0.0,          100, infinity,     Yes, 29/06/2006 11:00:00,  29/06/2006 11:00:00
+
+Output Requirements - Fields:
+Name,                                            Quantity,        Species,   Source,      H-Grid,     Z-Grid,  T-Grid, Z-Coord, BL Average, T Av or Int, Av Time, # Av Times, Sync?, Graph?, Screen?, Disk?,  Across, Separate File,  Output Format,  Output Group, Semi-infinite approx?
+Lagrangian_Particle_App, Adult Effective Cloud Gamma Dose,     KRYPTON-85,         ,    CG_Grid1,   CG_Grid1,  TGrid1,        ,           ,         Int,   06:00,        180,    No,     No,      No,   Yes,      TZ,             T,            IAE,  Fields_grid4,                    No
+Semi_Infinite_Cloud_App, Adult Effective Cloud Gamma Dose,     KRYPTON-85,         ,    CG_Grid1,   AC_Grid1,  TGrid1,        ,           ,         Int,   06:00,        180,    No,     No,      No,   Yes,      TZ,             T,            IAE,  Fields_grid4,                   Yes
+
+Sets of Dispersion Options:
+Max # Particles, Max # Full Particles, Max # Puffs, Max # Original Puffs, Skew Time, Velocity Memory Time, Mesoscale Velocity Memory Time, Inhomogeneous Time, DeltaOpt,    Puff Time,  Sync Time, Time of Fixed Met, Computational Domain, Puff Interval, Deep Convection?, Radioactive Decay?, Agent Decay?, Dry Deposition?, Wet Deposition?, Max deposition height, Turbulence?, Mesoscale Motions?, Chemistry? 
+        5000000,                    2,        1000,                  100,      0:00,                 0:00,                           0:00,               0:00,        1,        00:00,   00:00:30,                  ,    Dispersion Domain,      00:00:30,               No,                Yes,           No,             Yes,             Yes,                   100,         Yes,                Yes,         No 
+
+Single Site Met Module Instances:
+Name,         H-Coord,   Long,     Lat, Height,   z0, z0d, Representative?,                                                       Met File, Ignore Fixed Met Time?
+Met Station, Lat-Long,  -1.00, 51.0000,   10.0,  0.3, 0.3,             Yes,  /home/h05/appb/Version5_2h/Executables_Linux/Run1/NAMEIII.MET,                    Yes
+
+Single Site Flow Module Instances:
+Name,             Met Module,         Met,            Domain
+Met Station, Single Site Met, Met Station, Dispersion Domain
+
+Flow Order: Update
+Flow Module,      Flow
+Single Site Flow, Met Station
+
+Flow Order: Convert
+Flow Module,      Flow
+Single Site Flow, Met Station
+
+Flow Order: Flow
+Flow Module,      Flow
+Single Site Flow, Met Station
+
+Flow Order: Cloud
+Flow Module,      Flow
+Single Site Flow, Met Station
+
+Flow Order: Rain
+Flow Module,      Flow
+Single Site Flow, Met Station
+
+Flow Attributes:
+Name,    Flow Order
+Update,  Update
+Convert, Convert
+Flow,    Flow
+Cloud,   Cloud
+Rain,    Rain

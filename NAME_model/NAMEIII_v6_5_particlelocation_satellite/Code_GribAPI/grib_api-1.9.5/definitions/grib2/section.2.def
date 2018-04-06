@@ -1,0 +1,42 @@
+# Copyright 2005-2007 ECMWF
+# 
+# Licensed under the GNU Lesser General Public License which
+# incorporates the terms and conditions of version 3 of the GNU
+# General Public License.
+# See LICENSE and gpl-3.0.txt for details.
+
+position offsetSection2;
+length[4] section2Length ;
+
+meta section2Pointer section_pointer(offsetSection2,section2Length,2);
+unsigned[1] numberOfSection = 2 :read_only;
+
+if ( grib2LocalSectionPresent==1 or ( section2Length>5 or new() )) {
+	alias section2Used=one;
+
+	if(productionStatusOfProcessedData == 4 || productionStatusOfProcessedData == 5) {
+		codetable[2] tiggeLocalVersion 'grib2/tiggeLocalVersion.table' = 1 : dump;
+		template  tiggeSection "grib2/local.tigge.[tiggeLocalVersion:l].def";
+	}
+
+	codetable[2] grib2LocalSectionNumber 'grib2/grib2LocalSectionNumber.[centreForLocal:l].table' = 0 : dump;
+	alias localDefinitionNumber=grib2LocalSectionNumber;
+	
+	if (grib2LocalSectionNumber!=0) {
+		template_nofail local "grib2/local.[centreForLocal:l].def";
+	} else {
+		constant deleteLocalDefinition=1;
+	}
+	position offsetAfterCentreLocalSection;
+	transient addECMWFParamId=0;
+	transient ECMWFparamIdPresent = section2Length - offsetAfterCentreLocalSection + offsetSection2 - 3;
+	if ( ECMWFparamIdPresent>0 || addECMWFParamId ) {
+		 unsigned[4] ECMWFparamId = 0;
+	}
+
+}
+
+section_padding section2Padding : read_only;
+
+
+

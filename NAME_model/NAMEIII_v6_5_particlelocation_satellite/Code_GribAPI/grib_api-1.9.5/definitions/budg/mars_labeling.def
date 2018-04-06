@@ -1,0 +1,18 @@
+# Copyright 2005-2007 ECMWF
+# 
+# Licensed under the GNU Lesser General Public License which
+# incorporates the terms and conditions of version 3 of the GNU
+# General Public License.
+# See LICENSE and gpl-3.0.txt for details.
+
+constant domain  = "g";
+constant levtype = "sfc";
+constant param   = "128.128";
+
+
+
+alias mars.param   = param;
+alias mars.levtype = levtype;
+#alias mars.domain  = domain;
+
+
