@@ -123,9 +123,9 @@ Integer, Parameter :: MaxZCoords     = 10 ! Maximum number of vertical coord sys
 
 ! Parameters for grid and domain module.
 Integer, Parameter :: MaxLocationses = 5   ! Maximum number of sets of locations.
-Integer, Parameter :: MaxHGrids      = 5000  ! Maximum number of horizontal grids.
-Integer, Parameter :: MaxZGrids      = 5000  ! Maximum number of vertical grids.
-Integer, Parameter :: MaxTGrids      = 5000 ! Maximum number of temporal grids.
+Integer, Parameter :: MaxHGrids      = 500  ! Maximum number of horizontal grids.
+Integer, Parameter :: MaxZGrids      = 500  ! Maximum number of vertical grids.
+Integer, Parameter :: MaxTGrids      = 500 ! Maximum number of temporal grids.
 Integer, Parameter :: MaxDGrids      = 5   ! Maximum number of data grids.
 Integer, Parameter :: MaxDomains     = 32  ! Maximum number of domains.
 
@@ -263,12 +263,11 @@ Integer, Parameter :: MaxPPInfoOutputFiles    = 1000
 #ifdef CompaqPCCompiler
   Integer, Parameter :: MaxOutputLineLength   = 1000
 #else
-  Integer, Parameter :: MaxOutputLineLength   = 100000
+  Integer, Parameter :: MaxOutputLineLength   = 6000
 #endif
 Integer, Parameter :: OutputPrelimColumnWidth = 24
 Integer, Parameter :: OutputFieldColumnWidth  = 26
-!Integer, Parameter :: MaxFieldReqsPerReqInfo  = 600
-Integer, Parameter :: MaxFieldReqsPerReqInfo  = 5000
+Integer, Parameter :: MaxFieldReqsPerReqInfo  = 600
 Integer, Parameter :: MaxPPInfoReqsPerReqInfo = 10
 Integer, Parameter :: MaxReqInfoTimes         = 45
 Integer, Parameter :: MaxReqInfoTravelTimes   = 45
