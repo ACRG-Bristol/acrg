@@ -1,0 +1,271 @@
+Document written by rt17603
+Last updated 2018/04/04
+
+Full documentation about pytest can be found here - https://docs.pytest.org/en/latest/
+
+--------------
+Running pytest
+--------------
+
+To simply run all existing tests using pytest module the following command can be run within a terminal
+
+>> pytest
+
+See below for examples of outputs. The pytest module looks within the current directory and its 
+subdirectories and will run all files of the form test_*.py or *_test.py 
+(https://docs.pytest.org/en/latest/getting-started.html#getstarted).
+Within those files it will identify all functions which start or end with "test".
+
+pytest can also be run over individual test files if you only wish to test one module for instance e.g.
+
+>> pytest tests/test_acrg_gosat.py
+
+We can also run a subset of test cases e.g.:
+
+>> pytest -m 'basic'
+
+This runs all tests which have been marked as 'basic' (using @pytest.mark.basic)
+OR
+
+>> pytest -m 'not long'
+
+This runs all tests except those which have been marked as 'long' (using @pytest.mark.long)
+(See *Markers* section below for more details of setting this up)
+
+------------------
+Creating new tests
+------------------
+
+Within the ACRG repository test files should be contained within the "tests" directory. To create new 
+tests you can either modify a current test file or create a new test file yourself (starting the name 
+with "test_"). The simplest convention to use for this is to keep all tests related to one module or 
+script within one test file which should be named after the script (e.g. tests for acrg_gosat.py should 
+be within test_acrg_gosat.py). 
+This will make it easier to modify the tests later on as the code evolves.
+
+Tests should be created as functions which start or end with word "test" (e.g. test_simple_function or 
+simple_function_test).
+
+Some examples of the form tests can take:
+
+def test_positive():
+	'''
+	Positive test which makes an assertion about the result
+	'''
+	out = function(x)
+	
+	assert out == expected_result
+
+def test_negative():
+	'''
+	Negative test which expects the function to raise an Exception e.g. KeyError,TypeError,
+	ValueError,Exception (can include specific error instead of Exception if the error is known)
+	'''
+	with pytest.raises(Exception):
+		out = function(x)
+
+See pytest documentation (https://docs.pytest.org/en/latest/example/simple.html) for much fuller list 
+of examples of tests.
+
+----------------
+Testing examples 
+----------------
+
+A very simple example around an addition function where we know the expected answer
+
++++++++++++++++++++++++
+
+def add(num1,num2):
+	return num1+num2
+
++++++++++++++++++++++++
+
++++++++++++++++++++++++
+
+def test_wrong_add():
+	out = add(3,4)
+	assert out == 7
+
++++++++++++++++++++++++
+
+Here is some example ACRG code which we may wish to test. The domain_volume function takes the name of 
+a domain (e.g. "EUROPE") and uses a footprint file to work out the domain volume (lat,lon,height).
+
++++++++++++++++++++++++
+
+def domain_volume(domain,fp_dir=fp_directory):
+    '''
+    The domain_volume function extracts the volume (lat, lon, height) within a domain from a related 
+    footprint file.
+    
+    Args:
+        domain : domain of interest (one of 'AUSTRALIA', 'CARIBBEAN','EASTASIA','EUROPE','NAMERICA',
+        'PACIFIC','SOUTHAFRICA','SOUTHASIA','WESTUSA')
+        fp_dir : path to upper level of footprint files.
+        
+    Returns:
+        xarray.DataArray (3): latitude, longitude, height  
+    '''
+    directory = os.path.join(fp_dir,domain)
+    listoffiles = glob.glob(directory + "/*")
+    if listoffiles:
+        filename = listoffiles[0]
+        print 'Using footprint file: {0} to extract domain'.format(filename)
+        with xray.open_dataset(filename) as temp:
+            fields_ds = temp.load()
+        
+        fp_lat = fields_ds["lat"].values
+        fp_lon = fields_ds["lon"].values
+        fp_height = fields_ds["height"].values
+    
+        return fp_lat,fp_lon,fp_height     
+    else:
+        raise Exception('Cannot extract volume for domain: {1}. No footprint file found within {0}'.format(directory,domain))
+
++++++++++++++++++++++++
+
+An example of a negative test for this may be to tests that an Exception is raised when an unknown 
+domain is specified.
+Setup: None required
+
++++++++++++++++++++++++
+
+def test_incorrect_domain():
+    '''
+    Test Exception is raised when incorrect domain is specified as a str
+    '''
+    with pytest.raises(Exception):
+        domain = "MMM"
+        gosat.domain_volume(domain)
+
++++++++++++++++++++++++
+
+An example of a positive test for this may be to test that the domain volume can be extracted when a 
+different fp_directory is specified 
+Setup: copy an appropriate file to the directory "/home/rt17603/Documents/Test_files/NAME/fp/EUROPE/" 
+(note here the structure expects the domain name to be the last directory in the chain)
+
++++++++++++++++++++++++
+
+def test_other_directory():
+    '''
+    Test that function can read from a different directory
+    '''
+    fp_dir = "/home/rt17603/Documents/Test_files/NAME/fp/"
+    domain = "EUROPE"
+    fp_lat,fp_lon,fp_height = gosat.domain_volume(domain,fp_dir=fp_dir)
+    
+    assert fp_lat != None
+    assert fp_lon != None
+    assert fp_height != None
+
++++++++++++++++++++++++
+
+Since we do not know the form of the output the assert statements here simply check that the output 
+exists.
+
+--------
+Fixtures
+--------
+
+It is often the case that to set up a test you will need to create some data object or define a set of 
+parameters. With pytest this is done in a reproducable way using something called a fixture.
+See pytest documentation on fixtures: https://docs.pytest.org/en/latest/fixture.html
+
+A fixture is basically set up as a function and the output can be used within a test case. It is 
+defined using a decorator which looks like @pytest.fixture().
+For example here I have set up some fixtures to define a Dataset object and the data variable 
+parameters:
+
+@pytest.fixture()
+def gosat_dataset_raw():
+    directory = "/shared_data/air/shared/obs_raw/GOSAT/CH4_GOS_OCPR_v7.0/2012/"
+    filename = "ESACCI-GHG-L2-CH4-GOSAT-OCPR-20120101-fv7.0.nc"
+    filename = os.path.join(directory,filename)
+    ds_raw = xray.open_dataset(filename)
+    return ds_raw
+
+@pytest.fixture()
+def ds_data_variables():
+    
+    dv = {"xch4":"xch4",
+          "xch4_uncertainty":"xch4_uncertainty",
+          "lat":"latitude",
+          "lon":"longitude",
+          "ak":"xch4_averaging_kernel",
+          "qf_flag":"xch4_quality_flag"}
+    
+    return dv
+
+These fixtures can then be used in a test function as an argument:
+    
+def test_data_vars_gosat_add(ds_data_variables,gosat_dataset_raw):
+    ''' Test data variables can be specified within the gosat_add_coords '''
+    data_vars = [ds_data_variables["xch4"]]
+    
+    out = gosat.gosat_add_coords(gosat_dataset_raw,data_vars=data_vars)
+    out_data_vars = out.data_vars
+    
+    for in_var,out_var in zip(data_vars,out_data_vars):
+        assert out_var == in_var
+
+-------
+Markers
+-------
+
+As well as using decorators to denote fixtures, as above, they can also be used to mark test cases to 
+include them in certain subsets.
+See pytest documentation: https://docs.pytest.org/en/latest/example/markers.html
+
+For example in the test suite so far some tests have been marked as belonging to a certain subset 
+e.g. "basic" or "long" using the syntax:
+    @pytest.mark.basic
+This should be included on the line before the function is defined.
+
+Doing this allows us to select a subset of tests to be run if only a 'basic' run is required or 
+allows us to exclude 'long' tests if we will not have
+time to run them. Additional markers can be used as required.
+
+---------------
+Output examples
+---------------
+
+ ** Running pytest on the command line will produce an output like this if all tests have been passed: **
+============================= test session starts ==============================
+platform linux2 -- Python 2.7.13, pytest-3.0.7, py-1.4.33, pluggy-0.4.0
+rootdir: /home/rt17603/Documents/Code, inifile:
+collected 44 items 
+
+tests/test_acrg_gosat.py ............................................
+
+========================== 44 passed in 12.91 seconds ==========================
+
+ ** And like this if there are some failures: **
+============================= test session starts ==============================
+platform linux2 -- Python 2.7.13, pytest-3.0.7, py-1.4.33, pluggy-0.4.0
+rootdir: /home/rt17603/Documents/Code, inifile:
+collected 46 items 
+
+tests/example_test.py FF
+tests/test_acrg_gosat.py ............................................
+
+=================================== FAILURES ===================================
+_________________________________ test_answer __________________________________
+
+    def test_answer():
+>       assert inc(3) == 5, "that's not 3+1!"
+E       AssertionError: that's not 3+1!
+E       assert 4 == 5
+E        +  where 4 = inc(3)
+
+tests/example_test.py:13: AssertionError
+________________________________ test_function _________________________________
+
+    def test_function():
+>       assert f() == 4
+E       assert 3 == 4
+E        +  where 3 = f()
+
+tests/example_test.py:19: AssertionError
+===================== 2 failed, 44 passed in 56.62 seconds =====================
+

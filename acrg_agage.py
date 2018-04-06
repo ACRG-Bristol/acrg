@@ -208,8 +208,6 @@ def get_file_list(site, species, start, end, height,
                  si.upper() == file_site_string.upper() and
                  sp.upper() == file_species_string.upper() and
                  hi.upper() == file_height_string.upper()]
-    print 'file_height_string',file_height_string
-    print 'matched files',files
     
     if instrument is not None:
         files = [f for f in files if instrument.upper() in f.upper()]
@@ -463,8 +461,8 @@ def get_gosat(site, species, max_level, start = "1900-01-01", end = "2020-01-01"
     data["mf"] = data.xch4 - data.mf_prior_factor - data.mf_prior_upper_level_factor
     data["dmf"] = data.xch4_uncertainty
 
-        
-    data = data.drop("lev")
+    if "lev" in data.data_vars:    
+        data = data.drop("lev")
     data = data.drop(["xch4", "xch4_uncertainty", "lon", "lat"])
     data = data.to_dataframe()
     

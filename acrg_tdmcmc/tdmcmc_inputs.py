@@ -107,6 +107,10 @@ unique_copy = param['unique_copy']
 
 if output_dir == "/path/to/output/directory/":
     raise Exception("Please set output directory (output_dir) parameter within configuration file: {0}".format(config_file))
+elif output_dir.startswith("$ACRG_PATH"):
+    output_dir = output_dir.replace("$ACRG_PATH",acrg_path)
+elif output_dir.startswith("$DATA_PATH"):
+    output_dir = output_dir.replace("$DATA_PATH",data_path)
 
 #######################################################
 # DO YOU WANT TO DO REVERSIBLE JUMP OR NOT?????
