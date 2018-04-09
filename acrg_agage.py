@@ -37,7 +37,6 @@ import json
 import datetime as dt
 import xarray as xray
 import pdb
-from acrg_tdmcmc.tdmcmc_post_process import open_ds
 
 acrg_path = getenv("ACRG_PATH")
 data_path = getenv("DATA_PATH")
@@ -59,6 +58,16 @@ with open(join(acrg_path, "acrg_species_info.json")) as f:
 
 with open(join(acrg_path, "acrg_site_info.json")) as f:
     site_info=json.load(f)
+
+def open_ds(path):
+    
+    """
+    Function efficiently opens xray datasets.
+    """
+    # use a context manager, to ensure the file gets closed after use
+    with xray.open_dataset(path) as ds:
+        ds.load()
+    return ds    
 
 def is_number(s):
     try:
