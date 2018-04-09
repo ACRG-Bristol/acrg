@@ -59,6 +59,16 @@ with open(join(acrg_path, "acrg_species_info.json")) as f:
 with open(join(acrg_path, "acrg_site_info.json")) as f:
     site_info=json.load(f)
 
+def open_ds(path):
+    
+    """
+    Function efficiently opens xray datasets.
+    """
+    # use a context manager, to ensure the file gets closed after use
+    with xray.open_dataset(path) as ds:
+        ds.load()
+    return ds    
+
 def is_number(s):
     try:
         float(s)
@@ -440,8 +450,10 @@ def get_gosat(site, species, max_level, start = "1900-01-01", end = "2020-01-01"
     files = [f for (f, k) in zip(files, files_keep) if k == True]
 
     data = []
-    for f in files:
-        data.append(xray.open_dataset(join(data_directory,f)))
+    for i,f in enumerate(files):
+        #data.append(xray.open_dataset(join(data_directory,f)))
+        # rt17603: 06/04/2018 Changed this to use function containing with statement. Was possible causing problems with too many files being open at once..
+        data.append(open_ds(join(data_directory,f)))
         
     data = xray.concat(data, dim = "time")
 
@@ -460,10 +472,23 @@ def get_gosat(site, species, max_level, start = "1900-01-01", end = "2020-01-01"
     data["mf"] = data.xch4 - data.mf_prior_factor - data.mf_prior_upper_level_factor
     data["dmf"] = data.xch4_uncertainty
 
-    if "lev" in data.data_vars:    
-        data = data.drop("lev")
-    data = data.drop(["xch4", "xch4_uncertainty", "lon", "lat"])
+    # rt17603: 06/04/2018 Added drop variables to ensure lev and id dimensions are also dropped, Causing problems in footprints_data_merge() function
+    drop_data_vars = ["xch4","xch4_uncertainty","lon","lat","ch4_profile_apriori","xch4_averaging_kernel",
+                      "pressure_levels","pressure_weights","exposure_id"]
+    drop_coords = ["lev","id"]
+    
+    for dv in drop_data_vars:
+        if dv in data.data_vars:
+            data = data.drop(dv)
+    for coord in drop_coords:
+        if coord in data.coords:
+            data = data.drop(coord)
+
+    #data = data.drop("lev")
+    #data = data.drop(["xch4", "xch4_uncertainty", "lon", "lat"])
     data = data.to_dataframe()
+    # rt17603: 06/04/2018 Added sort because some data was not being read in time order. Causing problems in footprints_data_merge() function
+    data = data.sort_index()
     
     data.max_level = max_level
     if species.upper() == "CH4":

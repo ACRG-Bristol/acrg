@@ -412,7 +412,6 @@ def fp_sensitivity_param(fp_data_merge,measurement_param_small,basis_function_pa
 
     return input_param
 
-@pytest.mark.basic
 def test_fp_sensitivity(fp_sensitivity_param):
     '''
     Test fp_sensitivity() function can create suitable output object from standard parameters.
@@ -435,7 +434,6 @@ def bc_sensitivity_param(fp_data_merge,measurement_param_small,basis_function_pa
 
     return input_param
 
-@pytest.mark.basic
 def test_bc_sensitivity(bc_sensitivity_param):
     '''
     Test bc_sensitivity() function can create suitable output object from standard parameters.
@@ -568,7 +566,6 @@ def test_filtering_6hrmean(fp_data_H_merge):
     out = name.filtering(fp_data_H_merge,filters)
     assert out
 
-@pytest.mark.basic
 def test_filtering_local(fp_data_H_lr_merge):
     '''
     Test filtering() function can produce an output using "local_influence" filter
