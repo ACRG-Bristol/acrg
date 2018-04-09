@@ -253,8 +253,10 @@ def flux(domain, species, flux_directory=flux_directory):
     This may get slow for very large flux datasets, and we may want to subset.    
     """
 
+    print 'search str',flux_directory + domain + "/" + species.lower() + "_" + "*.nc"
     files = sorted(glob.glob(flux_directory + domain + "/" + 
                    species.lower() + "_" + "*.nc"))
+    print 'files',files
     if len(files) == 0:
         print("Can't find flux: " + domain + " " + species)
         return None
@@ -328,7 +330,7 @@ def basis_boundary_conditions(domain, basis_case = 'NESW', bc_basis_directory=bc
     return basis_ds
 
 
-def combine_datasets(dsa, dsb, method = "nearest", tolerance = None):
+def combine_datasets(dsa, dsb, method = "ffill", tolerance = None):
     """
     Merge two datasets. Assumes that you want to 
     re-index to the FIRST dataset.
@@ -404,7 +406,7 @@ def timeseries_HiTRes(fp_HiTRes_ds, domain, HiTRes_flux_name, Resid_flux_name,
         em = flux_HiTRes.reindex_like(new_ds, method='ffill')
         
         #Use end of hours back as closest point for finding the emissions file
-        emend = flux_resid.sel(time = new_ds.time[0], method = 'nearest')
+        emend = flux_resid.sel(time = new_ds.time[0], method = 'ffill')
         em.flux[:,:,0] = emend.flux
         fpXflux[:,:,ti] = (new_ds.fp_HiTRes*em.flux).sum(["time"])
         
@@ -432,7 +434,7 @@ def timeseries_boundary_conditions(ds):
            (ds.particle_locations_w*ds.vmr_w).sum(["height", "lat"])
 
     
-def footprints_data_merge(data, domain = "EUROPE", load_flux = True,
+def footprints_data_merge(data, domain = None, load_flux = True,
                           calc_timeseries = True, calc_bc = True, HiTRes = False,
                           average = None, site_modifier = {}, height = None,
                           emissions_name = None, interp_vmr_freq = None,
@@ -574,9 +576,20 @@ def footprints_data_merge(data, domain = "EUROPE", load_flux = True,
                 tolerance = '1min'    
             else:
                 tolerance = None
-                
-            site_ds = combine_datasets(site_ds, site_fp,
-                                       method = "nearest",
+            
+            # rt17603: 06/04/2018 - Added sort as some footprints weren't sorted by time for satellite data.
+            site_fp = site_fp.sortby("time")
+            
+            # Combine datasets to one with coarsest  frequency
+            ds_timefreq = np.median((site_ds.time.data[0:-1] - site_ds.time.data[1:]).astype('int64')) 
+            fp_timefreq = np.median((site_fp.time.data[0:-1] - site_fp.time.data[1:]).astype('int64')) 
+            if ds_timefreq > fp_timefreq:
+               site_ds = combine_datasets(site_ds, site_fp,
+                                       method = "ffill",
+                                       tolerance = tolerance)
+            else: 
+               site_ds = combine_datasets(site_fp, site_ds,
+                                       method = "ffill",
                                        tolerance = tolerance)
                 
             # If units are specified, multiply by scaling factor
@@ -633,44 +646,61 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi',
     for site in sites:
 
         if 'fp_HiTRes' in fp_and_data[site].keys():
-            site_bf_temp = xray.Dataset({"fp_HiTRes":fp_and_data[site]["fp_HiTRes"],
+            site_bf = xray.Dataset({"fp_HiTRes":fp_and_data[site]["fp_HiTRes"],
                                          "fp":fp_and_data[site]["fp"]})
-        else:
-            site_bf_temp = xray.Dataset({"fp":fp_and_data[site]["fp"],
-                                         "flux":fp_and_data[site]["flux"]})
-        
-        site_bf = combine_datasets(site_bf_temp,basis_func)
-
-        basis_scale = xray.Dataset({'basis_scale': (['lat','lon','time'],
-                                                    np.zeros(np.shape(site_bf.basis)))},
-                                   coords = site_bf.coords)
-        site_bf = site_bf.merge(basis_scale)
-
-        H = np.zeros((int(np.max(site_bf.basis)),len(site_bf.time)))
-        
-        if 'fp_HiTRes' in site_bf.keys():
             H_all_arr=timeseries_HiTRes(site_bf, domain, HiTRes_flux_name, Resid_flux_name, output_TS = False, output_fpXflux = True, flux_directory=flux_directory)
             H_all = xray.DataArray(H_all_arr, coords=[site_bf.lat, site_bf.lon, site_bf.time], dims = ['lat','lon','time'])
-        else:
-            H_all=site_bf.fp*site_bf.flux 
-            H_all_arr = H_all.values
-            
-        H_all_v=np.zeros((len(site_bf.lat)*len(site_bf.lon),len(site_bf.time)))
-        for ti in range(len(site_bf.time)):
-            H_all_v[:,ti]=np.ravel(H_all[:,:,ti])
-            
-        base_temp = np.ravel(site_bf.basis.values[:,:,0])
-        for i in range(int(np.max(site_bf.basis))):
-            wh_ri = np.where(base_temp == i+1)
-             
-            for ti in range(len(site_bf.time)):
-                 H[i,ti]=np.sum(H_all_v[wh_ri,ti])        
 
         
-        sensitivity = xray.DataArray(H, 
+        else:
+            site_bf = xray.Dataset({"fp":fp_and_data[site]["fp"],
+                                         "flux":fp_and_data[site]["flux"]})
+            H_all=site_bf.fp*site_bf.flux 
+            H_all_arr = H_all.values
+        
+            
+        H_all_v=H_all.values.reshape((len(site_bf.lat)*len(site_bf.lon),len(site_bf.time)))        
+        
+        
+        if 'region' in basis_func.dims.keys():
+            
+            if 'time' in basis_func.basis.dims:
+                basis_func = basis_func.isel(time=0)
+            
+            site_bf = xray.merge([site_bf, basis_func])
+            
+            H = np.zeros((len(site_bf.region),len(site_bf.time)))
+            
+            base_v = site_bf.basis.values.reshape((len(site_bf.lat)*len(site_bf.lon), len(site_bf.region)))
+            
+            for i in range(len(site_bf.region)):
+                H[i,:] = np.sum(H_all_v*base_v[:,i,np.newaxis], axis = 0) 
+
+            sensitivity = xray.DataArray(H, 
+                              coords=[('region', site_bf.region), 
+                                      ('time', fp_and_data[site].coords['time'])])
+        
+        else:
+        
+            site_bf = combine_datasets(site_bf,basis_func)
+            
+            H = np.zeros((int(np.max(site_bf.basis)),len(site_bf.time)))
+
+            basis_scale = xray.Dataset({'basis_scale': (['lat','lon','time'],
+                                                    np.zeros(np.shape(site_bf.basis)))},
+                                   coords = site_bf.coords)
+            site_bf = site_bf.merge(basis_scale)
+
+            base_v = np.ravel(site_bf.basis.values[:,:,0])
+            for i in range(int(np.max(site_bf.basis))):
+                wh_ri = np.where(base_v == i+1)
+                H[i,:]=np.sum(H_all_v[wh_ri[0],:], axis = 0)        
+            
+            sensitivity = xray.DataArray(H, 
                               coords=[('region', range(1,np.max(site_bf.basis)+1)), 
                                       ('time', fp_and_data[site].coords['time'])])
                                      
+
         fp_and_data[site]['H'] = sensitivity                             
 
         
@@ -681,15 +711,15 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi',
             'sub-transd', 'sub_transd', sub-intem' will work
             'transd' or 'transd-sub' won't work
             """
-            sub_fp_temp = site_bf.fp.sel(lon=slice(min(site_bf.sub_lon),max(site_bf.sub_lon)), 
-                                    lat=slice(min(site_bf.sub_lat),max(site_bf.sub_lat))) 
+            sub_fp_temp = site_bf.fp.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
+                                         method="ffill") 
             sub_fp = xray.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
                                coords = {'sub_lat': (site_bf.coords['sub_lat']),
                                          'sub_lon': (site_bf.coords['sub_lon']),
                                 'time' : (fp_and_data[site].coords['time'])})
                                 
-            sub_H_temp = H_all.sel(lon=slice(min(site_bf.sub_lon),max(site_bf.sub_lon)), 
-                                    lat=slice(min(site_bf.sub_lat),max(site_bf.sub_lat)))                             
+            sub_H_temp = H_all.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
+                                         method="ffill")                             
             sub_H = xray.Dataset({'sub_H': (['sub_lat','sub_lon','time'], sub_H_temp)},
                                coords = {'sub_lat': (site_bf.coords['sub_lat']),
                                          'sub_lon': (site_bf.coords['sub_lon']),
@@ -861,9 +891,20 @@ def filtering(datasets_in, filters, keep_missing=False):
     datasets_dictionary = filtering(datasets_dictionary, 
                                     ["daytime", "daily_median"])
     
-    The first filter "daytime" selects data between 1000 and 1500 UTC,
-    the second "daily_median" calculates the daily median. Obviously in this
-    case, you need to do the first filter before the second.    
+    All options are:
+        "daytime"           : selects data between 1000 and 1500 UTC
+        "nighttime"         : Only b/w 23:00 - 03:00 inclusive
+        "noon"              : Only 12:00 fp and obs used
+        "daily_median"      : calculates the daily median
+        "pblh_gt_threshold" : 
+        "local_influence"   : Only keep times when localness is low
+        "six_hr_mean"       :
+        "local_lapse"       :
+    
+    The order of the filters reflects the order they are applied, so for 
+    instance when applying the "daily_median" filter if you only wanted
+    to look at daytime values the filters list should be 
+    ["daytime","daily_median"]            
     """
 
     if type(filters) is not list:
@@ -1015,7 +1056,10 @@ def filtering(datasets_in, filters, keep_missing=False):
     for site in sites:
     
             for filt in filters:
-                datasets[site] = filtering_functions[filt](datasets[site], site, keep_missing=keep_missing)
+                if filt == "daily_median" or filt == "six_hr_mean":
+                    datasets[site] = filtering_functions[filt](datasets[site], keep_missing=keep_missing)
+                else:
+                    datasets[site] = filtering_functions[filt](datasets[site], site, keep_missing=keep_missing)
 
     return datasets
 
@@ -1082,7 +1126,8 @@ def plot(fp_data, date, out_filename=None,
          colormap = plt.cm.YlGnBu,
          tolerance = None,
          interpolate = False,
-         dpi = None):
+         dpi = None,
+         bottom_left = False):
     """
     Plot footprint using pcolormesh.
     
@@ -1130,7 +1175,7 @@ def plot(fp_data, date, out_filename=None,
         map_data = plot_map_setup(fp_data[sites[0]],
                                   lon_range = lon_range,
                                   lat_range = lat_range,
-                                  bottom_left=True,
+                                  bottom_left=bottom_left,
                                   map_resolution = map_resolution)
 
     # Open plot
