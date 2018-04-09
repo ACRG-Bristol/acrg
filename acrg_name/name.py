@@ -406,7 +406,7 @@ def timeseries_HiTRes(fp_HiTRes_ds, domain, HiTRes_flux_name, Resid_flux_name,
         em = flux_HiTRes.reindex_like(new_ds, method='nearest')
         
         #Use end of hours back as closest point for finding the emissions file
-        emend = flux_resid.sel(time = new_ds.time[0], method = 'nearest')
+        emend = flux_resid.sel(time = new_ds.time[0], method = 'ffill')
         em.flux[:,:,0] = emend.flux
         fpXflux[:,:,ti] = (new_ds.fp_HiTRes*em.flux).sum(["time"])
         
@@ -434,7 +434,7 @@ def timeseries_boundary_conditions(ds):
            (ds.particle_locations_w*ds.vmr_w).sum(["height", "lat"])
 
     
-def footprints_data_merge(data, domain = "EUROPE", load_flux = True,
+def footprints_data_merge(data, domain = None, load_flux = True,
                           calc_timeseries = True, calc_bc = True, HiTRes = False,
                           average = None, site_modifier = {}, height = None,
                           emissions_name = None, interp_vmr_freq = None,
@@ -579,7 +579,16 @@ def footprints_data_merge(data, domain = "EUROPE", load_flux = True,
             
             # rt17603: 06/04/2018 - Added sort as some footprints weren't sorted by time for satellite data.
             site_fp = site_fp.sortby("time")
-            site_ds = combine_datasets(site_ds, site_fp,
+            
+            # Combine datasets to one with coarsest  frequency
+            ds_timefreq = np.median((site_ds.time.data[0:-1] - site_ds.time.data[1:]).astype('int64')) 
+            fp_timefreq = np.median((site_fp.time.data[0:-1] - site_fp.time.data[1:]).astype('int64')) 
+            if ds_timefreq > fp_timefreq:
+               site_ds = combine_datasets(site_ds, site_fp,
+                                       method = "ffill",
+                                       tolerance = tolerance)
+            else: 
+               site_ds = combine_datasets(site_fp, site_ds,
                                        method = "ffill",
                                        tolerance = tolerance)
                 
@@ -703,14 +712,16 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi',
             'transd' or 'transd-sub' won't work
             """
             sub_fp_temp = site_bf.fp.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
-                                         method="nearest") 
+                                         method="ffill") 
+
             sub_fp = xray.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
                                coords = {'sub_lat': (site_bf.coords['sub_lat']),
                                          'sub_lon': (site_bf.coords['sub_lon']),
                                 'time' : (fp_and_data[site].coords['time'])})
                                 
             sub_H_temp = H_all.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
-                                         method="nearest")                             
+                                         method="ffill")                             
+
             sub_H = xray.Dataset({'sub_H': (['sub_lat','sub_lon','time'], sub_H_temp)},
                                coords = {'sub_lat': (site_bf.coords['sub_lat']),
                                          'sub_lon': (site_bf.coords['sub_lon']),
