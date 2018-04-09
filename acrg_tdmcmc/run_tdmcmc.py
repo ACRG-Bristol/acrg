@@ -331,12 +331,6 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     # APPLY AVERAGING PERIOD
     fp_data_H = average_period_fp(fp_data_H5,av_period,dim="time")
     
-#    fp_data_H = {}    
-#    for si, site in enumerate(sites):
-#        site_ds = fp_data_H5[site].resample(av_period[si], dim = "time")
-#        site_ds2= site_ds.dropna("time", how="all")
-#        fp_data_H[site] = site_ds2
-    
     lat = np.asarray(fp_data_H[sites[0]].sub_lat)
     lon = np.asarray(fp_data_H[sites[0]].sub_lon)
     nlat=len(lat)
