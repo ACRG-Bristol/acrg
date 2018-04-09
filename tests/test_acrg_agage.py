@@ -39,8 +39,8 @@ def sat_measurement_param():
     ''' Define set of measurement parameters for satellite data '''
     param = {}
     param["sites"] = ["GOSAT-INDIA"]
-    param["start"] = "2012-01-01"
-    param["end"] = "2012-02-01"
+    param["start"] = "2013-07-01"
+    param["end"] = "2013-08-01"
     param["heights"] = [None]
     param["species"] = "ch4"
     param["max_level"] = 17
