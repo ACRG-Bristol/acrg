@@ -253,8 +253,10 @@ def flux(domain, species, flux_directory=flux_directory):
     This may get slow for very large flux datasets, and we may want to subset.    
     """
 
+    print 'search str',flux_directory + domain + "/" + species.lower() + "_" + "*.nc"
     files = sorted(glob.glob(flux_directory + domain + "/" + 
                    species.lower() + "_" + "*.nc"))
+    print 'files',files
     if len(files) == 0:
         print("Can't find flux: " + domain + " " + species)
         return None
@@ -574,7 +576,9 @@ def footprints_data_merge(data, domain = "EUROPE", load_flux = True,
                 tolerance = '1min'    
             else:
                 tolerance = None
-                
+            
+            # rt17603: 06/04/2018 - Added sort as some footprints weren't sorted by time for satellite data.
+            site_fp = site_fp.sortby("time")
             site_ds = combine_datasets(site_ds, site_fp,
                                        method = "nearest",
                                        tolerance = tolerance)
@@ -878,9 +882,20 @@ def filtering(datasets_in, filters, keep_missing=False):
     datasets_dictionary = filtering(datasets_dictionary, 
                                     ["daytime", "daily_median"])
     
-    The first filter "daytime" selects data between 1000 and 1500 UTC,
-    the second "daily_median" calculates the daily median. Obviously in this
-    case, you need to do the first filter before the second.    
+    All options are:
+        "daytime"           : selects data between 1000 and 1500 UTC
+        "nighttime"         : Only b/w 23:00 - 03:00 inclusive
+        "noon"              : Only 12:00 fp and obs used
+        "daily_median"      : calculates the daily median
+        "pblh_gt_threshold" : 
+        "local_influence"   : Only keep times when localness is low
+        "six_hr_mean"       :
+        "local_lapse"       :
+    
+    The order of the filters reflects the order they are applied, so for 
+    instance when applying the "daily_median" filter if you only wanted
+    to look at daytime values the filters list should be 
+    ["daytime","daily_median"]            
     """
 
     if type(filters) is not list:
@@ -1032,7 +1047,10 @@ def filtering(datasets_in, filters, keep_missing=False):
     for site in sites:
     
             for filt in filters:
-                datasets[site] = filtering_functions[filt](datasets[site], site, keep_missing=keep_missing)
+                if filt == "daily_median" or filt == "six_hr_mean":
+                    datasets[site] = filtering_functions[filt](datasets[site], keep_missing=keep_missing)
+                else:
+                    datasets[site] = filtering_functions[filt](datasets[site], site, keep_missing=keep_missing)
 
     return datasets
 
