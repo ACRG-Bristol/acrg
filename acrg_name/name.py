@@ -589,6 +589,8 @@ def footprints_data_merge(data, domain = None, load_flux = True,
                                        tolerance = tolerance)
             else: 
                site_ds = combine_datasets(site_fp, site_ds,
+                                       method = "ffill",
+                                       tolerance = tolerance)
                 
             # If units are specified, multiply by scaling factor
             if ".units" in attributes:
