@@ -326,22 +326,24 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
                         df["vmf"] = file_vmf[:]
                 
 #                If ship read lat and lon data
-                if site_info[site]["platform"] == 'ship':
-                    file_lat=ncf.variables["latitude"]
-                    if len(file_lat) > 0:                                
-                        df["meas_lat"] = file_lat[:]
-                        
-                    file_lon=ncf.variables["longitude"]
-                    if len(file_lon) > 0:
-                        df["meas_lon"] = file_lon[:]
-                       
-                
-                #If platform is aircraft, get altitude data
-                if site_info[site]["platform"] == 'aircraft':
-                    if "alt" in ncf.variables.keys():
-                        file_alt=ncf.variables["alt"]
-                        if len(file_alt) > 0:
-                            df["altitude"] = file_alt[:]        
+#               Check if site info has a keyword called platform
+                if 'platform' in site_info[site].keys():
+                    if site_info[site]["platform"] == 'ship':
+                        file_lat=ncf.variables["latitude"]
+                        if len(file_lat) > 0:                                
+                            df["meas_lat"] = file_lat[:]
+                            
+                        file_lon=ncf.variables["longitude"]
+                        if len(file_lon) > 0:
+                            df["meas_lon"] = file_lon[:]
+                           
+                    
+                    #If platform is aircraft, get altitude data
+                    if site_info[site]["platform"] == 'aircraft':
+                        if "alt" in ncf.variables.keys():
+                            file_alt=ncf.variables["alt"]
+                            if len(file_alt) > 0:
+                                df["altitude"] = file_alt[:]        
                         
                 #Get status flag
                 if ncvarname + "_status_flag" in ncf.variables.keys():
