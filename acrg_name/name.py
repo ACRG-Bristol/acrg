@@ -1093,22 +1093,6 @@ class plot_map_setup:
 
 
 
-def plot_map_zoom(fp_data):
-    
-    sites = [key for key in fp_data.keys() if key[0] != '.']
-    
-    dlon = max(fp_data[sites[0]].lon.values) - \
-            min(fp_data[sites[0]].lon.values)
-    lon_range = [min(fp_data[sites[0]].lon.values) + 0.6*dlon,
-                 max(fp_data[sites[0]].lon.values) - 0.25*dlon]
-    dlat = max(fp_data[sites[0]].lat.values) - \
-            min(fp_data[sites[0]].lat.values)
-    lat_range = [min(fp_data[sites[0]].lat.values) + 0.53*dlat,
-                 max(fp_data[sites[0]].lat.values) - 0.25*dlat]
-
-    return lat_range, lon_range
-
-
 def plot(fp_data, date, out_filename=None, 
          lon_range=None, lat_range=None, log_range = [5., 9.],
          map_data = None, zoom = False,
@@ -1156,10 +1140,15 @@ def plot(fp_data, date, out_filename=None,
 
     # Get sites
     sites = [key for key in fp_data.keys() if key[0] != '.']
-
-    # Zoom in. Assumes release point is to the East of centre
+    
+#    Zoom in. Get min and max release lat lons to zoom the map around the data (+/- 10 degrees)
     if zoom:
-        lat_range, lon_range = plot_map_zoom(fp_data)
+        release_lons = [fp_data[key].release_lon for key in fp_data.keys() if key[0] != '.']     
+        release_lats = [fp_data[key].release_lat for key in fp_data.keys() if key[0] != '.']
+        
+        lon_range = [np.min(release_lons)-10, np.max(release_lons)+10]
+        lat_range = [np.min(release_lats)-10, np.max(release_lats)+10]
+
     
     # Get map data
     if map_data is None:
