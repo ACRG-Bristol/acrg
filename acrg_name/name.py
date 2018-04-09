@@ -682,11 +682,7 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi',
         
         else:
         
-<<<<<<< HEAD
-            site_bf = combine_datasets(site_bf,basis_func)
-=======
             site_bf = combine_datasets(site_bf,basis_func, method='ffill')
->>>>>>> 3b774d09de71c18506b26420ffc8d9b703a1c8df
             
             H = np.zeros((int(np.max(site_bf.basis)),len(site_bf.time)))
 
@@ -716,22 +712,16 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi',
             'transd' or 'transd-sub' won't work
             """
             sub_fp_temp = site_bf.fp.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
-<<<<<<< HEAD
                                          method="ffill") 
-=======
-                                         method="nearest") 
->>>>>>> 3b774d09de71c18506b26420ffc8d9b703a1c8df
+
             sub_fp = xray.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
                                coords = {'sub_lat': (site_bf.coords['sub_lat']),
                                          'sub_lon': (site_bf.coords['sub_lon']),
                                 'time' : (fp_and_data[site].coords['time'])})
                                 
             sub_H_temp = H_all.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
-<<<<<<< HEAD
                                          method="ffill")                             
-=======
-                                         method="nearest")                             
->>>>>>> 3b774d09de71c18506b26420ffc8d9b703a1c8df
+
             sub_H = xray.Dataset({'sub_H': (['sub_lat','sub_lon','time'], sub_H_temp)},
                                coords = {'sub_lat': (site_bf.coords['sub_lat']),
                                          'sub_lon': (site_bf.coords['sub_lon']),
