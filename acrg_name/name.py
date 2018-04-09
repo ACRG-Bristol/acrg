@@ -712,7 +712,7 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi',
             'transd' or 'transd-sub' won't work
             """
             sub_fp_temp = site_bf.fp.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
-                                         method="ffill") 
+                                         method="nearest") 
 
             sub_fp = xray.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
                                coords = {'sub_lat': (site_bf.coords['sub_lat']),
@@ -720,7 +720,7 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi',
                                 'time' : (fp_and_data[site].coords['time'])})
                                 
             sub_H_temp = H_all.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
-                                         method="ffill")                             
+                                         method="nearest")                             
 
             sub_H = xray.Dataset({'sub_H': (['sub_lat','sub_lon','time'], sub_H_temp)},
                                coords = {'sub_lat': (site_bf.coords['sub_lat']),
