@@ -1,0 +1,116 @@
+
+Main Options:
+Absolute or Relative Time?, Fixed Met?, Flat Earth?,           Run Name,  Random Seed, Max # Sources
+                  Absolute,         No,          No, NWPMetAndPlumeRise,        Fixed,             1
+
+Restart File Options:
+# Cases Between Writes, Time Between Writes, Delete Old Files?, Write On Suspend?,
+                      ,                    ,                  ,                  ,
+
+Multiple Case Options:
+Dispersion Options Ensemble Size, Met Ensemble Size,
+                               1,                 1,
+
+Output Options:
+Folder
+.\Output\
+
+Input Files:
+File names
+..\Resources\Defns\MetDefnUM5R.txt
+
+Horizontal Coordinate Systems:
+Name
+Lat-Long
+
+Vertical Coordinate Systems:
+Name
+m agl
+
+Locations: Output Locations
+Name,    H-Coord,     X,     Y
+Site A, Lat-Long, -3.47, 50.73
+Site B, Lat-Long, -3.50, 51.00
+
+Horizontal Grids:
+Name,    H-Coord,  nX,  nY,   dX,   dY, X Centre, Y Centre
+HGrid1, Lat-Long, 120, 120, 0.05, 0.05,    -3.47,    50.73
+
+Horizontal Grids:
+Name,     dX,   dY, Set of Locations
+HGrid2, 0.05, 0.05, Output Locations
+
+Vertical Grids:
+Name,   Z-Coord,  nZ,    dZ,    Z0
+ZGrid1,   m agl,   1, 200.0,   0.0
+ZGrid2,   m agl, 100,  10.0,  10.0
+
+Temporal Grids:
+Name,   nt,       dt,                  t0
+TGrid1, 12, 01:00:00, 24/07/2002 01:00:00
+TGrid2,  2, 06:00:00, 24/07/2002 06:00:00
+
+Domains:
+Name,               H-Coord, X Min, X Max, Y Min, Y Max, H Unbounded?, Z-Coord,   Z Max, Z Unbounded?,       Start Time,  End Time, T Unbounded?, Max Travel Time
+Dispersion Domain, Lat-Long, -6.47, -0.47, 47.73, 53.73,           No,   m agl, 15000.0,           No, 24/07/2002 00:00,  infinity,           No,        infinity
+
+Species:
+Name,   Category, Half Life, UV Loss Rate, Surface Resistance, Molecular Weight, Material Unit
+Tracer,   Tracer,    STABLE,     0.00E+00,                0.0,                0,             g
+
+Species Uses:
+Species,         On Particles?, On Fields?, Advect Field?
+Tracer,                    Yes,         No,            No
+
+Sources:
+Name,         Shape,  H-Coord, Z-Coord,     X,     Y,     Z, dH-Metres?, dZ-Metres?,   dX,   dY,  dZ, Angle, Source Strength, Time Dependency, Plume Rise?, Temperature, Flow Velocity, # Particles,  Max Age, Top Hat,          Start Time,            Stop Time
+Source A, Ellipsoid, Lat-Long,   m agl, -3.47, 50.73, 150.0,        Yes,        Yes, 10.0, 10.0, 0.0,   0.0, Tracer  100.0 g,                ,         Yes,       380.0,           5.0,       10000, infinity,     Yes, 24/07/2002 00:00:00,  24/07/2002 06:00:00
+
+Output Requirements - Fields:
+Name,  Quantity,          Species, Source, H-Grid,  Z-Grid,  T-Grid, BL Average, T Av or Int, Av Time, # Av Times, Sync?, Output Route, Across, Separate File, Output Format,  Output Group
+Req 1, Air Concentration,  Tracer,       , HGrid1,  ZGrid1,  TGrid1,         No,          No,        ,           ,    No,            D,     TZ,             T,            IA,  Fields_grid1
+
+Output Requirements - Fields:
+Name,  Quantity,                 Species, Source,  H-Coord, H-Grid,  Z-Grid,  T-Grid, BL Average, T Av or Int, Av Time, # Av Times, Sync?, Output Route, Across, Separate File, Output Format,  Output Group
+Req 2, Temperature (K),                 ,       ,         , HGrid2,  ZGrid2,  TGrid2,         No,          No,        ,           ,   Yes,            D,      T,              ,            AZ,  Fields_grid2
+Req 3, Wind Direction (degrees),        ,       , Lat-Long, HGrid2,  ZGrid2,  TGrid2,         No,          No,        ,           ,   Yes,            D,      T,              ,            AZ,  Fields_grid2
+
+Sets of Dispersion Options:
+Max # Particles, Max # Full Particles, Max # Puffs, Max # Original Puffs, Skew Time, Velocity Memory Time, Mesoscale Velocity Memory Time, Inhomogeneous Time, DeltaOpt, Puff Time, Sync Time, Time of Fixed Met, Computational Domain, Puff Interval, Deep Convection?, Radioactive Decay?, Agent Decay?, Dry Deposition?, Wet Deposition?, Turbulence?, Mesoscale Motions?, Chemistry? 
+              2,                    2,      100000,                 1000,     00:00,                00:30,                          00:00,              00:30,        1,  infinity,  00:15:00,                  ,    Dispersion Domain,         00:30,              Old,                 No,           No,              No,              No,         Yes,                Yes,         No 
+
+NWP Met Module Instances: 
+Name,     Min B L Depth, Max B L Depth, Use NWP BL Depth?, Restore Met Script, Delete Met?,       Met Folder,  Topography Folder, Met Definition Name
+Regional,          80.0,        4000.0,               Yes,                   ,          No, ..\Resources\Met, ..\Resources\Topog,                UM5R
+
+NWP Flow Module Instances: 
+Name,     Met Module,      Met,     Domain
+Regional,    NWP Met, Regional, UM5R Whole 
+
+Flow Order: Update
+Flow Module, Flow
+NWP Flow,    Regional
+
+Flow Order: Convert
+Flow Module, Flow
+NWP Flow,    Regional
+
+Flow Order: Flow
+Flow Module, Flow
+NWP Flow,    Regional
+
+Flow Order: Cloud
+Flow Module, Flow
+NWP Flow,    Regional
+
+Flow Order: Rain
+Flow Module, Flow
+NWP Flow,    Regional
+
+Flow Attributes:
+Name,    Flow Order
+Update,  Update
+Convert, Convert
+Flow,    Flow
+Cloud,   Cloud
+Rain,    Rain

@@ -1,0 +1,372 @@
+
+Notes on UM met files used for NAME II and NAME III.
+
+
+Types of met file
+-----------------
+
+PP files are a Met Office format for holding 2-d NWP fields.
+
+Name II files are a modification of this format. The modifications are: 
+  (i)   field headers all reals, 
+  (ii)  fields split into ny nx-long records instead of one nx*ny-long record, 
+  (iii) field header array elements 34-37 used to indicate area of cut down met and <= 0 
+        for non-cut down met,
+  (iv)  field header array element 1 set to <= 0 to indicate a missing field - for 
+        missing fields the following field records are not present.  
+Modifications (i) and (ii) make transferring to/from GPCS easier.
+
+
+NWP models and areas covered
+---------------------------- 
+
+                NAME III                 NAME III           Day per Data interval 
+Met file suffix Met Defn files           Topog file         file    (hrs)
+--------------- --------------           ----------         ------- -------------
+
+GLOV3           MetDefnUMV3G.txt         TopogUMV3G         Y       6
+REGV3           MetDefnUMV3R.txt         TopogUMV3R         Y       3
+MESV3           MetDefnUMV3M.txt         TopogUMV3M         Y       1
+
+GLOH            MetDefnUMHG.txt          TopogUMHH2001G     Y       6
+REGH            MetDefnUMHR.txt          TopogUMHH2001R     Y       3
+MESH            MetDefnUMHM.txt          TopogUMHH2001M     Y       3
+
+GLOH2001        MetDefnUMH2001G.txt      TopogUMHH2001G     N       3
+REGH2001        MetDefnUMH2001R.txt      TopogUMHH2001R     N       3
+MESH2001        MetDefnUMH2001M.txt      TopogUMHH2001M     N       1
+
+GLOUM5          MetDefnUM5G.txt          TopogUM5G          N       3     
+REGUM5          MetDefnUM5R.txt          TopogUM5R          N       3     
+MESUM5          MetDefnUM5M.txt          TopogUM5M          N       1 or 3     
+MESUM5_SAH      MetDefnUM5CammSahara.txt TopogUM5CammSahara N       1     
+
+GLOUM6          MetDefnUM6G.txt          TopogUM6G          N       3
+GLOUM6_L40      MetDefnUM6GL40.txt       TopogUM6G          N       3
+REGUM6          MetDefnUM6R.txt          TopogUM6R          N       3
+NAEUM6          MetDefnUM6NAE.txt        TopogUM6NAE        N       1
+4KM1_UM6        MetDefnUM6_4km1.txt      TopogUM6M_4km1     N       1
+4KM2_UM6        MetDefnUM6_4km2.txt      TopogUM6M_4km2     N       1
+SAMUM6          MetDefnUM6SAM.txt        TopogUM6SAM        N       1
+ 
+Suffix GLO...     indicates global data
+Suffix GLO..._L40 indicates global data (40 levels)
+Suffix REG...     indicates regional data
+Suffix NAE...     indicates North-Atlantic & European data
+Suffix MES...     indicates mesoscale data (including crisis area mesoscale models)
+Suffix 4KM1_...   indicates UK 4km model (original domain)
+Suffix 4KM2_...   indicates UK 4km model (2nd domain, i.e. extended to include the Shetlands)
+Suffix SAM...     indicates South Asian model 
+
+V3    UM - pressure based eta coord system. 
+      Global & meso upgraded during 1998 (presumably look-alike files created by 
+      interpolation from the upgraded models) and regional replaced during 1998 by cut 
+      down from a preliminary run of the global model.
+      Global = ?km, ? levels; Regional = ?km, ? levels; Mesoscale = ?km, ? levels.
+H     UM - pressure based eta coord system. 
+      Global & meso are from the upgrades made during 1998 and regional is cut down 
+      from (same run of the) global model.
+      Global = 60km, 30 levels; Regional = cut down global; Mesoscale = 12km, 38 levels.
+H2001 UM - pressure based eta coord system. 
+      As H, but we include more levels in our files and have one file per data time.
+UM5   UM new dynamics - height based coord system. 
+      Covers UM version 5 or later for model resolutions introduced during UM v5 and 
+      some crisis area mesoscale models. 
+      Meso replaced by look-alike files cut out from the NAE on 20/9/2006, 12Z. 
+      Global = 60km, 38 levels; Regional = cut down global; Mesoscale = 12km, 38 levels.
+UM6   UM new dynamics - height based coord system. 
+      Covers UM version 6 or later for model resolutions introduced during UM v6.
+      Global = 40km, 50 levels; Regional = cut down global; NAE = 12km, 38 levels; 
+      UK 4km = 4km, 38 levels.
+
+V3    covers 01/01/95 - 31/12/98
+
+H     covers 01/01/99 - 05/08/02 for regional 
+             01/01/99 - 09/02/01 for others   
+
+H2001 covers 01/01/01 - 05/08/02                
+
+UM5   covers 24/07/02 - 19/12/05 for global/regional
+             07/08/02 - present  for (UK) mesoscale
+             07/08/02 - present  (at most) for Sahara CAMM  
+
+UM6   covers 19/12/05 - present  for global/regional (may be extendable to 1/11/05 from MASS?)
+             ?        - ?        for NAE
+             ?        - ?        for UK 4km Mk 1
+             ?        - 27/11/07 for UK 4km Mk 2
+             26/11/07 - ?        for UK 4km Mk 3
+
+GLOUM6_L40 is from the same model as GLOUM6, but more levels are stored. 
+                             
+NAME II Inclibs  Data types used
+---------------  ---------------
+std              GLOV3/REGV3/MESV3          
+hres             GLOH/REGH/MESH  
+2001             GLOH2001/REGH2001/MESH2001
+um5              GLOUM5/REGUM5/MESUM5 
+um6              GLOUM6/REGUM6/MESUM5  
+
+Some cut down met files exist for various subgrids. These are named by appending the 
+long-lat limits of the area covered to the suffix (older files) or grid point indices  
+newer files, 2006 onwards). The cut down area is stored in the header as follows:
+Header(34) = min x index
+Header(35) = max x index
+Header(36) = min y index
+Header(37) = max y index.
+In NAME II these files can be used where full files would be used.
+In NAME III they are read on their own grid with separate met defn files and topog 
+files which are named by appending the grid point indices defining the area.
+
+Some specific cut down met data known to have been produced:
+
+Example file name                  Name III Met Defn file          Topog file
+-----------------                  ----------------------          ----------
+HP010499.REGHN0200303565           MetDefnUMHR013075028084.txt     TopogUMHH2001R013075028084 } Provided to EA before 2006.
+HP011200.MESHN0110034959           MetDefnUMHM013097043135.txt     TopogUMHH2001M013097043135 }
+HP200110010000.REGH2001N0200303565 MetDefnUMH2001R014074028082.txt TopogUMHH2001R014074028082 }
+HP200407011600.MESUM5N014098046139 MetDefnUM5MDt1_014098046139.txt TopogUM5M014098046139      Provided to EA in 2006.
+                                   MetDefnUMHM014098044137.txt     TopogUMHH2001M014098044137 No met files produced except in testing  
+                                                                                              program to cut down met.
+
+The cut down mesoscale files cover approximately 11W to 3E, 49N to 59N.
+The cut down regional files cover approximately 20W to 30E, 35N to 65N.
+Note cut down met files covering the same nominal area sometimes have different grid points 
+even if the parent data is on the same grid - this is due to different choices being made 
+in rounding and in which grid (e.g. wind or temperature) is used in determining the area.
+
+Met Defn files and Topog files ending in .pp or pp.txt are pp versions.
+
+For the limited area models, it seems useful to exclude from use a number of grid points 
+at the edge of the domain. However, for the cut down global data, there is no reason to 
+do this.   
+ 
+Next heat flux = .false. for mesoscale data, .true. otherwise
+
+Note: 
+With 'old dynamics' (UM 4) data: 
+NAME III Eta(1: ) = NAME II.5.0 ALEV  (0:NLEV ) } for UVT levels  
+NAME III A  (1: ) = NAME II.5.0 ACOEF (0:NLEV ) } 
+NAME III Eta(1: ) = NAME II.5.0 ALEVW (0:NLEVW) ] for W Levels 
+NAME III A  (1: ) = NAME II.5.0 ACOEFW(0:NLEVW) ]
+Later on NAME II was changed to start numbering levels at 1.  
+
+In general we define UM grids with dx and dy = +/- 1.0 and x0 and y0 = -0.5, 0 or 0.5. 
+Any scale factors or offsets needed to do this are included in the coord system 
+definition.  
+Note that UM grids with the grid index increasing as y decreases from y0 can be 
+treated with dy < 0.
+(x0, y0) is the point with grid index (1, 1). 
+
+
+Notes on grids
+--------------
+
+Pre UM5:
+
+Horizontal (Arakawa B):
+
+          1      2 
+        -----  -----
+      | X      X      ...  X             
+     1|
+      |    UV     UV  ...     UV
+
+      | X      X      ...  X   
+     2|
+      |    UV     UV  ...     UV
+        .   .      .       .   . 
+        .   .      .       .   . 
+        .   .      .       .   . 
+
+           UV     UV  ...     UV
+
+        X      X      ...  X   
+
+UV = U, V, U10, V10, UStress, VStress
+X = Everything else
+1,2 ... are indices used in NAME II/III
+
+Vertical (Lorentz):
+
+         .
+         .
+      2  W
+
+      2  X
+
+      1  Wx surface
+
+W = W
+X = Everything else
+lower case = NAME II/III but not UM
+1,2 ... are indices used in NAME II/III
+UM uses 1/2, 1, 3/2, 2 ... or 1, 1, 2, 2 ...
+Note however that the UM met files for NAME have a diagnostic 10m level for some 
+quantities. If there is no 10m level in the UM, or if there is but the met file has 
+data separately for both the model level and the diagnostic level, this can lead to 
+two X levels in the met file without an interleaving W level:
+
+           .
+           .
+      2/2  W
+
+      3/2  X
+
+      2/-  X
+
+      1/1  Wx surface
+
+If there are two levels nominally at 10m, both levels are used in NAME II but not in 
+NAME III. Otherwise the extra level is used in both NAME II and NAME III. The level 
+numbers shown above (e.g. 3/2) reflect differences in numbering depending on whether 
+the extra 10m level is used.
+Not all UM levels have been retained in the UM met files for NAME, so there is no 
+guarantee of interleaving of levels at higher levels either (or of there not being 
+another X level before the first retained elevated W level).
+
+UM5:
+
+Horizontal (Arakawa C):
+
+        X   U   X   U   ... X   U             
+                                           
+        V       V       ... V       
+        .   .   .   .       .   .   
+        .   .   .   .       .   .   
+        .   .   .   .       .   .   
+     
+      | V       V       ... V       
+     2|
+      | X   U   X   U   ... X   U   
+
+      | V       V       ... V       
+     1|
+      | X   U   X   U   ... X   U   
+        -----   -----
+          1       2 
+
+U = U, U10, UStress
+V = V, V10, VStress
+X = Everything else
+1,2 ... are indices used in NAME II/III
+
+Vertical (Charney-Philips):
+
+         .
+         .
+     2   X
+
+     2  UV
+
+     1  Xuv surface
+
+UV = U, V (and, in the UM but not NAME II/III, P and Rho)
+X = Everything else (including P in NAME II/III)
+lower case = NAME II/III but not UM
+1,2 ... are indices used in NAME II/III
+UM uses 0, 1/2, 1, 3/2 ... or 0, 1, 1, 2 ...
+Not all UM levels have been retained in the UM met files for NAME, but the 
+interleaving of levels is retained.
+The UM output has P on both X and UV levels - the UM met files for NAME use the P 
+values from the X levels. 
+The UM met files for NAME do not contain Rho - this is calculated internally in NAME 
+II/III.
+
+The NAME structure and numbering of fields discussed above refers to the structure 
+and numbering of fields as read in to (or calculated at the surface by) either (i) 
+NAME II versions which number levels starting with 1 at the ground, or (ii) NAME III. 
+(Fields may be interpolated to different grids within NAME II).
+
+Problems with met files in the archive
+--------------------------------------
+
+H and H2001 regional and H2001 global files were intended to have level 19 on the UV 
+grid. However it seems that:
+  01/01/99 - 29/03/99 inclusive, H regional has level 18 instead of 19
+  30/03/99 - 31/12/00 inclusive, H regional has level 19
+  01/01/01 - 04/08/02 inclusive, H2001 regional has level 18 instead of 19.
+  01/01/01 - 04/08/02 inclusive, H2001 global has level 18 instead of 19.
+So it looks like the error in level numbers was corrected on 30/03/99 but that the 
+error was reintroduced for H2001 data. (These findings are based on looking at just 
+a sample of files, but comparing some field values with the WGOS archive as well as 
+looking at the headers. We should probably expect it not to be completely consistent,
+e.g. where the files were not created automatically at the time but patched 
+together from other archives.)
+
+As a result we have changed level 19 to 18 in MetDefnUMH2001R.txt and 
+MetDefnUMH2001G.txt (and in the related files MetDefnUMH2001R_No10m.txt and 
+MetDefnUMH2001R014074028082.txt), but not in MetDefnUMHR.txt as the majority of the H 
+regional data (up to 31/12/00) has level 19. Note the H regional files after 31/12/00 
+were made from H2001 files and so are expected to have level 18 instead of 19. 
+
+The H2001 regional files (19/1/2001 to 20/1/2001) in the Name III library have 
+different headers to the files in the main regional archive on 
+\project_NAME\met\REGH2001. The headers in the Name III library version seem a bit 
+better as if they have been run through fixheader. However the 'cutdown met' headers
+(headers 34-37) have been set (i.e. are non-zero) which the current fixheader code
+doesn't do.
+
+H regional files from 1/1/99 to 12/10/99 (but not necessarily all times in this 
+period) have stash 13 for convective cloud amount instead of 5013.
+
+Notes on ancillary files of surface properties
+----------------------------------------------
+
+Fields considered:
+  land use fractions (9 land use types)
+  clay mass fraction
+  silt mass fraction
+  sand mass fraction
+  soil particle mass fractions (6 size bins)
+  soil moisture
+
+These are all < 0 over the sea.
+$$ don't know what happens in partially sea grid boxes - e.g. sum to 1 or <  1?
+
+Land use fraction refer to the following 9 land use categories:
+  1   Broadleaf trees (BL)
+  2   Needle leaf trees (NL)
+  3   C3 (temperate) grass (C3G) 
+  4   C4 (tropical) grass (C4G)
+  5   Shrubs (sh)
+  6   Urban (ur)
+  7   Inland water (wa)
+  8   Soil (bs)
+  9   Ice (ic)
+These are generated from the IGBP land use dataset (see
+http://www-nwp/~frsurf/ancillary_files/ancil_code/UM6.6/v1.1/doc/IGBP_to_MOSES).
+The IGBP dataset gives a single land use for each point (i.e. not land use fractions) 
+at high resolution. The IGBP categories are
+  1   Evergreen Needleleaf Forest
+  2   Evergreen Broadleaf Forest
+  3   Deciduous Needleleaf Forest
+  4   Deciduous Broadleaf Forest
+  5   Mixed Forest
+  6   Closed Shrublands
+  7   Open Shrublands
+  8   Woody Savannas
+  9   Savannas
+  10  Grasslands
+  11  Permanent Wetlands
+  12  Croplands
+  13  Urban and Built-Up
+  14  Cropland/Natural Vegetation Mosaic
+  15  Snow and Ice
+  16  Barren or Sparsely Vegetated
+  17  Water Bodies
+
+In NAME II Nikki Morrison produced a land use data set by reducing the resolution
+of the IGBP dataset by 4x4 and combining classes (see Morrison, 2003, Using a 
+land use map within NAME). This gave a single land use from 10 categories for 
+each 16 raw land use grid squares.
+
+The 6 soil particle mass fractions cover the following particle size ranges
+ 0.0632 to  0.200
+ 0.200  to  0.632
+ 0.632  to  2.00 
+ 2.00   to  6.32 
+ 6.32   to 20.0  
+20.0    to 63.2
+
+Soil moisture is taken from the 1st UM soil level.  
+

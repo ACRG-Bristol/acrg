@@ -1,0 +1,144 @@
+# ******************************************************************************
+#
+# Project: Example NAME runs
+#
+# File:    ERA-40 demonstration run
+#
+# Author:  Andrew Jones, Atmospheric Dispersion
+#
+# Date:    30/06/2010
+#
+# ******************************************************************************
+
+Main Options:
+ Absolute or Relative Time?, Fixed Met?, Flat Earth?,                      Run Name, Random Seed, Backwards?,
+                   Absolute,         No,          No, ERA40 demonstration: Jan 1990,       Fixed,         No,
+
+Restart File Options:
+ # Cases Between Writes, Time Between Writes, Delete Old Files?, Write On Suspend?,
+                       ,                    ,                  ,                  ,
+
+Multiple Case Options:
+ Dispersion Options Ensemble Size, Met Ensemble Size,
+                                1,                 1,
+
+Output Options:
+  Folder, Seconds?, Time Decimal Places,
+./Output,         ,                    ,
+
+Input Files:
+                                         File Names,
+ ../Resources/Defns/MetDefnECMWF_ERA40_Regional.txt,
+
+Locations: Source Location
+         Name,  H-Coord,     X,     Y,
+       Exeter, Lat-Long, -3.50, 50.70,
+
+Horizontal Coordinate Systems:
+     Name,
+ Lat-Long,
+
+Vertical Coordinate Systems:
+  Name,
+ m agl,
+
+Horizontal Grids:
+           Name,  H-Coord,  nX, nY,        dX,        dY,     X Min,    Y Min,
+ HGridForFields, Lat-Long, 101, 61, 0.5000000, 0.5000000, -30.00000, 35.00000,
+
+Horizontal Grids:
+           Name, Set of Locations,  dX,  dY
+    HGridForMet,  Source Location, 0.1, 0.1
+
+Vertical Grids:
+        Name, Z-Coord, nZ,     dZ,     Z0,
+    ZGrid_0m,   m agl,  1,  200.0,    0.0,
+   ZGrid_10m,   m agl,  1,    0.0,   10.0,
+
+Temporal Grids:
+           Name,  nT,    dT,               T0,
+ TGridForFields,  40, 03:00, 02/01/1990 03:00,
+    TGridHourly, 120, 01:00, 02/01/1990 01:00,
+
+Domains:
+              Name,  H-Coord,     X Min,    X Max,    Y Min,    Y Max, H Unbounded?, Z-Coord,   Z Max, Z Unbounded?,       Start Time,         End Time, T Unbounded?, Max Travel Time,
+ Dispersion Domain, Lat-Long, -30.25000, 20.25000, 34.75000, 65.25000,           No,   m agl, 15000.0,           No, 02/01/1990 00:00, 07/01/1990 00:00,           No,        infinity,
+
+Sources:
+      Name,  Shape, Set of locations, Location, Z-Coord,    Z,  dX,  dY,  dZ, Angle, dH-Metres?, dZ-Metres?, Time Dependency, Plume Rise?, # Particles,  Max Age, Top Hat,       Start Time,        Stop Time, Source Strength,
+ Source  1, Cuboid,  Source Location,   Exeter,   m agl, 10.0, 0.0, 0.0, 0.0,   0.0,        Yes,        Yes,                ,          No,   1000 / hr, infinity,     Yes, 02/01/1990 00:00, 02/01/1990 06:00,  Tracer 1.0 g/s,
+
+Output Requirements - Fields:
+                    Name,            Quantity, Species, Source, Source Group,         H-Grid,      Z-Grid,         T-Grid, BL Average, T Av Or Int, Av Time, # Av Times, Fluctuations?, Sync?, Output Route, Across, Separate File, Output Format,    Output Group,
+  Tracer Air Conc at 0 m,   Air Concentration,  Tracer,       ,             , HGridForFields,    ZGrid_0m, TGridForFields,         No,          Av,   03:00,         12,            No,    No,            D,     TZ,             T,            IA, Fields_species1,
+
+Output Requirements - Fields:
+                     Name,                  Quantity,    H-Coord, Species, Source, Source Group,      H-Grid,     Z-Grid,      T-Grid, BL Average, T Av Or Int, Av Time, # Av Times, Fluctuations?, Sync?, Output Route, Across, Separate File, Output Group, Output Format,
+ Wind U Component at 10 m,               Mean Flow U,   Lat-Long,        ,       ,             , HGridForMet,  ZGrid_10m, TGridHourly,         No,          No,        ,           ,            No,   Yes,            D,    XYZ,              ,   Fields_met,            AZ,
+ Wind V Component at 10 m,               Mean Flow V,   Lat-Long,        ,       ,             , HGridForMet,  ZGrid_10m, TGridHourly,         No,          No,        ,           ,            No,   Yes,            D,    XYZ,              ,   Fields_met,            AZ,
+       Wind Speed at 10 m,                Wind Speed,           ,        ,       ,             , HGridForMet,  ZGrid_10m, TGridHourly,         No,          No,        ,           ,            No,   Yes,            D,    XYZ,              ,   Fields_met,            AZ,
+   Wind Direction at 10 m,  Wind Direction (degrees),   Lat-Long,        ,       ,             , HGridForMet,  ZGrid_10m, TGridHourly,         No,          No,        ,           ,            No,   Yes,            D,    XYZ,              ,   Fields_met,            AZ,
+ Wind W Component at 10 m,               Mean Flow W,           ,        ,       ,             , HGridForMet,  ZGrid_10m, TGridHourly,         No,          No,        ,           ,            No,   Yes,            D,    XYZ,              ,   Fields_met,            AZ,
+      Temperature at 10 m,           Temperature (C),           ,        ,       ,             , HGridForMet,  ZGrid_10m, TGridHourly,         No,          No,        ,           ,            No,   Yes,            D,    XYZ,              ,   Fields_met,            AZ,
+Specific Humidity at 10 m,         Specific Humidity,           ,        ,       ,             , HGridForMet,  ZGrid_10m, TGridHourly,         No,          No,        ,           ,            No,   Yes,            D,    XYZ,              ,   Fields_met,            AZ,
+       Sensible Heat Flux,        Sensible Heat Flux,           ,        ,       ,             , HGridForMet,   ZGrid_0m, TGridHourly,         No,          No,        ,           ,            No,   Yes,            D,    XYZ,              ,   Fields_met,            AZ,
+     Boundary Layer Depth,      Boundary Layer Depth,           ,        ,       ,             , HGridForMet,   ZGrid_0m, TGridHourly,         No,          No,        ,           ,            No,   Yes,            D,    XYZ,              ,   Fields_met,            AZ,
+               Topography,                Topography,           ,        ,       ,             , HGridForMet,   ZGrid_0m, TGridHourly,         No,          No,        ,           ,            No,   Yes,            D,    XYZ,              ,   Fields_met,            AZ,
+        Friction Velocity,                    u-star,           ,        ,       ,             , HGridForMet,   ZGrid_0m, TGridHourly,         No,          No,        ,           ,            No,   Yes,            D,    XYZ,              ,   Fields_met,            AZ,
+         Surface Pressure,             Pressure (Pa),           ,        ,       ,             , HGridForMet,   ZGrid_0m, TGridHourly,         No,          No,        ,           ,            No,   Yes,            D,    XYZ,              ,   Fields_met,            AZ,
+      Precipitation Rate, Precipitation Rate (mm/hr),           ,        ,       ,             , HGridForMet,   ZGrid_0m, TGridHourly,         No,          No,        ,           ,            No,   Yes,            D,    XYZ,              ,   Fields_met,            AZ,
+
+Output Requirements - Fields:
+               Name,     Quantity, Species,      T-Grid, T Av Or Int, Sync?, Output Route, Output Group, Output Format,
+ % of run completed, Progress (%),        , TGridHourly,          No,   Yes,            D,         Info,            AF,
+ Count of particles,  # Particles,        , TGridHourly,          No,   Yes,            D,         Info,            AF,
+
+Sets of Dispersion Options:
+ Max # Particles, Max # Full Particles, Max # Puffs, Max # Original Puffs, Skew Time, Velocity Memory Time, Mesoscale Velocity Memory Time, Inhomogeneous Time, Sync Time, Puff Time, Puff Interval, DeltaOpt, Computational Domain, Deep Convection?, Radioactive Decay?, Agent Decay?, Dry Deposition?, Wet Deposition?, Turbulence?, Mesoscale Motions?, Chemistry?,
+         2000000,                    2,           2,                    2,     00:00,                00:00,                          00:00,              00:00,     00:15,     00:00,         00:00,        1,    Dispersion Domain,               No,                 No,           No,              No,              No,         Yes,                Yes,         No,
+
+Species:
+   Name, Category, Half Life, UV Loss Rate, Surface Resistance, Deposition Velocity, Molecular Weight, Material Unit                                                                                                                                                                                                                                                                                                                                                                 
+ Tracer,    INERT,    STABLE,     0.00E+00,                   ,                 0.0,                0,             g                                                                                                                                                                                                                                                                                                                                                                 
+
+Species Uses:
+Species,         On Particles?, On Fields?, Advect Field?
+Tracer,                    Yes,         No,            No
+
+! Using ECMWF ERA40 Regional
+
+NWP Met Module Instances: 
+Name,                  Min B L Depth, Max B L Depth, Use NWP BL Depth?, Restore Met Script, Delete Met?,                    Met Folder,  Topography Folder,   Met Definition Name
+ECMWF ERA40 Regional,           50.0,        4000.0,               Yes,                   ,          No,  /project/NAME_LAM/apnm/ERA40, ../Resources/Topog,  ECMWF ERA40 Regional
+
+NWP Flow Module Instances: 
+Name,                  Met Module,                   Met,               Domain
+ECMWF ERA40 Regional,     NWP Met,  ECMWF ERA40 Regional, ECMWF ERA40 Regional
+
+Flow Order: Update
+Flow Module, Flow
+NWP Flow,    ECMWF ERA40 Regional
+
+Flow Order: Convert
+Flow Module, Flow
+NWP Flow,    ECMWF ERA40 Regional
+
+Flow Order: Flow
+Flow Module, Flow
+NWP Flow,    ECMWF ERA40 Regional
+
+Flow Order: Cloud
+Flow Module, Flow
+NWP Flow,    ECMWF ERA40 Regional
+
+Flow Order: Rain
+Flow Module, Flow
+NWP Flow,    ECMWF ERA40 Regional
+
+Flow Attributes:
+Name,    Flow Order
+Update,  Update
+Convert, Convert
+Flow,    Flow
+Cloud,   Cloud
+Rain,    Rain

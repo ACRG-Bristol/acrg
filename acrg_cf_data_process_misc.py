@@ -13,7 +13,7 @@ from os.path import join, split
 from datetime import datetime as dt
 from datetime import timedelta as td
 import glob
-import xray
+import xarray as xray
 import json
 from os import getenv
 from acrg_GCWerks.cf_data_process import attributes, output_filename
@@ -21,11 +21,12 @@ import calendar
 import re
 import dateutil
 from acrg_time import convert
-
+import pytz
 
 
 # Site info file
 acrg_path = getenv("ACRG_PATH")
+data_path = getenv("DATA_PATH")
 site_info_file = join(acrg_path, "acrg_site_info.json")
 with open(site_info_file) as sf:
     site_params = json.load(sf)
@@ -338,7 +339,7 @@ def ec(site):
     for fname in fnames:
         
         header_count = 0
-        with open(fname, "r") as f:
+        with odffpen(fname, "r") as f:
             for line in f:
                 if line[0] == "C":
                     header_count+=1
@@ -979,7 +980,7 @@ def nies_read(network, site,
         ds.to_netcdf(nc_filename)
 
 
-def nies():
+def nies_wdcgg():
 
     global_attributes = {"data_owner": "NIES",
                          "data_owner_email": "lnmukaih@nies.go.jp"
@@ -993,6 +994,81 @@ def nies():
               global_attributes = global_attributes,
               instrument = "GCMS",
               assume_repeatability = 0.03)
+
+
+
+def nies(fname, species, site, units = "ppt"):
+    '''
+    Examples of files that this will process:
+        fname = "/data/shared/obs_raw/NIES/HAT/HAT_20170804_PFC-318.xlsx"
+        species = "PFC-318"
+        site = "HAT"
+        
+        fname = "/data/shared/obs_raw/NIES/HAT/HAT_20170628_CHCl3.txt"
+        species = "CHCl3"
+        site = "HAT"
+    '''
+
+    global_attributes = {"data_owner": "Takuya Saito",
+                         "data_owner_email": "saito.takuya@nies.go.jp"
+                         }    
+    
+    
+    if fname.split(".")[1] == "xlsx":
+        df = pd.read_excel(fname, parse_dates = [0], index_col = [0])
+    else:
+        df = pd.read_csv(fname, sep = "\t", parse_dates = [0], index_col = [0])
+    
+    print("Assuming data is in JST. Check input file. CONVERTING TO UTC.")
+    
+   # df.index = df.index.tz_localize(pytz.timezone("Japan")).tz_convert(pytz.utc).tz_localize(None) # Previous solution
+    df.index = df.index.tz_localize(pytz.timezone("Japan")).tz_convert(None) # Simpler solution
+
+    # Sort
+    df.sort_index(inplace = True)
+
+    # Rename columns to species
+    df.rename(columns = {df.columns[0]: species}, inplace = True)
+    
+    # Drop duplicates and rename index
+    df.index.name = "index"
+    df = df.reset_index().drop_duplicates(subset='index').set_index('index')              
+    df.index.name = "time"
+
+    
+    # Add a repeatability column
+    df[species + "_repeatability"] = df[species]*0.05
+
+    # Convert to dataset
+    ds = xray.Dataset.from_dataframe(df)
+
+    ds[species + "_repeatability"].attrs["Comment"] = \
+        "NOTE: This is an assumed value. Contact data owner."
+    
+    
+    # Add attributes
+    ds = attributes(ds,
+                    species,
+                    site,
+                    scale = "Check raw data file or contact data owner",
+                    global_attributes = global_attributes,
+                    sampling_period = 60,
+                    units = units)
+
+    # Write file
+    #output_path = "/data/shared/obs/"
+    output_path = join(data_path,"obs/")
+    nc_filename = output_filename(output_path,
+                                  "NIES",
+                                  "GCMS",
+                                  site.upper(),
+                                  str(ds.time.to_pandas().index.to_pydatetime()[0].year),
+                                  ds.species,
+                                  "various")
+    print("Writing " + nc_filename)
+    
+    ds.to_netcdf(nc_filename)
+
 
 
 def niwa(site, species):
@@ -1335,6 +1411,196 @@ def saws():
     
     ds.to_netcdf(nc_filename)
     
+    return(ds, df)
 
 
+def uex():
+    params = {
+            "site" : "CVO",
+            "directory" : "/data/shared/obs_raw/UEX/",
+            "directory_output" : "/data/shared/obs/",
+            "global_attributes" : {
+                    "contact": "Elena Kozlova",
+                    "averaging": "minute averaged OA-ICOS"
+                    }
+            }
+    
+    fnames = sorted(glob.glob(join(params["directory"],"*.txt")))
+
+    df = []
+    
+    for fname in fnames:
+        
+        header_count = 0
+        with open(fname, "r") as f:
+            for line in f:
+                if line[0] == "D":
+                    header_count+=1
+                    header = line.split()
+                else:
+                    break
+    
+        dff = pd.read_csv(fname, sep = r"\s+",
+                         skiprows = header_count,
+                         header = None,
+                         names = header,
+                         parse_dates = {"time": ["DATE", "TIME"]},
+                         index_col = "time")
+        
+        dff = dff[["DATA", "ND", "SD"]]
+    
+        dff.rename(columns = {"DATA" : "CH4",
+                                "ND": "CH4_number_of_observations",
+                                "SD": "CH4_variability"},
+                   inplace = True)
+
+        df.append(dff)
+
+    df = pd.concat(df)
+    
+    # remove duplicates
+    df.index.name = "index"
+    df = df.reset_index().drop_duplicates(subset='index').set_index('index')              
+    df.index.name = "time"
+ 
+    # Convert to xray dataset
+    ds = xray.Dataset.from_dataframe(df)
+
+    # Add attributes
+    ds = attributes(ds,
+                    "CH4",
+                    params['site'].upper(),
+                    global_attributes = params["global_attributes"],
+                    scale = "NOAA-2004")
+    
+    # Write file
+    nc_filename = output_filename(params["directory_output"],
+                                  "UEX",
+                                  "OA-ICOS",
+                                  params["site"],
+                                  str(ds.time.to_pandas().index.to_pydatetime()[0].year),
+                                  ds.species,
+                                  site_params[params["site"]]["height"][0])
+    
+    print("Writing " + nc_filename)
+    
+    ds.to_netcdf(nc_filename)
+
+
+def obspack_co2(site, height, obspack_name):
+    
+    """
+    obspack_name is one of: 'GLOBALVIEW', 'preICOS' or 'WDCGG'
+    """
+
+    height = str(height)
+    site = str(site)
+    obspack_name = str(obspack_name).lower()
+    
+    obspack_name_dict = {'globalview': 'GLOBALVIEW',
+                         'preicos':'PreICOS',
+                         'wdcgg':'WDCGG'}
+    
+    if height == 'surface':
+        if site == "PAL":
+            fname = glob.glob("/data/shared/obs_raw/EUROCOM_ObsPack/"+obspack_name_dict[obspack_name]+"/co2_" + site.lower() + "*" + "nonlocal.nc" )
+        else:
+            fname = glob.glob("/data/shared/obs_raw/EUROCOM_ObsPack/"+obspack_name_dict[obspack_name]+"/co2_" + site.lower() + "*" + ".nc" )
+    else:    
+        fname = glob.glob("/data/shared/obs_raw/EUROCOM_ObsPack/"+obspack_name_dict[obspack_name]+"/co2_" + site.lower() + "*" + "-" + height +"magl.nc" )
+    
+    instrument_dict = {'MHD':'CRDS',
+                       'RGL':'CRDS',
+                       'TAC':'CRDS',
+                       'TTA':'CRDS',
+                       'CBW':'NDIR',
+                       'HUN':'NDIR',
+                       'HEI':'GC-FID',
+                       'KAS':'GC-FID',
+                       'LUT':'GC-FID',
+                       'PAL':'NDIR',
+                       'SMR':'CRDS',
+                       'SSL':'NDIR',
+                       'LMP':'NDIR',
+                       'OPE':'CRDS',
+                       'TRN':'GC-FID'}
+
+    if len(fname) == 0:
+        print "Can't find file for obspack %s, site %s and height %s" %(obspack_name, site, height)
+    elif len(fname) > 1:
+        print "Ambiguous filename for obspack %s, site %s and height %s" %(obspack_name,site, height)
+    elif len(fname) == 1:
+        ds = xray.open_dataset(fname[0])
+        
+        species = ds.dataset_parameter
+        if site in ['ces', 'CES']:
+            site = 'CBW'
+        else:
+            site = ds.site_code
+            
+        if ds.value.units == "mol mol-1":
+            print ds.value.values[0], float(unit_species[species.upper()])
+            values = ds.value.values/float(unit_species[species.upper()])
+            if 'value_unc' in ds.keys(): 
+                unc_values = ds.value_unc.values/float(unit_species[species.upper()])
+            else:
+                print "Can't find data error in file. Using data*0.001 as error"
+                unc_values = values*0.001
+            print values[0], unc_values[0]
+        else:
+            print "You need to create a unit conversion for the input units"
+        
+        if 'dataset_intake_ht' in ds.attrs.keys():
+            intake_ht = ds.dataset_intake_ht
+        elif 'intake_height' in ds.keys():
+            intake_ht = str(ds.intake_height.values[0])
+            
+        if 'dataset_intake_ht_unit' in ds.attrs.keys():
+            intake_ht_unit = ds.dataset_intake_ht_unit
+        elif 'intake_height' in ds.keys():
+            intake_ht_unit = ds.intake_height.units
+        
+        
+        ds2 = xray.Dataset({species.upper(): (['time'],values),
+                            species.upper() + "_repeatability": (['time'],unc_values)},
+#                            species.upper() + "_status_flag": (['time'],ds.obs_flag.values)},
+                            coords = {'time': ds.time.values})
+
+    
+        global_attributes = {'origin': ds.obspack_name,
+                             'original_filename': ds.dataset_name,
+                             'citation': ds.obspack_citation,
+                             'inlet_height_%s' %intake_ht_unit : intake_ht,
+                             'main_provider_name' : ds.provider_1_name,
+                             'main_provider_affiliation': ds.provider_1_affiliation,
+                             'main_provider_email': ds.provider_1_email,
+                             'fair_usage': ds.obspack_fair_use}
+    
+        ds2 = attributes(ds2,
+                        species.upper(),
+                        site.upper(),
+                        global_attributes = global_attributes,
+                        units = 'ppm',
+                        scale = ds.dataset_calibration_scale,
+                        sampling_period = None)
+    
+        # Write file
+        directory_output = "/data/shared/obs/"
+        instrument = instrument_dict[site.upper()]
+        if site == 'MHD':
+            inlet = "10m"
+        else:
+            inlet = "%im" %(int(float(intake_ht)))
+        
+        nc_filename = output_filename(directory_output,
+                                  "EUROCOM",
+                                  instrument,
+                                  site.upper(),
+                                  str(ds2.time.to_pandas().index.to_pydatetime()[0].year),
+                                  ds2.species,
+                                  inlet)
+    
+        print("Writing " + nc_filename)
+        
+        ds2.to_netcdf(nc_filename)
 

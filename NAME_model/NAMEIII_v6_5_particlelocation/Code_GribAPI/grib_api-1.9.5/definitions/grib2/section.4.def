@@ -1,0 +1,57 @@
+# Copyright 2005-2007 ECMWF
+#
+# Licensed under the GNU Lesser General Public License which
+# incorporates the terms and conditions of version 3 of the GNU
+# General Public License.
+# See LICENSE and gpl-3.0.txt for details.
+transient timeRangeIndicator=0 : no_copy,hidden;
+
+position offsetSection4;
+length[4] section4Length ;
+meta section4Pointer section_pointer(offsetSection4,section4Length,4);
+
+unsigned[1] numberOfSection = 4:read_only;
+
+unsigned[2] NV  : dump ;
+alias numberOfVerticalCoordinateValues=NV ;
+alias numberOfCoordinatesValues=NV;
+
+#  Product Definition Template Number
+
+transient neitherPresent = 0;
+
+if (centre==7 || centre==46) {
+	alias disableGrib1LocalSection=one;
+}
+
+codetable[2] productDefinitionTemplateNumber('4.0.table',masterDir,localDir) : dump;
+
+_if (section2Used == 1) {
+	when (changed(grib2LocalSectionNumber) && grib2LocalSectionNumber!=0) {
+		set_nofail productDefinitionTemplateNumber=productDefinitionTemplateNumberInternal;
+	}
+}
+
+template productDefinition "grib2/template.4.[productDefinitionTemplateNumber:l].def";
+
+#if (section2Used == 1 && centreForLocal==98 ) {
+if (defined(marsStream) && defined(marsType)) {
+	template_nofail marsKeywords1 "mars/grib1.[marsStream:s].[marsType:s].def";
+}
+
+template parameters "grib2/parameters.def";
+
+if(NV  == 0){
+  transient PVPresent = 0;
+} else {
+  transient PVPresent = 1;
+}
+
+if(PVPresent){
+ ieeefloat pv[numberOfCoordinatesValues] : dump;
+ alias vertical.pv=pv;
+}
+
+
+
+meta md5Section4 md5(offsetSection4,section4Length);

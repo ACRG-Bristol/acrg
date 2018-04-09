@@ -1,0 +1,23 @@
+# Copyright 2005-2007 ECMWF
+# 
+# Licensed under the GNU Lesser General Public License which
+# incorporates the terms and conditions of version 3 of the GNU
+# General Public License.
+# See LICENSE and gpl-3.0.txt for details.
+
+#Data Representation Template 5.40: 
+#Grid point data - JPEG 2000 Code Stream Format
+
+include "template.5.packing.def";
+include "template.5.original_values.def";
+
+# Octets 21 : Type of Compression used. (see Code Table 5.40) 
+
+codetable[1] typeOfCompressionUsed  ('5.40.table',masterDir,localDir) ;
+
+# Octets 23 Target compression ratio, M:1 (with respect to the bit-depth specified in octet 20),
+# when octet 22 indicates Lossy Compression.   Otherwise, set to missing. (see Note 3)
+
+unsigned[1] targetCompressionRatio = 255;
+
+# END   2/template.5.40-------------------------------

@@ -1,0 +1,10 @@
+# Copyright 2005-2007 ECMWF
+#
+# Licensed under the GNU Lesser General Public License which
+# incorporates the terms and conditions of version 3 of the GNU
+# General Public License.
+# See LICENSE and gpl-3.0.txt for details.
+
+unsigned[1] localDefinitionNumber = 1 : dump,edition_specific,no_copy;
+template  localDefinition  "grib1/local.[centre:l].[localDefinitionNumber:l].def";
+

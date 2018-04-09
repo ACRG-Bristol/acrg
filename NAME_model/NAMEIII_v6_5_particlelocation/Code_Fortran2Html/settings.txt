@@ -1,0 +1,3 @@
+NAMEIII_VersionNumber...=3.0d
+Directory_Input.........=/home/hc1400/aprj/NameIII/Code/HTML/ProcessingDirectory
+Directory_Output........=/home/hc1400/aprj/public_html/nameiii/v3_0d

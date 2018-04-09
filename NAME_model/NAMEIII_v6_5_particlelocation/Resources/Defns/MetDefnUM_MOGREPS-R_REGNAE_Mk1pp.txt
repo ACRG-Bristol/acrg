@@ -1,0 +1,192 @@
+
+The NWP met definition 'UM MOGREPS-R REGNAE Mk1' is suitable for use with UM MOGREPS-R
+met data (i.e. the MOGREPS regional ensemble) on the REGNAE cut-out subdomain.
+
+The domain 'UM MOGREPS-R REGNAE Mk1 Whole' covers the whole area covered by the intersection
+of all the grids used by the met data.
+
+The domain 'UM MOGREPS-R REGNAE Mk1 Whole-4.5' excludes 4.5 grid lengths at the
+horizontal boundaries.
+
+The remaining definitions are intended only for use here in defining the above NWP met
+definition and domains (although there is no reason why they cannot be used elsewhere).
+
+NWP Met Definitions:
+Name,                    Binary Format, File Type,   Dt, Day Per File,  Prefix,       Suffix, Next Heat Flux, Mesoscale SigU, Mesoscale TauU, Met File Structure Definition, Z-Coord - W, Z-Coord - Cloud Height,                    Z-Grid,                 Z-Grid - UV,                Z-Grid - W,                Z-Grid - P,                    H-Grid,                 H-Grid - U,                 H-Grid - V,                 Topography File
+UM MOGREPS-R REGNAE Mk1,    BIG_ENDIAN,        PP, 3:00,           No, MOGREPS, REGNAEUM6.pp,             No,            0.8,        10000.0,              UM MOGREPS-R Mk1,       m asl,                     Pa, UM MOGREPS-R REGNAE ZGrid, UM MOGREPS-R REGNAE ZGridUV, UM MOGREPS-R REGNAE ZGrid, UM MOGREPS-R REGNAE ZGrid, UM MOGREPS-R REGNAE HGrid, UM MOGREPS-R REGNAE HGridU, UM MOGREPS-R REGNAE HGridV, TopogUM_MOGREPS-R_REGNAE_Mk1.pp
+
+Domains:
+Name,                              H Unbounded?,              H-Coord, X Min, X Max, Y Min, Y Max, Z Unbounded?,    Z-Coord,     Z Max, T Unbounded?, Max Travel Time
+UM MOGREPS-R REGNAE Mk1 Whole,               No,  UM MOGREPS-R HCoord, 110.5, 299.0,  13.5, 161.5,           No, UM6 ZCoord, 0.2037966,          Yes,        infinity
+UM MOGREPS-R REGNAE Mk1 Whole-4.5,           No,  UM MOGREPS-R HCoord, 115.0, 294.5,  18.0, 157.0,           No, UM6 ZCoord, 0.2037966,          Yes,        infinity
+
+Horizontal Coordinate Systems:
+Name,                 Type, Pole Lat, Pole Long, Angle, x-origin, y-origin,    x-unit,    y-unit
+UM MOGREPS-R HCoord,     1,     37.5,     177.5, 180.0,   326.22,   -20.07,      0.22,      0.22
+
+Horizontal Grids:
+Name,                                   H-Coord,  nx,  ny,  dx,  dy, x min, y min, Wrap?
+UM MOGREPS-R REGNAE HGrid,  UM MOGREPS-R HCoord, 190, 150, 1.0, 1.0, 110.0,  13.0,    No
+UM MOGREPS-R REGNAE HGridU, UM MOGREPS-R HCoord, 190, 150, 1.0, 1.0, 110.5,  13.0,    No
+UM MOGREPS-R REGNAE HGridV, UM MOGREPS-R HCoord, 190, 149, 1.0, 1.0, 110.0,  13.5,    No
+
+Vertical Coordinate Systems:
+Name,        Type, Unit,  Model Top Height, Interface Height
+UM6 ZCoord,     6,  1.0,      39254.833576,        17506.969
+Pa,              ,     ,                  ,                ,
+m asl,           ,     ,                  ,                ,
+
+Vertical Grids:
+Name,                              Z-Coord,                          Z-Array,     Index-Array
+UM MOGREPS-R REGNAE ZGridUV,    UM6 ZCoord,    UM MOGREPS-R REGNAE UV Levels, 0 to 20 Indices
+UM MOGREPS-R REGNAE ZGrid,      UM6 ZCoord,     UM MOGREPS-R REGNAE W Levels, 0 to 20 Indices
+
+The 'level numbers' given in the notes on the Arrays below are UM level numbers (in 
+their integer form).
+
+Array: UM MOGREPS-R REGNAE UV Levels
+Array Values, ! Notes - Level Number - Height Above Sea - Orography Damping
+    .0000000,                surface            0.00000            1.000000
+    .0002547,                      1            9.99821            0.998858
+    .0012737,                      2            49.9989            0.994296
+    .0033117,                      3            130.000            0.985204
+    .0063686,                      4            249.998            0.971644
+    .0104446,                      5            410.001            0.953710
+    .0155395,                      6            610.000            0.931527
+    .0216534,                      7            850.001            0.905253
+    .0287863,                      8            1130.00            0.875075
+    .0369381,                      9            1450.00            0.841212
+    .0461090,                     10            1810.00            0.803914
+    .0562988,                     11            2210.00            0.763464
+    .0675076,                     12            2650.00            0.720176
+    .0797354,                     13            3130.00            0.674393
+    .0929822,                     14            3650.00            0.626491
+    .1072479,                     15            4210.00            0.576877
+    .1225327,                     16            4810.00            0.525991
+    .1388364,                     17            5450.00            0.474301
+    .1561591,                     18            6130.00            0.422310
+    .1745008,                     19            6850.00            0.370549
+    .1938615,                     20            7610.00            0.319582
+
+    .2142411,                     21            8410.00            0.270005
+    .2356398,                     22            9250.00            0.222443
+    .2580574,                     23            10130.0            0.177555
+    .2814940,                     24            11050.0            0.136030
+    .3059496,                     25            12010.0        0.985881E-01
+    .3314242,                     26            13010.0        0.659808E-01
+    .3579279,                     27            14050.4        0.389824E-01
+    .3856269,                     28            15137.7        0.183147E-01
+    .4148527,                     29            16285.0        0.487211E-02
+    .4459825,                     30            17507.0            0.000000
+    .4794523,                     31            18820.8            0.000000
+    .5157734,                     32            20246.6            0.000000
+    .5555529,                     33            21808.1            0.000000
+    .5997270,                     34            23542.2            0.000000
+    .6501355,                     35            25521.0            0.000000
+    .7107751,                     36            27901.4            0.000000
+    .7913392,                     37            31063.9            0.000000
+    .9191674,                     38            36081.8            0.000000
+
+Array: UM MOGREPS-R REGNAE W Levels
+Array Values, ! Notes - Level Number - Height Above Sea - Orography Damping
+    .0000000,                      0            0.00000            1.000000
+    .0005095,                      1            20.0003            0.997716
+    .0020380,                      2            80.0014            0.990882
+    .0045854,                      3            179.999            0.979543
+    .0081519,                      4            320.001            0.963777
+    .0127373,                      5            500.001            0.943696
+    .0183417,                      6            720.000            0.919438
+    .0249651,                      7            980.001            0.891178
+    .0326074,                      8            1280.00            0.859118
+    .0412688,                      9            1620.00            0.823494
+    .0509491,                     10            2000.00            0.784571
+    .0616485,                     11            2420.00            0.742646
+    .0733668,                     12            2880.00            0.698050
+    .0861040,                     13            3380.00            0.651143
+    .0998603,                     14            3920.00            0.602314
+    .1146356,                     15            4500.00            0.551989
+    .1304298,                     16            5120.00            0.500620
+    .1472430,                     17            5780.00            0.448693
+    .1650752,                     18            6480.00            0.396726
+    .1839264,                     19            7220.00            0.345265
+    .2037966,                     20            8000.00            0.294891
+
+    .2246857,                     21            8820.00            0.246215
+    .2465938,                     22            9680.00            0.199878
+    .2695209,                     23            10580.0            0.156554
+    .2934670,                     24            11520.0            0.116948
+    .3184321,                     25            12500.0        0.817952E-01
+    .3444162,                     26            13520.0        0.518637E-01
+    .3714396,                     27            14580.8        0.279368E-01
+    .3998142,                     28            15694.6        0.107165E-01
+    .4298913,                     29            16875.3        0.130179E-02
+    .4620737,                     30            18138.6            0.000000
+    .4968308,                     31            19503.0            0.000000
+    .5347160,                     32            20990.2            0.000000
+    .5763897,                     33            22626.1            0.000000
+    .6230643,                     34            24458.3            0.000000
+    .6772068,                     35            26583.6            0.000000
+    .7443435,                     36            29219.1            0.000000
+    .8383348,                     37            32908.7            0.000000
+   1.0000000,                     38            39254.8            0.000000
+
+Array: 0 to 20 Indices
+Array Values
+ 0
+ 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+
+NWP Met File Structure Definition: UM MOGREPS-R Mk1
+                       Field Name, Lowest Level, Highest Level, Field Code, 3-d?, Field Qualifiers,
+                     wind (u-cpt),            2,           Top,          2,  Yes,                 ,
+                     wind (v-cpt),            2,           Top,          3,  Yes,                 ,
+                     wind (w-cpt),            2,           Top,        150,  Yes,                 ,
+                  temperature (K),            2,           Top,      16004,  Yes,                 ,
+                specific humidity,            2,           Top,         10,  Yes,                 ,
+                    pressure (Pa),            2,           Top,        408,   No,                 ,
+   surface stress (u-cpt) (N/m^2),            1,             1,       3219,   No,                 ,
+   surface stress (v-cpt) (N/m^2),            1,             1,       3220,   No,                 ,
+       surface sensible heat flux,            1,             1,       3217,   No,                 ,
+          sea level pressure (Pa),            1,             1,      16222,   No,                 ,
+                    pressure (Pa),            1,             1,        409,   No,                 ,
+                  temperature (K),            1,             1,       3236,   No,                 ,
+    convective cloud amount (0-1),            1,             1,       5262,   No,                 ,
+            convective cloud base,            1,             1,       5207,   No,                 ,
+             convective cloud top,            1,             1,       5208,   No,                 ,
+   dynamic rain rate (kg/(m^2 s)),            1,             1,       4203,   No,                 ,
+convective rain rate (kg/(m^2 s)),            1,             1,       5205,   No,                 ,
+   dynamic snow rate (kg/(m^2 s)),            1,             1,       4204,   No,                 ,
+convective snow rate (kg/(m^2 s)),            1,             1,       5206,   No,                 ,
+          high cloud amount (0-1),            1,             1,       9205,   No,          Dynamic,
+        medium cloud amount (0-1),            1,             1,       9204,   No,          Dynamic,
+           low cloud amount (0-1),            1,             1,       9203,   No,          Dynamic,
+                 roughness length,            1,             1,       3026,   No,                 ,
+             boundary layer depth,            1,             1,         25,   No,                 ,
+
+! Available in pp files (but not yet used)
+                    soil moisture,            1,             1,       8223,   No,                 ,
+                     murk aerosol,            1,             1,         90,   No,                 ,
+                     murk aerosol,            5,             5,         90,   No,                 ,
+                     murk aerosol,           10,            10,         90,   No,                 ,
+
+! Unavailable in pp files
+       cloud liquid water (kg/kg),            2,           Top,       4205,  Yes,          Dynamic,
+                cloud ice (kg/kg),            2,           Top,       4206,  Yes,          Dynamic,

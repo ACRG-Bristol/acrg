@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VisualStudioProject ProjectCreator="Intel Fortran" Keyword="QuickWin - Converted from CVF" Version="11.0" ProjectIdGuid="{FB45EEF8-BDBA-4281-BD32-AA24C41C2B3D}">
+	<Platforms>
+		<Platform Name="Win32"/>
+		<Platform Name="x64"/></Platforms>
+	<Configurations>
+		<Configuration Name="Debug|Win32" OutputDirectory="$(PlatformName)\$(ConfigurationName)" IntermediateDirectory="$(PlatformName)\$(ConfigurationName)" DeleteExtensionsOnClean="*.obj;*.mod;*.pdb;*.asm;*.map;*.dyn;*.dpi;*.tmp;*.log;*.ilk;*.exe;$(TargetPath)">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" HeapArrays="0" Preprocess="preprocessYes" PreprocessorDefinitions="IntelLinCompiler,IntelWin,UseConvert,ExtraChecks,UseTimers=UseTimers" FixedFormLineLength="fixedLength132" OpenMP="OpenMPParallelCode" ModulePath="$(INTDIR)/" ObjectFile="$(INTDIR)/" AssemblerListingLocation="$(INTDIR)/" Traceback="true" BoundsCheck="true" RuntimeLibrary="rtQuickWinDebug"/>
+				<Tool Name="VFLinkerTool" AdditionalOptions="/MACHINE:I386" OutputFile="$(OUTDIR)/NameIII.exe" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" IgnoreDefaultLibraryNames="dfconsol.lib" GenerateDebugInformation="true" ProgramDatabaseFile="$(OUTDIR)/NameIII.pdb" SubSystem="subSystemWindows" StackReserveSize="268435456" EntryPointSymbol="WinMainCRTStartup" ImportLibrary="" AdditionalDependencies="kernel32.lib"/>
+				<Tool Name="VFResourceCompilerTool" PreprocessorDefinitions="_DEBUG" Culture="rcEnglishBritain" ResourceOutputFileName="$(INTDIR)/$(InputName).res"/>
+				<Tool Name="VFMidlTool" PreprocessorDefinitions="_DEBUG" MkTypLibCompatible="true" SuppressStartupBanner="true" HeaderFileName="" DLLDataFileName="" TypeLibraryName="$(OUTDIR)/NameIII.tlb"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool" CommandLine="copy .\Win32\Debug\NameIII.exe ..\Executables_Win\NameIIIDebug.exe"/>
+				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration>
+		<Configuration Name="Release|Win32" OutputDirectory="$(PlatformName)\$(ConfigurationName)" IntermediateDirectory="$(PlatformName)\$(ConfigurationName)" DeleteExtensionsOnClean="*.obj;*.mod;*.pdb;*.asm;*.map;*.dyn;*.dpi;*.tmp;*.log;*.ilk;*.exe;$(TargetPath)">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" Preprocess="preprocessYes" PreprocessorDefinitions="IntelLinCompiler,IntelWin,UseConvert,UseTimers=UseTimers" FixedFormLineLength="fixedLength132" OpenMP="OpenMPParallelCode" ModulePath="$(INTDIR)/" ObjectFile="$(INTDIR)/" AssemblerListingLocation="$(INTDIR)/" RuntimeLibrary="rtQuickWin"/>
+				<Tool Name="VFLinkerTool" AdditionalOptions="/MACHINE:I386" OutputFile="$(OUTDIR)/NameIII.exe" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" IgnoreDefaultLibraryNames="dfconsol.lib" ProgramDatabaseFile="$(OUTDIR)/NameIII.pdb" SubSystem="subSystemWindows" StackReserveSize="268435456" EntryPointSymbol="WinMainCRTStartup" ImportLibrary="" AdditionalDependencies="kernel32.lib"/>
+				<Tool Name="VFResourceCompilerTool" PreprocessorDefinitions="NDEBUG" Culture="rcEnglishBritain" ResourceOutputFileName="$(INTDIR)/$(InputName).res"/>
+				<Tool Name="VFMidlTool" PreprocessorDefinitions="NDEBUG" MkTypLibCompatible="true" SuppressStartupBanner="true" HeaderFileName="" DLLDataFileName="" TypeLibraryName="$(OUTDIR)/NameIII.tlb"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool" CommandLine="copy .\Win32\Release\NameIII.exe ..\Executables_Win\NameIII.exe"/>
+				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration>
+		<Configuration Name="Debug|x64" DeleteExtensionsOnClean="*.obj;*.mod;*.pdb;*.asm;*.map;*.dyn;*.dpi;*.tmp;*.log;*.ilk;*.exe;$(TargetPath)">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" Parallelization="true" HeapArrays="0" Preprocess="preprocessYes" PreprocessorDefinitions="IntelLinCompiler,IntelWin,UseConvert,ExtraChecks,UseTimers=UseTimers" FixedFormLineLength="fixedLength132" OpenMP="OpenMPParallelCode" ModulePath="$(INTDIR)/" ObjectFile="$(INTDIR)/" AssemblerListingLocation="$(INTDIR)/" Traceback="true" BoundsCheck="true" RuntimeLibrary="rtQuickWinDebug"/>
+				<Tool Name="VFLinkerTool" OutputFile="$(OUTDIR)/NameIII.exe" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" IgnoreDefaultLibraryNames="dfconsol.lib" GenerateDebugInformation="true" ProgramDatabaseFile="$(OUTDIR)/NameIII.pdb" SubSystem="subSystemWindows" StackReserveSize="268435456" EntryPointSymbol="WinMainCRTStartup" ImportLibrary="" AdditionalDependencies="kernel32.lib"/>
+				<Tool Name="VFResourceCompilerTool" PreprocessorDefinitions="_DEBUG" Culture="rcEnglishBritain" ResourceOutputFileName="$(INTDIR)/$(InputName).res"/>
+				<Tool Name="VFMidlTool" PreprocessorDefinitions="_DEBUG" MkTypLibCompatible="true" SuppressStartupBanner="true" TargetEnvironment="midlTargetAMD64" HeaderFileName="" DLLDataFileName="" TypeLibraryName="$(OUTDIR)/NameIII.tlb"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool" CommandLine="copy .\x64\Debug\NameIII.exe ..\Executables_Win\NameIIIDebug_64bit_par.exe"/>
+				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration>
+		<Configuration Name="Release|x64" DeleteExtensionsOnClean="*.obj;*.mod;*.pdb;*.asm;*.map;*.dyn;*.dpi;*.tmp;*.log;*.ilk;*.exe;$(TargetPath)">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" Parallelization="true" Preprocess="preprocessYes" PreprocessorDefinitions="IntelLinCompiler,IntelWin,UseConvert,UseTimers=UseTimers" FixedFormLineLength="fixedLength132" OpenMP="OpenMPParallelCode" ModulePath="$(INTDIR)/" ObjectFile="$(INTDIR)/" AssemblerListingLocation="$(INTDIR)/" RuntimeLibrary="rtQuickWin"/>
+				<Tool Name="VFLinkerTool" OutputFile="$(OUTDIR)/NameIII.exe" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" IgnoreDefaultLibraryNames="dfconsol.lib" ProgramDatabaseFile="$(OUTDIR)/NameIII.pdb" SubSystem="subSystemWindows" StackReserveSize="268435456" EntryPointSymbol="WinMainCRTStartup" ImportLibrary="" AdditionalDependencies="kernel32.lib"/>
+				<Tool Name="VFResourceCompilerTool" PreprocessorDefinitions="NDEBUG" Culture="rcEnglishBritain" ResourceOutputFileName="$(INTDIR)/$(InputName).res"/>
+				<Tool Name="VFMidlTool" PreprocessorDefinitions="NDEBUG" MkTypLibCompatible="true" SuppressStartupBanner="true" TargetEnvironment="midlTargetAMD64" HeaderFileName="" DLLDataFileName="" TypeLibraryName="$(OUTDIR)/NameIII.tlb"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool" CommandLine="copy .\x64\Release\NameIII.exe ..\Executables_Win\NameIII_64bit_par.exe"/>
+				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration></Configurations>
+	<Files>
+		<Filter Name="Header Files" Filter="h;hpp;hxx;hm;inl;fi;fd"/>
+		<Filter Name="Resource Files" Filter="ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe"/>
+		<Filter Name="Source Files" Filter="cpp;c;cxx;rc;def;r;odl;idl;hpj;bat;f90;for;f;fpp">
+		<File RelativePath=".\AncillaryMet.F90"/>
+		<File RelativePath=".\Building.F90"/>
+		<File RelativePath=".\BuildingFlow.F90"/>
+		<File RelativePath=".\Case.F90"/>
+		<File RelativePath=".\Chemistry.F90"/>
+		<File RelativePath=".\ChemistryScheme.F90"/>
+		<File RelativePath=".\CommonFlow.F90"/>
+		<File RelativePath=".\CommonMet.F90"/>
+		<File RelativePath=".\CompilerInfo.F90"/>
+		<File RelativePath=".\CoordinateSystem.F90"/>
+		<File RelativePath=".\ErrorAndMessage.F90"/>
+		<File RelativePath=".\ErrorAndMessageII.F90"/>
+		<File RelativePath=".\EulerianInterface.F90"/>
+		<File RelativePath=".\FlowAndFlowProfile.F90"/>
+		<File RelativePath=".\Flows.F90"/>
+		<File RelativePath=".\Fluctuation.F90"/>
+		<File RelativePath=".\GlobalParameters.F90"/>
+		<File RelativePath=".\GridAndDomain.F90"/>
+		<File RelativePath=".\HeadedFile.F90"/>
+		<File RelativePath=".\Input.F90"/>
+		<File RelativePath=".\IOThread.F90"/>
+		<File RelativePath=".\IterativePlumeRiseModel.F90"/>
+		<File RelativePath=".\LincomFlow.F90"/>
+		<File RelativePath=".\MainNameIII.F90"/>
+		<File RelativePath=".\Maths.F90"/>
+		<File RelativePath=".\Mets.F90"/>
+		<File RelativePath=".\NWPFlow.F90"/>
+		<File RelativePath=".\NWPMet.F90"/>
+		<File RelativePath=".\NWPUtilities.F90"/>
+		<File RelativePath=".\OpenMP.F90"/>
+		<File RelativePath=".\Output.F90"/>
+		<File RelativePath=".\Particle.F90"/>
+		<File RelativePath=".\ParticleSizeDistribution.F90"/>
+		<File RelativePath=".\PhysicalUnits.F90"/>
+		<File RelativePath=".\Physics.F90"/>
+		<File RelativePath=".\PlumeRise.F90"/>
+		<File RelativePath=".\PrototypeFlow.F90"/>
+		<File RelativePath=".\PrototypeMet.F90"/>
+		<File RelativePath=".\Puff.F90"/>
+		<File RelativePath=".\RadarFlow.F90"/>
+		<File RelativePath=".\RadarMet.F90"/>
+		<File RelativePath=".\Restart.F90"/>
+		<File RelativePath=".\Screen.F90"/>
+		<File RelativePath=".\SemiLagrangian.F90"/>
+		<File RelativePath=".\Service.F90"/>
+		<File RelativePath=".\SingleSite.F90"/>
+		<File RelativePath=".\SingleSiteFlow.F90"/>
+		<File RelativePath=".\SingleSiteMet.F90"/>
+		<File RelativePath=".\Sort.F90"/>
+		<File RelativePath=".\Source.F90"/>
+		<File RelativePath=".\Species.F90"/>
+		<File RelativePath=".\String.F90"/>
+		<File RelativePath=".\System.F90"/>
+		<File RelativePath=".\Time.F90"/>
+		<File RelativePath=".\Timers.F90"/>
+		<File RelativePath=".\Unit.F90"/></Filter>
+		<File RelativePath=".\CatCode"/>
+		<File RelativePath=".\Changes.txt"/>
+		<File RelativePath=".\Flows.P90">
+			<FileConfiguration Name="Debug|Win32">
+				<Tool Name="VFCustomBuildTool" CommandLine="..\Executables_Win\Preprocessor.exe Flows.P90 Flows.F90" Outputs="Flows.F90"/></FileConfiguration>
+			<FileConfiguration Name="Release|x64">
+				<Tool Name="VFCustomBuildTool" CommandLine="..\Executables_Win\Preprocessor.exe Flows.P90 Flows.F90" Outputs="Flows.F90"/></FileConfiguration>
+			<FileConfiguration Name="Debug|x64">
+				<Tool Name="VFCustomBuildTool" CommandLine="..\Executables_Win\Preprocessor.exe Flows.P90 Flows.F90" Outputs="Flows.F90"/></FileConfiguration>
+			<FileConfiguration Name="Release|Win32">
+				<Tool Name="VFCustomBuildTool" CommandLine="..\Executables_Win\Preprocessor.exe Flows.P90 Flows.F90" Outputs="Flows.F90"/></FileConfiguration></File>
+		<File RelativePath=".\LinuxIntelDebug"/>
+		<File RelativePath=".\LinuxIntelRelease"/>
+		<File RelativePath=".\LinuxIntelRelease_GribAPI"/>
+		<File RelativePath=".\makedepend.pl"/>
+		<File RelativePath=".\Makefile"/>
+		<File RelativePath=".\Mets.P90">
+			<FileConfiguration Name="Debug|Win32">
+				<Tool Name="VFCustomBuildTool" CommandLine="..\Executables_Win\Preprocessor.exe Mets.P90 Mets.F90" Outputs="Mets.F90"/></FileConfiguration>
+			<FileConfiguration Name="Release|x64">
+				<Tool Name="VFCustomBuildTool" CommandLine="..\Executables_Win\Preprocessor.exe Mets.P90 Mets.F90" Outputs="Mets.F90"/></FileConfiguration>
+			<FileConfiguration Name="Debug|x64">
+				<Tool Name="VFCustomBuildTool" CommandLine="..\Executables_Win\Preprocessor.exe Mets.P90 Mets.F90" Outputs="Mets.F90"/></FileConfiguration>
+			<FileConfiguration Name="Release|Win32">
+				<Tool Name="VFCustomBuildTool" CommandLine="..\Executables_Win\Preprocessor.exe Mets.P90 Mets.F90" Outputs="Mets.F90"/></FileConfiguration></File>
+		<File RelativePath=".\NameIII_sources"/>
+		<File RelativePath=".\ReadMe.txt"/></Files>
+	<Globals/></VisualStudioProject>

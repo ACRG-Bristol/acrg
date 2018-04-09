@@ -1,0 +1,12 @@
+set Ni=2;
+set Nj=2;
+
+set decimalPrecision=4;
+set values={2.0,2.0,2.0,2.0};
+print "values=[values]";
+print "max=[max] min=[min] average=[average]";
+
+set values={2.0,5.0,2.0,2.0};
+print "values=[values]";
+print "max=[max] min=[min] average=[average]";
+

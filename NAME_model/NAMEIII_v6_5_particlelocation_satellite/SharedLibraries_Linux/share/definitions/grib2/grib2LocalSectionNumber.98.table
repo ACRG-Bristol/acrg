@@ -1,0 +1,11 @@
+0 0  Empty local section
+1 1  MARS labelling
+7 7  Sensitivity data
+9 9  Singular vectors and ensemble perturbations
+15 15  Seasonal forecast data
+18 18  Multianalysis ensemble data
+20 20  4D variational increments
+23 23  Coupled atmospheric, wave and ocean means (with hindcast support)
+26 26  MARS labelling or ensemble forecast data (with hindcast support)
+30 30  Forecasting Systems with Variable Resolution
+300 300  1D parameters

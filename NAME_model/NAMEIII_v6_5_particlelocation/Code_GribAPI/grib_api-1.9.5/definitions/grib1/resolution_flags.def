@@ -1,0 +1,30 @@
+# Copyright 2005-2007 ECMWF
+#
+# Licensed under the GNU Lesser General Public License which
+# incorporates the terms and conditions of version 3 of the GNU
+# General Public License.
+# See LICENSE and gpl-3.0.txt for details.
+
+#  Resolution and component flags
+flags[1] resolutionAndComponentFlags 'grib1/7.table' : edition_specific,no_copy ;
+
+# Not flagbit numbers 7 to 0, while wmo is 1 to 8
+
+flagbit ijDirectionIncrementGiven(resolutionAndComponentFlags,7) = 1 ;
+
+# For grib 1 to 2
+alias iDirectionIncrementGiven = ijDirectionIncrementGiven;
+alias jDirectionIncrementGiven = ijDirectionIncrementGiven;
+alias DiGiven = ijDirectionIncrementGiven;
+alias DjGiven = ijDirectionIncrementGiven;
+
+flagbit earthIsOblate(resolutionAndComponentFlags,6) : dump;
+
+flagbit resolutionAndComponentFlags3(resolutionAndComponentFlags,5) = 0: read_only;
+flagbit resolutionAndComponentFlags4(resolutionAndComponentFlags,4) = 0: read_only;
+
+flagbit uvRelativeToGrid(resolutionAndComponentFlags,3) : dump;
+
+flagbit resolutionAndComponentFlags6(resolutionAndComponentFlags,2) = 0: read_only;
+flagbit resolutionAndComponentFlags7(resolutionAndComponentFlags,1) = 0: read_only;
+flagbit resolutionAndComponentFlags8(resolutionAndComponentFlags,0) = 0: read_only;

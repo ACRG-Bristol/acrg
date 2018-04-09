@@ -1,0 +1,1894 @@
+Changes to IDLGraphics
+
+Note the code was originally developed for PV-Wave and later converted to IDL via 
+TIDL. The early part of this file refers to PV-Wave. Changes during the overlap period 
+indicate whether they refer to PV-Wave, TIDL or IDL.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 4.3 of NAME III released 18/5/07.
+Changes prior to version 4.3 not recorded.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+8/7/07
+
+plotpartloc.pro updated to handle and plot NAMEIII multiple trajectory output (if 
+output as separate files for each particle). Any number of trajectories can be plotted 
+using the option numtraj.
+
+Claire Witham
+
+!-------------------------------------------------------------------------------------
+
+10/7/07
+
+plotfield.pro - bug fix - routine crashed when specifying usecontours. Level 
+and species now specified prior to call to readfield when determining map 
+limits. 
+
+Helen Webster
+
+!-------------------------------------------------------------------------------------
+
+24/7/07
+
+plotfield.pro - 
+   Field also specified prior to call to readfield when determining map limits. 
+   Prevents call to logodraw if on a 64bit machine    
+
+Alistair Manning
+
+!-------------------------------------------------------------------------------------
+
+16/08/07
+
+plotfield.pro - 
+   Test on namever for readfield when calculating map limits.
+   Test for 64 bit machine not done when on Windows PC as uname command not recognised 
+     on PC   
+
+Helen Webster
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 5.0 of NAME III released 24/8/07.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+22/02/08
+
+plotvac_big.pro
+plottraj.pro
+plotrsmc.pro
+Added check on logodraw to deal with 64 bit computers i.e. logo is not 
+drawn on these machines.
+
+Matthew Hort 
+
+!-------------------------------------------------------------------------------------
+
+19/6/08
+
+plotvac_big.pro
+Positioning of graphics altered.
+
+plotfield.pro
+Added check on logodraw to deal with 64 bit computers i.e. logo is not 
+drawn on these machines.
+
+Matthew Hort 
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 5.1 of NAME III released 11/7/08.
+Note a number of earlier changes (listed below) were not included in 5.1.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+2/10/07
+
+plotpartloc.pro updated to plot user-specified locations on the map.  The map outline
+is now black as well.
+
+Claire Witham
+
+!-------------------------------------------------------------------------------------
+
+4/10/07
+
+plotfield.pro
+color_blue2red.pro
+
+Added new custom colour table, which goes from blue to red and can be used for
+plotting e.g. temperature and humidity fields.  The colours are defined in the
+new file color_blue2red.pro.  This is called from plotfield if the new variable
+ct_blue2red is set to 1 in the call to the wavescript.  Default is 0.
+Usecontours is needed as normal to get the required range of values in the plot. 
+
+
+Claire Witham
+
+!-------------------------------------------------------------------------------------
+
+5/10/07
+
+plotpartloc.pro 
+Added capability to plot trajectories so that they are colour coded in 3 hour blocks
+(0000-0300, 0300-0600 etc). Uses new variable PlotByTime.  Default value is 0.
+
+Claire Witham
+
+!-------------------------------------------------------------------------------------
+
+9/10/07
+
+plotfieldpos.pro 
+Changed map outline colour to black.  Parameter color changed to 0 from 3.
+
+Claire Witham
+
+!-------------------------------------------------------------------------------------
+
+10/12/07
+
+printctbto.pro 
+Change made as NAME III files output as NAME II are not quite identical enough.
+
+Matthew Hort
+
+!-------------------------------------------------------------------------------------
+
+11/12/07
+
+printctbtomulti.pro
+New version of CTBTO pvwave code.
+Original CTBTO NAME III run had one receptor per run.
+Updated NAME III run does all receptors in one run. In this case there is no
+source data in NAME output file. Currently hard wired release rate in this 
+pvwave to get around this problem. Will have to do this more rigorusly at a
+later date.
+
+Matthew Hort
+
+!-------------------------------------------------------------------------------------
+
+18/01/07
+
+printctbtomulti.pro
+Modified code to read in source information from seperate files
+created by CTBTO code.
+
+Matthew Hort
+
+!-------------------------------------------------------------------------------------
+
+18/01/07
+
+printctbtomulti.pro
+plotfield.pro
+Fixed bug that prevented processing of 'Fields_grid' files for grids higher
+than 9.
+Matthew Hort
+
+!-------------------------------------------------------------------------------------
+
+29/01/08
+
+readfield.pro
+Added checks and print statements to specify which fields can't be matched
+if the "No field found" error message is generated.
+
+Claire Witham 
+
+!-------------------------------------------------------------------------------------
+
+22/02/08
+
+plotseries.pro
+Added check on logodraw to deal with 64 bit computers i.e. logo is not 
+drawn on these machines.
+
+Matthew Hort 
+
+!-------------------------------------------------------------------------------------
+
+01/04/08
+
+plotfield.pro
+If data column had no data, then, when using options back, percent & dosage, 
+pvwave would fail in maplimits.pro. If the exact option was used then this 
+error did not occur. I have now fixed the root cause of the error which
+was a division by zero in plotfield.
+
+Matthew Hort 
+
+!-------------------------------------------------------------------------------------
+
+01/05/08
+
+plotfield.pro
+plotattrib.pro
+plotfieldmax.pro
+plotfieldmean.pro
+plotmet.pro
+plotpartloc.pro
+plotplume.pro
+plotrsmc.pro
+plotrsmc_nameii.pro
+plotseries.pro
+plottraj.pro
+
+Removed "(GMR)" from output footer in all plots.
+
+Claire Witham
+
+!-------------------------------------------------------------------------------------
+
+30/05/08
+
+readtraj.pro
+plotpartloc.pro
+
+Met variables now read in from trajectory output files.
+Capability to plot met variables added (similar to plotting height
+of trajectories) if plotmet is set to 1. Produces two extra postscript files
+containing the met plots. 
+Only tested for NAME III.
+
+Laura Burgin
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 5.2 of NAME III released 28/7/08.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+29/07/08
+
+plotseries.pro
+
+Enabled the filetext option for labelling output files, as previously coding
+allowed the variable but didn't use it.
+
+Claire Witham
+
+!-------------------------------------------------------------------------------------
+
+23/09/08
+
+plotrsmc.pro
+
+Change the type from contour to pixel to circumvent the problem with 
+map_contours over the dateline.
+
+Helen Webster
+
+!-------------------------------------------------------------------------------------
+
+20/01/09 TIDL only
+
+TIDL Graphics code created by copying PV-Wave Graphics code in preparation for 
+converting the code to TIDL.
+
+Lois Huggett 
+
+!-------------------------------------------------------------------------------------
+
+21/01/09 TIDL only
+
+Wave -> TIDL (wave compatibility mode = 2)
+readfieldhead.pro
+ line 108 de-3,8 changed to de-2,7
+readfield.pro
+ line 321 de-3,8 changed to de-2,7
+plotfield.pro
+ lines 1004 & 1007 old lines commented out (can be removed in future).  New call
+ to device using /color keyword only. 
+pixelplot.pro
+ line 57 map_polyfill replaced by polyfill, /Data
+plotfieldpos.pro
+ lines 276 & 297 map_xyouts replaced by xyouts, /Data
+ 
+Lois Huggett 
+
+!-------------------------------------------------------------------------------------
+
+05/02/09 TIDL only
+
+Wave -> TIDL (wave compatibility mode = 2)
+readfield.pro
+ line 210 added Delim=[','],
+
+Lois Huggett
+
+!-------------------------------------------------------------------------------------
+
+10/02/09 TIDL only
+
+Wave -> TIDL (wave compatibility mode = 2)
+plotseries.pro
+ lines 179 & 181 old lines commented out (can be removed in future).  New call
+ to device using /color keyword only.
+
+Lois Huggett
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 5.3 of NAME III released 25/2/09.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+26/03/09 IDL only
+
+IDL Graphics code created by copying TIDL Graphics code in preparation for 
+converting the code to IDL.
+
+Lois Huggett 
+
+!-------------------------------------------------------------------------------------
+
+26/03/09 IDL only
+
+plotfield.pro and areaatrisk.pro and associated procedures are working in IDL.  
+To run IDL files in scripts, replace the old 'wave' command with 'idl'
+
+Lois Huggett 
+
+!-------------------------------------------------------------------------------------
+
+06/04/09 IDL only
+
+areaatrisk.pro now modified to work with air concentration output as well.
+
+Lois Huggett 
+
+!-------------------------------------------------------------------------------------
+
+07/04/09 IDL only
+
+readtitle.pro and readdata.pro updated for NAME II case
+readfield.pro and readfieldheader.pro modified to get source 
+longitude for any value
+
+Lois Huggett 
+
+!-------------------------------------------------------------------------------------
+
+08/04/09 IDL only
+
+plotfield.pro updated to take map boundaries from areaatrisk.pro calculated
+files if keyword aar is set to 1
+areaatrisk.pro modified to choose its own map size from source data if
+keyword datamap is set to 1
+
+Lois Huggett 
+
+!-------------------------------------------------------------------------------------
+
+01/06/09 IDL only
+
+genanim.pro modified to avoid changing directory when creating anim files.
+
+Lois Huggett 
+
+!-------------------------------------------------------------------------------------
+
+02/06/09 IDL only
+
+plotfield.pro and areaatrisk.pro modified to constrain input selection to either 
+field + level (+ timeaverage for name iii) or none.
+
+Lois Huggett 
+
+!-------------------------------------------------------------------------------------
+
+05/06/09 PV-Wave, TIDL and IDL
+
+plotpartloc.pro
+
+Added a couple more lines of run information to bottom of page.
+
+Matthew Hort
+
+!-------------------------------------------------------------------------------------
+
+10/06/09 IDL only
+
+plotfield.pro colours fixed
+
+Lois Huggett 
+
+!-------------------------------------------------------------------------------------
+
+11/06/09 IDL only
+
+plotseries.pro modified for IDL - introduced date/time structure and section to 
+set up x-axis of graphs depending on length of time series (will work for between
+0.5 seconds and 20 years - further modifications required if a run is outside
+these timescales).  Met Office logo plotted directly without using UKMO routines.
+
+readts.pro and readtshead.pro - file reading instructions now IDL compatible
+
+readheader.pro and readdata.pro - now have keywords to give variable numbers of
+columns preceding the data.
+
+Lois Huggett 
+
+!-------------------------------------------------------------------------------------
+
+11/06/09 IDL only
+
+plotseries.pro and associated procedures are now working in IDL.
+
+Lois Huggett 
+
+!-------------------------------------------------------------------------------------
+
+12/06/09 IDL only
+
+readfield.pro and readfieldhead.pro modified to eliminate error message given
+when running with multiple sources.
+
+plotfieldpos.pro - can now decide to plot maps across international dateline.
+
+Lois Huggett 
+
+!-------------------------------------------------------------------------------------
+
+16/06/09 TIDL only
+
+Wave -> TIDL (wave compatibility mode = 2)
+readts.pro
+  dc_read commands changed to IDL version using readdata.pro (from idl file)
+plotseries.pro and associated routines should now work in tidl
+
+Lois Huggett
+
+!-------------------------------------------------------------------------------------
+
+17/06/09 IDL only
+
+make_ts_rimnet.pro now IDL compatible
+
+Lois Huggett 
+
+!-------------------------------------------------------------------------------------
+
+18/06/09 IDL only
+
+plotfield.pro & plotfieldpos.pro - added 'coasts', 'continents'  and 'states'
+options for maps.  Coasts defaults to 0, continents and states to 1.
+
+Lois Huggett 
+
+!-------------------------------------------------------------------------------------
+
+19/06/09 IDL only
+
+plotrsmc.pro and plotrsmc_nameii.pro now in IDL (these two files are almost 
+identical).
+
+Lois Huggett 
+
+!-------------------------------------------------------------------------------------
+
+23/06/09 IDL only
+
+readfield.pro - test for file opening moved into readdata.pro
+readdata.pro - test for file opening added
+plotloc.pro - modified for IDL.  Now takes NAME-style source location files
+and has option to switch off plotting of place names by setting placenames=0
+in call to plotfield
+plotfield.pro, plotfieldpos.pro - placenames option now passed through to
+plotloc.pro, default stting 1.
+
+Lois Huggett 
+
+!-------------------------------------------------------------------------------------
+
+24/06/09 IDL only
+
+plotfield.pro now includes new keyword 'origin', a 2-D floating point array [Lat,Long]
+to specify origin point of map projection, and new 'automap' functionality to select 
+an appropriate projection origin if not specified.  Any specified origin will be 
+ignored if the 'polar' keyword is used.
+plotfieldpos.pro adapted to take 'origin' and 'automap' keywords.
+plotvac.pro, plotvac_big.pro now IDL compatible and include 'polar' and 'origin'
+keywords as above in plotfield.
+
+Lois Huggett 
+
+!-------------------------------------------------------------------------------------
+
+02/07/09 PV-Wave, TIDL and IDL
+
+readtraj.pro
+Modified to work with NAMEIII particle output files that include met data
+information and those that exclude it
+
+plotpartloc.pro
+Modified to work properly with new readtraj.pro.
+Now only works with NAMEIII output - all references to NAME removed.
+Modified to work correctly with plotmet option. 
+ht_contours option now plots the colours on the horizontal map correctly.  
+Output legend location made the same for all output options.  
+Default namever set to 3. 
+Default number of particle trajectories to plot set to 10.
+
+plottraj.pro
+Modified to work properly with new readtraj.pro and NAMEIII output.  
+Output legends brought inline with those now in plotpartloc.pro.
+Default namever set to 3.
+Colour of background changed to be black (not green anymore).
+
+readpartloc.pro
+Removed to simplify plotpartloc.pro.  This removes backwards compatibility with
+the non-standard particle location outputs from NAME2.
+
+The changes above have been made to fix some bugs identified in the files,
+but also to bring the coding back into line with that used by EMARC and 
+ensure full functionality for all NAME III output.
+
+Claire Witham
+
+!-------------------------------------------------------------------------------------
+
+06/07/09 IDL only
+
+plotfieldpos.pro now has variable descriptions
+readdata.pro now contains the funtionality of readheader.pro as well
+readheader.pro now redundant
+readfield.pro, readfieldhead.pro, readts.pro, readtshead.pro, make_ts_rimnet.pro,
+make_ts.pro all edited to use readdata where readheader was used previously.
+
+Lois Huggett 
+
+!-------------------------------------------------------------------------------------
+
+10/07/09 IDL only
+
+plotmet.pro, readmet.pro and readmethead.pro are now IDL and Name 3 
+compatible.
+metcontours.pro altered to have 'else' clause in first case statement,
+which exits the subroutine and uses plofieldpos.pro contours.
+
+Lois Huggett 
+
+!-------------------------------------------------------------------------------------
+
+10/07/09 IDL only
+
+plotvac.pro, plotrsmc.pro and plotmet.pro and associated procedures
+are now working in IDL.
+
+Lois Huggett 
+
+!-------------------------------------------------------------------------------------
+
+15/07/09 TIDL only
+
+Wave -> TIDL (wave compatibility mode = 2)
+readtraj.pro
+  adapted in the same way as readts (see above, 16/6/09).
+
+Lois Huggett
+
+!-------------------------------------------------------------------------------------
+
+16/07/09 TIDL only
+
+Wave -> TIDL (wave compatibility mode = 2)
+plotpartloc.pro
+plottraj.pro
+  if test added for back runs to avoid negative date ranges
+
+Trajectory runs should now work in TIDL
+
+Lois Huggett
+
+!-------------------------------------------------------------------------------------
+
+17/07/09 IDL only
+
+plotpartloc.pro, plottraj.pro and readtraj.pro are now IDL compatible
+for Name 3 (and possibly for Name 2, but no test files were available).
+plotseries.pro has had the time axis code extracted into a separate file.
+timeaxis.pro is a new file for setting up the x-axis for time plots, called
+with the time range as its argument.
+dt_to_str.pro is a new file adapted from Alistair's code of the same name.
+readdata.pro now no longer requires number of columns as an argument.
+
+Lois Huggett 
+
+!-------------------------------------------------------------------------------------
+
+17/07/09 IDL only
+
+plotpartloc.pro, plottraj.pro and associated procedures are now working in IDL.
+
+Lois Huggett 
+
+!-------------------------------------------------------------------------------------
+
+23/07/09 IDL only
+
+printctbto.pro and printctbtomulti.pro adapted for IDL.
+
+Lois Huggett 
+
+!-------------------------------------------------------------------------------------
+
+10/08/09 IDL only
+
+plotpartloc.pro ht_contour colours now sorted
+
+Lois Huggett 
+
+!-------------------------------------------------------------------------------------
+
+10/08/09 IDL only
+
+plotplume.pro now IDL compatible; readtraj.pro modified to use with plotplume - 
+readplume.pro now redundant.  Alistair's nint.pro procedure incorporated into IDL 
+file.
+
+plotfield.pro and plotfieldpos.pro should now be able to plot met data on maps.
+
+Polar plots modified in plotfieldpos.pro, plotpartloc.pro, plottraj.pro, plotvac.pro, 
+and plotvac_big.pro to cut off map at equator if calulated map range extends further.
+
+Lois Huggett 
+
+!-------------------------------------------------------------------------------------
+
+11/08/09 IDL only
+
+readtitle.pro modified to have namever=2 as default 
+
+plotattrib.pro, readattrib.pro, readattribhead.pro, lincomtopog.pro, plotfieldmax.pro
+and plotfieldmean.pro now all IDL compatible but untested as no examples available.
+
+Lois Huggett 
+
+!-------------------------------------------------------------------------------------
+
+18/08/09 IDL only
+
+areaatrisk.pro
+
+added code to adjust margin based on longitude west (if ydim not specified in
+ input), then adjust xdim to return requested map size
+
+Susan Leadbetter
+
+!-------------------------------------------------------------------------------------
+
+20/08/09 IDL only
+
+areaatrisk.pro
+plotfiled.pro
+
+fixed seltimeaverage error
+
+Matthew Hort
+
+!-------------------------------------------------------------------------------------
+
+24/08/09 TIDL only
+
+genanim.pro: fixed bug with brackets in filenames
+
+Lois Huggett
+
+!-------------------------------------------------------------------------------------
+
+24/08/09 IDL only
+
+genanim.pro: fixed bug with brackets in filenames
+
+Lois Huggett
+
+!-------------------------------------------------------------------------------------
+
+26/08/09 IDL only
+
+plotfield.pro
+
+fixed problem with seldatavalue having more than one value
+
+Susan Leadbetter
+
+!-------------------------------------------------------------------------------------
+
+26/08/09 IDL only
+
+plotfieldpos.pro
+
+fixed divide by 0 bug which occurred only when a single colour was used.
+
+Lois Huggett
+
+!-------------------------------------------------------------------------------------
+
+28/08/09 IDL only
+
+plotfield.pro
+
+Change on 26/08/09 broke plotfield.pro for runs with more than one field but
+no seldatavalues. Altered plotfield.pro so that it works whether seldatavalue
+is input or not
+
+Susan Leadbetter
+
+!-------------------------------------------------------------------------------------
+
+28/08/09 IDL only
+
+plotloc.pro
+Added in default value for 'placenames', without this crashes if no value
+is set.
+
+Alistair Manning
+
+!-------------------------------------------------------------------------------------
+
+01/09/09 IDL only
+
+plotvertfield.pro, plotvertpos.pro, readvertfield.pro
+
+Added three procedures to plot vertical slices through plumes.
+Details of required NAME III output are given in Md2_4_1.pdf
+in P:\Dispersion\NameIII\NameIIILibrary\Documents\ModelDocs.
+Input is similar to plotfield.pro except that levellist refers
+to lats or lons of slice lines and Vertical Grid information 
+can be input (vgrid) - see Example of Use in plotvertfield.pro
+
+Susan Leadbetter
+
+!-------------------------------------------------------------------------------------
+
+08/09/09 IDL only
+
+var_to_dt.pro
+dt_add.pro
+
+Copied these routine from ~apdg/IDL_routines. They were needed for code in 
+plotfield for back runs.
+
+Matthew Hort
+
+!-------------------------------------------------------------------------------------
+
+08/09/09 IDL only
+
+plotfield.pro
+
+Modified part of code only used for back runs. Code extracts dates and times 
+from main header block. idl removes spaces that pv left in so position of data
+is different in idl strings. Should do this correctly and remove such
+crude code.... 
+
+Matthew Hort
+
+!-------------------------------------------------------------------------------------
+
+10/09/09 IDL only
+
+plotfieldpos.pro
+
+Expanded range of contour level text using format F6.2 down to -99.99
+
+Susan Leadbetter
+
+!-------------------------------------------------------------------------------------
+
+15/09/09 IDL only
+
+areaatrisk.pro
+
+Fixed bug with naming of AaR files to give each file requested a unique name.
+
+plotfield.pro
+
+Adjusted reading of AaR files to give consistent map size.
+
+Lois Huggett
+
+!-------------------------------------------------------------------------------------
+
+17/09/09 IDL only
+
+plotfieldpos.pro
+
+Returned to previous version as the contour level formatting fix was too simplistic
+
+Susan Leadbetter
+
+!--------------------------------------------------------------------------------------
+
+23/09/09 IDL only
+
+Added new routine: map_lakes.pro, provided by AVD team to map larger lakes and 
+inland seas.
+
+plotfieldpos.pro
+plotpartloc.pro
+plottraj.pro
+plotvac.pro
+plotvac_big.pro
+plotplume.pro
+
+All modified to use map_lakes
+
+Lois Huggett
+
+!-------------------------------------------------------------------------------------
+
+24/09/09 IDL only
+
+areaatrisk.pro
+
+fixed bug that was causing first line of above threshold data array to be all zeroes.
+
+Lois Huggett
+
+!-------------------------------------------------------------------------------------
+
+01/10/09 IDL only
+
+plotplume.pro
+
+Changed default xpixel to 595 (from 700) to make animation output work
+
+genanim.pro
+
+Fixed bug with additional '.' characters in filenames
+
+Lois Huggett
+
+!-------------------------------------------------------------------------------------
+ 
+06/10/09 IDL only
+
+readdata.pro
+readfield.pro
+
+Altered readfield.pro and readdata.pro to allow the read in of empty NAME output files
+without the IDL code crashing
+
+Susan Leadbetter 
+
+!-------------------------------------------------------------------------------------
+
+19/10/09 IDL only
+
+plotfieldpos.pro
+
+If no origin is entered and projection is cylindrical or mercator, origin is
+ automtically set to [0,0]
+
+Susan Leadbetter
+
+!-------------------------------------------------------------------------------------
+
+20/10/09 IDL only
+
+plotfieldpos.pro
+
+If no origin is entered and projection is cylindrical or mercator, origin latitude is
+ automtically set to 0. Longitude computed by automap is now retained.
+
+Susan Leadbetter
+
+!-------------------------------------------------------------------------------------
+
+22/10/09 IDL only
+
+plottraj.pro
+
+Added polar keyword to input list (as it appeared to be missing)
+
+Susan Leadbetter
+
+!-------------------------------------------------------------------------------------
+
+26/10/09 IDL only
+
+plotplume.pro
+plotpartloc.pro
+plotvac.pro
+plotvac_big.pro
+plottraj.pro
+
+If no origin is entered and projection is cylindrical or mercator, origin latitude is
+ automtically set to 0.
+
+Susan Leadbetter
+
+!-------------------------------------------------------------------------------------
+
+26/10/09 IDL only
+
+plotfieldpos.pro
+plotplume.pro
+plotpartloc.pro
+plotvac.pro
+plotvac_big.pro
+plottraj.pro
+
+projection_name.pro
+
+Projection is now passed to 'map_set' as a word not a number. 
+e.g. name='mercator' instead of projection=9
+
+Susan Leadbetter
+
+!-------------------------------------------------------------------------------------
+
+06/11/09 IDL only
+
+plotfield.pro
+
+seldatavalue is now treated in a similar fashion to seltimeaverage
+to allow single values to be selected in readfield.pro
+
+Susan Leadbetter
+
+!-------------------------------------------------------------------------------------
+
+16/11/09 IDL only
+
+Reverted back to plotfield12.pro. Changes to seldatavalue stored in plotfield13.pro
+
+Susan Leadbetter
+
+!-------------------------------------------------------------------------------------
+
+17/11/09 IDL only
+
+plotseries.pro
+Removed optional argument contour - this was not used any where in code.
+Added some comments to help people use plot series.
+
+Matthew Hort
+
+!-------------------------------------------------------------------------------------
+
+27/11/09
+
+plotmax.pro plotfieldmean.pro
+Now IDL compatible & tested with NAME II-style fields output.
+
+Lois Huggett
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 5.4 of NAME III released 27/11/09.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+2/12/09 PV-Wave only
+
+PV-Wave code deleted.
+
+Dave Thomson
+
+!-------------------------------------------------------------------------------------
+
+08/12/09 IDL only
+
+plotfield.pro
+
+seldatavalue is now treated in a similar fashion to seltimeaverage
+to allow single values to be selected in readfield.pro. Now tested on Name II
+files
+
+Susan Leadbetter
+
+!-------------------------------------------------------------------------------------
+
+09/12/09 IDL only
+
+printctbtomulti.pro
+
+null option added and nskip corrected in call to readdata. This required due to 
+different way idl reads files from wave. Not spotted earlier.
+
+Matthew Hort
+
+!-------------------------------------------------------------------------------------
+
+15/12/09 IDL only
+
+plotfield.pro
+
+corrected bug with automatic selction of level values for deposition
+
+readtshead.pro
+readts.pro
+
+removed specification of number of columns in calls to readdata
+
+Lois Huggett
+
+!-------------------------------------------------------------------------------------
+
+15/12/09
+
+plotfield.pro
+
+Name version number now trimmed to be centred on page
+
+plotfield.pro
+plotvac.pro
+plotvac_big.pro
+
+automap keyword added, default 0. Needs to be set to 1 for more realistic-looking maps.
+
+plotfield.pro
+plotplume.pro
+plotpartloc.pro
+plotvac.pro
+plotvac_big.pro
+plottraj.pro
+
+If no origin is entered origin latitude is automtically set to 0 for all projections,
+unless automap is set to 1 or polar is non-zero.
+
+Lois Huggett
+
+!-------------------------------------------------------------------------------------
+
+16/12/09
+
+plotfieldmean.pro
+plotfieldmax.pro
+
+If no origin is entered origin latitude is automtically set to 0 for all projections,
+unless automap is set to 1 or polar is non-zero.
+
+Lois Huggett
+
+!-------------------------------------------------------------------------------------
+
+17/12/09
+
+Changes to:
+genanim.pro
+plotfieldpos.pro
+plotfield.pro
+
+Newfiles:
+vm_plotfield.pro (.sav)
+vm_plotseries.pro (.sav)
+vm_plottraj.pro (.sav)
+.sav files are compiled .pro files
+
+Aim: To allow the IDL Virtual Machine Code (Pre-compiled IDL) to compile from files
+in Code_IDLGraphics
+
+Changes:
+1.) gif4web option removed from genanim.pro - this is an obselete option so this change
+      should be invisible to users
+
+2.) contourplot.pro called by plotfieldpos.pro has been replaced by IDL's own contour
+    routine as contourplot.pro relied on an UKMO routine not accessible to IDL Virtual
+    Machine. This change should be invisible to users
+
+*** Visible Change
+3.) The plotfield.pro input keyword 'ct' has been replaced with 'colourtable' as ct
+     was seen as a shortened version of ct_red2blue by the virtual machine
+***
+
+Susan Leadbetter
+
+!-------------------------------------------------------------------------------------
+
+18/12/09
+
+plotfield.pro
+
+Note to code editors only: I used the development environment to tidy up the indentation
+ of loops and comments. As this won't change how plotfield runs I didn't make a copy.
+
+Susan Leadbetter
+
+!-------------------------------------------------------------------------------------
+
+20/01/10
+
+areaatrisk.pro
+
+Bug fix. Altered formatting of output filename to remove spaces in output filename
+at L424
+
+Susan Leadbetter
+
+!-------------------------------------------------------------------------------------
+
+20/01/10
+
+areaatrisk.pro
+
+To ensure that areaatrisk.pro is the most up-to-date version, copied code relating to
+aspect ratio from EMARC's version of areaatrisk.pro
+
+Susan Leadbetter
+
+!-------------------------------------------------------------------------------------
+
+26/01/10
+
+plotfield.pro
+plotfieldpos.pro
+
+Changes to fix bugs for plotuv and plotpmsl options. No changes for namever=2 users
+in plotfield.pro
+1.) Change in filename passed to readmet for plotuv and plotpmsl options
+2.) Change met names from U, V, and Pmsl to Mean Flow U, Mean Flow V and 
+    Sea Level Pressure (Pa)
+3.) Added /overplot to contour and velovect commands for plotpmsl and plotuv options
+in plotfieldpos.pro
+4.) Divided pmsl by 100 to convert units from Pascals to millibars
+
+Susan Leadbetter
+
+!--------------------------------------------------------------------------------------
+
+17/02/10
+
+readfieldhead.pro
+
+Changed 'grid' to be a 6-element array to pass extra grid information back
+for use without needing to re-split 'modtitle'.
+
+readfield.pro
+
+Fixed bug with 'selname' when called from routines other than readfield.
+
+Lois Huggett
+
+!--------------------------------------------------------------------------------------
+
+22/02/10
+
+vm_plotfield.pro
+vm_plottraj.pro
+vm_plotseries.pro
+
+Changed 'IF' loop to 'CASE' construct. Not visible to users but makes addition of 
+keyword parameters easier
+Changed error messages. Similar style to NAME, so misspelt keywords are ignored and
+a warning is issued but missing datadir and selgrid are Fatal errors and the program
+stops.
+Added automap keyword and group keyword to plotfield.pro as these were missing
+Added polar keyword to plottraj.pro as this was missing.
+
+Susan Leadbetter
+
+!--------------------------------------------------------------------------------------- 
+
+02/03/10
+
+plotvac.pro
+
+Changes made to alter the positions of subfigures - back to where they were in the
+PV Wave code. Also changed lake colour to same as country outline colour.
+
+Susan Leadbetter
+
+!--------------------------------------------------------------------------------------
+
+02/03/10
+
+plotfield.pro
+
+In order to add an option for having a black and white logo on NAME output figures
+Added MO_Master_Mono_B.jpg to the IDL directory. This is a black and white Met Office
+logo. It can be added to figures by selecting metoffice=2 or by choosing colourtable=0
+(the greyscale colour scheme). Note that if colourtable=1 and metoffice=1 a coloured
+logo will appear.
+
+Susan Leadbetter
+
+!--------------------------------------------------------------------------------------
+
+03/03/10
+
+plotfieldmean.pro
+
+fixed a few bugs
+
+plotfieldstat.pro
+
+new procedure to replace plotfieldmean and plotfieldmax.  Call as plotfield
+with either statistic='mean' or statistic='maximum' in addition to normal keywords
+
+Lois Huggett
+
+!--------------------------------------------------------------------------------------
+
+10/03/10
+
+New files added:
+
+readaqobs.pro
+plot_obsvmod_series.pro
+
+New procedure plot_obsvmod_series added to plot several model runs on the same 
+time series plots using data in different directories. Will also plot 
+air quality observation data from csv files read in using readaqobs on the
+same plot if required. 
+
+plot_obsvmod_series works in the same way as plot_series, but with the addition
+of allowing datadir to be an array, and the additional keywords selobsloc,
+(observation location name), obsdir (directory containing obs datafiles), and 
+legendlabels (array of labels for legend describing different model runs).
+
+Lucy Davis
+
+!--------------------------------------------------------------------------------------
+
+12/03/10
+
+plotfieldstat.pro
+
+modified to allow user to change unit of field printed in legend with new keyword
+'fieldunit' - to be used in conjunction with 'scalefactor'
+
+Lois Huggett
+
+!--------------------------------------------------------------------------------------
+
+17/03/10
+
+readaqobs.pro
+plot_obsvmod_field.pro (New file)
+
+readaqobs - updated to set obs = -999.9 if file does not exist
+plot_obsvmod_field - Based on plotfield.pro, but overplots AQ observation data.
+
+Lucy Davis
+
+!--------------------------------------------------------------------------------------
+
+19/03/10
+
+plotfieldstat.pro
+
+New keyword 'plottitle' added (NAME III only).  Use to set title of each plotted 
+map to species, level, timeaverage or field only.
+
+Lois Huggett
+
+!--------------------------------------------------------------------------------------
+
+12/04/10
+
+readfield.pro
+readfieldhead.pro
+
+Altered lines reading in source location (xyrel) to read in an extra decimal place by
+ altering length used by STRMID.
+
+Susan Leadbetter
+
+!--------------------------------------------------------------------------------------
+
+18/04/10
+
+readtraj.pro
+plotplume.pro
+
+Have mucked about with these files for volcano stuff.  Shouldn't affect
+regular working.  Will give fuller explanation later.
+
+Lois Huggett
+
+!--------------------------------------------------------------------------------------
+
+26/04/10
+
+plotfieldpos.pro
+
+Bug fix for grid labelling added.
+
+Lois Huggett
+
+!--------------------------------------------------------------------------------------
+
+28/04/10
+
+plotfield.pro
+
+New case 'species' added.  Call using group='species'.  Example call shown in
+plotfield routine.  Will plot all species (and times) in a single postscript file 
+with fields and levels in separate files.  Recommended for use with multiplot to show 
+all species for one time on a single page.
+
+Lois Huggett
+
+!--------------------------------------------------------------------------------------
+
+05/05/10
+
+plotfield.pro
+plotfieldobs.pro
+plotvaacobs.pro
+
+Added a new keyword parameter (plotvaacobs) to plotfield.pro which is passed to 
+plotfieldpos.pro to allow the plotting of an aircraft track over NAME plumes.
+plotvaacobs.pro is called in the same way as plotloc but can plot open and closed
+squares. See vaacobs.pro for details
+
+Susan Leadbetter and Alistair Manning
+
+!------------------------------------------------------------------------------------- 
+
+05/05/10
+
+plotfield.pro
+
+1.) added the contourcolors keyword parameter to plotfield.pro so that precise
+colours can be specified. This keyword was already passed to plotfieldpos.pro
+so no downstream changes were necessary.
+2.) added a specific colour for colour 250 in the ct_red2blue colour palette for
+   use in volcanic ash plots. This colour is not used elsewhere so users should 
+   see no difference in their plots
+
+Susan Leadbetter
+
+!---------------------------------------------------------------------------------------
+
+06/05/10
+
+plotseries.pro
+
+Added in keyword maxy - this will set the yaxis range to [0,maxy] to force 
+y axis range.
+
+Lucy Davis
+
+!---------------------------------------------------------------------------------------
+
+06/05/10
+
+datathreshold.pro
+writefield.pro
+
+New procedures to mask one field using another at a specified threshold value
+and overwrite the masked field in the input file.  Both masking and masked fields
+should be in the same input file.
+
+Lois Huggett
+
+!---------------------------------------------------------------------------------------
+
+14/05/10
+
+plotfieldstat.pro
+
+Added new option for statistic keyword: 'total'.  Use to sum field over all times and
+output total field.
+
+Lois Huggett
+
+!---------------------------------------------------------------------------------------
+
+21/05/10
+
+plotfield.pro
+
+Added new keyword: 'printtimeaverage'.  Set to 1 to give validity time of plot
+as 'From time1 to time2' if time averaging is in hours.
+
+timeavstring.pro
+
+New procedure to make string as described above.
+
+datetimestruct.pro
+
+New procedure to set up date time structure for use in native IDL
+
+Lois Huggett
+
+!---------------------------------------------------------------------------------------
+
+09/06/10
+
+readaqobs.pro
+
+Modified to allow for changes in AURN formatting - can now accept dates in 
+format yyyy-mm-dd or dd-mm-yyyy, can also accept headers in " ".
+
+Lucy Davis
+
+!---------------------------------------------------------------------------------------
+
+15/06/10
+
+plotfieldpos
+
+Grid plotting and labelling modified to ensure that labels do not end
+up between gridlines.
+
+Lois Huggett
+
+!---------------------------------------------------------------------------------------
+
+21/06/10
+
+genanim.pro
+plotfield.pro
+
+Added an additional option for convert postscripts to gifs - 'pstoimg'. This is 
+quicker than 'convert' because it is less flexible. The keyword 'method' was added
+to plotfield.pro and passed to genanim.pro to select this option.
+Note that 'pstoimg' cannot produce jpg's so these will be produced by 'convert' if
+'pstoimg' is selected
+
+Susan Leadbetter
+
+!---------------------------------------------------------------------------------------
+
+21/06/10
+
+plot_obsvmod_series.pro
+tsstats.pro
+
+Added option to plot statistics over timeseries within plot_obsvmod_series.pro
+- needs call eg statistics=['r','rmse','bias']
+
+New routine tsstats.pro to calculate statistics from a timeseries - requires
+modeldata array and observation data array.
+
+Lucy Davis
+
+!---------------------------------------------------------------------------------------
+
+26/06/10
+
+plotrsmc.pro
+
+Increased the number  of graphics generated for EMARC RSMC runs.
+
+Matthew Hort
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 6.0 of NAME III released 02/08/2010.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+05/08/2010
+
+I added the two files comparefields.pro and comparets.pro. These subroutines can be
+used to compare 2d fields and timeseries which are stored in files with the
+same name in separate subdirectories. They generate output in the form of
+postscript files. For the 2d fields this output includes the two fields that are
+compared, their absolute and relative difference, and some statistics.
+For the time series, the output includes the data from the two files and a
+scatter plot with the time series on the two axis. The Pearson correlation coefficient
+and round mean square error are calculated.
+
+Eike Mueller
+
+!---------------------------------------------------------------------------------------
+
+14/10/2010
+
+Various changes related to ticket #10. Including:
+- Added keyword tekcolors
+- Bug fix to allow negative values to be plotted
+- Add keyword fixdate to move the date label in timeseries plots when placed wrongly by IDL
+(Both in plot_obsvmod_series.pro and plot_series.pro
+- Updated list of output statistics in tsstats.pro and plotting in plot_obsvmod_series.pro
+- Add keyword filename to readfield and writefield to give user defined filename instead 
+of NAME style
+- Added in keyword sumpm to calculate 'TOTAL-PM10' as a species by totalling
+pm10+sulphate+nh42so4+nh4no3+naer in plot_obsvmod_series.pro
+- Updated readaqobs.pro for another change in headers of csv files
+- Updated plot_obsvmod_field with recent changes to plotfield
+- Allowed selgrid to be an array linked to datadir in plot_obsvmod_series.pro
+- Added found keyword to readts.pro to return 0 if file not found
+
+Lucy Davis
+
+!---------------------------------------------------------------------------------------
+27/10/2010
+
+plotfield.pro
+plotfieldpos.pro
+map_cities.pro
+map_rivers.pro
+map_roads.pro
+map_airports.pro
+circle.pro
+map_init.pro
+map_glaciers.pro
+
+An additional keyword parameter 'mapfeatures' was added to plotfield.pro 
+It allows users to plot cities, rivers, airports and roads onto their IDL maps
+It also colours land green and sea blue. The number of roads and rivers included
+is dependent on the latitudinal and longitudinal extent of the plot.
+
+To invoke the IDL style plotting users should add the following to their call
+to plotfield
+mapfeatures=['roads','rivers','cities','glaciers','airports']
+(Note that each feature can be included or not as the user requires)
+
+Note: currently awaiting a shapefile for motorways
+
+Susan Leadbetter
+
+!---------------------------------------------------------------------------------------
+04/11/2010
+
+In addition to the above motorways can be plotted too.
+
+Susan Leadbetter
+
+!---------------------------------------------------------------------------------------
+
+15/11/2010
+
+Added support for simultaneously reading multiple columns from a NAME output file and added an IDL script for fields to a new file in NAME II format.
+Fixed a bug in readfield.pro.
+
+In readfield.pro multiply columns can now be read simultaneously from a file (before all column were read, but only one column returned in fielddata). If the field selectors (sellevel, selfield, etc.) are given as arrays of length n instead of scalars, the columns specified by these selectors are returned and the resulting fielddata array has dimension (1+2) where the first index is the column index (running from 0 to n-1). The routine is backwards compatible, i.e. if the field selectors are given as scalars only the specified column will be read and fielddata has dimension 2.
+
+writefile.pro is a subroutine for writing header information and fielddata to a file in NAME II format (with the implicit assumption that the coordinates are longitude/latitude). The subroutine also requires a title array with field metadata as input. fieldhead and fielddata can be (1+1) and (1+2) dimensional, if multiple columns are to be written simultaneously, or 1 and 2 dimensional if only one column is to be written.
+
+A bug was fixed in readfield.pro: when mapping longitudes to the range [-180,180] the fields where shifted by nshift=index2(0)-2, which has to be nshift=index2(0).
+
+Eike Mueller
+
+!---------------------------------------------------------------------------------------
+
+13/01/2011
+
+datathreshold.pro
+
+1. Added an input variable 'missing', used for missing fields in the NAME
+output file, which defaults to zero, but if set to 1, it makes the scale
+factor zero and then sets the field to -1.0 everywhere. 
+
+2. Bug fix - numlevels was not defined for NAME-III, only for NAME-II, so
+I've added it to the NAME-III loop as it gave errors otherwise. 
+
+Helen Champion
+
+!---------------------------------------------------------------------------------------
+
+
+25/01/2011
+
+The bugfix described in the change from 15/11/2010 is wrong, i.e. nshift is given by
+nshift=index2(0)-2 as in the original version. This has now been changed back.
+In addition, I added a keyword nolongitudeshift to the function readfield. If this
+is set to 1, then the longitude is not adjusted to lie within the range [-180,180].
+This is necessary if the data read by readfield is subsequently written to disk with
+writefile.
+
+Eike Mueller
+
+!---------------------------------------------------------------------------------------
+
+09/03/2011
+
+bugfix in readfield.pro.
+
+Before this bugfix reform removed all dimensions of size one in fielddata, which gives the wrong results if the file to be read is empty or contains only one line as then the second array dimension has size one and is removed.
+
+I now ensure that only the first dimension is removed with reform if it has size one, all other dimensions are left untouched.
+
+Eike Mueller
+
+!---------------------------------------------------------------------------------------
+
+28/03/2011
+
+plotfield.pro
+genanim.pro
+plotfieldpos.pro
+
+Added a new keyword parameter "genpng" to plotfield.pro. The keyword parameter is passed to genanim.pro to produce graphics in png format.
+
+Fixed bug - plotfieldpos.pro was overwriting plots on a single page instead of putting subsequent plots on a new page. Resolved by adding /advance to the call to map_set.
+
+Imogen Heard
+
+!---------------------------------------------------------------------------------------
+12/04/2011
+
+maplimits.pro
+
+Fixed bug
+When the plume/trajectory crosses the dateline (travels west of 175W or east of 175E) but 
+not the meridian the IDL code converts the co-ordinates from -180:180 to 0:360. Added code
+which stops this conversion from failing if there are in fact no points to be plotted east
+of 180.
+
+Susan Leadbetter
+
+!---------------------------------------------------------------------------------------
+06/07/2011
+
+plotrsmc.pro
+
+Added minimum contour value of 10E-20. Ticket #48
+
+Lois Huggett
+
+!---------------------------------------------------------------------------------------
+12/01/2012
+
+Ticket #57: Merge VAACSystem NAME version with trunk
+
+TestHarnessThinLayerReduce.py
+plotfieldpos_maxheight.pro
+plotmaxheight.pro
+thinlayerreduce.pro
+writefile.pro
+
+Added IDL code used in VAAC system to main trunk.
+This includes programs for combining layers in NAME files and computing and plotting
+the maximum height of a threshold contour.
+It also includes changes to writefile.pro so that:
+ (a) header lines do not have trailing blanks, and
+ (b) to output bounding coordinates.
+
+Susan Leadbetter
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 6.1 of NAME III released 20/02/2012.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+14/08/2012
+
+Ticket #52
+
+plotseries.pro
+plotfield.pro
+plotfieldpos.pro
+MO_master_web.gif
+
+The following changes were made to the plotting routines to enable resuspended ash to
+be plotted.
+
+Added 'legmax' option so user can choose whether to print the maximum value above the legend.
+Default is to print the maximum value.
+
+Added the option to specify ymin as well as ymax by entering the keyword parameter yrange.
+Note that to allow backwards compatibility if maxy is specified yrange will not be used.
+
+Added a strcompress command to stop the postscript filename from including spaces.
+
+Added brand image for use on gifs for webpage.
+
+Susan Leadbetter
+
+!-------------------------------------------------------------------------------------
+
+26/09/2012
+
+Ticket #75: RSMC plotting
+
+plotrsmc.pro
+Changed title in RSMC plots from "dosage" to "24 hour integrated air concentration"
+and made lines of latitude and longitude clearer. This change had been implemented
+previously on the EMARC system.
+
+Susan Leadbetter
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 6.2 of NAME III released 22/10/2012.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+04/12/2012
+
+Ticket #78: Post-release activities following the freeze of version 6_2.
+
+datathreshold.pro
+Corrected the comment character (':' should be ';') in a comment added on 13/01/2011.
+
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 6.3 of NAME III released 26/03/2013.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+24/05/2013
+
+Ticket #86: Changes to RSMC plotting requested by Anton
+
+plotrsmc.pro
+The text "boundary layer" is replaced with "ground" on deposition plots.
+The text "contour values may vary from chart to chart" has been added on the deposition
+and concentration charts.
+
+plottraj.pro
+For output in m asl, when fit=1, the vertical scale bar will alter to fit the maximum
+height of all the trajectories.
+The gridline plotting has been altered to match that in the routine plotfieldpos.pro.
+The width of the trajectories has been increased to 2.0.
+
+Susan Leadbetter
+
+!-------------------------------------------------------------------------------------
+
+22/07/2013
+
+Ticket #87: start time of integration to be added to plotrsmc.pro ps plots
+
+plotrsmc.pro
+Altered routine so that the beginning and end times of integrals (in UTC) are printed
+on output postscript charts.
+
+Lois Huggett
+
+!-------------------------------------------------------------------------------------
+
+07/08/2013
+
+plotmaxheight.pro
+Altered routine to enable it to work with NAMEIII format output and to allow any
+threshold value or species to be specified. Previously the output was restricted to
+VAAC-relevant text, limiting the applicability of this code.
+
+plotfield.pro
+Fix added for plotting precipitation fields from NAME, as the previous code could not
+correctly handle the slash in the field name title "Precipitation Rate (mm/hr)".
+The fix essentially removes the units from the variable name.
+
+Claire Witham
+
+!-------------------------------------------------------------------------------------
+
+03/04/2014
+
+Ticket #98: Update IDL used in Emergency Response Systems
+
+areaatrisk.pro
+Updated to produce a text file describing the orientation of the area-at-risk area
+(portrait or landscape). This is used to determine the naming convention of the
+CHEMET files sent to SWIFT as SWIFT needs to know whether the plots are portrait
+or landscape.
+
+Susan Leadbetter
+
+!--------------------------------------------------------------------------------------
+
+03/04/2014
+
+Ticket #98: Update IDL used in Emergency Response Systems
+
+plotrsmc.pro
+The routine now plots the first, second and third NAME output file as the choice of
+whether to output on 12Z or 0Z is now made by the setup script rather than the
+plotting code.
+
+Susan Leadbetter
+
+!--------------------------------------------------------------------------------------
+
+03/04/2014
+
+Ticket #98: Update IDL used in Emergency Response Systems
+
+genanim.pro
+Major changes have been made to genanim.pro.
+
+1) All calls to Alchemy have been removed as this is no longer available on the
+   desktop systems.
+
+2) Owing to changes in the way 'convert' works under RedHat 6, some modifications to the
+   'convert' commands are necessary:
+   
+   a) When a multi-page postscript file is converted to separate gif images, the first
+      page is offset compared to the remaining pages. This results in a "jumpy" animation.
+      To correct this problem the postscript file is now chopped up using 'psselect'
+      before each single page is converted to a gif.
+   
+   b) The background for the trajectory plots is assumed to be transparent when converted
+      to a gif. Therefore in some gif viewers the background appears black instead of
+      white and the plots are unreadable. The options "-background white -flatten"
+      have been added to the 'convert' command so the background is white and the images
+      are of a readable quality.
+
+Susan Leadbetter
+
+!--------------------------------------------------------------------------------------
+
+12/08/2014
+
+Ticket #98: Update IDL used in Emergency Response Systems
+
+Minor corrections to plotrsmc.pro.
+
+Susan Leadbetter
+
+!--------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 6.4 beta of NAME III released 29/10/2014.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 6.4 of NAME III released 18/12/2014.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+23/12/2014
+
+Ticket #108: Activities associated with freezing of version 6.4.
+
+The author and date have been removed from the top header in this Changes file
+and in the ReadMe file for this folder.
+
+Andrew Jones
+
+!-------------------------------------------------------------------------------------
+
+16/01/2015
+
+Ticket #115 Correction of two plotting issues
+
+plottraj.pro - modified so that it is now possible to plot a single trajectory
+
+plotseries.pro - modified so that values below 0 can now be plotted
+
+Susan Leadbetter
+
+!-------------------------------------------------------------------------------------
+
+19/06/2015
+
+Ticket #135 - Add validity time to back maps
+
+plotfield.pro - Modified back map plotting to provide an option to add validity time
+to the back map head. This is done by setting back=4 when calling plotfield.pro
+
+Susan Leadbetter
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 6.5 beta of NAME III released 01/07/2015.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+
+Version 6.5 of NAME III released 31/07/2015.
+
+!-------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------

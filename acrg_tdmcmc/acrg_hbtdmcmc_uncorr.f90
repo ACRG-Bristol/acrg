@@ -193,7 +193,7 @@ INTEGER rej_prob_p1_ib1(nIC1)
 !f2py intent(out) accept_sigma_y_all, reject_sigma_y_all
 
  
- !    call OMP_SET_NUM_THREADS(nbeta)     ! UNCOMMENT IF PARALLEL TEMPERING REQUIRED
+  call OMP_SET_NUM_THREADS(nbeta)     ! UNCOMMENT IF PARALLEL TEMPERING REQUIRED
 
   call init_random_seed()          ! Ensure random number generation starts from new point each time program is run
                                   ! Random seed only needs to be called once in a program.  

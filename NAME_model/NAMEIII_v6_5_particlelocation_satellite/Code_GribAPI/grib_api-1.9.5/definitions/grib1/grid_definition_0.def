@@ -1,0 +1,16 @@
+# Copyright 2005-2007 ECMWF
+#
+# Licensed under the GNU Lesser General Public License which
+# incorporates the terms and conditions of version 3 of the GNU
+# General Public License.
+# See LICENSE and gpl-3.0.txt for details.
+
+# GRID DEFINITION latitude/longitude grid (or equidistant cylindrical)
+
+# grib 1 -> 2
+constant gridDefinitionTemplateNumber     = 0;
+
+template commonBlock "grib1/grid_definition_latlon.def";
+
+pad padding_grid0_1(4);
+

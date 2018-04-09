@@ -1,0 +1,13 @@
+# Copyright 2005-2007 ECMWF
+# 
+# Licensed under the GNU Lesser General Public License which
+# incorporates the terms and conditions of version 3 of the GNU
+# General Public License.
+# See LICENSE and gpl-3.0.txt for details.
+
+
+constant section8Length=4;
+position offsetSection8;
+ascii[4] '7777' = "7777" : read_only;
+meta section8Pointer section_pointer(offsetSection8,section8Length,8);
+

@@ -1,0 +1,37 @@
+! Using UMG_Mk5 met data (UM GLOBAL Mk5)
+
+NWP Met Module Instances:
+Name,          Min B L Depth, Max B L Depth, Use NWP BL Depth?, Restore Met Script, Delete Met?, Met Folder, Topography Folder, Met Definition Name, Update on Demand?
+Global_UM6pp,          100.0,        4000.0,               Yes, %MetRestoreScript%,          No,   %MetDir%,        %TopogDir%,                UM6G,               Yes
+
+NWP Flow Module Instances: 
+Name,               Met Module,          Met,      Domain, Update on Demand?
+Global_UM6pp Flow,     NWP Met, Global_UM6pp,  UM6G Whole,               Yes
+
+Flow Order: Update
+Flow Module, Flow
+NWP Flow,    Global_UM6pp Flow
+
+Flow Order: Convert
+Flow Module, Flow
+NWP Flow,    Global_UM6pp Flow
+
+Flow Order: Flow
+Flow Module, Flow
+NWP Flow,    Global_UM6pp Flow
+
+Flow Order: Cloud
+Flow Module, Flow
+NWP Flow,    Global_UM6pp Flow
+
+Flow Order: Rain
+Flow Module, Flow
+NWP Flow,    Global_UM6pp Flow
+
+Flow Attributes:
+Name,    Flow Order
+Update,  Update
+Convert, Convert
+Flow,    Flow
+Cloud,   Cloud
+Rain,    Rain

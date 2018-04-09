@@ -1,0 +1,39 @@
+** Test Chemistry Grid **
+Note:
+The 'boundary levels' define the bottom and top of each slab.
+The 'grid levels' are representative values for each of the slabs defined by the boundary levels,
+and are often taken as the centre of each slab.
+
+Array: EulerianGrid Boundaries
+Array Values
+    0.0
+   50.0
+  100.0
+  200.0
+  400.0
+  800.0
+     
+Array: EulerianGrid
+Array Values
+   25.0
+   75.0
+  150.0
+  300.0
+  600.0
+     
+Horizontal Coordinate Systems:
+Name        
+Lat-Long    
+
+Vertical Coordinate Systems:
+Name
+m agl
+
+Horizontal Grids:
+Name,            H-Coord,  nX,  nY,   dX,   dY, x min, y min
+Eulerian HGrid, Lat-Long,   2,   2,  1.0,  1.0,  -3.5,  50.5
+
+Vertical Grids:
+Name,                    Z-Coord,                 Z-Array,       Av Z-Array    
+Eulerian ZGridBoundary,    m agl, EulerianGrid Boundaries,  Z on boundaries
+Eulerian ZGrid,            m agl,            EulerianGrid,                ,

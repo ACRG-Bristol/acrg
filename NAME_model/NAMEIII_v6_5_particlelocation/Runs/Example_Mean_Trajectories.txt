@@ -1,0 +1,124 @@
+----------------------------------------------------------------------
+Trajectories.txt
+
+NAME III input file to generate 3 MEAN (no turbulence) trajectories
+for 3 particles released at the same horizontal location but at 3 different heights
+
+Output is written to:
+/data/local/apdg/NameIIIExternalUsersVersion_5_2/Runs/Output/Traj_Mean_Example
+There is a PVWave script in this output directory for processing the output.
+
+To run NAME with this file type
+
+../Executables_Linux/nameiii.exe Mean_Trajectories.txt
+
+
+Created: 24/11/2008 by Matthew Hort
+        
+----------------------------------------------------------------------
+
+
+Main Options: 
+Absolute or Relative Time?, Fixed Met?, Flat Earth?,           Run Name, Random Seed, Backwards?, Max # Sources
+                  Absolute,         No,          No,  Traj_Mean_Example,       Fixed,        Yes,             3
+
+Restart File Options: 
+# Cases Between Writes, Time Between Writes, Delete Old Files?, Write On Suspend?
+                      ,                    ,                  ,                 , 
+
+Multiple Case Options:
+Dispersion Options Ensemble Size, Met Ensemble Size,
+                               1,                 1,
+
+Output Options: 
+Folder
+./Output/Traj_Mean_Example 
+
+Input Files:
+File names
+../Resources/Defns/MetDefnUM6R.txt
+
+Horizontal Coordinate Systems:
+Name
+Lat-Long
+
+Vertical Coordinate Systems:
+Name
+m agl
+
+Locations: Source Locations
+Name,             H-Coord,          X,       Y
+Falkirk,         Lat-Long,    -3.7897, 56.0044
+
+Temporal Grids:
+Name,       nt,      dt,              t0    
+TGrid,      24,    1:00, 06/11/2008 00:00:00
+
+Domains:
+Name,               H Unbounded?,  H-Coord, X Min, X Max, Y Min, Y Max, Z Unbounded?, Z-Coord,   Z Max, T Unbounded?,          Start Time,             End Time, Max Travel Time
+Dispersion Domain,           Yes,         ,      ,      ,      ,      ,           No,   m agl, 15000.0,           No, 06/11/2008 00:00:00,  03/11/2008 00:00:00,        infinity
+
+Species:
+Name,           Category,        Half Life, UV Loss Rate, Surface Resistance, Deposition Velocity, Molecular Weight, Material Unit
+INERT_TRACER,      INERT,           STABLE,     0.00E+00,                   ,                    ,                0,             g
+
+Species Uses:
+Species,         On Particles?, On Fields?, Advect Field?
+INERT_TRACER,              Yes,         No,            No
+
+Sources:
+Name,           Set of Locations,   Location,           Shape,  H-Coord, Z-Coord, dH-Metres?, dZ-Metres?,   dX,   dY,       Z,   dZ,  Angle,          Source Strength,   Time Dependency, Plume Rise?, Temperature, Flow Velocity, # Particles,   Max Age, Top Hat,           Start Time,      Stop Time
+Falkirk01,      Source Locations,    Falkirk,       Ellipsoid, Lat-Long,   m agl,        Yes,        Yes,  0.0,  0.0,   100.0,  0.0,    0.0,    INERT_TRACER    1.0 g,                  ,          No,       273.0,           0.0,           1,  infinity,     Yes,  06/11/2008 00:00:00,  06/11/2008 00:00:00
+Falkirk02,      Source Locations,    Falkirk,       Ellipsoid, Lat-Long,   m agl,        Yes,        Yes,  0.0,  0.0,   500.0,  0.0,    0.0,    INERT_TRACER    1.0 g,                  ,          No,       273.0,           0.0,           1,  infinity,     Yes,  06/11/2008 00:00:00,  06/11/2008 00:00:00
+Falkirk03,      Source Locations,    Falkirk,       Ellipsoid, Lat-Long,   m agl,        Yes,        Yes,  0.0,  0.0,  1000.0,  0.0,    0.0,    INERT_TRACER    1.0 g,                  ,          No,       273.0,           0.0,           1,  infinity,     Yes,  06/11/2008 00:00:00,  06/11/2008 00:00:00
+
+A fields output is required to obtain the particle output information from the run:
+
+Output Requirements - Fields: 
+Name,           Quantity,        Species,    Source,      H-Grid,  Z-Grid,           T-Grid, BL Average,  T Av Or Int, Av Time,  # Av Times, Sync?, Output Route, Across,  Separate File, Output Format,  Output Group
+ReqNum,      # Particles,               ,          ,            ,        ,            TGrid,         No,           No,        ,            ,   Yes,            D,       ,               ,            AF,  Numbers
+
+Output Requirements - Sets of Particle/Puff Information:
+Output Name,      Source, Particles?, Puffs?, First Particle, Last Particle, First Puff, Last Puff, Met?, Mass?, Plume Rise?, Dispersion Scheme?, Puff Family?,  H-Coord, Z-Coord, T-Grid, Sync?, Output Route, Output Format
+Data_Traj,              ,        Yes,     No,              1,             5,          0,         0,  Yes,    No,          No,                 No,           No, Lat-Long,   m agl,  TGrid,    No,            D,             P
+
+Sets of Dispersion Options:
+Max # Particles, Max # Full Particles, Max # Puffs, Max # Original Puffs, Skew Time, Velocity Memory Time, Mesoscale Velocity Memory Time, Inhomogeneous Time, DeltaOpt, Puff Time, Sync Time, Time of Fixed Met, Computational Domain, Puff Interval, Deep Convection?, Radioactive Decay?, Agent Decay?, Dry Deposition?, Wet Deposition?, Turbulence?, Mesoscale Motions?, Vertical Velocity?, Chemistry? 
+             10,                    2,           2,                    2,     00:00,                00:00,                          00:00,              00:00,        1,     00:00,  00:05:00,                  ,    Dispersion Domain,         00:30,               No,                 No,           No,              No,              No,          No,                 No,                Yes,       No 
+
+NWP Met Module Instances:
+Name,        Min B L Depth, Max B L Depth, Use NWP BL Depth?,     Restore Met Script, Delete Met?,           Met Folder,           Topography Folder,    Met Definition Name
+Regional,             50.0,        4000.0,               Yes,                       ,          No,   ../Resources/UMMet,          ../Resources/Topog,           UM6R
+
+
+NWP Flow Module Instances: 
+Name,     Met Module,      Met,              Domain
+Regional,    NWP Met, Regional,   Dispersion Domain 
+
+Flow Order: Update
+Flow Module, Flow
+NWP Flow,    Regional
+
+Flow Order: Convert
+Flow Module, Flow
+NWP Flow,    Regional
+
+Flow Order: Flow
+Flow Module, Flow
+NWP Flow,    Regional
+
+Flow Order: Cloud
+Flow Module, Flow
+NWP Flow,    Regional
+
+Flow Order: Rain
+Flow Module, Flow
+NWP Flow,    Regional
+
+Flow Attributes:
+Name,    Flow Order
+Update,  Update
+Convert, Convert
+Flow,    Flow
+Cloud,   Cloud
+Rain,    Rain

@@ -59,6 +59,16 @@ with open(join(acrg_path, "acrg_species_info.json")) as f:
 with open(join(acrg_path, "acrg_site_info.json")) as f:
     site_info=json.load(f)
 
+def open_ds(path):
+    
+    """
+    Function efficiently opens xray datasets.
+    """
+    # use a context manager, to ensure the file gets closed after use
+    with xray.open_dataset(path) as ds:
+        ds.load()
+    return ds    
+
 def is_number(s):
     try:
         float(s)
@@ -190,7 +200,8 @@ def get_file_list(site, species, start, end, height,
     file_site = [f[1] for f in file_info]
     file_species = [re.split("-|\.", f[-1])[0] for f in file_info]
     file_height = [re.split("-|\.", f[-1])[1] for f in file_info]
-
+    
+    
     #Get file list
     file_species_string = listsearch(file_species, species, species_info)
     if file_species_string is None:
@@ -207,7 +218,7 @@ def get_file_list(site, species, start, end, height,
                  si.upper() == file_site_string.upper() and
                  sp.upper() == file_species_string.upper() and
                  hi.upper() == file_height_string.upper()]
-
+    
     if instrument is not None:
         files = [f for f in files if instrument.upper() in f.upper()]
 
@@ -242,6 +253,7 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
     data_directory, files = get_file_list(site, species, start_time, end_time,
                                           height, network = network,
                                           instrument = instrument, data_directory=data_directory)                                 
+    
     #Get files
     #####################################
     if files is not None:
@@ -313,24 +325,25 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
                     if len(file_vmf) > 0:
                         df["vmf"] = file_vmf[:]
                 
-                #If FERRY read lat and lon data
-#                if site_in == 'GAUGE-FERRY':
-#                    file_lat=ncf.variables["latitude"]
-#                    if len(file_lat) > 0:
-#                                 
-#                        df["meas_lat"] = file_lat[:]
-#                        
-#                    file_lon=ncf.variables["longitude"]
-#                    if len(file_lon) > 0:
-#                        df["meas_lon"] = file_lon[:]
-                       
-                
-                #If FAAM get altitude data
-                if site_in == 'GAUGE-FAAM':
-                    if "alt" in ncf.variables.keys():
-                        file_alt=ncf.variables["alt"]
-                        if len(file_alt) > 0:
-                            df["altitude"] = file_alt[:]        
+#                If ship read lat and lon data
+#               Check if site info has a keyword called platform
+                if 'platform' in site_info[site].keys():
+                    if site_info[site]["platform"] == 'ship':
+                        file_lat=ncf.variables["latitude"]
+                        if len(file_lat) > 0:                                
+                            df["meas_lat"] = file_lat[:]
+                            
+                        file_lon=ncf.variables["longitude"]
+                        if len(file_lon) > 0:
+                            df["meas_lon"] = file_lon[:]
+                           
+                    
+                    #If platform is aircraft, get altitude data
+                    if site_info[site]["platform"] == 'aircraft':
+                        if "alt" in ncf.variables.keys():
+                            file_alt=ncf.variables["alt"]
+                            if len(file_alt) > 0:
+                                df["altitude"] = file_alt[:]        
                         
                 #Get status flag
                 if ncvarname + "_status_flag" in ncf.variables.keys():
@@ -423,7 +436,7 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
         return None
 
 
-def get_gosat(site, species, max_level, start = "1900-01-01", end = "2020-01-01"):
+def get_gosat(site, species, max_level, start = "1900-01-01", end = "2020-01-01", data_directory = None):
     
     if max_level is None:
         print "ERROR: MAX LEVEL REQUIRED FOR SATELLITE OBS DATA"
@@ -433,14 +446,16 @@ def get_gosat(site, species, max_level, start = "1900-01-01", end = "2020-01-01"
     end_time = convert.reftime(end)
 
     data_directory, files = get_file_list(site, species, start_time, end_time,
-                                          None)
+                                          None, data_directory = data_directory)
     files_date = [convert.reftime(f.split("_")[2][0:8]) for f in files]
     files_keep = [True if d >= start_time and d < end_time else False for d in files_date]
     files = [f for (f, k) in zip(files, files_keep) if k == True]
 
     data = []
-    for f in files:
-        data.append(xray.open_dataset(join(data_directory,f)))
+    for i,f in enumerate(files):
+        #data.append(xray.open_dataset(join(data_directory,f)))
+        # rt17603: 06/04/2018 Changed this to use function containing with statement. Was possible causing problems with too many files being open at once..
+        data.append(open_ds(join(data_directory,f)))
         
     data = xray.concat(data, dim = "time")
 
@@ -459,10 +474,23 @@ def get_gosat(site, species, max_level, start = "1900-01-01", end = "2020-01-01"
     data["mf"] = data.xch4 - data.mf_prior_factor - data.mf_prior_upper_level_factor
     data["dmf"] = data.xch4_uncertainty
 
-        
-    data = data.drop("lev")
-    data = data.drop(["xch4", "xch4_uncertainty", "lon", "lat"])
+    # rt17603: 06/04/2018 Added drop variables to ensure lev and id dimensions are also dropped, Causing problems in footprints_data_merge() function
+    drop_data_vars = ["xch4","xch4_uncertainty","lon","lat","ch4_profile_apriori","xch4_averaging_kernel",
+                      "pressure_levels","pressure_weights","exposure_id"]
+    drop_coords = ["lev","id"]
+    
+    for dv in drop_data_vars:
+        if dv in data.data_vars:
+            data = data.drop(dv)
+    for coord in drop_coords:
+        if coord in data.coords:
+            data = data.drop(coord)
+
+    #data = data.drop("lev")
+    #data = data.drop(["xch4", "xch4_uncertainty", "lon", "lat"])
     data = data.to_dataframe()
+    # rt17603: 06/04/2018 Added sort because some data was not being read in time order. Causing problems in footprints_data_merge() function
+    data = data.sort_index()
     
     data.max_level = max_level
     if species.upper() == "CH4":
@@ -477,7 +505,7 @@ def get_gosat(site, species, max_level, start = "1900-01-01", end = "2020-01-01"
 def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
             height = None, baseline = False, average = None, keep_missing=False,
             network = None, instrument = None, status_flag_unflagged = None,
-            max_level = None):
+            max_level = None, data_directory = None):
 
     # retrieves obervations for a set of sites and species between start and end dates
     # max_level only pertains to satellite data
@@ -525,10 +553,11 @@ def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
     # Get data
     obs = {}
     for si, site in enumerate(sites):
-        print(site)
+
         if "GOSAT" in site.upper():
             data = get_gosat(site, species,
-                       start = start_time, end = end_time, max_level = max_level)
+                       start = start_time, end = end_time, max_level = max_level,
+                       data_directory = data_directory)
             if data is None:
                 return
                 
@@ -539,7 +568,8 @@ def get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
                        network = network[si],
                        instrument = instrument[si],
                        keep_missing = keep_missing,
-                       status_flag_unflagged = status_flag_unflagged[si])                       
+                       status_flag_unflagged = status_flag_unflagged[si],
+                       data_directory = data_directory)                     
                        
         if data is not None:
             obs[site] = data.copy()            

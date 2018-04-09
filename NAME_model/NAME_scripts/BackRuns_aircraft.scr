@@ -1,0 +1,811 @@
+#!/bin/ksh
+# ******************************************************************************
+#
+# Project: Template files and scripts for research users on NAME-JASMIN
+#
+# File:    Sample script for NAME back runs for aircraft
+#
+# Author:  Andrew Jones, Atmospheric Dispersion, UK Met Office
+#	   modified by Anita Ganesan, University of Bristol
+#
+# Date:    25/09/2014
+#          Aircraft modifications 1/2/2015
+#
+# ******************************************************************************
+
+# Summary of set up for back runs:
+#
+# - A separate NAME back run is performed for each minute of an aircraft flight.
+#
+# Inputs:
+# - A file that contains the following 7 columns: timestamp, lon, d_lon, lat, d_lat, alt (m.a.s.l),d_alt
+# - The first line must be a header line
+#	timestamp - timestamp of that minute of the flight in the format YYYY-mm-DD HH:MM or YYYY-mm-DD HH:MM:SS (seconds not read in)
+#	lon - mean longitiude in one minute bin
+#	d_lon - the range of lon in the one minute bin (x_max - x_min)
+#	lat - mean latitude in one minute bin
+#	d_lat - the range of lat in the one minute bin (y_max - y_min)
+#	alt - mean altitude in one minute bin
+#	d_alt = range of altitude in one minute bin (z_max - z_min)
+# - There cannot be any missing rows (data must be regularly spaced) and there cannot be any empty information in any row.
+# - Required starting inputs: path to flight data filename runname
+# - Example syntax to launch: BackRuns_aircraft.scr /home/username/Flight_name/Flight_data.csv GAUGE_B862 {RunName}
+# 
+# Outputs:
+# - Outputs are stored in hourly Fields files, with the number of columns in the file corresponding to the number of minutes in that hour.
+# - Met data is stored in a seperate folder with one file per one minute of the flight
+# - A particle location file for each hour of the flight is stored, which contains the x,y,z,t of a particle when it dies (e.g., leaves the domain or end of run)
+#
+# - each back run uses GLOBAL NWP analysis data (with update-on-demand)
+#
+#
+# Update History:
+#
+# 08/10/2013 - original version of script supplied to Ag Stephens at BADC
+#
+# 26/11/2013 - version 2 includes automatic specification of the GLOBAL NWP data
+#              to use based on the dates for each NAME simulation (currently the
+#              start date and end date of each NAME run must be covered by the
+#              same 'Mk' data, although this restriction might be relaxed later)
+#
+# 25/09/2014 - updated to include 'Mk8' GLOBAL UM option to be used for dates
+#              from 15/07/2014 onwards.
+#
+# 1/2/2015 - updated to work on aircraft data
+
+# 20/11/2015 - updated to NAME v6.5 and to include support for 'Mk9' GLOBAL UM
+#              option to be used for dates from 25/08/2015 onwards.
+#
+# 08/05/2017 - updated to add GLOUM6 met data ('Mk3') prior to 01/01/2009
+#
+#
+# IMPORTANT NOTES:
+# 1/2/2015
+# - Script only works when the entirety of the run is in the same MK version.
+# - Met output currently only works for a maximum flight length of 6 hours. If longer duration is needed, then the size of HGrid, ZGrid and TGrid
+#   needs to be changed in the file GlobalParamaters.F90 and model needs to be recompiled.
+# - There are sometimes issues with outputting the met for the entire fight if the duration is too long (memory issues on server). If that happens,
+# - the run needs to be partitioned into smaller lengths and the met rerun by commenting out the NAME command for the fields file generation.
+
+echo "Script $0 starting at" `date`
+
+# Set system variables
+
+. /etc/profile
+
+ulimit -s unlimited
+
+GWS=/home
+USER=ag12733
+
+# ------------------------------------------------------------------------------
+#
+#  **  User-specified parameters  **
+#
+# ------------------------------------------------------------------------------
+
+# ----------------------------------------------------------------------
+#  1)   NWP METEOROLOGY
+# ----------------------------------------------------------------------
+
+# Retention period for local NWP files
+MetHistory=32
+
+# Directory containing topography files
+TopogSubdir='UMTopogData'
+
+
+# ----------------------------------------------------------------------
+#  2)   SOURCE LOCATION,  OUTPUT GRIDS  AND  MODELLING DOMAIN
+# ----------------------------------------------------------------------
+
+#EUROPE
+# Output Grid 1 and Grid 2
+#Grid1_nX='391'
+#Grid1_nY='293'
+#Grid1_dX='0.352'
+#Grid1_dY='0.234'
+#Grid1_Xmin='-97.9'
+#Grid1_Ymin='10.729'
+#
+## Computational domain (recommend 5 deg buffer (long) and 4 deg buffer (lat))
+#CompDom_Xmin='-98.076'
+#CompDom_Xmax='39.556'
+#CompDom_Ymin='10.612'
+#CompDom_Ymax='79.174'
+
+
+# ----------------------------------------------------------------------
+#  3)   DURATION OF SIMULATION (i.e. MAX PARTICLE AGE IN DAYS)
+# ----------------------------------------------------------------------
+
+MaxAge_Days=30
+
+
+# ----------------------------------------------------------------------
+#  4)   SAMPLING PERIOD FOR EACH BACK MAP (IN HOURS)
+# ----------------------------------------------------------------------
+
+# Changing this variable hasn't been tested but in principal should work for other sampling periods (under one hour)
+# works for other sampling periods when they start at the beginning of the hour (e.g. 1400-1410, 1410-1420, etc)
+
+SamplingPeriod_Mins=60
+
+
+# ----------------------------------------------------------------------
+#  5)   PARTICLE RELEASE AND SYNC TIME CHARACTERISTICS
+# ----------------------------------------------------------------------
+
+ParticlesPerSource='1000/min'
+MaxNumParticles=100000
+
+SyncTime_Minutes=06
+nIntTimesPerHour=10
+
+# ----------------------------------------------------------------------
+#  6)   NAME OF RUN
+# ----------------------------------------------------------------------
+
+RunName=$2
+
+
+# ----------------------------------------------------------------------
+#  7)   CONTROL FLAGS FOR SCRIPT EXECUTION
+# ----------------------------------------------------------------------
+
+# Number of threads for parallelised NAME execution
+
+let nThreads=1
+
+# ----------------------------------------------------------------------
+#  8)   SET DIRECTORIES
+# ----------------------------------------------------------------------
+SCRIPTDIR="$GWS/$USER/NAME_scripts"
+NAMEIIIDIR="/data/shared/NAME/Model/NAMEIII_v6_5_particlelocation"
+
+WORKDIR="$SCRIPTDIR/Results/${RunName}"
+#STOREDIR="$SCRIPTDIR/Back_results"
+
+METDIR="/data/$USER/met_data"
+TOPOGDIR="/data/shared/NAME/Model/NAMEIII_v6_5_particlelocation/Resources/Topog"
+
+# ------------------------------------------------------------------------------
+#
+#  **  Functions  **
+#
+# ------------------------------------------------------------------------------
+
+# Gets the Mk (version number) of Global met data appropriate to a given date
+
+get_Mk_Global(){
+
+  # Input date as seconds from Jan 1, 1970
+  
+  if [[ ${GlobalMetDate} -lt 1136073600 ]] ; then
+    
+    let GlobalMetMk=0
+    echo "ERROR in get_Mk_Global: date is before the earliest available Global met data"
+    exit 1
+    
+  elif [[ ${GlobalMetDate} -lt 1230768000 ]] ; then
+    
+    let GlobalMetMk=3
+    
+  elif [[ ${GlobalMetDate} -lt 1257811200 ]] ; then
+    
+    let GlobalMetMk=4
+    
+  elif [[ ${GlobalMetDate} -lt 1268092800 ]] ; then
+    
+    let GlobalMetMk=5
+    
+  elif [[ ${GlobalMetDate} -lt 1367280000 ]] ; then
+    
+    let GlobalMetMk=6
+    
+  elif [[ ${GlobalMetDate} -lt 1405382400 ]] ; then
+    
+    let GlobalMetMk=7
+    
+  elif [[ ${GlobalMetDate} -lt 1440460800 ]] ; then
+    
+    let GlobalMetMk=8
+    
+  else
+    
+    let GlobalMetMk=9
+    
+  fi
+
+}
+
+# ------------------------------------------------------------------------------
+#
+#  **  NWP specifications - these are fixed and should not be changed **
+#
+# ------------------------------------------------------------------------------
+
+# Met Type             |   Dates
+# -------------------------------------------------
+#
+# GLOUM6               |  01/01/2006 --> 31/12/2008
+#
+# GLOUM6pp             |  01/01/2009 --> 09/11/2009
+#
+# UMG_Mk5              |  10/11/2009 --> 08/03/2010
+#
+# UMG_Mk6              |  09/03/2010 --> 29/04/2013
+#
+# UMG_Mk7              |  30/04/2013 --> 14/07/2014
+#
+# UMG_Mk8              |  15/07/2014 --> 25/08/2015
+#
+# UMG_Mk9              |  25/08/2015 --> ---
+#
+
+set -A MetMk             0       1       2       3                  4                    5                           6                             7                             8                             9                           
+set -A MetType           'null'  'null'  'null'  'GLOUM6'           'GLOUM6pp'           'UMG_Mk5'                   'UMG_Mk6PT'                   'UMG_Mk7PT'                   'UMG_Mk8PT'                   'UMG_Mk9PT'
+set -A MetDefnFileName   'null'  'null'  'null'  'MetDefnUM6G.txt'  'MetDefnUM6Gpp.txt'  'MetDefnUMG_Mk5_L52pp.txt'  'MetDefnUMG_Mk6_L59PTpp.txt'  'MetDefnUMG_Mk7_L59PTpp.txt'  'MetDefnUMG_Mk8_L59PTpp.txt'  'MetDefnUMG_Mk9_L59PTpp.txt'
+set -A MetDeclnFileName  'null'  'null'  'null'  'Use_UM6G.txt'     'Use_UM6Gpp.txt'     'Use_UMG_Mk5_L52pp.txt'     'Use_UMG_Mk6_L59PTpp.txt'     'Use_UMG_Mk7_L59PTpp.txt'     'Use_UMG_Mk8_L59PTpp.txt'     'Use_UMG_Mk9_L59PTpp.txt'
+set -A MetPrefix         'null'  'null'  'null'  'HP'               'HP'                 'MO'                        'MO'                          'MO'                          'MO'                          'MO'
+set -A MetSuffix         'null'  'null'  'null'  'GLOUM6'           'GLOUM6.pp'          'UMG_Mk5_L52.pp'            'UMG_Mk6_L59PT*.pp'           'UMG_Mk7_[IM]_L59PT*.pp'      'UMG_Mk8_[IM]_L59PT*.pp'      'UMG_Mk9_[IM]_L59PT*.pp'
+set -A ArchiveMetDir     'null'  'null'  'null'  'Global/GLOUM6'    'Global/GLOUM6pp'    'Global/UMG_Mk5'            'Global/UMG_Mk6PT'            'Global/UMG_Mk7PT'            'Global/UMG_Mk8PT'            'Global/UMG_Mk9PT'
+ 
+ 
+
+# ------------------------------------------------------------------------------
+#
+#  **  Script parameters and arguments  **
+#
+# ------------------------------------------------------------------------------
+
+# Correct usage string (for display in error messages)
+
+Usage="Usage: $0  [-h]  flight_data_filename"
+
+# Get optional parameters
+
+while getopts :h name ; do
+  case ${name} in
+    h) # option: help
+      echo '---------------------------------------------------'
+      echo ${Usage}
+      echo '---------------------------------------------------'
+      echo ''
+      echo 'Required parameters:'
+      echo '   path to flight_data_filename'
+      echo ''
+      echo 'Optional parameters:'
+      echo '  -h  displays this help page'
+      echo ''
+      echo '---------------------------------------------------'
+      exit 0
+      ;;
+    :) # expected argument is missing
+      echo 'Error: missing argument for option -'${OPTARG}
+      echo ${Usage}
+      exit 1
+      ;;
+    ?) # illegal option
+      echo 'Error: illegal option -'${OPTARG}
+      echo ${Usage}
+      exit 1
+      ;;
+    *) # unexpected error
+      echo 'Error: unexpected problem reading optional parameters'
+      echo ${Usage}
+      exit 1
+      ;;
+  esac
+done
+
+shift $((${OPTIND}-1))
+ 
+#  Get input arguments: name of flight data file
+
+if [[ $# -eq 2 ]] ; then  
+flight_data_file=$1
+RunName=$2
+  
+else
+  
+  echo "Error in input arguments"
+  echo ${Usage}
+  exit 1
+  
+fi
+
+# find out number of sampling periods in run
+nummins=$(wc -l < ${flight_data_file})
+
+# read in start date from flight data file (starting from second line, first line is header)
+    sed -n "2p" ${flight_data_file} > temp.out
+    IFS=","
+    while read f1 f2 f3 f4 f5 f6 f7
+	do
+	start_date=$f1
+	done < temp.out
+    rm temp.out
+start_date=`date -u -d "${start_date} UTC" +'%Y-%m-%d %H:%M'`
+
+ # read in end date from flight data file (second line, first line is header)
+    sed -n "${nummins}p" ${flight_data_file} > temp.out
+    IFS=","
+    while read f1 f2 f3 f4 f5 f6 f7
+	do
+	end_date=$f1
+	done < temp.out
+    rm temp.out
+end_date=`date -u -d "${end_date} UTC +${SamplingPeriod_Mins} min" +'%Y-%m-%d %H:%M'`
+
+echo "Flight start date is: ${start_date}"
+echo "Flight end date is: ${end_date}"
+echo "Flight data file is: ${flight_data_file}"
+
+
+# Now check input dates are well-specified with an end date after the start date
+
+start_seconds=`date -u -d "${start_date} UTC" +'%s'`
+
+end_seconds=`date -u -d "${end_date} UTC" +'%s'`
+
+if [[ ${start_seconds} -gt ${end_seconds} ]] ; then
+  
+  echo "Error in ${flight_data_file}: end date is before the start date"
+  echo ${Usage}
+  exit 1
+  
+fi
+
+
+# ------------------------------------------------------------------------------
+#
+#  Set up directory structures (if necessary) and switch to working directory
+#
+# ------------------------------------------------------------------------------
+
+# Create working directory for NAME runs
+
+mkdir -p ${WORKDIR}
+
+# Create store directory for NAME runs
+
+# mkdir -p ${STOREDIR}
+
+# Create local met directory
+
+mkdir -p ${METDIR}
+
+# Switch to working directory
+
+cd ${WORKDIR}
+
+
+
+# ------------------------------------------------------------------------------
+#
+#  Calculate input file parameters from supplied user inputs
+#
+# ------------------------------------------------------------------------------
+
+# max particle age in hours
+let MaxAge_Hours=${MaxAge_Days}*24
+
+# duration of run (24 hours longer than max particle age)
+#let RunDuration=${MaxAge_Hours}+24
+let RunDuration=${MaxAge_Hours}+1
+
+# total number of integration steps for integrated air concentrations
+let nIntTimes=${RunDuration}*${nIntTimesPerHour}
+
+# ------------------------------------------------------------------------------
+#
+#  Loop over sampling periods from flight start_date to flight end_date 
+#  
+# ------------------------------------------------------------------------------
+
+FlightStartTime=`date -u -d "${start_date} UTC" +'%d/%m/%Y %H:%M'`
+FlightStopTime=`date -u -d "${end_date} UTC" +'%d/%m/%Y %H:%M'`
+
+end_date_hourstamp=`date -u -d "${end_date} UTC" +'%Y-%m-%d %H'`
+end_date_min=`date -u -d "${end_date} UTC" +'%M'`
+end_date_sec=`date -u -d "${end_date} UTC" +'%s'`
+
+# Initialise current date to the start date
+
+cur_date=${start_date}
+cur_date_hourstamp=`date -u -d "${cur_date} UTC" +'%Y-%m-%d %H'`
+cur_date_min=`date -u -d "${cur_date} UTC" +'%M'`
+cur_date_sec=`date -u -d "${cur_date} UTC" +'%s'`
+
+###echo ${cur_date_hourstamp}
+###echo ${end_date_hourstamp}
+###echo ${cur_date_min}
+###exit
+
+# Set number of sampling periods in first hour if flight leaves in middle of the hour
+if [[ ${cur_date_hourstamp} != ${end_date_hourstamp} ]] ; then
+        ((temp = (60-${cur_date_min})/${SamplingPeriod_Mins} ))
+	if [[ $temp == [0-9]* ]]; then
+		remainder_in_hour=$(awk -v var=${temp} 'BEGIN{print (var-int(var)<0.499)?int(var)+1:int(var)}')
+		let remainder_in_hour=${remainder_in_hour}-1
+	else
+		remainder_in_hour=$(awk -v var=${temp} 'BEGIN{print (var-int(var)<0.499)?int(var)+1:int(var)}')
+	#(( remainder_in_hour=(60-${cur_date_min})/${SamplingPeriod_Mins} ))
+	fi
+###	echo ${remainder_in_hour}
+###	exit
+else
+	(( remainder_in_hour=(${end_date_min}-${cur_date_min})/${SamplingPeriod_Mins} ))
+
+fi
+
+# Met input file
+met_input_file="BackRun_${RunName}_met.txt"
+cp  ${SCRIPTDIR}/Met_aircraft_template.txt  ${met_input_file}
+
+# set counter for reading correct line of input file with aircraft location, first line is a header
+counter=2
+
+# Set counter for preparing met_input file
+let TotalSamplingPeriod_Index=0
+
+# Loop through each hour of the flight
+until [[ ${cur_date_sec} -ge ${end_date_sec} ]] ; do
+
+  cur_date_as_char=`date -u -d "${cur_date}" +'%Y%m%d%H'`  
+
+  # set start and end times for NAME run
+  # backwards run - so start of run is chronologically later than end of run
+  RunStartTime=`date -u -d "${cur_date} UTC              +1 hour" +'%d/%m/%Y %H:%M'`
+  RunStopTime=`date -u -d "${cur_date} UTC -${MaxAge_Days} day" +'%d/%m/%Y %H:%M'`
+
+  # ... and in seconds format as ...
+  RunStartSecs=`date -u -d "${cur_date} UTC              +1 hour" +'%s'`
+  RunStopSecs=`date -u -d "${cur_date} UTC -${MaxAge_Days} day" +'%s'`
+  
+  # next determine the 'Mk' of the Global met data
+  GlobalMetDate=${RunStartSecs}
+  get_Mk_Global
+  RunStartMk=${GlobalMetMk}
+  
+  GlobalMetDate=${RunStopSecs}
+  get_Mk_Global
+  RunStopMk=${GlobalMetMk}
+  
+  # 'Mk' should be the same throughout the NAME run
+  # (might relax this condition later on, but this would make coding more complicated)
+  if [[ ${RunStartMk} -eq ${RunStopMk} ]] ; then
+    GlobalMk=${RunStartMk}
+  else
+    echo "Error in script $0: the start and stop dates of the NAME run do not use the same 'Mk' Global met data"
+    exit 2
+  fi
+  
+  # set files for use of NWP meteorology
+  MetDefnFile="${NAMEIIIDIR}/Resources/Defns/${MetDefnFileName[${GlobalMk}]}"
+  MetDeclnFile="${SCRIPTDIR}/MetDeclarations/${MetDeclnFileName[${GlobalMk}]}"
+  MetRestoreScript="${SCRIPTDIR}/MetRestore_JASMIN.ksh"
+  
+  # set input filename for NAME run
+  input_file="BackRun_${RunName}_${cur_date_as_char}.txt"
+  
+  # set error filename for NAME run
+  error_file="BackRun_${RunName}_${cur_date_as_char}Error.txt"
+  
+  # ----------------------------------------------------------------------------
+  # Prepare main part of the input file
+  # ----------------------------------------------------------------------------
+  
+  # copy main input file template for processing
+  cp  ${SCRIPTDIR}/BackRuns_aircraft_template.txt  ${input_file}
+  
+  # substitute dynamic variables in the main part of the input file
+  
+  # - name of back run
+  sed -i "s|%Run_Name%|${RunName}|g"             ${input_file}
+  
+  # - number of threads to use
+  sed -i "s|%nThreads%|${nThreads}|g"            ${input_file}
+  
+  # - output directory
+  sed -i "s|%OutputDir%|${WORKDIR}|g"            ${input_file}
+  
+  # - name of met defn file to read
+  sed -i "s|%MetDefnFile%|${MetDefnFile}|g"      ${input_file}
+
+  # - duration of back run in hours
+  sed -i "s|%RunDuration%|${RunDuration}|g"      ${input_file}
+  
+  # - start and end time
+  sed -i "s|%StartTimeOfRun%|${RunStartTime}|g"  ${input_file}
+  sed -i "s|%EndTimeOfRun%|${RunStopTime}|g"     ${input_file}
+  
+  # - sync time step (main model time step) in minutes
+  sed -i "s|%SyncTime%|${SyncTime_Minutes}|g"    ${input_file}
+  
+  # - grid 1 definition
+  sed -i "s|%Grid1_nX%|${Grid1_nX}|g"            ${input_file}
+  sed -i "s|%Grid1_nY%|${Grid1_nY}|g"            ${input_file}
+  sed -i "s|%Grid1_dX%|${Grid1_dX}|g"            ${input_file}
+  sed -i "s|%Grid1_dY%|${Grid1_dY}|g"            ${input_file}
+  sed -i "s|%Grid1_Xmin%|${Grid1_Xmin}|g"        ${input_file}
+  sed -i "s|%Grid1_Ymin%|${Grid1_Ymin}|g"        ${input_file}
+  
+  # - computational domain
+  sed -i "s|%CompDom_Xmin%|${CompDom_Xmin}|g"    ${input_file}
+  sed -i "s|%CompDom_Xmax%|${CompDom_Xmax}|g"    ${input_file}
+  sed -i "s|%CompDom_Ymin%|${CompDom_Ymin}|g"    ${input_file}
+  sed -i "s|%CompDom_Ymax%|${CompDom_Ymax}|g"    ${input_file}
+  
+  # - maximum number of particles allowed
+  sed -i "s|%MaxNumParticles%|${MaxNumParticles}|g"  ${input_file}
+  
+  # - name of back run
+  sed -i "s|%Run_Name%|${RunName}|g"             ${met_input_file}
+  
+  # - number of threads to use
+  sed -i "s|%nThreads%|${nThreads}|g"            ${met_input_file}
+  
+  # - output directory
+  sed -i "s|%OutputDir%|${WORKDIR}|g"            ${met_input_file}
+  
+  # - name of met defn file to read
+  sed -i "s|%MetDefnFile%|${MetDefnFile}|g"      ${met_input_file}
+ 
+  sed -i "s|%SyncTime%|${SyncTime_Minutes}|g"    ${met_input_file}
+  
+  sed -i "s|%CompDom_Xmin%|${CompDom_Xmin}|g"    ${met_input_file}
+  sed -i "s|%CompDom_Xmax%|${CompDom_Xmax}|g"    ${met_input_file}
+  sed -i "s|%CompDom_Ymin%|${CompDom_Ymin}|g"    ${met_input_file}
+  sed -i "s|%CompDom_Ymax%|${CompDom_Ymax}|g"    ${met_input_file}
+  sed -i "s|%CompDom_Ymax%|${CompDom_Ymax}|g"    ${met_input_file}
+  
+  sed -i "s|%StopTimeOfFlight%|${FlightStopTime}|g"  ${met_input_file}
+  sed -i "s|%StartTimeOfFlight%|${FlightStartTime}|g"     ${met_input_file}
+  
+  # ----------------------------------------------------------------------------
+  # Prepare sources and output requests for each sampling period
+  # ----------------------------------------------------------------------------
+  
+  # loop through sampling periods on each day
+  # backwards run - so start of each sampling period is chronologically later than end of period
+  let SamplingPeriod_Index=0
+  let min_stop=0
+  let min_start=${SamplingPeriod_Mins}
+###  echo ${remainder_in_hour}
+###  exit
+  while [[ ${SamplingPeriod_Index} -lt ${remainder_in_hour} ]] ; do
+  
+  # read in flight data file, one line at a time 
+    sed -n "${counter}p" ${flight_data_file} > temp.out
+    IFS=","
+    while read f1 f2 f3 f4 f5 f6 f7
+	do
+	SourceLoc_X=$f2
+  	delta_x=$f3
+  	SourceLoc_Y=$f4
+  	delta_y=$f5
+  	SourceLoc_Z=$f6
+  	delta_z=$f7
+	done < temp.out
+    rm temp.out
+    let counter=${counter}+1
+    
+    let SamplingPeriod_Index=${SamplingPeriod_Index}+1
+    let TotalSamplingPeriod_Index=${TotalSamplingPeriod_Index}+1
+    
+    SamplingPeriod_Stop=`date -u -d "${cur_date} UTC +${min_stop}  min" +'%d/%m/%Y %H:%M'`
+    SamplingPeriod_Stop_as_char=`date -u -d "${cur_date} UTC +${min_stop}  min" +'%Y%m%d%H%M'`
+    SamplingPeriod_Start=`date -u -d "${cur_date} UTC +${min_start} min" +'%d/%m/%Y %H:%M'`
+###    echo "start ${SamplingPeriod_Start}"
+###    echo "stop ${SamplingPeriod_Stop}"
+###   echo "index is ${TotalSamplingPeriod_Index}"
+    
+       
+    # copy template for source and output requests block for processing
+    cp  ${SCRIPTDIR}/SourceTermAndOutputRequests_aircraft.txt  SourceAndRequests.tmp
+    
+    # substitute dynamic variables for this sampling period
+      # - source location (as lat-long)
+    sed -i "s|%SourceLoc_X%|${SourceLoc_X}|g"      SourceAndRequests.tmp
+    sed -i "s|%SourceLoc_Y%|${SourceLoc_Y}|g"      SourceAndRequests.tmp 
+    sed -i "s|%SourceLoc_Z%|${SourceLoc_Z}|g"      SourceAndRequests.tmp
+    sed -i "s|%delta_x%|${delta_x}|g"      SourceAndRequests.tmp
+    sed -i "s|%delta_y%|${delta_y}|g"      SourceAndRequests.tmp
+    sed -i "s|%delta_z%|${delta_z}|g"      SourceAndRequests.tmp
+    
+    # - sample period index, start and end times
+    sed -i "s|%SamplePeriod%|${SamplingPeriod_Index}|g"        SourceAndRequests.tmp
+    sed -i "s|%SamplePeriod_Start%|${SamplingPeriod_Start}|g"  SourceAndRequests.tmp
+    sed -i "s|%SamplePeriod_End%|${SamplingPeriod_Stop}|g"     SourceAndRequests.tmp
+    
+    # - number of particles released by each source
+    sed -i "s|%nParticlesPerSource%|${ParticlesPerSource}|g"   SourceAndRequests.tmp
+    
+    # - duration of back run in hours
+    sed -i "s|%RunDuration%|${RunDuration}|g"                  SourceAndRequests.tmp
+    
+    # - number of integrating times for output fields
+    sed -i "s|%nIntTimes%|${nIntTimes}|g"                      SourceAndRequests.tmp
+    
+    # append the processed source and output requests to the main input file
+    echo ''                   >> ${input_file}
+    cat SourceAndRequests.tmp >> ${input_file}
+    
+    # remove temporary file
+    rm SourceAndRequests.tmp
+    
+    cp  ${SCRIPTDIR}/MetOutputRequests_aircraft.txt  MetSourceAndRequests.tmp
+    
+    sed -i "s|%SamplePeriod%|${TotalSamplingPeriod_Index}|g"        MetSourceAndRequests.tmp
+    sed -i "s|%SamplePeriod%|${TotalSamplingPeriod_Index}|g"        MetSourceAndRequests.tmp
+    sed -i "s|%SamplePeriod%|${TotalSamplingPeriod_Index}|g"        MetSourceAndRequests.tmp
+    sed -i "s|%SourceLoc_X%|${SourceLoc_X}|g"      MetSourceAndRequests.tmp
+    sed -i "s|%SourceLoc_Y%|${SourceLoc_Y}|g"      MetSourceAndRequests.tmp
+    sed -i "s|%SourceLoc_Z%|${SourceLoc_Z}|g"      MetSourceAndRequests.tmp
+    sed -i "s|%StopTimeOfRun%|${SamplingPeriod_Stop}|g"      MetSourceAndRequests.tmp   
+    sed -i "s|%StopTimeOfRun_char%|${SamplingPeriod_Stop_as_char}|g"      MetSourceAndRequests.tmp     
+    
+    # append the processed source and output requests to the main input file
+    echo ''                   >> ${met_input_file}
+    cat MetSourceAndRequests.tmp >> ${met_input_file}
+    
+    # remove temporary file
+    rm MetSourceAndRequests.tmp
+    
+    
+    let min_stop=${min_stop}+${SamplingPeriod_Mins}
+    let min_start=${min_start}+${SamplingPeriod_Mins}
+###    echo ${min_stop}
+###    echo ${min_start}
+###    exit
+  done
+  
+  # ----------------------------------------------------------------------------
+  # Prepare the met declaration file
+  # ----------------------------------------------------------------------------
+  
+  # copy template for met declaration file for processing
+  cp  ${MetDeclnFile}  MetDeclaration.tmp
+  
+  # substitute dynamic variables for the met declaration
+  
+  # - Path of local met directory
+  sed -i "s|%MetDir%|${METDIR}|g"                      MetDeclaration.tmp
+  
+  # - Path of topography directory
+  sed -i "s|%TopogDir%|${TOPOGDIR}|g"                  MetDeclaration.tmp
+  
+  # - Met restore script to use
+  sed -i "s|%MetRestoreScript%|${MetRestoreScript}|g"  MetDeclaration.tmp
+  
+  # append the processed met declaration to the main input file
+  echo ''                >> ${input_file}
+  cat MetDeclaration.tmp >> ${input_file}
+  
+  # remove temporary file
+  rm MetDeclaration.tmp
+  
+  # ----------------------------------------------------------------------------
+  # Run NAME for this day
+  # ----------------------------------------------------------------------------
+  
+  echo "=============================="
+  echo "Running NAME for ${cur_date}"
+  echo "=============================="
+  
+  ${NAMEIIIDIR}/Executables_Linux/nameiii_64bit_par.exe  ${input_file}
+  
+  # ----------------------------------------------------------------------------
+  # Check for errors in NAME run
+  # ----------------------------------------------------------------------------
+  
+  if [[ -r ${error_file} ]] ; then
+    error_status=`cat ${error_file} | wc -c`
+  else
+    error_status=1
+  fi
+  
+  if [[ ${error_status} -ne 0 ]] ; then
+    
+    echo "NAME error when running: ${input_file}" >> ${WORKDIR}/MainErrors.txt
+    echo "Error file is reproduced below"         >> ${WORKDIR}/MainErrors.txt
+    cat ${error_file}                             >> ${WORKDIR}/MainErrors.txt
+    
+  fi
+  
+  
+  # ----------------------------------------------------------------------------
+  # Tidy up following the NAME run
+  # ----------------------------------------------------------------------------
+  
+# # remove old met data no longer needed (older than prescribed history)
+#  old_met_date=`date -u -d "${cur_date} UTC -${MetHistory} day" +'%Y%m%d'`
+#  old_met_files="${MetPrefix[${GlobalMk}]}${old_met_date}*${MetSuffix[${GlobalMk}]}"
+  
+#  echo "Deleting old met files ${old_met_files}"
+#  find ${METDIR} -name "${old_met_files}" -type f -delete
+  
+  #change timestamp of fields files to be the release time rather than end time
+  mv -f Fields_grid1_* Fields_${RunName}_${cur_date_as_char}.txt
+  mv -f Fields_gridBL_* Fields_BL_${RunName}_${cur_date_as_char}.txt
+  gzip Fields*.txt
+  
+  # increment current date by one hour
+  cur_date=`date -u -d "${cur_date} UTC +1 hour" +'%Y-%m-%d %H'`
+  cur_date_sec=`date -u -d "${cur_date} UTC" +'%s'`
+  
+###  echo ${cur_date}
+###  echo ${end_date_min}
+###  exit
+  # set number of minutes in next hour
+  if [[ ${cur_date} == ${end_date_hourstamp} ]]; then
+    (( remainder_in_hour=${end_date_min}/${SamplingPeriod_Mins} ))
+###    echo "remainder is ${remainder_in_hour}"
+###    exit
+  else
+    (( remainder_in_hour=60/${SamplingPeriod_Mins} ))
+###    echo "remainder is ${remainder_in_hour}"
+###    exit
+  fi
+
+  mv particle_location.txt particle_location_${RunName}_${cur_date_as_char}.txt    
+  gzip particle_location_${RunName}_${cur_date_as_char}.txt 
+    
+done # corresponds to until statement
+  
+
+echo "Script $0 completing at" `date`
+
+# -------------------------------- END OF FIELDS GENERATION -------------------------------
+
+# --------------------------------- GENERATE MET DATA -------------------------------------
+  
+  # copy template for met declaration file for processing
+  cp  ${MetDeclnFile}  MetDeclaration.tmp
+  
+  # substitute dynamic variables for the met declaration
+  
+  # - Path of local met directory
+  sed -i "s|%MetDir%|${METDIR}|g"                      MetDeclaration.tmp
+  
+  # - Path of topography directory
+  sed -i "s|%TopogDir%|${TOPOGDIR}|g"                  MetDeclaration.tmp
+  
+  # - Met restore script to use
+  sed -i "s|%MetRestoreScript%|${MetRestoreScript}|g"  MetDeclaration.tmp
+  
+  # append the processed met declaration to the main input file
+  echo ''                >> ${met_input_file}
+  cat MetDeclaration.tmp >> ${met_input_file}
+  
+  # remove temporary file
+  rm MetDeclaration.tmp
+  
+
+  ${NAMEIIIDIR}/Executables_Linux/nameiii_64bit_par.exe  ${met_input_file}
+ 
+  gzip Met_*
+  rm -f particle_location.txt
+  mkdir -p Met_${RunName}
+  mv -f Met*.gz Met_${RunName}/.
+
+  mkdir -p ${SCRIPTDIR}/Results/${RunName}/Input_files
+  mkdir -p ${SCRIPTDIR}/Results/${RunName}/Fields_files
+  mkdir -p ${SCRIPTDIR}/Results/${RunName}/Fields_files_BL
+  mkdir -p ${SCRIPTDIR}/Results/${RunName}/Particle_files
+  mkdir -p ${SCRIPTDIR}/Results/${RunName}/Met
+  mkdir -p ${SCRIPTDIR}/Results/${RunName}/Processed_Fields_files
+
+  mv -f Fields*BL*gz ${SCRIPTDIR}/Results/${RunName}/Fields_files_BL/.
+  mv -f Fields*gz ${SCRIPTDIR}/Results/${RunName}/Fields_files/.
+  mv -f particle_location*gz ${SCRIPTDIR}/Results/${RunName}/Particle_files/.
+  mv -f Met_${RunName}/* ${SCRIPTDIR}/Results/${RunName}/Met/.
+  mv -f *.txt ${SCRIPTDIR}/Results/${RunName}/Input_files/.
+
+  rm -r Met_${RunName}
+  
+  find ${SCRIPTDIR}/Results/${RunName}/ -type f -print0 | xargs -0 chmod 664
+
+exit 0 

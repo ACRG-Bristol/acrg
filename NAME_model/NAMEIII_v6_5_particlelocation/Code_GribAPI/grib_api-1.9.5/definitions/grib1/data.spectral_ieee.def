@@ -1,0 +1,34 @@
+# Copyright 2005-2007 ECMWF
+#
+# Licensed under the GNU Lesser General Public License which
+# incorporates the terms and conditions of version 3 of the GNU
+# General Public License.
+# See LICENSE and gpl-3.0.txt for details.
+
+# For grib1 -> grib2
+#constant dataRepresentationTemplateNumber = ?;
+
+
+
+# TODO
+codetable[1] precision "grib1/precision.table" = 2 : dump;
+transient laplacianOperator=0;
+transient JS=0;
+transient KS=0;
+transient MS=0;
+alias subSetJ=JS  ;
+alias subSetK=KS  ;
+alias subSetM=MS  ;
+
+position offsetBeforeData;
+meta   values data_raw_packing(
+              section4Length,
+              offsetBeforeData,
+              offsetSection4,
+              numberOfCodedValues,
+              precision
+            );
+            
+meta numberOfCodedValues number_of_values_data_raw_packing(values,precision);
+
+template statistics "common/statistics_spectral.def";

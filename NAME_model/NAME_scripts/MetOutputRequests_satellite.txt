@@ -1,0 +1,20 @@
+Horizontal Grids:
+                Name,    H-Coord,         nX,         nY,         dX,         dY,         X Min,         Y Min,
+HGrid_%SamplePeriod%,   Lat-Long,          1,          1,      0.352,      0.234, %SourceLoc_X%, %SourceLoc_Y%,
+
+Vertical Grids:
+                Name,   Z-Coord,  nZ,               Z0,      dZ,
+ZGrid_%SamplePeriod%,        Pa,   1,    %SourceLoc_Z%,       0,
+
+Temporal Grids:
+Name,                      nt,      dt,               t0,
+TGrid_%SamplePeriod%,       1,   00:01,  %StopTimeOfRun%,
+
+Output Requirements - Fields: 
+Quantity,                 Species, Source,               H-Grid,              Z-Grid,               T-Grid,  H-Coord, Z-Coord, BL Average, T Av Or Int, Av Time, # Av Times, Sync?, Output Route, X Scale, Y Scale, Across, Separate File, Output Format, Output Group
+Temperature (C),                 ,       , HGrid_%SamplePeriod%,ZGrid_%SamplePeriod%, TGrid_%SamplePeriod%,         ,        ,           ,          No,        ,           ,   Yes,            D,        ,        ,      Z,            XY,            ZA,   Met_%SourceLoc_X%_%SourceLoc_Y%_%vert_level%
+Boundary layer depth,            ,       , HGrid_%SamplePeriod%,ZGrid_%SamplePeriod%, TGrid_%SamplePeriod%,         ,        ,           ,          No,        ,           ,   Yes,            D,        ,        ,      Z,            XY,            ZA,   Met_%SourceLoc_X%_%SourceLoc_Y%_%vert_level%
+Pressure (Pa),                   ,       , HGrid_%SamplePeriod%,ZGrid_%SamplePeriod%, TGrid_%SamplePeriod%,         ,        ,           ,          No,        ,           ,   Yes,            D,        ,        ,      Z,            XY,            ZA,   Met_%SourceLoc_X%_%SourceLoc_Y%_%vert_level%
+Wind speed,                      ,       , HGrid_%SamplePeriod%,ZGrid_%SamplePeriod%, TGrid_%SamplePeriod%,         ,        ,           ,          No,        ,           ,   Yes,            D,        ,        ,      Z,            XY,            ZA,   Met_%SourceLoc_X%_%SourceLoc_Y%_%vert_level%
+Wind direction (degrees),        ,       , HGrid_%SamplePeriod%,ZGrid_%SamplePeriod%, TGrid_%SamplePeriod%, Lat-Long,        ,           ,          No,        ,           ,   Yes,            D,        ,        ,      Z,            XY,            ZA,   Met_%SourceLoc_X%_%SourceLoc_Y%_%vert_level%
+

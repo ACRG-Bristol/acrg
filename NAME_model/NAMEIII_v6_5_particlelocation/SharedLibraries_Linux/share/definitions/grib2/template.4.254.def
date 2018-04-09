@@ -1,0 +1,19 @@
+# Copyright 2005-2007 ECMWF
+#
+# Licensed under the GNU Lesser General Public License which
+# incorporates the terms and conditions of version 3 of the GNU
+# General Public License.
+# See LICENSE and gpl-3.0.txt for details.
+
+# TEMPLATE 4.254, CCITT IA5 character string
+
+#  Parameter category
+codetable[1] parameterCategory ('4.1.[discipline:l].table',masterDir,localDir): dump;
+
+#  Parameter number
+codetable[1] parameterNumber ('4.2.[discipline:l].[parameterCategory:l].table',masterDir,localDir)  : dump;
+meta parameterUnits codetable_units(parameterNumber) : dump;
+meta parameterName  codetable_title(parameterNumber) : dump;
+
+#  Number of characters
+unsigned[4] numberOfCharacters  : dump;

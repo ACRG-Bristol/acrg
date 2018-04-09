@@ -215,11 +215,11 @@ def footprints(sitecode_or_filename, fp_directory = fp_directory,
         if emissions_name is not None:
             flux_ds = flux(domain, emissions_name, flux_directory)
             if flux_ds is not None:
-                fp = combine_datasets(fp, flux_ds)
+                fp = combine_datasets(fp, flux_ds, method='ffill')
         elif species is not None:
             flux_ds = flux(domain, species, flux_directory)
             if flux_ds is not None:
-                fp = combine_datasets(fp, flux_ds)
+                fp = combine_datasets(fp, flux_ds, method='ffill')
         
         if species is not None:
             bc_ds = boundary_conditions(domain, species,bc_directory)
@@ -230,12 +230,12 @@ def footprints(sitecode_or_filename, fp_directory = fp_directory,
                     new_times=dum_ds.time            
                     vmr_var_names=["vmr_n", "vmr_e", "vmr_s", "vmr_w"]
                     bc_ds = interp_time(bc_ds,vmr_var_names, new_times)  
-                fp = combine_datasets(fp, bc_ds)
+                fp = combine_datasets(fp, bc_ds, method='ffill')
 
         if HiTRes == True:
             HiTRes_files = filenames(site, domain, start, end, height, fp_directory["HiTRes"])
             HiTRes_ds = read_netcdfs(HiTRes_files)
-            fp = combine_datasets(fp, HiTRes_ds)
+            fp = combine_datasets(fp, HiTRes_ds, method='ffill')
 
         return fp
 
@@ -403,7 +403,7 @@ def timeseries_HiTRes(fp_HiTRes_ds, domain, HiTRes_flux_name, Resid_flux_name,
                                        'lon':fp.lon,
                                        'time':new_time})
 
-        em = flux_HiTRes.reindex_like(new_ds, method='ffill')
+        em = flux_HiTRes.reindex_like(new_ds, method='nearest')
         
         #Use end of hours back as closest point for finding the emissions file
         emend = flux_resid.sel(time = new_ds.time[0], method = 'ffill')
@@ -589,8 +589,6 @@ def footprints_data_merge(data, domain = None, load_flux = True,
                                        tolerance = tolerance)
             else: 
                site_ds = combine_datasets(site_fp, site_ds,
-                                       method = "ffill",
-                                       tolerance = tolerance)
                 
             # If units are specified, multiply by scaling factor
             if ".units" in attributes:
@@ -682,7 +680,11 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi',
         
         else:
         
+<<<<<<< HEAD
             site_bf = combine_datasets(site_bf,basis_func)
+=======
+            site_bf = combine_datasets(site_bf,basis_func, method='ffill')
+>>>>>>> 3b774d09de71c18506b26420ffc8d9b703a1c8df
             
             H = np.zeros((int(np.max(site_bf.basis)),len(site_bf.time)))
 
@@ -712,14 +714,22 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi',
             'transd' or 'transd-sub' won't work
             """
             sub_fp_temp = site_bf.fp.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
+<<<<<<< HEAD
                                          method="ffill") 
+=======
+                                         method="nearest") 
+>>>>>>> 3b774d09de71c18506b26420ffc8d9b703a1c8df
             sub_fp = xray.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
                                coords = {'sub_lat': (site_bf.coords['sub_lat']),
                                          'sub_lon': (site_bf.coords['sub_lon']),
                                 'time' : (fp_and_data[site].coords['time'])})
                                 
             sub_H_temp = H_all.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
+<<<<<<< HEAD
                                          method="ffill")                             
+=======
+                                         method="nearest")                             
+>>>>>>> 3b774d09de71c18506b26420ffc8d9b703a1c8df
             sub_H = xray.Dataset({'sub_H': (['sub_lat','sub_lon','time'], sub_H_temp)},
                                coords = {'sub_lat': (site_bf.coords['sub_lat']),
                                          'sub_lon': (site_bf.coords['sub_lon']),
@@ -761,7 +771,7 @@ def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW', bc_basis
                                 "vmr_w":fp_and_data[site]["vmr_w"],
                                 "bc":fp_and_data[site]["bc"]})
                         
-        DS = combine_datasets(DS_temp, basis_func)                                    
+        DS = combine_datasets(DS_temp, basis_func, method='ffill')                                    
 
         part_loc = np.hstack([DS.particle_locations_n,
                                 DS.particle_locations_e,

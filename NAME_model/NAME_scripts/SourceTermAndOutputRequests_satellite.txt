@@ -1,0 +1,11 @@
+! Source term and output requests for sampling period %SamplePeriod%: %SamplePeriod_Start% --> %SamplePeriod_End%
+
+Sources:
+                   Name,           Start Time,          Stop Time,           # Particles,      Source Strength,   Shape,  H-Coord, Z-Coord,   Set of Locations,    Location, dH-Metres?, dZ-Metres?,             X,             Y,            Z,     dX,      dY,      dZ, Angle, Top Hat, Plume Rise?, Temperature, Volume Flow Rate,  Max Age, No Reflect?
+SourceID_%SamplePeriod%, %SamplePeriod_Start%, %SamplePeriod_End%, %nParticlesPerSource%, INERT-TRACER 1.0 g/s,  Cuboid, Lat-Long,      Pa,                   ,            ,        No,        No, %SourceLoc_X%, %SourceLoc_Y%, %SourceLoc_Z%,%delta_x%, %delta_y%, %delta_z%,   0.0,     Yes,          No,         0.0,              0.0, infinity, Yes 
+
+Output Requirements - Fields: 
+Name,                                    Quantity,      Species,                  Source,               H-Grid,              Z-Grid,         T-Grid,  BL Average, T Av Or Int,          Av Time,  # Av Times, Sync?, Output Route, Across, Separate File, Output Format, Output Group 
+Req_H1Z1_%SamplePeriod%,        Air concentration, INERT-TRACER, SourceID_%SamplePeriod%,               HGrid1,              ZGrid1,  TGridEndOfRun,          No,         Int, %RunDuration%:00, %nIntTimes%,    No,            D,     TZ,             T,           IA, Fields_grid1 
+Req_H1BL_%SamplePeriod%,        Air concentration, INERT-TRACER, SourceID_%SamplePeriod%,               HGrid1,                    ,  TGridEndOfRun,         Yes,         Int, %RunDuration%:00, %nIntTimes%,    No,            D,     TZ,             T,           IA, Fields_gridBL 
+

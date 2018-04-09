@@ -1,0 +1,65 @@
+! ******************************************************************************
+!
+! Project: Template files and scripts for research users on NAME-JASMIN
+!
+! File:    Input file template for a set of daily NAME back runs from one site
+!
+! Author:  Andrew Jones, Atmospheric Dispersion, UK Met Office
+!
+! Date:    08/10/2013
+!
+! ******************************************************************************
+
+Main Options:
+Absolute or Relative Time?, Fixed Met?, Flat Earth?,    Run Name,       Random Seed,  Backwards?, Max # Field Reqs, Max # Field Output Groups
+                  Absolute,         No,          No,  %Run_Name%, Random (Parallel),         Yes, 4000, 800
+
+Restart File Options:
+# Cases Between Writes, Time Between Writes, Delete Old Files?, Write On Suspend?,
+                      ,                    ,                  ,                  ,
+
+Multiple Case Options:
+Dispersion Options Ensemble Size, Met Ensemble Size,
+                               1,                 1,
+
+OpenMP Options:
+Use OpenMP?,    Threads, Parallel MetRead, Parallel MetProcess,
+        Yes, %nThreads%,               No,                  No,
+
+Output Options:
+Folder
+%OutputDir%
+
+Input Files:
+File names
+%MetDefnFile%
+
+Horizontal Coordinate Systems:
+Name
+Lat-Long
+
+Vertical Coordinate Systems:
+Name
+m agl
+m asl
+Pa
+
+Domains:
+Name,              H Unbounded?,  H-Coord,          X Min,          X Max,          Y Min,          Y Max, Z Unbounded?, Z-Coord,   Z Max, T Unbounded?, Start Time, End Time,  Max Travel Time,
+Dispersion Domain,           No, Lat-Long, %CompDom_Xmin%, %CompDom_Xmax%, %CompDom_Ymin%, %CompDom_Ymax%,           No,   m agl, 19000.0,          Yes,           ,         ,            24:00,
+
+Species:
+        Name, Category, Half Life, UV Loss Rate, Surface Resistance, Deposition Velocity,  Molecular Weight, Material Unit,
+INERT-TRACER,    INERT,    Stable,     0.00E+00,                   ,                 0.0,                 0,             g,
+
+Species Uses:
+Species,        On Particles?, On Fields?, Advect Field?
+INERT-TRACER, Yes, No, No
+
+Sources:
+                   Name,           Start Time,          Stop Time,           # Particles,      Source Strength,   Shape,  H-Coord, Z-Coord,   Set of Locations,    Location, dH-Metres?, dZ-Metres?,             X,             Y,            Z,     dX,      dY,      dZ, Angle, Top Hat, Plume Rise?, Temperature, Volume Flow Rate,  Max Age
+Source1, %StopTimeOfFlight%, %StartTimeOfFlight%, 1, INERT-TRACER 1.0 g/s,  Cuboid, Lat-Long,   m asl,                   ,            ,        Yes,        Yes, 5.5, 55.5, 10,0.0, 0.0, 0.0,   0.0,     Yes,          No,         0.0,              0.0, infinity
+
+Sets of Dispersion Options:
+Max # Particles,   Max # Full Particles, Max # Puffs, Max # Original Puffs, Skew Time, Velocity Memory Time, Mesoscale Velocity Memory Time, Inhomogeneous Time, DeltaOpt, Puff Time,     Sync Time, Time of Fixed Met, Computational Domain, Puff Interval, Deep Convection?, Radioactive Decay?, Agent Decay?, Dry Deposition?, Wet Deposition?, Turbulence?, Mesoscale Motions?, Chemistry?
+100,                    2,           2,                    2,     00:00,                00:00,                          00:00,              00:00,        1,     00:00, 00:%SyncTime%,                  ,    Dispersion Domain,         00:00,               No,                 No,           No,              No,              No,         Yes,                Yes,         No

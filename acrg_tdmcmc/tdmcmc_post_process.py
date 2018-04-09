@@ -355,7 +355,7 @@ def regions_histogram(k_it, out_filename=None, fignum=2):
         plt.show()
     
 def country_emissions(ds_mcmc, x_post_vit, q_ap_abs_v, countries, species,
-                      units = None, ocean=True, domain='EUROPE', uk_split=False):
+                      units = None, ocean=True, domain='EUROPE', uk_split=False, fixed_map = False):
         
     """
     Generates national totals for a given list of countries
@@ -448,9 +448,12 @@ def country_emissions(ds_mcmc, x_post_vit, q_ap_abs_v, countries, species,
             country_v_new[c_index[0]]=ci+1
             for it in range(nIt):
                 x_vit_temp=x_post_vit[it,:]
-                q_country_it[ci,it]=np.sum(x_vit_temp[c_index[0]]*area_v[c_index[0]]
-                                *q_ap_abs_v[c_index[0]]) 
-        
+                if fixed_map == False:
+                    q_country_it[ci,it]=np.sum(x_vit_temp[c_index[0]]*area_v[c_index[0]]
+                                    *q_ap_abs_v[c_index[0]]) 
+                elif fixed_map == True:
+                    q_country_it[ci,it]=np.sum(x_vit_temp*area_v[c_index[0]]
+                                    *q_ap_abs_v[c_index[0]]) 
             q_country_ap[ci] = np.sum(area_v[c_index[0]]*q_ap_abs_v[c_index[0]]
                                 *365.*24.*3600.*molmass/unit_factor) # in Tg/yr
         
@@ -489,9 +492,12 @@ def country_emissions(ds_mcmc, x_post_vit, q_ap_abs_v, countries, species,
             country_v_new[c_index[0]]=ci+1
             for it in range(nIt):
                 x_vit_temp=x_post_vit[it,:]
-                q_country_it[ci,:,it]=np.sum(x_vit_temp[c_index[0],None]*area_v[c_index[0],None]
-                                *q_ap_abs_v[c_index[0],:], axis = 0) 
-        
+                if fixed_map == False:
+                    q_country_it[ci,:,it]=np.sum(x_vit_temp[c_index[0],None]*area_v[c_index[0],None]
+                                    *q_ap_abs_v[c_index[0],:], axis = 0) 
+                elif fixed_map == True:
+                    q_country_it[ci,:,it]=np.sum(x_vit_temp*area_v[c_index[0],None]
+                                    *q_ap_abs_v[c_index[0],:], axis = 0)
             q_country_ap[ci,:] = np.sum(area_v[c_index[0],None]*q_ap_abs_v[c_index[0],:]
                                 *365.*24.*3600.*molmass/unit_factor, axis = 0) # in Tg/yr
         

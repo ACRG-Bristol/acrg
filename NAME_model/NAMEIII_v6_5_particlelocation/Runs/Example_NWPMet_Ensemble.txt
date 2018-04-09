@@ -1,0 +1,129 @@
+
+Main Options:
+Absolute or Relative Time?, Fixed Met?, Flat Earth?,                  Run Name,  Random Seed, Max # Sources
+                  Absolute,         No,          No, ExampleRunWithNWPEnsemble,        Fixed,             1
+
+Restart File Options:
+# Cases Between Writes, Time Between Writes, Delete Old Files?, Write On Suspend?,
+                      ,                    ,                  ,                  ,
+
+Multiple Case Options:
+Dispersion Options Ensemble Size, Met Ensemble Size,
+                               1,                 3,
+
+Output Options:
+Folder
+.\Output\
+
+Input Files:
+File names
+..\Resources\Defns\MetDefnUM6R.txt
+..\Resources\Defns\MetDefnUM5MDt1.txt
+
+Horizontal Coordinate Systems:
+Name
+Lat-Long
+
+Vertical Coordinate Systems:
+Name
+m agl
+
+Array: EPS Folders
+Array Values
+/data/local/aprj/met_test/EPS1
+/data/local/aprj/met_test/EPS2
+/data/local/aprj/met_test/EPS3
+
+Locations: Output Locations
+Name,    H-Coord,     X,     Y
+Site A, Lat-Long, -3.47, 50.73
+
+Horizontal Grids:
+Name,    H-Coord,  nX,  nY,   dX,   dY, X Centre, Y Centre
+HGrid1, Lat-Long, 120, 120, 0.05, 0.05,    -3.47,    50.73
+
+Horizontal Grids:
+Name,     dX,   dY, Set of Locations
+HGrid2, 0.05, 0.05, Output Locations
+
+Vertical Grids:
+Name,   Z-Coord,  nZ,    dZ,    Z0
+ZGrid1,   m agl,   1, 200.0,   0.0
+ZGrid2,   m agl, 100,  10.0,  10.0
+
+Temporal Grids:
+Name,   nt,       dt,                  t0
+TGrid1, 12, 01:00:00, 16/03/2006 01:00:00
+TGrid2,  2, 06:00:00, 16/03/2006 06:00:00
+
+Domains:
+Name,               H-Coord, X Min, X Max, Y Min, Y Max, H Unbounded?, Z-Coord,   Z Max, Z Unbounded?,       Start Time,  End Time, T Unbounded?, Max Travel Time
+Dispersion Domain, Lat-Long, -6.47, -0.47, 47.73, 53.73,           No,   m agl, 15000.0,           No, 16/03/2006 00:00,  infinity,           No,        infinity
+
+Species:
+Name,   Category, Half Life, UV Loss Rate, Deposition Velocity, Molecular Weight, Material Unit
+Tracer,   Tracer,    Stable,     0.00E+00,                 0.0,                0,             g
+
+Species Uses:
+Species,         On Particles?, On Fields?, Advect Field?
+Tracer,                    Yes,         No,            No
+
+Sources:
+Name,         Shape,  H-Coord, Z-Coord,     X,     Y,     Z, dH-Metres?, dZ-Metres?,   dX,   dY,    dZ, Angle, Source Strength, Time Dependency, Plume Rise?, Temperature, Flow Velocity, # Particles,  Max Age, Top Hat,          Start Time,            Stop Time
+Source A, Ellipsoid, Lat-Long,   m agl, -3.47, 50.73, 150.0,        Yes,        Yes, 10.0, 10.0, 100.0,   0.0, Tracer    1.0 g,                ,          no,       273.0,           0.0,       10000, infinity,     Yes, 16/03/2006 00:00:00,  16/03/2006 06:00:00
+
+Output Requirements - Fields:
+Name,                                 Quantity, Species, Source, H-Grid,  Z-Grid,  T-Grid, BL Average, T Av or Int, Av Time, # Av Times, Sync?, Output Route, Across, Separate File, Output Format,  Output Group
+B-L Concentration of Tracer, Air Concentration,  Tracer,       , HGrid1,        ,  TGrid1,        Yes,          Av,   01:00,          4,    No,            D,     TZ,             T,            IA,  Fields_grid1
+
+Output Requirements - Fields:
+Name,                     Quantity, Species, Source,  H-Coord, H-Grid,  Z-Grid,  T-Grid, BL Average, T Av or Int, Av Time, # Av Times, Sync?, Output Route, Across, Separate File, Output Format,  Output Group
+Temp,              Temperature (K),        ,       ,         , HGrid2,  ZGrid2,  TGrid2,         No,          No,        ,           ,   Yes,            D,      T,              ,            AZ,  Met
+WindDir,  Wind Direction (degrees),        ,       , Lat-Long, HGrid2,  ZGrid2,  TGrid2,         No,          No,        ,           ,   Yes,            D,      T,              ,            AZ,  Met
+
+Sets of Dispersion Options:
+Max # Particles, Max # Full Particles, Max # Puffs, Max # Original Puffs, Skew Time, Velocity Memory Time, Mesoscale Velocity Memory Time, Inhomogeneous Time, DeltaOpt, Puff Time, Sync Time, Time of Fixed Met, Computational Domain, Puff Interval, Deep Convection?, Radioactive Decay?, Agent Decay?, Dry Deposition?, Wet Deposition?, Turbulence?, Mesoscale Motions?, Chemistry? 
+         100000,                    2,           2,                    2,     00:00,                00:00,                          00:00,              00:00,        1,     00:00,  00:15:00,                  ,    Dispersion Domain,         00:30,              Old,                 No,           No,              No,              No,         Yes,                Yes,         No 
+
+NWP Met Module Instances: 
+Name,     Min B L Depth, Max B L Depth, Use NWP BL Depth?, Restore Met Script, Delete Met?,                    !Met Folder,               Met Folder Stem, !Met Folders,                                          Topography Folder, Met Definition Name
+Mesoscale,         50.0,        4000.0,               Yes,                   ,          No, /data/local/aprj/met_test/EPS1, /data/local/aprj/met_test/EPS,  EPS Folders,  /home/fr1140/apdg/NameIII/NameIIILibrary/Data/UMTopogData,                UM5M
+Regional,          50.0,        4000.0,               Yes,                   ,          No, /data/local/aprj/met_test/EPS1, /data/local/aprj/met_test/EPS,  EPS Folders,  /home/fr1140/apdg/NameIII/NameIIILibrary/Data/UMTopogData,                UM6R
+
+NWP Flow Module Instances: 
+Name,     Met Module,       Met, Domain
+Mesoscale,   NWP Met, Mesoscale, UM5M Whole-4.5
+Regional,    NWP Met,  Regional, UM6R Whole
+
+Flow Order: Update
+Flow Module, Flow
+NWP Flow,    Mesoscale
+NWP Flow,    Regional
+
+Flow Order: Convert
+Flow Module, Flow
+NWP Flow,    Mesoscale
+NWP Flow,    Regional
+
+Flow Order: Flow
+Flow Module, Flow
+NWP Flow,    Mesoscale
+NWP Flow,    Regional
+
+Flow Order: Cloud
+Flow Module, Flow
+NWP Flow,    Mesoscale
+NWP Flow,    Regional
+
+Flow Order: Rain
+Flow Module, Flow
+NWP Flow,    Mesoscale
+NWP Flow,    Regional
+
+Flow Attributes:
+Name,    Flow Order
+Update,  Update
+Convert, Convert
+Flow,    Flow
+Cloud,   Cloud
+Rain,    Rain
