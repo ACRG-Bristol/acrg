@@ -46,8 +46,8 @@ def write(lat, lon, time, flux, species, domain,
     TODO: Add some error checking (e.g. check that domain is correct)
     '''
     
-    print "WARNING: Make sure time stamp is centre of time period (i.e. 15th of month\
-            for monthly data or 15th June for yearly data)."
+    print "WARNING: Make sure time stamp is start of time period (i.e. 1st of month\
+            for monthly data or 1st January for yearly data)."
     print "WARNING: Make sure coordinates are centre of the gridbox."
     print "WARNING: Make sure fluxes are in mol/m2/s."
         
@@ -124,7 +124,7 @@ def write(lat, lon, time, flux, species, domain,
     
     flux_ds.lat.attrs = lat_attrs
     flux_ds.lon.attrs = lon_attrs
-    flux_ds.time.attrs['notes'] = "centre of time period"
+    flux_ds.time.attrs['notes'] = "Start of time period"
     
 
     flux_ds.flux.encoding = {'zlib':True}                        
