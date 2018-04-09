@@ -215,11 +215,11 @@ def footprints(sitecode_or_filename, fp_directory = fp_directory,
         if emissions_name is not None:
             flux_ds = flux(domain, emissions_name, flux_directory)
             if flux_ds is not None:
-                fp = combine_datasets(fp, flux_ds)
+                fp = combine_datasets(fp, flux_ds, method='ffill')
         elif species is not None:
             flux_ds = flux(domain, species, flux_directory)
             if flux_ds is not None:
-                fp = combine_datasets(fp, flux_ds)
+                fp = combine_datasets(fp, flux_ds, method='ffill')
         
         if species is not None:
             bc_ds = boundary_conditions(domain, species,bc_directory)
@@ -230,12 +230,12 @@ def footprints(sitecode_or_filename, fp_directory = fp_directory,
                     new_times=dum_ds.time            
                     vmr_var_names=["vmr_n", "vmr_e", "vmr_s", "vmr_w"]
                     bc_ds = interp_time(bc_ds,vmr_var_names, new_times)  
-                fp = combine_datasets(fp, bc_ds)
+                fp = combine_datasets(fp, bc_ds, method='ffill')
 
         if HiTRes == True:
             HiTRes_files = filenames(site, domain, start, end, height, fp_directory["HiTRes"])
             HiTRes_ds = read_netcdfs(HiTRes_files)
-            fp = combine_datasets(fp, HiTRes_ds)
+            fp = combine_datasets(fp, HiTRes_ds, method='ffill')
 
         return fp
 
@@ -330,7 +330,7 @@ def basis_boundary_conditions(domain, basis_case = 'NESW', bc_basis_directory=bc
     return basis_ds
 
 
-def combine_datasets(dsa, dsb, method = "nearest", tolerance = None):
+def combine_datasets(dsa, dsb, method = "ffill", tolerance = None):
     """
     Merge two datasets. Assumes that you want to 
     re-index to the FIRST dataset.
@@ -580,7 +580,7 @@ def footprints_data_merge(data, domain = "EUROPE", load_flux = True,
             # rt17603: 06/04/2018 - Added sort as some footprints weren't sorted by time for satellite data.
             site_fp = site_fp.sortby("time")
             site_ds = combine_datasets(site_ds, site_fp,
-                                       method = "nearest",
+                                       method = "ffill",
                                        tolerance = tolerance)
                 
             # If units are specified, multiply by scaling factor
@@ -673,7 +673,7 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi',
         
         else:
         
-            site_bf = combine_datasets(site_bf,basis_func)
+            site_bf = combine_datasets(site_bf,basis_func, method='ffill')
             
             H = np.zeros((int(np.max(site_bf.basis)),len(site_bf.time)))
 
@@ -752,7 +752,7 @@ def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW', bc_basis
                                 "vmr_w":fp_and_data[site]["vmr_w"],
                                 "bc":fp_and_data[site]["bc"]})
                         
-        DS = combine_datasets(DS_temp, basis_func)                                    
+        DS = combine_datasets(DS_temp, basis_func, method='ffill')                                    
 
         part_loc = np.hstack([DS.particle_locations_n,
                                 DS.particle_locations_e,
