@@ -166,6 +166,112 @@ def get_nsigma_y(fp_data_H,start_date, end_date, sites,
     
     return R_indices, ydim1, ydim2, np.asarray(sigma_models)
 
+def add_local_ratio(fp_data_H,return_release=True):
+    '''
+    The add_local_ratio function adds an additional "local_ratio" parameter to all xarray.Dataset objects
+    within fp_data_H dictionary.
+
+    Note: footprints_data_merge() function creates a dictionary of xarray.Dataset objects with one for each 
+    site. fp_sensivity() takes the output from footprints_data_merge() and adds sensivity matrix to each
+    dataset in the dictionary.
+    Each dataset should contain the following data variables:
+        "mf"
+        "fp"
+        "release_lon"
+        "release_lat"
+        "sub_fp" (additional "sub_lon", "sub_lat" coords associated with this data variable)
+ 
+    WARNING: Changes input object in place
+ 
+    Args:
+        fp_data_H (dict)      : xarray.Dataset. Expects output from name.fp_sensitivity() function.
+        return_release (bool) : Whether or not to also return the release_lats and release_lons
+                                arrays.
+                          
+    Returns:
+        if return_release:
+             tuple(dict (xarray Datasets and identifiers), np.array, np.array) : 
+                 fp_data_H with "local_ratio" data variable added, release_lons, release_lats
+        else:
+            dict (xarray Datasets and identifiers) : fp_data_H with "local_ratio" data variable added
+    '''
+    
+    sites = [key for key in fp_data_H.keys() if key[0] != '.']
+    
+    release_lons=np.zeros((len(sites)))
+    release_lats=np.zeros((len(sites)))
+    
+    for si, site in enumerate(sites):
+        release_lons[si]=fp_data_H[site].release_lon[0].values
+        release_lats[si]=fp_data_H[site].release_lat[0].values
+        dlon=fp_data_H[site].sub_lon[1].values-fp_data_H[site].sub_lon[0].values
+        dlat=fp_data_H[site].sub_lat[1].values-fp_data_H[site].sub_lat[0].values
+        local_sum=np.zeros((len(fp_data_H[site].mf)))
+       
+        for ti in range(len(fp_data_H[site].mf)):
+            release_lon=fp_data_H[site].release_lon[ti].values
+            release_lat=fp_data_H[site].release_lat[ti].values
+            wh_rlon = np.where(abs(fp_data_H[site].sub_lon.values-release_lon) < dlon/2.)
+            wh_rlat = np.where(abs(fp_data_H[site].sub_lat.values-release_lat) < dlat/2.)
+            local_sum[ti] = np.sum(fp_data_H[site].sub_fp[
+            wh_rlat[0][0]-2:wh_rlat[0][0]+3,wh_rlon[0][0]-2:wh_rlon[0][0]+3,ti].values)/np.sum(
+            fp_data_H[site].fp[:,:,ti].values)  
+            
+        local_ds = xray.Dataset({'local_ratio': (['time'], local_sum)},
+                                        coords = {'time' : (fp_data_H[site].coords['time'])})
+    
+        fp_data_H[site] = fp_data_H[site].merge(local_ds)
+    
+    if return_release:
+        return fp_data_H,release_lons,release_lats
+    else:
+        return fp_data_H
+
+def average_period(ds,av_period,dim="time"):
+    '''
+    The average_period function resamples the input dataset along the specified dimension to the average
+    period.
+    
+    Args:
+        ds (xarray.Dataset) : Dataset contaiing time series dimension.
+        av_period (str)     : Averaging period to apply to timeseries dimension of dataset.
+                              E.g. "2H" (2 hours), "30min" or "30T" (30 minutes)
+                              See http://pandas.pydata.org/pandas-docs/stable/timeseries.html#offset-aliases
+                              for list of all frequencies available.
+        dim                 : Timeseries dimension within Dataset. Default = "time".
+    
+    Returns:
+        xarray.Dataset : original dataset averaged along the specified dimension
+    '''
+    ds_av = ds.resample(av_period, dim = "time")
+    ds_av = ds_av.dropna(dim, how="all")
+    
+    return ds_av
+
+def average_period_fp(fp_data_H,av_period_site,dim="time"):
+    '''
+    The average_period_fp function resamples all datasets within a footprints_data_merge() dictionary over
+    the averaging periods.
+    Note: av_period_site should contain the same number of entries as there are sites in fp_data_H
+    
+    Args:
+        fp_data_H (dict) : output from footprints_data_merge() function.
+        av_period (list) : Averaging periods (str objects), one for each site.
+                           E.g. "2H" (2 hours), "30min" or "30T" (30 minutes)        
+        dim              : Timeseries dimension within Dataset. Default = "time".
+        
+    Returns:
+        dict: fp_data_H with datasets averaged along the specified dimension    
+    '''
+    
+    sites = [key for key in fp_data_H.keys() if key[0] != '.']
+
+    fp_data_H_av = {}
+    for si, site in enumerate(sites):
+        fp_data_H_av[site] = average_period(fp_data_H[site],av_period_site[si],dim=dim)
+    
+    return fp_data_H_av
+
 
 def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date, 
     domain,network,fp_basis_case ,bc_basis_case,rjmcmc,para_temp,
@@ -186,6 +292,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     
     #########################################
     # READ IN DATA AND FOOTPRINTS THEN MERGE
+    
     corr_type={"uncorrelated":False,
               "corr":False,
               "evencorr":True}
@@ -206,42 +313,29 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     
     ###########################################################################
     # CALCULATE DEGREE OF LOCALNESS FOR EACH FOOTPRINT
-    release_lons=np.zeros((len(sites)))
-    release_lats=np.zeros((len(sites)))
-    for si, site in enumerate(sites):
-        release_lons[si]=fp_data_H2[site].release_lon[0].values
-        release_lats[si]=fp_data_H2[site].release_lat[0].values
-        dlon=fp_data_H2[site].sub_lon[1].values-fp_data_H2[site].sub_lon[0].values
-        dlat=fp_data_H2[site].sub_lat[1].values-fp_data_H2[site].sub_lat[0].values
-        local_sum=np.zeros((len(fp_data_H2[site].mf)))
-       
-        for ti in range(len(fp_data_H2[site].mf)):
-            release_lon=fp_data_H2[site].release_lon[ti].values
-            release_lat=fp_data_H2[site].release_lat[ti].values
-            wh_rlon = np.where(abs(fp_data_H2[site].sub_lon.values-release_lon) < dlon/2.)
-            wh_rlat = np.where(abs(fp_data_H2[site].sub_lat.values-release_lat) < dlat/2.)
-            local_sum[ti] = np.sum(fp_data_H2[site].sub_fp[
-            wh_rlat[0][0]-2:wh_rlat[0][0]+3,wh_rlon[0][0]-2:wh_rlon[0][0]+3,ti].values)/np.sum(
-            fp_data_H2[site].fp[:,:,ti].values)  
-            
-        local_ds = xray.Dataset({'local_ratio': (['time'], local_sum)},
-                                        coords = {'time' : (fp_data_H2[site].coords['time'])})
+    fp_data_H2,release_lats,release_lons = add_local_ratio(fp_data_H2)
     
-        fp_data_H2[site] = fp_data_H2[site].merge(local_ds)
+    for si, site in enumerate(sites):     
         fp_data_H2[site].attrs['Domain']=domain
 #        fp_data_H2[site].attrs['Height']=fp_heights[site] # ** fp_heights needs to be defined **
     
+    ###########################################################################
+    # APPLY FILTERS TO DATASET
+
     if filters is not None:
         fp_data_H5 = name.filtering(fp_data_H2, filters,keep_missing=corr_type[inv_type])
     else:
         fp_data_H5 = fp_data_H2.copy()
-        
-    fp_data_H = {}    
-    for si, site in enumerate(sites):
-        site_ds = fp_data_H5[site].resample(av_period[si], dim = "time")
-        site_ds2= site_ds.dropna("time", how="all")
-        fp_data_H[site] = site_ds2
-        
+     
+    ###########################################################################
+    # APPLY AVERAGING PERIOD
+    fp_data_H = average_period_fp(fp_data_H5,av_period,dim="time")
+    
+#    fp_data_H = {}    
+#    for si, site in enumerate(sites):
+#        site_ds = fp_data_H5[site].resample(av_period[si], dim = "time")
+#        site_ds2= site_ds.dropna("time", how="all")
+#        fp_data_H[site] = site_ds2
     
     lat = np.asarray(fp_data_H[sites[0]].sub_lat)
     lon = np.asarray(fp_data_H[sites[0]].sub_lon)
@@ -284,7 +378,9 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
             y_error.append(fp_data_H3.vmf.values)
         else:
             print "No variability or repeatability in data file - use a default value"
-            y_error.append(0.002*fp_data_H3.mf.values) # 0.002 only appropriate for methane
+            dmf_default = 0.002
+            print "Default value used: {}. Only appropriate for methane".format(dmf_default)
+            y_error.append(dmf_default*fp_data_H3.mf.values) # 0.002 only appropriate for methane
         if si ==0:
             H_fixed2=fp_data_H3.H
             H_vary2=fp_data_H3.sub_H
