@@ -581,14 +581,14 @@ def footprints_data_merge(data, domain = None, load_flux = True,
             site_fp = site_fp.sortby("time")
             
             # Combine datasets to one with coarsest  frequency
-            ds_timefreq = np.median((site_ds.time.data[0:-1] - site_ds.time.data[1:]).astype('int64')) 
-            fp_timefreq = np.median((site_fp.time.data[0:-1] - site_fp.time.data[1:]).astype('int64')) 
+            ds_timefreq = np.nanmedian((site_ds.time.data[1:] - site_ds.time.data[0:-1]).astype('int64')) 
+            fp_timefreq = np.nanmedian((site_fp.time.data[1:] - site_fp.time.data[0:-1]).astype('int64')) 
             if ds_timefreq > fp_timefreq:
-               site_ds = combine_datasets(site_ds, site_fp,
-                                       method = "ffill",
-                                       tolerance = tolerance)
-            else: 
-               site_ds = combine_datasets(site_fp, site_ds,
+               site_fp = site_fp.resample(str(ds_timefreq/3600e9)+'H', dim='time', how='mean')
+            elif ds_timefreq < fp_timefreq:
+               site_ds = site_ds.resample(str(fp_timefreq/3600e9)+'H', dim='time', how='mean')
+               
+            site_ds = combine_datasets(site_ds, site_fp,
                                        method = "ffill",
                                        tolerance = tolerance)
                 
