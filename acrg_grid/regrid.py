@@ -14,19 +14,24 @@ import datetime as dt
 
 def regrid2d(array_in, lat_in, lon_in,
              lat_out, lon_out):
-    '''
-    2D mass-conservative regrid
+    '''2D mass-conservative regrid
     
-    Only handles a 2D array at the moment. We should add time.
-    
-    Inputs:
-        array_in: 2D field to regrid
-        lat_in: latitudes corresponding to array_in
-        lon_in: longitude corresponding to array_in
-        lat_out: latitude to regrid onto
-        lon_out: longitude to regrid onto
+    Args:
+        array_in (arrray): 2D field to regrid
+        lat_in (array): latitudes corresponding to array_in
+        lon_in (array): longitude corresponding to array_in
+        lat_out (array): latitude to regrid onto
+        lon_out (array): longitude to regrid onto
         
-    Returns a 2D array of dimensions [lat_out, lon_out]
+    Returns:
+        array: regridded 2D array of dimensions [lat_out, lon_out]
+        iris 'Cube': regridded iris 'Cube' object
+        
+    Example:
+        new_array, newcube = regrid2d(array_in, lat_in, lon_in, lat_out, lon_out)
+    
+    Todo:
+        Only handles a 2D array at the moment. We should add time.
     '''
 
 
@@ -68,18 +73,21 @@ def regrid2d(array_in, lat_in, lon_in,
 
 def regrid3d(array_in, lat_in, lon_in,
              lat_out, lon_out, time):
-             
-    '''
-    3D mass-conservative regrid using a cached regridder
+    '''3D mass-conservative regrid using a cached regridder
     
-    Inputs:
-        array_in: 3D field to regrid - Lat, Lon, Time
-        lat_in: latitudes corresponding to array_in
-        lon_in: longitude corresponding to array_in
-        lat_out: latitude to regrid onto
-        lon_out: longitude to regrid onto
+    Args:
+        array_in (array): 3D field to regrid -- Dimensions of [lat_in, lon_in, time_in]
+        lat_in (array): latitudes corresponding to array_in
+        lon_in (array): longitude corresponding to array_in
+        lat_out (array): latitude to regrid onto
+        lon_out (array): longitude to regrid onto
+        time (array): times to regrid onto
         
-    Returns a 3D array of dimensions [lat_out, lon_out, time_out]
+    Returns
+        array: regridded 3D array of dimensions [lat_out, lon_out, time]
+        
+    Example:
+        array_out = regrid3d(array_in, lat_in, lon_in, lat_out, lon_out, time)
     '''
 
     def get_cube_in(array_in, lat_in, lon_in, time):
