@@ -1,0 +1,228 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>acrg_grid.regrid &#8212; acrg  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for acrg_grid.regrid</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Created on Thu Nov 26 16:58:34 2015</span>
+
+<span class="sd">@author: chxmr and Mark Lunt</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">iris.coords</span> <span class="k">import</span> <span class="n">DimCoord</span>
+<span class="kn">from</span> <span class="nn">iris.cube</span> <span class="k">import</span> <span class="n">Cube</span>
+<span class="kn">from</span> <span class="nn">iris.analysis</span> <span class="k">import</span> <span class="n">AreaWeighted</span>
+<span class="kn">import</span> <span class="nn">datetime</span> <span class="k">as</span> <span class="nn">dt</span>
+
+
+<div class="viewcode-block" id="regrid2d"><a class="viewcode-back" href="../../api/acrg_grid.html#acrg_grid.regrid.regrid2d">[docs]</a><span class="k">def</span> <span class="nf">regrid2d</span><span class="p">(</span><span class="n">array_in</span><span class="p">,</span> <span class="n">lat_in</span><span class="p">,</span> <span class="n">lon_in</span><span class="p">,</span>
+             <span class="n">lat_out</span><span class="p">,</span> <span class="n">lon_out</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    2D mass-conservative regrid</span>
+<span class="sd">    </span>
+<span class="sd">    Only handles a 2D array at the moment. We should add time.</span>
+<span class="sd">    </span>
+<span class="sd">    Inputs:</span>
+<span class="sd">        array_in: 2D field to regrid</span>
+<span class="sd">        lat_in: latitudes corresponding to array_in</span>
+<span class="sd">        lon_in: longitude corresponding to array_in</span>
+<span class="sd">        lat_out: latitude to regrid onto</span>
+<span class="sd">        lon_out: longitude to regrid onto</span>
+<span class="sd">        </span>
+<span class="sd">    Returns a 2D array of dimensions [lat_out, lon_out]</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+
+    <span class="c1"># Define input cube</span>
+    <span class="n">cube_lat_in</span> <span class="o">=</span> <span class="n">DimCoord</span><span class="p">(</span><span class="n">lat_in</span><span class="p">,</span>
+                           <span class="n">standard_name</span><span class="o">=</span><span class="s1">&#39;latitude&#39;</span><span class="p">,</span>
+                           <span class="n">units</span><span class="o">=</span><span class="s1">&#39;degrees&#39;</span><span class="p">)</span>
+    <span class="n">cube_lon_in</span> <span class="o">=</span> <span class="n">DimCoord</span><span class="p">(</span><span class="n">lon_in</span><span class="p">,</span>
+                           <span class="n">standard_name</span><span class="o">=</span><span class="s1">&#39;longitude&#39;</span><span class="p">,</span>
+                           <span class="n">units</span><span class="o">=</span><span class="s1">&#39;degrees&#39;</span><span class="p">)</span>
+    <span class="n">cube_in</span> <span class="o">=</span> <span class="n">Cube</span><span class="p">(</span><span class="n">array_in</span><span class="p">,</span>
+                   <span class="n">dim_coords_and_dims</span><span class="o">=</span><span class="p">[(</span><span class="n">cube_lat_in</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                                        <span class="p">(</span><span class="n">cube_lon_in</span><span class="p">,</span> <span class="mi">1</span><span class="p">)])</span>                                   
+    <span class="n">cube_in</span><span class="o">.</span><span class="n">coord</span><span class="p">(</span><span class="s1">&#39;latitude&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">guess_bounds</span><span class="p">()</span>
+    <span class="n">cube_in</span><span class="o">.</span><span class="n">coord</span><span class="p">(</span><span class="s1">&#39;longitude&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">guess_bounds</span><span class="p">()</span>
+
+    <span class="c1"># Define output grid</span>
+    <span class="n">cube_lat_out</span> <span class="o">=</span> <span class="n">DimCoord</span><span class="p">(</span><span class="n">lat_out</span><span class="p">,</span>
+                            <span class="n">standard_name</span><span class="o">=</span><span class="s1">&#39;latitude&#39;</span><span class="p">,</span>
+                            <span class="n">units</span><span class="o">=</span><span class="s1">&#39;degrees&#39;</span><span class="p">)</span>
+    <span class="n">cube_lon_out</span> <span class="o">=</span> <span class="n">DimCoord</span><span class="p">(</span><span class="n">lon_out</span><span class="p">,</span>
+                            <span class="n">standard_name</span><span class="o">=</span><span class="s1">&#39;longitude&#39;</span><span class="p">,</span>
+                            <span class="n">units</span><span class="o">=</span><span class="s1">&#39;degrees&#39;</span><span class="p">)</span>
+    <span class="n">cube_out</span> <span class="o">=</span> <span class="n">Cube</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">lat_out</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">lon_out</span><span class="p">)),</span>
+                             <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+                    <span class="n">dim_coords_and_dims</span><span class="o">=</span><span class="p">[(</span><span class="n">cube_lat_out</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                                         <span class="p">(</span><span class="n">cube_lon_out</span><span class="p">,</span> <span class="mi">1</span><span class="p">)])</span>
+    <span class="n">cube_out</span><span class="o">.</span><span class="n">coord</span><span class="p">(</span><span class="s1">&#39;latitude&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">guess_bounds</span><span class="p">()</span>
+    <span class="n">cube_out</span><span class="o">.</span><span class="n">coord</span><span class="p">(</span><span class="s1">&#39;longitude&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">guess_bounds</span><span class="p">()</span>
+    
+    <span class="c1"># Regrid</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Regridding...&quot;</span><span class="p">)</span>
+    <span class="n">cube_regridded</span> <span class="o">=</span> <span class="n">cube_in</span><span class="o">.</span><span class="n">regrid</span><span class="p">(</span><span class="n">cube_out</span><span class="p">,</span>
+                                    <span class="n">AreaWeighted</span><span class="p">(</span><span class="n">mdtol</span><span class="o">=</span><span class="mf">1.</span><span class="p">))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">cube_regridded</span><span class="o">.</span><span class="n">summary</span><span class="p">(</span><span class="n">shorten</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">cube_regridded</span><span class="o">.</span><span class="n">data</span><span class="p">,</span><span class="n">cube_regridded</span>         </div>
+
+
+<div class="viewcode-block" id="regrid3d"><a class="viewcode-back" href="../../api/acrg_grid.html#acrg_grid.regrid.regrid3d">[docs]</a><span class="k">def</span> <span class="nf">regrid3d</span><span class="p">(</span><span class="n">array_in</span><span class="p">,</span> <span class="n">lat_in</span><span class="p">,</span> <span class="n">lon_in</span><span class="p">,</span>
+             <span class="n">lat_out</span><span class="p">,</span> <span class="n">lon_out</span><span class="p">,</span> <span class="n">time</span><span class="p">):</span>
+             
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    3D mass-conservative regrid using a cached regridder</span>
+<span class="sd">    </span>
+<span class="sd">    Inputs:</span>
+<span class="sd">        array_in: 3D field to regrid - Lat, Lon, Time</span>
+<span class="sd">        lat_in: latitudes corresponding to array_in</span>
+<span class="sd">        lon_in: longitude corresponding to array_in</span>
+<span class="sd">        lat_out: latitude to regrid onto</span>
+<span class="sd">        lon_out: longitude to regrid onto</span>
+<span class="sd">        </span>
+<span class="sd">    Returns a 3D array of dimensions [lat_out, lon_out, time_out]</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="k">def</span> <span class="nf">get_cube_in</span><span class="p">(</span><span class="n">array_in</span><span class="p">,</span> <span class="n">lat_in</span><span class="p">,</span> <span class="n">lon_in</span><span class="p">,</span> <span class="n">time</span><span class="p">):</span>
+        <span class="c1">#Define input grid</span>
+        <span class="n">cube_lat_in</span> <span class="o">=</span> <span class="n">DimCoord</span><span class="p">(</span><span class="n">lat_in</span><span class="p">,</span>
+                               <span class="n">standard_name</span><span class="o">=</span><span class="s1">&#39;latitude&#39;</span><span class="p">,</span>
+                               <span class="n">units</span><span class="o">=</span><span class="s1">&#39;degrees&#39;</span><span class="p">)</span>
+        <span class="n">cube_lon_in</span> <span class="o">=</span> <span class="n">DimCoord</span><span class="p">(</span><span class="n">lon_in</span><span class="p">,</span>
+                               <span class="n">standard_name</span><span class="o">=</span><span class="s1">&#39;longitude&#39;</span><span class="p">,</span>
+                               <span class="n">units</span><span class="o">=</span><span class="s1">&#39;degrees&#39;</span><span class="p">)</span>
+        <span class="n">cube_time</span> <span class="o">=</span> <span class="n">DimCoord</span><span class="p">(</span><span class="n">time</span><span class="p">,</span>
+                               <span class="n">standard_name</span><span class="o">=</span><span class="s1">&#39;time&#39;</span><span class="p">,</span>
+                               <span class="n">units</span><span class="o">=</span><span class="s1">&#39;seconds&#39;</span><span class="p">)</span>
+        <span class="n">cube_in</span> <span class="o">=</span> <span class="n">Cube</span><span class="p">(</span><span class="n">array_in</span><span class="p">[:,:,:],</span>
+                       <span class="n">dim_coords_and_dims</span><span class="o">=</span><span class="p">[(</span><span class="n">cube_lat_in</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                                        <span class="p">(</span><span class="n">cube_lon_in</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+                                        <span class="p">(</span><span class="n">cube_time</span><span class="p">,</span> <span class="mi">2</span><span class="p">)])</span>                                   
+        <span class="n">cube_in</span><span class="o">.</span><span class="n">coord</span><span class="p">(</span><span class="s1">&#39;latitude&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">guess_bounds</span><span class="p">()</span>
+        <span class="n">cube_in</span><span class="o">.</span><span class="n">coord</span><span class="p">(</span><span class="s1">&#39;longitude&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">guess_bounds</span><span class="p">()</span>
+        <span class="n">cube_in</span><span class="o">.</span><span class="n">coord</span><span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">guess_bounds</span><span class="p">()</span>
+        
+        <span class="k">return</span> <span class="n">cube_in</span>
+
+    <span class="k">def</span> <span class="nf">get_cube_out</span><span class="p">(</span><span class="n">lat_out</span><span class="p">,</span> <span class="n">lon_out</span><span class="p">,</span> <span class="n">time</span><span class="p">):</span>
+        <span class="c1"># Define output grid</span>
+        <span class="n">cube_lat_out</span> <span class="o">=</span> <span class="n">DimCoord</span><span class="p">(</span><span class="n">lat_out</span><span class="p">,</span>
+                                <span class="n">standard_name</span><span class="o">=</span><span class="s1">&#39;latitude&#39;</span><span class="p">,</span>
+                                <span class="n">units</span><span class="o">=</span><span class="s1">&#39;degrees&#39;</span><span class="p">)</span>
+        <span class="n">cube_lon_out</span> <span class="o">=</span> <span class="n">DimCoord</span><span class="p">(</span><span class="n">lon_out</span><span class="p">,</span>
+                                <span class="n">standard_name</span><span class="o">=</span><span class="s1">&#39;longitude&#39;</span><span class="p">,</span>
+                                <span class="n">units</span><span class="o">=</span><span class="s1">&#39;degrees&#39;</span><span class="p">)</span>
+        <span class="n">cube_time</span> <span class="o">=</span> <span class="n">DimCoord</span><span class="p">(</span><span class="n">time</span><span class="p">,</span>
+                               <span class="n">standard_name</span><span class="o">=</span><span class="s1">&#39;time&#39;</span><span class="p">,</span>
+                               <span class="n">units</span><span class="o">=</span><span class="s1">&#39;seconds&#39;</span><span class="p">)</span>
+        <span class="n">cube_out</span> <span class="o">=</span> <span class="n">Cube</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">lat_out</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">lon_out</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">time</span><span class="p">)),</span>
+                                 <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+                                 <span class="n">dim_coords_and_dims</span><span class="o">=</span><span class="p">[(</span><span class="n">cube_lat_out</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                                                      <span class="p">(</span><span class="n">cube_lon_out</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+                                                      <span class="p">(</span><span class="n">cube_time</span><span class="p">,</span> <span class="mi">2</span><span class="p">)])</span>
+        <span class="n">cube_out</span><span class="o">.</span><span class="n">coord</span><span class="p">(</span><span class="s1">&#39;latitude&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">guess_bounds</span><span class="p">()</span>
+        <span class="n">cube_out</span><span class="o">.</span><span class="n">coord</span><span class="p">(</span><span class="s1">&#39;longitude&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">guess_bounds</span><span class="p">()</span>
+        <span class="n">cube_out</span><span class="o">.</span><span class="n">coord</span><span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">guess_bounds</span><span class="p">()</span>
+        
+        <span class="k">return</span> <span class="n">cube_out</span>
+    
+    <span class="c1"># Regrid</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Getting cube in and cube out&quot;</span><span class="p">)</span>
+    <span class="n">cube_in</span> <span class="o">=</span> <span class="n">get_cube_in</span><span class="p">(</span><span class="n">array_in</span><span class="p">,</span> <span class="n">lat_in</span><span class="p">,</span> <span class="n">lon_in</span><span class="p">,</span> <span class="n">time</span><span class="p">)</span>    
+    <span class="n">cube_out</span> <span class="o">=</span> <span class="n">get_cube_out</span><span class="p">(</span><span class="n">lat_out</span><span class="p">,</span> <span class="n">lon_out</span><span class="p">,</span><span class="n">time</span><span class="p">)</span>     
+    
+    <span class="n">array_out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">lat_out</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">lon_out</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">time</span><span class="p">)))</span>
+    
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Regridding...&quot;</span><span class="p">)</span>
+    <span class="n">cube_regridded</span> <span class="o">=</span> <span class="n">cube_in</span><span class="o">.</span><span class="n">regrid</span><span class="p">(</span><span class="n">cube_out</span><span class="p">,</span>
+                                    <span class="n">AreaWeighted</span><span class="p">(</span><span class="n">mdtol</span><span class="o">=</span><span class="mf">1.</span><span class="p">))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">cube_regridded</span><span class="o">.</span><span class="n">summary</span><span class="p">(</span><span class="n">shorten</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+    <span class="n">array_out</span> <span class="o">=</span> <span class="n">cube_regridded</span><span class="o">.</span><span class="n">data</span>
+
+    <span class="k">return</span> <span class="n">array_out</span>          </div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, mrghg.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

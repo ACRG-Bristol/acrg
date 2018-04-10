@@ -1,0 +1,490 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>acrg_config package &#8212; acrg  documentation</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="acrg-config-package">
+<h1>acrg_config package<a class="headerlink" href="#acrg-config-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-acrg_config.config">
+<span id="acrg-config-config-module"></span><h2>acrg_config.config module<a class="headerlink" href="#module-acrg_config.config" title="Permalink to this headline">¶</a></h2>
+<p>Created on Mon Sep 25 16:39:01 2017</p>
+<p>This module allows configuration files in the INI format to be read and used.</p>
+<hr class="docutils" />
+<p>Example of a section in the configuration file:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">MEASUREMENTS</span><span class="p">]</span>
+<span class="c1"># Measurement details</span>
+
+<span class="n">sites</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;GSN&quot;</span><span class="p">]</span>           <span class="p">;</span> <span class="n">Sites</span> <span class="n">to</span> <span class="n">read</span> <span class="n">the</span> <span class="n">data</span> <span class="kn">from</span> <span class="nn">as</span> <span class="n">a</span> <span class="nb">list</span>
+<span class="n">species</span> <span class="o">=</span> <span class="s2">&quot;chcl3&quot;</span>
+<span class="n">start_date</span> <span class="o">=</span> <span class="s2">&quot;2015-01-01&quot;</span> <span class="p">;</span> <span class="n">Default</span> <span class="n">start</span> <span class="n">date</span> <span class="n">used</span> <span class="k">if</span> <span class="n">none</span> <span class="n">specified</span> <span class="n">on</span> <span class="n">the</span> <span class="n">command</span> <span class="n">line</span>
+<span class="n">end_date</span> <span class="o">=</span> <span class="s2">&quot;2015-02-01&quot;</span>   <span class="p">;</span> <span class="n">Default</span> <span class="n">start</span> <span class="n">date</span> <span class="n">used</span> <span class="k">if</span> <span class="n">none</span> <span class="n">specified</span> <span class="n">on</span> <span class="n">the</span> <span class="n">command</span> <span class="n">line</span>
+<span class="n">domain</span> <span class="o">=</span> <span class="s2">&quot;EASTASIA&quot;</span>
+<span class="n">network</span> <span class="o">=</span> <span class="s2">&quot;AGAGE&quot;</span>
+</pre></div>
+</div>
+<hr class="docutils" />
+<blockquote>
+<div><ul class="simple">
+<li>Sections are included in square brackets</li>
+<li><dl class="first docutils">
+<dt>Parameter name and value pairs are separated by an equals sign</dt>
+<dd><ul class="first last">
+<li>Values can be specified with the same syntax as when creating a python object e.g. &#8216;&#8217; for string, [] for lists (and also for np.array - will be converted if their type has been set as an array)</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li>; and # symbols can be used to create new line and inline comments</li>
+</ul>
+</div></blockquote>
+<p>Section headings can be of the form [NAME] or [GROUP.NAME]. This allows paramaters to be separated into several
+section headings in the configuration file for clarity but grouped into one overall classification when inputted based on the GROUP
+name.</p>
+<div class="section" id="param-type-dictionary">
+<h3>param_type dictionary<a class="headerlink" href="#param-type-dictionary" title="Permalink to this headline">¶</a></h3>
+<p>To specify inputs and the types they should be cast to (e.g. str, array, boolean etc) a nested dictionary should be created.
+This can be passed into several functions as the param_type argument.</p>
+<dl class="docutils">
+<dt>This should be of the form of one of the following:</dt>
+<dd><ul class="first last simple">
+<li>{&#8216;SECTION_GROUP1&#8217;:{&#8216;param1&#8217;:str,&#8217;param2&#8217;:float},&#8217;SECTION_GROUP2&#8217;:{&#8216;param3&#8217;:list,&#8217;param4&#8217;:np.array}}</li>
+<li>{&#8216;SECTION1&#8217;:{&#8216;param1&#8217;:str},&#8217;SECTION2&#8217;:&#8217;{param2&#8217;:float},&#8217;SECTION3&#8217;:{&#8216;param3&#8217;:list},&#8217;SECTION4&#8217;:{&#8216;param4&#8217;:np.array}}</li>
+<li>OrderedDict([&#8216;SECTION_GROUP1&#8217;:OrderedDict([(&#8216;param1&#8217;:str),(&#8216;param2&#8217;:float)]),&#8217;SECTION_GROUP2&#8217;:OrderedDict([(&#8216;param3&#8217;:list),(&#8216;param4&#8217;:np.array)]))</li>
+<li>OrderedDict([&#8216;SECTION1&#8217;:{&#8216;param1&#8217;:str},&#8217;SECTION2&#8217;:{&#8216;param2&#8217;:float},&#8217;SECTION3&#8217;:{&#8216;param3&#8217;:list},&#8217;SECTION4&#8217;:{&#8216;param4&#8217;:np.array}])</li>
+</ul>
+</dd>
+</dl>
+<p>This can either be created directly or a template configuration file can be created and a param_type dictionary created
+from this using the generate_param_dict() function.
+These template files should be kept within the acrg_config/templates/ directory and, after creation, should not be altered
+unless you wish to change the format for all config files of this type.</p>
+<p>Note: if param_type is not defined, the code will attempt to cast the inputs to the most sensible type.
+This should be fine in most cases but could cause issues.
+This also means the inputs will not be checked for any missing values.</p>
+</div>
+<div class="section" id="how-to-run">
+<h3>How to run<a class="headerlink" href="#how-to-run" title="Permalink to this headline">¶</a></h3>
+<p>The main functions to use for reading in parameters from a config file are:</p>
+<blockquote>
+<div><ul class="simple">
+<li>all_param(config_file,...)      - Extract all parameters from a configuration file.</li>
+<li>extract_params(config_file,...) - Extract specific parameters from a file either based on parameter</li>
+</ul>
+<p>names, sections or groups.</p>
+</div></blockquote>
+<p>A param_type dictionary can be defined both to fix expected inputs and to explictly specify the parameter types.</p>
+<p>&#64;author: rt17603</p>
+<dl class="function">
+<dt id="acrg_config.config.all_param">
+<code class="descclassname">acrg_config.config.</code><code class="descname">all_param</code><span class="sig-paren">(</span><em>config_file</em>, <em>optional_param=[]</em>, <em>param_type=None</em>, <em>remove_not_found=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_config/config.html#all_param"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_config.config.all_param" title="Permalink to this definition">¶</a></dt>
+<dd><p>The all_param function extracts all parameters from a config file.
+If param_type specified will cast to the specified types, otherwise will attempt to discern the parameter types from the form of the values.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>config_file</strong> &#8211; filename for input configuration file</li>
+<li><strong>optional_param</strong> &#8211; parameters which are optional. If the param cannot be found in input file, value will be set to None</li>
+<li><strong>param_type</strong> &#8211; nested dictionary of sections or groups and expected parameter names and types.
+See module header for expected formats of param_type dictionary.</li>
+<li><strong>remove_not_found</strong> (<em>bool</em>) &#8211; whether to remove parameters which are not found in the input file or include them as None.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">parameter names and values</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">OrderedDict</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_config.config.all_parameters_in_param_type">
+<code class="descclassname">acrg_config.config.</code><code class="descname">all_parameters_in_param_type</code><span class="sig-paren">(</span><em>param_type</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_config/config.html#all_parameters_in_param_type"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_config.config.all_parameters_in_param_type" title="Permalink to this definition">¶</a></dt>
+<dd><p>The all_parameters_in_param_type function extracts all parameters (regardless of section/section_group) for a given
+param_type nested dictionary.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>param_type</strong> &#8211; nested dictionary of expected parameter names and types.
+Key for each parameter dictionary can be the section heading or the overall group (e.g. for [MCMC.MEASUREMENTS], section group should be &#8216;MCMC&#8217;).
+See module header for expected formats of param_type dictionary.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">list of all parameters in param_type dictionary</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">list</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_config.config.convert">
+<code class="descclassname">acrg_config.config.</code><code class="descname">convert</code><span class="sig-paren">(</span><em>string</em>, <em>value_type=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_config/config.html#convert"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_config.config.convert" title="Permalink to this definition">¶</a></dt>
+<dd><p>The convert function converts the input string to the specified value_type.
+If no value_type is stated, the function attempts to discern the appropriate type.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>string</strong> &#8211; value input from config file</li>
+<li><strong>value_type</strong> &#8211; object type. Values accepted: str,list</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><p>Python object of specified type</p>
+<dl class="docutils">
+<dt>If unable to convert to value_type:</dt>
+<dd><p class="first last">None</p>
+</dd>
+<dt>If unable to find a suitable type when value_type is not specified:</dt>
+<dd><p class="first last">None</p>
+</dd>
+</dl>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_config.config.eval_check">
+<code class="descclassname">acrg_config.config.</code><code class="descname">eval_check</code><span class="sig-paren">(</span><em>string</em>, <em>error=True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_config/config.html#eval_check"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_config.config.eval_check" title="Permalink to this definition">¶</a></dt>
+<dd><p>The eval_check function evaluates the input string from a configuration file to a python object.
+For example: &#8216;1&#8217; would evalute to an int object 1</p>
+<blockquote>
+<div>: &#8216;1.&#8217; or &#8216;1.0&#8217; would evaluate to float object 1.0
+: &#8220;[1,2,3]&#8221; would evalute to a list object [1,2,3]
+: &#8220;1,2,3&#8221; would evaluate to a tuple object (1,2,3)
+See eval() documentation for full list</div></blockquote>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>string</strong> &#8211; value input from config file</li>
+<li><strong>error</strong> &#8211; return error message if unable to evaluate (bool).</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><p>Python object</p>
+<dl class="docutils">
+<dt>If unable to convert string to python object:</dt>
+<dd><p class="first last">None</p>
+</dd>
+</dl>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_config.config.extract_params">
+<code class="descclassname">acrg_config.config.</code><code class="descname">extract_params</code><span class="sig-paren">(</span><em>config_file</em>, <em>section=None</em>, <em>section_group=None</em>, <em>names=[]</em>, <em>optional_param=[]</em>, <em>remove_not_found=False</em>, <em>param_type=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_config/config.html#extract_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_config.config.extract_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>The extract_params function extracts parameter names and values from a configuration file.
+The parameters which are extracted is dependent on whether the section, section_group and/or names variables are specified.
+A param_type dictionary can be defined to ensure variables are cast to the correct types.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>config_file</strong> &#8211; filename for input configuration file.</li>
+<li><strong>section</strong> (<em>str</em>) &#8211; extract parameters from section name.</li>
+<li><strong>section_group</strong> (<em>str</em>) &#8211; extract parameters from all sections with this group.
+If section and section_group are both specified - section takes precedence.</li>
+<li><strong>names</strong> (<em>list</em>) &#8211; which parameter names to extract (within section or section_group)</li>
+<li><strong>optional_param</strong> (<em>list</em>) &#8211; parameters which are optional. If the param cannot be found value will be set to None</li>
+<li><strong>param_type</strong> (<em>dict</em>) &#8211; nested dictionary of sections or groups and expected parameter names and types.
+See module header for expected formats of param_type dictionary.</li>
+<li><strong>remove_not_found</strong> (<em>bool</em>) &#8211; whether to remove parameters which are not found in the input file or include them as None.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><p>parameter names and values</p>
+<dl class="docutils">
+<dt>If parameter cannot be found (not specified as an optional param)</dt>
+<dd><p class="first last">Exception raised and program exited</p>
+</dd>
+</dl>
+</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">OrderedDict</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_config.config.find_param_key">
+<code class="descclassname">acrg_config.config.</code><code class="descname">find_param_key</code><span class="sig-paren">(</span><em>param_type</em>, <em>section=None</em>, <em>section_group=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_config/config.html#find_param_key"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_config.config.find_param_key" title="Permalink to this definition">¶</a></dt>
+<dd><p>The find_param_key function checks whether the keys within the param_type dictionary are for sections (e.g. &#8216;MCMC.MEASUREMENTS&#8217;)
+or groups (e.g. &#8216;MCMC&#8217;) and returns the relevant key.
+One of section or section_group should be specified.
+Returned key_type is one of &#8216;section&#8217; or &#8216;section_group&#8217;.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>param_type</strong> &#8211; nested dictionary of expected parameter names and types.
+Key for each parameter dictionary can be the section heading or the overall group (e.g. for [MCMC.MEASUREMENTS], section group should be &#8216;MCMC&#8217;).
+See module header for expected formats of param_type dictionary.</li>
+<li><strong>section</strong> (<em>str</em>) &#8211; name of section in config file for the parameter</li>
+<li><strong>section_group</strong> (<em>str</em>) &#8211; name of group in config file for the parameter</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">key, key_type</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">str,str</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_config.config.generate_param_dict">
+<code class="descclassname">acrg_config.config.</code><code class="descname">generate_param_dict</code><span class="sig-paren">(</span><em>config_file</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_config/config.html#generate_param_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_config.config.generate_param_dict" title="Permalink to this definition">¶</a></dt>
+<dd><p>The generate_param_dict function creates a param_type nested dictionary from an input configuration file.
+This could be used on some fixed example config file to generate the parameter type dictionary which can then be applied
+to other configuration files of the same type.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>config_file</strong> &#8211; filename for input configuration file (str).</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">parameter type dictionary from configuration file input</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">nested OrderedDict</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_config.config.get_value">
+<code class="descclassname">acrg_config.config.</code><code class="descname">get_value</code><span class="sig-paren">(</span><em>name</em>, <em>config</em>, <em>section</em>, <em>param_type=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_config/config.html#get_value"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_config.config.get_value" title="Permalink to this definition">¶</a></dt>
+<dd><p>The get_value function extracts the value of a parameter from the configuration file.
+This value is then converted to the type specified within param_type (default from mcmc_param_type() function).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>str</em>) &#8211; name of the parameter to extract</li>
+<li><strong>config</strong> (<em>ConfigParser</em>) &#8211; ConfigParser object created using the configparser class. Data from config file should have been read in</li>
+<li><strong>section</strong> (<em>str</em>) &#8211; name of section in config file for the parameter</li>
+<li><strong>param_type</strong> (<em>dict</em>) &#8211; nested dictionary of parameter classes and expected parameter names and types.
+Key for each parameter dictionary can be the section heading or the overall classification (e.g. for [MCMC.MEASUREMENTS], classification should be &#8216;MCMC&#8217;).
+See module header for expected formats of param_type dictionary.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><p>value</p>
+<dl class="docutils">
+<dt>If param_type is specified</dt>
+<dd><dl class="first last docutils">
+<dt>If neither section nor section_group can be identified within param_type dictionary:</dt>
+<dd><p class="first last">Exception raised and program exited</p>
+</dd>
+<dt>If parameter name cannot be identified within param_type dictionary:</dt>
+<dd><p class="first last">Exception raised and program exited</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_config.config.list_check">
+<code class="descclassname">acrg_config.config.</code><code class="descname">list_check</code><span class="sig-paren">(</span><em>string</em>, <em>force_convert=True</em>, <em>error=True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_config/config.html#list_check"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_config.config.list_check" title="Permalink to this definition">¶</a></dt>
+<dd><p>The list_check function converts input string to a list.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>string</strong> (<em>str</em>) &#8211; value input from config file</li>
+<li><strong>force_convert</strong> (<em>bool</em>) &#8211; whether the conversion should be forced by creating a list object</li>
+<li><strong>error</strong> (<em>bool</em>) &#8211; return error message if unable to convert.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><p>List</p>
+<dl class="docutils">
+<dt>If unable to convert to list:</dt>
+<dd><p class="first last">None</p>
+</dd>
+</dl>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_config.config.open_config">
+<code class="descclassname">acrg_config.config.</code><code class="descname">open_config</code><span class="sig-paren">(</span><em>config_file</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_config/config.html#open_config"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_config.config.open_config" title="Permalink to this definition">¶</a></dt>
+<dd><p>The open_config function is used to open configuration files in the ini format.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>config_file</strong> &#8211; filename for input configuration file (str).</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">configparser.ConfigParser object</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_config.config.str_check">
+<code class="descclassname">acrg_config.config.</code><code class="descname">str_check</code><span class="sig-paren">(</span><em>string</em>, <em>error=True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_config/config.html#str_check"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_config.config.str_check" title="Permalink to this definition">¶</a></dt>
+<dd><p>The str_check function is used as part of checking the input from a configuration file.
+This function ensures the input remains as a string and removes any &#8221; or &#8216; characters</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>string</strong> &#8211; value input from config file</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">string (formatted)</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="module-acrg_config">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-acrg_config" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">acrg_config package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-acrg_config.config">acrg_config.config module</a><ul>
+<li><a class="reference internal" href="#param-type-dictionary">param_type dictionary</a></li>
+<li><a class="reference internal" href="#how-to-run">How to run</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-acrg_config">Module contents</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/api/acrg_config.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, mrghg.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/api/acrg_config.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

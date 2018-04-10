@@ -1,0 +1,222 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>acrg_time package &#8212; acrg  documentation</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="acrg-time-package">
+<h1>acrg_time package<a class="headerlink" href="#acrg-time-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-acrg_time.convert">
+<span id="acrg-time-convert-module"></span><h2>acrg_time.convert module<a class="headerlink" href="#module-acrg_time.convert" title="Permalink to this headline">¶</a></h2>
+<p>FUNCTIONS</p>
+<dl class="docutils">
+<dt>sec2time: Convert &#8220;seconds since YYYY-MM-DD HH:MM&#8221; format (e.g. from CF files)</dt>
+<dd><p class="first">to datetime</p>
+<dl class="last docutils">
+<dt>Example:</dt>
+<dd>time =         acrg_time.convert.sec2time(seconds, &#8220;2000-01-01 00:00&#8221;)</dd>
+</dl>
+</dd>
+<dt>time2sec: Calculate seconds since some reference time. Assumes you want</dt>
+<dd><p class="first">a reference time at the beginning of that year, unless you specify a
+particular reference time</p>
+<dl class="last docutils">
+<dt>Example:</dt>
+<dd>seconds_since, reference = acrg_time.convert.time2sec(datetime)</dd>
+</dl>
+</dd>
+</dl>
+<p>Created on Fri Nov 21 10:48:30 2014</p>
+<p>&#64;author: chxmr</p>
+<dl class="function">
+<dt id="acrg_time.convert.check_iter">
+<code class="descclassname">acrg_time.convert.</code><code class="descname">check_iter</code><span class="sig-paren">(</span><em>var</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_time/convert.html#check_iter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_time.convert.check_iter" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="acrg_time.convert.day2time">
+<code class="descclassname">acrg_time.convert.</code><code class="descname">day2time</code><span class="sig-paren">(</span><em>days</em>, <em>time_reference</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_time/convert.html#day2time"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_time.convert.day2time" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="acrg_time.convert.decimal2time">
+<code class="descclassname">acrg_time.convert.</code><code class="descname">decimal2time</code><span class="sig-paren">(</span><em>frac</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_time/convert.html#decimal2time"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_time.convert.decimal2time" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="acrg_time.convert.hours2time">
+<code class="descclassname">acrg_time.convert.</code><code class="descname">hours2time</code><span class="sig-paren">(</span><em>hours</em>, <em>time_reference</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_time/convert.html#hours2time"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_time.convert.hours2time" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="acrg_time.convert.julian2time">
+<code class="descclassname">acrg_time.convert.</code><code class="descname">julian2time</code><span class="sig-paren">(</span><em>dates</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_time/convert.html#julian2time"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_time.convert.julian2time" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert Julian dates (e.g. from IDL) to datetime</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_time.convert.min2time">
+<code class="descclassname">acrg_time.convert.</code><code class="descname">min2time</code><span class="sig-paren">(</span><em>minutes</em>, <em>time_reference</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_time/convert.html#min2time"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_time.convert.min2time" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="acrg_time.convert.reftime">
+<code class="descclassname">acrg_time.convert.</code><code class="descname">reftime</code><span class="sig-paren">(</span><em>time_reference</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_time/convert.html#reftime"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_time.convert.reftime" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="acrg_time.convert.return_iter">
+<code class="descclassname">acrg_time.convert.</code><code class="descname">return_iter</code><span class="sig-paren">(</span><em>var</em>, <em>notIter</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_time/convert.html#return_iter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_time.convert.return_iter" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="acrg_time.convert.sec2time">
+<code class="descclassname">acrg_time.convert.</code><code class="descname">sec2time</code><span class="sig-paren">(</span><em>seconds</em>, <em>time_reference</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_time/convert.html#sec2time"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_time.convert.sec2time" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="acrg_time.convert.time2decimal">
+<code class="descclassname">acrg_time.convert.</code><code class="descname">time2decimal</code><span class="sig-paren">(</span><em>dates</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_time/convert.html#time2decimal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_time.convert.time2decimal" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="acrg_time.convert.time2sec">
+<code class="descclassname">acrg_time.convert.</code><code class="descname">time2sec</code><span class="sig-paren">(</span><em>time</em>, <em>time_reference=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_time/convert.html#time2sec"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_time.convert.time2sec" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-acrg_time.kz_filter">
+<span id="acrg-time-kz-filter-module"></span><h2>acrg_time.kz_filter module<a class="headerlink" href="#module-acrg_time.kz_filter" title="Permalink to this headline">¶</a></h2>
+<p>; :Purpose:
+;   Filter data using Kolmogorov-Zurbenko filter
+;
+; :Inputs:
+;   x_in: array of locations of the data to be filtered (e.g. time)
+;   y_in: array to be filtered
+;   sigma: array of uncertainties in y_in
+;
+; :Keywords:
+;   iterations: (input, integer) numeber of filter passes
+;   window: (input, floating) width of filter window in the same units as x_in
+;   growth: (input, Boolean) set to true to filter the growth rate of y_in
+;   min_elements: (input, integer), minimum number of data points that must lie within a particular
+;     window in order for average to be calculated</p>
+<p class="rubric">Example</p>
+<p>from acrg_time import kz_filter
+x_smoothed, y_smoothed = kz_filter(x, y, window=12., iterations=4)</p>
+<p>Created on Thu Nov 20 12:27:48 2014</p>
+<p>&#64;author: chxmr</p>
+<dl class="function">
+<dt id="acrg_time.kz_filter.kz_filter">
+<code class="descclassname">acrg_time.kz_filter.</code><code class="descname">kz_filter</code><span class="sig-paren">(</span><em>x_in</em>, <em>y_in</em>, <em>growth=False</em>, <em>iterations=4</em>, <em>window=1.0</em>, <em>min_elements=1</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_time/kz_filter.html#kz_filter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_time.kz_filter.kz_filter" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-acrg_time">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-acrg_time" title="Permalink to this headline">¶</a></h2>
+<p>Created on Fri Nov 21 11:03:33 2014</p>
+<p>&#64;author: chxmr</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">acrg_time package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-acrg_time.convert">acrg_time.convert module</a></li>
+<li><a class="reference internal" href="#module-acrg_time.kz_filter">acrg_time.kz_filter module</a></li>
+<li><a class="reference internal" href="#module-acrg_time">Module contents</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/api/acrg_time.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, mrghg.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/api/acrg_time.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
