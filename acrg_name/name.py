@@ -184,14 +184,6 @@ def footprints(sitecode_or_filename, fp_directory = fp_directory,
     acrg_site_info.json file is assumed.
 
     """
-    #Check that a start, end and domain have been specified
-    if start == None or end == None:
-        print("Start or end date not specified in name.footprints")
-        return None
-    if domain == None:
-        print("Domain not specified in name.footprints")
-        return None
-    
     #Chose whether we've input a site code or a file name
     #If it's a three-letter site code, assume it's been processed
     # into an annual footprint file in (mol/mol) / (mol/m2/s)
