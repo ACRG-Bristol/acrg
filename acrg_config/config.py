@@ -539,7 +539,7 @@ def extract_params(config_file,section=None,section_group=None,names=[],optional
                 elif section_group:
                     raise KeyError("Parameter '{0}' not found in input configuration file within section_group '{1}'".format(name,section_group))
                 else:
-                    raise KeyError("Parameter '{0}' not found in specified in input configuration file.".format(name))
+                    raise KeyError("Parameter '{0}' not found in input configuration file.".format(name))
     #else:
     #    for name in names:
     #        try:
