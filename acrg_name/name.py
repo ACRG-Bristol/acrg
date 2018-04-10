@@ -57,12 +57,28 @@ with open(join(acrg_path, "acrg_site_info.json")) as f:
 
 def filenames(site, domain, start, end, height, fp_directory):
     """
-    Output a list of available footprint file names,
+    The filenames function outputs a list of available footprint file names,
     for given site, domain, directory and date range.
     
-    fp_directory can be specified if files are not in the default directory
-    must point to a directory which contains subfolders organized by domain
+    Expect filenames of the form:
+        [fp_directory]/domain/site*-height*domain*yearmonth*.nc
+        e.g. [/data/shared/NAME/fp]/EUROPE/MHD-10magl_EUROPE_201401.nc
     
+    Args:
+        site (str)         : Site name. Full list of site names should be 
+                             defined within acrg_site_info.json
+        domain (str)       : Domain name. The footprint files should be 
+                             sub-categorised by the NAME domain name.
+        start (str)        : Start date in format "YYYY-MM-DD" for range of files
+                             to find.
+        end (str)          : End date in same format as start for range of files
+                             to find.
+        height (str)       : Height related to NAME. 
+        fp_directory (str) : fp_directory can be specified if files are not in 
+                             the default directory must point to a directory 
+                             which contains subfolders organized by domain.
+    Returns:
+        list (str): matched filenames
     """
 
     baseDirectory = fp_directory
@@ -99,8 +115,17 @@ def filenames(site, domain, start, end, height, fp_directory):
 
 def read_netcdfs(files, dim = "time"):
     '''
-    Use xray to open sequential netCDF files. 
-    Makes sure that file is closed after open_dataset call.
+    The read_netcdfs function uses xarray to open sequential netCDF files and 
+    and concatenates them along the specified dimension.
+    Note: this function makes sure that file is closed after open_dataset call.
+    
+    Args:
+        files (list) : List of netCDF filenames.
+        dim (str)    : Dimension of netCDF to use for concatenating the files.
+                       Default= "time".
+    
+    Returns:
+        xarray.Dataset : all files open as one concatenated xarray.Dataset object    
     '''
     
     def process_one_path(path):
@@ -114,11 +139,21 @@ def read_netcdfs(files, dim = "time"):
 
 def interp_time(bc_ds,vmr_var_names, new_times):
     """
-    Created to convert MOZART monthly averages into same frequency as NAME footprints.
-    Interpolates the times of the VMR variable 'vmr_var_name' in the xray dataset
-    'bc_ds' to the times specified in 'interp_times'. The variable must have dimensions
-    (height, lat_or_lon, time) in that order. 
-    Returns a new dataset with the VMRs recalculated at interpolated times.
+    The interp_time function interpolates the times of the VMR variable 
+    'vmr_var_name' in the xarray.Dataset 'bc_ds' to the times specified in 
+    'interp_times'. The variable must have dimensions (height, lat_or_lon, time) 
+    in that order. 
+    Note: This function was created to convert MOZART monthly averages into 
+    same frequency as NAME footprints.
+
+    Args:
+        bc_ds (xarray.Dataset)   : Output from boundary_conditions() function
+        vmr_var_names (iterable) : 
+        new_times                : 
+    
+    Returns:
+        xarray.Dataset : new dataset with the VMRs recalculated at interpolated times.
+
     """
 
     vmr_dict={}
@@ -153,39 +188,44 @@ def footprints(sitecode_or_filename, fp_directory = fp_directory,
                species = None, emissions_name = None, HiTRes = False,interp_vmr_freq=None):
 
     """
-    Load a NAME footprint netCDF files into an xray dataset 
-    
-    Loads flux and boundary conditions if species or emissions_name is specified
-    
-    EMISSIONS_NAME allows emissions files such as co2nee_EUROPE_2012.nc
-    to be read in. In this case EMISSIONS_NAME would be 'co2nee'
+    The footprints function loads a NAME footprint netCDF files into an xarray Dataset.
+    Flux and boundary conditions are also loaded if species or emissions_name is specified.
     
     Either specify:
-    
-    a) A file name:
-
-        fp = footprints(filename)
-    
-    b) A site code, domain, and date range:
-    
-        fp = footprints("MHD", 
+        a) A file name:
+            fp = footprints(filename)
+        b) A site code, domain, and date range:
+            fp = footprints("MHD", 
                     start = "2014-01-01", end = "2014-01-01",
                     domain = "EUROPE")
     
-    fp_directory, flux_directory and bc_directory can point to specified directories
-    but if not specified, will use default directories
-    
-    fp_directory must be a dictionary of the form 
-    {"integrated":PATH_TO_INTEGRATED_FP", "HiTRes":PATH_TO_HIGHTRES_FP}
-    if the high time resolution footprints are used (HiTRes = True);
-    otherwise can be a single string if only integrated FPs are used and are non-default
-    
-    If the HEIGHT keyword is not specified, the default height from the
-    acrg_site_info.json file is assumed.
+    See filenames() function for expected format of files.
+    Note: fp_directory, flux_directory and bc_directory can point to specified directories
+    but if not specified, default directories will be used (set at the top of file).
 
+    Args:
+        sitecode_or_filename : Site (e.g. 'MHD') or a netCDF filename (*.nc) (str)
+        fp_directory (str)   : fp_directory can be specified if files are not in 
+                               the default directory. Must point to a directory 
+                               which contains subfolders organized by domain. (optional)
+        flux_directory (str) : Same sytax as fp_directory (optional)
+        bc_directory (str)   : Same sytax as bc_directory (optional)
+        start (str)          : Start date in format "YYYY-MM-DD" for range of files to find.
+        end (str)            : End date in same format as start for range of files to find.
+        domain (str)         : Domain name. The footprint files should be sub-categorised by the domain.
+        height (str)         : Height related to NAME. If the HEIGHT keyword is not specified, the default 
+                               height from the acrg_site_info.json file is assumed.
+        species (str)        : Species name. All species names are defined acrg_species_info.json.
+        emissions_name (str) : Allows emissions files such as co2nee_EUROPE_2012.nc to be read in. 
+                               In this case EMISSIONS_NAME would be 'co2nee'
+        HiTRes (bool)        : Whether to include high time resolution footprints.
+        interp_vmr_freq      : Frequency to interpolate vmr time. (float/int)
+        
+    Returns:
+        xarray.Dataset : combined footprint files
     """
-    #Chose whether we've input a site code or a file name
-    #If it's a three-letter site code, assume it's been processed
+    # Chose whether we've input a site code or a file name
+    # If it's a three-letter site code, assume it's been processed
     # into an annual footprint file in (mol/mol) / (mol/m2/s)
     # using acrg_name_process
     
@@ -197,8 +237,8 @@ def footprints(sitecode_or_filename, fp_directory = fp_directory,
     else:
         site=sitecode_or_filename[:]
 
-# finds integrated footprints if specified as a dictionary with multiple entries (HiTRes = True) 
-# or a string with one entry        
+    # Finds integrated footprints if specified as a dictionary with multiple entries (HiTRes = True) 
+    # or a string with one entry        
         if type(fp_directory) is dict:
             files = filenames(site, domain, start, end, height, fp_directory["integrated"])
         else:
@@ -242,21 +282,28 @@ def footprints(sitecode_or_filename, fp_directory = fp_directory,
 
 def flux(domain, species, flux_directory=flux_directory):
     """
-    Read in a flux dataset.
-    
-    Looks in directory 'flux_directory' which can be input or is otherwise default.
-    
+    The flux function reads in all flux files for the domain and species as an xarray Dataset.
+    Note that at present ALL flux data is read in per species per domain or by emissions name.
     To be consistent with the footprints, fluxes should be in mol/m2/s.
     
-    Note that at present ALL flux data is read in per species per domain or by emissions name.
+    Expect filenames of the form:
+        [flux_directory]/domain/species.lower()_*.nc
+        e.g. [/data/shared/NAME/emissions]/EUROPE/ch4_EUROPE_2013.nc
     
-    This may get slow for very large flux datasets, and we may want to subset.    
+    TODO: This may get slow for very large flux datasets, and we may want to subset.
+    
+    Args:
+        domain (str)         : Domain name. The flux files should be sub-categorised by the domain.
+        species (str)        : Species name. All species names are defined acrg_species_info.json.
+        flux_directory (str) : flux_directory can be specified if files are not in 
+                               the default directory. Must point to a directory 
+                               which contains subfolders organized by domain. (optional)
+    Returns:
+        xarray.Dataset : combined dataset of all matching flux files
     """
 
-    print 'search str',flux_directory + domain + "/" + species.lower() + "_" + "*.nc"
     files = sorted(glob.glob(flux_directory + domain + "/" + 
                    species.lower() + "_" + "*.nc"))
-    print 'files',files
     if len(files) == 0:
         print("Can't find flux: " + domain + " " + species)
         return None
@@ -283,10 +330,22 @@ def flux(domain, species, flux_directory=flux_directory):
 
 def boundary_conditions(domain, species, bc_directory=bc_directory):
     """
-    Read in the files with the global model vmrs at the domain edges to give
-    the boundary conditions.
-    
-    Looks in default folder unless the directory bc_directory is specified
+    The boundary_conditions function reads in the files with the global model vmrs at the domain edges 
+    to give the boundary conditions as an xarray Dataset.
+
+    Expect filenames of the form:
+        [bc_directory]/domain/species.lower()_*.nc
+        e.g. [/data/shared/NAME/bc]/EUROPE/ch4_EUROPE_201301.nc
+
+    Args:
+        domain (str)       : Domain name. The boundary condition files should be sub-categorised by the 
+                             domain.
+        species (str)      : Species name. All species names are defined acrg_species_info.json.
+        bc_directory (str) : bc_directory can be specified if files are not in 
+                             the default directory. Must point to a directory 
+                             which contains subfolders organized by domain. (optional)
+    Returns:
+        xarray.Dataset : combined dataset of matching boundary conditions files
     """
     
     files = sorted(glob.glob(bc_directory + domain + "/" + 
@@ -302,7 +361,23 @@ def boundary_conditions(domain, species, bc_directory=bc_directory):
 
 def basis(domain, basis_case, basis_directory = basis_directory):
     """
-    Read in a basis function file.
+    The basis function reads in the all matching files for the basis as an xarray Dataset.
+    
+    Expect filenames of the form:
+        [basis_directory]/domain/"basis_case"_"domain"*.nc
+        e.g. [/data/shared/NAME/basis_functions]/EUROPE/sub_transd_EUROPE_2014.nc
+
+    TODO: More info on options for basis functions.
+
+    Args:
+        domain (str)       : Domain name. The basis files should be sub-categorised by the domain.
+        basis_case (str)   : Basis case to read in. Examples of basis cases are "voroni","sub-transd",
+                             "sub-country_mask","INTEM".
+        bc_directory (str) : bc_directory can be specified if files are not in 
+                             the default directory. Must point to a directory 
+                             which contains subfolders organized by domain. (optional)
+    Returns:
+        xarray.Dataset : combined dataset of matching basis functions
     """
     
     files = sorted(glob.glob(basis_directory + domain + "/" +
@@ -316,8 +391,10 @@ def basis(domain, basis_case, basis_directory = basis_directory):
     return basis_ds
 
 
-def basis_boundary_conditions(domain, basis_case, bc_basis_directory=bc_basis_directory):
-    
+def basis_boundary_conditions(domain, basis_case = 'NESW', bc_basis_directory=bc_basis_directory):
+    """
+    """
+   
     files = sorted(glob.glob(bc_basis_directory + domain + "/" +
                     basis_case + '_' + domain + "*.nc"))
 

@@ -513,7 +513,86 @@ def country_emissions(ds_mcmc, x_post_vit, q_ap_abs_v, countries, species,
         return q_country_it*365.*24.*3600.*molmass/unit_factor,\
         q_country_mean, q_country_05, q_country_16, q_country_50, q_country_84, \
         q_country_95, q_country_ap, country_index
+
+def prior_mf(ds):
+    '''
+     The prior_mf function calculates the y prior mole fraction
     
+    Args:
+        ds (xarray.Dataset) : output from the run_tdmcmc function
+    
+    Returns:
+        np.array : y prior mole fraction   
+    '''
+    h_v_all = ds.h_v_all.values # nmeasure x NgridIC (Ngrid + nIC)
+    
+    #NgridIC = len(ds.NgridIC.values)
+    #x = np.ones(NgridIC)
+    #y_prior = np.dot(h_v_all,x)
+    
+    y_prior = np.sum(h_v_all,axis=1)
+    
+    return y_prior
+
+def post_bl(ds):
+    '''
+    The post_bl function calculates the y posterior baseline iterations and mean
+    
+    Args:
+        ds (xarray.Dataset) : output from the run_tdmcmc function
+    
+    Returns:
+        (np.array,np.array) : y posterior baseline iterations, y posterior baseline mean
+    '''
+
+    nIC = ds.nIC.values         # number of initial conditions (basis functions + boundary conditions + bias)
+    nIt = len(ds.nIt)           # number of iterations
+    nmeasure = len(ds.nmeasure) # number of measurement points
+    
+    h_v_all = ds.h_v_all.values # nmeasure x NgridIC (Ngrid + nIC)
+    x_it = ds.x_it.values       # nIt x kICmax (nIC + kmax  - maximum number of regions in sub-domain)
+    
+    y_bg_it = np.zeros((nIt,nmeasure))
+    for it in range(nIt):
+        y_bg_it[it,:]=np.dot(h_v_all[:,:nIC],x_it[it,:nIC]) # Find y posterior for each iteration
+        #y_bg_it[it,:]=np.dot(h_v_all[:,:10],x_it[it,:10])
+    
+    y_bg_mean=np.mean(y_bg_it, axis=0) # Take the mean across all iterations
+    
+    return y_bg_it,y_bg_mean
+
+def post_mf(ds):
+    '''
+    The post_mf function calculates the y posterior mole fraction ierations and mean
+    
+    Args:
+        ds (xarray.Dataset) : output from the run_tdmcmc function
+    
+    Returns:
+        (np.array,np.array) : y posterior mole fraction iterations, y posterior mole fraction mean
+    '''
+
+    nIC = ds.nIC.values         # number of initial conditions (basis functions + boundary conditions + bias)
+    nIt = len(ds.nIt)           # number of iterations
+    nmeasure = len(ds.nmeasure) # number of measurement points
+    Ngrid = len(ds.Ngrid)       # number of positions in lat x lon grid
+    
+    h_v_all = ds.h_v_all.values       # nmeasure x NgridIC (Ngrid + nIC)
+    x_post_vit = ds.x_post_vit.values # nIt x Ngrid
+    x_it = ds.x_it.values             # nIt x kICmax (nIC + kmax  - maximum number of regions in sub-domain)
+    
+    x_post_all_it = np.zeros((nIt,Ngrid+nIC)) # Create x vector of dimesion NgridIC for every iteration
+    x_post_all_it[:,:nIC] = x_it[:,:nIC] # Populate nIC entries with posterior values for each IC parameter for x_it
+    x_post_all_it[:,nIC:] = x_post_vit   # Populate Ngrid entries with posterior values for each coord from x_post_vit
+    
+    y_post_it = np.zeros((nIt,nmeasure))
+    for it in range(nIt):
+        y_post_it[it,:]=np.dot(h_v_all,x_post_all_it[it,:]) # Find y posterior for each iteration
+    
+    y_post_mean=np.mean(y_post_it, axis=0) # Take the mean across all iterations
+    
+    return y_post_it,y_post_mean
+ 
 def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True):
     
     """
@@ -528,36 +607,42 @@ def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True
     
     Specify an out_filename to write to disk
     """
-    x_it=ds.x_it.values
-    h_v_all=ds.h_v_all.values
-    x_post_vit = ds.x_post_vit.values
-    sigma_y_mean=np.mean(ds.sigma_y_it.values, axis=1)
+    
+#    x_it=ds.x_it.values
+#    h_v_all=ds.h_v_all.values
+#    x_post_vit = ds.x_post_vit.values
     sites=ds.coords['sites'].values
     nsites=len(sites)
-    nlon=len(ds.lon)
-    nlat=len(ds.lat)
-    Ngrid=nlon*nlat
-    nIt=len(ds.nIt)
-    nIC=ds.nIC.values
-    nmeasure=len(ds.nmeasure)
+#    nlon=len(ds.lon)
+#    nlat=len(ds.lat)
+#    Ngrid=nlon*nlat
+#    nIt=len(ds.nIt)
+#    nIC=ds.nIC.values
+#    nmeasure=len(ds.nmeasure)
+#
+#    x_post_all_it=np.zeros((nIt,Ngrid+nIC))
+#    y_post_it = np.zeros((nIt,nmeasure))
+#    y_bg_it = np.zeros((nIt,nmeasure))
+#    x_post_all_it[:,:nIC]=x_it[:,:nIC]
+#    x_post_all_it[:,nIC:]=x_post_vit
+#    for it in range(nIt):
+#        y_post_it[it,:]=np.dot(h_v_all,x_post_all_it[it,:])  
+#        y_bg_it[it,:]=np.dot(h_v_all[:,:nIC],x_it[it,:nIC])
+#        #y_bg_it[it,:]=np.dot(h_v_all[:,:10],x_it[it,:10])
+#    y_post_mean=np.mean(y_post_it, axis=0)
+#    y_bg_mean=np.mean(y_bg_it, axis=0)
 
-    x_post_all_it=np.zeros((nIt,Ngrid+nIC))
-    y_post_it = np.zeros((nIt,nmeasure))
-    y_bg_it = np.zeros((nIt,nmeasure))
-    x_post_all_it[:,:nIC]=x_it[:,:nIC]
-    x_post_all_it[:,nIC:]=x_post_vit
-    for it in range(nIt):
-        y_post_it[it,:]=np.dot(h_v_all,x_post_all_it[it,:])  
-        y_bg_it[it,:]=np.dot(h_v_all[:,:nIC],x_it[it,:nIC])
-        #y_bg_it[it,:]=np.dot(h_v_all[:,:10],x_it[it,:10])
-    y_post_mean=np.mean(y_post_it, axis=0)
-    y_bg_mean=np.mean(y_bg_it, axis=0)
-    y_time=ds.y_time.values
+    sigma_y_mean=np.mean(ds.sigma_y_it.values, axis=1)
+    y_bg_it,y_bg_mean = post_bl(ds)
+    y_post_it,y_post_mean = post_mf(ds)
+
+    y_time = ds.y_time.values
     y_site = ds.y_site.values
     y_obs = ds.y.values
-    upper=y_post_mean+sigma_y_mean
-    lower=y_post_mean-sigma_y_mean
+    upper = y_post_mean+sigma_y_mean
+    lower = y_post_mean-sigma_y_mean
     
+
     if doplot is True:
         fig,ax=plt.subplots(nsites,sharex=True)
         
