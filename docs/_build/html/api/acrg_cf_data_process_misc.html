@@ -1,0 +1,225 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>acrg_cf_data_process_misc module &#8212; acrg  documentation</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-acrg_cf_data_process_misc">
+<span id="acrg-cf-data-process-misc-module"></span><h1>acrg_cf_data_process_misc module<a class="headerlink" href="#module-acrg_cf_data_process_misc" title="Permalink to this headline">¶</a></h1>
+<p>Data processing routines for various networks/stations</p>
+<p>Created on Thu Jan 14 10:47:45 2016</p>
+<p>&#64;author: chxmr</p>
+<dl class="function">
+<dt id="acrg_cf_data_process_misc.cbw">
+<code class="descclassname">acrg_cf_data_process_misc.</code><code class="descname">cbw</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_cf_data_process_misc.html#cbw"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_cf_data_process_misc.cbw" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process Cabauw</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_cf_data_process_misc.ec">
+<code class="descclassname">acrg_cf_data_process_misc.</code><code class="descname">ec</code><span class="sig-paren">(</span><em>site</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_cf_data_process_misc.html#ec"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_cf_data_process_misc.ec" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process Environment Canada data</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_cf_data_process_misc.ec_run">
+<code class="descclassname">acrg_cf_data_process_misc.</code><code class="descname">ec_run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_cf_data_process_misc.html#ec_run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_cf_data_process_misc.ec_run" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="acrg_cf_data_process_misc.gla">
+<code class="descclassname">acrg_cf_data_process_misc.</code><code class="descname">gla</code><span class="sig-paren">(</span><em>species</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_cf_data_process_misc.html#gla"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_cf_data_process_misc.gla" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="acrg_cf_data_process_misc.nies">
+<code class="descclassname">acrg_cf_data_process_misc.</code><code class="descname">nies</code><span class="sig-paren">(</span><em>fname</em>, <em>species</em>, <em>site</em>, <em>units='ppt'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_cf_data_process_misc.html#nies"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_cf_data_process_misc.nies" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="docutils">
+<dt>Examples of files that this will process:</dt>
+<dd><p class="first">fname = &#8220;/data/shared/obs_raw/NIES/HAT/HAT_20170804_PFC-318.xlsx&#8221;
+species = &#8220;PFC-318&#8221;
+site = &#8220;HAT&#8221;</p>
+<p class="last">fname = &#8220;/data/shared/obs_raw/NIES/HAT/HAT_20170628_CHCl3.txt&#8221;
+species = &#8220;CHCl3&#8221;
+site = &#8220;HAT&#8221;</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_cf_data_process_misc.nies_read">
+<code class="descclassname">acrg_cf_data_process_misc.</code><code class="descname">nies_read</code><span class="sig-paren">(</span><em>network</em>, <em>site</em>, <em>global_attributes={}</em>, <em>instrument=''</em>, <em>assume_repeatability=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_cf_data_process_misc.html#nies_read"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_cf_data_process_misc.nies_read" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="acrg_cf_data_process_misc.nies_wdcgg">
+<code class="descclassname">acrg_cf_data_process_misc.</code><code class="descname">nies_wdcgg</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_cf_data_process_misc.html#nies_wdcgg"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_cf_data_process_misc.nies_wdcgg" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="acrg_cf_data_process_misc.niwa">
+<code class="descclassname">acrg_cf_data_process_misc.</code><code class="descname">niwa</code><span class="sig-paren">(</span><em>site</em>, <em>species</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_cf_data_process_misc.html#niwa"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_cf_data_process_misc.niwa" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="acrg_cf_data_process_misc.niwa_run">
+<code class="descclassname">acrg_cf_data_process_misc.</code><code class="descname">niwa_run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_cf_data_process_misc.html#niwa_run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_cf_data_process_misc.niwa_run" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="acrg_cf_data_process_misc.noaa_ccgg">
+<code class="descclassname">acrg_cf_data_process_misc.</code><code class="descname">noaa_ccgg</code><span class="sig-paren">(</span><em>species</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_cf_data_process_misc.html#noaa_ccgg"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_cf_data_process_misc.noaa_ccgg" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="acrg_cf_data_process_misc.noaa_montzka_usa">
+<code class="descclassname">acrg_cf_data_process_misc.</code><code class="descname">noaa_montzka_usa</code><span class="sig-paren">(</span><em>species</em>, <em>network='NOAA'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_cf_data_process_misc.html#noaa_montzka_usa"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_cf_data_process_misc.noaa_montzka_usa" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process Steve Montzka&#8217;s USA files</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_cf_data_process_misc.obspack_co2">
+<code class="descclassname">acrg_cf_data_process_misc.</code><code class="descname">obspack_co2</code><span class="sig-paren">(</span><em>site</em>, <em>height</em>, <em>obspack_name</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_cf_data_process_misc.html#obspack_co2"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_cf_data_process_misc.obspack_co2" title="Permalink to this definition">¶</a></dt>
+<dd><p>obspack_name is one of: &#8216;GLOBALVIEW&#8217;, &#8216;preICOS&#8217; or &#8216;WDCGG&#8217;</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_cf_data_process_misc.saws">
+<code class="descclassname">acrg_cf_data_process_misc.</code><code class="descname">saws</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_cf_data_process_misc.html#saws"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_cf_data_process_misc.saws" title="Permalink to this definition">¶</a></dt>
+<dd><p>South African Weather Service observations</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_cf_data_process_misc.ucam">
+<code class="descclassname">acrg_cf_data_process_misc.</code><code class="descname">ucam</code><span class="sig-paren">(</span><em>site</em>, <em>species</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_cf_data_process_misc.html#ucam"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_cf_data_process_misc.ucam" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process University of Cambridge data files</p>
+<p>Inputs are site code and species</p>
+<p>Assumes that file names start with a date, routine will pick the latest one</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_cf_data_process_misc.ucam_run">
+<code class="descclassname">acrg_cf_data_process_misc.</code><code class="descname">ucam_run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_cf_data_process_misc.html#ucam_run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_cf_data_process_misc.ucam_run" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="acrg_cf_data_process_misc.uci_13ch4">
+<code class="descclassname">acrg_cf_data_process_misc.</code><code class="descname">uci_13ch4</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_cf_data_process_misc.html#uci_13ch4"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_cf_data_process_misc.uci_13ch4" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="acrg_cf_data_process_misc.uea">
+<code class="descclassname">acrg_cf_data_process_misc.</code><code class="descname">uea</code><span class="sig-paren">(</span><em>site</em>, <em>species</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_cf_data_process_misc.html#uea"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_cf_data_process_misc.uea" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process University of East Anglia data files</p>
+<p>Inputs are site code and species</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_cf_data_process_misc.uex">
+<code class="descclassname">acrg_cf_data_process_misc.</code><code class="descname">uex</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_cf_data_process_misc.html#uex"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_cf_data_process_misc.uex" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="acrg_cf_data_process_misc.uhei_13ch4">
+<code class="descclassname">acrg_cf_data_process_misc.</code><code class="descname">uhei_13ch4</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_cf_data_process_misc.html#uhei_13ch4"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_cf_data_process_misc.uhei_13ch4" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="acrg_cf_data_process_misc.uw_13ch4">
+<code class="descclassname">acrg_cf_data_process_misc.</code><code class="descname">uw_13ch4</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_cf_data_process_misc.html#uw_13ch4"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_cf_data_process_misc.uw_13ch4" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="acrg_cf_data_process_misc.wdcgg_read">
+<code class="descclassname">acrg_cf_data_process_misc.</code><code class="descname">wdcgg_read</code><span class="sig-paren">(</span><em>fname</em>, <em>species</em>, <em>permil=False</em>, <em>repeatability_column=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_cf_data_process_misc.html#wdcgg_read"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_cf_data_process_misc.wdcgg_read" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/api/acrg_cf_data_process_misc.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, mrghg.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/api/acrg_cf_data_process_misc.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

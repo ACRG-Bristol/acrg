@@ -1,0 +1,166 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>acrg_time.kz_filter &#8212; acrg  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for acrg_time.kz_filter</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">; :Purpose:</span>
+<span class="sd">;   Filter data using Kolmogorov-Zurbenko filter</span>
+<span class="sd">;   </span>
+<span class="sd">; :Inputs:</span>
+<span class="sd">;   x_in: array of locations of the data to be filtered (e.g. time)</span>
+<span class="sd">;   y_in: array to be filtered</span>
+<span class="sd">;   sigma: array of uncertainties in y_in</span>
+<span class="sd">;   </span>
+<span class="sd">; :Keywords:</span>
+<span class="sd">;   iterations: (input, integer) numeber of filter passes</span>
+<span class="sd">;   window: (input, floating) width of filter window in the same units as x_in</span>
+<span class="sd">;   growth: (input, Boolean) set to true to filter the growth rate of y_in</span>
+<span class="sd">;   min_elements: (input, integer), minimum number of data points that must lie within a particular </span>
+<span class="sd">;     window in order for average to be calculated</span>
+
+
+<span class="sd">Example:</span>
+
+<span class="sd">    from acrg_time import kz_filter</span>
+<span class="sd">    x_smoothed, y_smoothed = kz_filter(x, y, window=12., iterations=4)</span>
+
+
+<span class="sd">Created on Thu Nov 20 12:27:48 2014</span>
+
+<span class="sd">@author: chxmr</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib.dates</span> <span class="k">as</span> <span class="nn">dates</span>
+
+<div class="viewcode-block" id="kz_filter"><a class="viewcode-back" href="../../api/acrg_time.html#acrg_time.kz_filter.kz_filter">[docs]</a><span class="k">def</span> <span class="nf">kz_filter</span><span class="p">(</span><span class="n">x_in</span><span class="p">,</span> <span class="n">y_in</span><span class="p">,</span> \
+    <span class="n">growth</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">iterations</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">window</span><span class="o">=</span><span class="mf">1.</span><span class="p">,</span> <span class="n">min_elements</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+
+    <span class="n">x</span><span class="o">=</span><span class="n">x_in</span><span class="p">[:]</span>
+    <span class="n">y</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">y_in</span><span class="p">)</span>
+
+    <span class="n">x</span><span class="o">=</span><span class="n">dates</span><span class="o">.</span><span class="n">date2num</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">growth</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">y</span><span class="o">=</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span><span class="o">/</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span>
+        <span class="n">x</span><span class="o">=</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">/</span><span class="mf">2.</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">y</span><span class="o">=</span><span class="n">y</span>
+        <span class="n">x</span><span class="o">=</span><span class="n">x</span>
+    
+    <span class="n">ys</span><span class="o">=</span><span class="n">y</span>
+    <span class="n">xStart</span><span class="o">=</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">window</span>
+    <span class="n">xEnd</span><span class="o">=</span><span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">window</span>
+    <span class="n">xiStart</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">x</span> <span class="o">&gt;=</span> <span class="n">xStart</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">xiEnd</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">x</span> <span class="o">&lt;=</span> <span class="n">xEnd</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    
+    <span class="n">xs</span><span class="o">=</span><span class="n">x</span>
+    
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">iterations</span><span class="p">):</span>
+        <span class="n">ys_prev</span><span class="o">=</span><span class="n">ys</span>
+        <span class="n">xs_prev</span><span class="o">=</span><span class="n">xs</span>
+        <span class="k">for</span> <span class="n">xi</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">xs</span><span class="p">)):</span>
+            <span class="n">wh</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span> <span class="p">(</span><span class="n">xs_prev</span> <span class="o">&gt;</span> <span class="n">xs_prev</span><span class="p">[</span><span class="n">xi</span><span class="p">]</span><span class="o">-</span><span class="n">window</span><span class="o">/</span><span class="mf">2.</span><span class="p">)</span> <span class="o">*</span> \
+              <span class="p">(</span><span class="n">xs_prev</span> <span class="o">&lt;=</span> <span class="n">xs_prev</span><span class="p">[</span><span class="n">xi</span><span class="p">]</span><span class="o">+</span><span class="n">window</span><span class="o">/</span><span class="mf">2.</span><span class="p">)</span> <span class="o">*</span> \
+              <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">ys_prev</span><span class="p">))</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">wh</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+                <span class="n">ys</span><span class="p">[</span><span class="n">xi</span><span class="p">]</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">ys_prev</span><span class="p">[</span><span class="n">wh</span><span class="p">])</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">ys</span><span class="p">[</span><span class="n">xi</span><span class="p">]</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s2">&quot;Nan&quot;</span><span class="p">)</span>
+    
+    <span class="n">ys</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">xiStart</span><span class="p">]</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s2">&quot;Nan&quot;</span><span class="p">)</span>
+    <span class="n">ys</span><span class="p">[</span><span class="n">xiEnd</span><span class="p">:]</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s2">&quot;Nan&quot;</span><span class="p">)</span>
+    
+    <span class="n">wh</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">ys</span><span class="p">))</span>
+    <span class="n">ys</span><span class="o">=</span><span class="n">ys</span><span class="p">[</span><span class="n">wh</span><span class="p">]</span>
+    <span class="n">xs</span><span class="o">=</span><span class="n">xs</span><span class="p">[</span><span class="n">wh</span><span class="p">]</span>
+    
+    <span class="n">out_window</span><span class="o">=</span><span class="n">window</span><span class="o">*</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">iterations</span><span class="p">)</span><span class="o">**</span><span class="p">(</span><span class="mf">0.5</span><span class="p">))</span>
+    
+    <span class="n">xs</span><span class="o">=</span><span class="n">dates</span><span class="o">.</span><span class="n">num2date</span><span class="p">(</span><span class="n">xs</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">xs</span><span class="p">,</span> <span class="n">ys</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, mrghg.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,229 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>acrg_MOZART module &#8212; acrg  documentation</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-acrg_MOZART">
+<span id="acrg-mozart-module"></span><h1>acrg_MOZART module<a class="headerlink" href="#module-acrg_MOZART" title="Permalink to this headline">¶</a></h1>
+<p>File to read in standard MOZART output file
+Output will contain the timestamp, lat, lon, surface emissions and concentrations
+If you want any other fields then you&#8217;ll need to add them in</p>
+<blockquote>
+<div>import acrg_MOZART as mozart
+data=mozart.read(&#8216;filename&#8217;)
+print data.time</div></blockquote>
+<p>Can also extract data for sites given lats and lons
+sitefile = a text file with the site acronym, lat and then lon separated by spaces or tabs</p>
+<blockquote>
+<div>import acrg_MOZART as mozart
+data=mozart.filter(&#8216;filename&#8217;, &#8216;sitefile&#8217;)</div></blockquote>
+<dl class="function">
+<dt id="acrg_MOZART.calc_altitude">
+<code class="descclassname">acrg_MOZART.</code><code class="descname">calc_altitude</code><span class="sig-paren">(</span><em>P</em>, <em>P0</em>, <em>h0=7640.0</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_MOZART.html#calc_altitude"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_MOZART.calc_altitude" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="acrg_MOZART.calc_pressure">
+<em class="property">class </em><code class="descclassname">acrg_MOZART.</code><code class="descname">calc_pressure</code><span class="sig-paren">(</span><em>altitude</em>, <em>P0</em>, <em>units='m'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_MOZART.html#calc_pressure"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_MOZART.calc_pressure" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="acrg_MOZART.data_filter_column">
+<em class="property">class </em><code class="descclassname">acrg_MOZART.</code><code class="descname">data_filter_column</code><span class="sig-paren">(</span><em>mzfile</em>, <em>sitefile</em>, <em>conc_tag='_VMR_avrg'</em>, <em>singlesite=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_MOZART.html#data_filter_column"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_MOZART.data_filter_column" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="acrg_MOZART.data_filter_fixed">
+<em class="property">class </em><code class="descclassname">acrg_MOZART.</code><code class="descname">data_filter_fixed</code><span class="sig-paren">(</span><em>mzfile</em>, <em>conc_tag='_VMR_avrg'</em>, <em>sitefile=None</em>, <em>Ave=0</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_MOZART.html#data_filter_fixed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_MOZART.data_filter_fixed" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="acrg_MOZART.data_filter_mobile">
+<em class="property">class </em><code class="descclassname">acrg_MOZART.</code><code class="descname">data_filter_mobile</code><span class="sig-paren">(</span><em>mzfile</em>, <em>conc_tag='_VMR_avrg'</em>, <em>sitefile=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_MOZART.html#data_filter_mobile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_MOZART.data_filter_mobile" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="acrg_MOZART.data_match_mobile">
+<em class="property">class </em><code class="descclassname">acrg_MOZART.</code><code class="descname">data_match_mobile</code><span class="sig-paren">(</span><em>species=0</em>, <em>model_conc=0</em>, <em>model_lat=0</em>, <em>model_lon=0</em>, <em>model_time=0</em>, <em>model_P0=0</em>, <em>model_pressure=0</em>, <em>model_emission=0</em>, <em>obs_conc=0</em>, <em>obs_lat=0</em>, <em>obs_lon=0</em>, <em>obs_time=0</em>, <em>obs_pressure=0</em>, <em>obs_alt=0</em>, <em>obs_alt_units=0</em>, <em>quiet=1</em>, <em>concnames=''</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_MOZART.html#data_match_mobile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_MOZART.data_match_mobile" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="acrg_MOZART.extract_site_info">
+<em class="property">class </em><code class="descclassname">acrg_MOZART.</code><code class="descname">extract_site_info</code><span class="sig-paren">(</span><em>sitefile</em>, <em>sitename</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_MOZART.html#extract_site_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_MOZART.extract_site_info" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="acrg_MOZART.match_latlon">
+<em class="property">class </em><code class="descclassname">acrg_MOZART.</code><code class="descname">match_latlon</code><span class="sig-paren">(</span><em>lat</em>, <em>lon</em>, <em>lat_array</em>, <em>lon_array</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_MOZART.html#match_latlon"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_MOZART.match_latlon" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="acrg_MOZART.plot_map_setup">
+<em class="property">class </em><code class="descclassname">acrg_MOZART.</code><code class="descname">plot_map_setup</code><span class="sig-paren">(</span><em>data</em>, <em>lat</em>, <em>lon</em>, <em>lon_range=None</em>, <em>lat_range=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_MOZART.html#plot_map_setup"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_MOZART.plot_map_setup" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="acrg_MOZART.plot_ncdf_fixed">
+<em class="property">class </em><code class="descclassname">acrg_MOZART.</code><code class="descname">plot_ncdf_fixed</code><span class="sig-paren">(</span><em>data</em>, <em>sitename='mhd'</em>, <em>scaling=1000000.0</em>, <em>x_range=None</em>, <em>save_plot=0</em>, <em>network=None</em>, <em>height=None</em>, <em>speciesname=None</em>, <em>diff=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_MOZART.html#plot_ncdf_fixed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_MOZART.plot_ncdf_fixed" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="acrg_MOZART.plot_ncdf_mobile">
+<em class="property">class </em><code class="descclassname">acrg_MOZART.</code><code class="descname">plot_ncdf_mobile</code><span class="sig-paren">(</span><em>data</em>, <em>sitename='ferry'</em>, <em>save_plot=0</em>, <em>scaling=1000000.0</em>, <em>no_obs=1</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_MOZART.html#plot_ncdf_mobile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_MOZART.plot_ncdf_mobile" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="acrg_MOZART.plotlevel_MZT">
+<code class="descclassname">acrg_MOZART.</code><code class="descname">plotlevel_MZT</code><span class="sig-paren">(</span><em>data</em>, <em>lat=None</em>, <em>lon=None</em>, <em>time=None</em>, <em>level=-1</em>, <em>timestep=0</em>, <em>out_filename=None</em>, <em>range_all=None</em>, <em>lon_range=None</em>, <em>lat_range=None</em>, <em>species=None</em>, <em>species_choice=0</em>, <em>scale=None</em>, <em>rangescale=100</em>, <em>colourbar_label=None</em>, <em>savefig=None</em>, <em>map_data=None</em>, <em>nlevels=10</em>, <em>levels=None</em>, <em>minconc=None</em>, <em>maxconc=None</em>, <em>title=None</em>, <em>outdir='/home/as16992/MOZART/plots/'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_MOZART.html#plotlevel_MZT"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_MOZART.plotlevel_MZT" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="acrg_MOZART.plotprofiles_MZT">
+<code class="descclassname">acrg_MOZART.</code><code class="descname">plotprofiles_MZT</code><span class="sig-paren">(</span><em>data</em>, <em>timestep=0</em>, <em>latindex=48</em>, <em>lonindex=0</em>, <em>out_filename=None</em>, <em>outdir='/home/as13988/Plots/'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_MOZART.html#plotprofiles_MZT"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_MOZART.plotprofiles_MZT" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="acrg_MOZART.read">
+<em class="property">class </em><code class="descclassname">acrg_MOZART.</code><code class="descname">read</code><span class="sig-paren">(</span><em>filename</em>, <em>conc_tag='_VMR_avrg'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_MOZART.html#read"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_MOZART.read" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="acrg_MOZART.read_column_sitefile_nc">
+<em class="property">class </em><code class="descclassname">acrg_MOZART.</code><code class="descname">read_column_sitefile_nc</code><span class="sig-paren">(</span><em>sitefile=0</em>, <em>species='CH4'</em>, <em>dir='/shared_data/snowy/shared/GAUGE/'</em>, <em>month=1</em>, <em>year=2009</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_MOZART.html#read_column_sitefile_nc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_MOZART.read_column_sitefile_nc" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="acrg_MOZART.read_fixed_sitefile_nc">
+<em class="property">class </em><code class="descclassname">acrg_MOZART.</code><code class="descname">read_fixed_sitefile_nc</code><span class="sig-paren">(</span><em>sitefile=None</em>, <em>species='CH4'</em>, <em>dir='/shared_data/snowy/shared/GAUGE/'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_MOZART.html#read_fixed_sitefile_nc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_MOZART.read_fixed_sitefile_nc" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="acrg_MOZART.read_flux">
+<em class="property">class </em><code class="descclassname">acrg_MOZART.</code><code class="descname">read_flux</code><span class="sig-paren">(</span><em>filename</em>, <em>emissions_tag_ncdf='emissions'</em>, <em>time_tag='time'</em>, <em>emiss_varname=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_MOZART.html#read_flux"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_MOZART.read_flux" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="acrg_MOZART.read_mobile_sitefile_nc">
+<em class="property">class </em><code class="descclassname">acrg_MOZART.</code><code class="descname">read_mobile_sitefile_nc</code><span class="sig-paren">(</span><em>sitefile=0</em>, <em>species='CH4'</em>, <em>dir='/shared_data/snowy/shared/GAUGE/'</em>, <em>month=1</em>, <em>year=2003</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_MOZART.html#read_mobile_sitefile_nc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_MOZART.read_mobile_sitefile_nc" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="acrg_MOZART.read_ncdf_fixed">
+<em class="property">class </em><code class="descclassname">acrg_MOZART.</code><code class="descname">read_ncdf_fixed</code><span class="sig-paren">(</span><em>filenames=None</em>, <em>filepattern='*_TT.nc'</em>, <em>species='CH4'</em>, <em>directory=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_MOZART.html#read_ncdf_fixed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_MOZART.read_ncdf_fixed" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="acrg_MOZART.read_ncdf_mobile">
+<em class="property">class </em><code class="descclassname">acrg_MOZART.</code><code class="descname">read_ncdf_mobile</code><span class="sig-paren">(</span><em>filenames=None</em>, <em>species='CH4'</em>, <em>filepattern='*_mobile.nc'</em>, <em>directory=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_MOZART.html#read_ncdf_mobile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_MOZART.read_ncdf_mobile" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="acrg_MOZART.read_sitefile_txt">
+<em class="property">class </em><code class="descclassname">acrg_MOZART.</code><code class="descname">read_sitefile_txt</code><span class="sig-paren">(</span><em>sitefile</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_MOZART.html#read_sitefile_txt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_MOZART.read_sitefile_txt" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="acrg_MOZART.write_ncdf_column">
+<em class="property">class </em><code class="descclassname">acrg_MOZART.</code><code class="descname">write_ncdf_column</code><span class="sig-paren">(</span><em>filtereddata</em>, <em>outdir=0</em>, <em>filename=0</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_MOZART.html#write_ncdf_column"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_MOZART.write_ncdf_column" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="acrg_MOZART.write_ncdf_fixed">
+<em class="property">class </em><code class="descclassname">acrg_MOZART.</code><code class="descname">write_ncdf_fixed</code><span class="sig-paren">(</span><em>filtereddata</em>, <em>outdir=0</em>, <em>filename=0</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_MOZART.html#write_ncdf_fixed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_MOZART.write_ncdf_fixed" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="acrg_MOZART.write_ncdf_mobile">
+<em class="property">class </em><code class="descclassname">acrg_MOZART.</code><code class="descname">write_ncdf_mobile</code><span class="sig-paren">(</span><em>filtereddata</em>, <em>outdir=0</em>, <em>filename=0</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_MOZART.html#write_ncdf_mobile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_MOZART.write_ncdf_mobile" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/api/acrg_MOZART.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, mrghg.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/api/acrg_MOZART.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
