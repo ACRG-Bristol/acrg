@@ -390,7 +390,6 @@ def basis(domain, basis_case, basis_directory = basis_directory):
 
     return basis_ds
 
-
 def basis_boundary_conditions(domain, basis_case, bc_basis_directory=bc_basis_directory):
     """
     The basis_boundary_conditions function reads in all matching files for the boundary conditions 
