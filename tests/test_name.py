@@ -384,6 +384,29 @@ def test_fp_data_merge(data,measurement_param_small,fp_directory,flux_directory,
         assert data_var in ds.data_vars
 
     return out
+
+def test_fp_data_merge_long(data,measurement_param,fp_directory,flux_directory,bc_directory):
+    '''
+    Test footprints_data_merge() function (with one site).
+    Check parameters within dictionary.
+    Check data variables within dataset for site.
+    '''
+    site = measurement_param["sites"][0]
+    expected_keys = [".species",".units",site]
+    expected_data_var = ["mf","dmf","fp","particle_locations_n","particle_locations_e","particle_locations_s",
+                         "particle_locations_w","flux","vmr_n","vmr_e","vmr_s","vmr_w","bc"]
+    
+    out = name.footprints_data_merge(data,domain=measurement_param["domain"],fp_directory=fp_directory,
+                                     flux_directory=flux_directory,bc_directory=bc_directory)
+    ds = out[site]
+    
+    for key in expected_keys:
+        assert key in out
+
+    for data_var in expected_data_var:
+        assert data_var in ds.data_vars
+
+    return out
     
 # TODO:
 #    Add more complete tests for footprints_data_merge function as it is important to check the output
@@ -412,7 +435,6 @@ def fp_sensitivity_param(fp_data_merge,measurement_param_small,basis_function_pa
 
     return input_param
 
-@pytest.mark.basic
 def test_fp_sensitivity(fp_sensitivity_param):
     '''
     Test fp_sensitivity() function can create suitable output object from standard parameters.
@@ -435,7 +457,6 @@ def bc_sensitivity_param(fp_data_merge,measurement_param_small,basis_function_pa
 
     return input_param
 
-@pytest.mark.basic
 def test_bc_sensitivity(bc_sensitivity_param):
     '''
     Test bc_sensitivity() function can create suitable output object from standard parameters.
@@ -568,7 +589,6 @@ def test_filtering_6hrmean(fp_data_H_merge):
     out = name.filtering(fp_data_H_merge,filters)
     assert out
 
-@pytest.mark.basic
 def test_filtering_local(fp_data_H_lr_merge):
     '''
     Test filtering() function can produce an output using "local_influence" filter
