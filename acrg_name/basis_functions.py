@@ -34,11 +34,27 @@ basis_dir = join(data_path, 'NAME/basis_functions/')
 bc_basis_dir = join(data_path,'NAME/bc_basis_functions/')
 
 
-def basis_blocks(domain = "SOUTHASIA", time = "2012-01-01", blocksize = 25, basis_case = "25x25"): 
-
-# creates basis functions in square blocks (e.g., 5x5 grid cells per region)    
+def basis_blocks(domain, time, blocksize, basis_case=None): 
+    """Creates basis functions in square blocks (e.g., 5x5 grid cells per region)
     
-# load a Fields file to get the domain
+    Args:
+        domain (str): String of domain area
+        time (str): Timestamp for basis functions
+        blocksize (int): Number of grid cells to split into (i.e. blocksize x blocksize)
+        basis_case (str, optional): Labelling for basis case. 
+            Default is e.g. '5x5' for blocksize of 5
+    
+    Returns:
+        None
+        Writes blocked basis functions to netcdf
+        
+    Example:
+        basis_blocks(domain = "SOUTHASIA", time = "2012-01-01", blocksize=25)
+    """
+    if basis_case == None:
+        basis_case = str(blocksize)+"x"+str(blocksize)
+    
+    # load a Fields file to get the domain
 
     files = glob.glob(fields_file_path + domain + "/*")
     
@@ -72,14 +88,36 @@ def basis_blocks(domain = "SOUTHASIA", time = "2012-01-01", blocksize = 25, basi
                 
     basis_ds.to_netcdf(basis_dir + domain +"/" + basis_case + "_" + domain + "_" + str(time.year) + ".nc")
 
-def basis_transd(domain = "SOUTHASIA", time = "2012-01-01", basis_case = "transd", sub_lon_min = 65,
-                 sub_lon_max = 100, sub_lat_min = 5, sub_lat_max = 40): 
-
-# creates basis regions for the "transdimensional inversion"
-# creates variable central block based on sub_lat and sub_lon domain
-# and four fixed regions surrounding the central box   
+def basis_transd(domain, time, basis_case = "transd", sub_lon_min = None,
+                 sub_lon_max = None, sub_lat_min = None, sub_lat_max = None): 
+    """Creates basis regions for the "transdimensional inversion".
+    Creates variable central block based on sub_lat and sub_lon domain
+    and four fixed regions surrounding the central box. 
     
-# load a Fields file to get the domain
+    Args:
+        domain (str): String of domain area
+        time (str): Timestamp for basis functions
+        basis_case (str, optional): Labelling for basis case. 
+            Default is "transd" for transdimensional
+        sub_lon_min (float): Minimum longitude of sub domain
+        sub_lon_max (float): Maximum longitude of sub domain
+        sub_lat_min (float): Minimum latitude of sub domain
+        sub_lat_max (float): Maximum latitude of sub domain
+    
+    Returns:
+        None
+        Writes basis regions to netcdf
+        
+    Example:
+        basis_transd(domain = "SOUTHASIA", time = "2012-01-01", basis_case = "transd",
+            sub_lon_min = 65, sub_lon_max = 100, sub_lat_min = 5, sub_lat_max = 40)
+    """  
+    
+    if all([sub_lon_min, sub_lon_max, sub_lat_min, sub_lat_max]) == False:
+        print("At least one sub domain lon or lat is missing on input")
+        return        
+    
+    # load a Fields file to get the domain
 
     files = glob.glob(fields_file_path + domain + "/*")
     
@@ -122,11 +160,25 @@ def basis_transd(domain = "SOUTHASIA", time = "2012-01-01", basis_case = "transd
     basis_ds.to_netcdf(basis_dir + domain +"/" + basis_case + "_" + domain + "_" + str(time.year) + ".nc")
     
 
-def basis_bc_blocks(domain = "SOUTHASIA", basis_case = "NESW", time = "2012-01-01", vertical=1):
+def basis_bc_blocks(domain, basis_case, time, vertical=1):
+    """Creates uniform blocks for boundary conditions in each direction (NESW).
+    Each direction is split into vertical slabs with number specified by input 'vertical'
     
-# creates uniform blocks for each direction (NESW). 
-# Each direction is split into vertical slabs with number specified by input 'vertical'
-    
+    Args:
+        domain (str): String of domain area
+        basis_case (str): Labelling for basis case. 
+        time (str): Timestamp for basis functions
+        vertical (int, optioanl): Number of vertical slabs to split boundary conditions into
+            Default = 1
+            
+    Returns:
+        None
+        Writes basis boundary condition blocks to netcdf
+        
+    Example:
+        basis_bc_blocks(domain='SOUTHASIA', basis_case='NESW', time='2012-01-01', vertical = 4)
+    """
+        
     files = glob.glob(fields_file_path + domain + "/*")
     
     time = pd.to_datetime(time)
@@ -170,9 +222,23 @@ def basis_bc_blocks(domain = "SOUTHASIA", basis_case = "NESW", time = "2012-01-0
 
     basis_ds.to_netcdf(bc_basis_dir + domain +"/" + basis_case + "_" + domain + "_" + time.strftime('%m')+str(time.year) + ".nc")                
     
-def basis_bc_uniform(domain = "SOUTHASIA", basis_case = "uniform", time = "2012-01-01"):
+def basis_bc_uniform(domain, basis_case, time):
+    """Creates creates one uniform scaling for boundary conditions for all directions
     
-# creates one uniform scaling for all directions 
+    Args:
+        domain (str): String of domain area
+        basis_case (str): Labelling for basis case. 
+        time (str): Timestamp for basis functions
+            
+    Returns:
+        None
+        Writes uniform basis boundary condition to netcdf
+        
+    Example:
+        basis_bc_uniform(domain='SOUTHASIA', basis_case='uniform', time='2012-01-01')
+    """
+    
+ 
 
     files = glob.glob(fields_file_path + domain + "/*")
     
@@ -214,15 +280,33 @@ def basis_bc_uniform(domain = "SOUTHASIA", basis_case = "uniform", time = "2012-
                 
     basis_ds.to_netcdf(bc_basis_dir + domain +"/" + basis_case + "_" + domain + "_" + time.strftime('%m')+str(time.year) + ".nc")
 
-def basis_bc_all_gradients(domain = "SOUTHASIA", time = "2012-01-15", species='ch4', units='ppb', basis_case='horiz-strat-grad'):
-# creates five terms for bc basis regions
-#           	     (1) offset to shift entire field up and down
-#				(2) factor to scale the entire field
-#				(3) scaling of N-S gradient
-#				(4) scaling of E-W gradient
-#				(5) scaling of stratospheric gradient
-# technically file is species specific as it calculates the stratosphere based on the vmm but one can 
-# assume/hope that the stratosphere doesn't change by species 
+def basis_bc_all_gradients(domain, time, species, units='ppb', basis_case='horiz-strat-grad'):
+    """Creates five terms for bc basis regions
+        (1) offset to shift entire field up and down
+        (2) factor to scale the entire field
+        (3) scaling of N-S gradient
+        (4) scaling of E-W gradient
+        (5) scaling of stratospheric gradient
+        Technically file is species specific as it calculates the stratosphere 
+        based on the vmm but one can assume/hope that the stratosphere doesn't 
+        change by species 
+        
+    Args:
+        domain (str): String of domain area
+        time (str): Timestamp for basis functions
+        species (str): Species of interest
+        units (str, optional): Units of boundary conditions. Default ppb
+        basis_case (str, optional): Name of basis case. 
+            Default 'horiz-strat-grad'
+            
+    Returns:
+        None
+        Writes basis boundary condition gradients to netcdf
+        
+    Example:
+        basis_bc_all_gradients('SOUTHASIA', '2012-01-01', 'ch4', units='ppb', basis_case='horiz-strat-grad')
+        
+    """
     
     files = glob.glob(fields_file_path + domain + "/*")
     
@@ -372,8 +456,25 @@ def basis_bc_all_gradients(domain = "SOUTHASIA", time = "2012-01-15", species='c
 
  
                
-def basis_bc_pca(domain = "SOUTHASIA", time = "2012-01-15", species='ch4', units='ppb', basis_case='pca', numregions = 4):
-#   breaks the MOZART VMR into the first 'numregions' principal components and scales each PC
+def basis_bc_pca(domain, time, species, units='ppb', basis_case='pca', numregions = 4):
+    """breaks the MOZART VMR into the first 'numregions' principal components and scales each PC
+    
+    Args:
+        domain (str): String of domain area
+        time (str): Timestamp for basis functions
+        species (str): Species of interest
+        units (str, optional): Units of species. Default is 'ppb' 
+        basis_case (str): Labelling for basis case. Default is 'pca'
+        numregions (int): Number of PCs 
+            
+    Returns:
+        None
+        Writes PCA basis boundary condition to netcdf
+        
+    Example:
+        basis_bc_pca("SOUTHASIA", "2012-01-15", 'ch4', units='ppb', basis_case='pca', numregions = 4)
+    """
+#   
 # will be species specific
     
     files = glob.glob(fields_file_path + domain + "/*")
@@ -485,6 +586,8 @@ def basis_bc_pca(domain = "SOUTHASIA", time = "2012-01-15", species='ch4', units
  
  
 def cut_array2d(array, shape):
+    """Needs a description for what it does
+    """
     arr_shape = np.shape(array)
     xcut = np.linspace(0,arr_shape[0],shape[0]+1).astype(np.int)
     ycut = np.linspace(0,arr_shape[1],shape[1]+1).astype(np.int)

@@ -1,0 +1,644 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>GAUGE_comparisons &#8212; acrg  documentation</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for GAUGE_comparisons</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Created on Fri Oct  9 12:24:18 2015</span>
+
+<span class="sd">@author: as13988</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">acrg_agage</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">matplotlib</span>
+<span class="kn">import</span> <span class="nn">pdb</span>
+<span class="kn">import</span> <span class="nn">pandas</span>
+<span class="kn">import</span> <span class="nn">datetime</span> <span class="k">as</span> <span class="nn">dt</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">netCDF4</span>
+<span class="kn">import</span> <span class="nn">bisect</span>
+<span class="kn">from</span> <span class="nn">acrg_GCWerks</span> <span class="k">import</span> <span class="n">acrg_ICP</span>
+<span class="n">reload</span><span class="p">(</span><span class="n">acrg_agage</span><span class="p">)</span>
+
+<span class="c1"># gases available</span>
+<div class="viewcode-block" id="gases_measured"><a class="viewcode-back" href="../api/GAUGE_comparisons.html#GAUGE_comparisons.gases_measured">[docs]</a><span class="k">def</span> <span class="nf">gases_measured</span><span class="p">():</span>
+    <span class="n">gases</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;co2&#39;</span><span class="p">,</span><span class="s1">&#39;CO2&#39;</span><span class="p">,</span><span class="s1">&#39;ch4&#39;</span><span class="p">,</span><span class="s1">&#39;CH4&#39;</span><span class="p">,</span> <span class="s1">&#39;n2o&#39;</span><span class="p">,</span><span class="s1">&#39;N2O&#39;</span><span class="p">,</span><span class="s1">&#39;co&#39;</span><span class="p">,</span><span class="s1">&#39;CO&#39;</span><span class="p">,</span><span class="s1">&#39;sf6&#39;</span><span class="p">,</span><span class="s1">&#39;SF6&#39;</span><span class="p">]</span>
+    
+    <span class="k">return</span> <span class="n">gases</span></div>
+
+<span class="c1"># list of sites</span>
+<div class="viewcode-block" id="sites_list"><a class="viewcode-back" href="../api/GAUGE_comparisons.html#GAUGE_comparisons.sites_list">[docs]</a><span class="k">class</span> <span class="nc">sites_list</span><span class="p">():</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">sites_tag</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;MHD&#39;</span><span class="p">,</span><span class="s1">&#39;TTA&#39;</span><span class="p">,</span><span class="s1">&#39;BSD&#39;</span><span class="p">,</span><span class="s1">&#39;HFD&#39;</span><span class="p">,</span><span class="s1">&#39;RGL&#39;</span><span class="p">,</span><span class="s1">&#39;TAC&#39;</span><span class="p">,</span> <span class="s1">&#39;ferry&#39;</span><span class="p">,</span><span class="s1">&#39;WAO&#39;</span><span class="p">,</span><span class="s1">&#39;HAD&#39;</span><span class="p">,</span><span class="s1">&#39;TIL&#39;</span><span class="p">,</span> <span class="s1">&#39;GLA&#39;</span><span class="p">,</span><span class="s1">&#39;EHL&#39;</span><span class="p">,</span> <span class="s1">&#39;WAO_UCAM&#39;</span><span class="p">,</span> <span class="s1">&#39;BTT&#39;</span><span class="p">]</span>
+        <span class="n">sites_name</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Mace Head&#39;</span><span class="p">,</span><span class="s1">&#39;Angus&#39;</span><span class="p">,</span> <span class="s1">&#39;Bilsdale&#39;</span><span class="p">,</span><span class="s1">&#39;Heathfield&#39;</span><span class="p">,</span><span class="s1">&#39;Ridge Hill&#39;</span><span class="p">,</span><span class="s1">&#39;Tacolneston&#39;</span><span class="p">,</span> <span class="s1">&#39;Ferry&#39;</span><span class="p">,</span><span class="s1">&#39;Weybourne&#39;</span><span class="p">,</span><span class="s1">&#39;Haddenham&#39;</span><span class="p">,</span><span class="s1">&#39;Tilney&#39;</span><span class="p">,</span><span class="s1">&#39;Glatton&#39;</span><span class="p">,</span><span class="s2">&quot;Earl&#39;s Hall&quot;</span><span class="p">,</span> <span class="s1">&#39;Weybourne UCam&#39;</span><span class="p">,</span> <span class="s1">&#39;BT Tower&#39;</span><span class="p">]</span>
+    
+    
+        <span class="bp">self</span><span class="o">.</span><span class="n">sites_tag</span> <span class="o">=</span> <span class="n">sites_tag</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sites_name</span> <span class="o">=</span> <span class="n">sites_name</span></div>
+
+
+<span class="c1"># units information</span>
+<div class="viewcode-block" id="units"><a class="viewcode-back" href="../api/GAUGE_comparisons.html#GAUGE_comparisons.units">[docs]</a><span class="k">def</span> <span class="nf">units</span><span class="p">(</span><span class="n">gas</span><span class="p">):</span>
+    <span class="n">units</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;ppm&#39;</span><span class="p">,</span> <span class="s1">&#39;ppm&#39;</span><span class="p">,</span> <span class="s1">&#39;ppb&#39;</span><span class="p">,</span><span class="s1">&#39;ppb&#39;</span><span class="p">,</span> <span class="s1">&#39;ppb&#39;</span><span class="p">,</span><span class="s1">&#39;ppb&#39;</span><span class="p">,</span><span class="s1">&#39;ppb&#39;</span><span class="p">,</span><span class="s1">&#39;ppb&#39;</span><span class="p">,</span><span class="s1">&#39;ppt&#39;</span><span class="p">,</span><span class="s1">&#39;ppt&#39;</span><span class="p">]</span>
+
+    <span class="n">index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">gases_measured</span><span class="p">())</span> <span class="o">==</span> <span class="n">gas</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>   
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">index</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">unit</span> <span class="o">=</span> <span class="n">units</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">unit</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+        
+    <span class="k">return</span> <span class="s1">&#39;[&#39;</span><span class="o">+</span><span class="n">unit</span><span class="o">+</span><span class="s1">&#39;]&#39;</span></div>
+
+
+<span class="c1"># PLOT CODE!</span>
+<span class="c1"># Make the plot and save it    </span>
+<div class="viewcode-block" id="plotagainstother"><a class="viewcode-back" href="../api/GAUGE_comparisons.html#GAUGE_comparisons.plotagainstother">[docs]</a><span class="k">def</span> <span class="nf">plotagainstother</span><span class="p">(</span><span class="n">site</span><span class="p">,</span> <span class="n">gas</span><span class="p">,</span> <span class="n">suffix</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">yscale</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">xscale</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">other_site</span><span class="o">=</span><span class="s1">&#39;MHD&#39;</span><span class="p">,</span>\
+                     <span class="n">alt_dir_site</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">alt_dir_other</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">dateformatter</span> <span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">network</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>\
+                     <span class="n">site_name</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">other_site_name</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">outdir</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">n2o_scale_site</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>\
+                     <span class="n">n2o_scale_other</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+
+    <span class="c1"># Check if the given site matches</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">sites_list</span><span class="p">()</span><span class="o">.</span><span class="n">sites_tag</span><span class="p">)</span> <span class="o">==</span> <span class="n">site</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span> 
+        <span class="k">if</span> <span class="n">site_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">site_name</span> <span class="o">=</span> <span class="p">(</span><span class="n">sites_list</span><span class="p">()</span><span class="o">.</span><span class="n">sites_name</span><span class="p">)[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">sites_list</span><span class="p">()</span><span class="o">.</span><span class="n">sites_tag</span> <span class="p">)</span> <span class="o">==</span> <span class="n">site</span><span class="p">)[</span><span class="mi">0</span><span class="p">]]</span>
+            <span class="k">if</span> <span class="n">n2o_scale_site</span><span class="p">:</span>
+                <span class="n">site_name</span> <span class="o">=</span> <span class="n">site_name</span> <span class="o">+</span> <span class="s1">&#39;_scaled&#39;</span>
+                <span class="n">suffix</span> <span class="o">=</span> <span class="s1">&#39;scaled&#39;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span> <span class="s1">&#39;Site &#39;</span> <span class="o">+</span> <span class="n">site</span> <span class="o">+</span> <span class="s1">&#39; does not match any listed&#39;</span>
+        <span class="nb">print</span> <span class="s1">&#39;Please use: &#39;</span> 
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">sites_list</span><span class="p">()</span><span class="o">.</span><span class="n">sites_tag</span><span class="p">:</span>
+            <span class="nb">print</span> <span class="n">i</span>
+    
+    <span class="k">if</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">sites_list</span><span class="p">()</span><span class="o">.</span><span class="n">sites_tag</span><span class="p">)</span> <span class="o">==</span> <span class="n">other_site</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>   
+        <span class="k">if</span> <span class="n">other_site_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">other_site_name</span> <span class="o">=</span> <span class="p">(</span><span class="n">sites_list</span><span class="p">()</span><span class="o">.</span><span class="n">sites_name</span><span class="p">)[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">sites_list</span><span class="p">()</span><span class="o">.</span><span class="n">sites_tag</span><span class="p">)</span> <span class="o">==</span> <span class="n">other_site</span><span class="p">)[</span><span class="mi">0</span><span class="p">]]</span>    
+        <span class="k">if</span> <span class="n">n2o_scale_other</span><span class="p">:</span>
+            <span class="n">other_site_name</span> <span class="o">=</span> <span class="n">other_site_name</span> <span class="o">+</span> <span class="s1">&#39;_scaled&#39;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span> <span class="s1">&#39;Site &#39;</span> <span class="o">+</span> <span class="n">other_site</span> <span class="o">+</span> <span class="s1">&#39; does not match any listed&#39;</span>
+        <span class="nb">print</span> <span class="s1">&#39;Please use: &#39;</span> 
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">sites_list</span><span class="p">()</span><span class="o">.</span><span class="n">sites_tag</span><span class="p">:</span>
+            <span class="nb">print</span> <span class="n">i</span>
+            
+    <span class="k">if</span> <span class="n">outdir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>    
+        <span class="n">outdir</span> <span class="o">=</span> <span class="s1">&#39;/home/as13988/GAUGE/MHDComparisons/&#39;</span>
+
+    <span class="k">if</span> <span class="n">site</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;WAO_UCAM&#39;</span><span class="p">]:</span>
+        <span class="n">network</span> <span class="o">=</span> <span class="s1">&#39;UCAM-EA&#39;</span> 
+    
+    <span class="n">site_data</span> <span class="o">=</span> <span class="n">read_site</span><span class="p">(</span><span class="n">site</span><span class="p">,</span> <span class="n">gas</span><span class="p">,</span> <span class="n">network</span><span class="o">=</span><span class="n">network</span><span class="p">,</span> <span class="n">alt_dir</span> <span class="o">=</span> <span class="n">alt_dir_site</span><span class="p">,</span> <span class="n">n2o_scale</span> <span class="o">=</span> <span class="n">n2o_scale_site</span><span class="p">)</span>
+        
+    <span class="k">if</span> <span class="p">(</span><span class="n">site_data</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">site_data</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+        <span class="n">end</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">site_data</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">other_site</span> <span class="o">==</span> <span class="s1">&#39;MHD&#39;</span> <span class="ow">and</span> <span class="n">gas</span> <span class="o">==</span> <span class="s1">&#39;co2&#39;</span><span class="p">:</span>
+            <span class="n">network</span><span class="o">=</span><span class="s1">&#39;LSCE&#39;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">network</span> <span class="o">=</span> <span class="kc">None</span>
+            
+        <span class="n">other_site_data</span> <span class="o">=</span> <span class="n">read_site</span><span class="p">(</span><span class="n">other_site</span><span class="p">,</span> <span class="n">gas</span><span class="p">,</span> <span class="n">start</span> <span class="o">=</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="n">end</span><span class="p">,</span> <span class="n">network</span><span class="o">=</span><span class="n">network</span><span class="p">,</span>\
+        <span class="n">alt_dir</span> <span class="o">=</span> <span class="n">alt_dir_other</span><span class="p">,</span> <span class="n">n2o_scale</span> <span class="o">=</span> <span class="n">n2o_scale_other</span><span class="p">)</span>
+             
+        <span class="k">if</span> <span class="n">other_site_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>             
+             
+            <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+            <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">()</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">site_data</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">site_data</span><span class="p">[</span><span class="s1">&#39;mf&#39;</span><span class="p">],</span> <span class="s1">&#39;ob&#39;</span><span class="p">,</span> <span class="n">mec</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">,</span> <span class="n">ms</span> <span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">other_site_data</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">other_site_data</span><span class="p">[</span><span class="s1">&#39;mf&#39;</span><span class="p">],</span> <span class="s1">&#39;or&#39;</span><span class="p">,</span> <span class="n">mec</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="n">ms</span> <span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+            
+            <span class="c1"># Adjust the tick number on the x axis</span>
+            <span class="n">x_formatter</span> <span class="o">=</span> <span class="n">matplotlib</span><span class="o">.</span><span class="n">dates</span><span class="o">.</span><span class="n">DateFormatter</span><span class="p">(</span><span class="s1">&#39;%m/%Y&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">dateformatter</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">x_formatter</span> <span class="o">=</span> <span class="n">matplotlib</span><span class="o">.</span><span class="n">dates</span><span class="o">.</span><span class="n">DateFormatter</span><span class="p">(</span><span class="n">dateformatter</span><span class="p">)</span>
+
+            <span class="n">x_tickno_formatter</span> <span class="o">=</span> <span class="n">matplotlib</span><span class="o">.</span><span class="n">ticker</span><span class="o">.</span><span class="n">MaxNLocator</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_major_formatter</span><span class="p">(</span><span class="n">x_formatter</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_major_locator</span><span class="p">(</span><span class="n">x_tickno_formatter</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="n">gas</span> <span class="o">+</span> <span class="s1">&#39; &#39;</span> <span class="o">+</span> <span class="n">units</span><span class="p">(</span><span class="n">gas</span><span class="p">))</span>
+        
+            <span class="k">if</span> <span class="n">yscale</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="n">yscale</span><span class="p">)</span>
+        
+            <span class="k">if</span> <span class="n">xscale</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">xscale</span><span class="p">)</span>
+        
+                        
+        
+            <span class="n">plt</span><span class="o">.</span><span class="n">figtext</span><span class="p">(</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">,</span> <span class="n">gas</span><span class="p">,</span> <span class="n">verticalalignment</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span> <span class="n">horizontalalignment</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+        
+            <span class="n">plt</span><span class="o">.</span><span class="n">figtext</span><span class="p">(</span><span class="mf">0.7</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">,</span> <span class="n">other_site_name</span><span class="p">,</span> <span class="n">verticalalignment</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span> <span class="n">horizontalalignment</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">figtext</span><span class="p">(</span><span class="mf">0.7</span><span class="p">,</span> <span class="mf">0.75</span><span class="p">,</span> <span class="n">site_name</span><span class="p">,</span> <span class="n">verticalalignment</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span> <span class="n">horizontalalignment</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">)</span>
+        
+            <span class="k">if</span> <span class="n">suffix</span>  <span class="o">!=</span> <span class="s1">&#39;&#39;</span><span class="p">:</span>
+                <span class="n">suffix</span> <span class="o">=</span> <span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span class="n">suffix</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">outdir</span><span class="o">+</span><span class="n">site</span><span class="o">+</span><span class="s1">&#39;Vs&#39;</span> <span class="o">+</span> <span class="n">other_site</span> <span class="o">+</span> <span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span class="n">gas</span><span class="o">+</span><span class="n">suffix</span> <span class="o">+</span> <span class="s1">&#39;.png&#39;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+            
+        <span class="k">else</span><span class="p">:</span>
+                 <span class="nb">print</span> <span class="s1">&#39;Can not find data for &#39;</span> <span class="o">+</span> <span class="n">gas</span> <span class="o">+</span> <span class="s1">&#39; at &#39;</span> <span class="o">+</span> <span class="n">other_site</span> 
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span> <span class="s1">&#39;Can not find data for &#39;</span> <span class="o">+</span> <span class="n">gas</span> <span class="o">+</span> <span class="s1">&#39; at &#39;</span> <span class="o">+</span> <span class="n">site</span> </div>
+
+<span class="c1"># Make the plot and save it    </span>
+<div class="viewcode-block" id="plotagainstflask"><a class="viewcode-back" href="../api/GAUGE_comparisons.html#GAUGE_comparisons.plotagainstflask">[docs]</a><span class="k">def</span> <span class="nf">plotagainstflask</span><span class="p">(</span><span class="n">site</span><span class="p">,</span> <span class="n">flasksite</span><span class="p">,</span> <span class="n">gas</span><span class="p">,</span> <span class="n">suffix</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">yscale</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">xscale</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">network</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>\
+                 <span class="n">yscale_diff</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">xscale_diff</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">n2o_scale</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">outdir</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">no_bar</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    
+    <span class="n">site_name</span> <span class="o">=</span> <span class="p">(</span><span class="n">sites_list</span><span class="p">()</span><span class="o">.</span><span class="n">sites_name</span><span class="p">)[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">sites_list</span><span class="p">()</span><span class="o">.</span><span class="n">sites_tag</span> <span class="p">)</span> <span class="o">==</span> <span class="n">site</span><span class="p">)[</span><span class="mi">0</span><span class="p">]]</span> 
+    <span class="k">if</span> <span class="n">n2o_scale</span><span class="p">:</span>
+        <span class="n">site_name</span> <span class="o">=</span> <span class="n">site_name</span> <span class="o">+</span> <span class="s1">&#39;_scaled&#39;</span>  
+        <span class="n">suffix</span> <span class="o">=</span> <span class="s1">&#39;scaled&#39;</span>
+    
+    <span class="n">flask_site_name</span> <span class="o">=</span> <span class="p">(</span><span class="n">sites_list</span><span class="p">()</span><span class="o">.</span><span class="n">sites_name</span><span class="p">)[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">sites_list</span><span class="p">()</span><span class="o">.</span><span class="n">sites_tag</span><span class="p">)</span> <span class="o">==</span> <span class="n">flasksite</span><span class="p">)[</span><span class="mi">0</span><span class="p">]]</span>    
+    
+    <span class="k">if</span> <span class="n">outdir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">outdir</span> <span class="o">=</span> <span class="s1">&#39;/home/as13988/GAUGE/FlaskComparisons/&#39;</span>
+        
+    <span class="n">site_data</span> <span class="o">=</span> <span class="n">read_site</span><span class="p">(</span><span class="n">site</span><span class="p">,</span> <span class="n">gas</span><span class="p">,</span> <span class="n">n2o_scale</span> <span class="o">=</span> <span class="n">n2o_scale</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="p">(</span><span class="n">site_data</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">site_data</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+        <span class="n">end</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">site_data</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+        
+        <span class="n">flask_data</span> <span class="o">=</span> <span class="p">(</span><span class="n">read_flask</span><span class="p">(</span><span class="n">flasksite</span><span class="p">,</span> <span class="n">gas</span><span class="p">,</span> <span class="n">start</span> <span class="o">=</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="n">end</span><span class="p">))</span><span class="o">.</span><span class="n">data</span>
+             
+        <span class="k">if</span> <span class="n">flask_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>             
+            <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+            <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">()</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">site_data</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">site_data</span><span class="p">[</span><span class="s1">&#39;mf&#39;</span><span class="p">],</span> <span class="s1">&#39;ob&#39;</span><span class="p">,</span> <span class="n">mec</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">,</span> <span class="n">ms</span> <span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">flask_data</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">flask_data</span><span class="p">[</span><span class="s1">&#39;mf&#39;</span><span class="p">],</span> <span class="s1">&#39;or&#39;</span><span class="p">,</span> <span class="n">mec</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="n">ms</span> <span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+            
+            <span class="c1"># Adjust the tick number on the x axis</span>
+            <span class="n">x_formatter</span> <span class="o">=</span> <span class="n">matplotlib</span><span class="o">.</span><span class="n">dates</span><span class="o">.</span><span class="n">DateFormatter</span><span class="p">(</span><span class="s1">&#39;%m/%Y&#39;</span><span class="p">)</span>
+            <span class="n">x_tickno_formatter</span> <span class="o">=</span> <span class="n">matplotlib</span><span class="o">.</span><span class="n">ticker</span><span class="o">.</span><span class="n">MaxNLocator</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_major_formatter</span><span class="p">(</span><span class="n">x_formatter</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_major_locator</span><span class="p">(</span><span class="n">x_tickno_formatter</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="n">gas</span> <span class="o">+</span> <span class="s1">&#39; &#39;</span> <span class="o">+</span> <span class="n">units</span><span class="p">(</span><span class="n">gas</span><span class="p">))</span>
+        
+            <span class="k">if</span> <span class="n">yscale</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="n">yscale</span><span class="p">)</span>
+        
+            <span class="k">if</span> <span class="n">xscale</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">xscale</span><span class="p">)</span>
+                        
+        
+            <span class="n">plt</span><span class="o">.</span><span class="n">figtext</span><span class="p">(</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">,</span> <span class="n">gas</span><span class="p">,</span> <span class="n">verticalalignment</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span> <span class="n">horizontalalignment</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+        
+            <span class="n">plt</span><span class="o">.</span><span class="n">figtext</span><span class="p">(</span><span class="mf">0.65</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">,</span> <span class="n">flask_site_name</span> <span class="o">+</span> <span class="s1">&#39; flask&#39;</span><span class="p">,</span> <span class="n">verticalalignment</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span> <span class="n">horizontalalignment</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">figtext</span><span class="p">(</span><span class="mf">0.65</span><span class="p">,</span> <span class="mf">0.75</span><span class="p">,</span> <span class="n">site_name</span><span class="o">+</span> <span class="s1">&#39; in situ&#39;</span><span class="p">,</span> <span class="n">verticalalignment</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span> <span class="n">horizontalalignment</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">)</span>
+        
+            <span class="k">if</span> <span class="n">suffix</span> <span class="ow">is</span> <span class="kc">None</span> <span class="p">:</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">outdir</span><span class="o">+</span><span class="n">site</span><span class="o">+</span><span class="s1">&#39;Vs&#39;</span> <span class="o">+</span> <span class="n">flasksite</span> <span class="o">+</span> <span class="s1">&#39;_flask_&#39;</span> <span class="o">+</span> <span class="n">gas</span> <span class="o">+</span> <span class="s1">&#39;.png&#39;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">outdir</span><span class="o">+</span><span class="n">site</span><span class="o">+</span><span class="s1">&#39;Vs&#39;</span> <span class="o">+</span> <span class="n">flasksite</span> <span class="o">+</span> <span class="s1">&#39;_flask_&#39;</span> <span class="o">+</span> <span class="n">gas</span><span class="o">+</span><span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span class="n">suffix</span> <span class="o">+</span> <span class="s1">&#39;.png&#39;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+
+        
+        <span class="c1"># Time match the flask record to the closet in situ record and plot just these</span>
+        <span class="n">matchedindex</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">matcheddiff</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">extendedindex</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">means</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">sds</span> <span class="o">=</span> <span class="p">[]</span>
+        
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">flask_data</span><span class="o">.</span><span class="n">index</span><span class="p">)):</span>
+            <span class="c1"># Find the points either side of the flask data point</span>
+            <span class="n">after</span> <span class="o">=</span> <span class="n">bisect</span><span class="o">.</span><span class="n">bisect_left</span><span class="p">(</span><span class="n">site_data</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">flask_data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            <span class="n">before</span> <span class="o">=</span> <span class="n">bisect</span><span class="o">.</span><span class="n">bisect_right</span><span class="p">(</span><span class="n">site_data</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">flask_data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            
+            <span class="n">afterdiff</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">((</span><span class="n">flask_data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">site_data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="n">after</span><span class="p">])</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">())</span>
+            <span class="n">beforediff</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">((</span><span class="n">flask_data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">site_data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="n">before</span><span class="p">])</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">())</span>
+            
+            <span class="k">if</span> <span class="n">afterdiff</span> <span class="o">&lt;=</span> <span class="n">beforediff</span><span class="p">:</span>
+                <span class="n">matchedindex</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">after</span><span class="p">)</span>
+                <span class="n">matcheddiff</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">afterdiff</span><span class="p">)</span> 
+                <span class="n">extendedindex</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">30</span><span class="p">)</span><span class="o">-</span><span class="mi">15</span><span class="o">+</span><span class="n">after</span><span class="p">)</span> <span class="c1">#get the indicies 15 on each side</span>
+                <span class="n">means</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">site_data</span><span class="p">[</span><span class="s1">&#39;mf&#39;</span><span class="p">][</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">30</span><span class="p">)</span><span class="o">-</span><span class="mi">15</span><span class="o">+</span><span class="n">after</span><span class="p">]))</span>
+                <span class="n">sds</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">site_data</span><span class="p">[</span><span class="s1">&#39;mf&#39;</span><span class="p">][</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">30</span><span class="p">)</span><span class="o">-</span><span class="mi">15</span><span class="o">+</span><span class="n">after</span><span class="p">]))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">matchedindex</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">before</span><span class="p">)</span>
+                <span class="n">matcheddiff</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">beforediff</span><span class="p">)</span> 
+                <span class="n">extendedindex</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">30</span><span class="p">)</span><span class="o">-</span><span class="mi">15</span><span class="o">+</span><span class="n">before</span><span class="p">)</span>
+                <span class="n">means</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">site_data</span><span class="p">[</span><span class="s1">&#39;mf&#39;</span><span class="p">][</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">30</span><span class="p">)</span><span class="o">-</span><span class="mi">15</span><span class="o">+</span><span class="n">before</span><span class="p">]))</span>
+                <span class="n">sds</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">site_data</span><span class="p">[</span><span class="s1">&#39;mf&#39;</span><span class="p">][</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">30</span><span class="p">)</span><span class="o">-</span><span class="mi">15</span><span class="o">+</span><span class="n">before</span><span class="p">]))</span>
+                
+        <span class="c1"># Extract the data at the matched indicies</span>
+        <span class="n">matchedtime</span> <span class="o">=</span> <span class="p">[</span><span class="n">site_data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">matchedindex</span><span class="p">]</span>
+        <span class="n">matchedinsitu</span> <span class="o">=</span> <span class="p">[</span><span class="n">site_data</span><span class="p">[</span><span class="s1">&#39;mf&#39;</span><span class="p">][</span><span class="n">j</span><span class="p">]</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">matchedindex</span><span class="p">]</span>
+        <span class="n">matchedinsitu</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">matchedinsitu</span><span class="p">)</span>
+        
+        <span class="n">extendedtime</span> <span class="o">=</span> <span class="p">[</span><span class="n">site_data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">extendedindex</span><span class="p">]</span>
+        <span class="n">extendedinsitu</span> <span class="o">=</span> <span class="p">[</span><span class="n">site_data</span><span class="p">[</span><span class="s1">&#39;mf&#39;</span><span class="p">][</span><span class="n">j</span><span class="p">]</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">extendedindex</span><span class="p">]</span>
+        <span class="n">extendedinsitu</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">extendedinsitu</span><span class="p">)</span>      
+        
+        
+        <span class="c1"># Remove points which are more than 30 mins away from each other</span>
+        <span class="n">toofar</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">matcheddiff</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1800</span><span class="p">)</span>
+        <span class="n">matchedinsitu</span><span class="p">[</span><span class="n">toofar</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+               
+        <span class="c1"># Calculate differences</span>
+        <span class="n">diffs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">means</span><span class="p">)</span> <span class="o">-</span>  <span class="n">flask_data</span><span class="p">[</span><span class="s1">&#39;mf&#39;</span><span class="p">]</span>
+        
+        <span class="c1"># Remove differences flasks more than 30mins away from the in situ data</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">toofar</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+            <span class="n">diffs</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>        
+            <span class="n">sds</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+          
+        
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+        <span class="n">f</span><span class="p">,</span> <span class="p">(</span><span class="n">ax0</span><span class="p">,</span> <span class="n">ax</span><span class="p">,</span> <span class="n">ax1</span><span class="p">)</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">sharex</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+        <span class="n">ax0</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">extendedtime</span><span class="p">,</span> <span class="n">extendedinsitu</span><span class="p">,</span> <span class="s1">&#39;ob&#39;</span><span class="p">,</span> <span class="n">mec</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">,</span> <span class="n">ms</span> <span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">ax0</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">flask_data</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">flask_data</span><span class="p">[</span><span class="s1">&#39;mf&#39;</span><span class="p">],</span> <span class="s1">&#39;or&#39;</span><span class="p">,</span> <span class="n">mec</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="n">ms</span> <span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        
+        <span class="c1"># Adjust the tick number on the x axis</span>
+        <span class="n">x_formatter</span> <span class="o">=</span> <span class="n">matplotlib</span><span class="o">.</span><span class="n">dates</span><span class="o">.</span><span class="n">DateFormatter</span><span class="p">(</span><span class="s1">&#39;%m/%Y&#39;</span><span class="p">)</span>
+        <span class="n">x_tickno_formatter</span> <span class="o">=</span> <span class="n">matplotlib</span><span class="o">.</span><span class="n">ticker</span><span class="o">.</span><span class="n">MaxNLocator</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+        <span class="n">ax0</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_major_formatter</span><span class="p">(</span><span class="n">x_formatter</span><span class="p">)</span>
+        <span class="n">ax0</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_major_locator</span><span class="p">(</span><span class="n">x_tickno_formatter</span><span class="p">)</span>
+        <span class="n">ax0</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="n">gas</span> <span class="o">+</span> <span class="s1">&#39; &#39;</span> <span class="o">+</span> <span class="n">units</span><span class="p">(</span><span class="n">gas</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">yscale</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">ax0</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="n">yscale</span><span class="p">)</span>
+    
+        <span class="k">if</span> <span class="n">xscale</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">ax0</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">xscale</span><span class="p">)</span>
+        
+        
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">matchedtime</span><span class="p">,</span> <span class="n">matchedinsitu</span><span class="p">,</span> <span class="s1">&#39;ob&#39;</span><span class="p">,</span> <span class="n">mec</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">,</span> <span class="n">ms</span> <span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">flask_data</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">flask_data</span><span class="p">[</span><span class="s1">&#39;mf&#39;</span><span class="p">],</span> <span class="s1">&#39;or&#39;</span><span class="p">,</span> <span class="n">mec</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="n">ms</span> <span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        
+        <span class="c1"># Adjust the tick number on the x axis</span>
+        <span class="n">x_formatter</span> <span class="o">=</span> <span class="n">matplotlib</span><span class="o">.</span><span class="n">dates</span><span class="o">.</span><span class="n">DateFormatter</span><span class="p">(</span><span class="s1">&#39;%m/%Y&#39;</span><span class="p">)</span>
+        <span class="n">x_tickno_formatter</span> <span class="o">=</span> <span class="n">matplotlib</span><span class="o">.</span><span class="n">ticker</span><span class="o">.</span><span class="n">MaxNLocator</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_major_formatter</span><span class="p">(</span><span class="n">x_formatter</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_major_locator</span><span class="p">(</span><span class="n">x_tickno_formatter</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="n">gas</span> <span class="o">+</span> <span class="s1">&#39; &#39;</span> <span class="o">+</span> <span class="n">units</span><span class="p">(</span><span class="n">gas</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">yscale</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="n">yscale</span><span class="p">)</span>
+    
+        <span class="k">if</span> <span class="n">xscale</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">xscale</span><span class="p">)</span>
+        
+        <span class="c1">#ax1.plot(matchedtime, matchedinsitu -  flask_data[&#39;mf&#39;],&#39;ob&#39;, mec=&#39;blue&#39;, ms =2)</span>
+        <span class="k">if</span> <span class="n">no_bar</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>        
+            <span class="n">ax1</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span><span class="n">matchedtime</span><span class="p">,</span> <span class="n">diffs</span><span class="p">,</span><span class="n">yerr</span><span class="o">=</span><span class="n">sds</span><span class="p">,</span><span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;ob&#39;</span><span class="p">,</span> <span class="n">mec</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">,</span> <span class="n">ms</span> <span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ax1</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">matchedtime</span><span class="p">,</span> <span class="n">diffs</span><span class="p">,</span><span class="s1">&#39;ob&#39;</span><span class="p">,</span> <span class="n">mec</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">,</span> <span class="n">ms</span> <span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+      
+        <span class="c1"># Adjust the tick number on the x axis</span>
+        <span class="n">x_formatter</span> <span class="o">=</span> <span class="n">matplotlib</span><span class="o">.</span><span class="n">dates</span><span class="o">.</span><span class="n">DateFormatter</span><span class="p">(</span><span class="s1">&#39;%m/%Y&#39;</span><span class="p">)</span>
+        <span class="n">x_tickno_formatter</span> <span class="o">=</span> <span class="n">matplotlib</span><span class="o">.</span><span class="n">ticker</span><span class="o">.</span><span class="n">MaxNLocator</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+        <span class="n">ax1</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_major_formatter</span><span class="p">(</span><span class="n">x_formatter</span><span class="p">)</span>
+        <span class="n">ax1</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_major_locator</span><span class="p">(</span><span class="n">x_tickno_formatter</span><span class="p">)</span>
+        <span class="n">ax1</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;insitu - flask&#39;</span> <span class="o">+</span> <span class="n">units</span><span class="p">(</span><span class="n">gas</span><span class="p">))</span>
+        
+        <span class="c1"># Plot WMO lines</span>
+        <span class="n">lines</span> <span class="o">=</span> <span class="n">acrg_ICP</span><span class="o">.</span><span class="n">WMOLines</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">gas</span><span class="p">)</span>
+        <span class="n">daterange</span> <span class="o">=</span> <span class="p">[</span><span class="n">extendedtime</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">extendedtime</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span>  
+
+        <span class="n">ax1</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">daterange</span><span class="p">,</span> <span class="n">lines</span><span class="o">.</span><span class="n">plusline</span><span class="p">,</span><span class="s1">&#39;--&#39;</span><span class="p">)</span>
+        <span class="n">ax1</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">daterange</span><span class="p">,</span> <span class="n">lines</span><span class="o">.</span><span class="n">minusline</span><span class="p">,</span><span class="s1">&#39;--&#39;</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">xscale_diff</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">ax1</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">xscale_diff</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">yscale_diff</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">ax1</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="n">yscale_diff</span><span class="p">)</span>  
+            
+        <span class="n">plt</span><span class="o">.</span><span class="n">figtext</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">,</span> <span class="n">site</span> <span class="o">+</span> <span class="s1">&#39; Vs. &#39;</span> <span class="o">+</span> <span class="n">flasksite</span><span class="p">,</span> <span class="n">verticalalignment</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span> <span class="n">horizontalalignment</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figtext</span><span class="p">(</span><span class="mf">0.83</span><span class="p">,</span> <span class="mf">0.84</span><span class="p">,</span> <span class="s1">&#39;Flask&#39;</span><span class="p">,</span> <span class="n">verticalalignment</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span> <span class="n">horizontalalignment</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figtext</span><span class="p">(</span><span class="mf">0.75</span><span class="p">,</span> <span class="mf">0.84</span><span class="p">,</span> <span class="s1">&#39;In situ&#39;</span><span class="p">,</span> <span class="n">verticalalignment</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span> <span class="n">horizontalalignment</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figtext</span><span class="p">(</span><span class="mf">0.15</span><span class="p">,</span> <span class="mf">0.57</span><span class="p">,</span> <span class="s1">&#39;Closest minute&#39;</span><span class="p">,</span> <span class="n">verticalalignment</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span> <span class="n">horizontalalignment</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figtext</span><span class="p">(</span><span class="mf">0.15</span><span class="p">,</span> <span class="mf">0.84</span><span class="p">,</span> <span class="s1">&#39;Closest 30 minutes&#39;</span><span class="p">,</span> <span class="n">verticalalignment</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span> <span class="n">horizontalalignment</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figtext</span><span class="p">(</span><span class="mf">0.15</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="s1">&#39;Closest 30 minutes diff&#39;</span><span class="p">,</span> <span class="n">verticalalignment</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span> <span class="n">horizontalalignment</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+        
+
+        <span class="k">if</span> <span class="n">suffix</span> <span class="ow">is</span> <span class="kc">None</span> <span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">outdir</span><span class="o">+</span><span class="n">site</span><span class="o">+</span><span class="s1">&#39;Vs&#39;</span> <span class="o">+</span> <span class="n">flasksite</span> <span class="o">+</span> <span class="s1">&#39;_flaskmatched_&#39;</span> <span class="o">+</span> <span class="n">gas</span> <span class="o">+</span> <span class="s1">&#39;.png&#39;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">outdir</span><span class="o">+</span><span class="n">site</span><span class="o">+</span><span class="s1">&#39;Vs&#39;</span> <span class="o">+</span> <span class="n">flasksite</span> <span class="o">+</span> <span class="s1">&#39;_flaskmatched_&#39;</span> <span class="o">+</span> <span class="n">gas</span><span class="o">+</span><span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span class="n">suffix</span> <span class="o">+</span> <span class="s1">&#39;.png&#39;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        
+        <span class="c1"># Plot differences against concentration</span>
+        <span class="n">ax2</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">()</span>        
+        <span class="n">ax2</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">means</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">means</span><span class="p">)</span> <span class="o">-</span>  <span class="n">flask_data</span><span class="p">[</span><span class="s1">&#39;mf&#39;</span><span class="p">],</span><span class="n">yerr</span> <span class="o">=</span> <span class="n">sds</span><span class="p">,</span><span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;ob&#39;</span><span class="p">,</span> <span class="n">mec</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">,</span> <span class="n">ms</span> <span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        
+        <span class="c1"># Adjust the tick number on the x axis</span>
+        <span class="n">ax2</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;insitu - flask&#39;</span> <span class="o">+</span> <span class="n">units</span><span class="p">(</span><span class="n">gas</span><span class="p">))</span>
+        <span class="n">ax2</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;insitu&#39;</span><span class="o">+</span> <span class="n">units</span><span class="p">(</span><span class="n">gas</span><span class="p">))</span>
+        
+        <span class="c1"># Plot WMO lines</span>
+        <span class="n">lines</span> <span class="o">=</span> <span class="n">acrg_ICP</span><span class="o">.</span><span class="n">WMOLines</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">gas</span><span class="p">)</span>
+        <span class="n">daterange</span> <span class="o">=</span> <span class="p">[</span><span class="n">extendedtime</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">extendedtime</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span>  
+
+        <span class="n">ax2</span><span class="o">.</span><span class="n">plot</span><span class="p">([</span><span class="n">extendedinsitu</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">extendedinsitu</span><span class="o">.</span><span class="n">max</span><span class="p">()],</span> <span class="n">lines</span><span class="o">.</span><span class="n">plusline</span><span class="p">,</span><span class="s1">&#39;--&#39;</span><span class="p">)</span>
+        <span class="n">ax2</span><span class="o">.</span><span class="n">plot</span><span class="p">([</span><span class="n">extendedinsitu</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">extendedinsitu</span><span class="o">.</span><span class="n">max</span><span class="p">()],</span> <span class="n">lines</span><span class="o">.</span><span class="n">minusline</span><span class="p">,</span><span class="s1">&#39;--&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figtext</span><span class="p">(</span><span class="mf">0.15</span><span class="p">,</span> <span class="mf">0.84</span><span class="p">,</span> <span class="n">site</span> <span class="o">+</span> <span class="s1">&#39; Vs. &#39;</span> <span class="o">+</span> <span class="n">flasksite</span><span class="p">,</span> <span class="n">verticalalignment</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span> <span class="n">horizontalalignment</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">suffix</span> <span class="ow">is</span> <span class="kc">None</span> <span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">outdir</span><span class="o">+</span><span class="n">site</span><span class="o">+</span><span class="s1">&#39;Vs&#39;</span> <span class="o">+</span> <span class="n">flasksite</span> <span class="o">+</span> <span class="s1">&#39;_flaskconc_&#39;</span> <span class="o">+</span> <span class="n">gas</span> <span class="o">+</span> <span class="s1">&#39;.png&#39;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">outdir</span><span class="o">+</span><span class="n">site</span><span class="o">+</span><span class="s1">&#39;Vs&#39;</span> <span class="o">+</span> <span class="n">flasksite</span> <span class="o">+</span> <span class="s1">&#39;_flaskconc_&#39;</span> <span class="o">+</span> <span class="n">gas</span><span class="o">+</span><span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span class="n">suffix</span> <span class="o">+</span> <span class="s1">&#39;.png&#39;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span> <span class="s1">&#39;Can not find data for &#39;</span> <span class="o">+</span> <span class="n">gas</span> <span class="o">+</span> <span class="s1">&#39; at &#39;</span> <span class="o">+</span> <span class="n">site</span> </div>
+
+
+<span class="c1"># READ CODE!</span>
+<span class="c1"># Read in the site data for the given gas</span>
+<div class="viewcode-block" id="read_site"><a class="viewcode-back" href="../api/GAUGE_comparisons.html#GAUGE_comparisons.read_site">[docs]</a><span class="k">def</span> <span class="nf">read_site</span><span class="p">(</span><span class="n">site</span><span class="p">,</span> <span class="n">gas</span><span class="p">,</span> <span class="n">start</span> <span class="o">=</span> <span class="s1">&#39;1900-01-01 00:00:00&#39;</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="s1">&#39;2020-01-01 00:00:00&#39;</span><span class="p">,</span> <span class="n">network</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> \
+            <span class="n">alt_dir</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">n2o_scale</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+   
+    
+    <span class="k">if</span> <span class="n">site</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;WAO&#39;</span><span class="p">,</span><span class="s1">&#39;wao&#39;</span><span class="p">]:</span>
+        <span class="n">site_data</span> <span class="o">=</span> <span class="n">read_wao</span><span class="p">(</span><span class="n">gas</span><span class="p">)</span><span class="o">.</span><span class="n">data</span>   
+        
+    <span class="c1">#if site in [&#39;GLA&#39;,&#39;gla&#39;]:</span>
+        <span class="c1">#site_data = read_gla(gas).data   </span>
+    
+    <span class="k">if</span> <span class="n">site</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;MHD&#39;</span><span class="p">,</span><span class="s1">&#39;mhd&#39;</span><span class="p">]:</span>
+        <span class="n">site_data</span> <span class="o">=</span> <span class="n">read_MHD</span><span class="p">(</span><span class="n">gas</span><span class="p">,</span> <span class="n">start</span> <span class="o">=</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="n">end</span><span class="p">,</span> <span class="n">alt_dir</span><span class="o">=</span><span class="n">alt_dir</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">site</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;WAO_UCAM&#39;</span><span class="p">,</span> <span class="s1">&#39;wao_ucam&#39;</span><span class="p">]:</span>  
+        <span class="n">site_data</span> <span class="o">=</span> <span class="n">acrg_agage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;WAO&#39;</span><span class="p">,</span> <span class="n">gas</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="n">end</span><span class="p">,</span> <span class="n">network</span><span class="o">=</span><span class="n">network</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">site</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;FAAM&#39;</span><span class="p">,</span> <span class="s1">&#39;faam&#39;</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="n">gas</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;co2&#39;</span><span class="p">,</span><span class="s1">&#39;CO2&#39;</span><span class="p">,</span> <span class="s1">&#39;ch4&#39;</span><span class="p">,</span> <span class="s1">&#39;CH4&#39;</span><span class="p">]:</span>
+            <span class="n">instrument</span> <span class="o">=</span> <span class="s1">&#39;FGGA&#39;</span>
+        <span class="k">if</span> <span class="n">gas</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;n2o&#39;</span><span class="p">,</span><span class="s1">&#39;N2O&#39;</span><span class="p">]:</span>
+            <span class="n">instrument</span> <span class="o">=</span> <span class="s1">&#39;QCL&#39;</span>
+        <span class="k">if</span> <span class="n">gas</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;co&#39;</span><span class="p">,</span><span class="s1">&#39;CO&#39;</span><span class="p">]:</span>
+            <span class="n">instrument</span> <span class="o">=</span> <span class="s1">&#39;AL5002&#39;</span>
+            
+        <span class="n">site_data</span> <span class="o">=</span> <span class="n">acrg_agage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;FAAM&#39;</span><span class="p">,</span> <span class="n">gas</span><span class="p">,</span> <span class="n">instrument</span> <span class="o">=</span> <span class="n">instrument</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="n">end</span><span class="p">,</span> <span class="n">network</span><span class="o">=</span><span class="s1">&#39;GAUGE&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">site</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;ferry&#39;</span><span class="p">,</span> <span class="s1">&#39;Ferry&#39;</span><span class="p">]:</span>  
+        <span class="n">site_data</span> <span class="o">=</span> <span class="n">acrg_agage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;ferry&#39;</span><span class="p">,</span> <span class="n">gas</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="n">end</span><span class="p">,</span> <span class="n">network</span><span class="o">=</span><span class="n">network</span><span class="p">,</span> <span class="n">status_flag_unflagged</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">])</span>
+
+    <span class="c1">#if site not in [&#39;WAO&#39;,&#39;wao&#39;,&#39;GLA&#39;,&#39;gla&#39;,&#39;MHD&#39;,&#39;mhd&#39;,&#39;WAO_UCAM&#39;, &#39;wao_ucam&#39;]:</span>
+    <span class="k">if</span> <span class="n">site</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;WAO&#39;</span><span class="p">,</span><span class="s1">&#39;wao&#39;</span><span class="p">,</span><span class="s1">&#39;MHD&#39;</span><span class="p">,</span><span class="s1">&#39;mhd&#39;</span><span class="p">,</span><span class="s1">&#39;WAO_UCAM&#39;</span><span class="p">,</span> <span class="s1">&#39;wao_ucam&#39;</span><span class="p">,</span> <span class="s1">&#39;ferry&#39;</span><span class="p">,</span> <span class="s1">&#39;Ferry&#39;</span><span class="p">]:</span>
+        <span class="n">site_data</span> <span class="o">=</span> <span class="n">acrg_agage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">site</span><span class="p">,</span> <span class="n">gas</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="n">end</span><span class="p">,</span> <span class="n">network</span><span class="o">=</span><span class="n">network</span><span class="p">,</span> <span class="n">alt_dir</span><span class="o">=</span><span class="n">alt_dir</span><span class="p">)</span>
+
+
+    <span class="c1"># Temporary scaling to adjust to x2006A using 2014 factor</span>
+    <span class="k">if</span> <span class="n">n2o_scale</span> <span class="ow">and</span> <span class="n">gas</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;n2o&#39;</span><span class="p">,</span> <span class="s1">&#39;N2O&#39;</span><span class="p">]:</span>
+        <span class="n">site_data</span><span class="p">[</span><span class="s1">&#39;mf&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">site_data</span><span class="p">[</span><span class="s1">&#39;mf&#39;</span><span class="p">]</span><span class="o">*</span><span class="mf">1.0009</span>
+
+    <span class="k">return</span> <span class="n">site_data</span></div>
+
+
+<span class="c1"># Read in the MHD data for the same date range as the site</span>
+<div class="viewcode-block" id="read_MHD"><a class="viewcode-back" href="../api/GAUGE_comparisons.html#GAUGE_comparisons.read_MHD">[docs]</a><span class="k">def</span> <span class="nf">read_MHD</span><span class="p">(</span><span class="n">gas</span><span class="p">,</span> <span class="n">start</span> <span class="o">=</span> <span class="s1">&#39;1900-01-01 00:00:00&#39;</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="s1">&#39;2020-01-01 00:00:00&#39;</span><span class="p">,</span> <span class="n">alt_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        
+    <span class="k">if</span> <span class="n">gas</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;co2&#39;</span><span class="p">,</span> <span class="s1">&#39;CO2&#39;</span><span class="p">]:</span>
+        <span class="n">MHD</span> <span class="o">=</span> <span class="n">acrg_agage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;MHD&#39;</span><span class="p">,</span> <span class="s1">&#39;CO2&#39;</span><span class="p">,</span> <span class="n">instrument</span><span class="o">=</span><span class="s1">&#39;CRDS&#39;</span><span class="p">,</span> <span class="n">network</span><span class="o">=</span><span class="s1">&#39;LSCE&#39;</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="n">end</span><span class="p">,</span> <span class="n">alt_dir</span> <span class="o">=</span> <span class="n">alt_dir</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">MHD</span> <span class="o">=</span> <span class="n">acrg_agage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;MHD&#39;</span><span class="p">,</span> <span class="n">gas</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="n">end</span><span class="p">,</span> <span class="n">alt_dir</span> <span class="o">=</span> <span class="n">alt_dir</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">MHD</span></div>
+
+
+<span class="c1"># Read in the flask files</span>
+<div class="viewcode-block" id="read_flask"><a class="viewcode-back" href="../api/GAUGE_comparisons.html#GAUGE_comparisons.read_flask">[docs]</a><span class="k">class</span> <span class="nc">read_flask</span><span class="p">():</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">site</span><span class="p">,</span> <span class="n">gas</span><span class="p">,</span> <span class="n">start</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        
+        <span class="c1"># need to set some parameters to get the data to reaTACd in properly</span>
+        <span class="n">network</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">height</span> <span class="o">=</span> <span class="kc">None</span>
+        
+        <span class="k">if</span> <span class="n">site</span> <span class="o">==</span><span class="s1">&#39;MHD&#39;</span> <span class="ow">or</span> <span class="n">gas</span> <span class="o">==</span><span class="s1">&#39;mhd&#39;</span><span class="p">:</span> 
+            <span class="n">network</span> <span class="o">=</span> <span class="s1">&#39;GAUGE&#39;</span>
+        
+        <span class="k">if</span> <span class="n">site</span> <span class="o">==</span> <span class="s1">&#39;TAC&#39;</span> <span class="ow">or</span> <span class="n">site</span> <span class="o">==</span> <span class="s1">&#39;tac&#39;</span><span class="p">:</span>
+            <span class="n">network</span> <span class="o">=</span> <span class="s1">&#39;GAUGE&#39;</span>
+            <span class="n">height</span> <span class="o">=</span> <span class="s1">&#39;185m&#39;</span>
+                
+        <span class="n">df</span> <span class="o">=</span> <span class="n">acrg_agage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">site</span><span class="p">,</span> <span class="n">gas</span><span class="p">,</span> <span class="n">network</span><span class="o">=</span><span class="n">network</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="n">height</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="n">end</span><span class="p">)</span>   
+                                       
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">df</span></div>
+
+
+<span class="c1"># Read in the WAO files</span>
+<div class="viewcode-block" id="read_wao"><a class="viewcode-back" href="../api/GAUGE_comparisons.html#GAUGE_comparisons.read_wao">[docs]</a><span class="k">class</span> <span class="nc">read_wao</span><span class="p">():</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gas</span><span class="p">):</span>
+        <span class="n">filenames</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;wao-CO2_weybourne_20120101_compilation_hourlyaverage.na&#39;</span><span class="p">,</span>\
+                    <span class="s1">&#39;wao-rga3_weybourne_20080306_h2-co-compilation-hourlyaverage.na&#39;</span><span class="p">,</span>\
+                    <span class="s1">&#39;wao-ghg-gc-fid_weybourne_20130306_ch4-compilation.na&#39;</span><span class="p">]</span>
+        <span class="n">datadir</span> <span class="o">=</span> <span class="s1">&#39;/home/as13988/GAUGE/WAO/&#39;</span>
+        
+        <span class="c1"># need to figure out which file we want</span>
+        <span class="n">file_tag</span> <span class="o">=</span> <span class="n">gas</span>
+        <span class="n">OK</span> <span class="o">=</span> <span class="kc">None</span>
+        
+        <span class="k">if</span> <span class="n">gas</span> <span class="o">==</span><span class="s1">&#39;co2&#39;</span> <span class="ow">or</span> <span class="n">gas</span> <span class="o">==</span><span class="s1">&#39;CO2&#39;</span><span class="p">:</span> 
+            <span class="n">infile</span> <span class="o">=</span><span class="s1">&#39;wao-CO2_weybourne_20120101_compilation_hourlyaverage.na&#39;</span>
+            <span class="n">OK</span> <span class="o">=</span><span class="mi">1</span>
+            
+        <span class="k">if</span> <span class="n">gas</span> <span class="o">==</span> <span class="s1">&#39;CO&#39;</span> <span class="ow">or</span> <span class="n">gas</span> <span class="o">==</span> <span class="s1">&#39;co&#39;</span><span class="p">:</span>
+            <span class="n">infile</span> <span class="o">=</span> <span class="s1">&#39;wao-rga3_weybourne_20080306_h2-co-compilation-hourlyaverage.na&#39;</span>
+            <span class="n">sd_header</span> <span class="o">=</span> <span class="s1">&#39;CO_ppb_sd&#39;</span>
+            <span class="n">OK</span> <span class="o">=</span> <span class="mi">1</span>
+            
+        <span class="k">if</span> <span class="n">gas</span> <span class="o">==</span><span class="s1">&#39;CH4&#39;</span> <span class="ow">or</span> <span class="n">gas</span> <span class="o">==</span><span class="s1">&#39;ch4&#39;</span><span class="p">:</span>
+            <span class="n">infile</span> <span class="o">=</span> <span class="s1">&#39;wao-ghg-gc-fid_weybourne_20130306_ch4-compilation.na&#39;</span>
+            <span class="n">sd_header</span> <span class="o">=</span> <span class="s1">&#39;CH4_WT_ppb&#39;</span>
+            <span class="n">OK</span> <span class="o">=</span> <span class="mi">1</span>
+        
+        <span class="k">if</span> <span class="n">gas</span> <span class="o">==</span><span class="s1">&#39;N2O&#39;</span> <span class="ow">or</span> <span class="n">gas</span> <span class="o">==</span><span class="s1">&#39;n2o&#39;</span><span class="p">:</span>
+            <span class="n">infile</span> <span class="o">=</span> <span class="s1">&#39;WAO_N2O_SF6_forAnn_151015.csv&#39;</span>
+            <span class="n">sd_header</span> <span class="o">=</span> <span class="s1">&#39;N2O_flag&#39;</span>
+            <span class="n">OK</span> <span class="o">=</span> <span class="mi">2</span>
+            
+        <span class="n">meancolumnheaders</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;CO2_ppm&#39;</span><span class="p">,</span><span class="s1">&#39;CO2_ppm&#39;</span><span class="p">,</span><span class="s1">&#39;CH4_ppb&#39;</span><span class="p">,</span><span class="s1">&#39;CH4_ppb&#39;</span><span class="p">,</span><span class="s1">&#39;N2O_ppb&#39;</span><span class="p">,</span><span class="s1">&#39;N2O_ppb&#39;</span><span class="p">,</span><span class="s1">&#39;CO_ppb&#39;</span><span class="p">,</span><span class="s1">&#39;CO_ppb&#39;</span><span class="p">,</span><span class="s1">&#39;SF6_ppb&#39;</span><span class="p">,</span><span class="s1">&#39;SF6_ppb&#39;</span><span class="p">]</span>         
+        
+        <span class="k">if</span> <span class="n">OK</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>        
+                
+            <span class="n">index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">gases_measured</span><span class="p">())</span> <span class="o">==</span> <span class="n">gas</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>    
+            <span class="n">mean_header</span> <span class="o">=</span> <span class="n">meancolumnheaders</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+            
+            <span class="nb">print</span> <span class="s1">&#39;Reading : &#39;</span> <span class="o">+</span> <span class="n">infile</span>
+            
+            <span class="c1"># read in the file</span>
+            <span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">datadir</span><span class="o">+</span><span class="n">infile</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span>
+            <span class="n">lines</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
+
+            <span class="c1"># Hack for the N2O and SF6 csv file</span>
+            <span class="k">if</span> <span class="n">OK</span>  <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>  
+                <span class="n">noheaderlines</span> <span class="o">=</span> <span class="mi">3</span>
+                <span class="c1"># read in the header for the columns</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="n">pandas</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">datadir</span><span class="o">+</span><span class="n">infile</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="n">noheaderlines</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="s1">&#39;,&#39;</span><span class="p">)</span>
+            
+            <span class="c1"># read in the first line which give you the number of header lines</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">noheaderlines</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="n">lines</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">())[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="c1"># read in the header for the columns</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="n">pandas</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">datadir</span><span class="o">+</span><span class="n">infile</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="n">noheaderlines</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">delim_whitespace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            
+            
+            <span class="k">if</span> <span class="n">infile</span> <span class="o">!=</span> <span class="s1">&#39;wao-CO2_weybourne_20120101_compilation_hourlyaverage.na&#39;</span><span class="p">:</span> 
+                <span class="k">if</span> <span class="n">OK</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                    <span class="n">time</span> <span class="o">=</span> <span class="p">[</span><span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;Date_Time&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">],</span> <span class="s2">&quot;</span><span class="si">%d</span><span class="s2">/%m/%Y %H:%M&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;Date_Time&#39;</span><span class="p">]))]</span>                   
+                    <span class="n">sd</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">))</span>
+                    <span class="n">sd</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">NaN</span>
+                <span class="k">else</span><span class="p">:</span>                    
+                    <span class="n">time</span> <span class="o">=</span> <span class="p">[</span><span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;year&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">]),</span><span class="nb">int</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;month&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">]),</span><span class="nb">int</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;day&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">]),</span><span class="nb">int</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;hour&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">]))</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;year&#39;</span><span class="p">]))]</span>
+                    <span class="n">sd</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">sd_header</span><span class="p">])</span>
+            <span class="k">else</span><span class="p">:</span> 
+                <span class="n">time</span> <span class="o">=</span> <span class="p">[</span><span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">+</span> <span class="s1">&#39; &#39;</span> <span class="o">+</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;Date_and_Time&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">],</span> <span class="s2">&quot;</span><span class="si">%d</span><span class="s2">/%m/%Y %H:%M:%S&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;Date_and_Time&#39;</span><span class="p">]))]</span>
+                <span class="n">sd</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">time</span><span class="p">))</span>
+                <span class="n">sd</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">NAN</span>
+            
+            <span class="n">conc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">mean_header</span><span class="p">])</span>
+            
+            <span class="n">gooddata</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">conc</span> <span class="o">&lt;</span> <span class="mf">9999.0</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="c1"># Some files have 9999.0 some have 9999.99</span>
+    
+            <span class="n">goodtime</span> <span class="o">=</span> <span class="p">[</span><span class="n">time</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">gooddata</span><span class="p">]</span>        
+        
+            <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s2">&quot;mf&quot;</span><span class="p">:</span> <span class="n">conc</span><span class="p">[</span><span class="n">gooddata</span><span class="p">],</span> <span class="s1">&#39;vmf&#39;</span><span class="p">:</span> <span class="n">sd</span><span class="p">[</span><span class="n">gooddata</span><span class="p">]},</span>
+                                      <span class="n">index</span> <span class="o">=</span> <span class="n">goodtime</span><span class="p">)</span>             
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="kc">None</span>
+                                       
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">df</span></div>
+
+<span class="c1"># Read in the GLA files</span>
+<div class="viewcode-block" id="read_gla"><a class="viewcode-back" href="../api/GAUGE_comparisons.html#GAUGE_comparisons.read_gla">[docs]</a><span class="k">class</span> <span class="nc">read_gla</span><span class="p">():</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gas</span><span class="p">):</span>
+
+               
+        <span class="n">filenames</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;GAUGE-insitu-fts_GLA_20141022_ch4-10m.nc&#39;</span><span class="p">,</span>\
+                        <span class="s1">&#39;GAUGE-insitu-fts_GLA_20141022_co2-10m.nc&#39;</span><span class="p">,</span>\
+                        <span class="s1">&#39;GAUGE-insitu-fts_GLA_20141022_co-10m.nc&#39;</span><span class="p">,</span> \
+                        <span class="s1">&#39;GAUGE-insitu-fts_GLA_20141022_n2o-10m.nc&#39;</span><span class="p">]</span>
+
+        <span class="n">datadir</span> <span class="o">=</span> <span class="s1">&#39;/data/shared/obs/GAUGE/&#39;</span>
+        
+        <span class="c1"># need to figure out which file we want</span>
+        <span class="n">file_tag</span> <span class="o">=</span> <span class="n">gas</span>
+        <span class="n">OK</span> <span class="o">=</span> <span class="kc">None</span>
+        
+        <span class="k">if</span> <span class="n">gas</span> <span class="o">==</span><span class="s1">&#39;co2&#39;</span> <span class="ow">or</span> <span class="n">gas</span> <span class="o">==</span><span class="s1">&#39;CO2&#39;</span><span class="p">:</span> 
+            <span class="n">infile</span> <span class="o">=</span> <span class="n">filenames</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">OK</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="n">gas</span> <span class="o">==</span> <span class="s1">&#39;CO&#39;</span> <span class="ow">or</span> <span class="n">gas</span> <span class="o">==</span><span class="s1">&#39;co&#39;</span><span class="p">:</span>
+            <span class="n">infile</span> <span class="o">=</span> <span class="n">filenames</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+            <span class="n">OK</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="n">gas</span> <span class="o">==</span><span class="s1">&#39;CH4&#39;</span> <span class="ow">or</span> <span class="n">gas</span> <span class="o">==</span> <span class="s1">&#39;ch4&#39;</span><span class="p">:</span>
+            <span class="n">infile</span> <span class="o">=</span> <span class="n">filenames</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">OK</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="n">gas</span> <span class="o">==</span><span class="s1">&#39;N2O&#39;</span> <span class="ow">or</span> <span class="n">gas</span> <span class="o">==</span><span class="s1">&#39;n2o&#39;</span><span class="p">:</span>
+            <span class="n">infile</span> <span class="o">=</span> <span class="n">filenames</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+            <span class="n">OK</span> <span class="o">=</span> <span class="mi">1</span>
+            
+        <span class="k">if</span> <span class="n">OK</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>        
+                
+            <span class="nb">print</span> <span class="s1">&#39;Reading : &#39;</span> <span class="o">+</span> <span class="n">infile</span>
+            
+            <span class="c1"># read in the file</span>
+            <span class="n">ncfile</span> <span class="o">=</span> <span class="n">netCDF4</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">datadir</span><span class="o">+</span><span class="n">infile</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span>
+            
+            <span class="n">startdate</span> <span class="o">=</span> <span class="n">ncfile</span><span class="o">.</span><span class="n">variables</span><span class="p">[</span><span class="s1">&#39;datestart&#39;</span><span class="p">]</span>
+            <span class="n">startdate_dt</span> <span class="o">=</span> <span class="p">[</span><span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">),</span> <span class="s1">&#39;%Y%m</span><span class="si">%d</span><span class="s1">&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">startdate</span><span class="p">[:]]</span>
+            <span class="n">startdatesec</span> <span class="o">=</span> <span class="n">ncfile</span><span class="o">.</span><span class="n">variables</span><span class="p">[</span><span class="s1">&#39;datesecstart&#39;</span><span class="p">]</span>
+            <span class="n">time</span> <span class="o">=</span> <span class="p">[</span><span class="n">startdate_dt</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="n">dt</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="n">long</span><span class="p">(</span><span class="n">startdatesec</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">startdatesec</span><span class="p">))]</span>
+
+            <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s2">&quot;mf&quot;</span><span class="p">:</span> <span class="n">ncfile</span><span class="o">.</span><span class="n">variables</span><span class="p">[</span><span class="s1">&#39;mf&#39;</span><span class="p">][:]},</span> <span class="n">index</span> <span class="o">=</span> <span class="n">time</span><span class="p">)</span>
+            <span class="n">df</span><span class="p">[</span><span class="s1">&#39;umf&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ncfile</span><span class="o">.</span><span class="n">variables</span><span class="p">[</span><span class="s1">&#39;u_mf&#39;</span><span class="p">][:]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="kc">None</span>
+                                       
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">df</span></div>
+
+
+
+<span class="c1"># Plot all the sites for a given gas</span>
+<div class="viewcode-block" id="plotallsites"><a class="viewcode-back" href="../api/GAUGE_comparisons.html#GAUGE_comparisons.plotallsites">[docs]</a><span class="k">def</span> <span class="nf">plotallsites</span><span class="p">(</span><span class="n">gas</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">sites_list</span><span class="p">()</span><span class="o">.</span><span class="n">sites_tag</span><span class="p">:</span>
+        <span class="nb">print</span> <span class="s1">&#39;Plotting for site: &#39;</span> <span class="o">+</span> <span class="n">i</span>
+        <span class="n">plotagainstother</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">gas</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, mrghg.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
