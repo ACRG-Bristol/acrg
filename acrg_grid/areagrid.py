@@ -1,25 +1,28 @@
 # -*- coding: utf-8 -*-
 """
 Created on Tue Nov 11 11:23:48 2014
-
-Areagrid: Calculate a grid of areas (m2) given arrays of 
-    latitudes and longitudes
-
-    Example: 
-    
-    import acrg_grid
-    lat=np.arange(50., 60., 1.)
-    lon=np.arange(0., 10., 1.)
-    
-    area=acrg_grid.areagrid(lat, lon)
-
 @author: chxmr
 """
-
 import numpy as np
 
 def areagrid(lat, lon):
+  """Calculates grid of areas (m2) given arrays of latitudes and longitudes
 
+  Args:
+      lat (array): 1D array of latitudes
+      lon (array): 1D array of longitudes
+        
+  Returns:
+      area (array): 2D array of areas of of size lat x lon
+      
+  Example:
+    import acrg_grid
+    lat=np.arange(50., 60., 1.)
+    lon=np.arange(0., 10., 1.)
+    area=acrg_grid.areagrid(lat, lon)
+    
+  """
+        
   re=6367500.0	#radius of Earth in m
   
   dlon=abs(np.mean(lon[1:] - lon[0:-1]))*np.pi/180.
