@@ -720,9 +720,7 @@ def footprints_data_merge(data, domain, load_flux = True,
             site_fp = site_fp.sortby("time")
             
             # Combine datasets to one with coarsest  frequency
-<<<<<<< HEAD
 
-=======
             ds_timefreq = np.nanmedian((site_ds.time.data[1:] - site_ds.time.data[0:-1]).astype('int64')) 
             fp_timefreq = np.nanmedian((site_fp.time.data[1:] - site_fp.time.data[0:-1]).astype('int64')) 
             if ds_timefreq > fp_timefreq:
@@ -730,7 +728,7 @@ def footprints_data_merge(data, domain, load_flux = True,
             elif ds_timefreq < fp_timefreq:
                site_ds = site_ds.resample(str(fp_timefreq/3600e9)+'H', dim='time', how='mean')
                
->>>>>>> c4c9911936b6743de6c9444ab6de0b6e1a58daa1
+
             site_ds = combine_datasets(site_ds, site_fp,
                                        method = "ffill",
                                        tolerance = tolerance)
@@ -1447,34 +1445,7 @@ def plot(fp_data, date, out_filename=None,
         plt.close()
     else:
         plt.show()
-<<<<<<< HEAD
-=======
 
-
-def time_unique(fp_data, time_regular = False):
-    """
-    The time_unique function creates one set of time entries within fp_data (dictionary of datasets)
-    merging across multiple sites if necessary.
-    Time can also be reindexed to be evenly spaced between the minimum and maximum values if time_regular
-    if specified.
-    
-    Args:
-        fp_data      : Output from footprints_data_merge(). Dictionary of datasets.
-        time_regular : Frequency between minumum and maximum to set the time values within fp_data. 
-                       Set at False to not apply this step (Default = False).
-    Returns:
-        xarray.Dataset : Time values extracted for this first site within fp_data
-    """
-    sites = [key for key in fp_data.keys() if key[0] != '.']
-    
-    time_array = fp_data[sites[0]].time
-    time_array.name = "times"
-    time = time_array.to_dataset()
-    if len(sites) > 1:
-        for site in sites[1:]:
-            time.merge(fp_data[site].time.to_dataset(), inplace = True)
->>>>>>> c4c9911936b6743de6c9444ab6de0b6e1a58daa1
-    
 
 def plot3d(fp_data, date, out_filename=None,tolerance = None, 
            log_range = [5., 9.], particle_clevs = [0., 0.009, 0.001], particle_direction = 'nw'):
@@ -1570,6 +1541,20 @@ def animate(fp_data, output_directory,
             plot_function = "plot", time_regular = "1H",
             frame_range = None,
             dpi = 150, interpolate = True):
+
+    """
+        The time_unique function creates one set of time entries within fp_data (dictionary of datasets)
+    merging across multiple sites if necessary.
+    Time can also be reindexed to be evenly spaced between the minimum and maximum values if time_regular
+    if specified.
+    
+    Args:
+        fp_data      : Output from footprints_data_merge(). Dictionary of datasets.
+        time_regular : Frequency between minumum and maximum to set the time values within fp_data. 
+                       Set at False to not apply this step (Default = False).
+    Returns:
+        xarray.Dataset : Time values extracted for this first site within fp_data
+    """
     
     def time_unique(fp_data, time_regular = False):
     
