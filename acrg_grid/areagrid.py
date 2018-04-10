@@ -29,7 +29,7 @@ def areagrid(lat, lon):
   area=np.zeros((len(lat), len(lon)))
   
   for latI in range(len(lat)):
-    if theta[latI] == 0. or theta[latI] == np.pi:
+    if theta[latI] == 0. or np.isclose(theta[latI], np.pi):
       area[latI, :]=(re**2)*abs(np.cos(dlat/2.)-np.cos(0.))*dlon
     else:
       lat1=theta[latI] - dlat/2.
