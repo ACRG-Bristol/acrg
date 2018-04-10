@@ -291,13 +291,6 @@ def output_filename(output_directory,
                                                    time_start.day,
                                                    suffix))
     
-#    return join(output_directory,
-#                site + "/" + \
-#                network + "-" + \
-#                instrument + "_" + \
-#                site + "_" + \
-#                str(time_start.year) + str(time_start.month).zfill(2) + str(time_start.day).zfill(2) + "_" + \
-#                suffix + ".nc")
 
 
 # ICOS
@@ -402,7 +395,7 @@ def icos(site, network = "ICOS",
                                           network,
                                           "CRDS",
                                           site.upper(),
-                                          str(ds.time.to_pandas().index.to_pydatetime()[0].year),
+                                          ds.time.to_pandas().index.to_pydatetime()[0],
                                           ds.species,
                                           params_icos[site]["inlet_rename"][inlet])
 
@@ -1019,7 +1012,7 @@ if __name__ == "__main__":
     crds("RPB", "AGAGE")
 
     # ICOS
-    icos("TTA", network = "DECC")
+#    icos("TTA", network = "DECC")
     icos("MHD", network = "ICOS")
 
     # GAUGE CRDS data
