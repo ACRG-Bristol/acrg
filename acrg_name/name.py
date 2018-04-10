@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.ticker import MaxNLocator
-from matplotlib.colors import BoundaryNorm
 import datetime as dt
 import os
 import glob
@@ -26,7 +25,8 @@ from acrg_time import convert
 import calendar
 import pickle
 from scipy import interpolate
-
+import cartopy.crs as ccrs
+import matplotlib.animation as animation
 
 acrg_path = os.getenv("ACRG_PATH")
 data_path = os.getenv("DATA_PATH")
@@ -581,14 +581,8 @@ def footprints_data_merge(data, domain = None, load_flux = True,
             site_fp = site_fp.sortby("time")
             
             # Combine datasets to one with coarsest  frequency
-            ds_timefreq = np.median((site_ds.time.data[0:-1] - site_ds.time.data[1:]).astype('int64')) 
-            fp_timefreq = np.median((site_fp.time.data[0:-1] - site_fp.time.data[1:]).astype('int64')) 
-            if ds_timefreq > fp_timefreq:
-               site_ds = combine_datasets(site_ds, site_fp,
-                                       method = "ffill",
-                                       tolerance = tolerance)
-            else: 
-               site_ds = combine_datasets(site_fp, site_ds,
+
+            site_ds = combine_datasets(site_ds, site_fp,
                                        method = "ffill",
                                        tolerance = tolerance)
                 
@@ -1066,54 +1060,13 @@ def filtering(datasets_in, filters, keep_missing=False):
     return datasets
 
 
-
-
-
-class plot_map_setup:
-    def __init__(self, fp_data, 
-                 lon_range = None, lat_range = None,
-                 bottom_left = False,
-                 map_resolution = "l"):
-
-        if lon_range is None:
-            lon_range = (min(fp_data.lon.values),
-                         max(fp_data.lon.values))
-        if lat_range is None:
-            lat_range = (min(fp_data.lat.values),
-                         max(fp_data.lat.values))
-        
-        m = Basemap(projection='gall',
-            llcrnrlat=lat_range[0], urcrnrlat=lat_range[1],
-            llcrnrlon=lon_range[0], urcrnrlon=lon_range[1],
-            resolution = map_resolution)
-
-        if bottom_left == False:
-            lons, lats = np.meshgrid(fp_data.lon.values,
-                                     fp_data.lat.values)
-        else:
-            dlon = fp_data.lon.values[1] - fp_data.lon.values[0]
-            dlat = fp_data.lat.values[1] - fp_data.lat.values[0]            
-            lons, lats = np.meshgrid(fp_data.lon.values - dlon,
-                                     fp_data.lat.values - dlat)
-        
-        x, y = m(lons, lats)
-        
-        self.x = x
-        self.y = y
-        self.m = m
-
-
-
 def plot(fp_data, date, out_filename=None, 
          lon_range=None, lat_range=None, log_range = [5., 9.],
          map_data = None, zoom = False,
-         map_resolution = "l", 
-         map_background = "countryborders",
          colormap = plt.cm.YlGnBu,
          tolerance = None,
          interpolate = False,
-         dpi = None,
-         bottom_left = False):
+         dpi = None):
     """
     Plot footprint using pcolormesh.
     
@@ -1152,46 +1105,51 @@ def plot(fp_data, date, out_filename=None,
     # Get sites
     sites = [key for key in fp_data.keys() if key[0] != '.']
     
+    # Find lat and lon range of the footprints
+    if lon_range is None:
+        lons = fp_data[sites[0]].lon.values
+    else:
+        lons_all = fp_data[sites[0]].lon.values
+        indx = np.where((lons_all >= lon_range[0]) & (lons_all <= lon_range[-1]))[0]
+        lons = lons_all[indx]
+        indx = np.where((lons_all < lon_range[0]) | (lons_all > lon_range[-1]))[0]
+                
+    if lat_range is None:
+        lats = fp_data[sites[0]].lat.values
+    else:
+        lats_all = fp_data[sites[0]].lat.values
+        indy = np.where((lats_all >= lat_range[0]) & (lats_all <= lat_range[-1]))[0]
+        lats = lats_all[indy]
+        indy = np.where((lats_all < lat_range[0]) | (lats_all > lat_range[-1]))[0]       
+    
 #    Zoom in. Get min and max release lat lons to zoom the map around the data (+/- 10 degrees)
     if zoom:
         release_lons = [fp_data[key].release_lon for key in fp_data.keys() if key[0] != '.']     
         release_lats = [fp_data[key].release_lat for key in fp_data.keys() if key[0] != '.']
-        
+                      
         lon_range = [np.min(release_lons)-10, np.max(release_lons)+10]
         lat_range = [np.min(release_lats)-10, np.max(release_lats)+10]
 
+        lons_all = fp_data[sites[0]].lon.values
+        lats_all = fp_data[sites[0]].lat.values
+        indx = np.where((lons_all >= lon_range[0]) & (lons_all <= lon_range[-1]))[0]
+        lons = lons_all[indx]
+        indx = np.where((lons_all < lon_range[0]) | (lons_all > lon_range[-1]))[0]
+        indy = np.where((lats_all >= lat_range[0]) & (lats_all <= lat_range[-1]))[0]
+        lats = lats_all[indy]
+        indy = np.where((lats_all < lat_range[0]) | (lats_all > lat_range[-1]))[0]  
     
-    # Get map data
-    if map_data is None:
-        map_data = plot_map_setup(fp_data[sites[0]],
-                                  lon_range = lon_range,
-                                  lat_range = lat_range,
-                                  bottom_left=bottom_left,
-                                  map_resolution = map_resolution)
-
-    # Open plot
-    fig = plt.figure(figsize=(8,8))
-    fig.add_axes([0.1,0.1,0.8,0.8])
-
-    if map_background == "shadedrelief":
-        map_data.m.shadedrelief()
-    elif map_background == "countryborders":
-        map_data.m.drawcoastlines()
-        map_data.m.fillcontinents(color='grey',lake_color=None, alpha = 0.2)
-        map_data.m.drawcountries()
-
+    ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=np.median(lons)))
+    ax.set_extent([lons[0], lons[-1], lats[0], lats[-1]], crs=ccrs.PlateCarree())
+    ax.coastlines()
+    
     #Calculate color levels
-    cmap = colormap
     rp_color = {"SURFACE": "black",
                 "SHIP": "purple",
                 "AIRCRAFT": "red",
                 "SATELLITE": "green"}
             
     levels = MaxNLocator(nbins=256).tick_values(log_range[0], log_range[1])
-    #levels=np.arange(log_range[0],log_range[1], 0.2)
-    norm = BoundaryNorm(levels,
-                        ncolors=cmap.N,
-                        clip=True)
 
     # Create dictionaries and arrays    
     release_lon = {}
@@ -1258,118 +1216,122 @@ def plot(fp_data, date, out_filename=None,
     #Set very small elements to zero
     data = np.log10(data)
     data[np.where(data <  log_range[0])]=np.nan
+
+    # If lat range, lon range or zoom input, then subset data    
+    if lon_range or zoom:
+        data = np.delete(data, indx, axis=1)
+    if lat_range or zoom:
+        data = np.delete(data, indy, axis=0)
     
     #Plot footprint
-    cs = map_data.m.pcolormesh(map_data.x, map_data.y,
-                               np.ma.masked_where(np.isnan(data), data),
-                               cmap = cmap, norm = norm)
+    plt.contourf(lons, lats, data, transform=ccrs.PlateCarree(), cmap = colormap, levels=levels)
 
     # over-plot release location
     if len(release_lon) > 0:
         for site in sites:
             if site in release_lon:
-                rplons, rplats = np.meshgrid(release_lon[site],
-                                             release_lat[site])
-                rpx, rpy = map_data.m(rplons, rplats)
                 if "platform" in site_info[site]:
                     color = rp_color[site_info[site]["platform"].upper()]
                 else:
                     color = rp_color["SURFACE"]
-                rp = map_data.m.scatter(rpx, rpy, 100, color = color)
-    
-    plt.title(str(pd.to_datetime(str(date))), fontsize=20)
+                plt.plot(release_lon[site], release_lat[site], color = color, marker = 'o', markersize=4,  transform=ccrs.PlateCarree())
 
-    cb = map_data.m.colorbar(cs, location='bottom', pad="5%")
-    
-    tick_locator = ticker.MaxNLocator(nbins=10)
+    plt.title(str(pd.to_datetime(str(date))), fontsize=12)
+
+    cb = plt.colorbar(orientation='horizontal', pad=0.05)
+   
+    tick_locator = ticker.MaxNLocator(nbins=np.ceil(log_range[1] - log_range[0]).astype(int))
     cb.locator = tick_locator
     cb.update_ticks()
  
     cb.set_label('log$_{10}$( (nmol/mol) / (mol/m$^2$/s) )', 
-                 fontsize=15)
-    cb.ax.tick_params(labelsize=13) 
+                fontsize=12)
+    cb.ax.tick_params(labelsize=12) 
     
     if out_filename is not None:
         plt.savefig(out_filename, dpi = dpi)
         plt.close()
     else:
         plt.show()
-
-
-def time_unique(fp_data, time_regular = False):
     
-    sites = [key for key in fp_data.keys() if key[0] != '.']
-    
-    time_array = fp_data[sites[0]].time
-    time_array.name = "times"
-    time = time_array.to_dataset()
-    if len(sites) > 1:
-        for site in sites[1:]:
-            time.merge(fp_data[site].time.to_dataset(), inplace = True)
-    
-    time = time.time.to_pandas().index.to_pydatetime()
-    if time_regular is not False:
-        time = pd.date_range(min(time), max(time), freq = time_regular)
-    
-    return time
 
-
-def plot3d(fp_data, date, out_filename=None, 
-           log_range = [5., 9.]):
+def plot3d(fp_data, date, out_filename=None,tolerance = None, 
+           log_range = [5., 9.], particle_clevs = [0., 0.009, 0.001], particle_direction = 'nw'):
 
     """date as string "d/m/y H:M" or datetime object 
     datetime.datetime(yyyy,mm,dd,hh,mm)
     """
+    def fp_nearest(fp, tolerance = None):
+        return fp.reindex_like( \
+                        xray.Dataset(coords = {"time": [date]}),
+                        method = "nearest",
+                        tolerance = tolerance)
     
-    #looks for nearest time point aviable in footprint   
-    if isinstance(date, str):
-        date=dt.datetime.strptime(date, '%d/%m/%Y %H:%M')
+    sites = [key for key in fp_data.keys() if key[0] != '.']
+    fp_data = fp_data[sites[0]]
 
-    time_index = bisect.bisect_left(fp_data.time, date)
+    date = np.datetime64(convert.reftime(date))
+        
+    fp_data = fp_nearest(fp_data, tolerance = tolerance)
+    fp_data = fp_data.squeeze(dim='time')
 
-    data = np.log10(fp_data.fp.values[:,:,time_index].squeeze())
     lon_range = (fp_data.lon.min().values, fp_data.lon.max().values)
     lat_range = (fp_data.lat.min().values, fp_data.lat.max().values)
 
     #Set very small elements to zero
-    data[np.where(data <  log_range[0])]=np.nan
-
-    fig = plt.figure(figsize=(16,12))
-
-    fig.text(0.1, 0.2, str(date), fontsize = 20)
+    fp_data.where(np.log10(fp_data["fp"]) < log_range[0])
     
-    ax = Axes3D(fig)
+    figure = plt.figure(figsize=(8,6), facecolor='w')
+    ax = figure.gca(projection='3d')
     
     ax.set_ylim(lat_range)
     ax.set_xlim(lon_range)
     ax.set_zlim((min(fp_data.height), max(fp_data.height)))
 
     fpX, fpY = np.meshgrid(fp_data.lon, fp_data.lat)
-    
     levels = np.arange(log_range[0], log_range[1], 0.05)
 
-    plfp = ax.contourf(fpX, fpY, data, levels, offset = 0.)
     plnX, plnY = np.meshgrid(fp_data.lon.values.squeeze(), fp_data.height.values.squeeze())
     plwX, plwY = np.meshgrid(fp_data.lat.values.squeeze(), fp_data.height.values.squeeze())
-    pllevs = np.arange(0., 0.0031, 0.0001)
-    
-    plnvals = fp_data.particle_locations_n.values[:,:,time_index].squeeze()
-    plnvals[np.where(plnvals == 0.)]=np.nan
-    plwvals = fp_data.particle_locations_w.values[:,:,time_index].squeeze()
-    plwvals[np.where(plwvals == 0.)]=np.nan
-    plpln = ax.contourf(plnX, plnvals, plnY,
-                        zdir = 'y', offset = max(fp_data.lat.values), levels = pllevs)
-    plplw = ax.contourf(plwvals, plwX, plwY,
-                        zdir = 'x', offset = min(fp_data.lon.values), levels = pllevs)    
+    pllevs = np.arange(particle_clevs[0], particle_clevs[1], particle_clevs[2])
+
+    if particle_direction == 'nw':
+        plfp = ax.contourf(fpX, fpY, np.log10(fp_data["fp"]), levels, offset = 0., cmap = 'inferno_r')
+        plnvals = fp_data.particle_locations_n.values
+        plnvals[np.where(plnvals == 0.)]=np.nan
+        plwvals = fp_data.particle_locations_w.values
+        plwvals[np.where(plwvals == 0.)]=np.nan
+        plpln = ax.contourf(plnvals,plnX, plnY,
+                            zdir = 'y', offset = max(fp_data.lat.values), levels = pllevs, cmap = plt.cm.BuGn)
+        ax.text(150,0,23500,"North", color='red', zdir=None)
+        plplw = ax.contourf(plwvals, plwX, plwY,
+                            zdir = 'x', offset = min(fp_data.lon.values), levels = pllevs, cmap = plt.cm.BuGn)    
+        ax.text(0,0,10000,"West", color='red', zdir=None)
+    elif particle_direction == 'se':
+        plfp = ax.contourf(fpX, fpY, np.fliplr(np.flipud(np.log10(fp_data["fp"]))), levels, offset = 0., cmap = 'inferno_r')
+        plnvals = fp_data.particle_locations_s.values
+        plnvals[np.where(plnvals == 0.)]=np.nan
+        plwvals = fp_data.particle_locations_e.values
+        plwvals[np.where(plwvals == 0.)]=np.nan
+        plpln = ax.contourf(plnvals,plnX, plnY,
+                            zdir = 'y', offset = max(fp_data.lat.values), levels = pllevs, cmap = plt.cm.BuGn)
+        ax.text(150,0,23500,"South", color='red', zdir=None)
+        plplw = ax.contourf(plwvals, plwX, plwY,
+                            zdir = 'x', offset = min(fp_data.lon.values), levels = pllevs, cmap = plt.cm.BuGn)    
+        ax.text(0,0,10000,"East", color='red', zdir=None)
     ax.view_init(50)
 
-    cb = plt.colorbar(plfp, location='bottom', shrink=0.8)
+    plt.title(str(pd.to_datetime(str(date))), fontsize = 12, y=1.08)
+    plt.xlabel('longitude', color='blue')
+    plt.ylabel('latitude', color='blue')
+    ax.set_zlabel('altitude (m)', color='blue')
+    cb = plt.colorbar(plfp, orientation='horizontal', shrink=0.4)
     tick_locator = ticker.MaxNLocator(nbins=7)
     cb.locator = tick_locator
     cb.update_ticks()
     cb.set_label('log$_{10}$( (mol/mol) / (mol/m$^2$/s))', 
-             fontsize=15)
-    cb.ax.tick_params(labelsize=13) 
+             fontsize=12)
+    cb.ax.tick_params(labelsize=12) 
     
     if out_filename is not None:
         plt.savefig(out_filename, dpi = 300)
@@ -1377,35 +1339,43 @@ def plot3d(fp_data, date, out_filename=None,
     else:
         plt.show()
 
-
 def animate(fp_data, output_directory, 
-            lon_range = None, lat_range=None, zoom = False,
+            lon_range = None, lat_range = None, zoom = False,
             log_range = [5., 9.],
             overwrite=True, file_label = 'fp',
             framerate=10, delete_png=False,
             video_os="mac", ffmpeg_only = False,
             plot_function = "plot", time_regular = "1H",
-            frame_limit = None,
+            frame_range = None,
             dpi = 150, interpolate = True):
+    
+    def time_unique(fp_data, time_regular = False):
+    
+        sites = [key for key in fp_data.keys() if key[0] != '.']
+        
+        time_array = fp_data[sites[0]].time
+        time_array.name = "times"
+        time = time_array.to_dataset()
+        if len(sites) > 1:
+            for site in sites[1:]:
+                time.merge(fp_data[site].time.to_dataset(), inplace = True)
+        
+        time = time.time.to_pandas().index.to_pydatetime()
+        if time_regular is not False:
+            time = pd.date_range(min(time), max(time), freq = time_regular)
+        
+        return time
     
     sites = [key for key in fp_data.keys() if key[0] != '.']
     
     if ffmpeg_only is False:
-
-        # Set up map        
-        if zoom:
-            lat_range, lon_range = plot_map_zoom(fp_data)
-        
-        map_data = plot_map_setup(fp_data[sites[0]], 
-                                  lon_range = lon_range, 
-                                  lat_range = lat_range, bottom_left = True)
         
         # Find unique times
         times = time_unique(fp_data,
                             time_regular = time_regular)
         
-        if frame_limit:
-            times = times[:min([frame_limit, len(times)])]
+        if frame_range:
+            times = times[:min([frame_range, len(times)])]
 
         # Start progress bar
         pbar = ProgressBar(maxval=len(times)).start()
@@ -1420,12 +1390,12 @@ def animate(fp_data, output_directory,
                 if plot_function == "plot":
                     plot(fp_data, t, out_filename = fname, 
                          lon_range = lon_range, lat_range= lat_range,
-                         log_range = log_range, map_data = map_data,
+                         log_range = log_range, zoom = zoom,
                          interpolate = interpolate,
                          dpi = dpi)
                 elif plot_function == "plot3d":
-                    plot3d(fp_data[sites[0]], t, out_filename = fname,
-                           log_range = log_range)
+                    plot3d(fp_data, t, out_filename = fname, tolerance = None,
+                           log_range = log_range, particle_direction = 'nw')
                      
             pbar.update(ti)
         pbar.finish()
