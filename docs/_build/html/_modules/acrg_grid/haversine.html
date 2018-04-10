@@ -1,0 +1,258 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>acrg_grid.haversine &#8212; acrg  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for acrg_grid.haversine</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Created on Thu Nov 13 16:03:08 2014</span>
+<span class="sd"> </span>
+<span class="sd">FUNCTIONS</span>
+<span class="sd">___________ </span>
+<span class="sd"> </span>
+<span class="sd"> </span>
+<span class="sd">distance</span>
+
+
+<span class="sd">Calculates the distance in km between two lat/lon pairs using the haversine formula.</span>
+
+
+<span class="sd">Example:</span>
+
+<span class="sd">distance = acrg_grid.haversine.distance(origin, destination, radius=radius)</span>
+
+
+<span class="sd">Inputs:</span>
+
+<span class="sd">origin: [lat_1, lon_1] two element array containing the lat and lon of your original point</span>
+<span class="sd">destination: [lat_2, lon_2] two element array containing the lat and lon of your destination point</span>
+<span class="sd">radius: radius in km. Defaults to 6371km.</span>
+
+
+<span class="sd">Output:</span>
+
+<span class="sd">distance between the two points in km</span>
+
+
+
+<span class="sd">CLASSES</span>
+<span class="sd">_________</span>
+
+
+<span class="sd">multipledistances</span>
+
+<span class="sd">Calculates the distance in km between a single lat/lon pair and a grid of lat/lons using the haversine formula.</span>
+<span class="sd">Also identifies the minimum distance and it&#39;s location.</span>
+
+
+<span class="sd">Example:</span>
+
+<span class="sd">distances = acrg_grid.haversine.multipledistances(origin, lat, lon, radius=radius)</span>
+
+<span class="sd">Inputs:</span>
+
+<span class="sd">origin: [lat_1, lon_1] two element array containing the lat and lon of your original point</span>
+<span class="sd">lat: an array of latitudes of length n</span>
+<span class="sd">lon: an array of longitudes of lenth m</span>
+<span class="sd">radius: radius in km. Defaults to 6371km.</span>
+
+<span class="sd">Outputs:</span>
+
+<span class="sd">distances= an n by m array containing the distances from every point in the nxm grid to the origin</span>
+<span class="sd">mindist = the minimum distance</span>
+<span class="sd">mindist_index = two element array containing the index in n and m corresponding to the minium distance</span>
+<span class="sd">e.g. if the minimum distance is at the 2nd latitude and 17th longitude then mindist_index = [2,17]</span>
+<span class="sd">mindist_loc = two element array containing the lat and lon corresponding to the minimum distance</span>
+
+<span class="sd">@author: as1398</span>
+<span class="sd">Based on code I nicked off a website made by Wayne Dick</span>
+
+
+<span class="sd">28/11/2014</span>
+<span class="sd">MLR: Added distancelist. Given a list of lon/lat pairs, outputs a list of </span>
+<span class="sd">    distances from the &quot;origin&quot;</span>
+<span class="sd">    </span>
+<span class="sd">    e.g. distances=distancelist((origin_lat, origin_lon), zip(lats, lons))</span>
+
+<span class="sd">    if lons and lats are of length N, output will also be of length N</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+ 
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">numba</span> <span class="k">import</span> <span class="n">jit</span>
+<span class="kn">import</span> <span class="nn">pdb</span>
+
+<span class="n">radius</span> <span class="o">=</span> <span class="mi">6371</span> <span class="c1">#km</span>
+ 
+<div class="viewcode-block" id="distance"><a class="viewcode-back" href="../../api/acrg_grid.html#acrg_grid.haversine.distance">[docs]</a><span class="k">def</span> <span class="nf">distance</span><span class="p">(</span><span class="n">origin</span><span class="p">,</span> <span class="n">destination</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="n">radius</span><span class="p">):</span>
+    <span class="n">lat1</span><span class="p">,</span> <span class="n">lon1</span> <span class="o">=</span> <span class="n">origin</span>
+    <span class="n">lat2</span><span class="p">,</span> <span class="n">lon2</span> <span class="o">=</span> <span class="n">destination</span>
+
+    <span class="n">dlat</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">lat2</span><span class="o">-</span><span class="n">lat1</span><span class="p">)</span>
+    <span class="n">dlon</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">lon2</span><span class="o">-</span><span class="n">lon1</span><span class="p">)</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">dlat</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">dlat</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="n">math</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">lat1</span><span class="p">))</span> \
+        <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">lat2</span><span class="p">))</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">dlon</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">dlon</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">c</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">atan2</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">a</span><span class="p">),</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">a</span><span class="p">))</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="n">radius</span> <span class="o">*</span> <span class="n">c</span>
+ 
+    <span class="k">return</span> <span class="n">d</span></div>
+    
+<span class="c1"># Turns the multipledistances into a function rather than a class</span>
+<span class="nd">@jit</span><span class="p">(</span><span class="n">nopython</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<div class="viewcode-block" id="fn_multipledistances"><a class="viewcode-back" href="../../api/acrg_grid.html#acrg_grid.haversine.fn_multipledistances">[docs]</a><span class="k">def</span> <span class="nf">fn_multipledistances</span><span class="p">(</span><span class="n">origin</span><span class="p">,</span> <span class="n">lat</span><span class="p">,</span> <span class="n">lon</span><span class="p">,</span> <span class="n">distances</span><span class="p">,</span> <span class="n">index</span><span class="p">):</span>
+    <span class="c1"># Calculate the distance between the point of interest and </span>
+    <span class="c1">#  ALL points in the grid</span>
+    <span class="n">lat1</span> <span class="o">=</span> <span class="n">origin</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">lon1</span> <span class="o">=</span> <span class="n">origin</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    
+    <span class="c1">#distances = np.zeros(len(lat))    </span>
+    
+    
+    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">index</span><span class="p">:</span>
+        
+        <span class="n">lat2</span> <span class="o">=</span> <span class="n">lat</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+        <span class="n">lon2</span> <span class="o">=</span> <span class="n">lon</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+
+        <span class="n">dlat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">lat2</span><span class="o">-</span><span class="n">lat1</span><span class="p">)</span>
+        <span class="n">dlon</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">lon2</span><span class="o">-</span><span class="n">lon1</span><span class="p">)</span>
+        
+        <span class="n">a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">dlat</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">dlat</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">lat1</span><span class="p">))</span> \
+            <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">lat2</span><span class="p">))</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">dlon</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">dlon</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">arctan2</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">a</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">a</span><span class="p">))</span>
+        
+        <span class="n">d_j</span> <span class="o">=</span> <span class="n">radius</span> <span class="o">*</span> <span class="n">c</span>        
+        
+        <span class="n">distances</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">d_j</span>
+        
+       
+    <span class="k">return</span> <span class="n">distances</span></div>
+    
+    
+<div class="viewcode-block" id="multipledistances"><a class="viewcode-back" href="../../api/acrg_grid.html#acrg_grid.haversine.multipledistances">[docs]</a><span class="k">class</span> <span class="nc">multipledistances</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">origin</span><span class="p">,</span> <span class="n">lat</span><span class="p">,</span> <span class="n">lon</span><span class="p">,</span> \
+        <span class="n">radius</span><span class="o">=</span><span class="n">radius</span><span class="p">):</span>
+          
+        <span class="c1"># Calculate the distance between the point of interest and </span>
+        <span class="c1">#  ALL points in the grid</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">lon</span><span class="p">)):</span>
+            <span class="n">d</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="n">distance</span><span class="p">(</span><span class="n">origin</span><span class="p">,</span> <span class="p">[</span><span class="n">lat</span><span class="p">[</span><span class="n">i</span><span class="p">],</span><span class="n">lon</span><span class="p">[</span><span class="n">j</span><span class="p">]])</span> \
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">lat</span><span class="p">))])</span>
+        
+            <span class="k">if</span> <span class="n">j</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+                <span class="n">distances</span> <span class="o">=</span> <span class="n">d</span>
+            
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">distances</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">distances</span><span class="p">,</span><span class="n">d</span><span class="p">))</span>
+
+
+        <span class="c1"># Find the minimum distance</span>
+        <span class="n">mindist</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">distances</span><span class="p">)</span>
+        
+        <span class="c1"># Extract the lat and lon that correspond to the minimum distance</span>
+        <span class="n">min_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">distances</span> <span class="o">==</span> <span class="n">mindist</span><span class="p">)</span>
+        
+        <span class="n">lat_index</span> <span class="o">=</span> <span class="n">min_index</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span><span class="p">((</span><span class="n">min_index</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">/</span><span class="nb">len</span><span class="p">(</span><span class="n">lat</span><span class="p">))</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">lat</span><span class="p">))</span> 
+        <span class="n">lon_index</span> <span class="o">=</span> <span class="p">(</span><span class="n">min_index</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">/</span><span class="nb">len</span><span class="p">(</span><span class="n">lat</span><span class="p">))</span>
+        
+        <span class="n">mindist_index</span><span class="o">=</span><span class="p">[</span><span class="n">lat_index</span><span class="p">,</span> <span class="n">lon_index</span><span class="p">]</span>        
+        
+        <span class="n">mindist_loc</span><span class="o">=</span><span class="p">[</span><span class="n">lat</span><span class="p">[</span><span class="n">lat_index</span><span class="p">],</span> <span class="n">lon</span><span class="p">[</span><span class="n">lon_index</span><span class="p">]]</span>        
+        
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">distances</span><span class="o">=</span><span class="n">distances</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mindist</span> <span class="o">=</span> <span class="n">mindist</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mindist_index</span> <span class="o">=</span> <span class="n">mindist_index</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mindist_loc</span> <span class="o">=</span> <span class="n">mindist_loc</span></div>
+
+
+<div class="viewcode-block" id="distancelist"><a class="viewcode-back" href="../../api/acrg_grid.html#acrg_grid.haversine.distancelist">[docs]</a><span class="k">def</span> <span class="nf">distancelist</span><span class="p">(</span><span class="n">origin</span><span class="p">,</span> <span class="n">destinations</span><span class="p">,</span> \
+        <span class="n">radius</span><span class="o">=</span><span class="n">radius</span><span class="p">):</span>
+
+    <span class="n">distances</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="n">distance</span><span class="p">(</span><span class="n">origin</span><span class="p">,</span> <span class="n">destination</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="n">radius</span><span class="p">)</span> \
+        <span class="k">for</span> <span class="n">destination</span> <span class="ow">in</span> <span class="n">destinations</span><span class="p">])</span>
+    
+    <span class="k">return</span> <span class="n">distances</span></div>
+    
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, mrghg.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

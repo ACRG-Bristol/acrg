@@ -184,7 +184,7 @@ def interp_time(bc_ds,vmr_var_names, new_times):
 
 def footprints(sitecode_or_filename, fp_directory = fp_directory, 
                flux_directory = flux_directory, bc_directory = bc_directory,
-               start = "2010-01-01", end = "2016-01-01", domain = "EUROPE", height = None,
+               start = None, end = None, domain = None, height = None,
                species = None, emissions_name = None, HiTRes = False,interp_vmr_freq=None):
 
     """
@@ -359,7 +359,7 @@ def boundary_conditions(domain, species, bc_directory=bc_directory):
     return bc_ds
 
 
-def basis(domain, basis_case = 'voronoi', basis_directory = basis_directory):
+def basis(domain, basis_case, basis_directory = basis_directory):
     """
     The basis function reads in the all matching files for the basis as an xarray Dataset.
     
@@ -394,7 +394,7 @@ def basis(domain, basis_case = 'voronoi', basis_directory = basis_directory):
 def basis_boundary_conditions(domain, basis_case = 'NESW', bc_basis_directory=bc_basis_directory):
     """
     """
-    
+   
     files = sorted(glob.glob(bc_basis_directory + domain + "/" +
                     basis_case + '_' + domain + "*.nc"))
 
@@ -511,7 +511,7 @@ def timeseries_boundary_conditions(ds):
            (ds.particle_locations_w*ds.vmr_w).sum(["height", "lat"])
 
     
-def footprints_data_merge(data, domain = None, load_flux = True,
+def footprints_data_merge(data, domain, load_flux = True,
                           calc_timeseries = True, calc_bc = True, HiTRes = False,
                           average = None, site_modifier = {}, height = None,
                           emissions_name = None, interp_vmr_freq = None,
@@ -702,7 +702,7 @@ def footprints_data_merge(data, domain = None, load_flux = True,
     return fp_and_data
 
 
-def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi',
+def fp_sensitivity(fp_and_data, domain, basis_case,
                    basis_directory = basis_directory,
                    HiTRes_flux_name = None, Resid_flux_name=None, flux_directory=flux_directory):
     """
@@ -810,7 +810,7 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi',
     return fp_and_data
 
 
-def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW', bc_basis_directory=bc_basis_directory):
+def bc_sensitivity(fp_and_data, domain, basis_case, bc_basis_directory=bc_basis_directory):
 
     """
     Adds H_bc to the sensitivity matrix, to each site xray dataframe in fp_and_data.

@@ -1,0 +1,1103 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>acrg_GCWerks.cf_data_process &#8212; acrg  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for acrg_GCWerks.cf_data_process</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Created on Fri Oct 16 14:08:07 2015</span>
+
+<span class="sd">@author: chxmr</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">os.path</span> <span class="k">import</span> <span class="n">join</span><span class="p">,</span> <span class="n">split</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="k">import</span> <span class="n">datetime</span> <span class="k">as</span> <span class="n">dt</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="k">import</span> <span class="n">timedelta</span> <span class="k">as</span> <span class="n">td</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+<span class="kn">import</span> <span class="nn">xarray</span> <span class="k">as</span> <span class="nn">xray</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">from</span> <span class="nn">os</span> <span class="k">import</span> <span class="n">getenv</span><span class="p">,</span> <span class="n">stat</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
+
+
+<span class="c1"># Read site info file</span>
+<span class="n">acrg_path</span> <span class="o">=</span> <span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;ACRG_PATH&quot;</span><span class="p">)</span>
+<span class="n">info_file</span> <span class="o">=</span> <span class="n">join</span><span class="p">(</span><span class="n">acrg_path</span><span class="p">,</span>
+                 <span class="s2">&quot;acrg_GCWerks/cf_data_process_parameters.json&quot;</span><span class="p">)</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">info_file</span><span class="p">)</span> <span class="k">as</span> <span class="n">sf</span><span class="p">:</span>
+    <span class="n">params</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">sf</span><span class="p">)</span>
+
+<span class="n">site_info_file</span> <span class="o">=</span> <span class="n">join</span><span class="p">(</span><span class="n">acrg_path</span><span class="p">,</span> <span class="s2">&quot;acrg_site_info.json&quot;</span><span class="p">)</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">site_info_file</span><span class="p">)</span> <span class="k">as</span> <span class="n">sf</span><span class="p">:</span>
+    <span class="n">site_params</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">sf</span><span class="p">)</span>
+
+<span class="c1"># Output unit strings</span>
+<span class="n">unit_species</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;CO2&quot;</span><span class="p">:</span> <span class="s2">&quot;1e-6&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;CH4&quot;</span><span class="p">:</span> <span class="s2">&quot;1e-9&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;C2H6&quot;</span><span class="p">:</span> <span class="s2">&quot;1e-9&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;N2O&quot;</span><span class="p">:</span> <span class="s2">&quot;1e-9&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;CO&quot;</span><span class="p">:</span> <span class="s2">&quot;1e-6&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;CH4C13&quot;</span><span class="p">:</span> <span class="s2">&quot;permil&quot;</span><span class="p">}</span>
+
+<span class="n">unit_interpret</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;ppm&quot;</span><span class="p">:</span> <span class="s2">&quot;1e-6&quot;</span><span class="p">,</span>
+                  <span class="s2">&quot;ppb&quot;</span><span class="p">:</span> <span class="s2">&quot;1e-9&quot;</span><span class="p">,</span>
+                  <span class="s2">&quot;ppt&quot;</span><span class="p">:</span> <span class="s2">&quot;1e-12&quot;</span><span class="p">,</span>
+                  <span class="s2">&quot;else&quot;</span><span class="p">:</span> <span class="s2">&quot;unknown&quot;</span><span class="p">}</span>
+
+<span class="c1"># Default calibration scales</span>
+<span class="n">scales</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;CO2&quot;</span><span class="p">:</span> <span class="s2">&quot;NOAA-2007&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;CH4&quot;</span><span class="p">:</span> <span class="s2">&quot;NOAA-2004A&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;N2O&quot;</span><span class="p">:</span> <span class="s2">&quot;SIO-98&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;CO&quot;</span><span class="p">:</span> <span class="s2">&quot;Unknown&quot;</span><span class="p">}</span>
+
+<span class="c1">## Species long-names for output</span>
+<span class="c1">#species_long = {&quot;CO2&quot;: &quot;carbon_dioxide&quot;,</span>
+<span class="c1">#                &quot;CH4&quot;: &quot;methane&quot;,</span>
+<span class="c1">#                &quot;N2O&quot;: &quot;nitrous_oxide&quot;,</span>
+<span class="c1">#                &quot;CO&quot;: &quot;carbon_monoxide&quot;}</span>
+
+<span class="c1"># For species which need more than just a hyphen removing or changing to lower case</span>
+<span class="c1"># First element of list is the output variable name,</span>
+<span class="c1"># second is the long name for variable standard_name and long_name</span>
+<span class="c1"># Keys are upper case</span>
+<span class="n">species_translator</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;CO2&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;co2&quot;</span><span class="p">,</span> <span class="s2">&quot;carbon_dioxide&quot;</span><span class="p">],</span>
+                      <span class="s2">&quot;CH4&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;ch4&quot;</span><span class="p">,</span> <span class="s2">&quot;methane&quot;</span><span class="p">],</span>
+                      <span class="s2">&quot;ETHANE&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;c2h6&quot;</span><span class="p">,</span> <span class="s2">&quot;ethane&quot;</span><span class="p">],</span>
+                      <span class="s2">&quot;PROPANE&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;c3h8&quot;</span><span class="p">,</span> <span class="s2">&quot;propane&quot;</span><span class="p">],</span>
+                      <span class="s2">&quot;C-PROPANE&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;cc3h8&quot;</span><span class="p">,</span> <span class="s2">&quot;cpropane&quot;</span><span class="p">],</span>
+                      <span class="s2">&quot;BENZENE&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;c6h6&quot;</span><span class="p">,</span> <span class="s2">&quot;benzene&quot;</span><span class="p">],</span>
+                      <span class="s2">&quot;TOLUENE&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;c6h5ch3&quot;</span><span class="p">,</span> <span class="s2">&quot;methylbenzene&quot;</span><span class="p">],</span>
+                      <span class="s2">&quot;ETHENE&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;c2f4&quot;</span><span class="p">,</span> <span class="s2">&quot;ethene&quot;</span><span class="p">],</span>
+                      <span class="s2">&quot;ETHYNE&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;c2f2&quot;</span><span class="p">,</span> <span class="s2">&quot;ethyne&quot;</span><span class="p">],</span>
+                      <span class="s2">&quot;N2O&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;n2o&quot;</span><span class="p">,</span> <span class="s2">&quot;nitrous_oxide&quot;</span><span class="p">],</span>
+                      <span class="s2">&quot;CO&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;co&quot;</span><span class="p">,</span> <span class="s2">&quot;carbon_monoxide&quot;</span><span class="p">],</span>
+                      <span class="s2">&quot;H-1211&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;halon1211&quot;</span><span class="p">,</span> <span class="s2">&quot;halon1211&quot;</span><span class="p">],</span>
+                      <span class="s2">&quot;H-1301&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;halon1301&quot;</span><span class="p">,</span> <span class="s2">&quot;halon1301&quot;</span><span class="p">],</span>
+                      <span class="s2">&quot;H-2402&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;halon2402&quot;</span><span class="p">,</span> <span class="s2">&quot;halon2402&quot;</span><span class="p">],</span>
+                      <span class="s2">&quot;PCE&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;c2cl4&quot;</span><span class="p">,</span> <span class="s2">&quot;tetrachloroethylene&quot;</span><span class="p">],</span>
+                      <span class="s2">&quot;TCE&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;c2hcl3&quot;</span><span class="p">,</span> <span class="s2">&quot;trichloroethylene&quot;</span><span class="p">],</span>
+                      <span class="s2">&quot;PFC-116&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;c2f6&quot;</span><span class="p">,</span> <span class="s2">&quot;hexafluoroethane&quot;</span><span class="p">],</span>
+                      <span class="s2">&quot;PFC-218&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;c3f8&quot;</span><span class="p">,</span> <span class="s2">&quot;octafluoropropane&quot;</span><span class="p">],</span>
+                      <span class="s2">&quot;PFC-318&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;c4f8&quot;</span><span class="p">,</span> <span class="s2">&quot;cyclooctafluorobutane&quot;</span><span class="p">],</span>
+                      <span class="s2">&quot;F-113&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;cfc113&quot;</span><span class="p">,</span> <span class="s2">&quot;cfc113&quot;</span><span class="p">]</span>
+                      <span class="p">}</span>
+
+<span class="c1"># Translate header strings</span>
+<span class="n">crds_header_string_interpret</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;C&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+                                <span class="s2">&quot;stdev&quot;</span><span class="p">:</span> <span class="s2">&quot;_variability&quot;</span><span class="p">,</span>
+                                <span class="s2">&quot;N&quot;</span><span class="p">:</span> <span class="s2">&quot;_number_of_observations&quot;</span><span class="p">}</span>
+
+
+<div class="viewcode-block" id="parser_YYMMDD"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.cf_data_process.parser_YYMMDD">[docs]</a><span class="k">def</span> <span class="nf">parser_YYMMDD</span><span class="p">(</span><span class="n">yymmdd</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">dt</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">yymmdd</span><span class="p">,</span> <span class="s1">&#39;%y%m</span><span class="si">%d</span><span class="s1">&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="get_directories"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.cf_data_process.get_directories">[docs]</a><span class="k">def</span> <span class="nf">get_directories</span><span class="p">(</span><span class="n">default_input_directory</span><span class="p">,</span>
+                    <span class="n">default_output_directory</span><span class="p">,</span>
+                    <span class="n">user_specified_input_directory</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                    <span class="n">user_specified_output_directory</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+
+    <span class="c1"># If an output directory directory is set, use that, otherwise from json file</span>
+    <span class="k">if</span> <span class="n">user_specified_output_directory</span><span class="p">:</span>
+        <span class="n">output_folder</span> <span class="o">=</span> <span class="n">user_specified_output_directory</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">output_folder</span> <span class="o">=</span> <span class="n">default_output_directory</span>
+
+    <span class="c1"># If an input directory directory is set, use that, otherwise from json file</span>
+    <span class="k">if</span> <span class="n">user_specified_input_directory</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">user_specified_output_directory</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;EXITING: You must also specify an output folder if you specify an input&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="n">data_folder</span> <span class="o">=</span> <span class="n">user_specified_input_directory</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">data_folder</span> <span class="o">=</span> <span class="n">default_input_directory</span>
+
+    <span class="k">return</span> <span class="n">data_folder</span><span class="p">,</span> <span class="n">output_folder</span></div>
+
+
+<div class="viewcode-block" id="site_info_attributes"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.cf_data_process.site_info_attributes">[docs]</a><span class="k">def</span> <span class="nf">site_info_attributes</span><span class="p">(</span><span class="n">site</span><span class="p">):</span>
+
+    <span class="n">attributes</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">attributes_list</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;longitude&quot;</span><span class="p">:</span> <span class="s2">&quot;station_longitude&quot;</span><span class="p">,</span>
+                       <span class="s2">&quot;latitude&quot;</span><span class="p">:</span> <span class="s2">&quot;station_latitude&quot;</span><span class="p">,</span>
+                       <span class="s2">&quot;long_name&quot;</span><span class="p">:</span> <span class="s2">&quot;station_long_name&quot;</span><span class="p">,</span>
+                       <span class="s2">&quot;height_station_masl&quot;</span><span class="p">:</span> <span class="s2">&quot;station_height_masl&quot;</span><span class="p">}</span>
+
+    <span class="k">if</span> <span class="n">site</span> <span class="ow">in</span> <span class="n">site_params</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">at</span> <span class="ow">in</span> <span class="n">attributes_list</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">at</span> <span class="ow">in</span> <span class="n">site_params</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="n">attributes</span><span class="p">[</span><span class="n">attributes_list</span><span class="p">[</span><span class="n">at</span><span class="p">]]</span> <span class="o">=</span> <span class="n">site_params</span><span class="p">[</span><span class="n">site</span><span class="p">][</span><span class="n">at</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">attributes</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="attributes"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.cf_data_process.attributes">[docs]</a><span class="k">def</span> <span class="nf">attributes</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">species</span><span class="p">,</span> <span class="n">site</span><span class="p">,</span>
+               <span class="n">global_attributes</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+               <span class="n">units</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+               <span class="n">scale</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+               <span class="n">sampling_period</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Format attributes for netCDF file</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Rename species</span>
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">ds</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">species</span> <span class="ow">in</span> <span class="n">key</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">species</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="ow">in</span> <span class="n">species_translator</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="c1"># Rename based on species_translator, if available</span>
+                <span class="n">species_out</span> <span class="o">=</span> <span class="n">species_translator</span><span class="p">[</span><span class="n">species</span><span class="o">.</span><span class="n">upper</span><span class="p">()][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Rename species to be lower case and without hyphens</span>
+                <span class="n">species_out</span> <span class="o">=</span> <span class="n">species</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="n">ds</span><span class="o">.</span><span class="n">rename</span><span class="p">({</span><span class="n">key</span><span class="p">:</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">species</span><span class="p">,</span> <span class="n">species_out</span><span class="p">)},</span> <span class="n">inplace</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+
+    <span class="c1"># Global attributes</span>
+    <span class="c1">#############################################</span>
+    <span class="k">if</span> <span class="n">global_attributes</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">global_attributes</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="c1"># Add some defaults</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;global_attributes&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+        <span class="n">global_attributes</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+    <span class="n">global_attributes</span><span class="p">[</span><span class="s2">&quot;File created&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">dt</span><span class="o">.</span><span class="n">now</span><span class="p">())</span>
+    <span class="n">global_attributes</span><span class="p">[</span><span class="s2">&quot;Conventions&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;CF-1.6&quot;</span>
+
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">values</span> <span class="ow">in</span> <span class="n">global_attributes</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+        <span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span>
+
+    <span class="c1"># Add some site attributes</span>
+    <span class="n">global_attributes_site</span> <span class="o">=</span> <span class="n">site_info_attributes</span><span class="p">(</span><span class="n">site</span><span class="o">.</span><span class="n">upper</span><span class="p">())</span>
+    <span class="k">if</span> <span class="n">global_attributes_site</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">values</span> <span class="ow">in</span> <span class="n">global_attributes_site</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+            <span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span>
+
+    <span class="c1"># Add calibration scale</span>
+    <span class="k">if</span> <span class="n">scale</span><span class="p">:</span>
+        <span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;Calibration_scale&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">scale</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">species</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="ow">in</span> <span class="n">scales</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;Calibration_scale&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">scales</span><span class="p">[</span><span class="n">species</span><span class="o">.</span><span class="n">upper</span><span class="p">()]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;Calibration_scale&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;unknown&quot;</span>
+
+    <span class="c1"># Add species name</span>
+    <span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;species&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">species_out</span>
+
+    <span class="c1"># Species-specific attributes</span>
+    <span class="c1">#############################################</span>
+
+    <span class="c1"># Long name</span>
+    <span class="k">if</span> <span class="n">species</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="ow">in</span> <span class="n">species_translator</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="n">sp_long</span> <span class="o">=</span> <span class="s2">&quot;mole_fraction_of_&quot;</span> <span class="o">+</span> <span class="n">species_translator</span><span class="p">[</span><span class="n">species</span><span class="o">.</span><span class="n">upper</span><span class="p">()][</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;_in_air&quot;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">sp_long</span> <span class="o">=</span> <span class="s2">&quot;mole_fraction_of_&quot;</span> <span class="o">+</span> <span class="n">species_out</span> <span class="o">+</span> <span class="s2">&quot;_in_air&quot;</span>
+
+    <span class="n">ancillary_variables</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">ds</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+
+        <span class="k">if</span> <span class="n">species_out</span> <span class="ow">in</span> <span class="n">key</span><span class="p">:</span>
+
+            <span class="c1"># Standard name attribute</span>
+            <span class="n">ds</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;standard_name&quot;</span><span class="p">]</span><span class="o">=</span><span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">species_out</span><span class="p">,</span> <span class="n">sp_long</span><span class="p">)</span>
+            <span class="n">ds</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;long_name&quot;</span><span class="p">]</span><span class="o">=</span><span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">species_out</span><span class="p">,</span> <span class="n">sp_long</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="p">(</span><span class="n">key</span> <span class="o">==</span> <span class="n">species_out</span><span class="p">)</span> <span class="ow">or</span> \
+                <span class="p">(</span><span class="s2">&quot;variability&quot;</span> <span class="ow">in</span> <span class="n">key</span><span class="p">)</span> <span class="ow">or</span> \
+                <span class="p">(</span><span class="s2">&quot;repeatability&quot;</span> <span class="ow">in</span> <span class="n">key</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">units</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">ds</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;units&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">unit_species</span><span class="p">[</span><span class="n">species</span><span class="o">.</span><span class="n">upper</span><span class="p">()]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">units</span> <span class="ow">in</span> <span class="n">unit_interpret</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                        <span class="n">ds</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;units&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">unit_interpret</span><span class="p">[</span><span class="n">units</span><span class="p">]</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">ds</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;units&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">unit_interpret</span><span class="p">[</span><span class="s2">&quot;else&quot;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="o">!=</span> <span class="n">species_out</span><span class="p">:</span>
+                <span class="n">ancillary_variables</span> <span class="o">+=</span> <span class="s2">&quot; &quot;</span> <span class="o">+</span> <span class="n">key</span>
+
+    <span class="n">ds</span><span class="p">[</span><span class="n">species_out</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;ancilliary_variables&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ancillary_variables</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+    <span class="c1"># Add quality flag attributes</span>
+    <span class="c1">##################################</span>
+
+    <span class="n">flag_key</span> <span class="o">=</span> <span class="p">[</span><span class="n">key</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">ds</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="k">if</span> <span class="s2">&quot;_status_flag&quot;</span> <span class="ow">in</span> <span class="n">key</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">flag_key</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">flag_key</span> <span class="o">=</span> <span class="n">flag_key</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">ds</span><span class="p">[</span><span class="n">flag_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">flag_key</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+        <span class="n">ds</span><span class="p">[</span><span class="n">flag_key</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;flag_meaning&quot;</span><span class="p">:</span>
+                              <span class="s2">&quot;0 = unflagged, 1 = flagged&quot;</span><span class="p">,</span>
+                              <span class="s2">&quot;standard_name&quot;</span><span class="p">:</span>
+                              <span class="n">ds</span><span class="p">[</span><span class="n">species_out</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;standard_name&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;_status_flag&quot;</span><span class="p">}</span>
+
+    <span class="c1"># Add integration flag attributes</span>
+    <span class="c1">##################################</span>
+
+    <span class="n">flag_key</span> <span class="o">=</span> <span class="p">[</span><span class="n">key</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">ds</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="k">if</span> <span class="s2">&quot;_integration_flag&quot;</span> <span class="ow">in</span> <span class="n">key</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">flag_key</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">flag_key</span> <span class="o">=</span> <span class="n">flag_key</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">ds</span><span class="p">[</span><span class="n">flag_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">flag_key</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+        <span class="n">ds</span><span class="p">[</span><span class="n">flag_key</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;flag_meaning&quot;</span><span class="p">:</span>
+                              <span class="s2">&quot;0 = area, 1 = height&quot;</span><span class="p">,</span>
+                              <span class="s2">&quot;standard_name&quot;</span><span class="p">:</span>
+                              <span class="n">ds</span><span class="p">[</span><span class="n">species_out</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;standard_name&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;_integration_flag&quot;</span><span class="p">,</span>
+                              <span class="s2">&quot;comment&quot;</span><span class="p">:</span>
+                              <span class="s2">&quot;GC peak integration method (by height or by area). &quot;</span> <span class="o">+</span>
+                              <span class="s2">&quot;Does not indicate data quality&quot;</span><span class="p">}</span>
+
+    <span class="c1"># Set time encoding</span>
+    <span class="c1">#########################################</span>
+
+    <span class="n">first_year</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">to_pandas</span><span class="p">()</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">to_pydatetime</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">year</span><span class="p">)</span>
+
+    <span class="n">ds</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">encoding</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;units&quot;</span><span class="p">:</span> <span class="s2">&quot;seconds since &quot;</span> <span class="o">+</span> \
+                        <span class="n">first_year</span> <span class="o">+</span> <span class="s2">&quot;-01-01 00:00:00&quot;</span><span class="p">}</span>
+    <span class="n">ds</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;label&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;left&quot;</span>
+    <span class="n">ds</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;comment&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Time stamp corresponds to beginning of sampling period. &quot;</span> <span class="o">+</span> \
+                               <span class="s2">&quot;Time since midnight UTC of reference date. &quot;</span> <span class="o">+</span> \
+                               <span class="s2">&quot;Note that sampling periods are approximate.&quot;</span>
+    <span class="k">if</span> <span class="n">sampling_period</span><span class="p">:</span>
+        <span class="n">ds</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;sampling_period_seconds&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sampling_period</span>
+
+    <span class="k">return</span> <span class="n">ds</span></div>
+
+<div class="viewcode-block" id="output_filename"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.cf_data_process.output_filename">[docs]</a><span class="k">def</span> <span class="nf">output_filename</span><span class="p">(</span><span class="n">output_directory</span><span class="p">,</span>
+                    <span class="n">network</span><span class="p">,</span>
+                    <span class="n">instrument</span><span class="p">,</span>
+                    <span class="n">site</span><span class="p">,</span>
+                    <span class="n">year</span><span class="p">,</span>
+                    <span class="n">species</span><span class="p">,</span>
+                    <span class="n">inlet</span><span class="p">):</span>
+
+    <span class="k">return</span> <span class="n">join</span><span class="p">(</span><span class="n">output_directory</span><span class="p">,</span>
+                <span class="n">network</span> <span class="o">+</span> <span class="s2">&quot;/&quot;</span> <span class="o">+</span> \
+                <span class="n">network</span> <span class="o">+</span> <span class="s2">&quot;-&quot;</span> <span class="o">+</span> \
+                <span class="n">instrument</span> <span class="o">+</span> <span class="s2">&quot;_&quot;</span> <span class="o">+</span> \
+                <span class="n">site</span> <span class="o">+</span> <span class="s2">&quot;_&quot;</span> <span class="o">+</span> \
+                <span class="n">year</span> <span class="o">+</span> <span class="s2">&quot;0101_&quot;</span> <span class="o">+</span> \
+                <span class="n">species</span> <span class="o">+</span> <span class="s2">&quot;-&quot;</span> <span class="o">+</span> \
+                <span class="n">inlet</span> <span class="o">+</span> <span class="s2">&quot;.nc&quot;</span><span class="p">)</span></div>
+
+
+<span class="c1"># ICOS</span>
+<span class="c1">########################################################</span>
+
+<div class="viewcode-block" id="icos_data_read"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.cf_data_process.icos_data_read">[docs]</a><span class="k">def</span> <span class="nf">icos_data_read</span><span class="p">(</span><span class="n">data_file</span><span class="p">,</span> <span class="n">species</span><span class="p">):</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Reading &quot;</span> <span class="o">+</span> <span class="n">data_file</span><span class="p">)</span>
+
+    <span class="c1"># Find out how many header lines there are</span>
+    <span class="n">nheader</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">data_file</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">f</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">l</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;#&quot;</span><span class="p">:</span>
+                <span class="k">break</span>
+            <span class="n">nheader</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="c1"># Read CSV file</span>
+    <span class="n">df</span> <span class="o">=</span>  <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">data_file</span><span class="p">,</span>
+                      <span class="n">skiprows</span> <span class="o">=</span> <span class="n">nheader</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span>
+                      <span class="n">parse_dates</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;time&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Year&quot;</span><span class="p">,</span> <span class="s2">&quot;Month&quot;</span><span class="p">,</span> <span class="s2">&quot;Day&quot;</span><span class="p">,</span> <span class="s2">&quot;Hour&quot;</span><span class="p">,</span> <span class="s2">&quot;Minute&quot;</span><span class="p">]},</span>
+<span class="c1">#                      date_parser = lambda s: pd.to_datetime(s, format = &quot;%Y %m %d %H %M&quot;),</span>
+                      <span class="n">index_col</span> <span class="o">=</span> <span class="s2">&quot;time&quot;</span><span class="p">,</span>
+                      <span class="n">sep</span> <span class="o">=</span> <span class="s2">&quot;;&quot;</span><span class="p">,</span>
+                      <span class="n">usecols</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Day&quot;</span><span class="p">,</span> <span class="s2">&quot;Month&quot;</span><span class="p">,</span> <span class="s2">&quot;Year&quot;</span><span class="p">,</span> <span class="s2">&quot;Hour&quot;</span><span class="p">,</span> <span class="s2">&quot;Minute&quot;</span><span class="p">,</span>
+                                 <span class="nb">str</span><span class="p">(</span><span class="n">species</span><span class="o">.</span><span class="n">lower</span><span class="p">()),</span> <span class="s2">&quot;SamplingHeight&quot;</span><span class="p">,</span>
+                                 <span class="s2">&quot;Stdev&quot;</span><span class="p">,</span> <span class="s2">&quot;NbPoints&quot;</span><span class="p">],</span>
+                      <span class="n">dtype</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;Day&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">,</span>
+                               <span class="s2">&quot;Month&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">,</span>
+                               <span class="s2">&quot;Year&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">,</span>
+                               <span class="s2">&quot;Hour&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">,</span>
+                               <span class="s2">&quot;Minute&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">,</span>
+                               <span class="n">species</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span> <span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">,</span>
+                               <span class="s2">&quot;Stdev&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">,</span>
+                               <span class="s2">&quot;SamplingHeight&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">,</span>
+                               <span class="s2">&quot;NbPoints&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">},</span>
+                      <span class="n">na_values</span> <span class="o">=</span> <span class="s2">&quot;-999.99&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Format time</span>
+    <span class="n">df</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="nb">format</span> <span class="o">=</span> <span class="s2">&quot;%Y %m </span><span class="si">%d</span><span class="s2"> %H %M&quot;</span><span class="p">)</span>
+
+    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="n">species</span><span class="o">.</span><span class="n">lower</span><span class="p">()]</span> <span class="o">&gt;=</span> <span class="mf">0.</span><span class="p">]</span>
+
+    <span class="c1"># Remove duplicate indices</span>
+    <span class="n">df</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">inplace</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="s1">&#39;index&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;index&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Rename columns</span>
+    <span class="n">df</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span> <span class="o">=</span> <span class="p">{</span><span class="n">species</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span> <span class="n">species</span><span class="o">.</span><span class="n">upper</span><span class="p">(),</span>
+                         <span class="s2">&quot;Stdev&quot;</span><span class="p">:</span> <span class="n">species</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;_variability&quot;</span><span class="p">,</span>
+                         <span class="s2">&quot;NbPoints&quot;</span><span class="p">:</span> <span class="n">species</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;_number_of_observations&quot;</span><span class="p">},</span>
+               <span class="n">inplace</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;time&quot;</span>
+
+    <span class="c1"># Convert to Dataset</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">xray</span><span class="o">.</span><span class="n">Dataset</span><span class="o">.</span><span class="n">from_dataframe</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">sort_index</span><span class="p">())</span>
+
+    <span class="k">return</span> <span class="n">ds</span></div>
+
+
+<div class="viewcode-block" id="icos"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.cf_data_process.icos">[docs]</a><span class="k">def</span> <span class="nf">icos</span><span class="p">(</span><span class="n">site</span><span class="p">,</span> <span class="n">network</span> <span class="o">=</span> <span class="s2">&quot;ICOS&quot;</span><span class="p">,</span>
+         <span class="n">input_directory</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+         <span class="n">output_directory</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+
+    <span class="c1"># Get directories and site strings</span>
+    <span class="n">params_icos</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;ICOS&quot;</span><span class="p">]</span>
+    <span class="n">site_string</span> <span class="o">=</span> <span class="n">params_icos</span><span class="p">[</span><span class="n">site</span><span class="p">][</span><span class="s2">&quot;gcwerks_site_name&quot;</span><span class="p">]</span>
+
+    <span class="n">data_folder</span><span class="p">,</span> <span class="n">output_folder</span> <span class="o">=</span> \
+            <span class="n">get_directories</span><span class="p">(</span><span class="n">params_icos</span><span class="p">[</span><span class="s2">&quot;directory&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">ite&quot;</span><span class="p">,</span> <span class="n">site_string</span><span class="p">),</span>
+                            <span class="n">params_icos</span><span class="p">[</span><span class="s2">&quot;directory_output&quot;</span><span class="p">],</span>
+                            <span class="n">user_specified_input_directory</span> <span class="o">=</span> <span class="n">input_directory</span><span class="p">,</span>
+                            <span class="n">user_specified_output_directory</span> <span class="o">=</span> <span class="n">output_directory</span><span class="p">)</span>
+
+    <span class="c1"># Search for species and inlets from file names</span>
+    <span class="n">data_file_search</span> <span class="o">=</span> <span class="n">join</span><span class="p">(</span><span class="n">data_folder</span><span class="p">,</span> <span class="n">site</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;.*.1minute.*.dat&quot;</span><span class="p">)</span>
+    <span class="n">data_files</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">data_file_search</span><span class="p">)</span>
+    <span class="n">data_file_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">split</span><span class="p">(</span><span class="n">f</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">data_files</span><span class="p">]</span>
+    <span class="n">species_and_inlet</span> <span class="o">=</span> <span class="p">[(</span><span class="n">f</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">],</span> <span class="n">f</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span> \
+                         <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">data_file_names</span><span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">species</span><span class="p">,</span> <span class="n">inlet</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">species_and_inlet</span><span class="p">):</span>
+
+        <span class="k">if</span> <span class="n">stat</span><span class="p">(</span><span class="n">data_files</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">.</span><span class="n">st_size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+
+            <span class="c1"># Create Pandas dataframe</span>
+            <span class="n">ds</span> <span class="o">=</span> <span class="n">icos_data_read</span><span class="p">(</span><span class="n">data_files</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">species</span><span class="o">.</span><span class="n">upper</span><span class="p">())</span>
+
+            <span class="c1"># Sort out attributes</span>
+            <span class="n">global_attributes</span> <span class="o">=</span> <span class="n">params_icos</span><span class="p">[</span><span class="n">site</span><span class="o">.</span><span class="n">upper</span><span class="p">()][</span><span class="s2">&quot;global_attributes&quot;</span><span class="p">]</span>
+            <span class="n">global_attributes</span><span class="p">[</span><span class="s2">&quot;inlet_height_magl&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">params_icos</span><span class="p">[</span><span class="n">site</span><span class="p">][</span><span class="s2">&quot;inlet_rename&quot;</span><span class="p">][</span><span class="n">inlet</span><span class="p">][:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+            <span class="n">ds</span> <span class="o">=</span> <span class="n">attributes</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span>
+                            <span class="n">species</span><span class="o">.</span><span class="n">upper</span><span class="p">(),</span>
+                            <span class="n">site</span><span class="o">.</span><span class="n">upper</span><span class="p">(),</span>
+                            <span class="n">global_attributes</span> <span class="o">=</span> <span class="n">global_attributes</span><span class="p">,</span>
+                            <span class="n">sampling_period</span> <span class="o">=</span> <span class="mi">60</span><span class="p">)</span>
+
+            <span class="c1"># Write file</span>
+            <span class="n">nc_filename</span> <span class="o">=</span> <span class="n">output_filename</span><span class="p">(</span><span class="n">output_folder</span><span class="p">,</span>
+                                          <span class="n">network</span><span class="p">,</span>
+                                          <span class="s2">&quot;CRDS&quot;</span><span class="p">,</span>
+                                          <span class="n">site</span><span class="o">.</span><span class="n">upper</span><span class="p">(),</span>
+                                          <span class="nb">str</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">to_pandas</span><span class="p">()</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">to_pydatetime</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">year</span><span class="p">),</span>
+                                          <span class="n">ds</span><span class="o">.</span><span class="n">species</span><span class="p">,</span>
+                                          <span class="n">params_icos</span><span class="p">[</span><span class="n">site</span><span class="p">][</span><span class="s2">&quot;inlet_rename&quot;</span><span class="p">][</span><span class="n">inlet</span><span class="p">])</span>
+
+            <span class="n">ds</span><span class="o">.</span><span class="n">to_netcdf</span><span class="p">(</span><span class="n">nc_filename</span><span class="p">)</span>
+
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Written &quot;</span> <span class="o">+</span> <span class="n">nc_filename</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Skipping empty file: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">data_files</span><span class="p">[</span><span class="n">i</span><span class="p">])</span></div>
+
+<span class="c1"># GC FUNCTIONS</span>
+<span class="c1">###############################################################</span>
+
+<div class="viewcode-block" id="gc_data_read"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.cf_data_process.gc_data_read">[docs]</a><span class="k">def</span> <span class="nf">gc_data_read</span><span class="p">(</span><span class="n">dotC_file</span><span class="p">,</span> <span class="n">scale</span> <span class="o">=</span> <span class="p">{},</span> <span class="n">units</span> <span class="o">=</span> <span class="p">{}):</span>
+
+    <span class="n">species</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c1"># Read header</span>
+    <span class="n">header</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">dotC_file</span><span class="p">,</span>
+                         <span class="n">skiprows</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+                         <span class="n">nrows</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+                         <span class="n">header</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                         <span class="n">sep</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;\s+&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Read data</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">dotC_file</span><span class="p">,</span>
+                     <span class="n">skiprows</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+                     <span class="n">sep</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;\s+&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Time index</span>
+    <span class="n">time</span> <span class="o">=</span> <span class="p">[</span><span class="n">dt</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">yyyy</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">df</span><span class="o">.</span><span class="n">mm</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">df</span><span class="o">.</span><span class="n">dd</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">df</span><span class="o">.</span><span class="n">hh</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">df</span><span class="o">.</span><span class="n">mi</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> \
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">))]</span>
+    <span class="n">df</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">time</span>
+
+    <span class="c1"># Drop duplicates</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="s1">&#39;index&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;index&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Rename flag column with species name</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+        <span class="k">if</span> <span class="n">key</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">4</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Flag&quot;</span><span class="p">:</span>
+            <span class="n">quality_flag</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">area_height_flag</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">flags</span> <span class="ow">in</span> <span class="n">df</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">:</span>
+
+                <span class="c1"># Quality flag</span>
+                <span class="k">if</span> <span class="n">flags</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;-&quot;</span><span class="p">:</span>
+                    <span class="n">quality_flag</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">quality_flag</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+                <span class="c1"># Area/height</span>
+                <span class="k">if</span> <span class="n">flags</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;-&quot;</span><span class="p">:</span>
+                    <span class="n">area_height_flag</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># Area</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">area_height_flag</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># Height</span>
+
+            <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">df</span><span class="o">.</span><span class="n">keys</span><span class="p">()[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;_flag&quot;</span><span class="p">})</span>
+            <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="o">.</span><span class="n">keys</span><span class="p">()[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;_status_flag&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">quality_flag</span>
+            <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="o">.</span><span class="n">keys</span><span class="p">()[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;_integration_flag&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">area_height_flag</span>
+            <span class="n">scale</span><span class="p">[</span><span class="n">df</span><span class="o">.</span><span class="n">keys</span><span class="p">()[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span> <span class="o">=</span> <span class="n">header</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">units</span><span class="p">[</span><span class="n">df</span><span class="o">.</span><span class="n">keys</span><span class="p">()[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span> <span class="o">=</span> <span class="n">header</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">species</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">keys</span><span class="p">()[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">df</span><span class="p">,</span> <span class="n">species</span><span class="p">,</span> <span class="n">units</span><span class="p">,</span> <span class="n">scale</span></div>
+
+
+<div class="viewcode-block" id="gc_precisions_read"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.cf_data_process.gc_precisions_read">[docs]</a><span class="k">def</span> <span class="nf">gc_precisions_read</span><span class="p">(</span><span class="n">precisions_file</span><span class="p">):</span>
+
+    <span class="c1"># Read precision species</span>
+    <span class="n">precision_species</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">precisions_file</span><span class="p">,</span>
+                                         <span class="n">skiprows</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+                                         <span class="n">nrows</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+                                         <span class="n">header</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                                         <span class="n">sep</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;\s+&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">:])</span>
+
+    <span class="c1"># Read precisions</span>
+    <span class="n">precision</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">precisions_file</span><span class="p">,</span>
+                            <span class="n">skiprows</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+                            <span class="n">header</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                            <span class="n">sep</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;\s+&quot;</span><span class="p">,</span> <span class="n">dtype</span> <span class="o">=</span> <span class="nb">str</span><span class="p">,</span>
+                            <span class="n">index_col</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+                            <span class="n">parse_dates</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+                            <span class="n">date_parser</span> <span class="o">=</span> <span class="n">parser_YYMMDD</span><span class="p">)</span>
+
+    <span class="c1"># Rename index column</span>
+    <span class="n">precision</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;index&quot;</span><span class="p">]</span>
+
+    <span class="c1"># Drop duplicates</span>
+    <span class="n">precision</span> <span class="o">=</span> <span class="n">precision</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="s1">&#39;index&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;index&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">precision</span><span class="p">,</span> <span class="n">precision_species</span></div>
+
+
+<div class="viewcode-block" id="gc"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.cf_data_process.gc">[docs]</a><span class="k">def</span> <span class="nf">gc</span><span class="p">(</span><span class="n">site</span><span class="p">,</span> <span class="n">instrument</span><span class="p">,</span> <span class="n">network</span><span class="p">,</span>
+       <span class="n">input_directory</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+       <span class="n">output_directory</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Process GC data per site and instrument</span>
+<span class="sd">    Instruments can be:</span>
+<span class="sd">        &quot;GCMD&quot;: GC multi-detector (output will be labeled GC-FID or GC-ECD)</span>
+<span class="sd">        &quot;GCMS&quot;: GC ADS (output GC-ADS)</span>
+<span class="sd">        &quot;medusa&quot;: GC medusa (output GC-MEDUSA)</span>
+
+<span class="sd">    Network is the network name for output file.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">site_gcwerks</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;GC&quot;</span><span class="p">][</span><span class="n">site</span><span class="p">][</span><span class="s2">&quot;gcwerks_site_name&quot;</span><span class="p">]</span>
+    <span class="n">instrument_gcwerks</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;GC&quot;</span><span class="p">][</span><span class="s2">&quot;instruments&quot;</span><span class="p">][</span><span class="n">instrument</span><span class="p">]</span>
+
+    <span class="n">data_folder</span><span class="p">,</span> <span class="n">output_folder</span> <span class="o">=</span> \
+            <span class="n">get_directories</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;GC&quot;</span><span class="p">][</span><span class="s2">&quot;directory&quot;</span><span class="p">][</span><span class="n">instrument</span><span class="p">],</span>
+                            <span class="n">params</span><span class="p">[</span><span class="s2">&quot;GC&quot;</span><span class="p">][</span><span class="s2">&quot;directory_output&quot;</span><span class="p">],</span>
+                            <span class="n">user_specified_input_directory</span> <span class="o">=</span> <span class="n">input_directory</span><span class="p">,</span>
+                            <span class="n">user_specified_output_directory</span> <span class="o">=</span> <span class="n">output_directory</span><span class="p">)</span>
+
+    <span class="n">search_strings</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">suffix</span> <span class="ow">in</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;GC&quot;</span><span class="p">][</span><span class="s2">&quot;instruments_suffix&quot;</span><span class="p">][</span><span class="n">instrument</span><span class="p">]:</span>
+        <span class="c1"># Search string</span>
+        <span class="n">search_string</span> <span class="o">=</span> <span class="n">join</span><span class="p">(</span><span class="n">data_folder</span><span class="p">,</span>
+                             <span class="n">site_gcwerks</span> <span class="o">+</span> \
+                             <span class="n">instrument_gcwerks</span> <span class="o">+</span> \
+                             <span class="n">suffix</span> <span class="o">+</span> <span class="s2">&quot;.??.C&quot;</span><span class="p">)</span>
+        <span class="n">search_strings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">search_string</span><span class="p">)</span>
+
+        <span class="n">data_files</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">search_string</span><span class="p">))</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data_files</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">break</span>
+
+    <span class="c1"># Error if can&#39;t find files</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data_files</span><span class="p">)</span> <span class="o">==</span> <span class="mf">0.</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;ERROR: can&#39;t find any files: &quot;</span> <span class="o">+</span> \
+              <span class="s2">&quot;,</span><span class="se">\r</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">search_strings</span><span class="p">))</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="n">precision_files</span> <span class="o">=</span> <span class="p">[</span><span class="n">data_file</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;.precisions.C&quot;</span> \
+                        <span class="k">for</span> <span class="n">data_file</span> <span class="ow">in</span> <span class="n">data_files</span><span class="p">]</span>
+
+    <span class="n">dfs</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">scale</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">units</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">for</span> <span class="n">fi</span><span class="p">,</span> <span class="n">data_file</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">data_files</span><span class="p">):</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Reading &quot;</span> <span class="o">+</span> <span class="n">data_file</span><span class="p">)</span>
+
+        <span class="c1"># Get observations</span>
+        <span class="n">df</span><span class="p">,</span> <span class="n">species</span><span class="p">,</span> <span class="n">units</span><span class="p">,</span> <span class="n">scale</span> <span class="o">=</span> <span class="n">gc_data_read</span><span class="p">(</span><span class="n">data_file</span><span class="p">,</span>
+                                                 <span class="n">scale</span> <span class="o">=</span> <span class="n">scale</span><span class="p">,</span>
+                                                 <span class="n">units</span> <span class="o">=</span> <span class="n">units</span><span class="p">)</span>
+
+        <span class="c1"># Get precision</span>
+        <span class="n">precision</span><span class="p">,</span> <span class="n">precision_species</span> <span class="o">=</span> <span class="n">gc_precisions_read</span><span class="p">(</span><span class="n">precision_files</span><span class="p">[</span><span class="n">fi</span><span class="p">])</span>
+
+        <span class="c1"># Merge precisions into dataframe</span>
+        <span class="k">for</span> <span class="n">sp</span> <span class="ow">in</span> <span class="n">species</span><span class="p">:</span>
+            <span class="n">precision_index</span> <span class="o">=</span> <span class="n">precision_species</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">sp</span><span class="p">)</span><span class="o">*</span><span class="mi">2</span><span class="o">+</span><span class="mi">1</span>
+            <span class="n">df</span><span class="p">[</span><span class="n">sp</span> <span class="o">+</span> <span class="s2">&quot;_repeatability&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">precision</span><span class="p">[</span><span class="n">precision_index</span><span class="p">]</span><span class="o">.</span>\
+                                            <span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span>\
+                                            <span class="n">reindex_like</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="s2">&quot;pad&quot;</span><span class="p">)</span>
+
+        <span class="n">dfs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+
+    <span class="c1"># Concatenate</span>
+    <span class="n">dfs</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">dfs</span><span class="p">)</span><span class="o">.</span><span class="n">sort_index</span><span class="p">()</span>
+
+    <span class="c1"># Apply timestamp offset so that timestamp reflects start of sampling</span>
+    <span class="n">time</span> <span class="o">=</span> <span class="n">dfs</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">time_offset</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">timedelta64</span><span class="p">(</span><span class="n">td</span><span class="p">(</span><span class="n">seconds</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;GC&quot;</span><span class="p">][</span><span class="s2">&quot;timestamp_correct_seconds&quot;</span><span class="p">][</span><span class="n">instrument</span><span class="p">]))</span>
+    <span class="n">time</span> <span class="o">=</span> <span class="p">[</span><span class="n">t</span> <span class="o">+</span> <span class="n">time_offset</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">time</span><span class="p">]</span>
+    <span class="n">dfs</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">time</span>
+
+    <span class="c1"># Label time index</span>
+    <span class="n">dfs</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;time&quot;</span>
+
+    <span class="c1"># Convert to xray dataset</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">xray</span><span class="o">.</span><span class="n">Dataset</span><span class="o">.</span><span class="n">from_dataframe</span><span class="p">(</span><span class="n">dfs</span><span class="p">)</span>
+
+    <span class="c1"># Get species from scale dictionary</span>
+    <span class="n">species</span> <span class="o">=</span> <span class="n">scale</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+
+    <span class="n">inlets</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;GC&quot;</span><span class="p">][</span><span class="n">site</span><span class="p">][</span><span class="s2">&quot;inlets&quot;</span><span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">sp</span> <span class="ow">in</span> <span class="n">species</span><span class="p">:</span>
+
+        <span class="n">global_attributes</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;GC&quot;</span><span class="p">][</span><span class="n">site</span><span class="o">.</span><span class="n">upper</span><span class="p">()][</span><span class="s2">&quot;global_attributes&quot;</span><span class="p">]</span>
+        <span class="n">global_attributes</span><span class="p">[</span><span class="s2">&quot;comment&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;GC&quot;</span><span class="p">][</span><span class="s2">&quot;comment&quot;</span><span class="p">][</span><span class="n">instrument</span><span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">inleti</span><span class="p">,</span> <span class="n">inlet</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">inlets</span><span class="p">):</span>
+
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Processing &quot;</span> <span class="o">+</span> <span class="n">sp</span> <span class="o">+</span> <span class="s2">&quot;, &quot;</span> <span class="o">+</span> <span class="n">inlet</span> <span class="o">+</span> <span class="s2">&quot;...&quot;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="p">(</span><span class="n">inlet</span> <span class="o">==</span> <span class="s2">&quot;any&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">inlet</span> <span class="o">==</span> <span class="s2">&quot;air&quot;</span><span class="p">):</span>
+                <span class="n">ds_sp</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[[</span><span class="n">sp</span><span class="p">,</span>
+                            <span class="n">sp</span> <span class="o">+</span> <span class="s2">&quot;_repeatability&quot;</span><span class="p">,</span>
+                            <span class="n">sp</span> <span class="o">+</span> <span class="s2">&quot;_status_flag&quot;</span><span class="p">,</span>
+                            <span class="n">sp</span> <span class="o">+</span> <span class="s2">&quot;_integration_flag&quot;</span><span class="p">]]</span>
+                <span class="n">inlet_label</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;GC&quot;</span><span class="p">][</span><span class="n">site</span><span class="o">.</span><span class="n">upper</span><span class="p">()][</span><span class="s2">&quot;inlet_label&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">global_attributes</span><span class="p">[</span><span class="s2">&quot;inlet_height_magl&quot;</span><span class="p">]</span> <span class="o">=</span> \
+                                    <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s2">&quot;Inlet&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">))</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">ds_sp</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">Inlet</span> <span class="o">==</span> <span class="n">inlet</span><span class="p">)[[</span><span class="n">sp</span><span class="p">,</span>
+                                                     <span class="n">sp</span> <span class="o">+</span> <span class="s2">&quot;_repeatability&quot;</span><span class="p">,</span>
+                                                     <span class="n">sp</span> <span class="o">+</span> <span class="s2">&quot;_status_flag&quot;</span><span class="p">,</span>
+                                                     <span class="n">sp</span> <span class="o">+</span> <span class="s2">&quot;_integration_flag&quot;</span><span class="p">]]</span>
+                <span class="n">inlet_label</span> <span class="o">=</span> <span class="n">inlet</span>
+
+<span class="c1">#            # re-label inlet if required</span>
+<span class="c1">#            if &quot;inlet_label&quot; in params[&quot;GC&quot;][site].keys():</span>
+<span class="c1">#                inlet_label = params[&quot;GC&quot;][site][&quot;inlet_label&quot;][inleti]</span>
+<span class="c1">#            else:</span>
+<span class="c1">#               inlet_label = inlet</span>
+
+            <span class="n">global_attributes</span><span class="p">[</span><span class="s2">&quot;inlet_height_magl&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">inlet_label</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+            <span class="c1"># Drop NaNs</span>
+            <span class="n">ds_sp</span> <span class="o">=</span> <span class="n">ds_sp</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="s2">&quot;time&quot;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ds_sp</span><span class="o">.</span><span class="n">time</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;... no data in file, skipping &quot;</span> <span class="o">+</span> <span class="n">sp</span><span class="p">)</span>
+
+            <span class="k">else</span><span class="p">:</span>
+
+                <span class="c1"># Sort out attributes</span>
+                <span class="n">ds_sp</span> <span class="o">=</span> <span class="n">attributes</span><span class="p">(</span><span class="n">ds_sp</span><span class="p">,</span> <span class="n">sp</span><span class="p">,</span> <span class="n">site</span><span class="o">.</span><span class="n">upper</span><span class="p">(),</span>
+                                   <span class="n">global_attributes</span> <span class="o">=</span> <span class="n">global_attributes</span><span class="p">,</span>
+                                   <span class="n">units</span> <span class="o">=</span> <span class="n">units</span><span class="p">[</span><span class="n">sp</span><span class="p">],</span>
+                                   <span class="n">scale</span> <span class="o">=</span> <span class="n">scale</span><span class="p">[</span><span class="n">sp</span><span class="p">],</span>
+                                   <span class="n">sampling_period</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;GC&quot;</span><span class="p">][</span><span class="s2">&quot;sampling_period&quot;</span><span class="p">][</span><span class="n">instrument</span><span class="p">])</span>
+
+                <span class="c1"># Get instrument name for output</span>
+                <span class="k">if</span> <span class="n">sp</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="ow">in</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;GC&quot;</span><span class="p">][</span><span class="s2">&quot;instruments_out&quot;</span><span class="p">][</span><span class="n">instrument</span><span class="p">]:</span>
+                    <span class="n">instrument_out</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;GC&quot;</span><span class="p">][</span><span class="s2">&quot;instruments_out&quot;</span><span class="p">][</span><span class="n">instrument</span><span class="p">][</span><span class="n">sp</span><span class="p">]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">instrument_out</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;GC&quot;</span><span class="p">][</span><span class="s2">&quot;instruments_out&quot;</span><span class="p">][</span><span class="n">instrument</span><span class="p">][</span><span class="s2">&quot;else&quot;</span><span class="p">]</span>
+
+                <span class="c1"># Write file</span>
+                <span class="n">nc_filename</span> <span class="o">=</span> <span class="n">output_filename</span><span class="p">(</span><span class="n">output_folder</span><span class="p">,</span>
+                                              <span class="n">network</span><span class="p">,</span>
+                                              <span class="n">instrument_out</span><span class="p">,</span>
+                                              <span class="n">site</span><span class="o">.</span><span class="n">upper</span><span class="p">(),</span>
+                                              <span class="nb">str</span><span class="p">(</span><span class="n">ds_sp</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">to_pandas</span><span class="p">()</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">to_pydatetime</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">year</span><span class="p">),</span>
+                                              <span class="n">ds_sp</span><span class="o">.</span><span class="n">species</span><span class="p">,</span>
+                                              <span class="n">inlet_label</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Writing... &quot;</span> <span class="o">+</span> <span class="n">nc_filename</span><span class="p">)</span>
+                <span class="n">ds_sp</span><span class="o">.</span><span class="n">to_netcdf</span><span class="p">(</span><span class="n">nc_filename</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;... written.&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="crds_data_read"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.cf_data_process.crds_data_read">[docs]</a><span class="k">def</span> <span class="nf">crds_data_read</span><span class="p">(</span><span class="n">data_file</span><span class="p">):</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Reading &quot;</span> <span class="o">+</span> <span class="n">data_file</span><span class="p">)</span>
+
+    <span class="c1"># Read file header</span>
+    <span class="n">df_header</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">data_file</span><span class="p">,</span>
+                         <span class="n">skiprows</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                         <span class="n">nrows</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+                         <span class="n">header</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                         <span class="n">sep</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;\s+&quot;</span><span class="p">)</span>
+
+    <span class="n">header</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">species</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c1"># Create header list</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">df_header</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">df_header</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;-&#39;</span><span class="p">:</span>
+            <span class="n">header</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">df_header</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">+</span> \
+                          <span class="n">crds_header_string_interpret</span><span class="p">[</span><span class="n">df_header</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]])</span>
+            <span class="k">if</span> <span class="n">df_header</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;C&quot;</span><span class="p">:</span>
+                <span class="n">species</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">df_header</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">upper</span><span class="p">())</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">header</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">df_header</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">upper</span><span class="p">())</span>
+
+    <span class="c1"># Read data</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">data_file</span><span class="p">,</span>
+                     <span class="n">skiprows</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+                     <span class="n">header</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                     <span class="n">sep</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;\s+&quot;</span><span class="p">,</span>
+                     <span class="n">names</span> <span class="o">=</span> <span class="n">header</span><span class="p">,</span>
+                     <span class="n">dtype</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;DATE&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="s2">&quot;TIME&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">})</span>
+
+    <span class="c1"># Interpret time</span>
+    <span class="n">time</span> <span class="o">=</span> <span class="p">[</span><span class="n">dt</span><span class="p">(</span><span class="mi">2000</span> <span class="o">+</span> <span class="nb">int</span><span class="p">(</span><span class="n">date</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">]),</span>
+                      <span class="nb">int</span><span class="p">(</span><span class="n">date</span><span class="p">[</span><span class="mi">2</span><span class="p">:</span><span class="mi">4</span><span class="p">]),</span>
+                      <span class="nb">int</span><span class="p">(</span><span class="n">date</span><span class="p">[</span><span class="mi">4</span><span class="p">:]),</span>
+                      <span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">]),</span>
+                      <span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="p">[</span><span class="mi">2</span><span class="p">:</span><span class="mi">4</span><span class="p">]),</span>
+                      <span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="p">[</span><span class="mi">4</span><span class="p">:]))</span> \
+            <span class="k">for</span> <span class="n">date</span><span class="p">,</span> <span class="n">time</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;DATE&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;TIME&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">)]</span>
+    <span class="n">df</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">time</span>
+
+    <span class="c1"># Remove duplicate indices</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="s1">&#39;index&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;index&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Convert to Dataset</span>
+    <span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;time&quot;</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">xray</span><span class="o">.</span><span class="n">Dataset</span><span class="o">.</span><span class="n">from_dataframe</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">sort_index</span><span class="p">())</span>
+
+    <span class="k">return</span> <span class="n">ds</span><span class="p">,</span> <span class="n">species</span></div>
+
+
+<div class="viewcode-block" id="crds"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.cf_data_process.crds">[docs]</a><span class="k">def</span> <span class="nf">crds</span><span class="p">(</span><span class="n">site</span><span class="p">,</span> <span class="n">network</span><span class="p">,</span>
+         <span class="n">input_directory</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+         <span class="n">output_directory</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Process CRDS data</span>
+
+<span class="sd">    site : Three letter site code</span>
+<span class="sd">    network : Network string only for output</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">params_crds</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;CRDS&quot;</span><span class="p">]</span>
+
+    <span class="n">site_string</span> <span class="o">=</span> <span class="n">params_crds</span><span class="p">[</span><span class="n">site</span><span class="p">][</span><span class="s2">&quot;gcwerks_site_name&quot;</span><span class="p">]</span>
+
+    <span class="n">data_folder</span><span class="p">,</span> <span class="n">output_folder</span> <span class="o">=</span> \
+            <span class="n">get_directories</span><span class="p">(</span><span class="n">params_crds</span><span class="p">[</span><span class="s2">&quot;directory&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">ite&quot;</span><span class="p">,</span> <span class="n">site_string</span><span class="p">),</span>
+                            <span class="n">params</span><span class="p">[</span><span class="s2">&quot;CRDS&quot;</span><span class="p">][</span><span class="s2">&quot;directory_output&quot;</span><span class="p">],</span>
+                            <span class="n">user_specified_input_directory</span> <span class="o">=</span> <span class="n">input_directory</span><span class="p">,</span>
+                            <span class="n">user_specified_output_directory</span> <span class="o">=</span> <span class="n">output_directory</span><span class="p">)</span>
+
+    <span class="c1"># Search for species and inlets from file names</span>
+    <span class="n">data_file_search</span> <span class="o">=</span> <span class="n">join</span><span class="p">(</span><span class="n">data_folder</span><span class="p">,</span> <span class="n">site</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;.*.1minute.*.dat&quot;</span><span class="p">)</span>
+    <span class="n">data_files</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">data_file_search</span><span class="p">)</span>
+    <span class="n">inlets</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">data_files</span><span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">inlet</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">inlets</span><span class="p">):</span>
+
+        <span class="c1"># Create Pandas dataframe</span>
+        <span class="n">ds</span><span class="p">,</span> <span class="n">species</span> <span class="o">=</span> <span class="n">crds_data_read</span><span class="p">(</span><span class="n">data_files</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+        <span class="c1"># Write netCDF file for each species</span>
+        <span class="k">for</span> <span class="n">sp</span> <span class="ow">in</span> <span class="n">species</span><span class="p">:</span>
+
+            <span class="c1"># Species-specific dataset</span>
+            <span class="n">ds_sp</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[[</span><span class="n">sp</span><span class="p">,</span>
+                        <span class="n">sp</span> <span class="o">+</span> <span class="s2">&quot;_variability&quot;</span><span class="p">,</span>
+                        <span class="n">sp</span> <span class="o">+</span> <span class="s2">&quot;_number_of_observations&quot;</span><span class="p">]]</span>
+            <span class="n">ds_sp</span> <span class="o">=</span> <span class="n">ds_sp</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="s2">&quot;time&quot;</span><span class="p">)</span>
+
+            <span class="n">global_attributes</span> <span class="o">=</span> <span class="n">params_crds</span><span class="p">[</span><span class="n">site</span><span class="p">][</span><span class="s2">&quot;global_attributes&quot;</span><span class="p">]</span>
+            <span class="n">global_attributes</span><span class="p">[</span><span class="s2">&quot;inlet_height_magl&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">inlet</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+            <span class="n">global_attributes</span><span class="p">[</span><span class="s2">&quot;comment&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">params_crds</span><span class="p">[</span><span class="s2">&quot;comment&quot;</span><span class="p">]</span>
+
+            <span class="n">ds_sp</span> <span class="o">=</span> <span class="n">attributes</span><span class="p">(</span><span class="n">ds_sp</span><span class="p">,</span> <span class="n">sp</span><span class="p">,</span> <span class="n">site</span><span class="o">.</span><span class="n">upper</span><span class="p">(),</span>
+                               <span class="n">global_attributes</span> <span class="o">=</span> <span class="n">global_attributes</span><span class="p">,</span>
+                               <span class="n">scale</span> <span class="o">=</span> <span class="n">scales</span><span class="p">[</span><span class="n">sp</span><span class="p">],</span>
+                               <span class="n">sampling_period</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>
+
+            <span class="c1"># Write file</span>
+            <span class="n">nc_filename</span> <span class="o">=</span> <span class="n">output_filename</span><span class="p">(</span><span class="n">output_folder</span><span class="p">,</span>
+                                          <span class="n">network</span><span class="p">,</span>
+                                          <span class="s2">&quot;CRDS&quot;</span><span class="p">,</span>
+                                          <span class="n">site</span><span class="o">.</span><span class="n">upper</span><span class="p">(),</span>
+                                          <span class="nb">str</span><span class="p">(</span><span class="n">ds_sp</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">to_pandas</span><span class="p">()</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">to_pydatetime</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">year</span><span class="p">),</span>
+                                          <span class="n">ds_sp</span><span class="o">.</span><span class="n">species</span><span class="p">,</span>
+                                          <span class="n">inlet</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Writing &quot;</span> <span class="o">+</span> <span class="n">nc_filename</span><span class="p">)</span>
+            <span class="n">ds_sp</span><span class="o">.</span><span class="n">to_netcdf</span><span class="p">(</span><span class="n">nc_filename</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;... written.&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ale_gage"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.cf_data_process.ale_gage">[docs]</a><span class="k">def</span> <span class="nf">ale_gage</span><span class="p">(</span><span class="n">site</span><span class="p">,</span> <span class="n">network</span><span class="p">):</span>
+
+    <span class="kn">import</span> <span class="nn">fortranformat</span> <span class="k">as</span> <span class="nn">ff</span>
+
+    <span class="n">ale_directory</span> <span class="o">=</span> <span class="s2">&quot;/dagage2/agage/summary/git/ale_new/complete/&quot;</span>
+    <span class="n">gage_directory</span> <span class="o">=</span> <span class="s2">&quot;/dagage2/agage/summary/git/gage_new/complete/&quot;</span>
+
+    <span class="n">output_directory</span> <span class="o">=</span> <span class="s2">&quot;/dagage2/agage/metoffice/processed_observations/&quot;</span>
+
+    <span class="n">site_translate</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;ADR&quot;</span><span class="p">:</span> <span class="s2">&quot;adrigole&quot;</span><span class="p">,</span>
+                      <span class="s2">&quot;RPB&quot;</span><span class="p">:</span> <span class="s2">&quot;barbados&quot;</span><span class="p">,</span>
+                      <span class="s2">&quot;ORG&quot;</span><span class="p">:</span> <span class="s2">&quot;oregon&quot;</span><span class="p">,</span>
+                      <span class="s2">&quot;SMO&quot;</span><span class="p">:</span> <span class="s2">&quot;samoa&quot;</span><span class="p">,</span>
+                      <span class="s2">&quot;CGO&quot;</span><span class="p">:</span> <span class="s2">&quot;tasmania&quot;</span><span class="p">,</span>
+                      <span class="s2">&quot;MHD&quot;</span><span class="p">:</span> <span class="s2">&quot;macehead&quot;</span><span class="p">}</span>
+
+    <span class="k">if</span> <span class="n">network</span> <span class="o">==</span> <span class="s2">&quot;ALE&quot;</span><span class="p">:</span>
+        <span class="n">data_directory</span> <span class="o">=</span> <span class="n">ale_directory</span>
+    <span class="k">if</span> <span class="n">network</span> <span class="o">==</span> <span class="s2">&quot;GAGE&quot;</span><span class="p">:</span>
+        <span class="n">data_directory</span> <span class="o">=</span> <span class="n">gage_directory</span>
+
+
+    <span class="n">fnames</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">join</span><span class="p">(</span><span class="n">data_directory</span><span class="p">,</span>
+                                   <span class="n">site_translate</span><span class="p">[</span><span class="n">site</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;/&quot;</span> <span class="o">+</span> <span class="n">site</span> <span class="o">+</span> <span class="s2">&quot;*.dap&quot;</span><span class="p">)))</span>
+
+
+    <span class="n">formatter</span> <span class="o">=</span> <span class="n">ff</span><span class="o">.</span><span class="n">FortranRecordReader</span><span class="p">(</span><span class="s1">&#39;(F10.5, 2I4,I6, 2I4,I6,1X,10(F10.3,a1))&#39;</span><span class="p">)</span>
+
+
+    <span class="n">dfs</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">fname</span> <span class="ow">in</span> <span class="n">fnames</span><span class="p">:</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Reading... &quot;</span> <span class="o">+</span> <span class="n">fname</span><span class="p">)</span>
+
+        <span class="n">header</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">6</span><span class="p">):</span>
+                <span class="n">header</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">readline</span><span class="p">())</span>
+
+            <span class="n">lines</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
+
+        <span class="n">scales</span> <span class="o">=</span> <span class="n">header</span><span class="p">[</span><span class="o">-</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+        <span class="n">units</span> <span class="o">=</span> <span class="n">header</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+        <span class="n">species</span> <span class="o">=</span> <span class="n">header</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+
+        <span class="n">dayi</span> <span class="o">=</span> <span class="n">species</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s2">&quot;DD&quot;</span><span class="p">)</span>
+        <span class="n">monthi</span> <span class="o">=</span> <span class="n">species</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s2">&quot;MM&quot;</span><span class="p">)</span>
+        <span class="n">yeari</span> <span class="o">=</span> <span class="n">species</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s2">&quot;YYYY&quot;</span><span class="p">)</span>
+        <span class="n">houri</span> <span class="o">=</span> <span class="n">species</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s2">&quot;hh&quot;</span><span class="p">)</span>
+        <span class="n">mini</span> <span class="o">=</span> <span class="n">species</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s2">&quot;min&quot;</span><span class="p">)</span>
+
+        <span class="n">data</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">time</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">:</span>
+            <span class="n">data_line</span> <span class="o">=</span> <span class="n">formatter</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">data_line</span><span class="p">[</span><span class="n">mini</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">60</span> <span class="ow">and</span> <span class="n">data_line</span><span class="p">[</span><span class="n">houri</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">24</span><span class="p">:</span>
+                <span class="n">data</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">d</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">data_line</span> <span class="k">if</span> <span class="n">d</span> <span class="o">!=</span> <span class="s2">&quot; &quot;</span> <span class="ow">and</span> \
+                                                     <span class="n">d</span> <span class="o">!=</span> <span class="kc">None</span> <span class="ow">and</span> \
+                                                     <span class="n">d</span> <span class="o">!=</span> <span class="s2">&quot;P&quot;</span><span class="p">])</span>
+                <span class="n">time</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dt</span><span class="p">(</span><span class="n">data_line</span><span class="p">[</span><span class="n">yeari</span><span class="p">],</span>
+                               <span class="n">data_line</span><span class="p">[</span><span class="n">monthi</span><span class="p">],</span>
+                               <span class="n">data_line</span><span class="p">[</span><span class="n">dayi</span><span class="p">],</span>
+                               <span class="n">data_line</span><span class="p">[</span><span class="n">houri</span><span class="p">],</span>
+                               <span class="n">data_line</span><span class="p">[</span><span class="n">mini</span><span class="p">]))</span>
+
+        <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="mi">7</span><span class="p">:]</span>
+
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">,</span> <span class="n">columns</span> <span class="o">=</span> <span class="n">species</span><span class="p">[</span><span class="mi">7</span><span class="p">:],</span> <span class="n">index</span> <span class="o">=</span> <span class="n">time</span><span class="p">)</span>
+        <span class="n">df</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">to_replace</span> <span class="o">=</span> <span class="mf">0.</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">NaN</span><span class="p">,</span> <span class="n">inplace</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+        <span class="n">dfs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+
+    <span class="n">scales</span> <span class="o">=</span> <span class="n">scales</span><span class="p">[</span><span class="mi">7</span><span class="p">:]</span>
+    <span class="n">units</span> <span class="o">=</span> <span class="n">units</span><span class="p">[</span><span class="mi">7</span><span class="p">:]</span>
+    <span class="n">species</span> <span class="o">=</span> <span class="n">species</span><span class="p">[</span><span class="mi">7</span><span class="p">:]</span>
+
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">dfs</span><span class="p">)</span>
+
+    <span class="c1"># Write netCDF file for each species</span>
+    <span class="k">for</span> <span class="n">si</span><span class="p">,</span> <span class="n">sp</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">species</span><span class="p">):</span>
+
+        <span class="c1"># Remove duplicate indices</span>
+        <span class="n">df_sp</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">sp</span><span class="p">]</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="s1">&#39;index&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;index&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Convert to Dataset</span>
+        <span class="n">df_sp</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;time&quot;</span>
+        <span class="n">ds</span> <span class="o">=</span> <span class="n">xray</span><span class="o">.</span><span class="n">Dataset</span><span class="o">.</span><span class="n">from_dataframe</span><span class="p">(</span><span class="n">df_sp</span><span class="o">.</span><span class="n">sort_index</span><span class="p">())</span>
+        <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="s2">&quot;time&quot;</span><span class="p">)</span>
+
+        <span class="n">ds</span> <span class="o">=</span> <span class="n">attributes</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">sp</span><span class="p">,</span> <span class="n">site</span><span class="o">.</span><span class="n">upper</span><span class="p">(),</span>
+                       <span class="n">scale</span> <span class="o">=</span> <span class="n">scales</span><span class="p">[</span><span class="n">si</span><span class="p">],</span>
+                       <span class="n">sampling_period</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span>
+                       <span class="n">units</span> <span class="o">=</span> <span class="n">units</span><span class="p">[</span><span class="n">si</span><span class="p">])</span>
+
+        <span class="c1"># Write file</span>
+        <span class="n">nc_filename</span> <span class="o">=</span> <span class="n">output_filename</span><span class="p">(</span><span class="n">output_directory</span><span class="p">,</span>
+                                      <span class="n">network</span><span class="p">,</span>
+                                      <span class="s2">&quot;GC-ECD&quot;</span><span class="p">,</span>
+                                      <span class="n">site</span><span class="o">.</span><span class="n">upper</span><span class="p">(),</span>
+                                      <span class="nb">str</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">to_pandas</span><span class="p">()</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">to_pydatetime</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">year</span><span class="p">),</span>
+                                      <span class="n">ds</span><span class="o">.</span><span class="n">species</span><span class="p">,</span>
+                                      <span class="n">site_params</span><span class="p">[</span><span class="n">site</span><span class="p">][</span><span class="s2">&quot;height&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Writing &quot;</span> <span class="o">+</span> <span class="n">nc_filename</span><span class="p">)</span>
+        <span class="n">ds</span><span class="o">.</span><span class="n">to_netcdf</span><span class="p">(</span><span class="n">nc_filename</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;... written.&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="mhd_o3"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.cf_data_process.mhd_o3">[docs]</a><span class="k">def</span> <span class="nf">mhd_o3</span><span class="p">():</span>
+
+    <span class="n">channels</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;channel1&quot;</span><span class="p">,</span> <span class="s2">&quot;channel0&quot;</span><span class="p">,</span> <span class="s2">&quot;channel2&quot;</span><span class="p">]</span>
+    <span class="n">base_directory</span> <span class="o">=</span> <span class="s2">&quot;/dagage2/agage/macehead-ozone/results/export/&quot;</span>
+
+    <span class="n">df</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">channel</span> <span class="ow">in</span> <span class="n">channels</span><span class="p">:</span>
+
+        <span class="n">files_channel</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">join</span><span class="p">(</span><span class="n">base_directory</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="s2">&quot;*.csv&quot;</span><span class="p">)))</span>
+
+        <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">files_channel</span><span class="p">:</span>
+
+            <span class="n">df</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;,&quot;</span><span class="p">,</span>
+                                  <span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;datetime&quot;</span><span class="p">,</span>
+                                           <span class="s2">&quot;ozone&quot;</span><span class="p">,</span>
+                                           <span class="s2">&quot;ozone_variability&quot;</span><span class="p">,</span>
+                                           <span class="s2">&quot;ozone_number_samples&quot;</span><span class="p">],</span>
+                                  <span class="n">na_values</span> <span class="o">=</span> <span class="s2">&quot;NA&quot;</span><span class="p">,</span>
+                                  <span class="n">index_col</span> <span class="o">=</span> <span class="s2">&quot;datetime&quot;</span><span class="p">,</span>
+                                  <span class="n">parse_dates</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;datetime&quot;</span><span class="p">]))</span>
+            <span class="n">df</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">inplace</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+    <span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;index&quot;</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="s1">&#39;index&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;index&#39;</span><span class="p">)</span>
+    <span class="n">df</span><span class="o">.</span><span class="n">sort_index</span><span class="p">(</span><span class="n">inplace</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+
+    <span class="c1"># Convert to Dataset</span>
+    <span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;time&quot;</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">xray</span><span class="o">.</span><span class="n">Dataset</span><span class="o">.</span><span class="n">from_dataframe</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">attributes</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span>
+                    <span class="s2">&quot;ozone&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;MHD&quot;</span><span class="p">,</span>
+                    <span class="n">scale</span> <span class="o">=</span> <span class="s2">&quot;SCALE&quot;</span><span class="p">,</span>
+                    <span class="n">sampling_period</span><span class="o">=</span><span class="mi">60</span><span class="o">*</span><span class="mi">60</span><span class="p">,</span>
+                    <span class="n">units</span> <span class="o">=</span> <span class="s2">&quot;ppb&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Write file</span>
+    <span class="n">nc_filename</span> <span class="o">=</span> <span class="n">output_filename</span><span class="p">(</span><span class="s2">&quot;/dagage2/agage/metoffice/processed_observations&quot;</span><span class="p">,</span>
+                                  <span class="s2">&quot;AURN&quot;</span><span class="p">,</span>
+                                  <span class="s2">&quot;thermo&quot;</span><span class="p">,</span>
+                                  <span class="s2">&quot;MHD&quot;</span><span class="p">,</span>
+                                  <span class="nb">str</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">to_pandas</span><span class="p">()</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">to_pydatetime</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">year</span><span class="p">),</span>
+                                  <span class="n">ds</span><span class="o">.</span><span class="n">species</span><span class="p">,</span>
+                                  <span class="n">site_params</span><span class="p">[</span><span class="s2">&quot;MHD&quot;</span><span class="p">][</span><span class="s2">&quot;height&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Writing &quot;</span> <span class="o">+</span> <span class="n">nc_filename</span><span class="p">)</span>
+    <span class="n">ds</span><span class="o">.</span><span class="n">to_netcdf</span><span class="p">(</span><span class="n">nc_filename</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;... written.&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="decc_data_freeze"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.cf_data_process.decc_data_freeze">[docs]</a><span class="k">def</span> <span class="nf">decc_data_freeze</span><span class="p">():</span>
+
+    <span class="n">input_directory</span> <span class="o">=</span> <span class="s2">&quot;/dagage2/agage/summary/gccompare-net/snapshot/current-frozendata/data-net/&quot;</span>
+    <span class="n">output_directory</span> <span class="o">=</span> <span class="s2">&quot;/dagage2/agage/summary/gccompare-net/snapshot/current-frozendata/data-net/processed/&quot;</span>
+
+    <span class="c1"># ICOS</span>
+    <span class="n">icos</span><span class="p">(</span><span class="s2">&quot;MHD&quot;</span><span class="p">,</span> <span class="n">network</span> <span class="o">=</span> <span class="s2">&quot;LSCE&quot;</span><span class="p">,</span> <span class="n">input_directory</span> <span class="o">=</span> <span class="n">input_directory</span><span class="p">,</span> <span class="n">output_directory</span> <span class="o">=</span> <span class="n">output_directory</span><span class="p">)</span>
+
+    <span class="c1"># GAUGE CRDS data</span>
+    <span class="n">crds</span><span class="p">(</span><span class="s2">&quot;HFD&quot;</span><span class="p">,</span> <span class="s2">&quot;GAUGE&quot;</span><span class="p">,</span> <span class="n">input_directory</span> <span class="o">=</span> <span class="n">input_directory</span><span class="p">,</span> <span class="n">output_directory</span> <span class="o">=</span> <span class="n">output_directory</span><span class="p">)</span>
+    <span class="n">crds</span><span class="p">(</span><span class="s2">&quot;BSD&quot;</span><span class="p">,</span> <span class="s2">&quot;GAUGE&quot;</span><span class="p">,</span> <span class="n">input_directory</span> <span class="o">=</span> <span class="n">input_directory</span><span class="p">,</span> <span class="n">output_directory</span> <span class="o">=</span> <span class="n">output_directory</span><span class="p">)</span>
+
+    <span class="c1"># GAUGE GC data</span>
+    <span class="n">gc</span><span class="p">(</span><span class="s2">&quot;BSD&quot;</span><span class="p">,</span> <span class="s2">&quot;GCMD&quot;</span><span class="p">,</span> <span class="s2">&quot;GAUGE&quot;</span><span class="p">,</span> <span class="n">input_directory</span> <span class="o">=</span> <span class="n">input_directory</span><span class="p">,</span> <span class="n">output_directory</span> <span class="o">=</span> <span class="n">output_directory</span><span class="p">)</span>
+    <span class="n">gc</span><span class="p">(</span><span class="s2">&quot;HFD&quot;</span><span class="p">,</span> <span class="s2">&quot;GCMD&quot;</span><span class="p">,</span> <span class="s2">&quot;GAUGE&quot;</span><span class="p">,</span> <span class="n">input_directory</span> <span class="o">=</span> <span class="n">input_directory</span><span class="p">,</span> <span class="n">output_directory</span> <span class="o">=</span> <span class="n">output_directory</span><span class="p">)</span>
+
+    <span class="c1"># DECC CRDS data</span>
+    <span class="n">crds</span><span class="p">(</span><span class="s2">&quot;TTA&quot;</span><span class="p">,</span> <span class="s2">&quot;DECC&quot;</span><span class="p">,</span> <span class="n">input_directory</span> <span class="o">=</span> <span class="n">input_directory</span><span class="p">,</span> <span class="n">output_directory</span> <span class="o">=</span> <span class="n">output_directory</span><span class="p">)</span>
+    <span class="n">crds</span><span class="p">(</span><span class="s2">&quot;RGL&quot;</span><span class="p">,</span> <span class="s2">&quot;DECC&quot;</span><span class="p">,</span> <span class="n">input_directory</span> <span class="o">=</span> <span class="n">input_directory</span><span class="p">,</span> <span class="n">output_directory</span> <span class="o">=</span> <span class="n">output_directory</span><span class="p">)</span>
+    <span class="n">crds</span><span class="p">(</span><span class="s2">&quot;TAC&quot;</span><span class="p">,</span> <span class="s2">&quot;DECC&quot;</span><span class="p">,</span> <span class="n">input_directory</span> <span class="o">=</span> <span class="n">input_directory</span><span class="p">,</span> <span class="n">output_directory</span> <span class="o">=</span> <span class="n">output_directory</span><span class="p">)</span>
+
+    <span class="c1"># DECC GC data</span>
+    <span class="n">gc</span><span class="p">(</span><span class="s2">&quot;TAC&quot;</span><span class="p">,</span> <span class="s2">&quot;GCMD&quot;</span><span class="p">,</span> <span class="s2">&quot;DECC&quot;</span><span class="p">,</span> <span class="n">input_directory</span> <span class="o">=</span> <span class="n">input_directory</span><span class="p">,</span> <span class="n">output_directory</span> <span class="o">=</span> <span class="n">output_directory</span><span class="p">)</span>
+    <span class="n">gc</span><span class="p">(</span><span class="s2">&quot;RGL&quot;</span><span class="p">,</span> <span class="s2">&quot;GCMD&quot;</span><span class="p">,</span> <span class="s2">&quot;DECC&quot;</span><span class="p">,</span> <span class="n">input_directory</span> <span class="o">=</span> <span class="n">input_directory</span><span class="p">,</span> <span class="n">output_directory</span> <span class="o">=</span> <span class="n">output_directory</span><span class="p">)</span>
+
+    <span class="c1"># DECC Medusa</span>
+    <span class="n">gc</span><span class="p">(</span><span class="s2">&quot;TAC&quot;</span><span class="p">,</span> <span class="s2">&quot;medusa&quot;</span><span class="p">,</span> <span class="s2">&quot;DECC&quot;</span><span class="p">,</span> <span class="n">input_directory</span> <span class="o">=</span> <span class="n">input_directory</span><span class="p">,</span> <span class="n">output_directory</span> <span class="o">=</span> <span class="n">output_directory</span><span class="p">)</span>
+
+    <span class="c1"># AGAGE GC data</span>
+    <span class="n">gc</span><span class="p">(</span><span class="s2">&quot;MHD&quot;</span><span class="p">,</span> <span class="s2">&quot;GCMD&quot;</span><span class="p">,</span> <span class="s2">&quot;AGAGE&quot;</span><span class="p">,</span> <span class="n">input_directory</span> <span class="o">=</span> <span class="n">input_directory</span><span class="p">,</span> <span class="n">output_directory</span> <span class="o">=</span> <span class="n">output_directory</span><span class="p">)</span>
+
+    <span class="c1"># AGAGE GCMS data</span>
+    <span class="n">gc</span><span class="p">(</span><span class="s2">&quot;MHD&quot;</span><span class="p">,</span> <span class="s2">&quot;GCMS&quot;</span><span class="p">,</span> <span class="s2">&quot;AGAGE&quot;</span><span class="p">,</span> <span class="n">input_directory</span> <span class="o">=</span> <span class="n">input_directory</span><span class="p">,</span> <span class="n">output_directory</span> <span class="o">=</span> <span class="n">output_directory</span><span class="p">)</span>
+
+    <span class="c1"># AGAGE Medusa</span>
+    <span class="n">gc</span><span class="p">(</span><span class="s2">&quot;MHD&quot;</span><span class="p">,</span> <span class="s2">&quot;medusa&quot;</span><span class="p">,</span> <span class="s2">&quot;AGAGE&quot;</span><span class="p">,</span> <span class="n">input_directory</span> <span class="o">=</span> <span class="n">input_directory</span><span class="p">,</span> <span class="n">output_directory</span> <span class="o">=</span> <span class="n">output_directory</span><span class="p">)</span></div>
+
+
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+
+    <span class="c1"># AGAGE Medusa</span>
+    <span class="n">gc</span><span class="p">(</span><span class="s2">&quot;MHD&quot;</span><span class="p">,</span> <span class="s2">&quot;medusa&quot;</span><span class="p">,</span> <span class="s2">&quot;AGAGE&quot;</span><span class="p">)</span>
+    <span class="n">gc</span><span class="p">(</span><span class="s2">&quot;CGO&quot;</span><span class="p">,</span> <span class="s2">&quot;medusa&quot;</span><span class="p">,</span> <span class="s2">&quot;AGAGE&quot;</span><span class="p">)</span>
+    <span class="n">gc</span><span class="p">(</span><span class="s2">&quot;GSN&quot;</span><span class="p">,</span> <span class="s2">&quot;medusa&quot;</span><span class="p">,</span> <span class="s2">&quot;AGAGE&quot;</span><span class="p">)</span>
+    <span class="n">gc</span><span class="p">(</span><span class="s2">&quot;SDZ&quot;</span><span class="p">,</span> <span class="s2">&quot;medusa&quot;</span><span class="p">,</span> <span class="s2">&quot;AGAGE&quot;</span><span class="p">)</span>
+    <span class="n">gc</span><span class="p">(</span><span class="s2">&quot;THD&quot;</span><span class="p">,</span> <span class="s2">&quot;medusa&quot;</span><span class="p">,</span> <span class="s2">&quot;AGAGE&quot;</span><span class="p">)</span>
+    <span class="n">gc</span><span class="p">(</span><span class="s2">&quot;RPB&quot;</span><span class="p">,</span> <span class="s2">&quot;medusa&quot;</span><span class="p">,</span> <span class="s2">&quot;AGAGE&quot;</span><span class="p">)</span>
+    <span class="n">gc</span><span class="p">(</span><span class="s2">&quot;SMO&quot;</span><span class="p">,</span> <span class="s2">&quot;medusa&quot;</span><span class="p">,</span> <span class="s2">&quot;AGAGE&quot;</span><span class="p">)</span>
+    <span class="n">gc</span><span class="p">(</span><span class="s2">&quot;SIO&quot;</span><span class="p">,</span> <span class="s2">&quot;medusa&quot;</span><span class="p">,</span> <span class="s2">&quot;AGAGE&quot;</span><span class="p">)</span>
+    <span class="n">gc</span><span class="p">(</span><span class="s2">&quot;JFJ&quot;</span><span class="p">,</span> <span class="s2">&quot;medusa&quot;</span><span class="p">,</span> <span class="s2">&quot;AGAGE&quot;</span><span class="p">)</span>
+    <span class="n">gc</span><span class="p">(</span><span class="s2">&quot;CMN&quot;</span><span class="p">,</span> <span class="s2">&quot;medusa&quot;</span><span class="p">,</span> <span class="s2">&quot;AGAGE&quot;</span><span class="p">)</span>
+    <span class="n">gc</span><span class="p">(</span><span class="s2">&quot;ZEP&quot;</span><span class="p">,</span> <span class="s2">&quot;medusa&quot;</span><span class="p">,</span> <span class="s2">&quot;AGAGE&quot;</span><span class="p">)</span>
+
+    <span class="c1"># AGAGE GC data</span>
+    <span class="n">gc</span><span class="p">(</span><span class="s2">&quot;RPB&quot;</span><span class="p">,</span> <span class="s2">&quot;GCMD&quot;</span><span class="p">,</span> <span class="s2">&quot;AGAGE&quot;</span><span class="p">)</span>
+    <span class="n">gc</span><span class="p">(</span><span class="s2">&quot;CGO&quot;</span><span class="p">,</span> <span class="s2">&quot;GCMD&quot;</span><span class="p">,</span> <span class="s2">&quot;AGAGE&quot;</span><span class="p">)</span>
+    <span class="n">gc</span><span class="p">(</span><span class="s2">&quot;MHD&quot;</span><span class="p">,</span> <span class="s2">&quot;GCMD&quot;</span><span class="p">,</span> <span class="s2">&quot;AGAGE&quot;</span><span class="p">)</span>
+    <span class="n">gc</span><span class="p">(</span><span class="s2">&quot;SMO&quot;</span><span class="p">,</span> <span class="s2">&quot;GCMD&quot;</span><span class="p">,</span> <span class="s2">&quot;AGAGE&quot;</span><span class="p">)</span>
+    <span class="n">gc</span><span class="p">(</span><span class="s2">&quot;THD&quot;</span><span class="p">,</span> <span class="s2">&quot;GCMD&quot;</span><span class="p">,</span> <span class="s2">&quot;AGAGE&quot;</span><span class="p">)</span>
+
+    <span class="c1"># AGAGE GCMS data</span>
+    <span class="n">gc</span><span class="p">(</span><span class="s2">&quot;CGO&quot;</span><span class="p">,</span> <span class="s2">&quot;GCMS&quot;</span><span class="p">,</span> <span class="s2">&quot;AGAGE&quot;</span><span class="p">)</span>
+    <span class="n">gc</span><span class="p">(</span><span class="s2">&quot;MHD&quot;</span><span class="p">,</span> <span class="s2">&quot;GCMS&quot;</span><span class="p">,</span> <span class="s2">&quot;AGAGE&quot;</span><span class="p">)</span>
+    <span class="n">gc</span><span class="p">(</span><span class="s2">&quot;RPB&quot;</span><span class="p">,</span> <span class="s2">&quot;GCMS&quot;</span><span class="p">,</span> <span class="s2">&quot;AGAGE&quot;</span><span class="p">)</span>
+    <span class="n">gc</span><span class="p">(</span><span class="s2">&quot;SMO&quot;</span><span class="p">,</span> <span class="s2">&quot;GCMS&quot;</span><span class="p">,</span> <span class="s2">&quot;AGAGE&quot;</span><span class="p">)</span>
+    <span class="n">gc</span><span class="p">(</span><span class="s2">&quot;THD&quot;</span><span class="p">,</span> <span class="s2">&quot;GCMS&quot;</span><span class="p">,</span> <span class="s2">&quot;AGAGE&quot;</span><span class="p">)</span>
+    <span class="n">gc</span><span class="p">(</span><span class="s2">&quot;JFJ&quot;</span><span class="p">,</span> <span class="s2">&quot;GCMS&quot;</span><span class="p">,</span> <span class="s2">&quot;AGAGE&quot;</span><span class="p">)</span>
+    <span class="n">gc</span><span class="p">(</span><span class="s2">&quot;CMN&quot;</span><span class="p">,</span> <span class="s2">&quot;GCMS&quot;</span><span class="p">,</span> <span class="s2">&quot;AGAGE&quot;</span><span class="p">)</span>
+    <span class="n">gc</span><span class="p">(</span><span class="s2">&quot;ZEP&quot;</span><span class="p">,</span> <span class="s2">&quot;GCMS&quot;</span><span class="p">,</span> <span class="s2">&quot;AGAGE&quot;</span><span class="p">)</span>
+
+    <span class="c1"># AGAGE CRDS data</span>
+    <span class="n">crds</span><span class="p">(</span><span class="s2">&quot;RPB&quot;</span><span class="p">,</span> <span class="s2">&quot;AGAGE&quot;</span><span class="p">)</span>
+
+    <span class="c1"># ICOS</span>
+<span class="c1">#    icos(&quot;TTA&quot;)</span>
+    <span class="n">icos</span><span class="p">(</span><span class="s2">&quot;MHD&quot;</span><span class="p">,</span> <span class="n">network</span> <span class="o">=</span> <span class="s2">&quot;LSCE&quot;</span><span class="p">)</span>
+
+    <span class="c1"># GAUGE CRDS data</span>
+    <span class="n">crds</span><span class="p">(</span><span class="s2">&quot;HFD&quot;</span><span class="p">,</span> <span class="s2">&quot;GAUGE&quot;</span><span class="p">)</span>
+    <span class="n">crds</span><span class="p">(</span><span class="s2">&quot;BSD&quot;</span><span class="p">,</span> <span class="s2">&quot;GAUGE&quot;</span><span class="p">)</span>
+
+    <span class="c1"># GAUGE GC data</span>
+    <span class="n">gc</span><span class="p">(</span><span class="s2">&quot;BSD&quot;</span><span class="p">,</span> <span class="s2">&quot;GCMD&quot;</span><span class="p">,</span> <span class="s2">&quot;GAUGE&quot;</span><span class="p">)</span>
+    <span class="n">gc</span><span class="p">(</span><span class="s2">&quot;HFD&quot;</span><span class="p">,</span> <span class="s2">&quot;GCMD&quot;</span><span class="p">,</span> <span class="s2">&quot;GAUGE&quot;</span><span class="p">)</span>
+
+    <span class="c1"># DECC CRDS data</span>
+    <span class="n">crds</span><span class="p">(</span><span class="s2">&quot;TTA&quot;</span><span class="p">,</span> <span class="s2">&quot;DECC&quot;</span><span class="p">)</span>
+    <span class="n">crds</span><span class="p">(</span><span class="s2">&quot;RGL&quot;</span><span class="p">,</span> <span class="s2">&quot;DECC&quot;</span><span class="p">)</span>
+    <span class="n">crds</span><span class="p">(</span><span class="s2">&quot;TAC&quot;</span><span class="p">,</span> <span class="s2">&quot;DECC&quot;</span><span class="p">)</span>
+
+    <span class="c1"># DECC GC data</span>
+    <span class="n">gc</span><span class="p">(</span><span class="s2">&quot;TAC&quot;</span><span class="p">,</span> <span class="s2">&quot;GCMD&quot;</span><span class="p">,</span> <span class="s2">&quot;DECC&quot;</span><span class="p">)</span>
+    <span class="n">gc</span><span class="p">(</span><span class="s2">&quot;RGL&quot;</span><span class="p">,</span> <span class="s2">&quot;GCMD&quot;</span><span class="p">,</span> <span class="s2">&quot;DECC&quot;</span><span class="p">)</span>
+
+    <span class="c1"># DECC Medusa</span>
+    <span class="n">gc</span><span class="p">(</span><span class="s2">&quot;TAC&quot;</span><span class="p">,</span> <span class="s2">&quot;medusa&quot;</span><span class="p">,</span> <span class="s2">&quot;DECC&quot;</span><span class="p">)</span>
+
+
+    <span class="c1"># Copy files</span>
+    <span class="n">networks</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;AGAGE&quot;</span><span class="p">,</span> <span class="s2">&quot;GAUGE&quot;</span><span class="p">,</span> <span class="s2">&quot;DECC&quot;</span><span class="p">,</span> <span class="s2">&quot;LSCE&quot;</span><span class="p">]</span>
+    <span class="n">src_dir</span> <span class="o">=</span> <span class="s2">&quot;/dagage2/agage/metoffice/processed_observations&quot;</span>
+    <span class="n">dest_dir</span> <span class="o">=</span> <span class="s2">&quot;/data/shared/obs&quot;</span>
+
+    <span class="k">for</span> <span class="n">network</span> <span class="ow">in</span> <span class="n">networks</span><span class="p">:</span>
+        <span class="n">files</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">join</span><span class="p">(</span><span class="n">src_dir</span><span class="p">,</span> <span class="n">network</span><span class="p">,</span> <span class="s2">&quot;*.nc&quot;</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">files</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Copying </span><span class="si">%s</span><span class="s2">...&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">split</span><span class="p">(</span><span class="n">f</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
+            <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">join</span><span class="p">(</span><span class="n">dest_dir</span><span class="p">,</span> <span class="n">network</span><span class="p">))</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, mrghg.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

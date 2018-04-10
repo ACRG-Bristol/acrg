@@ -1,0 +1,511 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>acrg_tdmcmc package &#8212; acrg  documentation</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="acrg-tdmcmc-package">
+<h1>acrg_tdmcmc package<a class="headerlink" href="#acrg-tdmcmc-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="acrg-tdmcmc-post-process-template-module">
+<h2>acrg_tdmcmc.post_process_template module<a class="headerlink" href="#acrg-tdmcmc-post-process-template-module" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-acrg_tdmcmc.run_tdmcmc">
+<span id="acrg-tdmcmc-run-tdmcmc-module"></span><h2>acrg_tdmcmc.run_tdmcmc module<a class="headerlink" href="#module-acrg_tdmcmc.run_tdmcmc" title="Permalink to this headline">¶</a></h2>
+<p>Created on Fri Feb  5 09:44:30 2016</p>
+<p>&#64;author: ml12574</p>
+<p>Template script for running uncorrelated trans-dimensional inversion</p>
+<p>Uses acrg_hbtdmcmc_uncorr.f90</p>
+<p>Please note: The default is not to perform parallel tempering and the rjmcmc
+is performed using a single chain on a single processor. If you think parallel
+tempering is required this is easily changed. Speak to me (ML).</p>
+<p>After the function definition at the top of the script the next section
+is the inputs. This contains all the basic stuff you will probably want and
+have to change or tune.</p>
+<p>Further changes to stepsizes and parameter uncertainties can be applied
+further down the script once the dimensions have been set. You will almost
+certainly need to tune your stepsizes appropriately for different parameter
+types (i.e. baseline and emissions). You will also want to adjust the
+uncertainties differently (emissions uncertainty &gt; baseline uncertainty).</p>
+<p>&#64;author: ml12574</p>
+<dl class="attribute">
+<dt id="acrg_tdmcmc.run_tdmcmc.closest_grid">
+<code class="descclassname">acrg_tdmcmc.run_tdmcmc.</code><code class="descname">closest_grid</code><a class="reference internal" href="../_modules/acrg_tdmcmc/run_tdmcmc.html#closest_grid"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_tdmcmc.run_tdmcmc.closest_grid" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="acrg_tdmcmc.run_tdmcmc.get_nsigma_y">
+<code class="descclassname">acrg_tdmcmc.run_tdmcmc.</code><code class="descname">get_nsigma_y</code><span class="sig-paren">(</span><em>fp_data_H</em>, <em>start_date</em>, <em>end_date</em>, <em>sites</em>, <em>nmeasure</em>, <em>sigma_values</em>, <em>bl_period=10</em>, <em>bl_split=False</em>, <em>levels=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_tdmcmc/run_tdmcmc.html#get_nsigma_y"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_tdmcmc.run_tdmcmc.get_nsigma_y" title="Permalink to this definition">¶</a></dt>
+<dd><p>Defines the indices of the measurement vector which are described by different
+uncertainty hyperparameters (sigma_model)
+By default all sigma_models are split by site and time.
+Alternative option for subdivision by site and boundary layer depth. Can be set
+when calling the function.
+E.g.
+To split by 10 day periods:</p>
+<blockquote>
+<div>R_indices, ydim1,ydim2, sigma_model0 = get_nsigma_y(fp_data_H,start_date, end_date,
+sites, nmeasure, bl_split = False, bl_period=10,
+sigma_values=50.)</div></blockquote>
+<dl class="docutils">
+<dt>To split by BL depth:</dt>
+<dd>R_indices, ydim1,ydim2, sigma_model0 = get_nsigma_y(fp_data_H,start_date, end_date,
+sites, nmeasure, bl_split = True, bl_period=None,
+sigma_values=50.)</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_tdmcmc.run_tdmcmc.run_tdmcmc">
+<code class="descclassname">acrg_tdmcmc.run_tdmcmc.</code><code class="descname">run_tdmcmc</code><span class="sig-paren">(</span><em>sites</em>, <em>meas_period</em>, <em>av_period</em>, <em>species</em>, <em>start_date</em>, <em>end_date</em>, <em>domain</em>, <em>network</em>, <em>fp_basis_case</em>, <em>bc_basis_case</em>, <em>rjmcmc</em>, <em>para_temp</em>, <em>bl_period</em>, <em>kmin</em>, <em>kmax</em>, <em>k_ap</em>, <em>nIt</em>, <em>burn_in</em>, <em>nsub</em>, <em>nbeta</em>, <em>beta</em>, <em>sigma_model_pdf</em>, <em>sigma_model_ap</em>, <em>sigma_model_hparams</em>, <em>stepsize_sigma_y</em>, <em>stepsize_clon</em>, <em>stepsize_clat</em>, <em>stepsize_bd</em>, <em>stepsize_all</em>, <em>stepsize_pdf_p1_all</em>, <em>stepsize_pdf_p2_all</em>, <em>pdf_param1</em>, <em>pdf_param2</em>, <em>pdf_p1_hparam1</em>, <em>pdf_p1_hparam2</em>, <em>pdf_p2_hparam1</em>, <em>pdf_p2_hparam2</em>, <em>x_pdf</em>, <em>pdf_param1_pdf</em>, <em>pdf_param2_pdf</em>, <em>inv_type</em>, <em>output_dir</em>, <em>tau_ap=None</em>, <em>tau_hparams=None</em>, <em>stepsize_tau=None</em>, <em>tau_pdf=None</em>, <em>bl_split=False</em>, <em>bl_levels=None</em>, <em>filters=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_tdmcmc/run_tdmcmc.html#run_tdmcmc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_tdmcmc.run_tdmcmc.run_tdmcmc" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-acrg_tdmcmc.tdmcmc_config">
+<span id="acrg-tdmcmc-tdmcmc-config-module"></span><h2>acrg_tdmcmc.tdmcmc_config module<a class="headerlink" href="#module-acrg_tdmcmc.tdmcmc_config" title="Permalink to this headline">¶</a></h2>
+<p>Created on Mon Mar 26 12:41:21 2018</p>
+<p>This module describes the specific configuration set up for the running the tdmcmc code.
+This builds on the more general functionality of configuration file functions acrg_config.config module.
+Please refer to this module for further details.</p>
+<div class="section" id="mcmc">
+<h3>MCMC<a class="headerlink" href="#mcmc" title="Permalink to this headline">¶</a></h3>
+<p>For the MCMC inputs an input parameter dictionary is pre-defined (mcmc_param_type()) and separates the parameters by classifications.
+This dictionary allows us to define which inputs we expect and the associated types.
+Unless specified as optional parameters an error is returned if those parameters aren&#8217;t present.</p>
+<dl class="docutils">
+<dt>By default this includes three classifications:</dt>
+<dd><ul class="first last simple">
+<li>MEASUREMENTS - defines expected parameters from [MEASUREMENTS] section</li>
+<li>MCMC         - defines expected parameters from all [MCMC.***] sections collected together</li>
+<li>TDMCMC       - defines expected parameters from all [TDMCMC.***] sections collected together</li>
+</ul>
+</dd>
+</dl>
+<p>See mcmc_param_type() function for full list of pre-defined parameters and types</p>
+<p>Extracted parameters are returned as an OrderedDict object (from collections module).</p>
+</div>
+<div class="section" id="how-to-run">
+<h3>How to run<a class="headerlink" href="#how-to-run" title="Permalink to this headline">¶</a></h3>
+<p>The main function to use for reading in parameters from a config file are:</p>
+<blockquote>
+<div><ul class="simple">
+<li>all_mcmc_param(config_file,...) - Extract MCMC parameters specifically based on a pre-defined param_type</li>
+</ul>
+<p>dictionary (see above)</p>
+</div></blockquote>
+<p>Note: At present the param_type dict specified by the gosat_param_dict() function is created from an in-built
+nested dictionary. However, this can be modified to rely on a template configuration file instead. See
+acrg_config.generate_param_dict() function for more details.</p>
+<p>&#64;author: rt17603</p>
+<dl class="function">
+<dt id="acrg_tdmcmc.tdmcmc_config.all_mcmc_param">
+<code class="descclassname">acrg_tdmcmc.tdmcmc_config.</code><code class="descname">all_mcmc_param</code><span class="sig-paren">(</span><em>config_file</em>, <em>optional_param=[]</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_tdmcmc/tdmcmc_config.html#all_mcmc_param"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_tdmcmc.tdmcmc_config.all_mcmc_param" title="Permalink to this definition">¶</a></dt>
+<dd><p>The all_mcmc_param function extracts all parameters related to running the tdmcmc code as defined in mcmc_param_type()</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>config_file</strong> &#8211; filename for input configuration file</li>
+<li><strong>optional_param</strong> &#8211; parameters which are optional. If the param cannot be found in input file, value will be set to None</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><p>parameter names and values</p>
+<dl class="docutils">
+<dt>If any parameter defined in mcmc_param_type() cannot be found (not specified as an optional param):</dt>
+<dd><p class="first last">Exception raised and program exited</p>
+</dd>
+</dl>
+</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">OrderedDict</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_tdmcmc.tdmcmc_config.get_mcmc_params">
+<code class="descclassname">acrg_tdmcmc.tdmcmc_config.</code><code class="descname">get_mcmc_params</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_tdmcmc/tdmcmc_config.html#get_mcmc_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_tdmcmc.tdmcmc_config.get_mcmc_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>The get_meas_param function returns all parameter names associated the the &#8216;MCMC&#8217; group
+:returns: parameter names, str: group name
+:rtype: OrderedDict</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_tdmcmc.tdmcmc_config.get_meas_params">
+<code class="descclassname">acrg_tdmcmc.tdmcmc_config.</code><code class="descname">get_meas_params</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_tdmcmc/tdmcmc_config.html#get_meas_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_tdmcmc.tdmcmc_config.get_meas_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>The get_meas_param function returns all parameter names associated the the &#8216;MEASUREMENTS&#8217; group
+:returns: parameter names, str: group name
+:rtype: OrderedDict</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_tdmcmc.tdmcmc_config.get_tdmcmc_params">
+<code class="descclassname">acrg_tdmcmc.tdmcmc_config.</code><code class="descname">get_tdmcmc_params</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_tdmcmc/tdmcmc_config.html#get_tdmcmc_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_tdmcmc.tdmcmc_config.get_tdmcmc_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>The get_meas_param function returns all parameter names associated the the &#8216;TDMCMC&#8217; group
+:returns: parameter names, str: group name
+:rtype: OrderedDict</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_tdmcmc.tdmcmc_config.mcmc_param">
+<code class="descclassname">acrg_tdmcmc.tdmcmc_config.</code><code class="descname">mcmc_param</code><span class="sig-paren">(</span><em>config_file</em>, <em>optional_param=[]</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_tdmcmc/tdmcmc_config.html#mcmc_param"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_tdmcmc.tdmcmc_config.mcmc_param" title="Permalink to this definition">¶</a></dt>
+<dd><p>The mcmc_param function extracts all parameters for the MCMC run (see mcmc_param_type for full list)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>config_file</strong> (<em>str</em>) &#8211; filename for input configuration file</li>
+<li><strong>optional_param</strong> (<em>list</em>) &#8211; parameters which are optional. If the param cannot be found value will be set to None</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><p>parameter names and values</p>
+<dl class="docutils">
+<dt>If any MCMC parameter cannot be found (not specified as an optional param):</dt>
+<dd><p class="first last">Exception raised and program exited</p>
+</dd>
+</dl>
+</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">OrderedDict</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_tdmcmc.tdmcmc_config.mcmc_param_type">
+<code class="descclassname">acrg_tdmcmc.tdmcmc_config.</code><code class="descname">mcmc_param_type</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_tdmcmc/tdmcmc_config.html#mcmc_param_type"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_tdmcmc.tdmcmc_config.mcmc_param_type" title="Permalink to this definition">¶</a></dt>
+<dd><p>The mcmc_param_type function specifies the names of expected input parameters from the config file and the required Python object types.
+This includes three section groups for the input parameter:</p>
+<blockquote>
+<div>&#8216;MEASUREMENTS&#8217; - details related to the measurements made
+&#8216;MCMC&#8217;         - parameters for running the mcmc model
+&#8216;TDMCMC&#8217;       - parameters for running the tdmcmc model (in addition to mcmc parameters needed)</div></blockquote>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Each section group contains a OrderedDict of parameter names and associated type:
+&#8216;MEASUREMENTS&#8217; (&#8216;sites&#8217;,list),(&#8216;species&#8217;,str),(&#8216;start_date&#8217;,str),(&#8216;end_date&#8217;,str),(&#8216;domain&#8217;,str),<blockquote>
+<div>(&#8216;network&#8217;,str)</div></blockquote>
+<dl class="docutils">
+<dt>&#8216;MCMC&#8217;         (&#8216;meas_period&#8217;,list),(&#8216;av_period&#8217;,list),(&#8216;nIt&#8217;,int),(&#8216;burn_in&#8217;,int),</dt>
+<dd>(&#8216;nsub&#8217;,int),(&#8216;fp_basis_case&#8217;,str),(&#8216;bc_basis_case&#8217;,str),(&#8216;x_pdf0&#8217;,int),
+(&#8216;pdf_param1_pdf0&#8217;,int),(&#8216;pdf_param2_pdf0&#8217;,int),(&#8216;sigma_model_pdf&#8217;,int),
+(&#8216;pdf_param10&#8217;,float),(&#8216;pdf_param20&#8217;,float),(&#8216;pdf_p1_hparam10&#8217;,float),
+(&#8216;pdf_p1_hparam20&#8217;,float),(&#8216;pdf_p2_hparam10&#8217;,float),(&#8216;pdf_p2_hparam20&#8217;,float),
+(&#8216;sigma_model_ap&#8217;,float),(&#8216;sigma_model_hparams&#8217;,list),(&#8216;bl_period&#8217;,int),
+(&#8216;bl_split&#8217;,bool),(&#8216;levels&#8217;,int),(&#8216;stepsize&#8217;,float),(&#8216;stepsize_pdf_p1&#8217;,float),
+(&#8216;stepsize_pdf_p2&#8217;,float),(&#8216;stepsize_sigma_y&#8217;,float),(&#8216;stepsize_clon&#8217;,float),
+(&#8216;stepsize_clat&#8217;,float),(&#8216;stepsize_bd&#8217;,int),(&#8216;inv_type&#8217;,str),(&#8216;tau_ap&#8217;,float),
+(&#8216;tau_hparams&#8217;,list),(&#8216;tau_pdf&#8217;,int),(&#8216;stepsize_tau&#8217;,float), (&#8216;filters&#8217;,list),
+(&#8216;parallel_tempering&#8217;,bool),(&#8216;nbeta&#8217;,int),(&#8216;output_dir&#8217;,str),(&#8216;unique_copy&#8217;,boolean)</dd>
+</dl>
+<p>&#8216;TDMCMC&#8217;       (&#8216;reversible_jump&#8217;,bool),(&#8216;kmin&#8217;,int),(&#8216;kmax&#8217;,int),(&#8216;k_ap&#8217;,int)</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">OrderedDict of section groups</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_tdmcmc.tdmcmc_config.measurements_param">
+<code class="descclassname">acrg_tdmcmc.tdmcmc_config.</code><code class="descname">measurements_param</code><span class="sig-paren">(</span><em>config_file</em>, <em>optional_param=[]</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_tdmcmc/tdmcmc_config.html#measurements_param"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_tdmcmc.tdmcmc_config.measurements_param" title="Permalink to this definition">¶</a></dt>
+<dd><p>The measurements_param function extracts all parameters relevant to measurement details (see mcmc_param_type for full list)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>config_file</strong> (<em>str</em>) &#8211; filename for input configuration file</li>
+<li><strong>optional_param</strong> (<em>list</em>) &#8211; parameters which are optional. If the param cannot be found value will be set to None.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><p>parameter names and values</p>
+<dl class="docutils">
+<dt>If any measurement parameter cannot be found (not specified as an optional param):</dt>
+<dd><p class="first last">Exception raised and program exited</p>
+</dd>
+</dl>
+</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">OrderedDict</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_tdmcmc.tdmcmc_config.tdmcmc_param">
+<code class="descclassname">acrg_tdmcmc.tdmcmc_config.</code><code class="descname">tdmcmc_param</code><span class="sig-paren">(</span><em>config_file</em>, <em>optional_param=[]</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_tdmcmc/tdmcmc_config.html#tdmcmc_param"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_tdmcmc.tdmcmc_config.tdmcmc_param" title="Permalink to this definition">¶</a></dt>
+<dd><p>The tdmcmc_param function extracts all parameters for the MCMC run (see mcmc_param_type for full list)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>config_file</strong> (<em>str</em>) &#8211; filename for input configuration file</li>
+<li><strong>optional_param</strong> (<em>list</em>) &#8211; parameters which are optional. If the param cannot be found value will be set to None</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><p>parameter names and values</p>
+<dl class="docutils">
+<dt>If any MCMC parameter cannot be found (not specified as an optional param):</dt>
+<dd><p class="first last">Exception raised and program exited</p>
+</dd>
+</dl>
+</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">OrderedDict</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="acrg-tdmcmc-tdmcmc-inputs-module">
+<h2>acrg_tdmcmc.tdmcmc_inputs module<a class="headerlink" href="#acrg-tdmcmc-tdmcmc-inputs-module" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-acrg_tdmcmc.tdmcmc_post_process">
+<span id="acrg-tdmcmc-tdmcmc-post-process-module"></span><h2>acrg_tdmcmc.tdmcmc_post_process module<a class="headerlink" href="#module-acrg_tdmcmc.tdmcmc_post_process" title="Permalink to this headline">¶</a></h2>
+<p>Created on Tue Aug  4 08:57:53 2015</p>
+<p>Script to process Transdimensional MCMC output</p>
+<p>Includes:
+Write netcdf and append netcdf to write output to nc file</p>
+<p>plot_scaling - plot posterior scaling map</p>
+<p>regions_histogram - plot histogram of number of regions</p>
+<dl class="docutils">
+<dt>country_emissions - calculate emissions from given list of countries</dt>
+<dd>Currently hard-wired for methane</dd>
+</dl>
+<p>&#64;author: ml12574</p>
+<dl class="function">
+<dt id="acrg_tdmcmc.tdmcmc_post_process.append_netcdf">
+<code class="descclassname">acrg_tdmcmc.tdmcmc_post_process.</code><code class="descname">append_netcdf</code><span class="sig-paren">(</span><em>flux_mean</em>, <em>flux_percentile</em>, <em>flux_it</em>, <em>country_mean</em>, <em>country_percentile</em>, <em>k_mean</em>, <em>k_percentile</em>, <em>lon</em>, <em>lat</em>, <em>time</em>, <em>country</em>, <em>percentile</em>, <em>nIt</em>, <em>experiment</em>, <em>outfile</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_tdmcmc/tdmcmc_post_process.html#append_netcdf"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_tdmcmc.tdmcmc_post_process.append_netcdf" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function for appending flux and country output to file</p>
+<p>Only use this function once file has already been created
+Create file first using write_netcdf function below</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_tdmcmc.tdmcmc_post_process.country_emissions">
+<code class="descclassname">acrg_tdmcmc.tdmcmc_post_process.</code><code class="descname">country_emissions</code><span class="sig-paren">(</span><em>ds_mcmc</em>, <em>x_post_vit</em>, <em>q_ap_abs_v</em>, <em>countries</em>, <em>species</em>, <em>units=None</em>, <em>ocean=True</em>, <em>domain='EUROPE'</em>, <em>uk_split=False</em>, <em>fixed_map=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_tdmcmc/tdmcmc_post_process.html#country_emissions"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_tdmcmc.tdmcmc_post_process.country_emissions" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates national totals for a given list of countries
+Requires:
+ds_mcmc - post_mcmc xray dataset
+countries - list of countries (see data_path/countries files for names)</p>
+<blockquote>
+<div>In general names are all capitalized</div></blockquote>
+<p>species - CH4, CO2 etc.</p>
+<p>Optional:
+units - Need to specify to get something sensible out, otherwise returns in g/yr</p>
+<blockquote>
+<div>Options are Pg/yr, Tg/yr,Gg/yr Mg/yr</div></blockquote>
+<p>ocean - Default is true, If false only include emissions from land surface
+uk_split - Break UK into devolved administrations</p>
+<blockquote>
+<div>Country names then have to be [&#8216;Eng&#8217;, &#8216;Sco&#8217;, &#8216;Wales&#8217;,
+NIre&#8217;, &#8216;IRELAND&#8217;, &#8216;BENELUX&#8217;]. Horribly inconsistent I know!</div></blockquote>
+<p>Returns: mean, 5th,16th,median,84th,95th percentiles and prior for each country</p>
+<p>Output in Tg/yr</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_tdmcmc.tdmcmc_post_process.open_ds">
+<code class="descclassname">acrg_tdmcmc.tdmcmc_post_process.</code><code class="descname">open_ds</code><span class="sig-paren">(</span><em>path</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_tdmcmc/tdmcmc_post_process.html#open_ds"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_tdmcmc.tdmcmc_post_process.open_ds" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function efficiently opens xray datasets.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_tdmcmc.tdmcmc_post_process.plot_nuclei_density">
+<code class="descclassname">acrg_tdmcmc.tdmcmc_post_process.</code><code class="descname">plot_nuclei_density</code><span class="sig-paren">(</span><em>ds</em>, <em>out_filename=None</em>, <em>fignum=3</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_tdmcmc/tdmcmc_post_process.html#plot_nuclei_density"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_tdmcmc.tdmcmc_post_process.plot_nuclei_density" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot a 2D histogram/density plot of where nuclei are located in inversion domain</p>
+<p>Requires x_ray dataset of outputs
+Currently in rainbow colour scheme - Eurgh! #endrainbow</p>
+<p>Specify an out_filename to write to disk</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_tdmcmc.tdmcmc_post_process.plot_scaling">
+<code class="descclassname">acrg_tdmcmc.tdmcmc_post_process.</code><code class="descname">plot_scaling</code><span class="sig-paren">(</span><em>data</em>, <em>lon</em>, <em>lat</em>, <em>clevels=None</em>, <em>cmap=&lt;matplotlib.colors.LinearSegmentedColormap object&gt;</em>, <em>label=None</em>, <em>smooth=False</em>, <em>out_filename=None</em>, <em>stations=None</em>, <em>fignum=None</em>, <em>title=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_tdmcmc/tdmcmc_post_process.html#plot_scaling"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_tdmcmc.tdmcmc_post_process.plot_scaling" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot 2d scaling map of posterior x
+i.e. degree of scaling applied to prior emissions
+Inputs:
+data = 2D (lat,lon) array of whatever you want
+clevels = Contour levels; defaults to np.arange(-2., 2.1, 0.1)
+cmap = Colormap - defaults to Red Blue reverse
+label = String - to appear at bottom
+smooth = If true plot smooth contours, otherwise use pcolormesh
+stations = Default is None. If true needs to be a dictionary containing:</p>
+<blockquote>
+<div>sites: &#8216;MHD&#8217;, &#8216;TAC&#8217;
+MHD_lon: -9.02
+MHHD_lat: 55.2
+TAC_lon: etc...</div></blockquote>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_tdmcmc.tdmcmc_post_process.plot_timeseries">
+<code class="descclassname">acrg_tdmcmc.tdmcmc_post_process.</code><code class="descname">plot_timeseries</code><span class="sig-paren">(</span><em>ds</em>, <em>fig_text=None</em>, <em>ylim=None</em>, <em>out_filename=None</em>, <em>doplot=True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_tdmcmc/tdmcmc_post_process.html#plot_timeseries"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_tdmcmc.tdmcmc_post_process.plot_timeseries" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot measurement timeseries of posterior and observed measurements
+Requires post_mcmc xray dataset
+For future: incorporate model &amp; measurement uncertainty
+Plots separate subplots for each of the measurement sites - hopefully!</p>
+<p>ds = dataset output from run_tdmcmc script
+fig_text = String e.g. &#8220;CH$_{4}$ mole fraction (ppb)&#8221;
+ylim = array [ymin,ymax]</p>
+<p>Specify an out_filename to write to disk</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_tdmcmc.tdmcmc_post_process.regions_histogram">
+<code class="descclassname">acrg_tdmcmc.tdmcmc_post_process.</code><code class="descname">regions_histogram</code><span class="sig-paren">(</span><em>k_it</em>, <em>out_filename=None</em>, <em>fignum=2</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_tdmcmc/tdmcmc_post_process.html#regions_histogram"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_tdmcmc.tdmcmc_post_process.regions_histogram" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot a histogram of the number of regions in trandimensional inversion</p>
+<p>Use this as a check for whether kmax should be larger</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_tdmcmc.tdmcmc_post_process.write_netcdf">
+<code class="descclassname">acrg_tdmcmc.tdmcmc_post_process.</code><code class="descname">write_netcdf</code><span class="sig-paren">(</span><em>flux_mean</em>, <em>flux_percentile</em>, <em>flux_it</em>, <em>flux_prior</em>, <em>flux_ap_percentile</em>, <em>country_mean</em>, <em>country_percentile</em>, <em>country_prior</em>, <em>country_ap_percentile</em>, <em>country_index</em>, <em>k_mean</em>, <em>k_percentile</em>, <em>lon</em>, <em>lat</em>, <em>time</em>, <em>country</em>, <em>percentile</em>, <em>nIt</em>, <em>experiment</em>, <em>outfile</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_tdmcmc/tdmcmc_post_process.html#write_netcdf"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_tdmcmc.tdmcmc_post_process.write_netcdf" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function for writing all flux and country output to file</p>
+<p>Only use this function for first set of variables
+Once file has been created, use append_netcdf function above</p>
+</dd></dl>
+
+</div>
+<div class="section" id="acrg-tdmcmc-tdmcmc-time-module">
+<h2>acrg_tdmcmc.tdmcmc_time module<a class="headerlink" href="#acrg-tdmcmc-tdmcmc-time-module" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-acrg_tdmcmc">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-acrg_tdmcmc" title="Permalink to this headline">¶</a></h2>
+<p>Created on Tue Sep 15 12:46:19 2015</p>
+<p>&#64;author: ml12574</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">acrg_tdmcmc package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#acrg-tdmcmc-post-process-template-module">acrg_tdmcmc.post_process_template module</a></li>
+<li><a class="reference internal" href="#module-acrg_tdmcmc.run_tdmcmc">acrg_tdmcmc.run_tdmcmc module</a></li>
+<li><a class="reference internal" href="#module-acrg_tdmcmc.tdmcmc_config">acrg_tdmcmc.tdmcmc_config module</a><ul>
+<li><a class="reference internal" href="#mcmc">MCMC</a></li>
+<li><a class="reference internal" href="#how-to-run">How to run</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#acrg-tdmcmc-tdmcmc-inputs-module">acrg_tdmcmc.tdmcmc_inputs module</a></li>
+<li><a class="reference internal" href="#module-acrg_tdmcmc.tdmcmc_post_process">acrg_tdmcmc.tdmcmc_post_process module</a></li>
+<li><a class="reference internal" href="#acrg-tdmcmc-tdmcmc-time-module">acrg_tdmcmc.tdmcmc_time module</a></li>
+<li><a class="reference internal" href="#module-acrg_tdmcmc">Module contents</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/api/acrg_tdmcmc.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, mrghg.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/api/acrg_tdmcmc.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

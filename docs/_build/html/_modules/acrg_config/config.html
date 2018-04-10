@@ -1,0 +1,655 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>acrg_config.config &#8212; acrg  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for acrg_config.config</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python2</span>
+<span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Created on Mon Sep 25 16:39:01 2017</span>
+
+<span class="sd">This module allows configuration files in the INI format to be read and used.</span>
+
+<span class="sd">------------------------------------------------</span>
+
+<span class="sd">Example of a section in the configuration file:</span>
+<span class="sd">::</span>
+<span class="sd">   </span>
+<span class="sd">    [MEASUREMENTS]</span>
+<span class="sd">    # Measurement details</span>
+<span class="sd">    </span>
+<span class="sd">    sites = [&quot;GSN&quot;]           ; Sites to read the data from as a list</span>
+<span class="sd">    species = &quot;chcl3&quot;</span>
+<span class="sd">    start_date = &quot;2015-01-01&quot; ; Default start date used if none specified on the command line</span>
+<span class="sd">    end_date = &quot;2015-02-01&quot;   ; Default start date used if none specified on the command line</span>
+<span class="sd">    domain = &quot;EASTASIA&quot;</span>
+<span class="sd">    network = &quot;AGAGE&quot;</span>
+
+<span class="sd">------------------------------------------------</span>
+
+<span class="sd"> - Sections are included in square brackets</span>
+<span class="sd"> - Parameter name and value pairs are separated by an equals sign</span>
+<span class="sd">     - Values can be specified with the same syntax as when creating a python object e.g. &#39;&#39; for string, [] for lists (and also for np.array - will be converted if their type has been set as an array)</span>
+<span class="sd"> - ; and # symbols can be used to create new line and inline comments</span>
+
+<span class="sd">Section headings can be of the form [NAME] or [GROUP.NAME]. This allows paramaters to be separated into several</span>
+<span class="sd">section headings in the configuration file for clarity but grouped into one overall classification when inputted based on the GROUP</span>
+<span class="sd">name.</span>
+
+<span class="sd">param_type dictionary</span>
+<span class="sd">+++++++++++++++++++++</span>
+
+<span class="sd">To specify inputs and the types they should be cast to (e.g. str, array, boolean etc) a nested dictionary should be created.</span>
+<span class="sd">This can be passed into several functions as the param_type argument.</span>
+
+<span class="sd">This should be of the form of one of the following:</span>
+<span class="sd">   - {&#39;SECTION_GROUP1&#39;:{&#39;param1&#39;:str,&#39;param2&#39;:float},&#39;SECTION_GROUP2&#39;:{&#39;param3&#39;:list,&#39;param4&#39;:np.array}}</span>
+<span class="sd">   - {&#39;SECTION1&#39;:{&#39;param1&#39;:str},&#39;SECTION2&#39;:&#39;{param2&#39;:float},&#39;SECTION3&#39;:{&#39;param3&#39;:list},&#39;SECTION4&#39;:{&#39;param4&#39;:np.array}}</span>
+<span class="sd">   - OrderedDict([&#39;SECTION_GROUP1&#39;:OrderedDict([(&#39;param1&#39;:str),(&#39;param2&#39;:float)]),&#39;SECTION_GROUP2&#39;:OrderedDict([(&#39;param3&#39;:list),(&#39;param4&#39;:np.array)]))</span>
+<span class="sd">   - OrderedDict([&#39;SECTION1&#39;:{&#39;param1&#39;:str},&#39;SECTION2&#39;:{&#39;param2&#39;:float},&#39;SECTION3&#39;:{&#39;param3&#39;:list},&#39;SECTION4&#39;:{&#39;param4&#39;:np.array}])</span>
+
+<span class="sd">This can either be created directly or a template configuration file can be created and a param_type dictionary created </span>
+<span class="sd">from this using the generate_param_dict() function.</span>
+<span class="sd">These template files should be kept within the acrg_config/templates/ directory and, after creation, should not be altered</span>
+<span class="sd">unless you wish to change the format for all config files of this type.</span>
+
+<span class="sd">Note: if param_type is not defined, the code will attempt to cast the inputs to the most sensible type.</span>
+<span class="sd">This should be fine in most cases but could cause issues.</span>
+<span class="sd">This also means the inputs will not be checked for any missing values.</span>
+
+
+<span class="sd">How to run</span>
+<span class="sd">++++++++++</span>
+
+<span class="sd">The main functions to use for reading in parameters from a config file are:</span>
+<span class="sd">    </span>
+<span class="sd">    * all_param(config_file,...)      - Extract all parameters from a configuration file.</span>
+<span class="sd">    * extract_params(config_file,...) - Extract specific parameters from a file either based on parameter </span>
+<span class="sd">    names, sections or groups.</span>
+
+<span class="sd">A param_type dictionary can be defined both to fix expected inputs and to explictly specify the parameter types.</span>
+
+<span class="sd">@author: rt17603</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">configparser</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">OrderedDict</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<div class="viewcode-block" id="open_config"><a class="viewcode-back" href="../../api/acrg_config.html#acrg_config.config.open_config">[docs]</a><span class="k">def</span> <span class="nf">open_config</span><span class="p">(</span><span class="n">config_file</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    The open_config function is used to open configuration files in the ini format.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        config_file : filename for input configuration file (str).</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        configparser.ConfigParser object</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="n">configparser</span><span class="o">.</span><span class="n">ConfigParser</span><span class="p">(</span><span class="n">inline_comment_prefixes</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;;&#39;</span><span class="p">,</span><span class="s1">&#39;#&#39;</span><span class="p">))</span>
+    <span class="n">config</span><span class="o">.</span><span class="n">optionxform</span><span class="o">=</span><span class="nb">str</span> <span class="c1"># Keeps case when inputting option names</span>
+    
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">config_file</span><span class="p">)</span> <span class="k">as</span> <span class="n">fp</span><span class="p">:</span>
+        <span class="n">config</span><span class="o">.</span><span class="n">readfp</span><span class="p">(</span><span class="n">fp</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">config</span></div>
+
+<div class="viewcode-block" id="generate_param_dict"><a class="viewcode-back" href="../../api/acrg_config.html#acrg_config.config.generate_param_dict">[docs]</a><span class="k">def</span> <span class="nf">generate_param_dict</span><span class="p">(</span><span class="n">config_file</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    The generate_param_dict function creates a param_type nested dictionary from an input configuration file.</span>
+<span class="sd">    This could be used on some fixed example config file to generate the parameter type dictionary which can then be applied</span>
+<span class="sd">    to other configuration files of the same type.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        config_file : filename for input configuration file (str).</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        nested OrderedDict : parameter type dictionary from configuration file input</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="n">open_config</span><span class="p">(</span><span class="n">config_file</span><span class="p">)</span>
+    
+    <span class="n">sections</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">sections</span><span class="p">()</span> <span class="c1"># Extract all section names from the config file</span>
+    
+    <span class="n">param_type</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">([])</span>
+    
+    <span class="k">for</span> <span class="n">section</span> <span class="ow">in</span> <span class="n">sections</span><span class="p">:</span>
+        <span class="n">section_param</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="n">section</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">section_param</span><span class="p">:</span>
+            <span class="nb">print</span> <span class="n">section_param</span>
+            <span class="n">types</span> <span class="o">=</span> <span class="p">[</span><span class="nb">type</span><span class="p">(</span><span class="n">convert</span><span class="p">(</span><span class="n">value</span><span class="p">))</span> <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">config</span><span class="p">[</span><span class="n">section</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">()]</span>
+            <span class="nb">print</span> <span class="n">types</span>
+            <span class="n">section_types</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">([(</span><span class="n">key</span><span class="p">,</span><span class="n">value</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span><span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">section_param</span><span class="p">,</span><span class="n">types</span><span class="p">)])</span>
+            <span class="n">param_type</span><span class="p">[</span><span class="n">section</span><span class="p">]</span> <span class="o">=</span> <span class="n">section_types</span>
+    
+    <span class="k">return</span> <span class="n">param_type</span></div>
+
+
+<div class="viewcode-block" id="str_check"><a class="viewcode-back" href="../../api/acrg_config.html#acrg_config.config.str_check">[docs]</a><span class="k">def</span> <span class="nf">str_check</span><span class="p">(</span><span class="n">string</span><span class="p">,</span><span class="n">error</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    The str_check function is used as part of checking the input from a configuration file.</span>
+<span class="sd">    This function ensures the input remains as a string and removes any &quot; or &#39; characters</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        string : value input from config file</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        string (formatted)</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    
+    <span class="c1"># Remove any &#39; or &quot; symbols surrounding the input string from the config_file</span>
+
+    <span class="n">string</span> <span class="o">=</span> <span class="n">string</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="c1"># Strip any whitespace just in case</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">string</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;&#39;&quot;</span> <span class="ow">and</span> <span class="n">string</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;&#39;&quot;</span><span class="p">):</span>
+        <span class="n">string</span> <span class="o">=</span> <span class="n">string</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">elif</span> <span class="p">(</span><span class="n">string</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;&quot;&#39;</span> <span class="ow">and</span> <span class="n">string</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;&quot;&#39;</span><span class="p">):</span>
+        <span class="n">string</span> <span class="o">=</span> <span class="n">string</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">string</span><span class="p">)</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;ascii&#39;</span><span class="p">,</span><span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span><span class="ne">SyntaxError</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">error</span><span class="p">:</span>
+            <span class="nb">print</span> <span class="s2">&quot;Could not convert input parameter &#39;</span><span class="si">{0}</span><span class="s2">&#39; to str.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    
+    <span class="k">return</span> <span class="n">out</span></div>
+
+
+<div class="viewcode-block" id="eval_check"><a class="viewcode-back" href="../../api/acrg_config.html#acrg_config.config.eval_check">[docs]</a><span class="k">def</span> <span class="nf">eval_check</span><span class="p">(</span><span class="n">string</span><span class="p">,</span><span class="n">error</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    The eval_check function evaluates the input string from a configuration file to a python object.</span>
+<span class="sd">    For example: &#39;1&#39; would evalute to an int object 1</span>
+<span class="sd">               : &#39;1.&#39; or &#39;1.0&#39; would evaluate to float object 1.0</span>
+<span class="sd">               : &quot;[1,2,3]&quot; would evalute to a list object [1,2,3]</span>
+<span class="sd">               : &quot;1,2,3&quot; would evaluate to a tuple object (1,2,3)</span>
+<span class="sd">               See eval() documentation for full list</span>
+<span class="sd">    Args:</span>
+<span class="sd">        string : value input from config file</span>
+<span class="sd">        error  : return error message if unable to evaluate (bool).</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        Python object</span>
+<span class="sd">        </span>
+<span class="sd">        If unable to convert string to python object:</span>
+<span class="sd">            None</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="n">string</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">NameError</span><span class="p">,</span><span class="ne">SyntaxError</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="s2">&quot;&#39;&quot;</span><span class="o">+</span><span class="n">string</span><span class="o">+</span><span class="s2">&quot;&#39;&quot;</span><span class="p">)</span> <span class="c1"># An input string without quotes cannot be evaluated so try adding quotes</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">NameError</span><span class="p">,</span><span class="ne">SyntaxError</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">error</span><span class="p">:</span>
+                <span class="nb">print</span> <span class="s2">&quot;Could evaluate input &#39;</span><span class="si">{0}</span><span class="s2">&#39; to any type.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">string</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+    
+    <span class="k">return</span> <span class="n">out</span></div>
+
+
+<div class="viewcode-block" id="list_check"><a class="viewcode-back" href="../../api/acrg_config.html#acrg_config.config.list_check">[docs]</a><span class="k">def</span> <span class="nf">list_check</span><span class="p">(</span><span class="n">string</span><span class="p">,</span><span class="n">force_convert</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span><span class="n">error</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    The list_check function converts input string to a list.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        string (str)         : value input from config file</span>
+<span class="sd">        force_convert (bool) : whether the conversion should be forced by creating a list object</span>
+<span class="sd">        error (bool)         : return error message if unable to convert.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        List</span>
+<span class="sd">        </span>
+<span class="sd">        If unable to convert to list:</span>
+<span class="sd">            None    </span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    
+    <span class="n">out</span> <span class="o">=</span> <span class="n">eval_check</span><span class="p">(</span><span class="n">string</span><span class="p">)</span> <span class="c1"># Try evaluating input</span>
+    
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">str</span><span class="p">)):</span> <span class="c1"># If not already a list</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">force_convert</span><span class="p">:</span>
+                <span class="n">out</span> <span class="o">=</span> <span class="p">[</span><span class="n">out</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">error</span><span class="p">:</span>
+                    <span class="nb">print</span> <span class="s2">&quot;Could not convert input parameter &#39;</span><span class="si">{0}</span><span class="s2">&#39; to list.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="p">[</span><span class="n">out</span><span class="p">]</span>
+    
+    <span class="k">return</span> <span class="n">out</span></div>
+
+
+<span class="c1">#def float_check(string,error=True):</span>
+<span class="c1">#    </span>
+<span class="c1">#    out = eval_check(string)</span>
+<span class="c1">#    </span>
+<span class="c1">#    try:</span>
+<span class="c1">#        out = float(out)</span>
+<span class="c1">#    except ValueError:</span>
+<span class="c1">#        if error:</span>
+<span class="c1">#            print &#39;Could not convert input parameter to float: {0}&#39;.format(out)</span>
+<span class="c1">#        return None</span>
+<span class="c1">#    </span>
+<span class="c1">#    return out    </span>
+
+<span class="c1">#def int_check(string,error=True):</span>
+<span class="c1">#    </span>
+<span class="c1">#    out = eval_check(string)</span>
+<span class="c1">#    </span>
+<span class="c1">#    try:</span>
+<span class="c1">#        out = int(out)</span>
+<span class="c1">#    except ValueError:</span>
+<span class="c1">#        if error:</span>
+<span class="c1">#            print &#39;Could not convert input parameter to int: {0}&#39;.format(out)</span>
+<span class="c1">#        return None</span>
+<span class="c1">#    </span>
+<span class="c1">#    return out</span>
+    
+
+<div class="viewcode-block" id="convert"><a class="viewcode-back" href="../../api/acrg_config.html#acrg_config.config.convert">[docs]</a><span class="k">def</span> <span class="nf">convert</span><span class="p">(</span><span class="n">string</span><span class="p">,</span><span class="n">value_type</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    The convert function converts the input string to the specified value_type.</span>
+<span class="sd">    If no value_type is stated, the function attempts to discern the appropriate type.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        string     : value input from config file</span>
+<span class="sd">        value_type : object type. Values accepted: str,list</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        Python object of specified type</span>
+<span class="sd">        </span>
+<span class="sd">        If unable to convert to value_type:</span>
+<span class="sd">            None</span>
+<span class="sd">        If unable to find a suitable type when value_type is not specified:</span>
+<span class="sd">            None</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    
+    <span class="k">if</span> <span class="n">value_type</span> <span class="ow">is</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="n">str_check</span><span class="p">(</span><span class="n">string</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">value_type</span> <span class="ow">is</span> <span class="nb">list</span><span class="p">:</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="n">list_check</span><span class="p">(</span><span class="n">string</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">value_type</span> <span class="ow">is</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="n">list_check</span><span class="p">(</span><span class="n">string</span><span class="p">)</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+<span class="c1">#    elif value_type is float:</span>
+<span class="c1">#        out = float_check(string)</span>
+<span class="c1">#    elif value_type is int:</span>
+<span class="c1">#        out = int_check(string)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="n">eval_check</span><span class="p">(</span><span class="n">string</span><span class="p">,</span><span class="n">error</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">out</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="n">str_check</span><span class="p">(</span><span class="n">out</span><span class="p">,</span><span class="n">error</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">out</span>       </div>
+
+
+<span class="c1">#def check_params(param,param_type,keys=[],optional_param=[],raise_exception=True):</span>
+<span class="c1">#    &#39;&#39;&#39;</span>
+<span class="c1">#    The check_params function</span>
+<span class="c1">#    &#39;&#39;&#39;</span>
+<span class="c1">#    names = param.keys()</span>
+<span class="c1">#    </span>
+<span class="c1">#    if keys:</span>
+<span class="c1">#        check_keys = keys</span>
+<span class="c1">#    else:</span>
+<span class="c1">#        check_keys = param_type.keys()</span>
+<span class="c1">#    </span>
+<span class="c1">#    check_names = []</span>
+<span class="c1">#    for key in check_keys:</span>
+<span class="c1">#        try:</span>
+<span class="c1">#            check_names.extend(param_type[key].keys())</span>
+<span class="c1">#        except KeyError:</span>
+<span class="c1">#            print &quot;Key &#39;{0}&#39; cannot be found in param_type passed to check_params function&quot;.format(key)</span>
+<span class="c1">#            return None</span>
+<span class="c1">#    </span>
+<span class="c1">#    for name in check_names:</span>
+<span class="c1">#        if name not in names:</span>
+<span class="c1">#            if name not in optional_param:</span>
+<span class="c1">#                if raise_exception:</span>
+<span class="c1">#                    raise Exception(&quot;Parameter &#39;{0}&#39; must be specified in configuration file&quot;.format(name))</span>
+<span class="c1">#                else:</span>
+<span class="c1">#                    return False</span>
+<span class="c1">#    </span>
+<span class="c1">#    return True</span>
+
+<div class="viewcode-block" id="all_parameters_in_param_type"><a class="viewcode-back" href="../../api/acrg_config.html#acrg_config.config.all_parameters_in_param_type">[docs]</a><span class="k">def</span> <span class="nf">all_parameters_in_param_type</span><span class="p">(</span><span class="n">param_type</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    The all_parameters_in_param_type function extracts all parameters (regardless of section/section_group) for a given </span>
+<span class="sd">    param_type nested dictionary.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        param_type : nested dictionary of expected parameter names and types.</span>
+<span class="sd">                     Key for each parameter dictionary can be the section heading or the overall group (e.g. for [MCMC.MEASUREMENTS], section group should be &#39;MCMC&#39;).</span>
+<span class="sd">                     See module header for expected formats of param_type dictionary.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        list : list of all parameters in param_type dictionary</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">types</span> <span class="o">=</span> <span class="n">param_type</span> <span class="c1"># Get dictionary containing parameter names and types</span>
+    <span class="n">keys</span> <span class="o">=</span> <span class="n">types</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="c1"># Extract all section/section_group headings</span>
+    <span class="n">parameters</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+        <span class="n">parameters</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">types</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="c1"># For each section/section_group extract all the associated parameters</span>
+    
+    <span class="k">return</span> <span class="n">parameters</span></div>
+
+<div class="viewcode-block" id="find_param_key"><a class="viewcode-back" href="../../api/acrg_config.html#acrg_config.config.find_param_key">[docs]</a><span class="k">def</span> <span class="nf">find_param_key</span><span class="p">(</span><span class="n">param_type</span><span class="p">,</span><span class="n">section</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span><span class="n">section_group</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    The find_param_key function checks whether the keys within the param_type dictionary are for sections (e.g. &#39;MCMC.MEASUREMENTS&#39;) </span>
+<span class="sd">    or groups (e.g. &#39;MCMC&#39;) and returns the relevant key.</span>
+<span class="sd">    One of section or section_group should be specified.</span>
+<span class="sd">    Returned key_type is one of &#39;section&#39; or &#39;section_group&#39;.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        param_type          : nested dictionary of expected parameter names and types.</span>
+<span class="sd">                              Key for each parameter dictionary can be the section heading or the overall group (e.g. for [MCMC.MEASUREMENTS], section group should be &#39;MCMC&#39;).</span>
+<span class="sd">                              See module header for expected formats of param_type dictionary.</span>
+<span class="sd">        section (str)       : name of section in config file for the parameter</span>
+<span class="sd">        section_group (str) : name of group in config file for the parameter</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        str,str: key, key_type                      </span>
+<span class="sd">    </span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">types</span> <span class="o">=</span> <span class="n">param_type</span> <span class="c1"># Get dictionary containing parameter names and types</span>
+    <span class="n">keys</span> <span class="o">=</span> <span class="n">types</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="c1"># Extract all section/classification keys</span>
+    
+    <span class="c1"># Find oarameter class if not specified (should be defined as first part of section split by &#39;.&#39; e.g. MCMC.MEASUREMENTS, section_group=&#39;MCMC&#39;)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">section_group</span><span class="p">:</span>
+        <span class="n">section_group</span> <span class="o">=</span> <span class="n">section</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        
+    <span class="k">if</span> <span class="n">section</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">section</span>
+        <span class="n">key_type</span> <span class="o">=</span> <span class="s1">&#39;section&#39;</span>
+    <span class="k">elif</span> <span class="n">section_group</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">section_group</span>
+        <span class="n">key_type</span> <span class="o">=</span> <span class="s1">&#39;section_group&#39;</span>
+    <span class="k">elif</span> <span class="n">section_group</span> <span class="ow">in</span> <span class="p">[</span><span class="n">k</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">]:</span>
+        <span class="n">keys_starter</span> <span class="o">=</span> <span class="p">[</span><span class="n">k</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">]</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">keys</span><span class="p">[</span><span class="n">keys_starter</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">section_group</span><span class="p">)]</span>
+        <span class="n">key_type</span> <span class="o">=</span> <span class="s1">&#39;section&#39;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">key_type</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="c1">#raise Exception(&#39;Section/Classification {0}/{1} does not match to any key in input param_type&#39;.format(section_group,section))</span>
+        <span class="c1">#print &#39;Param class cannot be found i for section of parameters not defined. Using {0} as default&#39;.format(section_groups[0])</span>
+        <span class="c1">#section_group = section_groups[0]</span>
+    
+    <span class="k">return</span> <span class="n">key</span><span class="p">,</span><span class="n">key_type</span></div>
+    
+
+
+<div class="viewcode-block" id="get_value"><a class="viewcode-back" href="../../api/acrg_config.html#acrg_config.config.get_value">[docs]</a><span class="k">def</span> <span class="nf">get_value</span><span class="p">(</span><span class="n">name</span><span class="p">,</span><span class="n">config</span><span class="p">,</span><span class="n">section</span><span class="p">,</span><span class="n">param_type</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    The get_value function extracts the value of a parameter from the configuration file.</span>
+<span class="sd">    This value is then converted to the type specified within param_type (default from mcmc_param_type() function).</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        name (str)            : name of the parameter to extract</span>
+<span class="sd">        config (ConfigParser) : ConfigParser object created using the configparser class. Data from config file should have been read in</span>
+<span class="sd">        section (str)         : name of section in config file for the parameter</span>
+<span class="sd">        param_type (dict)     : nested dictionary of parameter classes and expected parameter names and types.</span>
+<span class="sd">                                Key for each parameter dictionary can be the section heading or the overall classification (e.g. for [MCMC.MEASUREMENTS], classification should be &#39;MCMC&#39;).</span>
+<span class="sd">                                See module header for expected formats of param_type dictionary.</span>
+<span class="sd">                                </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        value</span>
+<span class="sd">        </span>
+<span class="sd">        If param_type is specified</span>
+<span class="sd">            If neither section nor section_group can be identified within param_type dictionary:</span>
+<span class="sd">                Exception raised and program exited</span>
+<span class="sd">            If parameter name cannot be identified within param_type dictionary:</span>
+<span class="sd">                Exception raised and program exited</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    
+    <span class="k">if</span> <span class="n">param_type</span><span class="p">:</span>
+        <span class="n">key</span><span class="p">,</span><span class="n">key_type</span> <span class="o">=</span> <span class="n">find_param_key</span><span class="p">(</span><span class="n">param_type</span><span class="p">,</span><span class="n">section</span><span class="p">)</span>
+        <span class="n">types</span> <span class="o">=</span> <span class="n">param_type</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">value_type</span> <span class="o">=</span> <span class="n">types</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="n">name</span><span class="p">]</span> <span class="c1"># Find specified type of object for input parameter</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="c1">#raise Exception(&#39;Input parameter {0} in section {1} not expected (not found in param_type dictionary [{2}][{0}])&#39;.format(name,section,key))</span>
+            <span class="nb">print</span> <span class="s2">&quot;Type for input name &#39;</span><span class="si">{0}</span><span class="s2">&#39; is not specified.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+            <span class="n">value_type</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1">#print &quot;Type for input name &#39;{0}&#39; is not specified.&quot;.format(name)</span>
+        <span class="c1">#value_type = str</span>
+        <span class="n">value_type</span> <span class="o">=</span> <span class="kc">None</span>
+    
+    <span class="c1"># For int, float and bool object functions within config module exist to cast directly to these types</span>
+    <span class="k">if</span> <span class="n">value_type</span> <span class="o">==</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">getint</span><span class="p">(</span><span class="n">section</span><span class="p">,</span><span class="n">option</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">value_type</span> <span class="o">==</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">getfloat</span><span class="p">(</span><span class="n">section</span><span class="p">,</span><span class="n">option</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">value_type</span> <span class="o">==</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">getboolean</span><span class="p">(</span><span class="n">section</span><span class="p">,</span><span class="n">option</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span> <span class="c1"># For lists, np.ndarrays and str objects we extract as a string and manually format</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">section</span><span class="p">,</span><span class="n">option</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">convert</span><span class="p">(</span><span class="n">value</span><span class="p">,</span><span class="n">value_type</span><span class="o">=</span><span class="n">value_type</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">value</span></div>
+
+
+<div class="viewcode-block" id="extract_params"><a class="viewcode-back" href="../../api/acrg_config.html#acrg_config.config.extract_params">[docs]</a><span class="k">def</span> <span class="nf">extract_params</span><span class="p">(</span><span class="n">config_file</span><span class="p">,</span><span class="n">section</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span><span class="n">section_group</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span><span class="n">names</span><span class="o">=</span><span class="p">[],</span><span class="n">optional_param</span><span class="o">=</span><span class="p">[],</span><span class="n">remove_not_found</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                   <span class="n">param_type</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    The extract_params function extracts parameter names and values from a configuration file.</span>
+<span class="sd">    The parameters which are extracted is dependent on whether the section, section_group and/or names variables are specified.</span>
+<span class="sd">    A param_type dictionary can be defined to ensure variables are cast to the correct types.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        config_file             : filename for input configuration file.</span>
+<span class="sd">        section (str)           : extract parameters from section name.</span>
+<span class="sd">        section_group (str)     : extract parameters from all sections with this group.</span>
+<span class="sd">                                  If section and section_group are both specified - section takes precedence.</span>
+<span class="sd">        names (list)            : which parameter names to extract (within section or section_group)</span>
+<span class="sd">        optional_param (list)   : parameters which are optional. If the param cannot be found value will be set to None</span>
+<span class="sd">        param_type (dict)       : nested dictionary of sections or groups and expected parameter names and types.</span>
+<span class="sd">                                  See module header for expected formats of param_type dictionary.                          </span>
+<span class="sd">        remove_not_found (bool) : whether to remove parameters which are not found in the input file or include them as None.</span>
+<span class="sd">        </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        OrderedDict : parameter names and values</span>
+<span class="sd">        </span>
+<span class="sd">        If parameter cannot be found (not specified as an optional param)</span>
+<span class="sd">            Exception raised and program exited</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    
+    <span class="c1"># Open config file with configparser</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="n">open_config</span><span class="p">(</span><span class="n">config_file</span><span class="p">)</span>
+    
+    <span class="n">all_sections</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">sections</span><span class="p">()</span> <span class="c1"># Extract all section names from the config file</span>
+    
+    <span class="k">if</span> <span class="n">section</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">section</span> <span class="ow">in</span> <span class="n">all_sections</span><span class="p">:</span>
+            <span class="n">select_sections</span> <span class="o">=</span> <span class="p">[</span><span class="n">section</span><span class="p">]</span> <span class="c1"># Only look within selected section</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s1">&#39;Specified section </span><span class="si">{0}</span><span class="s1"> could not be found in configuration file: </span><span class="si">{1}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">section</span><span class="p">,</span><span class="n">config_file</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+            <span class="c1">#select_sections = []</span>
+    <span class="k">elif</span> <span class="n">section_group</span><span class="p">:</span>
+        <span class="n">sections</span> <span class="o">=</span> <span class="n">all_sections</span>
+        <span class="n">select_sections</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">sections</span> <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="n">section_group</span><span class="o">.</span><span class="n">lower</span><span class="p">()]</span> <span class="c1"># Find all sections covered by section_group (section_group.name)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">select_sections</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s1">&#39;No sections could be found for specified section_group </span><span class="si">{0}</span><span class="s1"> in configuration file: </span><span class="si">{1}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">section_group</span><span class="p">,</span><span class="n">config_file</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">select_sections</span> <span class="o">=</span> <span class="n">all_sections</span> <span class="c1"># Find all sections</span>
+    
+    <span class="c1"># Finding all parameter names in the sections we want to extract</span>
+    <span class="n">extracted_names</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">match_section</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">sect</span> <span class="ow">in</span> <span class="n">select_sections</span><span class="p">:</span>
+        <span class="n">k</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="n">sect</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="p">[</span><span class="n">sect</span><span class="p">]</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+        <span class="n">extracted_names</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">k</span><span class="p">)</span> <span class="c1"># List of the parameter names within the input file, within specified sections</span>
+        <span class="n">match_section</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>   <span class="c1"># Associated list with the section heading for each parameter</span>
+       
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">names</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">param_type</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">section_group</span><span class="p">:</span>
+                <span class="n">key_value</span><span class="p">,</span><span class="n">key_type</span> <span class="o">=</span> <span class="n">find_param_key</span><span class="p">(</span><span class="n">section_group</span><span class="o">=</span><span class="n">section_group</span><span class="p">,</span><span class="n">param_type</span><span class="o">=</span><span class="n">param_type</span><span class="p">)</span>
+                <span class="n">keys</span> <span class="o">=</span> <span class="p">[</span><span class="n">key_value</span><span class="p">]</span>
+            <span class="k">elif</span> <span class="n">section</span><span class="p">:</span>
+                <span class="n">key_value</span><span class="p">,</span><span class="n">key_type</span> <span class="o">=</span> <span class="n">find_param_key</span><span class="p">(</span><span class="n">section</span><span class="o">=</span><span class="n">section</span><span class="p">,</span><span class="n">param_type</span><span class="o">=</span><span class="n">param_type</span><span class="p">)</span>
+                <span class="n">keys</span> <span class="o">=</span> <span class="p">[</span><span class="n">key_value</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">keys</span> <span class="o">=</span> <span class="n">param_type</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+            <span class="c1">#print &#39;Keys to extract input names from param_type: {0}&#39;.format(keys)</span>
+            <span class="n">names</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">section_group</span> <span class="ow">and</span> <span class="n">key_type</span> <span class="o">==</span> <span class="s1">&#39;section_group&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">section</span> <span class="ow">and</span> <span class="n">key_type</span> <span class="o">==</span> <span class="s1">&#39;section&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">section_group</span> <span class="ow">and</span> <span class="n">key_type</span> <span class="o">==</span> <span class="s1">&#39;section&#39;</span><span class="p">):</span>
+               <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+                   <span class="n">names</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">param_type</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+            <span class="k">elif</span> <span class="p">(</span><span class="n">section</span> <span class="ow">and</span> <span class="n">key_type</span> <span class="o">==</span> <span class="s1">&#39;section_group&#39;</span><span class="p">):</span>
+                <span class="nb">print</span> <span class="s1">&#39;Cannot create list of necessary input parameters created based on param_type input. Please check all inputs are included manually.&#39;</span>
+                <span class="n">names</span> <span class="o">=</span> <span class="n">extracted_names</span> <span class="c1"># Set to just match names extracted from file           </span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">names</span> <span class="o">=</span> <span class="n">all_parameters_in_param_type</span><span class="p">(</span><span class="n">param_type</span><span class="p">)</span> <span class="c1"># Extract all parameter names from param_type dictionary</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">names</span> <span class="o">=</span> <span class="n">extracted_names</span> <span class="c1"># Set to just match names extracted from file</span>
+    
+    <span class="c1">#print &#39;Parameter names to extract from configuration file: {0}&#39;.format(names)</span>
+    <span class="c1">#print &#39;Relevant parameter names within configuration file: {0}&#39;.format(extracted_names)</span>
+    
+    <span class="n">param</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">({})</span>
+    
+    <span class="c1">#if param_type:</span>
+    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">names</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">extracted_names</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">index</span> <span class="o">=</span> <span class="n">extracted_names</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                <span class="nb">print</span> <span class="s2">&quot;Parameter &#39;</span><span class="si">{0}</span><span class="s2">&#39; not found in configuration file (check specified section </span><span class="si">{1}</span><span class="s2"> or section_group </span><span class="si">{2}</span><span class="s2"> is correct).&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">,</span><span class="n">section</span><span class="p">,</span><span class="n">section_group</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">param</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_value</span><span class="p">(</span><span class="n">name</span><span class="p">,</span><span class="n">config</span><span class="p">,</span><span class="n">match_section</span><span class="p">[</span><span class="n">index</span><span class="p">],</span><span class="n">param_type</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">optional_param</span><span class="p">:</span>
+                <span class="n">param</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">elif</span> <span class="ow">not</span> <span class="n">param_type</span><span class="p">:</span>
+                <span class="nb">print</span> <span class="s2">&quot;Parameter &#39;</span><span class="si">{0}</span><span class="s2">&#39; not found in configuration file (check specified section </span><span class="si">{1}</span><span class="s2"> or section_group </span><span class="si">{2}</span><span class="s2"> is correct).&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">,</span><span class="n">section</span><span class="p">,</span><span class="n">section_group</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">section</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s2">&quot;Parameter &#39;</span><span class="si">{0}</span><span class="s2">&#39; not found in input configuration file in section &#39;</span><span class="si">{1}</span><span class="s2">&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">,</span><span class="n">section</span><span class="p">))</span>
+                <span class="k">elif</span> <span class="n">section_group</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s2">&quot;Parameter &#39;</span><span class="si">{0}</span><span class="s2">&#39; not found in input configuration file within section_group &#39;</span><span class="si">{1}</span><span class="s2">&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">,</span><span class="n">section_group</span><span class="p">))</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s2">&quot;Parameter &#39;</span><span class="si">{0}</span><span class="s2">&#39; not found in specified in input configuration file.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
+    <span class="c1">#else:</span>
+    <span class="c1">#    for name in names:</span>
+    <span class="c1">#        try:</span>
+    <span class="c1">#            index = extracted_names.index(name)</span>
+    <span class="c1">#        except ValueError:</span>
+    <span class="c1">#            print &quot;Parameter &#39;{0}&#39; not found in configuration file (check specified section {1} or section_group {2} is correct).&quot;.format(name,section,section_group)</span>
+    <span class="c1">#        else:</span>
+    <span class="c1">#            section = match_section[index]</span>
+    <span class="c1">#            param[name] = get_value(name,config,section,param_type)</span>
+    
+    <span class="k">if</span> <span class="n">remove_not_found</span><span class="p">:</span>
+        <span class="n">param</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">([(</span><span class="n">key</span><span class="p">,</span><span class="n">value</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span><span class="n">value</span> <span class="ow">in</span> <span class="n">param</span><span class="o">.</span><span class="n">iteritems</span><span class="p">()</span> <span class="k">if</span> <span class="n">value</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">])</span>
+    
+    <span class="k">return</span> <span class="n">param</span></div>
+
+<div class="viewcode-block" id="all_param"><a class="viewcode-back" href="../../api/acrg_config.html#acrg_config.config.all_param">[docs]</a><span class="k">def</span> <span class="nf">all_param</span><span class="p">(</span><span class="n">config_file</span><span class="p">,</span><span class="n">optional_param</span><span class="o">=</span><span class="p">[],</span><span class="n">param_type</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span><span class="n">remove_not_found</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    The all_param function extracts all parameters from a config file.</span>
+<span class="sd">    If param_type specified will cast to the specified types, otherwise will attempt to discern the parameter types from the form of the values.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        config_file             : filename for input configuration file</span>
+<span class="sd">        optional_param          : parameters which are optional. If the param cannot be found in input file, value will be set to None</span>
+<span class="sd">        param_type              : nested dictionary of sections or groups and expected parameter names and types.</span>
+<span class="sd">                                  See module header for expected formats of param_type dictionary.</span>
+<span class="sd">        remove_not_found (bool) : whether to remove parameters which are not found in the input file or include them as None.    </span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        OrderedDict: parameter names and values </span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    
+    <span class="n">param</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">({})</span>
+    <span class="n">param</span> <span class="o">=</span> <span class="n">extract_params</span><span class="p">(</span><span class="n">config_file</span><span class="p">,</span><span class="n">optional_param</span><span class="o">=</span><span class="n">optional_param</span><span class="p">,</span><span class="n">param_type</span><span class="o">=</span><span class="n">param_type</span><span class="p">,</span><span class="n">remove_not_found</span><span class="o">=</span><span class="n">remove_not_found</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">param</span></div>
+
+
+    
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, mrghg.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

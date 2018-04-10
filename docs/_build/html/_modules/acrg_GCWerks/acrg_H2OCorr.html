@@ -1,0 +1,897 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>acrg_GCWerks.acrg_H2OCorr &#8212; acrg  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for acrg_GCWerks.acrg_H2OCorr</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Created on Mon Mar 23 10:47:23 2015</span>
+
+<span class="sd">@author: as13988</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">acrg_GCWerks</span> <span class="k">import</span> <span class="n">acrg_read_GCwerks</span> <span class="k">as</span> <span class="n">read_GCwerks</span>
+<span class="kn">import</span> <span class="nn">matplotlib.ticker</span> <span class="k">as</span> <span class="nn">ticker</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">matplotlib</span>
+<span class="kn">import</span> <span class="nn">pdb</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">datetime</span> <span class="k">as</span> <span class="nn">dt</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">bisect</span>
+<span class="kn">from</span> <span class="nn">acrg_GCWerks</span> <span class="k">import</span> <span class="n">fitting</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+ 
+<span class="c1"># Read raw data</span>
+<div class="viewcode-block" id="read_raw"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.acrg_H2OCorr.read_raw">[docs]</a><span class="k">class</span> <span class="nc">read_raw</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputfile</span><span class="o">=</span><span class="s1">&#39;/Users/as13988/Documents/Work/Picarro/Drying/GCWerksOutput/DPG.E-114.DPG=5a.20150325.dat&#39;</span><span class="p">):</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">read_GCwerks</span><span class="o">.</span><span class="n">read_gcexport_crds</span><span class="p">(</span><span class="n">inputfile</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">data</span></div>
+
+
+<span class="c1"># Read timefile</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd"># Timefile dew point generator tests run at Heathfield</span>
+<span class="sd"># Configurations types</span>
+<span class="sd"># 1 = H2O trap bypassed, through Nafion</span>
+<span class="sd"># 2 = H2O trap bypassed, Nafion bypassed</span>
+<span class="sd"># 3 = through H2O trap, Nafion bypassed</span>
+<span class="sd"># 4 = through H2O trap, through Nafion</span>
+<span class="sd">#</span>
+<span class="sd"># Runs</span>
+<span class="sd"># 1 = Cylinder E-114 Dew Point = 5C</span>
+<span class="sd"># 2 = Cylinder E-114 Dew Point = 5C</span>
+<span class="sd"># 3 = Cylinder E-114 Dew Point = 15C</span>
+<span class="sd"># 4 = Cylinder E-114 Dew Point = 20C</span>
+<span class="sd"># 5 = Cylinder of compressed air Dew Point = 5</span>
+<span class="sd"># 6 = Cylinder of compressed air Dew Point = 15</span>
+<span class="sd"># 7 = Cylinder H-249 Dew Point = 5</span>
+<span class="sd"># 8 = Cylinder H-249 Dew Point = 10</span>
+<span class="sd"># 9 = Cylinder UAN20070098 Dew Point = 15</span>
+<span class="sd"># 10 = Cylinder UAN20070098 Dew Point = 5</span>
+<span class="sd">#---------------------------------------</span>
+<span class="sd">Cylinder	DewPoint	Config	RunNo	StartTime			EndTime				Comment</span>
+<span class="sd">E-114		5 			2 		1 		11/03/2015 13:32		11/03/2015 16:05		# Could be dodgy as it&#39;s at a different flow rate</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="read_timefile"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.acrg_H2OCorr.read_timefile">[docs]</a><span class="k">class</span> <span class="nc">read_timefile</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timefile</span><span class="o">=</span><span class="s1">&#39;/Users/as13988/Documents/Work/Picarro/Drying/DPGTimefile&#39;</span><span class="p">):</span>
+        
+        <span class="n">config_types</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;H2O trap bypassed, through Nafion&#39;</span><span class="p">,</span> \
+                         <span class="s1">&#39;H2O trap bypassed, Nafion bypassed&#39;</span><span class="p">,</span> \
+                         <span class="s1">&#39;through H2O trap, Nafion bypassed&#39;</span><span class="p">,</span> \
+                         <span class="s1">&#39;through H2O trap, through bypassed&#39;</span><span class="p">]</span>
+
+        <span class="n">run_types</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Cylinder E-114 Dew Point = 5C&#39;</span><span class="p">,</span> \
+                    <span class="s1">&#39;Cylinder E-114 Dew Point = 5C&#39;</span><span class="p">,</span> \
+                    <span class="s1">&#39;Cylinder E-114 Dew Point = 15C&#39;</span><span class="p">,</span> \
+                    <span class="s1">&#39;Cylinder E-114 Dew Point = 20C&#39;</span><span class="p">,</span> \
+                    <span class="s1">&#39;Cylinder of compressed air Dew Point = 5&#39;</span><span class="p">,</span> \
+                    <span class="s1">&#39;Cylinder of compressed air Dew Point = 15&#39;</span><span class="p">,</span> \
+                    <span class="s1">&#39;Cylinder H-249 Dew Point = 5&#39;</span><span class="p">,</span> \
+                    <span class="s1">&#39;Cylinder H-249 Dew Point = 10&#39;</span><span class="p">,</span> \
+                    <span class="s1">&#39;Cylinder UAN20070098 Dew Point = 15&#39;</span><span class="p">,</span> \
+                    <span class="s1">&#39;Cylinder UAN20070098 Dew Point = 5&#39;</span><span class="p">]</span>
+        
+        <span class="c1"># If you leave the delimiter blank it splits based on white space</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">timefile</span><span class="p">)</span> <span class="o">==</span> <span class="nb">tuple</span><span class="p">:</span>
+            <span class="n">timedata</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="n">timefile</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">skip_header</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">timefile</span><span class="p">)</span> <span class="o">==</span> <span class="nb">str</span><span class="p">:</span>
+            <span class="n">timedata</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="n">timefile</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">skip_header</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>     
+        
+        <span class="n">cylinder</span> <span class="o">=</span> <span class="n">timedata</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span>
+        
+        <span class="n">dewpoint</span> <span class="o">=</span> <span class="n">timedata</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>      
+        <span class="n">config_no</span> <span class="o">=</span> <span class="n">timedata</span><span class="p">[:,</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+        <span class="n">run_no</span> <span class="o">=</span> <span class="n">timedata</span><span class="p">[:,</span><span class="mi">3</span><span class="p">]</span>
+        <span class="n">starttime</span> <span class="o">=</span> <span class="p">[</span><span class="n">timedata</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="mi">4</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39; &#39;</span> <span class="o">+</span> <span class="n">timedata</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="mi">5</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">timedata</span><span class="p">[:,</span><span class="mi">4</span><span class="p">]))]</span>
+        <span class="n">endtime</span> <span class="o">=</span> <span class="p">[</span><span class="n">timedata</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="mi">6</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39; &#39;</span> <span class="o">+</span> <span class="n">timedata</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="mi">7</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">timedata</span><span class="p">[:,</span><span class="mi">4</span><span class="p">]))]</span>
+        
+        <span class="c1"># Convert starttime and endtime to a datetime </span>
+        <span class="n">start_dt</span> <span class="o">=</span> <span class="p">[</span><span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">%d</span><span class="s2">/%m/%Y %H:%M&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">starttime</span><span class="p">]</span>
+        <span class="n">end_dt</span> <span class="o">=</span> <span class="p">[</span><span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">%d</span><span class="s2">/%m/%Y %H:%M&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">endtime</span><span class="p">]</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">cylinder</span> <span class="o">=</span> <span class="n">cylinder</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dewpoint</span> <span class="o">=</span> <span class="n">dewpoint</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config_no</span> <span class="o">=</span> <span class="n">config_no</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">run_no</span> <span class="o">=</span> <span class="n">run_no</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>  
+        <span class="bp">self</span><span class="o">.</span><span class="n">starttime_str</span> <span class="o">=</span> <span class="n">starttime</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sendtime_str</span> <span class="o">=</span> <span class="n">endtime</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_dt</span> <span class="o">=</span> <span class="n">start_dt</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">end_dt</span> <span class="o">=</span> <span class="n">end_dt</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config_types</span> <span class="o">=</span> <span class="n">config_types</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">run_types</span> <span class="o">=</span> <span class="n">run_types</span>
+                
+        <span class="n">dirname</span><span class="p">,</span> <span class="n">filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">timefile</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="n">filename</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dirname</span> <span class="o">=</span> <span class="n">dirname</span></div>
+
+
+<span class="c1"># Split minutemeans</span>
+<div class="viewcode-block" id="split_raw"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.acrg_H2OCorr.split_raw">[docs]</a><span class="k">class</span> <span class="nc">split_raw</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">timefile</span><span class="o">=</span><span class="s1">&#39;/Users/as13988/Documents/Work/Picarro/Drying/DPGTimefile&#39;</span><span class="p">,</span> <span class="n">run_no</span> <span class="o">=</span> <span class="mi">0</span><span class="p">):</span>
+     
+        <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">data</span>
+     
+     
+        <span class="c1"># Extract the unflagged data</span>
+        <span class="n">dt_co2</span><span class="p">,</span> <span class="n">co2</span><span class="p">,</span> <span class="n">co2sd</span> <span class="o">=</span> <span class="n">read_GCwerks</span><span class="o">.</span><span class="n">Extractgood</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">datetime</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">co2</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">co2flags</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">co2sd</span><span class="p">)</span>
+        <span class="n">dt_ch4</span><span class="p">,</span> <span class="n">ch4</span><span class="p">,</span> <span class="n">ch4sd</span> <span class="o">=</span> <span class="n">read_GCwerks</span><span class="o">.</span><span class="n">Extractgood</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">datetime</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">ch4</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">ch4flags</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">ch4sd</span><span class="p">)</span>
+        <span class="n">dt_h2o</span><span class="p">,</span> <span class="n">h2o</span><span class="p">,</span> <span class="n">dummy</span> <span class="o">=</span> <span class="n">read_GCwerks</span><span class="o">.</span><span class="n">Extractgood</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">datetime</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">h2o</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">co2flags</span><span class="p">)</span>
+  
+        <span class="c1"># Read in the timefile</span>
+        <span class="n">timedata</span> <span class="o">=</span> <span class="n">read_timefile</span><span class="p">(</span><span class="n">timefile</span><span class="o">=</span><span class="n">timefile</span><span class="p">)</span>     
+        
+        <span class="c1"># If the run number isn&#39;t given default to the run that is closest to the first time stamp in the data</span>
+        <span class="k">if</span> <span class="n">run_no</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">config_no_sorted</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="p">(</span><span class="n">y</span><span class="p">,</span><span class="n">x</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">timedata</span><span class="o">.</span><span class="n">start_dt</span><span class="p">,</span><span class="n">timedata</span><span class="o">.</span><span class="n">run_no</span><span class="p">))]</span>
+            <span class="n">start_dt_sorted</span> <span class="o">=</span> <span class="p">[</span><span class="n">y</span> <span class="k">for</span> <span class="p">(</span><span class="n">y</span><span class="p">,</span><span class="n">x</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">timedata</span><span class="o">.</span><span class="n">start_dt</span><span class="p">,</span><span class="n">timedata</span><span class="o">.</span><span class="n">run_no</span><span class="p">))]</span>
+        
+            <span class="n">run_no</span> <span class="o">=</span> <span class="n">config_no_sorted</span><span class="p">[</span><span class="n">bisect</span><span class="o">.</span><span class="n">bisect</span><span class="p">(</span><span class="n">start_dt_sorted</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">datetime</span><span class="p">[</span><span class="mi">0</span><span class="p">])]</span>
+        
+        <span class="c1">#pdb.set_trace()</span>
+
+        <span class="c1"># Find the start and end times for that run</span>
+        <span class="n">index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">timedata</span><span class="o">.</span><span class="n">run_no</span> <span class="o">==</span> <span class="n">run_no</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">starttimes</span> <span class="o">=</span> <span class="p">[</span><span class="n">timedata</span><span class="o">.</span><span class="n">start_dt</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">index</span><span class="p">]</span>
+        <span class="n">endtimes</span> <span class="o">=</span> <span class="p">[</span><span class="n">timedata</span><span class="o">.</span><span class="n">end_dt</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">index</span><span class="p">]</span>
+        <span class="n">config_no</span> <span class="o">=</span> <span class="n">timedata</span><span class="o">.</span><span class="n">config_no</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+                
+        
+        <span class="c1">#pdb.set_trace()</span>
+        
+        <span class="c1"># Split the time file info for that run no into the individual config types</span>
+        <span class="c1"># Extract the corresponding data and time stamps</span>
+        <span class="n">config_types</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">config_no</span><span class="p">))</span>
+         
+        <span class="n">datasplit</span> <span class="o">=</span> <span class="p">[]</span>         
+        
+        <span class="c1"># go through each config type</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">config_types</span><span class="p">:</span>
+            <span class="n">config_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">config_no</span> <span class="o">==</span> <span class="n">j</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+                     
+            <span class="n">configsplit</span> <span class="o">=</span> <span class="p">[]</span>            
+            
+            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">config_index</span><span class="p">:</span>
+                <span class="n">startindex</span> <span class="o">=</span> <span class="n">bisect</span><span class="o">.</span><span class="n">bisect</span><span class="p">(</span><span class="n">dt_co2</span><span class="p">,</span> <span class="n">starttimes</span><span class="p">[</span><span class="n">k</span><span class="p">])</span>
+                <span class="n">endindex</span> <span class="o">=</span> <span class="n">bisect</span><span class="o">.</span><span class="n">bisect</span><span class="p">(</span><span class="n">dt_co2</span><span class="p">,</span> <span class="n">endtimes</span><span class="p">[</span><span class="n">k</span><span class="p">])</span>
+                
+                <span class="n">co2times_k</span> <span class="o">=</span> <span class="n">dt_co2</span><span class="p">[</span><span class="n">startindex</span><span class="p">:</span><span class="n">endindex</span><span class="p">]</span>
+                <span class="n">co2_k</span> <span class="o">=</span> <span class="n">co2</span><span class="p">[</span><span class="n">startindex</span><span class="p">:</span><span class="n">endindex</span><span class="p">]</span>
+                <span class="n">co2sd_k</span> <span class="o">=</span> <span class="n">co2sd</span><span class="p">[</span><span class="n">startindex</span><span class="p">:</span><span class="n">endindex</span><span class="p">]</span>
+                <span class="n">h2o_k</span> <span class="o">=</span> <span class="n">h2o</span><span class="p">[</span><span class="n">startindex</span><span class="p">:</span><span class="n">endindex</span><span class="p">]</span>                
+                <span class="n">h2otimes_k</span> <span class="o">=</span> <span class="n">dt_h2o</span><span class="p">[</span><span class="n">startindex</span><span class="p">:</span><span class="n">endindex</span><span class="p">]</span>
+                
+                <span class="n">startindex</span> <span class="o">=</span> <span class="n">bisect</span><span class="o">.</span><span class="n">bisect</span><span class="p">(</span><span class="n">dt_ch4</span><span class="p">,</span> <span class="n">starttimes</span><span class="p">[</span><span class="n">k</span><span class="p">])</span>
+                <span class="n">endindex</span> <span class="o">=</span> <span class="n">bisect</span><span class="o">.</span><span class="n">bisect</span><span class="p">(</span><span class="n">dt_ch4</span><span class="p">,</span> <span class="n">endtimes</span><span class="p">[</span><span class="n">k</span><span class="p">])</span>
+                
+                <span class="n">ch4times_k</span> <span class="o">=</span> <span class="n">dt_ch4</span><span class="p">[</span><span class="n">startindex</span><span class="p">:</span><span class="n">endindex</span><span class="p">]</span>
+                <span class="n">ch4_k</span> <span class="o">=</span> <span class="n">ch4</span><span class="p">[</span><span class="n">startindex</span><span class="p">:</span><span class="n">endindex</span><span class="p">]</span>
+                <span class="n">ch4sd_k</span> <span class="o">=</span> <span class="n">ch4sd</span><span class="p">[</span><span class="n">startindex</span><span class="p">:</span><span class="n">endindex</span><span class="p">]</span>
+                        
+                
+                <span class="n">dict_k</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;dt_co2&#39;</span> <span class="p">:</span><span class="n">co2times_k</span><span class="p">,</span> \
+                        <span class="s1">&#39;co2&#39;</span> <span class="p">:</span> <span class="n">co2_k</span><span class="p">,</span> \
+                        <span class="s1">&#39;co2sd&#39;</span> <span class="p">:</span> <span class="n">co2sd_k</span><span class="p">,</span> \
+                        <span class="s1">&#39;dt_ch4&#39;</span> <span class="p">:</span><span class="n">ch4times_k</span><span class="p">,</span> \
+                        <span class="s1">&#39;ch4&#39;</span> <span class="p">:</span> <span class="n">ch4_k</span><span class="p">,</span> \
+                        <span class="s1">&#39;ch4sd&#39;</span> <span class="p">:</span> <span class="n">ch4sd_k</span><span class="p">,</span> \
+                        <span class="s1">&#39;dt_h2o&#39;</span> <span class="p">:</span> <span class="n">h2otimes_k</span><span class="p">,</span> \
+                        <span class="s1">&#39;h2o&#39;</span> <span class="p">:</span> <span class="n">h2o_k</span><span class="p">}</span>
+                
+                <span class="n">configsplit</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dict_k</span><span class="p">)</span>
+                
+                
+            <span class="n">dict_j</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;cylinder&#39;</span> <span class="p">:</span> <span class="n">timedata</span><span class="o">.</span><span class="n">cylinder</span><span class="p">[</span><span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span> \
+                    <span class="s1">&#39;dewpoint&#39;</span> <span class="p">:</span> <span class="n">timedata</span><span class="o">.</span><span class="n">dewpoint</span><span class="p">[</span><span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span> \
+                    <span class="s1">&#39;config_no&#39;</span> <span class="p">:</span> <span class="n">j</span><span class="p">,</span> \
+                    <span class="s1">&#39;run_no&#39;</span> <span class="p">:</span> <span class="n">run_no</span><span class="p">,</span> \
+                    <span class="s1">&#39;starttime&#39;</span> <span class="p">:</span> <span class="p">[</span><span class="n">starttimes</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">config_index</span><span class="p">],</span> \
+                    <span class="s1">&#39;endtime&#39;</span> <span class="p">:</span> <span class="p">[</span><span class="n">endtimes</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">config_index</span><span class="p">],</span> \
+                    <span class="s1">&#39;data&#39;</span> <span class="p">:</span> <span class="n">configsplit</span><span class="p">,</span> \
+                    <span class="p">}</span>
+            <span class="n">datasplit</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dict_j</span><span class="p">)</span>
+            
+        <span class="bp">self</span><span class="o">.</span><span class="n">split_data</span> <span class="o">=</span> <span class="n">datasplit</span>   
+        <span class="bp">self</span><span class="o">.</span><span class="n">unflaggeddata</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;dt_co2&#39;</span> <span class="p">:</span><span class="n">dt_co2</span><span class="p">,</span> \
+                        <span class="s1">&#39;co2&#39;</span> <span class="p">:</span> <span class="n">co2</span><span class="p">,</span> \
+                        <span class="s1">&#39;co2sd&#39;</span> <span class="p">:</span> <span class="n">co2sd</span><span class="p">,</span> \
+                        <span class="s1">&#39;dt_ch4&#39;</span> <span class="p">:</span><span class="n">dt_ch4</span><span class="p">,</span> \
+                        <span class="s1">&#39;ch4&#39;</span> <span class="p">:</span> <span class="n">ch4</span><span class="p">,</span> \
+                        <span class="s1">&#39;ch4sd&#39;</span> <span class="p">:</span> <span class="n">ch4sd</span><span class="p">,</span> \
+                        <span class="s1">&#39;dt_h2o&#39;</span> <span class="p">:</span> <span class="n">dt_h2o</span><span class="p">,</span> \
+                        <span class="s1">&#39;h2o&#39;</span> <span class="p">:</span> <span class="n">h2o</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">timedata</span> <span class="o">=</span> <span class="n">timedata</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">configs</span> <span class="o">=</span> <span class="n">config_types</span></div>
+
+
+<span class="c1"># do fits and calculate means</span>
+<div class="viewcode-block" id="make_means"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.acrg_H2OCorr.make_means">[docs]</a><span class="k">class</span> <span class="nc">make_means</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputfile</span><span class="o">=</span><span class="s1">&#39;/Users/as13988/Documents/Work/Picarro/Drying/GCWerksOutput/DPG.E-114.DPG=5a.20150326.dat&#39;</span><span class="p">,</span> \
+            <span class="n">timefile</span><span class="o">=</span><span class="s1">&#39;/Users/as13988/Documents/Work/Picarro/Drying/DPGTimefile&#39;</span><span class="p">,</span> \
+            <span class="n">outputdir</span><span class="o">=</span><span class="s1">&#39;/Users/as13988/Documents/Work/Picarro/Drying/GCWerksOutput/&#39;</span><span class="p">,</span> <span class="n">run_no</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">species</span> <span class="o">=</span><span class="s1">&#39;co2&#39;</span><span class="p">,</span> <span class="n">fit_type</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+     
+        <span class="c1"># Read in the raw data </span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">read_raw</span><span class="p">(</span><span class="n">inputfile</span><span class="o">=</span><span class="n">inputfile</span><span class="p">)</span>
+     
+        <span class="c1"># split the raw data</span>
+        <span class="n">processed_data</span> <span class="o">=</span> <span class="n">split_raw</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">timefile</span><span class="o">=</span><span class="n">timefile</span><span class="p">,</span> <span class="n">run_no</span> <span class="o">=</span> <span class="n">run_no</span><span class="p">)</span>
+        
+        <span class="c1"># all data</span>
+        <span class="n">all_data</span> <span class="o">=</span> <span class="n">processed_data</span><span class="o">.</span><span class="n">unflaggeddata</span>
+        <span class="n">all_seconds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([(</span><span class="n">l</span> <span class="o">-</span> <span class="n">all_data</span><span class="p">[</span><span class="s1">&#39;dt_co2&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">all_data</span><span class="p">[</span><span class="s1">&#39;dt_co2&#39;</span><span class="p">]])</span>
+            
+<span class="c1"># ____________________________________________________________________</span>
+<span class="c1"># FITS        </span>
+<span class="c1"># ____________________________________________________________________</span>
+<span class="c1"># TYPE 2 = do a fit to the &quot;No H2O trap, No nafion&quot;        </span>
+        <span class="n">type2_data</span> <span class="o">=</span> <span class="n">processed_data</span><span class="o">.</span><span class="n">split_data</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">processed_data</span><span class="o">.</span><span class="n">configs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">)[</span><span class="mi">0</span><span class="p">]]</span>
+
+        <span class="c1"># cycle through each run of type 2   </span>
+        <span class="n">x_2</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">y_2</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">h2o_2</span> <span class="o">=</span> <span class="p">[]</span>
+        
+        <span class="n">no_runs_2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">type2_data</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">no_runs_2</span><span class="p">):</span>
+            <span class="n">x_2</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">type2_data</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">][</span><span class="n">j</span><span class="p">][</span><span class="s1">&#39;dt_&#39;</span><span class="o">+</span><span class="n">species</span><span class="p">])</span>          
+            <span class="n">y_2</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">type2_data</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">][</span><span class="n">j</span><span class="p">][</span><span class="n">species</span><span class="p">])</span>
+            <span class="n">h2o_2</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">type2_data</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">][</span><span class="n">j</span><span class="p">][</span><span class="s1">&#39;h2o&#39;</span><span class="p">])</span>
+        
+        
+        <span class="c1"># Calculate the mean h2o value for the run</span>
+        <span class="n">h2o_mean_2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">h2o_2</span><span class="p">)</span>        
+        <span class="n">h2o_sd_2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">h2o_2</span><span class="p">)</span>        
+        
+        <span class="c1"># convert to seconds since the start of the run</span>
+        <span class="n">x_2_secs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([(</span><span class="n">k</span> <span class="o">-</span> <span class="n">all_data</span><span class="p">[</span><span class="s1">&#39;dt_&#39;</span><span class="o">+</span><span class="n">species</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">x_2</span><span class="p">])</span>
+        
+        <span class="c1"># do the fit to the data:</span>
+        <span class="c1"># If there are multiple runs the fit to exp/log fit       </span>
+        <span class="c1"># If the individual run contains &gt; 30mins worth of data then ignore the first 10mins </span>
+        <span class="c1"># (this should be done by the DPGTimeFile) and then do a exp/log</span>
+        <span class="c1"># If the individual run contains &lt; 30mins of data then just do a linear fit</span>
+        <span class="c1">#pdb.set_trace()        </span>
+        <span class="k">if</span> <span class="n">no_runs_2</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">x_2_secs</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">30</span><span class="p">:</span>            
+                <span class="n">fit_2</span> <span class="o">=</span> <span class="n">fitting</span><span class="o">.</span><span class="n">fit_data</span><span class="p">(</span><span class="n">x_2_secs</span><span class="p">,</span> <span class="n">y_2</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">fit_type</span><span class="o">=</span><span class="n">fit_type</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">fit_2</span> <span class="o">=</span> <span class="n">fitting</span><span class="o">.</span><span class="n">fit_data</span><span class="p">(</span><span class="n">x_2_secs</span><span class="p">,</span> <span class="n">y_2</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">fit_type</span><span class="o">=</span><span class="s1">&#39;lin&#39;</span><span class="p">)</span>
+                
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">fit_2</span> <span class="o">=</span> <span class="n">fitting</span><span class="o">.</span><span class="n">fit_data</span><span class="p">(</span><span class="n">x_2_secs</span><span class="p">,</span> <span class="n">y_2</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">fit_type</span><span class="o">=</span><span class="n">fit_type</span><span class="p">)</span>
+
+        <span class="c1"># calculate the fit at all the data points</span>
+        <span class="n">all_fit_2</span> <span class="o">=</span> <span class="p">(</span><span class="n">fitting</span><span class="o">.</span><span class="n">func</span><span class="p">(</span><span class="n">all_seconds</span><span class="o">*</span><span class="n">fit_2</span><span class="o">.</span><span class="n">x_scale</span><span class="p">,</span> <span class="n">fit_2</span><span class="o">.</span><span class="n">coeffs</span><span class="p">,</span> <span class="n">fit_type</span><span class="o">=</span><span class="n">fit_2</span><span class="o">.</span><span class="n">fit_type</span><span class="p">))</span><span class="o">/</span><span class="n">fit_2</span><span class="o">.</span><span class="n">y_scale</span>
+        
+        
+<span class="c1"># TYPE 3 = do a fit to the &quot;H2O trap, No nafion&quot;        </span>
+        <span class="n">type3_data</span> <span class="o">=</span> <span class="n">processed_data</span><span class="o">.</span><span class="n">split_data</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">processed_data</span><span class="o">.</span><span class="n">configs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">)[</span><span class="mi">0</span><span class="p">]]</span>
+
+        <span class="c1"># cycle through each run of type 3   </span>
+        <span class="n">x_3</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">y_3</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">h2o_3</span> <span class="o">=</span> <span class="p">[]</span>
+        
+        <span class="n">no_runs_3</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">type3_data</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">no_runs_3</span><span class="p">):</span>
+            <span class="n">x_3</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">type3_data</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">][</span><span class="n">j</span><span class="p">][</span><span class="s1">&#39;dt_&#39;</span><span class="o">+</span><span class="n">species</span><span class="p">])</span>          
+            <span class="n">y_3</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">type3_data</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">][</span><span class="n">j</span><span class="p">][</span><span class="n">species</span><span class="p">])</span>
+            <span class="n">h2o_3</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">type3_data</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">][</span><span class="n">j</span><span class="p">][</span><span class="s1">&#39;h2o&#39;</span><span class="p">])</span>
+            
+        <span class="c1"># Calculate the mean h2o value for the run</span>
+        <span class="n">h2o_mean_3</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">h2o_3</span><span class="p">)</span>        
+        <span class="n">h2o_sd_3</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">h2o_3</span><span class="p">)</span>        
+
+
+        <span class="c1"># convert to seconds since the start of the run</span>
+        <span class="n">x_3_secs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([(</span><span class="n">k</span> <span class="o">-</span> <span class="n">all_data</span><span class="p">[</span><span class="s1">&#39;dt_co2&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">x_3</span><span class="p">])</span>
+        
+        <span class="c1"># do the fit to the data:</span>
+        <span class="c1"># If there are multiple runs the fit to exp/log fit       </span>
+        <span class="c1"># If the individual run contains &gt; 30mins worth of data then ignore the first 10mins </span>
+        <span class="c1"># (this should be done by the DPGTimeFile) and then do a exp/log</span>
+        <span class="c1"># If the individual run contains &lt; 30mins of data then just do a linear fit</span>
+        <span class="k">if</span> <span class="n">no_runs_3</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">x_3_secs</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">30</span><span class="p">:</span>            
+                <span class="n">fit_3</span> <span class="o">=</span> <span class="n">fitting</span><span class="o">.</span><span class="n">fit_data</span><span class="p">(</span><span class="n">x_3_secs</span><span class="p">,</span> <span class="n">y_3</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">fit_type</span><span class="o">=</span><span class="n">fit_type</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">fit_3</span> <span class="o">=</span> <span class="n">fitting</span><span class="o">.</span><span class="n">fit_data</span><span class="p">(</span><span class="n">x_3_secs</span><span class="p">,</span> <span class="n">y_3</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">fit_type</span><span class="o">=</span><span class="s1">&#39;lin&#39;</span><span class="p">)</span>
+                
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">fit_3</span> <span class="o">=</span> <span class="n">fitting</span><span class="o">.</span><span class="n">fit_data</span><span class="p">(</span><span class="n">x_3_secs</span><span class="p">,</span> <span class="n">y_3</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">fit_type</span><span class="o">=</span><span class="n">fit_type</span><span class="p">)</span>
+
+        <span class="c1"># calculate the fit at all the data points</span>
+        <span class="n">all_fit_3</span> <span class="o">=</span> <span class="p">(</span><span class="n">fitting</span><span class="o">.</span><span class="n">func</span><span class="p">(</span><span class="n">all_seconds</span><span class="o">*</span><span class="n">fit_3</span><span class="o">.</span><span class="n">x_scale</span><span class="p">,</span> <span class="n">fit_3</span><span class="o">.</span><span class="n">coeffs</span><span class="p">,</span> <span class="n">fit_type</span><span class="o">=</span><span class="n">fit_3</span><span class="o">.</span><span class="n">fit_type</span><span class="p">))</span><span class="o">/</span><span class="n">fit_3</span><span class="o">.</span><span class="n">y_scale</span>
+
+
+<span class="c1"># ____________________________________________________________________</span>
+<span class="c1"># EXTRACT OTHER DATA     </span>
+<span class="c1"># ____________________________________________________________________</span>
+<span class="c1"># TYPE 1 - &quot;No H2O trap, nafion&quot;    </span>
+        <span class="c1"># cycle through each run of type 1 </span>
+        <span class="n">x_1</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">y_1</span> <span class="o">=</span> <span class="p">[]</span> 
+        <span class="n">h2o_1</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">type1_data</span> <span class="o">=</span> <span class="n">processed_data</span><span class="o">.</span><span class="n">split_data</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">processed_data</span><span class="o">.</span><span class="n">configs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]]</span>
+         
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">type1_data</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">])[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="n">x_1</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">type1_data</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">][</span><span class="n">j</span><span class="p">][</span><span class="s1">&#39;dt_&#39;</span><span class="o">+</span><span class="n">species</span><span class="p">])</span>          
+            <span class="n">y_1</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">type1_data</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">][</span><span class="n">j</span><span class="p">][</span><span class="n">species</span><span class="p">])</span>
+            <span class="n">h2o_1</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">type1_data</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">][</span><span class="n">j</span><span class="p">][</span><span class="s1">&#39;h2o&#39;</span><span class="p">])</span>
+            
+        <span class="c1"># Calculate the mean h2o value for the run</span>
+        <span class="n">h2o_mean_1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">h2o_1</span><span class="p">)</span>        
+        <span class="n">h2o_sd_1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">h2o_1</span><span class="p">)</span>                                
+            
+        <span class="c1"># convert to seconds since the start of the run</span>
+        <span class="n">x_1_secs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([(</span><span class="n">k</span> <span class="o">-</span> <span class="n">all_data</span><span class="p">[</span><span class="s1">&#39;dt_co2&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">x_1</span><span class="p">])</span>
+        
+        <span class="c1"># Calculate values from the fit to type 2 at type 1&#39;s time steps</span>
+        <span class="n">x_1_fit</span> <span class="o">=</span> <span class="p">(</span><span class="n">fitting</span><span class="o">.</span><span class="n">func</span><span class="p">(</span><span class="n">x_1_secs</span><span class="o">*</span><span class="n">fit_2</span><span class="o">.</span><span class="n">x_scale</span><span class="p">,</span> <span class="n">fit_2</span><span class="o">.</span><span class="n">coeffs</span><span class="p">,</span> <span class="n">fit_type</span><span class="o">=</span><span class="n">fit_2</span><span class="o">.</span><span class="n">fit_type</span><span class="p">))</span><span class="o">/</span><span class="n">fit_2</span><span class="o">.</span><span class="n">y_scale</span>        
+               
+            
+<span class="c1"># TYPE 4 - &quot;H2O trap, nafion&quot;       </span>
+        <span class="c1"># cycle through each run of type 4</span>
+        <span class="n">x_4</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">y_4</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">h2o_4</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">type4_data</span> <span class="o">=</span> <span class="n">processed_data</span><span class="o">.</span><span class="n">split_data</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">processed_data</span><span class="o">.</span><span class="n">configs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">4</span><span class="p">)[</span><span class="mi">0</span><span class="p">]]</span>
+        
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">type4_data</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">])[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="n">x_4</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">type4_data</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">][</span><span class="n">j</span><span class="p">][</span><span class="s1">&#39;dt_&#39;</span><span class="o">+</span><span class="n">species</span><span class="p">])</span>          
+            <span class="n">y_4</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">type4_data</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">][</span><span class="n">j</span><span class="p">][</span><span class="n">species</span><span class="p">])</span>
+            <span class="n">h2o_4</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">type4_data</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">][</span><span class="n">j</span><span class="p">][</span><span class="s1">&#39;h2o&#39;</span><span class="p">])</span>
+        
+        <span class="c1"># Calculate the mean h2o value for the run</span>
+        <span class="n">h2o_mean_4</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">h2o_4</span><span class="p">)</span>        
+        <span class="n">h2o_sd_4</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">h2o_4</span><span class="p">)</span>                
+        
+        <span class="n">x_4_secs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([(</span><span class="n">k</span> <span class="o">-</span> <span class="n">all_data</span><span class="p">[</span><span class="s1">&#39;dt_&#39;</span><span class="o">+</span><span class="n">species</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">x_4</span><span class="p">])</span>
+        
+        <span class="c1"># Calculate values from the fit to type 3 at type 4&#39;s time steps</span>
+        <span class="n">x_4_fit</span> <span class="o">=</span> <span class="p">(</span><span class="n">fitting</span><span class="o">.</span><span class="n">func</span><span class="p">(</span><span class="n">x_4_secs</span><span class="o">*</span><span class="n">fit_3</span><span class="o">.</span><span class="n">x_scale</span><span class="p">,</span> <span class="n">fit_3</span><span class="o">.</span><span class="n">coeffs</span><span class="p">,</span> <span class="n">fit_type</span><span class="o">=</span><span class="n">fit_3</span><span class="o">.</span><span class="n">fit_type</span><span class="p">))</span><span class="o">/</span><span class="n">fit_3</span><span class="o">.</span><span class="n">y_scale</span>        
+        
+
+<span class="c1"># ____________________________________________________________________</span>
+<span class="c1"># PLOTS       </span>
+<span class="c1"># ____________________________________________________________________</span>
+<span class="c1"># Fits to raw data    </span>
+        <span class="n">colours</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;purple&#39;</span><span class="p">,</span><span class="s1">&#39;blue&#39;</span><span class="p">,</span><span class="s1">&#39;green&#39;</span><span class="p">,</span><span class="s1">&#39;red&#39;</span><span class="p">]</span> 
+        
+    <span class="c1"># PLot fit to config 2</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">)</span>        
+        <span class="n">fig</span><span class="o">.</span><span class="n">subplots_adjust</span><span class="p">(</span><span class="n">bottom</span> <span class="o">=</span> <span class="mf">0.2</span><span class="p">)</span>
+
+        <span class="c1"># Plot all data</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">all_seconds</span><span class="p">,</span> <span class="n">all_data</span><span class="p">[</span><span class="n">species</span><span class="p">],</span> <span class="s1">&#39;+&#39;</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="s1">&#39;grey&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Plot type 2 data</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x_2_secs</span><span class="p">,</span><span class="n">y_2</span><span class="p">,</span> <span class="s1">&#39;o&#39;</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="n">colours</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+        <span class="c1"># Plot fit to type 2 data           </span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">all_seconds</span><span class="p">,</span> <span class="n">all_fit_2</span><span class="p">,</span> <span class="s1">&#39;-&#39;</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="n">colours</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+        <span class="c1"># Plot type 3 data</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x_3_secs</span><span class="p">,</span><span class="n">y_3</span><span class="p">,</span> <span class="s1">&#39;s&#39;</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="n">colours</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+        
+        <span class="c1"># Plot fit to type 3 data           </span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">all_seconds</span><span class="p">,</span> <span class="n">all_fit_3</span><span class="p">,</span> <span class="s1">&#39;-&#39;</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="n">colours</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+
+        <span class="c1"># PLot type 1, 3 &amp; 4 data</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x_1_secs</span><span class="p">,</span><span class="n">y_1</span><span class="p">,</span> <span class="s1">&#39;o&#39;</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="n">colours</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x_4_secs</span><span class="p">,</span><span class="n">y_4</span><span class="p">,</span> <span class="s1">&#39;s&#39;</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="n">colours</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span>
+     
+        <span class="n">plt</span><span class="o">.</span><span class="n">figtext</span><span class="p">(</span><span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="s1">&#39;H2O trap, Nafion bypassed&#39;</span><span class="p">,</span> <span class="n">verticalalignment</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span> <span class="n">horizontalalignment</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="s1">&#39;green&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figtext</span><span class="p">(</span><span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="s1">&#39;H2O trap, Nafion&#39;</span><span class="p">,</span> <span class="n">verticalalignment</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span> <span class="n">horizontalalignment</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="s1">&#39;red&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figtext</span><span class="p">(</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="s1">&#39;H2O trap bypassed, Nafion&#39;</span><span class="p">,</span> <span class="n">verticalalignment</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span> <span class="n">horizontalalignment</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="s1">&#39;purple&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figtext</span><span class="p">(</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="s1">&#39;H2O trap bypassed, Nafion bypassed&#39;</span><span class="p">,</span> <span class="n">verticalalignment</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span> <span class="n">horizontalalignment</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="s1">&#39;blue&#39;</span><span class="p">)</span>
+        
+        <span class="n">plt</span><span class="o">.</span><span class="n">figtext</span><span class="p">(</span><span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">fit_2</span><span class="o">.</span><span class="n">fit_label</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="s1">&#39;blue&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figtext</span><span class="p">(</span><span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.45</span><span class="p">,</span> <span class="n">fit_3</span><span class="o">.</span><span class="n">fit_label</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="s1">&#39;green&#39;</span><span class="p">)</span>
+
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;Seconds since start of run&#39;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;[&#39;</span> <span class="o">+</span> <span class="n">species</span> <span class="o">+</span><span class="s1">&#39;] dry minute mean&#39;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">filename</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+        
+        <span class="k">if</span> <span class="s1">&#39;DPG.H-249.DPG=5&#39;</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">filename</span><span class="p">)[</span><span class="mi">0</span><span class="p">]:</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">((</span><span class="mi">399</span><span class="p">,</span><span class="mi">402</span><span class="p">))</span>
+
+        <span class="k">if</span><span class="s1">&#39;DPG.UAN&#39;</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">filename</span><span class="p">)[</span><span class="mi">0</span><span class="p">]:</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">((</span><span class="mi">439</span><span class="p">,</span><span class="mf">440.5</span><span class="p">))</span>
+
+        <span class="n">y_formatter</span> <span class="o">=</span> <span class="n">ticker</span><span class="o">.</span><span class="n">ScalarFormatter</span><span class="p">(</span><span class="n">useOffset</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">yaxis</span><span class="o">.</span><span class="n">set_major_formatter</span><span class="p">(</span><span class="n">y_formatter</span><span class="p">)</span>
+         
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">outputdir</span><span class="o">+</span><span class="s1">&#39;fits/&#39;</span><span class="o">+</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">filename</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="s1">&#39;_Fits.png&#39;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+        
+        <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>       
+        
+    <span class="c1"># PLot data with fit deducted</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">)</span>   
+        <span class="n">fig</span><span class="o">.</span><span class="n">subplots_adjust</span><span class="p">(</span><span class="n">bottom</span> <span class="o">=</span> <span class="mf">0.2</span><span class="p">)</span>
+
+        <span class="c1"># Plot type 2 less fit</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x_2_secs</span><span class="p">,</span> <span class="n">y_2</span><span class="o">-</span> <span class="n">fit_2</span><span class="o">.</span><span class="n">fit</span><span class="p">,</span> <span class="s1">&#39;o&#39;</span><span class="p">,</span> <span class="n">mfc</span> <span class="o">=</span> <span class="s1">&#39;none&#39;</span><span class="p">,</span> <span class="n">mec</span> <span class="o">=</span> <span class="n">colours</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+        <span class="c1"># Plot type 3 less fit</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x_3_secs</span><span class="p">,</span> <span class="n">y_3</span> <span class="o">-</span> <span class="n">fit_3</span><span class="o">.</span><span class="n">fit</span><span class="p">,</span> <span class="s1">&#39;s&#39;</span><span class="p">,</span> <span class="n">mfc</span> <span class="o">=</span> <span class="s1">&#39;none&#39;</span><span class="p">,</span> <span class="n">mec</span> <span class="o">=</span> <span class="n">colours</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>   
+        
+        <span class="c1"># Plot type 1 data less fit to type 2</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x_1_secs</span><span class="p">,</span> <span class="n">y_1</span> <span class="o">-</span> <span class="n">x_1_fit</span><span class="p">,</span> <span class="s1">&#39;o&#39;</span><span class="p">,</span> <span class="n">mfc</span> <span class="o">=</span> <span class="s1">&#39;none&#39;</span><span class="p">,</span> <span class="n">mec</span> <span class="o">=</span>  <span class="n">colours</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>    
+        
+        <span class="c1"># Plot type 4 data less fit to type 3</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x_4_secs</span><span class="p">,</span> <span class="n">y_4</span> <span class="o">-</span> <span class="n">x_4_fit</span><span class="p">,</span> <span class="s1">&#39;s&#39;</span><span class="p">,</span> <span class="n">mfc</span> <span class="o">=</span> <span class="s1">&#39;none&#39;</span><span class="p">,</span> <span class="n">mec</span> <span class="o">=</span> <span class="n">colours</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span>   
+                
+        <span class="n">plt</span><span class="o">.</span><span class="n">figtext</span><span class="p">(</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="s1">&#39;H2O trap bypassed, Nafion&#39;</span><span class="p">,</span> <span class="n">verticalalignment</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span> <span class="n">horizontalalignment</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="s1">&#39;purple&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figtext</span><span class="p">(</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="s1">&#39;H2O trap bypassed, Nafion bypassed&#39;</span><span class="p">,</span> <span class="n">verticalalignment</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span> <span class="n">horizontalalignment</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="s1">&#39;blue&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figtext</span><span class="p">(</span><span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="s1">&#39;H2O trap, Nafion bypassed&#39;</span><span class="p">,</span> <span class="n">verticalalignment</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span> <span class="n">horizontalalignment</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="s1">&#39;green&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figtext</span><span class="p">(</span><span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="s1">&#39;H2O trap, Nafion&#39;</span><span class="p">,</span> <span class="n">verticalalignment</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span> <span class="n">horizontalalignment</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="s1">&#39;red&#39;</span><span class="p">)</span>
+
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;Seconds since start of run&#39;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;Difference from long term trend (No trap, No Nafion)&#39;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">filename</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+
+       
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">outputdir</span><span class="o">+</span><span class="s1">&#39;fits/&#39;</span><span class="o">+</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">filename</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="s1">&#39;_DiffFits.png&#39;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+               
+
+<span class="c1"># ____________________________________________________________________</span>
+<span class="c1"># CALCULATE MEANS       </span>
+<span class="c1"># ____________________________________________________________________</span>
+
+<span class="c1"># Cycle through each config and deduct the config2 fit and calculate means for each run</span>
+        <span class="n">means</span> <span class="o">=</span> <span class="p">[]</span>
+        
+        <span class="n">configs</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">]</span>
+        
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">configs</span><span class="p">:</span>
+            <span class="c1">#print i</span>
+            <span class="n">typei_data</span> <span class="o">=</span> <span class="n">processed_data</span><span class="o">.</span><span class="n">split_data</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">processed_data</span><span class="o">.</span><span class="n">configs</span><span class="p">)</span> <span class="o">==</span> <span class="n">i</span><span class="p">)[</span><span class="mi">0</span><span class="p">]]</span>
+            
+            <span class="n">no_means</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">typei_data</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">seconds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">no_means</span><span class="p">)</span>
+            <span class="n">conc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">no_means</span><span class="p">)</span>            
+            <span class="n">conc_sd</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">no_means</span><span class="p">)</span>
+            <span class="n">h2o</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">no_means</span><span class="p">)</span>
+            <span class="n">h2o_sd</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">no_means</span><span class="p">)</span>
+            <span class="n">fit</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">no_means</span><span class="p">)</span>
+            <span class="n">fit_sd</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">no_means</span><span class="p">)</span>
+            <span class="n">diff</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">no_means</span><span class="p">)</span>
+            <span class="n">diff_sd</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">no_means</span><span class="p">)</span>
+            
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">typei_data</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">])[</span><span class="mi">0</span><span class="p">]):</span>
+                <span class="c1"># Extract the data for that block</span>
+                <span class="n">x_i</span> <span class="o">=</span> <span class="n">typei_data</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">][</span><span class="n">j</span><span class="p">][</span><span class="s1">&#39;dt_&#39;</span><span class="o">+</span><span class="n">species</span><span class="p">]</span> 
+                <span class="n">y_i</span> <span class="o">=</span> <span class="n">typei_data</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">][</span><span class="n">j</span><span class="p">][</span><span class="n">species</span><span class="p">]</span>
+    
+                <span class="n">h2o_i</span> <span class="o">=</span> <span class="n">typei_data</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">][</span><span class="n">j</span><span class="p">][</span><span class="s1">&#39;h2o&#39;</span><span class="p">]</span>
+                
+                <span class="c1"># Determine the seconds for the block</span>
+                <span class="n">x_i_secs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([(</span><span class="n">k</span> <span class="o">-</span> <span class="n">all_data</span><span class="p">[</span><span class="s1">&#39;dt_&#39;</span><span class="o">+</span><span class="n">species</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">x_i</span><span class="p">])</span>
+        
+                <span class="c1"># Calculate values from the fit to type 2 (or type 3) at given time steps</span>
+                <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+                    <span class="n">x_i_fit</span> <span class="o">=</span> <span class="p">(</span><span class="n">fitting</span><span class="o">.</span><span class="n">func</span><span class="p">(</span><span class="n">x_i_secs</span><span class="o">*</span><span class="n">fit_2</span><span class="o">.</span><span class="n">x_scale</span><span class="p">,</span> <span class="n">fit_2</span><span class="o">.</span><span class="n">coeffs</span><span class="p">,</span> <span class="n">fit_type</span><span class="o">=</span><span class="n">fit_2</span><span class="o">.</span><span class="n">fit_type</span><span class="p">))</span><span class="o">/</span><span class="n">fit_2</span><span class="o">.</span><span class="n">y_scale</span>        
+       
+                <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="mi">2</span> <span class="p">:</span>       
+                    <span class="n">x_i_fit</span> <span class="o">=</span> <span class="p">(</span><span class="n">fitting</span><span class="o">.</span><span class="n">func</span><span class="p">(</span><span class="n">x_i_secs</span><span class="o">*</span><span class="n">fit_3</span><span class="o">.</span><span class="n">x_scale</span><span class="p">,</span> <span class="n">fit_3</span><span class="o">.</span><span class="n">coeffs</span><span class="p">,</span> <span class="n">fit_type</span><span class="o">=</span><span class="n">fit_3</span><span class="o">.</span><span class="n">fit_type</span><span class="p">))</span><span class="o">/</span><span class="n">fit_3</span><span class="o">.</span><span class="n">y_scale</span>        
+       
+               <span class="c1"># Calculate means</span>
+                <span class="n">seconds</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">x_i_secs</span><span class="p">)</span>
+                <span class="n">conc</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">y_i</span><span class="p">)</span>
+                <span class="n">conc_sd</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">y_i</span><span class="p">)</span>
+                <span class="n">h2o</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">h2o_i</span><span class="p">)</span>
+                <span class="n">h2o_sd</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">h2o_i</span><span class="p">)</span>
+                <span class="n">fit</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">x_i_fit</span><span class="p">)</span>
+                <span class="n">fit_sd</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span>  <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">x_i_fit</span><span class="p">)</span>
+                <span class="n">diff</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">y_i</span> <span class="o">-</span> <span class="n">x_i_fit</span><span class="p">)</span>
+                <span class="n">diff_sd</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">y_i</span> <span class="o">-</span> <span class="n">x_i_fit</span><span class="p">)</span>
+       
+       
+            <span class="c1"># store means</span>
+            <span class="n">mean_i</span> <span class="o">=</span> <span class="p">{</span> <span class="s1">&#39;config_no&#39;</span> <span class="p">:</span> <span class="n">i</span><span class="p">,</span> \
+                      <span class="s1">&#39;seconds&#39;</span> <span class="p">:</span> <span class="n">seconds</span><span class="p">,</span> \
+                      <span class="s1">&#39;conc&#39;</span> <span class="p">:</span> <span class="n">conc</span><span class="p">,</span> \
+                      <span class="s1">&#39;conc_sd&#39;</span> <span class="p">:</span> <span class="n">conc_sd</span><span class="p">,</span> \
+                      <span class="s1">&#39;h2o&#39;</span> <span class="p">:</span> <span class="n">h2o</span><span class="p">,</span> \
+                      <span class="s1">&#39;h2o_sd&#39;</span> <span class="p">:</span> <span class="n">h2o_sd</span><span class="p">,</span> \
+                      <span class="s1">&#39;fit&#39;</span> <span class="p">:</span> <span class="n">fit</span><span class="p">,</span> \
+                      <span class="s1">&#39;fit_sd&#39;</span> <span class="p">:</span> <span class="n">fit_sd</span><span class="p">,</span> \
+                      <span class="s1">&#39;diff&#39;</span> <span class="p">:</span> <span class="n">diff</span><span class="p">,</span> \
+                      <span class="s1">&#39;diff_sd&#39;</span> <span class="p">:</span> <span class="n">diff_sd</span><span class="p">}</span>
+            
+            <span class="n">means</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mean_i</span><span class="p">)</span>
+
+
+<span class="c1"># ____________________________________________________________________</span>
+<span class="c1"># PLOT MEANS       </span>
+<span class="c1"># ____________________________________________________________________</span>
+
+<span class="c1"># Cycle through each config and plot the means for each run</span>
+        <span class="c1">#pdb.set_trace()</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">means</span><span class="p">)[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="c1">#print i</span>
+            <span class="c1">#print means[i][&#39;seconds&#39;], means[i][&#39;diff&#39;], means[i][&#39;diff_sd&#39;]</span>
+           <span class="c1"># print colours[i]</span>
+            
+            <span class="n">ax</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span><span class="n">means</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s1">&#39;seconds&#39;</span><span class="p">],</span> <span class="n">means</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s1">&#39;diff&#39;</span><span class="p">],</span> <span class="n">means</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s1">&#39;diff_sd&#39;</span><span class="p">],</span> <span class="n">color</span> <span class="o">=</span> <span class="n">colours</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;o&#39;</span><span class="p">)</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">outputdir</span><span class="o">+</span><span class="s1">&#39;fits/&#39;</span><span class="o">+</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">filename</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="s1">&#39;_DiffFit2_means.png&#39;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">all_seconds</span> <span class="o">=</span> <span class="n">all_seconds</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conc</span> <span class="o">=</span> <span class="n">all_data</span><span class="p">[</span><span class="n">species</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">means</span> <span class="o">=</span> <span class="n">means</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">processed_data</span> <span class="o">=</span> <span class="n">processed_data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">h2o_means</span> <span class="o">=</span> <span class="p">[</span><span class="n">h2o_mean_1</span><span class="p">,</span> <span class="n">h2o_mean_2</span><span class="p">,</span> <span class="n">h2o_mean_3</span><span class="p">,</span> <span class="n">h2o_mean_4</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">h2o_sd</span> <span class="o">=</span> <span class="p">[</span><span class="n">h2o_sd_1</span><span class="p">,</span> <span class="n">h2o_sd_2</span><span class="p">,</span> <span class="n">h2o_sd_3</span><span class="p">,</span> <span class="n">h2o_sd_4</span><span class="p">]</span></div>
+                
+<span class="c1"># Configurations types</span>
+<span class="c1"># 1 = H2O trap bypassed, through Nafion</span>
+<span class="c1"># 2 = H2O trap bypassed, Nafion bypassed</span>
+<span class="c1"># 3 = through H2O trap, Nafion bypassed</span>
+<span class="c1"># 4 = through H2O trap, through Nafion</span>
+<span class="c1"># calc run means and H2O conc    </span>
+<div class="viewcode-block" id="calc_h2o_vs_means"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.acrg_H2OCorr.calc_h2o_vs_means">[docs]</a><span class="k">class</span> <span class="nc">calc_h2o_vs_means</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cylinderno</span><span class="p">):</span>
+
+
+        <span class="c1"># find the means for the given cylinder number</span>
+        <span class="n">files</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s1">&#39;/Users/as13988/Documents/Work/Picarro/Drying/GCWerksOutput/*&#39;</span> <span class="o">+</span> <span class="n">cylinderno</span> <span class="o">+</span> <span class="s1">&#39;*20150326*dat&#39;</span><span class="p">)</span>
+
+        <span class="n">h2o</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">h2o_sd</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">diffconc</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">diffconc_sd</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># go through each file and extract the differences and h2o concs</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">files</span><span class="p">:</span>
+            <span class="n">means</span> <span class="o">=</span> <span class="n">make_means</span><span class="p">(</span><span class="n">inputfile</span><span class="o">=</span><span class="n">j</span><span class="p">)</span>
+ 
+            <span class="c1"># Extract diff means for configs 1 and 4</span>
+            <span class="c1"># The diff means for configs 2 and 3 will be 0 as they&#39;re the data that&#39;s fit to</span>
+            <span class="c1"># Diff for 1 = nafion diff wet</span>
+            <span class="c1"># Diff for 4 = nafion diff dry</span>
+            <span class="n">diffconc_1</span> <span class="o">=</span> <span class="n">means</span><span class="o">.</span><span class="n">means</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;diff&#39;</span><span class="p">]</span>
+            <span class="n">diffconc_sd_1</span> <span class="o">=</span> <span class="n">means</span><span class="o">.</span><span class="n">means</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;diff_sd&#39;</span><span class="p">]</span>            
+
+            <span class="n">diffconc_4</span> <span class="o">=</span> <span class="n">means</span><span class="o">.</span><span class="n">means</span><span class="p">[</span><span class="mi">3</span><span class="p">][</span><span class="s1">&#39;diff&#39;</span><span class="p">]</span>
+            <span class="n">diffconc_sd_4</span> <span class="o">=</span> <span class="n">means</span><span class="o">.</span><span class="n">means</span><span class="p">[</span><span class="mi">3</span><span class="p">][</span><span class="s1">&#39;diff_sd&#39;</span><span class="p">]</span>            
+            
+            <span class="c1"># Combine the dry and then wet values</span>
+            <span class="n">diffconc</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">diffconc_1</span><span class="p">)</span>    
+            <span class="n">diffconc</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">diffconc_4</span><span class="p">)</span>  
+            <span class="n">diffconc_sd</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">diffconc_sd_1</span><span class="p">)</span>
+            <span class="n">diffconc_sd</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">diffconc_sd_4</span><span class="p">)</span>            
+            
+            
+            <span class="c1"># For config 1 and 2 we want to use the H2O concentration from config 2</span>
+            <span class="n">h2o_1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">diffconc_1</span><span class="p">))</span>
+            <span class="n">h2o_sd_1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">diffconc_1</span><span class="p">))</span>
+
+            <span class="n">h2o_1</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">means</span><span class="o">.</span><span class="n">h2o_means</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">h2o_sd_1</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">means</span><span class="o">.</span><span class="n">h2o_sd</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            
+            <span class="c1"># For config 4 we want to use the H2O concentration from config 3</span>
+            <span class="n">h2o_4</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">diffconc_4</span><span class="p">))</span>
+            <span class="n">h2o_sd_4</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">diffconc_4</span><span class="p">))</span>
+ 
+            <span class="n">h2o_4</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">means</span><span class="o">.</span><span class="n">h2o_means</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+            <span class="n">h2o_sd_4</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">means</span><span class="o">.</span><span class="n">h2o_sd</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+              
+            
+            
+            <span class="c1"># Combine the dry and then wet values</span>
+            <span class="n">h2o</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">h2o_1</span><span class="p">)</span>
+            <span class="n">h2o</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">h2o_4</span><span class="p">)</span>  
+            <span class="n">h2o_sd</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">h2o_sd_1</span><span class="p">)</span>            
+            <span class="n">h2o_sd</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">h2o_sd_4</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">cylinder_no</span> <span class="o">=</span> <span class="n">cylinderno</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">h2o</span> <span class="o">=</span> <span class="n">h2o</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">diffconc</span> <span class="o">=</span> <span class="n">diffconc</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">diffconc_sd</span> <span class="o">=</span> <span class="n">diffconc_sd</span></div>
+
+
+
+
+<span class="c1"># plot multiple run means and H2O conc    </span>
+<div class="viewcode-block" id="plot_h2o_vs_means_multi"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.acrg_H2OCorr.plot_h2o_vs_means_multi">[docs]</a><span class="k">class</span> <span class="nc">plot_h2o_vs_means_multi</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cylindernos</span><span class="p">,</span> <span class="n">outputdir</span><span class="o">=</span><span class="s1">&#39;/Users/as13988/Documents/Work/Picarro/Drying/GCWerksOutput/&#39;</span><span class="p">,</span> <span class="n">filesuffix</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">close</span> <span class="o">=</span> <span class="mi">0</span><span class="p">):</span>
+
+        <span class="n">opennew</span> <span class="o">=</span> <span class="mi">0</span>
+        
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">cylindernos</span><span class="p">:</span>
+            <span class="n">plot_h2o_vs_means</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">close</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">opennew</span> <span class="o">=</span> <span class="n">opennew</span><span class="p">)</span>
+            <span class="n">opennew</span> <span class="o">=</span> <span class="mi">1</span>            
+
+        <span class="n">colours</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;orange&#39;</span><span class="p">,</span> <span class="s1">&#39;aqua&#39;</span><span class="p">,</span> <span class="s1">&#39;magenta&#39;</span><span class="p">,</span> <span class="s1">&#39;lime&#39;</span><span class="p">]</span>
+        <span class="n">cylinders</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="s1">&#39;E-114&#39;</span><span class="p">,</span> <span class="s1">&#39;H-249&#39;</span><span class="p">,</span> <span class="s1">&#39;UAN20070098&#39;</span><span class="p">,</span> <span class="s1">&#39;IndustAir&#39;</span><span class="p">])</span>        
+        
+        
+        <span class="n">plt</span><span class="o">.</span><span class="n">figtext</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="n">cylinders</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">color</span> <span class="o">=</span> <span class="n">colours</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figtext</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.08</span><span class="p">,</span> <span class="n">cylinders</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">color</span> <span class="o">=</span> <span class="n">colours</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figtext</span><span class="p">(</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="n">cylinders</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">color</span> <span class="o">=</span> <span class="n">colours</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figtext</span><span class="p">(</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.08</span><span class="p">,</span> <span class="n">cylinders</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="n">color</span> <span class="o">=</span> <span class="n">colours</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span>
+        
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>        
+        <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">outputdir</span><span class="o">+</span><span class="s1">&#39;All_DiffVsH2O.png&#39;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+
+<span class="c1"># plot run means and H2O conc    </span>
+<div class="viewcode-block" id="plot_h2o_vs_means"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.acrg_H2OCorr.plot_h2o_vs_means">[docs]</a><span class="k">class</span> <span class="nc">plot_h2o_vs_means</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cylinderno</span><span class="p">,</span> <span class="n">outputdir</span><span class="o">=</span><span class="s1">&#39;/Users/as13988/Documents/Work/Picarro/Drying/GCWerksOutput/&#39;</span><span class="p">,</span> <span class="n">filesuffix</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">close</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">opennew</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+
+        <span class="n">data</span> <span class="o">=</span> <span class="n">calc_h2o_vs_means</span><span class="p">(</span><span class="n">cylinderno</span><span class="p">)</span>
+        
+        <span class="n">colours</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;orange&#39;</span><span class="p">,</span> <span class="s1">&#39;aqua&#39;</span><span class="p">,</span> <span class="s1">&#39;magenta&#39;</span><span class="p">,</span> <span class="s1">&#39;lime&#39;</span><span class="p">]</span>
+        <span class="n">cylinders</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="s1">&#39;E-114&#39;</span><span class="p">,</span> <span class="s1">&#39;H-249&#39;</span><span class="p">,</span> <span class="s1">&#39;UAN20070098&#39;</span><span class="p">,</span> <span class="s1">&#39;IndustAir&#39;</span><span class="p">])</span>
+        
+        <span class="n">colour</span> <span class="o">=</span> <span class="n">colours</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">cylinders</span> <span class="o">==</span> <span class="n">cylinderno</span><span class="p">)[</span><span class="mi">0</span><span class="p">]]</span>
+        
+        <span class="k">if</span> <span class="n">opennew</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+            <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">)</span>   
+            <span class="n">fig</span><span class="o">.</span><span class="n">subplots_adjust</span><span class="p">(</span><span class="n">bottom</span> <span class="o">=</span> <span class="mf">0.2</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;H2O concentration (%) at the nafion&#39;</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;With Nafion less Without Nafion (ppm)&#39;</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">((</span><span class="o">-</span><span class="mf">0.5</span><span class="p">,</span><span class="mf">2.5</span><span class="p">))</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">((</span><span class="o">-</span><span class="mf">0.3</span><span class="p">,</span><span class="mf">0.2</span><span class="p">))</span>
+            
+
+
+        <span class="c1"># Plot data</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">h2o</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">diffconc</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">diffconc_sd</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="n">colour</span><span class="p">,</span> <span class="n">fmt</span> <span class="o">=</span> <span class="s1">&#39;o&#39;</span><span class="p">)</span>
+       
+        
+
+        <span class="c1"># Do a fit</span>
+        <span class="n">fit</span> <span class="o">=</span> <span class="n">fitting</span><span class="o">.</span><span class="n">fit_data</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">h2o</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">diffconc</span><span class="p">,</span> <span class="n">fit_type</span> <span class="o">=</span> <span class="s1">&#39;lin&#39;</span><span class="p">,</span> <span class="n">sigma</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">diffconc_sd</span><span class="p">)</span>
+        
+        <span class="c1"># Generate some dummy values for x</span>
+        <span class="n">x</span> <span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">30</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">/</span><span class="mf">10.0</span>
+        <span class="n">x</span> <span class="o">=</span><span class="n">x</span> <span class="o">-</span><span class="mf">0.5</span>        
+        <span class="n">x_fit</span> <span class="o">=</span> <span class="n">fitting</span><span class="o">.</span><span class="n">func</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">fit</span><span class="o">.</span><span class="n">coeffs</span><span class="p">,</span> <span class="n">fit_type</span><span class="o">=</span><span class="n">fit</span><span class="o">.</span><span class="n">fit_type</span><span class="p">)</span>        
+        
+        <span class="c1"># Plot fit</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">x_fit</span><span class="p">,</span> <span class="s1">&#39;-&#39;</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="n">colour</span><span class="p">)</span>
+        <span class="c1">#pdb.set_trace()</span>
+
+        <span class="c1"># PLot zero lines    </span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],[</span><span class="o">-</span><span class="mf">0.3</span><span class="p">,</span><span class="mf">0.2</span><span class="p">],</span> <span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="s1">&#39;black&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">([</span><span class="o">-</span><span class="mf">0.5</span><span class="p">,</span><span class="mf">2.5</span><span class="p">],[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="s1">&#39;black&#39;</span><span class="p">)</span>
+        
+        
+        <span class="k">if</span> <span class="n">close</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">figtext</span><span class="p">(</span><span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span> <span class="n">fit</span><span class="o">.</span><span class="n">fit_label</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="n">colour</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="n">cylinderno</span><span class="p">)</span>            
+            <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>        
+            
+            <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">outputdir</span><span class="o">+</span><span class="n">cylinderno</span><span class="o">+</span><span class="s1">&#39;_DiffVsH2O.png&#39;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">fit</span> <span class="o">=</span> <span class="n">fit</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">x</span></div>
+     
+
+<span class="c1"># Plot minutemeans</span>
+<div class="viewcode-block" id="plot_raw"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.acrg_H2OCorr.plot_raw">[docs]</a><span class="k">class</span> <span class="nc">plot_raw</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputfile</span> <span class="o">=</span> <span class="s1">&#39;/Users/as13988/Documents/Work/Picarro/Drying/GCWerksOutput/DPG.E-114.DPG=5a.20150325.dat&#39;</span><span class="p">,</span>\
+        <span class="n">outputdir</span><span class="o">=</span><span class="s1">&#39;/Users/as13988/Documents/Work/Picarro/Drying/GCWerksOutput/&#39;</span><span class="p">,</span> \
+        <span class="n">timefile</span><span class="o">=</span><span class="s1">&#39;/Users/as13988/Documents/Work/Picarro/Drying/DPGTimefile&#39;</span><span class="p">,</span> <span class="n">plot_unflagged</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">filesuffix</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">):</span>
+        
+        <span class="n">data</span> <span class="o">=</span> <span class="n">read_raw</span><span class="p">(</span><span class="n">inputfile</span><span class="o">=</span><span class="n">inputfile</span><span class="p">)</span>
+  
+        <span class="c1">#pdb.set_trace()  </span>
+  
+        <span class="n">splitdata</span> <span class="o">=</span> <span class="n">split_raw</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">timefile</span><span class="o">=</span><span class="n">timefile</span><span class="p">,</span> <span class="n">run_no</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span>
+        
+        <span class="n">run_no</span> <span class="o">=</span> <span class="n">splitdata</span><span class="o">.</span><span class="n">split_data</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;run_no&#39;</span><span class="p">]</span>
+        
+        <span class="c1"># plot all the data in grey</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">subplots_adjust</span><span class="p">(</span><span class="n">bottom</span> <span class="o">=</span> <span class="mf">0.2</span><span class="p">)</span>
+        
+        <span class="n">plt1</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        
+        <span class="c1"># Config colours</span>
+        <span class="c1"># set these to be consistent with Georgina</span>
+        <span class="c1"># 1 = H2O trap bypassed, through Nafion PURPLE</span>
+        <span class="c1"># 2 = H2O trap bypassed, Nafion bypassed BLUE</span>
+        <span class="c1"># 3 = through H2O trap, Nafion bypassed GREEN</span>
+        <span class="c1"># 4 = through H2O trap, through Nafion RED</span>
+        <span class="n">colours</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;purple&#39;</span><span class="p">,</span><span class="s1">&#39;blue&#39;</span><span class="p">,</span><span class="s1">&#39;green&#39;</span><span class="p">,</span><span class="s1">&#39;red&#39;</span><span class="p">,</span><span class="s1">&#39;grey&#39;</span><span class="p">]</span>        
+        
+        
+        <span class="k">if</span> <span class="n">plot_unflagged</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># Plot CO2</span>
+            <span class="n">plt1</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">datetime</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">co2</span><span class="p">,</span> <span class="n">yerr</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">co2sd</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;+&#39;</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="s1">&#39;grey&#39;</span><span class="p">,</span> <span class="n">markersize</span> <span class="o">=</span> <span class="mi">3</span><span class="p">)</span>
+            <span class="c1">#plt1.set_ylim(Calcrange(means.co2, means.co2sd))</span>
+            <span class="c1">#plt1.set_xlim(daterange)     </span>
+            
+            <span class="n">y_formatter</span> <span class="o">=</span> <span class="n">ticker</span><span class="o">.</span><span class="n">ScalarFormatter</span><span class="p">(</span><span class="n">useOffset</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="n">plt1</span><span class="o">.</span><span class="n">yaxis</span><span class="o">.</span><span class="n">set_major_formatter</span><span class="p">(</span><span class="n">y_formatter</span><span class="p">)</span>
+            
+            <span class="c1">#x_formatter = matplotlib.dates.DateFormatter(&#39;%H:%M %m/%Y&#39;)</span>
+            <span class="n">x_tickno_formatter</span> <span class="o">=</span> <span class="n">ticker</span><span class="o">.</span><span class="n">MaxNLocator</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+            <span class="n">x_formatter</span> <span class="o">=</span> <span class="n">matplotlib</span><span class="o">.</span><span class="n">dates</span><span class="o">.</span><span class="n">DateFormatter</span><span class="p">(</span><span class="s1">&#39;%H:%M </span><span class="si">%d</span><span class="s1">/%m/%Y&#39;</span><span class="p">)</span>
+            <span class="n">plt1</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_major_formatter</span><span class="p">(</span><span class="n">x_formatter</span><span class="p">)</span>
+            <span class="n">plt1</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_major_locator</span><span class="p">(</span><span class="n">x_tickno_formatter</span><span class="p">)</span>
+            
+            <span class="n">plt1</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="n">splitdata</span><span class="o">.</span><span class="n">timedata</span><span class="o">.</span><span class="n">run_types</span><span class="p">[</span><span class="n">run_no</span> <span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+            <span class="n">plt1</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;[CO$_2$] (ppm)&#39;</span><span class="p">)</span>
+            
+            <span class="c1"># Plot CH4 </span>
+            <span class="n">plt2</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+            <span class="n">plt2</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">datetime</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">ch4</span><span class="p">,</span> <span class="n">yerr</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">ch4sd</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;+&#39;</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="s1">&#39;grey&#39;</span><span class="p">,</span> <span class="n">markersize</span> <span class="o">=</span> <span class="mi">3</span><span class="p">)</span>
+            <span class="c1">#plt2.set_ylim(Calcrange(means.ch4, means.ch4sd))</span>
+            <span class="n">plt2</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;[CH$_4$] (ppb)&#39;</span><span class="p">)</span>
+            <span class="c1">#plt2.set_xlim(daterange)  </span>
+            <span class="n">plt2</span><span class="o">.</span><span class="n">yaxis</span><span class="o">.</span><span class="n">set_major_formatter</span><span class="p">(</span><span class="n">y_formatter</span><span class="p">)</span>
+            <span class="n">plt2</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_major_formatter</span><span class="p">(</span><span class="n">x_formatter</span><span class="p">)</span>            
+            <span class="n">plt2</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_major_locator</span><span class="p">(</span><span class="n">x_tickno_formatter</span><span class="p">)</span>
+        
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1">#PLot CO2 data</span>
+            <span class="n">plt1</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span><span class="n">splitdata</span><span class="o">.</span><span class="n">unflaggeddata</span><span class="p">[</span><span class="s1">&#39;dt_co2&#39;</span><span class="p">],</span> <span class="n">splitdata</span><span class="o">.</span><span class="n">unflaggeddata</span><span class="p">[</span><span class="s1">&#39;co2&#39;</span><span class="p">],</span> <span class="n">yerr</span><span class="o">=</span><span class="n">splitdata</span><span class="o">.</span><span class="n">unflaggeddata</span><span class="p">[</span><span class="s1">&#39;co2sd&#39;</span><span class="p">],</span> <span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;+&#39;</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="s1">&#39;grey&#39;</span><span class="p">,</span> <span class="n">markersize</span> <span class="o">=</span> <span class="mi">3</span><span class="p">)</span>
+            <span class="c1">#plt1.set_ylim(Calcrange(means.co2, means.co2sd))</span>
+            <span class="c1">#plt1.set_xlim(daterange)     </span>
+            
+            <span class="n">y_formatter</span> <span class="o">=</span> <span class="n">ticker</span><span class="o">.</span><span class="n">ScalarFormatter</span><span class="p">(</span><span class="n">useOffset</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="n">plt1</span><span class="o">.</span><span class="n">yaxis</span><span class="o">.</span><span class="n">set_major_formatter</span><span class="p">(</span><span class="n">y_formatter</span><span class="p">)</span>
+            
+            <span class="n">x_formatter</span> <span class="o">=</span> <span class="n">matplotlib</span><span class="o">.</span><span class="n">dates</span><span class="o">.</span><span class="n">DateFormatter</span><span class="p">(</span><span class="s1">&#39;%H:%M %m/%Y&#39;</span><span class="p">)</span>
+            <span class="n">x_tickno_formatter</span> <span class="o">=</span> <span class="n">ticker</span><span class="o">.</span><span class="n">MaxNLocator</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+            
+            <span class="n">plt1</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_major_formatter</span><span class="p">(</span><span class="n">x_formatter</span><span class="p">)</span>
+            <span class="n">plt1</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_major_locator</span><span class="p">(</span><span class="n">x_tickno_formatter</span><span class="p">)</span>
+            
+            <span class="n">plt1</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="n">splitdata</span><span class="o">.</span><span class="n">timedata</span><span class="o">.</span><span class="n">run_types</span><span class="p">[</span><span class="n">run_no</span> <span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+            <span class="n">plt1</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;[CO$_2$] (ppm)&#39;</span><span class="p">)</span>
+            
+            <span class="c1"># Plot CH4</span>
+            <span class="n">plt2</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+            <span class="n">plt2</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span><span class="n">splitdata</span><span class="o">.</span><span class="n">unflaggeddata</span><span class="p">[</span><span class="s1">&#39;dt_ch4&#39;</span><span class="p">],</span> <span class="n">splitdata</span><span class="o">.</span><span class="n">unflaggeddata</span><span class="p">[</span><span class="s1">&#39;ch4&#39;</span><span class="p">],</span> <span class="n">yerr</span><span class="o">=</span><span class="n">splitdata</span><span class="o">.</span><span class="n">unflaggeddata</span><span class="p">[</span><span class="s1">&#39;ch4sd&#39;</span><span class="p">],</span> <span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;+&#39;</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="s1">&#39;grey&#39;</span><span class="p">,</span> <span class="n">markersize</span> <span class="o">=</span> <span class="mi">3</span><span class="p">)</span>
+            <span class="c1">#plt2.set_ylim(Calcrange(means.ch4, means.ch4sd))</span>
+            <span class="n">plt2</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;[CH$_4$] (ppb)&#39;</span><span class="p">)</span>
+            <span class="c1">#plt2.set_xlim(daterange)  </span>
+            <span class="n">plt2</span><span class="o">.</span><span class="n">yaxis</span><span class="o">.</span><span class="n">set_major_formatter</span><span class="p">(</span><span class="n">y_formatter</span><span class="p">)</span>
+            <span class="n">plt2</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_major_formatter</span><span class="p">(</span><span class="n">x_formatter</span><span class="p">)</span>            
+            <span class="n">plt2</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_major_locator</span><span class="p">(</span><span class="n">x_tickno_formatter</span><span class="p">)</span>
+        
+      
+        <span class="c1"># plot each config over the top</span>
+        <span class="c1"># Determine the number of configurations used</span>
+        <span class="n">configno</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">splitdata</span><span class="o">.</span><span class="n">split_data</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">configno</span><span class="p">):</span>
+ 
+            <span class="n">config_colour</span> <span class="o">=</span> <span class="n">colours</span><span class="p">[</span><span class="n">splitdata</span><span class="o">.</span><span class="n">split_data</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s1">&#39;config_no&#39;</span><span class="p">]</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span>           
+            <span class="n">configdata_i</span> <span class="o">=</span> <span class="n">splitdata</span><span class="o">.</span><span class="n">split_data</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s1">&#39;data&#39;</span><span class="p">]</span>
+
+            <span class="c1"># Determine the number of runs of configuration i</span>
+            <span class="n">no_config_runs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">configdata_i</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>            
+            
+        
+            
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">no_config_runs</span><span class="p">):</span>
+                
+                <span class="n">plt1</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span><span class="n">configdata_i</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="s1">&#39;dt_co2&#39;</span><span class="p">],</span> <span class="n">configdata_i</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="s1">&#39;co2&#39;</span><span class="p">],</span> <span class="n">yerr</span><span class="o">=</span><span class="n">configdata_i</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="s1">&#39;co2sd&#39;</span><span class="p">],</span> <span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;+&#39;</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="n">config_colour</span><span class="p">)</span>
+                <span class="n">y_formatter</span> <span class="o">=</span> <span class="n">ticker</span><span class="o">.</span><span class="n">ScalarFormatter</span><span class="p">(</span><span class="n">useOffset</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+                <span class="n">plt1</span><span class="o">.</span><span class="n">yaxis</span><span class="o">.</span><span class="n">set_major_formatter</span><span class="p">(</span><span class="n">y_formatter</span><span class="p">)</span>
+                  
+                <span class="n">x_formatter</span> <span class="o">=</span> <span class="n">matplotlib</span><span class="o">.</span><span class="n">dates</span><span class="o">.</span><span class="n">DateFormatter</span><span class="p">(</span><span class="s1">&#39;%H:%M </span><span class="si">%d</span><span class="s1">/%m/%Y&#39;</span><span class="p">)</span>
+                <span class="n">x_tickno_formatter</span> <span class="o">=</span> <span class="n">ticker</span><span class="o">.</span><span class="n">MaxNLocator</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+                
+                  
+                <span class="n">plt1</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_major_formatter</span><span class="p">(</span><span class="n">x_formatter</span><span class="p">)</span>
+                <span class="n">plt1</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_major_locator</span><span class="p">(</span><span class="n">x_tickno_formatter</span><span class="p">)</span>
+    
+                <span class="n">plt</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span><span class="n">configdata_i</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="s1">&#39;dt_ch4&#39;</span><span class="p">],</span> <span class="n">configdata_i</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="s1">&#39;ch4&#39;</span><span class="p">],</span> <span class="n">yerr</span><span class="o">=</span><span class="n">configdata_i</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="s1">&#39;ch4sd&#39;</span><span class="p">],</span> <span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;+&#39;</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="n">config_colour</span><span class="p">)</span>
+                <span class="n">plt2</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;[CH$_4$] (ppb)&#39;</span><span class="p">)</span>
+                <span class="n">plt2</span><span class="o">.</span><span class="n">yaxis</span><span class="o">.</span><span class="n">set_major_formatter</span><span class="p">(</span><span class="n">y_formatter</span><span class="p">)</span>
+                <span class="n">plt2</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_major_formatter</span><span class="p">(</span><span class="n">x_formatter</span><span class="p">)</span>            
+                <span class="n">plt2</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_major_locator</span><span class="p">(</span><span class="n">x_tickno_formatter</span><span class="p">)</span>
+        
+        <span class="n">plt</span><span class="o">.</span><span class="n">figtext</span><span class="p">(</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="s1">&#39;H2O trap bypassed, Nafion&#39;</span><span class="p">,</span> <span class="n">verticalalignment</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span> <span class="n">horizontalalignment</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="s1">&#39;purple&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figtext</span><span class="p">(</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="s1">&#39;H2O trap bypassed, Nafion bypassed&#39;</span><span class="p">,</span> <span class="n">verticalalignment</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span> <span class="n">horizontalalignment</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="s1">&#39;blue&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figtext</span><span class="p">(</span><span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="s1">&#39;H2O trap, Nafion bypassed&#39;</span><span class="p">,</span> <span class="n">verticalalignment</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span> <span class="n">horizontalalignment</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="s1">&#39;green&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figtext</span><span class="p">(</span><span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="s1">&#39;H2O trap, Nafion&#39;</span><span class="p">,</span> <span class="n">verticalalignment</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span> <span class="n">horizontalalignment</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="s1">&#39;red&#39;</span><span class="p">)</span>
+        
+        <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">outputdir</span><span class="o">+</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">filename</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="n">filesuffix</span><span class="o">+</span><span class="s1">&#39;.png&#39;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+        
+           
+        
+        
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, mrghg.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
