@@ -149,7 +149,7 @@ def interp_time(bc_ds,vmr_var_names, new_times):
 
 def footprints(sitecode_or_filename, fp_directory = fp_directory, 
                flux_directory = flux_directory, bc_directory = bc_directory,
-               start = "2010-01-01", end = "2016-01-01", domain="EUROPE", height = None,
+               start = None, end = None, domain = None, height = None,
                species = None, emissions_name = None, HiTRes = False,interp_vmr_freq=None):
 
     """
@@ -215,11 +215,11 @@ def footprints(sitecode_or_filename, fp_directory = fp_directory,
         if emissions_name is not None:
             flux_ds = flux(domain, emissions_name, flux_directory)
             if flux_ds is not None:
-                fp = combine_datasets(fp, flux_ds)
+                fp = combine_datasets(fp, flux_ds, method='ffill')
         elif species is not None:
             flux_ds = flux(domain, species, flux_directory)
             if flux_ds is not None:
-                fp = combine_datasets(fp, flux_ds)
+                fp = combine_datasets(fp, flux_ds, method='ffill')
         
         if species is not None:
             bc_ds = boundary_conditions(domain, species,bc_directory)
@@ -230,12 +230,12 @@ def footprints(sitecode_or_filename, fp_directory = fp_directory,
                     new_times=dum_ds.time            
                     vmr_var_names=["vmr_n", "vmr_e", "vmr_s", "vmr_w"]
                     bc_ds = interp_time(bc_ds,vmr_var_names, new_times)  
-                fp = combine_datasets(fp, bc_ds)
+                fp = combine_datasets(fp, bc_ds, method='ffill')
 
         if HiTRes == True:
             HiTRes_files = filenames(site, domain, start, end, height, fp_directory["HiTRes"])
             HiTRes_ds = read_netcdfs(HiTRes_files)
-            fp = combine_datasets(fp, HiTRes_ds)
+            fp = combine_datasets(fp, HiTRes_ds, method='ffill')
 
         return fp
 
@@ -300,7 +300,7 @@ def boundary_conditions(domain, species, bc_directory=bc_directory):
     return bc_ds
 
 
-def basis(domain, basis_case = 'voronoi', basis_directory = basis_directory):
+def basis(domain, basis_case, basis_directory = basis_directory):
     """
     Read in a basis function file.
     """
@@ -316,7 +316,7 @@ def basis(domain, basis_case = 'voronoi', basis_directory = basis_directory):
     return basis_ds
 
 
-def basis_boundary_conditions(domain, basis_case = 'NESW', bc_basis_directory=bc_basis_directory):
+def basis_boundary_conditions(domain, basis_case, bc_basis_directory=bc_basis_directory):
     
     files = sorted(glob.glob(bc_basis_directory + domain + "/" +
                     basis_case + '_' + domain + "*.nc"))
@@ -330,7 +330,7 @@ def basis_boundary_conditions(domain, basis_case = 'NESW', bc_basis_directory=bc
     return basis_ds
 
 
-def combine_datasets(dsa, dsb, method = "nearest", tolerance = None):
+def combine_datasets(dsa, dsb, method = "ffill", tolerance = None):
     """
     Merge two datasets. Assumes that you want to 
     re-index to the FIRST dataset.
@@ -406,7 +406,7 @@ def timeseries_HiTRes(fp_HiTRes_ds, domain, HiTRes_flux_name, Resid_flux_name,
         em = flux_HiTRes.reindex_like(new_ds, method='nearest')
         
         #Use end of hours back as closest point for finding the emissions file
-        emend = flux_resid.sel(time = new_ds.time[0], method = 'nearest')
+        emend = flux_resid.sel(time = new_ds.time[0], method = 'ffill')
         em.flux[:,:,0] = emend.flux
         fpXflux[:,:,ti] = (new_ds.fp_HiTRes*em.flux).sum(["time"])
         
@@ -434,7 +434,7 @@ def timeseries_boundary_conditions(ds):
            (ds.particle_locations_w*ds.vmr_w).sum(["height", "lat"])
 
     
-def footprints_data_merge(data, domain = "EUROPE", load_flux = True,
+def footprints_data_merge(data, domain, load_flux = True,
                           calc_timeseries = True, calc_bc = True, HiTRes = False,
                           average = None, site_modifier = {}, height = None,
                           emissions_name = None, interp_vmr_freq = None,
@@ -579,8 +579,17 @@ def footprints_data_merge(data, domain = "EUROPE", load_flux = True,
             
             # rt17603: 06/04/2018 - Added sort as some footprints weren't sorted by time for satellite data.
             site_fp = site_fp.sortby("time")
+            
+            # Combine datasets to one with coarsest  frequency
+            ds_timefreq = np.nanmedian((site_ds.time.data[1:] - site_ds.time.data[0:-1]).astype('int64')) 
+            fp_timefreq = np.nanmedian((site_fp.time.data[1:] - site_fp.time.data[0:-1]).astype('int64')) 
+            if ds_timefreq > fp_timefreq:
+               site_fp = site_fp.resample(str(ds_timefreq/3600e9)+'H', dim='time', how='mean')
+            elif ds_timefreq < fp_timefreq:
+               site_ds = site_ds.resample(str(fp_timefreq/3600e9)+'H', dim='time', how='mean')
+               
             site_ds = combine_datasets(site_ds, site_fp,
-                                       method = "nearest",
+                                       method = "ffill",
                                        tolerance = tolerance)
                 
             # If units are specified, multiply by scaling factor
@@ -616,7 +625,7 @@ def footprints_data_merge(data, domain = "EUROPE", load_flux = True,
     return fp_and_data
 
 
-def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi',
+def fp_sensitivity(fp_and_data, domain, basis_case,
                    basis_directory = basis_directory,
                    HiTRes_flux_name = None, Resid_flux_name=None, flux_directory=flux_directory):
     """
@@ -673,7 +682,7 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi',
         
         else:
         
-            site_bf = combine_datasets(site_bf,basis_func)
+            site_bf = combine_datasets(site_bf,basis_func, method='ffill')
             
             H = np.zeros((int(np.max(site_bf.basis)),len(site_bf.time)))
 
@@ -704,6 +713,7 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi',
             """
             sub_fp_temp = site_bf.fp.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
                                          method="nearest") 
+
             sub_fp = xray.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
                                coords = {'sub_lat': (site_bf.coords['sub_lat']),
                                          'sub_lon': (site_bf.coords['sub_lon']),
@@ -711,6 +721,7 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi',
                                 
             sub_H_temp = H_all.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
                                          method="nearest")                             
+
             sub_H = xray.Dataset({'sub_H': (['sub_lat','sub_lon','time'], sub_H_temp)},
                                coords = {'sub_lat': (site_bf.coords['sub_lat']),
                                          'sub_lon': (site_bf.coords['sub_lon']),
@@ -722,7 +733,7 @@ def fp_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'voronoi',
     return fp_and_data
 
 
-def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW', bc_basis_directory=bc_basis_directory):
+def bc_sensitivity(fp_and_data, domain, basis_case, bc_basis_directory=bc_basis_directory):
 
     """
     Adds H_bc to the sensitivity matrix, to each site xray dataframe in fp_and_data.
@@ -752,7 +763,7 @@ def bc_sensitivity(fp_and_data, domain = 'EUROPE', basis_case = 'NESW', bc_basis
                                 "vmr_w":fp_and_data[site]["vmr_w"],
                                 "bc":fp_and_data[site]["bc"]})
                         
-        DS = combine_datasets(DS_temp, basis_func)                                    
+        DS = combine_datasets(DS_temp, basis_func, method='ffill')                                    
 
         part_loc = np.hstack([DS.particle_locations_n,
                                 DS.particle_locations_e,
@@ -1093,22 +1104,6 @@ class plot_map_setup:
 
 
 
-def plot_map_zoom(fp_data):
-    
-    sites = [key for key in fp_data.keys() if key[0] != '.']
-    
-    dlon = max(fp_data[sites[0]].lon.values) - \
-            min(fp_data[sites[0]].lon.values)
-    lon_range = [min(fp_data[sites[0]].lon.values) + 0.6*dlon,
-                 max(fp_data[sites[0]].lon.values) - 0.25*dlon]
-    dlat = max(fp_data[sites[0]].lat.values) - \
-            min(fp_data[sites[0]].lat.values)
-    lat_range = [min(fp_data[sites[0]].lat.values) + 0.53*dlat,
-                 max(fp_data[sites[0]].lat.values) - 0.25*dlat]
-
-    return lat_range, lon_range
-
-
 def plot(fp_data, date, out_filename=None, 
          lon_range=None, lat_range=None, log_range = [5., 9.],
          map_data = None, zoom = False,
@@ -1156,10 +1151,15 @@ def plot(fp_data, date, out_filename=None,
 
     # Get sites
     sites = [key for key in fp_data.keys() if key[0] != '.']
-
-    # Zoom in. Assumes release point is to the East of centre
+    
+#    Zoom in. Get min and max release lat lons to zoom the map around the data (+/- 10 degrees)
     if zoom:
-        lat_range, lon_range = plot_map_zoom(fp_data)
+        release_lons = [fp_data[key].release_lon for key in fp_data.keys() if key[0] != '.']     
+        release_lats = [fp_data[key].release_lat for key in fp_data.keys() if key[0] != '.']
+        
+        lon_range = [np.min(release_lons)-10, np.max(release_lons)+10]
+        lat_range = [np.min(release_lats)-10, np.max(release_lats)+10]
+
     
     # Get map data
     if map_data is None:

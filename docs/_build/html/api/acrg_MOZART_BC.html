@@ -1,0 +1,169 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>acrg_MOZART_BC module &#8212; acrg  documentation</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-acrg_MOZART_BC">
+<span id="acrg-mozart-bc-module"></span><h1>acrg_MOZART_BC module<a class="headerlink" href="#module-acrg_MOZART_BC" title="Permalink to this headline">¶</a></h1>
+<p>Created on Thu Jun 11 15:17:02 2015</p>
+<p>Code to get MOZART volume mixing ratios at the edges of a domain,
+for including boundary conditions in inversions.</p>
+<p>Call MOZART_BC_nc which does the following:</p>
+<p>Uses &#8220;MOZART_vmr&#8221; to find an xray dataset of MOZART vmr with the altitude
+of each gridcell.</p>
+<p>Uses &#8220;MOZART_boundaries&#8221; to find an xray dataset with the vmrs on the 4
+edges of the specified domain. This is interpolated in height and lat/lon to
+agree with NAME output.</p>
+<p>&#64;author: ew14860</p>
+<dl class="function">
+<dt id="acrg_MOZART_BC.MOZART_BC_nc">
+<code class="descclassname">acrg_MOZART_BC.</code><code class="descname">MOZART_BC_nc</code><span class="sig-paren">(</span><em>start='2012-01-01'</em>, <em>end='2014-09-01'</em>, <em>species='CH4'</em>, <em>filename=None</em>, <em>domain='EUROPE'</em>, <em>freq='M'</em>, <em>runname='NewEDGAR'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_MOZART_BC.html#MOZART_BC_nc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_MOZART_BC.MOZART_BC_nc" title="Permalink to this definition">¶</a></dt>
+<dd><p>Specify end date as 2 months after the month of the last file
+(because the date specified is actually the first day of the next month and
+the range goes up to but doesn&#8217;t include the last date). Only monthly
+frequency because this is the frequency of the mozart files we have so far.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_MOZART_BC.MOZART_boundaries">
+<code class="descclassname">acrg_MOZART_BC.</code><code class="descname">MOZART_boundaries</code><span class="sig-paren">(</span><em>MZ</em>, <em>domain</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_MOZART_BC.html#MOZART_boundaries"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_MOZART_BC.MOZART_boundaries" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets an xray dataset with 4 variables, each of one side of the domain boundary
+(n,e,s,w) and with height and lat/lon interpolated to the NAME grid.
+MZ is a mozart xray dataset created using MOZART_vmr.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_MOZART_BC.MOZART_filenames">
+<code class="descclassname">acrg_MOZART_BC.</code><code class="descname">MOZART_filenames</code><span class="sig-paren">(</span><em>species</em>, <em>start='2010-01-01'</em>, <em>end='2016-01-01'</em>, <em>runname='NewEDGAR'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_MOZART_BC.html#MOZART_filenames"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_MOZART_BC.MOZART_filenames" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets a list of files given a species, start date and end date.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_MOZART_BC.MOZART_vmr">
+<code class="descclassname">acrg_MOZART_BC.</code><code class="descname">MOZART_vmr</code><span class="sig-paren">(</span><em>species</em>, <em>filename=None</em>, <em>start='2010-01-01'</em>, <em>end='2016-01-01'</em>, <em>freq='M'</em>, <em>runname='NewEDGAR'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_MOZART_BC.html#MOZART_vmr"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_MOZART_BC.MOZART_vmr" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns an xray dataset with (height,lat,lon,time) coordinates and 2 data variables:
+concentration of species (SPECIES_vmr_mozart) and an array of altitudes calculated
+from the pressure levels given in the original MOZART file (Alt). The lons are converted
+from the 0 - 360 convention used in MOZART to the -180 to 180 convention used in NAME.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_MOZART_BC.convert_lon">
+<code class="descclassname">acrg_MOZART_BC.</code><code class="descname">convert_lon</code><span class="sig-paren">(</span><em>DS</em>, <em>data_var</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_MOZART_BC.html#convert_lon"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_MOZART_BC.convert_lon" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts variables with a longitude dimension to the -180-180 convention
+rather than the 0-360 convention.
+WARNING: variable must have dimensions (&#8216;height&#8217;,&#8217;lat&#8217;,&#8217;lon&#8217;,&#8217;time&#8217;) in that order.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_MOZART_BC.interp_heights">
+<code class="descclassname">acrg_MOZART_BC.</code><code class="descname">interp_heights</code><span class="sig-paren">(</span><em>DS</em>, <em>vmr_var_name</em>, <em>interp_height</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_MOZART_BC.html#interp_heights"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_MOZART_BC.interp_heights" title="Permalink to this definition">¶</a></dt>
+<dd><p>Created to convert MOZART heights to NAME heights at boundaries.
+Interpolates the heights of the VMR variable &#8216;vmr_var_name&#8217; in the xray dataset
+&#8216;DS&#8217; to the heights specified in &#8216;interp_heights&#8217;. The variable must have dimensions
+(height, lat_or_lon, time) in that order. The dataset DS must also contain a variable
+of altitudes for each value of the VMR variable.
+Returns a new dataset with the VMRs recalculated at interpolated heights, a &#8216;height&#8217;
+dimension replaced with the interpolated values and the &#8216;Alt&#8217; variable removed.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_MOZART_BC.interp_lonlat">
+<code class="descclassname">acrg_MOZART_BC.</code><code class="descname">interp_lonlat</code><span class="sig-paren">(</span><em>DS</em>, <em>vmr_var_name</em>, <em>lat_or_lon</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_MOZART_BC.html#interp_lonlat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_MOZART_BC.interp_lonlat" title="Permalink to this definition">¶</a></dt>
+<dd><p>Created to convert MOZART lons/lats to NAME lons/lats at boundaries.
+Make sure that the heights have already been interpolated using &#8216;interp_heights&#8217;.
+Interpolates the heights of the VMR variable &#8216;vmr_var_name&#8217; in the xray dataset
+&#8216;DS&#8217; to the longitude or latitude specified in &#8216;lon_or_lat&#8217;. The variable must
+have dimensions (height, lat_or_lon, time) in that order.</p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/api/acrg_MOZART_BC.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, mrghg.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/api/acrg_MOZART_BC.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

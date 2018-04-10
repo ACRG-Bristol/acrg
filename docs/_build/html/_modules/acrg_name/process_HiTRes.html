@@ -1,0 +1,322 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>acrg_name.process_HiTRes &#8212; acrg  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for acrg_name.process_HiTRes</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python2</span>
+<span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Created on Mon Feb 19 11:09:53 2018</span>
+
+<span class="sd">@author: ew14860</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Functions for processing HiTRes footprint files</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">acrg_name.process</span> <span class="k">as</span> <span class="nn">proc</span>
+<span class="kn">import</span> <span class="nn">datetime</span> <span class="k">as</span> <span class="nn">dt</span>
+<span class="kn">from</span> <span class="nn">dateutil</span> <span class="k">import</span> <span class="n">parser</span>
+<span class="kn">import</span> <span class="nn">gzip</span>
+<span class="kn">import</span> <span class="nn">os.path</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+<span class="kn">import</span> <span class="nn">acrg_name.name</span> <span class="k">as</span> <span class="nn">nm</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">xarray</span> <span class="k">as</span> <span class="nn">xray</span>
+<span class="kn">import</span> <span class="nn">getpass</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+
+
+<div class="viewcode-block" id="update_release_time"><a class="viewcode-back" href="../../api/acrg_name.html#acrg_name.process_HiTRes.update_release_time">[docs]</a><span class="k">def</span> <span class="nf">update_release_time</span><span class="p">(</span><span class="n">fname</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Updates the time of release in the HiTRes output files to be start and end </span>
+<span class="sd">    of the release at that timestep rather than the start and end of the release</span>
+<span class="sd">    for the first timestep of that day.</span>
+<span class="sd">    </span>
+<span class="sd">    fname: path to file to be updated</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">fname</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">filelines</span> <span class="o">=</span> <span class="n">proc</span><span class="o">.</span><span class="n">extract_file_lines</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span>
+    
+    <span class="n">filestartline</span> <span class="o">=</span> <span class="n">filelines</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span>
+    <span class="n">fileendline</span> <span class="o">=</span> <span class="n">filelines</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span>
+    <span class="n">endlinesplit</span> <span class="o">=</span> <span class="n">fileendline</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
+    <span class="n">startlinesplit</span> <span class="o">=</span> <span class="n">filestartline</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
+            
+    <span class="n">fileS</span> <span class="o">=</span> <span class="n">startlinesplit</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39; &#39;</span> <span class="o">+</span> <span class="n">startlinesplit</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">fileE</span> <span class="o">=</span> <span class="n">endlinesplit</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39; &#39;</span> <span class="o">+</span> <span class="n">endlinesplit</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">filestart</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">fileS</span><span class="p">,</span> <span class="n">dayfirst</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+    <span class="n">fileend</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">fileE</span><span class="p">,</span> <span class="n">dayfirst</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+    <span class="n">release_hr</span> <span class="o">=</span> <span class="n">filelines</span><span class="p">[</span><span class="mi">19</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">dt_hour</span> <span class="o">=</span> <span class="n">filelines</span><span class="p">[</span><span class="mi">20</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)[</span><span class="mi">2</span><span class="p">]</span>
+    
+    <span class="k">if</span> <span class="n">filestart</span> <span class="o">==</span> <span class="n">fileend</span> <span class="o">+</span> <span class="n">dt</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">dt_hour</span><span class="p">)):</span>
+        <span class="nb">print</span> <span class="s2">&quot;File dates already changed for file: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span><span class="n">filename</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span> <span class="s2">&quot;Modifying dates in file: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span><span class="n">filename</span>
+        <span class="n">start_release</span> <span class="o">=</span> <span class="n">fileend</span> <span class="o">+</span> <span class="n">dt</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">release_hr</span><span class="p">)</span><span class="o">+</span><span class="nb">int</span><span class="p">(</span><span class="n">dt_hour</span><span class="p">))</span>
+        <span class="n">end_release</span> <span class="o">=</span> <span class="n">fileend</span> <span class="o">+</span> <span class="n">dt</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">release_hr</span><span class="p">))</span>
+    
+        <span class="n">startlinesplit</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">start_release</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%H%M%Z&#39;</span><span class="p">)</span>
+        <span class="n">startlinesplit</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">start_release</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%d</span><span class="s1">/%m/%Y&#39;</span><span class="p">)</span>
+        <span class="n">endlinesplit</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">end_release</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%H%M%Z&#39;</span><span class="p">)</span>
+        <span class="n">endlinesplit</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">end_release</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%d</span><span class="s1">/%m/%Y&#39;</span><span class="p">)</span>
+                
+        <span class="n">filelines</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">startlinesplit</span><span class="p">)</span>
+        <span class="n">filelines</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">endlinesplit</span><span class="p">)</span>
+        <span class="n">filetext</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">filelines</span><span class="p">)</span>
+                    
+        <span class="n">outfilename</span> <span class="o">=</span> <span class="n">fname</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="n">gzip</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">outfilename</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span>
+        <span class="n">output</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">filetext</span><span class="p">)</span>
+        <span class="n">output</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="process_HiTRes"><a class="viewcode-back" href="../../api/acrg_name.html#acrg_name.process_HiTRes.process_HiTRes">[docs]</a><span class="k">def</span> <span class="nf">process_HiTRes</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">site</span><span class="p">,</span> <span class="n">height</span><span class="p">,</span> <span class="n">year</span><span class="p">,</span> <span class="n">month</span><span class="p">,</span> <span class="n">user_max_hour_back</span><span class="p">,</span>
+                   <span class="n">base_dir</span> <span class="o">=</span> <span class="s2">&quot;/dagage2/agage/metoffice/NAME_output/&quot;</span><span class="p">,</span>
+                   <span class="n">HiTRes_fields_folder</span> <span class="o">=</span> <span class="s2">&quot;24HrBk_Fields_files&quot;</span><span class="p">,</span>
+                   <span class="n">met_folder</span> <span class="o">=</span> <span class="s2">&quot;Met&quot;</span><span class="p">):</span>
+    
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    domain: string - &#39;EUROPE&#39;</span>
+<span class="sd">    site: string - &#39;MHD&#39;</span>
+<span class="sd">    height: string in magl - &#39;10&#39; </span>
+<span class="sd">    year: string - &#39;2014&#39;</span>
+<span class="sd">    month: string - &#39;06&#39;</span>
+<span class="sd">    user_max_hour_back: int - 24</span>
+<span class="sd">    base_dir: string, directory where [domain]_[site]_[height]magl folder is containing HiTRes footprints</span>
+<span class="sd">    HiTRes_fields_folder: string, name of HiTRes fields folder - &#39;24HrBk_Fields_files&#39;</span>
+<span class="sd">    met_folder: string, name of met folder - &#39;Met&#39;</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">subfolder</span> <span class="o">=</span> <span class="n">base_dir</span> <span class="o">+</span> <span class="n">domain</span> <span class="o">+</span> <span class="s2">&quot;_&quot;</span> <span class="o">+</span> <span class="n">site</span> <span class="o">+</span> <span class="s2">&quot;_&quot;</span> <span class="o">+</span> <span class="n">height</span> <span class="o">+</span> <span class="s2">&quot;magl&quot;</span><span class="o">+</span> <span class="s2">&quot;/&quot;</span>
+    
+    <span class="n">HiTRes_search_string</span> <span class="o">=</span> <span class="n">subfolder</span><span class="o">+</span><span class="n">HiTRes_fields_folder</span><span class="o">+</span><span class="s2">&quot;/*_&quot;</span><span class="o">+</span><span class="n">year</span><span class="o">+</span><span class="n">month</span><span class="o">+</span><span class="s2">&quot;*&quot;</span>
+    <span class="n">fnames</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">HiTRes_search_string</span><span class="p">)</span>
+    <span class="n">fnames</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">fnames</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nb">print</span> <span class="s2">&quot;Can&#39;t find high time resolution footprint files &quot;</span> <span class="o">+</span> <span class="n">HiTRes_search_string</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="n">met_search_str</span> <span class="o">=</span> <span class="n">subfolder</span> <span class="o">+</span> <span class="n">met_folder</span> <span class="o">+</span> <span class="s2">&quot;/*.txt*&quot;</span>
+      
+    <span class="n">met_files</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">met_search_str</span><span class="p">))</span>
+        
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">met_files</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Can&#39;t find MET files: &quot;</span> <span class="o">+</span> <span class="n">met_search_str</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">met</span> <span class="o">=</span> <span class="n">proc</span><span class="o">.</span><span class="n">read_met</span><span class="p">(</span><span class="n">met_files</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">month</span> <span class="o">==</span> <span class="s1">&#39;12&#39;</span><span class="p">:</span>
+        <span class="n">totfp</span> <span class="o">=</span> <span class="n">nm</span><span class="o">.</span><span class="n">footprints</span><span class="p">(</span><span class="n">site</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">-</span><span class="si">%s</span><span class="s2">-01&quot;</span> <span class="o">%</span><span class="p">(</span><span class="n">year</span><span class="p">,</span><span class="n">month</span><span class="p">),</span> <span class="n">end</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">-</span><span class="si">%s</span><span class="s2">-01&quot;</span> <span class="o">%</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">year</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;01&#39;</span><span class="p">),</span> <span class="n">domain</span><span class="o">=</span><span class="n">domain</span><span class="p">,</span> <span class="n">height</span> <span class="o">=</span> <span class="n">height</span><span class="o">+</span><span class="s1">&#39;m&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">totfp</span> <span class="o">=</span> <span class="n">nm</span><span class="o">.</span><span class="n">footprints</span><span class="p">(</span><span class="n">site</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">-</span><span class="si">%s</span><span class="s2">-01&quot;</span> <span class="o">%</span><span class="p">(</span><span class="n">year</span><span class="p">,</span><span class="n">month</span><span class="p">),</span> <span class="n">end</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">-</span><span class="si">%02d</span><span class="s2">-01&quot;</span> <span class="o">%</span><span class="p">(</span><span class="n">year</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">month</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">),</span> <span class="n">domain</span><span class="o">=</span><span class="n">domain</span><span class="p">,</span> <span class="n">height</span> <span class="o">=</span> <span class="n">height</span><span class="o">+</span><span class="s1">&#39;m&#39;</span><span class="p">)</span>
+
+    <span class="n">totfp</span> <span class="o">=</span> <span class="n">totfp</span><span class="o">.</span><span class="n">fp</span><span class="o">.</span><span class="n">to_dataset</span><span class="p">()</span>
+
+    <span class="n">user_max_hour_back</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">user_max_hour_back</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">fi</span><span class="p">,</span> <span class="n">f</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">fnames</span><span class="p">):</span>
+        <span class="n">update_release_time</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+
+        <span class="n">filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">f</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">splitfile</span> <span class="o">=</span> <span class="n">filename</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)</span>
+        <span class="n">release_hr</span> <span class="o">=</span> <span class="n">splitfile</span><span class="p">[</span><span class="o">-</span><span class="mi">3</span><span class="p">]</span>
+        <span class="n">hr_back</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">splitfile</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+        
+        <span class="nb">print</span> <span class="n">hr_back</span>
+        <span class="nb">print</span> <span class="n">user_max_hour_back</span>
+        
+        <span class="k">if</span> <span class="n">hr_back</span> <span class="o">&lt;=</span> <span class="n">user_max_hour_back</span><span class="p">:</span>
+            
+            <span class="n">fp0</span> <span class="o">=</span> <span class="n">proc</span><span class="o">.</span><span class="n">footprint_array</span><span class="p">(</span><span class="n">f</span><span class="p">,</span><span class="n">met</span><span class="o">=</span><span class="n">met</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">fi</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">time0</span> <span class="o">=</span> <span class="n">fp0</span><span class="o">.</span><span class="n">time</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        
+            <span class="n">fp_droplev</span> <span class="o">=</span> <span class="n">fp0</span><span class="o">.</span><span class="n">fp</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="s1">&#39;lev&#39;</span><span class="p">)</span>
+            <span class="n">fp0</span> <span class="o">=</span> <span class="n">fp0</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;fp&#39;</span><span class="p">:</span><span class="n">fp_droplev</span><span class="p">})</span>
+            <span class="n">fp_addH</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">fp0</span><span class="o">.</span><span class="n">fp</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+            <span class="n">fp_addH_var</span> <span class="o">=</span> <span class="n">xray</span><span class="o">.</span><span class="n">Variable</span><span class="p">([</span><span class="s1">&#39;time&#39;</span><span class="p">,</span><span class="s1">&#39;lat&#39;</span><span class="p">,</span><span class="s1">&#39;lon&#39;</span><span class="p">,</span> <span class="s1">&#39;H_back&#39;</span><span class="p">],</span> <span class="n">fp_addH</span><span class="p">)</span>
+
+            <span class="n">FDS</span><span class="o">=</span> <span class="n">xray</span><span class="o">.</span><span class="n">Dataset</span><span class="p">({</span><span class="s1">&#39;fp&#39;</span> <span class="p">:</span> <span class="n">fp_addH_var</span><span class="p">},</span>
+                              <span class="n">coords</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="n">fp0</span><span class="o">.</span><span class="n">time</span><span class="p">,</span>
+                                        <span class="s1">&#39;lat&#39;</span><span class="p">:</span> <span class="n">totfp</span><span class="o">.</span><span class="n">lat</span><span class="p">,</span>
+                                        <span class="s1">&#39;lon&#39;</span><span class="p">:</span> <span class="n">totfp</span><span class="o">.</span><span class="n">lon</span><span class="p">,</span>
+                                        <span class="s1">&#39;H_back&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">hr_back</span><span class="p">]})</span>
+            <span class="n">FDS</span> <span class="o">=</span> <span class="n">FDS</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="s1">&#39;lat&#39;</span><span class="p">,</span><span class="s1">&#39;lon&#39;</span><span class="p">,</span><span class="s1">&#39;time&#39;</span><span class="p">,</span><span class="s1">&#39;H_back&#39;</span><span class="p">)</span>
+    
+            <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="n">release_hr</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">fp0</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">values</span> <span class="o">==</span> <span class="n">time0</span><span class="o">.</span><span class="n">values</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">FDS</span><span class="o">.</span><span class="n">H_back</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">FDS0</span> <span class="o">=</span> <span class="n">FDS</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">FDS0</span> <span class="o">=</span> <span class="n">xray</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">FDS0</span><span class="p">,</span> <span class="n">FDS</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="s1">&#39;H_back&#39;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">FDS</span><span class="o">.</span><span class="n">H_back</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">FDS1</span> <span class="o">=</span> <span class="n">FDS</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">FDS1</span> <span class="o">=</span> <span class="n">xray</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">FDS1</span><span class="p">,</span> <span class="n">FDS</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="s1">&#39;H_back&#39;</span><span class="p">)</span>
+            
+                <span class="k">if</span> <span class="n">FDS</span><span class="o">.</span><span class="n">H_back</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">FDS0</span><span class="o">.</span><span class="n">H_back</span><span class="p">):</span>
+                    <span class="n">FDS0</span> <span class="o">=</span> <span class="n">xray</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">FDS0</span><span class="p">,</span> <span class="n">FDS1</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="s1">&#39;time&#39;</span><span class="p">)</span>
+
+    <span class="n">file_max_hour_back</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">FDS</span><span class="o">.</span><span class="n">H_back</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">file_max_hour_back</span> <span class="o">!=</span> <span class="n">user_max_hour_back</span><span class="p">:</span>
+        <span class="nb">print</span> <span class="s2">&quot;WARNING: The maximum number of hours back specified by the user (</span><span class="si">%s</span><span class="s2">)</span><span class="se">\</span>
+<span class="s2">        is greater than the maximum number of hours back available in the high</span><span class="se">\</span>
+<span class="s2">        time resolution footprint file (</span><span class="si">%s</span><span class="s2">). Creating a footprint file with the</span><span class="se">\</span>
+<span class="s2">        available number of hours back (</span><span class="si">%s</span><span class="s2">).&quot;</span> <span class="o">%</span><span class="p">(</span><span class="n">user_max_hour_back</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">FDS</span><span class="o">.</span><span class="n">H_back</span><span class="o">.</span><span class="n">values</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">FDS</span><span class="o">.</span><span class="n">H_back</span><span class="o">.</span><span class="n">values</span><span class="p">))</span>
+    
+    <span class="n">FDS</span> <span class="o">=</span> <span class="n">FDS0</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">addfp</span> <span class="o">=</span> <span class="n">FDS</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="s1">&#39;H_back&#39;</span><span class="p">)</span>
+    
+    <span class="c1">#make sure totfp is on same time resolution as HiTRes fp</span>
+    <span class="c1">#can&#39;t get mean using reindex_like</span>
+    <span class="c1">#need to use resample</span>
+    <span class="n">tot_fp_time_period</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">totfp</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">period</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]))</span>
+    <span class="n">HiTRes_fp_time_period</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="n">FDS</span><span class="o">.</span><span class="n">time</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">-</span><span class="n">FDS</span><span class="o">.</span><span class="n">time</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;timedelta64[h]&#39;</span><span class="p">)</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">timedelta64</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="s1">&#39;h&#39;</span><span class="p">))</span>
+    
+    <span class="k">if</span> <span class="n">HiTRes_fp_time_period</span> <span class="o">&gt;</span> <span class="n">tot_fp_time_period</span><span class="p">:</span>
+        <span class="nb">print</span> <span class="s2">&quot;Time resolution of total footprints (</span><span class="si">%d</span><span class="s2"> hourly) is higher than</span><span class="se">\</span>
+<span class="s2">        time resolution in &#39;time&#39; dimension of HiTRes footprints (</span><span class="si">%d</span><span class="s2"> hourly).</span><span class="se">\</span>
+<span class="s2">        Averaging total footprints to match time resolution of HiTRes footprints.&quot;</span> <span class="o">%</span><span class="p">(</span><span class="n">tot_fp_time_period</span><span class="p">,</span> <span class="n">HiTRes_fp_time_period</span><span class="p">)</span>
+        <span class="n">totfp</span> <span class="o">=</span> <span class="n">totfp</span><span class="o">.</span><span class="n">resample</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%d</span><span class="s1">H&#39;</span> <span class="o">%</span><span class="n">HiTRes_fp_time_period</span><span class="p">,</span><span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;mean&#39;</span><span class="p">)</span>
+        <span class="n">totfp</span> <span class="o">=</span> <span class="n">totfp</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="s1">&#39;lat&#39;</span><span class="p">,</span><span class="s1">&#39;lon&#39;</span><span class="p">,</span><span class="s1">&#39;time&#39;</span><span class="p">)</span>
+    
+    <span class="k">elif</span> <span class="n">HiTRes_fp_time_period</span> <span class="o">&lt;</span> <span class="n">tot_fp_time_period</span><span class="p">:</span>
+        <span class="nb">print</span> <span class="s2">&quot;Time resolution of total footprints (</span><span class="si">%d</span><span class="s2"> hourly) is too low for</span><span class="se">\</span>
+<span class="s2">        time resolution in &#39;time&#39; dimension of HiTRes footprints (</span><span class="si">%d</span><span class="s2"> hourly).</span><span class="se">\</span>
+<span class="s2">        Aborting.&quot;</span> <span class="o">%</span><span class="p">(</span><span class="n">tot_fp_time_period</span><span class="p">,</span> <span class="n">HiTRes_fp_time_period</span><span class="p">)</span>
+        <span class="n">exit</span>
+        
+    <span class="n">remfp</span> <span class="o">=</span> <span class="n">totfp</span><span class="o">.</span><span class="n">fp</span> <span class="o">-</span> <span class="n">addfp</span>
+    <span class="n">remfpval</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">remfp</span><span class="o">.</span><span class="n">fp</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+    <span class="n">remfpvar</span> <span class="o">=</span> <span class="n">xray</span><span class="o">.</span><span class="n">Variable</span><span class="p">([</span><span class="s1">&#39;lat&#39;</span><span class="p">,</span> <span class="s1">&#39;lon&#39;</span><span class="p">,</span><span class="s1">&#39;time&#39;</span><span class="p">,</span><span class="s1">&#39;H_back&#39;</span><span class="p">],</span> <span class="n">remfpval</span><span class="p">)</span>
+    <span class="n">remfp</span> <span class="o">=</span> <span class="n">remfp</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;fp&#39;</span> <span class="p">:</span> <span class="n">remfpvar</span><span class="p">,</span>
+                      <span class="s1">&#39;H_back&#39;</span> <span class="p">:</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">FDS</span><span class="o">.</span><span class="n">H_back</span><span class="o">.</span><span class="n">values</span><span class="p">)</span><span class="o">+</span><span class="mi">2</span><span class="p">]})</span>
+    <span class="n">FDS</span> <span class="o">=</span> <span class="n">xray</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">FDS</span><span class="p">,</span> <span class="n">remfp</span><span class="p">],</span> <span class="n">dim</span> <span class="o">=</span> <span class="s1">&#39;H_back&#39;</span><span class="p">)</span>
+    <span class="n">FDS</span> <span class="o">=</span> <span class="n">FDS</span><span class="o">.</span><span class="n">rename</span><span class="p">({</span><span class="s1">&#39;fp&#39;</span><span class="p">:</span><span class="s1">&#39;fp_HiTRes&#39;</span><span class="p">})</span>
+            
+    <span class="n">FDSattrs</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;title&quot;</span><span class="p">:</span><span class="s2">&quot; NAME footprints, </span><span class="si">%s</span><span class="s2">, particles recorded two hourly for first </span><span class="si">%d</span><span class="s2"> hours&quot;</span> <span class="o">%</span><span class="p">(</span><span class="n">site</span><span class="p">,</span> <span class="n">file_max_hour_back</span><span class="p">),</span>
+                      <span class="s2">&quot;author&quot;</span> <span class="p">:</span> <span class="n">getpass</span><span class="o">.</span><span class="n">getuser</span><span class="p">(),</span>
+                        <span class="s2">&quot;date_created&quot;</span> <span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">str</span><span class="p">(</span><span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">today</span><span class="p">()),</span>
+                        <span class="s2">&quot;fp_units&quot;</span> <span class="p">:</span> <span class="s2">&quot;mol/mol/mol/m2/s&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;comments&quot;</span> <span class="p">:</span> <span class="s2">&quot;Timestamp is time of end of release, first hour back (0) is </span><span class="se">\</span>
+<span class="s2">                        the record of particles in the boundary layer at the end of the release.&quot;</span> <span class="p">}</span>
+
+    <span class="n">FDS</span><span class="o">.</span><span class="n">attrs</span> <span class="o">=</span> <span class="n">FDSattrs</span>
+
+    <span class="c1">#MAKE NETCDF FILE!!</span>
+    
+    <span class="n">out_folder</span> <span class="o">=</span> <span class="n">subfolder</span> <span class="o">+</span> <span class="s2">&quot;Processed_</span><span class="si">%s</span><span class="s2">HrBk_Fields_files/&quot;</span> <span class="o">%</span><span class="p">(</span><span class="n">file_max_hour_back</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">out_folder</span><span class="p">):</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">out_folder</span><span class="p">)</span>
+    
+    <span class="n">FDS</span><span class="o">.</span><span class="n">fp_HiTRes</span><span class="o">.</span><span class="n">encoding</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;zlib&#39;</span><span class="p">:</span><span class="kc">True</span><span class="p">}</span>
+    <span class="n">FDS</span><span class="o">.</span><span class="n">to_netcdf</span><span class="p">(</span><span class="n">path</span> <span class="o">=</span> <span class="n">out_folder</span><span class="o">+</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">-</span><span class="si">%s</span><span class="s1">magl_</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s%s</span><span class="s1">.nc&#39;</span> <span class="o">%</span><span class="p">(</span><span class="n">site</span><span class="p">,</span> <span class="n">height</span><span class="p">,</span> <span class="n">domain</span><span class="p">,</span> <span class="n">year</span><span class="p">,</span> <span class="n">month</span><span class="p">),</span> <span class="n">mode</span> <span class="o">=</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span>
+    <span class="nb">print</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">-</span><span class="si">%s</span><span class="s2">magl_</span><span class="si">%s</span><span class="s2">_</span><span class="si">%s%s</span><span class="s2">.nc Done&quot;</span> <span class="o">%</span><span class="p">(</span><span class="n">site</span><span class="p">,</span> <span class="n">height</span><span class="p">,</span> <span class="n">domain</span><span class="p">,</span> <span class="n">year</span><span class="p">,</span> <span class="n">month</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="process_HiTRes_all"><a class="viewcode-back" href="../../api/acrg_name.html#acrg_name.process_HiTRes.process_HiTRes_all">[docs]</a><span class="k">def</span> <span class="nf">process_HiTRes_all</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">site_height_dict</span><span class="p">,</span> <span class="n">start_date</span><span class="p">,</span> <span class="n">end_date</span><span class="p">,</span> <span class="n">user_max_hour_back</span><span class="p">,</span>
+                       <span class="n">base_dir</span> <span class="o">=</span> <span class="s2">&quot;/dagage2/agage/metoffice/NAME_output/&quot;</span><span class="p">,</span>
+                       <span class="n">HiTRes_fields_folder</span> <span class="o">=</span> <span class="s2">&quot;24HrBk_Fields_files&quot;</span><span class="p">,</span>
+                       <span class="n">met_folder</span> <span class="o">=</span> <span class="s2">&quot;Met&quot;</span><span class="p">):</span>
+    
+    <span class="n">dates</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="n">start_date</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="n">end_date</span><span class="p">,</span> <span class="n">freq</span> <span class="o">=</span> <span class="s1">&#39;MS&#39;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">site_height_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">dates</span><span class="p">:</span>
+            <span class="nb">print</span> <span class="s2">&quot;Getting HiTRes footprints for </span><span class="si">%02d</span><span class="s2"> </span><span class="si">%04d</span><span class="s2"> at </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">year</span><span class="p">,</span> <span class="n">d</span><span class="o">.</span><span class="n">month</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+            <span class="n">process_HiTRes</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">site_height_dict</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="s2">&quot;</span><span class="si">%04d</span><span class="s2">&quot;</span> <span class="o">%</span><span class="n">d</span><span class="o">.</span><span class="n">year</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">%02d</span><span class="s2">&quot;</span> <span class="o">%</span><span class="n">d</span><span class="o">.</span><span class="n">month</span><span class="p">,</span> <span class="n">user_max_hour_back</span><span class="p">,</span>
+                           <span class="n">base_dir</span> <span class="o">=</span> <span class="n">base_dir</span><span class="p">,</span> <span class="n">HiTRes_fields_folder</span> <span class="o">=</span> <span class="n">HiTRes_fields_folder</span><span class="p">,</span>
+                           <span class="n">met_folder</span> <span class="o">=</span> <span class="n">met_folder</span><span class="p">)</span></div>
+            
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, mrghg.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

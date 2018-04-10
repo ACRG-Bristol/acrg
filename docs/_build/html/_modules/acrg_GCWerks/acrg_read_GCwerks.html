@@ -1,0 +1,1078 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>acrg_GCWerks.acrg_read_GCwerks &#8212; acrg  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for acrg_GCWerks.acrg_read_GCwerks</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Created on Mon Mar 23 10:22:22 2015</span>
+
+<span class="sd">@author: as13988</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">datetime</span> <span class="k">as</span> <span class="nn">dt</span>
+<span class="kn">import</span> <span class="nn">pdb</span>
+
+<span class="c1"># Class to read in the txt output of CRDS gcexport made using the standard peak.list and report config on Dagage2</span>
+<div class="viewcode-block" id="read_gcexport_crds"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.acrg_read_GCwerks.read_gcexport_crds">[docs]</a><span class="k">def</span> <span class="nf">read_gcexport_crds</span><span class="p">(</span><span class="n">datafile</span><span class="p">):</span>
+        
+        <span class="nb">print</span> <span class="s1">&#39;Reading:&#39;</span>
+        <span class="nb">print</span> <span class="n">datafile</span>
+        
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">datafile</span><span class="p">)</span> <span class="o">==</span> <span class="nb">tuple</span><span class="p">:</span>
+            <span class="c1">#data=np.genfromtxt(datafile[0], dtype=str, skip_header=3)</span>
+            <span class="n">data</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="n">datafile</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">skip_header</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            
+        <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">datafile</span><span class="p">)</span> <span class="o">==</span> <span class="nb">str</span><span class="p">:</span>
+            <span class="c1">#data=np.genfromtxt(datafile, dtype=str, skip_header=3)</span>
+            <span class="n">data</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="n">datafile</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">skip_header</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+   
+        <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">datafile</span><span class="p">)</span> <span class="o">==</span> <span class="nb">list</span><span class="p">:</span>
+            <span class="c1">#data=np.genfromtxt(datafile, dtype=str, skip_header=3)</span>
+
+            <span class="n">datafile</span> <span class="o">=</span> <span class="n">datafile</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">data</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="n">datafile</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">skip_header</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        
+        <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">datafile</span><span class="p">)</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">string_</span><span class="p">:</span>
+            <span class="c1">#data=np.genfromtxt(datafile, dtype=str, skip_header=3)</span>
+            <span class="n">data</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="n">datafile</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">skip_header</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            
+        <span class="n">data_good</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="mi">2</span><span class="p">:,:]</span>
+        <span class="n">header_1</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">,:]</span>
+                
+        <span class="c1"># Ensure that second &quot;time&quot; is &quot;bin_time&quot;</span>
+        <span class="n">header_1</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">header_1</span> <span class="o">==</span><span class="s1">&#39;bin&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span><span class="s1">&#39;bin&#39;</span>        
+        
+        <span class="n">header_2</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="mi">1</span><span class="p">,:]</span>
+        <span class="n">headers</span> <span class="o">=</span> <span class="p">[]</span>
+        
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">header_1</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="n">header_1</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;-&#39;</span><span class="p">:</span>    
+                <span class="n">headers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">header_2</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+                
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">headers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">header_1</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span class="n">header_2</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+        <span class="n">headers</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">headers</span><span class="p">)</span>
+        
+        <span class="c1">#if np.shape(data)[1] &gt; 18 :</span>
+         <span class="c1">#   data = read_gcexport_crds_new(data_good, datafile)</span>
+        <span class="c1">#else:</span>
+        <span class="c1">#    data = read_gcexport_crds_old(data_good, datafile)</span>
+        
+        <span class="n">data</span> <span class="o">=</span> <span class="n">read_gcexport_crds_flexi</span><span class="p">(</span><span class="n">data_good</span><span class="p">,</span> <span class="n">datafile</span><span class="p">,</span> <span class="n">headers</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">data</span></div>
+
+<span class="c1"># More flexible approach using the headers in the file</span>
+<div class="viewcode-block" id="read_gcexport_crds_flexi"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.acrg_read_GCwerks.read_gcexport_crds_flexi">[docs]</a><span class="k">class</span> <span class="nc">read_gcexport_crds_flexi</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">datafile</span><span class="p">,</span> <span class="n">headers</span><span class="p">):</span>
+        
+        <span class="n">date</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;date&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">time</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;time&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">sampletype</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;type&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">samplename</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;sample&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">standard</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;standard&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">port</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;port&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">cavity_temp</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;cavity_temp&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">cavity_press</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;cavity_press&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span> 
+        <span class="n">h2o_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;h2o&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">h2osd_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;h2o_stdev&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        
+        <span class="n">co2_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;co2_C&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">co2drift_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;co2_Cdrift&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>        
+        <span class="n">co2wet_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;co2_wet&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">co2dry_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;co2_dry&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">co2sd_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;co2_stdev&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">co2_n</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;co2_N&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        
+        <span class="n">ch4_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;ch4_C&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">ch4drift_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;ch4_Cdrift&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>        
+        <span class="n">ch4wet_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;ch4_wet&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">ch4dry_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;ch4_dry&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">ch4sd_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;ch4_stdev&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">ch4_n</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;ch4_N&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        
+        <span class="n">dirname</span><span class="p">,</span> <span class="n">filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">datafile</span><span class="p">)</span>
+        
+        <span class="n">co2flags</span> <span class="o">=</span> <span class="n">Makeflags</span><span class="p">(</span><span class="n">co2_orig</span><span class="p">)</span>
+        <span class="n">ch4flags</span> <span class="o">=</span> <span class="n">Makeflags</span><span class="p">(</span><span class="n">ch4_orig</span><span class="p">)</span>
+        
+        
+        <span class="c1"># Strip flags from conc data</span>
+        <span class="n">co2_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">co2_orig</span><span class="p">)</span>
+        <span class="n">co2drift_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">co2drift_orig</span><span class="p">)</span>
+        <span class="n">co2sd_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">co2sd_orig</span><span class="p">)</span>
+        
+        <span class="n">ch4_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">ch4_orig</span><span class="p">)</span>
+        <span class="n">ch4drift_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">ch4drift_orig</span><span class="p">)</span>
+        <span class="n">ch4sd_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">ch4sd_orig</span><span class="p">)</span>
+        
+        <span class="n">h2o_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">h2o_orig</span><span class="p">)</span>
+        <span class="n">h2osd_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">h2osd_orig</span><span class="p">)</span>
+        
+        <span class="n">co2wet_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">co2wet_orig</span><span class="p">)</span>
+        <span class="n">co2dry_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">co2dry_orig</span><span class="p">)</span>
+        <span class="n">ch4wet_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">ch4wet_orig</span><span class="p">)</span>
+        <span class="n">ch4dry_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">ch4dry_orig</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">nogases</span> <span class="o">=</span> <span class="mi">2</span>  
+        
+        <span class="k">if</span> <span class="s1">&#39;co_C&#39;</span> <span class="ow">in</span> <span class="n">headers</span><span class="p">:</span>
+            <span class="n">co_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;co_C&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">codrift_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;co_Cdrift&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>        
+            <span class="n">cowet_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;co_wet&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">codry_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;co_dry&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">cosd_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;co_stdev&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">co_n</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;co_N&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+            
+            <span class="n">coflags</span> <span class="o">=</span> <span class="n">Makeflags</span><span class="p">(</span><span class="n">co_orig</span><span class="p">)</span>
+            
+            <span class="n">co_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">co_orig</span><span class="p">)</span>
+            <span class="n">codrift_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">codrift_orig</span><span class="p">)</span>
+            <span class="n">cosd_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">cosd_orig</span><span class="p">)</span>
+
+            <span class="n">cowet_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">cowet_orig</span><span class="p">)</span>
+            <span class="n">codry_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">codry_orig</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">co_orig</span> <span class="o">=</span> <span class="n">co_orig</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">co</span> <span class="o">=</span> <span class="n">co_stripped</span><span class="o">.</span><span class="n">gas</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">codrift</span> <span class="o">=</span> <span class="n">codrift_stripped</span><span class="o">.</span><span class="n">gas</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cosd_orig</span> <span class="o">=</span> <span class="n">cosd_orig</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cosd</span> <span class="o">=</span> <span class="n">cosd_stripped</span><span class="o">.</span><span class="n">gas</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">co_dry</span> <span class="o">=</span> <span class="n">codry_stripped</span><span class="o">.</span><span class="n">gas</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">co_wet</span> <span class="o">=</span> <span class="n">cowet_stripped</span><span class="o">.</span><span class="n">gas</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">coflags</span> <span class="o">=</span> <span class="n">coflags</span><span class="o">.</span><span class="n">flags</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">co_n</span> <span class="o">=</span> <span class="n">co_n</span>
+            
+            <span class="bp">self</span><span class="o">.</span><span class="n">nogases</span> <span class="o">=</span> <span class="mi">3</span>
+
+        <span class="k">if</span> <span class="s1">&#39;h2o_reported&#39;</span> <span class="ow">in</span> <span class="n">headers</span><span class="p">:</span>
+            <span class="n">h2o_rep_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;h2o_reported&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">h2o_rep_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">h2o_rep_orig</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">h2o_rep_orig</span> <span class="o">=</span> <span class="n">h2o_rep_orig</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">h2o_reported</span> <span class="o">=</span>  <span class="n">h2o_rep_stripped</span><span class="o">.</span><span class="n">gas</span>
+
+
+        <span class="c1"># make datetime variable</span>
+        <span class="n">dt_date</span> <span class="o">=</span> <span class="p">[</span><span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">date</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39; &#39;</span> <span class="o">+</span> <span class="n">time</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="p">,</span> <span class="s2">&quot;%y%m</span><span class="si">%d</span><span class="s2"> %H%M%S&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">date</span><span class="p">))]</span>
+           
+        <span class="bp">self</span><span class="o">.</span><span class="n">date</span> <span class="o">=</span> <span class="n">date</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">time</span> <span class="o">=</span> <span class="n">time</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dt_date</span> <span class="o">=</span> <span class="n">dt_date</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">datetime</span> <span class="o">=</span> <span class="n">dt_date</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sampletype</span> <span class="o">=</span> <span class="n">sampletype</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">samplename</span> <span class="o">=</span> <span class="n">samplename</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">standard</span> <span class="o">=</span> <span class="n">standard</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">port</span> <span class="o">=</span> <span class="n">port</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;int&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cavity_temp</span> <span class="o">=</span> <span class="n">cavity_temp</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;float&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cavity_press</span> <span class="o">=</span> <span class="n">cavity_press</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;float&#39;</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">h2o_orig</span> <span class="o">=</span> <span class="n">h2o_orig</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">h2o</span> <span class="o">=</span>  <span class="n">h2o_stripped</span><span class="o">.</span><span class="n">gas</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">h2osd_orig</span> <span class="o">=</span> <span class="n">h2osd_orig</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">h2osd</span> <span class="o">=</span> <span class="n">h2osd_stripped</span><span class="o">.</span><span class="n">gas</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">co2_orig</span> <span class="o">=</span> <span class="n">co2_orig</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">co2</span> <span class="o">=</span> <span class="n">co2_stripped</span><span class="o">.</span><span class="n">gas</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">co2drift</span> <span class="o">=</span> <span class="n">co2drift_stripped</span><span class="o">.</span><span class="n">gas</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">co2sd_orig</span> <span class="o">=</span> <span class="n">co2sd_orig</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">co2sd</span> <span class="o">=</span> <span class="n">co2sd_stripped</span><span class="o">.</span><span class="n">gas</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">co2flags</span> <span class="o">=</span> <span class="n">co2flags</span><span class="o">.</span><span class="n">flags</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">co2_n</span> <span class="o">=</span> <span class="n">co2_n</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">ch4_orig</span> <span class="o">=</span> <span class="n">ch4_orig</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ch4</span> <span class="o">=</span> <span class="n">ch4_stripped</span><span class="o">.</span><span class="n">gas</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ch4drift</span> <span class="o">=</span> <span class="n">ch4drift_stripped</span><span class="o">.</span><span class="n">gas</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ch4sd_orig</span> <span class="o">=</span> <span class="n">ch4sd_orig</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ch4sd</span> <span class="o">=</span> <span class="n">ch4sd_stripped</span><span class="o">.</span><span class="n">gas</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ch4flags</span> <span class="o">=</span> <span class="n">ch4flags</span><span class="o">.</span><span class="n">flags</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ch4_n</span> <span class="o">=</span> <span class="n">ch4_n</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">co2_dry</span> <span class="o">=</span> <span class="n">co2dry_stripped</span><span class="o">.</span><span class="n">gas</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">co2_wet</span> <span class="o">=</span> <span class="n">co2wet_stripped</span><span class="o">.</span><span class="n">gas</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ch4_dry</span> <span class="o">=</span> <span class="n">ch4dry_stripped</span><span class="o">.</span><span class="n">gas</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ch4_wet</span> <span class="o">=</span> <span class="n">ch4wet_stripped</span><span class="o">.</span><span class="n">gas</span>    
+        
+              
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="n">filename</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">datadir</span> <span class="o">=</span> <span class="n">dirname</span></div>
+
+<span class="c1">#:Created: 14 Jan 15 15:28 GMT</span>
+<span class="c1">#     -      -         -            -            -    -    cavity    cavity         -       co2     co2       ch4     ch4        co      co </span>
+<span class="c1">#  date   time      type       sample     standard port      temp     press       h2o         C   stdev         C   stdev         C   stdev </span>
+<span class="c1"># 140710 093530      tank  USN20132963        H-239    6    45.000   139.999     0.532    418.42*  0.188*  1993.75*  0.204*   200.84*  5.913*</span>
+
+<div class="viewcode-block" id="read_gcexport_crds_old"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.acrg_read_GCwerks.read_gcexport_crds_old">[docs]</a><span class="k">class</span> <span class="nc">read_gcexport_crds_old</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">datafile</span><span class="p">):</span>
+        
+        <span class="n">date</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">time</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">sampletype</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">samplename</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">3</span><span class="p">]</span>
+        <span class="n">standard</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">4</span><span class="p">]</span>
+        <span class="n">port</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">5</span><span class="p">]</span>
+        <span class="n">cavity_temp</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">6</span><span class="p">]</span>
+        <span class="n">cavity_press</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">7</span><span class="p">]</span> 
+        <span class="n">h2o_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">8</span><span class="p">]</span>
+        <span class="n">co2_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">9</span><span class="p">]</span>
+        <span class="n">co2sd_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">10</span><span class="p">]</span>
+        <span class="n">co2_n</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">11</span><span class="p">]</span>
+        <span class="n">ch4_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">12</span><span class="p">]</span>
+        <span class="n">ch4sd_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">13</span><span class="p">]</span>
+        <span class="n">ch4_n</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">14</span><span class="p">]</span>
+        
+        <span class="n">dirname</span><span class="p">,</span> <span class="n">filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">datafile</span><span class="p">)</span>
+        
+        <span class="n">co2flags</span> <span class="o">=</span> <span class="n">Makeflags</span><span class="p">(</span><span class="n">co2_orig</span><span class="p">)</span>
+        <span class="n">ch4flags</span> <span class="o">=</span> <span class="n">Makeflags</span><span class="p">(</span><span class="n">ch4_orig</span><span class="p">)</span>
+        
+        
+        <span class="c1"># Strip flags from conc data</span>
+        <span class="n">co2_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">co2_orig</span><span class="p">)</span>
+        <span class="n">co2sd_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">co2sd_orig</span><span class="p">)</span>
+        <span class="n">ch4_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">ch4_orig</span><span class="p">)</span>
+        <span class="n">ch4sd_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">ch4sd_orig</span><span class="p">)</span>
+        <span class="n">h2o_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">h2o_orig</span><span class="p">)</span>
+        
+        <span class="c1"># CO data is only at some sites</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">data</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">18</span><span class="p">:</span>
+            <span class="n">co_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">15</span><span class="p">]</span>
+            <span class="n">cosd_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">16</span><span class="p">]</span>
+            <span class="n">co_n</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">17</span><span class="p">]</span>
+            <span class="n">coflags</span> <span class="o">=</span> <span class="n">Makeflags</span><span class="p">(</span><span class="n">co_orig</span><span class="p">)</span>
+            <span class="n">co_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">co_orig</span><span class="p">)</span>
+            <span class="n">cosd_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">cosd_orig</span><span class="p">)</span>
+            
+        <span class="c1"># make datetime variable</span>
+        <span class="n">dt_date</span> <span class="o">=</span> <span class="p">[</span><span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">date</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39; &#39;</span> <span class="o">+</span> <span class="n">time</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="p">,</span> <span class="s2">&quot;%y%m</span><span class="si">%d</span><span class="s2"> %H%M%S&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">date</span><span class="p">))]</span>
+           
+        <span class="bp">self</span><span class="o">.</span><span class="n">date</span> <span class="o">=</span> <span class="n">date</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">time</span> <span class="o">=</span> <span class="n">time</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dt_date</span> <span class="o">=</span> <span class="n">dt_date</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">datetime</span> <span class="o">=</span> <span class="n">dt_date</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sampletype</span> <span class="o">=</span> <span class="n">sampletype</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">samplename</span> <span class="o">=</span> <span class="n">samplename</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">standard</span> <span class="o">=</span> <span class="n">standard</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">port</span> <span class="o">=</span> <span class="n">port</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;int&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cavity_temp</span> <span class="o">=</span> <span class="n">cavity_temp</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;float&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cavity_press</span> <span class="o">=</span> <span class="n">cavity_press</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;float&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">h2o_orig</span> <span class="o">=</span> <span class="n">h2o_orig</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">h2o</span> <span class="o">=</span>  <span class="n">h2o_stripped</span><span class="o">.</span><span class="n">gas</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">co2_orig</span> <span class="o">=</span> <span class="n">co2_orig</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">co2</span> <span class="o">=</span> <span class="n">co2_stripped</span><span class="o">.</span><span class="n">gas</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">co2sd_orig</span> <span class="o">=</span> <span class="n">co2sd_orig</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">co2sd</span> <span class="o">=</span> <span class="n">co2sd_stripped</span><span class="o">.</span><span class="n">gas</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">co2flags</span> <span class="o">=</span> <span class="n">co2flags</span><span class="o">.</span><span class="n">flags</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">co2_n</span> <span class="o">=</span> <span class="n">co2_n</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">ch4_orig</span> <span class="o">=</span> <span class="n">ch4_orig</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ch4</span> <span class="o">=</span> <span class="n">ch4_stripped</span><span class="o">.</span><span class="n">gas</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ch4sd_orig</span> <span class="o">=</span> <span class="n">ch4sd_orig</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ch4sd</span> <span class="o">=</span> <span class="n">ch4sd_stripped</span><span class="o">.</span><span class="n">gas</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ch4flags</span> <span class="o">=</span> <span class="n">ch4flags</span><span class="o">.</span><span class="n">flags</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ch4_n</span> <span class="o">=</span> <span class="n">ch4_n</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">nogases</span> <span class="o">=</span> <span class="mi">2</span>        
+        
+        <span class="c1"># CO data is only at some sites</span>
+        <span class="k">if</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;nan&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">co_orig</span> <span class="o">=</span> <span class="n">co_orig</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">co</span> <span class="o">=</span> <span class="n">co_stripped</span><span class="o">.</span><span class="n">gas</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cosd_orig</span> <span class="o">=</span> <span class="n">cosd_orig</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cosd</span> <span class="o">=</span> <span class="n">cosd_stripped</span><span class="o">.</span><span class="n">gas</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">coflags</span> <span class="o">=</span> <span class="n">coflags</span><span class="o">.</span><span class="n">flags</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">co_n</span> <span class="o">=</span> <span class="n">co_n</span>
+            
+            <span class="bp">self</span><span class="o">.</span><span class="n">nogases</span> <span class="o">=</span> <span class="mi">3</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="n">filename</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">datadir</span> <span class="o">=</span> <span class="n">dirname</span></div>
+
+
+<span class="c1"># New file format</span>
+<span class="c1">#Created: 11 Jun 15 12:00 GMT</span>
+<span class="c1">#     -      -     bin    -         -            -            -    -    cavity    cavity         -       co2       co2       co2     co2   co2       ch4       ch4       ch4     ch4   ch4        co        co        co      co    co </span>
+<span class="c1">#  date   time    date time      type       sample     standard port      temp     press       h2o         C       wet       dry   stdev     N         C       wet       dry   stdev     N         C       wet       dry   stdev     N </span>
+<span class="c1">#150605 104930  150605 1049       std USN-20121603 USN-20121603    5    45.000   139.963     1.567    519.74F   503.22F   516.28F216.126    14      5.92F  1950.83F  1990.64F154.924    14       nan       nan       nan     nan   nan </span>
+
+
+<div class="viewcode-block" id="read_gcexport_crds_new"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.acrg_read_GCwerks.read_gcexport_crds_new">[docs]</a><span class="k">class</span> <span class="nc">read_gcexport_crds_new</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">datafile</span><span class="p">):</span>
+        
+        <span class="n">pdb</span><span class="o">.</span><span class="n">set_trace</span><span class="p">()</span>        
+        
+        <span class="n">date</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">time</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">sampletype</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">4</span><span class="p">]</span>
+        <span class="n">samplename</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">5</span><span class="p">]</span>
+        <span class="n">standard</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">6</span><span class="p">]</span>
+        <span class="n">port</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">7</span><span class="p">]</span>
+        <span class="n">cavity_temp</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">8</span><span class="p">]</span>
+        <span class="n">cavity_press</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">9</span><span class="p">]</span> 
+        <span class="n">h2o_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">10</span><span class="p">]</span>
+        
+        <span class="n">co2_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">11</span><span class="p">]</span>
+        <span class="n">co2wet_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">12</span><span class="p">]</span>
+        <span class="n">co2dry_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">13</span><span class="p">]</span>
+        <span class="n">co2sd_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">14</span><span class="p">]</span>
+        <span class="n">co2_n</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">15</span><span class="p">]</span>
+        
+        <span class="n">ch4_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">16</span><span class="p">]</span>
+        <span class="n">ch4wet_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">17</span><span class="p">]</span>
+        <span class="n">ch4dry_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">18</span><span class="p">]</span>
+        <span class="n">ch4sd_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">19</span><span class="p">]</span>
+        <span class="n">ch4_n</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">20</span><span class="p">]</span>
+        
+        <span class="n">co_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">21</span><span class="p">]</span>
+        <span class="n">cowet_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">22</span><span class="p">]</span>
+        <span class="n">codry_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">23</span><span class="p">]</span>
+        <span class="n">cosd_orig</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">24</span><span class="p">]</span>
+        <span class="n">co_n</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">25</span><span class="p">]</span>
+                
+                
+        <span class="n">dirname</span><span class="p">,</span> <span class="n">filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">datafile</span><span class="p">)</span>
+
+        
+        <span class="n">coflags</span> <span class="o">=</span> <span class="n">Makeflags</span><span class="p">(</span><span class="n">co_orig</span><span class="p">)</span>
+        <span class="n">co2flags</span> <span class="o">=</span> <span class="n">Makeflags</span><span class="p">(</span><span class="n">co2_orig</span><span class="p">)</span>
+        <span class="n">ch4flags</span> <span class="o">=</span> <span class="n">Makeflags</span><span class="p">(</span><span class="n">ch4_orig</span><span class="p">)</span>
+        
+        <span class="c1"># Strip flags from conc data</span>
+        <span class="n">co2_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">co2_orig</span><span class="p">)</span>
+        <span class="n">co2sd_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">co2sd_orig</span><span class="p">)</span>
+        <span class="n">ch4_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">ch4_orig</span><span class="p">)</span>
+        <span class="n">ch4sd_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">ch4sd_orig</span><span class="p">)</span>
+        <span class="n">h2o_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">h2o_orig</span><span class="p">)</span>
+        <span class="n">co_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">co_orig</span><span class="p">)</span>
+        <span class="n">cosd_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">cosd_orig</span><span class="p">)</span>
+        
+        <span class="n">co2wet_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">co2wet_orig</span><span class="p">)</span>
+        <span class="n">co2dry_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">co2dry_orig</span><span class="p">)</span>
+        <span class="n">ch4wet_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">ch4wet_orig</span><span class="p">)</span>
+        <span class="n">ch4dry_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">ch4dry_orig</span><span class="p">)</span>
+        <span class="n">cowet_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">cowet_orig</span><span class="p">)</span>
+        <span class="n">codry_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">codry_orig</span><span class="p">)</span>
+
+            
+        <span class="c1"># make datetime variable</span>
+        <span class="n">dt_date</span> <span class="o">=</span> <span class="p">[</span><span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">date</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39; &#39;</span> <span class="o">+</span> <span class="n">time</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="p">,</span> <span class="s2">&quot;%y%m</span><span class="si">%d</span><span class="s2"> %H%M%S&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">date</span><span class="p">))]</span>
+           
+        <span class="bp">self</span><span class="o">.</span><span class="n">date</span> <span class="o">=</span> <span class="n">date</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">time</span> <span class="o">=</span> <span class="n">time</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dt_date</span> <span class="o">=</span> <span class="n">dt_date</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">datetime</span> <span class="o">=</span> <span class="n">dt_date</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sampletype</span> <span class="o">=</span> <span class="n">sampletype</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">samplename</span> <span class="o">=</span> <span class="n">samplename</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">standard</span> <span class="o">=</span> <span class="n">standard</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">port</span> <span class="o">=</span> <span class="n">port</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;int&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cavity_temp</span> <span class="o">=</span> <span class="n">cavity_temp</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;float&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cavity_press</span> <span class="o">=</span> <span class="n">cavity_press</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;float&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">h2o_orig</span> <span class="o">=</span> <span class="n">h2o_orig</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">h2o</span> <span class="o">=</span>  <span class="n">h2o_stripped</span><span class="o">.</span><span class="n">gas</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">co2_orig</span> <span class="o">=</span> <span class="n">co2_orig</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">co2</span> <span class="o">=</span> <span class="n">co2_stripped</span><span class="o">.</span><span class="n">gas</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">co2sd_orig</span> <span class="o">=</span> <span class="n">co2sd_orig</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">co2sd</span> <span class="o">=</span> <span class="n">co2sd_stripped</span><span class="o">.</span><span class="n">gas</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">co2flags</span> <span class="o">=</span> <span class="n">co2flags</span><span class="o">.</span><span class="n">flags</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">co2_n</span> <span class="o">=</span> <span class="n">co2_n</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">ch4_orig</span> <span class="o">=</span> <span class="n">ch4_orig</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ch4</span> <span class="o">=</span> <span class="n">ch4_stripped</span><span class="o">.</span><span class="n">gas</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ch4sd_orig</span> <span class="o">=</span> <span class="n">ch4sd_orig</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ch4sd</span> <span class="o">=</span> <span class="n">ch4sd_stripped</span><span class="o">.</span><span class="n">gas</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ch4flags</span> <span class="o">=</span> <span class="n">ch4flags</span><span class="o">.</span><span class="n">flags</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ch4_n</span> <span class="o">=</span> <span class="n">ch4_n</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">co2_dry</span> <span class="o">=</span> <span class="n">co2dry_stripped</span><span class="o">.</span><span class="n">gas</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">co2_wet</span> <span class="o">=</span> <span class="n">co2wet_stripped</span><span class="o">.</span><span class="n">gas</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ch4_dry</span> <span class="o">=</span> <span class="n">ch4dry_stripped</span><span class="o">.</span><span class="n">gas</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ch4_wet</span> <span class="o">=</span> <span class="n">ch4wet_stripped</span><span class="o">.</span><span class="n">gas</span>    
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">nogases</span> <span class="o">=</span> <span class="mi">2</span>        
+        
+        <span class="c1"># CO data is only at some sites</span>
+        <span class="k">if</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;nan&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">co_orig</span> <span class="o">=</span> <span class="n">co_orig</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">co</span> <span class="o">=</span> <span class="n">co_stripped</span><span class="o">.</span><span class="n">gas</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cosd_orig</span> <span class="o">=</span> <span class="n">cosd_orig</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cosd</span> <span class="o">=</span> <span class="n">cosd_stripped</span><span class="o">.</span><span class="n">gas</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">co_dry</span> <span class="o">=</span> <span class="n">codry_stripped</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">co_wet</span> <span class="o">=</span> <span class="n">cowet_stripped</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">coflags</span> <span class="o">=</span> <span class="n">coflags</span><span class="o">.</span><span class="n">flags</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">co_n</span> <span class="o">=</span> <span class="n">co_n</span>
+            
+            <span class="bp">self</span><span class="o">.</span><span class="n">nogases</span> <span class="o">=</span> <span class="mi">3</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="n">filename</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">datadir</span> <span class="o">=</span> <span class="n">dirname</span></div>
+
+<span class="c1"># More flexible approach using the headers in the file</span>
+<div class="viewcode-block" id="read_gcexport_lgr"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.acrg_read_GCwerks.read_gcexport_lgr">[docs]</a><span class="k">class</span> <span class="nc">read_gcexport_lgr</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">datafile</span><span class="p">):</span>
+        
+        <span class="nb">print</span> <span class="s1">&#39;Reading:&#39;</span>
+        <span class="nb">print</span> <span class="n">datafile</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">datafile</span><span class="p">)</span> <span class="o">==</span> <span class="nb">tuple</span><span class="p">:</span>
+            <span class="c1">#data=np.genfromtxt(datafile[0], dtype=str, skip_header=3)</span>
+            <span class="n">data</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="n">datafile</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">skip_header</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">datafile</span><span class="p">)</span> <span class="o">==</span> <span class="nb">str</span><span class="p">:</span>
+            <span class="c1">#data=np.genfromtxt(datafile, dtype=str, skip_header=3)</span>
+            <span class="n">data</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="n">datafile</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">skip_header</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        
+              
+        <span class="n">data_good</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="mi">2</span><span class="p">:,:]</span>
+        <span class="n">header_1</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">,:]</span>
+              
+        <span class="c1"># Ensure that second &quot;time&quot; is &quot;bin_time&quot;</span>
+        <span class="n">header_1</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">header_1</span> <span class="o">==</span><span class="s1">&#39;bin&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span><span class="s1">&#39;bin&#39;</span>        
+        
+        <span class="n">header_2</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="mi">1</span><span class="p">,:]</span>
+        <span class="n">headers</span> <span class="o">=</span> <span class="p">[]</span>
+        
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">header_1</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="n">header_1</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;-&#39;</span><span class="p">:</span>    
+                <span class="n">headers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">header_2</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+                
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">headers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">header_1</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span class="n">header_2</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+        <span class="n">headers</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">headers</span><span class="p">)</span>
+        
+        
+        <span class="n">date</span> <span class="o">=</span> <span class="n">data_good</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;date&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">time</span> <span class="o">=</span> <span class="n">data_good</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;time&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">sampletype</span> <span class="o">=</span> <span class="n">data_good</span><span class="p">[:,</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;type&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">samplename</span> <span class="o">=</span> <span class="n">data_good</span><span class="p">[:,</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;sample&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">standard</span> <span class="o">=</span> <span class="n">data_good</span><span class="p">[:,</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;standard&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">port</span> <span class="o">=</span> <span class="n">data_good</span><span class="p">[:,</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;port&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">cavity_temp</span> <span class="o">=</span> <span class="n">data_good</span><span class="p">[:,</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;cavity_temp&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">cavity_press</span> <span class="o">=</span> <span class="n">data_good</span><span class="p">[:,</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;cavity_press&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span> 
+        <span class="n">h2o_orig</span> <span class="o">=</span> <span class="n">data_good</span><span class="p">[:,</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;h2o&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        
+        <span class="n">co_orig</span> <span class="o">=</span> <span class="n">data_good</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;co_C&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">co_wet_orig</span> <span class="o">=</span> <span class="n">data_good</span><span class="p">[:,</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;co_wet&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">co_dry_orig</span> <span class="o">=</span> <span class="n">data_good</span><span class="p">[:,</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;co_dry&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">co_sd_orig</span> <span class="o">=</span> <span class="n">data_good</span><span class="p">[:,</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;co_stdev&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">co_n</span> <span class="o">=</span> <span class="n">data_good</span><span class="p">[:,</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;co_N&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        
+        <span class="n">n2o_orig</span> <span class="o">=</span> <span class="n">data_good</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;n2o_C&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">n2o_wet_orig</span> <span class="o">=</span> <span class="n">data_good</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;n2o_wet&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">n2o_dry_orig</span> <span class="o">=</span> <span class="n">data_good</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;n2o_dry&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">n2o_sd_orig</span> <span class="o">=</span> <span class="n">data_good</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;n2o_stdev&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">n2o_n</span> <span class="o">=</span> <span class="n">data_good</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;n2o_N&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        
+        <span class="n">dirname</span><span class="p">,</span> <span class="n">filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">datafile</span><span class="p">)</span>
+        
+        <span class="n">coflags</span> <span class="o">=</span> <span class="n">Makeflags</span><span class="p">(</span><span class="n">co_orig</span><span class="p">)</span>
+        <span class="n">n2oflags</span> <span class="o">=</span> <span class="n">Makeflags</span><span class="p">(</span><span class="n">n2o_orig</span><span class="p">)</span>
+        
+               
+        
+        <span class="c1"># Strip flags from conc data</span>
+        <span class="n">co_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">co_orig</span><span class="p">)</span>
+        <span class="n">co_sd_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">co_sd_orig</span><span class="p">)</span>
+        <span class="n">n2o_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">n2o_orig</span><span class="p">)</span>
+        <span class="n">n2o_sd_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">n2o_sd_orig</span><span class="p">)</span>
+        <span class="n">h2o_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">h2o_orig</span><span class="p">)</span>
+        
+        <span class="n">co_wet_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">co_wet_orig</span><span class="p">)</span>
+        <span class="n">co_dry_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">co_dry_orig</span><span class="p">)</span>
+        <span class="n">n2o_wet_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">n2o_wet_orig</span><span class="p">)</span>
+        <span class="n">n2o_dry_stripped</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">n2o_dry_orig</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">nogases</span> <span class="o">=</span> <span class="mi">2</span>  
+
+
+        <span class="c1"># make datetime variable</span>
+        <span class="n">dt_date</span> <span class="o">=</span> <span class="p">[</span><span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">date</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39; &#39;</span> <span class="o">+</span> <span class="n">time</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="p">,</span> <span class="s2">&quot;%y%m</span><span class="si">%d</span><span class="s2"> %H%M%S&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">date</span><span class="p">))]</span>
+           
+        <span class="bp">self</span><span class="o">.</span><span class="n">date</span> <span class="o">=</span> <span class="n">date</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">time</span> <span class="o">=</span> <span class="n">time</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dt_date</span> <span class="o">=</span> <span class="n">dt_date</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">datetime</span> <span class="o">=</span> <span class="n">dt_date</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sampletype</span> <span class="o">=</span> <span class="n">sampletype</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">samplename</span> <span class="o">=</span> <span class="n">samplename</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">standard</span> <span class="o">=</span> <span class="n">standard</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">port</span> <span class="o">=</span> <span class="n">port</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;int&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cavity_temp</span> <span class="o">=</span> <span class="n">cavity_temp</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;float&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cavity_press</span> <span class="o">=</span> <span class="n">cavity_press</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;float&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">h2o_orig</span> <span class="o">=</span> <span class="n">h2o_orig</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">h2o</span> <span class="o">=</span>  <span class="n">h2o_stripped</span><span class="o">.</span><span class="n">gas</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">co_orig</span> <span class="o">=</span> <span class="n">co_orig</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">co</span> <span class="o">=</span> <span class="n">co_stripped</span><span class="o">.</span><span class="n">gas</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">co_sd_orig</span> <span class="o">=</span> <span class="n">co_sd_orig</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">co_sd</span> <span class="o">=</span> <span class="n">co_sd_stripped</span><span class="o">.</span><span class="n">gas</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">co_flags</span> <span class="o">=</span> <span class="n">coflags</span><span class="o">.</span><span class="n">flags</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">co_n</span> <span class="o">=</span> <span class="n">co_n</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">n2o_orig</span> <span class="o">=</span> <span class="n">n2o_orig</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n2o</span> <span class="o">=</span> <span class="n">n2o_stripped</span><span class="o">.</span><span class="n">gas</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n2o_sd_orig</span> <span class="o">=</span> <span class="n">n2o_sd_orig</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n2o_sd</span> <span class="o">=</span> <span class="n">n2o_sd_stripped</span><span class="o">.</span><span class="n">gas</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n2o_flags</span> <span class="o">=</span> <span class="n">n2oflags</span><span class="o">.</span><span class="n">flags</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n2o_n</span> <span class="o">=</span> <span class="n">n2o_n</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">co_dry</span> <span class="o">=</span> <span class="n">co_dry_stripped</span><span class="o">.</span><span class="n">gas</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">co_wet</span> <span class="o">=</span> <span class="n">co_wet_stripped</span><span class="o">.</span><span class="n">gas</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n2o_dry</span> <span class="o">=</span> <span class="n">n2o_dry_stripped</span><span class="o">.</span><span class="n">gas</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n2o_wet</span> <span class="o">=</span> <span class="n">n2o_wet_stripped</span><span class="o">.</span><span class="n">gas</span>    
+        
+              
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="n">filename</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">datadir</span> <span class="o">=</span> <span class="n">dirname</span></div>
+
+<span class="c1"># More flexible approach using the headers in the file</span>
+<div class="viewcode-block" id="read_gcexport_medusa"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.acrg_read_GCwerks.read_gcexport_medusa">[docs]</a><span class="k">class</span> <span class="nc">read_gcexport_medusa</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">datafile</span><span class="p">):</span>
+        
+        <span class="nb">print</span> <span class="s1">&#39;Reading:&#39;</span>
+        <span class="nb">print</span> <span class="n">datafile</span>
+        
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">datafile</span><span class="p">)</span> <span class="o">==</span> <span class="nb">tuple</span><span class="p">:</span>
+            <span class="c1">#data=np.genfromtxt(datafile[0], dtype=str, skip_header=3)</span>
+            <span class="n">data</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="n">datafile</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">skip_header</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">datafile</span><span class="p">)</span> <span class="o">==</span> <span class="nb">str</span><span class="p">:</span>
+            <span class="c1">#data=np.genfromtxt(datafile, dtype=str, skip_header=3)</span>
+            <span class="n">data</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="n">datafile</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">skip_header</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        
+              
+        <span class="n">data_good</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="mi">2</span><span class="p">:,:]</span>
+        <span class="n">header_1</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">,:]</span>
+              
+        <span class="c1"># Ensure that second &quot;time&quot; is &quot;bin_time&quot;</span>
+        <span class="n">header_1</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">header_1</span> <span class="o">==</span><span class="s1">&#39;bin&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span><span class="s1">&#39;bin&#39;</span>        
+        
+        <span class="n">header_2</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="mi">1</span><span class="p">,:]</span>
+        <span class="n">headers</span> <span class="o">=</span> <span class="p">[]</span>
+        
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">header_1</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="n">header_1</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;-&#39;</span><span class="p">:</span>    
+                <span class="n">headers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">header_2</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+                
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">headers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">header_1</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span class="n">header_2</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+        <span class="n">headers</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">headers</span><span class="p">)</span>
+        
+        <span class="n">date</span> <span class="o">=</span> <span class="n">data_good</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;date&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">time</span> <span class="o">=</span> <span class="n">data_good</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;time&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">sampletype</span> <span class="o">=</span> <span class="n">data_good</span><span class="p">[:,</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;type&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">samplename</span> <span class="o">=</span> <span class="n">data_good</span><span class="p">[:,</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;sample&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">standard</span> <span class="o">=</span> <span class="n">data_good</span><span class="p">[:,</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;standard&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">port</span> <span class="o">=</span> <span class="n">data_good</span><span class="p">[:,</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;port&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">volume</span> <span class="o">=</span> <span class="n">data_good</span><span class="p">[:,</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;volume&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        
+        <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">species</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">headers</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s1">&#39;_C&#39;</span> <span class="o">==</span> <span class="n">i</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">:]:</span>
+                <span class="n">orig_i</span> <span class="o">=</span>  <span class="n">data_good</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="n">i</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">flags_i</span> <span class="o">=</span> <span class="n">Makeflags</span><span class="p">(</span><span class="n">orig_i</span><span class="p">)</span>
+                <span class="n">stripped_i</span> <span class="o">=</span> <span class="n">Stripflags</span><span class="p">(</span><span class="n">orig_i</span><span class="p">)</span>
+                
+                <span class="n">orig_i_tag</span> <span class="o">=</span> <span class="n">i</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;_orig&#39;</span>          
+                <span class="n">flags_i_tag</span> <span class="o">=</span> <span class="n">i</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;_flags&#39;</span> 
+                
+                <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">orig_i_tag</span><span class="p">,</span> <span class="n">orig_i</span><span class="p">)</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">stripped_i</span><span class="o">.</span><span class="n">gas</span><span class="p">)</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">flags_i_tag</span><span class="p">,</span> <span class="n">flags_i</span><span class="o">.</span><span class="n">flags</span><span class="p">)</span>
+                
+                <span class="n">count</span> <span class="o">=</span> <span class="n">count</span> <span class="o">+</span> <span class="mi">1</span>
+                
+                <span class="n">species</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">nogases</span> <span class="o">=</span> <span class="n">count</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">species</span> <span class="o">=</span> <span class="n">species</span>
+
+        <span class="c1"># make datetime variable</span>
+        <span class="n">dt_date</span> <span class="o">=</span> <span class="p">[</span><span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">date</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39; &#39;</span> <span class="o">+</span> <span class="n">time</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="p">,</span> <span class="s2">&quot;%y%m</span><span class="si">%d</span><span class="s2"> %H%M%S&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">date</span><span class="p">))]</span>
+           
+        <span class="bp">self</span><span class="o">.</span><span class="n">date</span> <span class="o">=</span> <span class="n">date</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">time</span> <span class="o">=</span> <span class="n">time</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dt_date</span> <span class="o">=</span> <span class="n">dt_date</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">datetime</span> <span class="o">=</span> <span class="n">dt_date</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sampletype</span> <span class="o">=</span> <span class="n">sampletype</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">samplename</span> <span class="o">=</span> <span class="n">samplename</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">standard</span> <span class="o">=</span> <span class="n">standard</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">port</span> <span class="o">=</span> <span class="n">port</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;int&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">volume</span> <span class="o">=</span>  <span class="n">volume</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">datafile</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">datadir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">datafile</span><span class="p">)</span></div>
+
+        
+<span class="c1"># Class to make the flags</span>
+<span class="c1"># nb: an * flag will =  a 1 flag</span>
+<span class="c1"># an F flag will = a 2 flag</span>
+<div class="viewcode-block" id="Makeflags"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.acrg_read_GCwerks.Makeflags">[docs]</a><span class="k">class</span> <span class="nc">Makeflags</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gas</span><span class="p">):</span>    
+        
+        
+        
+        <span class="n">flag</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">gas</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">gas</span><span class="p">)):</span>
+            <span class="n">A</span> <span class="o">=</span> <span class="p">(</span><span class="n">gas</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;*&#39;</span><span class="p">)</span>
+            <span class="n">B</span> <span class="o">=</span> <span class="p">(</span><span class="n">gas</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;F&#39;</span><span class="p">)</span>
+            <span class="n">C</span> <span class="o">=</span> <span class="p">(</span><span class="n">gas</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;x&#39;</span><span class="p">)</span>
+            <span class="n">D</span> <span class="o">=</span> <span class="p">(</span><span class="n">gas</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;H&#39;</span><span class="p">)</span>
+            
+            <span class="c1"># a * flag</span>
+            <span class="k">if</span> <span class="n">A</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">flag</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+
+            <span class="c1"># a F flag</span>
+            <span class="k">if</span> <span class="n">B</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">flag</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="mi">2</span>
+
+            <span class="c1"># a x flag</span>
+            <span class="k">if</span> <span class="n">C</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">flag</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="mi">3</span>
+                
+            <span class="c1"># These are ok it just means that they&#39;re done by height</span>
+            <span class="k">if</span> <span class="n">D</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">flag</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span> 
+            
+        <span class="bp">self</span><span class="o">.</span><span class="n">flags</span> <span class="o">=</span> <span class="n">flag</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;int&#39;</span><span class="p">)</span></div>
+        
+
+<span class="c1"># Class to strip the *,x and F flags from the raw data</span>
+<div class="viewcode-block" id="Stripflags"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.acrg_read_GCwerks.Stripflags">[docs]</a><span class="k">class</span> <span class="nc">Stripflags</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gas</span><span class="p">):</span>    
+        
+        <span class="n">orig_gas</span> <span class="o">=</span> <span class="n">gas</span>        
+        <span class="n">stripped_gas</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">gas</span><span class="p">))</span>
+        
+        <span class="c1"># need to check if it&#39;s all nan&#39;s</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">gas</span><span class="p">)):</span>
+                    
+            <span class="n">flags</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;*&#39;</span><span class="p">,</span><span class="s1">&#39;F&#39;</span><span class="p">,</span><span class="s1">&#39;x&#39;</span><span class="p">,</span><span class="s1">&#39;T&#39;</span><span class="p">,</span><span class="s1">&#39;H&#39;</span><span class="p">]</span>
+            
+            <span class="c1"># one of the flags is in the string</span>
+            <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">x</span> <span class="ow">in</span> <span class="n">orig_gas</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">flags</span><span class="p">):</span>
+                <span class="n">stripped_gas</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">orig_gas</span><span class="p">[</span><span class="n">i</span><span class="p">][:(</span><span class="nb">len</span><span class="p">(</span><span class="n">orig_gas</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">-</span><span class="mi">1</span><span class="p">)]</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">stripped_gas</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">orig_gas</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                
+        <span class="sd">&quot;&quot;&quot; Old method</span>
+<span class="sd">            A = (orig_gas[i]).find(&#39;*&#39;)</span>
+<span class="sd">            B = (orig_gas[i]).find(&#39;F&#39;)</span>
+
+<span class="sd">            # a * flag</span>
+<span class="sd">            if A &gt; 0:</span>
+<span class="sd">                stripped_gas[i] = orig_gas[i][:(len(orig_gas[i])-1)]</span>
+
+<span class="sd">            # a F flag</span>
+<span class="sd">            if B &gt; 0:</span>
+<span class="sd">                stripped_gas[i] = orig_gas[i][:(len(orig_gas[i])-1)]</span>
+
+<span class="sd">            if A &lt; 0 and B &lt; 0:</span>
+<span class="sd">                stripped_gas[i] = orig_gas[i]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gas</span> <span class="o">=</span> <span class="n">stripped_gas</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;float&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">orig_gas</span> <span class="o">=</span> <span class="n">orig_gas</span></div>
+
+
+<span class="c1"># Code to extract the flagged data</span>
+<div class="viewcode-block" id="Extractgood"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.acrg_read_GCwerks.Extractgood">[docs]</a><span class="k">def</span> <span class="nf">Extractgood</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="n">gas</span><span class="p">,</span> <span class="n">flags</span><span class="p">,</span> <span class="n">SD</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    
+    <span class="n">index</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">flags</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)))[</span><span class="mi">0</span><span class="p">,:]</span>       
+    <span class="n">time_flag</span> <span class="o">=</span> <span class="p">[</span><span class="n">time</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">index</span><span class="p">]</span>          
+    <span class="n">gas_flag</span> <span class="o">=</span> <span class="n">gas</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+    
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">SD</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="n">sd_flag</span> <span class="o">=</span> <span class="n">SD</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">sd_flag</span> <span class="o">=</span> <span class="mi">0</span>
+        
+    <span class="k">return</span> <span class="n">time_flag</span><span class="p">,</span> <span class="n">gas_flag</span><span class="p">,</span> <span class="n">sd_flag</span></div>
+    
+<span class="c1"># Class to read in the txt output of gcexport made using the standard peak.list and report config on Dagage2</span>
+<div class="viewcode-block" id="read_gcexport_means"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.acrg_read_GCwerks.read_gcexport_means">[docs]</a><span class="k">def</span> <span class="nf">read_gcexport_means</span><span class="p">(</span><span class="n">infile</span><span class="p">):</span>
+
+        <span class="c1"># Adjust if the datafile is given as a tuple</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">infile</span><span class="p">)</span> <span class="o">==</span> <span class="nb">tuple</span><span class="p">:</span>
+             <span class="n">infile</span> <span class="o">=</span> <span class="n">infile</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+             
+        <span class="nb">print</span> <span class="s1">&#39;Reading:&#39;</span>
+        <span class="nb">print</span> <span class="n">infile</span>
+        
+        <span class="c1"># Read in the end header line and the rest of the file</span>
+        <span class="n">data</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="n">infile</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">skip_header</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Split out the header              </span>
+        <span class="n">data_good</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="mi">1</span><span class="p">:,:]</span>
+        
+        <span class="c1"># Need to skip header line 0 and then read it in separately!</span>
+        <span class="n">header_2</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">,:]</span>
+
+       
+                
+        <span class="c1"># read in the first header line</span>
+        <span class="c1"># NB: I can&#39;t read this in at the same time as the first read as it has a different number of columns!</span>
+        <span class="n">header_1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="n">infile</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">skip_footer</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
+        
+        <span class="n">headers</span> <span class="o">=</span> <span class="p">[]</span>
+        
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">header_1</span><span class="p">)):</span>
+            <span class="n">headers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">header_1</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span class="n">header_2</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">3</span><span class="p">])</span>
+
+        <span class="n">headers</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">header_2</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">3</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">headers</span><span class="p">)))</span>
+        
+        <span class="n">data</span> <span class="o">=</span> <span class="n">read_gcexport_means_flexi</span><span class="p">(</span><span class="n">data_good</span><span class="p">,</span> <span class="n">infile</span><span class="p">,</span> <span class="n">headers</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">data</span></div>
+        
+<span class="c1"># Reads the standard ports logs formatted files</span>
+<div class="viewcode-block" id="read_portslogs"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.acrg_read_GCwerks.read_portslogs">[docs]</a><span class="k">def</span> <span class="nf">read_portslogs</span><span class="p">(</span><span class="n">site</span> <span class="o">=</span> <span class="s1">&#39;MHD&#39;</span><span class="p">,</span> <span class="n">std_only</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">logdir</span> <span class="o">=</span> <span class="s1">&#39;/Users/as13988/Documents/Work/Cylinders/Calibrations/N2OScaleConversion/&#39;</span><span class="p">):</span>
+    <span class="kn">import</span> <span class="nn">glob</span>
+    <span class="n">logfiles</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">logdir</span><span class="o">+</span> <span class="n">site</span> <span class="o">+</span> <span class="s1">&#39;_Tanks/portslogs&#39;</span><span class="o">+</span> <span class="s1">&#39;/????&#39;</span><span class="p">)</span>    
+    
+    <span class="n">datetime_out</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">port_out</span> <span class="o">=</span> <span class="p">[]</span>    
+    <span class="n">type_out</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">tank_out</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">reg_out</span> <span class="o">=</span> <span class="p">[]</span>
+    
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">logfiles</span><span class="p">:</span>
+        <span class="nb">print</span> <span class="s1">&#39;Reading file : &#39;</span> <span class="o">+</span> <span class="n">i</span>
+        <span class="n">indata</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+    
+        
+        
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">indata</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">date_str</span> <span class="o">=</span> <span class="n">indata</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">time_str</span> <span class="o">=</span> <span class="n">indata</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">port_out</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="nb">int</span><span class="p">(</span><span class="n">j</span><span class="p">)</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">indata</span><span class="p">[:,</span><span class="mi">2</span><span class="p">])])</span>
+            <span class="n">tank_out</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">indata</span><span class="p">[:,</span><span class="mi">3</span><span class="p">])</span>
+            <span class="n">reg_out</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">indata</span><span class="p">[:,</span><span class="mi">4</span><span class="p">])</span>
+            <span class="n">type_out</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">indata</span><span class="p">[:,</span><span class="mi">5</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">date_str</span> <span class="o">=</span> <span class="p">[</span><span class="n">indata</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+            <span class="n">time_str</span> <span class="o">=</span> <span class="p">[</span><span class="n">indata</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span>
+            <span class="n">port_out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">indata</span><span class="p">[</span><span class="mi">2</span><span class="p">]))</span>
+            <span class="n">tank_out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">indata</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span>
+            <span class="n">reg_out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">indata</span><span class="p">[</span><span class="mi">4</span><span class="p">])</span>
+            <span class="n">type_out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">indata</span><span class="p">[</span><span class="mi">5</span><span class="p">])</span>
+
+        
+        
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">date_str</span><span class="p">)):</span>
+            <span class="n">datetime_out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">date_str</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">+</span><span class="s1">&#39; &#39;</span> <span class="o">+</span> <span class="n">time_str</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="s1">&#39;%y%m</span><span class="si">%d</span><span class="s1"> %H%M&#39;</span><span class="p">))</span>
+
+
+    <span class="k">if</span> <span class="n">std_only</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">type_out</span><span class="p">)</span> <span class="o">==</span> <span class="s1">&#39;std&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>    
+
+        <span class="n">port_out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">port_out</span><span class="p">)[</span><span class="n">index</span><span class="p">]</span>
+        <span class="n">tank_out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">tank_out</span><span class="p">)[</span><span class="n">index</span><span class="p">]</span>
+        <span class="n">reg_out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">reg_out</span><span class="p">)[</span><span class="n">index</span><span class="p">]</span>
+        <span class="n">type_out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">type_out</span><span class="p">)[</span><span class="n">index</span><span class="p">]</span>
+        <span class="n">datetime_out</span> <span class="o">=</span> <span class="p">[</span><span class="n">datetime_out</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">index</span><span class="p">]</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        
+        <span class="n">port_out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">port_out</span><span class="p">)</span>
+        <span class="n">tank_out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">tank_out</span><span class="p">)</span>
+        <span class="n">reg_out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">reg_out</span><span class="p">)</span>
+        <span class="n">type_out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">type_out</span><span class="p">)</span>
+
+    <span class="n">dateindex</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">datetime_out</span><span class="p">)</span>
+    
+    <span class="n">output</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">output</span><span class="p">[</span><span class="s1">&#39;datetime&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">datetime_out</span><span class="p">)[</span><span class="n">dateindex</span><span class="p">]</span>
+    <span class="n">output</span><span class="p">[</span><span class="s1">&#39;tank&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tank_out</span><span class="p">[</span><span class="n">dateindex</span><span class="p">]</span>
+    <span class="n">output</span><span class="p">[</span><span class="s1">&#39;port&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">port_out</span><span class="p">[</span><span class="n">dateindex</span><span class="p">]</span>
+    <span class="n">output</span><span class="p">[</span><span class="s1">&#39;reg&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">reg_out</span><span class="p">[</span><span class="n">dateindex</span><span class="p">]</span>
+    <span class="n">output</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">type_out</span><span class="p">[</span><span class="n">dateindex</span><span class="p">]</span>
+    
+    <span class="k">return</span> <span class="n">output</span></div>
+
+
+<span class="c1"># More flexible approach using the headers in the file</span>
+<div class="viewcode-block" id="read_gcexport_means_flexi"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.acrg_read_GCwerks.read_gcexport_means_flexi">[docs]</a><span class="k">class</span> <span class="nc">read_gcexport_means_flexi</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">infile</span><span class="p">,</span> <span class="n">headers</span><span class="p">):</span>
+        
+        <span class="c1"># Extract columns common to all means files</span>
+        <span class="n">tank</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;Tank&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">std</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;Standard&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">date</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="s1">&#39;Date&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">]</span>
+        
+        <span class="c1"># Want to loop through the remainder of the column headers and store them in a dictionary</span>
+        <span class="n">dataout</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">headers</span><span class="p">[</span><span class="mi">3</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+            <span class="n">dataout</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">data</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">headers</span> <span class="o">==</span> <span class="n">i</span><span class="p">)[</span><span class="mi">0</span><span class="p">]][:,</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;float&#39;</span><span class="p">)</span>
+
+        <span class="c1"># make datetime variable</span>
+        <span class="n">dt_date</span> <span class="o">=</span> <span class="p">[</span><span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="s2">&quot;%y%m</span><span class="si">%d</span><span class="s2">&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">date</span><span class="p">]</span>
+           
+        <span class="bp">self</span><span class="o">.</span><span class="n">date</span> <span class="o">=</span> <span class="n">date</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">datetime</span> <span class="o">=</span> <span class="n">dt_date</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">standard</span> <span class="o">=</span> <span class="n">std</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tank</span> <span class="o">=</span> <span class="n">tank</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">dataout</span>
+        
+        <span class="n">dirname</span><span class="p">,</span> <span class="n">filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">infile</span><span class="p">)</span>
+          
+        <span class="bp">self</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="n">filename</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">datadir</span> <span class="o">=</span> <span class="n">dirname</span></div>
+
+<span class="c1"># Read in a MD standards file</span>
+<span class="c1"># NOTE: I HAD TO COMMENT OUT A HEADER LINE THAT SOME GOOSE PUT IN HALFWAY THROUGH THE FILE!!!!!</span>
+<div class="viewcode-block" id="read_MDstds"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.acrg_read_GCwerks.read_MDstds">[docs]</a><span class="k">def</span> <span class="nf">read_MDstds</span><span class="p">(</span><span class="n">infile</span><span class="o">=</span><span class="s1">&#39;/Users/as13988/Documents/Work/Cylinders/Calibrations/N2OScaleConversion/MHD_Tanks/standards&#39;</span><span class="p">):</span>
+    <span class="n">raw</span><span class="o">=</span><span class="p">[]</span>    
+    <span class="n">out</span> <span class="o">=</span><span class="p">[]</span>
+    
+    <span class="c1"># read in the data file, ignore comment lines and split based on while space</span>
+    <span class="n">first_line</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">open</span><span class="p">(</span><span class="n">infile</span><span class="p">):</span>
+        
+        <span class="n">li</span><span class="o">=</span><span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">li</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;#&quot;</span><span class="p">):</span>
+            
+            <span class="n">raw</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">rstrip</span><span class="p">())</span>
+            
+            <span class="k">if</span> <span class="n">first_line</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">headers</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+                <span class="n">first_line</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">())</span>
+                
+    
+    <span class="c1"># convert list/array to a dictionary labelled using the column headers</span>
+    <span class="n">out_dict</span><span class="o">=</span><span class="p">{}</span>
+    
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">headers</span><span class="p">)):</span>
+        
+        <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">out_dict</span><span class="p">[</span><span class="s1">&#39;tank&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">out</span><span class="p">)[:,</span><span class="n">i</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">out_dict</span><span class="p">[</span><span class="n">headers</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">out</span><span class="p">)[:,</span><span class="n">i</span><span class="p">])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+          
+    <span class="k">return</span> <span class="n">out_dict</span></div>
+
+<span class="c1"># Read in MD standards.factors file</span>
+<span class="c1"># This assumed that there&#39;s only 4 columns of interest</span>
+<div class="viewcode-block" id="read_MDstdsfactors"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.acrg_read_GCwerks.read_MDstdsfactors">[docs]</a><span class="k">def</span> <span class="nf">read_MDstdsfactors</span><span class="p">(</span><span class="n">infile</span><span class="o">=</span><span class="s1">&#39;/Users/as13988/Documents/Work/Cylinders/Calibrations/N2OScaleConversion/MHD_Tanks/standards.factors&#39;</span><span class="p">):</span>
+    <span class="n">raw</span><span class="o">=</span><span class="p">[]</span>    
+    <span class="n">out</span> <span class="o">=</span><span class="p">[]</span>
+    
+    <span class="c1"># read in the data file, ignore comment lines and split based on while space</span>
+    <span class="n">first_line</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">open</span><span class="p">(</span><span class="n">infile</span><span class="p">):</span>
+        
+        <span class="n">li</span><span class="o">=</span><span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">li</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;#&quot;</span><span class="p">):</span>
+            
+            <span class="n">raw</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">rstrip</span><span class="p">())</span>
+            
+            <span class="n">stripped_l</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;#&#39;</span><span class="p">)</span> <span class="c1"># strip off the comment at the end!</span>
+            <span class="n">l</span> <span class="o">=</span> <span class="n">stripped_l</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">l</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">stripped_l</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">())</span>
+
+<span class="c1"># convert list/array to a dictionary labelled using the column headers</span>
+    <span class="n">out_dict</span><span class="o">=</span><span class="p">{}</span>
+    <span class="n">headers</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;species&#39;</span><span class="p">,</span> <span class="s1">&#39;scale&#39;</span><span class="p">,</span><span class="s1">&#39;factor&#39;</span><span class="p">,</span><span class="s1">&#39;units&#39;</span><span class="p">]</span>
+    
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">headers</span><span class="p">)):</span>
+        <span class="k">if</span> <span class="n">headers</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;factor&#39;</span><span class="p">:</span>
+            
+            <span class="n">out_dict</span><span class="p">[</span><span class="n">headers</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">out</span><span class="p">)[:,</span><span class="n">i</span><span class="p">])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">out_dict</span><span class="p">[</span><span class="n">headers</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">out</span><span class="p">)[:,</span><span class="n">i</span><span class="p">]</span>
+        
+    <span class="k">return</span> <span class="n">out_dict</span></div>
+
+<span class="c1"># Class to read in the txt output of gcexport made using the standard peak.list and report config on Dagage2</span>
+<div class="viewcode-block" id="read_gcexport_md"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.acrg_read_GCwerks.read_gcexport_md">[docs]</a><span class="k">def</span> <span class="nf">read_gcexport_md</span><span class="p">(</span><span class="n">datafile</span><span class="o">=</span><span class="s1">&#39;/Users/as13988/Documents/Work/Cylinders/Calibrations/N2OScaleConversion/MHD_Tanks/MHD_air.dat&#39;</span><span class="p">):</span>
+        
+        <span class="nb">print</span> <span class="s1">&#39;Reading:&#39;</span>
+        <span class="nb">print</span> <span class="n">datafile</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">datafile</span><span class="p">)</span> <span class="o">==</span> <span class="nb">tuple</span><span class="p">:</span>
+            <span class="c1">#data=np.genfromtxt(datafile[0], dtype=str, skip_header=3)</span>
+            <span class="n">data</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="n">datafile</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">skip_header</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">datafile</span><span class="p">)</span> <span class="o">==</span> <span class="nb">str</span><span class="p">:</span>
+            <span class="c1">#data=np.genfromtxt(datafile, dtype=str, skip_header=3)</span>
+            <span class="n">data</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="n">datafile</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">skip_header</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+        
+        
+        <span class="n">header_1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="n">datafile</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">skip_header</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">skip_footer</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">header_2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="n">datafile</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">skip_header</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">skip_footer</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
+                
+        <span class="n">headers</span> <span class="o">=</span> <span class="p">[]</span>
+        
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">header_2</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="n">header_1</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;-&#39;</span><span class="p">:</span>    
+                <span class="n">headers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">header_2</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+                
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">headers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">header_1</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span class="n">header_2</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+        <span class="c1"># remove flagged lines</span>
+
+        <span class="c1"># remove lines where conc  = nan</span>
+        <span class="c1"># I think this removes all the flagged points</span>
+        <span class="n">header_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">headers</span><span class="p">)</span> <span class="o">==</span> <span class="s1">&#39;N2O_C&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">data</span><span class="p">[:,</span><span class="n">header_index</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;nan&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">index</span><span class="p">,:]</span>
+    
+
+        <span class="n">out_dict</span><span class="o">=</span><span class="p">{}</span>
+
+        <span class="c1"># convert to a dictionary</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">headers</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="n">headers</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;date&#39;</span><span class="p">,</span><span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="s1">&#39;type&#39;</span><span class="p">,</span> <span class="s1">&#39;standard&#39;</span><span class="p">]:</span>
+                <span class="c1"># leave as string</span>
+                <span class="n">out_dict</span><span class="p">[</span><span class="n">headers</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="n">i</span><span class="p">]</span>
+            
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># convert to float</span>
+                <span class="n">out_dict</span><span class="p">[</span><span class="n">headers</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span> <span class="o">=</span> <span class="p">(</span><span class="n">data</span><span class="p">[:,</span><span class="n">i</span><span class="p">])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+
+
+        <span class="c1"># make a datetime variable</span>
+        <span class="n">dt_date</span> <span class="o">=</span> <span class="p">[</span><span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">out_dict</span><span class="p">[</span><span class="s1">&#39;date&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39; &#39;</span> <span class="o">+</span> <span class="n">out_dict</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="p">,</span> <span class="s2">&quot;%y%m</span><span class="si">%d</span><span class="s2"> %H%M%S&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">out_dict</span><span class="p">[</span><span class="s1">&#39;date&#39;</span><span class="p">]))]</span>
+
+        <span class="n">out_dict</span><span class="p">[</span><span class="s1">&#39;datetime&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dt_date</span>
+        <span class="k">return</span> <span class="n">out_dict</span></div>
+
+<span class="c1"># Class to read in the txt output of gcexport made using the standard peak.list and report config on Dagage2</span>
+<span class="c1"># The tank format is different to the air format</span>
+<div class="viewcode-block" id="read_gcexport_md_tank"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.acrg_read_GCwerks.read_gcexport_md_tank">[docs]</a><span class="k">def</span> <span class="nf">read_gcexport_md_tank</span><span class="p">(</span><span class="n">datafile</span><span class="o">=</span><span class="s1">&#39;/Users/as13988/Documents/Work/Cylinders/Calibrations/N2OScaleConversion/MHD_Tanks/MHD_air.dat&#39;</span><span class="p">):</span>
+        
+        <span class="nb">print</span> <span class="s1">&#39;Reading:&#39;</span>
+        <span class="nb">print</span> <span class="n">datafile</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">datafile</span><span class="p">)</span> <span class="o">==</span> <span class="nb">tuple</span><span class="p">:</span>
+            <span class="c1">#data=np.genfromtxt(datafile[0], dtype=str, skip_header=3)</span>
+            <span class="n">data</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="n">datafile</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">skip_header</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">datafile</span><span class="p">)</span> <span class="o">==</span> <span class="nb">str</span><span class="p">:</span>
+            <span class="c1">#data=np.genfromtxt(datafile, dtype=str, skip_header=3)</span>
+            <span class="n">data</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="n">datafile</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">skip_header</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        
+        
+        <span class="n">header_1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="n">datafile</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">skip_footer</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">header_2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="n">datafile</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">skip_header</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">skip_footer</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
+                
+        <span class="n">headers</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">header_2</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="nb">len</span><span class="p">(</span><span class="n">header_2</span><span class="p">)</span><span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="n">header_1</span><span class="p">)])</span>
+        
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">header_1</span><span class="p">)):</span>
+           <span class="n">headers</span> <span class="o">=</span> <span class="n">headers</span> <span class="o">+</span> <span class="p">[(</span><span class="n">header_1</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span class="n">header_2</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="nb">len</span><span class="p">(</span><span class="n">header_2</span><span class="p">)</span><span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="n">header_1</span><span class="p">)])]</span>
+
+        <span class="c1"># remove flagged lines</span>
+        <span class="c1"># remove lines where conc  = nan</span>
+        <span class="c1"># I think this removes all the flagged points</span>
+        <span class="n">header_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">headers</span><span class="p">)</span> <span class="o">==</span> <span class="s1">&#39;N2O_C&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">data</span><span class="p">[:,</span><span class="n">header_index</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;nan&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">index</span><span class="p">,:]</span>
+    
+
+        <span class="n">out_dict</span><span class="o">=</span><span class="p">{}</span>
+
+        <span class="c1"># convert to a dictionary</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">headers</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="n">headers</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;date&#39;</span><span class="p">,</span><span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="s1">&#39;type&#39;</span><span class="p">,</span> <span class="s1">&#39;standard&#39;</span><span class="p">,</span><span class="s1">&#39;Tank&#39;</span><span class="p">,</span><span class="s1">&#39;Standard&#39;</span><span class="p">,</span> <span class="s1">&#39;Date&#39;</span><span class="p">]:</span>
+                <span class="c1"># leave as string</span>
+                <span class="n">out_dict</span><span class="p">[</span><span class="n">headers</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="n">i</span><span class="p">]</span>
+            
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># convert to float</span>
+                <span class="n">out_dict</span><span class="p">[</span><span class="n">headers</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span> <span class="o">=</span> <span class="p">(</span><span class="n">data</span><span class="p">[:,</span><span class="n">i</span><span class="p">])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+
+
+        <span class="c1"># make a datetime variable</span>
+        <span class="n">dt_date</span> <span class="o">=</span> <span class="p">[</span><span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">out_dict</span><span class="p">[</span><span class="s1">&#39;Date&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">],</span> <span class="s2">&quot;%y%m</span><span class="si">%d</span><span class="s2">&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">out_dict</span><span class="p">[</span><span class="s1">&#39;Date&#39;</span><span class="p">]))]</span>
+
+        <span class="n">out_dict</span><span class="p">[</span><span class="s1">&#39;datetime&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dt_date</span>
+        <span class="k">return</span> <span class="n">out_dict</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, mrghg.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
