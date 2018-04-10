@@ -17,16 +17,16 @@
         },
         "instruments_out": {
             "GCMD": {
-                "CH4": "GC-FID",
-                "CO": "GC-RGA",
-                "H2": "GC-RGA",
-                "else": "GC-ECD"
+                "CH4": "GCFID",
+                "CO": "GCRGA",
+                "H2": "GCRGA",
+                "else": "GCECD"
             },
             "GCMS": {
                 "else": "GCMS"
             },
             "medusa": {
-                "else": "GCMS-Medusa"
+                "else": "GCMSMedusa"
             }
         },
         "directory" : {
@@ -49,7 +49,7 @@
             "GCMS": "Gas chromatograph-mass spectrometer measurements. Output from GCWerks.",
             "medusa": "Medusa measurements. Output from GCWerks. See Miller et al. (2008)."
         },
-        "directory_output" : "/dagage2/agage/metoffice/processed_observations",
+        "directory_output" : "/dagage2/agage/metoffice/processed_observations_2018",
         "BSD" : {
             "gcwerks_site_name": "bilsdale",
             "inlets": ["108m", "42m", "248m"],
@@ -191,7 +191,7 @@
     },
     "CRDS": {
         "directory" : "/dagage2/agage/%site-picarro/results-gcwerks/",
-        "directory_output" : "/dagage2/agage/metoffice/processed_observations",
+        "directory_output" : "/dagage2/agage/metoffice/processed_observations_2018",
         "comment": "Cavity ring-down measurements. Output from GCWerks",
         "BSD" : {
             "gcwerks_site_name": "bilsdale",
@@ -238,7 +238,7 @@
     },
     "ICOS": {
         "directory" : "/dagage2/agage/%site-picarro/results-icos/",
-        "directory_output" : "/dagage2/agage/metoffice/processed_observations",
+        "directory_output" : "/dagage2/agage/metoffice/processed_observations_2018",
         "MHD" : {
             "gcwerks_site_name": "macehead",
             "inlet_rename": {"15m": "10m"},

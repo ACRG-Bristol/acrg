@@ -7,6 +7,7 @@ Created on Fri Oct 16 14:08:07 2015
 
 import numpy as np
 import pandas as pd
+import os
 from os.path import join, split
 from datetime import datetime as dt
 from datetime import timedelta as td
@@ -261,18 +262,42 @@ def output_filename(output_directory,
                     network,
                     instrument,
                     site,
-                    year,
+                    time_start,
                     species,
                     inlet):
-
+    """
+    Create an output filename in the format 
+    output_directory/site/network-instrument_site_YYYYMMDD_species[-inlet].nc
+    
+    """
+    
+    # Check if directory exists. If not, create it
+    if not os.path.exists(join(output_directory, site)):
+        os.makedirs(join(output_directory, site))
+    
+    # Create suffix. If inlet is specified, append to species name
+    suffix = species
+    if inlet is not None:
+        suffix += "-" + inlet
+    
+    # Return output filename
     return join(output_directory,
-                network + "/" + \
-                network + "-" + \
-                instrument + "_" + \
-                site + "_" + \
-                year + "0101_" + \
-                species + "-" + \
-                inlet + ".nc")
+                "%s/%s-%s_%s_%04i%02i%02i_%s.nc" %(site,
+                                                   network,
+                                                   instrument,
+                                                   site,
+                                                   time_start.year,
+                                                   time_start.month,
+                                                   time_start.day,
+                                                   suffix))
+    
+#    return join(output_directory,
+#                site + "/" + \
+#                network + "-" + \
+#                instrument + "_" + \
+#                site + "_" + \
+#                str(time_start.year) + str(time_start.month).zfill(2) + str(time_start.day).zfill(2) + "_" + \
+#                suffix + ".nc")
 
 
 # ICOS
@@ -616,13 +641,15 @@ def gc(site, instrument, network,
                     instrument_out = params["GC"]["instruments_out"][instrument]["else"]
 
                 # Write file
+                print(output_folder)
                 nc_filename = output_filename(output_folder,
                                               network,
                                               instrument_out,
                                               site.upper(),
-                                              str(ds_sp.time.to_pandas().index.to_pydatetime()[0].year),
+                                              ds_sp.time.to_pandas().index.to_pydatetime()[0],
+#                                              ds_sp.time.to_pandas().index.to_pydatetime()[-1],
                                               ds_sp.species,
-                                              inlet_label)
+                                              None)
                 print("Writing... " + nc_filename)
                 ds_sp.to_netcdf(nc_filename)
                 print("... written.")
@@ -733,7 +760,7 @@ def crds(site, network,
                                           network,
                                           "CRDS",
                                           site.upper(),
-                                          str(ds_sp.time.to_pandas().index.to_pydatetime()[0].year),
+                                          ds_sp.time.to_pandas().index.to_pydatetime()[0],
                                           ds_sp.species,
                                           inlet)
             print("Writing " + nc_filename)
@@ -742,13 +769,22 @@ def crds(site, network,
 
 
 def ale_gage(site, network):
+    """
+    Process Georgia Tech ALE or GAGE observations
+    
+    Args:
+        site (str): ADR, RPB, ORG, SMO, CGO or MHD
+        network (str): ALE or GAGE
 
+    """
+    
+    
     import fortranformat as ff
 
     ale_directory = "/dagage2/agage/summary/git/ale_new/complete/"
     gage_directory = "/dagage2/agage/summary/git/gage_new/complete/"
 
-    output_directory = "/dagage2/agage/metoffice/processed_observations/"
+    output_directory = "/dagage2/agage/metoffice/processed_observations_2018/"
 
     site_translate = {"ADR": "adrigole",
                       "RPB": "barbados",
@@ -759,8 +795,11 @@ def ale_gage(site, network):
 
     if network == "ALE":
         data_directory = ale_directory
-    if network == "GAGE":
+    elif network == "GAGE":
         data_directory = gage_directory
+    else:
+        print("Network needs to be ALE or GAGE")
+        return None
 
 
     fnames = sorted(glob.glob(join(data_directory,
@@ -841,11 +880,11 @@ def ale_gage(site, network):
         # Write file
         nc_filename = output_filename(output_directory,
                                       network,
-                                      "GC-ECD",
+                                      "GCECD",
                                       site.upper(),
-                                      str(ds.time.to_pandas().index.to_pydatetime()[0].year),
+                                      ds.time.to_pandas().index.to_pydatetime()[0],
                                       ds.species,
-                                      site_params[site]["height"][0])
+                                      None)
         print("Writing " + nc_filename)
         ds.to_netcdf(nc_filename)
         print("... written.")
@@ -891,7 +930,7 @@ def mhd_o3():
                     units = "ppb")
 
     # Write file
-    nc_filename = output_filename("/dagage2/agage/metoffice/processed_observations",
+    nc_filename = output_filename("/dagage2/agage/metoffice/processed_observations_2018",
                                   "AURN",
                                   "thermo",
                                   "MHD",
@@ -909,7 +948,7 @@ def decc_data_freeze():
     output_directory = "/dagage2/agage/summary/gccompare-net/snapshot/current-frozendata/data-net/processed/"
 
     # ICOS
-    icos("MHD", network = "LSCE", input_directory = input_directory, output_directory = output_directory)
+    icos("MHD", network = "ICOS", input_directory = input_directory, output_directory = output_directory)
 
     # GAUGE CRDS data
     crds("HFD", "GAUGE", input_directory = input_directory, output_directory = output_directory)
@@ -946,50 +985,50 @@ def decc_data_freeze():
 
 if __name__ == "__main__":
 
-    # AGAGE Medusa
-    gc("MHD", "medusa", "AGAGE")
-    gc("CGO", "medusa", "AGAGE")
-    gc("GSN", "medusa", "AGAGE")
-    gc("SDZ", "medusa", "AGAGE")
-    gc("THD", "medusa", "AGAGE")
-    gc("RPB", "medusa", "AGAGE")
-    gc("SMO", "medusa", "AGAGE")
-    gc("SIO", "medusa", "AGAGE")
-    gc("JFJ", "medusa", "AGAGE")
-    gc("CMN", "medusa", "AGAGE")
-    gc("ZEP", "medusa", "AGAGE")
-
-    # AGAGE GC data
-    gc("RPB", "GCMD", "AGAGE")
-    gc("CGO", "GCMD", "AGAGE")
-    gc("MHD", "GCMD", "AGAGE")
-    gc("SMO", "GCMD", "AGAGE")
-    gc("THD", "GCMD", "AGAGE")
-
-    # AGAGE GCMS data
-    gc("CGO", "GCMS", "AGAGE")
-    gc("MHD", "GCMS", "AGAGE")
-    gc("RPB", "GCMS", "AGAGE")
-    gc("SMO", "GCMS", "AGAGE")
-    gc("THD", "GCMS", "AGAGE")
-    gc("JFJ", "GCMS", "AGAGE")
-    gc("CMN", "GCMS", "AGAGE")
-    gc("ZEP", "GCMS", "AGAGE")
-
+#    # AGAGE Medusa
+#    gc("MHD", "medusa", "AGAGE")
+#    gc("CGO", "medusa", "AGAGE")
+#    gc("GSN", "medusa", "AGAGE")
+#    gc("SDZ", "medusa", "AGAGE")
+#    gc("THD", "medusa", "AGAGE")
+#    gc("RPB", "medusa", "AGAGE")
+#    gc("SMO", "medusa", "AGAGE")
+#    gc("SIO", "medusa", "AGAGE")
+#    gc("JFJ", "medusa", "AGAGE")
+#    gc("CMN", "medusa", "AGAGE")
+#    gc("ZEP", "medusa", "AGAGE")
+#
+#    # AGAGE GC data
+#    gc("RPB", "GCMD", "AGAGE")
+#    gc("CGO", "GCMD", "AGAGE")
+#    gc("MHD", "GCMD", "AGAGE")
+#    gc("SMO", "GCMD", "AGAGE")
+#    gc("THD", "GCMD", "AGAGE")
+#
+#    # AGAGE GCMS data
+#    gc("CGO", "GCMS", "AGAGE")
+#    gc("MHD", "GCMS", "AGAGE")
+#    gc("RPB", "GCMS", "AGAGE")
+#    gc("SMO", "GCMS", "AGAGE")
+#    gc("THD", "GCMS", "AGAGE")
+#    gc("JFJ", "GCMS", "AGAGE")
+#    gc("CMN", "GCMS", "AGAGE")
+#    gc("ZEP", "GCMS", "AGAGE")
+#
     # AGAGE CRDS data
     crds("RPB", "AGAGE")
 
     # ICOS
-#    icos("TTA")
-    icos("MHD", network = "LSCE")
+    icos("TTA", network = "DECC")
+    icos("MHD", network = "ICOS")
 
     # GAUGE CRDS data
-    crds("HFD", "GAUGE")
-    crds("BSD", "GAUGE")
+    crds("HFD", "DECC")
+    crds("BSD", "DECC")
 
     # GAUGE GC data
-    gc("BSD", "GCMD", "GAUGE")
-    gc("HFD", "GCMD", "GAUGE")
+    gc("BSD", "GCMD", "DECC")
+    gc("HFD", "GCMD", "DECC")
 
     # DECC CRDS data
     crds("TTA", "DECC")
@@ -1004,13 +1043,13 @@ if __name__ == "__main__":
     gc("TAC", "medusa", "DECC")
 
 
-    # Copy files
-    networks = ["AGAGE", "GAUGE", "DECC", "LSCE"]
-    src_dir = "/dagage2/agage/metoffice/processed_observations"
-    dest_dir = "/data/shared/obs"
-
-    for network in networks:
-        files = glob.glob(join(src_dir, network, "*.nc"))
-        for f in files:
-            print("Copying %s..." % (split(f)[-1]))
-            shutil.copy(f, join(dest_dir, network))
+#    # Copy files
+#    networks = ["AGAGE", "GAUGE", "DECC", "ICOS"]
+#    src_dir = "/dagage2/agage/metoffice/processed_observations_2018"
+#    dest_dir = "/data/shared/obs_2018"
+#
+#    for network in networks:
+#        files = glob.glob(join(src_dir, network, "*.nc"))
+#        for f in files:
+#            print("Copying %s..." % (split(f)[-1]))
+#            shutil.copy(f, join(dest_dir, network))
