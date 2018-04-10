@@ -1,0 +1,584 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>acrg_name.basis_functions &#8212; acrg  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for acrg_name.basis_functions</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Created on Sat Jul 25 15:46:31 2015</span>
+
+<span class="sd">@author: ag12733</span>
+
+<span class="sd">Creat basis functions for domain</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">xarray</span> <span class="k">as</span> <span class="nn">xray</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">acrg_name</span> <span class="k">as</span> <span class="nn">name</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">os.path</span> <span class="k">import</span> <span class="n">join</span>
+
+<span class="n">acrg_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;ACRG_PATH&quot;</span><span class="p">)</span>
+<span class="n">data_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;DATA_PATH&quot;</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">acrg_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">acrg_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;HOME&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Default ACRG directory is assumed to be home directory. Set path in .bashrc as </span><span class="se">\</span>
+<span class="s2">            export ACRG_PATH=/path/to/acrg/repository/ and restart python terminal&quot;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">data_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">data_path</span> <span class="o">=</span> <span class="s2">&quot;/data/shared/&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Default Data directory is assumed to be /data/shared/. Set path in .bashrc as </span><span class="se">\</span>
+<span class="s2">            export DATA_PATH=/path/to/data/directory/ and restart python terminal&quot;</span><span class="p">)</span>
+
+<span class="c1"># These are the default directories if no optional arguments are specified in footprints_data_merge,</span>
+<span class="c1"># bc_sensitivity or fp_sensitivity</span>
+<span class="n">fields_file_path</span> <span class="o">=</span> <span class="n">join</span><span class="p">(</span><span class="n">data_path</span><span class="p">,</span> <span class="s1">&#39;NAME/fp/&#39;</span><span class="p">)</span>
+<span class="n">basis_dir</span> <span class="o">=</span> <span class="n">join</span><span class="p">(</span><span class="n">data_path</span><span class="p">,</span> <span class="s1">&#39;NAME/basis_functions/&#39;</span><span class="p">)</span>
+<span class="n">bc_basis_dir</span> <span class="o">=</span> <span class="n">join</span><span class="p">(</span><span class="n">data_path</span><span class="p">,</span><span class="s1">&#39;NAME/bc_basis_functions/&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="basis_blocks"><a class="viewcode-back" href="../../api/acrg_name.html#acrg_name.basis_functions.basis_blocks">[docs]</a><span class="k">def</span> <span class="nf">basis_blocks</span><span class="p">(</span><span class="n">domain</span> <span class="o">=</span> <span class="s2">&quot;SOUTHASIA&quot;</span><span class="p">,</span> <span class="n">time</span> <span class="o">=</span> <span class="s2">&quot;2012-01-01&quot;</span><span class="p">,</span> <span class="n">blocksize</span> <span class="o">=</span> <span class="mi">25</span><span class="p">,</span> <span class="n">basis_case</span> <span class="o">=</span> <span class="s2">&quot;25x25&quot;</span><span class="p">):</span> 
+
+<span class="c1"># creates basis functions in square blocks (e.g., 5x5 grid cells per region)    </span>
+    
+<span class="c1"># load a Fields file to get the domain</span>
+
+    <span class="n">files</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">fields_file_path</span> <span class="o">+</span> <span class="n">domain</span> <span class="o">+</span> <span class="s2">&quot;/*&quot;</span><span class="p">)</span>
+    
+    <span class="n">time</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">time</span><span class="p">)</span>
+    
+    <span class="k">with</span> <span class="n">xray</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">files</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">as</span> <span class="n">temp</span><span class="p">:</span>
+        <span class="n">fields_ds</span> <span class="o">=</span> <span class="n">temp</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">files</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Can&#39;t find Fields files: &quot;</span> <span class="o">+</span> <span class="n">domain</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    
+    <span class="n">lat</span> <span class="o">=</span> <span class="n">fields_ds</span><span class="p">[</span><span class="s2">&quot;lat&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">lon</span> <span class="o">=</span> <span class="n">fields_ds</span><span class="p">[</span><span class="s2">&quot;lon&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+    
+    <span class="n">basis_grid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">lat</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">lon</span><span class="p">)))</span>
+    
+    <span class="n">arr</span> <span class="o">=</span> <span class="n">basis_grid</span>
+    
+    <span class="n">x</span><span class="p">,</span><span class="n">y</span> <span class="o">=</span> <span class="n">cut_array2d</span><span class="p">(</span><span class="n">arr</span><span class="p">,(</span><span class="nb">len</span><span class="p">(</span><span class="n">lat</span><span class="p">)</span><span class="o">/</span><span class="n">blocksize</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">lon</span><span class="p">)</span><span class="o">/</span><span class="n">blocksize</span><span class="p">))</span>
+    
+    <span class="k">for</span> <span class="n">ii</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)):</span>
+        <span class="n">basis_grid</span><span class="p">[</span><span class="n">x</span><span class="p">[</span><span class="n">ii</span><span class="p">][</span><span class="mi">0</span><span class="p">]:</span><span class="n">x</span><span class="p">[</span><span class="n">ii</span><span class="p">][</span><span class="mi">1</span><span class="p">],</span><span class="n">y</span><span class="p">[</span><span class="n">ii</span><span class="p">][</span><span class="mi">0</span><span class="p">]:</span><span class="n">y</span><span class="p">[</span><span class="n">ii</span><span class="p">][</span><span class="mi">1</span><span class="p">]]</span><span class="o">=</span><span class="n">ii</span><span class="o">+</span><span class="mi">1</span>
+    
+    <span class="n">basis_grid</span> <span class="o">=</span> <span class="n">basis_grid</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">lat</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">lon</span><span class="p">),</span><span class="mi">1</span><span class="p">)</span>
+    
+    <span class="n">basis_ds</span> <span class="o">=</span> <span class="n">xray</span><span class="o">.</span><span class="n">Dataset</span><span class="p">({</span><span class="s1">&#39;basis&#39;</span><span class="p">:([</span><span class="s1">&#39;lat&#39;</span><span class="p">,</span><span class="s1">&#39;lon&#39;</span><span class="p">,</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">basis_grid</span><span class="p">)},</span> \
+            <span class="n">coords</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;lon&#39;</span><span class="p">:([</span><span class="s1">&#39;lon&#39;</span><span class="p">],</span> <span class="n">lon</span><span class="p">),</span> \
+                      <span class="s1">&#39;lat&#39;</span><span class="p">:([</span><span class="s1">&#39;lat&#39;</span><span class="p">],</span> <span class="n">lat</span><span class="p">),</span> \
+                      <span class="s1">&#39;time&#39;</span><span class="p">:([</span><span class="s1">&#39;time&#39;</span><span class="p">],[</span><span class="n">time</span><span class="p">])})</span>
+                
+    <span class="n">basis_ds</span><span class="o">.</span><span class="n">to_netcdf</span><span class="p">(</span><span class="n">basis_dir</span> <span class="o">+</span> <span class="n">domain</span> <span class="o">+</span><span class="s2">&quot;/&quot;</span> <span class="o">+</span> <span class="n">basis_case</span> <span class="o">+</span> <span class="s2">&quot;_&quot;</span> <span class="o">+</span> <span class="n">domain</span> <span class="o">+</span> <span class="s2">&quot;_&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">year</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.nc&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="basis_transd"><a class="viewcode-back" href="../../api/acrg_name.html#acrg_name.basis_functions.basis_transd">[docs]</a><span class="k">def</span> <span class="nf">basis_transd</span><span class="p">(</span><span class="n">domain</span> <span class="o">=</span> <span class="s2">&quot;SOUTHASIA&quot;</span><span class="p">,</span> <span class="n">time</span> <span class="o">=</span> <span class="s2">&quot;2012-01-01&quot;</span><span class="p">,</span> <span class="n">basis_case</span> <span class="o">=</span> <span class="s2">&quot;transd&quot;</span><span class="p">,</span> <span class="n">sub_lon_min</span> <span class="o">=</span> <span class="mi">65</span><span class="p">,</span>
+                 <span class="n">sub_lon_max</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span> <span class="n">sub_lat_min</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span> <span class="n">sub_lat_max</span> <span class="o">=</span> <span class="mi">40</span><span class="p">):</span> 
+
+<span class="c1"># creates basis regions for the &quot;transdimensional inversion&quot;</span>
+<span class="c1"># creates variable central block based on sub_lat and sub_lon domain</span>
+<span class="c1"># and four fixed regions surrounding the central box   </span>
+    
+<span class="c1"># load a Fields file to get the domain</span>
+
+    <span class="n">files</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">fields_file_path</span> <span class="o">+</span> <span class="n">domain</span> <span class="o">+</span> <span class="s2">&quot;/*&quot;</span><span class="p">)</span>
+    
+    <span class="n">time</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">time</span><span class="p">)</span>
+    
+    <span class="k">with</span> <span class="n">xray</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">files</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">as</span> <span class="n">temp</span><span class="p">:</span>
+        <span class="n">fields_ds</span> <span class="o">=</span> <span class="n">temp</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">files</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Can&#39;t find Fields files: &quot;</span> <span class="o">+</span> <span class="n">domain</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    
+    <span class="n">lat</span> <span class="o">=</span> <span class="n">fields_ds</span><span class="p">[</span><span class="s2">&quot;lat&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">lon</span> <span class="o">=</span> <span class="n">fields_ds</span><span class="p">[</span><span class="s2">&quot;lon&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+    
+    <span class="n">basis_grid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">lat</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">lon</span><span class="p">)))</span>    
+    
+    <span class="n">sub_lon_min_arg</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">lon</span> <span class="o">-</span> <span class="n">sub_lon_min</span><span class="p">)</span><span class="o">.</span><span class="n">argmin</span><span class="p">()</span>
+    <span class="n">sub_lon_max_arg</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">lon</span> <span class="o">-</span> <span class="n">sub_lon_max</span><span class="p">)</span><span class="o">.</span><span class="n">argmin</span><span class="p">()</span>
+    <span class="n">sub_lat_min_arg</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">lat</span> <span class="o">-</span> <span class="n">sub_lat_min</span><span class="p">)</span><span class="o">.</span><span class="n">argmin</span><span class="p">()</span>
+    <span class="n">sub_lat_max_arg</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">lat</span> <span class="o">-</span> <span class="n">sub_lat_max</span><span class="p">)</span><span class="o">.</span><span class="n">argmin</span><span class="p">()</span>
+    
+    <span class="n">sub_lon</span> <span class="o">=</span> <span class="n">lon</span><span class="p">[</span><span class="n">sub_lon_min_arg</span><span class="p">:</span><span class="n">sub_lon_max_arg</span><span class="p">]</span>
+    <span class="n">sub_lat</span> <span class="o">=</span> <span class="n">lat</span><span class="p">[</span><span class="n">sub_lat_min_arg</span><span class="p">:</span><span class="n">sub_lat_max_arg</span><span class="p">]</span>   
+     
+    <span class="n">basis_grid</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">sub_lat_min_arg</span><span class="p">,:]</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">basis_grid</span><span class="p">[</span><span class="n">sub_lat_min_arg</span><span class="p">:,</span><span class="mi">0</span><span class="p">:</span><span class="n">sub_lon_min_arg</span><span class="p">]</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">basis_grid</span><span class="p">[</span><span class="n">sub_lat_max_arg</span><span class="p">:,</span><span class="n">sub_lon_min_arg</span><span class="p">:</span><span class="n">sub_lon_max_arg</span><span class="p">]</span> <span class="o">=</span> <span class="mi">3</span>
+    <span class="n">basis_grid</span><span class="p">[</span><span class="n">sub_lat_min_arg</span><span class="p">:,</span><span class="n">sub_lon_max_arg</span><span class="p">:]</span> <span class="o">=</span> <span class="mi">4</span>
+   
+    <span class="n">basis_grid</span> <span class="o">=</span> <span class="n">basis_grid</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">lat</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">lon</span><span class="p">),</span><span class="mi">1</span><span class="p">)</span>
+    
+    <span class="n">basis_ds</span> <span class="o">=</span> <span class="n">xray</span><span class="o">.</span><span class="n">Dataset</span><span class="p">({</span><span class="s1">&#39;basis&#39;</span><span class="p">:([</span><span class="s1">&#39;lat&#39;</span><span class="p">,</span><span class="s1">&#39;lon&#39;</span><span class="p">,</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">basis_grid</span><span class="p">)},</span> \
+            <span class="n">coords</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;lon&#39;</span><span class="p">:([</span><span class="s1">&#39;lon&#39;</span><span class="p">],</span> <span class="n">lon</span><span class="p">),</span> \
+                      <span class="s1">&#39;lat&#39;</span><span class="p">:([</span><span class="s1">&#39;lat&#39;</span><span class="p">],</span> <span class="n">lat</span><span class="p">),</span> \
+                      <span class="s1">&#39;time&#39;</span><span class="p">:([</span><span class="s1">&#39;time&#39;</span><span class="p">],[</span><span class="n">time</span><span class="p">])</span> <span class="p">,</span>\
+                      <span class="s1">&#39;sub_lat&#39;</span><span class="p">:</span> <span class="p">([</span><span class="s1">&#39;sub_lat&#39;</span><span class="p">],</span><span class="n">sub_lat</span><span class="p">),</span>\
+                      <span class="s1">&#39;sub_lon&#39;</span><span class="p">:</span> <span class="p">([</span><span class="s1">&#39;sub_lon&#39;</span><span class="p">],</span><span class="n">sub_lon</span><span class="p">)})</span>
+                
+    <span class="n">basis_ds</span><span class="o">.</span><span class="n">to_netcdf</span><span class="p">(</span><span class="n">basis_dir</span> <span class="o">+</span> <span class="n">domain</span> <span class="o">+</span><span class="s2">&quot;/&quot;</span> <span class="o">+</span> <span class="n">basis_case</span> <span class="o">+</span> <span class="s2">&quot;_&quot;</span> <span class="o">+</span> <span class="n">domain</span> <span class="o">+</span> <span class="s2">&quot;_&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">year</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.nc&quot;</span><span class="p">)</span></div>
+    
+
+<div class="viewcode-block" id="basis_bc_blocks"><a class="viewcode-back" href="../../api/acrg_name.html#acrg_name.basis_functions.basis_bc_blocks">[docs]</a><span class="k">def</span> <span class="nf">basis_bc_blocks</span><span class="p">(</span><span class="n">domain</span> <span class="o">=</span> <span class="s2">&quot;SOUTHASIA&quot;</span><span class="p">,</span> <span class="n">basis_case</span> <span class="o">=</span> <span class="s2">&quot;NESW&quot;</span><span class="p">,</span> <span class="n">time</span> <span class="o">=</span> <span class="s2">&quot;2012-01-01&quot;</span><span class="p">,</span> <span class="n">vertical</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    
+<span class="c1"># creates uniform blocks for each direction (NESW). </span>
+<span class="c1"># Each direction is split into vertical slabs with number specified by input &#39;vertical&#39;</span>
+    
+    <span class="n">files</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">fields_file_path</span> <span class="o">+</span> <span class="n">domain</span> <span class="o">+</span> <span class="s2">&quot;/*&quot;</span><span class="p">)</span>
+    
+    <span class="n">time</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">time</span><span class="p">)</span>
+    
+    <span class="k">with</span> <span class="n">xray</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">files</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">as</span> <span class="n">temp</span><span class="p">:</span>
+        <span class="n">fields_ds</span> <span class="o">=</span> <span class="n">temp</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">files</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Can&#39;t find Fields files: &quot;</span> <span class="o">+</span> <span class="n">domain</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    
+    <span class="n">lat</span> <span class="o">=</span> <span class="n">fields_ds</span><span class="p">[</span><span class="s2">&quot;lat&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">lon</span> <span class="o">=</span> <span class="n">fields_ds</span><span class="p">[</span><span class="s2">&quot;lon&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+    
+    <span class="n">regions</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="n">vertical</span><span class="o">*</span><span class="mi">4</span><span class="p">)</span>
+    <span class="n">heights</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="mi">500</span><span class="p">,</span><span class="mi">20500</span><span class="p">,</span><span class="mi">1000</span><span class="p">)</span>
+    
+    <span class="n">basis_grid_e</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">heights</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">lat</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">regions</span><span class="p">),</span><span class="mi">1</span><span class="p">))</span>
+    <span class="n">basis_grid_w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">heights</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">lat</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">regions</span><span class="p">),</span><span class="mi">1</span><span class="p">))</span>
+    <span class="n">basis_grid_n</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">heights</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">lon</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">regions</span><span class="p">),</span><span class="mi">1</span><span class="p">))</span>
+    <span class="n">basis_grid_s</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">heights</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">lon</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">regions</span><span class="p">),</span><span class="mi">1</span><span class="p">))</span>
+    
+    <span class="n">vertical_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">heights</span><span class="p">),</span> <span class="n">vertical</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>
+    
+    <span class="k">for</span> <span class="n">ii</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">vertical</span><span class="p">):</span>
+        
+        <span class="n">basis_grid_n</span><span class="p">[</span><span class="n">vertical_index</span><span class="p">[</span><span class="n">ii</span><span class="p">]:</span><span class="n">vertical_index</span><span class="p">[</span><span class="n">ii</span><span class="o">+</span><span class="mi">1</span><span class="p">],:,</span><span class="mi">0</span><span class="o">+</span><span class="n">ii</span><span class="p">,:]</span> <span class="o">=</span> <span class="mi">1</span>    
+        <span class="n">basis_grid_e</span><span class="p">[</span><span class="n">vertical_index</span><span class="p">[</span><span class="n">ii</span><span class="p">]:</span><span class="n">vertical_index</span><span class="p">[</span><span class="n">ii</span><span class="o">+</span><span class="mi">1</span><span class="p">],:,</span><span class="n">vertical</span><span class="o">+</span><span class="n">ii</span><span class="p">,:]</span> <span class="o">=</span> <span class="mi">1</span>  
+        <span class="n">basis_grid_s</span><span class="p">[</span><span class="n">vertical_index</span><span class="p">[</span><span class="n">ii</span><span class="p">]:</span><span class="n">vertical_index</span><span class="p">[</span><span class="n">ii</span><span class="o">+</span><span class="mi">1</span><span class="p">],:,</span><span class="mi">2</span><span class="o">*</span><span class="n">vertical</span><span class="o">+</span><span class="n">ii</span><span class="p">,:]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">basis_grid_w</span><span class="p">[</span><span class="n">vertical_index</span><span class="p">[</span><span class="n">ii</span><span class="p">]:</span><span class="n">vertical_index</span><span class="p">[</span><span class="n">ii</span><span class="o">+</span><span class="mi">1</span><span class="p">],:,</span><span class="mi">3</span><span class="o">*</span><span class="n">vertical</span><span class="o">+</span><span class="n">ii</span><span class="p">,:]</span> <span class="o">=</span> <span class="mi">1</span>
+        
+    <span class="n">basis_ds</span> <span class="o">=</span> <span class="n">xray</span><span class="o">.</span><span class="n">Dataset</span><span class="p">({</span><span class="s1">&#39;bc_basis_n&#39;</span><span class="p">:([</span><span class="s1">&#39;height&#39;</span><span class="p">,</span><span class="s1">&#39;lon&#39;</span><span class="p">,</span><span class="s1">&#39;region&#39;</span><span class="p">,</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">basis_grid_n</span><span class="p">),</span> \
+                            <span class="s1">&#39;bc_basis_s&#39;</span><span class="p">:([</span><span class="s1">&#39;height&#39;</span><span class="p">,</span><span class="s1">&#39;lon&#39;</span><span class="p">,</span><span class="s1">&#39;region&#39;</span><span class="p">,</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">basis_grid_s</span><span class="p">),</span> \
+                            <span class="s1">&#39;bc_basis_e&#39;</span><span class="p">:([</span><span class="s1">&#39;height&#39;</span><span class="p">,</span><span class="s1">&#39;lat&#39;</span><span class="p">,</span><span class="s1">&#39;region&#39;</span><span class="p">,</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">basis_grid_e</span><span class="p">),</span> \
+                            <span class="s1">&#39;bc_basis_w&#39;</span><span class="p">:([</span><span class="s1">&#39;height&#39;</span><span class="p">,</span><span class="s1">&#39;lat&#39;</span><span class="p">,</span><span class="s1">&#39;region&#39;</span><span class="p">,</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">basis_grid_w</span><span class="p">)},</span> \
+                <span class="n">coords</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;height&#39;</span><span class="p">:</span> <span class="p">([</span><span class="s1">&#39;height&#39;</span><span class="p">],</span> <span class="n">heights</span><span class="p">),</span> \
+                          <span class="s1">&#39;lon&#39;</span><span class="p">:([</span><span class="s1">&#39;lon&#39;</span><span class="p">],</span> <span class="n">lon</span><span class="p">),</span> \
+                          <span class="s1">&#39;lat&#39;</span><span class="p">:([</span><span class="s1">&#39;lat&#39;</span><span class="p">],</span> <span class="n">lat</span><span class="p">),</span> \
+                          <span class="s1">&#39;region&#39;</span><span class="p">:([</span><span class="s1">&#39;region&#39;</span><span class="p">],</span><span class="n">regions</span><span class="p">),</span> \
+                          <span class="s1">&#39;time&#39;</span><span class="p">:([</span><span class="s1">&#39;time&#39;</span><span class="p">],[</span><span class="n">time</span><span class="p">])})</span>
+
+    <span class="n">basis_ds</span><span class="o">.</span><span class="n">to_netcdf</span><span class="p">(</span><span class="n">bc_basis_dir</span> <span class="o">+</span> <span class="n">domain</span> <span class="o">+</span><span class="s2">&quot;/&quot;</span> <span class="o">+</span> <span class="n">basis_case</span> <span class="o">+</span> <span class="s2">&quot;_&quot;</span> <span class="o">+</span> <span class="n">domain</span> <span class="o">+</span> <span class="s2">&quot;_&quot;</span> <span class="o">+</span> <span class="n">time</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%m&#39;</span><span class="p">)</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">year</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.nc&quot;</span><span class="p">)</span>                </div>
+    
+<div class="viewcode-block" id="basis_bc_uniform"><a class="viewcode-back" href="../../api/acrg_name.html#acrg_name.basis_functions.basis_bc_uniform">[docs]</a><span class="k">def</span> <span class="nf">basis_bc_uniform</span><span class="p">(</span><span class="n">domain</span> <span class="o">=</span> <span class="s2">&quot;SOUTHASIA&quot;</span><span class="p">,</span> <span class="n">basis_case</span> <span class="o">=</span> <span class="s2">&quot;uniform&quot;</span><span class="p">,</span> <span class="n">time</span> <span class="o">=</span> <span class="s2">&quot;2012-01-01&quot;</span><span class="p">):</span>
+    
+<span class="c1"># creates one uniform scaling for all directions </span>
+
+    <span class="n">files</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">fields_file_path</span> <span class="o">+</span> <span class="n">domain</span> <span class="o">+</span> <span class="s2">&quot;/*&quot;</span><span class="p">)</span>
+    
+    <span class="n">time</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">time</span><span class="p">)</span>
+    
+    <span class="k">with</span> <span class="n">xray</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">files</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">as</span> <span class="n">temp</span><span class="p">:</span>
+        <span class="n">fields_ds</span> <span class="o">=</span> <span class="n">temp</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">files</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Can&#39;t find Fields files: &quot;</span> <span class="o">+</span> <span class="n">domain</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    
+    <span class="n">lat</span> <span class="o">=</span> <span class="n">fields_ds</span><span class="p">[</span><span class="s2">&quot;lat&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">lon</span> <span class="o">=</span> <span class="n">fields_ds</span><span class="p">[</span><span class="s2">&quot;lon&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+    
+    <span class="n">regions</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">heights</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="mi">500</span><span class="p">,</span><span class="mi">20500</span><span class="p">,</span><span class="mi">1000</span><span class="p">)</span>
+    
+    <span class="n">basis_grid_e</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">heights</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">lat</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">regions</span><span class="p">),</span><span class="mi">1</span><span class="p">))</span>
+    <span class="n">basis_grid_w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">heights</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">lat</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">regions</span><span class="p">),</span><span class="mi">1</span><span class="p">))</span>
+    <span class="n">basis_grid_n</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">heights</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">lon</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">regions</span><span class="p">),</span><span class="mi">1</span><span class="p">))</span>
+    <span class="n">basis_grid_s</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">heights</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">lon</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">regions</span><span class="p">),</span><span class="mi">1</span><span class="p">))</span>
+    
+            
+    <span class="n">basis_grid_n</span><span class="p">[:,:,:,:]</span> <span class="o">=</span> <span class="mi">1</span>    
+    <span class="n">basis_grid_e</span><span class="p">[:,:,:,:]</span> <span class="o">=</span> <span class="mi">1</span>  
+    <span class="n">basis_grid_s</span><span class="p">[:,:,:,:]</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">basis_grid_w</span><span class="p">[:,:,:,:]</span> <span class="o">=</span> <span class="mi">1</span>
+        
+    <span class="n">basis_ds</span> <span class="o">=</span> <span class="n">xray</span><span class="o">.</span><span class="n">Dataset</span><span class="p">({</span><span class="s1">&#39;bc_basis_n&#39;</span><span class="p">:([</span><span class="s1">&#39;height&#39;</span><span class="p">,</span><span class="s1">&#39;lon&#39;</span><span class="p">,</span><span class="s1">&#39;region&#39;</span><span class="p">,</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">basis_grid_n</span><span class="p">),</span> \
+                            <span class="s1">&#39;bc_basis_s&#39;</span><span class="p">:([</span><span class="s1">&#39;height&#39;</span><span class="p">,</span><span class="s1">&#39;lon&#39;</span><span class="p">,</span><span class="s1">&#39;region&#39;</span><span class="p">,</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">basis_grid_s</span><span class="p">),</span> \
+                            <span class="s1">&#39;bc_basis_e&#39;</span><span class="p">:([</span><span class="s1">&#39;height&#39;</span><span class="p">,</span><span class="s1">&#39;lat&#39;</span><span class="p">,</span><span class="s1">&#39;region&#39;</span><span class="p">,</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">basis_grid_e</span><span class="p">),</span> \
+                            <span class="s1">&#39;bc_basis_w&#39;</span><span class="p">:([</span><span class="s1">&#39;height&#39;</span><span class="p">,</span><span class="s1">&#39;lat&#39;</span><span class="p">,</span><span class="s1">&#39;region&#39;</span><span class="p">,</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">basis_grid_w</span><span class="p">)},</span> \
+                <span class="n">coords</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;height&#39;</span><span class="p">:</span> <span class="p">([</span><span class="s1">&#39;height&#39;</span><span class="p">],</span> <span class="n">heights</span><span class="p">),</span> \
+                          <span class="s1">&#39;lon&#39;</span><span class="p">:([</span><span class="s1">&#39;lon&#39;</span><span class="p">],</span> <span class="n">lon</span><span class="p">),</span> \
+                          <span class="s1">&#39;lat&#39;</span><span class="p">:([</span><span class="s1">&#39;lat&#39;</span><span class="p">],</span> <span class="n">lat</span><span class="p">),</span> \
+                          <span class="s1">&#39;region&#39;</span><span class="p">:([</span><span class="s1">&#39;region&#39;</span><span class="p">],</span><span class="n">regions</span><span class="p">),</span> \
+                          <span class="s1">&#39;time&#39;</span><span class="p">:([</span><span class="s1">&#39;time&#39;</span><span class="p">],[</span><span class="n">time</span><span class="p">])})</span>
+                
+    <span class="n">basis_ds</span><span class="o">.</span><span class="n">to_netcdf</span><span class="p">(</span><span class="n">bc_basis_dir</span> <span class="o">+</span> <span class="n">domain</span> <span class="o">+</span><span class="s2">&quot;/&quot;</span> <span class="o">+</span> <span class="n">basis_case</span> <span class="o">+</span> <span class="s2">&quot;_&quot;</span> <span class="o">+</span> <span class="n">domain</span> <span class="o">+</span> <span class="s2">&quot;_&quot;</span> <span class="o">+</span> <span class="n">time</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%m&#39;</span><span class="p">)</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">year</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.nc&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="basis_bc_all_gradients"><a class="viewcode-back" href="../../api/acrg_name.html#acrg_name.basis_functions.basis_bc_all_gradients">[docs]</a><span class="k">def</span> <span class="nf">basis_bc_all_gradients</span><span class="p">(</span><span class="n">domain</span> <span class="o">=</span> <span class="s2">&quot;SOUTHASIA&quot;</span><span class="p">,</span> <span class="n">time</span> <span class="o">=</span> <span class="s2">&quot;2012-01-15&quot;</span><span class="p">,</span> <span class="n">species</span><span class="o">=</span><span class="s1">&#39;ch4&#39;</span><span class="p">,</span> <span class="n">units</span><span class="o">=</span><span class="s1">&#39;ppb&#39;</span><span class="p">,</span> <span class="n">basis_case</span><span class="o">=</span><span class="s1">&#39;horiz-strat-grad&#39;</span><span class="p">):</span>
+<span class="c1"># creates five terms for bc basis regions</span>
+<span class="c1">#           	     (1) offset to shift entire field up and down</span>
+<span class="c1">#				(2) factor to scale the entire field</span>
+<span class="c1">#				(3) scaling of N-S gradient</span>
+<span class="c1">#				(4) scaling of E-W gradient</span>
+<span class="c1">#				(5) scaling of stratospheric gradient</span>
+<span class="c1"># technically file is species specific as it calculates the stratosphere based on the vmm but one can </span>
+<span class="c1"># assume/hope that the stratosphere doesn&#39;t change by species </span>
+    
+    <span class="n">files</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">fields_file_path</span> <span class="o">+</span> <span class="n">domain</span> <span class="o">+</span> <span class="s2">&quot;/*&quot;</span><span class="p">)</span>
+    
+    <span class="n">time</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">time</span><span class="p">)</span>
+    
+    <span class="k">with</span> <span class="n">xray</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">files</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">as</span> <span class="n">temp</span><span class="p">:</span>
+        <span class="n">fields_ds</span> <span class="o">=</span> <span class="n">temp</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">files</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Can&#39;t find Fields files: &quot;</span> <span class="o">+</span> <span class="n">domain</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    
+    <span class="n">lat</span> <span class="o">=</span> <span class="n">fields_ds</span><span class="p">[</span><span class="s2">&quot;lat&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">lon</span> <span class="o">=</span> <span class="n">fields_ds</span><span class="p">[</span><span class="s2">&quot;lon&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+
+    <span class="n">heights</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="mi">500</span><span class="p">,</span><span class="mi">20500</span><span class="p">,</span><span class="mi">1000</span><span class="p">)</span>
+    
+    <span class="n">bc_ds</span> <span class="o">=</span>  <span class="n">name</span><span class="o">.</span><span class="n">boundary_conditions</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">species</span><span class="p">)</span>
+             
+    <span class="n">bc_ds</span> <span class="o">=</span> <span class="n">bc_ds</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">time</span> <span class="o">=</span> <span class="n">time</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">units</span> <span class="ow">is</span> <span class="s1">&#39;ppb&#39;</span><span class="p">:</span>
+        <span class="n">bc_ds</span> <span class="o">=</span> <span class="n">bc_ds</span><span class="o">*</span><span class="mf">1e9</span>
+    <span class="k">elif</span> <span class="n">units</span> <span class="ow">is</span> <span class="s1">&#39;ppm&#39;</span><span class="p">:</span>
+        <span class="n">bc_ds</span> <span class="o">=</span> <span class="n">bc_ds</span><span class="o">*</span><span class="mf">1e6</span>
+        
+    <span class="n">vmr_n</span> <span class="o">=</span> <span class="n">bc_ds</span><span class="p">[</span><span class="s2">&quot;vmr_n&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">vmr_e</span> <span class="o">=</span> <span class="n">bc_ds</span><span class="p">[</span><span class="s2">&quot;vmr_e&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">vmr_s</span> <span class="o">=</span> <span class="n">bc_ds</span><span class="p">[</span><span class="s2">&quot;vmr_s&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">vmr_w</span> <span class="o">=</span> <span class="n">bc_ds</span><span class="p">[</span><span class="s2">&quot;vmr_w&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+
+    <span class="c1">#flip the east and south directions to make it continuous</span>
+    
+    <span class="n">vmr_e_fl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fliplr</span><span class="p">(</span><span class="n">vmr_e</span><span class="p">)</span>
+    <span class="n">vmr_s_fl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fliplr</span><span class="p">(</span><span class="n">vmr_s</span><span class="p">)</span>
+    
+    <span class="c1"># stick together</span>
+    
+    <span class="n">ind</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span><span class="o">*</span><span class="mi">4</span>
+    <span class="n">vmr_all</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">vmr_n</span><span class="p">,</span> <span class="n">vmr_e_fl</span><span class="p">,</span> <span class="n">vmr_s_fl</span><span class="p">,</span> <span class="n">vmr_w</span><span class="p">),</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
+    
+    <span class="c1"># add component that will scale entire field up and down by some amount</span>
+    
+    <span class="n">scale_n</span> <span class="o">=</span> <span class="mi">1</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">vmr_n</span><span class="p">))</span>
+    <span class="n">scale_e</span> <span class="o">=</span> <span class="mi">1</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">vmr_e</span><span class="p">))</span>
+    <span class="n">scale_s</span> <span class="o">=</span> <span class="mi">1</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">vmr_s</span><span class="p">))</span>
+    <span class="n">scale_w</span> <span class="o">=</span> <span class="mi">1</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">vmr_w</span><span class="p">))</span>
+    <span class="n">scale_all</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">scale_n</span><span class="p">,</span> <span class="n">scale_e</span><span class="p">,</span> <span class="n">scale_s</span><span class="p">,</span> <span class="n">scale_w</span><span class="p">),</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
+    
+    <span class="c1"># find indices that correspond to each direction</span>
+    <span class="n">ind</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">lon</span><span class="p">))</span> <span class="c1">#N</span>
+    <span class="n">ind</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">ind</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span><span class="nb">max</span><span class="p">(</span><span class="n">ind</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">+</span><span class="mi">1</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">lat</span><span class="p">))</span> <span class="c1">#E</span>
+    <span class="n">ind</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">ind</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span><span class="nb">max</span><span class="p">(</span><span class="n">ind</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">+</span><span class="mi">1</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">lon</span><span class="p">))</span> <span class="c1">#s</span>
+    <span class="n">ind</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">ind</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span><span class="nb">max</span><span class="p">(</span><span class="n">ind</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span><span class="o">+</span><span class="mi">1</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">lat</span><span class="p">))</span> <span class="c1">#w</span>
+    
+    <span class="c1"># create field of East-West gradient</span>
+    <span class="n">grad_e_w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">vmr_n</span><span class="p">))</span>
+    <span class="n">slope_e_w</span> <span class="o">=</span> <span class="p">(</span><span class="mf">10.0</span> <span class="o">-</span> <span class="o">-</span><span class="mf">10.0</span><span class="p">)</span><span class="o">/</span><span class="nb">len</span><span class="p">(</span><span class="n">lon</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">ii</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">lon</span><span class="p">)):</span>
+        <span class="n">grad_e_w</span><span class="p">[:,</span><span class="n">ii</span><span class="p">]</span> <span class="o">=</span> <span class="n">slope_e_w</span><span class="o">*</span><span class="n">ii</span> <span class="o">+</span> <span class="o">-</span><span class="mi">10</span>
+ 
+    <span class="n">longrad</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">vmr_all</span><span class="p">))</span>
+    <span class="n">longrad</span><span class="p">[:,</span><span class="n">ind</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">=</span> <span class="n">grad_e_w</span>
+    <span class="n">longrad</span><span class="p">[:,</span><span class="n">ind</span><span class="p">[</span><span class="mi">2</span><span class="p">]]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fliplr</span><span class="p">(</span><span class="n">grad_e_w</span><span class="p">)</span>
+
+    <span class="c1"># create field of North-South gradient</span>
+    <span class="n">grad_n_s</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">vmr_e</span><span class="p">))</span>
+    <span class="n">slope_n_s</span> <span class="o">=</span> <span class="p">(</span><span class="mf">10.0</span> <span class="o">-</span> <span class="o">-</span><span class="mf">10.0</span><span class="p">)</span><span class="o">/</span><span class="nb">len</span><span class="p">(</span><span class="n">lat</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">ii</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">lat</span><span class="p">)):</span>
+        <span class="n">grad_n_s</span><span class="p">[:,</span><span class="n">ii</span><span class="p">]</span> <span class="o">=</span> <span class="n">slope_n_s</span><span class="o">*</span><span class="n">ii</span> <span class="o">+</span> <span class="o">-</span><span class="mi">10</span>
+ 
+    <span class="n">latgrad</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">vmr_all</span><span class="p">))</span>
+    <span class="n">latgrad</span><span class="p">[:,</span><span class="n">ind</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="o">=</span> <span class="n">grad_n_s</span>
+    <span class="n">latgrad</span><span class="p">[:,</span><span class="n">ind</span><span class="p">[</span><span class="mi">3</span><span class="p">]]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fliplr</span><span class="p">(</span><span class="n">grad_n_s</span><span class="p">)</span>
+
+    <span class="c1"># find maximum rate of change (second derivative) between levels 10-15</span>
+
+    <span class="n">secderiv</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">vmr_all</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">tropopause</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">secderiv</span><span class="p">[</span><span class="mi">10</span><span class="p">:</span><span class="mi">15</span><span class="p">,:],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">+</span><span class="mi">10</span><span class="o">+</span><span class="mi">1</span> <span class="c1"># add 1 as compromise. Because of finite differencing, levels will be decreased by 2</span>
+
+        
+    <span class="n">stratgradient</span> <span class="o">=</span>  <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">vmr_all</span><span class="p">))</span> 
+    
+    <span class="k">for</span> <span class="n">ii</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">lat</span><span class="p">)</span><span class="o">+</span><span class="nb">len</span><span class="p">(</span><span class="n">lon</span><span class="p">))):</span>
+        <span class="n">stratgradient</span><span class="p">[</span><span class="n">tropopause</span><span class="p">[</span><span class="n">ii</span><span class="p">]:,</span><span class="n">ii</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">20</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">heights</span><span class="p">)</span><span class="o">-</span><span class="n">tropopause</span><span class="p">[</span><span class="n">ii</span><span class="p">]))</span>      
+        
+    <span class="n">pcs</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">pcs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">scale_all</span><span class="p">)</span>
+    <span class="n">pcs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">vmr_all</span><span class="p">)</span>
+    <span class="n">pcs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">latgrad</span><span class="p">)</span>
+    <span class="n">pcs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">longrad</span><span class="p">)</span>
+    <span class="n">pcs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">stratgradient</span><span class="p">)</span>   
+
+                
+        
+    <span class="n">numregions</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">pcs</span><span class="p">)</span>
+    <span class="n">regions</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="n">numregions</span><span class="p">)</span>
+    
+    <span class="n">basis_grid_n</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">heights</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">lon</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">regions</span><span class="p">)))</span>
+    <span class="n">basis_grid_e</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">heights</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">lat</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">regions</span><span class="p">)))</span>
+    <span class="n">basis_grid_s</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">heights</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">lon</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">regions</span><span class="p">)))</span>
+    <span class="n">basis_grid_w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">heights</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">lat</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">regions</span><span class="p">)))</span>
+
+
+    <span class="c1"># unravel pcs into directions</span>
+    <span class="n">pc_n</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">pc_e</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">pc_s</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">pc_w</span> <span class="o">=</span> <span class="p">[]</span>
+    
+    <span class="k">for</span> <span class="n">ii</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">numregions</span><span class="p">):</span>
+        <span class="n">pc_n</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pcs</span><span class="p">[</span><span class="n">ii</span><span class="p">][:,</span><span class="n">ind</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span>
+        <span class="n">pc_e</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pcs</span><span class="p">[</span><span class="n">ii</span><span class="p">][:,</span><span class="n">ind</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span>
+        <span class="n">pc_s</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pcs</span><span class="p">[</span><span class="n">ii</span><span class="p">][:,</span><span class="n">ind</span><span class="p">[</span><span class="mi">2</span><span class="p">]])</span>
+        <span class="n">pc_w</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pcs</span><span class="p">[</span><span class="n">ii</span><span class="p">][:,</span><span class="n">ind</span><span class="p">[</span><span class="mi">3</span><span class="p">]])</span>
+
+    <span class="c1"># reverse pcs for east and south to make same as VMRs</span>
+    <span class="k">for</span> <span class="n">ii</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">numregions</span><span class="p">):</span>
+        <span class="n">pc_e</span><span class="p">[</span><span class="n">ii</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fliplr</span><span class="p">(</span><span class="n">pc_e</span><span class="p">[</span><span class="n">ii</span><span class="p">])</span>
+        <span class="n">pc_s</span><span class="p">[</span><span class="n">ii</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fliplr</span><span class="p">(</span><span class="n">pc_s</span><span class="p">[</span><span class="n">ii</span><span class="p">])</span>
+                
+    <span class="c1"># create basis grids in format needed for inversion</span>
+        
+    <span class="k">for</span> <span class="n">ii</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">numregions</span><span class="p">):</span>
+        <span class="n">basis_grid_n</span><span class="p">[:,:,</span><span class="n">ii</span><span class="p">]</span> <span class="o">=</span> <span class="n">pc_n</span><span class="p">[</span><span class="n">ii</span><span class="p">]</span><span class="o">/</span><span class="n">vmr_n</span>
+        <span class="n">basis_grid_e</span><span class="p">[:,:,</span><span class="n">ii</span><span class="p">]</span> <span class="o">=</span> <span class="n">pc_e</span><span class="p">[</span><span class="n">ii</span><span class="p">]</span><span class="o">/</span><span class="n">vmr_e</span>
+        <span class="n">basis_grid_s</span><span class="p">[:,:,</span><span class="n">ii</span><span class="p">]</span> <span class="o">=</span> <span class="n">pc_s</span><span class="p">[</span><span class="n">ii</span><span class="p">]</span><span class="o">/</span><span class="n">vmr_s</span>
+        <span class="n">basis_grid_w</span><span class="p">[:,:,</span><span class="n">ii</span><span class="p">]</span> <span class="o">=</span> <span class="n">pc_w</span><span class="p">[</span><span class="n">ii</span><span class="p">]</span><span class="o">/</span><span class="n">vmr_w</span>
+        
+    <span class="n">basis_grid_n</span> <span class="o">=</span> <span class="n">basis_grid_n</span><span class="p">[:,:,:,</span><span class="kc">None</span><span class="p">]</span>
+    <span class="n">basis_grid_e</span> <span class="o">=</span> <span class="n">basis_grid_e</span><span class="p">[:,:,:,</span><span class="kc">None</span><span class="p">]</span>
+    <span class="n">basis_grid_s</span> <span class="o">=</span> <span class="n">basis_grid_s</span><span class="p">[:,:,:,</span><span class="kc">None</span><span class="p">]</span>
+    <span class="n">basis_grid_w</span> <span class="o">=</span> <span class="n">basis_grid_w</span><span class="p">[:,:,:,</span><span class="kc">None</span><span class="p">]</span>
+    
+
+    <span class="n">basis_ds</span> <span class="o">=</span> <span class="n">xray</span><span class="o">.</span><span class="n">Dataset</span><span class="p">({</span><span class="s1">&#39;bc_basis_n&#39;</span><span class="p">:([</span><span class="s1">&#39;height&#39;</span><span class="p">,</span><span class="s1">&#39;lon&#39;</span><span class="p">,</span><span class="s1">&#39;region&#39;</span><span class="p">,</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">basis_grid_n</span><span class="p">),</span> \
+                            <span class="s1">&#39;bc_basis_s&#39;</span><span class="p">:([</span><span class="s1">&#39;height&#39;</span><span class="p">,</span><span class="s1">&#39;lon&#39;</span><span class="p">,</span><span class="s1">&#39;region&#39;</span><span class="p">,</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">basis_grid_s</span><span class="p">),</span> \
+                            <span class="s1">&#39;bc_basis_e&#39;</span><span class="p">:([</span><span class="s1">&#39;height&#39;</span><span class="p">,</span><span class="s1">&#39;lat&#39;</span><span class="p">,</span><span class="s1">&#39;region&#39;</span><span class="p">,</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">basis_grid_e</span><span class="p">),</span> \
+                            <span class="s1">&#39;bc_basis_w&#39;</span><span class="p">:([</span><span class="s1">&#39;height&#39;</span><span class="p">,</span><span class="s1">&#39;lat&#39;</span><span class="p">,</span><span class="s1">&#39;region&#39;</span><span class="p">,</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">basis_grid_w</span><span class="p">)},</span> \
+                <span class="n">coords</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;height&#39;</span><span class="p">:</span> <span class="p">([</span><span class="s1">&#39;height&#39;</span><span class="p">],</span> <span class="n">heights</span><span class="p">),</span> \
+                          <span class="s1">&#39;lon&#39;</span><span class="p">:([</span><span class="s1">&#39;lon&#39;</span><span class="p">],</span> <span class="n">lon</span><span class="p">),</span> \
+                          <span class="s1">&#39;lat&#39;</span><span class="p">:([</span><span class="s1">&#39;lat&#39;</span><span class="p">],</span> <span class="n">lat</span><span class="p">),</span> \
+                          <span class="s1">&#39;region&#39;</span><span class="p">:([</span><span class="s1">&#39;region&#39;</span><span class="p">],</span><span class="n">regions</span><span class="p">),</span> \
+                          <span class="s1">&#39;time&#39;</span><span class="p">:([</span><span class="s1">&#39;time&#39;</span><span class="p">],[</span><span class="n">time</span><span class="p">])})</span>
+                
+    <span class="n">basis_ds</span><span class="o">.</span><span class="n">to_netcdf</span><span class="p">(</span><span class="n">bc_basis_dir</span> <span class="o">+</span> <span class="n">domain</span> <span class="o">+</span><span class="s2">&quot;/&quot;</span> <span class="o">+</span> <span class="n">basis_case</span> <span class="o">+</span> <span class="s2">&quot;_&quot;</span> <span class="o">+</span> <span class="n">domain</span> <span class="o">+</span> <span class="s2">&quot;_&quot;</span> <span class="o">+</span> <span class="n">time</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%m&#39;</span><span class="p">)</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">year</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.nc&quot;</span><span class="p">)</span>           </div>
+
+ 
+               
+<div class="viewcode-block" id="basis_bc_pca"><a class="viewcode-back" href="../../api/acrg_name.html#acrg_name.basis_functions.basis_bc_pca">[docs]</a><span class="k">def</span> <span class="nf">basis_bc_pca</span><span class="p">(</span><span class="n">domain</span> <span class="o">=</span> <span class="s2">&quot;SOUTHASIA&quot;</span><span class="p">,</span> <span class="n">time</span> <span class="o">=</span> <span class="s2">&quot;2012-01-15&quot;</span><span class="p">,</span> <span class="n">species</span><span class="o">=</span><span class="s1">&#39;ch4&#39;</span><span class="p">,</span> <span class="n">units</span><span class="o">=</span><span class="s1">&#39;ppb&#39;</span><span class="p">,</span> <span class="n">basis_case</span><span class="o">=</span><span class="s1">&#39;pca&#39;</span><span class="p">,</span> <span class="n">numregions</span> <span class="o">=</span> <span class="mi">4</span><span class="p">):</span>
+<span class="c1">#   breaks the MOZART VMR into the first &#39;numregions&#39; principal components and scales each PC</span>
+<span class="c1"># will be species specific</span>
+    
+    <span class="n">files</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">fields_file_path</span> <span class="o">+</span> <span class="n">domain</span> <span class="o">+</span> <span class="s2">&quot;/*&quot;</span><span class="p">)</span>
+    
+    <span class="n">time</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">time</span><span class="p">)</span>
+    
+    <span class="k">with</span> <span class="n">xray</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">files</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">as</span> <span class="n">temp</span><span class="p">:</span>
+        <span class="n">fields_ds</span> <span class="o">=</span> <span class="n">temp</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">files</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Can&#39;t find Fields files: &quot;</span> <span class="o">+</span> <span class="n">domain</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    
+    <span class="n">lat</span> <span class="o">=</span> <span class="n">fields_ds</span><span class="p">[</span><span class="s2">&quot;lat&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">lon</span> <span class="o">=</span> <span class="n">fields_ds</span><span class="p">[</span><span class="s2">&quot;lon&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+    
+    <span class="n">regions</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="n">numregions</span><span class="p">)</span>
+    <span class="n">heights</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="mi">500</span><span class="p">,</span><span class="mi">20500</span><span class="p">,</span><span class="mi">1000</span><span class="p">)</span>
+    
+    <span class="n">basis_grid_n</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">heights</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">lon</span><span class="p">),</span><span class="n">numregions</span><span class="p">))</span>
+    <span class="n">basis_grid_e</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">heights</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">lat</span><span class="p">),</span><span class="n">numregions</span><span class="p">))</span>
+    <span class="n">basis_grid_s</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">heights</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">lon</span><span class="p">),</span><span class="n">numregions</span><span class="p">))</span>
+    <span class="n">basis_grid_w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">heights</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">lat</span><span class="p">),</span><span class="n">numregions</span><span class="p">))</span>
+
+    <span class="c1"># find principal companents of MOZART vmr</span>
+
+    <span class="n">bc_ds</span> <span class="o">=</span>  <span class="n">name</span><span class="o">.</span><span class="n">boundary_conditions</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">species</span><span class="p">)</span>
+    <span class="n">bc_ds</span> <span class="o">=</span> <span class="n">bc_ds</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">time</span> <span class="o">=</span> <span class="n">time</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">units</span> <span class="ow">is</span> <span class="s1">&#39;ppb&#39;</span><span class="p">:</span>
+        <span class="n">bc_ds</span> <span class="o">=</span> <span class="n">bc_ds</span><span class="o">*</span><span class="mf">1e9</span>
+    <span class="k">elif</span> <span class="n">units</span> <span class="ow">is</span> <span class="s1">&#39;ppm&#39;</span><span class="p">:</span>
+        <span class="n">bc_ds</span> <span class="o">=</span> <span class="n">bc_ds</span><span class="o">*</span><span class="mf">1e6</span>
+        
+    <span class="n">vmr_n</span> <span class="o">=</span> <span class="n">bc_ds</span><span class="p">[</span><span class="s2">&quot;vmr_n&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">vmr_e</span> <span class="o">=</span> <span class="n">bc_ds</span><span class="p">[</span><span class="s2">&quot;vmr_e&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">vmr_s</span> <span class="o">=</span> <span class="n">bc_ds</span><span class="p">[</span><span class="s2">&quot;vmr_s&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">vmr_w</span> <span class="o">=</span> <span class="n">bc_ds</span><span class="p">[</span><span class="s2">&quot;vmr_w&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+    
+    <span class="c1">#flip the east and south directions to make continuous</span>
+    
+    <span class="n">vmr_e_fl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fliplr</span><span class="p">(</span><span class="n">vmr_e</span><span class="p">)</span>
+    <span class="n">vmr_s_fl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fliplr</span><span class="p">(</span><span class="n">vmr_s</span><span class="p">)</span>
+    
+    <span class="c1"># stick together</span>
+    
+    <span class="n">ind</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span><span class="o">*</span><span class="mi">4</span>
+    <span class="n">vmr_all</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">vmr_n</span><span class="p">,</span> <span class="n">vmr_e_fl</span><span class="p">,</span> <span class="n">vmr_s_fl</span><span class="p">,</span> <span class="n">vmr_w</span><span class="p">),</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">ind</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">lon</span><span class="p">))</span>
+    <span class="n">ind</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">ind</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span><span class="nb">max</span><span class="p">(</span><span class="n">ind</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">+</span><span class="mi">1</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">lat</span><span class="p">))</span>
+    <span class="n">ind</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">ind</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span><span class="nb">max</span><span class="p">(</span><span class="n">ind</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">+</span><span class="mi">1</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">lon</span><span class="p">))</span>
+    <span class="n">ind</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">ind</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span><span class="nb">max</span><span class="p">(</span><span class="n">ind</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span><span class="o">+</span><span class="mi">1</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">lat</span><span class="p">))</span>
+    
+    <span class="n">pca</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">svd</span><span class="p">(</span><span class="n">vmr_all</span><span class="p">)</span>
+    
+    <span class="n">pcs</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">ii</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">numregions</span><span class="p">):</span>
+        <span class="n">u</span> <span class="o">=</span> <span class="n">pca</span><span class="p">[</span><span class="mi">0</span><span class="p">][:,</span><span class="n">ii</span><span class="p">]</span>
+        <span class="n">u</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">u</span><span class="p">,(</span><span class="nb">len</span><span class="p">(</span><span class="n">u</span><span class="p">),</span><span class="mi">1</span><span class="p">))</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">pca</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">ii</span><span class="p">]</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="n">pca</span><span class="p">[</span><span class="mi">2</span><span class="p">][</span><span class="n">ii</span><span class="p">,:]</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">v</span><span class="p">,(</span><span class="mi">1</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">v</span><span class="p">)))</span>
+        <span class="n">pcs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">u</span><span class="o">*</span><span class="n">s</span><span class="p">,</span><span class="n">v</span><span class="p">))</span>
+        
+    <span class="c1"># unravel pcs into directions</span>
+    <span class="n">pc_n</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">pc_e</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">pc_s</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">pc_w</span> <span class="o">=</span> <span class="p">[]</span>
+    
+    <span class="k">for</span> <span class="n">ii</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">numregions</span><span class="p">):</span>
+        <span class="n">pc_n</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pcs</span><span class="p">[</span><span class="n">ii</span><span class="p">][:,</span><span class="n">ind</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span>
+        <span class="n">pc_e</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pcs</span><span class="p">[</span><span class="n">ii</span><span class="p">][:,</span><span class="n">ind</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span>
+        <span class="n">pc_s</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pcs</span><span class="p">[</span><span class="n">ii</span><span class="p">][:,</span><span class="n">ind</span><span class="p">[</span><span class="mi">2</span><span class="p">]])</span>
+        <span class="n">pc_w</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pcs</span><span class="p">[</span><span class="n">ii</span><span class="p">][:,</span><span class="n">ind</span><span class="p">[</span><span class="mi">3</span><span class="p">]])</span>
+
+    <span class="c1"># &quot;un-reverse&quot; pcs for east and south to match VMRs</span>
+
+    <span class="k">for</span> <span class="n">ii</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">numregions</span><span class="p">):</span>
+        <span class="n">pc_e</span><span class="p">[</span><span class="n">ii</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fliplr</span><span class="p">(</span><span class="n">pc_e</span><span class="p">[</span><span class="n">ii</span><span class="p">])</span>
+        <span class="n">pc_s</span><span class="p">[</span><span class="n">ii</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fliplr</span><span class="p">(</span><span class="n">pc_s</span><span class="p">[</span><span class="n">ii</span><span class="p">])</span>
+        
+        
+    <span class="c1"># create basis grids in format needed for inversion</span>
+        
+    <span class="k">for</span> <span class="n">ii</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">numregions</span><span class="p">):</span>
+        <span class="n">basis_grid_n</span><span class="p">[:,:,</span><span class="n">ii</span><span class="p">]</span> <span class="o">=</span> <span class="n">pc_n</span><span class="p">[</span><span class="n">ii</span><span class="p">]</span><span class="o">/</span><span class="n">vmr_n</span>
+        <span class="n">basis_grid_e</span><span class="p">[:,:,</span><span class="n">ii</span><span class="p">]</span> <span class="o">=</span> <span class="n">pc_e</span><span class="p">[</span><span class="n">ii</span><span class="p">]</span><span class="o">/</span><span class="n">vmr_e</span>
+        <span class="n">basis_grid_s</span><span class="p">[:,:,</span><span class="n">ii</span><span class="p">]</span> <span class="o">=</span> <span class="n">pc_s</span><span class="p">[</span><span class="n">ii</span><span class="p">]</span><span class="o">/</span><span class="n">vmr_s</span>
+        <span class="n">basis_grid_w</span><span class="p">[:,:,</span><span class="n">ii</span><span class="p">]</span> <span class="o">=</span> <span class="n">pc_w</span><span class="p">[</span><span class="n">ii</span><span class="p">]</span><span class="o">/</span><span class="n">vmr_w</span>
+        
+    <span class="n">basis_grid_n</span> <span class="o">=</span> <span class="n">basis_grid_n</span><span class="p">[:,:,:,</span><span class="kc">None</span><span class="p">]</span>
+    <span class="n">basis_grid_e</span> <span class="o">=</span> <span class="n">basis_grid_e</span><span class="p">[:,:,:,</span><span class="kc">None</span><span class="p">]</span>
+    <span class="n">basis_grid_s</span> <span class="o">=</span> <span class="n">basis_grid_s</span><span class="p">[:,:,:,</span><span class="kc">None</span><span class="p">]</span>
+    <span class="n">basis_grid_w</span> <span class="o">=</span> <span class="n">basis_grid_w</span><span class="p">[:,:,:,</span><span class="kc">None</span><span class="p">]</span>
+    
+
+    <span class="n">basis_ds</span> <span class="o">=</span> <span class="n">xray</span><span class="o">.</span><span class="n">Dataset</span><span class="p">({</span><span class="s1">&#39;bc_basis_n&#39;</span><span class="p">:([</span><span class="s1">&#39;height&#39;</span><span class="p">,</span><span class="s1">&#39;lon&#39;</span><span class="p">,</span><span class="s1">&#39;region&#39;</span><span class="p">,</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">basis_grid_n</span><span class="p">),</span> \
+                            <span class="s1">&#39;bc_basis_s&#39;</span><span class="p">:([</span><span class="s1">&#39;height&#39;</span><span class="p">,</span><span class="s1">&#39;lon&#39;</span><span class="p">,</span><span class="s1">&#39;region&#39;</span><span class="p">,</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">basis_grid_s</span><span class="p">),</span> \
+                            <span class="s1">&#39;bc_basis_e&#39;</span><span class="p">:([</span><span class="s1">&#39;height&#39;</span><span class="p">,</span><span class="s1">&#39;lat&#39;</span><span class="p">,</span><span class="s1">&#39;region&#39;</span><span class="p">,</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">basis_grid_e</span><span class="p">),</span> \
+                            <span class="s1">&#39;bc_basis_w&#39;</span><span class="p">:([</span><span class="s1">&#39;height&#39;</span><span class="p">,</span><span class="s1">&#39;lat&#39;</span><span class="p">,</span><span class="s1">&#39;region&#39;</span><span class="p">,</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">basis_grid_w</span><span class="p">)},</span> \
+                <span class="n">coords</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;height&#39;</span><span class="p">:</span> <span class="p">([</span><span class="s1">&#39;height&#39;</span><span class="p">],</span> <span class="n">heights</span><span class="p">),</span> \
+                          <span class="s1">&#39;lon&#39;</span><span class="p">:([</span><span class="s1">&#39;lon&#39;</span><span class="p">],</span> <span class="n">lon</span><span class="p">),</span> \
+                          <span class="s1">&#39;lat&#39;</span><span class="p">:([</span><span class="s1">&#39;lat&#39;</span><span class="p">],</span> <span class="n">lat</span><span class="p">),</span> \
+                          <span class="s1">&#39;region&#39;</span><span class="p">:([</span><span class="s1">&#39;region&#39;</span><span class="p">],</span><span class="n">regions</span><span class="p">),</span> \
+                          <span class="s1">&#39;time&#39;</span><span class="p">:([</span><span class="s1">&#39;time&#39;</span><span class="p">],[</span><span class="n">time</span><span class="p">])})</span>
+                
+    <span class="n">basis_ds</span><span class="o">.</span><span class="n">to_netcdf</span><span class="p">(</span><span class="n">bc_basis_dir</span> <span class="o">+</span> <span class="n">domain</span> <span class="o">+</span><span class="s2">&quot;/&quot;</span> <span class="o">+</span> <span class="n">species</span> <span class="o">+</span> <span class="s2">&quot;_&quot;</span> <span class="o">+</span> <span class="n">basis_case</span> <span class="o">+</span> <span class="s2">&quot;_&quot;</span> <span class="o">+</span> <span class="n">domain</span> <span class="o">+</span> <span class="s2">&quot;_&quot;</span> <span class="o">+</span> <span class="n">time</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%m&#39;</span><span class="p">)</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">year</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.nc&quot;</span><span class="p">)</span>           </div>
+ 
+ 
+<div class="viewcode-block" id="cut_array2d"><a class="viewcode-back" href="../../api/acrg_name.html#acrg_name.basis_functions.cut_array2d">[docs]</a><span class="k">def</span> <span class="nf">cut_array2d</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">shape</span><span class="p">):</span>
+    <span class="n">arr_shape</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">array</span><span class="p">)</span>
+    <span class="n">xcut</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">arr_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">)</span>
+    <span class="n">ycut</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">arr_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">)</span>
+    <span class="n">xextent</span> <span class="o">=</span> <span class="p">[];</span>    <span class="n">yextent</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
+<span class="c1">#            blocks.append(array[xcut[i]:xcut[i+1],ycut[j]:ycut[j+1]])</span>
+            <span class="n">xextent</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">xcut</span><span class="p">[</span><span class="n">i</span><span class="p">],</span><span class="n">xcut</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]])</span>
+            <span class="n">yextent</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">ycut</span><span class="p">[</span><span class="n">j</span><span class="p">],</span><span class="n">ycut</span><span class="p">[</span><span class="n">j</span><span class="o">+</span><span class="mi">1</span><span class="p">]])</span>
+    <span class="k">return</span> <span class="n">xextent</span><span class="p">,</span><span class="n">yextent</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, mrghg.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
