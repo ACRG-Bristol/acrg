@@ -165,7 +165,7 @@ def test_footprints_from_file(fp_directory,measurement_param):
     search_str = os.path.join(directory,"*.nc")
     fp_filename = glob.glob(search_str)[0]
     
-    out = name.footprints(fp_filename)
+    out = name.footprints(fp_filename, start = "2010-01-01", end = "2016-01-01", domain="EUROPE")
     
     assert out
 
