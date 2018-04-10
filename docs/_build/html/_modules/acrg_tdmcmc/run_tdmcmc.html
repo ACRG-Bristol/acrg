@@ -1,0 +1,834 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>acrg_tdmcmc.run_tdmcmc &#8212; acrg  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for acrg_tdmcmc.run_tdmcmc</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Created on Fri Feb  5 09:44:30 2016</span>
+
+<span class="sd">@author: ml12574</span>
+
+<span class="sd">Template script for running uncorrelated trans-dimensional inversion</span>
+
+<span class="sd">Uses acrg_hbtdmcmc_uncorr.f90</span>
+
+<span class="sd">Please note: The default is not to perform parallel tempering and the rjmcmc </span>
+<span class="sd">is performed using a single chain on a single processor. If you think parallel</span>
+<span class="sd">tempering is required this is easily changed. Speak to me (ML).</span>
+
+<span class="sd">After the function definition at the top of the script the next section</span>
+<span class="sd">is the inputs. This contains all the basic stuff you will probably want and </span>
+<span class="sd">have to change or tune.</span>
+
+<span class="sd">Further changes to stepsizes and parameter uncertainties can be applied </span>
+<span class="sd">further down the script once the dimensions have been set. You will almost </span>
+<span class="sd">certainly need to tune your stepsizes appropriately for different parameter </span>
+<span class="sd">types (i.e. baseline and emissions). You will also want to adjust the </span>
+<span class="sd">uncertainties differently (emissions uncertainty &gt; baseline uncertainty). </span>
+
+<span class="sd">@author: ml12574</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="c1">#import tdmcmc_uncorr</span>
+<span class="c1">#import tdmcmc_evencorr</span>
+<span class="kn">import</span> <span class="nn">acrg_name</span> <span class="k">as</span> <span class="nn">name</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">acrg_agage</span> <span class="k">as</span> <span class="nn">agage</span>
+<span class="kn">import</span> <span class="nn">pandas</span>
+<span class="kn">import</span> <span class="nn">datetime</span> <span class="k">as</span> <span class="nn">dt</span>
+<span class="kn">from</span> <span class="nn">numba</span> <span class="k">import</span> <span class="n">jit</span>
+<span class="kn">import</span> <span class="nn">time</span> <span class="k">as</span> <span class="nn">run_time</span>
+<span class="kn">import</span> <span class="nn">xarray</span> <span class="k">as</span> <span class="nn">xray</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">re</span>
+
+
+<span class="nd">@jit</span><span class="p">(</span><span class="n">nopython</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<div class="viewcode-block" id="closest_grid"><a class="viewcode-back" href="../../api/acrg_tdmcmc.html#acrg_tdmcmc.run_tdmcmc.closest_grid">[docs]</a><span class="k">def</span> <span class="nf">closest_grid</span><span class="p">(</span><span class="n">region</span><span class="p">,</span> <span class="n">lon</span><span class="p">,</span> <span class="n">lat</span><span class="p">,</span> <span class="n">plon</span><span class="p">,</span> <span class="n">plat</span><span class="p">,</span> <span class="n">pind</span><span class="p">):</span>
+    <span class="n">lai</span><span class="o">=</span><span class="mi">0</span>
+    <span class="k">for</span> <span class="n">la</span> <span class="ow">in</span> <span class="n">lat</span><span class="p">:</span>
+        <span class="n">loi</span><span class="o">=</span><span class="mi">0</span>
+        <span class="k">for</span> <span class="n">lo</span> <span class="ow">in</span> <span class="n">lon</span><span class="p">:</span>
+            <span class="n">maxdist</span><span class="o">=</span><span class="mf">1e6</span>
+            <span class="k">for</span> <span class="n">pi</span> <span class="ow">in</span> <span class="n">pind</span><span class="p">:</span>
+                <span class="n">dist</span><span class="o">=</span><span class="p">(</span><span class="n">la</span> <span class="o">-</span> <span class="n">plat</span><span class="p">[</span><span class="n">pi</span><span class="p">])</span><span class="o">*</span><span class="p">(</span><span class="n">la</span> <span class="o">-</span> <span class="n">plat</span><span class="p">[</span><span class="n">pi</span><span class="p">])</span> <span class="o">+</span> <span class="p">(</span><span class="n">lo</span> <span class="o">-</span> <span class="n">plon</span><span class="p">[</span><span class="n">pi</span><span class="p">])</span><span class="o">*</span><span class="p">(</span><span class="n">lo</span> <span class="o">-</span> <span class="n">plon</span><span class="p">[</span><span class="n">pi</span><span class="p">])</span>
+                <span class="k">if</span> <span class="n">dist</span> <span class="o">&lt;</span> <span class="n">maxdist</span><span class="p">:</span>
+                    <span class="n">region</span><span class="p">[</span><span class="n">lai</span><span class="p">,</span> <span class="n">loi</span><span class="p">]</span><span class="o">=</span><span class="n">pi</span>
+                    <span class="n">maxdist</span><span class="o">=</span><span class="n">dist</span>
+            <span class="n">loi</span><span class="o">+=</span><span class="mi">1</span>
+        <span class="n">lai</span><span class="o">+=</span><span class="mi">1</span>
+    <span class="k">return</span> <span class="n">region</span></div>
+
+<div class="viewcode-block" id="get_nsigma_y"><a class="viewcode-back" href="../../api/acrg_tdmcmc.html#acrg_tdmcmc.run_tdmcmc.get_nsigma_y">[docs]</a><span class="k">def</span> <span class="nf">get_nsigma_y</span><span class="p">(</span><span class="n">fp_data_H</span><span class="p">,</span><span class="n">start_date</span><span class="p">,</span> <span class="n">end_date</span><span class="p">,</span> <span class="n">sites</span><span class="p">,</span> 
+                  <span class="n">nmeasure</span><span class="p">,</span> <span class="n">sigma_values</span><span class="p">,</span> <span class="n">bl_period</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">bl_split</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                  <span class="n">levels</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>      
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Defines the indices of the measurement vector which are described by different </span>
+<span class="sd">    uncertainty hyperparameters (sigma_model)</span>
+<span class="sd">    By default all sigma_models are split by site and time.</span>
+<span class="sd">    Alternative option for subdivision by site and boundary layer depth. Can be set</span>
+<span class="sd">    when calling the function.</span>
+<span class="sd">    E.g.</span>
+<span class="sd">    To split by 10 day periods:</span>
+<span class="sd">        R_indices, ydim1,ydim2, sigma_model0 = get_nsigma_y(fp_data_H,start_date, end_date,</span>
+<span class="sd">        sites, nmeasure, bl_split = False, bl_period=10,</span>
+<span class="sd">        sigma_values=50.)</span>
+<span class="sd">        </span>
+<span class="sd">    To split by BL depth:</span>
+<span class="sd">        R_indices, ydim1,ydim2, sigma_model0 = get_nsigma_y(fp_data_H,start_date, end_date,</span>
+<span class="sd">        sites, nmeasure, bl_split = True, bl_period=None,</span>
+<span class="sd">        sigma_values=50.)</span>
+<span class="sd">        </span>
+<span class="sd">    &quot;&quot;&quot;</span>  
+    <span class="n">nsites</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">sites</span><span class="p">)</span>      
+    <span class="n">d0</span><span class="o">=</span><span class="n">pandas</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">start_date</span><span class="p">)</span>
+    <span class="n">d1</span><span class="o">=</span><span class="n">pandas</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">end_date</span><span class="p">)</span>
+    <span class="n">delta</span> <span class="o">=</span> <span class="n">d1</span> <span class="o">-</span> <span class="n">d0</span>
+    <span class="n">ndays</span> <span class="o">=</span> <span class="n">delta</span><span class="o">.</span><span class="n">days</span>
+       
+    <span class="n">y_bl</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nmeasure</span><span class="p">))</span>
+    
+    <span class="n">nsigma</span><span class="o">=</span><span class="mi">0</span>
+    <span class="n">nsigma_max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">ndays</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">(</span><span class="n">bl_period</span><span class="p">)))</span>
+    <span class="n">ntime_stn</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nsites</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">levels</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">ngroups</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">levels</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span>
+        
+    <span class="n">ydim1</span><span class="o">=</span><span class="mi">0</span>
+    <span class="n">sigma_models</span><span class="o">=</span><span class="p">[]</span>
+    
+    <span class="k">for</span> <span class="n">si</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nsites</span><span class="p">):</span>
+        <span class="n">fp_data_H3</span> <span class="o">=</span> <span class="n">fp_data_H</span><span class="p">[</span><span class="n">sites</span><span class="p">[</span><span class="n">si</span><span class="p">]]</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="s2">&quot;time&quot;</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s2">&quot;all&quot;</span><span class="p">)</span>        
+        <span class="n">nsigma_stn</span><span class="o">=</span><span class="mi">0</span>
+        
+        <span class="n">mf_time_temp</span><span class="o">=</span><span class="n">fp_data_H3</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">mf_time_temp2</span><span class="o">=</span><span class="n">pandas</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">mf_time_temp</span><span class="p">)</span>
+        <span class="n">pblh_temp</span><span class="o">=</span><span class="n">fp_data_H3</span><span class="o">.</span><span class="n">PBLH</span><span class="o">.</span><span class="n">values</span>
+        <span class="c1">#mf_mod_temp=fp_data_H3.mf_mod.values</span>
+        <span class="n">ntime_stn</span><span class="p">[</span><span class="n">si</span><span class="p">]</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">mf_time_temp</span><span class="p">)</span>
+        
+        <span class="n">bl_start</span><span class="o">=</span><span class="n">d0</span>
+        
+        <span class="k">if</span> <span class="n">bl_split</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">mf_mod_temp</span><span class="o">=</span><span class="n">fp_data_H3</span><span class="o">.</span><span class="n">mf_mod</span><span class="o">.</span><span class="n">values</span>
+            <span class="k">for</span> <span class="n">ti</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ngroups</span><span class="p">):</span>
+                 
+                <span class="n">wh</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">pblh_temp</span><span class="o">&gt;=</span><span class="n">levels</span><span class="p">[</span><span class="n">ti</span><span class="p">],</span>
+                                           <span class="n">pblh_temp</span><span class="o">&lt;</span><span class="n">levels</span><span class="p">[</span><span class="n">ti</span><span class="o">+</span><span class="mi">1</span><span class="p">]))</span>
+                                                                       
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">wh</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">y_bl</span><span class="p">[</span><span class="n">wh</span><span class="o">+</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">ntime_stn</span><span class="p">[:</span><span class="n">si</span><span class="p">],</span><span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint16</span><span class="p">)]</span><span class="o">=</span><span class="n">nsigma_stn</span><span class="o">+</span><span class="n">nsigma</span>
+                    
+                    <span class="c1">#sigma_models.append(sigma_values[ti])</span>
+                    <span class="k">if</span> <span class="n">levels</span><span class="p">[</span><span class="n">ti</span><span class="p">]</span><span class="o">&lt;</span><span class="mi">499</span><span class="p">:</span>
+                        <span class="c1">#if levels[ti]&gt;499:</span>
+                        <span class="n">sigma_models</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sigma_values</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">wh</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                            <span class="n">sigma_models</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">mf_mod_temp</span><span class="p">[</span><span class="n">wh</span><span class="p">[</span><span class="mi">0</span><span class="p">]]))</span>
+                        <span class="k">else</span><span class="p">:</span> 
+                            <span class="n">sigma_models</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mf">20.</span><span class="p">)</span>
+                    <span class="n">nsigma_stn</span><span class="o">+=</span><span class="mi">1</span>
+                    
+                <span class="n">n_obs</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">wh</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="k">if</span> <span class="n">n_obs</span> <span class="o">&gt;</span> <span class="n">ydim1</span><span class="p">:</span>
+                    <span class="n">ydim1</span> <span class="o">=</span> <span class="n">n_obs</span><span class="o">*</span><span class="mi">1</span>
+                                      
+    
+            <span class="n">nsigma</span><span class="o">+=</span><span class="n">nsigma_stn</span>
+        
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">ti</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nsigma_max</span><span class="p">):</span>
+                    <span class="n">bl_end</span><span class="o">=</span><span class="n">bl_start</span><span class="o">+</span><span class="n">dt</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="n">bl_period</span><span class="p">)</span>
+                    
+                    <span class="n">wh</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">mf_time_temp2</span><span class="o">&gt;=</span><span class="n">bl_start</span><span class="p">,</span>
+                                           <span class="n">mf_time_temp2</span><span class="o">&lt;</span><span class="n">bl_end</span><span class="p">))</span>
+                    <span class="c1">#                                </span>
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">wh</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">y_bl</span><span class="p">[</span><span class="n">wh</span><span class="o">+</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">ntime_stn</span><span class="p">[:</span><span class="n">si</span><span class="p">],</span><span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint16</span><span class="p">)]</span><span class="o">=</span><span class="n">nsigma_stn</span><span class="o">+</span><span class="n">nsigma</span>
+                        <span class="n">sigma_models</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sigma_values</span><span class="p">)</span>
+                        <span class="n">nsigma_stn</span><span class="o">+=</span><span class="mi">1</span>
+                        
+                    <span class="n">bl_start</span><span class="o">=</span><span class="n">bl_start</span><span class="o">+</span><span class="n">dt</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="n">bl_period</span><span class="p">)</span>
+                    <span class="n">n_obs</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">wh</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                    <span class="k">if</span> <span class="n">n_obs</span> <span class="o">&gt;</span> <span class="n">ydim1</span><span class="p">:</span>
+                        <span class="n">ydim1</span> <span class="o">=</span> <span class="n">n_obs</span><span class="o">*</span><span class="mi">1</span>
+                                          
+        
+            <span class="n">nsigma</span><span class="o">+=</span><span class="n">nsigma_stn</span>
+    
+    <span class="c1"># INDEX R</span>
+    <span class="nb">print</span> <span class="n">ydim1</span><span class="p">,</span> <span class="n">nsigma</span>
+    <span class="n">R_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">ydim1</span><span class="p">,</span><span class="n">nsigma</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint16</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">ii</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nsigma</span><span class="p">):</span>      
+        <span class="n">wh_bl</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">y_bl</span> <span class="o">==</span> <span class="n">ii</span><span class="p">)</span>
+        <span class="n">nwh</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">wh_bl</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">R_indices</span><span class="p">[:</span><span class="n">nwh</span><span class="p">,</span><span class="n">ii</span><span class="p">]</span><span class="o">=</span><span class="n">wh_bl</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span>
+        <span class="k">if</span> <span class="n">nwh</span> <span class="o">&lt;</span> <span class="n">ydim1</span><span class="p">:</span>
+            <span class="n">R_indices</span><span class="p">[</span><span class="n">nwh</span><span class="p">:,</span><span class="n">ii</span><span class="p">]</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">wh_bl</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span>
+    
+    <span class="n">ydim2</span><span class="o">=</span><span class="n">nsigma</span><span class="o">*</span><span class="mi">1</span>
+    
+    <span class="k">return</span> <span class="n">R_indices</span><span class="p">,</span> <span class="n">ydim1</span><span class="p">,</span> <span class="n">ydim2</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">sigma_models</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="run_tdmcmc"><a class="viewcode-back" href="../../api/acrg_tdmcmc.html#acrg_tdmcmc.run_tdmcmc.run_tdmcmc">[docs]</a><span class="k">def</span> <span class="nf">run_tdmcmc</span><span class="p">(</span><span class="n">sites</span><span class="p">,</span><span class="n">meas_period</span><span class="p">,</span><span class="n">av_period</span><span class="p">,</span><span class="n">species</span><span class="p">,</span><span class="n">start_date</span> <span class="p">,</span><span class="n">end_date</span><span class="p">,</span> 
+    <span class="n">domain</span><span class="p">,</span><span class="n">network</span><span class="p">,</span><span class="n">fp_basis_case</span> <span class="p">,</span><span class="n">bc_basis_case</span><span class="p">,</span><span class="n">rjmcmc</span><span class="p">,</span><span class="n">para_temp</span><span class="p">,</span>
+    <span class="n">bl_period</span><span class="p">,</span><span class="n">kmin</span><span class="p">,</span><span class="n">kmax</span><span class="p">,</span><span class="n">k_ap</span><span class="p">,</span><span class="n">nIt</span><span class="p">,</span><span class="n">burn_in</span><span class="p">,</span><span class="n">nsub</span><span class="p">,</span>
+    <span class="n">nbeta</span><span class="p">,</span><span class="n">beta</span><span class="p">,</span><span class="n">sigma_model_pdf</span><span class="p">,</span><span class="n">sigma_model_ap</span><span class="p">,</span> 
+    <span class="n">sigma_model_hparams</span><span class="p">,</span><span class="n">stepsize_sigma_y</span><span class="p">,</span><span class="n">stepsize_clon</span><span class="p">,</span><span class="n">stepsize_clat</span><span class="p">,</span>
+    <span class="n">stepsize_bd</span><span class="p">,</span><span class="n">stepsize_all</span><span class="p">,</span><span class="n">stepsize_pdf_p1_all</span><span class="p">,</span><span class="n">stepsize_pdf_p2_all</span><span class="p">,</span>
+    <span class="n">pdf_param1</span><span class="p">,</span><span class="n">pdf_param2</span><span class="p">,</span><span class="n">pdf_p1_hparam1</span><span class="p">,</span><span class="n">pdf_p1_hparam2</span><span class="p">,</span><span class="n">pdf_p2_hparam1</span><span class="p">,</span>
+    <span class="n">pdf_p2_hparam2</span><span class="p">,</span><span class="n">x_pdf</span> <span class="p">,</span><span class="n">pdf_param1_pdf</span><span class="p">,</span><span class="n">pdf_param2_pdf</span><span class="p">,</span><span class="n">inv_type</span><span class="p">,</span>
+    <span class="n">output_dir</span><span class="p">,</span><span class="n">tau_ap</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">tau_hparams</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">stepsize_tau</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">tau_pdf</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">bl_split</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">bl_levels</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">filters</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="c1">#%%</span>
+    
+    <span class="k">if</span> <span class="n">para_temp</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="nb">print</span> <span class="p">(</span><span class="s2">&quot;Parallel tempering is true: have you remembered to uncomment &quot;</span> 
+                <span class="s2">&quot;call OMP_SET_NUM_THREADS in the .f90 script? &quot;</span><span class="p">)</span>
+        <span class="nb">print</span> <span class="p">(</span><span class="s2">&quot;No? Well do it and recompile with fopenmp otherwise this will take nbeta x longer&quot;</span><span class="p">)</span>
+    
+    <span class="c1">#########################################</span>
+    <span class="c1"># READ IN DATA AND FOOTPRINTS THEN MERGE</span>
+    <span class="n">corr_type</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;uncorrelated&quot;</span><span class="p">:</span><span class="kc">False</span><span class="p">,</span>
+              <span class="s2">&quot;corr&quot;</span><span class="p">:</span><span class="kc">False</span><span class="p">,</span>
+              <span class="s2">&quot;evencorr&quot;</span><span class="p">:</span><span class="kc">True</span><span class="p">}</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">agage</span><span class="o">.</span><span class="n">get_obs</span><span class="p">(</span><span class="n">sites</span><span class="p">,</span> <span class="n">species</span><span class="p">,</span> <span class="n">start</span> <span class="o">=</span> <span class="n">start_date</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="n">end_date</span><span class="p">,</span> <span class="n">average</span> <span class="o">=</span> <span class="n">meas_period</span><span class="p">,</span> 
+                          <span class="n">keep_missing</span><span class="o">=</span><span class="n">corr_type</span><span class="p">[</span><span class="n">inv_type</span><span class="p">])</span>
+    
+    
+    <span class="c1">#fp_all = name.footprints_data_merge(data, domain=domain, species=species, calc_bc=True)</span>
+    <span class="c1"># Commented out and replaced by rt17603 on 11/08 - no species argument in this function.</span>
+    <span class="n">fp_all</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="n">footprints_data_merge</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="n">domain</span><span class="p">,</span> <span class="n">calc_bc</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">fp_basis_case</span> <span class="ow">in</span><span class="p">(</span><span class="s2">&quot;INTEM&quot;</span><span class="p">):</span>    
+        <span class="n">fp_data_H2</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="n">fp_sensitivity</span><span class="p">(</span><span class="n">fp_all</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="n">domain</span><span class="p">,</span> <span class="n">basis_case</span><span class="o">=</span><span class="s1">&#39;transd&#39;</span><span class="p">)</span>
+        <span class="n">basis_func</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">basis</span><span class="p">(</span><span class="n">domain</span> <span class="o">=</span> <span class="n">domain</span><span class="p">,</span> <span class="n">basis_case</span> <span class="o">=</span> <span class="s1">&#39;INTEM&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>                            
+        <span class="n">fp_data_H2</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="n">fp_sensitivity</span><span class="p">(</span><span class="n">fp_all</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="n">domain</span><span class="p">,</span> <span class="n">basis_case</span><span class="o">=</span><span class="n">fp_basis_case</span><span class="p">)</span>
+    <span class="n">fp_data_H2</span><span class="o">=</span><span class="n">name</span><span class="o">.</span><span class="n">bc_sensitivity</span><span class="p">(</span><span class="n">fp_data_H2</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="n">domain</span><span class="p">,</span><span class="n">basis_case</span><span class="o">=</span><span class="n">bc_basis_case</span><span class="p">)</span>
+    
+    <span class="c1">###########################################################################</span>
+    <span class="c1"># CALCULATE DEGREE OF LOCALNESS FOR EACH FOOTPRINT</span>
+    <span class="n">release_lons</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">sites</span><span class="p">)))</span>
+    <span class="n">release_lats</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">sites</span><span class="p">)))</span>
+    <span class="k">for</span> <span class="n">si</span><span class="p">,</span> <span class="n">site</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sites</span><span class="p">):</span>
+        <span class="n">release_lons</span><span class="p">[</span><span class="n">si</span><span class="p">]</span><span class="o">=</span><span class="n">fp_data_H2</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">release_lon</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">release_lats</span><span class="p">[</span><span class="n">si</span><span class="p">]</span><span class="o">=</span><span class="n">fp_data_H2</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">release_lat</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">dlon</span><span class="o">=</span><span class="n">fp_data_H2</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">sub_lon</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">-</span><span class="n">fp_data_H2</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">sub_lon</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">dlat</span><span class="o">=</span><span class="n">fp_data_H2</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">sub_lat</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">-</span><span class="n">fp_data_H2</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">sub_lat</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">local_sum</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">fp_data_H2</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">mf</span><span class="p">)))</span>
+       
+        <span class="k">for</span> <span class="n">ti</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">fp_data_H2</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">mf</span><span class="p">)):</span>
+            <span class="n">release_lon</span><span class="o">=</span><span class="n">fp_data_H2</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">release_lon</span><span class="p">[</span><span class="n">ti</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+            <span class="n">release_lat</span><span class="o">=</span><span class="n">fp_data_H2</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">release_lat</span><span class="p">[</span><span class="n">ti</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+            <span class="n">wh_rlon</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">fp_data_H2</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">sub_lon</span><span class="o">.</span><span class="n">values</span><span class="o">-</span><span class="n">release_lon</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">dlon</span><span class="o">/</span><span class="mf">2.</span><span class="p">)</span>
+            <span class="n">wh_rlat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">fp_data_H2</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">sub_lat</span><span class="o">.</span><span class="n">values</span><span class="o">-</span><span class="n">release_lat</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">dlat</span><span class="o">/</span><span class="mf">2.</span><span class="p">)</span>
+            <span class="n">local_sum</span><span class="p">[</span><span class="n">ti</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">fp_data_H2</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">sub_fp</span><span class="p">[</span>
+            <span class="n">wh_rlat</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="mi">2</span><span class="p">:</span><span class="n">wh_rlat</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="mi">3</span><span class="p">,</span><span class="n">wh_rlon</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="mi">2</span><span class="p">:</span><span class="n">wh_rlon</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="mi">3</span><span class="p">,</span><span class="n">ti</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">)</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span>
+            <span class="n">fp_data_H2</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">fp</span><span class="p">[:,:,</span><span class="n">ti</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>  
+            
+        <span class="n">local_ds</span> <span class="o">=</span> <span class="n">xray</span><span class="o">.</span><span class="n">Dataset</span><span class="p">({</span><span class="s1">&#39;local_ratio&#39;</span><span class="p">:</span> <span class="p">([</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">local_sum</span><span class="p">)},</span>
+                                        <span class="n">coords</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;time&#39;</span> <span class="p">:</span> <span class="p">(</span><span class="n">fp_data_H2</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">])})</span>
+    
+        <span class="n">fp_data_H2</span><span class="p">[</span><span class="n">site</span><span class="p">]</span> <span class="o">=</span> <span class="n">fp_data_H2</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">local_ds</span><span class="p">)</span>
+        <span class="n">fp_data_H2</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;Domain&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">domain</span>
+<span class="c1">#        fp_data_H2[site].attrs[&#39;Height&#39;]=fp_heights[site] # ** fp_heights needs to be defined **</span>
+    
+    <span class="k">if</span> <span class="n">filters</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">fp_data_H5</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="n">filtering</span><span class="p">(</span><span class="n">fp_data_H2</span><span class="p">,</span> <span class="n">filters</span><span class="p">,</span><span class="n">keep_missing</span><span class="o">=</span><span class="n">corr_type</span><span class="p">[</span><span class="n">inv_type</span><span class="p">])</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">fp_data_H5</span> <span class="o">=</span> <span class="n">fp_data_H2</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        
+    <span class="n">fp_data_H</span> <span class="o">=</span> <span class="p">{}</span>    
+    <span class="k">for</span> <span class="n">si</span><span class="p">,</span> <span class="n">site</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sites</span><span class="p">):</span>
+        <span class="n">site_ds</span> <span class="o">=</span> <span class="n">fp_data_H5</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">resample</span><span class="p">(</span><span class="n">av_period</span><span class="p">[</span><span class="n">si</span><span class="p">],</span> <span class="n">dim</span> <span class="o">=</span> <span class="s2">&quot;time&quot;</span><span class="p">)</span>
+        <span class="n">site_ds2</span><span class="o">=</span> <span class="n">site_ds</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="s2">&quot;time&quot;</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s2">&quot;all&quot;</span><span class="p">)</span>
+        <span class="n">fp_data_H</span><span class="p">[</span><span class="n">site</span><span class="p">]</span> <span class="o">=</span> <span class="n">site_ds2</span>
+        
+    
+    <span class="n">lat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">fp_data_H</span><span class="p">[</span><span class="n">sites</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">sub_lat</span><span class="p">)</span>
+    <span class="n">lon</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">fp_data_H</span><span class="p">[</span><span class="n">sites</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">sub_lon</span><span class="p">)</span>
+    <span class="n">nlat</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">lat</span><span class="p">)</span>
+    <span class="n">nlon</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">lon</span><span class="p">)</span>
+    <span class="n">lonmin</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">lon</span><span class="p">)</span>
+    <span class="n">lonmax</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">lon</span><span class="p">)</span>
+    <span class="n">latmin</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">lat</span><span class="p">)</span>
+    <span class="n">latmax</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">lat</span><span class="p">)</span>
+    <span class="n">Ngrid</span> <span class="o">=</span> <span class="n">nlon</span><span class="o">*</span><span class="n">nlat</span>  <span class="c1"># Define underlying grid    </span>
+    
+    <span class="c1">###########################################################</span>
+    <span class="c1"># EVERYTHING NEEDS TO BE ARRAYS FOR MCMC</span>
+    <span class="c1">#STACK FPs, FLUXES AND OBS</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">y_site</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">y_time</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">y_error</span><span class="o">=</span><span class="p">[]</span>
+    <span class="n">H_bc5</span><span class="o">=</span><span class="p">[]</span>
+    <span class="n">local_ratio</span><span class="o">=</span><span class="p">[]</span>
+    <span class="n">pblh</span><span class="o">=</span><span class="p">[]</span>
+    <span class="n">wind_speed</span><span class="o">=</span><span class="p">[]</span>
+    
+    <span class="k">for</span> <span class="n">si</span><span class="p">,</span> <span class="n">site</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sites</span><span class="p">):</span>
+              
+        <span class="n">fp_data_H3</span> <span class="o">=</span> <span class="n">fp_data_H</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="s2">&quot;time&quot;</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s2">&quot;all&quot;</span><span class="p">)</span>  
+        <span class="n">attributes</span> <span class="o">=</span> <span class="p">[</span><span class="n">key</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">fp_data_H3</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="k">if</span> <span class="n">key</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;.&#39;</span><span class="p">]</span>  
+        <span class="n">y</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fp_data_H3</span><span class="o">.</span><span class="n">mf</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>     
+        <span class="n">y_site</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">site</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">fp_data_H3</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]))])</span>
+        <span class="n">y_time</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fp_data_H3</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+        <span class="n">H_bc5</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fp_data_H3</span><span class="o">.</span><span class="n">bc</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+        <span class="n">sub_flux_temp</span> <span class="o">=</span> <span class="n">fp_data_H3</span><span class="o">.</span><span class="n">flux</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">lon</span><span class="o">=</span><span class="n">lon</span><span class="p">,</span> <span class="n">lat</span><span class="o">=</span><span class="n">lat</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;nearest&quot;</span><span class="p">)</span>
+        <span class="n">local_ratio</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fp_data_H3</span><span class="o">.</span><span class="n">local_ratio</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+        <span class="n">pblh</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fp_data_H3</span><span class="o">.</span><span class="n">PBLH</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+        <span class="n">wind_speed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fp_data_H3</span><span class="o">.</span><span class="n">wind_speed</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="s1">&#39;dmf&#39;</span> <span class="ow">in</span> <span class="n">attributes</span><span class="p">:</span>    
+            <span class="n">y_error</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fp_data_H3</span><span class="o">.</span><span class="n">dmf</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="s1">&#39;vmf&#39;</span> <span class="ow">in</span> <span class="n">attributes</span><span class="p">:</span>   
+            <span class="n">y_error</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fp_data_H3</span><span class="o">.</span><span class="n">vmf</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span> <span class="s2">&quot;No variability or repeatability in data file - use a default value&quot;</span>
+            <span class="n">y_error</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mf">0.002</span><span class="o">*</span><span class="n">fp_data_H3</span><span class="o">.</span><span class="n">mf</span><span class="o">.</span><span class="n">values</span><span class="p">)</span> <span class="c1"># 0.002 only appropriate for methane</span>
+        <span class="k">if</span> <span class="n">si</span> <span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+            <span class="n">H_fixed2</span><span class="o">=</span><span class="n">fp_data_H3</span><span class="o">.</span><span class="n">H</span>
+            <span class="n">H_vary2</span><span class="o">=</span><span class="n">fp_data_H3</span><span class="o">.</span><span class="n">sub_H</span>
+            <span class="n">q_ap2</span><span class="o">=</span><span class="n">sub_flux_temp</span>
+            <span class="n">H_bc2</span><span class="o">=</span><span class="n">fp_data_H3</span><span class="o">.</span><span class="n">H_bc</span>
+                  
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">H_fixed2</span><span class="o">=</span><span class="n">xray</span><span class="o">.</span><span class="n">concat</span><span class="p">((</span><span class="n">H_fixed2</span><span class="p">,</span><span class="n">fp_data_H3</span><span class="o">.</span><span class="n">H</span><span class="p">),</span> <span class="n">dim</span><span class="o">=</span><span class="s2">&quot;time&quot;</span><span class="p">)</span>    
+            <span class="n">H_vary2</span><span class="o">=</span><span class="n">xray</span><span class="o">.</span><span class="n">concat</span><span class="p">((</span><span class="n">H_vary2</span><span class="p">,</span><span class="n">fp_data_H3</span><span class="o">.</span><span class="n">sub_H</span><span class="p">),</span><span class="n">dim</span><span class="o">=</span><span class="s2">&quot;time&quot;</span> <span class="p">)</span> 
+            <span class="n">q_ap2</span><span class="o">=</span><span class="n">xray</span><span class="o">.</span><span class="n">concat</span><span class="p">((</span><span class="n">q_ap2</span><span class="p">,</span><span class="n">sub_flux_temp</span><span class="p">),</span> <span class="n">dim</span><span class="o">=</span><span class="s2">&quot;time&quot;</span><span class="p">)</span> 
+            <span class="n">H_bc2</span><span class="o">=</span><span class="n">xray</span><span class="o">.</span><span class="n">concat</span><span class="p">((</span><span class="n">H_bc2</span><span class="p">,</span><span class="n">fp_data_H3</span><span class="o">.</span><span class="n">H_bc</span><span class="p">),</span> <span class="n">dim</span><span class="o">=</span><span class="s2">&quot;time&quot;</span><span class="p">)</span> 
+    
+    <span class="k">if</span> <span class="n">H_fixed2</span><span class="o">.</span><span class="n">dims</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;time&quot;</span><span class="p">:</span>
+        <span class="n">H_fixed2</span><span class="o">=</span><span class="n">H_fixed2</span><span class="o">.</span><span class="n">transpose</span><span class="p">()</span>
+        <span class="n">H_vary2</span><span class="o">=</span><span class="n">H_vary2</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="s2">&quot;time&quot;</span><span class="p">,</span><span class="s2">&quot;sub_lat&quot;</span><span class="p">,</span><span class="s2">&quot;sub_lon&quot;</span><span class="p">)</span>
+        <span class="n">q_ap2</span><span class="o">=</span><span class="n">q_ap2</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="s2">&quot;time&quot;</span><span class="p">,</span><span class="s2">&quot;lat&quot;</span><span class="p">,</span><span class="s2">&quot;lon&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">H_bc2</span><span class="o">.</span><span class="n">dims</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span><span class="s2">&quot;time&quot;</span><span class="p">:</span>
+        <span class="n">H_bc2</span><span class="o">=</span><span class="n">H_bc2</span><span class="o">.</span><span class="n">transpose</span><span class="p">()</span>
+        
+    <span class="n">H_fixed</span><span class="o">=</span><span class="n">H_fixed2</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">H_vary</span><span class="o">=</span><span class="n">H_vary2</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">q_ap</span><span class="o">=</span><span class="n">q_ap2</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">H_bc</span><span class="o">=</span><span class="n">H_bc2</span><span class="o">.</span><span class="n">values</span>
+     
+    <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+    <span class="n">y_site</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">(</span><span class="n">y_site</span><span class="p">)</span>
+    <span class="n">y_time</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">(</span><span class="n">y_time</span><span class="p">)</span>
+    <span class="n">y_error</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">(</span><span class="n">y_error</span><span class="p">)</span>
+    <span class="n">H_bc5</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">(</span><span class="n">H_bc5</span><span class="p">)</span>
+    <span class="n">local_ratio</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">(</span><span class="n">local_ratio</span><span class="p">)</span>
+    <span class="n">pblh</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">(</span><span class="n">pblh</span><span class="p">)</span>
+    <span class="n">wind_speed</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">(</span><span class="n">wind_speed</span><span class="p">)</span>
+    
+    <span class="n">q_ap0</span><span class="o">=</span><span class="n">q_ap</span><span class="p">[</span><span class="mi">0</span><span class="p">,:,:]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="c1">#q_ap_v = np.ravel(q_ap0)</span>
+    <span class="n">nmeasure</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+    <span class="nb">print</span> <span class="n">nmeasure</span>
+    <span class="n">h_v</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nmeasure</span><span class="p">,</span><span class="n">Ngrid</span><span class="p">))</span>
+    <span class="c1">#local_sum=np.zeros((nmeasure))</span>
+    <span class="k">for</span> <span class="n">ti</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nmeasure</span><span class="p">):</span>                        
+        <span class="c1"># Already multiplied by q in fp_senitivity            </span>
+        <span class="n">h_v</span><span class="p">[</span><span class="n">ti</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="n">H_vary</span><span class="p">[</span><span class="n">ti</span><span class="p">,:,:])</span>   <span class="c1">#*q_ap_v   # Create sensitivty matrix spatially vectorised</span>
+    
+    <span class="c1">#%%</span>
+    <span class="c1">#################################################</span>
+    <span class="k">if</span> <span class="n">inv_type</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;evencorr&#39;</span><span class="p">,</span> <span class="s1">&#39;corr&#39;</span><span class="p">):</span>
+        <span class="c1"># Define obs only where finite data exists         </span>
+        <span class="n">wh_temp</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">y_error</span><span class="p">),</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">y</span><span class="p">)))</span>
+        <span class="n">timeindex_nonzero</span><span class="o">=</span><span class="n">wh_temp</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">tindex_zero_temp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">nmeasure</span><span class="p">)</span>
+        <span class="n">timeindex_zero</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">tindex_zero_temp</span><span class="p">,</span> <span class="n">timeindex_nonzero</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">timeindex_zero</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">y</span><span class="p">[</span><span class="n">timeindex_zero</span><span class="p">]</span><span class="o">=</span><span class="mf">0.</span>
+            <span class="n">y_error</span><span class="p">[</span><span class="n">timeindex_zero</span><span class="p">]</span><span class="o">=</span><span class="mf">1.e12</span>
+            
+    <span class="c1">############################################################</span>
+    <span class="c1"># Create IC  </span>
+    <span class="n">nBC</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">fp_data_H</span><span class="p">[</span><span class="n">sites</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">region_bc</span><span class="p">)</span>
+    <span class="n">nfixed</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">fp_data_H</span><span class="p">[</span><span class="n">sites</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">region</span><span class="p">)</span>
+    
+    <span class="n">numsites</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">sites</span><span class="p">)</span>
+    <span class="n">nmeasure_site</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">numsites</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">ss</span><span class="p">,</span> <span class="n">si</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sites</span><span class="p">):</span>
+        <span class="n">wh_site</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">y_site</span> <span class="o">==</span> <span class="n">si</span><span class="p">))</span>
+        <span class="n">nmeasure_site</span><span class="p">[</span><span class="n">ss</span><span class="p">]</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">wh_site</span><span class="p">)</span>
+     
+    <span class="c1">################################################</span>
+    <span class="c1"># CALCULATE INDICES OF Y CORRESPONDING TO DIFFERENT SIGMA_Ys   </span>
+    <span class="n">R_indices</span><span class="p">,</span> <span class="n">ydim1</span><span class="p">,</span> <span class="n">ydim2</span><span class="p">,</span><span class="n">sigma_model0</span> <span class="o">=</span> <span class="n">get_nsigma_y</span><span class="p">(</span><span class="n">fp_data_H</span><span class="p">,</span><span class="n">start_date</span><span class="p">,</span> <span class="n">end_date</span><span class="p">,</span> <span class="n">sites</span><span class="p">,</span> 
+                  <span class="n">nmeasure</span><span class="p">,</span> <span class="n">sigma_model_ap</span><span class="p">,</span> <span class="n">bl_period</span><span class="o">=</span><span class="n">bl_period</span><span class="p">,</span> <span class="n">bl_split</span><span class="o">=</span><span class="n">bl_split</span><span class="p">,</span> 
+                  <span class="n">levels</span><span class="o">=</span><span class="n">bl_levels</span><span class="p">)</span>     
+    
+    <span class="c1">## Define H_bc based on time, so each month is scaled individually</span>
+    
+    <span class="n">pd_start</span><span class="o">=</span><span class="n">pandas</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">start_date</span><span class="p">)</span>
+    <span class="n">pd_end</span><span class="o">=</span><span class="n">pandas</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">end_date</span><span class="p">)</span>
+
+    <span class="c1"># Calculate number of months in inversion period</span>
+    <span class="k">if</span> <span class="n">pd_end</span><span class="o">.</span><span class="n">day</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">nmonths</span> <span class="o">=</span> <span class="n">pd_end</span><span class="o">.</span><span class="n">to_period</span><span class="p">(</span><span class="s1">&#39;M&#39;</span><span class="p">)</span> <span class="o">-</span> <span class="n">pd_start</span><span class="o">.</span><span class="n">to_period</span><span class="p">(</span><span class="s1">&#39;M&#39;</span><span class="p">)</span>   
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">nmonths</span> <span class="o">=</span> <span class="n">pd_end</span><span class="o">.</span><span class="n">to_period</span><span class="p">(</span><span class="s1">&#39;M&#39;</span><span class="p">)</span> <span class="o">-</span> <span class="n">pd_start</span><span class="o">.</span><span class="n">to_period</span><span class="p">(</span><span class="s1">&#39;M&#39;</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span>
+        
+    <span class="n">nBC_basis</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">fp_data_H</span><span class="p">[</span><span class="n">sites</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">region_bc</span><span class="p">)</span>
+    <span class="n">nBC</span> <span class="o">=</span> <span class="n">nBC_basis</span><span class="o">*</span><span class="n">nmonths</span>   <span class="c1"># No. of bc_basis functions x nmonths</span>
+    
+    <span class="n">nIC</span><span class="o">=</span><span class="n">nBC</span><span class="o">+</span><span class="n">nfixed</span>
+    <span class="n">h_agg0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nmeasure</span><span class="p">,</span><span class="n">k_ap</span><span class="o">+</span><span class="n">nIC</span><span class="p">))</span>
+    <span class="n">pdy_time</span> <span class="o">=</span> <span class="n">pandas</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">y_time</span><span class="p">)</span>
+    <span class="n">months</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">pd_start</span><span class="o">.</span><span class="n">to_period</span><span class="p">(</span><span class="s1">&#39;M&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">month</span><span class="p">,</span> <span class="n">pd_start</span><span class="o">.</span><span class="n">to_period</span><span class="p">(</span><span class="s1">&#39;M&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">month</span> <span class="o">+</span><span class="n">nmonths</span><span class="p">)</span>
+    <span class="n">months2</span> <span class="o">=</span> <span class="n">months</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">months2</span><span class="p">[</span><span class="n">months</span><span class="o">&gt;</span><span class="mi">12</span><span class="p">]</span><span class="o">=</span><span class="n">months2</span><span class="p">[</span><span class="n">months</span><span class="o">&gt;</span><span class="mi">12</span><span class="p">]</span><span class="o">-</span><span class="mi">12</span>    <span class="c1"># Make sure all months in range 1-12</span>
+    
+    <span class="k">for</span> <span class="n">mn</span><span class="p">,</span><span class="n">month</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">months2</span><span class="p">):</span>
+        <span class="n">wh_month</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">pdy_time</span><span class="o">.</span><span class="n">to_period</span><span class="p">(</span><span class="s1">&#39;M&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">month</span> <span class="o">==</span> <span class="n">month</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">wh_month</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="n">h_agg0</span><span class="p">[</span><span class="n">wh_month</span><span class="p">,</span><span class="n">mn</span><span class="o">*</span><span class="n">nBC_basis</span><span class="p">:(</span><span class="n">mn</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="n">nBC_basis</span><span class="p">]</span> <span class="o">=</span> <span class="n">H_bc</span><span class="p">[</span><span class="n">wh_month</span><span class="p">,:]</span>  <span class="c1"># Assign H_agg separately for each month</span>
+   
+    <span class="n">x_agg</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">k_ap</span><span class="o">+</span><span class="n">nIC</span><span class="p">))</span><span class="o">+</span><span class="mf">1.</span>  
+
+    <span class="c1">#%%</span>
+    <span class="c1"># Define prior model uncertainty</span>
+    <span class="c1">####################################################</span>
+    <span class="c1">#sigma_model0 = np.zeros((ydim2)) </span>
+    <span class="n">model_error</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nmeasure</span><span class="p">)</span>
+    <span class="c1">#sigma_model0[:]=sigma_model_ap</span>
+    <span class="n">sigma_measure</span><span class="o">=</span><span class="n">y_error</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">model_error</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">sigma_model0</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>	
+    
+    <span class="k">if</span> <span class="n">inv_type</span> <span class="ow">is</span> <span class="s1">&#39;uncorrelated&#39;</span><span class="p">:</span>
+        <span class="n">sigma_model_hparams</span><span class="o">=</span> <span class="n">sigma_model_hparams</span><span class="o">*</span><span class="n">sigma_model_ap</span>
+    <span class="k">elif</span> <span class="n">inv_type</span> <span class="ow">is</span> <span class="s1">&#39;evencorr&#39;</span><span class="p">:</span>
+        <span class="n">sigma_model_hparam1</span><span class="o">=</span><span class="n">sigma_model0</span><span class="o">*</span><span class="n">sigma_model_hparams</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">sigma_model_hparam2</span><span class="o">=</span><span class="n">sigma_model0</span><span class="o">*</span><span class="n">sigma_model_hparams</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="c1"># DEFINE TAU PARAMS AND DELTATIME</span>
+        <span class="n">deltatime</span><span class="o">=</span><span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;\d+&#39;</span><span class="p">,</span> <span class="n">av_period</span><span class="p">[</span><span class="mi">0</span><span class="p">])]</span>
+        <span class="n">nsite_max</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">nmeasure_site</span><span class="p">)</span>
+        <span class="n">error_structure</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nmeasure</span><span class="p">))</span><span class="o">+</span><span class="mf">1.</span>
+        
+    <span class="k">elif</span> <span class="n">inv_type</span> <span class="ow">is</span> <span class="s1">&#39;corr&#39;</span><span class="p">:</span>
+        <span class="n">sigma_model_hparam1</span><span class="o">=</span><span class="n">sigma_model0</span><span class="o">*</span><span class="n">sigma_model_hparams</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">sigma_model_hparam2</span><span class="o">=</span><span class="n">sigma_model0</span><span class="o">*</span><span class="n">sigma_model_hparams</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">deltatime</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nmeasure</span><span class="p">,</span><span class="n">nmeasure</span><span class="p">))</span><span class="o">+</span><span class="mf">1.e12</span>
+
+        <span class="k">for</span> <span class="n">ss</span><span class="p">,</span> <span class="n">si</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sites</span><span class="p">):</span>
+            <span class="n">wh_site</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">y_site</span> <span class="o">==</span> <span class="n">si</span><span class="p">))</span>
+            <span class="n">nmeasure_site</span><span class="p">[</span><span class="n">ss</span><span class="p">]</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">wh_site</span><span class="p">)</span>
+            
+            <span class="k">for</span> <span class="n">whi</span> <span class="ow">in</span> <span class="n">wh_site</span><span class="p">:</span>
+                <span class="n">tdelta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">absolute</span><span class="p">(</span><span class="n">y_time</span><span class="p">[</span><span class="n">wh_site</span><span class="p">]</span><span class="o">-</span><span class="n">y_time</span><span class="p">[</span><span class="n">whi</span><span class="p">])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;timedelta64[m]&#39;</span><span class="p">)</span>
+                <span class="n">deltatime_site</span><span class="o">=</span><span class="n">tdelta</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">timedelta64</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;h&#39;</span><span class="p">)</span>
+                <span class="n">deltatime</span><span class="p">[</span><span class="n">whi</span><span class="p">,</span><span class="n">wh_site</span><span class="p">]</span> <span class="o">=</span> <span class="n">deltatime_site</span>
+
+        <span class="n">nsite_max</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">nmeasure_site</span><span class="p">)</span>
+        <span class="n">error_structure</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nmeasure</span><span class="p">))</span><span class="o">+</span><span class="mf">1.</span>
+        
+    <span class="n">stepsize_sigma_y_all</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">ydim2</span><span class="p">))</span>
+    <span class="n">stepsize_sigma_y_all</span><span class="p">[:]</span><span class="o">=</span><span class="n">stepsize_sigma_y</span>
+    <span class="c1">#%%</span>
+    
+    <span class="c1"># Define prior model and regions with uniform distribution</span>
+    <span class="c1">#######################################</span>
+    <span class="n">kICmax</span><span class="o">=</span><span class="n">kmax</span><span class="o">+</span><span class="n">nIC</span>              <span class="c1"># nIC and kmax already defined at top of file</span>
+    
+    <span class="c1"># Set up different starting nuclei locations for each chain </span>
+    <span class="n">plon</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">kmax</span><span class="p">,</span><span class="n">nbeta</span><span class="p">))</span>
+    <span class="n">plat</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">kmax</span><span class="p">,</span><span class="n">nbeta</span><span class="p">))</span>
+    <span class="n">regions_v</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">Ngrid</span><span class="p">,</span><span class="n">nbeta</span><span class="p">),</span><span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint16</span><span class="p">)</span>
+    <span class="n">h_agg</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nmeasure</span><span class="p">,</span> <span class="n">kICmax</span><span class="p">,</span><span class="n">nbeta</span><span class="p">))</span>
+    <span class="n">n0</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nmeasure</span><span class="p">,</span><span class="n">nbeta</span><span class="p">))</span>    
+    
+    
+    <span class="c1">#plon0 = np.random.uniform(lonmin, lonmax, k_ap) # Lon locs of nuclei</span>
+    <span class="c1">#plat0 = np.random.uniform(latmin, latmax, k_ap) # Lat locs of nuclei</span>
+    
+    <span class="k">for</span> <span class="n">ib</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbeta</span><span class="p">):</span>
+    
+        <span class="n">plon</span><span class="p">[:</span><span class="n">k_ap</span><span class="p">,</span><span class="n">ib</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">lonmin</span><span class="p">,</span> <span class="n">lonmax</span><span class="p">,</span> <span class="n">k_ap</span><span class="p">)</span> <span class="c1"># Lon locs of nuclei</span>
+        <span class="n">plat</span><span class="p">[:</span><span class="n">k_ap</span><span class="p">,</span><span class="n">ib</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">latmin</span><span class="p">,</span> <span class="n">latmax</span><span class="p">,</span> <span class="n">k_ap</span><span class="p">)</span> <span class="c1"># Lat locs of nuclei</span>
+        <span class="c1">#plon[:k_ap,ib] = plon0</span>
+        <span class="c1">#plat[:k_ap,ib] = plat0</span>
+        
+        <span class="k">if</span> <span class="n">fp_basis_case</span> <span class="ow">in</span><span class="p">(</span><span class="s2">&quot;INTEM&quot;</span><span class="p">):</span>
+            <span class="n">basis_func</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;lon&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">fp_data_H3</span><span class="o">.</span><span class="n">lon</span>
+            <span class="n">basis_func</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;lat&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">fp_data_H3</span><span class="o">.</span><span class="n">lat</span>
+            <span class="n">regions_temp</span> <span class="o">=</span> <span class="n">basis_func</span><span class="o">.</span><span class="n">basis</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">lon</span><span class="o">=</span><span class="n">lon</span><span class="p">,</span> <span class="n">lat</span><span class="o">=</span><span class="n">lat</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;nearest&#39;</span><span class="p">)</span>
+            <span class="n">regions0</span> <span class="o">=</span> <span class="n">regions_temp</span><span class="p">[:,:,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+        <span class="c1">#    regions0 = basis_func.basis[:,:,0].values</span>
+            <span class="n">regions_v0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="n">regions0</span><span class="p">)</span>  
+            <span class="n">regions_v</span><span class="p">[:,</span><span class="n">ib</span><span class="p">]</span><span class="o">=</span><span class="n">regions_v0</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> 
+        
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">region</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nlat</span><span class="p">,</span> <span class="n">nlon</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint16</span><span class="p">)</span>
+            <span class="n">regions0</span><span class="o">=</span><span class="n">closest_grid</span><span class="p">(</span><span class="n">region</span><span class="p">,</span> <span class="n">lon</span><span class="p">,</span> <span class="n">lat</span><span class="p">,</span> <span class="n">plon</span><span class="p">[:</span><span class="n">k_ap</span><span class="p">,</span><span class="n">ib</span><span class="p">],</span> <span class="n">plat</span><span class="p">[:</span><span class="n">k_ap</span><span class="p">,</span><span class="n">ib</span><span class="p">],</span> \
+                    <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">k_ap</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint16</span><span class="p">))</span>
+            <span class="n">regions_v0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="n">regions0</span><span class="p">)</span>
+            <span class="n">regions_v</span><span class="p">[:,</span><span class="n">ib</span><span class="p">]</span><span class="o">=</span><span class="n">regions_v0</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span><span class="o">+</span><span class="mi">1</span>
+    
+        <span class="k">for</span> <span class="n">ri</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k_ap</span><span class="p">):</span>
+            <span class="n">wh_ri</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">regions_v0</span> <span class="o">==</span> <span class="n">ri</span><span class="p">)</span>      
+            <span class="k">for</span> <span class="n">ti</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nmeasure</span><span class="p">):</span>
+                <span class="n">h_agg0</span><span class="p">[</span><span class="n">ti</span><span class="p">,</span><span class="n">ri</span><span class="o">+</span><span class="n">nIC</span><span class="p">]</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">h_v</span><span class="p">[</span><span class="n">ti</span><span class="p">,</span><span class="n">wh_ri</span><span class="p">])</span>
+                
+      
+        <span class="n">y_model</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">h_agg0</span><span class="p">,</span><span class="n">x_agg</span><span class="p">)</span> 
+        <span class="n">n0_ap</span> <span class="o">=</span> <span class="n">y_model</span><span class="o">-</span><span class="n">y</span>
+    
+        <span class="n">h_agg</span><span class="p">[:,:</span><span class="n">k_ap</span><span class="o">+</span><span class="n">nIC</span><span class="p">,</span><span class="n">ib</span><span class="p">]</span> <span class="o">=</span> <span class="n">h_agg0</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">n0</span><span class="p">[:,</span><span class="n">ib</span><span class="p">]</span><span class="o">=</span><span class="n">n0_ap</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+       
+    <span class="c1">#################################</span>
+           
+    <span class="c1">#%%</span>
+    <span class="c1"># MCMC Parameters</span>
+    <span class="c1">#########################################</span>
+    <span class="n">nit_sub</span><span class="o">=</span><span class="n">nIt</span><span class="o">/</span><span class="n">nsub</span>
+    <span class="n">k</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nbeta</span><span class="p">),</span><span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">)</span><span class="o">+</span><span class="n">k_ap</span>
+    
+    <span class="n">x</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">kICmax</span><span class="p">,</span><span class="n">nbeta</span><span class="p">))</span>
+    <span class="n">sigma_model</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">ydim2</span><span class="p">,</span><span class="n">nbeta</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">ib</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbeta</span><span class="p">):</span>  
+        <span class="n">x</span><span class="p">[:</span><span class="n">k_ap</span><span class="o">+</span><span class="n">nIC</span><span class="p">,</span><span class="n">ib</span><span class="p">]</span><span class="o">=</span><span class="n">x_agg</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>  
+        <span class="n">sigma_model</span><span class="p">[:,</span><span class="n">ib</span><span class="p">]</span><span class="o">=</span><span class="n">sigma_model0</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    
+    <span class="c1"># nIC1 dimension Stuff</span>
+    <span class="c1">############################################################</span>
+    <span class="n">nIC1</span><span class="o">=</span><span class="n">nIC</span><span class="o">+</span><span class="mi">1</span>
+    
+    <span class="c1">#%%</span>
+    <span class="c1">#########################################</span>
+    <span class="n">sigma_clon</span> <span class="o">=</span> <span class="n">stepsize_clon</span><span class="o">*</span><span class="mf">1.</span>
+    <span class="n">sigma_clat</span> <span class="o">=</span> <span class="n">stepsize_clat</span><span class="o">*</span><span class="mf">1.</span>
+    <span class="n">sigma_bd</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">x_agg</span><span class="p">[</span><span class="n">nIC</span><span class="p">:])</span><span class="o">*</span><span class="n">stepsize_bd</span>
+    
+    <span class="k">if</span> <span class="n">inv_type</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;evencorr&#39;</span><span class="p">,</span> <span class="s1">&#39;corr&#39;</span><span class="p">):</span>
+        <span class="n">tau</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">numsites</span><span class="p">,</span><span class="n">nbeta</span><span class="p">))</span><span class="o">+</span><span class="n">tau_ap</span>
+        <span class="n">y_pdf</span><span class="o">=</span><span class="mi">1</span>
+        <span class="n">y_hparam1</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">y</span><span class="p">)</span><span class="o">*</span><span class="mf">0.8</span>
+        <span class="n">y_hparam2</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">y</span><span class="p">)</span><span class="o">*</span><span class="mf">1.25</span>
+        <span class="n">stepsize_y</span> <span class="o">=</span> <span class="mf">40.</span>
+        <span class="n">nzero</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">timeindex_zero</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">nzero</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">timeindex_zero_in</span><span class="o">=</span><span class="n">timeindex_zero</span><span class="o">+</span><span class="mi">1</span>
+            <span class="n">y</span><span class="p">[</span><span class="n">timeindex_zero</span><span class="p">]</span><span class="o">=</span><span class="n">y_model</span><span class="p">[</span><span class="n">timeindex_zero</span><span class="p">]</span><span class="o">*</span><span class="mf">0.95</span>
+            <span class="n">sigma_measure</span><span class="p">[</span><span class="n">timeindex_zero</span><span class="p">]</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nanmean</span><span class="p">(</span><span class="n">sigma_measure</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">timeindex_zero_in</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mi">999</span><span class="p">]</span>
+            <span class="n">nzero</span><span class="o">=</span><span class="mi">1</span>       
+        
+    <span class="k">if</span> <span class="n">rjmcmc</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">rjmcmc_in</span><span class="o">=</span><span class="mi">1</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">rjmcmc_in</span><span class="o">=</span><span class="mi">0</span>
+        
+    <span class="k">if</span> <span class="n">para_temp</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">para_temp_in</span><span class="o">=</span><span class="mi">1</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">para_temp_in</span><span class="o">=</span><span class="mi">0</span>
+    <span class="c1">#BEGIN ITERATIONS</span>
+    <span class="c1">##################################################</span>
+    <span class="nb">print</span> <span class="s1">&#39;Starting MCMC...&#39;</span>
+    <span class="n">startt</span> <span class="o">=</span> <span class="n">run_time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    
+    <span class="k">if</span> <span class="n">inv_type</span> <span class="ow">is</span> <span class="s1">&#39;uncorrelated&#39;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">para_temp</span><span class="p">:</span>
+            <span class="kn">import</span> <span class="nn">acrg_tdmcmc.tdmcmc_uncorr_pt</span> <span class="k">as</span> <span class="nn">tdmcmc_uncorr</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="kn">from</span> <span class="nn">acrg_tdmcmc</span> <span class="k">import</span> <span class="n">tdmcmc_uncorr</span>
+
+        <span class="n">k_it</span><span class="p">,</span> <span class="n">x_out</span><span class="p">,</span> <span class="n">regions_out</span><span class="p">,</span> <span class="n">plon_out</span><span class="p">,</span> <span class="n">plat_out</span><span class="p">,</span> <span class="n">sigma_model_out</span><span class="p">,</span><span class="n">sigma_y_out</span><span class="p">,</span> \
+        <span class="n">n0T_out</span><span class="p">,</span><span class="n">pdf_param1_out</span><span class="p">,</span><span class="n">pdf_param2_out</span><span class="p">,</span> <span class="n">accept</span><span class="p">,</span> <span class="n">reject</span><span class="p">,</span> \
+        <span class="n">accept_birth</span><span class="p">,</span> <span class="n">reject_birth</span><span class="p">,</span> <span class="n">accept_death</span><span class="p">,</span> <span class="n">reject_death</span><span class="p">,</span> <span class="n">accept_move</span><span class="p">,</span> <span class="n">reject_move</span><span class="p">,</span> \
+        <span class="n">accept_sigma_y</span><span class="p">,</span> <span class="n">reject_sigma_y</span><span class="p">,</span> <span class="n">accept_swap</span><span class="p">,</span> <span class="n">reject_swap</span><span class="p">,</span> \
+        <span class="n">stepsize_x_out</span><span class="p">,</span> <span class="n">stepsize_p1_out</span><span class="p">,</span> <span class="n">stepsize_p2_out</span><span class="p">,</span> \
+        <span class="n">stepsize_sigma_y_out</span><span class="p">,</span> <span class="n">accept_all</span><span class="p">,</span> <span class="n">reject_all</span><span class="p">,</span> <span class="n">accept_birth_all</span><span class="p">,</span> <span class="n">reject_birth_all</span><span class="p">,</span> \
+        <span class="n">accept_death_all</span><span class="p">,</span> <span class="n">reject_death_all</span><span class="p">,</span> <span class="n">accept_move_all</span><span class="p">,</span> <span class="n">reject_move_all</span><span class="p">,</span> \
+        <span class="n">accept_sigma_y_all</span><span class="p">,</span> <span class="n">reject_sigma_y_all</span> <span class="o">=</span> <span class="n">tdmcmc_uncorr</span><span class="o">.</span><span class="n">hbtdmcmc</span><span class="p">(</span>
+        <span class="n">beta</span><span class="p">,</span><span class="n">k</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">h_agg</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">n0</span><span class="p">,</span> <span class="n">plon</span><span class="p">,</span> <span class="n">plat</span><span class="p">,</span> <span class="n">regions_v</span><span class="p">,</span> 
+        <span class="n">pdf_param1</span><span class="p">,</span> <span class="n">pdf_param2</span><span class="p">,</span> <span class="n">lon</span><span class="p">,</span><span class="n">lat</span><span class="p">,</span> <span class="n">h_v</span><span class="p">,</span> <span class="n">sigma_model</span><span class="p">,</span> <span class="n">sigma_measure</span><span class="p">,</span> 
+        <span class="n">R_indices</span><span class="p">,</span> <span class="n">sigma_model_hparams</span><span class="p">,</span> <span class="n">stepsize_sigma_y_all</span><span class="p">,</span> <span class="n">sigma_model_pdf</span><span class="p">,</span> 
+        <span class="n">sigma_clon</span><span class="p">,</span> <span class="n">sigma_clat</span><span class="p">,</span> <span class="n">rjmcmc_in</span><span class="p">,</span> <span class="n">para_temp_in</span><span class="p">,</span>
+        <span class="n">lonmin</span><span class="p">,</span> <span class="n">lonmax</span><span class="p">,</span> <span class="n">latmin</span><span class="p">,</span><span class="n">latmax</span><span class="p">,</span> <span class="n">sigma_bd</span><span class="p">,</span> <span class="n">kmin</span><span class="p">,</span> <span class="n">x_pdf</span><span class="p">,</span> <span class="n">burn_in</span><span class="p">,</span> 
+        <span class="n">pdf_p1_hparam1</span><span class="p">,</span> <span class="n">pdf_p1_hparam2</span><span class="p">,</span> <span class="n">pdf_p2_hparam1</span><span class="p">,</span> <span class="n">pdf_p2_hparam2</span><span class="p">,</span> <span class="n">pdf_param1_pdf</span><span class="p">,</span> 
+        <span class="n">pdf_param2_pdf</span><span class="p">,</span><span class="n">stepsize_all</span><span class="p">,</span> <span class="n">stepsize_pdf_p1_all</span><span class="p">,</span><span class="n">stepsize_pdf_p2_all</span><span class="p">,</span> 
+        <span class="n">nIt</span><span class="p">,</span> <span class="n">nsub</span><span class="p">,</span> <span class="n">nit_sub</span><span class="p">,</span> <span class="n">nIC</span><span class="p">,</span> 
+        <span class="n">nbeta</span><span class="p">,</span> <span class="n">kmax</span><span class="p">,</span> <span class="n">kICmax</span><span class="p">,</span> <span class="n">nmeasure</span><span class="p">,</span> <span class="n">Ngrid</span><span class="p">,</span> <span class="n">nlon</span><span class="p">,</span><span class="n">nlat</span><span class="p">,</span> <span class="n">ydim1</span><span class="p">,</span> <span class="n">ydim2</span><span class="p">,</span> <span class="n">nIC1</span><span class="p">)</span>
+    
+    <span class="k">elif</span> <span class="n">inv_type</span> <span class="ow">is</span> <span class="s1">&#39;evencorr&#39;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">para_temp</span><span class="p">:</span>
+            <span class="kn">import</span> <span class="nn">acrg_tdmcmc.tdmcmc_evencorr_pt</span> <span class="k">as</span> <span class="nn">tdmcmc_evencorr</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="kn">from</span> <span class="nn">acrg_tdmcmc</span> <span class="k">import</span> <span class="n">tdmcmc_evencorr</span>
+        
+        <span class="n">k_it</span><span class="p">,</span> <span class="n">x_out</span><span class="p">,</span> <span class="n">regions_out</span><span class="p">,</span> <span class="n">plon_out</span><span class="p">,</span> <span class="n">plat_out</span><span class="p">,</span> <span class="n">sigma_y_out</span><span class="p">,</span> <span class="n">sigma_model_out</span><span class="p">,</span> \
+        <span class="n">n0T_out</span><span class="p">,</span><span class="n">pdf_param1_out</span><span class="p">,</span><span class="n">pdf_param2_out</span><span class="p">,</span> <span class="n">tau_out</span><span class="p">,</span> <span class="n">y_out</span><span class="p">,</span><span class="n">accept</span><span class="p">,</span> <span class="n">reject</span><span class="p">,</span> \
+        <span class="n">accept_birth</span><span class="p">,</span> <span class="n">reject_birth</span><span class="p">,</span> <span class="n">accept_death</span><span class="p">,</span> <span class="n">reject_death</span><span class="p">,</span> <span class="n">accept_move</span><span class="p">,</span> <span class="n">reject_move</span><span class="p">,</span> \
+        <span class="n">accept_swap</span><span class="p">,</span> <span class="n">reject_swap</span><span class="p">,</span> <span class="n">accept_sigma_y</span><span class="p">,</span> <span class="n">reject_sigma_y</span><span class="p">,</span> \
+        <span class="n">accept_tau</span><span class="p">,</span> <span class="n">reject_tau</span><span class="p">,</span> <span class="n">accept_y</span><span class="p">,</span> <span class="n">reject_y</span><span class="p">,</span> \
+        <span class="n">stepsize_x_out</span><span class="p">,</span> <span class="n">stepsize_p1_out</span><span class="p">,</span> <span class="n">stepsize_p2_out</span><span class="p">,</span> <span class="n">stepsize_sigma_y_out</span><span class="p">,</span> \
+        <span class="n">stepsize_tau_out</span><span class="p">,</span> <span class="n">accept_all</span><span class="p">,</span> <span class="n">reject_all</span><span class="p">,</span> <span class="n">accept_birth_all</span><span class="p">,</span> <span class="n">reject_birth_all</span><span class="p">,</span> \
+        <span class="n">accept_death_all</span><span class="p">,</span> <span class="n">reject_death_all</span><span class="p">,</span> <span class="n">accept_move_all</span><span class="p">,</span> <span class="n">reject_move_all</span><span class="p">,</span> \
+        <span class="n">accept_sigma_y_all</span><span class="p">,</span> <span class="n">reject_sigma_y_all</span><span class="p">,</span> <span class="n">accept_tau_all</span><span class="p">,</span> \
+        <span class="n">reject_tau_all</span> <span class="o">=</span> <span class="n">tdmcmc_evencorr</span><span class="o">.</span><span class="n">transd_evencorr</span><span class="o">.</span><span class="n">hbtdmcmc</span><span class="p">(</span><span class="n">beta</span><span class="p">,</span><span class="n">k</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span>
+        <span class="n">h_agg</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">n0</span><span class="p">,</span> <span class="n">plon</span><span class="p">,</span> <span class="n">plat</span><span class="p">,</span> <span class="n">regions_v</span><span class="p">,</span> 
+        <span class="n">pdf_param1</span><span class="p">,</span> <span class="n">pdf_param2</span><span class="p">,</span> <span class="n">lon</span><span class="p">,</span><span class="n">lat</span><span class="p">,</span> <span class="n">h_v</span><span class="p">,</span> <span class="n">sigma_model</span><span class="p">,</span> <span class="n">sigma_measure</span><span class="p">,</span> <span class="n">error_structure</span><span class="p">,</span>
+        <span class="n">R_indices</span><span class="p">,</span> <span class="n">sigma_model_hparam1</span><span class="p">,</span> <span class="n">sigma_model_hparam2</span><span class="p">,</span> <span class="n">stepsize_sigma_y_all</span><span class="p">,</span> <span class="n">sigma_model_pdf</span><span class="p">,</span> 
+        <span class="n">tau</span><span class="p">,</span> <span class="n">tau_hparams</span><span class="p">,</span> <span class="n">stepsize_tau</span><span class="p">,</span> <span class="n">tau_pdf</span><span class="p">,</span> <span class="n">deltatime</span><span class="p">,</span>
+        <span class="n">y_hparam1</span><span class="p">,</span> <span class="n">y_hparam2</span><span class="p">,</span> <span class="n">stepsize_y</span><span class="p">,</span> <span class="n">y_pdf</span><span class="p">,</span> <span class="n">timeindex_zero_in</span><span class="p">,</span>
+        <span class="n">sigma_clon</span><span class="p">,</span> <span class="n">sigma_clat</span><span class="p">,</span> <span class="n">rjmcmc_in</span><span class="p">,</span> <span class="n">para_temp_in</span><span class="p">,</span> <span class="n">nmeasure_site</span><span class="p">,</span> <span class="n">nsite_max</span><span class="p">,</span> 
+        <span class="n">lonmin</span><span class="p">,</span> <span class="n">lonmax</span><span class="p">,</span> <span class="n">latmin</span><span class="p">,</span><span class="n">latmax</span><span class="p">,</span> <span class="n">sigma_bd</span><span class="p">,</span> <span class="n">kmin</span><span class="p">,</span> <span class="n">x_pdf</span><span class="p">,</span> <span class="n">burn_in</span><span class="p">,</span> 
+        <span class="n">pdf_p1_hparam1</span><span class="p">,</span> <span class="n">pdf_p1_hparam2</span><span class="p">,</span> <span class="n">pdf_p2_hparam1</span><span class="p">,</span> <span class="n">pdf_p2_hparam2</span><span class="p">,</span> <span class="n">pdf_param1_pdf</span><span class="p">,</span> 
+        <span class="n">pdf_param2_pdf</span><span class="p">,</span><span class="n">stepsize_all</span><span class="p">,</span> <span class="n">stepsize_pdf_p1_all</span><span class="p">,</span><span class="n">stepsize_pdf_p2_all</span><span class="p">,</span> 
+        <span class="n">nIt</span><span class="p">,</span> <span class="n">nsub</span><span class="p">,</span> <span class="n">nit_sub</span><span class="p">,</span> <span class="n">nIC</span><span class="p">,</span>
+        <span class="n">nbeta</span><span class="p">,</span> <span class="n">kmax</span><span class="p">,</span> <span class="n">kICmax</span><span class="p">,</span> <span class="n">nmeasure</span><span class="p">,</span> <span class="n">Ngrid</span><span class="p">,</span> <span class="n">nlon</span><span class="p">,</span><span class="n">nlat</span><span class="p">,</span> <span class="n">ydim1</span><span class="p">,</span> <span class="n">ydim2</span><span class="p">,</span> <span class="n">numsites</span><span class="p">,</span><span class="n">nIC1</span><span class="p">,</span><span class="n">nzero</span><span class="p">)</span>
+     
+    
+    
+    <span class="k">elif</span> <span class="n">inv_type</span> <span class="ow">is</span> <span class="s1">&#39;corr&#39;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">para_temp</span><span class="p">:</span>
+            <span class="kn">import</span> <span class="nn">acrg_tdmcmc.tdmcmc_corr_pt</span> <span class="k">as</span> <span class="nn">tdmcmc_corr</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="kn">from</span> <span class="nn">acrg_tdmcmc</span> <span class="k">import</span> <span class="n">tdmcmc_corr</span>
+        
+        <span class="n">k_it</span><span class="p">,</span> <span class="n">x_out</span><span class="p">,</span> <span class="n">regions_out</span><span class="p">,</span> <span class="n">plon_out</span><span class="p">,</span> <span class="n">plat_out</span><span class="p">,</span> <span class="n">sigma_y_out</span><span class="p">,</span> <span class="n">sigma_model_out</span><span class="p">,</span> \
+        <span class="n">n0T_out</span><span class="p">,</span><span class="n">pdf_param1_out</span><span class="p">,</span><span class="n">pdf_param2_out</span><span class="p">,</span> <span class="n">tau_out</span><span class="p">,</span> <span class="n">y_out</span><span class="p">,</span><span class="n">accept</span><span class="p">,</span> <span class="n">reject</span><span class="p">,</span> \
+        <span class="n">accept_birth</span><span class="p">,</span> <span class="n">reject_birth</span><span class="p">,</span> <span class="n">accept_death</span><span class="p">,</span> <span class="n">reject_death</span><span class="p">,</span> <span class="n">accept_move</span><span class="p">,</span> <span class="n">reject_move</span><span class="p">,</span> \
+        <span class="n">accept_swap</span><span class="p">,</span> <span class="n">reject_swap</span><span class="p">,</span> <span class="n">accept_sigma_y</span><span class="p">,</span> <span class="n">reject_sigma_y</span><span class="p">,</span> \
+        <span class="n">accept_tau</span><span class="p">,</span> <span class="n">reject_tau</span><span class="p">,</span> <span class="n">accept_y</span><span class="p">,</span> <span class="n">reject_y</span><span class="p">,</span> \
+        <span class="n">stepsize_x_out</span><span class="p">,</span> <span class="n">stepsize_p1_out</span><span class="p">,</span> <span class="n">stepsize_p2_out</span><span class="p">,</span> <span class="n">stepsize_sigma_y_out</span><span class="p">,</span> \
+        <span class="n">stepsize_tau_out</span><span class="p">,</span> <span class="n">accept_all</span><span class="p">,</span> <span class="n">reject_all</span><span class="p">,</span> <span class="n">accept_birth_all</span><span class="p">,</span> <span class="n">reject_birth_all</span><span class="p">,</span> \
+        <span class="n">accept_death_all</span><span class="p">,</span> <span class="n">reject_death_all</span><span class="p">,</span> <span class="n">accept_move_all</span><span class="p">,</span> <span class="n">reject_move_all</span><span class="p">,</span> \
+        <span class="n">accept_sigma_y_all</span><span class="p">,</span> <span class="n">reject_sigma_y_all</span><span class="p">,</span> <span class="n">accept_tau_all</span><span class="p">,</span> \
+        <span class="n">reject_tau_all</span><span class="o">=</span> <span class="n">tdmcmc_corr</span><span class="o">.</span><span class="n">transd_corr</span><span class="o">.</span><span class="n">hbtdmcmc</span><span class="p">(</span><span class="n">beta</span><span class="p">,</span><span class="n">k</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span>
+        <span class="n">h_agg</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">n0</span><span class="p">,</span> <span class="n">plon</span><span class="p">,</span> <span class="n">plat</span><span class="p">,</span> <span class="n">regions_v</span><span class="p">,</span> 
+        <span class="n">pdf_param1</span><span class="p">,</span> <span class="n">pdf_param2</span><span class="p">,</span> <span class="n">lon</span><span class="p">,</span><span class="n">lat</span><span class="p">,</span> <span class="n">h_v</span><span class="p">,</span> <span class="n">sigma_model</span><span class="p">,</span> <span class="n">sigma_measure</span><span class="p">,</span> <span class="n">error_structure</span><span class="p">,</span>
+        <span class="n">R_indices</span><span class="p">,</span> <span class="n">sigma_model_hparam1</span><span class="p">,</span> <span class="n">sigma_model_hparam2</span><span class="p">,</span> <span class="n">stepsize_sigma_y_all</span><span class="p">,</span> <span class="n">sigma_model_pdf</span><span class="p">,</span> 
+        <span class="n">tau</span><span class="p">,</span> <span class="n">tau_hparams</span><span class="p">,</span> <span class="n">stepsize_tau</span><span class="p">,</span> <span class="n">tau_pdf</span><span class="p">,</span> <span class="n">deltatime</span><span class="p">,</span>
+        <span class="n">y_hparam1</span><span class="p">,</span> <span class="n">y_hparam2</span><span class="p">,</span> <span class="n">stepsize_y</span><span class="p">,</span> <span class="n">y_pdf</span><span class="p">,</span> <span class="n">timeindex_zero_in</span><span class="p">,</span>
+        <span class="n">sigma_clon</span><span class="p">,</span> <span class="n">sigma_clat</span><span class="p">,</span> <span class="n">rjmcmc_in</span><span class="p">,</span> <span class="n">para_temp_in</span><span class="p">,</span> <span class="n">nmeasure_site</span><span class="p">,</span> <span class="n">nsite_max</span><span class="p">,</span> 
+        <span class="n">lonmin</span><span class="p">,</span> <span class="n">lonmax</span><span class="p">,</span> <span class="n">latmin</span><span class="p">,</span><span class="n">latmax</span><span class="p">,</span> <span class="n">sigma_bd</span><span class="p">,</span> <span class="n">kmin</span><span class="p">,</span> <span class="n">x_pdf</span><span class="p">,</span> <span class="n">burn_in</span><span class="p">,</span> 
+        <span class="n">pdf_p1_hparam1</span><span class="p">,</span> <span class="n">pdf_p1_hparam2</span><span class="p">,</span> <span class="n">pdf_p2_hparam1</span><span class="p">,</span> <span class="n">pdf_p2_hparam2</span><span class="p">,</span> <span class="n">pdf_param1_pdf</span><span class="p">,</span> 
+        <span class="n">pdf_param2_pdf</span><span class="p">,</span><span class="n">stepsize_all</span><span class="p">,</span> <span class="n">stepsize_pdf_p1_all</span><span class="p">,</span><span class="n">stepsize_pdf_p2_all</span><span class="p">,</span> 
+        <span class="n">nIt</span><span class="p">,</span> <span class="n">nsub</span><span class="p">,</span> <span class="n">nit_sub</span><span class="p">,</span> <span class="n">nIC</span><span class="p">,</span>
+        <span class="n">nbeta</span><span class="p">,</span> <span class="n">kmax</span><span class="p">,</span> <span class="n">kICmax</span><span class="p">,</span> <span class="n">nmeasure</span><span class="p">,</span> <span class="n">Ngrid</span><span class="p">,</span> <span class="n">nlon</span><span class="p">,</span><span class="n">nlat</span><span class="p">,</span> <span class="n">ydim1</span><span class="p">,</span> <span class="n">ydim2</span><span class="p">,</span> <span class="n">numsites</span><span class="p">,</span><span class="n">nIC1</span><span class="p">,</span><span class="n">nzero</span><span class="p">)</span>
+    
+    <span class="n">endt</span><span class="o">=</span><span class="n">run_time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    
+    <span class="nb">print</span> <span class="s1">&#39;Finished MCMC in &#39;</span><span class="p">,</span> <span class="n">endt</span><span class="o">-</span><span class="n">startt</span>
+        
+    <span class="nb">print</span> <span class="s1">&#39;Beginning post processing&#39;</span>
+    <span class="n">x_post_vit</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nit_sub</span><span class="p">,</span><span class="n">Ngrid</span><span class="p">))</span>    
+    <span class="n">regions_it</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">regions_out</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span>
+    <span class="n">x_it</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">x_out</span><span class="p">)</span>
+    
+    <span class="k">for</span> <span class="n">it</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nit_sub</span><span class="p">):</span>    
+        <span class="k">for</span> <span class="n">zz</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k_it</span><span class="p">[</span><span class="n">it</span><span class="p">]):</span>
+            <span class="n">wh_reg</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">regions_it</span><span class="p">[</span><span class="n">it</span><span class="p">,:]</span> <span class="o">==</span> <span class="n">zz</span><span class="p">)</span>
+            <span class="n">x_post_vit</span><span class="p">[</span><span class="n">it</span><span class="p">,</span><span class="n">wh_reg</span><span class="p">]</span> <span class="o">=</span> <span class="n">x_it</span><span class="p">[</span><span class="n">it</span><span class="p">,</span><span class="n">zz</span><span class="o">+</span><span class="n">nIC</span><span class="p">]</span>
+    
+    <span class="nb">print</span> <span class="s1">&#39;Everything done&#39;</span>
+    <span class="n">endt2</span> <span class="o">=</span> <span class="n">run_time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="nb">print</span> <span class="n">endt2</span><span class="o">-</span><span class="n">endt</span>
+    
+    <span class="c1">##########################################</span>
+    <span class="n">h_v_all</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nmeasure</span><span class="p">,</span><span class="n">Ngrid</span><span class="o">+</span><span class="n">nIC</span><span class="p">))</span>  
+    <span class="n">h_v_all</span><span class="p">[:,:</span><span class="n">nIC</span><span class="p">]</span><span class="o">=</span><span class="n">h_agg0</span><span class="p">[:,:</span><span class="n">nIC</span><span class="p">]</span>
+    <span class="n">h_v_all</span><span class="p">[:,</span><span class="n">nIC</span><span class="p">:]</span><span class="o">=</span><span class="n">h_v</span>
+      
+    <span class="c1">##################################################################################</span>
+    <span class="c1"># SAVE MCMC output in a dataset and write to netcdf</span>
+    <span class="c1"># Set up post-mcmc dataset</span>
+    <span class="k">if</span> <span class="n">inv_type</span> <span class="ow">is</span> <span class="s1">&#39;uncorrelated&#39;</span><span class="p">:</span>
+        <span class="n">props_temp</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;birth&quot;</span><span class="p">,</span> <span class="s2">&quot;death&quot;</span><span class="p">,</span> <span class="s2">&quot;move&quot;</span><span class="p">,</span> <span class="s2">&quot;sigma_y&quot;</span><span class="p">,</span> <span class="s2">&quot;swap&quot;</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">props_temp</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;birth&quot;</span><span class="p">,</span> <span class="s2">&quot;death&quot;</span><span class="p">,</span> <span class="s2">&quot;move&quot;</span><span class="p">,</span> <span class="s2">&quot;sigma_y&quot;</span><span class="p">,</span> <span class="s2">&quot;tau&quot;</span><span class="p">,</span> <span class="s2">&quot;swap&quot;</span><span class="p">]</span>
+        
+    <span class="n">props</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nIC1</span><span class="o">+</span><span class="nb">len</span><span class="p">(</span><span class="n">props_temp</span><span class="p">)),</span><span class="n">dtype</span><span class="o">=</span><span class="nb">object</span><span class="p">)</span>
+    <span class="n">accepts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nIC1</span><span class="o">+</span><span class="nb">len</span><span class="p">(</span><span class="n">props_temp</span><span class="p">)))</span>
+    <span class="n">rejects</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nIC1</span><span class="o">+</span><span class="nb">len</span><span class="p">(</span><span class="n">props_temp</span><span class="p">)))</span>
+    <span class="k">for</span> <span class="n">ii</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nBC</span><span class="p">):</span>
+        <span class="n">props</span><span class="p">[</span><span class="n">ii</span><span class="p">]</span><span class="o">=</span><span class="s2">&quot;bc&quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">ii</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">jj</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nfixed</span><span class="p">):</span>
+        <span class="n">props</span><span class="p">[</span><span class="n">jj</span><span class="o">+</span><span class="n">nBC</span><span class="p">]</span><span class="o">=</span><span class="s2">&quot;fixed&quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">jj</span><span class="p">)</span>
+    <span class="n">props</span><span class="p">[</span><span class="n">nIC1</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;vary&quot;</span>
+    <span class="n">props</span><span class="p">[</span><span class="n">nIC1</span><span class="p">:]</span> <span class="o">=</span> <span class="n">props_temp</span>
+    
+    <span class="n">accepts</span><span class="p">[:</span><span class="n">nIC1</span><span class="p">]</span><span class="o">=</span><span class="n">accept</span>
+    <span class="n">rejects</span><span class="p">[:</span><span class="n">nIC1</span><span class="p">]</span><span class="o">=</span><span class="n">reject</span>
+    
+    <span class="k">if</span> <span class="n">inv_type</span> <span class="ow">is</span> <span class="s1">&#39;uncorrelated&#39;</span><span class="p">:</span>
+        <span class="n">accepts</span><span class="p">[</span><span class="n">nIC1</span><span class="p">:]</span> <span class="o">=</span> <span class="p">[</span><span class="n">accept_birth</span><span class="p">,</span><span class="n">accept_death</span><span class="p">,</span>
+                                 <span class="n">accept_move</span><span class="p">,</span><span class="n">accept_sigma_y</span><span class="p">,</span> <span class="n">accept_swap</span><span class="p">]</span>
+        <span class="n">rejects</span><span class="p">[</span><span class="n">nIC1</span><span class="p">:]</span> <span class="o">=</span> <span class="p">[</span><span class="n">reject_birth</span><span class="p">,</span><span class="n">reject_death</span><span class="p">,</span>
+                                 <span class="n">reject_move</span><span class="p">,</span><span class="n">reject_sigma_y</span><span class="p">,</span> <span class="n">reject_swap</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+         <span class="n">accepts</span><span class="p">[</span><span class="n">nIC1</span><span class="p">:]</span> <span class="o">=</span> <span class="p">[</span><span class="n">accept_birth</span><span class="p">,</span><span class="n">accept_death</span><span class="p">,</span>
+                             <span class="n">accept_move</span><span class="p">,</span><span class="n">accept_sigma_y</span><span class="p">,</span> <span class="n">accept_tau</span><span class="p">,</span> <span class="n">accept_swap</span><span class="p">]</span>
+         <span class="n">rejects</span><span class="p">[</span><span class="n">nIC1</span><span class="p">:]</span> <span class="o">=</span> <span class="p">[</span><span class="n">reject_birth</span><span class="p">,</span><span class="n">reject_death</span><span class="p">,</span>
+                             <span class="n">reject_move</span><span class="p">,</span><span class="n">reject_sigma_y</span><span class="p">,</span> <span class="n">reject_tau</span><span class="p">,</span> <span class="n">reject_swap</span><span class="p">]</span>                        
+    
+    <span class="c1">#Do I need to store both x_it and x_post_vit. Can&#39;t I just store x_post_vit_all[nit,NgridIC]?</span>
+    <span class="k">if</span> <span class="n">inv_type</span> <span class="ow">is</span> <span class="s1">&#39;evencorr&#39;</span><span class="p">:</span>    
+        <span class="n">y</span><span class="p">[</span><span class="n">timeindex_zero</span><span class="p">]</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+        <span class="n">sigma_measure</span><span class="p">[</span><span class="n">timeindex_zero</span><span class="p">]</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+        <span class="n">sigma_y_out</span><span class="p">[</span><span class="n">timeindex_zero</span><span class="p">,:]</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+    
+    
+    <span class="n">post_mcmc</span> <span class="o">=</span> <span class="n">xray</span><span class="o">.</span><span class="n">Dataset</span><span class="p">({</span><span class="s2">&quot;x_it&quot;</span><span class="p">:</span> <span class="p">([</span><span class="s2">&quot;nIt&quot;</span><span class="p">,</span> <span class="s2">&quot;kICmax&quot;</span><span class="p">],</span><span class="n">x_it</span><span class="p">),</span>
+                            <span class="s2">&quot;k_it&quot;</span><span class="p">:</span> <span class="p">([</span><span class="s2">&quot;nIt&quot;</span><span class="p">],</span><span class="n">k_it</span><span class="p">),</span>                        
+                            <span class="s2">&quot;x_post_vit&quot;</span><span class="p">:</span> <span class="p">([</span><span class="s2">&quot;nIt&quot;</span><span class="p">,</span> <span class="s2">&quot;Ngrid&quot;</span><span class="p">],</span><span class="n">x_post_vit</span><span class="p">),</span>                       
+                            <span class="s2">&quot;regions_it&quot;</span><span class="p">:</span> <span class="p">([</span><span class="s2">&quot;nIt&quot;</span><span class="p">,</span> <span class="s2">&quot;Ngrid&quot;</span><span class="p">],</span><span class="n">regions_it</span><span class="p">),</span>                       
+                            <span class="s2">&quot;plon_it&quot;</span><span class="p">:</span> <span class="p">([</span><span class="s2">&quot;kmax&quot;</span><span class="p">,</span><span class="s2">&quot;nIt&quot;</span><span class="p">],</span><span class="n">plon_out</span><span class="p">),</span>                       
+                            <span class="s2">&quot;plat_it&quot;</span><span class="p">:</span> <span class="p">([</span><span class="s2">&quot;kmax&quot;</span><span class="p">,</span><span class="s2">&quot;nIt&quot;</span><span class="p">],</span><span class="n">plat_out</span><span class="p">),</span>                     
+                            <span class="s2">&quot;sigma_y_it&quot;</span><span class="p">:</span> <span class="p">([</span><span class="s2">&quot;nmeasure&quot;</span><span class="p">,</span> <span class="s2">&quot;nIt&quot;</span><span class="p">],</span><span class="n">sigma_y_out</span><span class="p">),</span>
+                            <span class="s2">&quot;sigma_measure&quot;</span><span class="p">:</span> <span class="p">([</span><span class="s2">&quot;nmeasure&quot;</span><span class="p">],</span><span class="n">sigma_measure</span><span class="p">),</span>
+                            <span class="s2">&quot;sigma_model_it&quot;</span><span class="p">:</span> <span class="p">([</span><span class="s2">&quot;ydim2&quot;</span><span class="p">,</span> <span class="s2">&quot;nIt&quot;</span><span class="p">],</span><span class="n">sigma_model_out</span><span class="p">),</span>
+                            <span class="s2">&quot;R_indices&quot;</span><span class="p">:</span> <span class="p">([</span><span class="s2">&quot;ydim1&quot;</span><span class="p">,</span> <span class="s2">&quot;ydim2&quot;</span><span class="p">],</span><span class="n">R_indices</span><span class="p">),</span>
+                            <span class="s2">&quot;pdf_p1_it&quot;</span><span class="p">:</span> <span class="p">([</span><span class="s2">&quot;kICmax&quot;</span><span class="p">,</span><span class="s2">&quot;nIt&quot;</span><span class="p">],</span><span class="n">pdf_param1_out</span><span class="p">),</span>
+                            <span class="s2">&quot;pdf_p2_it&quot;</span><span class="p">:</span> <span class="p">([</span><span class="s2">&quot;kICmax&quot;</span><span class="p">,</span><span class="s2">&quot;nIt&quot;</span><span class="p">],</span> <span class="n">pdf_param2_out</span><span class="p">),</span>                     
+                            <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="p">([</span><span class="s2">&quot;nmeasure&quot;</span><span class="p">],</span> <span class="n">y</span><span class="p">),</span>
+                            <span class="s2">&quot;y_time&quot;</span><span class="p">:</span> <span class="p">([</span><span class="s2">&quot;nmeasure&quot;</span><span class="p">],</span> <span class="n">y_time</span><span class="p">),</span>
+                            <span class="s2">&quot;y_site&quot;</span><span class="p">:</span> <span class="p">([</span><span class="s2">&quot;nmeasure&quot;</span><span class="p">],</span> <span class="n">y_site</span><span class="p">),</span>
+                            <span class="s2">&quot;release_lons&quot;</span><span class="p">:</span> <span class="p">([</span><span class="s2">&quot;sites&quot;</span><span class="p">],</span> <span class="n">release_lons</span><span class="p">),</span>
+                            <span class="s2">&quot;release_lats&quot;</span><span class="p">:</span> <span class="p">([</span><span class="s2">&quot;sites&quot;</span><span class="p">],</span> <span class="n">release_lats</span><span class="p">),</span>
+                            <span class="s2">&quot;accepts&quot;</span><span class="p">:</span> <span class="p">([</span><span class="s2">&quot;proposal&quot;</span><span class="p">],</span>
+                            <span class="n">accepts</span><span class="p">),</span>
+                            <span class="s2">&quot;rejects&quot;</span><span class="p">:</span> <span class="p">([</span><span class="s2">&quot;proposal&quot;</span><span class="p">],</span>
+                            <span class="n">rejects</span><span class="p">),</span>                          
+                            <span class="s2">&quot;stepsize&quot;</span><span class="p">:</span> <span class="p">([</span><span class="s2">&quot;nIC1&quot;</span><span class="p">],</span> <span class="n">stepsize_x_out</span><span class="p">),</span>
+                            <span class="s2">&quot;stepsize_pdf_p1&quot;</span><span class="p">:</span> <span class="p">([</span><span class="s2">&quot;nIC1&quot;</span><span class="p">],</span> <span class="n">stepsize_p1_out</span><span class="p">),</span>
+                            <span class="s2">&quot;stepsize_pdf_p2&quot;</span><span class="p">:</span> <span class="p">([</span><span class="s2">&quot;nIC1&quot;</span><span class="p">],</span> <span class="n">stepsize_p2_out</span><span class="p">),</span>
+                            <span class="s2">&quot;stepsize_sigma_y&quot;</span><span class="p">:</span> <span class="p">([</span><span class="s2">&quot;ydim2&quot;</span><span class="p">],</span> <span class="n">stepsize_sigma_y_out</span><span class="p">),</span>
+                            <span class="s2">&quot;h_v_all&quot;</span><span class="p">:</span> <span class="p">([</span><span class="s2">&quot;nmeasure&quot;</span><span class="p">,</span><span class="s2">&quot;NgridIC&quot;</span><span class="p">],</span>
+                            <span class="n">h_v_all</span><span class="p">),</span> 
+                            <span class="s2">&quot;q_ap&quot;</span><span class="p">:</span> <span class="p">([</span><span class="s2">&quot;lat&quot;</span><span class="p">,</span> <span class="s2">&quot;lon&quot;</span><span class="p">],</span>
+                            <span class="n">q_ap0</span><span class="p">),</span>
+                            <span class="s2">&quot;dates&quot;</span><span class="p">:</span> <span class="p">([</span><span class="s2">&quot;ndates&quot;</span><span class="p">],</span> <span class="p">[</span><span class="n">start_date</span><span class="p">,</span><span class="n">end_date</span><span class="p">]),</span>
+                            <span class="s2">&quot;measure_av&quot;</span><span class="p">:</span> <span class="p">([</span><span class="s2">&quot;sites&quot;</span><span class="p">],</span> <span class="n">av_period</span><span class="p">),</span>
+                            <span class="s2">&quot;PBLH&quot;</span><span class="p">:</span>  <span class="p">([</span><span class="s2">&quot;nmeasure&quot;</span><span class="p">],</span> <span class="n">pblh</span><span class="p">),</span>
+                            <span class="s2">&quot;wind_speed&quot;</span><span class="p">:</span>  <span class="p">([</span><span class="s2">&quot;nmeasure&quot;</span><span class="p">],</span> <span class="n">wind_speed</span><span class="p">),</span>
+                            <span class="s2">&quot;local_ratio&quot;</span><span class="p">:</span>  <span class="p">([</span><span class="s2">&quot;nmeasure&quot;</span><span class="p">],</span> <span class="n">local_ratio</span><span class="p">),</span>
+                            <span class="s2">&quot;nIC&quot;</span><span class="p">:</span> <span class="n">nIC</span><span class="p">,</span>
+                            <span class="s2">&quot;nfixed&quot;</span><span class="p">:</span> <span class="n">nfixed</span><span class="p">},</span>
+                            <span class="n">coords</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;lon&quot;</span><span class="p">:</span><span class="n">lon</span><span class="p">,</span> <span class="s2">&quot;lat&quot;</span><span class="p">:</span> <span class="n">lat</span><span class="p">})</span>
+    
+    <span class="k">if</span> <span class="n">inv_type</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;evencorr&#39;</span><span class="p">,</span> <span class="s1">&#39;corr&#39;</span><span class="p">):</span>
+        <span class="c1"># could use assign?</span>
+        <span class="n">post_mcmc</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;tau_it&#39;</span><span class="p">:</span> <span class="p">([</span><span class="s2">&quot;sites&quot;</span><span class="p">,</span><span class="s2">&quot;nIt&quot;</span><span class="p">],</span> <span class="n">tau_out</span><span class="p">),</span>
+                          <span class="s1">&#39;stepsize_tau&#39;</span><span class="p">:</span> <span class="n">stepsize_tau_out</span><span class="p">})</span>
+        
+    <span class="c1"># Add some global attributes with all further info about the run:    </span>
+    <span class="n">post_mcmc</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;bc_basis_case&quot;</span><span class="p">]</span><span class="o">=</span><span class="n">bc_basis_case</span>
+    <span class="n">post_mcmc</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;fp_basis_case&quot;</span><span class="p">]</span><span class="o">=</span><span class="n">fp_basis_case</span>
+    <span class="n">post_mcmc</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;iterations&quot;</span><span class="p">]</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">nIt</span><span class="p">)</span>
+    <span class="n">post_mcmc</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;burn-in&quot;</span><span class="p">]</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">burn_in</span><span class="p">)</span>
+    <span class="n">post_mcmc</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;Start date&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">start_date</span>
+    <span class="n">post_mcmc</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;End date&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">end_date</span>
+    <span class="n">post_mcmc</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;Filters&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">filters</span>
+    <span class="n">post_mcmc</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;Parallel tempering?&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">para_temp</span><span class="p">)</span>
+    <span class="n">post_mcmc</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;Inversion type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">inv_type</span>
+        
+    <span class="n">post_mcmc</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s2">&quot;proposal&quot;</span><span class="p">]</span><span class="o">=</span><span class="n">props</span>
+    <span class="n">post_mcmc</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s2">&quot;sites&quot;</span><span class="p">]</span><span class="o">=</span><span class="n">sites</span>
+    
+   
+    <span class="c1"># Also:</span>
+    <span class="c1">#Attributes: Sites, av_period, basis_case, accepts and rejects names</span>
+    <span class="c1">#output_directory=&quot;/home/ml12574/work/programs/Python/my_acrg/td_uncorr/&quot;</span>
+    
+    <span class="c1">#Output files from tdmcmc_template.py stored in the form:</span>
+    <span class="c1"># &quot;output_&quot; + network + &quot;_&quot; + species +  &quot;_&quot; + date + &quot;.nc&quot;</span>
+    
+    <span class="n">fname</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span>
+                        <span class="s2">&quot;output_&quot;</span> <span class="o">+</span> <span class="n">network</span> <span class="o">+</span> <span class="s2">&quot;_&quot;</span> <span class="o">+</span> <span class="n">species</span> <span class="o">+</span> <span class="s2">&quot;_&quot;</span> <span class="o">+</span> <span class="n">start_date</span> <span class="o">+</span> <span class="s2">&quot;.nc&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">post_mcmc</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="n">post_mcmc</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">encoding</span><span class="p">[</span><span class="s1">&#39;zlib&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">post_mcmc</span><span class="o">.</span><span class="n">to_netcdf</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="n">fname</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">post_mcmc</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, mrghg.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
