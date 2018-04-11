@@ -23,7 +23,9 @@ from acrg_time import convert
 import calendar
 import pickle
 from scipy import interpolate
+import dateutil.relativedelta
 import cartopy.crs as ccrs
+import pdb
 
 acrg_path = os.getenv("ACRG_PATH")
 data_path = os.getenv("DATA_PATH")
@@ -279,7 +281,7 @@ def footprints(sitecode_or_filename, fp_directory = fp_directory,
         return fp
 
 
-def flux(domain, species, flux_directory=flux_directory):
+def flux(domain, species, start = None, end = None, flux_directory=flux_directory):
     """
     The flux function reads in all flux files for the domain and species as an xarray Dataset.
     Note that at present ALL flux data is read in per species per domain or by emissions name.
@@ -323,11 +325,45 @@ def flux(domain, species, flux_directory=flux_directory):
             print("ERROR: More than one flux level")
         else:
             return flux_ds.drop("lev")
+        
+    if start == None:
+        return flux_ds
+    else:
+        if end == None:
+            print "To get fluxes for a certain time period you must specify an end date."
+        else:
+            flux_timeslice = flux_ds.sel(time=slice(start, end))
+            if len(flux_timeslice.time)==0:
+                flux_timeslice = flux_ds.sel(time=start, method = 'ffill')
+                flux_timeslice = flux_timeslice.expand_dims('time',axis=-1)
+                print("No fluxes available during the time period specified so outputting\
+                          flux from %s" %flux_timeslice.time.values[0])
+            return flux_timeslice
 
-    return flux_ds
+
+def flux_for_HiTRes(domain, emissions_dict, start=None, end=None, flux_directory=flux_directory):
+    
+    if 'low_freq' not in emissions_dict.keys():
+        print("low_freq must be a key in the emissions_dict in order to combine with HiTRes footprints.")
+        return None
+    elif 'high_freq' not in emissions_dict.keys():
+        print("high_freq must be a key in the emissions_dict in order to use HiTRes footprints.")
+        return None
+    
+    flux_dict = {}
+    fluxes_highfreq = flux(domain, emissions_dict['high_freq'], start = start, end = end,flux_directory=flux_directory)
+    flux_dict['high_freq'] = fluxes_highfreq
+    if start:
+        start_lowfreq = start - dateutil.relativedelta.relativedelta(months=1)
+        fluxes_lowfreq = flux(domain, emissions_dict['low_freq'], start = start_lowfreq, end = end,flux_directory=flux_directory)
+    elif start == None:
+        fluxes_lowfreq = flux(domain, emissions_dict['low_freq'], start = None, end = None,flux_directory=flux_directory)
+    flux_dict['low_freq'] = fluxes_lowfreq
+    
+    return flux_dict
 
 
-def boundary_conditions(domain, species, bc_directory=bc_directory):
+def boundary_conditions(domain, species, start = None, end = None, bc_directory=bc_directory):
     """
     The boundary_conditions function reads in the files with the global model vmrs at the domain edges 
     to give the boundary conditions as an xarray Dataset.
@@ -355,7 +391,19 @@ def boundary_conditions(domain, species, bc_directory=bc_directory):
 
     bc_ds = read_netcdfs(files)
 
-    return bc_ds
+    if start == None:
+        return bc_ds
+    else:
+        if end == None:
+            print "To get boundary conditions for a certain time period you must specify an end date."
+        else:
+            bc_timeslice = bc_ds.sel(time=slice(start, end))
+            if len(bc_timeslice.time)==0:
+                bc_timeslice = bc_ds.sel(time=start, method = 'ffill')
+                bc_timeslice = bc_timeslice.expand_dims('time',axis=-1)
+                print("No boundary conditions available during the time period specified so outputting\
+                          boundary conditions from %s" %bc_timeslice.time.values[0])
+            return bc_timeslice
 
 
 def basis(domain, basis_case, basis_directory = basis_directory):
@@ -470,8 +518,7 @@ def timeseries(ds):
               "no fluxes. Check flux file.")
         return None
 
-def timeseries_HiTRes(fp_HiTRes_ds, domain, HiTRes_flux_name, Resid_flux_name,
-                      output_TS = True, output_fpXflux = True, flux_directory=flux_directory):
+def timeseries_HiTRes(fp_HiTRes_ds, flux_dict, output_TS = True, output_fpXflux = True):
     """
     The timeseries_HiTRes function computes flux * HiTRes footprints.
     
@@ -504,8 +551,21 @@ def timeseries_HiTRes(fp_HiTRes_ds, domain, HiTRes_flux_name, Resid_flux_name,
             Outputs the sensitivity map   
     """
     
-    flux_HiTRes = flux(domain, HiTRes_flux_name, flux_directory)
-    flux_resid = flux(domain, Resid_flux_name, flux_directory)
+#    # Get time range
+#    fp_start = fp_HiTRes_ds.time[0]
+#    start = dt.datetime(int(fp_start['time.year']), int(fp_start['time.month']), 1, 0, 0)
+#        
+#    fp_end = fp_HiTRes_ds.time[-1]
+#    month_days = calendar.monthrange(int(fp_end['time.year']), int(fp_end['time.month']))[1]
+#    end = dt.datetime(int(fp_end['time.year']), int(fp_end['time.month']), 1, 0, 0) + \
+#            dt.timedelta(days = month_days)
+    
+    flux_HiTRes = flux_dict['high_freq']
+    flux_resid = flux_dict['low_freq']
+    
+    """
+    Probably need a check in here to make sure dates of fluxes correspond to dates of footprints
+    """
     
     fp_HiTRes = fp_HiTRes_ds.fp_HiTRes.to_dataset()
     fpXflux = np.zeros((len(fp_HiTRes.lat), len(fp_HiTRes.lon), len(fp_HiTRes.time)))
@@ -524,7 +584,7 @@ def timeseries_HiTRes(fp_HiTRes_ds, domain, HiTRes_flux_name, Resid_flux_name,
                                        'lon':fp.lon,
                                        'time':new_time})
 
-        em = flux_HiTRes.reindex_like(new_ds, method='nearest')
+        em = flux_HiTRes.reindex_like(new_ds, method='ffill')
         
         #Use end of hours back as closest point for finding the emissions file
         emend = flux_resid.sel(time = new_ds.time[0], method = 'ffill')
@@ -560,7 +620,7 @@ def timeseries_boundary_conditions(ds):
            (ds.particle_locations_w*ds.vmr_w).sum(["height", "lat"])
 
     
-def footprints_data_merge(data, domain, load_flux = True,
+def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                           calc_timeseries = True, calc_bc = True, HiTRes = False,
                           average = None, site_modifier = {}, height = None,
                           emissions_name = None, interp_vmr_freq = None,
@@ -618,26 +678,24 @@ def footprints_data_merge(data, domain, load_flux = True,
     attributes = [key for key in data.keys() if key[0] == '.']
     
     if average is not None:
-        if type(average) is not list:
-            average = [average]
-        if len(average) != len(sites):
-            print("WARNING: average list must be the same length as " + \
-                  "number of sites. Ignoring. Output dataset will not be resampled.")
-            average = [None for i in sites]
+        if type(average) is not dict:
+            print("WARNING: average list must be a dictionary with {site: averaging_period}\
+                  key value pairs. Ignoring. Output dataset will not be resampled.")
+            average = {x:None for x in sites}
     else:
-        average = [None for i in sites]
+        average = {x:None for x in sites}
 
     # If not given, check if species is defined in data dictionary:
 #    if species is None:
     if ".species" in data.keys():
         species = data[".species"]
     else:
-        print "Species is not specified and can't be found in data dictionary."
+        print "Species can't be found in data dictionary."
 
     # Output array
     fp_and_data = {}
     
-    for si, site in enumerate(sites):
+    for site in sites:
 
         # Dataframe for this site            
         site_df = data[site] 
@@ -662,7 +720,7 @@ def footprints_data_merge(data, domain, load_flux = True,
         if height is not None:
             
             if type(height) is not dict:
-                print("Height input needs to be a dictionary with sitename:height")
+                print("Height input needs to be a dictionary with {sitename:height}")
                 return None
                 
             height_site = height[site] 
@@ -672,28 +730,28 @@ def footprints_data_merge(data, domain, load_flux = True,
         # Get footprints
 
 #   Error message if looking for HiTRes files and fp_directory is not a dictionary        
-        if HiTRes is True and type(fp_directory) is not dict:
+        if HiTRes is True:
+            if type(fp_directory) is not dict:
                 print("fp_directory needs to be a dictionary containing paths \
                        to integrated and HiTRes footprints \
                        {integrated:path1, HiTRes:path2}")
                 return None
+                
+                print("As HiTRes is set to True, make sure that the high and low time resolution emissions name\
+                      pairs are input correctly for the emissions sources where HiTRes applies. They should look like:\
+                      emissions_name = {quick_source_name:{'high_res':emissions_file_identifier,\
+                      'low_res':emissions_file_identifier}.")
 
         site_fp = footprints(site_modifier_fp, fp_directory = fp_directory, 
                              flux_directory = flux_directory, 
                              bc_directory = bc_directory,
                              start = start, end = end,
                              domain = domain,
-                             species = [species if load_flux == True or \
-                                     calc_timeseries == True or \
-                                     calc_bc == True \
-                                     else None][0], \
-                            height = height_site,
-                            emissions_name = [emissions_name if load_flux == True or \
-                                     calc_timeseries == True \
-                                     else None][0],
-                            HiTRes = HiTRes,
-                            interp_vmr_freq=interp_vmr_freq)
-                         
+                             species = None,
+                             height = height_site,
+                             emissions_name = None,
+                             HiTRes = HiTRes,
+                             interp_vmr_freq=interp_vmr_freq)                         
                         
         if site_fp is not None:                        
             # If satellite data, check that the max_level in the obs and the max level in the processed FPs are the same
@@ -717,17 +775,6 @@ def footprints_data_merge(data, domain, load_flux = True,
             
             # rt17603: 06/04/2018 - Added sort as some footprints weren't sorted by time for satellite data.
             site_fp = site_fp.sortby("time")
-            
-            # Combine datasets to one with coarsest  frequency
-
-            ds_timefreq = np.nanmedian((site_ds.time.data[1:] - site_ds.time.data[0:-1]).astype('int64')) 
-            fp_timefreq = np.nanmedian((site_fp.time.data[1:] - site_fp.time.data[0:-1]).astype('int64')) 
-            if ds_timefreq > fp_timefreq:
-               site_fp = site_fp.resample(str(ds_timefreq/3600e9)+'H', dim='time', how='mean')
-            elif ds_timefreq < fp_timefreq:
-               site_ds = site_ds.resample(str(fp_timefreq/3600e9)+'H', dim='time', how='mean')
-               
-
             site_ds = combine_datasets(site_ds, site_fp,
                                        method = "ffill",
                                        tolerance = tolerance)
@@ -744,20 +791,84 @@ def footprints_data_merge(data, domain, load_flux = True,
                 if HiTRes:
                     site_ds.update({'fp_HiTRes' : (site_ds.fp_HiTRes.dims, 
                                                    site_ds.fp_HiTRes / data[".units"])})
-                                                   
-            # Calculate model time series, if required
-            if calc_timeseries:
-                site_ds["mf_mod"] = timeseries(site_ds)
-            
-            # Calculate boundary conditions, if required         
-            if calc_bc:
-                site_ds["bc"] = timeseries_boundary_conditions(site_ds)  
-            
+        
             # Resample, if required
-            if average[si] is not None:
-                site_ds = site_ds.resample(average[si], dim = "time")
+            if average[site] is not None:
+                site_ds = site_ds.resample(average[site], dim = "time")
             
             fp_and_data[site] = site_ds
+            
+        
+        if load_flux:
+            
+            flux_dict = {} 
+            
+            start_flux = start
+            end_flux = dt.datetime(df_end.year, df_end.month, 1, 0, 0) + \
+                dt.timedelta(days = month_days-1)
+            
+            if emissions_name is not None:
+                if type(emissions_name) != dict:
+                    print("emissions_name should be a dictionary: {quick_source_name: emissions_file_identifier}")
+            elif species is not None:
+                emissions_name = {'all':species}
+            
+            for source in emissions_name.keys():
+                if type(emissions_name[source]) == str:
+                    flux_dict[source] = flux(domain, emissions_name[source], start = start_flux, end = end_flux,flux_directory=flux_directory)
+                elif type(emissions_name[source]) == dict:
+                    if HiTRes == False:
+                        print("HiTRes is set to False and a dictionary has been found as the emissions_name dictionary value\
+                              for source %s. Either enter your emissions names as separate entries in the emissions_name\
+                              dictionary or turn HiTRes to True to use the two emissions files together with HiTRes footprints." %source)
+                        return None
+                    else:
+                        flux_dict[source] = flux_for_HiTRes(domain, emissions_name[source], start=start_flux, end = end_flux, flux_directory=flux_directory)
+                        
+            fp_and_data['.flux'] = flux_dict
+            
+        
+        if load_bc:
+            
+            start_bc = start
+            end_bc = dt.datetime(df_end.year, df_end.month, 1, 0, 0) + \
+                dt.timedelta(days = month_days-1)
+            
+            bc = boundary_conditions(domain, species, start_bc, end = end_bc, bc_directory=bc_directory)
+                
+            fp_and_data['.bc'] = bc
+        
+                                           
+        # Calculate model time series, if required
+        if calc_timeseries:
+            if load_flux == False:
+                print "Can't get modelled mole fraction timeseries because load_flux is set to False."
+            else:
+                sites = [key for key in fp_and_data.keys() if key[0] != '.']
+                sources = fp_and_data['.flux'].keys()
+                for site in sites:
+                    for source in sources:
+                        if type(fp_and_data['.flux'][source]) == dict:
+                            fp_and_data[site]['mf_mod_'+source] = timeseries_HiTRes(fp_and_data[site],fp_and_data['.flux'][source], output_fpXflux=False)
+                        else:
+                            flux_reindex = fp_and_data['.flux'][source].reindex_like(fp_and_data[site], 'ffill')
+                            if source == 'all':
+                                fp_and_data[site]['mf_mod'] = (fp_and_data[site].fp*flux_reindex.flux).sum(["lat", "lon"])     
+                            else:
+                                fp_and_data[site]['mf_mod_'+source] = (fp_and_data[site].fp*flux_reindex.flux).sum(["lat", "lon"])  
+        
+        # Calculate boundary conditions, if required         
+        if calc_bc:
+            if load_bc == False:
+                print "Can't get modelled baseline timeseries because load_bc is set to False."
+            else:
+                sites = [key for key in fp_and_data.keys() if key[0] != '.']
+                for site in sites:
+                    bc_reindex = fp_and_data['.bc'].reindex_like(fp_and_data[site], 'ffill')
+                    fp_and_data[site]['bc'] = (fp_and_data[site].particle_locations_n*bc_reindex.vmr_n).sum(["height", "lon"]) + \
+                                                (fp_and_data[site].particle_locations_e*bc_reindex.vmr_e).sum(["height", "lat"]) + \
+                                                (fp_and_data[site].particle_locations_s*bc_reindex.vmr_s).sum(["height", "lon"]) + \
+                                                (fp_and_data[site].particle_locations_w*bc_reindex.vmr_w).sum(["height", "lat"])
         
     for a in attributes:
         fp_and_data[a] = data[a]
@@ -766,8 +877,7 @@ def footprints_data_merge(data, domain, load_flux = True,
 
 
 def fp_sensitivity(fp_and_data, domain, basis_case,
-                   basis_directory = basis_directory,
-                   HiTRes_flux_name = None, Resid_flux_name=None, flux_directory=flux_directory):
+                   basis_directory = basis_directory):
     """
     The fp_sensitivity function adds a sensitivity matrix, H, to each site xarray dataframe in fp_and_data.
 
@@ -793,94 +903,136 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
     
     sites = [key for key in fp_and_data.keys() if key[0] != '.']
     
-    basis_func = basis(domain = domain, basis_case = basis_case, basis_directory = basis_directory)
+    flux_sources = fp_and_data['.flux'].keys()
+    
+    if type(basis_case) is not dict:
+        if len(flux_sources) == 1:
+            basis_case = {flux_sources[0]:basis_case}
+        else:
+            basis_case = {'all':basis_case}
+    
+    if len(basis_case.keys()) != len(flux_sources):
+        if len(basis_case.keys()) == 1:
+            print("Using %s as the basis case for all sources" %basis_case[basis_case.keys()[0]])
+        else:
+            print("There should either only be one basis_case, or it should be a dictionary the same length\
+                  as the number of sources.")
+            return None
+    
     
     for site in sites:
+        
+        for si, source in enumerate(flux_sources):
+        
+            if source in basis_case.keys():
+                basis_func = basis(domain = domain, basis_case = basis_case[source], basis_directory = basis_directory)
+            else:
+                basis_func = basis(domain = domain, basis_case = basis_case['all'], basis_directory = basis_directory)
 
-        if 'fp_HiTRes' in fp_and_data[site].keys():
-            site_bf = xr.Dataset({"fp_HiTRes":fp_and_data[site]["fp_HiTRes"],
+            if type(fp_and_data['.flux'][source]) == dict:
+                if 'fp_HiTRes' in fp_and_data[site].keys():
+                    site_bf = xr.Dataset({"fp_HiTRes":fp_and_data[site]["fp_HiTRes"],
                                          "fp":fp_and_data[site]["fp"]})
-            H_all_arr=timeseries_HiTRes(site_bf, domain, HiTRes_flux_name, Resid_flux_name, output_TS = False, output_fpXflux = True, flux_directory=flux_directory)
-            H_all = xr.DataArray(H_all_arr, coords=[site_bf.lat, site_bf.lon, site_bf.time], dims = ['lat','lon','time'])
+                    H_all_arr=timeseries_HiTRes(site_bf, fp_and_data['.flux'][source], output_TS = False, output_fpXflux = True)
+                    H_all = xr.DataArray(H_all_arr, coords=[site_bf.lat, site_bf.lon, site_bf.time], dims = ['lat','lon','time'])
+                else:
+                    print("fp_and_data needs the variable fp_HiTRes to use the emissions dictionary with high_freq and low_freq emissions.")
+        
+            else:
+                site_bf = combine_datasets(fp_and_data[site]["fp"].to_dataset(), fp_and_data['.flux'][source])
+                H_all=site_bf.fp*site_bf.flux 
+                H_all_arr = H_all.values
+            
+            H_all_v=H_all.values.reshape((len(site_bf.lat)*len(site_bf.lon),len(site_bf.time)))        
+        
+        
+            if 'region' in basis_func.dims.keys():
+            
+                if 'time' in basis_func.basis.dims:
+                    basis_func = basis_func.isel(time=0)
+            
+                site_bf = xr.merge([site_bf, basis_func])
+            
+                H = np.zeros((len(site_bf.region),len(site_bf.time)))
+            
+                base_v = site_bf.basis.values.reshape((len(site_bf.lat)*len(site_bf.lon), len(site_bf.region)))
+            
+                for i in range(len(site_bf.region)):
+                    H[i,:] = np.sum(H_all_v*base_v[:,i,np.newaxis], axis = 0)
+                
+                if source == all:
+                    region_name = site_bf.region
+                else:
+                    region_name = [source+'-'+reg for reg in site_bf.region.values]
 
+                sensitivity = xr.DataArray(H, 
+                                             coords=[('region', region_name), 
+                                                     ('time', fp_and_data[site].coords['time'])])
         
-        else:
-            site_bf = xr.Dataset({"fp":fp_and_data[site]["fp"],
-                                         "flux":fp_and_data[site]["flux"]})
-            H_all=site_bf.fp*site_bf.flux 
-            H_all_arr = H_all.values
+            else:
+                print("Warning: Using basis functions without a region dimension may be deprecated shortly.")
         
+                site_bf = combine_datasets(site_bf,basis_func, method='ffill')
             
-        H_all_v=H_all.values.reshape((len(site_bf.lat)*len(site_bf.lon),len(site_bf.time)))        
-        
-        
-        if 'region' in basis_func.dims.keys():
-            
-            if 'time' in basis_func.basis.dims:
-                basis_func = basis_func.isel(time=0)
-            
-            site_bf = xr.merge([site_bf, basis_func])
-            
-            H = np.zeros((len(site_bf.region),len(site_bf.time)))
-            
-            base_v = site_bf.basis.values.reshape((len(site_bf.lat)*len(site_bf.lon), len(site_bf.region)))
-            
-            for i in range(len(site_bf.region)):
-                H[i,:] = np.sum(H_all_v*base_v[:,i,np.newaxis], axis = 0) 
+                H = np.zeros((int(np.max(site_bf.basis)),len(site_bf.time)))
 
-            sensitivity = xr.DataArray(H, 
-                              coords=[('region', site_bf.region), 
-                                      ('time', fp_and_data[site].coords['time'])])
-        
-        else:
-        
-            site_bf = combine_datasets(site_bf,basis_func, method='ffill')
-            
-            H = np.zeros((int(np.max(site_bf.basis)),len(site_bf.time)))
+                basis_scale = xr.Dataset({'basis_scale': (['lat','lon','time'],
 
-            basis_scale = xr.Dataset({'basis_scale': (['lat','lon','time'],
                                                     np.zeros(np.shape(site_bf.basis)))},
-                                   coords = site_bf.coords)
-            site_bf = site_bf.merge(basis_scale)
+                                       coords = site_bf.coords)
+                site_bf = site_bf.merge(basis_scale)
 
-            base_v = np.ravel(site_bf.basis.values[:,:,0])
-            for i in range(int(np.max(site_bf.basis))):
-                wh_ri = np.where(base_v == i+1)
-                H[i,:]=np.sum(H_all_v[wh_ri[0],:], axis = 0)        
-            
-            sensitivity = xr.DataArray(H, 
-                              coords=[('region', range(1,np.max(site_bf.basis)+1)), 
-                                      ('time', fp_and_data[site].coords['time'])])
+                base_v = np.ravel(site_bf.basis.values[:,:,0])
+                for i in range(int(np.max(site_bf.basis))):
+                    wh_ri = np.where(base_v == i+1)
+                    H[i,:]=np.sum(H_all_v[wh_ri[0],:], axis = 0)      
+                    
+                if source == all:
+                    region_name = range(1,np.max(site_bf.basis)+1)
+                else:
+                    region_name = [source+'-'+str(reg) for reg in range(1,np.max(site_bf.basis)+1)]
+
+                sensitivity = xr.DataArray(H, 
+                                             coords=[('region', region_name), 
+                                                     ('time', fp_and_data[site].coords['time'])])
                                      
-
-        fp_and_data[site]['H'] = sensitivity                             
-
-        
-        if basis_case.startswith('sub'):
-            """
-            To genrate sub_lon and sub_lat grids basis case must start with 'sub'
-            e.g.
-            'sub-transd', 'sub_transd', sub-intem' will work
-            'transd' or 'transd-sub' won't work
-            """
-            sub_fp_temp = site_bf.fp.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
-                                         method="nearest") 
-
-            sub_fp = xr.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
-                               coords = {'sub_lat': (site_bf.coords['sub_lat']),
-                                         'sub_lon': (site_bf.coords['sub_lon']),
-                                'time' : (fp_and_data[site].coords['time'])})
+            if si == 0:
+                concat_sensitivity = sensitivity
+            else:
+                concat_sensitivity = xr.concat((concat_sensitivity,sensitivity), dim='region')
+            
+            sub_basis_cases = 0
+            if basis_case[source].startswith('sub'):
+                """
+                To genrate sub_lon and sub_lat grids basis case must start with 'sub'
+                e.g.
+                'sub-transd', 'sub_transd', sub-intem' will work
+                'transd' or 'transd-sub' won't work
+                """
+                sub_basis_cases += 1
+                if sub_basis_cases > 1:
+                    print("Can currently only use a sub basis case for one source. Skipping...")
+                else:
+                    sub_fp_temp = site_bf.fp.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
+                                                 method="nearest") 
+                    sub_fp = xr.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
+                                           coords = {'sub_lat': (site_bf.coords['sub_lat']),
+                                                     'sub_lon': (site_bf.coords['sub_lon']),
+                                                     'time' : (fp_and_data[site].coords['time'])})
                                 
-            sub_H_temp = H_all.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
-                                         method="nearest")                             
+                    sub_H_temp = H_all.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
+                                           method="nearest")                             
+                    sub_H = xr.Dataset({'sub_H': (['sub_lat','sub_lon','time'], sub_H_temp)},
+                                          coords = {'sub_lat': (site_bf.coords['sub_lat']),
+                                                    'sub_lon': (site_bf.coords['sub_lon']),
+                                                    'time' : (fp_and_data[site].coords['time'])},
+                                          attrs = {'flux_source_used_to_create_sub_H':source})
+       
+                    fp_and_data[site] = fp_and_data[site].merge(sub_fp)
+                    fp_and_data[site] = fp_and_data[site].merge(sub_H)
+            
+        fp_and_data[site]['H'] = concat_sensitivity                             
 
-            sub_H = xr.Dataset({'sub_H': (['sub_lat','sub_lon','time'], sub_H_temp)},
-                               coords = {'sub_lat': (site_bf.coords['sub_lat']),
-                                         'sub_lon': (site_bf.coords['sub_lon']),
-                                'time' : (fp_and_data[site].coords['time'])})
-                                
-            fp_and_data[site] = fp_and_data[site].merge(sub_fp)
-            fp_and_data[site] = fp_and_data[site].merge(sub_H)
                     
     return fp_and_data
 
@@ -918,10 +1070,10 @@ def bc_sensitivity(fp_and_data, domain, basis_case, bc_basis_directory=bc_basis_
                                 "particle_locations_e":fp_and_data[site]["particle_locations_e"],
                                 "particle_locations_s":fp_and_data[site]["particle_locations_s"],
                                 "particle_locations_w":fp_and_data[site]["particle_locations_w"],
-                                "vmr_n":fp_and_data[site]["vmr_n"],
-                                "vmr_e":fp_and_data[site]["vmr_e"],
-                                "vmr_s":fp_and_data[site]["vmr_s"],
-                                "vmr_w":fp_and_data[site]["vmr_w"],
+                                "vmr_n":fp_and_data[".bc"]["vmr_n"],
+                                "vmr_e":fp_and_data[".bc"]["vmr_e"],
+                                "vmr_s":fp_and_data[".bc"]["vmr_s"],
+                                "vmr_w":fp_and_data[".bc"]["vmr_w"],
                                 "bc":fp_and_data[site]["bc"]})
                         
         DS = combine_datasets(DS_temp, basis_func, method='ffill')                                    
