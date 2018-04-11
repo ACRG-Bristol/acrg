@@ -10,25 +10,35 @@ from numba import jit
 
 @jit(nopython = True)
 def coarsen(arrayFine, latFine, lonFine, factor = 2, mean = True):
-    '''
-    Coarsen a fine grid by some integer factor.
+    '''Coarsen a fine grid by some integer factor.
     E.g. if the input array is 1000 x 500, and is coarsened by a factor of 2
     the output array will be 500 x 250. By default, the output is the mean
     of the inputs.
     
-    Arguments:
-    arrayFine: input array
-    latFine: input latitudes
-    lonFine: input longitudes
-    
-    Keywords:
-    factor: factor by which to coarsen array
-    mean: True/False. If True calculates the mean of the fine array values, 
-        if False, calculates the sum.
+    Args:
+        arrayFine (array): 
+            array of values for fine resolution grid
+        latFine (array): 
+            1D latitudes of fine resolution grid
+        lonFine (array): 
+            1D longitudes of fine resolution grid
+        factor (int, optional): 
+            Factor by which to coarsen array. Default is 2
+        mean (bool): 
+            True/False. 
+            True calculates the mean of the fine array values; False calculates the sum.
+            Default is True
+            
+    Returns:
+        out (array): 
+            grid of coarsened values
+        outLat (array): 
+            Latitudes of coarsened grid
+        outLon (array): 
+            Longitudes of coarsened grid
 
     Example:
-    
-    out, outLat, outLon = coarsen(fineArray, fineLat, fineLon, factor = 10, mean = True)
+        out, outLat, outLon = coarsen(fineArray, fineLat, fineLon, factor = 10, mean = True)
     
     '''
     

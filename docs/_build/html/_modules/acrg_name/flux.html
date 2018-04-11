@@ -67,31 +67,43 @@
           <span class="n">regridder_used</span> <span class="o">=</span> <span class="s1">&#39;acrg_grid.regrid.regrid_3D&#39;</span><span class="p">,</span>
           <span class="n">copy_from_year</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">climatology</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">flux_comments</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
           <span class="n">output_directory</span> <span class="o">=</span> <span class="s1">&#39;/data/shared/NAME/emissions/&#39;</span><span class="p">):</span>
-    <span class="sd">&#39;&#39;&#39;</span>
-<span class="sd">    Write a flux file</span>
+    <span class="sd">&#39;&#39;&#39;Write a flux file for emissions</span>
 <span class="sd">    </span>
-<span class="sd">    -time- should be in numpy.datetime64 format in either an array (format from xarray) or a datetime index (format from pandas).</span>
-<span class="sd">    See &#39;Creating datetime64 data&#39; : http://xarray.pydata.org/en/stable/time-series.html</span>
+<span class="sd">    Args:</span>
+<span class="sd">        lat (arr): 1D array of latitudes</span>
+<span class="sd">        lon (arr): 1D array of longitudes</span>
+<span class="sd">        time (numpy.datetime64): Either an array (format from xarray) or a datetime index (format from pandas).</span>
+<span class="sd">            See &#39;Creating datetime64 data&#39; : http://xarray.pydata.org/en/stable/time-series.html</span>
+<span class="sd">        flux (array): 2D array of size [lat x lon]. Should be in mol/m2/s.</span>
+<span class="sd">        species (str): Species of interest.</span>
+<span class="sd">        domain (str): String of domain area</span>
+<span class="sd">        source (str): Sources in file. E.g. &#39;ff&#39; (fossil fuel), &#39;agriculture&#39;.</span>
+<span class="sd">            source = None if the file contains all sources of a species. </span>
+<span class="sd">            If multiple sources: -source- is a chain of sources: &#39;waste-and-agriculture&#39; (with hyphens between words).</span>
+<span class="sd">        title (str): Gives more information about what is in the file, e.g. Fossil Fuel CO2.</span>
+<span class="sd">        prior_info_dict (dict): {&#39;NAME_OF_PRIOR&#39; : [&#39;VERSION&#39;,&#39;RAW RESOLUTION&#39;, &#39;REFERENCE&#39;]}</span>
+<span class="sd">        regridder_used (str, optional): regrid function used. Default is &#39;acrg_grid.regrid.regrid_3D&#39;.</span>
+<span class="sd">        copy_from_year (str, optional): If the data is the same as another year but with a different timestamp give the original year here as a string</span>
+<span class="sd">            Default is None</span>
+<span class="sd">        climatology (bool, optional): If the data is a climatology set this to True and give detail using flux_comments.</span>
+<span class="sd">            Default is False</span>
+<span class="sd">        flux_comments (str, optional): Extra comments. Default is None.</span>
+<span class="sd">        output_directory (str, optional): Output directory. Default is &#39;/data/shared/NAME/emissions/&#39;.</span>
 <span class="sd">    </span>
-<span class="sd">    -flux- should be in mol/m2/s and -units- should be mol/m2/s.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        None</span>
+<span class="sd">        Writes flux file to netcdf</span>
+<span class="sd">        </span>
+<span class="sd">    Example:</span>
+<span class="sd">        flux.write(lat, lon, time, flux, &#39;ch4&#39;, &#39;EUROPE&#39;, &#39;2012&#39;,</span>
+<span class="sd">          comments = comments, title=&quot;2012_CH4_emissions_EUROPE&quot;) </span>
 <span class="sd">    </span>
-<span class="sd">    -source- is the sources in file. E.g. &#39;ff&#39; (fossil fuel), &#39;agriculture&#39;.</span>
-<span class="sd">    source = None if the file contains all sources of a species. </span>
-<span class="sd">    If multiple sources: -source- is a chain of sources: &#39;waste-and-agriculture&#39; (with hyphens between words).</span>
-<span class="sd">    </span>
-<span class="sd">    -title- gives more information about what is in the file, e.g. Fossil Fuel CO2.</span>
-<span class="sd">    </span>
-<span class="sd">    prior_info_dict = {&#39;NAME_OF_PRIOR&#39; : [&#39;VERSION&#39;,&#39;RAW RESOLUTION&#39;, &#39;REFERENCE&#39;]}</span>
-<span class="sd">    </span>
-<span class="sd">    -copy_from_year- if the data is the same as another year but with a different timestamp give the original year here as a string</span>
-<span class="sd">    </span>
-<span class="sd">    -climatology- if the data is a climatology set this to True and give detail using flux_comments </span>
-<span class="sd">    </span>
-<span class="sd">    TODO: Add some error checking (e.g. check that domain is correct)</span>
+<span class="sd">    Todo: </span>
+<span class="sd">        Add some error checking (e.g. check that domain is correct)</span>
 <span class="sd">    &#39;&#39;&#39;</span>
     
-    <span class="nb">print</span> <span class="s2">&quot;WARNING: Make sure time stamp is centre of time period (i.e. 15th of month</span><span class="se">\</span>
-<span class="s2">            for monthly data or 15th June for yearly data).&quot;</span>
+    <span class="nb">print</span> <span class="s2">&quot;WARNING: Make sure time stamp is start of time period (i.e. 1st of month</span><span class="se">\</span>
+<span class="s2">            for monthly data or 1st January for yearly data).&quot;</span>
     <span class="nb">print</span> <span class="s2">&quot;WARNING: Make sure coordinates are centre of the gridbox.&quot;</span>
     <span class="nb">print</span> <span class="s2">&quot;WARNING: Make sure fluxes are in mol/m2/s.&quot;</span>
         
@@ -168,7 +180,7 @@
     
     <span class="n">flux_ds</span><span class="o">.</span><span class="n">lat</span><span class="o">.</span><span class="n">attrs</span> <span class="o">=</span> <span class="n">lat_attrs</span>
     <span class="n">flux_ds</span><span class="o">.</span><span class="n">lon</span><span class="o">.</span><span class="n">attrs</span> <span class="o">=</span> <span class="n">lon_attrs</span>
-    <span class="n">flux_ds</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;notes&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;centre of time period&quot;</span>
+    <span class="n">flux_ds</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;notes&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Start of time period&quot;</span>
     
 
     <span class="n">flux_ds</span><span class="o">.</span><span class="n">flux</span><span class="o">.</span><span class="n">encoding</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;zlib&#39;</span><span class="p">:</span><span class="kc">True</span><span class="p">}</span>                        

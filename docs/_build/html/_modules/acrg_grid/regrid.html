@@ -58,19 +58,24 @@
 
 <div class="viewcode-block" id="regrid2d"><a class="viewcode-back" href="../../api/acrg_grid.html#acrg_grid.regrid.regrid2d">[docs]</a><span class="k">def</span> <span class="nf">regrid2d</span><span class="p">(</span><span class="n">array_in</span><span class="p">,</span> <span class="n">lat_in</span><span class="p">,</span> <span class="n">lon_in</span><span class="p">,</span>
              <span class="n">lat_out</span><span class="p">,</span> <span class="n">lon_out</span><span class="p">):</span>
-    <span class="sd">&#39;&#39;&#39;</span>
-<span class="sd">    2D mass-conservative regrid</span>
+    <span class="sd">&#39;&#39;&#39;2D mass-conservative regrid</span>
 <span class="sd">    </span>
-<span class="sd">    Only handles a 2D array at the moment. We should add time.</span>
-<span class="sd">    </span>
-<span class="sd">    Inputs:</span>
-<span class="sd">        array_in: 2D field to regrid</span>
-<span class="sd">        lat_in: latitudes corresponding to array_in</span>
-<span class="sd">        lon_in: longitude corresponding to array_in</span>
-<span class="sd">        lat_out: latitude to regrid onto</span>
-<span class="sd">        lon_out: longitude to regrid onto</span>
+<span class="sd">    Args:</span>
+<span class="sd">        array_in (arrray): 2D field to regrid</span>
+<span class="sd">        lat_in (array): latitudes corresponding to array_in</span>
+<span class="sd">        lon_in (array): longitude corresponding to array_in</span>
+<span class="sd">        lat_out (array): latitude to regrid onto</span>
+<span class="sd">        lon_out (array): longitude to regrid onto</span>
 <span class="sd">        </span>
-<span class="sd">    Returns a 2D array of dimensions [lat_out, lon_out]</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        array: regridded 2D array of dimensions [lat_out, lon_out]</span>
+<span class="sd">        iris &#39;Cube&#39;: regridded iris &#39;Cube&#39; object</span>
+<span class="sd">        </span>
+<span class="sd">    Example:</span>
+<span class="sd">        new_array, newcube = regrid2d(array_in, lat_in, lon_in, lat_out, lon_out)</span>
+<span class="sd">    </span>
+<span class="sd">    Todo:</span>
+<span class="sd">        Only handles a 2D array at the moment. We should add time.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
 
 
@@ -112,18 +117,21 @@
 
 <div class="viewcode-block" id="regrid3d"><a class="viewcode-back" href="../../api/acrg_grid.html#acrg_grid.regrid.regrid3d">[docs]</a><span class="k">def</span> <span class="nf">regrid3d</span><span class="p">(</span><span class="n">array_in</span><span class="p">,</span> <span class="n">lat_in</span><span class="p">,</span> <span class="n">lon_in</span><span class="p">,</span>
              <span class="n">lat_out</span><span class="p">,</span> <span class="n">lon_out</span><span class="p">,</span> <span class="n">time</span><span class="p">):</span>
-             
-    <span class="sd">&#39;&#39;&#39;</span>
-<span class="sd">    3D mass-conservative regrid using a cached regridder</span>
+    <span class="sd">&#39;&#39;&#39;3D mass-conservative regrid using a cached regridder</span>
 <span class="sd">    </span>
-<span class="sd">    Inputs:</span>
-<span class="sd">        array_in: 3D field to regrid - Lat, Lon, Time</span>
-<span class="sd">        lat_in: latitudes corresponding to array_in</span>
-<span class="sd">        lon_in: longitude corresponding to array_in</span>
-<span class="sd">        lat_out: latitude to regrid onto</span>
-<span class="sd">        lon_out: longitude to regrid onto</span>
+<span class="sd">    Args:</span>
+<span class="sd">        array_in (array): 3D field to regrid -- Dimensions of [lat_in, lon_in, time_in]</span>
+<span class="sd">        lat_in (array): latitudes corresponding to array_in</span>
+<span class="sd">        lon_in (array): longitude corresponding to array_in</span>
+<span class="sd">        lat_out (array): latitude to regrid onto</span>
+<span class="sd">        lon_out (array): longitude to regrid onto</span>
+<span class="sd">        time (array): times to regrid onto</span>
 <span class="sd">        </span>
-<span class="sd">    Returns a 3D array of dimensions [lat_out, lon_out, time_out]</span>
+<span class="sd">    Returns</span>
+<span class="sd">        array: regridded 3D array of dimensions [lat_out, lon_out, time]</span>
+<span class="sd">        </span>
+<span class="sd">    Example:</span>
+<span class="sd">        array_out = regrid3d(array_in, lat_in, lon_in, lat_out, lon_out, time)</span>
 <span class="sd">    &#39;&#39;&#39;</span>
 
     <span class="k">def</span> <span class="nf">get_cube_in</span><span class="p">(</span><span class="n">array_in</span><span class="p">,</span> <span class="n">lat_in</span><span class="p">,</span> <span class="n">lon_in</span><span class="p">,</span> <span class="n">time</span><span class="p">):</span>

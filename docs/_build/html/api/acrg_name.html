@@ -53,38 +53,193 @@
 <p>Creat basis functions for domain</p>
 <dl class="function">
 <dt id="acrg_name.basis_functions.basis_bc_all_gradients">
-<code class="descclassname">acrg_name.basis_functions.</code><code class="descname">basis_bc_all_gradients</code><span class="sig-paren">(</span><em>domain='SOUTHASIA'</em>, <em>time='2012-01-15'</em>, <em>species='ch4'</em>, <em>units='ppb'</em>, <em>basis_case='horiz-strat-grad'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/basis_functions.html#basis_bc_all_gradients"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.basis_functions.basis_bc_all_gradients" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<code class="descclassname">acrg_name.basis_functions.</code><code class="descname">basis_bc_all_gradients</code><span class="sig-paren">(</span><em>domain</em>, <em>time</em>, <em>species</em>, <em>units='ppb'</em>, <em>basis_case='horiz-strat-grad'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/basis_functions.html#basis_bc_all_gradients"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.basis_functions.basis_bc_all_gradients" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="docutils">
+<dt>Creates five terms for bc basis regions</dt>
+<dd><ol class="first arabic simple">
+<li>offset to shift entire field up and down</li>
+<li>factor to scale the entire field</li>
+<li>scaling of N-S gradient</li>
+<li>scaling of E-W gradient</li>
+</ol>
+<p class="last">(5) scaling of stratospheric gradient
+Technically file is species specific as it calculates the stratosphere
+based on the vmm but one can assume/hope that the stratosphere doesn&#8217;t
+change by species</p>
+</dd>
+</dl>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>domain</strong> (<em>str</em>) &#8211; String of domain area</li>
+<li><strong>time</strong> (<em>str</em>) &#8211; Timestamp for basis functions</li>
+<li><strong>species</strong> (<em>str</em>) &#8211; Species of interest</li>
+<li><strong>units</strong> (<em>str</em><em>, </em><em>optional</em>) &#8211; Units of boundary conditions. Default ppb</li>
+<li><strong>basis_case</strong> (<em>str</em><em>, </em><em>optional</em>) &#8211; Name of basis case.
+Default &#8216;horiz-strat-grad&#8217;</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">None
+Writes basis boundary condition gradients to netcdf</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Example</p>
+<p>basis_bc_all_gradients(&#8216;SOUTHASIA&#8217;, &#8216;2012-01-01&#8217;, &#8216;ch4&#8217;, units=&#8217;ppb&#8217;, basis_case=&#8217;horiz-strat-grad&#8217;)</p>
+</dd></dl>
 
 <dl class="function">
 <dt id="acrg_name.basis_functions.basis_bc_blocks">
-<code class="descclassname">acrg_name.basis_functions.</code><code class="descname">basis_bc_blocks</code><span class="sig-paren">(</span><em>domain='SOUTHASIA'</em>, <em>basis_case='NESW'</em>, <em>time='2012-01-01'</em>, <em>vertical=1</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/basis_functions.html#basis_bc_blocks"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.basis_functions.basis_bc_blocks" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<code class="descclassname">acrg_name.basis_functions.</code><code class="descname">basis_bc_blocks</code><span class="sig-paren">(</span><em>domain</em>, <em>basis_case</em>, <em>time</em>, <em>vertical=1</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/basis_functions.html#basis_bc_blocks"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.basis_functions.basis_bc_blocks" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates uniform blocks for boundary conditions in each direction (NESW).
+Each direction is split into vertical slabs with number specified by input &#8216;vertical&#8217;</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>domain</strong> (<em>str</em>) &#8211; String of domain area</li>
+<li><strong>basis_case</strong> (<em>str</em>) &#8211; Labelling for basis case.</li>
+<li><strong>time</strong> (<em>str</em>) &#8211; Timestamp for basis functions</li>
+<li><strong>vertical</strong> (<em>int</em><em>, </em><em>optioanl</em>) &#8211; Number of vertical slabs to split boundary conditions into
+Default = 1</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">None
+Writes basis boundary condition blocks to netcdf</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Example</p>
+<p>basis_bc_blocks(domain=&#8217;SOUTHASIA&#8217;, basis_case=&#8217;NESW&#8217;, time=&#8216;2012-01-01&#8217;, vertical = 4)</p>
+</dd></dl>
 
 <dl class="function">
 <dt id="acrg_name.basis_functions.basis_bc_pca">
-<code class="descclassname">acrg_name.basis_functions.</code><code class="descname">basis_bc_pca</code><span class="sig-paren">(</span><em>domain='SOUTHASIA'</em>, <em>time='2012-01-15'</em>, <em>species='ch4'</em>, <em>units='ppb'</em>, <em>basis_case='pca'</em>, <em>numregions=4</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/basis_functions.html#basis_bc_pca"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.basis_functions.basis_bc_pca" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<code class="descclassname">acrg_name.basis_functions.</code><code class="descname">basis_bc_pca</code><span class="sig-paren">(</span><em>domain</em>, <em>time</em>, <em>species</em>, <em>units='ppb'</em>, <em>basis_case='pca'</em>, <em>numregions=4</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/basis_functions.html#basis_bc_pca"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.basis_functions.basis_bc_pca" title="Permalink to this definition">¶</a></dt>
+<dd><p>breaks the MOZART VMR into the first &#8216;numregions&#8217; principal components and scales each PC</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>domain</strong> (<em>str</em>) &#8211; String of domain area</li>
+<li><strong>time</strong> (<em>str</em>) &#8211; Timestamp for basis functions</li>
+<li><strong>species</strong> (<em>str</em>) &#8211; Species of interest</li>
+<li><strong>units</strong> (<em>str</em><em>, </em><em>optional</em>) &#8211; Units of species. Default is &#8216;ppb&#8217;</li>
+<li><strong>basis_case</strong> (<em>str</em>) &#8211; Labelling for basis case. Default is &#8216;pca&#8217;</li>
+<li><strong>numregions</strong> (<em>int</em>) &#8211; Number of PCs</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">None
+Writes PCA basis boundary condition to netcdf</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Example</p>
+<p>basis_bc_pca(&#8220;SOUTHASIA&#8221;, &#8220;2012-01-15&#8221;, &#8216;ch4&#8217;, units=&#8217;ppb&#8217;, basis_case=&#8217;pca&#8217;, numregions = 4)</p>
+</dd></dl>
 
 <dl class="function">
 <dt id="acrg_name.basis_functions.basis_bc_uniform">
-<code class="descclassname">acrg_name.basis_functions.</code><code class="descname">basis_bc_uniform</code><span class="sig-paren">(</span><em>domain='SOUTHASIA'</em>, <em>basis_case='uniform'</em>, <em>time='2012-01-01'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/basis_functions.html#basis_bc_uniform"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.basis_functions.basis_bc_uniform" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<code class="descclassname">acrg_name.basis_functions.</code><code class="descname">basis_bc_uniform</code><span class="sig-paren">(</span><em>domain</em>, <em>basis_case</em>, <em>time</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/basis_functions.html#basis_bc_uniform"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.basis_functions.basis_bc_uniform" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates creates one uniform scaling for boundary conditions for all directions</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>domain</strong> (<em>str</em>) &#8211; String of domain area</li>
+<li><strong>basis_case</strong> (<em>str</em>) &#8211; Labelling for basis case.</li>
+<li><strong>time</strong> (<em>str</em>) &#8211; Timestamp for basis functions</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">None
+Writes uniform basis boundary condition to netcdf</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Example</p>
+<p>basis_bc_uniform(domain=&#8217;SOUTHASIA&#8217;, basis_case=&#8217;uniform&#8217;, time=&#8216;2012-01-01&#8217;)</p>
+</dd></dl>
 
 <dl class="function">
 <dt id="acrg_name.basis_functions.basis_blocks">
-<code class="descclassname">acrg_name.basis_functions.</code><code class="descname">basis_blocks</code><span class="sig-paren">(</span><em>domain='SOUTHASIA'</em>, <em>time='2012-01-01'</em>, <em>blocksize=25</em>, <em>basis_case='25x25'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/basis_functions.html#basis_blocks"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.basis_functions.basis_blocks" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<code class="descclassname">acrg_name.basis_functions.</code><code class="descname">basis_blocks</code><span class="sig-paren">(</span><em>domain</em>, <em>time</em>, <em>blocksize</em>, <em>basis_case=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/basis_functions.html#basis_blocks"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.basis_functions.basis_blocks" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates basis functions in square blocks (e.g., 5x5 grid cells per region)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>domain</strong> (<em>str</em>) &#8211; String of domain area</li>
+<li><strong>time</strong> (<em>str</em>) &#8211; Timestamp for basis functions</li>
+<li><strong>blocksize</strong> (<em>int</em>) &#8211; Number of grid cells to split into (i.e. blocksize x blocksize)</li>
+<li><strong>basis_case</strong> (<em>str</em><em>, </em><em>optional</em>) &#8211; Labelling for basis case.
+Default is e.g. &#8216;5x5&#8217; for blocksize of 5</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">None
+Writes blocked basis functions to netcdf</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Example</p>
+<p>basis_blocks(domain = &#8220;SOUTHASIA&#8221;, time = &#8220;2012-01-01&#8221;, blocksize=25)</p>
+</dd></dl>
 
 <dl class="function">
 <dt id="acrg_name.basis_functions.basis_transd">
-<code class="descclassname">acrg_name.basis_functions.</code><code class="descname">basis_transd</code><span class="sig-paren">(</span><em>domain='SOUTHASIA'</em>, <em>time='2012-01-01'</em>, <em>basis_case='transd'</em>, <em>sub_lon_min=65</em>, <em>sub_lon_max=100</em>, <em>sub_lat_min=5</em>, <em>sub_lat_max=40</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/basis_functions.html#basis_transd"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.basis_functions.basis_transd" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<code class="descclassname">acrg_name.basis_functions.</code><code class="descname">basis_transd</code><span class="sig-paren">(</span><em>domain</em>, <em>time</em>, <em>basis_case='transd'</em>, <em>sub_lon_min=None</em>, <em>sub_lon_max=None</em>, <em>sub_lat_min=None</em>, <em>sub_lat_max=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/basis_functions.html#basis_transd"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.basis_functions.basis_transd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates basis regions for the &#8220;transdimensional inversion&#8221;.
+Creates variable central block based on sub_lat and sub_lon domain
+and four fixed regions surrounding the central box.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>domain</strong> (<em>str</em>) &#8211; String of domain area</li>
+<li><strong>time</strong> (<em>str</em>) &#8211; Timestamp for basis functions</li>
+<li><strong>basis_case</strong> (<em>str</em><em>, </em><em>optional</em>) &#8211; Labelling for basis case.
+Default is &#8220;transd&#8221; for transdimensional</li>
+<li><strong>sub_lon_min</strong> (<em>float</em>) &#8211; Minimum longitude of sub domain</li>
+<li><strong>sub_lon_max</strong> (<em>float</em>) &#8211; Maximum longitude of sub domain</li>
+<li><strong>sub_lat_min</strong> (<em>float</em>) &#8211; Minimum latitude of sub domain</li>
+<li><strong>sub_lat_max</strong> (<em>float</em>) &#8211; Maximum latitude of sub domain</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">None
+Writes basis regions to netcdf</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Example</p>
+<dl class="docutils">
+<dt>basis_transd(domain = &#8220;SOUTHASIA&#8221;, time = &#8220;2012-01-01&#8221;, basis_case = &#8220;transd&#8221;,</dt>
+<dd>sub_lon_min = 65, sub_lon_max = 100, sub_lat_min = 5, sub_lat_max = 40)</dd>
+</dl>
+</dd></dl>
 
 <dl class="function">
 <dt id="acrg_name.basis_functions.cut_array2d">
 <code class="descclassname">acrg_name.basis_functions.</code><code class="descname">cut_array2d</code><span class="sig-paren">(</span><em>array</em>, <em>shape</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/basis_functions.html#cut_array2d"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.basis_functions.cut_array2d" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Needs a description for what it does</p>
+</dd></dl>
 
 </div>
 <div class="section" id="module-acrg_name.flux">
@@ -99,18 +254,49 @@
 <dl class="function">
 <dt id="acrg_name.flux.write">
 <code class="descclassname">acrg_name.flux.</code><code class="descname">write</code><span class="sig-paren">(</span><em>lat</em>, <em>lon</em>, <em>time</em>, <em>flux</em>, <em>species</em>, <em>domain</em>, <em>source</em>, <em>title</em>, <em>prior_info_dict</em>, <em>regridder_used='acrg_grid.regrid.regrid_3D'</em>, <em>copy_from_year=None</em>, <em>climatology=False</em>, <em>flux_comments=None</em>, <em>output_directory='/data/shared/NAME/emissions/'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/flux.html#write"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.flux.write" title="Permalink to this definition">¶</a></dt>
-<dd><p>Write a flux file</p>
-<p>-time- should be in numpy.datetime64 format in either an array (format from xarray) or a datetime index (format from pandas).
-See &#8216;Creating datetime64 data&#8217; : <a class="reference external" href="http://xarray.pydata.org/en/stable/time-series.html">http://xarray.pydata.org/en/stable/time-series.html</a></p>
-<p>-flux- should be in mol/m2/s and -units- should be mol/m2/s.</p>
-<p>-source- is the sources in file. E.g. &#8216;ff&#8217; (fossil fuel), &#8216;agriculture&#8217;.
+<dd><p>Write a flux file for emissions</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>lat</strong> (<em>arr</em>) &#8211; 1D array of latitudes</li>
+<li><strong>lon</strong> (<em>arr</em>) &#8211; 1D array of longitudes</li>
+<li><strong>time</strong> (<em>numpy.datetime64</em>) &#8211; Either an array (format from xarray) or a datetime index (format from pandas).
+See &#8216;Creating datetime64 data&#8217; : <a class="reference external" href="http://xarray.pydata.org/en/stable/time-series.html">http://xarray.pydata.org/en/stable/time-series.html</a></li>
+<li><strong>flux</strong> (<em>array</em>) &#8211; 2D array of size [lat x lon]. Should be in mol/m2/s.</li>
+<li><strong>species</strong> (<em>str</em>) &#8211; Species of interest.</li>
+<li><strong>domain</strong> (<em>str</em>) &#8211; String of domain area</li>
+<li><strong>source</strong> (<em>str</em>) &#8211; Sources in file. E.g. &#8216;ff&#8217; (fossil fuel), &#8216;agriculture&#8217;.
 source = None if the file contains all sources of a species.
-If multiple sources: -source- is a chain of sources: &#8216;waste-and-agriculture&#8217; (with hyphens between words).</p>
-<p>-title- gives more information about what is in the file, e.g. Fossil Fuel CO2.</p>
-<p>prior_info_dict = {&#8216;NAME_OF_PRIOR&#8217; : [&#8216;VERSION&#8217;,&#8217;RAW RESOLUTION&#8217;, &#8216;REFERENCE&#8217;]}</p>
-<p>-copy_from_year- if the data is the same as another year but with a different timestamp give the original year here as a string</p>
-<p>-climatology- if the data is a climatology set this to True and give detail using flux_comments</p>
-<p>TODO: Add some error checking (e.g. check that domain is correct)</p>
+If multiple sources: -source- is a chain of sources: &#8216;waste-and-agriculture&#8217; (with hyphens between words).</li>
+<li><strong>title</strong> (<em>str</em>) &#8211; Gives more information about what is in the file, e.g. Fossil Fuel CO2.</li>
+<li><strong>prior_info_dict</strong> (<em>dict</em>) &#8211; {&#8216;NAME_OF_PRIOR&#8217; : [&#8216;VERSION&#8217;,&#8217;RAW RESOLUTION&#8217;, &#8216;REFERENCE&#8217;]}</li>
+<li><strong>regridder_used</strong> (<em>str</em><em>, </em><em>optional</em>) &#8211; regrid function used. Default is &#8216;acrg_grid.regrid.regrid_3D&#8217;.</li>
+<li><strong>copy_from_year</strong> (<em>str</em><em>, </em><em>optional</em>) &#8211; If the data is the same as another year but with a different timestamp give the original year here as a string
+Default is None</li>
+<li><strong>climatology</strong> (<em>bool</em><em>, </em><em>optional</em>) &#8211; If the data is a climatology set this to True and give detail using flux_comments.
+Default is False</li>
+<li><strong>flux_comments</strong> (<em>str</em><em>, </em><em>optional</em>) &#8211; Extra comments. Default is None.</li>
+<li><strong>output_directory</strong> (<em>str</em><em>, </em><em>optional</em>) &#8211; Output directory. Default is &#8216;/data/shared/NAME/emissions/&#8217;.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">None
+Writes flux file to netcdf</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Example</p>
+<dl class="docutils">
+<dt>flux.write(lat, lon, time, flux, &#8216;ch4&#8217;, &#8216;EUROPE&#8217;, &#8216;2012&#8217;,</dt>
+<dd>comments = comments, title=&#8221;2012_CH4_emissions_EUROPE&#8221;)</dd>
+</dl>
+<div class="admonition-todo admonition" id="index-0">
+<p class="first admonition-title">Todo</p>
+<p class="last">Add some error checking (e.g. check that domain is correct)</p>
+</div>
 </dd></dl>
 
 </div>
@@ -119,161 +305,475 @@ If multiple sources: -source- is a chain of sources: &#8216;waste-and-agricultur
 <p>Created on Mon Nov 10 10:45:51 2014</p>
 <dl class="function">
 <dt id="acrg_name.name.animate">
-<code class="descclassname">acrg_name.name.</code><code class="descname">animate</code><span class="sig-paren">(</span><em>fp_data, output_directory, lon_range=None, lat_range=None, zoom=False, log_range=[5.0, 9.0], overwrite=True, file_label='fp', framerate=10, delete_png=False, video_os='mac', ffmpeg_only=False, plot_function='plot', time_regular='1H', frame_limit=None, dpi=150, interpolate=True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/name.html#animate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.name.animate" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<code class="descclassname">acrg_name.name.</code><code class="descname">animate</code><span class="sig-paren">(</span><em>fp_data, output_directory, lon_range=None, lat_range=None, zoom=False, log_range=[5.0, 9.0], overwrite=True, file_label='fp', framerate=10, delete_png=False, video_os='mac', ffmpeg_only=False, plot_function='plot', time_regular='1H', frame_range=None, dpi=150, interpolate=True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/name.html#animate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.name.animate" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div>The time_unique function creates one set of time entries within fp_data (dictionary of datasets)</div></blockquote>
+<p>merging across multiple sites if necessary.
+Time can also be reindexed to be evenly spaced between the minimum and maximum values if time_regular
+if specified.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>fp_data</strong> &#8211; Output from footprints_data_merge(). Dictionary of datasets.</li>
+<li><strong>time_regular</strong> &#8211; Frequency between minumum and maximum to set the time values within fp_data.
+Set at False to not apply this step (Default = False).</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Time values extracted for this first site within fp_data</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">xarray.Dataset</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="function">
 <dt id="acrg_name.name.basis">
-<code class="descclassname">acrg_name.name.</code><code class="descname">basis</code><span class="sig-paren">(</span><em>domain</em>, <em>basis_case='voronoi'</em>, <em>basis_directory='/data/shared/NAME/basis_functions/'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/name.html#basis"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.name.basis" title="Permalink to this definition">¶</a></dt>
-<dd><p>Read in a basis function file.</p>
+<code class="descclassname">acrg_name.name.</code><code class="descname">basis</code><span class="sig-paren">(</span><em>domain</em>, <em>basis_case</em>, <em>basis_directory='/data/shared/NAME/basis_functions/'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/name.html#basis"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.name.basis" title="Permalink to this definition">¶</a></dt>
+<dd><p>The basis function reads in the all matching files for the basis case and domain as an xarray Dataset.</p>
+<dl class="docutils">
+<dt>Expect filenames of the form:</dt>
+<dd>[basis_directory]/domain/&#8221;basis_case&#8221;_&#8221;domain&#8221;<a href="#id1"><span class="problematic" id="id2">*</span></a>.nc
+e.g. [/data/shared/NAME/basis_functions]/EUROPE/sub_transd_EUROPE_2014.nc</dd>
+</dl>
+<p>TODO: More info on options for basis functions.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>domain</strong> (<em>str</em>) &#8211; Domain name. The basis files should be sub-categorised by the domain.</li>
+<li><strong>basis_case</strong> (<em>str</em>) &#8211; Basis case to read in. Examples of basis cases are &#8220;voroni&#8221;,&#8221;sub-transd&#8221;,
+&#8220;sub-country_mask&#8221;,&#8221;INTEM&#8221;.</li>
+<li><strong>bc_directory</strong> (<em>str</em>) &#8211; bc_directory can be specified if files are not in
+the default directory. Must point to a directory
+which contains subfolders organized by domain. (optional)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">combined dataset of matching basis functions</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">xarray.Dataset</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="function">
 <dt id="acrg_name.name.basis_boundary_conditions">
-<code class="descclassname">acrg_name.name.</code><code class="descname">basis_boundary_conditions</code><span class="sig-paren">(</span><em>domain</em>, <em>basis_case='NESW'</em>, <em>bc_basis_directory='/data/shared/NAME/bc_basis_functions/'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/name.html#basis_boundary_conditions"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.name.basis_boundary_conditions" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<code class="descclassname">acrg_name.name.</code><code class="descname">basis_boundary_conditions</code><span class="sig-paren">(</span><em>domain</em>, <em>basis_case</em>, <em>bc_basis_directory='/data/shared/NAME/bc_basis_functions/'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/name.html#basis_boundary_conditions"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.name.basis_boundary_conditions" title="Permalink to this definition">¶</a></dt>
+<dd><p>The basis_boundary_conditions function reads in all matching files for the boundary conditions
+basis case and domain as an xarray Dataset.</p>
+<dl class="docutils">
+<dt>Expect filesnames of the form:</dt>
+<dd>[bc_basis_directory]/domain/&#8221;basis_case&#8221;_&#8221;domain&#8221;<a href="#id3"><span class="problematic" id="id4">*</span></a>.nc
+e.g. [/data/shared/NAME/bc_basis_directory]/EUROPE/NESW_EUROPE_2013.nc</dd>
+</dl>
+<p>TODO: More info on options for basis functions.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>domain</strong> (<em>str</em>) &#8211; Domain name. The basis files should be sub-categorised by the domain.</li>
+<li><strong>basis_case</strong> (<em>str</em>) &#8211; Basis case to read in. Examples of basis cases are &#8220;NESW&#8221;,&#8221;stratgrad&#8221;.</li>
+<li><strong>bc_basis_directory</strong> (<em>str</em>) &#8211; bc_basis_directory can be specified if files are not in
+the default directory. Must point to a directory
+which contains subfolders organized by domain. (optional)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">combined dataset of matching basis functions</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">xarray.Datset</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="function">
 <dt id="acrg_name.name.bc_sensitivity">
-<code class="descclassname">acrg_name.name.</code><code class="descname">bc_sensitivity</code><span class="sig-paren">(</span><em>fp_and_data</em>, <em>domain='EUROPE'</em>, <em>basis_case='NESW'</em>, <em>bc_basis_directory='/data/shared/NAME/bc_basis_functions/'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/name.html#bc_sensitivity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.name.bc_sensitivity" title="Permalink to this definition">¶</a></dt>
-<dd><p>Adds H_bc to the sensitivity matrix, to each site xray dataframe in fp_and_data.</p>
-<p>Looks in default directory unless bc_basis_directory specified</p>
+<code class="descclassname">acrg_name.name.</code><code class="descname">bc_sensitivity</code><span class="sig-paren">(</span><em>fp_and_data</em>, <em>domain</em>, <em>basis_case</em>, <em>bc_basis_directory='/data/shared/NAME/bc_basis_functions/'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/name.html#bc_sensitivity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.name.bc_sensitivity" title="Permalink to this definition">¶</a></dt>
+<dd><p>The bc_sensitivity adds H_bc to the sensitivity matrix, to each site xray dataframe in fp_and_data.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>fp_and_data</strong> (<em>dict</em>) &#8211; Output from footprints_data_merge() function. Dictionary of datasets.</li>
+<li><strong>domain</strong> (<em>str</em>) &#8211; Domain name. The footprint files should be sub-categorised by the domain.</li>
+<li><strong>basis_case</strong> (<em>str</em>) &#8211; Basis case to read in. Examples of basis cases are &#8220;NESW&#8221;,&#8221;stratgrad&#8221;.</li>
+<li><strong>bc_basis_directory</strong> (<em>str</em>) &#8211; bc_basis_directory can be specified if files are not in the default
+directory. Must point to a directory which contains subfolders organized
+by domain. (optional)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Same format as fp_and_data with sensitivity matrix added.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">dict (xarray.Dataset)</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="function">
 <dt id="acrg_name.name.boundary_conditions">
 <code class="descclassname">acrg_name.name.</code><code class="descname">boundary_conditions</code><span class="sig-paren">(</span><em>domain</em>, <em>species</em>, <em>bc_directory='/data/shared/NAME/bc/'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/name.html#boundary_conditions"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.name.boundary_conditions" title="Permalink to this definition">¶</a></dt>
-<dd><p>Read in the files with the global model vmrs at the domain edges to give
-the boundary conditions.</p>
-<p>Looks in default folder unless the directory bc_directory is specified</p>
+<dd><p>The boundary_conditions function reads in the files with the global model vmrs at the domain edges
+to give the boundary conditions as an xarray Dataset.</p>
+<dl class="docutils">
+<dt>Expect filenames of the form:</dt>
+<dd>[bc_directory]/domain/species.lower()_*.nc
+e.g. [/data/shared/NAME/bc]/EUROPE/ch4_EUROPE_201301.nc</dd>
+</dl>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>domain</strong> (<em>str</em>) &#8211; Domain name. The boundary condition files should be sub-categorised by the
+domain.</li>
+<li><strong>species</strong> (<em>str</em>) &#8211; Species name. All species names are defined acrg_species_info.json.</li>
+<li><strong>bc_directory</strong> (<em>str</em>) &#8211; bc_directory can be specified if files are not in
+the default directory. Must point to a directory
+which contains subfolders organized by domain. (optional)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">combined dataset of matching boundary conditions files</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">xarray.Dataset</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="function">
 <dt id="acrg_name.name.combine_datasets">
-<code class="descclassname">acrg_name.name.</code><code class="descname">combine_datasets</code><span class="sig-paren">(</span><em>dsa</em>, <em>dsb</em>, <em>method='nearest'</em>, <em>tolerance=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/name.html#combine_datasets"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.name.combine_datasets" title="Permalink to this definition">¶</a></dt>
-<dd><p>Merge two datasets. Assumes that you want to
-re-index to the FIRST dataset.</p>
-<p>Example:</p>
+<code class="descclassname">acrg_name.name.</code><code class="descname">combine_datasets</code><span class="sig-paren">(</span><em>dsa</em>, <em>dsb</em>, <em>method='ffill'</em>, <em>tolerance=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/name.html#combine_datasets"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.name.combine_datasets" title="Permalink to this definition">¶</a></dt>
+<dd><p>The combine_datasets function merges two datasets and re-indexes to the FIRST dataset.
+If &#8220;fp&#8221; variable is found within the combined dataset, the &#8220;time&#8221; values where the &#8220;lat&#8221;,&#8221;lon&#8221;
+dimensions didn&#8217;t match are removed.</p>
+<p class="rubric">Example</p>
 <p>ds = combine_datasets(dsa, dsb)</p>
-<p>ds will have the index of dsa</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>dsa</strong> (<em>xarray.Dataset</em>) &#8211; First dataset to merge</li>
+<li><strong>dsb</strong> (<em>xarray.Dataset</em>) &#8211; Second dataset to merge</li>
+<li><strong>method</strong> (<em>str</em>) &#8211; One of {None, ‘nearest’, ‘pad’/’ffill’, ‘backfill’/’bfill’}
+See xarray.DataArray.reindex_like for list of options and meaning.</li>
+<li><strong>tolerance</strong> &#8211; Maximum allowed tolerance between matches.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">combined dataset indexed to dsa</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">xarray.Dataset</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="function">
 <dt id="acrg_name.name.filenames">
 <code class="descclassname">acrg_name.name.</code><code class="descname">filenames</code><span class="sig-paren">(</span><em>site</em>, <em>domain</em>, <em>start</em>, <em>end</em>, <em>height</em>, <em>fp_directory</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/name.html#filenames"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.name.filenames" title="Permalink to this definition">¶</a></dt>
-<dd><p>Output a list of available footprint file names,
+<dd><p>The filenames function outputs a list of available footprint file names,
 for given site, domain, directory and date range.</p>
-<p>fp_directory can be specified if files are not in the default directory
-must point to a directory which contains subfolders organized by domain</p>
+<dl class="docutils">
+<dt>Expect filenames of the form:</dt>
+<dd>[fp_directory]/domain/site*-height*domain*yearmonth*.nc
+e.g. [/data/shared/NAME/fp]/EUROPE/MHD-10magl_EUROPE_201401.nc</dd>
+</dl>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>site</strong> (<em>str</em>) &#8211; Site name. Full list of site names should be
+defined within acrg_site_info.json</li>
+<li><strong>domain</strong> (<em>str</em>) &#8211; Domain name. The footprint files should be
+sub-categorised by the NAME domain name.</li>
+<li><strong>start</strong> (<em>str</em>) &#8211; Start date in format &#8220;YYYY-MM-DD&#8221; for range of files
+to find.</li>
+<li><strong>end</strong> (<em>str</em>) &#8211; End date in same format as start for range of files
+to find.</li>
+<li><strong>height</strong> (<em>str</em>) &#8211; Height related to input data.</li>
+<li><strong>fp_directory</strong> (<em>str</em>) &#8211; fp_directory can be specified if files are not in
+the default directory must point to a directory
+which contains subfolders organized by domain.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">matched filenames</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">list (str)</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="function">
 <dt id="acrg_name.name.filtering">
 <code class="descclassname">acrg_name.name.</code><code class="descname">filtering</code><span class="sig-paren">(</span><em>datasets_in</em>, <em>filters</em>, <em>keep_missing=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/name.html#filtering"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.name.filtering" title="Permalink to this definition">¶</a></dt>
-<dd><p>Apply filtering (in time dimension) to entire dataset.</p>
-<p>Filters supplied in a list and then applied in order. So, if you want
-a daily, daytime average, you could do this:</p>
-<dl class="docutils">
+<dd><p>Applies filtering (in time dimension) to entire dataset.
+Filters supplied in a list and then applied in order. For example if you wanted a daily, daytime
+average, you could do this:</p>
+<blockquote>
+<div><dl class="docutils">
 <dt>datasets_dictionary = filtering(datasets_dictionary,</dt>
 <dd>[&#8220;daytime&#8221;, &#8220;daily_median&#8221;])</dd>
-<dt>All options are:</dt>
-<dd>&#8220;daytime&#8221;           : selects data between 1000 and 1500 UTC
+</dl>
+</div></blockquote>
+<p>The order of the filters reflects the order they are applied, so for
+instance when applying the &#8220;daily_median&#8221; filter if you only wanted
+to look at daytime values the filters list should be
+[&#8220;daytime&#8221;,&#8221;daily_median&#8221;]</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>datasets_in</strong> &#8211; Output from footprints_data_merge(). Dictionary of datasets.</li>
+<li><strong>filters</strong> (<em>list</em>) &#8211; <p>Which filters to apply to the datasets.
+All options are:</p>
+<blockquote>
+<div>&#8220;daytime&#8221;           : selects data between 1000 and 1500 UTC
 &#8220;nighttime&#8221;         : Only b/w 23:00 - 03:00 inclusive
 &#8220;noon&#8221;              : Only 12:00 fp and obs used
 &#8220;daily_median&#8221;      : calculates the daily median
 &#8220;pblh_gt_threshold&#8221; :
 &#8220;local_influence&#8221;   : Only keep times when localness is low
 &#8220;six_hr_mean&#8221;       :
-&#8220;local_lapse&#8221;       :</dd>
-</dl>
-<p>The order of the filters reflects the order they are applied, so for
-instance when applying the &#8220;daily_median&#8221; filter if you only wanted
-to look at daytime values the filters list should be
-[&#8220;daytime&#8221;,&#8221;daily_median&#8221;]</p>
+&#8220;local_lapse&#8221;       :</div></blockquote>
+</li>
+<li><strong>keep_missing</strong> (<em>bool</em>) &#8211; Whether to reindex to retain missing data.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Datasets with filters applied.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">Same format as datasets_in</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="function">
 <dt id="acrg_name.name.flux">
 <code class="descclassname">acrg_name.name.</code><code class="descname">flux</code><span class="sig-paren">(</span><em>domain</em>, <em>species</em>, <em>flux_directory='/data/shared/NAME/emissions/'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/name.html#flux"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.name.flux" title="Permalink to this definition">¶</a></dt>
-<dd><p>Read in a flux dataset.</p>
-<p>Looks in directory &#8216;flux_directory&#8217; which can be input or is otherwise default.</p>
-<p>To be consistent with the footprints, fluxes should be in mol/m2/s.</p>
-<p>Note that at present ALL flux data is read in per species per domain or by emissions name.</p>
-<p>This may get slow for very large flux datasets, and we may want to subset.</p>
+<dd><p>The flux function reads in all flux files for the domain and species as an xarray Dataset.
+Note that at present ALL flux data is read in per species per domain or by emissions name.
+To be consistent with the footprints, fluxes should be in mol/m2/s.</p>
+<dl class="docutils">
+<dt>Expect filenames of the form:</dt>
+<dd>[flux_directory]/domain/species.lower()_*.nc
+e.g. [/data/shared/NAME/emissions]/EUROPE/ch4_EUROPE_2013.nc</dd>
+</dl>
+<p>TODO: This may get slow for very large flux datasets, and we may want to subset.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>domain</strong> (<em>str</em>) &#8211; Domain name. The flux files should be sub-categorised by the domain.</li>
+<li><strong>species</strong> (<em>str</em>) &#8211; Species name. All species names are defined acrg_species_info.json.</li>
+<li><strong>flux_directory</strong> (<em>str</em>) &#8211; flux_directory can be specified if files are not in
+the default directory. Must point to a directory
+which contains subfolders organized by domain. (optional)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">combined dataset of all matching flux files</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">xarray.Dataset</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="function">
 <dt id="acrg_name.name.footprints">
-<code class="descclassname">acrg_name.name.</code><code class="descname">footprints</code><span class="sig-paren">(</span><em>sitecode_or_filename</em>, <em>fp_directory={'integrated': '/data/shared/NAME/fp/'</em>, <em>'HiTRes': '/data/shared/NAME/fp_high_time_res/'}</em>, <em>flux_directory='/data/shared/NAME/emissions/'</em>, <em>bc_directory='/data/shared/NAME/bc/'</em>, <em>start='2010-01-01'</em>, <em>end='2016-01-01'</em>, <em>domain='EUROPE'</em>, <em>height=None</em>, <em>species=None</em>, <em>emissions_name=None</em>, <em>HiTRes=False</em>, <em>interp_vmr_freq=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/name.html#footprints"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.name.footprints" title="Permalink to this definition">¶</a></dt>
-<dd><p>Load a NAME footprint netCDF files into an xray dataset</p>
-<p>Loads flux and boundary conditions if species or emissions_name is specified</p>
-<p>EMISSIONS_NAME allows emissions files such as co2nee_EUROPE_2012.nc
-to be read in. In this case EMISSIONS_NAME would be &#8216;co2nee&#8217;</p>
-<p>Either specify:</p>
-<ol class="loweralpha">
-<li><p class="first">A file name:</p>
-<blockquote>
-<div><p>fp = footprints(filename)</p>
-</div></blockquote>
+<code class="descclassname">acrg_name.name.</code><code class="descname">footprints</code><span class="sig-paren">(</span><em>sitecode_or_filename</em>, <em>fp_directory={'integrated': '/data/shared/NAME/fp/'</em>, <em>'HiTRes': '/data/shared/NAME/fp_high_time_res/'}</em>, <em>flux_directory='/data/shared/NAME/emissions/'</em>, <em>bc_directory='/data/shared/NAME/bc/'</em>, <em>start=None</em>, <em>end=None</em>, <em>domain=None</em>, <em>height=None</em>, <em>species=None</em>, <em>emissions_name=None</em>, <em>HiTRes=False</em>, <em>interp_vmr_freq=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/name.html#footprints"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.name.footprints" title="Permalink to this definition">¶</a></dt>
+<dd><p>The footprints function loads a NAME footprint netCDF files into an xarray Dataset.
+Flux and boundary conditions are also loaded if species or emissions_name is specified.</p>
+<dl class="docutils">
+<dt>Either specify:</dt>
+<dd><ol class="first last loweralpha simple">
+<li><dl class="first docutils">
+<dt>A file name:</dt>
+<dd>fp = footprints(filename)</dd>
+</dl>
 </li>
-<li><p class="first">A site code, domain, and date range:</p>
-<blockquote>
-<div><dl class="docutils">
+<li><dl class="first docutils">
+<dt>A site code, domain, and date range:</dt>
+<dd><dl class="first last docutils">
 <dt>fp = footprints(&#8220;MHD&#8221;,</dt>
-<dd><p class="first last">start = &#8220;2014-01-01&#8221;, end = &#8220;2014-01-01&#8221;,
-domain = &#8220;EUROPE&#8221;)</p>
+<dd>start = &#8220;2014-01-01&#8221;, end = &#8220;2014-01-01&#8221;,
+domain = &#8220;EUROPE&#8221;)</dd>
+</dl>
 </dd>
 </dl>
-</div></blockquote>
 </li>
 </ol>
-<p>fp_directory, flux_directory and bc_directory can point to specified directories
-but if not specified, will use default directories</p>
-<p>fp_directory must be a dictionary of the form
-{&#8220;integrated&#8221;:PATH_TO_INTEGRATED_FP&#8221;, &#8220;HiTRes&#8221;:PATH_TO_HIGHTRES_FP}
-if the high time resolution footprints are used (HiTRes = True);
-otherwise can be a single string if only integrated FPs are used and are non-default</p>
-<p>If the HEIGHT keyword is not specified, the default height from the
-acrg_site_info.json file is assumed.</p>
+</dd>
+</dl>
+<p>See filenames() function for expected format of files.
+Note: fp_directory, flux_directory and bc_directory can point to specified directories
+but if not specified, default directories will be used (set at the top of file).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>sitecode_or_filename</strong> &#8211; Site (e.g. &#8216;MHD&#8217;) or a netCDF filename (<a href="#id5"><span class="problematic" id="id6">*</span></a>.nc) (str)</li>
+<li><strong>fp_directory</strong> (<em>str</em>) &#8211; fp_directory can be specified if files are not in
+the default directory. Must point to a directory
+which contains subfolders organized by domain. (optional)</li>
+<li><strong>flux_directory</strong> (<em>str</em>) &#8211; Same sytax as fp_directory (optional)</li>
+<li><strong>bc_directory</strong> (<em>str</em>) &#8211; Same sytax as bc_directory (optional)</li>
+<li><strong>start</strong> (<em>str</em>) &#8211; Start date in format &#8220;YYYY-MM-DD&#8221; for range of files to find.</li>
+<li><strong>end</strong> (<em>str</em>) &#8211; End date in same format as start for range of files to find.</li>
+<li><strong>domain</strong> (<em>str</em>) &#8211; Domain name. The footprint files should be sub-categorised by the domain.</li>
+<li><strong>height</strong> (<em>str</em>) &#8211; Height related to NAME. If the HEIGHT keyword is not specified, the default
+height from the acrg_site_info.json file is assumed.</li>
+<li><strong>species</strong> (<em>str</em>) &#8211; Species name. All species names are defined acrg_species_info.json.</li>
+<li><strong>emissions_name</strong> (<em>str</em>) &#8211; Allows emissions files such as co2nee_EUROPE_2012.nc to be read in.
+In this case EMISSIONS_NAME would be &#8216;co2nee&#8217;</li>
+<li><strong>HiTRes</strong> (<em>bool</em>) &#8211; Whether to include high time resolution footprints.</li>
+<li><strong>interp_vmr_freq</strong> &#8211; Frequency to interpolate vmr time. (float/int)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">combined footprint files</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">xarray.Dataset</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="function">
 <dt id="acrg_name.name.footprints_data_merge">
-<code class="descclassname">acrg_name.name.</code><code class="descname">footprints_data_merge</code><span class="sig-paren">(</span><em>data</em>, <em>domain='EUROPE'</em>, <em>load_flux=True</em>, <em>calc_timeseries=True</em>, <em>calc_bc=True</em>, <em>HiTRes=False</em>, <em>average=None</em>, <em>site_modifier={}</em>, <em>height=None</em>, <em>emissions_name=None</em>, <em>interp_vmr_freq=None</em>, <em>fp_directory={'integrated': '/data/shared/NAME/fp/'</em>, <em>'HiTRes': '/data/shared/NAME/fp_high_time_res/'}</em>, <em>flux_directory='/data/shared/NAME/emissions/'</em>, <em>bc_directory='/data/shared/NAME/bc/'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/name.html#footprints_data_merge"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.name.footprints_data_merge" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">acrg_name.name.</code><code class="descname">footprints_data_merge</code><span class="sig-paren">(</span><em>data</em>, <em>domain</em>, <em>load_flux=True</em>, <em>calc_timeseries=True</em>, <em>calc_bc=True</em>, <em>HiTRes=False</em>, <em>average=None</em>, <em>site_modifier={}</em>, <em>height=None</em>, <em>emissions_name=None</em>, <em>interp_vmr_freq=None</em>, <em>fp_directory={'integrated': '/data/shared/NAME/fp/'</em>, <em>'HiTRes': '/data/shared/NAME/fp_high_time_res/'}</em>, <em>flux_directory='/data/shared/NAME/emissions/'</em>, <em>bc_directory='/data/shared/NAME/bc/'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/name.html#footprints_data_merge"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.name.footprints_data_merge" title="Permalink to this definition">¶</a></dt>
 <dd><p>Output a dictionary of xray footprint datasets, that correspond to a given
 dictionary of Pandas dataframes, containing mole fraction time series.</p>
-<p>fp_directory, flux_directory and bc_directory can point to specified directories
-if not specified, will use default directories</p>
-<dl class="docutils">
-<dt>fp_directory must be a dictionary of the form</dt>
-<dd>fp_directory = {&#8220;integrated&#8221;:PATH_TO_INTEGRATED_FP, &#8220;HiTRes&#8221;:PATH_TO_HIGHTRES_FP}</dd>
-</dl>
-<p>if the high time resolution footprints are used (HiTRes = True)
-otherwise can be a single string if only integrated FPs are used and non-default</p>
-<p>Example:</p>
-<p>Input dictionary contains time series at Mace Head and Tacolneston:</p>
-<blockquote>
-<div>data = {&#8220;MHD&#8221;: MHD_dataframe, &#8220;TAC&#8221;: TAC_dataframe}</div></blockquote>
-<p>The dataset must be labeled with &#8220;time&#8221; index, &#8220;mf&#8221; and &#8220;dmf&#8221; columns.</p>
-<p>An optional site modifier dictionary is used that maps the site name in the
+<p>TODO: Add details of load_flux, calc_timeseries, calc_bc, HiTRes options into description and affect
+on outputs</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>data</strong> (<em>dict</em>) &#8211; Input dictionary of dataframes with the sites as the keys.
+Should match output from acrg_agage.get_obs() function. For example:
+data = {&#8220;MHD&#8221;: MHD_dataframe, &#8220;TAC&#8221;: TAC_dataframe}</li>
+<li><strong>domain</strong> (<em>str</em>) &#8211; Domain name. The footprint files should be sub-categorised by the domain.</li>
+<li><strong>load_flux</strong> (<em>bool</em>) &#8211; </li>
+<li><strong>calc_timeseries</strong> (<em>bool</em>) &#8211; </li>
+<li><strong>calc_bc</strong> (<em>bool</em>) &#8211; </li>
+<li><strong>HiTRes</strong> (<em>bool</em>) &#8211; </li>
+<li><strong>average</strong> (<em>list</em>) &#8211; Averaging period for each dataset (for each site). Number of values for
+average must match number of sites within data dictionary.
+Each value should be a string of the form e.g. &#8220;2H&#8221;, &#8220;30min&#8221; (should match
+pandas offset aliases format).</li>
+<li><strong>site_modifier</strong> &#8211; An optional site modifier dictionary is used that maps the site name in the
 obs file to the site name in the footprint file, if they are different. This
 is useful for example if the same site FPs are run with a different met and
-they are named slightly differently from the obs file.</p>
+they are named slightly differently from the obs file. E.g.
+site_modifier = {&#8220;DJI&#8221;:&#8221;DJI-SAM&#8221;} - station called DJI, FPs called DJI-SAM</li>
+<li><strong>height</strong> (<em>str</em>) &#8211; Height related to input data. Can be found from acrg_sites_info.json</li>
+<li><strong>emissions_name</strong> &#8211; Allows emissions files such as co2nee_EUROPE_2012.nc to be read in.
+In this case EMISSIONS_NAME would be &#8216;co2nee&#8217;</li>
+<li><strong>interp_vmr_freq</strong> &#8211; Frequency to interpolate vmr time. (float/int)</li>
+<li><strong>fp_directory</strong> &#8211; <p>fp_directory must be a dictionary of the form
+fp_directory = {&#8220;integrated&#8221;:PATH_TO_INTEGRATED_FP,</p>
 <blockquote>
-<div>site_modifier = {&#8220;DJI&#8221;:&#8221;DJI-SAM&#8221;} - station called DJI, FPs called DJI-SAM</div></blockquote>
-<p>Output dataset will contain a dictionary of merged data and footprints:</p>
-<blockquote>
-<div>dataset = {&#8220;MHD&#8221;: MHD_xray_dataset, &#8220;TAC&#8221;: TAC_xray_dataset}</div></blockquote>
+<div>&#8220;HiTRes&#8221;:PATH_TO_HIGHTRES_FP}</div></blockquote>
+<p>if the high time resolution footprints are used (HiTRes = True)
+otherwise can be a single string if only integrated FPs are used and
+non-default.</p>
+</li>
+<li><strong>flux_directory</strong> (<em>str</em>) &#8211; flux_directory can be specified if files are not in the default directory.
+Must point to a directory which contains subfolders organized by domain.
+(optional)</li>
+<li><strong>bc_directory</strong> (<em>str</em>) &#8211; Same sytax as flux_directory (optional)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><dl class="docutils">
+<dt>MHD_xray_dataset, &#8220;TAC&#8221;: TAC_xray_dataset}:</dt>
+<dd><p class="first last">combined dataset for each site</p>
+</dd>
+</dl>
+</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">Dictionary of the form {&#8220;MHD&#8221;</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="function">
 <dt id="acrg_name.name.fp_sensitivity">
-<code class="descclassname">acrg_name.name.</code><code class="descname">fp_sensitivity</code><span class="sig-paren">(</span><em>fp_and_data</em>, <em>domain='EUROPE'</em>, <em>basis_case='voronoi'</em>, <em>basis_directory='/data/shared/NAME/basis_functions/'</em>, <em>HiTRes_flux_name=None</em>, <em>Resid_flux_name=None</em>, <em>flux_directory='/data/shared/NAME/emissions/'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/name.html#fp_sensitivity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.name.fp_sensitivity" title="Permalink to this definition">¶</a></dt>
-<dd><p>Adds a sensitivity matrix, H, to each site xray dataframe in fp_and_data.</p>
+<code class="descclassname">acrg_name.name.</code><code class="descname">fp_sensitivity</code><span class="sig-paren">(</span><em>fp_and_data</em>, <em>domain</em>, <em>basis_case</em>, <em>basis_directory='/data/shared/NAME/basis_functions/'</em>, <em>HiTRes_flux_name=None</em>, <em>Resid_flux_name=None</em>, <em>flux_directory='/data/shared/NAME/emissions/'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/name.html#fp_sensitivity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.name.fp_sensitivity" title="Permalink to this definition">¶</a></dt>
+<dd><p>The fp_sensitivity function adds a sensitivity matrix, H, to each site xray dataframe in fp_and_data.</p>
 <p>Basis function data in an array: lat, lon, no. regions. In each &#8216;region&#8217;
 element of array there is a lt lon grid with 1 in region and 0 outside region.</p>
 <p>Region numbering must start from 1</p>
-<p>Looks in default directory unless basis_directory specified</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>fp_and_data</strong> (<em>dict</em>) &#8211; Output from footprints_data_merge() function. Dictionary of datasets.</li>
+<li><strong>domain</strong> (<em>str</em>) &#8211; Domain name. The footprint files should be sub-categorised by the domain.</li>
+<li><strong>basis_case</strong> (<em>str</em>) &#8211; Basis case to read in. Examples of basis cases are &#8220;NESW&#8221;,&#8221;stratgrad&#8221;.</li>
+<li><strong>basis_directory</strong> (<em>str</em>) &#8211; basis_directory can be specified if files are not in the default
+directory. Must point to a directory which contains subfolders organized
+by domain. (optional)</li>
+<li><strong>HiTRes_flux_name</strong> &#8211; </li>
+<li><strong>Resid_flux_name</strong> &#8211; </li>
+<li><strong>flux_directory</strong> (<em>str</em>) &#8211; Same format as basis_directory.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Same format as fp_and_data with sensitivity matrix added.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">dict (xarray.Dataset)</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="class">
@@ -284,109 +784,227 @@ element of array there is a lt lon grid with 1 in region and 0 outside region.</
 <dl class="function">
 <dt id="acrg_name.name.interp_time">
 <code class="descclassname">acrg_name.name.</code><code class="descname">interp_time</code><span class="sig-paren">(</span><em>bc_ds</em>, <em>vmr_var_names</em>, <em>new_times</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/name.html#interp_time"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.name.interp_time" title="Permalink to this definition">¶</a></dt>
-<dd><p>Created to convert MOZART monthly averages into same frequency as NAME footprints.
-Interpolates the times of the VMR variable &#8216;vmr_var_name&#8217; in the xray dataset
-&#8216;bc_ds&#8217; to the times specified in &#8216;interp_times&#8217;. The variable must have dimensions
-(height, lat_or_lon, time) in that order.
-Returns a new dataset with the VMRs recalculated at interpolated times.</p>
+<dd><p>The interp_time function interpolates the times of the VMR variable
+&#8216;vmr_var_name&#8217; in the xarray.Dataset &#8216;bc_ds&#8217; to the times specified in
+&#8216;interp_times&#8217;. The variable must have dimensions (height, lat_or_lon, time)
+in that order.
+Note: This function was created to convert MOZART monthly averages into
+same frequency as NAME footprints.</p>
+<p>TODO: Add details for vmr_var_names and new_times</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>bc_ds</strong> (<em>xarray.Dataset</em>) &#8211; Output from boundary_conditions() function</li>
+<li><strong>vmr_var_names</strong> (<em>iterable</em>) &#8211; <p>???</p>
+</li>
+<li><strong>new_times</strong> &#8211; <p>???</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">new dataset with the VMRs recalculated at interpolated times.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">xarray.Dataset</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="function">
 <dt id="acrg_name.name.merge_sensitivity">
 <code class="descclassname">acrg_name.name.</code><code class="descname">merge_sensitivity</code><span class="sig-paren">(</span><em>fp_data_H</em>, <em>out_filename=None</em>, <em>remove_nan=True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/name.html#merge_sensitivity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.name.merge_sensitivity" title="Permalink to this definition">¶</a></dt>
-<dd><p>Outputs y, y_site, y_time in a single array for all sites
-(as opposed to a dictionary) and H and H_bc if present in dataset.
-Assumes my default that NaN values in y will be removed.</p>
+<dd><p>The merge_sensitivity function outputs y, y_site, y_time in a single array for all sites
+(as opposed to a dictionary) and H and H_bc if present in dataset.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>fp_data_H</strong> (<em>dict</em>) &#8211; Output from footprints_data_merge() function. Dictionary of datasets.</li>
+<li><strong>out_filename</strong> (<em>str</em>) &#8211; If specified the output will be writen to this filename. Otherwise values are
+returned.</li>
+<li><strong>remove_nan</strong> (<em>bool</em>) &#8211; Whether to remove NaN values in y. Default = True.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><p>each variable as an array (y, y_error, y_site, y_time [...])</p>
+<p>H, H_bc are also returned if present otherwise None is returned in their place.
+e.g.</p>
+<blockquote>
+<div><p>(y, y_error, y_site, y_time, H, H_bc)
+(y, y_error, y_site, y_time, None, H_bc)</p>
+</div></blockquote>
+</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">tuple</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="function">
 <dt id="acrg_name.name.plot">
-<code class="descclassname">acrg_name.name.</code><code class="descname">plot</code><span class="sig-paren">(</span><em>fp_data, date, out_filename=None, lon_range=None, lat_range=None, log_range=[5.0, 9.0], map_data=None, zoom=False, map_resolution='l', map_background='countryborders', colormap=&lt;matplotlib.colors.LinearSegmentedColormap object&gt;, tolerance=None, interpolate=False, dpi=None, bottom_left=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/name.html#plot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.name.plot" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">acrg_name.name.</code><code class="descname">plot</code><span class="sig-paren">(</span><em>fp_data, date, out_filename=None, lon_range=None, lat_range=None, log_range=[5.0, 9.0], map_data=None, zoom=False, colormap=&lt;matplotlib.colors.LinearSegmentedColormap object&gt;, tolerance=None, interpolate=False, dpi=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/name.html#plot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.name.plot" title="Permalink to this definition">¶</a></dt>
 <dd><p>Plot footprint using pcolormesh.</p>
-<p>Arguments:
-fp_data: Dictionary of xray datasets containing footprints</p>
-<blockquote>
-<div>and other variables</div></blockquote>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>fp_data</strong> &#8211; Dictionary of xray datasets containing footprints
+and other variables</li>
+<li><strong>date</strong> &#8211; Almost any time format should work (datetime object, string, etc).
+Footprints from all sites in dictionary that have time indices at that time
+will be plotted.</li>
+<li><strong>lon_range</strong> &#8211; list of min and max longitudes [min, max]</li>
+<li><strong>lat_range</strong> &#8211; list of min and max latitudes [min, max]</li>
+<li><strong>log_range</strong> &#8211; list of min and max LOG10(footprints) for
+color scale</li>
+<li><strong>map_data</strong> &#8211; contains plot_map_setup class (useful if animating,
+so that entire map does not need to be re-calculated each time)</li>
+<li><strong>zoom</strong> &#8211; shortcut to zoom in to subset of domain (needs work)</li>
+<li><strong>map_resolution</strong> &#8211; resolution of map</li>
+<li><strong>map_background</strong> &#8211; choice of &#8220;countryborders&#8221;, &#8220;shadedrelief&#8221;</li>
+<li><strong>colormap</strong> &#8211; color map to use for contours</li>
+<li><strong>tolerance</strong> &#8211; Xray doc &#8220;Maximum distance between original and new
+labels for inexact matches.&#8221;</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
 <dl class="docutils">
-<dt>date: Almost any time format should work (datetime object, string, etc).</dt>
-<dd>Footprints from all sites in dictionary that have time indices at that time
-will be plotted.</dd>
+<dt>Returns</dt>
+<dd><p class="first">None</p>
+<dl class="last docutils">
+<dt>If out_filename == None:</dt>
+<dd>produces as interactive plot</dd>
+<dt>Else:</dt>
+<dd>saves plot to file</dd>
 </dl>
-<p>Keywords:
-lon_range: list of min and max longitudes [min, max]
-lat_range: list of min and max latitudes [min, max]
-log_range: list of min and max LOG10(footprints) for</p>
-<blockquote>
-<div>color scale</div></blockquote>
-<dl class="docutils">
-<dt>map_data: contains plot_map_setup class (useful if animating,</dt>
-<dd>so that entire map does not need to be re-calculated each time)</dd>
+</dd>
 </dl>
-<p>zoom: shortcut to zoom in to subset of domain (needs work)
-map_resolution: resolution of map
-map_background: choice of &#8220;countryborders&#8221;, &#8220;shadedrelief&#8221;
-colormap: color map to use for contours
-tolerance: Xray doc &#8220;Maximum distance between original and new</p>
-<blockquote>
-<div>labels for inexact matches.&#8221;</div></blockquote>
 </dd></dl>
 
 <dl class="function">
 <dt id="acrg_name.name.plot3d">
-<code class="descclassname">acrg_name.name.</code><code class="descname">plot3d</code><span class="sig-paren">(</span><em>fp_data, date, out_filename=None, log_range=[5.0, 9.0]</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/name.html#plot3d"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.name.plot3d" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">acrg_name.name.</code><code class="descname">plot3d</code><span class="sig-paren">(</span><em>fp_data, date, out_filename=None, tolerance=None, log_range=[5.0, 9.0], particle_clevs=[0.0, 0.009, 0.001], particle_direction='nw'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/name.html#plot3d"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.name.plot3d" title="Permalink to this definition">¶</a></dt>
 <dd><p>date as string &#8220;d/m/y H:M&#8221; or datetime object
 datetime.datetime(yyyy,mm,dd,hh,mm)</p>
 </dd></dl>
 
-<dl class="class">
-<dt id="acrg_name.name.plot_map_setup">
-<em class="property">class </em><code class="descclassname">acrg_name.name.</code><code class="descname">plot_map_setup</code><span class="sig-paren">(</span><em>fp_data</em>, <em>lon_range=None</em>, <em>lat_range=None</em>, <em>bottom_left=False</em>, <em>map_resolution='l'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/name.html#plot_map_setup"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.name.plot_map_setup" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="function">
-<dt id="acrg_name.name.plot_map_zoom">
-<code class="descclassname">acrg_name.name.</code><code class="descname">plot_map_zoom</code><span class="sig-paren">(</span><em>fp_data</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/name.html#plot_map_zoom"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.name.plot_map_zoom" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
 <dl class="function">
 <dt id="acrg_name.name.read_netcdfs">
 <code class="descclassname">acrg_name.name.</code><code class="descname">read_netcdfs</code><span class="sig-paren">(</span><em>files</em>, <em>dim='time'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/name.html#read_netcdfs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.name.read_netcdfs" title="Permalink to this definition">¶</a></dt>
-<dd><p>Use xray to open sequential netCDF files.
-Makes sure that file is closed after open_dataset call.</p>
+<dd><p>The read_netcdfs function uses xarray to open sequential netCDF files and
+and concatenates them along the specified dimension.
+Note: this function makes sure that file is closed after open_dataset call.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>files</strong> (<em>list</em>) &#8211; List of netCDF filenames.</li>
+<li><strong>dim</strong> (<em>str</em>) &#8211; Dimension of netCDF to use for concatenating the files.
+Default= &#8220;time&#8221;.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">all files open as one concatenated xarray.Dataset object</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">xarray.Dataset</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
-
-<dl class="function">
-<dt id="acrg_name.name.time_unique">
-<code class="descclassname">acrg_name.name.</code><code class="descname">time_unique</code><span class="sig-paren">(</span><em>fp_data</em>, <em>time_regular=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/name.html#time_unique"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.name.time_unique" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
 
 <dl class="function">
 <dt id="acrg_name.name.timeseries">
 <code class="descclassname">acrg_name.name.</code><code class="descname">timeseries</code><span class="sig-paren">(</span><em>ds</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/name.html#timeseries"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.name.timeseries" title="Permalink to this definition">¶</a></dt>
-<dd><p>Compute flux * footprint time series.
-All that is required is that you input an xray
-dataset with both the flux and footprint fields present</p>
+<dd><p>The timeseries function compute flux * footprint time series.</p>
 <p class="rubric">Example</p>
 <p>ts = timeseries(dataset)</p>
-<p>There are almost certainly much more efficient ways of doing this.</p>
+<p>TODO: There are almost certainly much more efficient ways of doing this.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>ds</strong> (<em>xarray.Dataset</em>) &#8211; Dataset with both the flux and footprint fields present</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">xarray.Dataset</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="function">
 <dt id="acrg_name.name.timeseries_HiTRes">
 <code class="descclassname">acrg_name.name.</code><code class="descname">timeseries_HiTRes</code><span class="sig-paren">(</span><em>fp_HiTRes_ds</em>, <em>domain</em>, <em>HiTRes_flux_name</em>, <em>Resid_flux_name</em>, <em>output_TS=True</em>, <em>output_fpXflux=True</em>, <em>flux_directory='/data/shared/NAME/emissions/'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/name.html#timeseries_HiTRes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.name.timeseries_HiTRes" title="Permalink to this definition">¶</a></dt>
-<dd><p>Compute flux * HiTRes footprints</p>
-<p>HiTRes footprints record the footprint at each 2 hour period back in time for the first 24 hours.</p>
-<p>Need a high time resolution (HiTRes) flux to multiply the first 24 hours back of footprints.</p>
-<p>Need a residual (Resid) flux to multiply the residual integrated footprint for the remainder of the 20 day period.</p>
-<p>Can output the timeseries (output_TS = True) and/or the sensitivity map (output_fpXflux = True)</p>
+<dd><p>The timeseries_HiTRes function computes flux * HiTRes footprints.</p>
+<p>HiTRes footprints record the footprint at each 2 hour period back in time for the first 24 hours.
+Need a high time resolution (HiTRes) flux to multiply the first 24 hours back of footprints.
+Need a residual (Resid) flux to multiply the residual integrated footprint for the remainder of the 20
+day period.
+Can output the timeseries (output_TS = True) and/or the sensitivity map (output_fpXflux = True)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>fp_HiTRes_ds</strong> (<em>xarray.Dataset</em>) &#8211; Dataset of High Time resolution footprint. HiTRes footprints
+record the footprint at each 2 hour period back in time for the
+first 24 hours.</li>
+<li><strong>domain</strong> (<em>str</em>) &#8211; Domain name. The footprint files should be sub-categorised by the
+domain.</li>
+<li><strong>HiTRes_flux_name</strong> &#8211; </li>
+<li><strong>Resid_flux_name</strong> &#8211; </li>
+<li><strong>output_TS</strong> &#8211; </li>
+<li><strong>output_fpXflux</strong> &#8211; </li>
+<li><strong>flux_directory</strong> (<em>str</em>) &#8211; flux_directory can be specified if files are not in the default
+directory. Must point to a directory which contains subfolders
+organized by domain. (optional)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><p>xarray.Dataset / tuple(xarray.Dataset,xarray.Dataset)</p>
+<dl class="docutils">
+<dt>If output_TS is True:</dt>
+<dd><p class="first last">Outputs the timeseries</p>
+</dd>
+<dt>If output_fpXflux is True:</dt>
+<dd><p class="first last">Outputs the sensitivity map</p>
+</dd>
+</dl>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="function">
 <dt id="acrg_name.name.timeseries_boundary_conditions">
 <code class="descclassname">acrg_name.name.</code><code class="descname">timeseries_boundary_conditions</code><span class="sig-paren">(</span><em>ds</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_name/name.html#timeseries_boundary_conditions"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_name.name.timeseries_boundary_conditions" title="Permalink to this definition">¶</a></dt>
-<dd><p>Compute particle location * global model edges time series.
-All that is required is that you input an xray
-dataset with both the particle locations and vmr at domain edge fields present</p>
+<dd><p>The timeseries_boundary_conditions function compute particle location * global model edges time series.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>ds</strong> (<em>xarray.Dataset</em>) &#8211; Dataset with both the particle locations and vmr at domain edge fields
+present.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">xarray.Dataset</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </div>

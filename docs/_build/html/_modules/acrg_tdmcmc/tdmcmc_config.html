@@ -81,12 +81,15 @@
 <span class="sd">@author: rt17603</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
+<span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">acrg_agage</span> <span class="k">as</span> <span class="nn">agage</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">acrg_config.config</span> <span class="k">as</span> <span class="nn">config</span>
 <span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">OrderedDict</span>
 
-<span class="c1">## Functions below are specifically related to the MCMC code which build on the functions above</span>
+<span class="n">acrg_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;ACRG_PATH&quot;</span><span class="p">)</span>
+
+<span class="c1">## Functions below are specifically related to the MCMC code which build on the functions within acrg_config module</span>
 
 <div class="viewcode-block" id="mcmc_param_type"><a class="viewcode-back" href="../../api/acrg_tdmcmc.html#acrg_tdmcmc.tdmcmc_config.mcmc_param_type">[docs]</a><span class="k">def</span> <span class="nf">mcmc_param_type</span><span class="p">():</span>
     <span class="sd">&#39;&#39;&#39;</span>
@@ -117,94 +120,127 @@
 <span class="sd">    </span>
 <span class="sd">    &#39;&#39;&#39;</span>
     
-    <span class="n">measurements</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">([(</span><span class="s1">&#39;sites&#39;</span><span class="p">,</span><span class="nb">list</span><span class="p">),</span>
-                                <span class="p">(</span><span class="s1">&#39;species&#39;</span><span class="p">,</span><span class="nb">str</span><span class="p">),</span>
-                                <span class="p">(</span><span class="s1">&#39;start_date&#39;</span><span class="p">,</span><span class="nb">str</span><span class="p">),</span>
-                                <span class="p">(</span><span class="s1">&#39;end_date&#39;</span><span class="p">,</span><span class="nb">str</span><span class="p">),</span>
-                                <span class="p">(</span><span class="s1">&#39;domain&#39;</span><span class="p">,</span><span class="nb">str</span><span class="p">),</span>
-                                <span class="p">(</span><span class="s1">&#39;network&#39;</span><span class="p">,</span><span class="nb">str</span><span class="p">)])</span>
-    
-    <span class="n">mcmc</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">([(</span><span class="s1">&#39;meas_period&#39;</span><span class="p">,</span><span class="nb">list</span><span class="p">),</span>
-                        <span class="p">(</span><span class="s1">&#39;av_period&#39;</span><span class="p">,</span><span class="nb">list</span><span class="p">),</span>
-                        <span class="p">(</span><span class="s1">&#39;nIt&#39;</span><span class="p">,</span><span class="nb">int</span><span class="p">),</span>
-                        <span class="p">(</span><span class="s1">&#39;burn_in&#39;</span><span class="p">,</span><span class="nb">int</span><span class="p">),</span>
-                        <span class="p">(</span><span class="s1">&#39;nsub&#39;</span><span class="p">,</span><span class="nb">int</span><span class="p">),</span>
-                        <span class="p">(</span><span class="s1">&#39;fp_basis_case&#39;</span><span class="p">,</span><span class="nb">str</span><span class="p">),</span>
-                        <span class="p">(</span><span class="s1">&#39;bc_basis_case&#39;</span><span class="p">,</span><span class="nb">str</span><span class="p">),</span>
-                        <span class="p">(</span><span class="s1">&#39;x_pdf0&#39;</span><span class="p">,</span><span class="nb">int</span><span class="p">),</span>
-                        <span class="p">(</span><span class="s1">&#39;pdf_param1_pdf0&#39;</span><span class="p">,</span><span class="nb">int</span><span class="p">),</span>
-                        <span class="p">(</span><span class="s1">&#39;pdf_param2_pdf0&#39;</span><span class="p">,</span><span class="nb">int</span><span class="p">),</span>
-                        <span class="p">(</span><span class="s1">&#39;sigma_model_pdf&#39;</span><span class="p">,</span><span class="nb">int</span><span class="p">),</span>
-                        <span class="p">(</span><span class="s1">&#39;pdf_param10&#39;</span><span class="p">,</span><span class="nb">float</span><span class="p">),</span>
-                        <span class="p">(</span><span class="s1">&#39;pdf_param20&#39;</span><span class="p">,</span><span class="nb">float</span><span class="p">),</span>
-                        <span class="p">(</span><span class="s1">&#39;pdf_p1_hparam10&#39;</span><span class="p">,</span><span class="nb">float</span><span class="p">),</span>
-                        <span class="p">(</span><span class="s1">&#39;pdf_p1_hparam20&#39;</span><span class="p">,</span><span class="nb">float</span><span class="p">),</span>
-                        <span class="p">(</span><span class="s1">&#39;pdf_p2_hparam10&#39;</span><span class="p">,</span><span class="nb">float</span><span class="p">),</span>
-                        <span class="p">(</span><span class="s1">&#39;pdf_p2_hparam20&#39;</span><span class="p">,</span><span class="nb">float</span><span class="p">),</span>
-                        <span class="p">(</span><span class="s1">&#39;sigma_model_ap&#39;</span><span class="p">,</span><span class="nb">float</span><span class="p">),</span>
-                        <span class="p">(</span><span class="s1">&#39;sigma_model_hparams&#39;</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">),</span>
-                        <span class="p">(</span><span class="s1">&#39;bl_period&#39;</span><span class="p">,</span><span class="nb">int</span><span class="p">),</span>
-                        <span class="p">(</span><span class="s1">&#39;bl_split&#39;</span><span class="p">,</span><span class="nb">bool</span><span class="p">),</span>
-                        <span class="p">(</span><span class="s1">&#39;levels&#39;</span><span class="p">,</span><span class="nb">list</span><span class="p">),</span>
-                        <span class="p">(</span><span class="s1">&#39;stepsize&#39;</span><span class="p">,</span><span class="nb">float</span><span class="p">),</span>
-                        <span class="p">(</span><span class="s1">&#39;stepsize_pdf_p1&#39;</span><span class="p">,</span><span class="nb">float</span><span class="p">),</span>
-                        <span class="p">(</span><span class="s1">&#39;stepsize_pdf_p2&#39;</span><span class="p">,</span><span class="nb">float</span><span class="p">),</span>
-                        <span class="p">(</span><span class="s1">&#39;stepsize_sigma_y&#39;</span><span class="p">,</span><span class="nb">float</span><span class="p">),</span>
-                        <span class="p">(</span><span class="s1">&#39;stepsize_clon&#39;</span><span class="p">,</span><span class="nb">float</span><span class="p">),</span>
-                        <span class="p">(</span><span class="s1">&#39;stepsize_clat&#39;</span><span class="p">,</span><span class="nb">float</span><span class="p">),</span>
-                        <span class="p">(</span><span class="s1">&#39;stepsize_bd&#39;</span><span class="p">,</span><span class="nb">int</span><span class="p">),</span>
-                        <span class="p">(</span><span class="s1">&#39;inv_type&#39;</span><span class="p">,</span><span class="nb">str</span><span class="p">),</span>
-                        <span class="p">(</span><span class="s1">&#39;tau_ap&#39;</span><span class="p">,</span><span class="nb">float</span><span class="p">),</span>
-                        <span class="p">(</span><span class="s1">&#39;tau_hparams&#39;</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">),</span>
-                        <span class="p">(</span><span class="s1">&#39;tau_pdf&#39;</span><span class="p">,</span><span class="nb">int</span><span class="p">),</span>
-                        <span class="p">(</span><span class="s1">&#39;stepsize_tau&#39;</span><span class="p">,</span><span class="nb">float</span><span class="p">),</span> 
-                        <span class="p">(</span><span class="s1">&#39;filters&#39;</span><span class="p">,</span><span class="nb">list</span><span class="p">),</span>
-                        <span class="p">(</span><span class="s1">&#39;parallel_tempering&#39;</span><span class="p">,</span><span class="nb">bool</span><span class="p">),</span>
-                        <span class="p">(</span><span class="s1">&#39;nbeta&#39;</span><span class="p">,</span><span class="nb">int</span><span class="p">),</span>
-                        <span class="p">(</span><span class="s1">&#39;output_dir&#39;</span><span class="p">,</span><span class="nb">str</span><span class="p">),</span>
-                        <span class="p">(</span><span class="s1">&#39;unique_copy&#39;</span><span class="p">,</span><span class="nb">bool</span><span class="p">)])</span>
-    
-    <span class="n">tdmcmc</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">([(</span><span class="s1">&#39;reversible_jump&#39;</span><span class="p">,</span><span class="nb">bool</span><span class="p">),</span>
-                       <span class="p">(</span><span class="s1">&#39;kmin&#39;</span><span class="p">,</span><span class="nb">int</span><span class="p">),</span>
-                       <span class="p">(</span><span class="s1">&#39;kmax&#39;</span><span class="p">,</span><span class="nb">int</span><span class="p">),</span>
-                       <span class="p">(</span><span class="s1">&#39;k_ap&#39;</span><span class="p">,</span><span class="nb">int</span><span class="p">)])</span>
-    
-    <span class="n">param_dict</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">([(</span><span class="s1">&#39;MEASUREMENTS&#39;</span><span class="p">,</span> <span class="n">measurements</span><span class="p">),</span>
-                              <span class="p">(</span><span class="s1">&#39;MCMC&#39;</span><span class="p">,</span> <span class="n">mcmc</span><span class="p">),</span>
-                              <span class="p">(</span><span class="s1">&#39;TDMCMC&#39;</span><span class="p">,</span> <span class="n">tdmcmc</span><span class="p">)])</span>
-                          
+<span class="c1">#    measurements = OrderedDict([(&#39;sites&#39;,list),</span>
+<span class="c1">#                                (&#39;species&#39;,str),</span>
+<span class="c1">#                                (&#39;start_date&#39;,str),</span>
+<span class="c1">#                                (&#39;end_date&#39;,str),</span>
+<span class="c1">#                                (&#39;domain&#39;,str),</span>
+<span class="c1">#                                (&#39;network&#39;,str)])</span>
+<span class="c1">#    </span>
+<span class="c1">#    mcmc = OrderedDict([(&#39;meas_period&#39;,list),</span>
+<span class="c1">#                        (&#39;av_period&#39;,list),</span>
+<span class="c1">#                        (&#39;nIt&#39;,int),</span>
+<span class="c1">#                        (&#39;burn_in&#39;,int),</span>
+<span class="c1">#                        (&#39;nsub&#39;,int),</span>
+<span class="c1">#                        (&#39;fp_basis_case&#39;,str),</span>
+<span class="c1">#                        (&#39;bc_basis_case&#39;,str),</span>
+<span class="c1">#                        (&#39;x_pdf0&#39;,int),</span>
+<span class="c1">#                        (&#39;pdf_param1_pdf0&#39;,int),</span>
+<span class="c1">#                        (&#39;pdf_param2_pdf0&#39;,int),</span>
+<span class="c1">#                        (&#39;sigma_model_pdf&#39;,int),</span>
+<span class="c1">#                        (&#39;pdf_param10&#39;,float),</span>
+<span class="c1">#                        (&#39;pdf_param20&#39;,float),</span>
+<span class="c1">#                        (&#39;pdf_p1_hparam10&#39;,float),</span>
+<span class="c1">#                        (&#39;pdf_p1_hparam20&#39;,float),</span>
+<span class="c1">#                        (&#39;pdf_p2_hparam10&#39;,float),</span>
+<span class="c1">#                        (&#39;pdf_p2_hparam20&#39;,float),</span>
+<span class="c1">#                        (&#39;sigma_model_ap&#39;,float),</span>
+<span class="c1">#                        (&#39;sigma_model_hparams&#39;,np.ndarray),</span>
+<span class="c1">#                        (&#39;bl_period&#39;,int),</span>
+<span class="c1">#                        (&#39;bl_split&#39;,bool),</span>
+<span class="c1">#                        (&#39;levels&#39;,list),</span>
+<span class="c1">#                        (&#39;stepsize&#39;,float),</span>
+<span class="c1">#                        (&#39;stepsize_pdf_p1&#39;,float),</span>
+<span class="c1">#                        (&#39;stepsize_pdf_p2&#39;,float),</span>
+<span class="c1">#                        (&#39;stepsize_sigma_y&#39;,float),</span>
+<span class="c1">#                        (&#39;stepsize_clon&#39;,float),</span>
+<span class="c1">#                        (&#39;stepsize_clat&#39;,float),</span>
+<span class="c1">#                        (&#39;stepsize_bd&#39;,int),</span>
+<span class="c1">#                        (&#39;inv_type&#39;,str),</span>
+<span class="c1">#                        (&#39;tau_ap&#39;,float),</span>
+<span class="c1">#                        (&#39;tau_hparams&#39;,np.ndarray),</span>
+<span class="c1">#                        (&#39;tau_pdf&#39;,int),</span>
+<span class="c1">#                        (&#39;stepsize_tau&#39;,float), </span>
+<span class="c1">#                        (&#39;filters&#39;,list),</span>
+<span class="c1">#                        (&#39;parallel_tempering&#39;,bool),</span>
+<span class="c1">#                        (&#39;nbeta&#39;,int),</span>
+<span class="c1">#                        (&#39;output_dir&#39;,str),</span>
+<span class="c1">#                        (&#39;unique_copy&#39;,bool)])</span>
+<span class="c1">#    </span>
+<span class="c1">#    tdmcmc = OrderedDict([(&#39;reversible_jump&#39;,bool),</span>
+<span class="c1">#                       (&#39;kmin&#39;,int),</span>
+<span class="c1">#                       (&#39;kmax&#39;,int),</span>
+<span class="c1">#                       (&#39;k_ap&#39;,int)])</span>
+<span class="c1">#    </span>
+<span class="c1">#    param_dict = OrderedDict([(&#39;MEASUREMENTS&#39;, measurements),</span>
+<span class="c1">#                              (&#39;MCMC&#39;, mcmc),</span>
+<span class="c1">#                              (&#39;TDMCMC&#39;, tdmcmc)])</span>
+    <span class="n">reference_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">acrg_path</span><span class="p">,</span><span class="s2">&quot;acrg_config/templates/tdmcmc_template.ini&quot;</span><span class="p">)</span>
+    <span class="n">param_dict</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">generate_param_dict</span><span class="p">(</span><span class="n">reference_file</span><span class="p">)</span>
     
     <span class="k">return</span> <span class="n">param_dict</span></div>
 
-<div class="viewcode-block" id="get_meas_params"><a class="viewcode-back" href="../../api/acrg_tdmcmc.html#acrg_tdmcmc.tdmcmc_config.get_meas_params">[docs]</a><span class="k">def</span> <span class="nf">get_meas_params</span><span class="p">():</span>
-    <span class="sd">&#39;&#39;&#39;</span>
-<span class="sd">    The get_meas_param function returns all parameter names associated the the &#39;MEASUREMENTS&#39; group</span>
-<span class="sd">    Returns:</span>
-<span class="sd">        OrderedDict: parameter names, str: group name</span>
-<span class="sd">    &#39;&#39;&#39;</span>
-    <span class="n">key</span> <span class="o">=</span> <span class="s1">&#39;MEASUREMENTS&#39;</span>
-    <span class="k">return</span> <span class="n">mcmc_param_type</span><span class="p">()[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span><span class="n">key</span></div>
-
-
-<div class="viewcode-block" id="get_mcmc_params"><a class="viewcode-back" href="../../api/acrg_tdmcmc.html#acrg_tdmcmc.tdmcmc_config.get_mcmc_params">[docs]</a><span class="k">def</span> <span class="nf">get_mcmc_params</span><span class="p">():</span>
-    <span class="sd">&#39;&#39;&#39;</span>
-<span class="sd">    The get_meas_param function returns all parameter names associated the the &#39;MCMC&#39; group</span>
-<span class="sd">    Returns:</span>
-<span class="sd">        OrderedDict: parameter names, str: group name</span>
-<span class="sd">    &#39;&#39;&#39;</span>
-    <span class="n">key</span> <span class="o">=</span> <span class="s1">&#39;MCMC&#39;</span>
-    <span class="k">return</span> <span class="n">mcmc_param_type</span><span class="p">()[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span><span class="n">key</span></div>
-
-
-<div class="viewcode-block" id="get_tdmcmc_params"><a class="viewcode-back" href="../../api/acrg_tdmcmc.html#acrg_tdmcmc.tdmcmc_config.get_tdmcmc_params">[docs]</a><span class="k">def</span> <span class="nf">get_tdmcmc_params</span><span class="p">():</span>
-    <span class="sd">&#39;&#39;&#39;</span>
-<span class="sd">    The get_meas_param function returns all parameter names associated the the &#39;TDMCMC&#39; group</span>
-<span class="sd">    Returns:</span>
-<span class="sd">        OrderedDict: parameter names, str: group name</span>
-<span class="sd">    &#39;&#39;&#39;</span>
-    <span class="n">key</span> <span class="o">=</span> <span class="s1">&#39;TDMCMC&#39;</span>
-    <span class="k">return</span> <span class="n">mcmc_param_type</span><span class="p">()[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span><span class="n">key</span></div>
+<span class="c1">#def get_meas_params():</span>
+<span class="c1">#    &#39;&#39;&#39;</span>
+<span class="c1">#    The get_meas_param function returns all parameter names associated the the &#39;MEASUREMENTS&#39; group</span>
+<span class="c1">#    Returns:</span>
+<span class="c1">#        OrderedDict: parameter names, str: group name</span>
+<span class="c1">#    &#39;&#39;&#39;</span>
+<span class="c1">#    key = &#39;MEASUREMENTS&#39;</span>
+<span class="c1">#    return mcmc_param_type()[key].keys(),key</span>
+<span class="c1">#</span>
+<span class="c1">#</span>
+<span class="c1">#def get_mcmc_params():</span>
+<span class="c1">#    &#39;&#39;&#39;</span>
+<span class="c1">#    The get_meas_param function returns all parameter names associated the the &#39;MCMC&#39; group</span>
+<span class="c1">#    Returns:</span>
+<span class="c1">#        OrderedDict: parameter names, str: group name</span>
+<span class="c1">#    &#39;&#39;&#39;</span>
+<span class="c1">#    key = &#39;MCMC&#39;</span>
+<span class="c1">#    return mcmc_param_type()[key].keys(),key</span>
+<span class="c1">#</span>
+<span class="c1">#</span>
+<span class="c1">#def get_tdmcmc_params():</span>
+<span class="c1">#    &#39;&#39;&#39;</span>
+<span class="c1">#    The get_meas_param function returns all parameter names associated the the &#39;TDMCMC&#39; group</span>
+<span class="c1">#    Returns:</span>
+<span class="c1">#        OrderedDict: parameter names, str: group name</span>
+<span class="c1">#    &#39;&#39;&#39;</span>
+<span class="c1">#    key = &#39;TDMCMC&#39;</span>
+<span class="c1">#    return mcmc_param_type()[key].keys(),key</span>
   
+
+<div class="viewcode-block" id="optional_parameters"><a class="viewcode-back" href="../../api/acrg_tdmcmc.html#acrg_tdmcmc.tdmcmc_config.optional_parameters">[docs]</a><span class="k">def</span> <span class="nf">optional_parameters</span><span class="p">(</span><span class="n">section_group</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">meas_params</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;network&quot;</span><span class="p">,</span><span class="s2">&quot;start_date&quot;</span><span class="p">,</span><span class="s2">&quot;end_date&quot;</span><span class="p">]</span>
+    <span class="n">mcmc_params</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;unique_copy&quot;</span><span class="p">]</span>
+    <span class="n">tdmcmc_params</span> <span class="o">=</span> <span class="p">[]</span>
+    
+    <span class="n">optional_param</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">section_group</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">section_group</span> <span class="o">==</span> <span class="s2">&quot;MEASUREMENTS&quot;</span><span class="p">:</span>
+        <span class="n">optional_param</span> <span class="o">+=</span> <span class="n">meas_params</span>
+    <span class="k">if</span> <span class="n">section_group</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">section_group</span> <span class="o">==</span> <span class="s2">&quot;MCMC&quot;</span><span class="p">:</span>
+        <span class="n">optional_param</span> <span class="o">+=</span> <span class="n">mcmc_params</span>
+    <span class="k">if</span> <span class="n">section_group</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">section_group</span> <span class="o">==</span> <span class="s2">&quot;TDMCMC&quot;</span><span class="p">:</span>
+        <span class="n">optional_param</span> <span class="o">+=</span> <span class="n">tdmcmc_params</span>
+    
+    <span class="k">return</span> <span class="n">optional_param</span></div>
+
+<div class="viewcode-block" id="add_defaults"><a class="viewcode-back" href="../../api/acrg_tdmcmc.html#acrg_tdmcmc.tdmcmc_config.add_defaults">[docs]</a><span class="k">def</span> <span class="nf">add_defaults</span><span class="p">(</span><span class="n">param</span><span class="p">,</span><span class="n">section_group</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">if</span> <span class="n">section_group</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">section_group</span> <span class="o">==</span> <span class="s2">&quot;MEASUREMENTS&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="p">(</span><span class="s2">&quot;network&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">param</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="ow">or</span> <span class="p">(</span><span class="ow">not</span> <span class="n">param</span><span class="p">[</span><span class="s2">&quot;network&quot;</span><span class="p">]):</span>
+            <span class="n">site1</span> <span class="o">=</span> <span class="n">param</span><span class="p">[</span><span class="s1">&#39;sites&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">param</span><span class="p">[</span><span class="s2">&quot;network&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">agage</span><span class="o">.</span><span class="n">site_info</span><span class="p">[</span><span class="n">site1</span><span class="p">][</span><span class="s2">&quot;network&quot;</span><span class="p">]</span>
+            <span class="nb">print</span> <span class="s1">&#39;Extracting network for first site from json file&#39;</span>
+    
+    <span class="k">if</span> <span class="n">section_group</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">section_group</span> <span class="o">==</span> <span class="s2">&quot;MCMC&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="p">(</span><span class="s2">&quot;unique_copy&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">param</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="ow">or</span> <span class="p">(</span><span class="n">param</span><span class="p">[</span><span class="s2">&quot;unique_copy&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="n">param</span><span class="p">[</span><span class="s2">&quot;unique_copy&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">return</span> <span class="n">param</span></div>
 
 <div class="viewcode-block" id="measurements_param"><a class="viewcode-back" href="../../api/acrg_tdmcmc.html#acrg_tdmcmc.tdmcmc_config.measurements_param">[docs]</a><span class="k">def</span> <span class="nf">measurements_param</span><span class="p">(</span><span class="n">config_file</span><span class="p">,</span><span class="n">optional_param</span><span class="o">=</span><span class="p">[]):</span>
     <span class="sd">&#39;&#39;&#39;</span>
@@ -221,32 +257,14 @@
 <span class="sd">            Exception raised and program exited</span>
 <span class="sd">    &#39;&#39;&#39;</span>
     
-    <span class="n">meas_names</span><span class="p">,</span><span class="n">meas_section</span> <span class="o">=</span> <span class="n">get_meas_params</span><span class="p">()</span>
-    <span class="n">can_calculate</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;network&#39;</span><span class="p">]</span> <span class="c1"># Allow values which can be calculated to be optional parameters (currently only &#39;network&#39;)</span>
-    <span class="n">optional_param</span> <span class="o">+=</span> <span class="p">[</span><span class="s1">&#39;start_date&#39;</span><span class="p">,</span><span class="s1">&#39;end_date&#39;</span><span class="p">]</span>
+    <span class="n">meas_group</span> <span class="o">=</span> <span class="s1">&#39;MEASUREMENTS&#39;</span>
+    
+    <span class="n">optional_param</span> <span class="o">+=</span> <span class="n">optional_parameters</span><span class="p">(</span><span class="n">section_group</span><span class="o">=</span><span class="n">meas_group</span><span class="p">)</span>
     <span class="n">param_type</span> <span class="o">=</span> <span class="n">mcmc_param_type</span><span class="p">()</span>
+
+    <span class="n">param</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">extract_params</span><span class="p">(</span><span class="n">config_file</span><span class="p">,</span><span class="n">section_group</span><span class="o">=</span><span class="n">meas_group</span><span class="p">,</span><span class="n">optional_param</span><span class="o">=</span><span class="n">optional_param</span><span class="p">,</span><span class="n">param_type</span><span class="o">=</span><span class="n">param_type</span><span class="p">)</span>
     
-    <span class="n">param</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">extract_params</span><span class="p">(</span><span class="n">config_file</span><span class="p">,</span><span class="n">meas_section</span><span class="p">,</span><span class="n">names</span><span class="o">=</span><span class="n">meas_names</span><span class="p">,</span><span class="n">optional_param</span><span class="o">=</span><span class="n">can_calculate</span><span class="o">+</span><span class="n">optional_param</span><span class="p">,</span><span class="n">param_type</span><span class="o">=</span><span class="n">param_type</span><span class="p">)</span>
-    
-    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">can_calculate</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">key</span> <span class="o">==</span> <span class="s1">&#39;network&#39;</span><span class="p">:</span> <span class="c1"># If network is not specified, extract from site_info file</span>
-            <span class="k">try</span><span class="p">:</span>
-                <span class="n">param</span><span class="p">[</span><span class="s1">&#39;network&#39;</span><span class="p">]</span>
-            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
-                <span class="n">site1</span> <span class="o">=</span> <span class="n">param</span><span class="p">[</span><span class="s1">&#39;sites&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
-                <span class="n">param</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">agage</span><span class="o">.</span><span class="n">site_info</span><span class="p">[</span><span class="n">site1</span><span class="p">][</span><span class="s2">&quot;network&quot;</span><span class="p">]</span>
-                <span class="nb">print</span> <span class="s1">&#39;Extracting network for first site from json file&#39;</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">pass</span> <span class="c1"># Can add in extra checks here if value can be extracted from another source</span>
-    
-    <span class="c1">#sites = param[&#39;sites&#39;]</span>
-    <span class="c1">#species = param[&#39;species&#39;]</span>
-    <span class="c1">#domain = param[&#39;domain&#39;]</span>
-    <span class="c1">#network = param[&#39;network&#39;]</span>
-    <span class="c1">#start_date = param[&#39;start_date&#39;]</span>
-    <span class="c1">#end_date = param[&#39;end_date&#39;]</span>
-    
-    <span class="c1">#return sites,species,domain,network,start_date,end_date</span>
+    <span class="n">param</span> <span class="o">=</span> <span class="n">add_defaults</span><span class="p">(</span><span class="n">param</span><span class="p">,</span><span class="n">section_group</span><span class="o">=</span><span class="n">meas_group</span><span class="p">)</span>
     
     <span class="k">return</span> <span class="n">param</span></div>
 
@@ -266,14 +284,14 @@
 <span class="sd">            Exception raised and program exited</span>
 <span class="sd">    &#39;&#39;&#39;</span>
     
-    <span class="n">names</span><span class="p">,</span><span class="n">section_group</span> <span class="o">=</span> <span class="n">get_mcmc_params</span><span class="p">()</span>
-    <span class="n">optional_param</span> <span class="o">+=</span> <span class="p">[</span><span class="s1">&#39;unique_copy&#39;</span><span class="p">]</span>
+    <span class="n">mcmc_group</span> <span class="o">=</span> <span class="s2">&quot;MCMC&quot;</span>
+
+    <span class="n">optional_param</span> <span class="o">+=</span> <span class="n">optional_parameters</span><span class="p">(</span><span class="n">section_group</span><span class="o">=</span><span class="n">mcmc_group</span><span class="p">)</span>
     <span class="n">param_type</span> <span class="o">=</span> <span class="n">mcmc_param_type</span><span class="p">()</span>
     
-    <span class="n">param</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">extract_params</span><span class="p">(</span><span class="n">config_file</span><span class="p">,</span><span class="n">section_group</span><span class="o">=</span><span class="n">section_group</span><span class="p">,</span><span class="n">names</span><span class="o">=</span><span class="n">names</span><span class="p">,</span><span class="n">optional_param</span><span class="o">=</span><span class="n">optional_param</span><span class="p">,</span><span class="n">param_type</span><span class="o">=</span><span class="n">param_type</span><span class="p">)</span>
+    <span class="n">param</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">extract_params</span><span class="p">(</span><span class="n">config_file</span><span class="p">,</span><span class="n">section_group</span><span class="o">=</span><span class="n">mcmc_group</span><span class="p">,</span><span class="n">optional_param</span><span class="o">=</span><span class="n">optional_param</span><span class="p">,</span><span class="n">param_type</span><span class="o">=</span><span class="n">param_type</span><span class="p">)</span>
     
-    <span class="k">if</span> <span class="n">param</span><span class="p">[</span><span class="s1">&#39;unique_copy&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">param</span><span class="p">[</span><span class="s1">&#39;unique_copy&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">param</span> <span class="o">=</span> <span class="n">add_defaults</span><span class="p">(</span><span class="n">param</span><span class="p">,</span><span class="n">section_group</span><span class="o">=</span><span class="n">mcmc_group</span><span class="p">)</span>
     
     <span class="k">return</span> <span class="n">param</span></div>
 
@@ -292,10 +310,14 @@
 <span class="sd">            Exception raised and program exited</span>
 <span class="sd">    &#39;&#39;&#39;</span>
     
-    <span class="n">names</span><span class="p">,</span><span class="n">section_group</span> <span class="o">=</span> <span class="n">get_tdmcmc_params</span><span class="p">()</span>
+    <span class="n">tdmcmc_group</span> <span class="o">=</span> <span class="s2">&quot;TDMCMC&quot;</span>
+
+    <span class="n">optional_param</span> <span class="o">+=</span> <span class="n">optional_parameters</span><span class="p">(</span><span class="n">section_group</span><span class="o">=</span><span class="n">tdmcmc_group</span><span class="p">)</span>
     <span class="n">param_type</span> <span class="o">=</span> <span class="n">mcmc_param_type</span><span class="p">()</span>
     
-    <span class="n">param</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">extract_params</span><span class="p">(</span><span class="n">config_file</span><span class="p">,</span><span class="n">section_group</span><span class="o">=</span><span class="n">section_group</span><span class="p">,</span><span class="n">names</span><span class="o">=</span><span class="n">names</span><span class="p">,</span><span class="n">optional_param</span><span class="o">=</span><span class="n">optional_param</span><span class="p">,</span><span class="n">param_type</span><span class="o">=</span><span class="n">param_type</span><span class="p">)</span>
+    <span class="n">param</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">extract_params</span><span class="p">(</span><span class="n">config_file</span><span class="p">,</span><span class="n">section_group</span><span class="o">=</span><span class="n">tdmcmc_group</span><span class="p">,</span><span class="n">optional_param</span><span class="o">=</span><span class="n">optional_param</span><span class="p">,</span><span class="n">param_type</span><span class="o">=</span><span class="n">param_type</span><span class="p">)</span>
+    
+    <span class="n">param</span> <span class="o">=</span> <span class="n">add_defaults</span><span class="p">(</span><span class="n">param</span><span class="p">,</span><span class="n">section_group</span><span class="o">=</span><span class="n">tdmcmc_group</span><span class="p">)</span>
     
     <span class="k">return</span> <span class="n">param</span></div>
 
@@ -314,25 +336,30 @@
 <span class="sd">            Exception raised and program exited    </span>
 <span class="sd">    &#39;&#39;&#39;</span>
     
-    <span class="n">meas_parameters</span> <span class="o">=</span> <span class="n">measurements_param</span><span class="p">(</span><span class="n">config_file</span><span class="p">,</span><span class="n">optional_param</span><span class="p">)</span>
-    <span class="n">mcmc_parameters</span> <span class="o">=</span> <span class="n">mcmc_param</span><span class="p">(</span><span class="n">config_file</span><span class="p">,</span><span class="n">optional_param</span><span class="p">)</span>
-    <span class="n">tdmcmc_parameters</span> <span class="o">=</span> <span class="n">tdmcmc_param</span><span class="p">(</span><span class="n">config_file</span><span class="p">,</span><span class="n">optional_param</span><span class="p">)</span>
-    
-    <span class="n">param</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">({})</span>
-    <span class="n">param</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">meas_parameters</span><span class="p">)</span>
-    <span class="n">param</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">mcmc_parameters</span><span class="p">)</span>
-    <span class="n">param</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">tdmcmc_parameters</span><span class="p">)</span>
-    
-    <span class="c1"># Checking if any additional keys are present except those explictly used above</span>
-    <span class="n">known_keys</span> <span class="o">=</span> <span class="p">[</span><span class="n">get_meas_params</span><span class="p">()[</span><span class="mi">1</span><span class="p">],</span><span class="n">get_mcmc_params</span><span class="p">()[</span><span class="mi">1</span><span class="p">],</span><span class="n">get_tdmcmc_params</span><span class="p">()[</span><span class="mi">1</span><span class="p">]]</span>
     <span class="n">param_type</span> <span class="o">=</span> <span class="n">mcmc_param_type</span><span class="p">()</span>
+    <span class="n">optional_param</span> <span class="o">+=</span> <span class="n">optional_parameters</span><span class="p">()</span>
+    <span class="n">param</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">extract_params</span><span class="p">(</span><span class="n">config_file</span><span class="p">,</span><span class="n">optional_param</span><span class="o">=</span><span class="n">optional_param</span><span class="p">,</span><span class="n">param_type</span><span class="o">=</span><span class="n">param_type</span><span class="p">)</span>
+    <span class="n">param</span> <span class="o">=</span> <span class="n">add_defaults</span><span class="p">(</span><span class="n">param</span><span class="p">)</span>
     
-    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">param_type</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">known_keys</span><span class="p">:</span>
-            <span class="c1"># Extract the extra parameters but print a warning as these values should really be incorporated into code</span>
-            <span class="nb">print</span> <span class="s1">&#39;WARNING: Additional unknown key </span><span class="si">{0}</span><span class="s1"> extracted from mcmc_param_type. May be worth adding additional functions for this?&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
-            <span class="n">extra_parameters</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">extract_params</span><span class="p">(</span><span class="n">config_file</span><span class="p">,</span><span class="n">section_group</span><span class="o">=</span><span class="n">key</span><span class="p">,</span><span class="n">optional_param</span><span class="o">=</span><span class="n">optional_param</span><span class="p">,</span><span class="n">param_type</span><span class="o">=</span><span class="n">param_type</span><span class="p">)</span>
-            <span class="n">param</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">extra_parameters</span><span class="p">)</span>
+<span class="c1">#    meas_parameters = measurements_param(config_file,optional_param)</span>
+<span class="c1">#    mcmc_parameters = mcmc_param(config_file,optional_param)</span>
+<span class="c1">#    tdmcmc_parameters = tdmcmc_param(config_file,optional_param)</span>
+    
+<span class="c1">#    param = OrderedDict({})</span>
+<span class="c1">#    param.update(meas_parameters)</span>
+<span class="c1">#    param.update(mcmc_parameters)</span>
+<span class="c1">#    param.update(tdmcmc_parameters)</span>
+    
+<span class="c1">#    # Checking if any additional keys are present except those explictly used above</span>
+<span class="c1">#    known_keys = [get_meas_params()[1],get_mcmc_params()[1],get_tdmcmc_params()[1]]</span>
+<span class="c1">#    param_type = mcmc_param_type()</span>
+<span class="c1">#    </span>
+<span class="c1">#    for key in param_type:</span>
+<span class="c1">#        if key not in known_keys:</span>
+<span class="c1">#            # Extract the extra parameters but print a warning as these values should really be incorporated into code</span>
+<span class="c1">#            print &#39;WARNING: Additional unknown key {0} extracted from mcmc_param_type. May be worth adding additional functions for this?&#39;.format(key)</span>
+<span class="c1">#            extra_parameters = config.extract_params(config_file,section_group=key,optional_param=optional_param,param_type=param_type)</span>
+<span class="c1">#            param.update(extra_parameters)</span>
     
     <span class="k">return</span> <span class="n">param</span></div>
 </pre></div>

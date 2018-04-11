@@ -86,7 +86,42 @@ time, hfc134a, sigma =</p>
 <dl class="function">
 <dt id="acrg_agage.get_obs">
 <code class="descclassname">acrg_agage.</code><code class="descname">get_obs</code><span class="sig-paren">(</span><em>sites</em>, <em>species</em>, <em>start='1900-01-01'</em>, <em>end='2020-01-01'</em>, <em>height=None</em>, <em>baseline=False</em>, <em>average=None</em>, <em>keep_missing=False</em>, <em>network=None</em>, <em>instrument=None</em>, <em>status_flag_unflagged=None</em>, <em>max_level=None</em>, <em>data_directory=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_agage.html#get_obs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_agage.get_obs" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>The get_obs function retrieves obervations for a set of sites and species between start and end dates
+Note: max_level only pertains to satellite data</p>
+<p>If height, network, instrument and average inputs are specified they should have the same number of
+entries as there are sites. Format:</p>
+<blockquote>
+<div><ul class="simple">
+<li>For one site, can include as a str or a one item list.</li>
+<li>For multiple sites, must be a list matching the number of sites.</li>
+</ul>
+</div></blockquote>
+<p>If not explicitly specified, height and network values can be extracted from acrg_site_info.json. If
+there are multiple values are present, the first one will be used by default
+(<strong>* May change with Matt&#8217;s new acrg_site_info.json format *</strong>)</p>
+<p>For example if we wanted to read in daily averaged methane data for Mace Head and Tacolneston for 2012
+we could include:</p>
+<blockquote>
+<div><dl class="docutils">
+<dt>get_obs(sites=[&#8220;MHD&#8221;,&#8221;TAC&#8221;],species=&#8221;ch4&#8221;,start=&#8221;2012-01-01&#8221;,end=&#8221;2013-01-01&#8221;,height=[&#8220;10m&#8221;,&#8221;100m&#8221;],</dt>
+<dd>average=[&#8220;24H&#8221;,&#8221;24H&#8221;],network=[&#8220;AGAGE&#8221;,&#8221;DECC&#8221;])</dd>
+</dl>
+</div></blockquote>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>sites</strong> (<em>list</em>) &#8211; Site list. All sites should be defined within acrg_site_info.json.
+E.g. [&#8220;MHD&#8221;] for Mace Head site.</li>
+<li><strong>species</strong> (<em>str</em>) &#8211; Species identifier. All species names should be defined within acrg_species_info.json.
+E.g. &#8220;ch4&#8221; for methane.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="function">
 <dt id="acrg_agage.is_number">
@@ -97,6 +132,12 @@ time, hfc134a, sigma =</p>
 <dt id="acrg_agage.listsearch">
 <code class="descclassname">acrg_agage.</code><code class="descname">listsearch</code><span class="sig-paren">(</span><em>varnames</em>, <em>species</em>, <em>species_info</em>, <em>label='alt'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_agage.html#listsearch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_agage.listsearch" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
+
+<dl class="function">
+<dt id="acrg_agage.open_ds">
+<code class="descclassname">acrg_agage.</code><code class="descname">open_ds</code><span class="sig-paren">(</span><em>path</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_agage.html#open_ds"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_agage.open_ds" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function efficiently opens xray datasets.</p>
+</dd></dl>
 
 <dl class="function">
 <dt id="acrg_agage.quadratic_sum">

@@ -7,10 +7,7 @@ Created on Mon Nov 10 10:45:51 2014
 import netCDF4 as nc
 import numpy as np
 import matplotlib.pyplot as plt
-from mpl_toolkits.basemap import Basemap
-from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.ticker import MaxNLocator
-from matplotlib.colors import BoundaryNorm
 import datetime as dt
 import os
 import glob
@@ -21,12 +18,14 @@ import subprocess
 from progressbar import ProgressBar
 import json
 from os.path import join
-import xarray as xray
+import xarray as xr
 from acrg_time import convert
 import calendar
 import pickle
 from scipy import interpolate
-
+import dateutil.relativedelta
+import cartopy.crs as ccrs
+import pdb
 
 acrg_path = os.getenv("ACRG_PATH")
 data_path = os.getenv("DATA_PATH")
@@ -57,12 +56,28 @@ with open(join(acrg_path, "acrg_site_info.json")) as f:
 
 def filenames(site, domain, start, end, height, fp_directory):
     """
-    Output a list of available footprint file names,
+    The filenames function outputs a list of available footprint file names,
     for given site, domain, directory and date range.
     
-    fp_directory can be specified if files are not in the default directory
-    must point to a directory which contains subfolders organized by domain
+    Expect filenames of the form:
+        [fp_directory]/domain/site*-height*domain*yearmonth*.nc
+        e.g. [/data/shared/NAME/fp]/EUROPE/MHD-10magl_EUROPE_201401.nc
     
+    Args:
+        site (str)         : Site name. Full list of site names should be 
+                             defined within acrg_site_info.json
+        domain (str)       : Domain name. The footprint files should be 
+                             sub-categorised by the NAME domain name.
+        start (str)        : Start date in format "YYYY-MM-DD" for range of files
+                             to find.
+        end (str)          : End date in same format as start for range of files
+                             to find.
+        height (str)       : Height related to input data. 
+        fp_directory (str) : fp_directory can be specified if files are not in 
+                             the default directory must point to a directory 
+                             which contains subfolders organized by domain.
+    Returns:
+        list (str): matched filenames
     """
 
     baseDirectory = fp_directory
@@ -98,27 +113,48 @@ def filenames(site, domain, start, end, height, fp_directory):
     return files
 
 def read_netcdfs(files, dim = "time"):
-    '''
-    Use xray to open sequential netCDF files. 
-    Makes sure that file is closed after open_dataset call.
-    '''
+    """
+    The read_netcdfs function uses xarray to open sequential netCDF files and 
+    and concatenates them along the specified dimension.
+    Note: this function makes sure that file is closed after open_dataset call.
+    
+    Args:
+        files (list) : List of netCDF filenames.
+        dim (str)    : Dimension of netCDF to use for concatenating the files.
+                       Default= "time".
+    
+    Returns:
+        xarray.Dataset : all files open as one concatenated xarray.Dataset object    
+    """
     
     def process_one_path(path):
-        with xray.open_dataset(path) as ds:
+        with xr.open_dataset(path) as ds:
             ds.load()
         return ds
     
     datasets = [process_one_path(p) for p in sorted(files)]
-    combined = xray.concat(datasets, dim)
+    combined = xr.concat(datasets, dim)
     return combined   
 
 def interp_time(bc_ds,vmr_var_names, new_times):
     """
-    Created to convert MOZART monthly averages into same frequency as NAME footprints.
-    Interpolates the times of the VMR variable 'vmr_var_name' in the xray dataset
-    'bc_ds' to the times specified in 'interp_times'. The variable must have dimensions
-    (height, lat_or_lon, time) in that order. 
-    Returns a new dataset with the VMRs recalculated at interpolated times.
+    The interp_time function interpolates the times of the VMR variable 
+    'vmr_var_name' in the xarray.Dataset 'bc_ds' to the times specified in 
+    'interp_times'. The variable must have dimensions (height, lat_or_lon, time) 
+    in that order. 
+    Note: This function was created to convert MOZART monthly averages into 
+    same frequency as NAME footprints.
+
+    TODO: Add details for vmr_var_names and new_times
+
+    Args:
+        bc_ds (xarray.Dataset)   : Output from boundary_conditions() function
+        vmr_var_names (iterable) : ???
+        new_times                : ???
+    
+    Returns:
+        xarray.Dataset : new dataset with the VMRs recalculated at interpolated times.
+
     """
 
     vmr_dict={}
@@ -137,7 +173,7 @@ def interp_time(bc_ds,vmr_var_names, new_times):
 
         vmr_dict[vmr_var_name]=vmr_new
         
-    ds2 = xray.Dataset({"vmr_n": (["height", "lon", "time"],vmr_dict["vmr_n"]),
+    ds2 = xr.Dataset({"vmr_n": (["height", "lon", "time"],vmr_dict["vmr_n"]),
                         "vmr_e": (["height", "lat", "time"],vmr_dict["vmr_e"]),
                         "vmr_s": (["height", "lon", "time"],vmr_dict["vmr_s"]),
                         "vmr_w": (["height", "lat", "time"],vmr_dict["vmr_w"])},
@@ -153,39 +189,44 @@ def footprints(sitecode_or_filename, fp_directory = fp_directory,
                species = None, emissions_name = None, HiTRes = False,interp_vmr_freq=None):
 
     """
-    Load a NAME footprint netCDF files into an xray dataset 
-    
-    Loads flux and boundary conditions if species or emissions_name is specified
-    
-    EMISSIONS_NAME allows emissions files such as co2nee_EUROPE_2012.nc
-    to be read in. In this case EMISSIONS_NAME would be 'co2nee'
+    The footprints function loads a NAME footprint netCDF files into an xarray Dataset.
+    Flux and boundary conditions are also loaded if species or emissions_name is specified.
     
     Either specify:
-    
-    a) A file name:
-
-        fp = footprints(filename)
-    
-    b) A site code, domain, and date range:
-    
-        fp = footprints("MHD", 
+        a) A file name:
+            fp = footprints(filename)
+        b) A site code, domain, and date range:
+            fp = footprints("MHD", 
                     start = "2014-01-01", end = "2014-01-01",
                     domain = "EUROPE")
     
-    fp_directory, flux_directory and bc_directory can point to specified directories
-    but if not specified, will use default directories
-    
-    fp_directory must be a dictionary of the form 
-    {"integrated":PATH_TO_INTEGRATED_FP", "HiTRes":PATH_TO_HIGHTRES_FP}
-    if the high time resolution footprints are used (HiTRes = True);
-    otherwise can be a single string if only integrated FPs are used and are non-default
-    
-    If the HEIGHT keyword is not specified, the default height from the
-    acrg_site_info.json file is assumed.
+    See filenames() function for expected format of files.
+    Note: fp_directory, flux_directory and bc_directory can point to specified directories
+    but if not specified, default directories will be used (set at the top of file).
 
+    Args:
+        sitecode_or_filename : Site (e.g. 'MHD') or a netCDF filename (*.nc) (str)
+        fp_directory (str)   : fp_directory can be specified if files are not in 
+                               the default directory. Must point to a directory 
+                               which contains subfolders organized by domain. (optional)
+        flux_directory (str) : Same sytax as fp_directory (optional)
+        bc_directory (str)   : Same sytax as bc_directory (optional)
+        start (str)          : Start date in format "YYYY-MM-DD" for range of files to find.
+        end (str)            : End date in same format as start for range of files to find.
+        domain (str)         : Domain name. The footprint files should be sub-categorised by the domain.
+        height (str)         : Height related to NAME. If the HEIGHT keyword is not specified, the default 
+                               height from the acrg_site_info.json file is assumed.
+        species (str)        : Species name. All species names are defined acrg_species_info.json.
+        emissions_name (str) : Allows emissions files such as co2nee_EUROPE_2012.nc to be read in. 
+                               In this case EMISSIONS_NAME would be 'co2nee'
+        HiTRes (bool)        : Whether to include high time resolution footprints.
+        interp_vmr_freq      : Frequency to interpolate vmr time. (float/int)
+        
+    Returns:
+        xarray.Dataset : combined footprint files
     """
-    #Chose whether we've input a site code or a file name
-    #If it's a three-letter site code, assume it's been processed
+    # Chose whether we've input a site code or a file name
+    # If it's a three-letter site code, assume it's been processed
     # into an annual footprint file in (mol/mol) / (mol/m2/s)
     # using acrg_name_process
     
@@ -197,8 +238,8 @@ def footprints(sitecode_or_filename, fp_directory = fp_directory,
     else:
         site=sitecode_or_filename[:]
 
-# finds integrated footprints if specified as a dictionary with multiple entries (HiTRes = True) 
-# or a string with one entry        
+    # Finds integrated footprints if specified as a dictionary with multiple entries (HiTRes = True) 
+    # or a string with one entry        
         if type(fp_directory) is dict:
             files = filenames(site, domain, start, end, height, fp_directory["integrated"])
         else:
@@ -240,23 +281,30 @@ def footprints(sitecode_or_filename, fp_directory = fp_directory,
         return fp
 
 
-def flux(domain, species, flux_directory=flux_directory):
+def flux(domain, species, start = None, end = None, flux_directory=flux_directory):
     """
-    Read in a flux dataset.
-    
-    Looks in directory 'flux_directory' which can be input or is otherwise default.
-    
+    The flux function reads in all flux files for the domain and species as an xarray Dataset.
+    Note that at present ALL flux data is read in per species per domain or by emissions name.
     To be consistent with the footprints, fluxes should be in mol/m2/s.
     
-    Note that at present ALL flux data is read in per species per domain or by emissions name.
+    Expect filenames of the form:
+        [flux_directory]/domain/species.lower()_*.nc
+        e.g. [/data/shared/NAME/emissions]/EUROPE/ch4_EUROPE_2013.nc
     
-    This may get slow for very large flux datasets, and we may want to subset.    
+    TODO: This may get slow for very large flux datasets, and we may want to subset.
+    
+    Args:
+        domain (str)         : Domain name. The flux files should be sub-categorised by the domain.
+        species (str)        : Species name. All species names are defined acrg_species_info.json.
+        flux_directory (str) : flux_directory can be specified if files are not in 
+                               the default directory. Must point to a directory 
+                               which contains subfolders organized by domain. (optional)
+    Returns:
+        xarray.Dataset : combined dataset of all matching flux files
     """
 
-    print 'search str',flux_directory + domain + "/" + species.lower() + "_" + "*.nc"
     files = sorted(glob.glob(flux_directory + domain + "/" + 
                    species.lower() + "_" + "*.nc"))
-    print 'files',files
     if len(files) == 0:
         print("Can't find flux: " + domain + " " + species)
         return None
@@ -277,16 +325,62 @@ def flux(domain, species, flux_directory=flux_directory):
             print("ERROR: More than one flux level")
         else:
             return flux_ds.drop("lev")
+        
+    if start == None:
+        return flux_ds
+    else:
+        if end == None:
+            print "To get fluxes for a certain time period you must specify an end date."
+        else:
+            flux_timeslice = flux_ds.sel(time=slice(start, end))
+            if len(flux_timeslice.time)==0:
+                flux_timeslice = flux_ds.sel(time=start, method = 'ffill')
+                flux_timeslice = flux_timeslice.expand_dims('time',axis=-1)
+                print("No fluxes available during the time period specified so outputting\
+                          flux from %s" %flux_timeslice.time.values[0])
+            return flux_timeslice
 
-    return flux_ds
 
-
-def boundary_conditions(domain, species, bc_directory=bc_directory):
-    """
-    Read in the files with the global model vmrs at the domain edges to give
-    the boundary conditions.
+def flux_for_HiTRes(domain, emissions_dict, start=None, end=None, flux_directory=flux_directory):
     
-    Looks in default folder unless the directory bc_directory is specified
+    if 'low_freq' not in emissions_dict.keys():
+        print("low_freq must be a key in the emissions_dict in order to combine with HiTRes footprints.")
+        return None
+    elif 'high_freq' not in emissions_dict.keys():
+        print("high_freq must be a key in the emissions_dict in order to use HiTRes footprints.")
+        return None
+    
+    flux_dict = {}
+    fluxes_highfreq = flux(domain, emissions_dict['high_freq'], start = start, end = end,flux_directory=flux_directory)
+    flux_dict['high_freq'] = fluxes_highfreq
+    if start:
+        start_lowfreq = start - dateutil.relativedelta.relativedelta(months=1)
+        fluxes_lowfreq = flux(domain, emissions_dict['low_freq'], start = start_lowfreq, end = end,flux_directory=flux_directory)
+    elif start == None:
+        fluxes_lowfreq = flux(domain, emissions_dict['low_freq'], start = None, end = None,flux_directory=flux_directory)
+    flux_dict['low_freq'] = fluxes_lowfreq
+    
+    return flux_dict
+
+
+def boundary_conditions(domain, species, start = None, end = None, bc_directory=bc_directory):
+    """
+    The boundary_conditions function reads in the files with the global model vmrs at the domain edges 
+    to give the boundary conditions as an xarray Dataset.
+
+    Expect filenames of the form:
+        [bc_directory]/domain/species.lower()_*.nc
+        e.g. [/data/shared/NAME/bc]/EUROPE/ch4_EUROPE_201301.nc
+
+    Args:
+        domain (str)       : Domain name. The boundary condition files should be sub-categorised by the 
+                             domain.
+        species (str)      : Species name. All species names are defined acrg_species_info.json.
+        bc_directory (str) : bc_directory can be specified if files are not in 
+                             the default directory. Must point to a directory 
+                             which contains subfolders organized by domain. (optional)
+    Returns:
+        xarray.Dataset : combined dataset of matching boundary conditions files
     """
     
     files = sorted(glob.glob(bc_directory + domain + "/" + 
@@ -297,12 +391,40 @@ def boundary_conditions(domain, species, bc_directory=bc_directory):
 
     bc_ds = read_netcdfs(files)
 
-    return bc_ds
+    if start == None:
+        return bc_ds
+    else:
+        if end == None:
+            print "To get boundary conditions for a certain time period you must specify an end date."
+        else:
+            bc_timeslice = bc_ds.sel(time=slice(start, end))
+            if len(bc_timeslice.time)==0:
+                bc_timeslice = bc_ds.sel(time=start, method = 'ffill')
+                bc_timeslice = bc_timeslice.expand_dims('time',axis=-1)
+                print("No boundary conditions available during the time period specified so outputting\
+                          boundary conditions from %s" %bc_timeslice.time.values[0])
+            return bc_timeslice
 
 
 def basis(domain, basis_case, basis_directory = basis_directory):
     """
-    Read in a basis function file.
+    The basis function reads in the all matching files for the basis case and domain as an xarray Dataset.
+    
+    Expect filenames of the form:
+        [basis_directory]/domain/"basis_case"_"domain"*.nc
+        e.g. [/data/shared/NAME/basis_functions]/EUROPE/sub_transd_EUROPE_2014.nc
+
+    TODO: More info on options for basis functions.
+
+    Args:
+        domain (str)       : Domain name. The basis files should be sub-categorised by the domain.
+        basis_case (str)   : Basis case to read in. Examples of basis cases are "voroni","sub-transd",
+                             "sub-country_mask","INTEM".
+        bc_directory (str) : bc_directory can be specified if files are not in 
+                             the default directory. Must point to a directory 
+                             which contains subfolders organized by domain. (optional)
+    Returns:
+        xarray.Dataset : combined dataset of matching basis functions
     """
     
     files = sorted(glob.glob(basis_directory + domain + "/" +
@@ -315,9 +437,26 @@ def basis(domain, basis_case, basis_directory = basis_directory):
 
     return basis_ds
 
-
 def basis_boundary_conditions(domain, basis_case, bc_basis_directory=bc_basis_directory):
+    """
+    The basis_boundary_conditions function reads in all matching files for the boundary conditions 
+    basis case and domain as an xarray Dataset.
     
+    Expect filesnames of the form:
+        [bc_basis_directory]/domain/"basis_case"_"domain"*.nc
+        e.g. [/data/shared/NAME/bc_basis_directory]/EUROPE/NESW_EUROPE_2013.nc
+
+    TODO: More info on options for basis functions.
+    
+    Args:
+        domain (str)             : Domain name. The basis files should be sub-categorised by the domain.
+        basis_case (str)         : Basis case to read in. Examples of basis cases are "NESW","stratgrad".
+        bc_basis_directory (str) : bc_basis_directory can be specified if files are not in 
+                                   the default directory. Must point to a directory 
+                                   which contains subfolders organized by domain. (optional)
+    Returns:
+        xarray.Datset : combined dataset of matching basis functions
+    """
     files = sorted(glob.glob(bc_basis_directory + domain + "/" +
                     basis_case + '_' + domain + "*.nc"))
 
@@ -332,14 +471,22 @@ def basis_boundary_conditions(domain, basis_case, bc_basis_directory=bc_basis_di
 
 def combine_datasets(dsa, dsb, method = "ffill", tolerance = None):
     """
-    Merge two datasets. Assumes that you want to 
-    re-index to the FIRST dataset.
+    The combine_datasets function merges two datasets and re-indexes to the FIRST dataset.
+    If "fp" variable is found within the combined dataset, the "time" values where the "lat","lon"
+    dimensions didn't match are removed.
     
     Example:
-    
-    ds = combine_datasets(dsa, dsb)
+        ds = combine_datasets(dsa, dsb)
 
-    ds will have the index of dsa    
+    Args:
+        dsa (xarray.Dataset) : First dataset to merge
+        dsb (xarray.Dataset) : Second dataset to merge
+        method (str)         : One of {None, ‘nearest’, ‘pad’/’ffill’, ‘backfill’/’bfill’}
+                               See xarray.DataArray.reindex_like for list of options and meaning.
+        tolerance (??)      : Maximum allowed tolerance between matches.
+
+    Returns:
+        xarray.Dataset: combined dataset indexed to dsa
     """
     # merge the two datasets within a tolerance and remove times that are NaN (i.e. when FPs don't exist)
     
@@ -351,15 +498,17 @@ def combine_datasets(dsa, dsb, method = "ffill", tolerance = None):
 
 def timeseries(ds):
     """
-    Compute flux * footprint time series.
-    All that is required is that you input an xray
-    dataset with both the flux and footprint fields present    
-    
+    The timeseries function compute flux * footprint time series.
+
     Example:
-    
         ts = timeseries(dataset)
-    
-    There are almost certainly much more efficient ways of doing this.
+
+    TODO: There are almost certainly much more efficient ways of doing this.
+
+    Args:
+        ds (xarray.Dataset) : Dataset with both the flux and footprint fields present
+    Returns:
+        xarray.Dataset        
     """
 
     if "flux" in ds.keys():
@@ -369,22 +518,54 @@ def timeseries(ds):
               "no fluxes. Check flux file.")
         return None
 
-def timeseries_HiTRes(fp_HiTRes_ds, domain, HiTRes_flux_name, Resid_flux_name,
-                      output_TS = True, output_fpXflux = True, flux_directory=flux_directory):
+def timeseries_HiTRes(fp_HiTRes_ds, flux_dict, output_TS = True, output_fpXflux = True):
     """
-    Compute flux * HiTRes footprints
+    The timeseries_HiTRes function computes flux * HiTRes footprints.
     
     HiTRes footprints record the footprint at each 2 hour period back in time for the first 24 hours.
-    
     Need a high time resolution (HiTRes) flux to multiply the first 24 hours back of footprints.
-    
-    Need a residual (Resid) flux to multiply the residual integrated footprint for the remainder of the 20 day period.
-    
+    Need a residual (Resid) flux to multiply the residual integrated footprint for the remainder of the 20 
+    day period.
     Can output the timeseries (output_TS = True) and/or the sensitivity map (output_fpXflux = True)
+    
+    Args:
+        fp_HiTRes_ds (xarray.Dataset) : Dataset of High Time resolution footprint. HiTRes footprints 
+                                        record the footprint at each 2 hour period back in time for the 
+                                        first 24 hours.
+        domain (str)                  : Domain name. The footprint files should be sub-categorised by the 
+                                        domain.
+        HiTRes_flux_name (??)         :
+        Resid_flux_name (??)          :
+        output_TS (??)                :
+        output_fpXflux (??)           :
+        flux_directory (str)          : flux_directory can be specified if files are not in the default 
+                                        directory. Must point to a directory which contains subfolders 
+                                        organized by domain. (optional)
+    
+    Returns:
+        xarray.Dataset / tuple(xarray.Dataset,xarray.Dataset)
+        
+        If output_TS is True:
+            Outputs the timeseries
+        If output_fpXflux is True:
+            Outputs the sensitivity map   
     """
     
-    flux_HiTRes = flux(domain, HiTRes_flux_name, flux_directory)
-    flux_resid = flux(domain, Resid_flux_name, flux_directory)
+#    # Get time range
+#    fp_start = fp_HiTRes_ds.time[0]
+#    start = dt.datetime(int(fp_start['time.year']), int(fp_start['time.month']), 1, 0, 0)
+#        
+#    fp_end = fp_HiTRes_ds.time[-1]
+#    month_days = calendar.monthrange(int(fp_end['time.year']), int(fp_end['time.month']))[1]
+#    end = dt.datetime(int(fp_end['time.year']), int(fp_end['time.month']), 1, 0, 0) + \
+#            dt.timedelta(days = month_days)
+    
+    flux_HiTRes = flux_dict['high_freq']
+    flux_resid = flux_dict['low_freq']
+    
+    """
+    Probably need a check in here to make sure dates of fluxes correspond to dates of footprints
+    """
     
     fp_HiTRes = fp_HiTRes_ds.fp_HiTRes.to_dataset()
     fpXflux = np.zeros((len(fp_HiTRes.lat), len(fp_HiTRes.lon), len(fp_HiTRes.time)))
@@ -398,12 +579,12 @@ def timeseries_HiTRes(fp_HiTRes_ds, domain, HiTRes_flux_name, Resid_flux_name,
 
         new_fp = fp.fp_HiTRes[:,:,::-1]
         new_time = fp.time[::-1]
-        new_ds = xray.Dataset({'fp_HiTRes':(['lat','lon','time'], new_fp)},
+        new_ds = xr.Dataset({'fp_HiTRes':(['lat','lon','time'], new_fp)},
                                coords={'lat':fp.lat,
                                        'lon':fp.lon,
                                        'time':new_time})
 
-        em = flux_HiTRes.reindex_like(new_ds, method='nearest')
+        em = flux_HiTRes.reindex_like(new_ds, method='ffill')
         
         #Use end of hours back as closest point for finding the emissions file
         emend = flux_resid.sel(time = new_ds.time[0], method = 'ffill')
@@ -423,9 +604,14 @@ def timeseries_HiTRes(fp_HiTRes_ds, domain, HiTRes_flux_name, Resid_flux_name,
 
 def timeseries_boundary_conditions(ds):
     """
-    Compute particle location * global model edges time series.
-    All that is required is that you input an xray
-    dataset with both the particle locations and vmr at domain edge fields present    
+    The timeseries_boundary_conditions function compute particle location * global model edges time series.
+    
+    Args:
+        ds (xarray.Dataset) : Dataset with both the particle locations and vmr at domain edge fields 
+                              present.
+    
+    Returns:
+        xarray.Dataset
     """ 
 
     return (ds.particle_locations_n*ds.vmr_n).sum(["height", "lon"]) + \
@@ -434,7 +620,7 @@ def timeseries_boundary_conditions(ds):
            (ds.particle_locations_w*ds.vmr_w).sum(["height", "lat"])
 
     
-def footprints_data_merge(data, domain, load_flux = True,
+def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                           calc_timeseries = True, calc_bc = True, HiTRes = False,
                           average = None, site_modifier = {}, height = None,
                           emissions_name = None, interp_vmr_freq = None,
@@ -444,62 +630,72 @@ def footprints_data_merge(data, domain, load_flux = True,
 #                          perturbed=False, fp_dir_pert=None, pert_year=None, pert_month=None):
 
     """
-    Output a dictionary of xray footprint datasets, that correspond to a given
+    Output a dictionary of xarray footprint datasets, that correspond to a given
     dictionary of Pandas dataframes, containing mole fraction time series.
     
-    fp_directory, flux_directory and bc_directory can point to specified directories
-    if not specified, will use default directories
+    TODO: Add details of load_flux, calc_timeseries, calc_bc, HiTRes options into description and affect
+    on outputs
     
-    fp_directory must be a dictionary of the form 
-        fp_directory = {"integrated":PATH_TO_INTEGRATED_FP, "HiTRes":PATH_TO_HIGHTRES_FP}
-    if the high time resolution footprints are used (HiTRes = True)
-    otherwise can be a single string if only integrated FPs are used and non-default
+    Args:
+        data (dict)          : Input dictionary of dataframes with the sites as the keys.
+                               Should match output from acrg_agage.get_obs() function. For example:
+                               data = {"MHD": MHD_dataframe, "TAC": TAC_dataframe}
+        domain (str)         : Domain name. The footprint files should be sub-categorised by the domain.
+        load_flux (bool)     :  
+        calc_timeseries (bool) : 
+        calc_bc (bool)       :
+        HiTRes (bool)        : 
+        average (list)       : Averaging period for each dataset (for each site). Number of values for
+                               average must match number of sites within data dictionary.
+                               Each value should be a string of the form e.g. "2H", "30min" (should match
+                               pandas offset aliases format).
+        site_modifier        : An optional site modifier dictionary is used that maps the site name in the
+                               obs file to the site name in the footprint file, if they are different. This
+                               is useful for example if the same site FPs are run with a different met and 
+                               they are named slightly differently from the obs file. E.g.
+                               site_modifier = {"DJI":"DJI-SAM"} - station called DJI, FPs called DJI-SAM
+        height (str)         : Height related to input data. Can be found from acrg_sites_info.json
+        emissions_name       : Allows emissions files such as co2nee_EUROPE_2012.nc to be read in. 
+                               In this case EMISSIONS_NAME would be 'co2nee'
+        interp_vmr_freq      : Frequency to interpolate vmr time. (float/int)
+        fp_directory         : fp_directory must be a dictionary of the form 
+                               fp_directory = {"integrated":PATH_TO_INTEGRATED_FP, 
+                                               "HiTRes":PATH_TO_HIGHTRES_FP}
+                               if the high time resolution footprints are used (HiTRes = True)
+                               otherwise can be a single string if only integrated FPs are used and 
+                               non-default.
+        flux_directory (str) : flux_directory can be specified if files are not in the default directory. 
+                               Must point to a directory which contains subfolders organized by domain.
+                               (optional)
+        bc_directory (str)   : Same sytax as flux_directory (optional)
     
-    Example:
-    
-    Input dictionary contains time series at Mace Head and Tacolneston:
-        
-        data = {"MHD": MHD_dataframe, "TAC": TAC_dataframe}
-
-    The dataset must be labeled with "time" index, "mf" and "dmf" columns.
-        
-    An optional site modifier dictionary is used that maps the site name in the
-    obs file to the site name in the footprint file, if they are different. This
-    is useful for example if the same site FPs are run with a different met and 
-    they are named slightly differently from the obs file.
-    
-        site_modifier = {"DJI":"DJI-SAM"} - station called DJI, FPs called DJI-SAM
-        
-    Output dataset will contain a dictionary of merged data and footprints:
-        
-        dataset = {"MHD": MHD_xray_dataset, "TAC": TAC_xray_dataset}
-    
+    Returns:
+        Dictionary of the form {"MHD": MHD_xarray_dataset, "TAC": TAC_xarray_dataset}:
+            combined dataset for each site
     """
 
     sites = [key for key in data.keys() if key[0] != '.']
     attributes = [key for key in data.keys() if key[0] == '.']
     
     if average is not None:
-        if type(average) is not list:
-            average = [average]
-        if len(average) != len(sites):
-            print("WARNING: average list must be the same length as " + \
-                  "number of sites. Ignoring. Output dataset will not be resampled.")
-            average = [None for i in sites]
+        if type(average) is not dict:
+            print("WARNING: average list must be a dictionary with {site: averaging_period}\
+                  key value pairs. Ignoring. Output dataset will not be resampled.")
+            average = {x:None for x in sites}
     else:
-        average = [None for i in sites]
+        average = {x:None for x in sites}
 
     # If not given, check if species is defined in data dictionary:
 #    if species is None:
     if ".species" in data.keys():
         species = data[".species"]
     else:
-        print "Species is not specified and can't be found in data dictionary."
+        print "Species can't be found in data dictionary."
 
     # Output array
     fp_and_data = {}
     
-    for si, site in enumerate(sites):
+    for site in sites:
 
         # Dataframe for this site            
         site_df = data[site] 
@@ -514,7 +710,7 @@ def footprints_data_merge(data, domain, load_flux = True,
                 dt.timedelta(days = month_days)
       
         # Convert to dataset
-        site_ds = xray.Dataset.from_dataframe(site_df)
+        site_ds = xr.Dataset.from_dataframe(site_df)
         
         if site in site_modifier.keys():
             site_modifier_fp = site_modifier[site]
@@ -524,7 +720,7 @@ def footprints_data_merge(data, domain, load_flux = True,
         if height is not None:
             
             if type(height) is not dict:
-                print("Height input needs to be a dictionary with sitename:height")
+                print("Height input needs to be a dictionary with {sitename:height}")
                 return None
                 
             height_site = height[site] 
@@ -534,28 +730,28 @@ def footprints_data_merge(data, domain, load_flux = True,
         # Get footprints
 
 #   Error message if looking for HiTRes files and fp_directory is not a dictionary        
-        if HiTRes is True and type(fp_directory) is not dict:
+        if HiTRes is True:
+            if type(fp_directory) is not dict:
                 print("fp_directory needs to be a dictionary containing paths \
                        to integrated and HiTRes footprints \
                        {integrated:path1, HiTRes:path2}")
                 return None
+                
+                print("As HiTRes is set to True, make sure that the high and low time resolution emissions name\
+                      pairs are input correctly for the emissions sources where HiTRes applies. They should look like:\
+                      emissions_name = {quick_source_name:{'high_res':emissions_file_identifier,\
+                      'low_res':emissions_file_identifier}.")
 
         site_fp = footprints(site_modifier_fp, fp_directory = fp_directory, 
                              flux_directory = flux_directory, 
                              bc_directory = bc_directory,
                              start = start, end = end,
                              domain = domain,
-                             species = [species if load_flux == True or \
-                                     calc_timeseries == True or \
-                                     calc_bc == True \
-                                     else None][0], \
-                            height = height_site,
-                            emissions_name = [emissions_name if load_flux == True or \
-                                     calc_timeseries == True \
-                                     else None][0],
-                            HiTRes = HiTRes,
-                            interp_vmr_freq=interp_vmr_freq)
-                         
+                             species = None,
+                             height = height_site,
+                             emissions_name = None,
+                             HiTRes = HiTRes,
+                             interp_vmr_freq=interp_vmr_freq)                         
                         
         if site_fp is not None:                        
             # If satellite data, check that the max_level in the obs and the max level in the processed FPs are the same
@@ -579,15 +775,6 @@ def footprints_data_merge(data, domain, load_flux = True,
             
             # rt17603: 06/04/2018 - Added sort as some footprints weren't sorted by time for satellite data.
             site_fp = site_fp.sortby("time")
-            
-            # Combine datasets to one with coarsest  frequency
-            ds_timefreq = np.nanmedian((site_ds.time.data[1:] - site_ds.time.data[0:-1]).astype('int64')) 
-            fp_timefreq = np.nanmedian((site_fp.time.data[1:] - site_fp.time.data[0:-1]).astype('int64')) 
-            if ds_timefreq > fp_timefreq:
-               site_fp = site_fp.resample(str(ds_timefreq/3600e9)+'H', dim='time', how='mean')
-            elif ds_timefreq < fp_timefreq:
-               site_ds = site_ds.resample(str(fp_timefreq/3600e9)+'H', dim='time', how='mean')
-               
             site_ds = combine_datasets(site_ds, site_fp,
                                        method = "ffill",
                                        tolerance = tolerance)
@@ -604,20 +791,84 @@ def footprints_data_merge(data, domain, load_flux = True,
                 if HiTRes:
                     site_ds.update({'fp_HiTRes' : (site_ds.fp_HiTRes.dims, 
                                                    site_ds.fp_HiTRes / data[".units"])})
-                                                   
-            # Calculate model time series, if required
-            if calc_timeseries:
-                site_ds["mf_mod"] = timeseries(site_ds)
-            
-            # Calculate boundary conditions, if required         
-            if calc_bc:
-                site_ds["bc"] = timeseries_boundary_conditions(site_ds)  
-            
+        
             # Resample, if required
-            if average[si] is not None:
-                site_ds = site_ds.resample(average[si], dim = "time")
+            if average[site] is not None:
+                site_ds = site_ds.resample(average[site], dim = "time")
             
             fp_and_data[site] = site_ds
+            
+        
+        if load_flux:
+            
+            flux_dict = {} 
+            
+            start_flux = start
+            end_flux = dt.datetime(df_end.year, df_end.month, 1, 0, 0) + \
+                dt.timedelta(days = month_days-1)
+            
+            if emissions_name is not None:
+                if type(emissions_name) != dict:
+                    print("emissions_name should be a dictionary: {quick_source_name: emissions_file_identifier}")
+            elif species is not None:
+                emissions_name = {'all':species}
+            
+            for source in emissions_name.keys():
+                if type(emissions_name[source]) == str:
+                    flux_dict[source] = flux(domain, emissions_name[source], start = start_flux, end = end_flux,flux_directory=flux_directory)
+                elif type(emissions_name[source]) == dict:
+                    if HiTRes == False:
+                        print("HiTRes is set to False and a dictionary has been found as the emissions_name dictionary value\
+                              for source %s. Either enter your emissions names as separate entries in the emissions_name\
+                              dictionary or turn HiTRes to True to use the two emissions files together with HiTRes footprints." %source)
+                        return None
+                    else:
+                        flux_dict[source] = flux_for_HiTRes(domain, emissions_name[source], start=start_flux, end = end_flux, flux_directory=flux_directory)
+                        
+            fp_and_data['.flux'] = flux_dict
+            
+        
+        if load_bc:
+            
+            start_bc = start
+            end_bc = dt.datetime(df_end.year, df_end.month, 1, 0, 0) + \
+                dt.timedelta(days = month_days-1)
+            
+            bc = boundary_conditions(domain, species, start_bc, end = end_bc, bc_directory=bc_directory)
+                
+            fp_and_data['.bc'] = bc
+        
+                                           
+        # Calculate model time series, if required
+        if calc_timeseries:
+            if load_flux == False:
+                print "Can't get modelled mole fraction timeseries because load_flux is set to False."
+            else:
+                sites = [key for key in fp_and_data.keys() if key[0] != '.']
+                sources = fp_and_data['.flux'].keys()
+                for site in sites:
+                    for source in sources:
+                        if type(fp_and_data['.flux'][source]) == dict:
+                            fp_and_data[site]['mf_mod_'+source] = timeseries_HiTRes(fp_and_data[site],fp_and_data['.flux'][source], output_fpXflux=False)
+                        else:
+                            flux_reindex = fp_and_data['.flux'][source].reindex_like(fp_and_data[site], 'ffill')
+                            if source == 'all':
+                                fp_and_data[site]['mf_mod'] = (fp_and_data[site].fp*flux_reindex.flux).sum(["lat", "lon"])     
+                            else:
+                                fp_and_data[site]['mf_mod_'+source] = (fp_and_data[site].fp*flux_reindex.flux).sum(["lat", "lon"])  
+        
+        # Calculate boundary conditions, if required         
+        if calc_bc:
+            if load_bc == False:
+                print "Can't get modelled baseline timeseries because load_bc is set to False."
+            else:
+                sites = [key for key in fp_and_data.keys() if key[0] != '.']
+                for site in sites:
+                    bc_reindex = fp_and_data['.bc'].reindex_like(fp_and_data[site], 'ffill')
+                    fp_and_data[site]['bc'] = (fp_and_data[site].particle_locations_n*bc_reindex.vmr_n).sum(["height", "lon"]) + \
+                                                (fp_and_data[site].particle_locations_e*bc_reindex.vmr_e).sum(["height", "lat"]) + \
+                                                (fp_and_data[site].particle_locations_s*bc_reindex.vmr_s).sum(["height", "lon"]) + \
+                                                (fp_and_data[site].particle_locations_w*bc_reindex.vmr_w).sum(["height", "lat"])
         
     for a in attributes:
         fp_and_data[a] = data[a]
@@ -626,109 +877,162 @@ def footprints_data_merge(data, domain, load_flux = True,
 
 
 def fp_sensitivity(fp_and_data, domain, basis_case,
-                   basis_directory = basis_directory,
-                   HiTRes_flux_name = None, Resid_flux_name=None, flux_directory=flux_directory):
+                   basis_directory = basis_directory):
     """
-    Adds a sensitivity matrix, H, to each site xray dataframe in fp_and_data.
-    
+    The fp_sensitivity function adds a sensitivity matrix, H, to each site xarray dataframe in fp_and_data.
+
     Basis function data in an array: lat, lon, no. regions. In each 'region'
     element of array there is a lt lon grid with 1 in region and 0 outside region.
     
     Region numbering must start from 1
     
-    Looks in default directory unless basis_directory specified
+    Args:
+        fp_and_data (dict)    : Output from footprints_data_merge() function. Dictionary of datasets.
+        domain (str)          : Domain name. The footprint files should be sub-categorised by the domain.
+        basis_case (str)      : Basis case to read in. Examples of basis cases are "NESW","stratgrad".
+        basis_directory (str) : basis_directory can be specified if files are not in the default 
+                                directory. Must point to a directory which contains subfolders organized 
+                                by domain. (optional)
+        HiTRes_flux_name (??) :
+        Resid_flux_name (??)  :
+        flux_directory (str)  : Same format as basis_directory.
+    
+    Returns:
+        dict (xarray.Dataset) : Same format as fp_and_data with sensitivity matrix added.
     """    
     
     sites = [key for key in fp_and_data.keys() if key[0] != '.']
     
-    basis_func = basis(domain = domain, basis_case = basis_case, basis_directory = basis_directory)
+    flux_sources = fp_and_data['.flux'].keys()
+    
+    if type(basis_case) is not dict:
+        if len(flux_sources) == 1:
+            basis_case = {flux_sources[0]:basis_case}
+        else:
+            basis_case = {'all':basis_case}
+    
+    if len(basis_case.keys()) != len(flux_sources):
+        if len(basis_case.keys()) == 1:
+            print("Using %s as the basis case for all sources" %basis_case[basis_case.keys()[0]])
+        else:
+            print("There should either only be one basis_case, or it should be a dictionary the same length\
+                  as the number of sources.")
+            return None
+    
     
     for site in sites:
+        
+        for si, source in enumerate(flux_sources):
+        
+            if source in basis_case.keys():
+                basis_func = basis(domain = domain, basis_case = basis_case[source], basis_directory = basis_directory)
+            else:
+                basis_func = basis(domain = domain, basis_case = basis_case['all'], basis_directory = basis_directory)
 
-        if 'fp_HiTRes' in fp_and_data[site].keys():
-            site_bf = xray.Dataset({"fp_HiTRes":fp_and_data[site]["fp_HiTRes"],
+            if type(fp_and_data['.flux'][source]) == dict:
+                if 'fp_HiTRes' in fp_and_data[site].keys():
+                    site_bf = xr.Dataset({"fp_HiTRes":fp_and_data[site]["fp_HiTRes"],
                                          "fp":fp_and_data[site]["fp"]})
-            H_all_arr=timeseries_HiTRes(site_bf, domain, HiTRes_flux_name, Resid_flux_name, output_TS = False, output_fpXflux = True, flux_directory=flux_directory)
-            H_all = xray.DataArray(H_all_arr, coords=[site_bf.lat, site_bf.lon, site_bf.time], dims = ['lat','lon','time'])
+                    H_all_arr=timeseries_HiTRes(site_bf, fp_and_data['.flux'][source], output_TS = False, output_fpXflux = True)
+                    H_all = xr.DataArray(H_all_arr, coords=[site_bf.lat, site_bf.lon, site_bf.time], dims = ['lat','lon','time'])
+                else:
+                    print("fp_and_data needs the variable fp_HiTRes to use the emissions dictionary with high_freq and low_freq emissions.")
+        
+            else:
+                site_bf = combine_datasets(fp_and_data[site]["fp"].to_dataset(), fp_and_data['.flux'][source])
+                H_all=site_bf.fp*site_bf.flux 
+                H_all_arr = H_all.values
+            
+            H_all_v=H_all.values.reshape((len(site_bf.lat)*len(site_bf.lon),len(site_bf.time)))        
+        
+        
+            if 'region' in basis_func.dims.keys():
+            
+                if 'time' in basis_func.basis.dims:
+                    basis_func = basis_func.isel(time=0)
+            
+                site_bf = xr.merge([site_bf, basis_func])
+            
+                H = np.zeros((len(site_bf.region),len(site_bf.time)))
+            
+                base_v = site_bf.basis.values.reshape((len(site_bf.lat)*len(site_bf.lon), len(site_bf.region)))
+            
+                for i in range(len(site_bf.region)):
+                    H[i,:] = np.sum(H_all_v*base_v[:,i,np.newaxis], axis = 0)
+                
+                if source == all:
+                    region_name = site_bf.region
+                else:
+                    region_name = [source+'-'+reg for reg in site_bf.region.values]
 
+                sensitivity = xr.DataArray(H, 
+                                             coords=[('region', region_name), 
+                                                     ('time', fp_and_data[site].coords['time'])])
         
-        else:
-            site_bf = xray.Dataset({"fp":fp_and_data[site]["fp"],
-                                         "flux":fp_and_data[site]["flux"]})
-            H_all=site_bf.fp*site_bf.flux 
-            H_all_arr = H_all.values
+            else:
+                print("Warning: Using basis functions without a region dimension may be deprecated shortly.")
         
+                site_bf = combine_datasets(site_bf,basis_func, method='ffill')
             
-        H_all_v=H_all.values.reshape((len(site_bf.lat)*len(site_bf.lon),len(site_bf.time)))        
-        
-        
-        if 'region' in basis_func.dims.keys():
-            
-            if 'time' in basis_func.basis.dims:
-                basis_func = basis_func.isel(time=0)
-            
-            site_bf = xray.merge([site_bf, basis_func])
-            
-            H = np.zeros((len(site_bf.region),len(site_bf.time)))
-            
-            base_v = site_bf.basis.values.reshape((len(site_bf.lat)*len(site_bf.lon), len(site_bf.region)))
-            
-            for i in range(len(site_bf.region)):
-                H[i,:] = np.sum(H_all_v*base_v[:,i,np.newaxis], axis = 0) 
+                H = np.zeros((int(np.max(site_bf.basis)),len(site_bf.time)))
 
-            sensitivity = xray.DataArray(H, 
-                              coords=[('region', site_bf.region), 
-                                      ('time', fp_and_data[site].coords['time'])])
-        
-        else:
-        
-            site_bf = combine_datasets(site_bf,basis_func, method='ffill')
-            
-            H = np.zeros((int(np.max(site_bf.basis)),len(site_bf.time)))
+                basis_scale = xr.Dataset({'basis_scale': (['lat','lon','time'],
 
-            basis_scale = xray.Dataset({'basis_scale': (['lat','lon','time'],
                                                     np.zeros(np.shape(site_bf.basis)))},
-                                   coords = site_bf.coords)
-            site_bf = site_bf.merge(basis_scale)
+                                       coords = site_bf.coords)
+                site_bf = site_bf.merge(basis_scale)
 
-            base_v = np.ravel(site_bf.basis.values[:,:,0])
-            for i in range(int(np.max(site_bf.basis))):
-                wh_ri = np.where(base_v == i+1)
-                H[i,:]=np.sum(H_all_v[wh_ri[0],:], axis = 0)        
-            
-            sensitivity = xray.DataArray(H, 
-                              coords=[('region', range(1,np.max(site_bf.basis)+1)), 
-                                      ('time', fp_and_data[site].coords['time'])])
+                base_v = np.ravel(site_bf.basis.values[:,:,0])
+                for i in range(int(np.max(site_bf.basis))):
+                    wh_ri = np.where(base_v == i+1)
+                    H[i,:]=np.sum(H_all_v[wh_ri[0],:], axis = 0)      
+                    
+                if source == all:
+                    region_name = range(1,np.max(site_bf.basis)+1)
+                else:
+                    region_name = [source+'-'+str(reg) for reg in range(1,np.max(site_bf.basis)+1)]
+
+                sensitivity = xr.DataArray(H, 
+                                             coords=[('region', region_name), 
+                                                     ('time', fp_and_data[site].coords['time'])])
                                      
-
-        fp_and_data[site]['H'] = sensitivity                             
-
-        
-        if basis_case.startswith('sub'):
-            """
-            To genrate sub_lon and sub_lat grids basis case must start with 'sub'
-            e.g.
-            'sub-transd', 'sub_transd', sub-intem' will work
-            'transd' or 'transd-sub' won't work
-            """
-            sub_fp_temp = site_bf.fp.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
-                                         method="nearest") 
-
-            sub_fp = xray.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
-                               coords = {'sub_lat': (site_bf.coords['sub_lat']),
-                                         'sub_lon': (site_bf.coords['sub_lon']),
-                                'time' : (fp_and_data[site].coords['time'])})
+            if si == 0:
+                concat_sensitivity = sensitivity
+            else:
+                concat_sensitivity = xr.concat((concat_sensitivity,sensitivity), dim='region')
+            
+            sub_basis_cases = 0
+            if basis_case[source].startswith('sub'):
+                """
+                To genrate sub_lon and sub_lat grids basis case must start with 'sub'
+                e.g.
+                'sub-transd', 'sub_transd', sub-intem' will work
+                'transd' or 'transd-sub' won't work
+                """
+                sub_basis_cases += 1
+                if sub_basis_cases > 1:
+                    print("Can currently only use a sub basis case for one source. Skipping...")
+                else:
+                    sub_fp_temp = site_bf.fp.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
+                                                 method="nearest") 
+                    sub_fp = xr.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
+                                           coords = {'sub_lat': (site_bf.coords['sub_lat']),
+                                                     'sub_lon': (site_bf.coords['sub_lon']),
+                                                     'time' : (fp_and_data[site].coords['time'])})
                                 
-            sub_H_temp = H_all.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
-                                         method="nearest")                             
+                    sub_H_temp = H_all.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
+                                           method="nearest")                             
+                    sub_H = xr.Dataset({'sub_H': (['sub_lat','sub_lon','time'], sub_H_temp)},
+                                          coords = {'sub_lat': (site_bf.coords['sub_lat']),
+                                                    'sub_lon': (site_bf.coords['sub_lon']),
+                                                    'time' : (fp_and_data[site].coords['time'])},
+                                          attrs = {'flux_source_used_to_create_sub_H':source})
+       
+                    fp_and_data[site] = fp_and_data[site].merge(sub_fp)
+                    fp_and_data[site] = fp_and_data[site].merge(sub_H)
+            
+        fp_and_data[site]['H'] = concat_sensitivity                             
 
-            sub_H = xray.Dataset({'sub_H': (['sub_lat','sub_lon','time'], sub_H_temp)},
-                               coords = {'sub_lat': (site_bf.coords['sub_lat']),
-                                         'sub_lon': (site_bf.coords['sub_lon']),
-                                'time' : (fp_and_data[site].coords['time'])})
-                                
-            fp_and_data[site] = fp_and_data[site].merge(sub_fp)
-            fp_and_data[site] = fp_and_data[site].merge(sub_H)
                     
     return fp_and_data
 
@@ -736,9 +1040,18 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
 def bc_sensitivity(fp_and_data, domain, basis_case, bc_basis_directory=bc_basis_directory):
 
     """
-    Adds H_bc to the sensitivity matrix, to each site xray dataframe in fp_and_data.
+    The bc_sensitivity adds H_bc to the sensitivity matrix, to each site xarray dataframe in fp_and_data.
     
-    Looks in default directory unless bc_basis_directory specified
+    Args:
+        fp_and_data (dict)       : Output from footprints_data_merge() function. Dictionary of datasets.
+        domain (str)             : Domain name. The footprint files should be sub-categorised by the domain.
+        basis_case (str)         : Basis case to read in. Examples of basis cases are "NESW","stratgrad".
+        bc_basis_directory (str) : bc_basis_directory can be specified if files are not in the default 
+                                   directory. Must point to a directory which contains subfolders organized 
+                                   by domain. (optional)
+    
+    Returns:
+        dict (xarray.Dataset) : Same format as fp_and_data with sensitivity matrix added.
     """    
     
     
@@ -753,14 +1066,14 @@ def bc_sensitivity(fp_and_data, domain, basis_case, bc_basis_directory=bc_basis_
     
     for site in sites:
 
-        DS_temp = xray.Dataset({"particle_locations_n":fp_and_data[site]["particle_locations_n"],
+        DS_temp = xr.Dataset({"particle_locations_n":fp_and_data[site]["particle_locations_n"],
                                 "particle_locations_e":fp_and_data[site]["particle_locations_e"],
                                 "particle_locations_s":fp_and_data[site]["particle_locations_s"],
                                 "particle_locations_w":fp_and_data[site]["particle_locations_w"],
-                                "vmr_n":fp_and_data[site]["vmr_n"],
-                                "vmr_e":fp_and_data[site]["vmr_e"],
-                                "vmr_s":fp_and_data[site]["vmr_s"],
-                                "vmr_w":fp_and_data[site]["vmr_w"],
+                                "vmr_n":fp_and_data[".bc"]["vmr_n"],
+                                "vmr_e":fp_and_data[".bc"]["vmr_e"],
+                                "vmr_s":fp_and_data[".bc"]["vmr_s"],
+                                "vmr_w":fp_and_data[".bc"]["vmr_w"],
                                 "bc":fp_and_data[site]["bc"]})
                         
         DS = combine_datasets(DS_temp, basis_func, method='ffill')                                    
@@ -786,7 +1099,7 @@ def bc_sensitivity(fp_and_data, domain, basis_case, bc_basis_directory=bc_basis_
             reg = bf[:,:,i,:]
             H_bc[i,:] = np.sum((part_loc*vmr_ed*reg), axis=(0,1))
         
-        sensitivity = xray.Dataset({'H_bc': (['region_bc','time'], H_bc)},
+        sensitivity = xr.Dataset({'H_bc': (['region_bc','time'], H_bc)},
                                     coords = {'region_bc': (DS.coords['region'].values),
                                               'time' : (DS.coords['time'])})
 
@@ -799,9 +1112,22 @@ def merge_sensitivity(fp_data_H,
                       out_filename = None,
                       remove_nan = True):
     """
-    Outputs y, y_site, y_time in a single array for all sites
+    The merge_sensitivity function outputs y, y_site, y_time in a single array for all sites
     (as opposed to a dictionary) and H and H_bc if present in dataset.
-    Assumes my default that NaN values in y will be removed.
+    
+    Args:
+        fp_data_H (dict)   : Output from footprints_data_merge() function. Dictionary of datasets.
+        out_filename (str) : If specified the output will be writen to this filename. Otherwise values are
+                             returned.
+        remove_nan (bool)  : Whether to remove NaN values in y. Default = True.
+        
+    Returns:
+        tuple : each variable as an array (y, y_error, y_site, y_time [...])
+        
+        H, H_bc are also returned if present otherwise None is returned in their place.
+        e.g.
+            (y, y_error, y_site, y_time, H, H_bc)
+            (y, y_error, y_site, y_time, None, H_bc)
     """
 
     y = []
@@ -885,28 +1211,34 @@ def merge_sensitivity(fp_data_H,
 
 def filtering(datasets_in, filters, keep_missing=False):
     """
-    Apply filtering (in time dimension) to entire dataset.
+    Applies filtering (in time dimension) to entire dataset.
+    Filters supplied in a list and then applied in order. For example if you wanted a daily, daytime 
+    average, you could do this:
     
-    Filters supplied in a list and then applied in order. So, if you want
-    a daily, daytime average, you could do this:
-    
-    datasets_dictionary = filtering(datasets_dictionary, 
+        datasets_dictionary = filtering(datasets_dictionary, 
                                     ["daytime", "daily_median"])
-    
-    All options are:
-        "daytime"           : selects data between 1000 and 1500 UTC
-        "nighttime"         : Only b/w 23:00 - 03:00 inclusive
-        "noon"              : Only 12:00 fp and obs used
-        "daily_median"      : calculates the daily median
-        "pblh_gt_threshold" : 
-        "local_influence"   : Only keep times when localness is low
-        "six_hr_mean"       :
-        "local_lapse"       :
     
     The order of the filters reflects the order they are applied, so for 
     instance when applying the "daily_median" filter if you only wanted
     to look at daytime values the filters list should be 
-    ["daytime","daily_median"]            
+    ["daytime","daily_median"]                
+
+    Args:
+        datasets_in         : Output from footprints_data_merge(). Dictionary of datasets.
+        filters (list)      : Which filters to apply to the datasets. 
+                              All options are:
+                                 "daytime"           : selects data between 1000 and 1500 UTC
+                                 "nighttime"         : Only b/w 23:00 - 03:00 inclusive
+                                 "noon"              : Only 12:00 fp and obs used
+                                 "daily_median"      : calculates the daily median
+                                 "pblh_gt_threshold" : 
+                                 "local_influence"   : Only keep times when localness is low
+                                 "six_hr_mean"       :
+                                 "local_lapse"       :
+        keep_missing (bool) : Whether to reindex to retain missing data.
+    
+    Returns:
+       Same format as datasets_in : Datasets with filters applied. 
     """
 
     if type(filters) is not list:
@@ -916,16 +1248,16 @@ def filtering(datasets_in, filters, keep_missing=False):
 
     # Filter functions
     def daily_median(dataset, keep_missing=False):
-        # Calculate daily median
+        """ Calculate daily median """
         return dataset.resample("1D", "time", how = "median")
         
     def six_hr_mean(dataset, keep_missing=False):
-        # Calculate daily median
+        """ Calculate daily median """
         return dataset.resample("6H", "time", how = "mean")
     
 
     def daytime(dataset, site,keep_missing=False):
-        # Subset during daytime hours (11:00-15:00)
+        """ Subset during daytime hours (11:00-15:00) """
         hours = dataset.time.to_pandas().index.hour
         ti = [i for i, h in enumerate(hours) if h >= 11 and h <= 15]
         
@@ -937,7 +1269,7 @@ def filtering(datasets_in, filters, keep_missing=False):
             return dataset[dict(time = ti)]
             
     def nighttime(dataset, site,keep_missing=False):
-        # Subset during nighttime hours (23:00 - 03:00)
+        """ Subset during nighttime hours (23:00 - 03:00) """
         hours = dataset.time.to_pandas().index.hour
         ti = [i for i, h in enumerate(hours) if h >= 23 or h <= 3]
         
@@ -949,7 +1281,7 @@ def filtering(datasets_in, filters, keep_missing=False):
             return dataset[dict(time = ti)]
             
     def noon(dataset, site,keep_missing=False):
-        # Select only 12pm data 
+        """ Select only 12pm data """
         hours = dataset.time.to_pandas().index.hour
         ti = [i for i, h in enumerate(hours) if h == 12]
         
@@ -975,7 +1307,7 @@ def filtering(datasets_in, filters, keep_missing=False):
             
             dataarray_temp = mf_data_array[dict(time = ti)]   
             
-            mf_ds = xray.Dataset({'mf': (['time'], dataarray_temp)}, 
+            mf_ds = xr.Dataset({'mf': (['time'], dataarray_temp)}, 
                                   coords = {'time' : (dataarray_temp.coords['time'])})
             
             dataset_out = combine_datasets(dataset_temp, mf_ds, method=None)
@@ -1007,7 +1339,7 @@ def filtering(datasets_in, filters, keep_missing=False):
                 
                 dataarray_temp = mf_data_array[dict(time = ti)]   
                 
-                mf_ds = xray.Dataset({'mf': (['time'], dataarray_temp)}, 
+                mf_ds = xr.Dataset({'mf': (['time'], dataarray_temp)}, 
                                       coords = {'time' : (dataarray_temp.coords['time'])})
                 
                 dataset_out = combine_datasets(dataset_temp, mf_ds, method=None)
@@ -1033,7 +1365,7 @@ def filtering(datasets_in, filters, keep_missing=False):
             
             dataarray_temp = mf_data_array[dict(time = ti)]   
             
-            mf_ds = xray.Dataset({'mf': (['time'], dataarray_temp)}, 
+            mf_ds = xr.Dataset({'mf': (['time'], dataarray_temp)}, 
                                   coords = {'time' : (dataarray_temp.coords['time'])})
             
             dataset_out = combine_datasets(dataset_temp, mf_ds, method=None)
@@ -1066,82 +1398,56 @@ def filtering(datasets_in, filters, keep_missing=False):
     return datasets
 
 
-
-
-
-class plot_map_setup:
-    def __init__(self, fp_data, 
-                 lon_range = None, lat_range = None,
-                 bottom_left = False,
-                 map_resolution = "l"):
-
-        if lon_range is None:
-            lon_range = (min(fp_data.lon.values),
-                         max(fp_data.lon.values))
-        if lat_range is None:
-            lat_range = (min(fp_data.lat.values),
-                         max(fp_data.lat.values))
-        
-        m = Basemap(projection='gall',
-            llcrnrlat=lat_range[0], urcrnrlat=lat_range[1],
-            llcrnrlon=lon_range[0], urcrnrlon=lon_range[1],
-            resolution = map_resolution)
-
-        if bottom_left == False:
-            lons, lats = np.meshgrid(fp_data.lon.values,
-                                     fp_data.lat.values)
-        else:
-            dlon = fp_data.lon.values[1] - fp_data.lon.values[0]
-            dlat = fp_data.lat.values[1] - fp_data.lat.values[0]            
-            lons, lats = np.meshgrid(fp_data.lon.values - dlon,
-                                     fp_data.lat.values - dlat)
-        
-        x, y = m(lons, lats)
-        
-        self.x = x
-        self.y = y
-        self.m = m
-
-
-
-def plot(fp_data, date, out_filename=None, 
-         lon_range=None, lat_range=None, log_range = [5., 9.],
-         map_data = None, zoom = False,
-         map_resolution = "l", 
-         map_background = "countryborders",
-         colormap = plt.cm.YlGnBu,
-         tolerance = None,
-         interpolate = False,
-         dpi = None,
-         bottom_left = False):
+def plot(fp_data, date, out_filename=None, out_format = 'pdf',
+         lon_range=None, lat_range=None, log_range = [5., 9.], zoom = False,
+         colormap = 'YlGnBu', tolerance = None, interpolate = False, dpi = 300):
     """
-    Plot footprint using pcolormesh.
+    Plot footprint for a given timestamp.
     
-    Arguments:
-    fp_data: Dictionary of xray datasets containing footprints
-        and other variables
-    date: Almost any time format should work (datetime object, string, etc).
-        Footprints from all sites in dictionary that have time indices at that time
-        will be plotted.
+    Args:
+        fp_data (dict): 
+            Dictionary of xarray datasets containing footprints and other variables
+        date (str): 
+            Almost any time format should work (datetime object, string, etc). An example
+            time format is '2014-01-01 00:00'. Footprints from all sites in dictionary that 
+            have time indices nearest to the specified time will be plotted.
+        out_filename (str, optional):
+            Full path to filname to save figure
+        out_format (str, optional):
+            Format to save figure (e.g., png or pdf)
+        lon_range (list, optional): 
+            list of min and max longitudes [min, max] to plot
+        lat_range (list, optional): 
+            list of min and max latitudes [min, max] to plot
+        log_range (list, optional): 
+            list of min and max LOG10(footprints) for color scale       
+        zoom (bool, optional): 
+            True will plot a zoomed map (+/- 10 degrees around all site in fp_data)
+        colormap (str, optional): 
+            Color map to use for contour plot 
+            (https://matplotlib.org/examples/color/colormaps_reference.html)
+        tolerance (float or str, optional): 
+            Maximum distance between date specified and closest available footprint
+            Default is in nanosec if a float or in any units (e.g., '1H') if a string
+        interpolate (bool, optional): 
+            If True, interpolates footprint between the nearest two footprints to the date specified
+            If False, uses the nearest footprint avaialble
+        dpi (int, optional):
+            Dots per square inch resolution to save image format such as png
+            
+            
+    Returns
+        None
         
-    Keywords:
-    lon_range: list of min and max longitudes [min, max]
-    lat_range: list of min and max latitudes [min, max]
-    log_range: list of min and max LOG10(footprints) for 
-        color scale
-    map_data: contains plot_map_setup class (useful if animating, 
-        so that entire map does not need to be re-calculated each time)
-    zoom: shortcut to zoom in to subset of domain (needs work)
-    map_resolution: resolution of map
-    map_background: choice of "countryborders", "shadedrelief"
-    colormap: color map to use for contours
-    tolerance: Xray doc "Maximum distance between original and new
-        labels for inexact matches."
+        If out_filename == None:
+            produces as interactive plot
+        Else:
+            saves plot as specified by the full path in out_filename and format in out_format
     """
     
     def fp_nearest(fp, tolerance = None):
         return fp.reindex_like( \
-                            xray.Dataset(coords = {"time": [date]}),
+                            xr.Dataset(coords = {"time": [date]}),
                             method = "nearest",
                             tolerance = tolerance)
 
@@ -1152,46 +1458,51 @@ def plot(fp_data, date, out_filename=None,
     # Get sites
     sites = [key for key in fp_data.keys() if key[0] != '.']
     
+    # Find lat and lon range of the footprints
+    if lon_range is None:
+        lons = fp_data[sites[0]].lon.values
+    else:
+        lons_all = fp_data[sites[0]].lon.values
+        indx = np.where((lons_all >= lon_range[0]) & (lons_all <= lon_range[-1]))[0]
+        lons = lons_all[indx]
+        indx = np.where((lons_all < lon_range[0]) | (lons_all > lon_range[-1]))[0]
+                
+    if lat_range is None:
+        lats = fp_data[sites[0]].lat.values
+    else:
+        lats_all = fp_data[sites[0]].lat.values
+        indy = np.where((lats_all >= lat_range[0]) & (lats_all <= lat_range[-1]))[0]
+        lats = lats_all[indy]
+        indy = np.where((lats_all < lat_range[0]) | (lats_all > lat_range[-1]))[0]       
+    
 #    Zoom in. Get min and max release lat lons to zoom the map around the data (+/- 10 degrees)
     if zoom:
         release_lons = [fp_data[key].release_lon for key in fp_data.keys() if key[0] != '.']     
         release_lats = [fp_data[key].release_lat for key in fp_data.keys() if key[0] != '.']
-        
+                      
         lon_range = [np.min(release_lons)-10, np.max(release_lons)+10]
         lat_range = [np.min(release_lats)-10, np.max(release_lats)+10]
 
+        lons_all = fp_data[sites[0]].lon.values
+        lats_all = fp_data[sites[0]].lat.values
+        indx = np.where((lons_all >= lon_range[0]) & (lons_all <= lon_range[-1]))[0]
+        lons = lons_all[indx]
+        indx = np.where((lons_all < lon_range[0]) | (lons_all > lon_range[-1]))[0]
+        indy = np.where((lats_all >= lat_range[0]) & (lats_all <= lat_range[-1]))[0]
+        lats = lats_all[indy]
+        indy = np.where((lats_all < lat_range[0]) | (lats_all > lat_range[-1]))[0]  
     
-    # Get map data
-    if map_data is None:
-        map_data = plot_map_setup(fp_data[sites[0]],
-                                  lon_range = lon_range,
-                                  lat_range = lat_range,
-                                  bottom_left=bottom_left,
-                                  map_resolution = map_resolution)
-
-    # Open plot
-    fig = plt.figure(figsize=(8,8))
-    fig.add_axes([0.1,0.1,0.8,0.8])
-
-    if map_background == "shadedrelief":
-        map_data.m.shadedrelief()
-    elif map_background == "countryborders":
-        map_data.m.drawcoastlines()
-        map_data.m.fillcontinents(color='grey',lake_color=None, alpha = 0.2)
-        map_data.m.drawcountries()
-
+    ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=np.median(lons)))
+    ax.set_extent([lons[0], lons[-1], lats[0], lats[-1]], crs=ccrs.PlateCarree())
+    ax.coastlines()
+    
     #Calculate color levels
-    cmap = colormap
     rp_color = {"SURFACE": "black",
                 "SHIP": "purple",
                 "AIRCRAFT": "red",
                 "SATELLITE": "green"}
             
     levels = MaxNLocator(nbins=256).tick_values(log_range[0], log_range[1])
-    #levels=np.arange(log_range[0],log_range[1], 0.2)
-    norm = BoundaryNorm(levels,
-                        ncolors=cmap.N,
-                        clip=True)
 
     # Create dictionaries and arrays    
     release_lon = {}
@@ -1258,154 +1569,281 @@ def plot(fp_data, date, out_filename=None,
     #Set very small elements to zero
     data = np.log10(data)
     data[np.where(data <  log_range[0])]=np.nan
+
+    # If lat range, lon range or zoom input, then subset data    
+    if lon_range or zoom:
+        data = np.delete(data, indx, axis=1)
+    if lat_range or zoom:
+        data = np.delete(data, indy, axis=0)
     
     #Plot footprint
-    cs = map_data.m.pcolormesh(map_data.x, map_data.y,
-                               np.ma.masked_where(np.isnan(data), data),
-                               cmap = cmap, norm = norm)
+    plt.contourf(lons, lats, data, transform=ccrs.PlateCarree(), cmap = colormap, levels=levels)
 
     # over-plot release location
     if len(release_lon) > 0:
         for site in sites:
             if site in release_lon:
-                rplons, rplats = np.meshgrid(release_lon[site],
-                                             release_lat[site])
-                rpx, rpy = map_data.m(rplons, rplats)
                 if "platform" in site_info[site]:
                     color = rp_color[site_info[site]["platform"].upper()]
                 else:
                     color = rp_color["SURFACE"]
-                rp = map_data.m.scatter(rpx, rpy, 100, color = color)
-    
-    plt.title(str(pd.to_datetime(str(date))), fontsize=20)
+                plt.plot(release_lon[site], release_lat[site], color = color, marker = 'o', markersize=4,  transform=ccrs.PlateCarree())
 
-    cb = map_data.m.colorbar(cs, location='bottom', pad="5%")
-    
-    tick_locator = ticker.MaxNLocator(nbins=10)
+    plt.title(str(pd.to_datetime(str(date))), fontsize=12)
+
+    cb = plt.colorbar(orientation='horizontal', pad=0.05)
+   
+    tick_locator = ticker.MaxNLocator(nbins=np.ceil(log_range[1] - log_range[0]).astype(int))
     cb.locator = tick_locator
     cb.update_ticks()
  
     cb.set_label('log$_{10}$( (nmol/mol) / (mol/m$^2$/s) )', 
-                 fontsize=15)
-    cb.ax.tick_params(labelsize=13) 
+                fontsize=12)
+    cb.ax.tick_params(labelsize=12) 
     
     if out_filename is not None:
-        plt.savefig(out_filename, dpi = dpi)
+        plt.savefig(out_filename, dpi = dpi, format = out_format)
         plt.close()
     else:
         plt.show()
 
 
-def time_unique(fp_data, time_regular = False):
+def plot_particle_location(fp_data, date, particle_direction = 'nw', out_filename=None,
+                           out_format = 'pdf', tolerance = None, log_range = [5., 9.], 
+                           colormap_fp = 'inferno_r', colormap_part = 'GnBu',
+                           particle_clevs = [0., 0.009, 0.001], dpi = 300):
+
+    """
+    3D plot showing the footprint and particle exit locations for a given timestamp.
+    
+    Args:
+        fp_data (dict): 
+            Dictionary of xarray datasets containing footprints and other variables. 
+            Currently only one site will be plotted.
+        date (str): 
+            Almost any time format should work (datetime object, string, etc). An example
+            time format is '2014-01-01 00:00'. Footprints from all sites in dictionary that 
+            have time indices nearest to the specified time will be plotted.
+        particle_direction (str):
+            One of two options 'nw' = north-west or 'se' = south-west to determine which
+            edges of the domain are plotted for particle exit locations
+        out_filename (str, optional):
+            Full path to filname to save figure
+        out_format (str, optional):
+            Format to save figure (e.g., png or pdf)
+        tolerance (float or str, optional): 
+            Maximum distance between date specified and closest available footprint
+            Default is in nanosec if a float or in any units (e.g., '1H') if a string
+        log_range (list, optional): 
+            list of min and max LOG10(footprints) for color scale       
+        colormap_fp (str, optional): 
+            Color map to use for contour plot of footprint
+            (https://matplotlib.org/examples/color/colormaps_reference.html)
+        colormap_part (str, optional): 
+            Color map to use for contour plot of particle location
+            (https://matplotlib.org/examples/color/colormaps_reference.html)                    
+        particle_clevs (list, optional):
+            List of [min, max, interval] to plot the particle color levels
+        dpi (int, optional):
+            Resolution to save png
+            
+            
+    Returns
+        None
+        
+        If out_filename == None:
+            produces as interactive plot
+        Else:
+            saves plot as specified by the full path in out_filename and format in out_format
+    """
+    def fp_nearest(fp, tolerance = None):
+        return fp.reindex_like( \
+                        xr.Dataset(coords = {"time": [date]}),
+                        method = "nearest",
+                        tolerance = tolerance)
     
     sites = [key for key in fp_data.keys() if key[0] != '.']
-    
-    time_array = fp_data[sites[0]].time
-    time_array.name = "times"
-    time = time_array.to_dataset()
-    if len(sites) > 1:
-        for site in sites[1:]:
-            time.merge(fp_data[site].time.to_dataset(), inplace = True)
-    
-    time = time.time.to_pandas().index.to_pydatetime()
-    if time_regular is not False:
-        time = pd.date_range(min(time), max(time), freq = time_regular)
-    
-    return time
+    fp_data = fp_data[sites[0]]
 
+    date = np.datetime64(convert.reftime(date))
+        
+    fp_data = fp_nearest(fp_data, tolerance = tolerance)
+    fp_data = fp_data.squeeze(dim='time')
 
-def plot3d(fp_data, date, out_filename=None, 
-           log_range = [5., 9.]):
-
-    """date as string "d/m/y H:M" or datetime object 
-    datetime.datetime(yyyy,mm,dd,hh,mm)
-    """
-    
-    #looks for nearest time point aviable in footprint   
-    if isinstance(date, str):
-        date=dt.datetime.strptime(date, '%d/%m/%Y %H:%M')
-
-    time_index = bisect.bisect_left(fp_data.time, date)
-
-    data = np.log10(fp_data.fp.values[:,:,time_index].squeeze())
     lon_range = (fp_data.lon.min().values, fp_data.lon.max().values)
     lat_range = (fp_data.lat.min().values, fp_data.lat.max().values)
 
     #Set very small elements to zero
-    data[np.where(data <  log_range[0])]=np.nan
-
-    fig = plt.figure(figsize=(16,12))
-
-    fig.text(0.1, 0.2, str(date), fontsize = 20)
+    fp_data.where(np.log10(fp_data["fp"]) < log_range[0])
     
-    ax = Axes3D(fig)
+    figure = plt.figure(figsize=(8,6), facecolor='w')
+    ax = figure.gca(projection='3d')
     
     ax.set_ylim(lat_range)
     ax.set_xlim(lon_range)
     ax.set_zlim((min(fp_data.height), max(fp_data.height)))
 
     fpX, fpY = np.meshgrid(fp_data.lon, fp_data.lat)
-    
     levels = np.arange(log_range[0], log_range[1], 0.05)
 
-    plfp = ax.contourf(fpX, fpY, data, levels, offset = 0.)
     plnX, plnY = np.meshgrid(fp_data.lon.values.squeeze(), fp_data.height.values.squeeze())
     plwX, plwY = np.meshgrid(fp_data.lat.values.squeeze(), fp_data.height.values.squeeze())
-    pllevs = np.arange(0., 0.0031, 0.0001)
-    
-    plnvals = fp_data.particle_locations_n.values[:,:,time_index].squeeze()
-    plnvals[np.where(plnvals == 0.)]=np.nan
-    plwvals = fp_data.particle_locations_w.values[:,:,time_index].squeeze()
-    plwvals[np.where(plwvals == 0.)]=np.nan
-    plpln = ax.contourf(plnX, plnvals, plnY,
-                        zdir = 'y', offset = max(fp_data.lat.values), levels = pllevs)
-    plplw = ax.contourf(plwvals, plwX, plwY,
-                        zdir = 'x', offset = min(fp_data.lon.values), levels = pllevs)    
+    pllevs = np.arange(particle_clevs[0], particle_clevs[1], particle_clevs[2])
+
+    if particle_direction == 'nw':
+        plfp = ax.contourf(fpX, fpY, np.log10(fp_data["fp"]), levels, offset = 0., cmap = colormap_fp)
+        plnvals = fp_data.particle_locations_n.values
+        plnvals[np.where(plnvals == 0.)]=np.nan
+        plwvals = fp_data.particle_locations_w.values
+        plwvals[np.where(plwvals == 0.)]=np.nan
+        plpln = ax.contourf(plnvals,plnX, plnY,
+                            zdir = 'y', offset = max(fp_data.lat.values), levels = pllevs, cmap = colormap_part)
+        ax.text(150,0,23500,"North", color='red', zdir=None)
+        plplw = ax.contourf(plwvals, plwX, plwY,
+                            zdir = 'x', offset = min(fp_data.lon.values), levels = pllevs, cmap = colormap_part)    
+        ax.text(0,0,10000,"West", color='red', zdir=None)
+    elif particle_direction == 'se':
+        plfp = ax.contourf(fpX, fpY, np.fliplr(np.flipud(np.log10(fp_data["fp"]))), levels, offset = 0., cmap = colormap_fp)
+        plnvals = fp_data.particle_locations_s.values
+        plnvals[np.where(plnvals == 0.)]=np.nan
+        plwvals = fp_data.particle_locations_e.values
+        plwvals[np.where(plwvals == 0.)]=np.nan
+        plpln = ax.contourf(plnvals,plnX, plnY,
+                            zdir = 'y', offset = max(fp_data.lat.values), levels = pllevs, cmap = colormap_part)
+        ax.text(150,0,23500,"South", color='red', zdir=None)
+        plplw = ax.contourf(plwvals, plwX, plwY,
+                            zdir = 'x', offset = min(fp_data.lon.values), levels = pllevs, cmap = colormap_part)    
+        ax.text(0,0,10000,"East", color='red', zdir=None)
     ax.view_init(50)
 
-    cb = plt.colorbar(plfp, location='bottom', shrink=0.8)
+    plt.title(str(pd.to_datetime(str(date))), fontsize = 12, y=1.08)
+    plt.xlabel('longitude', color='blue')
+    plt.ylabel('latitude', color='blue')
+    ax.set_zlabel('altitude (m)', color='blue')
+    cb = plt.colorbar(plfp, orientation='horizontal', shrink=0.4)
     tick_locator = ticker.MaxNLocator(nbins=7)
     cb.locator = tick_locator
     cb.update_ticks()
     cb.set_label('log$_{10}$( (mol/mol) / (mol/m$^2$/s))', 
-             fontsize=15)
-    cb.ax.tick_params(labelsize=13) 
+             fontsize=12)
+    cb.ax.tick_params(labelsize=12) 
     
     if out_filename is not None:
-        plt.savefig(out_filename, dpi = 300)
+        plt.savefig(out_filename, dpi = dpi, format = out_format)
         plt.close()
     else:
         plt.show()
 
+def animate(fp_data, output_directory, plot_function = "plot", file_label = 'fp', 
+            video_os="mac", time_regular = False,        
+            lon_range = None, lat_range = None, log_range = [5., 9.],
+            colormap_fp = 'inferno_r', colormap_part = 'GnBu', zoom = False,
+            particle_clevs = [0., 0.009, 0.001], overwrite = True, 
+            framerate=10, delete_png=False, ffmpeg_only = False,
+            frame_max = None, dpi = 300):
 
-def animate(fp_data, output_directory, 
-            lon_range = None, lat_range=None, zoom = False,
-            log_range = [5., 9.],
-            overwrite=True, file_label = 'fp',
-            framerate=10, delete_png=False,
-            video_os="mac", ffmpeg_only = False,
-            plot_function = "plot", time_regular = "1H",
-            frame_limit = None,
-            dpi = 150, interpolate = True):
+    """
+    Animate footprints into a movie.
     
-    sites = [key for key in fp_data.keys() if key[0] != '.']
+    Args:
+        fp_data (dict): 
+            Dictionary of xarray datasets containing footprints and other variables
+        output_directory (str):
+            Full path to directory in which movie and images will be saved
+        plot_function (str):
+            Either 'plot' or 'plot_particle_location'. If plots are being generated 
+            (ffpmeg_only = False), call to this plotting function.
+        file_label (str):
+            File lavel of animation and and images of the frames 
+        video_os (str):
+            Operating system to play video - must be either mac or pc
+        time_regular (str): 
+            Frequency between minumum and maximum to set the time values within fp_data. (e.g., '1H') 
+            Set at False to not apply this step (Default = False).
+        lon_range (list, optional): 
+            list of min and max longitudes [min, max] to plot
+        lat_range (list, optional): 
+            list of min and max latitudes [min, max] to plot
+        log_range (list, optional): 
+            list of min and max LOG10(footprints) for color scale       
+        colormap_fp (str, optional): 
+            Color map to use for contour plot of footprint
+            (https://matplotlib.org/examples/color/colormaps_reference.html)
+        colormap_part (str, optional): 
+            Color map to use for contour plot of particle location
+            (https://matplotlib.org/examples/color/colormaps_reference.html)
+        zoom (bool, optional): 
+            True will plot a zoomed map (+/- 10 degrees around all site in fp_data)
+            if plot_function is 'plot'
+        particle_clevs (list, optional):
+            List of [min, max, interval] to plot the particle color levels if 
+            plot_function is 'plot_particle_location'
+        overwrite (bool, optional):
+            True will overwrite any existing files
+        framerate (int, optional):
+            Framerate of animation in frames per second
+        delete_png (bool. optional):
+            True will delete the images of each frame
+        ffmpeg_only (bool, optional):
+            True will generate movie from pre-saved images in the output directory 
+            named with file_label
+        frame_max (int, optional):
+            Set the maximum number of frames in the datset to animate. Animation will plot first n 
+            frames up to the frame_max. Useful for testing.
+        dpi (int, optional):
+            Dots per square inch resolution for each image generate as for example png           
+            
+            
+    Returns
+        None
+        
+        If out_filename == None:
+            produces as interactive plot
+        Else:
+            saves plot as specified by the full path in out_filename and format in out_format
+    """
+    
+    def time_unique(fp_data, time_regular = False):
+    
+        sites = [key for key in fp_data.keys() if key[0] != '.']
+        
+        time_array = fp_data[sites[0]].time
+        time_array.name = "times"
+        time = time_array.to_dataset()
+        if len(sites) > 1:
+            for site in sites[1:]:
+                time.merge(fp_data[site].time.to_dataset(), inplace = True)
+        
+        time = time.time.to_pandas().index.to_pydatetime()
+        if time_regular is not False:
+            time = pd.date_range(min(time), max(time), freq = time_regular)
+        
+        return time
+  
+        """
+        The time_unique function creates one set of time entries within fp_data (dictionary of datasets)
+        merging across multiple sites if necessary.
+        Time can also be reindexed to be evenly spaced between the minimum and maximum values if time_regular
+        if specified.
+        
+        Args:
+            fp_data (dict)     : 
+                Output from footprints_data_merge(). Dictionary of datasets.
+            time_regular (str) : 
+                Frequency between minumum and maximum to set the time values within fp_data. 
+                Set at False to not apply this step (Default = False).
+        Returns:
+            xarray.Dataset : Time values extracted for this first site within fp_data
+        """    
     
     if ffmpeg_only is False:
-
-        # Set up map        
-        if zoom:
-            lat_range, lon_range = plot_map_zoom(fp_data)
-        
-        map_data = plot_map_setup(fp_data[sites[0]], 
-                                  lon_range = lon_range, 
-                                  lat_range = lat_range, bottom_left = True)
         
         # Find unique times
         times = time_unique(fp_data,
                             time_regular = time_regular)
         
-        if frame_limit:
-            times = times[:min([frame_limit, len(times)])]
+        if frame_max:
+            times = times[:min([frame_max, len(times)])]
 
         # Start progress bar
         pbar = ProgressBar(maxval=len(times)).start()
@@ -1418,14 +1856,16 @@ def animate(fp_data, output_directory,
             
             if len(glob.glob(fname)) == 0 or overwrite == True:
                 if plot_function == "plot":
-                    plot(fp_data, t, out_filename = fname, 
-                         lon_range = lon_range, lat_range= lat_range,
-                         log_range = log_range, map_data = map_data,
-                         interpolate = interpolate,
+                    plot(fp_data, t, out_filename = fname, out_format = 'png',
+                         lon_range = lon_range, lat_range = lat_range,
+                         log_range = log_range, zoom = zoom, colormap = colormap_fp,
                          dpi = dpi)
-                elif plot_function == "plot3d":
-                    plot3d(fp_data[sites[0]], t, out_filename = fname,
-                           log_range = log_range)
+                elif plot_function == "plot_particle_location":
+                    plot_particle_location(fp_data, t, out_filename = fname, out_format = 'png',
+                                           log_range = log_range, 
+                                           particle_direction = 'nw', colormap_fp = colormap_fp,
+                                           colormap_part = colormap_part,
+                                           particle_clevs = particle_clevs, dpi = dpi)
                      
             pbar.update(ti)
         pbar.finish()

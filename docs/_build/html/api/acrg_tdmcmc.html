@@ -67,6 +67,112 @@ certainly need to tune your stepsizes appropriately for different parameter
 types (i.e. baseline and emissions). You will also want to adjust the
 uncertainties differently (emissions uncertainty &gt; baseline uncertainty).</p>
 <p>&#64;author: ml12574</p>
+<dl class="function">
+<dt id="acrg_tdmcmc.run_tdmcmc.add_local_ratio">
+<code class="descclassname">acrg_tdmcmc.run_tdmcmc.</code><code class="descname">add_local_ratio</code><span class="sig-paren">(</span><em>fp_data_H</em>, <em>return_release=True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_tdmcmc/run_tdmcmc.html#add_local_ratio"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_tdmcmc.run_tdmcmc.add_local_ratio" title="Permalink to this definition">¶</a></dt>
+<dd><p>The add_local_ratio function adds an additional &#8220;local_ratio&#8221; parameter to all xarray.Dataset objects
+within fp_data_H dictionary.</p>
+<p>Note: footprints_data_merge() function creates a dictionary of xarray.Dataset objects with one for each
+site. fp_sensivity() takes the output from footprints_data_merge() and adds sensivity matrix to each
+dataset in the dictionary.
+Each dataset should contain the following data variables:</p>
+<blockquote>
+<div>&#8220;mf&#8221;
+&#8220;fp&#8221;
+&#8220;release_lon&#8221;
+&#8220;release_lat&#8221;
+&#8220;sub_fp&#8221; (additional &#8220;sub_lon&#8221;, &#8220;sub_lat&#8221; coords associated with this data variable)</div></blockquote>
+<p>WARNING: Changes input object in place</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>fp_data_H</strong> (<em>dict</em>) &#8211; xarray.Dataset. Expects output from name.fp_sensitivity() function.</li>
+<li><strong>return_release</strong> (<em>bool</em>) &#8211; Whether or not to also return the release_lats and release_lons
+arrays.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><blockquote>
+<div><dl class="docutils">
+<dt>tuple(dict (xarray Datasets and identifiers), np.array, np.array) :</dt>
+<dd><p class="first last">fp_data_H with &#8220;local_ratio&#8221; data variable added, release_lons, release_lats</p>
+</dd>
+</dl>
+</div></blockquote>
+<dl class="docutils">
+<dt>else:</dt>
+<dd><p class="first last">dict (xarray Datasets and identifiers) : fp_data_H with &#8220;local_ratio&#8221; data variable added</p>
+</dd>
+</dl>
+</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">if return_release</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_tdmcmc.run_tdmcmc.average_period">
+<code class="descclassname">acrg_tdmcmc.run_tdmcmc.</code><code class="descname">average_period</code><span class="sig-paren">(</span><em>ds</em>, <em>av_period</em>, <em>dim='time'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_tdmcmc/run_tdmcmc.html#average_period"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_tdmcmc.run_tdmcmc.average_period" title="Permalink to this definition">¶</a></dt>
+<dd><p>The average_period function resamples the input dataset along the specified dimension to the average
+period.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>ds</strong> (<em>xarray.Dataset</em>) &#8211; Dataset contaiing time series dimension.</li>
+<li><strong>av_period</strong> (<em>str</em>) &#8211; Averaging period to apply to timeseries dimension of dataset.
+E.g. &#8220;2H&#8221; (2 hours), &#8220;30min&#8221; or &#8220;30T&#8221; (30 minutes)
+See <a class="reference external" href="http://pandas.pydata.org/pandas-docs/stable/timeseries.html#offset-aliases">http://pandas.pydata.org/pandas-docs/stable/timeseries.html#offset-aliases</a>
+for list of all frequencies available.</li>
+<li><strong>dim</strong> &#8211; Timeseries dimension within Dataset. Default = &#8220;time&#8221;.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">original dataset averaged along the specified dimension</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">xarray.Dataset</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_tdmcmc.run_tdmcmc.average_period_fp">
+<code class="descclassname">acrg_tdmcmc.run_tdmcmc.</code><code class="descname">average_period_fp</code><span class="sig-paren">(</span><em>fp_data_H</em>, <em>av_period_site</em>, <em>dim='time'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_tdmcmc/run_tdmcmc.html#average_period_fp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_tdmcmc.run_tdmcmc.average_period_fp" title="Permalink to this definition">¶</a></dt>
+<dd><p>The average_period_fp function resamples all datasets within a footprints_data_merge() dictionary over
+the averaging periods.
+Note: av_period_site should contain the same number of entries as there are sites in fp_data_H</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>fp_data_H</strong> (<em>dict</em>) &#8211; output from footprints_data_merge() function.</li>
+<li><strong>av_period</strong> (<em>list</em>) &#8211; Averaging periods (str objects), one for each site.
+E.g. &#8220;2H&#8221; (2 hours), &#8220;30min&#8221; or &#8220;30T&#8221; (30 minutes)</li>
+<li><strong>dim</strong> &#8211; Timeseries dimension within Dataset. Default = &#8220;time&#8221;.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">fp_data_H with datasets averaged along the specified dimension</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">dict</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
 <dl class="attribute">
 <dt id="acrg_tdmcmc.run_tdmcmc.closest_grid">
 <code class="descclassname">acrg_tdmcmc.run_tdmcmc.</code><code class="descname">closest_grid</code><a class="reference internal" href="../_modules/acrg_tdmcmc/run_tdmcmc.html#closest_grid"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_tdmcmc.run_tdmcmc.closest_grid" title="Permalink to this definition">¶</a></dt>
@@ -137,6 +243,11 @@ nested dictionary. However, this can be modified to rely on a template configura
 acrg_config.generate_param_dict() function for more details.</p>
 <p>&#64;author: rt17603</p>
 <dl class="function">
+<dt id="acrg_tdmcmc.tdmcmc_config.add_defaults">
+<code class="descclassname">acrg_tdmcmc.tdmcmc_config.</code><code class="descname">add_defaults</code><span class="sig-paren">(</span><em>param</em>, <em>section_group=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_tdmcmc/tdmcmc_config.html#add_defaults"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_tdmcmc.tdmcmc_config.add_defaults" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
 <dt id="acrg_tdmcmc.tdmcmc_config.all_mcmc_param">
 <code class="descclassname">acrg_tdmcmc.tdmcmc_config.</code><code class="descname">all_mcmc_param</code><span class="sig-paren">(</span><em>config_file</em>, <em>optional_param=[]</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_tdmcmc/tdmcmc_config.html#all_mcmc_param"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_tdmcmc.tdmcmc_config.all_mcmc_param" title="Permalink to this definition">¶</a></dt>
 <dd><p>The all_mcmc_param function extracts all parameters related to running the tdmcmc code as defined in mcmc_param_type()</p>
@@ -164,30 +275,6 @@ acrg_config.generate_param_dict() function for more details.</p>
 </tr>
 </tbody>
 </table>
-</dd></dl>
-
-<dl class="function">
-<dt id="acrg_tdmcmc.tdmcmc_config.get_mcmc_params">
-<code class="descclassname">acrg_tdmcmc.tdmcmc_config.</code><code class="descname">get_mcmc_params</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_tdmcmc/tdmcmc_config.html#get_mcmc_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_tdmcmc.tdmcmc_config.get_mcmc_params" title="Permalink to this definition">¶</a></dt>
-<dd><p>The get_meas_param function returns all parameter names associated the the &#8216;MCMC&#8217; group
-:returns: parameter names, str: group name
-:rtype: OrderedDict</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="acrg_tdmcmc.tdmcmc_config.get_meas_params">
-<code class="descclassname">acrg_tdmcmc.tdmcmc_config.</code><code class="descname">get_meas_params</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_tdmcmc/tdmcmc_config.html#get_meas_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_tdmcmc.tdmcmc_config.get_meas_params" title="Permalink to this definition">¶</a></dt>
-<dd><p>The get_meas_param function returns all parameter names associated the the &#8216;MEASUREMENTS&#8217; group
-:returns: parameter names, str: group name
-:rtype: OrderedDict</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="acrg_tdmcmc.tdmcmc_config.get_tdmcmc_params">
-<code class="descclassname">acrg_tdmcmc.tdmcmc_config.</code><code class="descname">get_tdmcmc_params</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_tdmcmc/tdmcmc_config.html#get_tdmcmc_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_tdmcmc.tdmcmc_config.get_tdmcmc_params" title="Permalink to this definition">¶</a></dt>
-<dd><p>The get_meas_param function returns all parameter names associated the the &#8216;TDMCMC&#8217; group
-:returns: parameter names, str: group name
-:rtype: OrderedDict</p>
 </dd></dl>
 
 <dl class="function">
@@ -289,6 +376,11 @@ This includes three section groups for the input parameter:</p>
 </dd></dl>
 
 <dl class="function">
+<dt id="acrg_tdmcmc.tdmcmc_config.optional_parameters">
+<code class="descclassname">acrg_tdmcmc.tdmcmc_config.</code><code class="descname">optional_parameters</code><span class="sig-paren">(</span><em>section_group=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_tdmcmc/tdmcmc_config.html#optional_parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_tdmcmc.tdmcmc_config.optional_parameters" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
 <dt id="acrg_tdmcmc.tdmcmc_config.tdmcmc_param">
 <code class="descclassname">acrg_tdmcmc.tdmcmc_config.</code><code class="descname">tdmcmc_param</code><span class="sig-paren">(</span><em>config_file</em>, <em>optional_param=[]</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_tdmcmc/tdmcmc_config.html#tdmcmc_param"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_tdmcmc.tdmcmc_config.tdmcmc_param" title="Permalink to this definition">¶</a></dt>
 <dd><p>The tdmcmc_param function extracts all parameters for the MCMC run (see mcmc_param_type for full list)</p>
@@ -386,19 +478,39 @@ Currently in rainbow colour scheme - Eurgh! #endrainbow</p>
 <dt id="acrg_tdmcmc.tdmcmc_post_process.plot_scaling">
 <code class="descclassname">acrg_tdmcmc.tdmcmc_post_process.</code><code class="descname">plot_scaling</code><span class="sig-paren">(</span><em>data</em>, <em>lon</em>, <em>lat</em>, <em>clevels=None</em>, <em>cmap=&lt;matplotlib.colors.LinearSegmentedColormap object&gt;</em>, <em>label=None</em>, <em>smooth=False</em>, <em>out_filename=None</em>, <em>stations=None</em>, <em>fignum=None</em>, <em>title=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_tdmcmc/tdmcmc_post_process.html#plot_scaling"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_tdmcmc.tdmcmc_post_process.plot_scaling" title="Permalink to this definition">¶</a></dt>
 <dd><p>Plot 2d scaling map of posterior x
-i.e. degree of scaling applied to prior emissions
-Inputs:
-data = 2D (lat,lon) array of whatever you want
-clevels = Contour levels; defaults to np.arange(-2., 2.1, 0.1)
-cmap = Colormap - defaults to Red Blue reverse
-label = String - to appear at bottom
-smooth = If true plot smooth contours, otherwise use pcolormesh
-stations = Default is None. If true needs to be a dictionary containing:</p>
-<blockquote>
-<div>sites: &#8216;MHD&#8217;, &#8216;TAC&#8217;
+i.e. degree of scaling applied to prior emissions</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>data</strong> &#8211; 2D (lat,lon) array of whatever you want</li>
+<li><strong>clevels</strong> &#8211; Contour levels; defaults to np.arange(-2., 2.1, 0.1)</li>
+<li><strong>cmap</strong> &#8211; Colormap - defaults to Red Blue reverse</li>
+<li><strong>label</strong> &#8211; String - to appear at bottom</li>
+<li><strong>smooth</strong> &#8211; If true plot smooth contours, otherwise use pcolormesh</li>
+<li><strong>stations</strong> &#8211; Default is None. If specified needs to be a dictionary containing:
+sites: &#8216;MHD&#8217;, &#8216;TAC&#8217;
 MHD_lon: -9.02
 MHHD_lat: 55.2
-TAC_lon: etc...</div></blockquote>
+TAC_lon: etc...</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><p>None</p>
+<dl class="docutils">
+<dt>If out_filename is None:</dt>
+<dd><p class="first last">Created plot is saved to file</p>
+</dd>
+<dt>Else:</dt>
+<dd><p class="first last">Plot is displayed interactively</p>
+</dd>
+</dl>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="function">
@@ -412,6 +524,60 @@ Plots separate subplots for each of the measurement sites - hopefully!</p>
 fig_text = String e.g. &#8220;CH$_{4}$ mole fraction (ppb)&#8221;
 ylim = array [ymin,ymax]</p>
 <p>Specify an out_filename to write to disk</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_tdmcmc.tdmcmc_post_process.post_bl">
+<code class="descclassname">acrg_tdmcmc.tdmcmc_post_process.</code><code class="descname">post_bl</code><span class="sig-paren">(</span><em>ds</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_tdmcmc/tdmcmc_post_process.html#post_bl"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_tdmcmc.tdmcmc_post_process.post_bl" title="Permalink to this definition">¶</a></dt>
+<dd><p>The post_bl function calculates the y posterior baseline iterations and mean</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>ds</strong> (<em>xarray.Dataset</em>) &#8211; output from the run_tdmcmc function</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">y posterior baseline iterations, y posterior baseline mean</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">(np.array,np.array)</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_tdmcmc.tdmcmc_post_process.post_mf">
+<code class="descclassname">acrg_tdmcmc.tdmcmc_post_process.</code><code class="descname">post_mf</code><span class="sig-paren">(</span><em>ds</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_tdmcmc/tdmcmc_post_process.html#post_mf"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_tdmcmc.tdmcmc_post_process.post_mf" title="Permalink to this definition">¶</a></dt>
+<dd><p>The post_mf function calculates the y posterior mole fraction ierations and mean</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>ds</strong> (<em>xarray.Dataset</em>) &#8211; output from the run_tdmcmc function</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">y posterior mole fraction iterations, y posterior mole fraction mean</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">(np.array,np.array)</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_tdmcmc.tdmcmc_post_process.prior_mf">
+<code class="descclassname">acrg_tdmcmc.tdmcmc_post_process.</code><code class="descname">prior_mf</code><span class="sig-paren">(</span><em>ds</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_tdmcmc/tdmcmc_post_process.html#prior_mf"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_tdmcmc.tdmcmc_post_process.prior_mf" title="Permalink to this definition">¶</a></dt>
+<dd><p>The prior_mf function calculates the y prior mole fraction</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>ds</strong> (<em>xarray.Dataset</em>) &#8211; output from the run_tdmcmc function</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">y prior mole fraction</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">np.array</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="function">

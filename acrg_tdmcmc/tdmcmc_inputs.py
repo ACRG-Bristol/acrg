@@ -121,12 +121,12 @@ parallel_tempering = param['parallel_tempering']   # True = do parallel temperin
 inv_type = param['inv_type']  # Options are 'uncorrelated', 'evencorr', 'corr'
 
 # Have to re-create value explicitly to ensure any 'is' statements return True
-if inv_type == 'uncorrelated':
-    inv_type = 'uncorrelated'
-elif inv_type == 'evencorr':
-    inv_type = 'evencorr'
-elif inv_type == 'corr':
-    inv_type = 'corr'
+#if inv_type == 'uncorrelated':
+#    inv_type = 'uncorrelated'
+#elif inv_type == 'evencorr':
+#    inv_type = 'evencorr'
+#elif inv_type == 'corr':
+#    inv_type = 'corr'
 
 kmin = param['kmin']          # Minimum number of regions
 kmax = param['kmax']          # Maximum number of regions
