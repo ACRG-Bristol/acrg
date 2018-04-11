@@ -1,1 +1,3 @@
-{}
+{
+  "test_tdmcmc_inputs.py::test_tdmcmc_run": true
+}
