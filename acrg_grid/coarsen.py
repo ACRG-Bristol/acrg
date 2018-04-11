@@ -16,18 +16,26 @@ def coarsen(arrayFine, latFine, lonFine, factor = 2, mean = True):
     of the inputs.
     
     Args:
-        arrayFine (array): array of values for fine resolution grid
-        latFine (array): 1D latitudes of fine resolution grid
-        lonFine (array): 1D longitudes of fine resolution grid
-        factor (int, optional): Factor by which to coarsen array. Default is 2
-        mean (bool): True/False. 
+        arrayFine (array): 
+            array of values for fine resolution grid
+        latFine (array): 
+            1D latitudes of fine resolution grid
+        lonFine (array): 
+            1D longitudes of fine resolution grid
+        factor (int, optional): 
+            Factor by which to coarsen array. Default is 2
+        mean (bool): 
+            True/False. 
             True calculates the mean of the fine array values; False calculates the sum.
             Default is True
             
     Returns:
-        out (array): grid of coarsened values
-        outLat (array): Latitudes of coarsened grid
-        outLon (array): Longitudes of coarsened grid
+        out (array): 
+            grid of coarsened values
+        outLat (array): 
+            Latitudes of coarsened grid
+        outLon (array): 
+            Longitudes of coarsened grid
 
     Example:
         out, outLat, outLon = coarsen(fineArray, fineLat, fineLon, factor = 10, mean = True)

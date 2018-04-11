@@ -17,14 +17,20 @@ def regrid2d(array_in, lat_in, lon_in,
     '''2D mass-conservative regrid
     
     Args:
-        array_in (arrray): 2D field to regrid
-        lat_in (array): latitudes corresponding to array_in
-        lon_in (array): longitude corresponding to array_in
-        lat_out (array): latitude to regrid onto
-        lon_out (array): longitude to regrid onto
+        array_in (arrray): 
+            2D field to regrid
+        lat_in (array): 
+            latitudes corresponding to array_in
+        lon_in (array): 
+            longitude corresponding to array_in
+        lat_out (array): 
+            latitude to regrid onto
+        lon_out (array): 
+            longitude to regrid onto
         
     Returns:
-        array: regridded 2D array of dimensions [lat_out, lon_out]
+        array: 
+            regridded 2D array of dimensions [lat_out, lon_out]
         iris 'Cube': regridded iris 'Cube' object
         
     Example:
