@@ -236,17 +236,25 @@ def plot_scaling(data,lon,lat, clevels=None, cmap=plt.cm.RdBu_r, label=None,
     """
     Plot 2d scaling map of posterior x
     i.e. degree of scaling applied to prior emissions 
-    Inputs:
-    data = 2D (lat,lon) array of whatever you want
-    clevels = Contour levels; defaults to np.arange(-2., 2.1, 0.1)
-    cmap = Colormap - defaults to Red Blue reverse
-    label = String - to appear at bottom
-    smooth = If true plot smooth contours, otherwise use pcolormesh
-    stations = Default is None. If true needs to be a dictionary containing:
-                sites: 'MHD', 'TAC'
-                MHD_lon: -9.02
-                MHHD_lat: 55.2
-                TAC_lon: etc...
+    
+    Args:
+        data     : 2D (lat,lon) array of whatever you want
+        clevels  : Contour levels; defaults to np.arange(-2., 2.1, 0.1)
+        cmap     : Colormap - defaults to Red Blue reverse
+        label    : String - to appear at bottom
+        smooth   : If true plot smooth contours, otherwise use pcolormesh
+        stations : Default is None. If specified needs to be a dictionary containing:
+                    sites: 'MHD', 'TAC'
+                    MHD_lon: -9.02
+                    MHHD_lat: 55.2
+                    TAC_lon: etc...
+    Returns:
+        None
+        
+        If out_filename is None:
+            Created plot is saved to file
+        Else:
+            Plot is displayed interactively
     """    
     lon_range = (np.min(lon), np.max(lon))
     lat_range = (np.min(lat), np.max(lat))
@@ -516,7 +524,7 @@ def country_emissions(ds_mcmc, x_post_vit, q_ap_abs_v, countries, species,
 
 def prior_mf(ds):
     '''
-     The prior_mf function calculates the y prior mole fraction
+    The prior_mf function calculates the y prior mole fraction
     
     Args:
         ds (xarray.Dataset) : output from the run_tdmcmc function

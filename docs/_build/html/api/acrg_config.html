@@ -108,8 +108,8 @@ This also means the inputs will not be checked for any missing values.</p>
 <p>The main functions to use for reading in parameters from a config file are:</p>
 <blockquote>
 <div><ul class="simple">
-<li>all_param(config_file,...)      - Extract all parameters from a configuration file.</li>
-<li>extract_params(config_file,...) - Extract specific parameters from a file either based on parameter</li>
+<li>all_param(config_file,...)      ; Extract all parameters from a configuration file.</li>
+<li>extract_params(config_file,...) ; Extract specific parameters from a file either based on parameter</li>
 </ul>
 <p>names, sections or groups.</p>
 </div></blockquote>
@@ -199,12 +199,16 @@ If no value_type is stated, the function attempts to discern the appropriate typ
 <dt id="acrg_config.config.eval_check">
 <code class="descclassname">acrg_config.config.</code><code class="descname">eval_check</code><span class="sig-paren">(</span><em>string</em>, <em>error=True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_config/config.html#eval_check"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_config.config.eval_check" title="Permalink to this definition">¶</a></dt>
 <dd><p>The eval_check function evaluates the input string from a configuration file to a python object.
-For example: &#8216;1&#8217; would evalute to an int object 1</p>
+For example:</p>
 <blockquote>
-<div>: &#8216;1.&#8217; or &#8216;1.0&#8217; would evaluate to float object 1.0
-: &#8220;[1,2,3]&#8221; would evalute to a list object [1,2,3]
-: &#8220;1,2,3&#8221; would evaluate to a tuple object (1,2,3)
-See eval() documentation for full list</div></blockquote>
+<div><ul class="simple">
+<li>&#8216;1&#8217; would evalute to an int object 1</li>
+<li>&#8216;1.&#8217; or &#8216;1.0&#8217; would evaluate to float object 1.0</li>
+<li>&#8220;[1,2,3]&#8221; would evalute to a list object [1,2,3]</li>
+<li>&#8220;1,2,3&#8221; would evaluate to a tuple object (1,2,3)</li>
+</ul>
+</div></blockquote>
+<p>See eval() documentation for full list</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />

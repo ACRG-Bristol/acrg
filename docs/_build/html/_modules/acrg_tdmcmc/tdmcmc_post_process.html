@@ -280,17 +280,25 @@
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Plot 2d scaling map of posterior x</span>
 <span class="sd">    i.e. degree of scaling applied to prior emissions </span>
-<span class="sd">    Inputs:</span>
-<span class="sd">    data = 2D (lat,lon) array of whatever you want</span>
-<span class="sd">    clevels = Contour levels; defaults to np.arange(-2., 2.1, 0.1)</span>
-<span class="sd">    cmap = Colormap - defaults to Red Blue reverse</span>
-<span class="sd">    label = String - to appear at bottom</span>
-<span class="sd">    smooth = If true plot smooth contours, otherwise use pcolormesh</span>
-<span class="sd">    stations = Default is None. If true needs to be a dictionary containing:</span>
-<span class="sd">                sites: &#39;MHD&#39;, &#39;TAC&#39;</span>
-<span class="sd">                MHD_lon: -9.02</span>
-<span class="sd">                MHHD_lat: 55.2</span>
-<span class="sd">                TAC_lon: etc...</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        data     : 2D (lat,lon) array of whatever you want</span>
+<span class="sd">        clevels  : Contour levels; defaults to np.arange(-2., 2.1, 0.1)</span>
+<span class="sd">        cmap     : Colormap - defaults to Red Blue reverse</span>
+<span class="sd">        label    : String - to appear at bottom</span>
+<span class="sd">        smooth   : If true plot smooth contours, otherwise use pcolormesh</span>
+<span class="sd">        stations : Default is None. If specified needs to be a dictionary containing:</span>
+<span class="sd">                    sites: &#39;MHD&#39;, &#39;TAC&#39;</span>
+<span class="sd">                    MHD_lon: -9.02</span>
+<span class="sd">                    MHHD_lat: 55.2</span>
+<span class="sd">                    TAC_lon: etc...</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        None</span>
+<span class="sd">        </span>
+<span class="sd">        If out_filename is None:</span>
+<span class="sd">            Created plot is saved to file</span>
+<span class="sd">        Else:</span>
+<span class="sd">            Plot is displayed interactively</span>
 <span class="sd">    &quot;&quot;&quot;</span>    
     <span class="n">lon_range</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">lon</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">lon</span><span class="p">))</span>
     <span class="n">lat_range</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">lat</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">lat</span><span class="p">))</span>
@@ -557,7 +565,86 @@
         <span class="k">return</span> <span class="n">q_country_it</span><span class="o">*</span><span class="mf">365.</span><span class="o">*</span><span class="mf">24.</span><span class="o">*</span><span class="mf">3600.</span><span class="o">*</span><span class="n">molmass</span><span class="o">/</span><span class="n">unit_factor</span><span class="p">,</span>\
         <span class="n">q_country_mean</span><span class="p">,</span> <span class="n">q_country_05</span><span class="p">,</span> <span class="n">q_country_16</span><span class="p">,</span> <span class="n">q_country_50</span><span class="p">,</span> <span class="n">q_country_84</span><span class="p">,</span> \
         <span class="n">q_country_95</span><span class="p">,</span> <span class="n">q_country_ap</span><span class="p">,</span> <span class="n">country_index</span></div>
+
+<div class="viewcode-block" id="prior_mf"><a class="viewcode-back" href="../../api/acrg_tdmcmc.html#acrg_tdmcmc.tdmcmc_post_process.prior_mf">[docs]</a><span class="k">def</span> <span class="nf">prior_mf</span><span class="p">(</span><span class="n">ds</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    The prior_mf function calculates the y prior mole fraction</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        ds (xarray.Dataset) : output from the run_tdmcmc function</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        np.array : y prior mole fraction   </span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">h_v_all</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">h_v_all</span><span class="o">.</span><span class="n">values</span> <span class="c1"># nmeasure x NgridIC (Ngrid + nIC)</span>
     
+    <span class="c1">#NgridIC = len(ds.NgridIC.values)</span>
+    <span class="c1">#x = np.ones(NgridIC)</span>
+    <span class="c1">#y_prior = np.dot(h_v_all,x)</span>
+    
+    <span class="n">y_prior</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">h_v_all</span><span class="p">,</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">y_prior</span></div>
+
+<div class="viewcode-block" id="post_bl"><a class="viewcode-back" href="../../api/acrg_tdmcmc.html#acrg_tdmcmc.tdmcmc_post_process.post_bl">[docs]</a><span class="k">def</span> <span class="nf">post_bl</span><span class="p">(</span><span class="n">ds</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    The post_bl function calculates the y posterior baseline iterations and mean</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        ds (xarray.Dataset) : output from the run_tdmcmc function</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        (np.array,np.array) : y posterior baseline iterations, y posterior baseline mean</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="n">nIC</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">nIC</span><span class="o">.</span><span class="n">values</span>         <span class="c1"># number of initial conditions (basis functions + boundary conditions + bias)</span>
+    <span class="n">nIt</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">nIt</span><span class="p">)</span>           <span class="c1"># number of iterations</span>
+    <span class="n">nmeasure</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">nmeasure</span><span class="p">)</span> <span class="c1"># number of measurement points</span>
+    
+    <span class="n">h_v_all</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">h_v_all</span><span class="o">.</span><span class="n">values</span> <span class="c1"># nmeasure x NgridIC (Ngrid + nIC)</span>
+    <span class="n">x_it</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">x_it</span><span class="o">.</span><span class="n">values</span>       <span class="c1"># nIt x kICmax (nIC + kmax  - maximum number of regions in sub-domain)</span>
+    
+    <span class="n">y_bg_it</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nIt</span><span class="p">,</span><span class="n">nmeasure</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">it</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nIt</span><span class="p">):</span>
+        <span class="n">y_bg_it</span><span class="p">[</span><span class="n">it</span><span class="p">,:]</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">h_v_all</span><span class="p">[:,:</span><span class="n">nIC</span><span class="p">],</span><span class="n">x_it</span><span class="p">[</span><span class="n">it</span><span class="p">,:</span><span class="n">nIC</span><span class="p">])</span> <span class="c1"># Find y posterior for each iteration</span>
+        <span class="c1">#y_bg_it[it,:]=np.dot(h_v_all[:,:10],x_it[it,:10])</span>
+    
+    <span class="n">y_bg_mean</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">y_bg_it</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="c1"># Take the mean across all iterations</span>
+    
+    <span class="k">return</span> <span class="n">y_bg_it</span><span class="p">,</span><span class="n">y_bg_mean</span></div>
+
+<div class="viewcode-block" id="post_mf"><a class="viewcode-back" href="../../api/acrg_tdmcmc.html#acrg_tdmcmc.tdmcmc_post_process.post_mf">[docs]</a><span class="k">def</span> <span class="nf">post_mf</span><span class="p">(</span><span class="n">ds</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    The post_mf function calculates the y posterior mole fraction ierations and mean</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        ds (xarray.Dataset) : output from the run_tdmcmc function</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        (np.array,np.array) : y posterior mole fraction iterations, y posterior mole fraction mean</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="n">nIC</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">nIC</span><span class="o">.</span><span class="n">values</span>         <span class="c1"># number of initial conditions (basis functions + boundary conditions + bias)</span>
+    <span class="n">nIt</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">nIt</span><span class="p">)</span>           <span class="c1"># number of iterations</span>
+    <span class="n">nmeasure</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">nmeasure</span><span class="p">)</span> <span class="c1"># number of measurement points</span>
+    <span class="n">Ngrid</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">Ngrid</span><span class="p">)</span>       <span class="c1"># number of positions in lat x lon grid</span>
+    
+    <span class="n">h_v_all</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">h_v_all</span><span class="o">.</span><span class="n">values</span>       <span class="c1"># nmeasure x NgridIC (Ngrid + nIC)</span>
+    <span class="n">x_post_vit</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">x_post_vit</span><span class="o">.</span><span class="n">values</span> <span class="c1"># nIt x Ngrid</span>
+    <span class="n">x_it</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">x_it</span><span class="o">.</span><span class="n">values</span>             <span class="c1"># nIt x kICmax (nIC + kmax  - maximum number of regions in sub-domain)</span>
+    
+    <span class="n">x_post_all_it</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nIt</span><span class="p">,</span><span class="n">Ngrid</span><span class="o">+</span><span class="n">nIC</span><span class="p">))</span> <span class="c1"># Create x vector of dimesion NgridIC for every iteration</span>
+    <span class="n">x_post_all_it</span><span class="p">[:,:</span><span class="n">nIC</span><span class="p">]</span> <span class="o">=</span> <span class="n">x_it</span><span class="p">[:,:</span><span class="n">nIC</span><span class="p">]</span> <span class="c1"># Populate nIC entries with posterior values for each IC parameter for x_it</span>
+    <span class="n">x_post_all_it</span><span class="p">[:,</span><span class="n">nIC</span><span class="p">:]</span> <span class="o">=</span> <span class="n">x_post_vit</span>   <span class="c1"># Populate Ngrid entries with posterior values for each coord from x_post_vit</span>
+    
+    <span class="n">y_post_it</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nIt</span><span class="p">,</span><span class="n">nmeasure</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">it</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nIt</span><span class="p">):</span>
+        <span class="n">y_post_it</span><span class="p">[</span><span class="n">it</span><span class="p">,:]</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">h_v_all</span><span class="p">,</span><span class="n">x_post_all_it</span><span class="p">[</span><span class="n">it</span><span class="p">,:])</span> <span class="c1"># Find y posterior for each iteration</span>
+    
+    <span class="n">y_post_mean</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">y_post_it</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="c1"># Take the mean across all iterations</span>
+    
+    <span class="k">return</span> <span class="n">y_post_it</span><span class="p">,</span><span class="n">y_post_mean</span></div>
+ 
 <div class="viewcode-block" id="plot_timeseries"><a class="viewcode-back" href="../../api/acrg_tdmcmc.html#acrg_tdmcmc.tdmcmc_post_process.plot_timeseries">[docs]</a><span class="k">def</span> <span class="nf">plot_timeseries</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">fig_text</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">ylim</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">out_filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">doplot</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
     
     <span class="sd">&quot;&quot;&quot;</span>
@@ -572,36 +659,42 @@
 <span class="sd">    </span>
 <span class="sd">    Specify an out_filename to write to disk</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">x_it</span><span class="o">=</span><span class="n">ds</span><span class="o">.</span><span class="n">x_it</span><span class="o">.</span><span class="n">values</span>
-    <span class="n">h_v_all</span><span class="o">=</span><span class="n">ds</span><span class="o">.</span><span class="n">h_v_all</span><span class="o">.</span><span class="n">values</span>
-    <span class="n">x_post_vit</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">x_post_vit</span><span class="o">.</span><span class="n">values</span>
-    <span class="n">sigma_y_mean</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">sigma_y_it</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    
+<span class="c1">#    x_it=ds.x_it.values</span>
+<span class="c1">#    h_v_all=ds.h_v_all.values</span>
+<span class="c1">#    x_post_vit = ds.x_post_vit.values</span>
     <span class="n">sites</span><span class="o">=</span><span class="n">ds</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;sites&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
     <span class="n">nsites</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">sites</span><span class="p">)</span>
-    <span class="n">nlon</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">lon</span><span class="p">)</span>
-    <span class="n">nlat</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">lat</span><span class="p">)</span>
-    <span class="n">Ngrid</span><span class="o">=</span><span class="n">nlon</span><span class="o">*</span><span class="n">nlat</span>
-    <span class="n">nIt</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">nIt</span><span class="p">)</span>
-    <span class="n">nIC</span><span class="o">=</span><span class="n">ds</span><span class="o">.</span><span class="n">nIC</span><span class="o">.</span><span class="n">values</span>
-    <span class="n">nmeasure</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">nmeasure</span><span class="p">)</span>
+<span class="c1">#    nlon=len(ds.lon)</span>
+<span class="c1">#    nlat=len(ds.lat)</span>
+<span class="c1">#    Ngrid=nlon*nlat</span>
+<span class="c1">#    nIt=len(ds.nIt)</span>
+<span class="c1">#    nIC=ds.nIC.values</span>
+<span class="c1">#    nmeasure=len(ds.nmeasure)</span>
+<span class="c1">#</span>
+<span class="c1">#    x_post_all_it=np.zeros((nIt,Ngrid+nIC))</span>
+<span class="c1">#    y_post_it = np.zeros((nIt,nmeasure))</span>
+<span class="c1">#    y_bg_it = np.zeros((nIt,nmeasure))</span>
+<span class="c1">#    x_post_all_it[:,:nIC]=x_it[:,:nIC]</span>
+<span class="c1">#    x_post_all_it[:,nIC:]=x_post_vit</span>
+<span class="c1">#    for it in range(nIt):</span>
+<span class="c1">#        y_post_it[it,:]=np.dot(h_v_all,x_post_all_it[it,:])  </span>
+<span class="c1">#        y_bg_it[it,:]=np.dot(h_v_all[:,:nIC],x_it[it,:nIC])</span>
+<span class="c1">#        #y_bg_it[it,:]=np.dot(h_v_all[:,:10],x_it[it,:10])</span>
+<span class="c1">#    y_post_mean=np.mean(y_post_it, axis=0)</span>
+<span class="c1">#    y_bg_mean=np.mean(y_bg_it, axis=0)</span>
 
-    <span class="n">x_post_all_it</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nIt</span><span class="p">,</span><span class="n">Ngrid</span><span class="o">+</span><span class="n">nIC</span><span class="p">))</span>
-    <span class="n">y_post_it</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nIt</span><span class="p">,</span><span class="n">nmeasure</span><span class="p">))</span>
-    <span class="n">y_bg_it</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nIt</span><span class="p">,</span><span class="n">nmeasure</span><span class="p">))</span>
-    <span class="n">x_post_all_it</span><span class="p">[:,:</span><span class="n">nIC</span><span class="p">]</span><span class="o">=</span><span class="n">x_it</span><span class="p">[:,:</span><span class="n">nIC</span><span class="p">]</span>
-    <span class="n">x_post_all_it</span><span class="p">[:,</span><span class="n">nIC</span><span class="p">:]</span><span class="o">=</span><span class="n">x_post_vit</span>
-    <span class="k">for</span> <span class="n">it</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nIt</span><span class="p">):</span>
-        <span class="n">y_post_it</span><span class="p">[</span><span class="n">it</span><span class="p">,:]</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">h_v_all</span><span class="p">,</span><span class="n">x_post_all_it</span><span class="p">[</span><span class="n">it</span><span class="p">,:])</span>  
-        <span class="n">y_bg_it</span><span class="p">[</span><span class="n">it</span><span class="p">,:]</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">h_v_all</span><span class="p">[:,:</span><span class="n">nIC</span><span class="p">],</span><span class="n">x_it</span><span class="p">[</span><span class="n">it</span><span class="p">,:</span><span class="n">nIC</span><span class="p">])</span>
-        <span class="c1">#y_bg_it[it,:]=np.dot(h_v_all[:,:10],x_it[it,:10])</span>
-    <span class="n">y_post_mean</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">y_post_it</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-    <span class="n">y_bg_mean</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">y_bg_it</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-    <span class="n">y_time</span><span class="o">=</span><span class="n">ds</span><span class="o">.</span><span class="n">y_time</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">sigma_y_mean</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">sigma_y_it</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">y_bg_it</span><span class="p">,</span><span class="n">y_bg_mean</span> <span class="o">=</span> <span class="n">post_bl</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+    <span class="n">y_post_it</span><span class="p">,</span><span class="n">y_post_mean</span> <span class="o">=</span> <span class="n">post_mf</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+
+    <span class="n">y_time</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">y_time</span><span class="o">.</span><span class="n">values</span>
     <span class="n">y_site</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">y_site</span><span class="o">.</span><span class="n">values</span>
     <span class="n">y_obs</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">y</span><span class="o">.</span><span class="n">values</span>
-    <span class="n">upper</span><span class="o">=</span><span class="n">y_post_mean</span><span class="o">+</span><span class="n">sigma_y_mean</span>
-    <span class="n">lower</span><span class="o">=</span><span class="n">y_post_mean</span><span class="o">-</span><span class="n">sigma_y_mean</span>
+    <span class="n">upper</span> <span class="o">=</span> <span class="n">y_post_mean</span><span class="o">+</span><span class="n">sigma_y_mean</span>
+    <span class="n">lower</span> <span class="o">=</span> <span class="n">y_post_mean</span><span class="o">-</span><span class="n">sigma_y_mean</span>
     
+
     <span class="k">if</span> <span class="n">doplot</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
         <span class="n">fig</span><span class="p">,</span><span class="n">ax</span><span class="o">=</span><span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">nsites</span><span class="p">,</span><span class="n">sharex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         
