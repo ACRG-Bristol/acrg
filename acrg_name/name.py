@@ -296,6 +296,8 @@ def flux(domain, species, start = None, end = None, flux_directory=flux_director
     Args:
         domain (str)         : Domain name. The flux files should be sub-categorised by the domain.
         species (str)        : Species name. All species names are defined acrg_species_info.json.
+        start (str)          : Start date in format "YYYY-MM-DD" to output only a time slice of all the flux files.
+        end (str)            : End date in same format as start to output only a time slice of all the flux files.
         flux_directory (str) : flux_directory can be specified if files are not in 
                                the default directory. Must point to a directory 
                                which contains subfolders organized by domain. (optional)
@@ -336,12 +338,30 @@ def flux(domain, species, start = None, end = None, flux_directory=flux_director
             if len(flux_timeslice.time)==0:
                 flux_timeslice = flux_ds.sel(time=start, method = 'ffill')
                 flux_timeslice = flux_timeslice.expand_dims('time',axis=-1)
-                print("No fluxes available during the time period specified so outputting\
+                print("Warning: No fluxes available during the time period specified so outputting\
                           flux from %s" %flux_timeslice.time.values[0])
             return flux_timeslice
 
 
 def flux_for_HiTRes(domain, emissions_dict, start=None, end=None, flux_directory=flux_directory):
+    """
+    Creates a dictionary of high and low frequency fluxes for use with HiTRes footprints.
+    
+    Args:
+        domain (str)          : Domain name. The flux files should be sub-categorised by the 
+                                domain.
+        emissions_dict (dict) : This should be a dictionary of the form:
+                                {'high_freq':high_freq_emissions_name, 'low_freq':low_freq_emissions_name}
+                                e.g. {'high_freq':'co2-ff-2hr', 'low_freq':'co2-ff-mth'}.
+        start (str)           : Start date in format "YYYY-MM-DD" to output only a time slice of all the flux files.
+        end (str)             : End date in same format as start to output only a time slice of all the flux files.
+        flux_directory (str)  : flux_directory can be specified if files are not in 
+                                the default directory. Must point to a directory 
+                                which contains subfolders organized by domain. (optional)
+    Returns:
+        dictionary {'high_freq': flux_xray_dataset, 'low_freq': flux_xray_dataset} :
+            dictionary containing xray datasets for both high and low frequency fluxes.
+    """
     
     if 'low_freq' not in emissions_dict.keys():
         print("low_freq must be a key in the emissions_dict in order to combine with HiTRes footprints.")
@@ -523,10 +543,9 @@ def timeseries_HiTRes(fp_HiTRes_ds, flux_dict, output_TS = True, output_fpXflux 
     The timeseries_HiTRes function computes flux * HiTRes footprints.
     
     HiTRes footprints record the footprint at each 2 hour period back in time for the first 24 hours.
-    Need a high time resolution (HiTRes) flux to multiply the first 24 hours back of footprints.
-    Need a residual (Resid) flux to multiply the residual integrated footprint for the remainder of the 20 
+    Need a high time resolution flux to multiply the first 24 hours back of footprints.
+    Need a residual flux to multiply the residual integrated footprint for the remainder of the 30 
     day period.
-    Can output the timeseries (output_TS = True) and/or the sensitivity map (output_fpXflux = True)
     
     Args:
         fp_HiTRes_ds (xarray.Dataset) : Dataset of High Time resolution footprint. HiTRes footprints 
@@ -534,13 +553,13 @@ def timeseries_HiTRes(fp_HiTRes_ds, flux_dict, output_TS = True, output_fpXflux 
                                         first 24 hours.
         domain (str)                  : Domain name. The footprint files should be sub-categorised by the 
                                         domain.
-        HiTRes_flux_name (??)         :
-        Resid_flux_name (??)          :
-        output_TS (??)                :
-        output_fpXflux (??)           :
-        flux_directory (str)          : flux_directory can be specified if files are not in the default 
-                                        directory. Must point to a directory which contains subfolders 
-                                        organized by domain. (optional)
+        flux_dict (dict)              : This should be a dictionary of the form output in the function
+                                        flux_for_HiTRes: {'high_freq': flux_dataset, 'low_freq': flux_dataset}.
+                                        This is because this function needs two time resolutions of fluxes as
+                                        explained in the header.
+        output_TS (bool)              : Output the timeseries. Default is True.
+        output_fpXflux (bool)         : Output the sensitivity map. Default is True.
+
     
     Returns:
         xarray.Dataset / tuple(xarray.Dataset,xarray.Dataset)
@@ -631,22 +650,20 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
 
     """
     Output a dictionary of xarray footprint datasets, that correspond to a given
-    dictionary of Pandas dataframes, containing mole fraction time series.
-    
-    TODO: Add details of load_flux, calc_timeseries, calc_bc, HiTRes options into description and affect
-    on outputs
+    dictionary of Pandas dataframes.
     
     Args:
         data (dict)          : Input dictionary of dataframes with the sites as the keys.
                                Should match output from acrg_agage.get_obs() function. For example:
                                data = {"MHD": MHD_dataframe, "TAC": TAC_dataframe}
         domain (str)         : Domain name. The footprint files should be sub-categorised by the domain.
-        load_flux (bool)     :  
-        calc_timeseries (bool) : 
-        calc_bc (bool)       :
-        HiTRes (bool)        : 
-        average (list)       : Averaging period for each dataset (for each site). Number of values for
-                               average must match number of sites within data dictionary.
+        load_flux (bool)     : True includes fluxes in output, False does not. Default True.
+        load_bc (bool)       : True includes boundary conditions in output, False does not. Default True.
+        calc_timeseries (bool) : True calculates modelled mole fractions for each site using fluxes, False does not. Default True.
+        calc_bc (bool)       : True calculates modelled baseline for each site using boundary conditions, False does not. Default True.
+        HiTRes (bool)        : Set to True to include HiTRes footprints in output. Default False.
+        average (dict)       : Averaging period for each dataset (for each site). Should be a dictionary with
+                               {site: averaging_period} key:value pairs.
                                Each value should be a string of the form e.g. "2H", "30min" (should match
                                pandas offset aliases format).
         site_modifier        : An optional site modifier dictionary is used that maps the site name in the
@@ -654,9 +671,17 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                                is useful for example if the same site FPs are run with a different met and 
                                they are named slightly differently from the obs file. E.g.
                                site_modifier = {"DJI":"DJI-SAM"} - station called DJI, FPs called DJI-SAM
-        height (str)         : Height related to input data. Can be found from acrg_sites_info.json
-        emissions_name       : Allows emissions files such as co2nee_EUROPE_2012.nc to be read in. 
-                               In this case EMISSIONS_NAME would be 'co2nee'
+        height (dict)        : Height related to input data. Should be a dictionary with
+                               {site: height} key:value pairs. Can be found from acrg_sites_info.json
+        emissions_name (dict): Allows emissions files with filenames that are longer than just the species name
+                               to be read in (e.g. co2-ff-mth_EUROPE_2014.nc). This should be a dictionary
+                               with {source_name: emissions_file_identifier} (e.g. {'anth':'co2-ff-mth'}). This way
+                               multiple sources can be read in simultaneously if they are added as separate entries to
+                               the emissions_name dictionary.
+                               If using HiTRes footprints, both the high and low frequency emissions files must be specified
+                               in a second dictionary like so: {'anth': {'high_freq':'co2-ff-2hr', 'low_freq':'co2-ff-mth'}}.
+                               It is not a problem to have a mixture of sources, with some that use HiTRes footprints and some
+                               that don't.
         interp_vmr_freq      : Frequency to interpolate vmr time. (float/int)
         fp_directory         : fp_directory must be a dictionary of the form 
                                fp_directory = {"integrated":PATH_TO_INTEGRATED_FP, 
@@ -670,7 +695,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
         bc_directory (str)   : Same sytax as flux_directory (optional)
     
     Returns:
-        Dictionary of the form {"MHD": MHD_xarray_dataset, "TAC": TAC_xarray_dataset}:
+        Dictionary of the form {"MHD": MHD_xarray_dataset, "TAC": TAC_xarray_dataset, ".flux": dictionary_of_flux_datasets, ".bc": boundary_conditions_dataset}:
             combined dataset for each site
     """
 
@@ -691,6 +716,15 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
         species = data[".species"]
     else:
         print "Species can't be found in data dictionary."
+
+    if load_flux:
+        if emissions_name is not None:
+            if type(emissions_name) != dict:
+                print("emissions_name should be a dictionary: {source_name: emissions_file_identifier}.\
+                      Setting load_flux to False.")
+                load_flux=False   
+        else:
+            emissions_name = {'all':species}
 
     # Output array
     fp_and_data = {}
@@ -739,7 +773,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                 
                 print("As HiTRes is set to True, make sure that the high and low time resolution emissions name\
                       pairs are input correctly for the emissions sources where HiTRes applies. They should look like:\
-                      emissions_name = {quick_source_name:{'high_res':emissions_file_identifier,\
+                      emissions_name = {source_name:{'high_res':emissions_file_identifier,\
                       'low_res':emissions_file_identifier}.")
 
         site_fp = footprints(site_modifier_fp, fp_directory = fp_directory, 
@@ -806,12 +840,6 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
             start_flux = start
             end_flux = dt.datetime(df_end.year, df_end.month, 1, 0, 0) + \
                 dt.timedelta(days = month_days-1)
-            
-            if emissions_name is not None:
-                if type(emissions_name) != dict:
-                    print("emissions_name should be a dictionary: {quick_source_name: emissions_file_identifier}")
-            elif species is not None:
-                emissions_name = {'all':species}
             
             for source in emissions_name.keys():
                 if type(emissions_name[source]) == str:
@@ -889,13 +917,13 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
     Args:
         fp_and_data (dict)    : Output from footprints_data_merge() function. Dictionary of datasets.
         domain (str)          : Domain name. The footprint files should be sub-categorised by the domain.
-        basis_case (str)      : Basis case to read in. Examples of basis cases are "NESW","stratgrad".
+        basis_case            : Basis case to read in. Examples of basis cases are "NESW","stratgrad".
+                                String if only one basis case is required. Dict if there are multiple
+                                sources that require separate basis cases. In which case, keys in dict should
+                                reflect keys in emissions_name dict used in fp_data_merge.
         basis_directory (str) : basis_directory can be specified if files are not in the default 
                                 directory. Must point to a directory which contains subfolders organized 
                                 by domain. (optional)
-        HiTRes_flux_name (??) :
-        Resid_flux_name (??)  :
-        flux_directory (str)  : Same format as basis_directory.
     
     Returns:
         dict (xarray.Dataset) : Same format as fp_and_data with sensitivity matrix added.
