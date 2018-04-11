@@ -23,27 +23,53 @@ def write(lat, lon, time, flux, species, domain,
           regridder_used = 'acrg_grid.regrid.regrid_3D',
           copy_from_year = None, climatology = False, flux_comments = None,
           output_directory = '/data/shared/NAME/emissions/'):
-    '''
-    Write a flux file
+    '''Write a flux file for emissions
     
-    -time- should be in numpy.datetime64 format in either an array (format from xarray) or a datetime index (format from pandas).
-    See 'Creating datetime64 data' : http://xarray.pydata.org/en/stable/time-series.html
+    Args:
+        lat (arr): 
+            1D array of latitudes
+        lon (arr): 
+            1D array of longitudes
+        time (numpy.datetime64): 
+            Either an array (format from xarray) or a datetime index (format from pandas).
+            See 'Creating datetime64 data' : http://xarray.pydata.org/en/stable/time-series.html
+        flux (array):
+            2D array of size [lat x lon]. Should be in mol/m2/s.
+        species (str): 
+            Species of interest.
+        domain (str): 
+            String of domain area
+        source (str): 
+            Sources in file. E.g. 'ff' (fossil fuel), 'agriculture'.
+            source = None if the file contains all sources of a species. 
+            If multiple sources: -source- is a chain of sources: 'waste-and-agriculture' (with hyphens between words).
+        title (str): 
+            Gives more information about what is in the file, e.g. Fossil Fuel CO2.
+        prior_info_dict (dict): 
+            {'NAME_OF_PRIOR' : ['VERSION','RAW RESOLUTION', 'REFERENCE']}
+        regridder_used (str, optional): 
+            regrid function used. Default is 'acrg_grid.regrid.regrid_3D'.
+        copy_from_year (str, optional): 
+            If the data is the same as another year but with a different timestamp give the original year here as a string
+            Default is None
+        climatology (bool, optional): 
+            If the data is a climatology set this to True and give detail using flux_comments.
+            Default is False
+        flux_comments (str, optional): 
+            Extra comments. Default is None.
+        output_directory (str, optional): 
+            Output directory. Default is '/data/shared/NAME/emissions/'.
     
-    -flux- should be in mol/m2/s and -units- should be mol/m2/s.
+    Returns:
+        None
+        Writes flux file to netcdf
+        
+    Example:
+        flux.write(lat, lon, time, flux, 'ch4', 'EUROPE', '2012',
+          comments = comments, title="2012_CH4_emissions_EUROPE") 
     
-    -source- is the sources in file. E.g. 'ff' (fossil fuel), 'agriculture'.
-    source = None if the file contains all sources of a species. 
-    If multiple sources: -source- is a chain of sources: 'waste-and-agriculture' (with hyphens between words).
-    
-    -title- gives more information about what is in the file, e.g. Fossil Fuel CO2.
-    
-    prior_info_dict = {'NAME_OF_PRIOR' : ['VERSION','RAW RESOLUTION', 'REFERENCE']}
-    
-    -copy_from_year- if the data is the same as another year but with a different timestamp give the original year here as a string
-    
-    -climatology- if the data is a climatology set this to True and give detail using flux_comments 
-    
-    TODO: Add some error checking (e.g. check that domain is correct)
+    Todo: 
+        Add some error checking (e.g. check that domain is correct)
     '''
     
     print "WARNING: Make sure time stamp is start of time period (i.e. 1st of month\

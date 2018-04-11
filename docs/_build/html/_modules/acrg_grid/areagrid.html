@@ -1,0 +1,129 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>acrg_grid.areagrid &#8212; acrg  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for acrg_grid.areagrid</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Created on Tue Nov 11 11:23:48 2014</span>
+<span class="sd">@author: chxmr</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<div class="viewcode-block" id="areagrid"><a class="viewcode-back" href="../../api/acrg_grid.html#acrg_grid.areagrid.areagrid">[docs]</a><span class="k">def</span> <span class="nf">areagrid</span><span class="p">(</span><span class="n">lat</span><span class="p">,</span> <span class="n">lon</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;Calculates grid of areas (m2) given arrays of latitudes and longitudes</span>
+
+<span class="sd">  Args:</span>
+<span class="sd">      lat (array): 1D array of latitudes</span>
+<span class="sd">      lon (array): 1D array of longitudes</span>
+<span class="sd">        </span>
+<span class="sd">  Returns:</span>
+<span class="sd">      area (array): 2D array of areas of of size lat x lon</span>
+<span class="sd">      </span>
+<span class="sd">  Example:</span>
+<span class="sd">    import acrg_grid</span>
+<span class="sd">    lat=np.arange(50., 60., 1.)</span>
+<span class="sd">    lon=np.arange(0., 10., 1.)</span>
+<span class="sd">    area=acrg_grid.areagrid(lat, lon)</span>
+<span class="sd">    </span>
+<span class="sd">  &quot;&quot;&quot;</span>
+        
+  <span class="n">re</span><span class="o">=</span><span class="mf">6367500.0</span>	<span class="c1">#radius of Earth in m</span>
+  
+  <span class="n">dlon</span><span class="o">=</span><span class="nb">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">lon</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">-</span> <span class="n">lon</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">/</span><span class="mf">180.</span>
+  <span class="n">dlat</span><span class="o">=</span><span class="nb">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">lat</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">-</span> <span class="n">lat</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">/</span><span class="mf">180.</span>
+  <span class="n">theta</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="p">(</span><span class="mf">90.</span><span class="o">-</span><span class="n">lat</span><span class="p">)</span><span class="o">/</span><span class="mf">180.</span>
+  
+  <span class="n">area</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">lat</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">lon</span><span class="p">)))</span>
+  
+  <span class="k">for</span> <span class="n">latI</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">lat</span><span class="p">)):</span>
+    <span class="k">if</span> <span class="n">theta</span><span class="p">[</span><span class="n">latI</span><span class="p">]</span> <span class="o">==</span> <span class="mf">0.</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">theta</span><span class="p">[</span><span class="n">latI</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">):</span>
+      <span class="n">area</span><span class="p">[</span><span class="n">latI</span><span class="p">,</span> <span class="p">:]</span><span class="o">=</span><span class="p">(</span><span class="n">re</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">*</span><span class="nb">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">dlat</span><span class="o">/</span><span class="mf">2.</span><span class="p">)</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mf">0.</span><span class="p">))</span><span class="o">*</span><span class="n">dlon</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">lat1</span><span class="o">=</span><span class="n">theta</span><span class="p">[</span><span class="n">latI</span><span class="p">]</span> <span class="o">-</span> <span class="n">dlat</span><span class="o">/</span><span class="mf">2.</span>
+      <span class="n">lat2</span><span class="o">=</span><span class="n">theta</span><span class="p">[</span><span class="n">latI</span><span class="p">]</span> <span class="o">+</span> <span class="n">dlat</span><span class="o">/</span><span class="mf">2.</span>
+      <span class="n">area</span><span class="p">[</span><span class="n">latI</span><span class="p">,</span> <span class="p">:]</span><span class="o">=</span><span class="p">((</span><span class="n">re</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">lat1</span><span class="p">)</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">lat2</span><span class="p">))</span><span class="o">*</span><span class="n">dlon</span><span class="p">)</span>
+
+  <span class="k">return</span> <span class="n">area</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, mrghg.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

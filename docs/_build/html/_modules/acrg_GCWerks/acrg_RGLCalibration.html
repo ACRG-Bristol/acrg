@@ -1,0 +1,232 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>acrg_GCWerks.acrg_RGLCalibration &#8212; acrg  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for acrg_GCWerks.acrg_RGLCalibration</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Created on Wed Sep  9 10:56:36 2015</span>
+
+<span class="sd">@author: as13988</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">datetime</span> <span class="k">as</span> <span class="nn">dt</span>
+<span class="kn">import</span> <span class="nn">matplotlib.ticker</span> <span class="k">as</span> <span class="nn">ticker</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">matplotlib</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">csv</span> 
+<span class="kn">from</span> <span class="nn">itertools</span> <span class="k">import</span> <span class="n">chain</span>
+<span class="kn">import</span> <span class="nn">pdb</span>
+<span class="kn">import</span> <span class="nn">acrg_read_GCwerks</span> <span class="k">as</span> <span class="nn">read_GCwerks</span>
+<span class="kn">import</span> <span class="nn">acrg_ICP</span>
+
+<span class="c1"># Class that contains the USNs and associated DNos</span>
+<div class="viewcode-block" id="USNsDNos"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.acrg_RGLCalibration.USNsDNos">[docs]</a><span class="k">class</span> <span class="nc">USNsDNos</span><span class="p">():</span>
+   <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> 
+       <span class="n">USNs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;H-237&#39;</span><span class="p">,</span> <span class="s1">&#39;E-097B&#39;</span><span class="p">,</span> <span class="s1">&#39;H-241&#39;</span><span class="p">,</span> <span class="s1">&#39;H-239&#39;</span><span class="p">,</span> <span class="s1">&#39;H-240&#39;</span><span class="p">]</span>
+       <span class="n">DNos</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;D091962&#39;</span><span class="p">,</span> <span class="s1">&#39;Unknown&#39;</span><span class="p">,</span> <span class="s1">&#39;D091983&#39;</span><span class="p">,</span> <span class="s1">&#39;DO91977&#39;</span><span class="p">,</span> <span class="s1">&#39;D091982&#39;</span><span class="p">]</span>  
+       
+       <span class="bp">self</span><span class="o">.</span><span class="n">USNs</span> <span class="o">=</span> <span class="n">USNs</span>
+       <span class="bp">self</span><span class="o">.</span><span class="n">DNos</span> <span class="o">=</span> <span class="n">DNos</span></div>
+
+<span class="c1"># Code to run for multiple files based on UAN or DNo</span>
+<div class="viewcode-block" id="Calcmulti"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.acrg_RGLCalibration.Calcmulti">[docs]</a><span class="k">class</span> <span class="nc">Calcmulti</span><span class="p">:</span>
+   <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">CylinderNo</span><span class="p">,</span> <span class="n">basedir</span> <span class="o">=</span> <span class="s1">&#39;/Users/as13988/Documents/Work/Cylinders/Calibrations/RGL/&#39;</span><span class="p">):</span>
+       
+       <span class="c1"># Find matching USN or vice versa</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">CylinderNo</span><span class="p">)</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;D09&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="c1"># We&#39;ve been given a USN so find the DNo</span>
+            <span class="n">USN_tank</span> <span class="o">=</span> <span class="n">CylinderNo</span>
+            <span class="n">index</span> <span class="o">=</span> <span class="p">(</span><span class="n">USNsDNos</span><span class="p">()</span><span class="o">.</span><span class="n">USNs</span><span class="p">)</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">USN_tank</span><span class="p">)</span>
+            <span class="n">DNo_tank</span> <span class="o">=</span> <span class="p">(</span><span class="n">USNsDNos</span><span class="p">()</span><span class="o">.</span><span class="n">DNos</span><span class="p">)[</span><span class="n">index</span><span class="p">]</span>
+            
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># We&#39;ve been given a DNo so find the USN</span>
+            <span class="n">DNo_tank</span> <span class="o">=</span> <span class="n">CylinderNo</span>
+            <span class="n">index</span> <span class="o">=</span> <span class="p">(</span><span class="n">USNsDNos</span><span class="p">()</span><span class="o">.</span><span class="n">DNos</span><span class="p">)</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">DNo_tank</span><span class="p">)</span>
+            <span class="n">USN_tank</span> <span class="o">=</span> <span class="p">(</span><span class="n">USNsDNos</span><span class="p">()</span><span class="o">.</span><span class="n">USNs</span><span class="p">)[</span><span class="n">index</span><span class="p">]</span>            
+
+
+        <span class="n">files</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">basedir</span><span class="o">+</span><span class="s1">&#39;*&#39;</span><span class="o">+</span><span class="n">USN_tank</span><span class="o">+</span><span class="s1">&#39;*.dat&#39;</span><span class="p">)</span>
+        
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">files</span><span class="p">)):</span>
+            <span class="nb">print</span> <span class="s1">&#39;Reading file: &#39;</span> <span class="o">+</span> <span class="n">files</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">data_i</span> <span class="o">=</span> <span class="n">read_data</span><span class="p">(</span><span class="n">files</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            
+            <span class="n">acrg_ICP</span><span class="o">.</span><span class="n">PlotRawMM</span><span class="p">(</span><span class="n">data_i</span><span class="p">,</span> <span class="n">outputdir</span><span class="o">=</span><span class="s1">&#39;/Users/as13988/Documents/Work/Cylinders/Calibrations/RGL/Plots/&#39;</span><span class="p">)</span>
+            
+            <span class="c1">#pdb.set_trace()            </span>
+            
+            <span class="n">means_i</span> <span class="o">=</span> <span class="n">acrg_ICP</span><span class="o">.</span><span class="n">Calcmeans</span><span class="p">(</span><span class="n">data_i</span><span class="p">)</span>
+
+            <span class="c1">#pdb.set_trace()</span>
+            <span class="n">key_i</span> <span class="o">=</span> <span class="n">data_i</span><span class="o">.</span><span class="n">site</span> <span class="o">+</span> <span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span class="n">data_i</span><span class="o">.</span><span class="n">instrument</span>
+            
+            <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="p">{</span><span class="n">key_i</span><span class="p">:</span><span class="n">data_i</span><span class="p">}</span>
+                <span class="n">means</span> <span class="o">=</span> <span class="p">{</span><span class="n">key_i</span><span class="p">:</span><span class="n">means_i</span><span class="o">.</span><span class="n">means</span><span class="p">}</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">data</span><span class="p">[</span><span class="n">key_i</span><span class="p">]</span> <span class="o">=</span> <span class="n">data_i</span>
+                <span class="n">means</span><span class="p">[</span><span class="n">key_i</span><span class="p">]</span> <span class="o">=</span> <span class="n">means_i</span><span class="o">.</span><span class="n">means</span>
+        
+        <span class="c1"># NB: syntax for extracting the same vaiable from each dictionary item</span>
+        <span class="c1"># b = [means[i].co2mean for i in means.keys()]</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">means</span> <span class="o">=</span> <span class="n">means</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">files</span> <span class="o">=</span> <span class="n">files</span></div>
+
+
+<div class="viewcode-block" id="read_data"><a class="viewcode-back" href="../../api/acrg_GCWerks.html#acrg_GCWerks.acrg_RGLCalibration.read_data">[docs]</a><span class="k">class</span> <span class="nc">read_data</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">datafile</span><span class="p">):</span>
+        
+        <span class="c1"># Read in the data using the general code</span>
+        <span class="n">indata</span> <span class="o">=</span>  <span class="n">read_GCwerks</span><span class="o">.</span><span class="n">read_gcexport_crds</span><span class="p">(</span><span class="n">datafile</span><span class="p">)</span>    
+            
+        <span class="c1"># Find making USN or vice versa</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">indata</span><span class="o">.</span><span class="n">filename</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="mi">2</span><span class="p">])</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;DO&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="c1"># We&#39;ve been given a USN so find the DNo</span>
+            <span class="n">USN_tank</span> <span class="o">=</span> <span class="p">(</span><span class="n">indata</span><span class="o">.</span><span class="n">filename</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="mi">2</span><span class="p">])</span>
+            <span class="n">index</span> <span class="o">=</span> <span class="p">(</span><span class="n">USNsDNos</span><span class="p">()</span><span class="o">.</span><span class="n">USNs</span><span class="p">)</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">USN_tank</span><span class="p">)</span>
+            <span class="n">DNo_tank</span> <span class="o">=</span> <span class="p">(</span><span class="n">USNsDNos</span><span class="p">()</span><span class="o">.</span><span class="n">DNos</span><span class="p">)[</span><span class="n">index</span><span class="p">]</span>
+            
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># We&#39;ve been given a DNo so find the USN</span>
+            <span class="n">DNo_tank</span> <span class="o">=</span> <span class="p">(</span><span class="n">indata</span><span class="o">.</span><span class="n">filename</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="mi">2</span><span class="p">])</span>
+            <span class="n">index</span> <span class="o">=</span> <span class="p">(</span><span class="n">USNsDNos</span><span class="p">()</span><span class="o">.</span><span class="n">DNos</span><span class="p">)</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">DNo_tank</span><span class="p">)</span>
+            <span class="n">USN_tank</span> <span class="o">=</span> <span class="p">(</span><span class="n">USNsDNos</span><span class="p">()</span><span class="o">.</span><span class="n">USNs</span><span class="p">)[</span><span class="n">index</span><span class="p">]</span>            
+            
+        <span class="bp">self</span><span class="o">.</span><span class="n">site</span> <span class="o">=</span> <span class="n">indata</span><span class="o">.</span><span class="n">filename</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">instrument</span> <span class="o">=</span> <span class="n">indata</span><span class="o">.</span><span class="n">filename</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">processeddate</span> <span class="o">=</span> <span class="n">indata</span><span class="o">.</span><span class="n">filename</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="mi">3</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">USN</span> <span class="o">=</span> <span class="n">USN_tank</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">DNo</span> <span class="o">=</span> <span class="n">DNo_tank</span>
+           
+        <span class="bp">self</span><span class="o">.</span><span class="n">date</span> <span class="o">=</span> <span class="n">indata</span><span class="o">.</span><span class="n">date</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">time</span> <span class="o">=</span> <span class="n">indata</span><span class="o">.</span><span class="n">time</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">datetime</span> <span class="o">=</span> <span class="n">indata</span><span class="o">.</span><span class="n">dt_date</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sampletype</span> <span class="o">=</span> <span class="n">indata</span><span class="o">.</span><span class="n">sampletype</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">samplename</span> <span class="o">=</span> <span class="n">indata</span><span class="o">.</span><span class="n">samplename</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">standard</span> <span class="o">=</span> <span class="n">indata</span><span class="o">.</span><span class="n">standard</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">port</span> <span class="o">=</span> <span class="n">indata</span><span class="o">.</span><span class="n">port</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;int&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cavity_temp</span> <span class="o">=</span> <span class="n">indata</span><span class="o">.</span><span class="n">cavity_temp</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;float&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cavity_press</span> <span class="o">=</span> <span class="n">indata</span><span class="o">.</span><span class="n">cavity_press</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;float&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">h2o</span> <span class="o">=</span> <span class="n">indata</span><span class="o">.</span><span class="n">h2o</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">co2_orig</span> <span class="o">=</span> <span class="n">indata</span><span class="o">.</span><span class="n">co2_orig</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">co2</span> <span class="o">=</span> <span class="n">indata</span><span class="o">.</span><span class="n">co2</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">co2sd_orig</span> <span class="o">=</span> <span class="n">indata</span><span class="o">.</span><span class="n">co2sd_orig</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">co2sd</span> <span class="o">=</span> <span class="n">indata</span><span class="o">.</span><span class="n">co2sd</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">co2flags</span> <span class="o">=</span> <span class="n">indata</span><span class="o">.</span><span class="n">co2flags</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">co2_n</span> <span class="o">=</span> <span class="n">indata</span><span class="o">.</span><span class="n">co2_n</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">co2_scale</span> <span class="o">=</span> <span class="s1">&#39;WMOx2007&#39;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">ch4_orig</span> <span class="o">=</span> <span class="n">indata</span><span class="o">.</span><span class="n">ch4_orig</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ch4</span> <span class="o">=</span> <span class="n">indata</span><span class="o">.</span><span class="n">ch4</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ch4sd_orig</span> <span class="o">=</span> <span class="n">indata</span><span class="o">.</span><span class="n">ch4sd_orig</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ch4sd</span> <span class="o">=</span> <span class="n">indata</span><span class="o">.</span><span class="n">ch4sd</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ch4flags</span> <span class="o">=</span> <span class="n">indata</span><span class="o">.</span><span class="n">ch4flags</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ch4_n</span> <span class="o">=</span> <span class="n">indata</span><span class="o">.</span><span class="n">ch4_n</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ch4_scale</span> <span class="o">=</span> <span class="s1">&#39;WMOx2014A&#39;</span>
+
+        
+        <span class="k">if</span> <span class="n">indata</span><span class="o">.</span><span class="n">nogases</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">co_orig</span> <span class="o">=</span> <span class="n">indata</span><span class="o">.</span><span class="n">co_orig</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">co</span> <span class="o">=</span> <span class="n">indata</span><span class="o">.</span><span class="n">co</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cosd_orig</span> <span class="o">=</span> <span class="n">indata</span><span class="o">.</span><span class="n">cosd_orig</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cosd</span> <span class="o">=</span> <span class="n">indata</span><span class="o">.</span><span class="n">cosd</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">coflags</span> <span class="o">=</span> <span class="n">indata</span><span class="o">.</span><span class="n">coflags</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">co_n</span> <span class="o">=</span> <span class="n">indata</span><span class="o">.</span><span class="n">co_n</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">co_scale</span> <span class="o">=</span> <span class="s1">&#39;CSIRO&#39;</span>     
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">nogases</span> <span class="o">=</span> <span class="n">indata</span><span class="o">.</span><span class="n">nogases</span>        
+                
+        <span class="bp">self</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="n">indata</span><span class="o">.</span><span class="n">filename</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">datadir</span> <span class="o">=</span> <span class="n">indata</span><span class="o">.</span><span class="n">datadir</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, mrghg.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

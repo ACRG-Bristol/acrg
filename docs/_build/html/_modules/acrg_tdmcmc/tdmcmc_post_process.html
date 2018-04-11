@@ -1,0 +1,886 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>acrg_tdmcmc.tdmcmc_post_process &#8212; acrg  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for acrg_tdmcmc.tdmcmc_post_process</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Created on Tue Aug  4 08:57:53 2015</span>
+
+
+<span class="sd">Script to process Transdimensional MCMC output </span>
+
+<span class="sd">Includes:</span>
+<span class="sd">Write netcdf and append netcdf to write output to nc file</span>
+
+<span class="sd">plot_scaling - plot posterior scaling map</span>
+
+<span class="sd">regions_histogram - plot histogram of number of regions</span>
+
+<span class="sd">country_emissions - calculate emissions from given list of countries</span>
+<span class="sd">                    Currently hard-wired for methane</span>
+
+
+<span class="sd">@author: ml12574</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">from</span> <span class="nn">mpl_toolkits.basemap</span> <span class="k">import</span> <span class="n">Basemap</span>
+<span class="kn">import</span> <span class="nn">xarray</span> <span class="k">as</span> <span class="nn">xray</span>
+<span class="kn">import</span> <span class="nn">acrg_name</span> <span class="k">as</span> <span class="nn">name</span>
+<span class="kn">from</span> <span class="nn">acrg_grid</span> <span class="k">import</span> <span class="n">areagrid</span>
+<span class="kn">from</span> <span class="nn">netCDF4</span> <span class="k">import</span> <span class="n">Dataset</span>
+<span class="kn">from</span> <span class="nn">acrg_time.convert</span> <span class="k">import</span> <span class="n">time2sec</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">acrg_agage</span> <span class="k">as</span> <span class="nn">agage</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">matplotlib.mlab</span> <span class="k">as</span> <span class="nn">mlab</span>
+<span class="kn">from</span> <span class="nn">matplotlib.patches</span> <span class="k">import</span> <span class="n">Polygon</span>
+<span class="kn">from</span> <span class="nn">matplotlib.colors</span> <span class="k">import</span> <span class="n">BoundaryNorm</span>
+<span class="kn">from</span> <span class="nn">matplotlib</span> <span class="k">import</span> <span class="n">ticker</span>
+
+<div class="viewcode-block" id="append_netcdf"><a class="viewcode-back" href="../../api/acrg_tdmcmc.html#acrg_tdmcmc.tdmcmc_post_process.append_netcdf">[docs]</a><span class="k">def</span> <span class="nf">append_netcdf</span><span class="p">(</span><span class="n">flux_mean</span><span class="p">,</span> <span class="n">flux_percentile</span><span class="p">,</span> <span class="n">flux_it</span><span class="p">,</span> <span class="n">country_mean</span><span class="p">,</span> <span class="n">country_percentile</span><span class="p">,</span>
+                  <span class="n">k_mean</span><span class="p">,</span> <span class="n">k_percentile</span><span class="p">,</span>
+                 <span class="n">lon</span><span class="p">,</span> <span class="n">lat</span><span class="p">,</span> <span class="n">time</span><span class="p">,</span> <span class="n">country</span><span class="p">,</span> <span class="n">percentile</span><span class="p">,</span> <span class="n">nIt</span><span class="p">,</span> <span class="n">experiment</span><span class="p">,</span> <span class="n">outfile</span><span class="p">):</span>
+    <span class="c1">#country_it,  </span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Function for appending flux and country output to file</span>
+<span class="sd">    </span>
+<span class="sd">    Only use this function once file has already been created</span>
+<span class="sd">    Create file first using write_netcdf function below</span>
+<span class="sd">    &quot;&quot;&quot;</span>         
+      
+    <span class="n">fm_name</span> <span class="o">=</span> <span class="s2">&quot;_&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s1">&#39;flux_mean&#39;</span><span class="p">,</span> <span class="n">experiment</span><span class="p">])</span>
+    <span class="n">fpc_name</span> <span class="o">=</span> <span class="s2">&quot;_&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s1">&#39;flux_percentile&#39;</span><span class="p">,</span> <span class="n">experiment</span><span class="p">])</span>
+    <span class="n">fit_name</span> <span class="o">=</span> <span class="s2">&quot;_&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s1">&#39;flux_it&#39;</span><span class="p">,</span> <span class="n">experiment</span><span class="p">])</span>
+    <span class="n">countrym_name</span> <span class="o">=</span> <span class="s2">&quot;_&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s1">&#39;country_mean&#39;</span><span class="p">,</span> <span class="n">experiment</span><span class="p">])</span>
+    <span class="n">countrypc_name</span> <span class="o">=</span> <span class="s2">&quot;_&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s1">&#39;country_percentile&#39;</span><span class="p">,</span> <span class="n">experiment</span><span class="p">])</span>
+    <span class="n">regionsm_name</span> <span class="o">=</span> <span class="s2">&quot;_&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s1">&#39;regions_mean&#39;</span><span class="p">,</span> <span class="n">experiment</span><span class="p">])</span>
+    <span class="n">regionspc_name</span> <span class="o">=</span> <span class="s2">&quot;_&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s1">&#39;regions_percentile&#39;</span><span class="p">,</span> <span class="n">experiment</span><span class="p">])</span>
+    <span class="c1">#countryit_name = &quot;_&quot;.join([&#39;country_it&#39;, experiment])</span>
+              
+    <span class="n">ncF</span><span class="o">=</span><span class="n">Dataset</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="s1">&#39;a&#39;</span><span class="p">)</span>
+    
+    <span class="n">ncfluxm</span><span class="o">=</span><span class="n">ncF</span><span class="o">.</span><span class="n">createVariable</span><span class="p">(</span><span class="n">fm_name</span><span class="p">,</span> <span class="s1">&#39;f&#39;</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;lat&#39;</span><span class="p">,</span> <span class="s1">&#39;lon&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">))</span>    
+    <span class="n">ncfluxpc</span><span class="o">=</span><span class="n">ncF</span><span class="o">.</span><span class="n">createVariable</span><span class="p">(</span><span class="n">fpc_name</span><span class="p">,</span> <span class="s1">&#39;f&#39;</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;lat&#39;</span><span class="p">,</span> <span class="s1">&#39;lon&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="s1">&#39;percentile&#39;</span><span class="p">))</span>    
+    <span class="n">nccountrym</span><span class="o">=</span><span class="n">ncF</span><span class="o">.</span><span class="n">createVariable</span><span class="p">(</span><span class="n">countrym_name</span><span class="p">,</span> <span class="s1">&#39;f&#39;</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;country&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">))</span>   
+    <span class="n">nccountrypc</span><span class="o">=</span><span class="n">ncF</span><span class="o">.</span><span class="n">createVariable</span><span class="p">(</span><span class="n">countrypc_name</span><span class="p">,</span> <span class="s1">&#39;f&#39;</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;country&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="s1">&#39;percentile&#39;</span><span class="p">))</span>
+    <span class="n">ncregionsm</span><span class="o">=</span><span class="n">ncF</span><span class="o">.</span><span class="n">createVariable</span><span class="p">(</span><span class="n">regionsm_name</span><span class="p">,</span> <span class="s1">&#39;f&#39;</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">))</span>   
+    <span class="n">ncregionspc</span><span class="o">=</span><span class="n">ncF</span><span class="o">.</span><span class="n">createVariable</span><span class="p">(</span><span class="n">regionspc_name</span><span class="p">,</span> <span class="s1">&#39;f&#39;</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="s1">&#39;percentile&#39;</span><span class="p">))</span>
+    <span class="n">ncfluxit</span><span class="o">=</span><span class="n">ncF</span><span class="o">.</span><span class="n">createVariable</span><span class="p">(</span><span class="n">fit_name</span><span class="p">,</span> <span class="s1">&#39;f&#39;</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;lat&#39;</span><span class="p">,</span> <span class="s1">&#39;lon&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="s1">&#39;nIt&#39;</span><span class="p">))</span>    
+    <span class="c1">#nccountryit=ncF.createVariable(countryit_name, &#39;f&#39;, (&#39;country&#39;, &#39;nIt&#39;,&#39;time&#39;))   </span>
+    
+    <span class="n">ncfluxm</span><span class="p">[:,</span> <span class="p">:,</span> <span class="p">:]</span><span class="o">=</span><span class="n">flux_mean</span>
+    <span class="n">ncfluxm</span><span class="o">.</span><span class="n">units</span><span class="o">=</span><span class="s1">&#39;mol/m2/s&#39;</span>
+    <span class="n">ncfluxm</span><span class="o">.</span><span class="n">long_name</span><span class="o">=</span><span class="s1">&#39;Posterior mean flux from each grid-cell&#39;</span>
+    
+    <span class="n">ncfluxpc</span><span class="p">[:,</span> <span class="p">:,</span> <span class="p">:,:]</span><span class="o">=</span><span class="n">flux_percentile</span>
+    <span class="n">ncfluxpc</span><span class="o">.</span><span class="n">units</span><span class="o">=</span><span class="s1">&#39;mol/m2/s&#39;</span>
+    <span class="n">ncfluxpc</span><span class="o">.</span><span class="n">long_name</span><span class="o">=</span><span class="s1">&#39;Posterior mean flux from each grid-cell&#39;</span>
+    
+    <span class="n">ncfluxit</span><span class="p">[:,</span> <span class="p">:,</span> <span class="p">:,:]</span><span class="o">=</span><span class="n">flux_it</span>
+    <span class="n">ncfluxit</span><span class="o">.</span><span class="n">units</span><span class="o">=</span><span class="s1">&#39;mol/m2/s&#39;</span>
+    <span class="n">ncfluxit</span><span class="o">.</span><span class="n">long_name</span><span class="o">=</span><span class="s1">&#39;Posterior it flux from each grid-cell&#39;</span>
+    
+    <span class="n">nccountrym</span><span class="p">[:,</span> <span class="p">:]</span><span class="o">=</span><span class="n">country_mean</span>
+    <span class="n">nccountrym</span><span class="o">.</span><span class="n">units</span><span class="o">=</span><span class="s1">&#39;Tg/yr&#39;</span>
+    <span class="n">nccountrym</span><span class="o">.</span><span class="n">long_name</span><span class="o">=</span><span class="s1">&#39;Posterior mean emissions from individual countries&#39;</span>
+    
+    <span class="n">nccountrypc</span><span class="p">[:,</span> <span class="p">:,</span> <span class="p">:]</span><span class="o">=</span><span class="n">country_percentile</span>
+    <span class="n">nccountrypc</span><span class="o">.</span><span class="n">units</span><span class="o">=</span><span class="s1">&#39;Tg/yr&#39;</span>
+    <span class="n">nccountrypc</span><span class="o">.</span><span class="n">long_name</span><span class="o">=</span><span class="s1">&#39;Posterior percentile emissions from individaul countries&#39;</span>
+    
+    <span class="n">ncregionsm</span><span class="p">[:]</span><span class="o">=</span><span class="n">k_mean</span>
+    <span class="c1">#ncregionsm.units=&#39; &#39;</span>
+    <span class="n">ncregionsm</span><span class="o">.</span><span class="n">long_name</span><span class="o">=</span><span class="s1">&#39;Posterior mean number of regions&#39;</span>
+    
+    <span class="n">ncregionspc</span><span class="p">[:,:]</span><span class="o">=</span><span class="n">k_percentile</span>
+    <span class="c1">#ncregionspc.units=&#39;</span>
+    <span class="n">ncregionspc</span><span class="o">.</span><span class="n">long_name</span><span class="o">=</span><span class="s1">&#39;Posterior percentile number of regions&#39;</span>
+    
+    <span class="c1">#nccountryit[:,:,:]=country_it</span>
+    <span class="c1">#nccountryit.units=&#39;Tg/yr&#39;</span>
+    <span class="c1">#nccountryit.long_name=&#39;Posterior emissions distribution from individual countries&#39;</span>
+    
+    <span class="n">ncF</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="nb">print</span> <span class="s2">&quot;Appended &quot;</span> <span class="o">+</span> <span class="n">experiment</span> <span class="o">+</span> <span class="s2">&quot; to &quot;</span> <span class="o">+</span> <span class="n">outfile</span> </div>
+
+<div class="viewcode-block" id="write_netcdf"><a class="viewcode-back" href="../../api/acrg_tdmcmc.html#acrg_tdmcmc.tdmcmc_post_process.write_netcdf">[docs]</a><span class="k">def</span> <span class="nf">write_netcdf</span><span class="p">(</span><span class="n">flux_mean</span><span class="p">,</span> <span class="n">flux_percentile</span><span class="p">,</span> <span class="n">flux_it</span><span class="p">,</span> <span class="n">flux_prior</span><span class="p">,</span> <span class="n">flux_ap_percentile</span><span class="p">,</span>
+                 <span class="n">country_mean</span><span class="p">,</span> <span class="n">country_percentile</span><span class="p">,</span> <span class="n">country_prior</span><span class="p">,</span> <span class="n">country_ap_percentile</span><span class="p">,</span>
+                 <span class="n">country_index</span><span class="p">,</span> <span class="n">k_mean</span><span class="p">,</span> <span class="n">k_percentile</span><span class="p">,</span>
+                 <span class="n">lon</span><span class="p">,</span> <span class="n">lat</span><span class="p">,</span> <span class="n">time</span><span class="p">,</span> <span class="n">country</span><span class="p">,</span> <span class="n">percentile</span><span class="p">,</span> <span class="n">nIt</span><span class="p">,</span> <span class="n">experiment</span><span class="p">,</span> <span class="n">outfile</span><span class="p">):</span>
+    <span class="c1">#country_it,</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Function for writing all flux and country output to file</span>
+<span class="sd">    </span>
+<span class="sd">    Only use this function for first set of variables</span>
+<span class="sd">    Once file has been created, use append_netcdf function above</span>
+<span class="sd">    &quot;&quot;&quot;</span>    
+    
+    <span class="n">time_seconds</span><span class="p">,</span> <span class="n">time_reference</span> <span class="o">=</span> <span class="n">time2sec</span><span class="p">(</span><span class="n">time</span><span class="p">)</span>
+    
+    <span class="n">fm_name</span> <span class="o">=</span> <span class="s2">&quot;_&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s1">&#39;flux_mean&#39;</span><span class="p">,</span> <span class="n">experiment</span><span class="p">])</span>
+    <span class="n">fpc_name</span> <span class="o">=</span> <span class="s2">&quot;_&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s1">&#39;flux_percentile&#39;</span><span class="p">,</span> <span class="n">experiment</span><span class="p">])</span>
+    <span class="n">fit_name</span> <span class="o">=</span> <span class="s2">&quot;_&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s1">&#39;flux_it&#39;</span><span class="p">,</span> <span class="n">experiment</span><span class="p">])</span>
+    <span class="n">countrym_name</span> <span class="o">=</span> <span class="s2">&quot;_&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s1">&#39;country_mean&#39;</span><span class="p">,</span> <span class="n">experiment</span><span class="p">])</span>
+    <span class="n">countrypc_name</span> <span class="o">=</span> <span class="s2">&quot;_&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s1">&#39;country_percentile&#39;</span><span class="p">,</span> <span class="n">experiment</span><span class="p">])</span>
+    <span class="n">regionsm_name</span> <span class="o">=</span> <span class="s2">&quot;_&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s1">&#39;regions_mean&#39;</span><span class="p">,</span> <span class="n">experiment</span><span class="p">])</span>
+    <span class="n">regionspc_name</span> <span class="o">=</span> <span class="s2">&quot;_&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s1">&#39;regions_percentile&#39;</span><span class="p">,</span> <span class="n">experiment</span><span class="p">])</span>
+    <span class="c1">#countryit_name = &quot;_&quot;.join([&#39;country_it&#39;, experiment])</span>
+    
+    <span class="c1">#Write NetCDF file</span>
+    <span class="n">ncF</span><span class="o">=</span><span class="n">Dataset</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span>
+    <span class="n">ncF</span><span class="o">.</span><span class="n">createDimension</span><span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">time</span><span class="p">))</span>
+    <span class="n">ncF</span><span class="o">.</span><span class="n">createDimension</span><span class="p">(</span><span class="s1">&#39;lon&#39;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">lon</span><span class="p">))</span>
+    <span class="n">ncF</span><span class="o">.</span><span class="n">createDimension</span><span class="p">(</span><span class="s1">&#39;lat&#39;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">lat</span><span class="p">))</span>
+    <span class="n">ncF</span><span class="o">.</span><span class="n">createDimension</span><span class="p">(</span><span class="s1">&#39;country&#39;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">country</span><span class="p">))</span>
+    <span class="n">ncF</span><span class="o">.</span><span class="n">createDimension</span><span class="p">(</span><span class="s1">&#39;percentile&#39;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">percentile</span><span class="p">))</span>
+    <span class="n">ncF</span><span class="o">.</span><span class="n">createDimension</span><span class="p">(</span><span class="s1">&#39;nIt&#39;</span><span class="p">,</span> <span class="n">nIt</span><span class="p">)</span>
+    
+    <span class="n">nctime</span><span class="o">=</span><span class="n">ncF</span><span class="o">.</span><span class="n">createVariable</span><span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="s1">&#39;i&#39;</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">,))</span>
+    <span class="n">nclon</span><span class="o">=</span><span class="n">ncF</span><span class="o">.</span><span class="n">createVariable</span><span class="p">(</span><span class="s1">&#39;lon&#39;</span><span class="p">,</span> <span class="s1">&#39;f&#39;</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;lon&#39;</span><span class="p">,))</span>
+    <span class="n">nclat</span><span class="o">=</span><span class="n">ncF</span><span class="o">.</span><span class="n">createVariable</span><span class="p">(</span><span class="s1">&#39;lat&#39;</span><span class="p">,</span> <span class="s1">&#39;f&#39;</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;lat&#39;</span><span class="p">,))</span>
+    <span class="n">nccountry</span><span class="o">=</span><span class="n">ncF</span><span class="o">.</span><span class="n">createVariable</span><span class="p">(</span><span class="s1">&#39;country_name&#39;</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;country&#39;</span><span class="p">,))</span>
+    <span class="n">ncpercent</span><span class="o">=</span><span class="n">ncF</span><span class="o">.</span><span class="n">createVariable</span><span class="p">(</span><span class="s1">&#39;percentile&#39;</span><span class="p">,</span> <span class="s1">&#39;i&#39;</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;percentile&#39;</span><span class="p">,))</span>
+    <span class="n">ncfluxm</span><span class="o">=</span><span class="n">ncF</span><span class="o">.</span><span class="n">createVariable</span><span class="p">(</span><span class="n">fm_name</span><span class="p">,</span> <span class="s1">&#39;f&#39;</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;lat&#39;</span><span class="p">,</span> <span class="s1">&#39;lon&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">))</span>    
+    <span class="n">ncfluxpc</span><span class="o">=</span><span class="n">ncF</span><span class="o">.</span><span class="n">createVariable</span><span class="p">(</span><span class="n">fpc_name</span><span class="p">,</span> <span class="s1">&#39;f&#39;</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;lat&#39;</span><span class="p">,</span> <span class="s1">&#39;lon&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="s1">&#39;percentile&#39;</span><span class="p">))</span>    
+    <span class="n">ncfluxit</span><span class="o">=</span><span class="n">ncF</span><span class="o">.</span><span class="n">createVariable</span><span class="p">(</span><span class="n">fit_name</span><span class="p">,</span> <span class="s1">&#39;f&#39;</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;lat&#39;</span><span class="p">,</span> <span class="s1">&#39;lon&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="s1">&#39;nIt&#39;</span><span class="p">))</span>    
+    <span class="n">nccountrym</span><span class="o">=</span><span class="n">ncF</span><span class="o">.</span><span class="n">createVariable</span><span class="p">(</span><span class="n">countrym_name</span><span class="p">,</span> <span class="s1">&#39;f&#39;</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;country&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">))</span>   
+    <span class="n">nccountrypc</span><span class="o">=</span><span class="n">ncF</span><span class="o">.</span><span class="n">createVariable</span><span class="p">(</span><span class="n">countrypc_name</span><span class="p">,</span> <span class="s1">&#39;f&#39;</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;country&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="s1">&#39;percentile&#39;</span><span class="p">))</span>
+    <span class="n">nccountryap</span><span class="o">=</span><span class="n">ncF</span><span class="o">.</span><span class="n">createVariable</span><span class="p">(</span><span class="s1">&#39;country_prior&#39;</span><span class="p">,</span> <span class="s1">&#39;f&#39;</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;country&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">))</span>
+    <span class="n">nccountryappc</span><span class="o">=</span><span class="n">ncF</span><span class="o">.</span><span class="n">createVariable</span><span class="p">(</span><span class="s1">&#39;country_prior_percentile&#39;</span><span class="p">,</span> <span class="s1">&#39;f&#39;</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;country&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="s1">&#39;percentile&#39;</span><span class="p">))</span>
+    <span class="n">ncfluxap</span><span class="o">=</span><span class="n">ncF</span><span class="o">.</span><span class="n">createVariable</span><span class="p">(</span><span class="s1">&#39;flux_prior&#39;</span><span class="p">,</span> <span class="s1">&#39;f&#39;</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;lat&#39;</span><span class="p">,</span> <span class="s1">&#39;lon&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">))</span>  
+    <span class="n">ncfluxappc</span><span class="o">=</span><span class="n">ncF</span><span class="o">.</span><span class="n">createVariable</span><span class="p">(</span><span class="s1">&#39;flux_prior_percentile&#39;</span><span class="p">,</span> <span class="s1">&#39;f&#39;</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;lat&#39;</span><span class="p">,</span> <span class="s1">&#39;lon&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="s1">&#39;percentile&#39;</span><span class="p">))</span>  
+    <span class="n">nccountryid</span><span class="o">=</span><span class="n">ncF</span><span class="o">.</span><span class="n">createVariable</span><span class="p">(</span><span class="s1">&#39;country_index&#39;</span><span class="p">,</span> <span class="s1">&#39;i&#39;</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;lat&#39;</span><span class="p">,</span> <span class="s1">&#39;lon&#39;</span><span class="p">))</span>    
+    <span class="n">ncregionsm</span><span class="o">=</span><span class="n">ncF</span><span class="o">.</span><span class="n">createVariable</span><span class="p">(</span><span class="n">regionsm_name</span><span class="p">,</span> <span class="s1">&#39;f&#39;</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">))</span>   
+    <span class="n">ncregionspc</span><span class="o">=</span><span class="n">ncF</span><span class="o">.</span><span class="n">createVariable</span><span class="p">(</span><span class="n">regionspc_name</span><span class="p">,</span> <span class="s1">&#39;f&#39;</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="s1">&#39;percentile&#39;</span><span class="p">))</span>
+    <span class="c1">#nccountryit=ncF.createVariable(countryit_name, &#39;f&#39;, (&#39;country&#39;, &#39;nIt&#39;,&#39;time&#39;))   </span>
+
+    
+    <span class="n">nctime</span><span class="p">[:]</span><span class="o">=</span><span class="n">time_seconds</span>
+    <span class="n">nctime</span><span class="o">.</span><span class="n">long_name</span><span class="o">=</span><span class="s1">&#39;time&#39;</span>
+    <span class="n">nctime</span><span class="o">.</span><span class="n">standard_name</span><span class="o">=</span><span class="s1">&#39;time&#39;</span>
+    <span class="n">nctime</span><span class="o">.</span><span class="n">units</span><span class="o">=</span><span class="s1">&#39;seconds since &#39;</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">str</span><span class="p">(</span><span class="n">time_reference</span><span class="p">)</span>
+    <span class="n">nctime</span><span class="o">.</span><span class="n">calendar</span><span class="o">=</span><span class="s1">&#39;gregorian&#39;</span>
+
+    <span class="n">nclon</span><span class="p">[:]</span><span class="o">=</span><span class="n">lon</span>
+    <span class="n">nclon</span><span class="o">.</span><span class="n">units</span><span class="o">=</span><span class="s1">&#39;Degrees east&#39;</span>
+    
+    <span class="n">nclat</span><span class="p">[:]</span><span class="o">=</span><span class="n">lat</span>
+    <span class="n">nclat</span><span class="o">.</span><span class="n">units</span><span class="o">=</span><span class="s1">&#39;Degrees north&#39;</span>
+
+    <span class="n">nccountry</span><span class="p">[:]</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">country</span><span class="p">)</span>
+    
+    <span class="n">ncpercent</span><span class="p">[:]</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">percentile</span><span class="p">)</span>
+    
+<span class="c1">#    ncfluxprior[:, :, :]=flux_mean</span>
+<span class="c1">#    ncfluxprior.units=&#39;mol/m2/s&#39;</span>
+<span class="c1">#    ncfluxprior.long_name=&#39;Mean flux from each grid-cell&#39;    </span>
+    
+    <span class="n">ncfluxm</span><span class="p">[:,</span> <span class="p">:,</span> <span class="p">:]</span><span class="o">=</span><span class="n">flux_mean</span>
+    <span class="n">ncfluxm</span><span class="o">.</span><span class="n">units</span><span class="o">=</span><span class="s1">&#39;mol/m2/s&#39;</span>
+    <span class="n">ncfluxm</span><span class="o">.</span><span class="n">long_name</span><span class="o">=</span><span class="s1">&#39;Posterior mean flux from each grid-cell&#39;</span>
+    
+    <span class="n">ncfluxpc</span><span class="p">[:,</span> <span class="p">:,</span> <span class="p">:,:]</span><span class="o">=</span><span class="n">flux_percentile</span>
+    <span class="n">ncfluxpc</span><span class="o">.</span><span class="n">units</span><span class="o">=</span><span class="s1">&#39;mol/m2/s&#39;</span>
+    <span class="n">ncfluxpc</span><span class="o">.</span><span class="n">long_name</span><span class="o">=</span><span class="s1">&#39;Posterior percentile flux from each grid-cell&#39;</span>
+    
+    <span class="n">ncfluxit</span><span class="p">[:,</span> <span class="p">:,</span> <span class="p">:,:]</span><span class="o">=</span><span class="n">flux_it</span>
+    <span class="n">ncfluxit</span><span class="o">.</span><span class="n">units</span><span class="o">=</span><span class="s1">&#39;mol/m2/s&#39;</span>
+    <span class="n">ncfluxit</span><span class="o">.</span><span class="n">long_name</span><span class="o">=</span><span class="s1">&#39;Posterior it flux from each grid-cell&#39;</span>
+    
+    <span class="n">nccountrym</span><span class="p">[:,</span> <span class="p">:]</span><span class="o">=</span><span class="n">country_mean</span>
+    <span class="n">nccountrym</span><span class="o">.</span><span class="n">units</span><span class="o">=</span><span class="s1">&#39;Tg/yr&#39;</span>
+    <span class="n">nccountrym</span><span class="o">.</span><span class="n">long_name</span><span class="o">=</span><span class="s1">&#39;Posterior mean emissions from individual countries&#39;</span>
+    
+    <span class="n">nccountrypc</span><span class="p">[:,</span> <span class="p">:,</span> <span class="p">:]</span><span class="o">=</span><span class="n">country_percentile</span>
+    <span class="n">nccountrypc</span><span class="o">.</span><span class="n">units</span><span class="o">=</span><span class="s1">&#39;Tg/yr&#39;</span>
+
+    <span class="n">nccountrypc</span><span class="o">.</span><span class="n">long_name</span><span class="o">=</span><span class="s1">&#39;Posterior percentile emissions from individual countries&#39;</span>
+    
+    <span class="n">ncfluxap</span><span class="p">[:,:,:]</span><span class="o">=</span><span class="n">flux_prior</span>
+    <span class="n">ncfluxap</span><span class="o">.</span><span class="n">units</span><span class="o">=</span><span class="s1">&#39;mol/m2/s&#39;</span>
+    <span class="n">ncfluxap</span><span class="o">.</span><span class="n">long_name</span><span class="o">=</span><span class="s1">&#39;Prior mean flux from each grid-cell&#39;</span>
+    
+    <span class="n">ncfluxappc</span><span class="p">[:,</span> <span class="p">:,</span> <span class="p">:,:]</span><span class="o">=</span><span class="n">flux_ap_percentile</span>
+    <span class="n">ncfluxappc</span><span class="o">.</span><span class="n">units</span><span class="o">=</span><span class="s1">&#39;mol/m2/s&#39;</span>
+    <span class="n">ncfluxappc</span><span class="o">.</span><span class="n">long_name</span><span class="o">=</span><span class="s1">&#39;Prior percentile flux from each grid-cell&#39;</span>
+    
+    <span class="n">nccountryap</span><span class="p">[:,</span> <span class="p">:]</span><span class="o">=</span><span class="n">country_prior</span>
+    <span class="n">nccountryap</span><span class="o">.</span><span class="n">units</span><span class="o">=</span><span class="s1">&#39;Tg/yr&#39;</span>
+    <span class="n">nccountryap</span><span class="o">.</span><span class="n">long_name</span><span class="o">=</span><span class="s1">&#39;Prior mean emissions from individual countries&#39;</span>
+    
+    <span class="n">nccountryappc</span><span class="p">[:,</span> <span class="p">:,</span> <span class="p">:]</span><span class="o">=</span><span class="n">country_ap_percentile</span>
+    <span class="n">nccountryappc</span><span class="o">.</span><span class="n">units</span><span class="o">=</span><span class="s1">&#39;Tg/yr&#39;</span>
+    <span class="n">nccountryappc</span><span class="o">.</span><span class="n">long_name</span><span class="o">=</span><span class="s1">&#39;Prior percentile emissions from individual countries&#39;</span>
+        
+    <span class="n">nccountryid</span><span class="p">[:,:]</span><span class="o">=</span><span class="n">country_index</span>
+    <span class="c1">#ncfluxap.units=&#39;mol/m2/s&#39;</span>
+    <span class="n">nccountryid</span><span class="o">.</span><span class="n">long_name</span><span class="o">=</span><span class="s1">&#39;Index corresponding to each country&#39;</span>
+    
+    <span class="n">ncregionsm</span><span class="p">[:]</span><span class="o">=</span><span class="n">k_mean</span>
+    <span class="c1">#ncregionsm.units=&#39; &#39;</span>
+    <span class="n">ncregionsm</span><span class="o">.</span><span class="n">long_name</span><span class="o">=</span><span class="s1">&#39;Posterior mean number of regions&#39;</span>
+    
+    <span class="n">ncregionspc</span><span class="p">[:,:]</span><span class="o">=</span><span class="n">k_percentile</span>
+    <span class="c1">#ncregionspc.units=&#39;</span>
+    <span class="n">ncregionspc</span><span class="o">.</span><span class="n">long_name</span><span class="o">=</span><span class="s1">&#39;Posterior percentile number of regions&#39;</span>
+    
+<span class="c1">#    nccountryit[:,:,:]=country_it</span>
+<span class="c1">#    nccountryit.units=&#39;Tg/yr&#39;</span>
+<span class="c1">#    nccountryit.long_name=&#39;Posterior emissions distribution from individual countries&#39;</span>
+    
+    <span class="n">ncF</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="nb">print</span> <span class="s2">&quot;Written &quot;</span> <span class="o">+</span> <span class="n">experiment</span> <span class="o">+</span> <span class="s2">&quot; to &quot;</span> <span class="o">+</span> <span class="n">outfile</span></div>
+
+<div class="viewcode-block" id="plot_scaling"><a class="viewcode-back" href="../../api/acrg_tdmcmc.html#acrg_tdmcmc.tdmcmc_post_process.plot_scaling">[docs]</a><span class="k">def</span> <span class="nf">plot_scaling</span><span class="p">(</span><span class="n">data</span><span class="p">,</span><span class="n">lon</span><span class="p">,</span><span class="n">lat</span><span class="p">,</span> <span class="n">clevels</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">plt</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">RdBu_r</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">smooth</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">out_filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">stations</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">fignum</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">title</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Plot 2d scaling map of posterior x</span>
+<span class="sd">    i.e. degree of scaling applied to prior emissions </span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        data     : 2D (lat,lon) array of whatever you want</span>
+<span class="sd">        clevels  : Contour levels; defaults to np.arange(-2., 2.1, 0.1)</span>
+<span class="sd">        cmap     : Colormap - defaults to Red Blue reverse</span>
+<span class="sd">        label    : String - to appear at bottom</span>
+<span class="sd">        smooth   : If true plot smooth contours, otherwise use pcolormesh</span>
+<span class="sd">        stations : Default is None. If specified needs to be a dictionary containing:</span>
+<span class="sd">                    sites: &#39;MHD&#39;, &#39;TAC&#39;</span>
+<span class="sd">                    MHD_lon: -9.02</span>
+<span class="sd">                    MHHD_lat: 55.2</span>
+<span class="sd">                    TAC_lon: etc...</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        None</span>
+<span class="sd">        </span>
+<span class="sd">        If out_filename is None:</span>
+<span class="sd">            Created plot is saved to file</span>
+<span class="sd">        Else:</span>
+<span class="sd">            Plot is displayed interactively</span>
+<span class="sd">    &quot;&quot;&quot;</span>    
+    <span class="n">lon_range</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">lon</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">lon</span><span class="p">))</span>
+    <span class="n">lat_range</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">lat</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">lat</span><span class="p">))</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">Basemap</span><span class="p">(</span><span class="n">projection</span><span class="o">=</span><span class="s1">&#39;gall&#39;</span><span class="p">,</span>
+            <span class="n">llcrnrlat</span><span class="o">=</span><span class="n">lat_range</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">urcrnrlat</span><span class="o">=</span><span class="n">lat_range</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+            <span class="n">llcrnrlon</span><span class="o">=</span><span class="n">lon_range</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">urcrnrlon</span><span class="o">=</span><span class="n">lon_range</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+            <span class="n">resolution</span><span class="o">=</span><span class="s1">&#39;l&#39;</span><span class="p">)</span>
+
+    <span class="n">lons</span><span class="p">,</span> <span class="n">lats</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">lon</span><span class="p">,</span><span class="n">lat</span><span class="p">)</span>
+    <span class="n">mapx</span><span class="p">,</span> <span class="n">mapy</span> <span class="o">=</span> <span class="n">m</span><span class="p">(</span><span class="n">lons</span><span class="p">,</span> <span class="n">lats</span><span class="p">)</span>
+    
+    <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">fignum</span><span class="p">,</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span><span class="mi">8</span><span class="p">))</span>
+    <span class="n">fig</span><span class="o">.</span><span class="n">add_axes</span><span class="p">([</span><span class="mf">0.1</span><span class="p">,</span><span class="mf">0.1</span><span class="p">,</span><span class="mf">0.8</span><span class="p">,</span><span class="mf">0.8</span><span class="p">])</span>
+    
+    <span class="n">m</span><span class="o">.</span><span class="n">drawcoastlines</span><span class="p">()</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">drawcountries</span><span class="p">()</span> 
+    
+    <span class="k">def</span> <span class="nf">draw_screen_poly</span><span class="p">(</span> <span class="n">lats</span><span class="p">,</span> <span class="n">lons</span><span class="p">,</span> <span class="n">m</span><span class="p">):</span>
+            <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">m</span><span class="p">(</span> <span class="n">lons</span><span class="p">,</span> <span class="n">lats</span> <span class="p">)</span>
+            <span class="n">xy</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">)</span>
+            <span class="n">poly</span> <span class="o">=</span> <span class="n">Polygon</span><span class="p">(</span> <span class="n">xy</span><span class="p">,</span> <span class="n">facecolor</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.4</span> <span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">add_patch</span><span class="p">(</span><span class="n">poly</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">clevels</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">print</span> <span class="s2">&quot;Warning: using default contour levels. Include clevels keyword to change&quot;</span>
+        <span class="n">clevels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="o">-</span><span class="mf">2.</span><span class="p">,</span> <span class="mf">2.1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">smooth</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
+        
+        <span class="n">cs</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">contourf</span><span class="p">(</span><span class="n">mapx</span><span class="p">,</span><span class="n">mapy</span><span class="p">,</span><span class="n">data</span><span class="p">,</span> <span class="n">clevels</span><span class="p">,</span> <span class="n">extend</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span><span class="p">)</span>
+        <span class="n">cb</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">cs</span><span class="p">,</span> <span class="n">location</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="s2">&quot;5%&quot;</span><span class="p">)</span>
+        
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">norm</span> <span class="o">=</span> <span class="n">BoundaryNorm</span><span class="p">(</span><span class="n">clevels</span><span class="p">,</span>
+                        <span class="n">ncolors</span><span class="o">=</span><span class="n">cmap</span><span class="o">.</span><span class="n">N</span><span class="p">,</span>
+                        <span class="n">clip</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">cs</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">pcolormesh</span><span class="p">(</span><span class="n">mapx</span><span class="p">,</span> <span class="n">mapy</span><span class="p">,</span>
+                <span class="n">data</span><span class="p">,</span><span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">)</span>
+        <span class="n">cb</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">cs</span><span class="p">,</span> <span class="n">location</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="s2">&quot;5%&quot;</span><span class="p">,</span> <span class="n">extend</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">)</span>
+        
+    <span class="k">if</span> <span class="n">label</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>        
+        <span class="n">cb</span><span class="o">.</span><span class="n">set_label</span><span class="p">(</span><span class="n">label</span><span class="p">,</span><span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span> 
+    <span class="k">if</span> <span class="n">title</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="n">title</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span> 
+               
+    <span class="k">if</span> <span class="n">stations</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        
+        <span class="n">nsites</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">stations</span><span class="p">[</span><span class="s1">&#39;sites&#39;</span><span class="p">])</span>
+        <span class="n">sites</span><span class="o">=</span><span class="n">stations</span><span class="p">[</span><span class="s1">&#39;sites&#39;</span><span class="p">]</span>
+        <span class="c1">#ilon=np.zeros((nsites))</span>
+        <span class="c1">#ilat=np.zeros((nsites))</span>
+        <span class="k">for</span> <span class="n">si</span><span class="p">,</span><span class="n">site</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">stations</span><span class="p">[</span><span class="s1">&#39;sites&#39;</span><span class="p">]):</span>
+            <span class="c1">#ilon[si]=stations[site+&#39;_lon&#39;]</span>
+            <span class="c1">#ilat[si]=stations[site+&#39;_lat&#39;]</span>
+            <span class="n">ilon</span><span class="o">=</span><span class="n">stations</span><span class="p">[</span><span class="n">site</span><span class="o">+</span><span class="s1">&#39;_lon&#39;</span><span class="p">]</span>
+            <span class="n">ilat</span><span class="o">=</span><span class="n">stations</span><span class="p">[</span><span class="n">site</span><span class="o">+</span><span class="s1">&#39;_lat&#39;</span><span class="p">]</span>
+            
+            <span class="n">mlon</span><span class="p">,</span><span class="n">mlat</span><span class="o">=</span><span class="n">m</span><span class="p">(</span><span class="n">ilon</span><span class="p">,</span><span class="n">ilat</span><span class="p">)</span>
+            <span class="n">site_loc</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">mlon</span><span class="p">,</span><span class="n">mlat</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;None&#39;</span><span class="p">,</span>  
+                            <span class="n">marker</span><span class="o">=</span><span class="s1">&#39;o&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;black&#39;</span><span class="p">,</span> <span class="n">markersize</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+            <span class="c1">#markeredgewidth=0.0,                 </span>
+            <span class="n">yoffset</span> <span class="o">=</span> <span class="mf">0.022</span><span class="o">*</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">ymax</span><span class="o">-</span><span class="n">m</span><span class="o">.</span><span class="n">ymin</span><span class="p">)</span> 
+            <span class="n">xoffset</span> <span class="o">=</span> <span class="mf">0.012</span><span class="o">*</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">xmax</span><span class="o">-</span><span class="n">m</span><span class="o">.</span><span class="n">xmin</span><span class="p">)</span>             
+        <span class="c1">#for ii in range(nsites):</span>
+        <span class="c1">#    plt.text(mlon[ii]+xoffset,</span>
+        <span class="c1">#             mlat[ii]+yoffset,sites[ii], fontsize=&#39;24&#39;, color=&#39;black&#39;)   </span>
+    <span class="n">tick_locator</span> <span class="o">=</span> <span class="n">ticker</span><span class="o">.</span><span class="n">MaxNLocator</span><span class="p">(</span><span class="n">nbins</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+    <span class="n">cb</span><span class="o">.</span><span class="n">locator</span> <span class="o">=</span> <span class="n">tick_locator</span>
+    <span class="n">cb</span><span class="o">.</span><span class="n">update_ticks</span><span class="p">()</span>                 
+    <span class="k">if</span> <span class="n">out_filename</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">out_filename</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div>
+
+    
+    
+<div class="viewcode-block" id="regions_histogram"><a class="viewcode-back" href="../../api/acrg_tdmcmc.html#acrg_tdmcmc.tdmcmc_post_process.regions_histogram">[docs]</a><span class="k">def</span> <span class="nf">regions_histogram</span><span class="p">(</span><span class="n">k_it</span><span class="p">,</span> <span class="n">out_filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">fignum</span><span class="o">=</span><span class="mi">2</span><span class="p">):</span>
+    
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Plot a histogram of the number of regions in trandimensional inversion</span>
+<span class="sd">    </span>
+<span class="sd">    Use this as a check for whether kmax should be larger</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">bin_max</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">((</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">k_it</span><span class="p">)</span><span class="o">+</span><span class="mf">50.</span><span class="p">)</span><span class="o">/</span><span class="mf">40.</span><span class="p">)</span><span class="o">*</span><span class="mi">40</span>
+    <span class="c1">#bin_max=100</span>
+    <span class="c1">#bin_step = bin_max/40</span>
+    <span class="n">bin_step</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">bins</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">bin_max</span><span class="p">,</span><span class="n">bin_step</span><span class="p">)</span>    
+    
+    <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">fignum</span><span class="p">)</span>
+    <span class="c1"># the histogram of the data with histtype=&#39;step&#39;</span>
+    <span class="n">n</span><span class="p">,</span> <span class="n">bins</span><span class="p">,</span> <span class="n">patches</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span><span class="n">k_it</span><span class="p">,</span> <span class="n">bins</span><span class="p">,</span> <span class="n">histtype</span><span class="o">=</span><span class="s1">&#39;bar&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;mediumblue&#39;</span><span class="p">)</span>
+    <span class="c1">#n, bins, patches = plt.hist(k_it, bins, normed=1, histtype=&#39;bar&#39;, rwidth=0.8)</span>
+    
+    <span class="c1"># add a &#39;best fit&#39; line</span>
+<span class="c1">#    y = mlab.normpdf( bins, np.mean(k_it), np.std(k_it))</span>
+<span class="c1">#    l = plt.plot(bins, y, &#39;r--&#39;, linewidth=1)</span>
+    
+    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Number of regions&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">18</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Number of instances&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">18</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">out_filename</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">out_filename</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div>
+    
+<div class="viewcode-block" id="country_emissions"><a class="viewcode-back" href="../../api/acrg_tdmcmc.html#acrg_tdmcmc.tdmcmc_post_process.country_emissions">[docs]</a><span class="k">def</span> <span class="nf">country_emissions</span><span class="p">(</span><span class="n">ds_mcmc</span><span class="p">,</span> <span class="n">x_post_vit</span><span class="p">,</span> <span class="n">q_ap_abs_v</span><span class="p">,</span> <span class="n">countries</span><span class="p">,</span> <span class="n">species</span><span class="p">,</span>
+                      <span class="n">units</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">ocean</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="s1">&#39;EUROPE&#39;</span><span class="p">,</span> <span class="n">uk_split</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">fixed_map</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+        
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generates national totals for a given list of countries</span>
+<span class="sd">    Requires: </span>
+<span class="sd">    ds_mcmc - post_mcmc xray dataset</span>
+<span class="sd">    countries - list of countries (see data_path/countries files for names)</span>
+<span class="sd">                In general names are all capitalized</span>
+<span class="sd">    species - CH4, CO2 etc.</span>
+<span class="sd">    </span>
+<span class="sd">    Optional:</span>
+<span class="sd">    units - Need to specify to get something sensible out, otherwise returns in g/yr</span>
+<span class="sd">            Options are Pg/yr, Tg/yr,Gg/yr Mg/yr</span>
+<span class="sd">    ocean - Default is true, If false only include emissions from land surface</span>
+<span class="sd">    uk_split - Break UK into devolved administrations</span>
+<span class="sd">                Country names then have to be [&#39;Eng&#39;, &#39;Sco&#39;, &#39;Wales&#39;,</span>
+<span class="sd">                NIre&#39;, &#39;IRELAND&#39;, &#39;BENELUX&#39;]. Horribly inconsistent I know!</span>
+<span class="sd">    </span>
+<span class="sd">    Returns: mean, 5th,16th,median,84th,95th percentiles and prior for each country</span>
+<span class="sd">       </span>
+<span class="sd">    Output in Tg/yr</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">if</span> <span class="n">units</span> <span class="o">==</span> <span class="s1">&#39;Tg/yr&#39;</span><span class="p">:</span>
+        <span class="n">unit_factor</span><span class="o">=</span><span class="mf">1.e12</span>
+    <span class="k">elif</span> <span class="n">units</span> <span class="o">==</span> <span class="s1">&#39;Gg/yr&#39;</span><span class="p">:</span> 
+        <span class="n">unit_factor</span><span class="o">=</span><span class="mf">1.e9</span>
+    <span class="k">elif</span> <span class="n">units</span> <span class="o">==</span> <span class="s1">&#39;Pg/yr&#39;</span><span class="p">:</span> 
+        <span class="n">unit_factor</span><span class="o">=</span><span class="mf">1.e15</span>
+    <span class="k">elif</span> <span class="n">units</span> <span class="o">==</span> <span class="s1">&#39;Mg/yr&#39;</span><span class="p">:</span> 
+        <span class="n">unit_factor</span><span class="o">=</span><span class="mf">1.e6</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span> <span class="s1">&#39;Undefined units: outputting in g/yr - let this be a lesson to define your units&#39;</span>
+        <span class="n">unit_factor</span><span class="o">=</span><span class="mf">1.</span>
+        
+    <span class="n">acrg_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s1">&#39;ACRG_PATH&#39;</span><span class="p">)</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">acrg_path</span> <span class="o">+</span> <span class="s2">&quot;/acrg_species_info.json&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">species_info</span><span class="o">=</span><span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+            
+    <span class="n">species_key</span> <span class="o">=</span> <span class="n">agage</span><span class="o">.</span><span class="n">synonyms</span><span class="p">(</span><span class="n">species</span><span class="p">,</span> <span class="n">species_info</span><span class="p">)</span>
+    
+    <span class="n">molmass</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">species_info</span><span class="p">[</span><span class="n">species_key</span><span class="p">][</span><span class="s1">&#39;mol_mass&#39;</span><span class="p">])</span>
+    <span class="c1">#units = species_info[species_key][&#39;units&#39;]    </span>
+    
+
+    <span class="n">lonmin</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">ds_mcmc</span><span class="o">.</span><span class="n">lon</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+    <span class="n">lonmax</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">ds_mcmc</span><span class="o">.</span><span class="n">lon</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+    <span class="n">latmin</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">ds_mcmc</span><span class="o">.</span><span class="n">lat</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+    <span class="n">latmax</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">ds_mcmc</span><span class="o">.</span><span class="n">lat</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+    <span class="n">area</span><span class="o">=</span><span class="n">areagrid</span><span class="p">(</span><span class="n">ds_mcmc</span><span class="o">.</span><span class="n">lat</span><span class="o">.</span><span class="n">values</span><span class="p">,</span><span class="n">ds_mcmc</span><span class="o">.</span><span class="n">lon</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+    <span class="c1"># GET COUNTRY DATA</span>
+    <span class="k">if</span> <span class="n">uk_split</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">c_object</span><span class="o">=</span><span class="n">name</span><span class="o">.</span><span class="n">get_country</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">ocean</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">ukmo</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">uk_split</span><span class="o">=</span><span class="n">uk_split</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">ocean</span><span class="o">==</span><span class="kc">True</span><span class="p">:</span>
+        <span class="n">c_object</span><span class="o">=</span><span class="n">name</span><span class="o">.</span><span class="n">get_country</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">ocean</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">ukmo</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">uk_split</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">c_object</span><span class="o">=</span><span class="n">name</span><span class="o">.</span><span class="n">get_country</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">ocean</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">cds</span> <span class="o">=</span> <span class="n">xray</span><span class="o">.</span><span class="n">Dataset</span><span class="p">({</span><span class="s1">&#39;country&#39;</span><span class="p">:</span> <span class="p">([</span><span class="s1">&#39;lat&#39;</span><span class="p">,</span><span class="s1">&#39;lon&#39;</span><span class="p">],</span> <span class="n">c_object</span><span class="o">.</span><span class="n">country</span><span class="p">),</span> 
+                        <span class="s1">&#39;name&#39;</span> <span class="p">:</span> <span class="p">([</span><span class="s1">&#39;ncountries&#39;</span><span class="p">],</span><span class="n">c_object</span><span class="o">.</span><span class="n">name</span><span class="p">)</span> <span class="p">},</span>
+                                        <span class="n">coords</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;lat&#39;</span><span class="p">:</span> <span class="p">(</span><span class="n">c_object</span><span class="o">.</span><span class="n">lat</span><span class="p">),</span>
+                                        <span class="s1">&#39;lon&#39;</span><span class="p">:</span> <span class="p">(</span><span class="n">c_object</span><span class="o">.</span><span class="n">lon</span><span class="p">)})</span>
+    <span class="n">country</span> <span class="o">=</span> <span class="n">cds</span><span class="o">.</span><span class="n">country</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">lon</span><span class="o">=</span><span class="nb">slice</span><span class="p">(</span><span class="n">lonmin</span><span class="p">,</span><span class="n">lonmax</span><span class="p">),</span> 
+                                        <span class="n">lat</span><span class="o">=</span><span class="nb">slice</span><span class="p">(</span><span class="n">latmin</span><span class="p">,</span><span class="n">latmax</span><span class="p">))</span>
+    
+    <span class="n">area_v</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="n">area</span><span class="p">)</span>
+    <span class="n">country_v</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="n">country</span><span class="p">)</span>
+    
+    <span class="n">ncountries</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">countries</span><span class="p">)</span>
+    <span class="c1">#nIt=len(ds_mcmc.k_it.values)</span>
+    <span class="n">nIt</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">x_post_vit</span><span class="p">[:,</span><span class="mi">0</span><span class="p">])</span>
+
+    <span class="n">nlon</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">ds_mcmc</span><span class="o">.</span><span class="n">lon</span><span class="p">)</span>
+    <span class="n">nlat</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">ds_mcmc</span><span class="o">.</span><span class="n">lat</span><span class="p">)</span>
+    <span class="n">country_v_new</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nlon</span><span class="o">*</span><span class="n">nlat</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">q_ap_abs_v</span><span class="p">))</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+
+        <span class="n">q_country_it</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">ncountries</span><span class="p">,</span> <span class="n">nIt</span><span class="p">))</span>
+        <span class="n">q_country_mean</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">ncountries</span><span class="p">))</span>
+        <span class="n">q_country_50</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">ncountries</span><span class="p">))</span>
+        <span class="n">q_country_05</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">ncountries</span><span class="p">))</span>
+        <span class="n">q_country_95</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">ncountries</span><span class="p">))</span>
+        <span class="n">q_country_16</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">ncountries</span><span class="p">))</span>
+        <span class="n">q_country_84</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">ncountries</span><span class="p">))</span>
+        <span class="n">q_country_ap</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">ncountries</span><span class="p">))</span>
+        <span class="n">q_country_mode</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">ncountries</span><span class="p">))</span>
+    
+        <span class="k">for</span> <span class="n">ci</span><span class="p">,</span><span class="n">cc</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">countries</span><span class="p">):</span>
+            <span class="n">name_country</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">cds</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">cc</span><span class="p">)</span>
+            <span class="n">c_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">country_v</span> <span class="o">==</span> <span class="n">name_country</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="n">country_v_new</span><span class="p">[</span><span class="n">c_index</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">=</span><span class="n">ci</span><span class="o">+</span><span class="mi">1</span>
+            <span class="k">for</span> <span class="n">it</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nIt</span><span class="p">):</span>
+                <span class="n">x_vit_temp</span><span class="o">=</span><span class="n">x_post_vit</span><span class="p">[</span><span class="n">it</span><span class="p">,:]</span>
+                <span class="k">if</span> <span class="n">fixed_map</span> <span class="o">==</span> <span class="kc">False</span><span class="p">:</span>
+                    <span class="n">q_country_it</span><span class="p">[</span><span class="n">ci</span><span class="p">,</span><span class="n">it</span><span class="p">]</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">x_vit_temp</span><span class="p">[</span><span class="n">c_index</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">*</span><span class="n">area_v</span><span class="p">[</span><span class="n">c_index</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+                                    <span class="o">*</span><span class="n">q_ap_abs_v</span><span class="p">[</span><span class="n">c_index</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span> 
+                <span class="k">elif</span> <span class="n">fixed_map</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
+                    <span class="n">q_country_it</span><span class="p">[</span><span class="n">ci</span><span class="p">,</span><span class="n">it</span><span class="p">]</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">x_vit_temp</span><span class="o">*</span><span class="n">area_v</span><span class="p">[</span><span class="n">c_index</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+                                    <span class="o">*</span><span class="n">q_ap_abs_v</span><span class="p">[</span><span class="n">c_index</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span> 
+            <span class="n">q_country_ap</span><span class="p">[</span><span class="n">ci</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">area_v</span><span class="p">[</span><span class="n">c_index</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">*</span><span class="n">q_ap_abs_v</span><span class="p">[</span><span class="n">c_index</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+                                <span class="o">*</span><span class="mf">365.</span><span class="o">*</span><span class="mf">24.</span><span class="o">*</span><span class="mf">3600.</span><span class="o">*</span><span class="n">molmass</span><span class="o">/</span><span class="n">unit_factor</span><span class="p">)</span> <span class="c1"># in Tg/yr</span>
+        
+            <span class="c1">#dum=np.histogram(q_country_it[ci,:], bins=100)                </span>
+            <span class="c1">#q_country_mode[ci] = dum[1][dum[0]==np.max(dum[0])][0]</span>
+            
+            <span class="n">q_country_mean</span><span class="p">[</span><span class="n">ci</span><span class="p">]</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">q_country_it</span><span class="p">[</span><span class="n">ci</span><span class="p">,:])</span><span class="o">*</span><span class="mf">365.</span><span class="o">*</span><span class="mf">24.</span><span class="o">*</span><span class="mf">3600.</span><span class="o">*</span><span class="n">molmass</span><span class="o">/</span><span class="n">unit_factor</span> <span class="c1"># in Tg/yr</span>
+            <span class="n">q_country_50</span><span class="p">[</span><span class="n">ci</span><span class="p">]</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">q_country_it</span><span class="p">[</span><span class="n">ci</span><span class="p">,:],</span><span class="mi">50</span><span class="p">)</span><span class="o">*</span><span class="mf">365.</span><span class="o">*</span><span class="mf">24.</span><span class="o">*</span><span class="mf">3600.</span><span class="o">*</span><span class="n">molmass</span><span class="o">/</span><span class="n">unit_factor</span>
+            <span class="n">q_country_05</span><span class="p">[</span><span class="n">ci</span><span class="p">]</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">q_country_it</span><span class="p">[</span><span class="n">ci</span><span class="p">,:],</span><span class="mi">5</span><span class="p">)</span><span class="o">*</span><span class="mf">365.</span><span class="o">*</span><span class="mf">24.</span><span class="o">*</span><span class="mf">3600.</span><span class="o">*</span><span class="n">molmass</span><span class="o">/</span><span class="n">unit_factor</span>
+            <span class="n">q_country_95</span><span class="p">[</span><span class="n">ci</span><span class="p">]</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">q_country_it</span><span class="p">[</span><span class="n">ci</span><span class="p">,:],</span><span class="mi">95</span><span class="p">)</span><span class="o">*</span><span class="mf">365.</span><span class="o">*</span><span class="mf">24.</span><span class="o">*</span><span class="mf">3600.</span><span class="o">*</span><span class="n">molmass</span><span class="o">/</span><span class="n">unit_factor</span>
+            <span class="n">q_country_16</span><span class="p">[</span><span class="n">ci</span><span class="p">]</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">q_country_it</span><span class="p">[</span><span class="n">ci</span><span class="p">,:],</span><span class="mi">16</span><span class="p">)</span><span class="o">*</span><span class="mf">365.</span><span class="o">*</span><span class="mf">24.</span><span class="o">*</span><span class="mf">3600.</span><span class="o">*</span><span class="n">molmass</span><span class="o">/</span><span class="n">unit_factor</span>
+            <span class="n">q_country_84</span><span class="p">[</span><span class="n">ci</span><span class="p">]</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">q_country_it</span><span class="p">[</span><span class="n">ci</span><span class="p">,:],</span><span class="mi">84</span><span class="p">)</span><span class="o">*</span><span class="mf">365.</span><span class="o">*</span><span class="mf">24.</span><span class="o">*</span><span class="mf">3600.</span><span class="o">*</span><span class="n">molmass</span><span class="o">/</span><span class="n">unit_factor</span>
+        
+        <span class="n">country_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">country_v_new</span><span class="p">,</span> <span class="p">(</span><span class="n">nlat</span><span class="p">,</span><span class="n">nlon</span><span class="p">))</span>   
+        <span class="k">return</span> <span class="n">q_country_it</span><span class="o">*</span><span class="mf">365.</span><span class="o">*</span><span class="mf">24.</span><span class="o">*</span><span class="mf">3600.</span><span class="o">*</span><span class="n">molmass</span><span class="o">/</span><span class="n">unit_factor</span><span class="p">,</span>\
+        <span class="n">q_country_mean</span><span class="p">,</span> <span class="n">q_country_05</span><span class="p">,</span> <span class="n">q_country_16</span><span class="p">,</span> <span class="n">q_country_50</span><span class="p">,</span> <span class="n">q_country_84</span><span class="p">,</span> \
+        <span class="n">q_country_95</span><span class="p">,</span> <span class="n">q_country_ap</span><span class="p">,</span> <span class="n">country_index</span>
+        
+    <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">q_ap_abs_v</span><span class="p">))</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+
+        <span class="n">q_ap_abs_v</span> <span class="o">=</span> <span class="n">q_ap_abs_v</span><span class="o">.</span><span class="n">T</span>
+        <span class="n">ntimes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">q_ap_abs_v</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>        
+        
+        <span class="n">q_country_it</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">ncountries</span><span class="p">,</span> <span class="n">ntimes</span><span class="p">,</span> <span class="n">nIt</span><span class="p">))</span>
+        <span class="n">q_country_mean</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">ncountries</span><span class="p">,</span> <span class="n">ntimes</span><span class="p">))</span>
+        <span class="n">q_country_50</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">ncountries</span><span class="p">,</span> <span class="n">ntimes</span><span class="p">))</span>
+        <span class="n">q_country_05</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">ncountries</span><span class="p">,</span> <span class="n">ntimes</span><span class="p">))</span>
+        <span class="n">q_country_95</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">ncountries</span><span class="p">,</span> <span class="n">ntimes</span><span class="p">))</span>
+        <span class="n">q_country_16</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">ncountries</span><span class="p">,</span> <span class="n">ntimes</span><span class="p">))</span>
+        <span class="n">q_country_84</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">ncountries</span><span class="p">,</span> <span class="n">ntimes</span><span class="p">))</span>
+        <span class="n">q_country_ap</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">ncountries</span><span class="p">,</span> <span class="n">ntimes</span><span class="p">))</span>
+    
+        <span class="k">for</span> <span class="n">ci</span><span class="p">,</span><span class="n">cc</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">countries</span><span class="p">):</span>
+            <span class="n">name_country</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">cds</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">cc</span><span class="p">)</span>
+            <span class="n">c_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">country_v</span> <span class="o">==</span> <span class="n">name_country</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="n">country_v_new</span><span class="p">[</span><span class="n">c_index</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">=</span><span class="n">ci</span><span class="o">+</span><span class="mi">1</span>
+            <span class="k">for</span> <span class="n">it</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nIt</span><span class="p">):</span>
+                <span class="n">x_vit_temp</span><span class="o">=</span><span class="n">x_post_vit</span><span class="p">[</span><span class="n">it</span><span class="p">,:]</span>
+                <span class="k">if</span> <span class="n">fixed_map</span> <span class="o">==</span> <span class="kc">False</span><span class="p">:</span>
+                    <span class="n">q_country_it</span><span class="p">[</span><span class="n">ci</span><span class="p">,:,</span><span class="n">it</span><span class="p">]</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">x_vit_temp</span><span class="p">[</span><span class="n">c_index</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="kc">None</span><span class="p">]</span><span class="o">*</span><span class="n">area_v</span><span class="p">[</span><span class="n">c_index</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="kc">None</span><span class="p">]</span>
+                                    <span class="o">*</span><span class="n">q_ap_abs_v</span><span class="p">[</span><span class="n">c_index</span><span class="p">[</span><span class="mi">0</span><span class="p">],:],</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> 
+                <span class="k">elif</span> <span class="n">fixed_map</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
+                    <span class="n">q_country_it</span><span class="p">[</span><span class="n">ci</span><span class="p">,:,</span><span class="n">it</span><span class="p">]</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">x_vit_temp</span><span class="o">*</span><span class="n">area_v</span><span class="p">[</span><span class="n">c_index</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="kc">None</span><span class="p">]</span>
+                                    <span class="o">*</span><span class="n">q_ap_abs_v</span><span class="p">[</span><span class="n">c_index</span><span class="p">[</span><span class="mi">0</span><span class="p">],:],</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">q_country_ap</span><span class="p">[</span><span class="n">ci</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">area_v</span><span class="p">[</span><span class="n">c_index</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="kc">None</span><span class="p">]</span><span class="o">*</span><span class="n">q_ap_abs_v</span><span class="p">[</span><span class="n">c_index</span><span class="p">[</span><span class="mi">0</span><span class="p">],:]</span>
+                                <span class="o">*</span><span class="mf">365.</span><span class="o">*</span><span class="mf">24.</span><span class="o">*</span><span class="mf">3600.</span><span class="o">*</span><span class="n">molmass</span><span class="o">/</span><span class="n">unit_factor</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="c1"># in Tg/yr</span>
+        
+            <span class="n">q_country_mean</span><span class="p">[</span><span class="n">ci</span><span class="p">,:]</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">q_country_it</span><span class="p">[</span><span class="n">ci</span><span class="p">,:,:],</span> <span class="n">axis</span> <span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="mf">365.</span><span class="o">*</span><span class="mf">24.</span><span class="o">*</span><span class="mf">3600.</span><span class="o">*</span><span class="n">molmass</span><span class="o">/</span><span class="n">unit_factor</span> <span class="c1"># in Tg/yr</span>
+            <span class="n">q_country_50</span><span class="p">[</span><span class="n">ci</span><span class="p">,:]</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">q_country_it</span><span class="p">[</span><span class="n">ci</span><span class="p">,:,:],</span><span class="mi">50</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="mf">365.</span><span class="o">*</span><span class="mf">24.</span><span class="o">*</span><span class="mf">3600.</span><span class="o">*</span><span class="n">molmass</span><span class="o">/</span><span class="n">unit_factor</span>
+            <span class="n">q_country_05</span><span class="p">[</span><span class="n">ci</span><span class="p">,:]</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">q_country_it</span><span class="p">[</span><span class="n">ci</span><span class="p">,:,:],</span><span class="mi">5</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="mf">365.</span><span class="o">*</span><span class="mf">24.</span><span class="o">*</span><span class="mf">3600.</span><span class="o">*</span><span class="n">molmass</span><span class="o">/</span><span class="n">unit_factor</span>
+            <span class="n">q_country_95</span><span class="p">[</span><span class="n">ci</span><span class="p">,:]</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">q_country_it</span><span class="p">[</span><span class="n">ci</span><span class="p">,:,:],</span><span class="mi">95</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="mf">365.</span><span class="o">*</span><span class="mf">24.</span><span class="o">*</span><span class="mf">3600.</span><span class="o">*</span><span class="n">molmass</span><span class="o">/</span><span class="n">unit_factor</span>
+            <span class="n">q_country_16</span><span class="p">[</span><span class="n">ci</span><span class="p">,:]</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">q_country_it</span><span class="p">[</span><span class="n">ci</span><span class="p">,:,:],</span><span class="mi">16</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="mf">365.</span><span class="o">*</span><span class="mf">24.</span><span class="o">*</span><span class="mf">3600.</span><span class="o">*</span><span class="n">molmass</span><span class="o">/</span><span class="n">unit_factor</span>
+            <span class="n">q_country_84</span><span class="p">[</span><span class="n">ci</span><span class="p">,:]</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">q_country_it</span><span class="p">[</span><span class="n">ci</span><span class="p">,:,:],</span><span class="mi">84</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="mf">365.</span><span class="o">*</span><span class="mf">24.</span><span class="o">*</span><span class="mf">3600.</span><span class="o">*</span><span class="n">molmass</span><span class="o">/</span><span class="n">unit_factor</span>
+        
+
+        <span class="n">country_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">country_v_new</span><span class="p">,</span> <span class="p">(</span><span class="n">nlat</span><span class="p">,</span><span class="n">nlon</span><span class="p">))</span>   
+        <span class="k">return</span> <span class="n">q_country_it</span><span class="o">*</span><span class="mf">365.</span><span class="o">*</span><span class="mf">24.</span><span class="o">*</span><span class="mf">3600.</span><span class="o">*</span><span class="n">molmass</span><span class="o">/</span><span class="n">unit_factor</span><span class="p">,</span>\
+        <span class="n">q_country_mean</span><span class="p">,</span> <span class="n">q_country_05</span><span class="p">,</span> <span class="n">q_country_16</span><span class="p">,</span> <span class="n">q_country_50</span><span class="p">,</span> <span class="n">q_country_84</span><span class="p">,</span> \
+        <span class="n">q_country_95</span><span class="p">,</span> <span class="n">q_country_ap</span><span class="p">,</span> <span class="n">country_index</span></div>
+
+<div class="viewcode-block" id="prior_mf"><a class="viewcode-back" href="../../api/acrg_tdmcmc.html#acrg_tdmcmc.tdmcmc_post_process.prior_mf">[docs]</a><span class="k">def</span> <span class="nf">prior_mf</span><span class="p">(</span><span class="n">ds</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    The prior_mf function calculates the y prior mole fraction</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        ds (xarray.Dataset) : output from the run_tdmcmc function</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        np.array : y prior mole fraction   </span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">h_v_all</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">h_v_all</span><span class="o">.</span><span class="n">values</span> <span class="c1"># nmeasure x NgridIC (Ngrid + nIC)</span>
+    
+    <span class="c1">#NgridIC = len(ds.NgridIC.values)</span>
+    <span class="c1">#x = np.ones(NgridIC)</span>
+    <span class="c1">#y_prior = np.dot(h_v_all,x)</span>
+    
+    <span class="n">y_prior</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">h_v_all</span><span class="p">,</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">y_prior</span></div>
+
+<div class="viewcode-block" id="post_bl"><a class="viewcode-back" href="../../api/acrg_tdmcmc.html#acrg_tdmcmc.tdmcmc_post_process.post_bl">[docs]</a><span class="k">def</span> <span class="nf">post_bl</span><span class="p">(</span><span class="n">ds</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    The post_bl function calculates the y posterior baseline iterations and mean</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        ds (xarray.Dataset) : output from the run_tdmcmc function</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        (np.array,np.array) : y posterior baseline iterations, y posterior baseline mean</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="n">nIC</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">nIC</span><span class="o">.</span><span class="n">values</span>         <span class="c1"># number of initial conditions (basis functions + boundary conditions + bias)</span>
+    <span class="n">nIt</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">nIt</span><span class="p">)</span>           <span class="c1"># number of iterations</span>
+    <span class="n">nmeasure</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">nmeasure</span><span class="p">)</span> <span class="c1"># number of measurement points</span>
+    
+    <span class="n">h_v_all</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">h_v_all</span><span class="o">.</span><span class="n">values</span> <span class="c1"># nmeasure x NgridIC (Ngrid + nIC)</span>
+    <span class="n">x_it</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">x_it</span><span class="o">.</span><span class="n">values</span>       <span class="c1"># nIt x kICmax (nIC + kmax  - maximum number of regions in sub-domain)</span>
+    
+    <span class="n">y_bg_it</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nIt</span><span class="p">,</span><span class="n">nmeasure</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">it</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nIt</span><span class="p">):</span>
+        <span class="n">y_bg_it</span><span class="p">[</span><span class="n">it</span><span class="p">,:]</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">h_v_all</span><span class="p">[:,:</span><span class="n">nIC</span><span class="p">],</span><span class="n">x_it</span><span class="p">[</span><span class="n">it</span><span class="p">,:</span><span class="n">nIC</span><span class="p">])</span> <span class="c1"># Find y posterior for each iteration</span>
+        <span class="c1">#y_bg_it[it,:]=np.dot(h_v_all[:,:10],x_it[it,:10])</span>
+    
+    <span class="n">y_bg_mean</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">y_bg_it</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="c1"># Take the mean across all iterations</span>
+    
+    <span class="k">return</span> <span class="n">y_bg_it</span><span class="p">,</span><span class="n">y_bg_mean</span></div>
+
+<div class="viewcode-block" id="post_mf"><a class="viewcode-back" href="../../api/acrg_tdmcmc.html#acrg_tdmcmc.tdmcmc_post_process.post_mf">[docs]</a><span class="k">def</span> <span class="nf">post_mf</span><span class="p">(</span><span class="n">ds</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    The post_mf function calculates the y posterior mole fraction ierations and mean</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        ds (xarray.Dataset) : output from the run_tdmcmc function</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        (np.array,np.array) : y posterior mole fraction iterations, y posterior mole fraction mean</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="n">nIC</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">nIC</span><span class="o">.</span><span class="n">values</span>         <span class="c1"># number of initial conditions (basis functions + boundary conditions + bias)</span>
+    <span class="n">nIt</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">nIt</span><span class="p">)</span>           <span class="c1"># number of iterations</span>
+    <span class="n">nmeasure</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">nmeasure</span><span class="p">)</span> <span class="c1"># number of measurement points</span>
+    <span class="n">Ngrid</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">Ngrid</span><span class="p">)</span>       <span class="c1"># number of positions in lat x lon grid</span>
+    
+    <span class="n">h_v_all</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">h_v_all</span><span class="o">.</span><span class="n">values</span>       <span class="c1"># nmeasure x NgridIC (Ngrid + nIC)</span>
+    <span class="n">x_post_vit</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">x_post_vit</span><span class="o">.</span><span class="n">values</span> <span class="c1"># nIt x Ngrid</span>
+    <span class="n">x_it</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">x_it</span><span class="o">.</span><span class="n">values</span>             <span class="c1"># nIt x kICmax (nIC + kmax  - maximum number of regions in sub-domain)</span>
+    
+    <span class="n">x_post_all_it</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nIt</span><span class="p">,</span><span class="n">Ngrid</span><span class="o">+</span><span class="n">nIC</span><span class="p">))</span> <span class="c1"># Create x vector of dimesion NgridIC for every iteration</span>
+    <span class="n">x_post_all_it</span><span class="p">[:,:</span><span class="n">nIC</span><span class="p">]</span> <span class="o">=</span> <span class="n">x_it</span><span class="p">[:,:</span><span class="n">nIC</span><span class="p">]</span> <span class="c1"># Populate nIC entries with posterior values for each IC parameter for x_it</span>
+    <span class="n">x_post_all_it</span><span class="p">[:,</span><span class="n">nIC</span><span class="p">:]</span> <span class="o">=</span> <span class="n">x_post_vit</span>   <span class="c1"># Populate Ngrid entries with posterior values for each coord from x_post_vit</span>
+    
+    <span class="n">y_post_it</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nIt</span><span class="p">,</span><span class="n">nmeasure</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">it</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nIt</span><span class="p">):</span>
+        <span class="n">y_post_it</span><span class="p">[</span><span class="n">it</span><span class="p">,:]</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">h_v_all</span><span class="p">,</span><span class="n">x_post_all_it</span><span class="p">[</span><span class="n">it</span><span class="p">,:])</span> <span class="c1"># Find y posterior for each iteration</span>
+    
+    <span class="n">y_post_mean</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">y_post_it</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="c1"># Take the mean across all iterations</span>
+    
+    <span class="k">return</span> <span class="n">y_post_it</span><span class="p">,</span><span class="n">y_post_mean</span></div>
+ 
+<div class="viewcode-block" id="plot_timeseries"><a class="viewcode-back" href="../../api/acrg_tdmcmc.html#acrg_tdmcmc.tdmcmc_post_process.plot_timeseries">[docs]</a><span class="k">def</span> <span class="nf">plot_timeseries</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">fig_text</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">ylim</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">out_filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">doplot</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Plot measurement timeseries of posterior and observed measurements</span>
+<span class="sd">    Requires post_mcmc xray dataset</span>
+<span class="sd">    For future: incorporate model &amp; measurement uncertainty</span>
+<span class="sd">    Plots separate subplots for each of the measurement sites - hopefully!</span>
+<span class="sd">    </span>
+<span class="sd">    ds = dataset output from run_tdmcmc script</span>
+<span class="sd">    fig_text = String e.g. &quot;CH$_{4}$ mole fraction (ppb)&quot;</span>
+<span class="sd">    ylim = array [ymin,ymax]</span>
+<span class="sd">    </span>
+<span class="sd">    Specify an out_filename to write to disk</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+<span class="c1">#    x_it=ds.x_it.values</span>
+<span class="c1">#    h_v_all=ds.h_v_all.values</span>
+<span class="c1">#    x_post_vit = ds.x_post_vit.values</span>
+    <span class="n">sites</span><span class="o">=</span><span class="n">ds</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;sites&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">nsites</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">sites</span><span class="p">)</span>
+<span class="c1">#    nlon=len(ds.lon)</span>
+<span class="c1">#    nlat=len(ds.lat)</span>
+<span class="c1">#    Ngrid=nlon*nlat</span>
+<span class="c1">#    nIt=len(ds.nIt)</span>
+<span class="c1">#    nIC=ds.nIC.values</span>
+<span class="c1">#    nmeasure=len(ds.nmeasure)</span>
+<span class="c1">#</span>
+<span class="c1">#    x_post_all_it=np.zeros((nIt,Ngrid+nIC))</span>
+<span class="c1">#    y_post_it = np.zeros((nIt,nmeasure))</span>
+<span class="c1">#    y_bg_it = np.zeros((nIt,nmeasure))</span>
+<span class="c1">#    x_post_all_it[:,:nIC]=x_it[:,:nIC]</span>
+<span class="c1">#    x_post_all_it[:,nIC:]=x_post_vit</span>
+<span class="c1">#    for it in range(nIt):</span>
+<span class="c1">#        y_post_it[it,:]=np.dot(h_v_all,x_post_all_it[it,:])  </span>
+<span class="c1">#        y_bg_it[it,:]=np.dot(h_v_all[:,:nIC],x_it[it,:nIC])</span>
+<span class="c1">#        #y_bg_it[it,:]=np.dot(h_v_all[:,:10],x_it[it,:10])</span>
+<span class="c1">#    y_post_mean=np.mean(y_post_it, axis=0)</span>
+<span class="c1">#    y_bg_mean=np.mean(y_bg_it, axis=0)</span>
+
+    <span class="n">sigma_y_mean</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">sigma_y_it</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">y_bg_it</span><span class="p">,</span><span class="n">y_bg_mean</span> <span class="o">=</span> <span class="n">post_bl</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+    <span class="n">y_post_it</span><span class="p">,</span><span class="n">y_post_mean</span> <span class="o">=</span> <span class="n">post_mf</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+
+    <span class="n">y_time</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">y_time</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">y_site</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">y_site</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">y_obs</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">y</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">upper</span> <span class="o">=</span> <span class="n">y_post_mean</span><span class="o">+</span><span class="n">sigma_y_mean</span>
+    <span class="n">lower</span> <span class="o">=</span> <span class="n">y_post_mean</span><span class="o">-</span><span class="n">sigma_y_mean</span>
+    
+
+    <span class="k">if</span> <span class="n">doplot</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">fig</span><span class="p">,</span><span class="n">ax</span><span class="o">=</span><span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">nsites</span><span class="p">,</span><span class="n">sharex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">nsites</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">si</span><span class="p">,</span><span class="n">site</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sites</span><span class="p">):</span>
+                <span class="n">wh_site</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">y_site</span> <span class="o">==</span> <span class="n">site</span><span class="p">)</span>
+                <span class="n">ax</span><span class="p">[</span><span class="n">si</span><span class="p">]</span><span class="o">.</span><span class="n">fill_between</span><span class="p">(</span><span class="n">y_time</span><span class="p">[</span><span class="n">wh_site</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span> <span class="n">upper</span><span class="p">[</span><span class="n">wh_site</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span><span class="n">lower</span><span class="p">[</span><span class="n">wh_site</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span> 
+                            <span class="n">facecolor</span><span class="o">=</span><span class="s1">&#39;lightskyblue&#39;</span><span class="p">,</span> <span class="n">edgecolor</span><span class="o">=</span><span class="s1">&#39;lightskyblue&#39;</span><span class="p">)</span>
+                <span class="n">ax</span><span class="p">[</span><span class="n">si</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">y_time</span><span class="p">[</span><span class="n">wh_site</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span><span class="n">y_obs</span><span class="p">[</span><span class="n">wh_site</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span> <span class="s1">&#39;ro&#39;</span><span class="p">,</span> <span class="n">markersize</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Observations&#39;</span><span class="p">)</span>
+                <span class="n">ax</span><span class="p">[</span><span class="n">si</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">y_time</span><span class="p">[</span><span class="n">wh_site</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span><span class="n">y_post_mean</span><span class="p">[</span><span class="n">wh_site</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Modelled observations&#39;</span><span class="p">)</span>
+                <span class="n">ax</span><span class="p">[</span><span class="n">si</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">y_time</span><span class="p">[</span><span class="n">wh_site</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span><span class="n">y_bg_mean</span><span class="p">[</span><span class="n">wh_site</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;black&#39;</span><span class="p">,</span> 
+                         <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Modelled baseline&#39;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">ylim</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">ax</span><span class="p">[</span><span class="n">si</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="n">ylim</span><span class="p">)</span>
+                <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="n">ax</span><span class="p">[</span><span class="n">si</span><span class="p">]</span><span class="o">.</span><span class="n">get_ylim</span><span class="p">()</span>
+                <span class="n">ax</span><span class="p">[</span><span class="n">si</span><span class="p">]</span><span class="o">.</span><span class="n">yaxis</span><span class="o">.</span><span class="n">set_ticks</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="p">(</span><span class="n">end</span><span class="o">-</span><span class="n">start</span><span class="p">)</span><span class="o">/</span><span class="mi">5</span><span class="p">))</span>
+                <span class="n">ax</span><span class="p">[</span><span class="n">si</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="n">site</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">si</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">legend</span><span class="o">=</span><span class="n">ax</span><span class="p">[</span><span class="n">si</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s1">&#39;upper left&#39;</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">legend</span><span class="o">.</span><span class="n">get_texts</span><span class="p">():</span>
+                        <span class="n">label</span><span class="o">.</span><span class="n">set_fontsize</span><span class="p">(</span><span class="s1">&#39;small&#39;</span><span class="p">)</span>
+                        
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">fill_between</span><span class="p">(</span><span class="n">y_time</span><span class="p">,</span> <span class="n">upper</span><span class="p">,</span><span class="n">lower</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span> 
+                        <span class="n">facecolor</span><span class="o">=</span><span class="s1">&#39;lightskyblue&#39;</span><span class="p">,</span> <span class="n">edgecolor</span><span class="o">=</span><span class="s1">&#39;lightskyblue&#39;</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">y_time</span><span class="p">,</span><span class="n">y_obs</span><span class="p">,</span> <span class="s1">&#39;ro&#39;</span><span class="p">,</span> <span class="n">markersize</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Observations&#39;</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">y_time</span><span class="p">,</span><span class="n">y_post_mean</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Modelled observations&#39;</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">y_time</span><span class="p">,</span><span class="n">y_bg_mean</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;black&#39;</span><span class="p">,</span> 
+                     <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Modelled baseline&#39;</span><span class="p">)</span>
+            <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">get_ylim</span><span class="p">()</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">yaxis</span><span class="o">.</span><span class="n">set_ticks</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="p">(</span><span class="n">end</span><span class="o">-</span><span class="n">start</span><span class="p">)</span><span class="o">/</span><span class="mi">5</span><span class="p">))</span>
+            <span class="n">legend</span><span class="o">=</span><span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s1">&#39;upper left&#39;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">legend</span><span class="o">.</span><span class="n">get_texts</span><span class="p">():</span>
+                <span class="n">label</span><span class="o">.</span><span class="n">set_fontsize</span><span class="p">(</span><span class="s1">&#39;small&#39;</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">fig_text</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="mf">0.01</span><span class="p">,</span><span class="mf">0.65</span><span class="p">,</span><span class="n">fig_text</span><span class="p">,</span> <span class="n">rotation</span><span class="o">=</span><span class="mi">90</span><span class="p">)</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">autofmt_xdate</span><span class="p">()</span>
+        
+        <span class="k">if</span> <span class="n">out_filename</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">out_filename</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+        
+    <span class="k">return</span> <span class="n">y_post_it</span><span class="p">,</span> <span class="n">y_bg_it</span></div>
+
+<div class="viewcode-block" id="open_ds"><a class="viewcode-back" href="../../api/acrg_tdmcmc.html#acrg_tdmcmc.tdmcmc_post_process.open_ds">[docs]</a><span class="k">def</span> <span class="nf">open_ds</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+    
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Function efficiently opens xray datasets.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># use a context manager, to ensure the file gets closed after use</span>
+    <span class="k">with</span> <span class="n">xray</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="k">as</span> <span class="n">ds</span><span class="p">:</span>
+        <span class="n">ds</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">ds</span>    </div>
+
+<div class="viewcode-block" id="plot_nuclei_density"><a class="viewcode-back" href="../../api/acrg_tdmcmc.html#acrg_tdmcmc.tdmcmc_post_process.plot_nuclei_density">[docs]</a><span class="k">def</span> <span class="nf">plot_nuclei_density</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">out_filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">fignum</span><span class="o">=</span><span class="mi">3</span><span class="p">):</span>
+    
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Plot a 2D histogram/density plot of where nuclei are located in inversion domain</span>
+<span class="sd">    </span>
+<span class="sd">    Requires x_ray dataset of outputs    </span>
+<span class="sd">    Currently in rainbow colour scheme - Eurgh! #endrainbow</span>
+<span class="sd">    </span>
+<span class="sd">    Specify an out_filename to write to disk</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1">##############################</span>
+    <span class="c1"># Density plot of nuclei locations</span>
+    <span class="n">lon</span><span class="o">=</span><span class="n">ds</span><span class="o">.</span><span class="n">lon</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">lat</span><span class="o">=</span><span class="n">ds</span><span class="o">.</span><span class="n">lat</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">plat_it</span><span class="o">=</span><span class="n">ds</span><span class="o">.</span><span class="n">plat_it</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">plon_it</span><span class="o">=</span><span class="n">ds</span><span class="o">.</span><span class="n">plon_it</span><span class="o">.</span><span class="n">values</span>
+    
+    <span class="n">dlon</span><span class="o">=</span><span class="n">lon</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">lon</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">dlat</span><span class="o">=</span><span class="n">lat</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">lat</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">nIt</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">plat_it</span><span class="p">[</span><span class="mi">0</span><span class="p">,:])</span>
+    
+    <span class="n">xedges</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">lon</span><span class="p">),</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">lon</span><span class="p">)</span><span class="o">+</span><span class="n">dlon</span><span class="p">,</span><span class="n">dlon</span><span class="p">)</span>
+    <span class="n">yedges</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">lat</span><span class="p">),</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">lat</span><span class="p">)</span><span class="o">+</span><span class="n">dlat</span><span class="p">,</span><span class="n">dlat</span><span class="p">)</span>
+    <span class="n">lon_range</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">xedges</span><span class="p">),</span> <span class="n">xedges</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span>
+    <span class="n">lat_range</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">yedges</span><span class="p">),</span> <span class="n">yedges</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span>
+    <span class="n">plat_it_v</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="n">plat_it</span><span class="p">)</span>
+    <span class="n">plon_it_v</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="n">plon_it</span><span class="p">)</span>
+    
+    <span class="n">H</span><span class="p">,</span> <span class="n">yedges</span><span class="p">,</span> <span class="n">xedges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram2d</span><span class="p">(</span><span class="n">plat_it_v</span><span class="p">,</span> <span class="n">plon_it_v</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="p">(</span><span class="n">yedges</span><span class="p">,</span> <span class="n">xedges</span><span class="p">))</span>
+    
+    <span class="n">m2</span> <span class="o">=</span> <span class="n">Basemap</span><span class="p">(</span><span class="n">projection</span><span class="o">=</span><span class="s1">&#39;gall&#39;</span><span class="p">,</span>
+                <span class="n">llcrnrlat</span><span class="o">=</span><span class="n">lat_range</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">urcrnrlat</span><span class="o">=</span><span class="n">lat_range</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                <span class="n">llcrnrlon</span><span class="o">=</span><span class="n">lon_range</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">urcrnrlon</span><span class="o">=</span><span class="n">lon_range</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                <span class="n">resolution</span><span class="o">=</span><span class="s1">&#39;l&#39;</span><span class="p">)</span>
+    
+    <span class="n">lona</span><span class="p">,</span> <span class="n">latb</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">xedges</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span><span class="n">yedges</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">mapa</span><span class="p">,</span> <span class="n">mapb</span> <span class="o">=</span> <span class="n">m2</span><span class="p">(</span><span class="n">lona</span><span class="p">,</span> <span class="n">latb</span><span class="p">)</span>
+    
+    <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span><span class="mi">8</span><span class="p">))</span>
+    <span class="c1">#ax = fig.add_subplot(111)</span>
+    
+    <span class="n">m2</span><span class="o">.</span><span class="n">drawcoastlines</span><span class="p">()</span>
+    <span class="n">m2</span><span class="o">.</span><span class="n">drawcountries</span><span class="p">()</span> 
+    
+    <span class="n">hlevels</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">nIt</span><span class="o">/</span><span class="mi">4</span><span class="p">,</span> <span class="n">nIt</span><span class="o">/</span><span class="mi">20</span><span class="o">/</span><span class="mi">4</span><span class="p">)</span> 
+    
+    <span class="n">ds</span><span class="o">=</span><span class="n">m2</span><span class="o">.</span><span class="n">contourf</span><span class="p">(</span><span class="n">mapa</span><span class="p">,</span><span class="n">mapb</span><span class="p">,</span><span class="n">H</span><span class="p">,</span> <span class="n">hlevels</span><span class="p">,</span> <span class="n">extend</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;YlGnBu&#39;</span><span class="p">)</span>
+    <span class="n">db</span> <span class="o">=</span> <span class="n">m2</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">location</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>    
+    
+    
+<span class="c1">#    lon=ds.lon.values</span>
+<span class="c1">#    lat=ds.lat.values</span>
+<span class="c1">#    plat_it=ds.plat_it.values</span>
+<span class="c1">#    plon_it=ds.plon_it.values</span>
+<span class="c1">#    </span>
+<span class="c1">#    xedges=np.arange(np.min(lon),np.max(lon)+2.,2.)</span>
+<span class="c1">#    yedges=np.arange(np.min(lat),np.max(lat)+2.,2.)</span>
+<span class="c1">#    lon_range = (np.min(xedges), xedges[-2])</span>
+<span class="c1">#    lat_range = (np.min(yedges), yedges[-2])</span>
+<span class="c1">#    plat_it_v=np.ravel(plat_it)</span>
+<span class="c1">#    plon_it_v=np.ravel(plon_it)</span>
+<span class="c1">#    </span>
+<span class="c1">#    H, yedges, xedges = np.histogram2d(plat_it_v, plon_it_v, bins=(yedges, xedges))</span>
+<span class="c1">#    </span>
+<span class="c1">#    m2 = Basemap(projection=&#39;gall&#39;,</span>
+<span class="c1">#                llcrnrlat=lat_range[0], urcrnrlat=lat_range[1],</span>
+<span class="c1">#                llcrnrlon=lon_range[0], urcrnrlon=lon_range[1],</span>
+<span class="c1">#                resolution=&#39;l&#39;)</span>
+<span class="c1">#    </span>
+<span class="c1">#    lona, latb = np.meshgrid(xedges[:-1],yedges[:-1])</span>
+<span class="c1">#    mapa, mapb = m2(lona, latb)</span>
+<span class="c1">#    </span>
+<span class="c1">#    fig = plt.figure(fignum,figsize=(8,8))</span>
+<span class="c1">#    ax = fig.add_subplot(111)</span>
+<span class="c1">#    </span>
+<span class="c1">#    m2.drawcoastlines()</span>
+<span class="c1">#    m2.drawcountries() </span>
+<span class="c1">#    </span>
+<span class="c1">#    hlevels=np.arange(np.min(H), np.max(H), (np.max(H)-np.min(H))/20) </span>
+<span class="c1">#    </span>
+<span class="c1">#    ds=m2.contourf(mapa,mapb,H, hlevels)</span>
+<span class="c1">#    db = m2.colorbar(ds, location=&#39;bottom&#39;)</span>
+
+    <span class="k">if</span> <span class="n">out_filename</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">out_filename</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, mrghg.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

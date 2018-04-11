@@ -1,0 +1,376 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>acrg_grid package &#8212; acrg  documentation</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="acrg-grid-package">
+<h1>acrg_grid package<a class="headerlink" href="#acrg-grid-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-acrg_grid.areagrid">
+<span id="acrg-grid-areagrid-module"></span><h2>acrg_grid.areagrid module<a class="headerlink" href="#module-acrg_grid.areagrid" title="Permalink to this headline">¶</a></h2>
+<p>Created on Tue Nov 11 11:23:48 2014
+&#64;author: chxmr</p>
+<dl class="function">
+<dt id="acrg_grid.areagrid.areagrid">
+<code class="descclassname">acrg_grid.areagrid.</code><code class="descname">areagrid</code><span class="sig-paren">(</span><em>lat</em>, <em>lon</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_grid/areagrid.html#areagrid"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_grid.areagrid.areagrid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates grid of areas (m2) given arrays of latitudes and longitudes</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>lat</strong> (<em>array</em>) &#8211; 1D array of latitudes</li>
+<li><strong>lon</strong> (<em>array</em>) &#8211; 1D array of longitudes</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">2D array of areas of of size lat x lon</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">area (array)</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Example</p>
+<p>import acrg_grid
+lat=np.arange(50., 60., 1.)
+lon=np.arange(0., 10., 1.)
+area=acrg_grid.areagrid(lat, lon)</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-acrg_grid.coarsen">
+<span id="acrg-grid-coarsen-module"></span><h2>acrg_grid.coarsen module<a class="headerlink" href="#module-acrg_grid.coarsen" title="Permalink to this headline">¶</a></h2>
+<p>Created on Thu Aug 13 16:09:07 2015</p>
+<p>&#64;author: chxmr</p>
+<dl class="attribute">
+<dt id="acrg_grid.coarsen.coarsen">
+<code class="descclassname">acrg_grid.coarsen.</code><code class="descname">coarsen</code><a class="reference internal" href="../_modules/acrg_grid/coarsen.html#coarsen"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_grid.coarsen.coarsen" title="Permalink to this definition">¶</a></dt>
+<dd><p>Coarsen a fine grid by some integer factor.
+E.g. if the input array is 1000 x 500, and is coarsened by a factor of 2
+the output array will be 500 x 250. By default, the output is the mean
+of the inputs.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>arrayFine</strong> (<em>array</em>) &#8211; array of values for fine resolution grid</li>
+<li><strong>latFine</strong> (<em>array</em>) &#8211; 1D latitudes of fine resolution grid</li>
+<li><strong>lonFine</strong> (<em>array</em>) &#8211; 1D longitudes of fine resolution grid</li>
+<li><strong>factor</strong> (<em>int</em><em>, </em><em>optional</em>) &#8211; Factor by which to coarsen array. Default is 2</li>
+<li><strong>mean</strong> (<em>bool</em>) &#8211; True/False.
+True calculates the mean of the fine array values; False calculates the sum.
+Default is True</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">grid of coarsened values
+outLat (array): Latitudes of coarsened grid
+outLon (array): Longitudes of coarsened grid</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">out (array)</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Example</p>
+<p>out, outLat, outLon = coarsen(fineArray, fineLat, fineLon, factor = 10, mean = True)</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-acrg_grid.haversine">
+<span id="acrg-grid-haversine-module"></span><h2>acrg_grid.haversine module<a class="headerlink" href="#module-acrg_grid.haversine" title="Permalink to this headline">¶</a></h2>
+<p>Created on Thu Nov 13 16:03:08 2014</p>
+<div class="section" id="functions">
+<h3>FUNCTIONS<a class="headerlink" href="#functions" title="Permalink to this headline">¶</a></h3>
+<p>distance</p>
+<p>Calculates the distance in km between two lat/lon pairs using the haversine formula.</p>
+<p>Example:</p>
+<p>distance = acrg_grid.haversine.distance(origin, destination, radius=radius)</p>
+<p>Inputs:</p>
+<p>origin: [lat_1, lon_1] two element array containing the lat and lon of your original point
+destination: [lat_2, lon_2] two element array containing the lat and lon of your destination point
+radius: radius in km. Defaults to 6371km.</p>
+<p>Output:</p>
+<p>distance between the two points in km</p>
+</div>
+<div class="section" id="classes">
+<h3>CLASSES<a class="headerlink" href="#classes" title="Permalink to this headline">¶</a></h3>
+<p>multipledistances</p>
+<p>Calculates the distance in km between a single lat/lon pair and a grid of lat/lons using the haversine formula.
+Also identifies the minimum distance and it&#8217;s location.</p>
+<p>Example:</p>
+<p>distances = acrg_grid.haversine.multipledistances(origin, lat, lon, radius=radius)</p>
+<p>Inputs:</p>
+<p>origin: [lat_1, lon_1] two element array containing the lat and lon of your original point
+lat: an array of latitudes of length n
+lon: an array of longitudes of lenth m
+radius: radius in km. Defaults to 6371km.</p>
+<p>Outputs:</p>
+<p>distances= an n by m array containing the distances from every point in the nxm grid to the origin
+mindist = the minimum distance
+mindist_index = two element array containing the index in n and m corresponding to the minium distance
+e.g. if the minimum distance is at the 2nd latitude and 17th longitude then mindist_index = [2,17]
+mindist_loc = two element array containing the lat and lon corresponding to the minimum distance</p>
+<p>&#64;author: as1398
+Based on code I nicked off a website made by Wayne Dick</p>
+<p>28/11/2014
+MLR: Added distancelist. Given a list of lon/lat pairs, outputs a list of</p>
+<blockquote>
+<div><p>distances from the &#8220;origin&#8221;</p>
+<p>e.g. distances=distancelist((origin_lat, origin_lon), zip(lats, lons))</p>
+<p>if lons and lats are of length N, output will also be of length N</p>
+</div></blockquote>
+<dl class="function">
+<dt id="acrg_grid.haversine.distance">
+<code class="descclassname">acrg_grid.haversine.</code><code class="descname">distance</code><span class="sig-paren">(</span><em>origin</em>, <em>destination</em>, <em>radius=6371</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_grid/haversine.html#distance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_grid.haversine.distance" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="acrg_grid.haversine.distancelist">
+<code class="descclassname">acrg_grid.haversine.</code><code class="descname">distancelist</code><span class="sig-paren">(</span><em>origin</em>, <em>destinations</em>, <em>radius=6371</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_grid/haversine.html#distancelist"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_grid.haversine.distancelist" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="acrg_grid.haversine.fn_multipledistances">
+<code class="descclassname">acrg_grid.haversine.</code><code class="descname">fn_multipledistances</code><a class="reference internal" href="../_modules/acrg_grid/haversine.html#fn_multipledistances"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_grid.haversine.fn_multipledistances" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="acrg_grid.haversine.multipledistances">
+<em class="property">class </em><code class="descclassname">acrg_grid.haversine.</code><code class="descname">multipledistances</code><span class="sig-paren">(</span><em>origin</em>, <em>lat</em>, <em>lon</em>, <em>radius=6371</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_grid/haversine.html#multipledistances"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_grid.haversine.multipledistances" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</div>
+<div class="section" id="module-acrg_grid.hybridcoords">
+<span id="acrg-grid-hybridcoords-module"></span><h2>acrg_grid.hybridcoords module<a class="headerlink" href="#module-acrg_grid.hybridcoords" title="Permalink to this headline">¶</a></h2>
+<p>Created on Wed Nov 19 10:56:48 2014
+; :Purpose:
+;   Calculate mid-point hybrid-coordinate pressure fields.
+;   For the ith level:
+;
+;     P_i=A_i*P_0 + B_i*P_surface
+;
+;   If /half is set, it is assumed that A (and B) define the coordinate system at
+;   grid cell boundaries. Mid-point pressure values will the be output, using:
+;
+;     P_i=(P_{i-1/2} + P_{i+1/2})/2
+;
+; :Inputs:
+;   A: (input, floating, required), hybrid A values. If P0 is set, A is dimensionless.
+;     If A P0 is not set, A must be in Pa.
+;   B: (input, floating, optional), hybrid B values. Dimensionless.
+;     If left out, surface pressure independent (fixed) pressure levels are output.</p>
+<blockquote>
+<div>PS: This is assumed to be of dimensions lon by lat. If you&#8217;ve got a lon by lat by
+time array then you&#8217;ll need to make a loop to go through each time point.</div></blockquote>
+<p>; :Keywords:
+;   P0: (input, optional, floating) Reference pressure to multipy the A coordinate
+;   Half: (input, optional, boolean) Set to True if A and B define coordinates at grid cell
+;     boundaries. The output will still be at grid cell centres.
+;     Note that if true, the output will have one fewer vertical elements than A and B.
+;
+; :Outputs:
+;   3D pressure field (lon, lat, level)
+;
+; :Example::
+;
+;   IDL&gt; Pressure=mr_hybrid_coords(A, PS, B=B, P0=P0, half=half)
+;
+; :History:
+;       Written by: Matt Rigby, University of Bristol, Jul 16, 2013</p>
+<blockquote>
+<div>Hacked into Python by Ann Stavert 19th Nov 2014</div></blockquote>
+<p>&#64;author: as13988</p>
+<dl class="function">
+<dt id="acrg_grid.hybridcoords.hybridcoords">
+<code class="descclassname">acrg_grid.hybridcoords.</code><code class="descname">hybridcoords</code><span class="sig-paren">(</span><em>A</em>, <em>PS</em>, <em>B=0</em>, <em>P0=100000.0</em>, <em>half=0</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_grid/hybridcoords.html#hybridcoords"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_grid.hybridcoords.hybridcoords" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-acrg_grid.regrid">
+<span id="acrg-grid-regrid-module"></span><h2>acrg_grid.regrid module<a class="headerlink" href="#module-acrg_grid.regrid" title="Permalink to this headline">¶</a></h2>
+<p>Created on Thu Nov 26 16:58:34 2015</p>
+<p>&#64;author: chxmr and Mark Lunt</p>
+<dl class="function">
+<dt id="acrg_grid.regrid.regrid2d">
+<code class="descclassname">acrg_grid.regrid.</code><code class="descname">regrid2d</code><span class="sig-paren">(</span><em>array_in</em>, <em>lat_in</em>, <em>lon_in</em>, <em>lat_out</em>, <em>lon_out</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_grid/regrid.html#regrid2d"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_grid.regrid.regrid2d" title="Permalink to this definition">¶</a></dt>
+<dd><p>2D mass-conservative regrid</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>array_in</strong> (<em>arrray</em>) &#8211; 2D field to regrid</li>
+<li><strong>lat_in</strong> (<em>array</em>) &#8211; latitudes corresponding to array_in</li>
+<li><strong>lon_in</strong> (<em>array</em>) &#8211; longitude corresponding to array_in</li>
+<li><strong>lat_out</strong> (<em>array</em>) &#8211; latitude to regrid onto</li>
+<li><strong>lon_out</strong> (<em>array</em>) &#8211; longitude to regrid onto</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">regridded 2D array of dimensions [lat_out, lon_out]
+iris &#8216;Cube&#8217;: regridded iris &#8216;Cube&#8217; object</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">array</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Example</p>
+<p>new_array, newcube = regrid2d(array_in, lat_in, lon_in, lat_out, lon_out)</p>
+<div class="admonition-todo admonition" id="index-0">
+<p class="first admonition-title">Todo</p>
+<p class="last">Only handles a 2D array at the moment. We should add time.</p>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="acrg_grid.regrid.regrid3d">
+<code class="descclassname">acrg_grid.regrid.</code><code class="descname">regrid3d</code><span class="sig-paren">(</span><em>array_in</em>, <em>lat_in</em>, <em>lon_in</em>, <em>lat_out</em>, <em>lon_out</em>, <em>time</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_grid/regrid.html#regrid3d"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_grid.regrid.regrid3d" title="Permalink to this definition">¶</a></dt>
+<dd><p>3D mass-conservative regrid using a cached regridder</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>array_in</strong> (<em>array</em>) &#8211; 3D field to regrid &#8211; Dimensions of [lat_in, lon_in, time_in]</li>
+<li><strong>lat_in</strong> (<em>array</em>) &#8211; latitudes corresponding to array_in</li>
+<li><strong>lon_in</strong> (<em>array</em>) &#8211; longitude corresponding to array_in</li>
+<li><strong>lat_out</strong> (<em>array</em>) &#8211; latitude to regrid onto</li>
+<li><strong>lon_out</strong> (<em>array</em>) &#8211; longitude to regrid onto</li>
+<li><strong>time</strong> (<em>array</em>) &#8211; times to regrid onto</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="docutils">
+<dt>Returns</dt>
+<dd>array: regridded 3D array of dimensions [lat_out, lon_out, time]</dd>
+</dl>
+<p class="rubric">Example</p>
+<p>array_out = regrid3d(array_in, lat_in, lon_in, lat_out, lon_out, time)</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-acrg_grid">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-acrg_grid" title="Permalink to this headline">¶</a></h2>
+<p>Created on Fri Nov 21 10:03:36 2014</p>
+<p>&#64;author: chxmr</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">acrg_grid package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-acrg_grid.areagrid">acrg_grid.areagrid module</a></li>
+<li><a class="reference internal" href="#module-acrg_grid.coarsen">acrg_grid.coarsen module</a></li>
+<li><a class="reference internal" href="#module-acrg_grid.haversine">acrg_grid.haversine module</a><ul>
+<li><a class="reference internal" href="#functions">FUNCTIONS</a></li>
+<li><a class="reference internal" href="#classes">CLASSES</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-acrg_grid.hybridcoords">acrg_grid.hybridcoords module</a></li>
+<li><a class="reference internal" href="#module-acrg_grid.regrid">acrg_grid.regrid module</a></li>
+<li><a class="reference internal" href="#module-acrg_grid">Module contents</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/api/acrg_grid.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, mrghg.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/api/acrg_grid.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

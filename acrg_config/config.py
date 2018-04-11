@@ -5,17 +5,21 @@ Created on Mon Sep 25 16:39:01 2017
 
 This module allows configuration files in the INI format to be read and used.
 
-Example of a section in the configuration file:
 ------------------------------------------------
-[MEASUREMENTS]
-# Measurement details
 
-sites = ["GSN"]           ; Sites to read the data from as a list
-species = "chcl3"
-start_date = "2015-01-01" ; Default start date used if none specified on the command line
-end_date = "2015-02-01"   ; Default start date used if none specified on the command line
-domain = "EASTASIA"
-network = "AGAGE"
+Example of a section in the configuration file:
+::
+   
+    [MEASUREMENTS]
+    # Measurement details
+    
+    sites = ["GSN"]           ; Sites to read the data from as a list
+    species = "chcl3"
+    start_date = "2015-01-01" ; Default start date used if none specified on the command line
+    end_date = "2015-02-01"   ; Default start date used if none specified on the command line
+    domain = "EASTASIA"
+    network = "AGAGE"
+
 ------------------------------------------------
 
  - Sections are included in square brackets
@@ -34,10 +38,10 @@ To specify inputs and the types they should be cast to (e.g. str, array, boolean
 This can be passed into several functions as the param_type argument.
 
 This should be of the form of one of the following:
-    {'SECTION_GROUP1':{'param1':str,'param2':float},'SECTION_GROUP2':{'param3':list,'param4':np.array}}
-    {'SECTION1':{'param1':str},'SECTION2':'{param2':float},'SECTION3':{'param3':list},'SECTION4':{'param4':np.array}}
-    OrderedDict(['SECTION_GROUP1':OrderedDict([('param1':str),('param2':float)]),'SECTION_GROUP2':OrderedDict([('param3':list),('param4':np.array)]))
-    OrderedDict(['SECTION1':{'param1':str},'SECTION2':{'param2':float},'SECTION3':{'param3':list},'SECTION4':{'param4':np.array}])
+   - {'SECTION_GROUP1':{'param1':str,'param2':float},'SECTION_GROUP2':{'param3':list,'param4':np.array}}
+   - {'SECTION1':{'param1':str},'SECTION2':'{param2':float},'SECTION3':{'param3':list},'SECTION4':{'param4':np.array}}
+   - OrderedDict(['SECTION_GROUP1':OrderedDict([('param1':str),('param2':float)]),'SECTION_GROUP2':OrderedDict([('param3':list),('param4':np.array)]))
+   - OrderedDict(['SECTION1':{'param1':str},'SECTION2':{'param2':float},'SECTION3':{'param3':list},'SECTION4':{'param4':np.array}])
 
 This can either be created directly or a template configuration file can be created and a param_type dictionary created 
 from this using the generate_param_dict() function.
@@ -46,17 +50,15 @@ unless you wish to change the format for all config files of this type.
 
 Note: if param_type is not defined, the code will attempt to cast the inputs to the most sensible type.
 This should be fine in most cases but could cause issues.
-This also means the inputs will not be checked for any missing values.
-
+This also means the the set of input parameters will not be checked for any missing values.
 
 How to run
 ++++++++++
 
 The main functions to use for reading in parameters from a config file are:
     
-    * all_param(config_file,...)      - Extract all parameters from a configuration file.
-    * extract_params(config_file,...) - Extract specific parameters from a file either based on parameter 
-    names, sections or groups.
+    * all_param(config_file,...)      ; Extract all parameters from a configuration file.
+    * extract_params(config_file,...) ; Extract specific parameters from a file either based on parameter names, sections or groups.
 
 A param_type dictionary can be defined both to fix expected inputs and to explictly specify the parameter types.
 
@@ -72,9 +74,10 @@ def open_config(config_file):
     The open_config function is used to open configuration files in the ini format.
     
     Args:
-        config_file : filename for input configuration file (str).
+        config_file (str): 
+            Filename for input configuration file (str).
     
-    Returns
+    Returns:
         configparser.ConfigParser object
     '''
     config = configparser.ConfigParser(inline_comment_prefixes=(';','#'))
@@ -87,15 +90,19 @@ def open_config(config_file):
 
 def generate_param_dict(config_file):
     '''
-    The generate_param_dict function creates a param_type nested dictionary from an input configuration file.
-    This could be used on some fixed example config file to generate the parameter type dictionary which can then be applied
-    to other configuration files of the same type.
+    The generate_param_dict function creates a param_type nested dictionary from an input configuration 
+    file.
+    This could be used on some fixed template config file to generate the parameter type dictionary which 
+    can then be applied to other configuration files of the same type.
     
     Args:
-        config_file : filename for input configuration file (str).
+        config_file (str) : 
+            Filename for template configuration file (str).
     
     Returns:
-        nested OrderedDict : parameter type dictionary from configuration file input
+        nested OrderedDict : 
+            Parameter type dictionary from configuration file input with sections as keys for parameters
+            and value types.
     '''
     config = open_config(config_file)
     
@@ -106,9 +113,7 @@ def generate_param_dict(config_file):
     for section in sections:
         section_param = config[section].keys()
         if section_param:
-            print section_param
             types = [type(convert(value)) for value in config[section].values()]
-            print types
             section_types = OrderedDict([(key,value) for key,value in zip(section_param,types)])
             param_type[section] = section_types
     
@@ -121,9 +126,12 @@ def str_check(string,error=True):
     This function ensures the input remains as a string and removes any " or ' characters
     
     Args:
-        string : value input from config file
+        string (str) : 
+            Value input from config file
+        error (bool, optional) :
+            Print error message if unable to evaluate (bool).
     
-    Returns
+    Returns:
         string (formatted)
     '''
     
@@ -149,14 +157,18 @@ def str_check(string,error=True):
 def eval_check(string,error=True):
     '''
     The eval_check function evaluates the input string from a configuration file to a python object.
-    For example: '1' would evalute to an int object 1
-               : '1.' or '1.0' would evaluate to float object 1.0
-               : "[1,2,3]" would evalute to a list object [1,2,3]
-               : "1,2,3" would evaluate to a tuple object (1,2,3)
-               See eval() documentation for full list
+    For example:
+        - '1' would evalute to an int object 1
+        - '1.' or '1.0' would evaluate to float object 1.0
+        - "[1,2,3]" would evalute to a list object [1,2,3]
+        - "1,2,3" would evaluate to a tuple object (1,2,3)
+    See eval() documentation for full list
+    
     Args:
-        string : value input from config file
-        error  : return error message if unable to evaluate (bool).
+        string (str) : 
+            Value input from config file
+        error (bool, optional) :
+            Print error message if unable to evaluate.
     
     Returns:
         Python object
@@ -182,9 +194,13 @@ def list_check(string,force_convert=True,error=True):
     The list_check function converts input string to a list.
     
     Args:
-        string (str)         : value input from config file
-        force_convert (bool) : whether the conversion should be forced by creating a list object
-        error (bool)         : return error message if unable to convert.
+        string (str) : 
+            Value input from config file
+        force_convert (bool, optional) : 
+            Specifies whether conversion to a list should be forced. (i.e. out = [out] if unable to
+            evaluate any other way). Default = True
+        error (bool, optional) : 
+            Print error message if unable to evaluate.
     
     Returns:
         List
@@ -244,8 +260,10 @@ def convert(string,value_type=None):
     If no value_type is stated, the function attempts to discern the appropriate type.
     
     Args:
-        string     : value input from config file
-        value_type : object type. Values accepted: str,list
+        string (str) : 
+            Value input from config file
+        value_type (str/None, optional) : 
+            Object type. Values accepted: "str","list"
     
     Returns:
         Python object of specified type
@@ -310,16 +328,14 @@ def all_parameters_in_param_type(param_type):
     param_type nested dictionary.
     
     Args:
-        param_type : nested dictionary of expected parameter names and types.
-                     Key for each parameter dictionary can be the section heading or the overall group (e.g. for [MCMC.MEASUREMENTS], section group should be 'MCMC').
-                     If param_type is explictly specified should be of form of one of the following:
-                          {'SECTION_GROUP1':{'param1':str,'param2':float},'SECTION_GROUP2':{'param3':list,'param4':np.array}}
-                          {'SECTION1':{'param1':str},'SECTION2':'{param2':float},'SECTION3':{'param3':list},'SECTION4':{'param4':np.array}}
-                           OrderedDict(['SECTION_GROUP1':OrderedDict([('param1':str),('param2':float)]),'SECTION_GROUP2':OrderedDict([('param3':list),('param4':np.array)]))
-                           OrderedDict(['SECTION1':{'param1':str},'SECTION2':{'param2':float},'SECTION3':{'param3':list},'SECTION4':{'param4':np.array}])
+        param_type (dict) : 
+            Nested dictionary of expected parameter names and types.
+            Key for each parameter dictionary can be the section heading or the overall group (e.g. for [MCMC.MEASUREMENTS], section group should be 'MCMC').
+            See module header for expected formats of param_type dictionary.
 
     Returns:
-        list : list of all parameters in param_type dictionary
+        list : 
+            list of all parameters in param_type dictionary
     '''
     types = param_type # Get dictionary containing parameter names and types
     keys = types.keys() # Extract all section/section_group headings
@@ -337,19 +353,18 @@ def find_param_key(param_type,section=None,section_group=None):
     Returned key_type is one of 'section' or 'section_group'.
     
     Args:
-        param_type          : nested dictionary of expected parameter names and types.
-                              Key for each parameter dictionary can be the section heading or the overall group (e.g. for [MCMC.MEASUREMENTS], section group should be 'MCMC').
-                              If param_type is explicly specified should be of form of one of the following:
-                                  {'SECTION_GROUP1':{'param1':str,'param2':float},'SECTION_GROUP2':{'param3':list,'param4':np.array}}
-                                  {'SECTION1':{'param1':str},'SECTION2':'{param2':float},'SECTION3':{'param3':list},'SECTION4':{'param4':np.array}}
-                                  OrderedDict(['SECTION_GROUP1':OrderedDict([('param1':str),('param2':float)]),'SECTION_GROUP2':OrderedDict([('param3':list),('param4':np.array)]))
-                                  OrderedDict(['SECTION1':{'param1':str},'SECTION2':{'param2':float},'SECTION3':{'param3':list},'SECTION4':{'param4':np.array}])
-        section (str)       : name of section in config file for the parameter
-        section_group (str) : name of group in config file for the parameter
+        param_type (dict) : 
+            Nested dictionary of expected parameter names and types.
+            Key for each parameter dictionary can be the section heading or the overall group (e.g. for [MCMC.MEASUREMENTS], section group should be 'MCMC').
+            See module header for expected formats of param_type dictionary.
+        section (str, optional) : 
+            Name of section in config file for the parameter
+        section_group (str, optional) : 
+            Name of group in config file for the parameter
     
     Returns:
-        str,str: key, key_type                      
-    
+        str,str: 
+            key, key_type
     '''
     types = param_type # Get dictionary containing parameter names and types
     keys = types.keys() # Extract all section/classification keys
@@ -382,19 +397,22 @@ def find_param_key(param_type,section=None,section_group=None):
 def get_value(name,config,section,param_type=None):
     '''
     The get_value function extracts the value of a parameter from the configuration file.
-    This value is then converted to the type specified within param_type (default from mcmc_param_type() function).
+    This value is then converted to the type specified within param_type (default from mcmc_param_type() 
+    function).
     
     Args:
-        name (str)            : name of the parameter to extract
-        config (ConfigParser) : ConfigParser object created using the configparser class. Data from config file should have been read in
-        section (str)         : name of section in config file for the parameter
-        param_type (dict)     : nested dictionary of parameter classes and expected parameter names and types.
-                                Key for each parameter dictionary can be the section heading or the overall classification (e.g. for [MCMC.MEASUREMENTS], classification should be 'MCMC').
-                                If param_type is explicly specified should be of form:
-                                    {'SECTION_GROUP1':{'param1':str,'param2':float},'SECTION_GROUP2':{'param3':list,'param4':np.array}}
-                                    {'SECTION1':{'param1':str},'SECTION2':'{param2':float},'SECTION3':{'param3':list},'SECTION4':{'param4':np.array}}
-                                    OrderedDict(['SECTION_GROUP1':OrderedDict([('param1':str),('param2':float)]),'SECTION_GROUP2':OrderedDict([('param3':list),('param4':np.array)]))
-                                    OrderedDict(['SECTION1':{'param1':str},'SECTION2':{'param2':float},'SECTION3':{'param3':list},'SECTION4':{'param4':np.array}])
+        name (str) : 
+            Name of the parameter to extract
+        config (ConfigParser) :
+            ConfigParser object created using the configparser class. Data from config file should have 
+            been read in.
+        section (str) : 
+            Name of section in config file for the parameter
+        param_type (dict, optional) : 
+            nested dictionary of parameter classes and expected parameter names and types.
+            Key for each parameter dictionary can be the section heading or the overall classification 
+            (e.g. for [MCMC.MEASUREMENTS], classification should be 'MCMC').
+            See module header for expected formats of param_type dictionary.
                                 
     Returns:
         value
@@ -438,26 +456,33 @@ def extract_params(config_file,section=None,section_group=None,names=[],optional
                    param_type=None):
     '''
     The extract_params function extracts parameter names and values from a configuration file.
-    The parameters which are extracted is dependent on whether the section, section_group and/or names variables are specified.
+    The parameters which are extracted is dependent on whether the section, section_group and/or names 
+    variables are specified.
     A param_type dictionary can be defined to ensure variables are cast to the correct types.
     
     Args:
-        config_file             : filename for input configuration file.
-        section (str)           : extract parameters from section name.
-        section_group (str)     : extract parameters from all sections with this group.
-                                  If section and section_group are both specified - section takes precedence.
-        names (list)            : which parameter names to extract (within section or section_group)
-        optional_param (list)   : parameters which are optional. If the param cannot be found value will be set to None
-        param_type (dict)       : nested dictionary of sections or groups and expected parameter names and types.
-                                  If param_type is explicly specified should be of form:
-                                      {'SECTION_GROUP1':{'param1':str,'param2':float},'SECTION_GROUP2':{'param3':list,'param4':np.array}}
-                                      {'SECTION1':{'param1':str},'SECTION2':'{param2':float},'SECTION3':{'param3':list},'SECTION4':{'param4':np.array}}
-                                      OrderedDict(('SECTION_GROUP1':OrderedDict(('param1':str),('param2':float)),'SECTION_GROUP2':OrderedDict(('param3':list),('param4':np.array)))
-                                      OrderedDict(('SECTION1':{'param1':str},'SECTION2':{'param2':float}'SECTION3':{'param3':list},'SECTION4':{'param4':np.array}))        
-        remove_not_found (bool) : whether to remove parameters which are not found in the input file or include them as None.
+        config_file (str) : 
+            Filename for input configuration file.
+        section (str/None, optional) : 
+            Extract parameters from section name.
+        section_group (str/None, optional) : 
+            Extract parameters from all sections with this group.
+            If section and section_group are both specified - section takes precedence.
+        names (list, optional) : 
+            Parameter names to extract (within section or section_group, if specified)
+        optional_param (list, optional) : 
+            Parameters within configuration file which are optional. If the parameter cannot be found in input file, 
+            value will either be set to None or not included within the output dictionary (dependent on input for 
+            remove_not_found option).
+        param_type (dict, optional) : 
+            Nested dictionary of sections or groups and expected parameter names and types.
+            See module header for expected formats of param_type dictionary.                          
+        remove_not_found (bool, optional) : 
+            Whether to remove parameters which are not found in the input file or include them as None.
         
     Returns:
-        OrderedDict : parameter names and values
+        OrderedDict : 
+            Parameter names and values
         
         If parameter cannot be found (not specified as an optional param)
             Exception raised and program exited
@@ -539,7 +564,7 @@ def extract_params(config_file,section=None,section_group=None,names=[],optional
                 elif section_group:
                     raise KeyError("Parameter '{0}' not found in input configuration file within section_group '{1}'".format(name,section_group))
                 else:
-                    raise KeyError("Parameter '{0}' not found in specified in input configuration file.".format(name))
+                    raise KeyError("Parameter '{0}' not found in input configuration file.".format(name))
     #else:
     #    for name in names:
     #        try:
@@ -561,17 +586,21 @@ def all_param(config_file,optional_param=[],param_type=None,remove_not_found=Fal
     If param_type specified will cast to the specified types, otherwise will attempt to discern the parameter types from the form of the values.
     
     Args:
-        config_file             : filename for input configuration file
-        optional_param          : parameters which are optional. If the param cannot be found in input file, value will be set to None
-        param_type              : nested dictionary of sections or groups and expected parameter names and types.
-                                  If param_type is specified should be of form:
-                                   {'SECTION_GROUP1':{'param1':str,'param2':float},'SECTION_GROUP2':{'param3':list,'param4':np.array}}
-                                   {'SECTION1':{'param1':str},'SECTION2':'{param2':float},'SECTION3':{'param3':list},'SECTION4':{'param4':np.array}}
-                                    OrderedDict(('SECTION_GROUP1':OrderedDict(('param1':str),('param2':float)),'SECTION_GROUP2':OrderedDict(('param3':list),('param4':np.array)))
-                                    OrderedDict(('SECTION1':{'param1':str},'SECTION2':{'param2':float}'SECTION3':{'param3':list},'SECTION4':{'param4':np.array}))        
-        remove_not_found (bool) : whether to remove parameters which are not found in the input file or include them as None.    
+        config_file (str) : 
+            Filename for input configuration file
+        optional_param (list, optional) : 
+            Parameters within configuration file which are optional. If the parameter cannot be found in input file, 
+            value will either be set to None or not included within the output dictionary (dependent on input for 
+            remove_not_found option).
+        param_type (dict, optional) : 
+            Nested dictionary of sections or groups and expected parameter names and types.
+            See module header for expected formats of param_type dictionary.
+        remove_not_found (bool, optional) : 
+            Whether to remove parameters which are not found in the input file or include them as None.    
+    
     Returns:
-        OrderedDict: parameter names and values 
+        OrderedDict: 
+            Parameter names and values 
     '''
     
     param = OrderedDict({})

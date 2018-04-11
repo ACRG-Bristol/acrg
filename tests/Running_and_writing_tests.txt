@@ -1,5 +1,5 @@
 Document written by rt17603
-Last updated 2018/04/04
+Last updated 2018/04/11
 
 Full documentation about pytest can be found here - https://docs.pytest.org/en/latest/
 
@@ -7,7 +7,8 @@ Full documentation about pytest can be found here - https://docs.pytest.org/en/l
 Running pytest
 --------------
 
-To simply run all existing tests using pytest module the following command can be run within a terminal
+To simply run all existing tests using the pytest module the following command can be run within a 
+terminal:
 
 >> pytest
 
@@ -18,7 +19,12 @@ Within those files it will identify all functions which start or end with "test"
 
 pytest can also be run over individual test files if you only wish to test one module for instance e.g.
 
->> pytest tests/test_acrg_gosat.py
+>> pytest tests/test_acrg_name.py
+
+pytest can even be run over individual test cases using the sytnax "test_file.py"::"test_name_of_test" 
+e.g.
+
+>> pytest tests/test_name.py::test_fp_data_merge
 
 We can also run a subset of test cases e.g.:
 
@@ -39,8 +45,8 @@ Creating new tests
 Within the ACRG repository test files should be contained within the "tests" directory. To create new 
 tests you can either modify a current test file or create a new test file yourself (starting the name 
 with "test_"). The simplest convention to use for this is to keep all tests related to one module or 
-script within one test file which should be named after the script (e.g. tests for acrg_gosat.py should 
-be within test_acrg_gosat.py). 
+script within one test file which should be named after the script (e.g. tests for acrg_agage.py should 
+be within test_acrg_agage.py). 
 This will make it easier to modify the tests later on as the code evolves.
 
 Tests should be created as functions which start or end with word "test" (e.g. test_simple_function or 

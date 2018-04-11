@@ -1,0 +1,348 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>acrg_MOZART_BC &#8212; acrg  documentation</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for acrg_MOZART_BC</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Created on Thu Jun 11 15:17:02 2015</span>
+
+<span class="sd">Code to get MOZART volume mixing ratios at the edges of a domain,</span>
+<span class="sd">for including boundary conditions in inversions.</span>
+
+<span class="sd">Call MOZART_BC_nc which does the following:</span>
+
+<span class="sd">Uses &quot;MOZART_vmr&quot; to find an xray dataset of MOZART vmr with the altitude</span>
+<span class="sd">of each gridcell.</span>
+
+<span class="sd">Uses &quot;MOZART_boundaries&quot; to find an xray dataset with the vmrs on the 4</span>
+<span class="sd">edges of the specified domain. This is interpolated in height and lat/lon to</span>
+<span class="sd">agree with NAME output.</span>
+
+<span class="sd">@author: ew14860</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">xarray</span> <span class="k">as</span> <span class="nn">xray</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">bisect</span>
+<span class="kn">from</span> <span class="nn">scipy</span> <span class="k">import</span> <span class="n">interpolate</span>
+<span class="kn">import</span> <span class="nn">acrg_MOZART</span> <span class="k">as</span> <span class="nn">mz</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+<span class="kn">import</span> <span class="nn">datetime</span> <span class="k">as</span> <span class="nn">dt</span>
+<span class="kn">import</span> <span class="nn">getpass</span>
+<span class="kn">import</span> <span class="nn">collections</span> <span class="k">as</span> <span class="nn">c</span>
+<span class="kn">import</span> <span class="nn">pdb</span>
+
+<span class="n">mzt_dir</span> <span class="o">=</span> <span class="s1">&#39;/shared_data/air/shared/MOZART/mzt_output/&#39;</span>
+<span class="c1">#filename = mzt_dir + &#39;CH4/FWDModelComparison_NewEDGAR.mz4.h2.2014-01.nc&#39;</span>
+
+
+<div class="viewcode-block" id="MOZART_filenames"><a class="viewcode-back" href="../api/acrg_MOZART_BC.html#acrg_MOZART_BC.MOZART_filenames">[docs]</a><span class="k">def</span> <span class="nf">MOZART_filenames</span><span class="p">(</span><span class="n">species</span><span class="p">,</span> <span class="n">start</span> <span class="o">=</span> <span class="s2">&quot;2010-01-01&quot;</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="s2">&quot;2016-01-01&quot;</span><span class="p">,</span> <span class="n">runname</span> <span class="o">=</span><span class="s1">&#39;NewEDGAR&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Gets a list of files given a species, start date and end date.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">baseDirectory</span> <span class="o">=</span> <span class="n">mzt_dir</span>
+    
+    <span class="n">months</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DatetimeIndex</span><span class="p">(</span><span class="n">start</span> <span class="o">=</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="n">end</span><span class="p">,</span> <span class="n">freq</span> <span class="o">=</span> <span class="s2">&quot;M&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">to_pydatetime</span><span class="p">()</span>
+    <span class="n">yearmonth</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">year</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;-&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">month</span><span class="p">)</span><span class="o">.</span><span class="n">zfill</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">months</span><span class="p">]</span>
+
+    <span class="n">files</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">ym</span> <span class="ow">in</span> <span class="n">yearmonth</span><span class="p">:</span>
+        <span class="n">f</span><span class="o">=</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">baseDirectory</span> <span class="o">+</span> \
+            <span class="n">species</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;/&quot;</span> <span class="o">+</span> <span class="s2">&quot;*&quot;</span> <span class="o">+</span><span class="n">runname</span><span class="o">+</span><span class="s1">&#39;*&#39;</span><span class="o">+</span> <span class="n">ym</span> <span class="o">+</span> <span class="s2">&quot;*.nc&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">f</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">files</span> <span class="o">+=</span> <span class="n">f</span>
+
+    <span class="n">files</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">files</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Can&#39;t find file: &quot;</span> <span class="o">+</span> <span class="n">baseDirectory</span> <span class="o">+</span> \
+            <span class="n">species</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;/&quot;</span> <span class="o">+</span> <span class="s2">&quot;*&quot;</span> <span class="o">+</span> <span class="n">ym</span> <span class="o">+</span> <span class="s2">&quot;*.nc&quot;</span><span class="p">)</span>
+    
+    <span class="k">return</span>  <span class="n">files</span></div>
+
+
+<div class="viewcode-block" id="convert_lon"><a class="viewcode-back" href="../api/acrg_MOZART_BC.html#acrg_MOZART_BC.convert_lon">[docs]</a><span class="k">def</span> <span class="nf">convert_lon</span><span class="p">(</span><span class="n">DS</span><span class="p">,</span> <span class="n">data_var</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Converts variables with a longitude dimension to the -180-180 convention</span>
+<span class="sd">    rather than the 0-360 convention.</span>
+<span class="sd">    WARNING: variable must have dimensions (&#39;height&#39;,&#39;lat&#39;,&#39;lon&#39;,&#39;time&#39;) in that order.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">DS</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;lon&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">DS</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;lon&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="mi">180</span>
+    <span class="n">L</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">DS</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;lon&#39;</span><span class="p">])</span><span class="o">/</span><span class="mi">2</span>
+    <span class="n">var0</span> <span class="o">=</span> <span class="n">DS</span><span class="p">[</span><span class="n">data_var</span><span class="p">]</span>
+    <span class="n">var</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">var0</span><span class="p">))</span>
+    <span class="k">if</span> <span class="s1">&#39;height&#39;</span> <span class="ow">in</span> <span class="n">DS</span><span class="p">[</span><span class="n">data_var</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span><span class="p">:</span>
+        <span class="n">var</span><span class="p">[:,:,:</span><span class="n">L</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">var0</span><span class="p">[:,:,</span><span class="n">L</span><span class="p">:,:]</span>
+        <span class="n">var</span><span class="p">[:,:,</span><span class="n">L</span><span class="p">:,:]</span> <span class="o">=</span> <span class="n">var0</span><span class="p">[:,:,:</span><span class="n">L</span><span class="p">,:]</span>  
+        <span class="n">DS</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">data_var</span><span class="p">:</span> <span class="p">([</span><span class="s1">&#39;height&#39;</span><span class="p">,</span> <span class="s1">&#39;lat&#39;</span><span class="p">,</span> <span class="s1">&#39;lon&#39;</span><span class="p">,</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">var</span><span class="p">)})</span>
+    <span class="k">elif</span> <span class="s1">&#39;height&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">DS</span><span class="p">[</span><span class="n">data_var</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span><span class="p">:</span>
+        <span class="n">var</span><span class="p">[:,:</span><span class="n">L</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">var0</span><span class="p">[:,</span><span class="n">L</span><span class="p">:,:]</span>
+        <span class="n">var</span><span class="p">[:,</span><span class="n">L</span><span class="p">:,:]</span> <span class="o">=</span> <span class="n">var0</span><span class="p">[:,:</span><span class="n">L</span><span class="p">,:]</span> 
+        <span class="n">DS</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">data_var</span><span class="p">:</span> <span class="p">([</span><span class="s1">&#39;lat&#39;</span><span class="p">,</span> <span class="s1">&#39;lon&#39;</span><span class="p">,</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">var</span><span class="p">)})</span></div>
+
+
+<div class="viewcode-block" id="interp_heights"><a class="viewcode-back" href="../api/acrg_MOZART_BC.html#acrg_MOZART_BC.interp_heights">[docs]</a><span class="k">def</span> <span class="nf">interp_heights</span><span class="p">(</span><span class="n">DS</span><span class="p">,</span><span class="n">vmr_var_name</span><span class="p">,</span> <span class="n">interp_height</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Created to convert MOZART heights to NAME heights at boundaries.</span>
+<span class="sd">    Interpolates the heights of the VMR variable &#39;vmr_var_name&#39; in the xray dataset</span>
+<span class="sd">    &#39;DS&#39; to the heights specified in &#39;interp_heights&#39;. The variable must have dimensions</span>
+<span class="sd">    (height, lat_or_lon, time) in that order. The dataset DS must also contain a variable</span>
+<span class="sd">    of altitudes for each value of the VMR variable.</span>
+<span class="sd">    Returns a new dataset with the VMRs recalculated at interpolated heights, a &#39;height&#39;</span>
+<span class="sd">    dimension replaced with the interpolated values and the &#39;Alt&#39; variable removed.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">vmr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">interp_height</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">DS</span><span class="p">[</span><span class="n">vmr_var_name</span><span class="p">][</span><span class="mi">0</span><span class="p">,:,</span><span class="mi">0</span><span class="p">]),</span><span class="nb">len</span><span class="p">(</span><span class="n">DS</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">])))</span>
+    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">DS</span><span class="p">[</span><span class="s1">&#39;Alt&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,:])):</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">DS</span><span class="p">[</span><span class="s1">&#39;Alt&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">,:,</span><span class="mi">0</span><span class="p">])):</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">DS</span><span class="p">[</span><span class="s1">&#39;Alt&#39;</span><span class="p">][:,</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="p">]</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">DS</span><span class="p">[</span><span class="n">vmr_var_name</span><span class="p">][:,</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="p">]</span>
+            <span class="n">f</span> <span class="o">=</span> <span class="n">interpolate</span><span class="o">.</span><span class="n">interp1d</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span> <span class="n">bounds_error</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">fill_value</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">y</span><span class="p">))</span>
+            <span class="n">vmr</span><span class="p">[:,</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">interp_height</span><span class="p">)</span>
+    <span class="n">DS2</span> <span class="o">=</span> <span class="n">DS</span><span class="o">.</span><span class="n">drop</span><span class="p">([</span><span class="s1">&#39;Alt&#39;</span><span class="p">])</span>
+    <span class="n">DS2</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">vmr_var_name</span> <span class="p">:</span> <span class="p">(</span><span class="n">DS</span><span class="p">[</span><span class="n">vmr_var_name</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span><span class="p">,</span> <span class="n">vmr</span><span class="p">),</span>
+               <span class="s1">&#39;height&#39;</span> <span class="p">:</span> <span class="p">(</span><span class="n">interp_height</span><span class="p">)})</span>
+    <span class="k">return</span> <span class="n">DS2</span></div>
+    
+    
+<div class="viewcode-block" id="interp_lonlat"><a class="viewcode-back" href="../api/acrg_MOZART_BC.html#acrg_MOZART_BC.interp_lonlat">[docs]</a><span class="k">def</span> <span class="nf">interp_lonlat</span><span class="p">(</span><span class="n">DS</span><span class="p">,</span><span class="n">vmr_var_name</span><span class="p">,</span> <span class="n">lat_or_lon</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Created to convert MOZART lons/lats to NAME lons/lats at boundaries.</span>
+<span class="sd">    Make sure that the heights have already been interpolated using &#39;interp_heights&#39;.</span>
+<span class="sd">    Interpolates the heights of the VMR variable &#39;vmr_var_name&#39; in the xray dataset</span>
+<span class="sd">    &#39;DS&#39; to the longitude or latitude specified in &#39;lon_or_lat&#39;. The variable must</span>
+<span class="sd">    have dimensions (height, lat_or_lon, time) in that order.    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">vmr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">DS</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;height&#39;</span><span class="p">]),</span><span class="nb">len</span><span class="p">(</span><span class="n">lat_or_lon</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">DS</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">])))</span>
+    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">DS</span><span class="p">[</span><span class="n">vmr_var_name</span><span class="p">][</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,:])):</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">DS</span><span class="p">[</span><span class="n">vmr_var_name</span><span class="p">][:,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">])):</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">DS</span><span class="p">[</span><span class="n">vmr_var_name</span><span class="p">][</span><span class="n">i</span><span class="p">,:,</span><span class="n">j</span><span class="p">]</span>    
+            <span class="k">if</span> <span class="s1">&#39;lon&#39;</span> <span class="ow">in</span> <span class="n">DS</span><span class="p">[</span><span class="n">vmr_var_name</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span><span class="p">:</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">DS</span><span class="p">[</span><span class="s1">&#39;lon&#39;</span><span class="p">]</span>
+            <span class="k">elif</span> <span class="s1">&#39;lat&#39;</span> <span class="ow">in</span> <span class="n">DS</span><span class="p">[</span><span class="n">vmr_var_name</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span><span class="p">:</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">DS</span><span class="p">[</span><span class="s1">&#39;lat&#39;</span><span class="p">]</span>
+            <span class="n">f</span> <span class="o">=</span> <span class="n">interpolate</span><span class="o">.</span><span class="n">interp1d</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">)</span>
+            <span class="n">vmr</span><span class="p">[</span><span class="n">i</span><span class="p">,:,</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">lat_or_lon</span><span class="p">)</span>
+        
+    <span class="k">if</span> <span class="s1">&#39;lon&#39;</span> <span class="ow">in</span> <span class="n">DS</span><span class="p">[</span><span class="n">vmr_var_name</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span><span class="p">:</span>
+        <span class="n">DS</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">vmr_var_name</span> <span class="p">:</span> <span class="p">(</span><span class="n">DS</span><span class="p">[</span><span class="n">vmr_var_name</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span><span class="p">,</span> <span class="n">vmr</span><span class="p">),</span>
+               <span class="s1">&#39;lon&#39;</span> <span class="p">:</span> <span class="p">(</span><span class="n">lat_or_lon</span><span class="p">)})</span>
+    <span class="k">elif</span> <span class="s1">&#39;lat&#39;</span> <span class="ow">in</span> <span class="n">DS</span><span class="p">[</span><span class="n">vmr_var_name</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span><span class="p">:</span>
+        <span class="n">DS</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">vmr_var_name</span> <span class="p">:</span> <span class="p">(</span><span class="n">DS</span><span class="p">[</span><span class="n">vmr_var_name</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span><span class="p">,</span> <span class="n">vmr</span><span class="p">),</span>
+               <span class="s1">&#39;lat&#39;</span> <span class="p">:</span> <span class="p">(</span><span class="n">lat_or_lon</span><span class="p">)})</span>
+    <span class="k">return</span> <span class="n">DS</span></div>
+
+
+<div class="viewcode-block" id="MOZART_vmr"><a class="viewcode-back" href="../api/acrg_MOZART_BC.html#acrg_MOZART_BC.MOZART_vmr">[docs]</a><span class="k">def</span> <span class="nf">MOZART_vmr</span><span class="p">(</span><span class="n">species</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">start</span> <span class="o">=</span> <span class="s2">&quot;2010-01-01&quot;</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="s2">&quot;2016-01-01&quot;</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="s1">&#39;M&#39;</span><span class="p">,</span> <span class="n">runname</span><span class="o">=</span><span class="s1">&#39;NewEDGAR&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns an xray dataset with (height,lat,lon,time) coordinates and 2 data variables:</span>
+<span class="sd">    concentration of species (SPECIES_vmr_mozart) and an array of altitudes calculated</span>
+<span class="sd">    from the pressure levels given in the original MOZART file (Alt). The lons are converted</span>
+<span class="sd">    from the 0 - 360 convention used in MOZART to the -180 to 180 convention used in NAME.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">species</span> <span class="o">=</span> <span class="n">species</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">filename</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="s1">&#39;/&#39;</span> <span class="ow">in</span> <span class="n">filename</span><span class="p">:</span>
+            <span class="n">files</span> <span class="o">=</span> <span class="p">[</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">mzt_dir</span><span class="o">+</span><span class="s1">&#39;/&#39;</span><span class="o">+</span><span class="n">species</span><span class="p">,</span> <span class="n">filename</span><span class="p">)]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">files</span><span class="o">=</span><span class="p">[</span><span class="n">filename</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">files</span> <span class="o">=</span> <span class="n">MOZART_filenames</span><span class="p">(</span><span class="n">species</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">runname</span><span class="p">)</span>
+            
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">files</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Can&#39;t find files, exiting&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">files</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+        <span class="n">mzt</span> <span class="o">=</span> <span class="p">[]</span>
+        
+        
+        <span class="k">for</span> <span class="n">fi</span> <span class="ow">in</span> <span class="n">files</span><span class="p">:</span>
+            <span class="n">f</span> <span class="o">=</span> <span class="n">mz</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">fi</span><span class="p">)</span>
+            <span class="n">Alt</span> <span class="o">=</span> <span class="n">mz</span><span class="o">.</span><span class="n">calc_altitude</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">pressure</span><span class="p">,</span><span class="n">f</span><span class="o">.</span><span class="n">P0</span><span class="p">)</span>
+            <span class="n">conc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">conc</span><span class="p">,</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">lev</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">lat</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">lon</span><span class="p">),</span><span class="nb">len</span><span class="p">([</span><span class="n">f</span><span class="o">.</span><span class="n">start_date</span><span class="p">])))</span>
+            <span class="n">Alt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">Alt</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">conc</span><span class="p">))</span>
+            <span class="n">vmr_var_name</span> <span class="o">=</span> <span class="s1">&#39;vmr&#39;</span>
+            
+            <span class="c1"># change timestamp to occur in the middle of the month. Currently, only monthly files are correctly</span>
+            <span class="c1"># timestamped to the 15th of the month</span>
+            <span class="k">if</span> <span class="n">freq</span> <span class="ow">is</span> <span class="s1">&#39;M&#39;</span><span class="p">:</span>
+                <span class="n">timestamp</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">start_date</span> <span class="o">+</span> <span class="n">dt</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">timestamp</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">start_date</span>
+
+            <span class="n">MZ</span> <span class="o">=</span> <span class="n">xray</span><span class="o">.</span><span class="n">Dataset</span><span class="p">({</span><span class="n">vmr_var_name</span> <span class="p">:</span> <span class="p">([</span><span class="s1">&#39;height&#39;</span><span class="p">,</span> <span class="s1">&#39;lat&#39;</span><span class="p">,</span> <span class="s1">&#39;lon&#39;</span><span class="p">,</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">conc</span><span class="p">),</span>
+                   <span class="s1">&#39;Alt&#39;</span> <span class="p">:</span> <span class="p">([</span><span class="s1">&#39;height&#39;</span><span class="p">,</span> <span class="s1">&#39;lat&#39;</span><span class="p">,</span> <span class="s1">&#39;lon&#39;</span><span class="p">,</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">Alt</span><span class="p">)},</span>
+                            <span class="n">coords</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;height&#39;</span> <span class="p">:</span> <span class="n">f</span><span class="o">.</span><span class="n">lev</span><span class="p">,</span>
+                                        <span class="s1">&#39;lat&#39;</span> <span class="p">:</span> <span class="n">f</span><span class="o">.</span><span class="n">lat</span><span class="p">,</span>
+                                        <span class="s1">&#39;lon&#39;</span> <span class="p">:</span> <span class="n">f</span><span class="o">.</span><span class="n">lon</span><span class="p">,</span>
+                                        <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">timestamp</span><span class="p">]})</span>
+            <span class="c1">#Change longitude from being 0 - 360 to being -180 - 180.</span>
+            <span class="n">convert_lon</span><span class="p">(</span><span class="n">MZ</span><span class="p">,</span><span class="n">vmr_var_name</span><span class="p">)</span>
+            <span class="n">mzt</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">MZ</span><span class="p">)</span>
+        <span class="n">mzt</span> <span class="o">=</span> <span class="n">xray</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">mzt</span><span class="p">,</span> <span class="n">dim</span> <span class="o">=</span> <span class="s1">&#39;time&#39;</span><span class="p">)</span>
+        <span class="n">attributes</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;title&quot;</span><span class="p">:</span><span class="s2">&quot;MOZART volume mixing ratios&quot;</span><span class="p">,</span>
+                      <span class="s2">&quot;author&quot;</span> <span class="p">:</span> <span class="n">getpass</span><span class="o">.</span><span class="n">getuser</span><span class="p">(),</span>
+                        <span class="s2">&quot;date_created&quot;</span> <span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">str</span><span class="p">(</span><span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">today</span><span class="p">()),</span>
+                        <span class="s2">&quot;species&quot;</span> <span class="p">:</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span><span class="n">species</span><span class="o">.</span><span class="n">upper</span><span class="p">(),</span>
+                        <span class="s2">&quot;run name&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span><span class="n">runname</span><span class="p">}</span>
+        <span class="n">mzt</span><span class="o">.</span><span class="n">attrs</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">(</span><span class="n">attributes</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">mzt</span></div>
+
+
+<span class="c1">#def MOZART_boundaries(MZ, FPfile = FPfilename):</span>
+<div class="viewcode-block" id="MOZART_boundaries"><a class="viewcode-back" href="../api/acrg_MOZART_BC.html#acrg_MOZART_BC.MOZART_boundaries">[docs]</a><span class="k">def</span> <span class="nf">MOZART_boundaries</span><span class="p">(</span><span class="n">MZ</span><span class="p">,</span> <span class="n">domain</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Gets an xray dataset with 4 variables, each of one side of the domain boundary</span>
+<span class="sd">    (n,e,s,w) and with height and lat/lon interpolated to the NAME grid.</span>
+<span class="sd">    MZ is a mozart xray dataset created using MOZART_vmr.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">listoffiles</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;/shared_data/air/shared/NAME/fp/&quot;</span> <span class="o">+</span> <span class="n">domain</span> <span class="o">+</span> <span class="s2">&quot;/*&quot;</span><span class="p">)</span>
+    
+    <span class="k">with</span> <span class="n">xray</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">listoffiles</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">as</span> <span class="n">temp</span><span class="p">:</span>
+        <span class="n">fields_ds</span> <span class="o">=</span> <span class="n">temp</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
+    
+    <span class="n">fp_lat</span> <span class="o">=</span> <span class="n">fields_ds</span><span class="p">[</span><span class="s2">&quot;lat&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">fp_lon</span> <span class="o">=</span> <span class="n">fields_ds</span><span class="p">[</span><span class="s2">&quot;lon&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">fp_height</span> <span class="o">=</span> <span class="n">fields_ds</span><span class="p">[</span><span class="s2">&quot;height&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+    
+    <span class="n">vmr_var_name</span> <span class="o">=</span> <span class="s1">&#39;vmr&#39;</span>
+
+    <span class="c1">#Get info from a EUROPE footprint file:</span>
+<span class="c1">#    FP = xray.open_dataset(FPfilename)</span>
+<span class="c1">#    fp_lon = FP[&#39;lon&#39;]</span>
+<span class="c1">#    fp_lat = FP[&#39;lat&#39;]</span>
+<span class="c1">#    fp_height = FP[&#39;height&#39;]</span>
+
+    <span class="c1">#Select the gidcells closest to the edges of the EUROPE domain. Bisect finds the </span>
+    <span class="c1">#index of the dimension value that occurs after the specified lons/lats.</span>
+    <span class="n">lat_n</span> <span class="o">=</span> <span class="n">bisect</span><span class="o">.</span><span class="n">bisect_left</span><span class="p">(</span><span class="n">MZ</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;lat&#39;</span><span class="p">],</span> <span class="nb">max</span><span class="p">(</span><span class="n">fp_lat</span><span class="p">))</span>
+    <span class="n">lat_s</span> <span class="o">=</span> <span class="n">bisect</span><span class="o">.</span><span class="n">bisect_left</span><span class="p">(</span><span class="n">MZ</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;lat&#39;</span><span class="p">],</span> <span class="nb">min</span><span class="p">(</span><span class="n">fp_lat</span><span class="p">))</span><span class="o">-</span><span class="mi">1</span>
+    <span class="n">lon_e</span> <span class="o">=</span> <span class="n">bisect</span><span class="o">.</span><span class="n">bisect_left</span><span class="p">(</span><span class="n">MZ</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;lon&#39;</span><span class="p">],</span> <span class="nb">max</span><span class="p">(</span><span class="n">fp_lon</span><span class="p">))</span>
+    <span class="n">lon_w</span> <span class="o">=</span> <span class="n">bisect</span><span class="o">.</span><span class="n">bisect_left</span><span class="p">(</span><span class="n">MZ</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;lon&#39;</span><span class="p">],</span> <span class="nb">min</span><span class="p">(</span><span class="n">fp_lon</span><span class="p">))</span><span class="o">-</span><span class="mi">1</span>
+
+    <span class="n">north</span> <span class="o">=</span> <span class="n">MZ</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">lat</span> <span class="o">=</span> <span class="n">MZ</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;lat&#39;</span><span class="p">][</span><span class="n">lat_n</span><span class="p">],</span>
+                   <span class="n">lon</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="n">MZ</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;lon&#39;</span><span class="p">][</span><span class="n">lon_w</span><span class="p">],</span><span class="n">MZ</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;lon&#39;</span><span class="p">][</span><span class="n">lon_e</span><span class="p">]))</span><span class="o">.</span><span class="n">drop</span><span class="p">([</span><span class="s1">&#39;lat&#39;</span><span class="p">])</span>
+    <span class="n">south</span> <span class="o">=</span> <span class="n">MZ</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">lat</span> <span class="o">=</span> <span class="n">MZ</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;lat&#39;</span><span class="p">][</span><span class="n">lat_s</span><span class="p">],</span>
+                   <span class="n">lon</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="n">MZ</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;lon&#39;</span><span class="p">][</span><span class="n">lon_w</span><span class="p">],</span><span class="n">MZ</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;lon&#39;</span><span class="p">][</span><span class="n">lon_e</span><span class="p">]))</span><span class="o">.</span><span class="n">drop</span><span class="p">([</span><span class="s1">&#39;lat&#39;</span><span class="p">])</span>
+    <span class="n">east</span> <span class="o">=</span> <span class="n">MZ</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">lon</span> <span class="o">=</span> <span class="n">MZ</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;lon&#39;</span><span class="p">][</span><span class="n">lon_e</span><span class="p">],</span>
+                  <span class="n">lat</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="n">MZ</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;lat&#39;</span><span class="p">][</span><span class="n">lat_s</span><span class="p">],</span><span class="n">MZ</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;lat&#39;</span><span class="p">][</span><span class="n">lat_n</span><span class="p">]))</span><span class="o">.</span><span class="n">drop</span><span class="p">([</span><span class="s1">&#39;lon&#39;</span><span class="p">])</span>
+    <span class="n">west</span> <span class="o">=</span> <span class="n">MZ</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">lon</span> <span class="o">=</span> <span class="n">MZ</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;lon&#39;</span><span class="p">][</span><span class="n">lon_w</span><span class="p">],</span>
+                  <span class="n">lat</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="n">MZ</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;lat&#39;</span><span class="p">][</span><span class="n">lat_s</span><span class="p">],</span><span class="n">MZ</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;lat&#39;</span><span class="p">][</span><span class="n">lat_n</span><span class="p">]))</span><span class="o">.</span><span class="n">drop</span><span class="p">([</span><span class="s1">&#39;lon&#39;</span><span class="p">])</span>
+              
+    <span class="n">interp_height</span> <span class="o">=</span> <span class="n">fp_height</span>
+    <span class="n">N</span> <span class="o">=</span> <span class="n">interp_lonlat</span><span class="p">(</span><span class="n">interp_heights</span><span class="p">(</span><span class="n">north</span><span class="p">,</span> <span class="n">vmr_var_name</span><span class="p">,</span><span class="n">interp_height</span><span class="p">),</span><span class="n">vmr_var_name</span><span class="p">,</span><span class="n">fp_lon</span><span class="p">)</span><span class="o">.</span><span class="n">rename</span><span class="p">({</span><span class="n">vmr_var_name</span> <span class="p">:</span> <span class="n">vmr_var_name</span><span class="o">+</span><span class="s1">&#39;_n&#39;</span><span class="p">})</span>        
+    <span class="n">S</span> <span class="o">=</span> <span class="n">interp_lonlat</span><span class="p">(</span><span class="n">interp_heights</span><span class="p">(</span><span class="n">south</span><span class="p">,</span> <span class="n">vmr_var_name</span><span class="p">,</span><span class="n">interp_height</span><span class="p">),</span><span class="n">vmr_var_name</span><span class="p">,</span><span class="n">fp_lon</span><span class="p">)</span><span class="o">.</span><span class="n">rename</span><span class="p">({</span><span class="n">vmr_var_name</span> <span class="p">:</span> <span class="n">vmr_var_name</span><span class="o">+</span><span class="s1">&#39;_s&#39;</span><span class="p">})</span>     
+    <span class="n">E</span> <span class="o">=</span> <span class="n">interp_lonlat</span><span class="p">(</span><span class="n">interp_heights</span><span class="p">(</span><span class="n">east</span><span class="p">,</span> <span class="n">vmr_var_name</span><span class="p">,</span><span class="n">interp_height</span><span class="p">),</span><span class="n">vmr_var_name</span><span class="p">,</span><span class="n">fp_lat</span><span class="p">)</span><span class="o">.</span><span class="n">rename</span><span class="p">({</span><span class="n">vmr_var_name</span> <span class="p">:</span> <span class="n">vmr_var_name</span><span class="o">+</span><span class="s1">&#39;_e&#39;</span><span class="p">})</span>     
+    <span class="n">W</span> <span class="o">=</span> <span class="n">interp_lonlat</span><span class="p">(</span><span class="n">interp_heights</span><span class="p">(</span><span class="n">west</span><span class="p">,</span> <span class="n">vmr_var_name</span><span class="p">,</span><span class="n">interp_height</span><span class="p">),</span><span class="n">vmr_var_name</span><span class="p">,</span><span class="n">fp_lat</span><span class="p">)</span><span class="o">.</span><span class="n">rename</span><span class="p">({</span><span class="n">vmr_var_name</span> <span class="p">:</span> <span class="n">vmr_var_name</span><span class="o">+</span><span class="s1">&#39;_w&#39;</span><span class="p">})</span> 
+
+    <span class="n">MZT_edges</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">E</span><span class="p">)</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">S</span><span class="p">)</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">W</span><span class="p">)</span>
+    <span class="n">MZT_edges</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;title&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;MOZART volume mixing ratios at domain edges&quot;</span>
+    <span class="n">MZT_edges</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;author&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">getpass</span><span class="o">.</span><span class="n">getuser</span><span class="p">()</span>
+    <span class="n">MZT_edges</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;date_created&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">str</span><span class="p">(</span><span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">today</span><span class="p">())</span>
+    
+    <span class="k">return</span> <span class="n">MZT_edges</span></div>
+    
+
+<div class="viewcode-block" id="MOZART_BC_nc"><a class="viewcode-back" href="../api/acrg_MOZART_BC.html#acrg_MOZART_BC.MOZART_BC_nc">[docs]</a><span class="k">def</span> <span class="nf">MOZART_BC_nc</span><span class="p">(</span><span class="n">start</span> <span class="o">=</span> <span class="s1">&#39;2012-01-01&#39;</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="s2">&quot;2014-09-01&quot;</span><span class="p">,</span> <span class="n">species</span> <span class="o">=</span> <span class="s1">&#39;CH4&#39;</span><span class="p">,</span> <span class="n">filename</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">domain</span> <span class="o">=</span> <span class="s1">&#39;EUROPE&#39;</span><span class="p">,</span> <span class="n">freq</span> <span class="o">=</span> <span class="s1">&#39;M&#39;</span><span class="p">,</span> <span class="n">runname</span> <span class="o">=</span> <span class="s1">&#39;NewEDGAR&#39;</span><span class="p">):</span>   
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Specify end date as 2 months after the month of the last file</span>
+<span class="sd">    (because the date specified is actually the first day of the next month and</span>
+<span class="sd">    the range goes up to but doesn&#39;t include the last date). Only monthly</span>
+<span class="sd">    frequency because this is the frequency of the mozart files we have so far.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">start_dates</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DatetimeIndex</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="n">end</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="n">freq</span><span class="p">,</span> <span class="n">closed</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">start_dates</span><span class="p">:</span>
+        <span class="n">MZ</span> <span class="o">=</span> <span class="n">MOZART_vmr</span><span class="p">(</span><span class="n">species</span><span class="p">,</span> <span class="n">start</span> <span class="o">=</span> <span class="n">i</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="n">i</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="n">freq</span><span class="p">,</span> <span class="n">filename</span> <span class="o">=</span> <span class="n">filename</span><span class="p">)</span>
+        <span class="n">MZ_edges</span> <span class="o">=</span> <span class="n">MOZART_boundaries</span><span class="p">(</span><span class="n">MZ</span><span class="p">,</span> <span class="n">domain</span><span class="p">)</span>
+        <span class="n">yearmonth</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">year</span><span class="p">)</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">month</span><span class="p">)</span><span class="o">.</span><span class="n">zfill</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">MZ_edges</span><span class="o">.</span><span class="n">to_netcdf</span><span class="p">(</span><span class="n">path</span> <span class="o">=</span> <span class="s1">&#39;/data/shared/NAME/bc/</span><span class="si">%s</span><span class="s1">/</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">.nc&#39;</span>
+                                                    <span class="o">%</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span><span class="n">species</span><span class="o">.</span><span class="n">lower</span><span class="p">(),</span><span class="n">domain</span><span class="p">,</span><span class="n">yearmonth</span><span class="p">),</span> <span class="n">mode</span> <span class="o">=</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, mrghg.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

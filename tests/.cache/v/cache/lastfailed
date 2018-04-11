@@ -1,6 +1,3 @@
 {
-  "test_acrg_agage.py::test_get_obs_sat": true, 
-  "test_name.py::test_filtering_6hrmean": true, 
-  "test_name.py::test_filtering_median": true, 
   "test_tdmcmc_inputs.py::test_tdmcmc_run": true
 }
