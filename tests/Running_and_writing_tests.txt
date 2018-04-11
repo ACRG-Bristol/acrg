@@ -18,7 +18,12 @@ Within those files it will identify all functions which start or end with "test"
 
 pytest can also be run over individual test files if you only wish to test one module for instance e.g.
 
->> pytest tests/test_acrg_gosat.py
+>> pytest tests/test_acrg_name.py
+
+pytest can even be run over individual test cases using the sytnax "test_file.py"::"test_name_of_test" 
+e.g.
+
+>> pytest tests/test_name.py::test_fp_data_merge
 
 We can also run a subset of test cases e.g.:
 
