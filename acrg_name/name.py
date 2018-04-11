@@ -7,8 +7,6 @@ Created on Mon Nov 10 10:45:51 2014
 import netCDF4 as nc
 import numpy as np
 import matplotlib.pyplot as plt
-from mpl_toolkits.basemap import Basemap
-from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.ticker import MaxNLocator
 import datetime as dt
 import os
@@ -20,13 +18,12 @@ import subprocess
 from progressbar import ProgressBar
 import json
 from os.path import join
-import xarray as xray
+import xarray as xr
 from acrg_time import convert
 import calendar
 import pickle
 from scipy import interpolate
 import cartopy.crs as ccrs
-import matplotlib.animation as animation
 
 acrg_path = os.getenv("ACRG_PATH")
 data_path = os.getenv("DATA_PATH")
@@ -129,12 +126,12 @@ def read_netcdfs(files, dim = "time"):
     """
     
     def process_one_path(path):
-        with xray.open_dataset(path) as ds:
+        with xr.open_dataset(path) as ds:
             ds.load()
         return ds
     
     datasets = [process_one_path(p) for p in sorted(files)]
-    combined = xray.concat(datasets, dim)
+    combined = xr.concat(datasets, dim)
     return combined   
 
 def interp_time(bc_ds,vmr_var_names, new_times):
@@ -172,7 +169,7 @@ def interp_time(bc_ds,vmr_var_names, new_times):
 
         vmr_dict[vmr_var_name]=vmr_new
         
-    ds2 = xray.Dataset({"vmr_n": (["height", "lon", "time"],vmr_dict["vmr_n"]),
+    ds2 = xr.Dataset({"vmr_n": (["height", "lon", "time"],vmr_dict["vmr_n"]),
                         "vmr_e": (["height", "lat", "time"],vmr_dict["vmr_e"]),
                         "vmr_s": (["height", "lon", "time"],vmr_dict["vmr_s"]),
                         "vmr_w": (["height", "lat", "time"],vmr_dict["vmr_w"])},
@@ -520,7 +517,7 @@ def timeseries_HiTRes(fp_HiTRes_ds, domain, HiTRes_flux_name, Resid_flux_name,
 
         new_fp = fp.fp_HiTRes[:,:,::-1]
         new_time = fp.time[::-1]
-        new_ds = xray.Dataset({'fp_HiTRes':(['lat','lon','time'], new_fp)},
+        new_ds = xr.Dataset({'fp_HiTRes':(['lat','lon','time'], new_fp)},
                                coords={'lat':fp.lat,
                                        'lon':fp.lon,
                                        'time':new_time})
@@ -571,7 +568,7 @@ def footprints_data_merge(data, domain, load_flux = True,
 #                          perturbed=False, fp_dir_pert=None, pert_year=None, pert_month=None):
 
     """
-    Output a dictionary of xray footprint datasets, that correspond to a given
+    Output a dictionary of xarray footprint datasets, that correspond to a given
     dictionary of Pandas dataframes, containing mole fraction time series.
     
     TODO: Add details of load_flux, calc_timeseries, calc_bc, HiTRes options into description and affect
@@ -611,7 +608,7 @@ def footprints_data_merge(data, domain, load_flux = True,
         bc_directory (str)   : Same sytax as flux_directory (optional)
     
     Returns:
-        Dictionary of the form {"MHD": MHD_xray_dataset, "TAC": TAC_xray_dataset}:
+        Dictionary of the form {"MHD": MHD_xarray_dataset, "TAC": TAC_xarray_dataset}:
             combined dataset for each site
     """
 
@@ -653,7 +650,7 @@ def footprints_data_merge(data, domain, load_flux = True,
                 dt.timedelta(days = month_days)
       
         # Convert to dataset
-        site_ds = xray.Dataset.from_dataframe(site_df)
+        site_ds = xr.Dataset.from_dataframe(site_df)
         
         if site in site_modifier.keys():
             site_modifier_fp = site_modifier[site]
@@ -770,7 +767,7 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                    basis_directory = basis_directory,
                    HiTRes_flux_name = None, Resid_flux_name=None, flux_directory=flux_directory):
     """
-    The fp_sensitivity function adds a sensitivity matrix, H, to each site xray dataframe in fp_and_data.
+    The fp_sensitivity function adds a sensitivity matrix, H, to each site xarray dataframe in fp_and_data.
 
     Basis function data in an array: lat, lon, no. regions. In each 'region'
     element of array there is a lt lon grid with 1 in region and 0 outside region.
@@ -799,14 +796,14 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
     for site in sites:
 
         if 'fp_HiTRes' in fp_and_data[site].keys():
-            site_bf = xray.Dataset({"fp_HiTRes":fp_and_data[site]["fp_HiTRes"],
+            site_bf = xr.Dataset({"fp_HiTRes":fp_and_data[site]["fp_HiTRes"],
                                          "fp":fp_and_data[site]["fp"]})
             H_all_arr=timeseries_HiTRes(site_bf, domain, HiTRes_flux_name, Resid_flux_name, output_TS = False, output_fpXflux = True, flux_directory=flux_directory)
-            H_all = xray.DataArray(H_all_arr, coords=[site_bf.lat, site_bf.lon, site_bf.time], dims = ['lat','lon','time'])
+            H_all = xr.DataArray(H_all_arr, coords=[site_bf.lat, site_bf.lon, site_bf.time], dims = ['lat','lon','time'])
 
         
         else:
-            site_bf = xray.Dataset({"fp":fp_and_data[site]["fp"],
+            site_bf = xr.Dataset({"fp":fp_and_data[site]["fp"],
                                          "flux":fp_and_data[site]["flux"]})
             H_all=site_bf.fp*site_bf.flux 
             H_all_arr = H_all.values
@@ -820,7 +817,7 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
             if 'time' in basis_func.basis.dims:
                 basis_func = basis_func.isel(time=0)
             
-            site_bf = xray.merge([site_bf, basis_func])
+            site_bf = xr.merge([site_bf, basis_func])
             
             H = np.zeros((len(site_bf.region),len(site_bf.time)))
             
@@ -829,7 +826,7 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
             for i in range(len(site_bf.region)):
                 H[i,:] = np.sum(H_all_v*base_v[:,i,np.newaxis], axis = 0) 
 
-            sensitivity = xray.DataArray(H, 
+            sensitivity = xr.DataArray(H, 
                               coords=[('region', site_bf.region), 
                                       ('time', fp_and_data[site].coords['time'])])
         
@@ -839,7 +836,7 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
             
             H = np.zeros((int(np.max(site_bf.basis)),len(site_bf.time)))
 
-            basis_scale = xray.Dataset({'basis_scale': (['lat','lon','time'],
+            basis_scale = xr.Dataset({'basis_scale': (['lat','lon','time'],
                                                     np.zeros(np.shape(site_bf.basis)))},
                                    coords = site_bf.coords)
             site_bf = site_bf.merge(basis_scale)
@@ -849,7 +846,7 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                 wh_ri = np.where(base_v == i+1)
                 H[i,:]=np.sum(H_all_v[wh_ri[0],:], axis = 0)        
             
-            sensitivity = xray.DataArray(H, 
+            sensitivity = xr.DataArray(H, 
                               coords=[('region', range(1,np.max(site_bf.basis)+1)), 
                                       ('time', fp_and_data[site].coords['time'])])
                                      
@@ -867,7 +864,7 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
             sub_fp_temp = site_bf.fp.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
                                          method="nearest") 
 
-            sub_fp = xray.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
+            sub_fp = xr.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
                                coords = {'sub_lat': (site_bf.coords['sub_lat']),
                                          'sub_lon': (site_bf.coords['sub_lon']),
                                 'time' : (fp_and_data[site].coords['time'])})
@@ -875,7 +872,7 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
             sub_H_temp = H_all.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
                                          method="nearest")                             
 
-            sub_H = xray.Dataset({'sub_H': (['sub_lat','sub_lon','time'], sub_H_temp)},
+            sub_H = xr.Dataset({'sub_H': (['sub_lat','sub_lon','time'], sub_H_temp)},
                                coords = {'sub_lat': (site_bf.coords['sub_lat']),
                                          'sub_lon': (site_bf.coords['sub_lon']),
                                 'time' : (fp_and_data[site].coords['time'])})
@@ -889,7 +886,7 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
 def bc_sensitivity(fp_and_data, domain, basis_case, bc_basis_directory=bc_basis_directory):
 
     """
-    The bc_sensitivity adds H_bc to the sensitivity matrix, to each site xray dataframe in fp_and_data.
+    The bc_sensitivity adds H_bc to the sensitivity matrix, to each site xarray dataframe in fp_and_data.
     
     Args:
         fp_and_data (dict)       : Output from footprints_data_merge() function. Dictionary of datasets.
@@ -915,7 +912,7 @@ def bc_sensitivity(fp_and_data, domain, basis_case, bc_basis_directory=bc_basis_
     
     for site in sites:
 
-        DS_temp = xray.Dataset({"particle_locations_n":fp_and_data[site]["particle_locations_n"],
+        DS_temp = xr.Dataset({"particle_locations_n":fp_and_data[site]["particle_locations_n"],
                                 "particle_locations_e":fp_and_data[site]["particle_locations_e"],
                                 "particle_locations_s":fp_and_data[site]["particle_locations_s"],
                                 "particle_locations_w":fp_and_data[site]["particle_locations_w"],
@@ -948,7 +945,7 @@ def bc_sensitivity(fp_and_data, domain, basis_case, bc_basis_directory=bc_basis_
             reg = bf[:,:,i,:]
             H_bc[i,:] = np.sum((part_loc*vmr_ed*reg), axis=(0,1))
         
-        sensitivity = xray.Dataset({'H_bc': (['region_bc','time'], H_bc)},
+        sensitivity = xr.Dataset({'H_bc': (['region_bc','time'], H_bc)},
                                     coords = {'region_bc': (DS.coords['region'].values),
                                               'time' : (DS.coords['time'])})
 
@@ -1156,7 +1153,7 @@ def filtering(datasets_in, filters, keep_missing=False):
             
             dataarray_temp = mf_data_array[dict(time = ti)]   
             
-            mf_ds = xray.Dataset({'mf': (['time'], dataarray_temp)}, 
+            mf_ds = xr.Dataset({'mf': (['time'], dataarray_temp)}, 
                                   coords = {'time' : (dataarray_temp.coords['time'])})
             
             dataset_out = combine_datasets(dataset_temp, mf_ds, method=None)
@@ -1188,7 +1185,7 @@ def filtering(datasets_in, filters, keep_missing=False):
                 
                 dataarray_temp = mf_data_array[dict(time = ti)]   
                 
-                mf_ds = xray.Dataset({'mf': (['time'], dataarray_temp)}, 
+                mf_ds = xr.Dataset({'mf': (['time'], dataarray_temp)}, 
                                       coords = {'time' : (dataarray_temp.coords['time'])})
                 
                 dataset_out = combine_datasets(dataset_temp, mf_ds, method=None)
@@ -1214,7 +1211,7 @@ def filtering(datasets_in, filters, keep_missing=False):
             
             dataarray_temp = mf_data_array[dict(time = ti)]   
             
-            mf_ds = xray.Dataset({'mf': (['time'], dataarray_temp)}, 
+            mf_ds = xr.Dataset({'mf': (['time'], dataarray_temp)}, 
                                   coords = {'time' : (dataarray_temp.coords['time'])})
             
             dataset_out = combine_datasets(dataset_temp, mf_ds, method=None)
@@ -1247,46 +1244,56 @@ def filtering(datasets_in, filters, keep_missing=False):
     return datasets
 
 
-def plot(fp_data, date, out_filename=None, 
-         lon_range=None, lat_range=None, log_range = [5., 9.],
-         map_data = None, zoom = False,
-         colormap = plt.cm.YlGnBu,
-         tolerance = None,
-         interpolate = False,
-         dpi = None):
+def plot(fp_data, date, out_filename=None, out_format = 'pdf',
+         lon_range=None, lat_range=None, log_range = [5., 9.], zoom = False,
+         colormap = 'YlGnBu', tolerance = None, interpolate = False, dpi = 300):
     """
-    Plot footprint using pcolormesh.
+    Plot footprint for a given timestamp.
     
     Args:
-        fp_data        : Dictionary of xray datasets containing footprints
-                         and other variables
-        date           : Almost any time format should work (datetime object, string, etc).
-                         Footprints from all sites in dictionary that have time indices at that time
-                         will be plotted.
-        lon_range      : list of min and max longitudes [min, max]
-        lat_range      : list of min and max latitudes [min, max]
-        log_range      : list of min and max LOG10(footprints) for 
-                        color scale
-        map_data       : contains plot_map_setup class (useful if animating, 
-                        so that entire map does not need to be re-calculated each time)
-        zoom           : shortcut to zoom in to subset of domain (needs work)
-        map_resolution : resolution of map
-        map_background : choice of "countryborders", "shadedrelief"
-        colormap       : color map to use for contours
-        tolerance      : Xray doc "Maximum distance between original and new
-                         labels for inexact matches."
+        fp_data (dict): 
+            Dictionary of xarray datasets containing footprints and other variables
+        date (str): 
+            Almost any time format should work (datetime object, string, etc). An example
+            time format is '2014-01-01 00:00'. Footprints from all sites in dictionary that 
+            have time indices nearest to the specified time will be plotted.
+        out_filename (str, optional):
+            Full path to filname to save figure
+        out_format (str, optional):
+            Format to save figure (e.g., png or pdf)
+        lon_range (list, optional): 
+            list of min and max longitudes [min, max] to plot
+        lat_range (list, optional): 
+            list of min and max latitudes [min, max] to plot
+        log_range (list, optional): 
+            list of min and max LOG10(footprints) for color scale       
+        zoom (bool, optional): 
+            True will plot a zoomed map (+/- 10 degrees around all site in fp_data)
+        colormap (str, optional): 
+            Color map to use for contour plot 
+            (https://matplotlib.org/examples/color/colormaps_reference.html)
+        tolerance (float or str, optional): 
+            Maximum distance between date specified and closest available footprint
+            Default is in nanosec if a float or in any units (e.g., '1H') if a string
+        interpolate (bool, optional): 
+            If True, interpolates footprint between the nearest two footprints to the date specified
+            If False, uses the nearest footprint avaialble
+        dpi (int, optional):
+            Dots per square inch resolution to save image format such as png
+            
+            
     Returns
         None
         
         If out_filename == None:
             produces as interactive plot
         Else:
-            saves plot to file
+            saves plot as specified by the full path in out_filename and format in out_format
     """
     
     def fp_nearest(fp, tolerance = None):
         return fp.reindex_like( \
-                            xray.Dataset(coords = {"time": [date]}),
+                            xr.Dataset(coords = {"time": [date]}),
                             method = "nearest",
                             tolerance = tolerance)
 
@@ -1441,22 +1448,63 @@ def plot(fp_data, date, out_filename=None,
     cb.ax.tick_params(labelsize=12) 
     
     if out_filename is not None:
-        plt.savefig(out_filename, dpi = dpi)
+        plt.savefig(out_filename, dpi = dpi, format = out_format)
         plt.close()
     else:
         plt.show()
 
 
-def plot3d(fp_data, date, out_filename=None,tolerance = None, 
-           log_range = [5., 9.], particle_clevs = [0., 0.009, 0.001], particle_direction = 'nw'):
+def plot_particle_location(fp_data, date, particle_direction = 'nw', out_filename=None,
+                           out_format = 'pdf', tolerance = None, log_range = [5., 9.], 
+                           colormap_fp = 'inferno_r', colormap_part = 'GnBu',
+                           particle_clevs = [0., 0.009, 0.001], dpi = 300):
 
     """
-    date as string "d/m/y H:M" or datetime object 
-    datetime.datetime(yyyy,mm,dd,hh,mm)
+    3D plot showing the footprint and particle exit locations for a given timestamp.
+    
+    Args:
+        fp_data (dict): 
+            Dictionary of xarray datasets containing footprints and other variables. 
+            Currently only one site will be plotted.
+        date (str): 
+            Almost any time format should work (datetime object, string, etc). An example
+            time format is '2014-01-01 00:00'. Footprints from all sites in dictionary that 
+            have time indices nearest to the specified time will be plotted.
+        particle_direction (str):
+            One of two options 'nw' = north-west or 'se' = south-west to determine which
+            edges of the domain are plotted for particle exit locations
+        out_filename (str, optional):
+            Full path to filname to save figure
+        out_format (str, optional):
+            Format to save figure (e.g., png or pdf)
+        tolerance (float or str, optional): 
+            Maximum distance between date specified and closest available footprint
+            Default is in nanosec if a float or in any units (e.g., '1H') if a string
+        log_range (list, optional): 
+            list of min and max LOG10(footprints) for color scale       
+        colormap_fp (str, optional): 
+            Color map to use for contour plot of footprint
+            (https://matplotlib.org/examples/color/colormaps_reference.html)
+        colormap_part (str, optional): 
+            Color map to use for contour plot of particle location
+            (https://matplotlib.org/examples/color/colormaps_reference.html)                    
+        particle_clevs (list, optional):
+            List of [min, max, interval] to plot the particle color levels
+        dpi (int, optional):
+            Resolution to save png
+            
+            
+    Returns
+        None
+        
+        If out_filename == None:
+            produces as interactive plot
+        Else:
+            saves plot as specified by the full path in out_filename and format in out_format
     """
     def fp_nearest(fp, tolerance = None):
         return fp.reindex_like( \
-                        xray.Dataset(coords = {"time": [date]}),
+                        xr.Dataset(coords = {"time": [date]}),
                         method = "nearest",
                         tolerance = tolerance)
     
@@ -1489,28 +1537,28 @@ def plot3d(fp_data, date, out_filename=None,tolerance = None,
     pllevs = np.arange(particle_clevs[0], particle_clevs[1], particle_clevs[2])
 
     if particle_direction == 'nw':
-        plfp = ax.contourf(fpX, fpY, np.log10(fp_data["fp"]), levels, offset = 0., cmap = 'inferno_r')
+        plfp = ax.contourf(fpX, fpY, np.log10(fp_data["fp"]), levels, offset = 0., cmap = colormap_fp)
         plnvals = fp_data.particle_locations_n.values
         plnvals[np.where(plnvals == 0.)]=np.nan
         plwvals = fp_data.particle_locations_w.values
         plwvals[np.where(plwvals == 0.)]=np.nan
         plpln = ax.contourf(plnvals,plnX, plnY,
-                            zdir = 'y', offset = max(fp_data.lat.values), levels = pllevs, cmap = plt.cm.BuGn)
+                            zdir = 'y', offset = max(fp_data.lat.values), levels = pllevs, cmap = colormap_part)
         ax.text(150,0,23500,"North", color='red', zdir=None)
         plplw = ax.contourf(plwvals, plwX, plwY,
-                            zdir = 'x', offset = min(fp_data.lon.values), levels = pllevs, cmap = plt.cm.BuGn)    
+                            zdir = 'x', offset = min(fp_data.lon.values), levels = pllevs, cmap = colormap_part)    
         ax.text(0,0,10000,"West", color='red', zdir=None)
     elif particle_direction == 'se':
-        plfp = ax.contourf(fpX, fpY, np.fliplr(np.flipud(np.log10(fp_data["fp"]))), levels, offset = 0., cmap = 'inferno_r')
+        plfp = ax.contourf(fpX, fpY, np.fliplr(np.flipud(np.log10(fp_data["fp"]))), levels, offset = 0., cmap = colormap_fp)
         plnvals = fp_data.particle_locations_s.values
         plnvals[np.where(plnvals == 0.)]=np.nan
         plwvals = fp_data.particle_locations_e.values
         plwvals[np.where(plwvals == 0.)]=np.nan
         plpln = ax.contourf(plnvals,plnX, plnY,
-                            zdir = 'y', offset = max(fp_data.lat.values), levels = pllevs, cmap = plt.cm.BuGn)
+                            zdir = 'y', offset = max(fp_data.lat.values), levels = pllevs, cmap = colormap_part)
         ax.text(150,0,23500,"South", color='red', zdir=None)
         plplw = ax.contourf(plwvals, plwX, plwY,
-                            zdir = 'x', offset = min(fp_data.lon.values), levels = pllevs, cmap = plt.cm.BuGn)    
+                            zdir = 'x', offset = min(fp_data.lon.values), levels = pllevs, cmap = colormap_part)    
         ax.text(0,0,10000,"East", color='red', zdir=None)
     ax.view_init(50)
 
@@ -1527,33 +1575,78 @@ def plot3d(fp_data, date, out_filename=None,tolerance = None,
     cb.ax.tick_params(labelsize=12) 
     
     if out_filename is not None:
-        plt.savefig(out_filename, dpi = 300)
+        plt.savefig(out_filename, dpi = dpi, format = out_format)
         plt.close()
     else:
         plt.show()
 
-def animate(fp_data, output_directory, 
-            lon_range = None, lat_range = None, zoom = False,
-            log_range = [5., 9.],
-            overwrite=True, file_label = 'fp',
-            framerate=10, delete_png=False,
-            video_os="mac", ffmpeg_only = False,
-            plot_function = "plot", time_regular = "1H",
-            frame_range = None,
-            dpi = 150, interpolate = True):
+def animate(fp_data, output_directory, plot_function = "plot", file_label = 'fp', 
+            video_os="mac", time_regular = False,        
+            lon_range = None, lat_range = None, log_range = [5., 9.],
+            colormap_fp = 'inferno_r', colormap_part = 'GnBu', zoom = False,
+            particle_clevs = [0., 0.009, 0.001], overwrite = True, 
+            framerate=10, delete_png=False, ffmpeg_only = False,
+            frame_max = None, dpi = 300):
 
     """
-        The time_unique function creates one set of time entries within fp_data (dictionary of datasets)
-    merging across multiple sites if necessary.
-    Time can also be reindexed to be evenly spaced between the minimum and maximum values if time_regular
-    if specified.
+    Animate footprints into a movie.
     
     Args:
-        fp_data      : Output from footprints_data_merge(). Dictionary of datasets.
-        time_regular : Frequency between minumum and maximum to set the time values within fp_data. 
-                       Set at False to not apply this step (Default = False).
-    Returns:
-        xarray.Dataset : Time values extracted for this first site within fp_data
+        fp_data (dict): 
+            Dictionary of xarray datasets containing footprints and other variables
+        output_directory (str):
+            Full path to directory in which movie and images will be saved
+        plot_function (str):
+            Either 'plot' or 'plot_particle_location'. If plots are being generated 
+            (ffpmeg_only = False), call to this plotting function.
+        file_label (str):
+            File lavel of animation and and images of the frames 
+        video_os (str):
+            Operating system to play video - must be either mac or pc
+        time_regular (str): 
+            Frequency between minumum and maximum to set the time values within fp_data. (e.g., '1H') 
+            Set at False to not apply this step (Default = False).
+        lon_range (list, optional): 
+            list of min and max longitudes [min, max] to plot
+        lat_range (list, optional): 
+            list of min and max latitudes [min, max] to plot
+        log_range (list, optional): 
+            list of min and max LOG10(footprints) for color scale       
+        colormap_fp (str, optional): 
+            Color map to use for contour plot of footprint
+            (https://matplotlib.org/examples/color/colormaps_reference.html)
+        colormap_part (str, optional): 
+            Color map to use for contour plot of particle location
+            (https://matplotlib.org/examples/color/colormaps_reference.html)
+        zoom (bool, optional): 
+            True will plot a zoomed map (+/- 10 degrees around all site in fp_data)
+            if plot_function is 'plot'
+        particle_clevs (list, optional):
+            List of [min, max, interval] to plot the particle color levels if 
+            plot_function is 'plot_particle_location'
+        overwrite (bool, optional):
+            True will overwrite any existing files
+        framerate (int, optional):
+            Framerate of animation in frames per second
+        delete_png (bool. optional):
+            True will delete the images of each frame
+        ffmpeg_only (bool, optional):
+            True will generate movie from pre-saved images in the output directory 
+            named with file_label
+        frame_max (int, optional):
+            Set the maximum number of frames in the datset to animate. Animation will plot first n 
+            frames up to the frame_max. Useful for testing.
+        dpi (int, optional):
+            Dots per square inch resolution for each image generate as for example png           
+            
+            
+    Returns
+        None
+        
+        If out_filename == None:
+            produces as interactive plot
+        Else:
+            saves plot as specified by the full path in out_filename and format in out_format
     """
     
     def time_unique(fp_data, time_regular = False):
@@ -1572,8 +1665,22 @@ def animate(fp_data, output_directory,
             time = pd.date_range(min(time), max(time), freq = time_regular)
         
         return time
-    
-    sites = [key for key in fp_data.keys() if key[0] != '.']
+  
+        """
+        The time_unique function creates one set of time entries within fp_data (dictionary of datasets)
+        merging across multiple sites if necessary.
+        Time can also be reindexed to be evenly spaced between the minimum and maximum values if time_regular
+        if specified.
+        
+        Args:
+            fp_data (dict)     : 
+                Output from footprints_data_merge(). Dictionary of datasets.
+            time_regular (str) : 
+                Frequency between minumum and maximum to set the time values within fp_data. 
+                Set at False to not apply this step (Default = False).
+        Returns:
+            xarray.Dataset : Time values extracted for this first site within fp_data
+        """    
     
     if ffmpeg_only is False:
         
@@ -1581,8 +1688,8 @@ def animate(fp_data, output_directory,
         times = time_unique(fp_data,
                             time_regular = time_regular)
         
-        if frame_range:
-            times = times[:min([frame_range, len(times)])]
+        if frame_max:
+            times = times[:min([frame_max, len(times)])]
 
         # Start progress bar
         pbar = ProgressBar(maxval=len(times)).start()
@@ -1595,14 +1702,16 @@ def animate(fp_data, output_directory,
             
             if len(glob.glob(fname)) == 0 or overwrite == True:
                 if plot_function == "plot":
-                    plot(fp_data, t, out_filename = fname, 
-                         lon_range = lon_range, lat_range= lat_range,
-                         log_range = log_range, zoom = zoom,
-                         interpolate = interpolate,
+                    plot(fp_data, t, out_filename = fname, out_format = 'png',
+                         lon_range = lon_range, lat_range = lat_range,
+                         log_range = log_range, zoom = zoom, colormap = colormap_fp,
                          dpi = dpi)
-                elif plot_function == "plot3d":
-                    plot3d(fp_data, t, out_filename = fname, tolerance = None,
-                           log_range = log_range, particle_direction = 'nw')
+                elif plot_function == "plot_particle_location":
+                    plot_particle_location(fp_data, t, out_filename = fname, out_format = 'png',
+                                           log_range = log_range, 
+                                           particle_direction = 'nw', colormap_fp = colormap_fp,
+                                           colormap_part = colormap_part,
+                                           particle_clevs = particle_clevs, dpi = dpi)
                      
             pbar.update(ti)
         pbar.finish()
