@@ -9,11 +9,14 @@ def areagrid(lat, lon):
   """Calculates grid of areas (m2) given arrays of latitudes and longitudes
 
   Args:
-      lat (array): 1D array of latitudes
-      lon (array): 1D array of longitudes
+      lat (array): 
+          1D array of latitudes
+      lon (array): 
+          1D array of longitudes
         
   Returns:
-      area (array): 2D array of areas of of size lat x lon
+      area (array): 
+          2D array of areas of of size lat x lon
       
   Example:
     import acrg_grid

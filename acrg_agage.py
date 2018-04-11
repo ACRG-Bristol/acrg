@@ -63,6 +63,9 @@ def open_ds(path):
     
     """
     Function efficiently opens xray datasets.
+    
+    Example:
+        ds = open_ds("path/file.nc")
     """
     # use a context manager, to ensure the file gets closed after use
     with xray.open_dataset(path) as ds:
@@ -70,6 +73,9 @@ def open_ds(path):
     return ds    
 
 def is_number(s):
+    """
+    Is it a number?
+    """
     try:
         float(s)
         return True
@@ -77,7 +83,10 @@ def is_number(s):
         return False
 
 def synonyms(search_string, info):
-    
+    """
+    Todo:
+        Make doc string
+    """
     keys=info.keys()
     
     #First test whether site matches keys (case insensitive)
@@ -102,7 +111,29 @@ def synonyms(search_string, info):
     return out_string
 
 def listsearch(varnames, species, species_info, label="alt"):
-
+    """Search over species info for variable.
+    
+    Args:
+        varnames (list):
+            variable names to search for
+        species (str):
+            Species of interest
+        species_info (dict):
+            species info from JSON value
+        label (str):
+            Entry label.
+            Default='alt'
+            
+    Returns:
+            out_string (str):
+                Matches to search
+                
+    Note:
+        I'm not actually sure if this is a correct description of that it's 
+        doing. So if somebody actually has to use it then it's probably good 
+        to check.
+    """
+    
     for v in varnames:
         if species.upper() == v.upper():
             out_string = v
@@ -126,11 +157,30 @@ def file_search_and_split(search_string):
 
 
 def quadratic_sum(x):
+    """
+    Computes np.sqrt(np.sum(x**2))/float(len(x))
+    
+    Args: 
+        x (array):
+            
+    """
     return np.sqrt(np.sum(x**2))/float(len(x))
     
 
 #Get Met Office baseline flags
 def ukmo_flags(site, site_info):
+    """Function to get Met Office baseline flags
+    
+    Args:
+       site (str):
+           Name of site of interest as acrg_site_info.json.
+       site_info (dict): 
+          site info from JSON file.
+          
+    Returns:
+        (pandas.Dataframe) Dataframe containing Met Office baseline flags for 
+        site.
+    """
     
     flag_directory=os.path.join(root_directory, "flags/")
     fnames, file_info=file_search_and_split(
@@ -165,6 +215,41 @@ def ukmo_flags(site, site_info):
 
 def get_file_list(site, species, start, end, height,
                   network = None, instrument = None, data_directory=None):
+    
+    """Gets list of relevent files for site, species, time and height.
+    
+    Args:
+        site (str) :
+            Obs site. All sites should be defined within acrg_site_info.json. 
+            E.g. ["MHD"] for Mace Head site.
+        species (str) :
+            Species identifier. All species names should be defined within acrg_species_info.json. 
+            E.g. "ch4" for methane.
+        start (str) : 
+            Start date in format "YYYY-MM-DD" for range of files to find.
+        end (str) : 
+            End date in same format as start for range of files to find.
+        height (str/list) : 
+            Height of inlet for input data (must match number of sites).
+        network (str/list, optional) : 
+            Network for the site/instrument (must match number of sites).
+            Default = None.
+        instrument (str/list, optional):
+            Specific instrument for the site (must match number of sites).
+            Default = None.
+        data_directory (str, optional) :
+            flux_directory can be specified if files are not in the default directory. 
+            Must point to a directory which contains subfolders organized by network.
+            Default=None.
+            
+    Returns:
+        data_directory (str):
+            If data_directory is specified on input then this is returned.
+            Else returns relevent directory.
+        files (list):
+            List of relevent files.
+            
+    """
              
     if network is None:
         file_network_string = site_info[site]["network"]
@@ -233,6 +318,55 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
         height=None, baseline=False, average=None, keep_missing=False,
         network = None, instrument = None,
         status_flag_unflagged = [0], data_directory=None):
+    """
+    Args:    
+        site_in (str) :
+            Site of interest. All sites should be defined within acrg_site_info.json. 
+            E.g. ["MHD"] for Mace Head site.
+        species_in (str) :
+            Species identifier. All species names should be defined within acrg_species_info.json. 
+            E.g. "ch4" for methane.
+        start (str, optional) : 
+            Start date in format "YYYY-MM-DD" for range of files to find.
+            Default = "1900-01-01".
+        end (str, optional) : 
+            End date in same format as start for range of files to find.
+            Default="2020-01-01".
+        height (str/list, optional) : 
+            Height of inlet for input data (must match number of sites).
+            Default=None
+        baseline (bool, optional) : 
+            *** Not actually used in this function, at present? ***
+            Default=False.
+        average (str/list, optional) :
+            Averaging period for each dataset (for each site) ((must match number of sites)).
+            Each value should be a string of the form e.g. "2H", "30min" (should match pandas offset 
+            aliases format).
+            Default=None.
+        keep_missing (bool, optional) :
+            Whether to keep missing data points or drop them.
+            default=False.
+        network (str/list, optional) : 
+            Network for the site/instrument (must match number of sites).
+            Default=None.
+        instrument (str/list, optional):
+            Specific instrument for the site (must match number of sites). 
+            Default=None.
+                status_flag_unflagged (list, optional) : 
+            The value to use when filtering by status_flag. 
+            Default = [0]
+        data_directory (str, optional) :
+            flux_directory can be specified if files are not in the default directory. 
+            Must point to a directory which contains subfolders organized by network.
+            Default=None.
+            
+    Returns:
+        (xarray dataframe):
+            Get timeseries data frame for observations at site of species.
+        
+        
+        
+    """
     
     start_time = convert.reftime(start)
     end_time = convert.reftime(end)
@@ -435,7 +569,34 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
 
 
 def get_gosat(site, species, max_level, start = "1900-01-01", end = "2020-01-01", data_directory = None):
+    """retrieves obervations for a set of sites and species between start and 
+    end dates for GOSAT 
     
+    Args:    
+        site (str) :
+            Site of interest. All sites should be defined within acrg_site_info.json. 
+            E.g. ["MHD"] for Mace Head site.
+        species (str) :
+            Species identifier. All species names should be defined within acrg_species_info.json. 
+            E.g. "ch4" for methane.
+        max_level (int) : 
+            Required for satellite data only. Maximum level to extract up to from within satellite data.
+        start (str, optional) : 
+            Start date in format "YYYY-MM-DD" for range of files to find.
+            Default = "1900-01-01".
+        end (str, optional) : 
+            End date in same format as start for range of files to find.
+            Default="2020-01-01".
+        data_directory (str, optional) :
+            flux_directory can be specified if files are not in the default directory. 
+            Must point to a directory which contains subfolders organized by network.
+            Default=None.
+            
+    Returns:
+        (xarray dataframe):
+            xarray data frame for GOSAT observations.
+            
+    """
     if max_level is None:
         print "ERROR: MAX LEVEL REQUIRED FOR SATELLITE OBS DATA"
         return None

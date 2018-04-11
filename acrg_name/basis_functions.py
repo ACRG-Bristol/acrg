@@ -38,10 +38,14 @@ def basis_blocks(domain, time, blocksize, basis_case=None):
     """Creates basis functions in square blocks (e.g., 5x5 grid cells per region)
     
     Args:
-        domain (str): String of domain area
-        time (str): Timestamp for basis functions
-        blocksize (int): Number of grid cells to split into (i.e. blocksize x blocksize)
-        basis_case (str, optional): Labelling for basis case. 
+        domain (str): 
+            String of domain area
+        time (str): 
+            Timestamp for basis functions
+        blocksize (int): 
+            Number of grid cells to split into (i.e. blocksize x blocksize)
+        basis_case (str, optional): 
+            Labelling for basis case. 
             Default is e.g. '5x5' for blocksize of 5
     
     Returns:
@@ -95,14 +99,21 @@ def basis_transd(domain, time, basis_case = "transd", sub_lon_min = None,
     and four fixed regions surrounding the central box. 
     
     Args:
-        domain (str): String of domain area
-        time (str): Timestamp for basis functions
-        basis_case (str, optional): Labelling for basis case. 
+        domain (str): 
+            String of domain area
+        time (str): 
+            Timestamp for basis functions
+        basis_case (str, optional):
+            Labelling for basis case. 
             Default is "transd" for transdimensional
-        sub_lon_min (float): Minimum longitude of sub domain
-        sub_lon_max (float): Maximum longitude of sub domain
-        sub_lat_min (float): Minimum latitude of sub domain
-        sub_lat_max (float): Maximum latitude of sub domain
+        sub_lon_min (float): 
+            Minimum longitude of sub domain
+        sub_lon_max (float): 
+            Maximum longitude of sub domain
+        sub_lat_min (float): 
+            Minimum latitude of sub domain
+        sub_lat_max (float): 
+            Maximum latitude of sub domain
     
     Returns:
         None
@@ -165,10 +176,14 @@ def basis_bc_blocks(domain, basis_case, time, vertical=1):
     Each direction is split into vertical slabs with number specified by input 'vertical'
     
     Args:
-        domain (str): String of domain area
-        basis_case (str): Labelling for basis case. 
-        time (str): Timestamp for basis functions
-        vertical (int, optioanl): Number of vertical slabs to split boundary conditions into
+        domain (str):
+            String of domain area
+        basis_case (str): 
+            Labelling for basis case. 
+        time (str): 
+            Timestamp for basis functions
+        vertical (int, optioanl): 
+            Number of vertical slabs to split boundary conditions into
             Default = 1
             
     Returns:
@@ -226,9 +241,12 @@ def basis_bc_uniform(domain, basis_case, time):
     """Creates creates one uniform scaling for boundary conditions for all directions
     
     Args:
-        domain (str): String of domain area
-        basis_case (str): Labelling for basis case. 
-        time (str): Timestamp for basis functions
+        domain (str): 
+            String of domain area
+        basis_case (str): 
+            Labelling for basis case. 
+        time (str): 
+            Timestamp for basis functions
             
     Returns:
         None
@@ -292,11 +310,16 @@ def basis_bc_all_gradients(domain, time, species, units='ppb', basis_case='horiz
         change by species 
         
     Args:
-        domain (str): String of domain area
-        time (str): Timestamp for basis functions
-        species (str): Species of interest
-        units (str, optional): Units of boundary conditions. Default ppb
-        basis_case (str, optional): Name of basis case. 
+        domain (str): 
+            String of domain area
+        time (str): 
+            Timestamp for basis functions
+        species (str): 
+            Species of interest
+        units (str, optional): 
+            Units of boundary conditions. Default ppb
+        basis_case (str, optional): 
+            Name of basis case. 
             Default 'horiz-strat-grad'
             
     Returns:
@@ -460,12 +483,18 @@ def basis_bc_pca(domain, time, species, units='ppb', basis_case='pca', numregion
     """breaks the MOZART VMR into the first 'numregions' principal components and scales each PC
     
     Args:
-        domain (str): String of domain area
-        time (str): Timestamp for basis functions
-        species (str): Species of interest
-        units (str, optional): Units of species. Default is 'ppb' 
-        basis_case (str): Labelling for basis case. Default is 'pca'
-        numregions (int): Number of PCs 
+        domain (str): 
+            String of domain area
+        time (str): 
+            Timestamp for basis functions
+        species (str): 
+            Species of interest
+        units (str, optional): 
+            Units of species. Default is 'ppb' 
+        basis_case (str):
+            Labelling for basis case. Default is 'pca'
+        numregions (int):
+            Number of PCs 
             
     Returns:
         None
