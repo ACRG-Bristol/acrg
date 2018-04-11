@@ -210,6 +210,112 @@
     
     <span class="k">return</span> <span class="n">R_indices</span><span class="p">,</span> <span class="n">ydim1</span><span class="p">,</span> <span class="n">ydim2</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">sigma_models</span><span class="p">)</span></div>
 
+<div class="viewcode-block" id="add_local_ratio"><a class="viewcode-back" href="../../api/acrg_tdmcmc.html#acrg_tdmcmc.run_tdmcmc.add_local_ratio">[docs]</a><span class="k">def</span> <span class="nf">add_local_ratio</span><span class="p">(</span><span class="n">fp_data_H</span><span class="p">,</span><span class="n">return_release</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    The add_local_ratio function adds an additional &quot;local_ratio&quot; parameter to all xarray.Dataset objects</span>
+<span class="sd">    within fp_data_H dictionary.</span>
+
+<span class="sd">    Note: footprints_data_merge() function creates a dictionary of xarray.Dataset objects with one for each </span>
+<span class="sd">    site. fp_sensivity() takes the output from footprints_data_merge() and adds sensivity matrix to each</span>
+<span class="sd">    dataset in the dictionary.</span>
+<span class="sd">    Each dataset should contain the following data variables:</span>
+<span class="sd">        &quot;mf&quot;</span>
+<span class="sd">        &quot;fp&quot;</span>
+<span class="sd">        &quot;release_lon&quot;</span>
+<span class="sd">        &quot;release_lat&quot;</span>
+<span class="sd">        &quot;sub_fp&quot; (additional &quot;sub_lon&quot;, &quot;sub_lat&quot; coords associated with this data variable)</span>
+<span class="sd"> </span>
+<span class="sd">    WARNING: Changes input object in place</span>
+<span class="sd"> </span>
+<span class="sd">    Args:</span>
+<span class="sd">        fp_data_H (dict)      : xarray.Dataset. Expects output from name.fp_sensitivity() function.</span>
+<span class="sd">        return_release (bool) : Whether or not to also return the release_lats and release_lons</span>
+<span class="sd">                                arrays.</span>
+<span class="sd">                          </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        if return_release:</span>
+<span class="sd">             tuple(dict (xarray Datasets and identifiers), np.array, np.array) : </span>
+<span class="sd">                 fp_data_H with &quot;local_ratio&quot; data variable added, release_lons, release_lats</span>
+<span class="sd">        else:</span>
+<span class="sd">            dict (xarray Datasets and identifiers) : fp_data_H with &quot;local_ratio&quot; data variable added</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    
+    <span class="n">sites</span> <span class="o">=</span> <span class="p">[</span><span class="n">key</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">fp_data_H</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="k">if</span> <span class="n">key</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;.&#39;</span><span class="p">]</span>
+    
+    <span class="n">release_lons</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">sites</span><span class="p">)))</span>
+    <span class="n">release_lats</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">sites</span><span class="p">)))</span>
+    
+    <span class="k">for</span> <span class="n">si</span><span class="p">,</span> <span class="n">site</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sites</span><span class="p">):</span>
+        <span class="n">release_lons</span><span class="p">[</span><span class="n">si</span><span class="p">]</span><span class="o">=</span><span class="n">fp_data_H</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">release_lon</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">release_lats</span><span class="p">[</span><span class="n">si</span><span class="p">]</span><span class="o">=</span><span class="n">fp_data_H</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">release_lat</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">dlon</span><span class="o">=</span><span class="n">fp_data_H</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">sub_lon</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">-</span><span class="n">fp_data_H</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">sub_lon</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">dlat</span><span class="o">=</span><span class="n">fp_data_H</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">sub_lat</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">-</span><span class="n">fp_data_H</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">sub_lat</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">local_sum</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">fp_data_H</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">mf</span><span class="p">)))</span>
+       
+        <span class="k">for</span> <span class="n">ti</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">fp_data_H</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">mf</span><span class="p">)):</span>
+            <span class="n">release_lon</span><span class="o">=</span><span class="n">fp_data_H</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">release_lon</span><span class="p">[</span><span class="n">ti</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+            <span class="n">release_lat</span><span class="o">=</span><span class="n">fp_data_H</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">release_lat</span><span class="p">[</span><span class="n">ti</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+            <span class="n">wh_rlon</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">fp_data_H</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">sub_lon</span><span class="o">.</span><span class="n">values</span><span class="o">-</span><span class="n">release_lon</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">dlon</span><span class="o">/</span><span class="mf">2.</span><span class="p">)</span>
+            <span class="n">wh_rlat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">fp_data_H</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">sub_lat</span><span class="o">.</span><span class="n">values</span><span class="o">-</span><span class="n">release_lat</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">dlat</span><span class="o">/</span><span class="mf">2.</span><span class="p">)</span>
+            <span class="n">local_sum</span><span class="p">[</span><span class="n">ti</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">fp_data_H</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">sub_fp</span><span class="p">[</span>
+            <span class="n">wh_rlat</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="mi">2</span><span class="p">:</span><span class="n">wh_rlat</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="mi">3</span><span class="p">,</span><span class="n">wh_rlon</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="mi">2</span><span class="p">:</span><span class="n">wh_rlon</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="mi">3</span><span class="p">,</span><span class="n">ti</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">)</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span>
+            <span class="n">fp_data_H</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">fp</span><span class="p">[:,:,</span><span class="n">ti</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>  
+            
+        <span class="n">local_ds</span> <span class="o">=</span> <span class="n">xray</span><span class="o">.</span><span class="n">Dataset</span><span class="p">({</span><span class="s1">&#39;local_ratio&#39;</span><span class="p">:</span> <span class="p">([</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">local_sum</span><span class="p">)},</span>
+                                        <span class="n">coords</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;time&#39;</span> <span class="p">:</span> <span class="p">(</span><span class="n">fp_data_H</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">])})</span>
+    
+        <span class="n">fp_data_H</span><span class="p">[</span><span class="n">site</span><span class="p">]</span> <span class="o">=</span> <span class="n">fp_data_H</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">local_ds</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">return_release</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">fp_data_H</span><span class="p">,</span><span class="n">release_lons</span><span class="p">,</span><span class="n">release_lats</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">fp_data_H</span></div>
+
+<div class="viewcode-block" id="average_period"><a class="viewcode-back" href="../../api/acrg_tdmcmc.html#acrg_tdmcmc.run_tdmcmc.average_period">[docs]</a><span class="k">def</span> <span class="nf">average_period</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span><span class="n">av_period</span><span class="p">,</span><span class="n">dim</span><span class="o">=</span><span class="s2">&quot;time&quot;</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    The average_period function resamples the input dataset along the specified dimension to the average</span>
+<span class="sd">    period.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        ds (xarray.Dataset) : Dataset contaiing time series dimension.</span>
+<span class="sd">        av_period (str)     : Averaging period to apply to timeseries dimension of dataset.</span>
+<span class="sd">                              E.g. &quot;2H&quot; (2 hours), &quot;30min&quot; or &quot;30T&quot; (30 minutes)</span>
+<span class="sd">                              See http://pandas.pydata.org/pandas-docs/stable/timeseries.html#offset-aliases</span>
+<span class="sd">                              for list of all frequencies available.</span>
+<span class="sd">        dim                 : Timeseries dimension within Dataset. Default = &quot;time&quot;.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        xarray.Dataset : original dataset averaged along the specified dimension</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">ds_av</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">resample</span><span class="p">(</span><span class="n">av_period</span><span class="p">,</span> <span class="n">dim</span> <span class="o">=</span> <span class="s2">&quot;time&quot;</span><span class="p">)</span>
+    <span class="n">ds_av</span> <span class="o">=</span> <span class="n">ds_av</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s2">&quot;all&quot;</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">ds_av</span></div>
+
+<div class="viewcode-block" id="average_period_fp"><a class="viewcode-back" href="../../api/acrg_tdmcmc.html#acrg_tdmcmc.run_tdmcmc.average_period_fp">[docs]</a><span class="k">def</span> <span class="nf">average_period_fp</span><span class="p">(</span><span class="n">fp_data_H</span><span class="p">,</span><span class="n">av_period_site</span><span class="p">,</span><span class="n">dim</span><span class="o">=</span><span class="s2">&quot;time&quot;</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    The average_period_fp function resamples all datasets within a footprints_data_merge() dictionary over</span>
+<span class="sd">    the averaging periods.</span>
+<span class="sd">    Note: av_period_site should contain the same number of entries as there are sites in fp_data_H</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        fp_data_H (dict) : output from footprints_data_merge() function.</span>
+<span class="sd">        av_period (list) : Averaging periods (str objects), one for each site.</span>
+<span class="sd">                           E.g. &quot;2H&quot; (2 hours), &quot;30min&quot; or &quot;30T&quot; (30 minutes)        </span>
+<span class="sd">        dim              : Timeseries dimension within Dataset. Default = &quot;time&quot;.</span>
+<span class="sd">        </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        dict: fp_data_H with datasets averaged along the specified dimension    </span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    
+    <span class="n">sites</span> <span class="o">=</span> <span class="p">[</span><span class="n">key</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">fp_data_H</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="k">if</span> <span class="n">key</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;.&#39;</span><span class="p">]</span>
+
+    <span class="n">fp_data_H_av</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">si</span><span class="p">,</span> <span class="n">site</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sites</span><span class="p">):</span>
+        <span class="n">fp_data_H_av</span><span class="p">[</span><span class="n">site</span><span class="p">]</span> <span class="o">=</span> <span class="n">average_period</span><span class="p">(</span><span class="n">fp_data_H</span><span class="p">[</span><span class="n">site</span><span class="p">],</span><span class="n">av_period_site</span><span class="p">[</span><span class="n">si</span><span class="p">],</span><span class="n">dim</span><span class="o">=</span><span class="n">dim</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">fp_data_H_av</span></div>
+
 
 <div class="viewcode-block" id="run_tdmcmc"><a class="viewcode-back" href="../../api/acrg_tdmcmc.html#acrg_tdmcmc.run_tdmcmc.run_tdmcmc">[docs]</a><span class="k">def</span> <span class="nf">run_tdmcmc</span><span class="p">(</span><span class="n">sites</span><span class="p">,</span><span class="n">meas_period</span><span class="p">,</span><span class="n">av_period</span><span class="p">,</span><span class="n">species</span><span class="p">,</span><span class="n">start_date</span> <span class="p">,</span><span class="n">end_date</span><span class="p">,</span> 
     <span class="n">domain</span><span class="p">,</span><span class="n">network</span><span class="p">,</span><span class="n">fp_basis_case</span> <span class="p">,</span><span class="n">bc_basis_case</span><span class="p">,</span><span class="n">rjmcmc</span><span class="p">,</span><span class="n">para_temp</span><span class="p">,</span>
@@ -230,6 +336,7 @@
     
     <span class="c1">#########################################</span>
     <span class="c1"># READ IN DATA AND FOOTPRINTS THEN MERGE</span>
+    
     <span class="n">corr_type</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;uncorrelated&quot;</span><span class="p">:</span><span class="kc">False</span><span class="p">,</span>
               <span class="s2">&quot;corr&quot;</span><span class="p">:</span><span class="kc">False</span><span class="p">,</span>
               <span class="s2">&quot;evencorr&quot;</span><span class="p">:</span><span class="kc">True</span><span class="p">}</span>
@@ -250,42 +357,23 @@
     
     <span class="c1">###########################################################################</span>
     <span class="c1"># CALCULATE DEGREE OF LOCALNESS FOR EACH FOOTPRINT</span>
-    <span class="n">release_lons</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">sites</span><span class="p">)))</span>
-    <span class="n">release_lats</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">sites</span><span class="p">)))</span>
-    <span class="k">for</span> <span class="n">si</span><span class="p">,</span> <span class="n">site</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sites</span><span class="p">):</span>
-        <span class="n">release_lons</span><span class="p">[</span><span class="n">si</span><span class="p">]</span><span class="o">=</span><span class="n">fp_data_H2</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">release_lon</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
-        <span class="n">release_lats</span><span class="p">[</span><span class="n">si</span><span class="p">]</span><span class="o">=</span><span class="n">fp_data_H2</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">release_lat</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
-        <span class="n">dlon</span><span class="o">=</span><span class="n">fp_data_H2</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">sub_lon</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">-</span><span class="n">fp_data_H2</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">sub_lon</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
-        <span class="n">dlat</span><span class="o">=</span><span class="n">fp_data_H2</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">sub_lat</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">-</span><span class="n">fp_data_H2</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">sub_lat</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
-        <span class="n">local_sum</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">fp_data_H2</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">mf</span><span class="p">)))</span>
-       
-        <span class="k">for</span> <span class="n">ti</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">fp_data_H2</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">mf</span><span class="p">)):</span>
-            <span class="n">release_lon</span><span class="o">=</span><span class="n">fp_data_H2</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">release_lon</span><span class="p">[</span><span class="n">ti</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
-            <span class="n">release_lat</span><span class="o">=</span><span class="n">fp_data_H2</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">release_lat</span><span class="p">[</span><span class="n">ti</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
-            <span class="n">wh_rlon</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">fp_data_H2</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">sub_lon</span><span class="o">.</span><span class="n">values</span><span class="o">-</span><span class="n">release_lon</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">dlon</span><span class="o">/</span><span class="mf">2.</span><span class="p">)</span>
-            <span class="n">wh_rlat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">fp_data_H2</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">sub_lat</span><span class="o">.</span><span class="n">values</span><span class="o">-</span><span class="n">release_lat</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">dlat</span><span class="o">/</span><span class="mf">2.</span><span class="p">)</span>
-            <span class="n">local_sum</span><span class="p">[</span><span class="n">ti</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">fp_data_H2</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">sub_fp</span><span class="p">[</span>
-            <span class="n">wh_rlat</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="mi">2</span><span class="p">:</span><span class="n">wh_rlat</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="mi">3</span><span class="p">,</span><span class="n">wh_rlon</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="mi">2</span><span class="p">:</span><span class="n">wh_rlon</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="mi">3</span><span class="p">,</span><span class="n">ti</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">)</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span>
-            <span class="n">fp_data_H2</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">fp</span><span class="p">[:,:,</span><span class="n">ti</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>  
-            
-        <span class="n">local_ds</span> <span class="o">=</span> <span class="n">xray</span><span class="o">.</span><span class="n">Dataset</span><span class="p">({</span><span class="s1">&#39;local_ratio&#39;</span><span class="p">:</span> <span class="p">([</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">local_sum</span><span class="p">)},</span>
-                                        <span class="n">coords</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;time&#39;</span> <span class="p">:</span> <span class="p">(</span><span class="n">fp_data_H2</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">])})</span>
+    <span class="n">fp_data_H2</span><span class="p">,</span><span class="n">release_lats</span><span class="p">,</span><span class="n">release_lons</span> <span class="o">=</span> <span class="n">add_local_ratio</span><span class="p">(</span><span class="n">fp_data_H2</span><span class="p">)</span>
     
-        <span class="n">fp_data_H2</span><span class="p">[</span><span class="n">site</span><span class="p">]</span> <span class="o">=</span> <span class="n">fp_data_H2</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">local_ds</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">si</span><span class="p">,</span> <span class="n">site</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sites</span><span class="p">):</span>     
         <span class="n">fp_data_H2</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;Domain&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">domain</span>
 <span class="c1">#        fp_data_H2[site].attrs[&#39;Height&#39;]=fp_heights[site] # ** fp_heights needs to be defined **</span>
     
+    <span class="c1">###########################################################################</span>
+    <span class="c1"># APPLY FILTERS TO DATASET</span>
+
     <span class="k">if</span> <span class="n">filters</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">fp_data_H5</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="n">filtering</span><span class="p">(</span><span class="n">fp_data_H2</span><span class="p">,</span> <span class="n">filters</span><span class="p">,</span><span class="n">keep_missing</span><span class="o">=</span><span class="n">corr_type</span><span class="p">[</span><span class="n">inv_type</span><span class="p">])</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">fp_data_H5</span> <span class="o">=</span> <span class="n">fp_data_H2</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-        
-    <span class="n">fp_data_H</span> <span class="o">=</span> <span class="p">{}</span>    
-    <span class="k">for</span> <span class="n">si</span><span class="p">,</span> <span class="n">site</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sites</span><span class="p">):</span>
-        <span class="n">site_ds</span> <span class="o">=</span> <span class="n">fp_data_H5</span><span class="p">[</span><span class="n">site</span><span class="p">]</span><span class="o">.</span><span class="n">resample</span><span class="p">(</span><span class="n">av_period</span><span class="p">[</span><span class="n">si</span><span class="p">],</span> <span class="n">dim</span> <span class="o">=</span> <span class="s2">&quot;time&quot;</span><span class="p">)</span>
-        <span class="n">site_ds2</span><span class="o">=</span> <span class="n">site_ds</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="s2">&quot;time&quot;</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s2">&quot;all&quot;</span><span class="p">)</span>
-        <span class="n">fp_data_H</span><span class="p">[</span><span class="n">site</span><span class="p">]</span> <span class="o">=</span> <span class="n">site_ds2</span>
-        
+     
+    <span class="c1">###########################################################################</span>
+    <span class="c1"># APPLY AVERAGING PERIOD</span>
+    <span class="n">fp_data_H</span> <span class="o">=</span> <span class="n">average_period_fp</span><span class="p">(</span><span class="n">fp_data_H5</span><span class="p">,</span><span class="n">av_period</span><span class="p">,</span><span class="n">dim</span><span class="o">=</span><span class="s2">&quot;time&quot;</span><span class="p">)</span>
     
     <span class="n">lat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">fp_data_H</span><span class="p">[</span><span class="n">sites</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">sub_lat</span><span class="p">)</span>
     <span class="n">lon</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">fp_data_H</span><span class="p">[</span><span class="n">sites</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">sub_lon</span><span class="p">)</span>
@@ -328,7 +416,9 @@
             <span class="n">y_error</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fp_data_H3</span><span class="o">.</span><span class="n">vmf</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="nb">print</span> <span class="s2">&quot;No variability or repeatability in data file - use a default value&quot;</span>
-            <span class="n">y_error</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mf">0.002</span><span class="o">*</span><span class="n">fp_data_H3</span><span class="o">.</span><span class="n">mf</span><span class="o">.</span><span class="n">values</span><span class="p">)</span> <span class="c1"># 0.002 only appropriate for methane</span>
+            <span class="n">dmf_default</span> <span class="o">=</span> <span class="mf">0.002</span>
+            <span class="nb">print</span> <span class="s2">&quot;Default value used: </span><span class="si">{}</span><span class="s2">. Only appropriate for methane&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">dmf_default</span><span class="p">)</span>
+            <span class="n">y_error</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dmf_default</span><span class="o">*</span><span class="n">fp_data_H3</span><span class="o">.</span><span class="n">mf</span><span class="o">.</span><span class="n">values</span><span class="p">)</span> <span class="c1"># 0.002 only appropriate for methane</span>
         <span class="k">if</span> <span class="n">si</span> <span class="o">==</span><span class="mi">0</span><span class="p">:</span>
             <span class="n">H_fixed2</span><span class="o">=</span><span class="n">fp_data_H3</span><span class="o">.</span><span class="n">H</span>
             <span class="n">H_vary2</span><span class="o">=</span><span class="n">fp_data_H3</span><span class="o">.</span><span class="n">sub_H</span>

@@ -54,25 +54,27 @@
 
 <span class="nd">@jit</span><span class="p">(</span><span class="n">nopython</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
 <div class="viewcode-block" id="coarsen"><a class="viewcode-back" href="../../api/acrg_grid.html#acrg_grid.coarsen.coarsen">[docs]</a><span class="k">def</span> <span class="nf">coarsen</span><span class="p">(</span><span class="n">arrayFine</span><span class="p">,</span> <span class="n">latFine</span><span class="p">,</span> <span class="n">lonFine</span><span class="p">,</span> <span class="n">factor</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">mean</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
-    <span class="sd">&#39;&#39;&#39;</span>
-<span class="sd">    Coarsen a fine grid by some integer factor.</span>
+    <span class="sd">&#39;&#39;&#39;Coarsen a fine grid by some integer factor.</span>
 <span class="sd">    E.g. if the input array is 1000 x 500, and is coarsened by a factor of 2</span>
 <span class="sd">    the output array will be 500 x 250. By default, the output is the mean</span>
 <span class="sd">    of the inputs.</span>
 <span class="sd">    </span>
-<span class="sd">    Arguments:</span>
-<span class="sd">    arrayFine: input array</span>
-<span class="sd">    latFine: input latitudes</span>
-<span class="sd">    lonFine: input longitudes</span>
-<span class="sd">    </span>
-<span class="sd">    Keywords:</span>
-<span class="sd">    factor: factor by which to coarsen array</span>
-<span class="sd">    mean: True/False. If True calculates the mean of the fine array values, </span>
-<span class="sd">        if False, calculates the sum.</span>
+<span class="sd">    Args:</span>
+<span class="sd">        arrayFine (array): array of values for fine resolution grid</span>
+<span class="sd">        latFine (array): 1D latitudes of fine resolution grid</span>
+<span class="sd">        lonFine (array): 1D longitudes of fine resolution grid</span>
+<span class="sd">        factor (int, optional): Factor by which to coarsen array. Default is 2</span>
+<span class="sd">        mean (bool): True/False. </span>
+<span class="sd">            True calculates the mean of the fine array values; False calculates the sum.</span>
+<span class="sd">            Default is True</span>
+<span class="sd">            </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        out (array): grid of coarsened values</span>
+<span class="sd">        outLat (array): Latitudes of coarsened grid</span>
+<span class="sd">        outLon (array): Longitudes of coarsened grid</span>
 
 <span class="sd">    Example:</span>
-<span class="sd">    </span>
-<span class="sd">    out, outLat, outLon = coarsen(fineArray, fineLat, fineLon, factor = 10, mean = True)</span>
+<span class="sd">        out, outLat, outLon = coarsen(fineArray, fineLat, fineLon, factor = 10, mean = True)</span>
 <span class="sd">    </span>
 <span class="sd">    &#39;&#39;&#39;</span>
     
