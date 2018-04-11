@@ -24,6 +24,7 @@ import calendar
 import pickle
 from scipy import interpolate
 import cartopy.crs as ccrs
+import pdb
 
 acrg_path = os.getenv("ACRG_PATH")
 data_path = os.getenv("DATA_PATH")
@@ -717,17 +718,6 @@ def footprints_data_merge(data, domain, load_flux = True,
             
             # rt17603: 06/04/2018 - Added sort as some footprints weren't sorted by time for satellite data.
             site_fp = site_fp.sortby("time")
-            
-            # Combine datasets to one with coarsest  frequency
-
-            ds_timefreq = np.nanmedian((site_ds.time.data[1:] - site_ds.time.data[0:-1]).astype('int64')) 
-            fp_timefreq = np.nanmedian((site_fp.time.data[1:] - site_fp.time.data[0:-1]).astype('int64')) 
-            if ds_timefreq > fp_timefreq:
-               site_fp = site_fp.resample(str(ds_timefreq/3600e9)+'H', dim='time', how='mean')
-            elif ds_timefreq < fp_timefreq:
-               site_ds = site_ds.resample(str(fp_timefreq/3600e9)+'H', dim='time', how='mean')
-               
-
             site_ds = combine_datasets(site_ds, site_fp,
                                        method = "ffill",
                                        tolerance = tolerance)
