@@ -143,10 +143,12 @@ def interp_time(bc_ds,vmr_var_names, new_times):
     Note: This function was created to convert MOZART monthly averages into 
     same frequency as NAME footprints.
 
+    TODO: Add details for vmr_var_names and new_times
+
     Args:
         bc_ds (xarray.Dataset)   : Output from boundary_conditions() function
-        vmr_var_names (iterable) : 
-        new_times                : 
+        vmr_var_names (iterable) : ???
+        new_times                : ???
     
     Returns:
         xarray.Dataset : new dataset with the VMRs recalculated at interpolated times.

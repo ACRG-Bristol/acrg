@@ -45,25 +45,28 @@
 <span></span><span class="c1"># -*- coding: utf-8 -*-</span>
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">Created on Tue Nov 11 11:23:48 2014</span>
-
-<span class="sd">Areagrid: Calculate a grid of areas (m2) given arrays of </span>
-<span class="sd">    latitudes and longitudes</span>
-
-<span class="sd">    Example: </span>
-<span class="sd">    </span>
-<span class="sd">    import acrg_grid</span>
-<span class="sd">    lat=np.arange(50., 60., 1.)</span>
-<span class="sd">    lon=np.arange(0., 10., 1.)</span>
-<span class="sd">    </span>
-<span class="sd">    area=acrg_grid.areagrid(lat, lon)</span>
-
 <span class="sd">@author: chxmr</span>
 <span class="sd">&quot;&quot;&quot;</span>
-
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 
 <div class="viewcode-block" id="areagrid"><a class="viewcode-back" href="../../api/acrg_grid.html#acrg_grid.areagrid.areagrid">[docs]</a><span class="k">def</span> <span class="nf">areagrid</span><span class="p">(</span><span class="n">lat</span><span class="p">,</span> <span class="n">lon</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;Calculates grid of areas (m2) given arrays of latitudes and longitudes</span>
 
+<span class="sd">  Args:</span>
+<span class="sd">      lat (array): 1D array of latitudes</span>
+<span class="sd">      lon (array): 1D array of longitudes</span>
+<span class="sd">        </span>
+<span class="sd">  Returns:</span>
+<span class="sd">      area (array): 2D array of areas of of size lat x lon</span>
+<span class="sd">      </span>
+<span class="sd">  Example:</span>
+<span class="sd">    import acrg_grid</span>
+<span class="sd">    lat=np.arange(50., 60., 1.)</span>
+<span class="sd">    lon=np.arange(0., 10., 1.)</span>
+<span class="sd">    area=acrg_grid.areagrid(lat, lon)</span>
+<span class="sd">    </span>
+<span class="sd">  &quot;&quot;&quot;</span>
+        
   <span class="n">re</span><span class="o">=</span><span class="mf">6367500.0</span>	<span class="c1">#radius of Earth in m</span>
   
   <span class="n">dlon</span><span class="o">=</span><span class="nb">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">lon</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">-</span> <span class="n">lon</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">/</span><span class="mf">180.</span>
@@ -73,7 +76,7 @@
   <span class="n">area</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">lat</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">lon</span><span class="p">)))</span>
   
   <span class="k">for</span> <span class="n">latI</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">lat</span><span class="p">)):</span>
-    <span class="k">if</span> <span class="n">theta</span><span class="p">[</span><span class="n">latI</span><span class="p">]</span> <span class="o">==</span> <span class="mf">0.</span> <span class="ow">or</span> <span class="n">theta</span><span class="p">[</span><span class="n">latI</span><span class="p">]</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">theta</span><span class="p">[</span><span class="n">latI</span><span class="p">]</span> <span class="o">==</span> <span class="mf">0.</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">theta</span><span class="p">[</span><span class="n">latI</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">):</span>
       <span class="n">area</span><span class="p">[</span><span class="n">latI</span><span class="p">,</span> <span class="p">:]</span><span class="o">=</span><span class="p">(</span><span class="n">re</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">*</span><span class="nb">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">dlat</span><span class="o">/</span><span class="mf">2.</span><span class="p">)</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mf">0.</span><span class="p">))</span><span class="o">*</span><span class="n">dlon</span>
     <span class="k">else</span><span class="p">:</span>
       <span class="n">lat1</span><span class="o">=</span><span class="n">theta</span><span class="p">[</span><span class="n">latI</span><span class="p">]</span> <span class="o">-</span> <span class="n">dlat</span><span class="o">/</span><span class="mf">2.</span>

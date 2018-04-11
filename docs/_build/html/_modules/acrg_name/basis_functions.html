@@ -78,11 +78,27 @@
 <span class="n">bc_basis_dir</span> <span class="o">=</span> <span class="n">join</span><span class="p">(</span><span class="n">data_path</span><span class="p">,</span><span class="s1">&#39;NAME/bc_basis_functions/&#39;</span><span class="p">)</span>
 
 
-<div class="viewcode-block" id="basis_blocks"><a class="viewcode-back" href="../../api/acrg_name.html#acrg_name.basis_functions.basis_blocks">[docs]</a><span class="k">def</span> <span class="nf">basis_blocks</span><span class="p">(</span><span class="n">domain</span> <span class="o">=</span> <span class="s2">&quot;SOUTHASIA&quot;</span><span class="p">,</span> <span class="n">time</span> <span class="o">=</span> <span class="s2">&quot;2012-01-01&quot;</span><span class="p">,</span> <span class="n">blocksize</span> <span class="o">=</span> <span class="mi">25</span><span class="p">,</span> <span class="n">basis_case</span> <span class="o">=</span> <span class="s2">&quot;25x25&quot;</span><span class="p">):</span> 
-
-<span class="c1"># creates basis functions in square blocks (e.g., 5x5 grid cells per region)    </span>
+<div class="viewcode-block" id="basis_blocks"><a class="viewcode-back" href="../../api/acrg_name.html#acrg_name.basis_functions.basis_blocks">[docs]</a><span class="k">def</span> <span class="nf">basis_blocks</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">time</span><span class="p">,</span> <span class="n">blocksize</span><span class="p">,</span> <span class="n">basis_case</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span> 
+    <span class="sd">&quot;&quot;&quot;Creates basis functions in square blocks (e.g., 5x5 grid cells per region)</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        domain (str): String of domain area</span>
+<span class="sd">        time (str): Timestamp for basis functions</span>
+<span class="sd">        blocksize (int): Number of grid cells to split into (i.e. blocksize x blocksize)</span>
+<span class="sd">        basis_case (str, optional): Labelling for basis case. </span>
+<span class="sd">            Default is e.g. &#39;5x5&#39; for blocksize of 5</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        None</span>
+<span class="sd">        Writes blocked basis functions to netcdf</span>
+<span class="sd">        </span>
+<span class="sd">    Example:</span>
+<span class="sd">        basis_blocks(domain = &quot;SOUTHASIA&quot;, time = &quot;2012-01-01&quot;, blocksize=25)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">basis_case</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">basis_case</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">blocksize</span><span class="p">)</span><span class="o">+</span><span class="s2">&quot;x&quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">blocksize</span><span class="p">)</span>
     
-<span class="c1"># load a Fields file to get the domain</span>
+    <span class="c1"># load a Fields file to get the domain</span>
 
     <span class="n">files</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">fields_file_path</span> <span class="o">+</span> <span class="n">domain</span> <span class="o">+</span> <span class="s2">&quot;/*&quot;</span><span class="p">)</span>
     
@@ -116,14 +132,36 @@
                 
     <span class="n">basis_ds</span><span class="o">.</span><span class="n">to_netcdf</span><span class="p">(</span><span class="n">basis_dir</span> <span class="o">+</span> <span class="n">domain</span> <span class="o">+</span><span class="s2">&quot;/&quot;</span> <span class="o">+</span> <span class="n">basis_case</span> <span class="o">+</span> <span class="s2">&quot;_&quot;</span> <span class="o">+</span> <span class="n">domain</span> <span class="o">+</span> <span class="s2">&quot;_&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">year</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.nc&quot;</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="basis_transd"><a class="viewcode-back" href="../../api/acrg_name.html#acrg_name.basis_functions.basis_transd">[docs]</a><span class="k">def</span> <span class="nf">basis_transd</span><span class="p">(</span><span class="n">domain</span> <span class="o">=</span> <span class="s2">&quot;SOUTHASIA&quot;</span><span class="p">,</span> <span class="n">time</span> <span class="o">=</span> <span class="s2">&quot;2012-01-01&quot;</span><span class="p">,</span> <span class="n">basis_case</span> <span class="o">=</span> <span class="s2">&quot;transd&quot;</span><span class="p">,</span> <span class="n">sub_lon_min</span> <span class="o">=</span> <span class="mi">65</span><span class="p">,</span>
-                 <span class="n">sub_lon_max</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span> <span class="n">sub_lat_min</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span> <span class="n">sub_lat_max</span> <span class="o">=</span> <span class="mi">40</span><span class="p">):</span> 
-
-<span class="c1"># creates basis regions for the &quot;transdimensional inversion&quot;</span>
-<span class="c1"># creates variable central block based on sub_lat and sub_lon domain</span>
-<span class="c1"># and four fixed regions surrounding the central box   </span>
+<div class="viewcode-block" id="basis_transd"><a class="viewcode-back" href="../../api/acrg_name.html#acrg_name.basis_functions.basis_transd">[docs]</a><span class="k">def</span> <span class="nf">basis_transd</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">time</span><span class="p">,</span> <span class="n">basis_case</span> <span class="o">=</span> <span class="s2">&quot;transd&quot;</span><span class="p">,</span> <span class="n">sub_lon_min</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">sub_lon_max</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">sub_lat_min</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">sub_lat_max</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span> 
+    <span class="sd">&quot;&quot;&quot;Creates basis regions for the &quot;transdimensional inversion&quot;.</span>
+<span class="sd">    Creates variable central block based on sub_lat and sub_lon domain</span>
+<span class="sd">    and four fixed regions surrounding the central box. </span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        domain (str): String of domain area</span>
+<span class="sd">        time (str): Timestamp for basis functions</span>
+<span class="sd">        basis_case (str, optional): Labelling for basis case. </span>
+<span class="sd">            Default is &quot;transd&quot; for transdimensional</span>
+<span class="sd">        sub_lon_min (float): Minimum longitude of sub domain</span>
+<span class="sd">        sub_lon_max (float): Maximum longitude of sub domain</span>
+<span class="sd">        sub_lat_min (float): Minimum latitude of sub domain</span>
+<span class="sd">        sub_lat_max (float): Maximum latitude of sub domain</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        None</span>
+<span class="sd">        Writes basis regions to netcdf</span>
+<span class="sd">        </span>
+<span class="sd">    Example:</span>
+<span class="sd">        basis_transd(domain = &quot;SOUTHASIA&quot;, time = &quot;2012-01-01&quot;, basis_case = &quot;transd&quot;,</span>
+<span class="sd">            sub_lon_min = 65, sub_lon_max = 100, sub_lat_min = 5, sub_lat_max = 40)</span>
+<span class="sd">    &quot;&quot;&quot;</span>  
     
-<span class="c1"># load a Fields file to get the domain</span>
+    <span class="k">if</span> <span class="nb">all</span><span class="p">([</span><span class="n">sub_lon_min</span><span class="p">,</span> <span class="n">sub_lon_max</span><span class="p">,</span> <span class="n">sub_lat_min</span><span class="p">,</span> <span class="n">sub_lat_max</span><span class="p">])</span> <span class="o">==</span> <span class="kc">False</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;At least one sub domain lon or lat is missing on input&quot;</span><span class="p">)</span>
+        <span class="k">return</span>        
+    
+    <span class="c1"># load a Fields file to get the domain</span>
 
     <span class="n">files</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">fields_file_path</span> <span class="o">+</span> <span class="n">domain</span> <span class="o">+</span> <span class="s2">&quot;/*&quot;</span><span class="p">)</span>
     
@@ -166,11 +204,25 @@
     <span class="n">basis_ds</span><span class="o">.</span><span class="n">to_netcdf</span><span class="p">(</span><span class="n">basis_dir</span> <span class="o">+</span> <span class="n">domain</span> <span class="o">+</span><span class="s2">&quot;/&quot;</span> <span class="o">+</span> <span class="n">basis_case</span> <span class="o">+</span> <span class="s2">&quot;_&quot;</span> <span class="o">+</span> <span class="n">domain</span> <span class="o">+</span> <span class="s2">&quot;_&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">year</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.nc&quot;</span><span class="p">)</span></div>
     
 
-<div class="viewcode-block" id="basis_bc_blocks"><a class="viewcode-back" href="../../api/acrg_name.html#acrg_name.basis_functions.basis_bc_blocks">[docs]</a><span class="k">def</span> <span class="nf">basis_bc_blocks</span><span class="p">(</span><span class="n">domain</span> <span class="o">=</span> <span class="s2">&quot;SOUTHASIA&quot;</span><span class="p">,</span> <span class="n">basis_case</span> <span class="o">=</span> <span class="s2">&quot;NESW&quot;</span><span class="p">,</span> <span class="n">time</span> <span class="o">=</span> <span class="s2">&quot;2012-01-01&quot;</span><span class="p">,</span> <span class="n">vertical</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
-    
-<span class="c1"># creates uniform blocks for each direction (NESW). </span>
-<span class="c1"># Each direction is split into vertical slabs with number specified by input &#39;vertical&#39;</span>
-    
+<div class="viewcode-block" id="basis_bc_blocks"><a class="viewcode-back" href="../../api/acrg_name.html#acrg_name.basis_functions.basis_bc_blocks">[docs]</a><span class="k">def</span> <span class="nf">basis_bc_blocks</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">basis_case</span><span class="p">,</span> <span class="n">time</span><span class="p">,</span> <span class="n">vertical</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Creates uniform blocks for boundary conditions in each direction (NESW).</span>
+<span class="sd">    Each direction is split into vertical slabs with number specified by input &#39;vertical&#39;</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        domain (str): String of domain area</span>
+<span class="sd">        basis_case (str): Labelling for basis case. </span>
+<span class="sd">        time (str): Timestamp for basis functions</span>
+<span class="sd">        vertical (int, optioanl): Number of vertical slabs to split boundary conditions into</span>
+<span class="sd">            Default = 1</span>
+<span class="sd">            </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        None</span>
+<span class="sd">        Writes basis boundary condition blocks to netcdf</span>
+<span class="sd">        </span>
+<span class="sd">    Example:</span>
+<span class="sd">        basis_bc_blocks(domain=&#39;SOUTHASIA&#39;, basis_case=&#39;NESW&#39;, time=&#39;2012-01-01&#39;, vertical = 4)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+        
     <span class="n">files</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">fields_file_path</span> <span class="o">+</span> <span class="n">domain</span> <span class="o">+</span> <span class="s2">&quot;/*&quot;</span><span class="p">)</span>
     
     <span class="n">time</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">time</span><span class="p">)</span>
@@ -214,9 +266,23 @@
 
     <span class="n">basis_ds</span><span class="o">.</span><span class="n">to_netcdf</span><span class="p">(</span><span class="n">bc_basis_dir</span> <span class="o">+</span> <span class="n">domain</span> <span class="o">+</span><span class="s2">&quot;/&quot;</span> <span class="o">+</span> <span class="n">basis_case</span> <span class="o">+</span> <span class="s2">&quot;_&quot;</span> <span class="o">+</span> <span class="n">domain</span> <span class="o">+</span> <span class="s2">&quot;_&quot;</span> <span class="o">+</span> <span class="n">time</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%m&#39;</span><span class="p">)</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">year</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.nc&quot;</span><span class="p">)</span>                </div>
     
-<div class="viewcode-block" id="basis_bc_uniform"><a class="viewcode-back" href="../../api/acrg_name.html#acrg_name.basis_functions.basis_bc_uniform">[docs]</a><span class="k">def</span> <span class="nf">basis_bc_uniform</span><span class="p">(</span><span class="n">domain</span> <span class="o">=</span> <span class="s2">&quot;SOUTHASIA&quot;</span><span class="p">,</span> <span class="n">basis_case</span> <span class="o">=</span> <span class="s2">&quot;uniform&quot;</span><span class="p">,</span> <span class="n">time</span> <span class="o">=</span> <span class="s2">&quot;2012-01-01&quot;</span><span class="p">):</span>
+<div class="viewcode-block" id="basis_bc_uniform"><a class="viewcode-back" href="../../api/acrg_name.html#acrg_name.basis_functions.basis_bc_uniform">[docs]</a><span class="k">def</span> <span class="nf">basis_bc_uniform</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">basis_case</span><span class="p">,</span> <span class="n">time</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Creates creates one uniform scaling for boundary conditions for all directions</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        domain (str): String of domain area</span>
+<span class="sd">        basis_case (str): Labelling for basis case. </span>
+<span class="sd">        time (str): Timestamp for basis functions</span>
+<span class="sd">            </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        None</span>
+<span class="sd">        Writes uniform basis boundary condition to netcdf</span>
+<span class="sd">        </span>
+<span class="sd">    Example:</span>
+<span class="sd">        basis_bc_uniform(domain=&#39;SOUTHASIA&#39;, basis_case=&#39;uniform&#39;, time=&#39;2012-01-01&#39;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     
-<span class="c1"># creates one uniform scaling for all directions </span>
+ 
 
     <span class="n">files</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">fields_file_path</span> <span class="o">+</span> <span class="n">domain</span> <span class="o">+</span> <span class="s2">&quot;/*&quot;</span><span class="p">)</span>
     
@@ -258,15 +324,33 @@
                 
     <span class="n">basis_ds</span><span class="o">.</span><span class="n">to_netcdf</span><span class="p">(</span><span class="n">bc_basis_dir</span> <span class="o">+</span> <span class="n">domain</span> <span class="o">+</span><span class="s2">&quot;/&quot;</span> <span class="o">+</span> <span class="n">basis_case</span> <span class="o">+</span> <span class="s2">&quot;_&quot;</span> <span class="o">+</span> <span class="n">domain</span> <span class="o">+</span> <span class="s2">&quot;_&quot;</span> <span class="o">+</span> <span class="n">time</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%m&#39;</span><span class="p">)</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">year</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.nc&quot;</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="basis_bc_all_gradients"><a class="viewcode-back" href="../../api/acrg_name.html#acrg_name.basis_functions.basis_bc_all_gradients">[docs]</a><span class="k">def</span> <span class="nf">basis_bc_all_gradients</span><span class="p">(</span><span class="n">domain</span> <span class="o">=</span> <span class="s2">&quot;SOUTHASIA&quot;</span><span class="p">,</span> <span class="n">time</span> <span class="o">=</span> <span class="s2">&quot;2012-01-15&quot;</span><span class="p">,</span> <span class="n">species</span><span class="o">=</span><span class="s1">&#39;ch4&#39;</span><span class="p">,</span> <span class="n">units</span><span class="o">=</span><span class="s1">&#39;ppb&#39;</span><span class="p">,</span> <span class="n">basis_case</span><span class="o">=</span><span class="s1">&#39;horiz-strat-grad&#39;</span><span class="p">):</span>
-<span class="c1"># creates five terms for bc basis regions</span>
-<span class="c1">#           	     (1) offset to shift entire field up and down</span>
-<span class="c1">#				(2) factor to scale the entire field</span>
-<span class="c1">#				(3) scaling of N-S gradient</span>
-<span class="c1">#				(4) scaling of E-W gradient</span>
-<span class="c1">#				(5) scaling of stratospheric gradient</span>
-<span class="c1"># technically file is species specific as it calculates the stratosphere based on the vmm but one can </span>
-<span class="c1"># assume/hope that the stratosphere doesn&#39;t change by species </span>
+<div class="viewcode-block" id="basis_bc_all_gradients"><a class="viewcode-back" href="../../api/acrg_name.html#acrg_name.basis_functions.basis_bc_all_gradients">[docs]</a><span class="k">def</span> <span class="nf">basis_bc_all_gradients</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">time</span><span class="p">,</span> <span class="n">species</span><span class="p">,</span> <span class="n">units</span><span class="o">=</span><span class="s1">&#39;ppb&#39;</span><span class="p">,</span> <span class="n">basis_case</span><span class="o">=</span><span class="s1">&#39;horiz-strat-grad&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Creates five terms for bc basis regions</span>
+<span class="sd">        (1) offset to shift entire field up and down</span>
+<span class="sd">        (2) factor to scale the entire field</span>
+<span class="sd">        (3) scaling of N-S gradient</span>
+<span class="sd">        (4) scaling of E-W gradient</span>
+<span class="sd">        (5) scaling of stratospheric gradient</span>
+<span class="sd">        Technically file is species specific as it calculates the stratosphere </span>
+<span class="sd">        based on the vmm but one can assume/hope that the stratosphere doesn&#39;t </span>
+<span class="sd">        change by species </span>
+<span class="sd">        </span>
+<span class="sd">    Args:</span>
+<span class="sd">        domain (str): String of domain area</span>
+<span class="sd">        time (str): Timestamp for basis functions</span>
+<span class="sd">        species (str): Species of interest</span>
+<span class="sd">        units (str, optional): Units of boundary conditions. Default ppb</span>
+<span class="sd">        basis_case (str, optional): Name of basis case. </span>
+<span class="sd">            Default &#39;horiz-strat-grad&#39;</span>
+<span class="sd">            </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        None</span>
+<span class="sd">        Writes basis boundary condition gradients to netcdf</span>
+<span class="sd">        </span>
+<span class="sd">    Example:</span>
+<span class="sd">        basis_bc_all_gradients(&#39;SOUTHASIA&#39;, &#39;2012-01-01&#39;, &#39;ch4&#39;, units=&#39;ppb&#39;, basis_case=&#39;horiz-strat-grad&#39;)</span>
+<span class="sd">        </span>
+<span class="sd">    &quot;&quot;&quot;</span>
     
     <span class="n">files</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">fields_file_path</span> <span class="o">+</span> <span class="n">domain</span> <span class="o">+</span> <span class="s2">&quot;/*&quot;</span><span class="p">)</span>
     
@@ -416,8 +500,25 @@
 
  
                
-<div class="viewcode-block" id="basis_bc_pca"><a class="viewcode-back" href="../../api/acrg_name.html#acrg_name.basis_functions.basis_bc_pca">[docs]</a><span class="k">def</span> <span class="nf">basis_bc_pca</span><span class="p">(</span><span class="n">domain</span> <span class="o">=</span> <span class="s2">&quot;SOUTHASIA&quot;</span><span class="p">,</span> <span class="n">time</span> <span class="o">=</span> <span class="s2">&quot;2012-01-15&quot;</span><span class="p">,</span> <span class="n">species</span><span class="o">=</span><span class="s1">&#39;ch4&#39;</span><span class="p">,</span> <span class="n">units</span><span class="o">=</span><span class="s1">&#39;ppb&#39;</span><span class="p">,</span> <span class="n">basis_case</span><span class="o">=</span><span class="s1">&#39;pca&#39;</span><span class="p">,</span> <span class="n">numregions</span> <span class="o">=</span> <span class="mi">4</span><span class="p">):</span>
-<span class="c1">#   breaks the MOZART VMR into the first &#39;numregions&#39; principal components and scales each PC</span>
+<div class="viewcode-block" id="basis_bc_pca"><a class="viewcode-back" href="../../api/acrg_name.html#acrg_name.basis_functions.basis_bc_pca">[docs]</a><span class="k">def</span> <span class="nf">basis_bc_pca</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">time</span><span class="p">,</span> <span class="n">species</span><span class="p">,</span> <span class="n">units</span><span class="o">=</span><span class="s1">&#39;ppb&#39;</span><span class="p">,</span> <span class="n">basis_case</span><span class="o">=</span><span class="s1">&#39;pca&#39;</span><span class="p">,</span> <span class="n">numregions</span> <span class="o">=</span> <span class="mi">4</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;breaks the MOZART VMR into the first &#39;numregions&#39; principal components and scales each PC</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        domain (str): String of domain area</span>
+<span class="sd">        time (str): Timestamp for basis functions</span>
+<span class="sd">        species (str): Species of interest</span>
+<span class="sd">        units (str, optional): Units of species. Default is &#39;ppb&#39; </span>
+<span class="sd">        basis_case (str): Labelling for basis case. Default is &#39;pca&#39;</span>
+<span class="sd">        numregions (int): Number of PCs </span>
+<span class="sd">            </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        None</span>
+<span class="sd">        Writes PCA basis boundary condition to netcdf</span>
+<span class="sd">        </span>
+<span class="sd">    Example:</span>
+<span class="sd">        basis_bc_pca(&quot;SOUTHASIA&quot;, &quot;2012-01-15&quot;, &#39;ch4&#39;, units=&#39;ppb&#39;, basis_case=&#39;pca&#39;, numregions = 4)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+<span class="c1">#   </span>
 <span class="c1"># will be species specific</span>
     
     <span class="n">files</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">fields_file_path</span> <span class="o">+</span> <span class="n">domain</span> <span class="o">+</span> <span class="s2">&quot;/*&quot;</span><span class="p">)</span>
@@ -529,6 +630,8 @@
  
  
 <div class="viewcode-block" id="cut_array2d"><a class="viewcode-back" href="../../api/acrg_name.html#acrg_name.basis_functions.cut_array2d">[docs]</a><span class="k">def</span> <span class="nf">cut_array2d</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">shape</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Needs a description for what it does</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">arr_shape</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">array</span><span class="p">)</span>
     <span class="n">xcut</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">arr_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">)</span>
     <span class="n">ycut</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">arr_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">)</span>

@@ -48,22 +48,36 @@
 </div>
 <div class="section" id="module-acrg_grid.areagrid">
 <span id="acrg-grid-areagrid-module"></span><h2>acrg_grid.areagrid module<a class="headerlink" href="#module-acrg_grid.areagrid" title="Permalink to this headline">¶</a></h2>
-<p>Created on Tue Nov 11 11:23:48 2014</p>
-<dl class="docutils">
-<dt>Areagrid: Calculate a grid of areas (m2) given arrays of</dt>
-<dd><p class="first">latitudes and longitudes</p>
-<p>Example:</p>
-<p>import acrg_grid
-lat=np.arange(50., 60., 1.)
-lon=np.arange(0., 10., 1.)</p>
-<p class="last">area=acrg_grid.areagrid(lat, lon)</p>
-</dd>
-</dl>
-<p>&#64;author: chxmr</p>
+<p>Created on Tue Nov 11 11:23:48 2014
+&#64;author: chxmr</p>
 <dl class="function">
 <dt id="acrg_grid.areagrid.areagrid">
 <code class="descclassname">acrg_grid.areagrid.</code><code class="descname">areagrid</code><span class="sig-paren">(</span><em>lat</em>, <em>lon</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_grid/areagrid.html#areagrid"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_grid.areagrid.areagrid" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Calculates grid of areas (m2) given arrays of latitudes and longitudes</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>lat</strong> (<em>array</em>) &#8211; 1D array of latitudes</li>
+<li><strong>lon</strong> (<em>array</em>) &#8211; 1D array of longitudes</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">2D array of areas of of size lat x lon</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">area (array)</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Example</p>
+<p>import acrg_grid
+lat=np.arange(50., 60., 1.)
+lon=np.arange(0., 10., 1.)
+area=acrg_grid.areagrid(lat, lon)</p>
+</dd></dl>
 
 </div>
 <div class="section" id="module-acrg_grid.coarsen">
@@ -77,16 +91,32 @@ lon=np.arange(0., 10., 1.)</p>
 E.g. if the input array is 1000 x 500, and is coarsened by a factor of 2
 the output array will be 500 x 250. By default, the output is the mean
 of the inputs.</p>
-<p>Arguments:
-arrayFine: input array
-latFine: input latitudes
-lonFine: input longitudes</p>
-<p>Keywords:
-factor: factor by which to coarsen array
-mean: True/False. If True calculates the mean of the fine array values,</p>
-<blockquote>
-<div>if False, calculates the sum.</div></blockquote>
-<p>Example:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>arrayFine</strong> (<em>array</em>) &#8211; array of values for fine resolution grid</li>
+<li><strong>latFine</strong> (<em>array</em>) &#8211; 1D latitudes of fine resolution grid</li>
+<li><strong>lonFine</strong> (<em>array</em>) &#8211; 1D longitudes of fine resolution grid</li>
+<li><strong>factor</strong> (<em>int</em><em>, </em><em>optional</em>) &#8211; Factor by which to coarsen array. Default is 2</li>
+<li><strong>mean</strong> (<em>bool</em>) &#8211; True/False.
+True calculates the mean of the fine array values; False calculates the sum.
+Default is True</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">grid of coarsened values
+outLat (array): Latitudes of coarsened grid
+outLon (array): Longitudes of coarsened grid</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">out (array)</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Example</p>
 <p>out, outLat, outLon = coarsen(fineArray, fineLat, fineLon, factor = 10, mean = True)</p>
 </dd></dl>
 
@@ -210,31 +240,62 @@ time array then you&#8217;ll need to make a loop to go through each time point.<
 <dt id="acrg_grid.regrid.regrid2d">
 <code class="descclassname">acrg_grid.regrid.</code><code class="descname">regrid2d</code><span class="sig-paren">(</span><em>array_in</em>, <em>lat_in</em>, <em>lon_in</em>, <em>lat_out</em>, <em>lon_out</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_grid/regrid.html#regrid2d"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_grid.regrid.regrid2d" title="Permalink to this definition">¶</a></dt>
 <dd><p>2D mass-conservative regrid</p>
-<p>Only handles a 2D array at the moment. We should add time.</p>
-<dl class="docutils">
-<dt>Inputs:</dt>
-<dd>array_in: 2D field to regrid
-lat_in: latitudes corresponding to array_in
-lon_in: longitude corresponding to array_in
-lat_out: latitude to regrid onto
-lon_out: longitude to regrid onto</dd>
-</dl>
-<p>Returns a 2D array of dimensions [lat_out, lon_out]</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>array_in</strong> (<em>arrray</em>) &#8211; 2D field to regrid</li>
+<li><strong>lat_in</strong> (<em>array</em>) &#8211; latitudes corresponding to array_in</li>
+<li><strong>lon_in</strong> (<em>array</em>) &#8211; longitude corresponding to array_in</li>
+<li><strong>lat_out</strong> (<em>array</em>) &#8211; latitude to regrid onto</li>
+<li><strong>lon_out</strong> (<em>array</em>) &#8211; longitude to regrid onto</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">regridded 2D array of dimensions [lat_out, lon_out]
+iris &#8216;Cube&#8217;: regridded iris &#8216;Cube&#8217; object</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">array</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Example</p>
+<p>new_array, newcube = regrid2d(array_in, lat_in, lon_in, lat_out, lon_out)</p>
+<div class="admonition-todo admonition" id="index-0">
+<p class="first admonition-title">Todo</p>
+<p class="last">Only handles a 2D array at the moment. We should add time.</p>
+</div>
 </dd></dl>
 
 <dl class="function">
 <dt id="acrg_grid.regrid.regrid3d">
 <code class="descclassname">acrg_grid.regrid.</code><code class="descname">regrid3d</code><span class="sig-paren">(</span><em>array_in</em>, <em>lat_in</em>, <em>lon_in</em>, <em>lat_out</em>, <em>lon_out</em>, <em>time</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/acrg_grid/regrid.html#regrid3d"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acrg_grid.regrid.regrid3d" title="Permalink to this definition">¶</a></dt>
 <dd><p>3D mass-conservative regrid using a cached regridder</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>array_in</strong> (<em>array</em>) &#8211; 3D field to regrid &#8211; Dimensions of [lat_in, lon_in, time_in]</li>
+<li><strong>lat_in</strong> (<em>array</em>) &#8211; latitudes corresponding to array_in</li>
+<li><strong>lon_in</strong> (<em>array</em>) &#8211; longitude corresponding to array_in</li>
+<li><strong>lat_out</strong> (<em>array</em>) &#8211; latitude to regrid onto</li>
+<li><strong>lon_out</strong> (<em>array</em>) &#8211; longitude to regrid onto</li>
+<li><strong>time</strong> (<em>array</em>) &#8211; times to regrid onto</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
 <dl class="docutils">
-<dt>Inputs:</dt>
-<dd>array_in: 3D field to regrid - Lat, Lon, Time
-lat_in: latitudes corresponding to array_in
-lon_in: longitude corresponding to array_in
-lat_out: latitude to regrid onto
-lon_out: longitude to regrid onto</dd>
+<dt>Returns</dt>
+<dd>array: regridded 3D array of dimensions [lat_out, lon_out, time]</dd>
 </dl>
-<p>Returns a 3D array of dimensions [lat_out, lon_out, time_out]</p>
+<p class="rubric">Example</p>
+<p>array_out = regrid3d(array_in, lat_in, lon_in, lat_out, lon_out, time)</p>
 </dd></dl>
 
 </div>
