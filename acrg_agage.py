@@ -35,7 +35,7 @@ from netCDF4 import Dataset
 from acrg_time import convert
 import json
 import datetime as dt
-import xarray as xray
+import xarray as xr
 from collections import OrderedDict
 import os
 
@@ -171,12 +171,12 @@ def quadratic_sum(x):
     
 
 def get_file_list(site, species,
-                  height = None,
+                  inlet = None,
                   network = None,
                   instrument = None,
                   data_directory=None):
     '''
-    Find all files that fit the site, species, start and end dates, heigh
+    Find all files that fit the site, species, start and end dates, inlet
     network and instrument.
     '''
     
@@ -191,10 +191,6 @@ def get_file_list(site, species,
         print("Directory %s doesn't exist." %data_directory)
         return data_directory, None
 
-    # If no network specified, pick the first network in site_info dictionary
-    if network is None:
-        file_network_string = site_info[site].keys()[0]
-    
     #Get file list and break down file name
     fnames, file_info = file_search_and_split(join(data_directory, "*.nc"))
 
@@ -232,38 +228,33 @@ def get_file_list(site, species,
             return data_directory, None
  
     # See if any sites are separated by height
-    file_height = [re.split("-|\.", f[-1])[1] for f in file_info]
-    file_height = [None if fh == "nc" else fh for fh in file_height]
+    file_inlet = [re.split("-|\.", f[-1])[1] for f in file_info]
+    file_inlet = [None if fh == "nc" else fh for fh in file_inlet]
     # Are there any files in the folder for which no inlet height is defined?
-    if any([f is None for f in file_height]):
+    if any([f is None for f in file_inlet]):
         # If so, do none of the matching files have a height? If so, we need more info
-        if not all([f is None for f in file_height]):
+        if not all([f is None for f in file_inlet]):
             print("It looks like there are some files in %s" %data_directory)
             print(" for which an inlet height has been defined, and others where none has been defined.")
             print("Make sure an inlet height is defined for all files, or change this function!")
             return data_directory, None
         # Else, we don't need to do anything            
     else:
-        # If no inlet specified, pick first element in list
-        if height is None:
-            file_height_string = site_info[site][file_network_string]["height"][0]
+        # If no inlet specified, pick first element in height list
+        if inlet is None:
+            file_inlet_string = site_info[site][network]["height"][0]
         else:
-            if type(height) is not list:
-                height = [height]
-            file_height_string = listsearch(height, site, site_info, 
-                                            label="height")                        
-            if file_height_string is None:
-                print("Height " + height + " doesn't exist in site_info.json. "
-                    + "Available heights are " + str(site_info[site]["height"])
-                    + ". Leave blank for default height.")
-                return data_directory, None
+            file_inlet_string = inlet
         # Subset of matching files
-        fnames = [f for (ht, f) in zip(file_height, fnames) if ht == file_height_string]
-        file_info = [f for (ht, f) in zip(file_height, file_info) if ht == file_height_string]
+        fnames = [f for (ht, f) in zip(file_inlet, fnames) if ht == file_inlet_string]
+        file_info = [f for (ht, f) in zip(file_inlet, file_info) if ht == file_inlet_string]
+        if len(fnames) == 0:
+            print("Can't find any matching inlets: %s" %inlet)
+            return data_directory, None
 
     # Return output
     if len(fnames) == 0:
-        print("For some reason there aren't any files here...")
+        print("For some reason I got to this stage and there aren't any files here...")
         return data_directory, None
     else:
         return data_directory, sorted(fnames)
@@ -271,12 +262,16 @@ def get_file_list(site, species,
 
 
 def get(site, species_in, network = None, start = None, end = None,
-        height = None, average = None, keep_missing = False,
+        inlet = None, average = None, keep_missing = False,
         instrument = None,
         status_flag_unflagged = [0], data_directory = None):
+    '''
+    Get measurements from one site
     
-#    start_time = convert.reftime(start)
-#    end_time = convert.reftime(end)
+    '''
+    
+    start_time = convert.reftime(start)
+    end_time = convert.reftime(end)
     
     if site not in site_info.keys():
         print("No site called %s." % site)
@@ -288,181 +283,175 @@ def get(site, species_in, network = None, start = None, end = None,
         print("No species called %s." % species_in)
         print("Either try a different name, or add name to species_info.json.")
         return
-        
-    data_directory, files = get_file_list(site, species, start, end,
-                                          height, network = network,
+    
+    # If no network specified, pick the first network in site_info dictionary
+    if network is None:
+        network = site_info[site].keys()[0]
+        print("Assuming network is %s" %network)
+    
+    
+    data_directory, files = get_file_list(site, species,
+                                          network = network,
+                                          inlet = inlet,
                                           instrument = instrument,
                                           data_directory = data_directory)
 
-    return files
+    # Iterate through files
+    if files is not None:
+        
+        data_frames = []
+        cal = []
+        
+        for f in files:
+            
+            print("Reading: " + f)
+            
+            # Read files using xarray
+            with xr.open_dataset(join(data_directory, f)) as fxr:
+                ds = fxr.load()
+                
+            # Record calibration scales
+            if "Calibration_scale" in ds.attrs.keys():
+                cal.append(ds.attrs["Calibration_scale"])            
+                
+                ncvarname=listsearch(ds.keys(), species, species_info)
+                
+                if ncvarname is None:
+                    print("Can't find mole fraction variable name '" + species + 
+                          "' or alternatives in file. Either change " + 
+                          "variable name, or add alternative to " + 
+                          "acrg_species_info.json")
+                    return None
+
+                # Create single site data frame
+                df = pd.DataFrame({"mf": ds[ncvarname][:]},
+                                  index = ds.time)
+                
+                if ds[ncvarname].units.isdigit():
+                    units = float(ds[ncvarname].units)
+                else:
+                    units = str(ds[ncvarname].units)
+                
+                #Get repeatability
+                if ncvarname + "_repeatability" in ds.keys():
+                    file_dmf=ds[ncvarname + "_repeatability"].values
+                    if len(file_dmf) > 0:
+                        df["dmf"] = file_dmf[:]
+        
+                #Get variability
+                if ncvarname + "_variability" in ds.keys():
+                    file_vmf=ds[ncvarname + "_variability"]
+                    if len(file_vmf) > 0:
+                        df["vmf"] = file_vmf[:]
+                
+                # If ship read lat and lon data
+                # Check if site info has a keyword called platform
+                if 'platform' in site_info[site].keys():
+                    if site_info[site][network]["platform"] == 'ship':
+                        file_lat=ds["latitude"].values
+                        if len(file_lat) > 0:                                
+                            df["meas_lat"] = file_lat
+                            
+                        file_lon=ds["longitude"].values
+                        if len(file_lon) > 0:
+                            df["meas_lon"] = file_lon
+                           
+                    
+                    #If platform is aircraft, get altitude data
+                    if site_info[site]["platform"] == 'aircraft':
+                        if "alt" in ds.keys():
+                            file_alt=ds["alt"].values
+                            if len(file_alt) > 0:
+                                df["altitude"] = file_alt    
+                        
+                #Get status flag
+                if ncvarname + "_status_flag" in ds.keys():
+                    file_flag=ds[ncvarname + "_status_flag"].values
+                    if len(file_flag) > 0:
+                        df["status_flag"] = file_flag                
+                        # Flag out multiple flags
+                        flag = [False for _ in range(len(df.index))]
+                        for f in status_flag_unflagged:
+                            flag = flag | (df.status_flag == f)
+                        df = df[flag]
+               
+                        
+                if units != "permil":
+                    df = df[df.mf > 0.]
+
+                if len(df) > 0:
+                    data_frames.append(df)
     
-#    #Get files
-#    #####################################
-#    if files is not None:
-#    
-#        data_frames = []
-#        
-#        for f in files:
-#            
-#            print("Reading: " + f)
-#    
-#            skip = False
-#            
-#            ncf=Dataset(join(data_directory, f), 'r')
-#            
-#            if "time" not in ncf.variables:
-#                print("Skipping: " + f + ". No time variable")
-#                skip = True
-#    
-#            else:
-#                if ("seconds" in ncf.variables["time"].units) is True:
-#                    time = convert.sec2time(ncf.variables["time"][:], 
-#                                            ncf.variables["time"].units[14:])
-#                elif ("minutes" in ncf.variables["time"].units) is True:
-#                    time = convert.min2time(ncf.variables["time"][:], 
-#                                            ncf.variables["time"].units[14:]) 
-#                elif ("hours" in ncf.variables["time"].units) is True:
-#                    time = convert.hours2time(ncf.variables["time"][:], 
-#                                            ncf.variables["time"].units[14:]) 
-#                elif ("days" in ncf.variables["time"].units) is True:
-#                    time = convert.day2time(ncf.variables["time"][:], 
-#                                            ncf.variables["time"].units[11:])
-#                else: 
-#                    print("Time unit is not a recognized unit (seconds, minuties or days since")
-#                            
-#                if max(time) < start_time:
-#                    skip = True
-#                if min(time) > end_time:
-#                    skip = True
-#    
-#            if not skip:
-#    
-#                ncvarname=listsearch(ncf.variables.keys(), species, species_info)
-#                
-#                if ncvarname is None:
-#                    print("Can't find mole fraction variable name '" + species + 
-#                          "' or alternatives in file. Either change " + 
-#                          "variable name, or add alternative to " + 
-#                          "acrg_species_info.json")
-#                    ncf.close()
-#                    return None
-#
-#                df = pd.DataFrame({"mf": ncf.variables[ncvarname][:]},
-#                                  index = time)
-#                
-#                if is_number(ncf.variables[ncvarname].units):
-#                    units = float(ncf.variables[ncvarname].units)
-#                else:
-#                    units = str(ncf.variables[ncvarname].units)
-#                
-#                #Get repeatability
-#                if ncvarname + "_repeatability" in ncf.variables.keys():
-#                    file_dmf=ncf.variables[ncvarname + "_repeatability"]
-#                    if len(file_dmf) > 0:
-#                        df["dmf"] = file_dmf[:]
-#        
-#                #Get variability
-#                if ncvarname + "_variability" in ncf.variables.keys():
-#                    file_vmf=ncf.variables[ncvarname + "_variability"]
-#                    if len(file_vmf) > 0:
-#                        df["vmf"] = file_vmf[:]
-#                
-##                If ship read lat and lon data
-##               Check if site info has a keyword called platform
-#                if 'platform' in site_info[site].keys():
-#                    if site_info[site]["platform"] == 'ship':
-#                        file_lat=ncf.variables["latitude"]
-#                        if len(file_lat) > 0:                                
-#                            df["meas_lat"] = file_lat[:]
-#                            
-#                        file_lon=ncf.variables["longitude"]
-#                        if len(file_lon) > 0:
-#                            df["meas_lon"] = file_lon[:]
-#                           
-#                    
-#                    #If platform is aircraft, get altitude data
-#                    if site_info[site]["platform"] == 'aircraft':
-#                        if "alt" in ncf.variables.keys():
-#                            file_alt=ncf.variables["alt"]
-#                            if len(file_alt) > 0:
-#                                df["altitude"] = file_alt[:]        
-#                        
-#                #Get status flag
-#                if ncvarname + "_status_flag" in ncf.variables.keys():
-#                    file_flag=ncf.variables[ncvarname + "_status_flag"]
-#                    if len(file_flag) > 0:
-#                        df["status_flag"] = file_flag[:]                  
-#                        # Flag out multiple flags
-#                        flag = [False for _ in range(len(df.index))]
-#                        for f in status_flag_unflagged:
-#                            flag = flag | (df.status_flag == f)
-#                        df = df[flag]
-#               
-#                        
-#                if units != "permil":
-#                    df = df[df.mf > 0.]
-#
-#                if len(df) > 0:
-#                    data_frames.append(df)
-#    
-#            ncf.close()
-#    
-#        if len(data_frames) > 0:
-#            data_frame = pd.concat(data_frames).sort_index()
-#            data_frame.index.name = 'time'
-#            data_frame = data_frame[start_time : end_time]            
-#            if len(data_frame) == 0:
-#                return None
-#        else:
-#            return None
-#
-#
-#        if average is not None:
-#            how = {}
-#            for key in data_frame.columns:
-#                if key == "dmf":
-#                    how[key] = quadratic_sum
-#                elif key == "vmf":
-#                    # Calculate std of 1 min mf obs in av period as new vmf 
-#                    how[key] = "std"
-#                    data_frame["vmf"] = data_frame["mf"]
-#                else:
-#                    how[key] = "mean"
-#            
-#            if keep_missing == True:
-#                if min(data_frame.index) > start_time:
-#                    dum_frame = pd.DataFrame({"status_flag": float('nan')},
-#                                         index = np.array([start_time]))   
-#                    dum_frame["mf"] =  float('nan')
-#                    dum_frame["dmf"] =  float('nan')
-#                    dum_frame.index.name = 'time'                                                                               
-#                    data_frame = data_frame.append(dum_frame)
-#            
-#                if max(data_frame.index) < end_time:
-#                    dum_frame2 = pd.DataFrame({"status_flag": float('nan')},
-#                                         index = np.array([end_time]))   
-#                    dum_frame2["mf"] =  float('nan')
-#                    dum_frame2["dmf"] =  float('nan')
-#                    dum_frame2.index.name = 'time'
-#                    data_frame = data_frame.append(dum_frame2)
-#            
-#            data_frame=data_frame.resample(average, how=how)
-#            if keep_missing == True:
-#                data_frame=data_frame.drop(data_frame.index[-1])
-#              
-#        # Drop NaNs
-#        if keep_missing == False:  
-#            data_frame.dropna(inplace = True)
-#            
-#        data_frame.mf.units = units
-#        data_frame.files = files
-#    
-#        return data_frame
-#
-#    else:
-#        return None
-#
-#
+        # If multiple files, merge
+        if len(data_frames) > 0:
+
+            # Check if all calibration scales are the same
+            if not all([c == cal[0] for c in cal]):
+                print("ERROR: Can't merge the following files, as calibration scales are different:")
+                for f in files:
+                    print(f)
+                return None
+            
+            data_frame = pd.concat(data_frames).sort_index()
+            data_frame.index.name = 'time'
+            data_frame = data_frame[start_time : end_time]
+            
+            if len(data_frame) == 0:
+                return None
+
+        else:
+
+            return None
+
+
+        # If averaging is set, resample
+        if average is not None:
+            how = {}
+            for key in data_frame.columns:
+                if key == "dmf":
+                    how[key] = quadratic_sum
+                elif key == "vmf":
+                    # Calculate std of 1 min mf obs in av period as new vmf 
+                    how[key] = "std"
+                    data_frame["vmf"] = data_frame["mf"]
+                else:
+                    how[key] = "mean"
+            
+            if keep_missing == True:
+                if min(data_frame.index) > start_time:
+                    dum_frame = pd.DataFrame({"status_flag": float('nan')},
+                                         index = np.array([start_time]))   
+                    dum_frame["mf"] =  float('nan')
+                    dum_frame["dmf"] =  float('nan')
+                    dum_frame.index.name = 'time'                                                                               
+                    data_frame = data_frame.append(dum_frame)
+            
+                if max(data_frame.index) < end_time:
+                    dum_frame2 = pd.DataFrame({"status_flag": float('nan')},
+                                         index = np.array([end_time]))   
+                    dum_frame2["mf"] =  float('nan')
+                    dum_frame2["dmf"] =  float('nan')
+                    dum_frame2.index.name = 'time'
+                    data_frame = data_frame.append(dum_frame2)
+            
+            data_frame=data_frame.resample(average, how=how)
+            if keep_missing == True:
+                data_frame=data_frame.drop(data_frame.index[-1])
+              
+        # Drop NaNs
+        if keep_missing == False:  
+            data_frame.dropna(inplace = True)
+        
+        data_frame.mf.units = units
+        data_frame.files = files
+    
+        return data_frame
+
+    else:
+        
+        return None
+
+
 #def get_gosat(site, species, max_level, start = "1900-01-01", end = "2020-01-01", data_directory = None):
 #    
 #    if max_level is None:
