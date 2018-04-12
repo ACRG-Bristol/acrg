@@ -567,7 +567,8 @@ def footprints_data_merge(data, domain, load_flux = True,
                           emissions_name = None, interp_vmr_freq = None,
                           fp_directory = fp_directory,
                           flux_directory = flux_directory,
-                          bc_directory = bc_directory):
+                          bc_directory = bc_directory,
+                          resample_to_data = False):
 #                          perturbed=False, fp_dir_pert=None, pert_year=None, pert_month=None):
 
     """
@@ -609,6 +610,12 @@ def footprints_data_merge(data, domain, load_flux = True,
                                Must point to a directory which contains subfolders organized by domain.
                                (optional)
         bc_directory (str)   : Same sytax as flux_directory (optional)
+        resample_to_data (bool) : If set to True, the footprints are resampled to the data time series.
+                                  If set to False, the data is resampled to the data
+                                  If set to None (default), then the footprints and data are sampled to the 
+                                  coarset resolution of the two.
+                                  (optional)
+                                    
     
     Returns:
         Dictionary of the form {"MHD": MHD_xarray_dataset, "TAC": TAC_xarray_dataset}:
@@ -718,6 +725,35 @@ def footprints_data_merge(data, domain, load_flux = True,
             
             # rt17603: 06/04/2018 - Added sort as some footprints weren't sorted by time for satellite data.
             site_fp = site_fp.sortby("time")
+            
+            #lw13938: 12/04/2018 - This should slice the date to the smallest time frame
+            # spanned by both the footprint and obs, then resamples the data 
+            #using the mean to the one with coarsest median resolution 
+            #starting from the sliced start date. 
+            ds_timefreq = np.nanmedian((site_ds.time.data[1:] - site_ds.time.data[0:-1]).astype('int64')) 
+            fp_timefreq = np.nanmedian((site_fp.time.data[1:] - site_fp.time.data[0:-1]).astype('int64')) 
+            ds_st = site_ds.time[0]
+            ds_et = site_ds.time[-1]
+            fp_st = site_fp.time[0]
+            fp_et = site_fp.time[-1]
+            if int(ds_st.data) > int(fp_st.data):
+                start_date = ds_st
+            else:  
+                start_date = fp_st
+            if int(ds_et.data) < int(fp_st.data):
+                end_date = ds_et
+            else:
+                end_date = fp_et
+                
+            site_ds = site_ds.sel(time=slice(str(start_date.data), str(end_date.data)))
+            site_fp = site_fp.sel(time=slice(str(start_date.data), str(end_date.data)))
+            
+            base = start_date.dt.hour.data + start_date.dt.minute.data/60. + start_date.dt.second.data/3600.
+            if (ds_timefreq > fp_timefreq) or (resample_to_data == True):
+               site_fp = site_fp.resample(str(ds_timefreq/3600e9)+'H', dim='time', how='mean', base=base)
+            elif ds_timefreq < fp_timefreq or (resample_to_data == False):
+               site_ds = site_ds.resample(str(fp_timefreq/3600e9)+'H', dim='time', how='mean', base=base)
+            
             site_ds = combine_datasets(site_ds, site_fp,
                                        method = "ffill",
                                        tolerance = tolerance)
