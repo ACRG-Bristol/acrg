@@ -369,9 +369,9 @@ def test_fp_data_merge(data,measurement_param_small,fp_directory,flux_directory,
     Check data variables within dataset for site.
     '''
     site = measurement_param_small["sites"][0]
-    expected_keys = [".species",".units",site]
+    expected_keys = [".species",".units",".flux",".bc",site]
     expected_data_var = ["mf","dmf","fp","particle_locations_n","particle_locations_e","particle_locations_s",
-                         "particle_locations_w","flux","vmr_n","vmr_e","vmr_s","vmr_w","bc"]
+                         "particle_locations_w","bc"]
     
     out = name.footprints_data_merge(data,domain=measurement_param_small["domain"],fp_directory=fp_directory,
                                      flux_directory=flux_directory,bc_directory=bc_directory)
