@@ -96,7 +96,8 @@ def write(lat, lon, time, flux, species, domain,
     if type(time[0]) == np.datetime64:
         time=time
     else:
-        sys.exit('Time format not correct, needs to be type numpy.datetime64')
+        sys.exit('Time format not correct, needs to be a list of type numpy.datetime64. A DatetimeIndex will not work.\
+                 To convert a DatetimeIndex to correct format: time = [np.datetime64(i) for i in DatetimeIndex]')
 
         
     #Open netCDF file
@@ -126,14 +127,21 @@ def write(lat, lon, time, flux, species, domain,
     lon_attrs = {"long_name" : "longitude",
                  "units" : "degrees_east",
                  "notes" : "centre of cell"}
+
+
+    glob_attrs = c.OrderedDict([("title",title),
+                                ("author" , getpass.getuser()),
+                                ("date_created" , np.str(dt.datetime.today())),
+                                ("prior_used" , [i for i in prior_info_dict.keys()])])
+
+    for i in prior_info_dict.keys():
+        glob_attrs[i+'_version'] = prior_info_dict[i][0]
+        glob_attrs[i+'_raw_resolution']=prior_info_dict[i][1]
+        glob_attrs[i+'_reference']=prior_info_dict[i][2]
     
-
-    glob_attrs = {"title":title,
-                  "author" : getpass.getuser(),
-                  "date_created" : np.str(dt.datetime.today()),
-                  "prior_used" : ["%s: Version %s, raw resolution %s, reference %s. " %(i, prior_info_dict[i][0], prior_info_dict[i][1], prior_info_dict[i][2]) for i in prior_info_dict.keys()],
-                  "regridder" : "Created using %s" %regridder_used}
-
+    glob_attrs["regridder_used"]= regridder_used
+    
+    
     if flux_comments != None:
         glob_attrs['comments'] = flux_comments
         if copy_from_year != None:
@@ -146,7 +154,7 @@ def write(lat, lon, time, flux, species, domain,
                               coords = {'lat' : lat,
                                         'lon' : lon,
                                         'time' : time},
-                              attrs = c.OrderedDict(glob_attrs))
+                              attrs = glob_attrs)
     
     flux_ds.lat.attrs = lat_attrs
     flux_ds.lon.attrs = lon_attrs
