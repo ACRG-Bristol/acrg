@@ -104,7 +104,7 @@ def write(lat, lon, time, flux, species, domain,
     year = pd.DatetimeIndex([time[0]]).year[0]
     if copy_from_year != None:
         ncname = output_directory + '%s/%s_%s_%s_copy-from-%s.nc' %(domain, file_source, domain, year, copy_from_year)
-    if climatology == True:
+    elif climatology == True:
         ncname = output_directory + '%s/%s_%s_%s_climatology.nc' %(domain, file_source, domain, year)
     else:
         ncname = output_directory + '%s/%s_%s_%s.nc' %(domain, file_source, domain, year)
@@ -136,10 +136,10 @@ def write(lat, lon, time, flux, species, domain,
 
     for i, key in enumerate(prior_info_dict.keys()):
         prior_number = i+1
-        glob_attrs['prior_file_' + str(prior_number)] = prior_info_dict[i]
-        glob_attrs['prior_file_' + str(prior_number)+'_version'] = prior_info_dict[i][0]
-        glob_attrs['prior_file_' + str(prior_number)+'_raw_resolution']=prior_info_dict[i][1]
-        glob_attrs['prior_file_' + str(prior_number)+'_reference']=prior_info_dict[i][2]
+        glob_attrs['prior_file_' + str(prior_number)] = key
+        glob_attrs['prior_file_' + str(prior_number)+'_version'] = prior_info_dict[key][0]
+        glob_attrs['prior_file_' + str(prior_number)+'_raw_resolution']=prior_info_dict[key][1]
+        glob_attrs['prior_file_' + str(prior_number)+'_reference']=prior_info_dict[key][2]
     
     glob_attrs["regridder_used"]= regridder_used
     
