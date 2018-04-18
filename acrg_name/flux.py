@@ -132,12 +132,14 @@ def write(lat, lon, time, flux, species, domain,
     glob_attrs = c.OrderedDict([("title",title),
                                 ("author" , getpass.getuser()),
                                 ("date_created" , np.str(dt.datetime.today())),
-                                ("prior_used" , [i for i in prior_info_dict.keys()])])
+                                ("number_of_prior_files_used" , len(prior_info_dict.keys()))])
 
-    for i in prior_info_dict.keys():
-        glob_attrs[i+'_version'] = prior_info_dict[i][0]
-        glob_attrs[i+'_raw_resolution']=prior_info_dict[i][1]
-        glob_attrs[i+'_reference']=prior_info_dict[i][2]
+    for i, key in enumerate(prior_info_dict.keys()):
+        prior_number = i+1
+        glob_attrs['prior_file_' + str(prior_number)] = prior_info_dict[i]
+        glob_attrs['prior_file_' + str(prior_number)+'_version'] = prior_info_dict[i][0]
+        glob_attrs['prior_file_' + str(prior_number)+'_raw_resolution']=prior_info_dict[i][1]
+        glob_attrs['prior_file_' + str(prior_number)+'_reference']=prior_info_dict[i][2]
     
     glob_attrs["regridder_used"]= regridder_used
     
