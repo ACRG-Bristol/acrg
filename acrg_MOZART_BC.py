@@ -163,12 +163,12 @@ def MOZART_vmr(species, filename=None, start = "2010-01-01", end = "2016-01-01",
             Alt = np.reshape(Alt,np.shape(conc))
             vmr_var_name = 'vmr'
             
-            # change timestamp to occur in the middle of the month. Currently, only monthly files are correctly
-            # timestamped to the 15th of the month
-            if freq is 'M':
-                timestamp = f.start_date + dt.timedelta(days=14)
-            else:
-                timestamp = f.start_date
+            # change timestamp to occur in the beginning of the month.
+#            if freq is 'M':
+#                timestamp = f.start_date + dt.timedelta(days=14)
+#            else:
+#                timestamp = f.start_date
+            timestamp = f.start_date
 
             MZ = xray.Dataset({vmr_var_name : (['height', 'lat', 'lon','time'], conc),
                    'Alt' : (['height', 'lat', 'lon','time'], Alt)},
@@ -207,12 +207,6 @@ def MOZART_boundaries(MZ, domain):
     fp_height = fields_ds["height"].values
     
     vmr_var_name = 'vmr'
-
-    #Get info from a EUROPE footprint file:
-#    FP = xray.open_dataset(FPfilename)
-#    fp_lon = FP['lon']
-#    fp_lat = FP['lat']
-#    fp_height = FP['height']
 
     #Select the gidcells closest to the edges of the EUROPE domain. Bisect finds the 
     #index of the dimension value that occurs after the specified lons/lats.

@@ -852,12 +852,12 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
             # If units are specified, multiply by scaling factor
             if ".units" in attributes:
                 site_ds.update({'fp' : (site_ds.fp.dims, site_ds.fp / data[".units"])})
-                if calc_bc:
-                    for key in site_ds.keys():
-                        if "vmr" in key:
-                            site_ds.update({key :
-                                            (site_ds[key].dims, site_ds[key] / \
-                                            data[".units"])})
+#                if calc_bc:
+#                    for key in site_ds.keys():
+#                        if "vmr" in key:
+#                            site_ds.update({key :
+#                                            (site_ds[key].dims, site_ds[key] / \
+#                                            data[".units"])})
                 if HiTRes:
                     site_ds.update({'fp_HiTRes' : (site_ds.fp_HiTRes.dims, 
                                                    site_ds.fp_HiTRes / data[".units"])})
@@ -899,8 +899,12 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                 dt.timedelta(days = month_days-1)
             
             bc = boundary_conditions(domain, species, start_bc, end = end_bc, bc_directory=bc_directory)
-                
-            fp_and_data['.bc'] = bc
+
+            if  ".units" in attributes:
+                fp_and_data['.bc'] = bc / data[".units"]               
+            else:
+                fp_and_data['.bc'] = bc
+            
         
                                            
         # Calculate model time series, if required
