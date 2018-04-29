@@ -72,7 +72,7 @@ def update_release_time(fname):
 def process_HiTRes(domain, site, height, year, month, user_max_hour_back,
                    base_dir = "/dagage2/agage/metoffice/NAME_output/",
                    HiTRes_fields_folder = "24HrBk_Fields_files",
-                   met_folder = "Met"):
+                   met_folder = "Met", normal_fp_dir = None):
     
     """
     domain: string - 'EUROPE'
@@ -109,9 +109,9 @@ def process_HiTRes(domain, site, height, year, month, user_max_hour_back,
         met = proc.read_met(met_files)
     
     if month == '12':
-        totfp = nm.footprints(site, start="%s-%s-01" %(year,month), end = "%s-%s-01" %(int(year)+1, '01'), domain=domain, height = height+'m')
+        totfp = nm.footprints(site, start="%s-%s-01" %(year,month), end = "%s-%s-01" %(int(year)+1, '01'), domain=domain, height = height+'m', fp_directory= normal_fp_dir)
     else:
-        totfp = nm.footprints(site, start="%s-%s-01" %(year,month), end = "%s-%02d-01" %(year, int(month)+1), domain=domain, height = height+'m')
+        totfp = nm.footprints(site, start="%s-%s-01" %(year,month), end = "%s-%02d-01" %(year, int(month)+1), domain=domain, height = height+'m', fp_directory = normal_fp_dir)
 
     totfp = totfp.fp.to_dataset()
 
@@ -222,7 +222,7 @@ def process_HiTRes(domain, site, height, year, month, user_max_hour_back,
 def process_HiTRes_all(domain, site_height_dict, start_date, end_date, user_max_hour_back,
                        base_dir = "/dagage2/agage/metoffice/NAME_output/",
                        HiTRes_fields_folder = "24HrBk_Fields_files",
-                       met_folder = "Met"):
+                       met_folder = "Met", normal_fp_dir = None):
     
     dates = pd.date_range(start=start_date, end = end_date, freq = 'MS')
 
@@ -231,5 +231,5 @@ def process_HiTRes_all(domain, site_height_dict, start_date, end_date, user_max_
             print "Getting HiTRes footprints for %02d %04d at %s" %(d.year, d.month, i)
             process_HiTRes(domain, i, site_height_dict[i], "%04d" %d.year, "%02d" %d.month, user_max_hour_back,
                            base_dir = base_dir, HiTRes_fields_folder = HiTRes_fields_folder,
-                           met_folder = met_folder)
+                           met_folder = met_folder, normal_fp_dir=normal_fp_dir)
             
