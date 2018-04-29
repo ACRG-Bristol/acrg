@@ -894,13 +894,9 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
             
             flux_dict = {} 
             
-            start_flux = start
-            end_flux = dt.datetime(df_end.year, df_end.month, 1, 0, 0) + \
-                dt.timedelta(days = month_days-1)
-            
             for source in emissions_name.keys():
                 if type(emissions_name[source]) == str:
-                    flux_dict[source] = flux(domain, emissions_name[source], start = start_flux, end = end_flux,flux_directory=flux_directory)
+                    flux_dict[source] = flux(domain, emissions_name[source], start = start, end = end,flux_directory=flux_directory)
                 elif type(emissions_name[source]) == dict:
                     if HiTRes == False:
                         print("HiTRes is set to False and a dictionary has been found as the emissions_name dictionary value\
@@ -908,18 +904,14 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                               dictionary or turn HiTRes to True to use the two emissions files together with HiTRes footprints." %source)
                         return None
                     else:
-                        flux_dict[source] = flux_for_HiTRes(domain, emissions_name[source], start=start_flux, end = end_flux, flux_directory=flux_directory)
+                        flux_dict[source] = flux_for_HiTRes(domain, emissions_name[source], start=start, end = end, flux_directory=flux_directory)
                         
             fp_and_data['.flux'] = flux_dict
             
         
         if load_bc:
             
-            start_bc = start
-            end_bc = dt.datetime(df_end.year, df_end.month, 1, 0, 0) + \
-                dt.timedelta(days = month_days-1)
-            
-            bc = boundary_conditions(domain, species, start_bc, end = end_bc, bc_directory=bc_directory)
+            bc = boundary_conditions(domain, species, start, end = end, bc_directory=bc_directory)
 
             if  ".units" in attributes:
                 fp_and_data['.bc'] = bc / data[".units"]               
