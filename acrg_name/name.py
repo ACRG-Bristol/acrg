@@ -339,7 +339,7 @@ def flux(domain, species, start = None, end = None, flux_directory=flux_director
         if end == None:
             print "To get fluxes for a certain time period you must specify an end date."
         else:
-            #Change timeslice to be the beginning of the month in start and 
+            #Change timeslice to be the beginning and end of months in the dates specified.
             start = pd.to_datetime(start)
             month_start = dt.datetime(start.year, start.month, 1, 0, 0)
         
@@ -430,7 +430,15 @@ def boundary_conditions(domain, species, start = None, end = None, bc_directory=
         if end == None:
             print "To get boundary conditions for a certain time period you must specify an end date."
         else:
-            bc_timeslice = bc_ds.sel(time=slice(start, end))
+            #Change timeslice to be the beginning and end of months in the dates specified.
+            start = pd.to_datetime(start)
+            month_start = dt.datetime(start.year, start.month, 1, 0, 0)
+        
+            end = pd.to_datetime(end)
+            month_end = dt.datetime(end.year, end.month, 1, 0, 0) - \
+                        dt.timedelta(seconds = 1)
+            
+            bc_timeslice = bc_ds.sel(time=slice(month_start, month_end))
             if len(bc_timeslice.time)==0:
                 bc_timeslice = bc_ds.sel(time=start, method = 'ffill')
                 bc_timeslice = bc_timeslice.expand_dims('time',axis=-1)
