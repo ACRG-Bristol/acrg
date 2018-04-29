@@ -374,7 +374,7 @@ def flux_for_HiTRes(domain, emissions_dict, start=None, end=None, flux_directory
     fluxes_highfreq = flux(domain, emissions_dict['high_freq'], start = start, end = end,flux_directory=flux_directory)
     flux_dict['high_freq'] = fluxes_highfreq
     if start:
-        start_lowfreq = start - dateutil.relativedelta.relativedelta(months=1)
+        start_lowfreq = str(pd.to_datetime(start) - dateutil.relativedelta.relativedelta(months=1))
         fluxes_lowfreq = flux(domain, emissions_dict['low_freq'], start = start_lowfreq, end = end,flux_directory=flux_directory)
     elif start == None:
         fluxes_lowfreq = flux(domain, emissions_dict['low_freq'], start = None, end = None,flux_directory=flux_directory)
