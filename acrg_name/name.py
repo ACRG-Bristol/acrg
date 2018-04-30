@@ -1147,15 +1147,13 @@ def bc_sensitivity(fp_and_data, domain, basis_case, bc_basis_directory=bc_basis_
     
     for site in sites:
 
-        DS_temp = xr.Dataset({"particle_locations_n":fp_and_data[site]["particle_locations_n"],
+        DS_particle_loc = xr.Dataset({"particle_locations_n":fp_and_data[site]["particle_locations_n"],
                                 "particle_locations_e":fp_and_data[site]["particle_locations_e"],
                                 "particle_locations_s":fp_and_data[site]["particle_locations_s"],
                                 "particle_locations_w":fp_and_data[site]["particle_locations_w"],
-                                "vmr_n":fp_and_data[".bc"]["vmr_n"],
-                                "vmr_e":fp_and_data[".bc"]["vmr_e"],
-                                "vmr_s":fp_and_data[".bc"]["vmr_s"],
-                                "vmr_w":fp_and_data[".bc"]["vmr_w"],
                                 "bc":fp_and_data[site]["bc"]})
+        
+        DS_temp = combine_datasets(DS_particle_loc, fp_and_data[".bc"], method='ffill')
                         
         DS = combine_datasets(DS_temp, basis_func, method='ffill')                                    
 
