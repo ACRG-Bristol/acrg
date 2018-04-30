@@ -29,8 +29,21 @@ import datetime as dt
 import getpass
 import collections as c
 import pdb
+from os.path import join
 
-mzt_dir = '/shared_data/air/shared/MOZART/mzt_output/'
+acrg_path = os.getenv("ACRG_PATH")
+data_path = os.getenv("DATA_PATH")
+
+if acrg_path is None:
+    acrg_path = os.getenv("HOME")
+    print("Default ACRG directory is assumed to be home directory. Set path in .bashrc as \
+            export ACRG_PATH=/path/to/acrg/repository/ and restart python terminal")
+if data_path is None:
+    data_path = "/data/shared/"
+    print("Default Data directory is assumed to be /data/shared/. Set path in .bashrc as \
+            export DATA_PATH=/path/to/data/directory/ and restart python terminal")
+
+mzt_dir = join(data_path, 'MOZART/mzt_output/')
 #filename = mzt_dir + 'CH4/FWDModelComparison_NewEDGAR.mz4.h2.2014-01.nc'
 
 
@@ -197,7 +210,8 @@ def MOZART_boundaries(MZ, domain):
     MZ is a mozart xray dataset created using MOZART_vmr.
     """
 
-    listoffiles = glob.glob("/shared_data/air/shared/NAME/fp/" + domain + "/*")
+#    listoffiles = glob.glob("/shared_data/air/shared/NAME/fp/" + domain + "/*")
+    listoffiles = glob.glob(join(data_path, "NAME/fp/" + domain + "/*"))
     
     with xray.open_dataset(listoffiles[0]) as temp:
         fields_ds = temp.load()
@@ -251,5 +265,5 @@ def MOZART_BC_nc(start = '2012-01-01', end = "2014-09-01", species = 'CH4', file
         MZ = MOZART_vmr(species, start = i, end = i, freq=freq, filename = filename)
         MZ_edges = MOZART_boundaries(MZ, domain)
         yearmonth = str(i.year) + str(i.month).zfill(2)
-        MZ_edges.to_netcdf(path = '/data/shared/NAME/bc/%s/%s_%s_%s.nc'
+        MZ_edges.to_netcdf(path = join(data_path, "NAME/bc/%s/%s_%s_%s.nc")
                                                     %(domain,species.lower(),domain,yearmonth), mode = 'w')
