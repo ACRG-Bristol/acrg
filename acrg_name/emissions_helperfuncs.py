@@ -43,7 +43,8 @@ def getGFED(year, lon_out, lat_out, timeframe='monthly', monthrange = [1,2,3,4,5
         timeframe (str):
             Time over which data is aggregated.
             Can be either 'monthly', 'daily' or '3hourly'.
-            Default = 'monthlty'
+            Only 'monthly' data available before 2003.
+            Default = 'monthly'
         monthrange (list):
             The months that you want data for. NB these don't have to be 
             sequential.
@@ -129,6 +130,10 @@ def getGFED(year, lon_out, lat_out, timeframe='monthly', monthrange = [1,2,3,4,5
         kc += 1
     EF = EFs[soix,:]
     
+    #Check that there are daily/3 hourly data available
+    if (year < 2003) & (timeframe != 'monthly'):
+        print "No %s data before 2003. Switching to monthly emissions." % timeframe
+        timeframe = 'monthly'
     
     #Check to see if desired year has a dataset
     possyears = np.empty(shape=[0,0],dtype=int)
