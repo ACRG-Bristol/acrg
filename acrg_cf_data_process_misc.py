@@ -1414,9 +1414,12 @@ def saws():
     return(ds, df)
 
 
-def uex():
+def uex(species):
     params = {
             "site" : "CVO",
+            "scale": {
+                "CH4": "NOAA2004",
+                "N2O": "WMO N2OX2006A"},
             "directory" : "/data/shared/obs_raw/UEX/",
             "directory_output" : "/data/shared/obs/",
             "global_attributes" : {
@@ -1425,20 +1428,32 @@ def uex():
                     }
             }
     
-    fnames = sorted(glob.glob(join(params["directory"],"*.txt")))
-
+    if species.lower() == 'ch4':
+        fnames = sorted(glob.glob(join(params["directory"],"*.txt")))
+    elif species.lower() == 'n2o':
+        fnames = sorted(glob.glob(join(params["directory"],"*.dat")))
+    
     df = []
     
     for fname in fnames:
-        
+
         header_count = 0
         with open(fname, "r") as f:
             for line in f:
-                if line[0] == "D":
-                    header_count+=1
+#                return line
+                header_count+=1
+                if line[0:4] == "DATE":
                     header = line.split()
-                else:
                     break
+        
+#        header_count = 0
+#        with open(fname, "r") as f:
+#            for line in f:
+#                if line[0] == "D":
+#                    header_count+=1
+#                    header = line.split()
+#                else:
+#                    break
     
         dff = pd.read_csv(fname, sep = r"\s+",
                          skiprows = header_count,
@@ -1449,9 +1464,9 @@ def uex():
         
         dff = dff[["DATA", "ND", "SD"]]
     
-        dff.rename(columns = {"DATA" : "CH4",
-                                "ND": "CH4_number_of_observations",
-                                "SD": "CH4_variability"},
+        dff.rename(columns = {"DATA" : species.upper(),
+                                "ND": (species.upper() + "_number_of_observations"),
+                                "SD": (species.upper() +"_variability")},
                    inplace = True)
 
         df.append(dff)
@@ -1467,12 +1482,13 @@ def uex():
     ds = xray.Dataset.from_dataframe(df)
 
     # Add attributes
+
     ds = attributes(ds,
-                    "CH4",
+                    species.upper(),
                     params['site'].upper(),
                     global_attributes = params["global_attributes"],
-                    scale = "NOAA-2004")
-    
+                    scale = params["scale"][species.upper()])
+   
     # Write file
     nc_filename = output_filename(params["directory_output"],
                                   "UEX",
