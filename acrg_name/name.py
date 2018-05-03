@@ -367,7 +367,12 @@ def flux_for_HiTRes(domain, emissions_dict, start=None, end=None, flux_directory
                                 {'high_freq':high_freq_emissions_name, 'low_freq':low_freq_emissions_name}
                                 e.g. {'high_freq':'co2-ff-2hr', 'low_freq':'co2-ff-mth'}.
         start (str)           : Start date in format "YYYY-MM-DD" to output only a time slice of all the flux files.
+                                The start date used will be the first of the input month. I.e. if "2014-01-06" is input,
+                                "2014-01-01" will be used.  This is to mirror the time slice functionality of the filenames function.
         end (str)             : End date in same format as start to output only a time slice of all the flux files.
+                                The end date used will be the first of the input month and the timeslice will go up
+                                to, but not include, this time. I.e. if "2014-02-25' is input, "2014-02-01" will be used.
+                                This is to mirror the time slice functionality of the filenames function.
         flux_directory (str)  : flux_directory can be specified if files are not in 
                                 the default directory. Must point to a directory 
                                 which contains subfolders organized by domain. (optional)
@@ -384,14 +389,18 @@ def flux_for_HiTRes(domain, emissions_dict, start=None, end=None, flux_directory
         return None
     
     flux_dict = {}
-    fluxes_highfreq = flux(domain, emissions_dict['high_freq'], start = start, end = end,flux_directory=flux_directory)
-    flux_dict['high_freq'] = fluxes_highfreq
+    
     if start:
-        start_lowfreq = str(pd.to_datetime(start) - dateutil.relativedelta.relativedelta(months=1))
-        fluxes_lowfreq = flux(domain, emissions_dict['low_freq'], start = start_lowfreq, end = end,flux_directory=flux_directory)
-    elif start == None:
-        fluxes_lowfreq = flux(domain, emissions_dict['low_freq'], start = None, end = None,flux_directory=flux_directory)
+        #Get the month before the one one requested because this will be needed for the first few
+        #days in timeseries_HiTRes to calculate the modleed molefractions for times when the footprints
+        #are in the previous month.
+        start = str(pd.to_datetime(start) - dateutil.relativedelta.relativedelta(months=1))
+    
+    fluxes_highfreq = flux(domain, emissions_dict['high_freq'], start = start, end = end,flux_directory=flux_directory)
+    fluxes_lowfreq = flux(domain, emissions_dict['low_freq'], start = start, end = end,flux_directory=flux_directory)
+    
     flux_dict['low_freq'] = fluxes_lowfreq
+    flux_dict['high_freq'] = fluxes_highfreq
     
     return flux_dict
 
@@ -757,6 +766,10 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
     # Output array
     fp_and_data = {}
     
+    #empty variables to fill with earliest start and latest end dates
+    flux_bc_start = None
+    flux_bc_end = None
+    
     for site in sites:
 
         # Dataframe for this site            
@@ -771,6 +784,12 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
         end = dt.datetime(df_end.year, df_end.month, 1, 0, 0) + \
                 dt.timedelta(days = month_days)
       
+        #Get earliest start and latest end dates from all sites for loading fluxes and bcs
+        if flux_bc_start == None or flux_bc_start > start:
+            flux_bc_start = start
+        if flux_bc_end == None or flux_bc_end < end:
+            flux_bc_end = end
+            
         # Convert to dataset
         site_ds = xr.Dataset.from_dataframe(site_df)
         
@@ -896,7 +915,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
             
             for source in emissions_name.keys():
                 if type(emissions_name[source]) == str:
-                    flux_dict[source] = flux(domain, emissions_name[source], start = start, end = end,flux_directory=flux_directory)
+                    flux_dict[source] = flux(domain, emissions_name[source], start=flux_bc_start, end=flux_bc_end, flux_directory=flux_directory)
                 elif type(emissions_name[source]) == dict:
                     if HiTRes == False:
                         print("HiTRes is set to False and a dictionary has been found as the emissions_name dictionary value\
@@ -904,14 +923,14 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                               dictionary or turn HiTRes to True to use the two emissions files together with HiTRes footprints." %source)
                         return None
                     else:
-                        flux_dict[source] = flux_for_HiTRes(domain, emissions_name[source], start=start, end = end, flux_directory=flux_directory)
+                        flux_dict[source] = flux_for_HiTRes(domain, emissions_name[source], start=flux_bc_start, end=flux_bc_end, flux_directory=flux_directory)
                         
             fp_and_data['.flux'] = flux_dict
             
         
         if load_bc:
             
-            bc = boundary_conditions(domain, species, start, end = end, bc_directory=bc_directory)
+            bc = boundary_conditions(domain, species, start=flux_bc_start, end=flux_bc_end, bc_directory=bc_directory)
 
             if  ".units" in attributes:
                 fp_and_data['.bc'] = bc / data[".units"]               
