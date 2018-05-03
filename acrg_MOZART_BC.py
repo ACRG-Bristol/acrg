@@ -219,15 +219,20 @@ def MOZART_boundaries(MZ, domain):
     fp_lat = fields_ds["lat"].values
     fp_lon = fields_ds["lon"].values
     fp_height = fields_ds["height"].values
-    
     vmr_var_name = 'vmr'
+    
+#    convert MOZART lons to be on 0 to 360 for consistency with footprints
+    new_coords = MZ.coords["lon"].values
+    new_coords[new_coords < 0] = new_coords[new_coords < 0] + 360
+    MZ = MZ.assign_coords(lon=new_coords)
+    MZ = MZ.sortby("lon")
 
-    #Select the gidcells closest to the edges of the EUROPE domain. Bisect finds the 
-    #index of the dimension value that occurs after the specified lons/lats.
-    lat_n = bisect.bisect_left(MZ.coords['lat'], max(fp_lat))
-    lat_s = bisect.bisect_left(MZ.coords['lat'], min(fp_lat))-1
-    lon_e = bisect.bisect_left(MZ.coords['lon'], max(fp_lon))
-    lon_w = bisect.bisect_left(MZ.coords['lon'], min(fp_lon))-1
+    #Select the gidcells closest to the edges of the  domain and make sure outside of fp
+    lat_n = (np.abs(MZ.coords['lat'].values - max(fp_lat))).argmin()+1
+    lat_s = (np.abs(MZ.coords['lat'].values - min(fp_lat))).argmin()-1
+    lon_e = (np.abs(MZ.coords['lon'].values - max(fp_lon))).argmin()+1
+    lon_w = (np.abs(MZ.coords['lon'].values - min(fp_lon))).argmin()-1
+    
 
     north = MZ.sel(lat = MZ.coords['lat'][lat_n],
                    lon = slice(MZ.coords['lon'][lon_w],MZ.coords['lon'][lon_e])).drop(['lat'])
