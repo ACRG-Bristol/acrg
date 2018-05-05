@@ -1325,7 +1325,8 @@ def filtering(datasets_in, filters, keep_missing=False):
         datasets_in         : Output from footprints_data_merge(). Dictionary of datasets.
         filters (list)      : Which filters to apply to the datasets. 
                               All options are:
-                                 "daytime"           : selects data between 1000 and 1500 UTC
+                                 "daytime"           : selects data between 1100 and 1500 UTC
+                                 "daytime9to5"       : selects data between 0900 and 1700 UTC
                                  "nighttime"         : Only b/w 23:00 - 03:00 inclusive
                                  "noon"              : Only 12:00 fp and obs used
                                  "daily_median"      : calculates the daily median
@@ -1358,6 +1359,18 @@ def filtering(datasets_in, filters, keep_missing=False):
         """ Subset during daytime hours (11:00-15:00) """
         hours = dataset.time.to_pandas().index.hour
         ti = [i for i, h in enumerate(hours) if h >= 11 and h <= 15]
+        
+        if keep_missing:
+            dataset_temp = dataset[dict(time = ti)]   
+            dataset_out = dataset_temp.reindex_like(dataset)
+            return dataset_out
+        else:
+            return dataset[dict(time = ti)]
+        
+    def daytime9to5(dataset, site,keep_missing=False):
+        """ Subset during daytime hours (9:00-17:00) """
+        hours = dataset.time.to_pandas().index.hour
+        ti = [i for i, h in enumerate(hours) if h >= 9 and h <= 17]
         
         if keep_missing:
             dataset_temp = dataset[dict(time = ti)]   
@@ -1474,6 +1487,7 @@ def filtering(datasets_in, filters, keep_missing=False):
         
     filtering_functions={"daily_median":daily_median,
                          "daytime":daytime,
+                         "daytime9to5":daytime9to5,
                          "nighttime":nighttime,
                          "noon":noon,
                          "pblh_gt_threshold": pblh_gt_threshold,
