@@ -1365,47 +1365,84 @@ def uhei_13ch4():
 
 
 
-def saws():
+def saws(species):
     ''' 
     South African Weather Service observations
     
-    '''
-    
-    
-    fname = "/data/shared/obs_raw/SAWS/CPT_CH4_1983_2015_All data.txt"
-    df = pd.read_csv(fname, skiprows=10,
-                     delimiter="\t", names = ["Time", "CH4"],
-                     index_col = "Time", parse_dates=["Time"],
-                     dayfirst=True)
-    
+    '''    
+    params = {
+        "site" : "CPT",
+        "scale": {
+            "CH4": "NOAA2004",
+            "N2O": "WMO N2OX2006A",
+            "RN222": "None"},
+        "instrument": {
+                "CH4": "GC-FID-CRDS",
+                "N2O": "GC-ECD",
+                "RN222": "ANSTO"},
+        "directory" : "/data/shared/obs_raw/SAWS/",
+        "directory_output" : "/data/shared/obs/",
+        "global_attributes" : {
+                "contact": "Casper Labuschagne (casper.labuschagne@weathersa.co.za), Warren Joubert (warren.joubert@weathersa.co.za)" ,
+                "averaging": "30 minutes"
+                }
+        }
+            
+    if species.lower() == 'ch4':
+        fname = "/data/shared/obs_raw/SAWS/CPT_CH4_1983_2015_All data.txt"
+    elif (species.lower() == 'n2o') or (species.lower() == 'rn222'):
+        fname = "/data/shared/obs_raw/SAWS/CPT_30min_N2O_Radon_winds_1995_2015.txt"
+
+    if species.lower() == 'ch4':    
+        df = pd.read_csv(fname, skiprows=10,
+                         delimiter="\t", names = ["Time", 'CH4'],
+                         index_col = "Time", parse_dates=["Time"],
+                         dayfirst=True)
+    elif (species.lower() == 'n2o') or (species.lower() == 'rn222'):
+        df = pd.read_csv(fname, skiprows=10,
+                 delimiter="\t|\t|\t|\t", names = ["Time", 'N2O', 'Wind speed', 'Wind dir', 'RN222'],
+                 index_col = "Time", parse_dates=["Time"],
+                 dayfirst=True, engine='python')       
+  
     # remove duplicates
     df.index.name = "index"
     df = df.reset_index().drop_duplicates(subset='index').set_index('index')              
     df.index.name = "time"
 
-    # remove NaN
-    df = df[np.isfinite(df["CH4"])]
+    df.index = df.index.tz_localize(pytz.timezone("Africa/Johannesburg")).tz_convert(None) # Simpler solution
     
+    if species.lower() == 'n2o':
+        df = df.drop(['Wind speed', 'Wind dir', 'RN222'], axis=1)
+    elif species.lower() == 'rn222':
+        df = df.drop(['Wind speed', 'Wind dir', 'N2O'], axis=1)
+        
+    # remove NaN
+    df = df[np.isfinite(df[species.upper()])]    
+
     # Sort and convert to dataset
     ds = xray.Dataset.from_dataframe(df.sort_index())
     
     
     # Add attributes
-    ds = attributes(ds,
-                    "CH4",
-                    "CPT",
-                    global_attributes = {"inlet_height_magl": 30.,
-                                         "data owner": "Casper Labuschagne (casper.labuschagne@weathersa.co.za)"},
-                    sampling_period = 30)
+    if species.lower() == 'ch4' or species.lower() == 'n2o':
+        ds = attributes(ds,
+                        species.upper(),
+                        params['site'].upper(),
+                        global_attributes = params["global_attributes"],
+                        scale = params["scale"][species.upper()])
+    elif species.lower() == 'rn222':
+        ds.attrs["units"] = "mBq/m3"
+        ds.attrs["species"] = species.lower()
+
 
     # Write file
-    nc_filename = output_filename("/data/shared/obs/",
+    nc_filename = output_filename(params["directory_output"],
                                   "SAWS",
-                                  "GC-FID-CRDS",
-                                  "CPT",
+                                  params["instrument"][species.upper()],
+                                  params["site"],
                                   str(ds.time.to_pandas().index.to_pydatetime()[0].year),
                                   ds.species,
-                                  "30m")
+                                  site_params[params["site"]]["height"][0])
     
     print("Writing " + nc_filename)
     
