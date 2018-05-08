@@ -238,7 +238,7 @@
     },
     "COI" : {
         "alt": [""],
-        "long_name" : "Cape Oshi-Ishi, Japan",
+        "long_name" : "Cape Ochi-Ishi, Japan",
         "height": ["10m"],
         "height_station_masl": 41.0,
         "height_name": ["46magl"],

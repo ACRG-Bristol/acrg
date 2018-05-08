@@ -1069,7 +1069,77 @@ def nies(fname, species, site, units = "ppt"):
     
     ds.to_netcdf(nc_filename)
 
+def nies_n2o():
+    '''
+    N2O files from NIES
+    '''
+    params = {
+        "site" : "COI",
+        "scale": {
+            "N2O": "NIES-96"},
+        "instrument": {
+                "N2O": "GC-ECD"},
+        "directory" : "/data/shared/obs_raw/SAWS/",
+        "directory_output" : "/data/shared/obs/",
+        "global_attributes" : {
+                "contact": "Yasunori Tohjima (tohjima@nies.go.jp)" ,
+                "averaging": "20 minutes"
+                }
+        }
+            
+    species = 'n2o'    
+    fname = "/data/shared/obs_raw/NIES/COI/n2o/COIN2O_Hourly_withSTD.txt"
+  
+    df = pd.read_csv(fname, skiprows=1,
+                     delimiter=",", names = ["Time", 'N2O', 'STD', 'n'],
+                     index_col = "Time", parse_dates=["Time"],
+                     dayfirst=True)
+    
+    print("Assuming data is in JST. Check input file. CONVERTING TO UTC.")
+    
+   # df.index = df.index.tz_localize(pytz.timezone("Japan")).tz_convert(pytz.utc).tz_localize(None) # Previous solution
+    df.index = df.index.tz_localize(pytz.timezone("Japan")).tz_convert(None) # Simpler solution
 
+    # Sort
+    df.sort_index(inplace = True)
+
+    # Rename columns to species
+    df.rename(columns = {df.columns[0]: species.upper()}, inplace = True)
+    df.rename(columns = {df.columns[1]: species.upper() + "_repeatability"}, inplace = True)
+    df.rename(columns = {df.columns[2]: species.upper() + "_number_of_observations"}, inplace = True)
+    
+    # Drop duplicates and rename index
+    df.index.name = "index"
+    df = df.reset_index().drop_duplicates(subset='index').set_index('index')              
+    df.index.name = "time"
+    
+    # remove 9999
+    df = df[df[species.upper()]<9999]
+
+    # Convert to dataset
+    ds = xray.Dataset.from_dataframe(df)
+    
+    
+    # Add attributes
+
+    ds = attributes(ds,
+                    species.upper(),
+                    params['site'].upper(),
+                    global_attributes = params["global_attributes"],
+                    scale = params["scale"][species.upper()])
+   
+    # Write file
+    nc_filename = output_filename(params["directory_output"],
+                                  "NIES",
+                                  "GC-ECD",
+                                  params["site"],
+                                  str(ds.time.to_pandas().index.to_pydatetime()[0].year),
+                                  ds.species,
+                                  site_params[params["site"]]["height"][0])
+    
+    print("Writing " + nc_filename)
+    
+    ds.to_netcdf(nc_filename)
 
 def niwa(site, species):
 
@@ -1111,6 +1181,8 @@ def niwa(site, species):
     print("Writing " + nc_filename)
     
     ds.to_netcdf(nc_filename)
+
+
 
 def niwa_run():
     
@@ -1477,20 +1549,10 @@ def uex(species):
         header_count = 0
         with open(fname, "r") as f:
             for line in f:
-#                return line
                 header_count+=1
                 if line[0:4] == "DATE":
                     header = line.split()
                     break
-        
-#        header_count = 0
-#        with open(fname, "r") as f:
-#            for line in f:
-#                if line[0] == "D":
-#                    header_count+=1
-#                    header = line.split()
-#                else:
-#                    break
     
         dff = pd.read_csv(fname, sep = r"\s+",
                          skiprows = header_count,
