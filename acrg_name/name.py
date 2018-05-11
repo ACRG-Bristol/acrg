@@ -1176,6 +1176,8 @@ def bc_sensitivity(fp_and_data, domain, basis_case, bc_basis_directory=bc_basis_
                         
         DS = combine_datasets(DS_temp, basis_func, method='ffill')                                    
 
+        DS = DS.transpose('height','lat','lon','region','time')
+
         part_loc = np.hstack([DS.particle_locations_n,
                                 DS.particle_locations_e,
                                 DS.particle_locations_s,
