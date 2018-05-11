@@ -890,7 +890,10 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                                        tolerance = tolerance)
             
             #transpose to keep time in the last dimension position in case it has been moved in resample
-            site_ds = site_ds.transpose('height','lat','lon','time')
+            if 'H_back' in site_ds.dims.keys():
+                site_ds = site_ds.transpose('height','lat','lon','lev','time', 'H_back')
+            else:
+                site_ds = site_ds.transpose('height','lat','lon','lev','time')
                 
             # If units are specified, multiply by scaling factor
             if ".units" in attributes:
