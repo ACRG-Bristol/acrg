@@ -888,6 +888,9 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
             site_ds = combine_datasets(site_ds, site_fp,
                                        method = "ffill",
                                        tolerance = tolerance)
+            
+            #transpose to keep time in the last dimension position in case it has been moved in resample
+            site_ds = site_ds.transpose('height','lat','lon','time')
                 
             # If units are specified, multiply by scaling factor
             if ".units" in attributes:
