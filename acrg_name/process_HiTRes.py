@@ -14,6 +14,7 @@ import acrg_name.process as proc
 import datetime as dt
 from dateutil import parser
 import gzip
+import os
 import os.path
 import glob
 import acrg_name.name as nm
@@ -21,6 +22,16 @@ import numpy as np
 import xarray as xray
 import getpass
 import pandas as pd
+from os.path import join
+
+data_path = os.getenv("DATA_PATH")
+
+if data_path is None:
+    data_path = "/data/shared/"
+    print("Default Data directory is assumed to be /data/shared/. Set path in .bashrc as \
+            export DATA_PATH=/path/to/data/directory/ and restart python terminal")
+
+normal_fp_dir = join(data_path, 'NAME/fp/')
 
 
 def update_release_time(fname):
@@ -72,7 +83,7 @@ def update_release_time(fname):
 def process_HiTRes(domain, site, height, year, month, user_max_hour_back,
                    base_dir = "/dagage2/agage/metoffice/NAME_output/",
                    HiTRes_fields_folder = "24HrBk_Fields_files",
-                   met_folder = "Met", normal_fp_dir = None):
+                   met_folder = "Met", normal_fp_dir = normal_fp_dir):
     
     """
     domain: string - 'EUROPE'
@@ -107,6 +118,8 @@ def process_HiTRes(domain, site, height, year, month, user_max_hour_back,
     
     else:
         met = proc.read_met(met_files)
+    
+    print "Getting normal integrated footprints from: %s" %(normal_fp_dir)
     
     if month == '12':
         totfp = nm.footprints(site, start="%s-%s-01" %(year,month), end = "%s-%s-01" %(int(year)+1, '01'), domain=domain, height = height+'m', fp_directory= normal_fp_dir)
