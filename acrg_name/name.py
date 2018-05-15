@@ -888,6 +888,12 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
             site_ds = combine_datasets(site_ds, site_fp,
                                        method = "ffill",
                                        tolerance = tolerance)
+            
+            #transpose to keep time in the last dimension position in case it has been moved in resample
+            if 'H_back' in site_ds.dims.keys():
+                site_ds = site_ds.transpose('height','lat','lon','lev','time', 'H_back')
+            else:
+                site_ds = site_ds.transpose('height','lat','lon','lev','time')
                 
             # If units are specified, multiply by scaling factor
             if ".units" in attributes:
@@ -1175,6 +1181,8 @@ def bc_sensitivity(fp_and_data, domain, basis_case, bc_basis_directory=bc_basis_
         DS_temp = combine_datasets(DS_particle_loc, fp_and_data[".bc"], method='ffill')
                         
         DS = combine_datasets(DS_temp, basis_func, method='ffill')                                    
+
+        DS = DS.transpose('height','lat','lon','region','time')
 
         part_loc = np.hstack([DS.particle_locations_n,
                                 DS.particle_locations_e,
