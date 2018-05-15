@@ -1718,4 +1718,75 @@ def obspack_co2(site, height, obspack_name):
         print("Writing " + nc_filename)
         
         ds2.to_netcdf(nc_filename)
+        
+def mpi(species):
+    ''' 
+    Max Planck observations
+    
+    '''    
+    params = {
+        "site" : "NDAO",
+        "scale": {
+            "CH4": "NOAA2004",
+            "N2O": "WMO N2OX2006A"},
+        "instrument": {
+                "CH4": "OA-ICOS",
+                "N2O": "OA-ICOS"},
+        "directory" : "/data/shared/obs_raw/MPI/",
+        "directory_output" : "/data/shared/obs/",
+        "global_attributes" : {
+                "contact": "Eric Morgan (ejmorgan@ucsd.edu)" ,
+                "averaging": "1 minute OA-ICOS"
+                }
+        }
+            
+    fname = "/data/shared/obs_raw/MPI/ndao_2013-2014.csv"
 
+
+    df = pd.read_csv(fname, skiprows=10,
+             delimiter=",", names = ["Time", 'CO2', 'CH4','N2O', 'CO','O2N2', \
+                                               'Radiation', 'Pressure', 'RH', 'Temp', \
+                                               'Wind speed', 'APO', 'Wind dir'],
+             index_col = "Time", parse_dates=["Time"],
+             dayfirst=True, engine='python')       
+
+    # remove duplicates
+    df.index.name = "index"
+    df = df.reset_index().drop_duplicates(subset='index').set_index('index')              
+    df.index.name = "time"
+
+#    df.index = df.index.tz_localize(pytz.timezone("Africa/Johannesburg")).tz_convert(None) # Simpler solution
+    
+    if species.lower() == 'n2o':
+        df = df.drop(['CO2', 'CH4', 'CO','O2N2','Radiation', 'Pressure', 'RH', 'Temp','Wind speed', 'APO', 'Wind dir'], axis=1)
+        
+    # remove NaN
+    df = df[np.isfinite(df[species.upper()])]    
+
+    # Sort and convert to dataset
+    ds = xray.Dataset.from_dataframe(df.sort_index())
+    
+    
+    # Add attributes
+    if species.lower() == 'ch4' or species.lower() == 'n2o':
+        ds = attributes(ds,
+                        species.upper(),
+                        params['site'].upper(),
+                        global_attributes = params["global_attributes"],
+                        scale = params["scale"][species.upper()])
+
+
+    # Write file
+    nc_filename = output_filename(params["directory_output"],
+                                  "MPI",
+                                  params["instrument"][species.upper()],
+                                  params["site"],
+                                  str(ds.time.to_pandas().index.to_pydatetime()[0].year),
+                                  ds.species,
+                                  site_params[params["site"]]["height"][0])
+    
+    print("Writing " + nc_filename)
+    
+    ds.to_netcdf(nc_filename)
+    
+    return(ds, df)
