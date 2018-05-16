@@ -718,6 +718,7 @@
         "alt": [],
         "long_name" : "Namib Desert Atmospheric Observatory",
         "height": ["21m"],
+        "height_name": ["21m"],
         "height_station_masl": 408.0,
         "latitude": -23.563,
         "longitude": 15.046,
