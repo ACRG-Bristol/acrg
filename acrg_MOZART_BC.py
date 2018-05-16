@@ -221,11 +221,14 @@ def MOZART_boundaries(MZ, domain):
     fp_height = fields_ds["height"].values
     vmr_var_name = 'vmr'
     
-#    convert MOZART lons to be on 0 to 360 for consistency with footprints
-    new_coords = MZ.coords["lon"].values
-    new_coords[new_coords < 0] = new_coords[new_coords < 0] + 360
-    MZ = MZ.assign_coords(lon=new_coords)
-    MZ = MZ.sortby("lon")
+    if any(n<0 for n in fp_lon):
+        pass
+    else:
+#       convert MOZART lons to be on 0 to 360 for consistency with footprints
+        new_coords = MZ.coords["lon"].values
+        new_coords[new_coords < 0] = new_coords[new_coords < 0] + 360
+        MZ = MZ.assign_coords(lon=new_coords)
+        MZ = MZ.sortby("lon")
 
     #Select the gidcells closest to the edges of the  domain and make sure outside of fp
     lat_n = (np.abs(MZ.coords['lat'].values - max(fp_lat))).argmin()+1
