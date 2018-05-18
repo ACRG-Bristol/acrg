@@ -92,7 +92,7 @@ def basis_blocks(domain, time, blocksize, basis_case=None):
                 
     basis_ds.to_netcdf(basis_dir + domain +"/" + basis_case + "_" + domain + "_" + str(time.year) + ".nc")
 
-def basis_transd(domain, time, basis_case = "transd", sub_lon_min = None,
+def basis_transd(domain, time, basis_case = "sub-transd", sub_lon_min = None,
                  sub_lon_max = None, sub_lat_min = None, sub_lat_max = None): 
     """Creates basis regions for the "transdimensional inversion".
     Creates variable central block based on sub_lat and sub_lon domain
@@ -124,11 +124,11 @@ def basis_transd(domain, time, basis_case = "transd", sub_lon_min = None,
             sub_lon_min = 65, sub_lon_max = 100, sub_lat_min = 5, sub_lat_max = 40)
     """  
     
-    if all([sub_lon_min, sub_lon_max, sub_lat_min, sub_lat_max]) == False:
+    if None in [sub_lon_min, sub_lon_max, sub_lat_min, sub_lat_max]:
         print("At least one sub domain lon or lat is missing on input")
         return        
     
-    # load a Fields file to get the domain
+#     load a Fields file to get the domain
 
     files = glob.glob(fields_file_path + domain + "/*")
     
@@ -171,7 +171,7 @@ def basis_transd(domain, time, basis_case = "transd", sub_lon_min = None,
     basis_ds.to_netcdf(basis_dir + domain +"/" + basis_case + "_" + domain + "_" + str(time.year) + ".nc")
     
 
-def basis_bc_blocks(domain, basis_case, time, vertical=1):
+def basis_bc_blocks(domain, time, basis_case = "NESW", vertical=1):
     """Creates uniform blocks for boundary conditions in each direction (NESW).
     Each direction is split into vertical slabs with number specified by input 'vertical'
     
@@ -237,7 +237,7 @@ def basis_bc_blocks(domain, basis_case, time, vertical=1):
 
     basis_ds.to_netcdf(bc_basis_dir + domain +"/" + basis_case + "_" + domain + "_" + time.strftime('%m')+str(time.year) + ".nc")                
     
-def basis_bc_uniform(domain, basis_case, time):
+def basis_bc_uniform(domain, time, basis_case = "uniform"):
     """Creates creates one uniform scaling for boundary conditions for all directions
     
     Args:

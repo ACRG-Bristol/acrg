@@ -238,10 +238,10 @@
     },
     "COI" : {
         "alt": [""],
-        "long_name" : "Cape Oshi-Ishi, Japan",
+        "long_name" : "Cape Ochi-Ishi, Japan",
         "height": ["10m"],
         "height_station_masl": 41.0,
-        "height_name": ["46magl"],
+        "height_name": ["10magl"],
         "latitude": 43.167,
         "longitude": 145.50,
         "network": "NIES"
@@ -287,9 +287,10 @@
         "long_name" : "Cape Verde, Africa",
         "height": ["30m"],
         "height_station_masl": 10.0,
+        "height_name": ["30magl"],
         "latitude": 16.8636,
         "longitude": -24.8672,
-        "network": "WMO"        
+        "network": "UEX"        
     },
     "DJI" : {
         "alt": [""],
@@ -712,6 +713,16 @@
         "latitude": -70.65,
         "longitude": -8.25,
         "network": "UHei"
+    },
+    "NDAO" : {
+        "alt": [],
+        "long_name" : "Namib Desert Atmospheric Observatory",
+        "height": ["21m"],
+        "height_name": ["21m"],
+        "height_station_masl": 408.0,
+        "latitude": -23.563,
+        "longitude": 15.046,
+        "network": "MPI"
     },
     "OPE" : {
         "alt": [],
