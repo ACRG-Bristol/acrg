@@ -37,6 +37,7 @@ import xarray as xray
 import os
 import re
 from collections import OrderedDict
+import pdb
 
 
 @jit(nopython=True)
@@ -279,11 +280,11 @@ def average_period_fp(fp_data_H,av_period_site,dim="time"):
     
     sites = [key for key in fp_data_H.keys() if key[0] != '.']
 
-    fp_data_H_av = {}
+    #fp_data_H_av = {}
     for si, site in enumerate(sites):
-        fp_data_H_av[site] = average_period(fp_data_H[site],av_period_site[si],dim=dim)
+        fp_data_H[site] = average_period(fp_data_H[site],av_period_site[si],dim=dim)
     
-    return fp_data_H_av
+    return fp_data_H
 
 
 def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date, 
@@ -316,7 +317,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     #fp_all = name.footprints_data_merge(data, domain=domain, species=species, calc_bc=True)
     # Commented out and replaced by rt17603 on 11/08 - no species argument in this function.
     fp_all = name.footprints_data_merge(data, domain=domain, calc_bc=True)
-    
+
     if fp_basis_case in ("INTEM"):    
         fp_data_H2 = name.fp_sensitivity(fp_all, domain=domain, basis_case='transd')
         basis_func = name.name.basis(domain = domain, basis_case = 'INTEM')
@@ -366,6 +367,8 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     pblh=[]
     wind_speed=[]
     
+    sub_flux_temp = fp_all[".flux"]["all"].sel(lon=lon, lat=lat, method="ffill")
+    
     for si, site in enumerate(sites):
               
         fp_data_H3 = fp_data_H[site].dropna("time", how="all")  
@@ -374,7 +377,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
         y_site.append([site for i in range(len(fp_data_H3.coords['time']))])
         y_time.append(fp_data_H3.coords['time'].values)
         H_bc5.append(fp_data_H3.bc.values)
-        sub_flux_temp = fp_data_H3.flux.sel(lon=lon, lat=lat, method="nearest")
+        #sub_flux_temp = fp_data_H['.flux']['all'].sel(lon=lon, lat=lat, method="ffill") #fp_data_H3.flux.sel(lon=lon, lat=lat, method="nearest")
         local_ratio.append(fp_data_H3.local_ratio.values)
         pblh.append(fp_data_H3.PBLH.values)
         wind_speed.append(fp_data_H3.wind_speed.values)
@@ -400,10 +403,12 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
             q_ap2=xray.concat((q_ap2,sub_flux_temp), dim="time") 
             H_bc2=xray.concat((H_bc2,fp_data_H3.H_bc), dim="time") 
     
+    q_ap2=q_ap2["flux"].transpose("time","lat","lon")
+    
     if H_fixed2.dims[0] != "time":
         H_fixed2=H_fixed2.transpose()
         H_vary2=H_vary2.transpose("time","sub_lat","sub_lon")
-        q_ap2=q_ap2.transpose("time","lat","lon")
+        #q_ap2=q_ap2.transpose("time","lat","lon")
     if H_bc2.dims[0] !="time":
         H_bc2=H_bc2.transpose()
         
@@ -430,7 +435,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     for ti in range(nmeasure):                        
         # Already multiplied by q in fp_senitivity            
         h_v[ti,:] = np.ravel(H_vary[ti,:,:])   #*q_ap_v   # Create sensitivty matrix spatially vectorised
-    
+
     #%%
     #################################################
     if inv_type in ('evencorr', 'corr'):
