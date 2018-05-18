@@ -1,2 +1,3 @@
 *.pyc
 tests/.cache/v/cache/lastfailed
+acrg_tdmcmc/param.ini
