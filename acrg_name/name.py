@@ -1467,7 +1467,40 @@ def filtering(datasets_in, filters, keep_missing=False):
                 return dataset[dict(time = ti)]   
         else:
             return None       
-                      
+
+    def local_lapse_045(dataset,site, keep_missing=False):
+        """
+        Subset for times when linear combination of lapse rate and local influence
+        is below threshold.
+        
+        Both normalized by 500 m. Thus, for low inlets the local influence is more dominant.
+        For higher inlets the vertical profile of potential temperature (stability) is more dominant. 
+        
+        This combination correlates to variation in mole fraction difference between inlets.
+        """
+        in_height = dataset.inlet
+        lapse_norm = dataset.theta_slope*in_height/500.
+        lr_norm = dataset.local_ratio*500./in_height
+        comb_norm = lr_norm + lapse_norm
+        cutoff=0.45
+        ti = [i for i, lr in enumerate(comb_norm) if lr < cutoff]
+        
+        if len(ti) > 0:
+            if keep_missing:
+                mf_data_array = dataset.mf            
+                dataset_temp = dataset.drop('mf')
+                
+                dataarray_temp = mf_data_array[dict(time = ti)]   
+                
+                mf_ds = xr.Dataset({'mf': (['time'], dataarray_temp)}, 
+                                      coords = {'time' : (dataarray_temp.coords['time'])})
+                
+                dataset_out = combine_datasets(dataset_temp, mf_ds, method=None)
+                return dataset_out
+            else:
+                return dataset[dict(time = ti)]   
+        else:
+            return None                       
             
     def local_influence(dataset,site, keep_missing=False):
         """
