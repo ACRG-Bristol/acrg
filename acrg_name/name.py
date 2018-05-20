@@ -1534,7 +1534,8 @@ def filtering(datasets_in, filters, keep_missing=False):
                          "pblh_gt_threshold": pblh_gt_threshold,
                          "local_influence":local_influence,
                          "six_hr_mean":six_hr_mean,
-                         "local_lapse":local_lapse}
+                         "local_lapse":local_lapse,
+                         "local_lapse_045":local_lapse_045}
 
     # Get list of sites
     sites = [key for key in datasets.keys() if key[0] != '.']
