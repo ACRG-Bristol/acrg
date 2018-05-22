@@ -37,11 +37,13 @@ import argparse
 import glob
 import shutil
 import numpy as np
+import pandas as pd
 import datetime as dt
 import acrg_name as name
 from acrg_tdmcmc import run_tdmcmc 
 from acrg_tdmcmc import tdmcmc_post_process as process
 import tdmcmc_config
+import pdb
 #import acrg_config as configread
 
 acrg_path = os.getenv("ACRG_PATH")
@@ -228,6 +230,11 @@ tau_pdf = param['tau_pdf']
 # TUNING OF INDIVIDUAL PARAMETER STEPSIZES AND UNCERTAINTIES
 ################################################
 # SET DIMENSIONS of nBC and nIC
+# nfixed - number of fixed areas within the basis function (nfixed = number from basis function -1 for trans-d model)
+# nBC - number of fixed areas within boundary condition basis function
+# nBIAS - seems to be specific to GOSAT?
+# nIC - a combination of all the above dimesions
+
 f_list=glob.glob(data_path + "/NAME/basis_functions/" 
                     + domain + "/" + fp_basis_case + 
                     "_" + domain + "_*.nc") 
@@ -246,7 +253,7 @@ f_list2=glob.glob(data_path + "/NAME/bc_basis_functions/"
                     "_" + domain + "_*.nc") 
 if len(f_list2) > 0:                    
     ds2 = process.open_ds(f_list2[0]) 
-    nBC = len(ds2.region)
+    nBC_basis = len(ds2.region)
 else:
     raise LookupError("No file exists for that bc_basis_case and domain")
 
@@ -254,6 +261,19 @@ if 'GOSAT' in(sites):
     nBias = 1           # Change as needed 
 else: 
     nBias=0
+
+## Define nBC based on time, so each month is scaled individually
+pd_start=pd.to_datetime(start_date)
+pd_end=pd.to_datetime(end_date)
+
+# Calculate number of months in inversion period
+if pd_end.day == 1:
+    nmonths = pd_end.to_period('M') - pd_start.to_period('M')   
+else:
+    nmonths = pd_end.to_period('M') - pd_start.to_period('M')+1
+    
+
+nBC = nBC_basis*nmonths   # No. of bc_basis functions x nmonths
 
 nIC=nfixed+nBC+nBias
 nIC1=nIC+1
@@ -351,3 +371,4 @@ if unique_copy:
 else:
     shutil.copy(config_file,output_dir)
 
+pdb.set_trace()
