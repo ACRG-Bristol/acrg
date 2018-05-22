@@ -147,9 +147,9 @@ def write(lat, lon, time, flux, species, domain,
     if flux_comments != None:
         glob_attrs['comments'] = flux_comments
         if copy_from_year != None:
-            glob_attrs['comments'] = "Fluxes copied from year %s." %copy_from_year + glob_attrs['comments']
+            glob_attrs['comments'] = "Fluxes copied from year %s. %s" %(copy_from_year, flux_comments)
     
-    if copy_from_year != None:
+    elif copy_from_year != None:
         glob_attrs['comments'] = "Fluxes copied from year %s." %copy_from_year
 
     flux_ds = xray.Dataset({'flux':(['lat','lon','time'], flux, flux_attrs)},

@@ -155,7 +155,6 @@ def get_nsigma_y(fp_data_H,start_date, end_date, sites,
             nsigma+=nsigma_stn
     
     # INDEX R
-    print ydim1, nsigma
     R_indices = np.zeros((ydim1,nsigma), dtype=np.uint16)
     for ii in range(nsigma):      
         wh_bl=np.where(y_bl == ii)
@@ -429,7 +428,6 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     q_ap0=q_ap[0,:,:].copy()
     #q_ap_v = np.ravel(q_ap0)
     nmeasure=len(y)
-    print nmeasure
     h_v = np.zeros((nmeasure,Ngrid))
     #local_sum=np.zeros((nmeasure))
     for ti in range(nmeasure):                        
@@ -450,7 +448,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
             
     ############################################################
     # Create IC  
-    nBC=len(fp_data_H[sites[0]].region_bc)
+    #nBC=len(fp_data_H[sites[0]].region_bc)
     nfixed = len(fp_data_H[sites[0]].region)
     
     numsites=len(sites)
