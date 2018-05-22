@@ -880,10 +880,11 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
             site_fp = site_fp.sel(time=slice(str(start_date.data), str(end_date.data)))
             
             base = start_date.dt.hour.data + start_date.dt.minute.data/60. + start_date.dt.second.data/3600.
-            if (ds_timefreq > fp_timefreq) or (resample_to_data == True):
-               site_fp = site_fp.resample(str(ds_timefreq/3600e9)+'H', dim='time', how='mean', base=base)
-            elif ds_timefreq < fp_timefreq or (resample_to_data == False):
+            if (ds_timefreq >= fp_timefreq) or (resample_to_data == False):
                site_ds = site_ds.resample(str(fp_timefreq/3600e9)+'H', dim='time', how='mean', base=base)
+            elif ds_timefreq < fp_timefreq or (resample_to_data == True):
+                site_fp = site_fp.resample(str(ds_timefreq/3600e9)+'H', dim='time', how='mean', base=base)
+               
             
             site_ds = combine_datasets(site_ds, site_fp,
                                        method = "ffill",
