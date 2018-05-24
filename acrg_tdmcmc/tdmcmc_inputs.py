@@ -370,5 +370,3 @@ if unique_copy:
     post_mcmc.to_netcdf(path=fname, mode='w')
 else:
     shutil.copy(config_file,output_dir)
-
-pdb.set_trace()
