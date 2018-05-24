@@ -861,8 +861,8 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
             # spanned by both the footprint and obs, then resamples the data 
             #using the mean to the one with coarsest median resolution 
             #starting from the sliced start date. 
-            ds_timefreq = np.nanmedian((site_ds.time.data[1:] - site_ds.time.data[0:-1]).astype('int64')) 
-            fp_timefreq = np.nanmedian((site_fp.time.data[1:] - site_fp.time.data[0:-1]).astype('int64')) 
+            ds_timeperiod = np.nanmedian((site_ds.time.data[1:] - site_ds.time.data[0:-1]).astype('int64')) 
+            fp_timeperiod = np.nanmedian((site_fp.time.data[1:] - site_fp.time.data[0:-1]).astype('int64')) 
             ds_st = site_ds.time[0]
             ds_et = site_ds.time[-1]
             fp_st = site_fp.time[0]
@@ -871,7 +871,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                 start_date = ds_st
             else:  
                 start_date = fp_st
-            if int(ds_et.data) < int(fp_st.data):
+            if int(ds_et.data) < int(fp_et.data):
                 end_date = ds_et
             else:
                 end_date = fp_et
@@ -880,12 +880,11 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
             site_fp = site_fp.sel(time=slice(str(start_date.data), str(end_date.data)))
             
             base = start_date.dt.hour.data + start_date.dt.minute.data/60. + start_date.dt.second.data/3600.
-            if (ds_timefreq >= fp_timefreq) or (resample_to_data == False):
-               site_ds = site_ds.resample(str(fp_timefreq/3600e9)+'H', dim='time', how='mean', base=base)
-            elif ds_timefreq < fp_timefreq or (resample_to_data == True):
-                site_fp = site_fp.resample(str(ds_timefreq/3600e9)+'H', dim='time', how='mean', base=base)
-               
-            
+            if (ds_timeperiod >= fp_timeperiod) or (resample_to_data == True):
+                site_fp = site_fp.resample(str(ds_timeperiod/3600e9)+'H', dim='time', how='mean', base=base)
+            elif ds_timeperiod < fp_timeperiod or (resample_to_data == False):
+                site_ds = site_ds.resample(str(fp_timeperiod/3600e9)+'H', dim='time', how='mean', base=base)
+                        
             site_ds = combine_datasets(site_ds, site_fp,
                                        method = "ffill",
                                        tolerance = tolerance)
@@ -979,7 +978,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
         
     for a in attributes:
         fp_and_data[a] = data[a]
-
+  
     return fp_and_data
 
 
