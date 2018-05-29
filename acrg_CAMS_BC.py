@@ -5,7 +5,8 @@ Created on Thu May 24 16:47:07 2018
 
 @author: lw13938
 
-Function makeCAMS_BC() creates a boundary conditions ncdf file.
+Function makeCAMS_BC() creates a boundary conditions ncdf file 
+using ECMWF CAMS data. 
 Relies on getCAMSdata, interpheight and interplonlat.
 
 To download new CAMS data you will have to: 
