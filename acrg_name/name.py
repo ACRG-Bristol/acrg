@@ -871,7 +871,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                 start_date = ds_st
             else:  
                 start_date = fp_st
-            if int(ds_et.data) < int(fp_st.data):
+            if int(ds_et.data) < int(fp_et.data):
                 end_date = ds_et
             else:
                 end_date = fp_et
