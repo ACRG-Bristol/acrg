@@ -156,10 +156,12 @@ def getGFED(year, lon_out, lat_out, timeframe='monthly', monthrange = [1,2,3,4,5
     lat = np.flipud(np.unique(np.array(f['lat']) - 0.125))
     lon = np.unique(np.array(f['lon']) + 0.125)
     leapyears = np.arange(1900, 2100, 4)    
-    dim = np.array([31,28,31,30,31,30,31,30,31,30,31,31])  
+    #dim = np.array([31,28,31,30,31,30,31,30,31,30,31,31])  
+    dim = np.array([31,28,31,30,31,30,31,31,30,31,30,31]) #rt17603: Updated to align with days in a month 
     if (np.min(abs(year-leapyears)) == 0):
         dim[1] = 29
-        
+    
+    monthrange = [m-1 for m in monthrange] # rt17603: Reset to zero-indexed list (jan=0,feb=1 etc)
     dim = dim[monthrange]    #Use only desired months
     
     if timeframe == 'monthly':
@@ -206,7 +208,8 @@ def getGFED(year, lon_out, lat_out, timeframe='monthly', monthrange = [1,2,3,4,5
         emissions = np.zeros((np.sum(dim)*8, len(lat), len(lon)))
         convert2secs = 3*3600
         h = 0
-        diurnalcyclenames = [("UTC_0-3h", "UTC_3-6h", "UTC_6-9h", "UTC_9-12h", "UTC_12-15h", "UTC_15-18h", "UTC_18-21h", "UTC_21-24h")]
+        #rt17603: Made into a list rather than a list containing one tuple.
+        diurnalcyclenames = ["UTC_0-3h", "UTC_3-6h", "UTC_6-9h", "UTC_9-12h", "UTC_12-15h", "UTC_15-18h", "UTC_18-21h", "UTC_21-24h"]
         for month in range(len(dim)):
             # read in DM emissions
            string = '/emissions/'+months[month]+'/DM'
