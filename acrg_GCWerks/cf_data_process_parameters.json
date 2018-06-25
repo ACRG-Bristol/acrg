@@ -132,8 +132,8 @@
             "inlets": ["any"],
             "inlet_label": ["10m"],
             "global_attributes": {
-                "data_owner": "Lingxi Zhou",
-                "data_owner_email": "zhoulx@cams.cma.gov.cn"
+                "data_owner": "Bo Yao",
+                "data_owner_email": "yaob@cams.cma.gov.cn"
             }
         },
         "SIO" : {
