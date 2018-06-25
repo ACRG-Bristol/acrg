@@ -67,6 +67,15 @@
                 "data_owner_email": "paul.krummel@csiro.au"
             }
         },
+        "CPT" : {
+            "gcwerks_site_name": "capepoint",
+            "inlets": ["any"],
+            "inlet_label": ["3m"],
+            "global_attributes": {
+                "data_owner": "Brett Kuyper",
+                "data_owner_email": "brett.kuyper@gmail.com"
+            }
+        },
         "HFD" : {
             "gcwerks_site_name": "heathfield",
             "inlets": ["100m", "50m"],

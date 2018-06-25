@@ -26,6 +26,7 @@ import xarray as xr
 from acrg_grid import areagrid
 import datetime
 import pandas as pd
+import os
 
 def getGFED(year, lon_out, lat_out, timeframe='monthly', monthrange = [1,2,3,4,5,6,7,8,9,10,11,12], soi='CH4', incagr=False):
     """
@@ -156,10 +157,12 @@ def getGFED(year, lon_out, lat_out, timeframe='monthly', monthrange = [1,2,3,4,5
     lat = np.flipud(np.unique(np.array(f['lat']) - 0.125))
     lon = np.unique(np.array(f['lon']) + 0.125)
     leapyears = np.arange(1900, 2100, 4)    
-    dim = np.array([31,28,31,30,31,30,31,30,31,30,31,31])  
+    #dim = np.array([31,28,31,30,31,30,31,30,31,30,31,31])  
+    dim = np.array([31,28,31,30,31,30,31,31,30,31,30,31]) #rt17603: Updated to align with days in a month 
     if (np.min(abs(year-leapyears)) == 0):
         dim[1] = 29
-        
+    
+    monthrange = [m-1 for m in monthrange] # rt17603: Reset to zero-indexed list (jan=0,feb=1 etc)
     dim = dim[monthrange]    #Use only desired months
     
     if timeframe == 'monthly':
@@ -206,7 +209,8 @@ def getGFED(year, lon_out, lat_out, timeframe='monthly', monthrange = [1,2,3,4,5
         emissions = np.zeros((np.sum(dim)*8, len(lat), len(lon)))
         convert2secs = 3*3600
         h = 0
-        diurnalcyclenames = [("UTC_0-3h", "UTC_3-6h", "UTC_6-9h", "UTC_9-12h", "UTC_12-15h", "UTC_15-18h", "UTC_18-21h", "UTC_21-24h")]
+        #rt17603: Made into a list rather than a list containing one tuple.
+        diurnalcyclenames = ["UTC_0-3h", "UTC_3-6h", "UTC_6-9h", "UTC_9-12h", "UTC_12-15h", "UTC_15-18h", "UTC_18-21h", "UTC_21-24h"]
         for month in range(len(dim)):
             # read in DM emissions
            string = '/emissions/'+months[month]+'/DM'
@@ -524,3 +528,82 @@ def getnaeiandedgarCH4(lon_out, lat_out):
                              lat_out, lon_out)
     return(narr)
     
+def getNAEI(year, lon_out, lat_out, soi, sector):
+ 
+    """
+    Converts raw NAEI into gridded emissions data in mol/m2/s
+    
+    Args:
+        lon_out (array): 
+            Longitudes to output the data on
+        lat_out (array):
+            Latitudes to output the data on
+        year (int): 
+            Year of interest
+        soi (str):
+            Which species you want to look at. 
+            Currently only 'CH4' or 'N2O'
+        sector (str):
+            Which sector to look at. Options are: 
+            "energyprod","domcom","indcom","indproc","offshore","roadtrans",
+            "othertrans","waste","agric","nature","points","total",
+            "totalexcship"
+        
+    Returns:
+        narr (array): 
+            Array of regridded emissions in mol/m2/s.
+            Dimensions are [lat, lon]
+    
+    Example: 
+        emissions  = getNAEI(2013, lon, lat, 'ch4', 'total')
+    
+    """   
+    
+    soi = soi.lower()   
+    naeidir = '/dagage2/agage/metoffice/naei/naei_raw_priors/'
+    fn = naeidir+'LatLong1km_'+soi.upper()+'_'+str(year)+'.csv.gz'
+    #Checks
+    if not os.path.isfile(fn):
+        print 'Raw NAEI file LatLong1km_'+soi.upper()+'_'+str(year)+'.csv.gz does not exist'
+        print 'Returning None'
+        return None
+    sectorlist = ["energyprod","domcom","indcom","indproc","offshore","roadtrans",
+    "othertrans","waste","agric","nature","points","total","totalexcship"]
+    if sector not in sectorlist:
+        print 'Sector not one of:'
+        print sectorlist
+        print 'Returning None'
+        return None
+        
+    #Read emissions as tonnes/km^2/yr and naei lat and lons
+    df = pd.DataFrame.from_csv(fn)   
+    lat = np.asarray(df.Latitude)
+    lon = np.asarray(df.Longitude)    
+    emissions = np.asarray(df[sector])
+    
+    #Make a square grid for the emissions
+    latarr = np.arange(min(lat), max(lat), 0.01)
+    lonarr = np.arange(min(lon), max(lon), 0.01)
+    grdemis = np.zeros((len(latarr), len(lonarr)))
+
+    for i in range(len(emissions)):
+        ilat = np.where(abs(latarr-lat[i]) == np.min(abs(latarr - lat[i])) )
+        ilon = np.where(abs(lonarr-lon[i]) == np.min(abs(lonarr - lon[i])) )
+        grdemis[ilat, ilon] = emissions[i]
+
+    #Convert to mol/m2/s        
+    if soi == 'ch4':
+        speciesmm = 16.0425
+    if soi == 'n20':
+        speciesmm = 44.013        
+    if year % 4 == 0:
+        diy = 365
+    else:
+        diy = 366    
+    grdemis = grdemis*1e3 / (diy * 3600*24) / speciesmm
+    
+    #Regrid to desired lats and lons
+    narr, reg = regrid2d(grdemis, latarr, lonarr,
+                                 lat_out, lon_out)
+
+    return(narr)
