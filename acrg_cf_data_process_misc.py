@@ -1011,11 +1011,14 @@ def nies(fname, species, site, units = "ppt"):
 
     global_attributes = {"data_owner": "Takuya Saito",
                          "data_owner_email": "saito.takuya@nies.go.jp"
-                         }    
+                         }
     
     
     if fname.split(".")[1] == "xlsx":
         df = pd.read_excel(fname, parse_dates = [0], index_col = [0])
+    elif fname.split(".")[1] == "csv":
+        df = pd.read_csv(fname, sep = ",", parse_dates = [0], index_col = [0],
+                         skipinitialspace=True)
     else:
         df = pd.read_csv(fname, sep = "\t", parse_dates = [0], index_col = [0])
     
