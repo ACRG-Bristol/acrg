@@ -1011,11 +1011,14 @@ def nies(fname, species, site, units = "ppt"):
 
     global_attributes = {"data_owner": "Takuya Saito",
                          "data_owner_email": "saito.takuya@nies.go.jp"
-                         }    
+                         }
     
     
     if fname.split(".")[1] == "xlsx":
         df = pd.read_excel(fname, parse_dates = [0], index_col = [0])
+    elif fname.split(".")[1] == "csv":
+        df = pd.read_csv(fname, sep = ",", parse_dates = [0], index_col = [0],
+                         skipinitialspace=True)
     else:
         df = pd.read_csv(fname, sep = "\t", parse_dates = [0], index_col = [0])
     
@@ -1790,3 +1793,129 @@ def mpi(species):
     ds.to_netcdf(nc_filename)
     
     return(ds, df)
+
+
+def sogeA():
+    '''
+    This is a work-around to processes the SDZ MD data from GCWerks. The usual process script won't work because:
+    a) the naming is different to the other SDZ data; b) For some reason, the files are in the GCMS folder
+    '''
+    
+    from acrg_GCWerks.cf_data_process import gc_data_read, gc_precisions_read, params
+    from datetime import timedelta as td
+    
+    instrument = "GCMD"
+    site = "SDZ"
+    
+    data_files = glob.glob("/dagage2/agage/summary/data-gcms/sogeA-cawas.??.C")
+
+    precision_files = [data_file[0:-2] + ".precisions.C" \
+                        for data_file in data_files]
+    dfs = []
+
+    
+    for fi, data_file in enumerate(data_files):
+
+        df, species, units, scale = gc_data_read(data_file)
+
+        # Get precision
+        precision, precision_species = gc_precisions_read(precision_files[fi])
+
+        # Merge precisions into dataframe
+        for sp in species:
+            precision_index = precision_species.index(sp)*2+1
+            df[sp + "_repeatability"] = precision[precision_index].\
+                                            astype(float).\
+                                            reindex_like(df, "pad")
+
+        dfs.append(df)
+
+    # Concatenate
+    dfs = pd.concat(dfs).sort_index()
+
+    # Apply timestamp offset so that timestamp reflects start of sampling
+    time = dfs.index.values
+    time_offset = np.timedelta64(td(seconds = params["GC"]["timestamp_correct_seconds"][instrument]))
+    time = [t + time_offset for t in time]
+    dfs.index = time
+
+    # Label time index
+    dfs.index.name = "time"
+
+    # Convert to xray dataset
+    ds = xray.Dataset.from_dataframe(dfs)
+
+    # Get species from scale dictionary
+    species = scale.keys()
+
+    inlets = params["GC"][site]["inlets"]
+
+    for sp in species:
+        # Missing some Key for CO someqwhere... didn't ahe time to fix this
+        print(sp)
+        if (sp != "CO") & (sp != "CH4") & (sp != "N2O"):
+            global_attributes = params["GC"][site.upper()]["global_attributes"]
+            global_attributes["comment"] = params["GC"]["comment"][instrument]
+
+            for inleti, inlet in enumerate(inlets):
+
+                print("Processing " + sp + ", " + inlet + "...")
+
+                if (inlet == "any") or (inlet == "air"):
+                    ds_sp = ds[[sp,
+                                sp + "_repeatability",
+                                sp + "_status_flag",
+                                sp + "_integration_flag"]]
+                    inlet_label = params["GC"][site.upper()]["inlet_label"][0]
+                    global_attributes["inlet_height_magl"] = \
+                                        ", ".join(set(ds["Inlet"].values))
+
+                else:
+                    ds_sp = ds.where(ds.Inlet == inlet)[[sp,
+                                                         sp + "_repeatability",
+                                                         sp + "_status_flag",
+                                                         sp + "_integration_flag"]]
+                    inlet_label = inlet
+
+    #            # re-label inlet if required
+    #            if "inlet_label" in params["GC"][site].keys():
+    #                inlet_label = params["GC"][site]["inlet_label"][inleti]
+    #            else:
+    #               inlet_label = inlet
+
+                global_attributes["inlet_height_magl"] = float(inlet_label[:-1])
+
+                # Drop NaNs
+                ds_sp = ds_sp.dropna("time")
+
+                if len(ds_sp.time) == 0:
+
+                    print("... no data in file, skipping " + sp)
+
+                else:
+
+                    # Sort out attributes
+                    ds_sp = attributes(ds_sp, sp, site.upper(),
+                                       global_attributes = global_attributes,
+                                       units = units[sp],
+                                       scale = scale[sp],
+                                       sampling_period = params["GC"]["sampling_period"][instrument])
+
+                    # Get instrument name for output
+                    if sp.upper() in params["GC"]["instruments_out"][instrument]:
+                        instrument_out = params["GC"]["instruments_out"][instrument][sp]
+                    else:
+                        instrument_out = params["GC"]["instruments_out"][instrument]["else"]
+
+                    # Write file
+                    nc_filename = output_filename(params["GC"]["directory_output"],
+                                                  "SOGE",
+                                                  instrument_out,
+                                                  site.upper(),
+                                                  str(ds_sp.time.to_pandas().index.to_pydatetime()[0].year),
+                                                  ds_sp.species,
+                                                  inlet_label)
+                    print("Writing... " + nc_filename)
+                    ds_sp.to_netcdf(nc_filename)
+                    print("... written.")
+
