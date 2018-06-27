@@ -195,6 +195,7 @@ def basis_bc_blocks(domain, time, basis_case = "NESW", vertical=1):
     """
         
     files = glob.glob(fields_file_path + domain + "/*")
+
     
     time = pd.to_datetime(time)
     
@@ -209,6 +210,7 @@ def basis_bc_blocks(domain, time, basis_case = "NESW", vertical=1):
     lon = fields_ds["lon"].values
     
     regions = range(vertical*4)
+
     heights = range(500,20500,1000)
     
     basis_grid_e = np.zeros((len(heights),len(lat),len(regions),1))
@@ -216,7 +218,7 @@ def basis_bc_blocks(domain, time, basis_case = "NESW", vertical=1):
     basis_grid_n = np.zeros((len(heights),len(lon),len(regions),1))
     basis_grid_s = np.zeros((len(heights),len(lon),len(regions),1))
     
-    vertical_index = np.round(np.linspace(0,len(heights), vertical+1))
+    vertical_index = np.round(np.linspace(0,len(heights), vertical+1)).astype('int')
     
     for ii in range(vertical):
         
@@ -234,8 +236,8 @@ def basis_bc_blocks(domain, time, basis_case = "NESW", vertical=1):
                           'lat':(['lat'], lat), \
                           'region':(['region'],regions), \
                           'time':(['time'],[time])})
-
-    basis_ds.to_netcdf(bc_basis_dir + domain +"/" + basis_case + "_" + domain + "_" + time.strftime('%m')+str(time.year) + ".nc")                
+    
+    basis_ds.to_netcdf(bc_basis_dir + domain +"/" + basis_case + "_" + domain + "_" + str(time.year) + ".nc")                
     
 def basis_bc_uniform(domain, time, basis_case = "uniform"):
     """Creates creates one uniform scaling for boundary conditions for all directions
