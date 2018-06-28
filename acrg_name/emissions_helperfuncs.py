@@ -594,7 +594,7 @@ def getNAEI(year, lon_out, lat_out, soi, sector):
     #Convert to mol/m2/s        
     if soi == 'ch4':
         speciesmm = 16.0425
-    if soi == 'n20':
+    if soi == 'n2o':
         speciesmm = 44.013        
     if year % 4 == 0:
         diy = 365
