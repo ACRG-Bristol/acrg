@@ -1122,6 +1122,7 @@ def nies_n2o():
     # Convert to dataset
     ds = xray.Dataset.from_dataframe(df)
     
+    ds = ds.where((ds['N2O_repeatability'] < 9000), drop = True)
     
     # Add attributes
 
@@ -1791,8 +1792,6 @@ def mpi(species):
     print("Writing " + nc_filename)
     
     ds.to_netcdf(nc_filename)
-    
-    return(ds, df)
 
 
 def sogeA():
