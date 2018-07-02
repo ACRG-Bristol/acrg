@@ -1,4 +1,4 @@
-#EUROPE
+# EUROPE
 # Output Grid 1 and Grid 2
 Grid1_nX='391'
 Grid1_nY='293'
@@ -16,3 +16,19 @@ Grid1_dX='0.352'
 Grid1_dY='0.234'
 Grid1_Xmin='-50'
 Grid1_Ymin='-15'
+
+# SOUTHAMERICA
+# Output Grid 1 and Grid 2
+Grid1_nX='190'
+Grid1_nY='357'
+Grid1_dX='0.352'
+Grid1_dY='0.234'
+Grid1_Xmin='-91.329'
+Grid1_Ymin='-60.981'
+
+# Computational domain (recommend 5 deg buffer (long) and 4 deg buffer (lat))
+CompDom_Xmin='-93'
+CompDom_Xmax='-22'
+CompDom_Ymin='-62.5'
+CompDom_Ymax='25'
+
