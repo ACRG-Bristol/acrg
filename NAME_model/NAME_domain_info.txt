@@ -26,3 +26,9 @@ Grid1_dY='0.234'
 Grid1_Xmin='-91.329'
 Grid1_Ymin='-60.981'
 
+# Computational domain (recommend 5 deg buffer (long) and 4 deg buffer (lat))
+CompDom_Xmin='-93'
+CompDom_Xmax='-22'
+CompDom_Ymin='-62.5'
+CompDom_Ymax='25'
+
