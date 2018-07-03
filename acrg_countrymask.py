@@ -413,6 +413,7 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
     attributes["author"] = "File created by {}".format(getpass.getuser())
     attributes["database"] = "{} database with scale {} used to create this file. Python module regionmask (https://regionmask.readthedocs.io/en/stable/) used to extract data.".format(database,scale)
     attributes["extent"] = "Domain beween latitude {} - {}, longitude {} - {} with resolution {:.3f},{:.3f} degrees".format(np.min(lat),np.max(lat),np.min(lon),np.max(lon),lat[1]-lat[0],lon[1]-lon[0])
+
        
     ds.attrs = attributes
     
