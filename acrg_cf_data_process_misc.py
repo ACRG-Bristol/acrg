@@ -1072,31 +1072,37 @@ def nies(fname, species, site, units = "ppt"):
     
     ds.to_netcdf(nc_filename)
 
-def nies_n2o():
+def nies_n2o_ch4(species):
     '''
     N2O files from NIES
-    '''
+    '''            
     params = {
         "site" : "COI",
         "scale": {
+            "CH4": "NIES-94",
             "N2O": "NIES-96"},
         "instrument": {
+                "CH4": "GC-FID",
                 "N2O": "GC-ECD"},
-        "directory" : "/data/shared/obs_raw/SAWS/",
         "directory_output" : "/data/shared/obs/",
         "global_attributes" : {
                 "contact": "Yasunori Tohjima (tohjima@nies.go.jp)" ,
                 "averaging": "20 minutes"
                 }
         }
-            
-    species = 'n2o'    
-    fname = "/data/shared/obs_raw/NIES/COI/n2o/COIN2O_Hourly_withSTD.txt"
-  
-    df = pd.read_csv(fname, skiprows=1,
-                     delimiter=",", names = ["Time", 'N2O', 'STD', 'n'],
-                     index_col = "Time", parse_dates=["Time"],
-                     dayfirst=True)
+    if species.lower() == 'ch4':
+        fname = "/data/shared/obs_raw/NIES/COI/COICH4_Hourly_withSTD.TXT"
+        df = pd.read_csv(fname, skiprows=1,
+                 delimiter=",", names = ["Time", species.upper(), 'sd', 'N'],
+                 index_col = "Time", parse_dates=["Time"],
+                 dayfirst=True)
+    elif species.lower() == 'n2o':
+        fname = "/data/shared/obs_raw/NIES/COI/COIN2O_Hourly_withSTD.txt"
+        df = pd.read_csv(fname, skiprows=1,
+                 delimiter=",", names = ["Time", species.upper(), 'STD', 'n'],
+                 index_col = "Time", parse_dates=["Time"],
+                 dayfirst=True)
+              
     
     print("Assuming data is in JST. Check input file. CONVERTING TO UTC.")
     
@@ -1108,6 +1114,7 @@ def nies_n2o():
 
     # Rename columns to species
     df.rename(columns = {df.columns[0]: species.upper()}, inplace = True)
+
     df.rename(columns = {df.columns[1]: species.upper() + "_repeatability"}, inplace = True)
     df.rename(columns = {df.columns[2]: species.upper() + "_number_of_observations"}, inplace = True)
     
@@ -1122,7 +1129,8 @@ def nies_n2o():
     # Convert to dataset
     ds = xray.Dataset.from_dataframe(df)
     
-    ds = ds.where((ds['N2O_repeatability'] < 9000), drop = True)
+
+    ds = ds.where((ds[species.upper() + "_repeatability"] < 9000), drop = True)
     
     # Add attributes
 
@@ -1135,7 +1143,7 @@ def nies_n2o():
     # Write file
     nc_filename = output_filename(params["directory_output"],
                                   "NIES",
-                                  "GC-ECD",
+                                  params["instrument"][species.upper()],
                                   params["site"],
                                   str(ds.time.to_pandas().index.to_pydatetime()[0].year),
                                   ds.species,
@@ -1580,6 +1588,11 @@ def uex(species):
     df.index.name = "index"
     df = df.reset_index().drop_duplicates(subset='index').set_index('index')              
     df.index.name = "time"
+    
+    if species.lower() == 'n2o':
+        # hack to filter spurious data but need more permanent fix from UEx!!!! #
+        df = df[df['N2O']>326]
+        df = df[df['N2O']<337]
  
     # Convert to xray dataset
     ds = xray.Dataset.from_dataframe(df)
