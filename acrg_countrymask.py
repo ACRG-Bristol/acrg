@@ -3,10 +3,10 @@
 """
 Created on Fri Jun 15 14:59:47 2018
 
-This module is for creating country mask xarray.Dataset obejcts and netCDF files for new domains 
+This module is for creating country mask xarray.Dataset objects and netCDF files for new domains 
 (or re-creating previous domains).
 
-This is based on the regionmask module. This uses the uses the Natural Earth database with a scale of 1:50m.
+This is based on the regionmask module. This uses the Natural Earth database with a scale of 1:50m.
 
 Output file name is of the form: "country_DOMAIN.nc" e.g. country_SOUTHAMERICA.nc
 
@@ -28,10 +28,11 @@ from collections import OrderedDict
 import glob
 import getpass
 import os
+import pdb
 
 data_path = os.getenv("DATA_PATH")
 fp_directory = os.path.join(data_path,'NAME/fp/')
-country_directory = os.path.join(data_path,'NAME/country/')
+country_directory = os.path.join(data_path,'NAME/countries/')
 
 def domain_volume(domain,fp_directory=fp_directory):
     '''
@@ -91,7 +92,7 @@ def range_from_bounds(bounds,step,include_upper=False):
 def country_name(code,allow_non_standard=True,supress_print=False):
     '''
     Extract country name based on ISO3166 standard.
-    Note: allows non-standard values based on Natural Earth database to be included if 
+    Note: allows non-standard values based on Natural Earth and Marine Regions databases to be included if 
     allow_non_standard is set to True.
     
     Args:
@@ -138,7 +139,7 @@ def country_name(code,allow_non_standard=True,supress_print=False):
 def country_alpha2(code,allow_non_standard=True,supress_print=False):
     '''
     Extract country two-letter code based on ISO3166 standard.
-    Note: allows non-standard values based on Natural Earth database and Marine Regions 
+    Note: allows non-standard values based on Natural Earth and Marine Regions databases
     to be included if allow_non_standard is set to True.
     
     Args:
@@ -291,7 +292,7 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
     Creates a country mask for the latitude and longitude range. Derives country data from
     Natural Earth database (at 1:50m resolution).
     
-    If write=True, writes out file of the "country_DOMAIN.nc" e.g. country_SOUTHAMERICA.nc
+    If write=True, writes out file of the form "country_DOMAIN.nc" e.g. country_SOUTHAMERICA.nc
     Note: Will not overwrite a pre-existing file.
     
     Args:
@@ -316,7 +317,7 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
             Add additional explicit ocean label as well as countries within domain.
             Default = True.
         write (bool, optional) :
-            Write produced dataset to file of the form "country_ocean_regionmask_"DOMAIN".nc".
+            Write produced dataset to file of the form "country_"DOMAIN".nc".
             Default = True.
         output_dir (str, optional) :
             Directory for writing output.
@@ -378,20 +379,24 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
     
     ## Set NaN values as ocean reference but make sure to keep any regions already labelled as 0.0 as 
     # nan_to_num function changes the nan values to 0.
-    mask.values[np.where(mask == 0)] = 10000
+    mask.values[np.where(mask == 0)] = 100000
     mask.values = np.nan_to_num(mask)
     mask.values[np.where(mask == 0)] = ocean_ref
-    mask.values[np.where(mask == 10000)] = 0
+    mask.values[np.where(mask == 100000)] = 0
     
     if reset_index:
-        ## Normalise numbers in mask
+        ## Normalise numbers in mask - have to add arbitrary number to avoid clashes when numbers are being reassigned
+        add_num = 100000
+        mask.values = mask.values+add_num
         for i,region_num in enumerate(regions):
-            mask.values[np.where(mask == region_num)] = i
-    
+            mask_num = region_num+add_num
+            mask.values[np.where(mask == mask_num)] = i
+   
     ## Turn mask output into a dataset and add additional parameters and attributes
     ds = mask.to_dataset(name="country")
 
     countries_upper = np.core.defchararray.upper(countries) # Make all upper case
+    countries_upper = countries_upper.astype(str)
 
     if reset_index:
         ds["name"] = xray.DataArray(countries_upper,dims="ncountries")
@@ -424,7 +429,7 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
 
 if __name__=="__main__":
     
-    write = False
+    write = True
     
     domain = "SOUTHAMERICA"
     grid_size = [0.234,0.352]
@@ -434,5 +439,17 @@ if __name__=="__main__":
     lat = range_from_bounds(lat_bounds,grid_size[0],include_upper=False)
     lon = range_from_bounds(lon_bounds,grid_size[1],include_upper=False)
     
+#    domain = "NORTHAFRICA"
+#    grid_size = [0.234,0.352]
+#    lat_bounds = [-15.0,41.160]
+#    lon_bounds = [-50.0,87.632]
+
+#    lat = range_from_bounds(lat_bounds,grid_size[0],include_upper=False)
+#    lon = range_from_bounds(lon_bounds,grid_size[1],include_upper=False)
+    
+#    domain = "SOUTHAFRICA"
+#    lat = None
+#    lon = None
+
     ds = create_country_mask(domain,lat=lat,lon=lon,write=write,reset_index=True,ocean_label=True)
     
