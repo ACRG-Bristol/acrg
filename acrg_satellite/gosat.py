@@ -91,8 +91,8 @@ import datetime as dt
 from collections import OrderedDict
 import itertools
 import acrg_agage as agage
-from acrg_GCWerks import cf_data_process
 from barometric import pressure_at_height
+from acrg_countrymask import domain_volume
 
 data_path = os.getenv("DATA_PATH")
 home = os.getenv("HOME")
@@ -101,39 +101,6 @@ fp_directory = os.path.join(data_path,'NAME/fp/')
 obs_directory = os.path.join(data_path,'obs/') # Where to write output nc files
 name_csv_directory = os.path.join(home,"NAME_files") # Where to write output NAME csv files
 name_pressure_directory = os.path.join(data_path,"NAME/surface_pressure/")
-
-def domain_volume(domain,fp_directory=fp_directory):
-    '''
-    The domain_volume function extracts the volume (lat, lon, height) within a domain from a related footprint file.
-    
-    Args:
-        domain (str) : 
-            Domain of interest (e.g. one of 'AUSTRALIA', 'CARIBBEAN','EASTASIA','EUROPE','NAMERICA','PACIFIC',
-            'SOUTHAFRICA','SOUTHASIA','WESTUSA')
-        fp_directory (str, optional) : 
-            fp_directory can be specified if files are not in the default directory. 
-            Must point to a directory which contains subfolders organized by domain.
-        
-    Returns:
-        xarray.DataArray (3): 
-            Latitude, longitude, height  
-    '''
-    directory = os.path.join(fp_directory,domain)
-    listoffiles = glob.glob(directory + "/*")
-    if listoffiles:
-        filename = listoffiles[0]
-        print 'Using footprint file: {0} to extract domain'.format(filename)
-        with xray.open_dataset(filename) as temp:
-            fields_ds = temp.load()
-        
-        fp_lat = fields_ds["lat"].values
-        fp_lon = fields_ds["lon"].values
-        fp_height = fields_ds["height"].values
-    
-        return fp_lat,fp_lon,fp_height     
-    else:
-        raise Exception('Cannot extract volume for domain: {1}. No footprint file found within {0}'.format(directory,domain))
-        #return None
 
 def apply_filter(ds,filter_array,dim_apply='time'):
     '''
