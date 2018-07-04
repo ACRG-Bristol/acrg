@@ -33,3 +33,28 @@ CompDom_Xmax='-22'
 CompDom_Ymin='-62.5'
 CompDom_Ymax='25'
 
+
+# SOUTHASIA
+# Output Grid 1 and Grid 2
+Grid1_nX='155'
+Grid1_nY='180'
+Grid1_dX='0.352'
+Grid1_dY='0.234'
+Grid1_Xmin='55'
+Grid1_Ymin='6'
+
+# AUSTRALIA
+
+# CARIBBEAN
+
+# EASTASIA
+
+# NAMERICA
+
+# PACIFIC
+
+# SOUTHAFRICA
+
+# WESTUSA
+
+
