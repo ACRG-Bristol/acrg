@@ -2246,7 +2246,7 @@ def write_netcdf(ds,filename,overwrite=False):
     '''    
     if not overwrite:
         if os.path.isfile(filename):
-            print '{0} already exists. Data has not been written to file because overwrite=False.'.format(filename)
+            print '\nERROR: {0} already exists. Data has not been written to file because overwrite=False.\n'.format(filename)
         else:
             print 'Writing to filename:',filename    
             ds.to_netcdf(filename)
@@ -2346,7 +2346,7 @@ def gosat_output(ds,site,species="ch4",file_per_day=False,output_directory=obs_d
 def gosat_output_name(ds,site,max_level=17,use_name_pressure=False,pressure_domain=None,
                       pressure_base_dir=name_pressure_directory,
                       pressure_max_days=31,pressure_day_template=True,name_directory=name_csv_directory,
-                      file_per_day=False,overwrite=False):
+                      file_per_day=False,max_points=60,overwrite=False):
     '''
     The gosat_output_name function creates a csv file in the correct format for input into NAME-III.
     Note: it is assumed input pressure values are in hPa values and so are converted to Pa for NAME (*100.)
@@ -2388,6 +2388,10 @@ def gosat_output_name(ds,site,max_level=17,use_name_pressure=False,pressure_doma
         file_per_day (bool, optional) : 
             Output all results to one file per day rather than splitting out per time point. 
             Default=False.
+        max_points (int/None, optional) :
+            Only applicable if file_per_day is True.
+            Maximum number of points to write if writing file per day. If number of points within the day
+            exceeds max_points multiple files will be written out with a character after the date of "-A","-B",...
         overwrite (bool, optional) : 
             Allow any files already present within the full path to name_directory to be overwritten. 
             Default = False
@@ -2397,7 +2401,6 @@ def gosat_output_name(ds,site,max_level=17,use_name_pressure=False,pressure_doma
         
         Writes output to multiple .csv files (split on time axis).
     '''
-    
     # Note column mapping here is out:in values rather than in:out because some columns in output do not map to input data variables.
     col_mapping = OrderedDict([('ID_Level','lev'),
                                ('Time','time'),
@@ -2477,12 +2480,20 @@ def gosat_output_name(ds,site,max_level=17,use_name_pressure=False,pressure_doma
             df_output.set_index(out_index,inplace=True)
             
             if file_per_day:
-                filename = site+"_"+date.replace('-','')+".csv"
+                filename = site+"_"+date.replace('-','')
+                if max_points:
+                    if len(wh_date) > max_points:
+                        letter_split = chr(ord("A")+int(ID/max_points))
+                        filename = "{}-{}".format(filename,letter_split)
+                    ID_1 = ID%max_points
+                else:
+                    ID_1 = ID
+                filename += '.csv'
                 filename = os.path.join(name_directory,filename)
                 
                 if not overwrite:
-                    if ID == 0 and os.path.isfile(filename):
-                        print('{0} already exists. Data has not been written to file because overwrite=False.'.format(filename))
+                    if ID_1 == 0 and os.path.isfile(filename):
+                        print('\nERROR: {0} already exists. Data has not been written to file because overwrite=False.\n'.format(filename))
                         break
                     elif not os.path.isfile(filename):
                         print('Writing to filename: {}'.format(filename))
@@ -2491,7 +2502,7 @@ def gosat_output_name(ds,site,max_level=17,use_name_pressure=False,pressure_doma
                         #print('Appending to filename: {}'.format(filename))
                         df_output.to_csv(filename,mode='a',header=False)    
                 else:
-                    if (not os.path.isfile(filename)) or (os.path.isfile(filename) and ID == 0):
+                    if (not os.path.isfile(filename)) or (os.path.isfile(filename) and ID_1 == 0):
                         print('Writing to filename: {}'.format(filename))
                         df_output.to_csv(filename)
                     else:
@@ -2502,7 +2513,8 @@ def gosat_output_name(ds,site,max_level=17,use_name_pressure=False,pressure_doma
                 filename = os.path.join(name_directory,filename)
                 if not overwrite:
                     if os.path.isfile(filename):
-                        print('{0} already exists. Data has not been written to file because overwrite=False.'.format(filename))
+                        print('\nERROR: {0} already exists. Data has not been written to file because overwrite=False.\n'.format(filename))
+                        break
                     else:
                         print('Writing to filename: {}'.format(filename))
                         df_output.to_csv(filename)
@@ -2518,7 +2530,7 @@ def gosat_process_file(filename,site,species="ch4",lat_bounds=[],lon_bounds=[],d
                        pressure_domain=None,pressure_max_days=31.,pressure_day_template=True,
                        write_nc=False,output_directory=obs_directory,
                        write_name=False,name_directory=name_csv_directory,
-                       file_per_day=False,overwrite=False,verbose=True):
+                       file_per_day=False,max_name_points=None,overwrite=False,verbose=True):
     '''
     The gosat_process_file function processes input gosat data for one file, applying designated filters, 
     binning and writing output as required.
@@ -2628,6 +2640,15 @@ def gosat_process_file(filename,site,species="ch4",lat_bounds=[],lon_bounds=[],d
             Group together all points into create one output file per day rather than one per 
             data point (bool).
             Default = False.
+        max_name_points (int/None, optional) :
+            Only applicable if file_per_day is True.
+            Maximum number of points to write to NAME csv file if writing file per day. 
+            If number of points within the day exceeds max_points multiple files will be written out with 
+            a character after the date of "-A","-B",...
+            NOTE: This will not be applied to netCDF files even if number of points is greater than
+            max_name_points, only to the NAME csv files. All points per day will be written to one file.
+            A sensible number for this, if specified, would be 60.
+            Default = None.
         overwrite (bool, optional) : 
             Allow any files already present within the output_directory and name_directory to be overwritten.
             Default = False.
@@ -2736,7 +2757,8 @@ def gosat_process_file(filename,site,species="ch4",lat_bounds=[],lon_bounds=[],d
             gosat_output_name(gosat,site=site,use_name_pressure=use_name_pressure,
                               pressure_domain=pressure_domain,pressure_base_dir=pressure_base_dir,
                               pressure_max_days=pressure_max_days,pressure_day_template=pressure_day_template,
-                              name_directory=name_directory,file_per_day=file_per_day,overwrite=overwrite)
+                              name_directory=name_directory,file_per_day=file_per_day,
+                              max_points=max_name_points,overwrite=overwrite)
     else:
         print('No points extracted from {} for specified parameters.'.format(filename))
 
@@ -2750,7 +2772,7 @@ def gosat_process(site,species="ch4",input_directory=input_directory,start=None,
                   pressure_domain=None,pressure_max_days=31,pressure_day_template=True,
                   write_nc=False,output_directory=obs_directory,
                   write_name=False,name_directory=name_csv_directory,file_per_day=False,
-                  overwrite=False):
+                  max_name_points=None,overwrite=False):
     '''
     The gosat_process function processes GOSAT input files from a directory.
     As part of processing the GOSAT input data there are multiple options including filtering based on
@@ -2857,6 +2879,13 @@ def gosat_process(site,species="ch4",input_directory=input_directory,start=None,
         file_per_day (bool, optional) : 
             Group together all points into create one output file per day rather than one per data point.
             Default = False.
+        max_name_points (int/None, optional) :
+            Only applicable if file_per_day is True.
+            Maximum number of points to write to NAME csv file if writing file per day. 
+            If number of points within the day exceeds max_points multiple files will be written out with 
+            a character after the date of "-A","-B",...
+            NOTE: This will not be applied to netCDF files even if number of points is greater than
+            max_name_points, only to the NAME csv files. All points per day will be written to one file.
         overwrite (bool, optional) : 
             Allow any files already present within the full path to output_directory and name_directory 
             to be overwritten.
@@ -2928,6 +2957,7 @@ def gosat_process(site,species="ch4",input_directory=input_directory,start=None,
                                     write_name=write_name,
                                     name_directory=name_directory,
                                     file_per_day=file_per_day,
+                                    max_name_points=max_name_points,
                                     overwrite=overwrite,
                                     verbose=verbose)
             
