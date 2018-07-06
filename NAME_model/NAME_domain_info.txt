@@ -8,6 +8,9 @@ Grid1_Xmin='-97.9'
 Grid1_Ymin='10.729'
 
 
+
+
+
 # NORTHAFRICA
 # Output Grid 1 and Grid 2
 Grid1_nX=391
@@ -16,6 +19,15 @@ Grid1_dX='0.352'
 Grid1_dY='0.234'
 Grid1_Xmin='-50'
 Grid1_Ymin='-15'
+
+# Computational domain (recommend 5 deg buffer (long) and 4 deg buffer (lat))
+CompDom_Xmin='-52'
+CompDom_Xmax='90'
+CompDom_Ymin='-17'
+CompDom_Ymax='44'
+
+
+
 
 
 # SOUTHAMERICA
@@ -34,6 +46,9 @@ CompDom_Ymin='-62.5'
 CompDom_Ymax='25'
 
 
+
+
+
 # SOUTHASIA
 # Output Grid 1 and Grid 2
 Grid1_nX='155'
@@ -43,17 +58,137 @@ Grid1_dY='0.234'
 Grid1_Xmin='55'
 Grid1_Ymin='6'
 
+# Computational domain (recommend 5 deg buffer (long) and 4 deg buffer (lat))
+CompDom_Xmin='54.3'
+CompDom_Xmax='109.9'
+CompDom_Ymin='5.5'
+CompDom_Ymax='48.4'
+
+
+
+
+
 # AUSTRALIA
 
+
+
+
+
 # CARIBBEAN
+# Output Grid 1 and Grid 2
+Grid1_nX=391
+Grid1_nY=340
+Grid1_dX='0.352'
+Grid1_dY='0.234'
+Grid1_Xmin='-100.012'
+Grid1_Ymin='-26.009'
+
+## Computational domain (recommend 5 deg buffer (long) and 4 deg buffer (lat))
+CompDom_Xmin='-104.012'
+CompDom_Xmax='41.3'
+CompDom_Ymin='-22.009'
+CompDom_Ymax='57.3'
+
+
+
+
 
 # EASTASIA
+# Output Grid 1 and Grid 2
+Grid1_nX=391
+Grid1_nY=340
+Grid1_dX='0.352'
+Grid1_dY='0.234'
+Grid1_Xmin='54.516'
+Grid1_Ymin='-5.183'
+
+# Computational domain (recommend 5 deg buffer (long) and 4 deg buffer (lat))
+CompDom_Xmin='52'
+CompDom_Xmax='194'
+CompDom_Ymin='-7'
+CompDom_Ymax='77'
+
+
+
+
 
 # NAMERICA
+# Output Grid 1 and Grid 2
+Grid1_nX=213
+Grid1_nY=147
+Grid1_dX='0.5625'
+Grid1_dY='0.375'
+Grid1_Xmin='-170'
+Grid1_Ymin='20'
+
+# Computational domain (recommend 5 deg buffer (long) and 4 deg buffer (lat))
+CompDom_Xmin='-172'
+CompDom_Xmax='-48.75'
+CompDom_Ymin='18'
+CompDom_Ymax='76.75'
+
+
+
+
+
 
 # PACIFIC
+# Output Grid 1 and Grid 2
+Grid1_nX=412
+Grid1_nY=300
+Grid1_dX='0.352'
+Grid1_dY='0.234'
+Grid1_Xmin='98.125'
+Grid1_Ymin='-50'
+
+# Computational domain (recommend 5 deg buffer (long) and 4 deg buffer (lat))
+CompDom_Xmin='96'
+CompDom_Xmax='245'
+CompDom_Ymin='-52'
+CompDom_Ymax='22'
+
+
+
+
 
 # SOUTHAFRICA
+# Output Grid 1 and Grid 2
+Grid1_nX=391
+Grid1_nY=293
+Grid1_dX='0.352'
+Grid1_dY='0.234'
+Grid1_Xmin='-50'
+Grid1_Ymin='-64'
+
+# Computational domain (recommend 5 deg buffer (long) and 4 deg buffer (lat))
+CompDom_Xmin='-52'
+CompDom_Xmax='90'
+CompDom_Ymin='-66'
+CompDom_Ymax='6.4'
+
+
+
+
+
+# CARIBBEAN
+# Output Grid 1 and Grid 2
+Grid1_nX=391
+Grid1_nY=340
+Grid1_dX='0.352'
+Grid1_dY='0.234'
+Grid1_Xmin='-100.012'
+Grid1_Ymin='-26.009'
+
+# Computational domain (recommend 5 deg buffer (long) and 4 deg buffer (lat))
+CompDom_Xmin='-104.012'
+CompDom_Xmax='41.3'
+CompDom_Ymin='-22.009'
+CompDom_Ymax='57.3'
+
+
+
+
+
 
 # WESTUSA
 
