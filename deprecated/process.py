@@ -1493,6 +1493,10 @@ def process(domain, site, height, year, month,
     if os.path.exists(subfolder + "/time_step.txt"):
         with open(subfolder + "/time_step.txt") as f:
             timeStep = float(f.read())
+            if satellite:
+                status_log("For satellite data, assuming input timestep file contains time in seconds and will be converted to hours.",
+                           error_or_warning="status",print_to_screen=True)
+                timeStep = timeStep/3600.
     else:
         timeStep = None
 

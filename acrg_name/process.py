@@ -726,7 +726,7 @@ def particle_locations(particle_file, time, lats, lons, levs, heights, id_is_lev
     if satellite:
         npoints = len(id_values)
         if np.any(np.isnan(list(id_values))):
-            status_log("Unable to read all id values from particle file. Check final column in file is separated by 1 or more spaces.",
+            status_log("Unable to read all id values from particle file. Check final column in particle_location* file is separated by 1 or more spaces.",
                        error_or_warning="error",print_to_screen=True)     
         if (npoints)%upper_level != 0:
             status_log("Total number of fields {} is not exactly divisable by the number of levels {}. Same number of levels must be used for each satellite point.".format(npoints,upper_level),
@@ -951,6 +951,10 @@ def footprint_array(fields_file,
     ## Reformat met data to separate into levels
     if satellite:
         met = met_satellite_split(met)
+        if len(met) != len(time):
+            status_log("Expect number of extracted met points to match number of time points. " + \
+                       "Check metError within NAME output to check if met has been generated correctly",
+                       error_or_warning="error")
 
     # Add in met data
     met_dict = {key : (["time", "lev"], np.zeros((len(time), len(levs))))
