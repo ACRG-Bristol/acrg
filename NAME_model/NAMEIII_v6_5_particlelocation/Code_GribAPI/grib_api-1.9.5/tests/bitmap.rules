@@ -1,6 +1,0 @@
-set bitmapPresent=1;
-set missingValue=1111;
-set Ni=6;
-set Nj=2;
-set values={1,2,3,4,5,6,7,1111,1111,8,9,10};
-write ;

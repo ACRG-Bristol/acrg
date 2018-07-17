@@ -247,11 +247,15 @@ def manage_country_descriptor(countries):
     return countries
     
 
-def region_mapping():
+def region_mapping(upper=True):
     '''
     Extract mapping from the region number to the country name from the regionmask module.
     
     See manage_country_descriptor() function for how names containing commas are treated.
+    
+    Args:
+        upper (bool, optional):
+            Return country names all in upper case. Default = True.
     
     Returns:
         dict:
@@ -282,6 +286,8 @@ def region_mapping():
                                 break
     
     names = manage_country_descriptor(names)
+    if upper:
+        names = np.core.defchararray.upper(names)
     region_dict = {num:name for num,name in zip(numbers,names)}
 
     return region_dict
@@ -343,9 +349,8 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
     elif database == "Natural_Earth" and scale == "1:110m":
         mask = regionmask.defined_regions.natural_earth.countries_110.mask(lon,lat,xarray=True)
     
-    mask_flat = mask.values.flatten()
-
     ## Find region numbers and associate with countries    
+    mask_flat = mask.values.flatten()
     regions = np.unique(mask_flat[~np.isnan(mask_flat)])
     region_dict = region_mapping()
     countries = [region_dict[region] for region in regions]
@@ -372,20 +377,21 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
     ## Add ocean label if relevant and set appropriate ocean_ref
     if ocean_label:
         ocean_ref = -1
-        countries.insert(0,"Ocean")
+        countries.insert(0,"OCEAN")
         regions = np.insert(regions,0,[ocean_ref])
     else:
         ocean_ref = -(2)**31
     
     ## Set NaN values as ocean reference but make sure to keep any regions already labelled as 0.0 as 
     # nan_to_num function changes the nan values to 0.
-    mask.values[np.where(mask == 0)] = 100000
+    temp_num = 100000
+    mask.values[np.where(mask == 0)] = temp_num
     mask.values = np.nan_to_num(mask)
     mask.values[np.where(mask == 0)] = ocean_ref
-    mask.values[np.where(mask == 100000)] = 0
+    mask.values[np.where(mask == temp_num)] = 0
     
     if reset_index:
-        ## Normalise numbers in mask - have to add arbitrary number to avoid clashes when numbers are being reassigned
+        ## Normalise numbers in mask- have to add arbitrary number to avoid clashes when numbers are being reassigned
         add_num = 100000
         mask.values = mask.values+add_num
         for i,region_num in enumerate(regions):
@@ -393,15 +399,14 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
             mask.values[np.where(mask == mask_num)] = i
    
     ## Turn mask output into a dataset and add additional parameters and attributes
+    
     ds = mask.to_dataset(name="country")
 
-    countries_upper = np.core.defchararray.upper(countries) # Make all upper case
-    countries_upper = countries_upper.astype(str)
-
+    countries = np.array(countries).astype(unicode)
     if reset_index:
-        ds["name"] = xray.DataArray(countries_upper,dims="ncountries")
+        ds["name"] = xray.DataArray(countries,dims="ncountries")
     else:
-        ds["name"] = xray.DataArray(countries_upper,coords={"ncountries":regions},dims={"ncountries":len(regions)})
+        ds["name"] = xray.DataArray(countries,coords={"ncountries":regions},dims={"ncountries":len(regions)})
     
     ds["country"].attrs = {"long_name":"Country indices"}
     ds["lat"].attrs = {"long_name":"latitude","units":"degrees_north"}
@@ -413,7 +418,7 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
     attributes["author"] = "File created by {}".format(getpass.getuser())
     attributes["database"] = "{} database with scale {} used to create this file. Python module regionmask (https://regionmask.readthedocs.io/en/stable/) used to extract data.".format(database,scale)
     attributes["extent"] = "Domain beween latitude {} - {}, longitude {} - {} with resolution {:.3f},{:.3f} degrees".format(np.min(lat),np.max(lat),np.min(lon),np.max(lon),lat[1]-lat[0],lon[1]-lon[0])
-       
+
     ds.attrs = attributes
     
     if write:
@@ -443,13 +448,21 @@ if __name__=="__main__":
 #    grid_size = [0.234,0.352]
 #    lat_bounds = [-15.0,41.160]
 #    lon_bounds = [-50.0,87.632]
+<<<<<<< HEAD
 
+=======
+#
+>>>>>>> master
 #    lat = range_from_bounds(lat_bounds,grid_size[0],include_upper=False)
 #    lon = range_from_bounds(lon_bounds,grid_size[1],include_upper=False)
     
 #    domain = "SOUTHAFRICA"
 #    lat = None
 #    lon = None
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> master
     ds = create_country_mask(domain,lat=lat,lon=lon,write=write,reset_index=True,ocean_label=True)
     
