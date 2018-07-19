@@ -1014,6 +1014,8 @@ def nies(fname, species, site, units = "ppt"):
                          }
     
     
+    repeatability = {"CFC-11": 0.008}
+    
     if fname.split(".")[1] == "xlsx":
         df = pd.read_excel(fname, parse_dates = [0], index_col = [0])
     elif fname.split(".")[1] == "csv":
@@ -1040,7 +1042,7 @@ def nies(fname, species, site, units = "ppt"):
 
     
     # Add a repeatability column
-    df[species + "_repeatability"] = df[species]*0.05
+    df[species + "_repeatability"] = df[species]*repeatability[species]
 
     # Convert to dataset
     ds = xray.Dataset.from_dataframe(df)
