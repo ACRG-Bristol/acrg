@@ -1662,6 +1662,9 @@ def process(domain, site, height, year, month,
     
     directory_status_log = subfolder
     
+    if not os.path.isdir(subfolder):
+        raise Exception("Subfolder: {} does not exist.\nExpect NAME output folder of format: domain_site_height".format(subfolder))
+    
     if perturbed_folder is not None:
         if perturbed_folder[-1] == "/":
             subfolder += perturbed_folder
@@ -1729,9 +1732,13 @@ def process(domain, site, height, year, month,
             datestrs = [str(year) + str(month).zfill(2)]
 
     # Output filename
-    outfile = subfolder + processed_folder + "/" + site + "-" + height + \
-                "_" + domain + "_" + str(year) + str(month).zfill(2) + ".nc"
+    full_out_path = os.path.join(subfolder,processed_folder)
+    outfile = os.path.join(full_out_path, site + "-" + height + \
+                "_" + domain + "_" + str(year) + str(month).zfill(2) + ".nc")
  
+    if not os.path.isdir(full_out_path):
+        os.makedirs(full_out_path)
+    
     # Check whether outfile needs updating
     if not force_update:
         status_log("Testing whether file exists or needs updating: " + outfile)
