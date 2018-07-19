@@ -758,12 +758,12 @@ def getedgarannualsectors(year, lon_out, lat_out, sectors, soi='CH4'):
         if os.path.isfile(edgar):
             ds = xr.open_dataset(edgar)
             soiname = 'emi_'+soi.lower()
-            if tot == None:
+            if tot is None:
                 tot = ds[soiname].values*1e3/speciesmm
             else:
                 tot += ds[soiname].values*1e3/speciesmm
         else:
-            print 'No annual file for sector %s and %s' % sec, soi
+            print 'No annual file for sector %s and %s' % (sec, soi)
         
     lat_in = ds.lat.values
     lon_in = ds.lon.values
