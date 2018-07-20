@@ -216,9 +216,12 @@ def add_local_ratio(fp_data_H,return_release=True):
             release_lat=fp_data_H[site].release_lat[ti].values
             wh_rlon = np.where(abs(fp_data_H[site].sub_lon.values-release_lon) < dlon/2.)
             wh_rlat = np.where(abs(fp_data_H[site].sub_lat.values-release_lat) < dlat/2.)
-            local_sum[ti] = np.sum(fp_data_H[site].sub_fp[
-            wh_rlat[0][0]-2:wh_rlat[0][0]+3,wh_rlon[0][0]-2:wh_rlon[0][0]+3,ti].values)/np.sum(
-            fp_data_H[site].fp[:,:,ti].values)  
+            if np.any(wh_rlon[0]) and np.any(wh_rlat[0]):
+                local_sum[ti] = np.sum(fp_data_H[site].sub_fp[
+                        wh_rlat[0][0]-2:wh_rlat[0][0]+3,wh_rlon[0][0]-2:wh_rlon[0][0]+3,ti].values)/np.sum(
+                        fp_data_H[site].fp[:,:,ti].values)  
+            else:
+                local_sum[ti] = 0.0
             
         local_ds = xray.Dataset({'local_ratio': (['time'], local_sum)},
                                         coords = {'time' : (fp_data_H[site].coords['time'])})
@@ -295,7 +298,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     pdf_param1,pdf_param2,pdf_p1_hparam1,pdf_p1_hparam2,pdf_p2_hparam1,
     pdf_p2_hparam2,x_pdf ,pdf_param1_pdf,pdf_param2_pdf,inv_type,
     output_dir,tau_ap=None, tau_hparams=None, stepsize_tau=None, tau_pdf=None,
-    bl_split=False, bl_levels=None, filters=None):
+    bl_split=False, bl_levels=None, filters=None,max_level=None):
     #%%
     
     if para_temp is True:
@@ -310,7 +313,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
               "corr":False,
               "evencorr":True}
     data = agage.get_obs(sites, species, start = start_date, end = end_date, average = meas_period, 
-                          keep_missing=corr_type[inv_type])
+                          keep_missing=corr_type[inv_type],max_level=max_level)
     
     
     #fp_all = name.footprints_data_merge(data, domain=domain, species=species, calc_bc=True)
@@ -477,7 +480,14 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     nBC_basis = len(fp_data_H[sites[0]].region_bc)
     nBC = nBC_basis*nmonths   # No. of bc_basis functions x nmonths
     
-    nIC=nBC+nfixed
+    for site in sites:
+        if "GOSAT" in site:
+            nBias = 1
+            break
+    else:
+        nBias = 0
+    
+    nIC=nBC+nfixed+nBias
     h_agg0 = np.zeros((nmeasure,k_ap+nIC))
     pdy_time = pandas.to_datetime(y_time)
     months = np.arange(pd_start.to_period('M').month, pd_start.to_period('M').month +nmonths)
