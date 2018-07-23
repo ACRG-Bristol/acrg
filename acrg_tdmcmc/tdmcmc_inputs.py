@@ -43,7 +43,6 @@ import acrg_name as name
 from acrg_tdmcmc import run_tdmcmc 
 from acrg_tdmcmc import tdmcmc_post_process as process
 import tdmcmc_config
-import pdb
 #import acrg_config as configread
 
 acrg_path = os.getenv("ACRG_PATH")
@@ -115,6 +114,9 @@ elif output_dir.startswith("$ACRG_PATH"):
     output_dir = output_dir.replace("$ACRG_PATH",acrg_path)
 elif output_dir.startswith("$DATA_PATH"):
     output_dir = output_dir.replace("$DATA_PATH",data_path)
+
+if not os.path.isdir(output_dir):
+    raise Exception("Output directory: {} does not exist.".format(output_dir))
 
 #######################################################
 # DO YOU WANT TO DO REVERSIBLE JUMP OR NOT?????
@@ -367,10 +369,10 @@ if unique_copy:
     # Copy config file to output sub-directory
     shutil.copy(config_file,datestamp_output_dir)
     
-    network = network.split('/')[-1]
+    network_w = network.split('/')[-1]
     # Write output from MCMC code again but this time to the subdirectory
     fname = os.path.join(datestamp_output_dir,
-                            "output_" + network + "_" + species + "_" + start_date + ".nc")
+                            "output_{network}_{species}_{date}.nc".format(network=network_w,species=species,date=start_date))
     for key in post_mcmc.keys():
         post_mcmc[key].encoding['zlib'] = True
     post_mcmc.to_netcdf(path=fname, mode='w')

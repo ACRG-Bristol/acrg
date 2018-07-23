@@ -37,7 +37,6 @@ import xarray as xray
 import os
 import re
 from collections import OrderedDict
-import pdb
 
 
 @jit(nopython=True)
@@ -848,8 +847,10 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     #Output files from tdmcmc_template.py stored in the form:
     # "output_" + network + "_" + species +  "_" + date + ".nc"
     
+    network_w = network.split('/')[-1]
+    
     fname=os.path.join(output_dir,
-                        "output_" + network + "_" + species + "_" + start_date + ".nc")
+                        "output_" + network_w + "_" + species + "_" + start_date + ".nc")
     for key in post_mcmc.keys():
         post_mcmc[key].encoding['zlib'] = True
     post_mcmc.to_netcdf(path=fname, mode='w')
