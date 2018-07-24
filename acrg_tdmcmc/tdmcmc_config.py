@@ -49,31 +49,78 @@ acrg_path = os.getenv("ACRG_PATH")
 
 def mcmc_param_type():
     '''
-    The mcmc_param_type function specifies the names of expected input parameters from the config file and the required Python object types.
-    This includes three section groups for the input parameter:
+    The mcmc_param_type function defines the names of expected input parameters from the config file and 
+    the required Python object types.
+    
+    The mcmc_param_type output is currently based on an input template configuration file:
+        $ACRG_PATH/acrg_config/templates/tdmcmc_template.ini
+    
+    WARNING: The description that follows may be subject to change, always check the template config file.
+    The section headings are split into three section groups for the input parameters:
         'MEASUREMENTS' - details related to the measurements made
         'MCMC'         - parameters for running the mcmc model
         'TDMCMC'       - parameters for running the tdmcmc model (in addition to mcmc parameters needed)
     
-    
     Returns:
-        OrderedDict of section groups:
-            Each section group contains a OrderedDict of parameter names and associated type:
-            'MEASUREMENTS' ('sites',list),('species',str),('start_date',str),('end_date',str),('domain',str),
-                           ('network',str)
-            'MCMC'         ('meas_period',list),('av_period',list),('nIt',int),('burn_in',int),
-                           ('nsub',int),('fp_basis_case',str),('bc_basis_case',str),('x_pdf0',int),
-                           ('pdf_param1_pdf0',int),('pdf_param2_pdf0',int),('sigma_model_pdf',int),
-                           ('pdf_param10',float),('pdf_param20',float),('pdf_p1_hparam10',float),
-                           ('pdf_p1_hparam20',float),('pdf_p2_hparam10',float),('pdf_p2_hparam20',float),
-                           ('sigma_model_ap',float),('sigma_model_hparams',list),('bl_period',int),
-                           ('bl_split',bool),('levels',int),('stepsize',float),('stepsize_pdf_p1',float),
-                           ('stepsize_pdf_p2',float),('stepsize_sigma_y',float),('stepsize_clon',float),
-                           ('stepsize_clat',float),('stepsize_bd',int),('inv_type',str),('tau_ap',float),
-                           ('tau_hparams',list),('tau_pdf',int),('stepsize_tau',float), ('filters',list),
-                           ('parallel_tempering',bool),('nbeta',int),('output_dir',str),('unique_copy',boolean)
-            'TDMCMC'       ('reversible_jump',bool),('kmin',int),('kmax',int),('k_ap',int)
-    
+        nested OrderedDict of sections and parameters within the configuration file
+
+    e.g.    
+    OrderedDict([('MEASUREMENTS',
+              OrderedDict([('sites', list),
+                           ('species', str),
+                           ('start_date', str),
+                           ('end_date', str),
+                           ('domain', str),
+                           ('network', str)])),
+             ('MCMC.MEASUREMENTS',
+              OrderedDict([('meas_period', list), ('av_period', list),('max_level',int))])),
+             ('MCMC.ITERATIONS',
+              OrderedDict([('nIt', int), ('burn_in', int), ('nsub', int)])),
+             ('MCMC.BASIS_FUNCTIONS',
+              OrderedDict([('fp_basis_case', str), ('bc_basis_case', str)])),
+             ('TDMCMC.SET_UP',
+              OrderedDict([('reversible_jump', bool),
+                           ('kmin', int),
+                           ('kmax', int),
+                           ('k_ap', int)])),
+             ('MCMC.PDFS',
+              OrderedDict([('x_pdf0', int),
+                           ('pdf_param1_pdf0', int),
+                           ('pdf_param2_pdf0', int),
+                           ('sigma_model_pdf', int)])),
+             ('MCMC.HYPERPARAMETERS',
+              OrderedDict([('pdf_param10', float),
+                           ('pdf_param20', float),
+                           ('pdf_p1_hparam10', float),
+                           ('pdf_p1_hparam20', int),
+                           ('pdf_p2_hparam10', float),
+                           ('pdf_p2_hparam20', int)])),
+             ('MCMC.MODEL_UNCERTAINTY',
+              OrderedDict([('sigma_model_ap', float),
+                           ('sigma_model_hparams', numpy.ndarray),
+                           ('bl_period', int),
+                           ('bl_split', bool),
+                           ('levels', int)])),
+             ('MCMC.STEPSIZE',
+              OrderedDict([('stepsize', float),
+                           ('stepsize_pdf_p1', float),
+                           ('stepsize_pdf_p2', float),
+                           ('stepsize_sigma_y', float),
+                           ('stepsize_clon', float),
+                           ('stepsize_clat', float),
+                           ('stepsize_bd', int)])),
+             ('MCMC.COVARIANCE_MATRIX',
+              OrderedDict([('inv_type', str),
+                           ('tau_ap', float),
+                           ('tau_hparams', numpy.ndarray),
+                           ('tau_pdf', int),
+                           ('stepsize_tau', float)])),
+             ('MCMC.FILTERS', OrderedDict([('filters', list)])),
+             ('MCMC.PARALLEL_TEMPERING',
+              OrderedDict([('parallel_tempering', bool), ('nbeta', int)])),
+             ('MCMC.OUTPUT',
+              OrderedDict([('output_dir', str), ('unique_copy', bool)]))])
+
     '''
     
 #    measurements = OrderedDict([('sites',list),
@@ -168,8 +215,24 @@ def mcmc_param_type():
 
 def optional_parameters(section_group=None):
     '''
+    The optional_parameters function defines the set of parameters whcih do not need to be specified within the 
+    configuration file. (All other parameters within dictionary from mcmc_param_type() MUST be included).
+    This includes some parameters which can be calculated independently without an output or have a default value.
+
+    TODO: Add any additional optional parameters to this function as the configuration set-up changes
+    and expands.
+    
+    Args:
+        section_group (str/None, optional):
+            Allows selection of optional parameters for a particular section_group.
+            Should be one of: "MEASUREMENTS","MCMC","TDMCMC"
+            If None is specified, optional parameters for all section_groups will be returned
+    
+    Returns:
+        list:
+            Optional parameters for MCMC code
     '''
-    meas_params = ["network","start_date","end_date"]
+    meas_params = ["network","start_date","end_date","max_level"]
     mcmc_params = ["unique_copy"]
     tdmcmc_params = []
     
@@ -185,6 +248,28 @@ def optional_parameters(section_group=None):
 
 def add_defaults(param,section_group=None):
     '''
+    The add_defaults function adds any default values if they have not been explictly specified within
+    the input configuation file.
+    
+    The current defaults that can be added are:
+        "network" (within MEASUREMENTS section group) - extracted from acrg_site_info.json file
+        "unique_copy" (within MCMC section group)     - set to False as a default
+    
+    TODO: Add additional defaults as the configuration set-up changes and expands.
+    
+    Args:
+        param (dict) :
+            Dictionary of parameter names and values.
+            Output from all_mcmc_param, measurements_param, mcmc_param, tdmcmc_param functions.
+        section_group (str/None, optional):
+            Only apply defaults for the particular section_group.
+            Should be one of: "MEASUREMENTS","MCMC","TDMCMC"
+            If None is specified, defaults will be added for all section_groups
+    
+    Returns:
+        dict:
+            param dictionary with default values added where necessary
+    
     '''
     if section_group is None or section_group == "MEASUREMENTS":
         if ("network" not in param.keys()) or (not param["network"]):
@@ -201,13 +286,20 @@ def add_defaults(param,section_group=None):
 def measurements_param(config_file,optional_param=[]):
     '''
     The measurements_param function extracts all parameters relevant to measurement details (see mcmc_param_type for full list)
-    
+
+    In addition to optional_param values, parameters from optional_parameters() function for section_group="MEASUREMENTS" 
+    are also treated as optional when reading the configuration file.
+     
     Args:
-        config_file (str)     : filename for input configuration file
-        optional_param (list) : parameters which are optional. If the param cannot be found value will be set to None.
+        config_file (str) : 
+            Filename for input configuration file
+        optional_param (list, optional) : 
+            Additional parameters within configuration file which are optional. If the parameter cannot be found in input file, 
+            value will set to None.
     
     Returns:
-        OrderedDict: parameter names and values
+        OrderedDict: 
+            parameter names and values
         
         If any measurement parameter cannot be found (not specified as an optional param):
             Exception raised and program exited
@@ -228,13 +320,20 @@ def measurements_param(config_file,optional_param=[]):
 def mcmc_param(config_file,optional_param=[]):
     '''
     The mcmc_param function extracts all parameters for the MCMC run (see mcmc_param_type for full list)
+
+    In addition to optional_param values, parameters from optional_parameters() function for section_group="MCMC" are 
+    also treated as optional when reading the configuration file.
      
     Args:
-        config_file (str)     : filename for input configuration file
-        optional_param (list) : parameters which are optional. If the param cannot be found value will be set to None
+        config_file (str) : 
+            Filename for input configuration file
+        optional_param (list, optional) : 
+            Additional parameters within configuration file which are optional. If the parameter cannot be found in input file, 
+            value will set to None.
     
     Returns:
-        OrderedDict: parameter names and values   
+        OrderedDict: 
+            parameter names and values   
         
         If any MCMC parameter cannot be found (not specified as an optional param):
             Exception raised and program exited
@@ -254,13 +353,20 @@ def mcmc_param(config_file,optional_param=[]):
 def tdmcmc_param(config_file,optional_param=[]):
     '''
     The tdmcmc_param function extracts all parameters for the MCMC run (see mcmc_param_type for full list)
+
+    In addition to optional_param values, parameters from optional_parameters() function for section_group="TDMCMC" are 
+    also treated as optional when reading the configuration file.
      
     Args:
-        config_file (str)     : filename for input configuration file
-        optional_param (list) : parameters which are optional. If the param cannot be found value will be set to None
+        config_file (str) : 
+            Filename for input configuration file
+        optional_param (list, optional) : 
+            Additional parameters within configuration file which are optional. If the parameter cannot be found in input file, 
+            value will set to None.
     
     Returns:
-        OrderedDict: parameter names and values   
+        OrderedDict: 
+            parameter names and values   
         
         If any MCMC parameter cannot be found (not specified as an optional param):
             Exception raised and program exited
@@ -281,12 +387,19 @@ def all_mcmc_param(config_file,optional_param=[]):
     '''
     The all_mcmc_param function extracts all parameters related to running the tdmcmc code as defined in mcmc_param_type()
     
-    Args:
-        config_file    : filename for input configuration file
-        optional_param : parameters which are optional. If the param cannot be found in input file, value will be set to None
+    In addition to optional_param values, parameters from optional_parameters() function are also treated as optional 
+    when reading the configuration file.
     
+    Args:
+        config_file (str) : 
+            Filename for input configuration file
+        optional_param (list, optional) : 
+            Additional parameters within configuration file which are optional. If the parameter cannot be found in input file, 
+            value will set to None.
+
     Returns:
-        OrderedDict: parameter names and values 
+        OrderedDict: 
+            parameter names and values 
         
         If any parameter defined in mcmc_param_type() cannot be found (not specified as an optional param):
             Exception raised and program exited    

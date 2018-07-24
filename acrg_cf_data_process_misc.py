@@ -1011,11 +1011,16 @@ def nies(fname, species, site, units = "ppt"):
 
     global_attributes = {"data_owner": "Takuya Saito",
                          "data_owner_email": "saito.takuya@nies.go.jp"
-                         }    
+                         }
     
+    
+    repeatability = {"CFC-11": 0.008}
     
     if fname.split(".")[1] == "xlsx":
         df = pd.read_excel(fname, parse_dates = [0], index_col = [0])
+    elif fname.split(".")[1] == "csv":
+        df = pd.read_csv(fname, sep = ",", parse_dates = [0], index_col = [0],
+                         skipinitialspace=True)
     else:
         df = pd.read_csv(fname, sep = "\t", parse_dates = [0], index_col = [0])
     
@@ -1037,7 +1042,7 @@ def nies(fname, species, site, units = "ppt"):
 
     
     # Add a repeatability column
-    df[species + "_repeatability"] = df[species]*0.05
+    df[species + "_repeatability"] = df[species]*repeatability[species]
 
     # Convert to dataset
     ds = xray.Dataset.from_dataframe(df)
@@ -1069,7 +1074,86 @@ def nies(fname, species, site, units = "ppt"):
     
     ds.to_netcdf(nc_filename)
 
+def nies_n2o_ch4(species):
+    '''
+    N2O files from NIES
+    '''            
+    params = {
+        "site" : "COI",
+        "scale": {
+            "CH4": "NIES-94",
+            "N2O": "NIES-96"},
+        "instrument": {
+                "CH4": "GC-FID",
+                "N2O": "GC-ECD"},
+        "directory_output" : "/data/shared/obs/",
+        "global_attributes" : {
+                "contact": "Yasunori Tohjima (tohjima@nies.go.jp)" ,
+                "averaging": "20 minutes"
+                }
+        }
+    if species.lower() == 'ch4':
+        fname = "/data/shared/obs_raw/NIES/COI/COICH4_Hourly_withSTD.TXT"
+        df = pd.read_csv(fname, skiprows=1,
+                 delimiter=",", names = ["Time", species.upper(), 'sd', 'N'],
+                 index_col = "Time", parse_dates=["Time"],
+                 dayfirst=True)
+    elif species.lower() == 'n2o':
+        fname = "/data/shared/obs_raw/NIES/COI/COIN2O_Hourly_withSTD.txt"
+        df = pd.read_csv(fname, skiprows=1,
+                 delimiter=",", names = ["Time", species.upper(), 'STD', 'n'],
+                 index_col = "Time", parse_dates=["Time"],
+                 dayfirst=True)
+              
+    
+    print("Assuming data is in JST. Check input file. CONVERTING TO UTC.")
+    
+   # df.index = df.index.tz_localize(pytz.timezone("Japan")).tz_convert(pytz.utc).tz_localize(None) # Previous solution
+    df.index = df.index.tz_localize(pytz.timezone("Japan")).tz_convert(None) # Simpler solution
 
+    # Sort
+    df.sort_index(inplace = True)
+
+    # Rename columns to species
+    df.rename(columns = {df.columns[0]: species.upper()}, inplace = True)
+
+    df.rename(columns = {df.columns[1]: species.upper() + "_repeatability"}, inplace = True)
+    df.rename(columns = {df.columns[2]: species.upper() + "_number_of_observations"}, inplace = True)
+    
+    # Drop duplicates and rename index
+    df.index.name = "index"
+    df = df.reset_index().drop_duplicates(subset='index').set_index('index')              
+    df.index.name = "time"
+    
+    # remove 9999
+    df = df[df[species.upper()]<9999]
+
+    # Convert to dataset
+    ds = xray.Dataset.from_dataframe(df)
+    
+
+    ds = ds.where((ds[species.upper() + "_repeatability"] < 9000), drop = True)
+    
+    # Add attributes
+
+    ds = attributes(ds,
+                    species.upper(),
+                    params['site'].upper(),
+                    global_attributes = params["global_attributes"],
+                    scale = params["scale"][species.upper()])
+   
+    # Write file
+    nc_filename = output_filename(params["directory_output"],
+                                  "NIES",
+                                  params["instrument"][species.upper()],
+                                  params["site"],
+                                  str(ds.time.to_pandas().index.to_pydatetime()[0].year),
+                                  ds.species,
+                                  site_params[params["site"]]["height"][0])
+    
+    print("Writing " + nc_filename)
+    
+    ds.to_netcdf(nc_filename)
 
 def niwa(site, species):
 
@@ -1111,6 +1195,8 @@ def niwa(site, species):
     print("Writing " + nc_filename)
     
     ds.to_netcdf(nc_filename)
+
+
 
 def niwa_run():
     
@@ -1365,47 +1451,84 @@ def uhei_13ch4():
 
 
 
-def saws():
+def saws(species):
     ''' 
     South African Weather Service observations
     
-    '''
-    
-    
-    fname = "/data/shared/obs_raw/SAWS/CPT_CH4_1983_2015_All data.txt"
-    df = pd.read_csv(fname, skiprows=10,
-                     delimiter="\t", names = ["Time", "CH4"],
-                     index_col = "Time", parse_dates=["Time"],
-                     dayfirst=True)
-    
+    '''    
+    params = {
+        "site" : "CPT",
+        "scale": {
+            "CH4": "NOAA2004",
+            "N2O": "WMO N2OX2006A",
+            "RN222": "None"},
+        "instrument": {
+                "CH4": "GC-FID-CRDS",
+                "N2O": "GC-ECD",
+                "RN222": "ANSTO"},
+        "directory" : "/data/shared/obs_raw/SAWS/",
+        "directory_output" : "/data/shared/obs/",
+        "global_attributes" : {
+                "contact": "Casper Labuschagne (casper.labuschagne@weathersa.co.za), Warren Joubert (warren.joubert@weathersa.co.za)" ,
+                "averaging": "30 minutes"
+                }
+        }
+            
+    if species.lower() == 'ch4':
+        fname = "/data/shared/obs_raw/SAWS/CPT_CH4_1983_2015_All data.txt"
+    elif (species.lower() == 'n2o') or (species.lower() == 'rn222'):
+        fname = "/data/shared/obs_raw/SAWS/CPT_30min_N2O_Radon_winds_1995_2015.txt"
+
+    if species.lower() == 'ch4':    
+        df = pd.read_csv(fname, skiprows=10,
+                         delimiter="\t", names = ["Time", 'CH4'],
+                         index_col = "Time", parse_dates=["Time"],
+                         dayfirst=True)
+    elif (species.lower() == 'n2o') or (species.lower() == 'rn222'):
+        df = pd.read_csv(fname, skiprows=10,
+                 delimiter="\t|\t|\t|\t", names = ["Time", 'N2O', 'Wind speed', 'Wind dir', 'RN222'],
+                 index_col = "Time", parse_dates=["Time"],
+                 dayfirst=True, engine='python')       
+  
     # remove duplicates
     df.index.name = "index"
     df = df.reset_index().drop_duplicates(subset='index').set_index('index')              
     df.index.name = "time"
 
-    # remove NaN
-    df = df[np.isfinite(df["CH4"])]
+    df.index = df.index.tz_localize(pytz.timezone("Africa/Johannesburg")).tz_convert(None) # Simpler solution
     
+    if species.lower() == 'n2o':
+        df = df.drop(['Wind speed', 'Wind dir', 'RN222'], axis=1)
+    elif species.lower() == 'rn222':
+        df = df.drop(['Wind speed', 'Wind dir', 'N2O'], axis=1)
+        
+    # remove NaN
+    df = df[np.isfinite(df[species.upper()])]    
+
     # Sort and convert to dataset
     ds = xray.Dataset.from_dataframe(df.sort_index())
     
     
     # Add attributes
-    ds = attributes(ds,
-                    "CH4",
-                    "CPT",
-                    global_attributes = {"inlet_height_magl": 30.,
-                                         "data owner": "Casper Labuschagne (casper.labuschagne@weathersa.co.za)"},
-                    sampling_period = 30)
+    if species.lower() == 'ch4' or species.lower() == 'n2o':
+        ds = attributes(ds,
+                        species.upper(),
+                        params['site'].upper(),
+                        global_attributes = params["global_attributes"],
+                        scale = params["scale"][species.upper()])
+    elif species.lower() == 'rn222':
+        ds.attrs["units"] = "mBq/m3"
+        ds.attrs["species"] = species.lower()
+
 
     # Write file
-    nc_filename = output_filename("/data/shared/obs/",
+    nc_filename = output_filename(params["directory_output"],
                                   "SAWS",
-                                  "GC-FID-CRDS",
-                                  "CPT",
+                                  params["instrument"][species.upper()],
+                                  params["site"],
                                   str(ds.time.to_pandas().index.to_pydatetime()[0].year),
                                   ds.species,
-                                  "30m")
+                                  site_params[params["site"]]["height"][0])
     
     print("Writing " + nc_filename)
     
@@ -1414,9 +1537,12 @@ def saws():
     return(ds, df)
 
 
-def uex():
+def uex(species):
     params = {
             "site" : "CVO",
+            "scale": {
+                "CH4": "NOAA2004",
+                "N2O": "WMO N2OX2006A"},
             "directory" : "/data/shared/obs_raw/UEX/",
             "directory_output" : "/data/shared/obs/",
             "global_attributes" : {
@@ -1425,19 +1551,21 @@ def uex():
                     }
             }
     
-    fnames = sorted(glob.glob(join(params["directory"],"*.txt")))
-
+    if species.lower() == 'ch4':
+        fnames = sorted(glob.glob(join(params["directory"],"*.txt")))
+    elif species.lower() == 'n2o':
+        fnames = sorted(glob.glob(join(params["directory"],"*.dat")))
+    
     df = []
     
     for fname in fnames:
-        
+
         header_count = 0
         with open(fname, "r") as f:
             for line in f:
-                if line[0] == "D":
-                    header_count+=1
+                header_count+=1
+                if line[0:4] == "DATE":
                     header = line.split()
-                else:
                     break
     
         dff = pd.read_csv(fname, sep = r"\s+",
@@ -1449,9 +1577,9 @@ def uex():
         
         dff = dff[["DATA", "ND", "SD"]]
     
-        dff.rename(columns = {"DATA" : "CH4",
-                                "ND": "CH4_number_of_observations",
-                                "SD": "CH4_variability"},
+        dff.rename(columns = {"DATA" : species.upper(),
+                                "ND": (species.upper() + "_number_of_observations"),
+                                "SD": (species.upper() +"_variability")},
                    inplace = True)
 
         df.append(dff)
@@ -1462,17 +1590,23 @@ def uex():
     df.index.name = "index"
     df = df.reset_index().drop_duplicates(subset='index').set_index('index')              
     df.index.name = "time"
+    
+    if species.lower() == 'n2o':
+        # hack to filter spurious data but need more permanent fix from UEx!!!! #
+        df = df[df['N2O']>326]
+        df = df[df['N2O']<337]
  
     # Convert to xray dataset
     ds = xray.Dataset.from_dataframe(df)
 
     # Add attributes
+
     ds = attributes(ds,
-                    "CH4",
+                    species.upper(),
                     params['site'].upper(),
                     global_attributes = params["global_attributes"],
-                    scale = "NOAA-2004")
-    
+                    scale = params["scale"][species.upper()])
+   
     # Write file
     nc_filename = output_filename(params["directory_output"],
                                   "UEX",
@@ -1603,4 +1737,199 @@ def obspack_co2(site, height, obspack_name):
         print("Writing " + nc_filename)
         
         ds2.to_netcdf(nc_filename)
+        
+def mpi(species):
+    ''' 
+    Max Planck observations
+    
+    '''    
+    params = {
+        "site" : "NDAO",
+        "scale": {
+            "CH4": "NOAA2004",
+            "N2O": "WMO N2OX2006A"},
+        "instrument": {
+                "CH4": "OA-ICOS",
+                "N2O": "OA-ICOS"},
+        "directory" : "/data/shared/obs_raw/MPI/",
+        "directory_output" : "/data/shared/obs/",
+        "global_attributes" : {
+                "contact": "Eric Morgan (ejmorgan@ucsd.edu)" ,
+                "averaging": "1 minute OA-ICOS"
+                }
+        }
+            
+    fname = "/data/shared/obs_raw/MPI/ndao_2013-2014.csv"
+
+
+    df = pd.read_csv(fname, skiprows=10,
+             delimiter=",", names = ["Time", 'CO2', 'CH4','N2O', 'CO','O2N2', \
+                                               'Radiation', 'Pressure', 'RH', 'Temp', \
+                                               'Wind speed', 'APO', 'Wind dir'],
+             index_col = "Time", parse_dates=["Time"],
+             dayfirst=True, engine='python')       
+
+    # remove duplicates
+    df.index.name = "index"
+    df = df.reset_index().drop_duplicates(subset='index').set_index('index')              
+    df.index.name = "time"
+
+#    df.index = df.index.tz_localize(pytz.timezone("Africa/Johannesburg")).tz_convert(None) # Simpler solution
+    
+    if species.lower() == 'n2o':
+        df = df.drop(['CO2', 'CH4', 'CO','O2N2','Radiation', 'Pressure', 'RH', 'Temp','Wind speed', 'APO', 'Wind dir'], axis=1)
+        
+    # remove NaN
+    df = df[np.isfinite(df[species.upper()])]    
+
+    # Sort and convert to dataset
+    ds = xray.Dataset.from_dataframe(df.sort_index())
+    
+    
+    # Add attributes
+    if species.lower() == 'ch4' or species.lower() == 'n2o':
+        ds = attributes(ds,
+                        species.upper(),
+                        params['site'].upper(),
+                        global_attributes = params["global_attributes"],
+                        scale = params["scale"][species.upper()])
+
+
+    # Write file
+    nc_filename = output_filename(params["directory_output"],
+                                  "MPI",
+                                  params["instrument"][species.upper()],
+                                  params["site"],
+                                  str(ds.time.to_pandas().index.to_pydatetime()[0].year),
+                                  ds.species,
+                                  site_params[params["site"]]["height"][0])
+    
+    print("Writing " + nc_filename)
+    
+    ds.to_netcdf(nc_filename)
+
+
+def sogeA():
+    '''
+    This is a work-around to processes the SDZ MD data from GCWerks. The usual process script won't work because:
+    a) the naming is different to the other SDZ data; b) For some reason, the files are in the GCMS folder
+    '''
+    
+    from acrg_GCWerks.cf_data_process import gc_data_read, gc_precisions_read, params
+    from datetime import timedelta as td
+    
+    instrument = "GCMD"
+    site = "SDZ"
+    
+    data_files = glob.glob("/dagage2/agage/summary/data-gcms/sogeA-cawas.??.C")
+
+    precision_files = [data_file[0:-2] + ".precisions.C" \
+                        for data_file in data_files]
+    dfs = []
+
+    
+    for fi, data_file in enumerate(data_files):
+
+        df, species, units, scale = gc_data_read(data_file)
+
+        # Get precision
+        precision, precision_species = gc_precisions_read(precision_files[fi])
+
+        # Merge precisions into dataframe
+        for sp in species:
+            precision_index = precision_species.index(sp)*2+1
+            df[sp + "_repeatability"] = precision[precision_index].\
+                                            astype(float).\
+                                            reindex_like(df, "pad")
+
+        dfs.append(df)
+
+    # Concatenate
+    dfs = pd.concat(dfs).sort_index()
+
+    # Apply timestamp offset so that timestamp reflects start of sampling
+    time = dfs.index.values
+    time_offset = np.timedelta64(td(seconds = params["GC"]["timestamp_correct_seconds"][instrument]))
+    time = [t + time_offset for t in time]
+    dfs.index = time
+
+    # Label time index
+    dfs.index.name = "time"
+
+    # Convert to xray dataset
+    ds = xray.Dataset.from_dataframe(dfs)
+
+    # Get species from scale dictionary
+    species = scale.keys()
+
+    inlets = params["GC"][site]["inlets"]
+
+    for sp in species:
+        # Missing some Key for CO someqwhere... didn't ahe time to fix this
+        print(sp)
+        if (sp != "CO") & (sp != "CH4") & (sp != "N2O"):
+            global_attributes = params["GC"][site.upper()]["global_attributes"]
+            global_attributes["comment"] = params["GC"]["comment"][instrument]
+
+            for inleti, inlet in enumerate(inlets):
+
+                print("Processing " + sp + ", " + inlet + "...")
+
+                if (inlet == "any") or (inlet == "air"):
+                    ds_sp = ds[[sp,
+                                sp + "_repeatability",
+                                sp + "_status_flag",
+                                sp + "_integration_flag"]]
+                    inlet_label = params["GC"][site.upper()]["inlet_label"][0]
+                    global_attributes["inlet_height_magl"] = \
+                                        ", ".join(set(ds["Inlet"].values))
+
+                else:
+                    ds_sp = ds.where(ds.Inlet == inlet)[[sp,
+                                                         sp + "_repeatability",
+                                                         sp + "_status_flag",
+                                                         sp + "_integration_flag"]]
+                    inlet_label = inlet
+
+    #            # re-label inlet if required
+    #            if "inlet_label" in params["GC"][site].keys():
+    #                inlet_label = params["GC"][site]["inlet_label"][inleti]
+    #            else:
+    #               inlet_label = inlet
+
+                global_attributes["inlet_height_magl"] = float(inlet_label[:-1])
+
+                # Drop NaNs
+                ds_sp = ds_sp.dropna("time")
+
+                if len(ds_sp.time) == 0:
+
+                    print("... no data in file, skipping " + sp)
+
+                else:
+
+                    # Sort out attributes
+                    ds_sp = attributes(ds_sp, sp, site.upper(),
+                                       global_attributes = global_attributes,
+                                       units = units[sp],
+                                       scale = scale[sp],
+                                       sampling_period = params["GC"]["sampling_period"][instrument])
+
+                    # Get instrument name for output
+                    if sp.upper() in params["GC"]["instruments_out"][instrument]:
+                        instrument_out = params["GC"]["instruments_out"][instrument][sp]
+                    else:
+                        instrument_out = params["GC"]["instruments_out"][instrument]["else"]
+
+                    # Write file
+                    nc_filename = output_filename(params["GC"]["directory_output"],
+                                                  "SOGE",
+                                                  instrument_out,
+                                                  site.upper(),
+                                                  str(ds_sp.time.to_pandas().index.to_pydatetime()[0].year),
+                                                  ds_sp.species,
+                                                  inlet_label)
+                    print("Writing... " + nc_filename)
+                    ds_sp.to_netcdf(nc_filename)
+                    print("... written.")
 

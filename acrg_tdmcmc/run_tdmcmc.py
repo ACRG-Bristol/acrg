@@ -36,6 +36,7 @@ import time as run_time
 import xarray as xray
 import os
 import re
+from collections import OrderedDict
 
 
 @jit(nopython=True)
@@ -153,7 +154,6 @@ def get_nsigma_y(fp_data_H,start_date, end_date, sites,
             nsigma+=nsigma_stn
     
     # INDEX R
-    print ydim1, nsigma
     R_indices = np.zeros((ydim1,nsigma), dtype=np.uint16)
     for ii in range(nsigma):      
         wh_bl=np.where(y_bl == ii)
@@ -184,8 +184,10 @@ def add_local_ratio(fp_data_H,return_release=True):
     WARNING: Changes input object in place
  
     Args:
-        fp_data_H (dict)      : xarray.Dataset. Expects output from name.fp_sensitivity() function.
-        return_release (bool) : Whether or not to also return the release_lats and release_lons
+        fp_data_H (dict) : 
+            xarray.Dataset. Expects output from name.fp_sensitivity() function.
+        return_release (bool) : 
+            Whether or not to also return the release_lats and release_lons
                                 arrays.
                           
     Returns:
@@ -213,9 +215,12 @@ def add_local_ratio(fp_data_H,return_release=True):
             release_lat=fp_data_H[site].release_lat[ti].values
             wh_rlon = np.where(abs(fp_data_H[site].sub_lon.values-release_lon) < dlon/2.)
             wh_rlat = np.where(abs(fp_data_H[site].sub_lat.values-release_lat) < dlat/2.)
-            local_sum[ti] = np.sum(fp_data_H[site].sub_fp[
-            wh_rlat[0][0]-2:wh_rlat[0][0]+3,wh_rlon[0][0]-2:wh_rlon[0][0]+3,ti].values)/np.sum(
-            fp_data_H[site].fp[:,:,ti].values)  
+            if np.any(wh_rlon[0]) and np.any(wh_rlat[0]):
+                local_sum[ti] = np.sum(fp_data_H[site].sub_fp[
+                        wh_rlat[0][0]-2:wh_rlat[0][0]+3,wh_rlon[0][0]-2:wh_rlon[0][0]+3,ti].values)/np.sum(
+                        fp_data_H[site].fp[:,:,ti].values)  
+            else:
+                local_sum[ti] = 0.0
             
         local_ds = xray.Dataset({'local_ratio': (['time'], local_sum)},
                                         coords = {'time' : (fp_data_H[site].coords['time'])})
@@ -233,15 +238,19 @@ def average_period(ds,av_period,dim="time"):
     period.
     
     Args:
-        ds (xarray.Dataset) : Dataset contaiing time series dimension.
-        av_period (str)     : Averaging period to apply to timeseries dimension of dataset.
-                              E.g. "2H" (2 hours), "30min" or "30T" (30 minutes)
-                              See http://pandas.pydata.org/pandas-docs/stable/timeseries.html#offset-aliases
-                              for list of all frequencies available.
-        dim                 : Timeseries dimension within Dataset. Default = "time".
+        ds (xarray.Dataset) : 
+            Dataset containing time series dimension.
+        av_period (str) : 
+            Averaging period to apply to timeseries dimension of dataset.
+            E.g. "2H" (2 hours), "30min" or "30T" (30 minutes)
+            See http://pandas.pydata.org/pandas-docs/stable/timeseries.html#offset-aliases
+            for list of all frequencies available.
+        dim (str, optional) : 
+            Timeseries dimension within Dataset. Default = "time".
     
     Returns:
-        xarray.Dataset : original dataset averaged along the specified dimension
+        xarray.Dataset: 
+            original dataset averaged along the specified dimension
     '''
     ds_av = ds.resample(av_period, dim = "time")
     ds_av = ds_av.dropna(dim, how="all")
@@ -254,23 +263,29 @@ def average_period_fp(fp_data_H,av_period_site,dim="time"):
     the averaging periods.
     Note: av_period_site should contain the same number of entries as there are sites in fp_data_H
     
+    WARNING: Datasets within dictionary are changed in place.
+    
     Args:
-        fp_data_H (dict) : output from footprints_data_merge() function.
-        av_period (list) : Averaging periods (str objects), one for each site.
-                           E.g. "2H" (2 hours), "30min" or "30T" (30 minutes)        
-        dim              : Timeseries dimension within Dataset. Default = "time".
+        fp_data_H (dict) : 
+            Dictionary of datasets. Output from footprints_data_merge() function.
+        av_period (list) : 
+            Averaging periods (str objects), one for each site.
+            E.g. "2H" (2 hours), "30min" or "30T" (30 minutes)        
+        dim (str,optional) : 
+            Timeseries dimension within Dataset. Default = "time".
         
     Returns:
-        dict: fp_data_H with datasets averaged along the specified dimension    
+        dict: 
+            fp_data_H with datasets averaged along the specified dimension    
     '''
     
     sites = [key for key in fp_data_H.keys() if key[0] != '.']
 
-    fp_data_H_av = {}
+    #fp_data_H_av = {}
     for si, site in enumerate(sites):
-        fp_data_H_av[site] = average_period(fp_data_H[site],av_period_site[si],dim=dim)
+        fp_data_H[site] = average_period(fp_data_H[site],av_period_site[si],dim=dim)
     
-    return fp_data_H_av
+    return fp_data_H
 
 
 def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date, 
@@ -282,7 +297,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     pdf_param1,pdf_param2,pdf_p1_hparam1,pdf_p1_hparam2,pdf_p2_hparam1,
     pdf_p2_hparam2,x_pdf ,pdf_param1_pdf,pdf_param2_pdf,inv_type,
     output_dir,tau_ap=None, tau_hparams=None, stepsize_tau=None, tau_pdf=None,
-    bl_split=False, bl_levels=None, filters=None):
+    bl_split=False, bl_levels=None, filters=None,max_level=None):
     #%%
     
     if para_temp is True:
@@ -297,14 +312,14 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
               "corr":False,
               "evencorr":True}
     data = agage.get_obs(sites, species, start = start_date, end = end_date, average = meas_period, 
-                          keep_missing=corr_type[inv_type])
+                          keep_missing=corr_type[inv_type],max_level=max_level)
     
     
     #fp_all = name.footprints_data_merge(data, domain=domain, species=species, calc_bc=True)
     # Commented out and replaced by rt17603 on 11/08 - no species argument in this function.
     fp_all = name.footprints_data_merge(data, domain=domain, calc_bc=True)
-    
-    if fp_basis_case in("INTEM"):    
+
+    if fp_basis_case in ("INTEM"):    
         fp_data_H2 = name.fp_sensitivity(fp_all, domain=domain, basis_case='transd')
         basis_func = name.name.basis(domain = domain, basis_case = 'INTEM')
     else:                            
@@ -353,6 +368,8 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     pblh=[]
     wind_speed=[]
     
+    sub_flux_temp = fp_all[".flux"]["all"].sel(lon=lon, lat=lat, method="ffill")
+    
     for si, site in enumerate(sites):
               
         fp_data_H3 = fp_data_H[site].dropna("time", how="all")  
@@ -361,7 +378,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
         y_site.append([site for i in range(len(fp_data_H3.coords['time']))])
         y_time.append(fp_data_H3.coords['time'].values)
         H_bc5.append(fp_data_H3.bc.values)
-        sub_flux_temp = fp_data_H3.flux.sel(lon=lon, lat=lat, method="nearest")
+        #sub_flux_temp = fp_data_H['.flux']['all'].sel(lon=lon, lat=lat, method="ffill") #fp_data_H3.flux.sel(lon=lon, lat=lat, method="nearest")
         local_ratio.append(fp_data_H3.local_ratio.values)
         pblh.append(fp_data_H3.PBLH.values)
         wind_speed.append(fp_data_H3.wind_speed.values)
@@ -387,10 +404,12 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
             q_ap2=xray.concat((q_ap2,sub_flux_temp), dim="time") 
             H_bc2=xray.concat((H_bc2,fp_data_H3.H_bc), dim="time") 
     
+    q_ap2=q_ap2["flux"].transpose("time","lat","lon")
+    
     if H_fixed2.dims[0] != "time":
         H_fixed2=H_fixed2.transpose()
         H_vary2=H_vary2.transpose("time","sub_lat","sub_lon")
-        q_ap2=q_ap2.transpose("time","lat","lon")
+        #q_ap2=q_ap2.transpose("time","lat","lon")
     if H_bc2.dims[0] !="time":
         H_bc2=H_bc2.transpose()
         
@@ -411,13 +430,12 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     q_ap0=q_ap[0,:,:].copy()
     #q_ap_v = np.ravel(q_ap0)
     nmeasure=len(y)
-    print nmeasure
     h_v = np.zeros((nmeasure,Ngrid))
     #local_sum=np.zeros((nmeasure))
     for ti in range(nmeasure):                        
         # Already multiplied by q in fp_senitivity            
         h_v[ti,:] = np.ravel(H_vary[ti,:,:])   #*q_ap_v   # Create sensitivty matrix spatially vectorised
-    
+
     #%%
     #################################################
     if inv_type in ('evencorr', 'corr'):
@@ -432,7 +450,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
             
     ############################################################
     # Create IC  
-    nBC=len(fp_data_H[sites[0]].region_bc)
+    #nBC=len(fp_data_H[sites[0]].region_bc)
     nfixed = len(fp_data_H[sites[0]].region)
     
     numsites=len(sites)
@@ -461,7 +479,14 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     nBC_basis = len(fp_data_H[sites[0]].region_bc)
     nBC = nBC_basis*nmonths   # No. of bc_basis functions x nmonths
     
-    nIC=nBC+nfixed
+    for site in sites:
+        if "GOSAT" in site:
+            nBias = 1
+            break
+    else:
+        nBias = 0
+    
+    nIC=nBC+nfixed+nBias
     h_agg0 = np.zeros((nmeasure,k_ap+nIC))
     pdy_time = pandas.to_datetime(y_time)
     months = np.arange(pd_start.to_period('M').month, pd_start.to_period('M').month +nmonths)
@@ -484,17 +509,16 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     sigma_measure=y_error.copy()
     model_error[:] = sigma_model0[0]	
     
-    if inv_type is 'uncorrelated':
+    if inv_type == 'uncorrelated':
         sigma_model_hparams= sigma_model_hparams*sigma_model_ap
-    elif inv_type is 'evencorr':
+    elif inv_type == 'evencorr':
         sigma_model_hparam1=sigma_model0*sigma_model_hparams[0]
         sigma_model_hparam2=sigma_model0*sigma_model_hparams[1]
         # DEFINE TAU PARAMS AND DELTATIME
         deltatime=[float(s) for s in re.findall(r'\d+', av_period[0])]
         nsite_max=np.max(nmeasure_site)
         error_structure=np.zeros((nmeasure))+1.
-        
-    elif inv_type is 'corr':
+    elif inv_type == 'corr':
         sigma_model_hparam1=sigma_model0*sigma_model_hparams[0]
         sigma_model_hparam2=sigma_model0*sigma_model_hparams[1]
         deltatime=np.zeros((nmeasure,nmeasure))+1.e12
@@ -537,7 +561,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
         #plon[:k_ap,ib] = plon0
         #plat[:k_ap,ib] = plat0
         
-        if fp_basis_case in("INTEM"):
+        if fp_basis_case in ("INTEM"):
             basis_func.coords['lon']=fp_data_H3.lon
             basis_func.coords['lat']=fp_data_H3.lat
             regions_temp = basis_func.basis.sel(lon=lon, lat=lat, method='nearest')
@@ -619,7 +643,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     print 'Starting MCMC...'
     startt = run_time.time()
     
-    if inv_type is 'uncorrelated':
+    if inv_type == 'uncorrelated':
         if para_temp:
             import acrg_tdmcmc.tdmcmc_uncorr_pt as tdmcmc_uncorr
         else:
@@ -643,7 +667,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
         nIt, nsub, nit_sub, nIC, 
         nbeta, kmax, kICmax, nmeasure, Ngrid, nlon,nlat, ydim1, ydim2, nIC1)
     
-    elif inv_type is 'evencorr':
+    elif inv_type == 'evencorr':
         if para_temp:
             import acrg_tdmcmc.tdmcmc_evencorr_pt as tdmcmc_evencorr
         else:
@@ -673,7 +697,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
      
     
     
-    elif inv_type is 'corr':
+    elif inv_type == 'corr':
         if para_temp:
             import acrg_tdmcmc.tdmcmc_corr_pt as tdmcmc_corr
         else:
@@ -727,7 +751,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     ##################################################################################
     # SAVE MCMC output in a dataset and write to netcdf
     # Set up post-mcmc dataset
-    if inv_type is 'uncorrelated':
+    if inv_type == 'uncorrelated':
         props_temp=["birth", "death", "move", "sigma_y", "swap"]
     else:
         props_temp=["birth", "death", "move", "sigma_y", "tau", "swap"]
@@ -745,7 +769,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     accepts[:nIC1]=accept
     rejects[:nIC1]=reject
     
-    if inv_type is 'uncorrelated':
+    if inv_type == 'uncorrelated':
         accepts[nIC1:] = [accept_birth,accept_death,
                                  accept_move,accept_sigma_y, accept_swap]
         rejects[nIC1:] = [reject_birth,reject_death,
@@ -757,49 +781,44 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
                              reject_move,reject_sigma_y, reject_tau, reject_swap]                        
     
     #Do I need to store both x_it and x_post_vit. Can't I just store x_post_vit_all[nit,NgridIC]?
-    if inv_type is 'evencorr':    
+    if inv_type == 'evencorr':    
         y[timeindex_zero]=np.nan
         sigma_measure[timeindex_zero]=np.nan
         sigma_y_out[timeindex_zero,:]=np.nan
-    
-    
-    post_mcmc = xray.Dataset({"x_it": (["nIt", "kICmax"],x_it),
-                            "k_it": (["nIt"],k_it),                        
-                            "x_post_vit": (["nIt", "Ngrid"],x_post_vit),                       
-                            "regions_it": (["nIt", "Ngrid"],regions_it),                       
-                            "plon_it": (["kmax","nIt"],plon_out),                       
-                            "plat_it": (["kmax","nIt"],plat_out),                     
-                            "sigma_y_it": (["nmeasure", "nIt"],sigma_y_out),
-                            "sigma_measure": (["nmeasure"],sigma_measure),
-                            "sigma_model_it": (["ydim2", "nIt"],sigma_model_out),
-                            "R_indices": (["ydim1", "ydim2"],R_indices),
-                            "pdf_p1_it": (["kICmax","nIt"],pdf_param1_out),
-                            "pdf_p2_it": (["kICmax","nIt"], pdf_param2_out),                     
-                            "y": (["nmeasure"], y),
-                            "y_time": (["nmeasure"], y_time),
-                            "y_site": (["nmeasure"], y_site),
-                            "release_lons": (["sites"], release_lons),
-                            "release_lats": (["sites"], release_lats),
-                            "accepts": (["proposal"],
-                            accepts),
-                            "rejects": (["proposal"],
-                            rejects),                          
-                            "stepsize": (["nIC1"], stepsize_x_out),
-                            "stepsize_pdf_p1": (["nIC1"], stepsize_p1_out),
-                            "stepsize_pdf_p2": (["nIC1"], stepsize_p2_out),
-                            "stepsize_sigma_y": (["ydim2"], stepsize_sigma_y_out),
-                            "h_v_all": (["nmeasure","NgridIC"],
-                            h_v_all), 
-                            "q_ap": (["lat", "lon"],
-                            q_ap0),
-                            "dates": (["ndates"], [start_date,end_date]),
-                            "measure_av": (["sites"], av_period),
-                            "PBLH":  (["nmeasure"], pblh),
-                            "wind_speed":  (["nmeasure"], wind_speed),
-                            "local_ratio":  (["nmeasure"], local_ratio),
-                            "nIC": nIC,
-                            "nfixed": nfixed},
-                            coords={"lon":lon, "lat": lat})
+  
+    post_mcmc = xray.Dataset(OrderedDict((("x_it",(["nIt", "kICmax"],x_it)),
+                            ("k_it", (["nIt"],k_it)),
+                            ("x_post_vit", (["nIt", "Ngrid"],x_post_vit)),
+                            ("regions_it", (["nIt", "Ngrid"],regions_it)),
+                            ("plon_it", (["kmax","nIt"],plon_out)),                       
+                            ("plat_it", (["kmax","nIt"],plat_out)),                     
+                            ("sigma_y_it", (["nmeasure", "nIt"],sigma_y_out)),
+                            ("sigma_measure", (["nmeasure"],sigma_measure)),
+                            ("sigma_model_it", (["ydim2", "nIt"],sigma_model_out)),
+                            ("R_indices", (["ydim1", "ydim2"],R_indices)),
+                            ("pdf_p1_it", (["kICmax","nIt"],pdf_param1_out)),
+                            ("pdf_p2_it", (["kICmax","nIt"], pdf_param2_out)),                     
+                            ("y", (["nmeasure"], y)),
+                            ("y_time", (["nmeasure"], y_time)),
+                            ("y_site", (["nmeasure"], y_site)),
+                            ("release_lons", (["sites"], release_lons)),
+                            ("release_lats", (["sites"], release_lats)),
+                            ("accepts", (["proposal"],accepts)),
+                            ("rejects", (["proposal"],rejects)),                          
+                            ("stepsize", (["nIC1"], stepsize_x_out)),
+                            ("stepsize_pdf_p1", (["nIC1"], stepsize_p1_out)),
+                            ("stepsize_pdf_p2", (["nIC1"], stepsize_p2_out)),
+                            ("stepsize_sigma_y", (["ydim2"], stepsize_sigma_y_out)),
+                            ("h_v_all", (["nmeasure","NgridIC"],h_v_all)), 
+                            ("q_ap", (["lat", "lon"],q_ap0)),
+                            ("dates", (["ndates"], [start_date,end_date])),
+                            ("measure_av", (["sites"], av_period)),
+                            ("PBLH",  (["nmeasure"], pblh)),
+                            ("wind_speed",  (["nmeasure"], wind_speed)),
+                            ("local_ratio",  (["nmeasure"], local_ratio)),
+                            ("nIC", nIC),
+                            ("nfixed", nfixed))),
+                            coords={"lon":lon, "lat": lat})    
     
     if inv_type in ('evencorr', 'corr'):
         # could use assign?
@@ -828,8 +847,10 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     #Output files from tdmcmc_template.py stored in the form:
     # "output_" + network + "_" + species +  "_" + date + ".nc"
     
+    network_w = network.split('/')[-1]
+    
     fname=os.path.join(output_dir,
-                        "output_" + network + "_" + species + "_" + start_date + ".nc")
+                        "output_" + network_w + "_" + species + "_" + start_date + ".nc")
     for key in post_mcmc.keys():
         post_mcmc[key].encoding['zlib'] = True
     post_mcmc.to_netcdf(path=fname, mode='w')

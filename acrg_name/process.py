@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
+"""Process script
 Created on Thu May  7 10:34:25 2015
 
 To use this script, you will need to have a directory, labeled as:
@@ -81,18 +81,31 @@ timestep_for_output = 0.
 directory_status_log = os.getenv("HOME")
 
 def load_NAME(file_lines, namever):
-    """
-    Loads the Met Office's NAME III grid output files returning
+    """Loads the Met Office's NAME III grid output files returning
     headers, column definitions and data arrays as 3 separate lists.
-    
     For a technical specification see 
     http://www-hc.metoffice.com/~apdg/nameiii/ModelDocumentation/md2_4_v2%28Output%29.pdf
     
-    Inputs to this routine are a list of file text lines (extracted using
-    the extract_file_lines routine), and the NAME version.
-
-    Where I've modified the original Met Office routine to accept file_lines, 
-    rather than the file itself, I've put the initials MLR
+    Args:
+        file_lines (list): 
+            list of file text lines (extracted using the extract_file_lines routine)
+        namever (int): 
+            the NAME version
+        
+    Returns:
+        headers (list): 
+            Headers of NAME output files
+        column_headings (list): 
+            Colums headings of NAME output files
+        data_arrays (list): 
+            Data of NAME output files
+    
+    Example: 
+        headers, column_headings, data_arrays = load_NAME(file_lines, namever)
+    
+    Note:
+        Where I've modified the original Met Office routine to accept file_lines, 
+        rather than the file itself, I've put the initials MLR
     """
     # loading a file gives a generator of lines which can be progressed using the next() method. 
     # This will come in handy as we wish to progress through the file line by line.
@@ -216,6 +229,18 @@ def extract_file_lines(fname):
     '''
     Determine whether file is zipped or not, and then extract text into
     file_lines variable.
+    
+    Args:
+        fname (str): 
+            file name to extract text from
+        
+    Returns:
+        file_lines (str array): 
+            lines of text extracted from fname 
+        
+    Example:
+        fname = 'sometextfile.txt'
+        file_lines = extract_file_lines(fname)
     '''
     
     if fname[-3:].upper() == ".GZ":
@@ -231,8 +256,19 @@ def extract_file_lines(fname):
 
 
 def read_file(fname):
-    '''
-    Read a given fields file and break into header, column_headings and data_arrays
+    '''Read a given fields file and break into header, column_headings and data_arrays
+     
+    Args:
+        fname (str): 
+            file name to extract from
+        
+    Returns:
+        headers (list): 
+            Headers of NAME output files
+        column_headings (list): 
+            Colums headings of NAME output files
+        data_arrays (list): 
+            Data of NAME output files
     '''
     
     global namever
@@ -254,12 +290,34 @@ def read_file(fname):
 
 
 def define_grid(header, column_headings, satellite = False):
-    '''
-    Largely taken from Met Office Python code.
+    '''Define output grid using file header information.
     
-    Define output grid using file header information.
+    Args:
+        header (list): 
+            header information
+        column_headings (list): 
+            headings for columns
+        satellite (bool, optional): 
+            If using satellites then True. Default is False.
+            For satellite instructions, see help(process.satellite_vertical_profile).
     
-    For satellite instructions, see satellite_vertical_profile.
+    Returns:
+        lons (array): 
+            NAME grid longitudes
+        lats (array): 
+            NAME grid latitudes
+        levs (list): 
+            Levels of NAME grid
+        time (list): 
+            Time step label at start of each time period
+        timeStep (float): 
+            Timestep in hours
+        
+    Example:
+        lons, lats, levs, time, timeStep = define_grid(header, column_headings, satellite = False)
+        
+    Note:
+        Largely taken from Met Office Python code.
     '''
 
     #Get file info
@@ -363,12 +421,27 @@ def met_empty():
 
 
 def read_met(fnames, met_def_dict=None, vertical_profile=False):
-    '''
-    For a given list of filenames, extract site meteorology and concatenate
-    into a Pandas dataframe.
+    '''Given list of filenames, extract site meteorology and concatenate into Pandas dataframe.
     
-    A dictionary of output column names and met file header search strings
-    is given in the met_default dictionary at the top of this file.
+    Args:
+        fnames (list): 
+            list of filenames
+        met_def_dict (dict, optional): 
+            Dictionary of met parameters.
+            Default=None, which takes default entries
+        vertical_profile (bool, optional): 
+            TODO. Default=False
+    
+    Returns:
+        output_df (dataframe): 
+            Dataframe of met data
+        
+    Example:
+        df = read_met(fnames, met_def_dict=None, vertical_profile=False)
+        
+    Note:
+        A dictionary of output column names and met file header search strings
+        is given in the met_default dictionary at the top of process.py.
     '''
 
 
@@ -493,8 +566,29 @@ def read_met(fnames, met_def_dict=None, vertical_profile=False):
 
 def particle_locations(particle_file, time, lats, lons, levs, heights,
                        id_is_lev = False):
-    '''
-    Read and process a particle location file.
+    '''Read and process a particle location file.
+    
+    Args:
+        particle_file (str): 
+            File of file containing particle locations
+        time (???str or datetime object -> TODO): 
+            Timestamps for particle locations
+        lats (array): 
+            Latitudes of particle locations
+        lons (array): 
+            Longitudes of particle locations
+        levs (???list -> TODO): 
+            Levels of particle locations 
+        heights (???array -> TODO): 
+            Particle location heights
+        id_is_lev (bool, optional): 
+            ???. Default = False
+        
+    Returns:
+        hist(xarray dataset): Number of particles at locations at each boundary
+        
+    Todo:
+        This doc string should really be written by someone who knows what it's doing...
     '''
 
     def particle_location_edges(xvalues, yvalues, x, y):
@@ -632,9 +726,25 @@ def footprint_array(fields_file,
                     met = None,
                     satellite = False,
                     time_step = None):
-    '''
-    Convert text output from a given file files into arrays in an 
+    '''Convert text output from a given file files into arrays in an 
     xray dataset.
+    
+    Args:
+        fields_file (str): 
+            filename of footprint text file
+        particle_file (str, optional): 
+            File containing particle locations. Default=None.
+        met (dict): 
+            Dictionary of Met data
+        satellite (bool, optional): 
+            If using satellites then True. Default is False.
+            For satellite instructions, see help(process.satellite_vertical_profile).
+        time_step (float, optional): 
+            Timestep of footprint. Default = None 
+        
+    Returns:
+        fp (xarray dataset): 
+            xarray dataset of footprint data
     '''
 
     global timestep_for_output
@@ -755,15 +865,30 @@ def footprint_concatenate(fields_prefix,
                           datestr = "*",
                           met = None,
                           satellite = False, time_step = None):
-    '''
-    For a given file search string (fields_prefix), find all fields and particle
-    files, read them and concatenate the output arrays.
+    '''Given file search string, finds all fields and particle
+    files, reads them and concatenates the output arrays.
     
-    Returns an xray dataset.
+    Args:
+        fields_prefix (str): 
+            prefix for fields file search string.
+        particle_prefix (str, optional): 
+            prefix for particle file search string.
+            Default = None
+        datestr (str, optional): 
+            Date for particle and fiels files. Default = '*'
+        met (dict, optional): 
+            Dictionary of met data. Default = None (empty)
+        satellite (boo, optional): 
+            Is it for satellite data? Default = False
+        time_step (float, optional): 
+            Timestep of footprint. Default = None 
+    
+    Returns:
+        fp (xarray dataset): 
+            Concatenated array of all field and particle files 
     
     Example:
-    
-    fp_dataset = footprint_concatenate("/dagage2/agage/metoffice/NAME_output/MY_FOOTPRINTS_FOLDER/Fields_Files/filename_prefix")
+        fp_dataset = footprint_concatenate("/dagage2/agage/metoffice/NAME_output/MY_FOOTPRINTS_FOLDER/Fields_Files/filename_prefix")
     '''
     
 
@@ -837,11 +962,62 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
             release_lon = None, release_lat = None,
             particle_locations=None, particle_heights=None,
             global_attributes = {}, lapse_rate=None, lapse_error=None):
-    '''
-    This routine writes a netCDF file with footprints, particle locations
-    meteorology, and release locations.
+    '''Writes netCDF with footprints, particle locations, meteorology and release locations.
     
-    NOTE that netCDF4 is required, as we make use of compression.    
+    Args:
+        fp (xarray dataset): 
+            Array of all footprint and particle fields in (mol/mol)/(mol/m2/s)
+        lons (array): 
+            1D array of longitudes
+        lats (array): 
+            1D array of latitudes
+        levs (???array or list -> TODO): 
+            1D array of particle levels
+        time (???str or datetime object -> TODO): 
+            Timestamps for footprints
+        outfile (str): 
+            Name of output file
+        temperature (array, optional): 
+            Input temperature variable in K. Default=None
+        pressure (array, optional): 
+            Input pressure variable in hPa. Default = None
+        wind_speed (array, optional): 
+            Input wind speed variable in m/s. Default = None
+        wind_direction (array, optional): 
+            Input wind direction variable in degrees. 
+            Default = None
+        PBLH (array, optional): 
+            Input planetary boundary layer height in m. 
+            Default = None
+        varname (str, optional): 
+            Name of output footprint variable. Default = 'fp'
+        release_lon (array, optional): 
+            Array of release longitude locations. 
+            Default = None
+        release_lat (array, optional): 
+            Array of release latitude locations. 
+            Default = None
+        particle_locations (xarray dataset, optional): 
+            Number of particles at locations at each boundary
+            Default=None
+        particle_heights (array, optional): 
+            Heights of particles leaving boundary.
+            Default=None
+        global_attributes (dictionary, optional): 
+            Dictionary of global attributes.
+            Default={} (empty)
+        lapse_rate (array, optional): 
+            Potential temperature gradient from 60 - 300 m in K/km. 
+            Default=None
+        lapse_error (array, optional): 
+            Error in potential temperature gradient in K/km
+            
+    Returns:
+        None.
+        Writes netCDF with footprints, particle locations, meteorology and release locations
+        
+    Note: 
+        netCDF4 is required, as we make use of compression.    
     '''
     
     time_seconds, time_reference = time2sec(time)
@@ -979,43 +1155,53 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
 
 
 def satellite_vertical_profile(fp, satellite_obs_file, max_level):
-    '''
-    Do weighted average by satellite averaging kernel and
+    '''Do weighted average by satellite averaging kernel and
     pressure weight. One time point only. Expects xray.dataset
     with one time point and N vertical levels.
     
-    fp = footprint for ONE time point. N levels in lev dimension 
-        with footprints and particle locations defined at each level
-    satellite_obs_file = NetCDF-format satellite observation file,
-        one per time step
-    max_level = the maximum vertical level of the retrieval that is included.
-                (maximum for GOSAT to include all levels from model is 20). 
-                The remaining levels are set equal to the a priori value.
+    Args:
+        fp (xarray dataset):
+            footprint for ONE time point. N levels in lev dimension with 
+            footprints and particle locations defined at each level
+        satellite_obs_file (str):
+            Filename of NetCDF-format satellite observation file. 
+            One per time step
+        max_level (int):
+            Maximum vertical level of the retrieval that is included.
+            (maximum for GOSAT to include all levels from model is 20). 
+            The remaining levels are set equal to the a priori value.
                 
-    Requirements for running processing satellite footprints
+    Returns:
+        fp (dictionary):
+            Footprint for column totals of satellite observations.
     
-    General file naming: Files/folders need to have a date string of the form
-        YYYYMMDD-II at the end of the file/folder name,
-        where II is a two-digit index corresponding to the
-        sequence of footprints throughout the day. This modifies the usual
-        naming convention for surface sites, which are only YYYYMMDD.
-    Met: The Met/ folder MUST contain a set of subfolders which are labeled
-        with the YYYYMMDD-II time stamp. Each of these subfolders should then
-        contain nLev Met output files, where nLev are the number of vertical
-        levels in the NAME output. This is required so that we know
-        what pressure/temperature each NAME footprint for each vertical level
-        corresponds to. The files can be named in any way, but the file names
-        must be in ascending order when sorted (i.e. blah_01.txt.gz, blah_02.txt.gz).
-    Fields files:
-        There must be ONE fields file per time stamp, labeled at the end
-        of the file string with YYYYMMDD-II (e.g. blah_YYYYMMDD-II.txt.gz).
-        The fields file must contain exactly nLev columns, one for each vertical
-        level, in ascending order, left to right.
-    Particle location files:
-        There must be ONE fields file per time stamp, labeled at the end
-        of the file string with YYYYMMDD-II (e.g. blah_YYYYMMDD-II.txt.gz).
-        The ID column in this file must contain nLev values in ascending order
-        specifying the vertical level that each particle belongs to.    
+    Note:
+        Requirements for running processing satellite footprints
+        
+        - General file naming: 
+            Files/folders need to have a date string of the form
+            YYYYMMDD-II at the end of the file/folder name,
+            where II is a two-digit index corresponding to the
+            sequence of footprints throughout the day. This modifies the usual
+            naming convention for surface sites, which are only YYYYMMDD.
+        - Met: 
+            The Met/ folder MUST contain a set of subfolders which are labeled
+            with the YYYYMMDD-II time stamp. Each of these subfolders should then
+            contain nLev Met output files, where nLev are the number of vertical
+            levels in the NAME output. This is required so that we know
+            what pressure/temperature each NAME footprint for each vertical level
+            corresponds to. The files can be named in any way, but the file names
+            must be in ascending order when sorted (i.e. blah_01.txt.gz, blah_02.txt.gz).
+        - Fields files:
+            There must be ONE fields file per time stamp, labeled at the end
+            of the file string with YYYYMMDD-II (e.g. blah_YYYYMMDD-II.txt.gz).
+            The fields file must contain exactly nLev columns, one for each vertical
+            level, in ascending order, left to right.
+        - Particle location files:
+            There must be ONE fields file per time stamp, labeled at the end
+            of the file string with YYYYMMDD-II (e.g. blah_YYYYMMDD-II.txt.gz).
+            The ID column in this file must contain nLev values in ascending order
+            specifying the vertical level that each particle belongs to.    
     '''
     
     if max_level is None:
@@ -1106,8 +1292,25 @@ def status_log(message,
                directory = None,
                error_or_warning = "status",
                print_to_screen = True):
-    '''
-    Write a log of an error or a warning to file. Will append to a file 
+    '''Write a log of an error or a warning to file. Will append to a file 
+    
+    Args:
+        message(str):
+            Error message
+        directory (str, optional): 
+            Directory of error log. Default = None
+        error_or_warning (str):
+            Message type. Default = "status"
+        print_to_screen (bool): 
+            Print to screen? Default=True
+            
+    Returns:
+        None.
+        Writes error to file
+        
+    Example:
+        status_log("Everything has gone wrong")
+            
     '''
 
     if directory is None:
@@ -1144,9 +1347,19 @@ def status_log(message,
             print(message)
 
 def process_basic(fields_folder, outfile):
-    """
-    Basic processing with no meteorology or particle files
+    """Basic processing with no meteorology or particle files
     NOT recommended, but helpful for a quick check
+    
+    Args:
+        field_folder (str):
+            folder containing fields data
+        outfile (str):
+            Name of outfile
+    
+    Returns:
+        None.
+        Writes outfile.
+    
     """
     
     fp = footprint_concatenate(fields_folder)
@@ -1170,9 +1383,10 @@ def process(domain, site, height, year, month,
             perturbed_folder = None,
             vertical_profile=False,
             transport_model="NAME"):
-    '''
-    Process a single month of footprints for a given domain, site, height,
-    year, month. If you want to process all files for a given domain + site
+    '''Process a single month of footprints for a given domain, site, height,
+    year, month. 
+    
+    If you want to process all files for a given domain + site
     use process_all.
     
     This routine finds all fields files and particle location files which match
@@ -1182,28 +1396,70 @@ def process(domain, site, height, year, month,
     
     At the moment, the entire Met folder is read each time.
     
-    Options:
-    force_update: By default, any existing netCDF files are NOT overwritten.
-        To explicitly over-write a file, set force_update = True
-    satellite: Read a "column" of footprints. There are very particular rules
-        about how the met, footprints and particle location files are stored
-        and named. See extra instructions in satellite_vertical_profile. 
-    perturbed_folder: Process a subfolder which has all of the required folders
-        (Fields_files, etc). This is for perturbed parameter ensembles for 
-        a particular site. E.g. for EUROPE_BSD_110magl/Perturbed/PARAMETERNAME_VALUE
-        you'd set:
-            perturbed_folder = "Perturbed/PARAMETERNAME_VALUE"
-    max_level: specified only for satellite data and indicates the max level to
-        process the foorprints. levels above are replaced by the prior profile
-    vertical_profile: If set to true will look for vertical potential temperature met file
-        and incorporate into footprint file. 
-        NB. This is a separate file from the normal met file, and is not mandatory.
-    transport_model: Defaults to "NAME". If "STILT", reads footprints in the
-        ncdf format created by the STILT model. Other values are invalid. Not
-        set up to read satellite column footprints from STILT format.
+    Args:
+        domain (str):
+            Domain of interest
+        site (str):
+            Observation site
+        height (str):
+            Height of observation, e.g. "10magl"
+        year (int):
+            The year
+        month (int):
+            The month, can be e.g. 5 or 05
+        base_dir (str, optional):
+            Base directory containing NAME output
+            Default="/dagage2/agage/metoffice/NAME_output/",
+        fields_folder (str, optional):
+            Folder containing fields data
+            Default="Fields_files",
+        particles_folder (str, optional):
+            Folder containing particles data.
+            Default = "Particle_files",
+        met_folder (str, optional):
+            Folder containing met data
+            Default = "Met"
+        force_met_empty (bool, optional):
+             Force the met data to be empty?
+             Default = False.
+        processed_folder (str, optional):
+             Folder for processed field files.
+             Default = "Processed_Fields_files",
+        satellite (bool, optional):
+            Read a "column" of footprints? There are very particular rules
+            about how the met, footprints and particle location files are stored
+            and named. See extra instructions in satellite_vertical_profile. 
+            Default = False
+        max_level (int, optional):
+            Specified only for satellite data and indicates the max level to
+            process the foorprints. 
+            Levels above are replaced by the prior profile.
+            Default = None.
+        force_update (bool, optional):
+            By default, any existing netCDF files are NOT overwritten.
+            To explicitly over-write a file, set force_update = True
+        perturbed_folder (str, optional)
+            Process a subfolder which has all of the required folders
+            (Fields_files, etc). This is for perturbed parameter ensembles for 
+            a particular site. E.g. for 
+            EUROPE_BSD_110magl/Perturbed/PARAMETERNAME_VALUE
+            you'd set: perturbed_folder = "Perturbed/PARAMETERNAME_VALUE".
+            Default = None.
+        vertical_profile (bool, optional):
+            If set to True will look for vertical potential temperature met file
+            and incorporate into footprint file. 
+            This is a separate file from the normal met file, and is not mandatory.
+            Default=False.
+        transport_model (str, optional): 
+            Defaults to "NAME". If "STILT", reads footprints in the
+            ncdf format created by the STILT model. Other values are invalid. 
+            Notset up to read satellite column footprints from STILT format.
+            Default="NAME".
         
-    Outputs:
-    This routine outputs a copy of the xray dataset that is written to file.
+    Returns:
+        None.
+        This routine outputs a copy of the xarray dataset that is written to file.
+    
     '''
  
     global directory_status_log
@@ -1211,6 +1467,9 @@ def process(domain, site, height, year, month,
     subfolder = base_dir + domain + "_" + site + "_" + height + "/"
     
     directory_status_log = subfolder
+    
+    if not os.path.isdir(subfolder):
+        raise Exception("Subfolder: {} does not exist.\nExpect NAME output folder of format: domain_site_height".format(subfolder))
     
     if perturbed_folder is not None:
         if perturbed_folder[-1] == "/":
@@ -1259,9 +1518,13 @@ def process(domain, site, height, year, month,
             datestrs = [str(year) + str(month).zfill(2)]
 
     # Output filename
-    outfile = subfolder + processed_folder + "/" + site + "-" + height + \
-                "_" + domain + "_" + str(year) + str(month).zfill(2) + ".nc"
+    full_out_path = os.path.join(subfolder,processed_folder)
+    outfile = os.path.join(full_out_path, site + "-" + height + \
+                "_" + domain + "_" + str(year) + str(month).zfill(2) + ".nc")
  
+    if not os.path.isdir(full_out_path):
+        os.makedirs(full_out_path)
+    
     # Check whether outfile needs updating
     if not force_update:
         status_log("Testing whether file exists or needs updating: " + outfile)
@@ -1463,27 +1726,67 @@ def process_all(domain, site,
                 force_met_empty=False,
                 vertical_profile=False,
                 transport_model="NAME"):
-    '''
-    For a given domain and site, process all available fields files (including
+    '''For a given domain and site, process all available fields files (including
     multiple heights).
     If you want to specify a subset of years/months to process, use the years_in
     or months_in kewords.
     
-    Keywords:
-    heights: If you only want to process a subset of heights, OR IF THE HEIGHT
-        INFORMATION IS NOT CONTAINED IN acrg_site_info.json, specify a list of
-        height strings here.
-    years_in: If you only want to process a subset of years, specify here.
-    months_in: Ditto for months
-    force_update: By default, this routine will not overwrite existing netcdf
-        files. Set force_update = True to reprocess an existing file
-    satellite: If a column of footprints needs to be processed, set to true.
-        See extra instructions in satellite_vertical_profile. 
-    perturbed_folder: Process a subfolder which has all of the required folders
-        (Fields_files, etc). This is for perturbed parameter ensembles for 
-        a particular site. E.g. for EUROPE_BSD_110magl/Perturbed/PARAMETERNAME_VALUE
-        you'd set:
-            perturbed_folder = "Perturbed/PARAMETERNAME_VALUE"
+    Args:
+        domain (str):
+            Domain of interest
+        site (str):
+            Observation site
+        heights (list, optional):
+            If you only want to process a subset of heights, OR IF THE HEIGHT
+            INFORMATION IS NOT CONTAINED IN acrg_site_info.json, specify a list of
+            height strings here.
+            Default=None.
+        years_in (array, optional):
+            If you only want to process a subset of years, specify here.
+            Default=None.
+        months_in (int, optional):
+            As years_in.
+        base_dir (str, optional):
+            Base directory containing NAME output
+            Default="/dagage2/agage/metoffice/NAME_output/",
+        force_update (bool, optional):
+            By default, any existing netCDF files are NOT overwritten.
+            To explicitly over-write a file, set force_update = True.
+        satellite (bool, optional):
+            Read a "column" of footprints? There are very particular rules
+            about how the met, footprints and particle location files are stored
+            and named. See extra instructions in satellite_vertical_profile. 
+            Default = False.
+        perturbed_folder (str, optional)
+            Process a subfolder which has all of the required folders
+            (Fields_files, etc). This is for perturbed parameter ensembles for 
+            a particular site. E.g. for 
+            EUROPE_BSD_110magl/Perturbed/PARAMETERNAME_VALUE
+            you'd set: perturbed_folder = "Perturbed/PARAMETERNAME_VALUE".
+            Default = None.
+        max_level (int, optional):
+            Specified only for satellite data and indicates the max level to
+            process the foorprints. 
+            Levels above are replaced by the prior profile.
+            Default = None.
+        force_met_empty (bool, optional):
+             Force the met data to be empty?
+             Default = False.
+        vertical_profile (bool, optional):
+            If set to True will look for vertical potential temperature met file
+            and incorporate into footprint file. 
+            This is a separate file from the normal met file, and is not mandatory.
+            Default=False.
+        transport_model (str, optional): 
+            Defaults to "NAME". If "STILT", reads footprints in the
+            ncdf format created by the STILT model. Other values are invalid. 
+            Notset up to read satellite column footprints from STILT format.
+            Default="NAME".
+        
+    Returns:
+        None.
+        This routine outputs a copy of the xarray dataset that is written to file.
+
     '''
 
     acrg_path = os.getenv("ACRG_PATH")
@@ -1544,6 +1847,13 @@ def copy_processed(domain):
         /dagage2/agage/metoffice/NAME_output/DOMAIN_SITE_HEIGHT/Processed_Fields_files
         to:
         air.chm:/data/shared/NAME/fp_netcdf/DOMAIN/
+        
+    Args:
+        domain (str):
+            Domain of interest
+            
+    Returns:
+        None
     '''
     
     src_folder = "/dagage2/agage/metoffice/NAME_output/"
@@ -1561,6 +1871,26 @@ def copy_processed(domain):
 
 def test_processed_met(domain, site, height,
                        base_dir = "/dagage2/agage/metoffice/NAME_output/"):
+    """Test to check that met is OK.
+    
+    Plots pressure, temperature, footprints and boundary particle locations.
+    Outputs dataset of met.
+    
+    Args:
+        domain (str):
+            Domain of interest
+        site (str):
+            Observation site
+        height (str):
+            Height of observation, e.g. "10magl"
+        base_dir (str, optional):
+            Base directory containing NAME output
+            Default="/dagage2/agage/metoffice/NAME_output/".
+    
+    Returns:
+        xarray dataset containing met data
+            
+    """
     
     subfolder = base_dir + domain + "_" + site + "_" + height + \
                 "/Processed_Fields_files/"
@@ -1613,11 +1943,16 @@ def process_vertical_profile(vp_fname):
     Relies on the process_met function
     In order to fit into this function the header information needs to be edited
     in the output files NAME generates. 
-    Required structure given in vp_met_dict
+    Required structure given in vp_met_dict.
     
-    Outputs: xarray dataset containing:
-        theta_slope - the potential temperature gradient at each time point
-        slope_error - the error in this calculated gradient
+    Args:
+        vp_name (str, optional): 
+            Name of vertical profiles file name
+    
+    Returns: 
+        xarray dataset containing:
+         - theta_slope - the potential temperature gradient at each time point
+         - slope_error - the error in this calculated gradient
     """
     
 #    vp_met_dict = {"time": "             T","temp20": "TEMP-Z = 20.00000 m agl",
@@ -1704,7 +2039,28 @@ def process_vertical_profile(vp_fname):
 def release_point(nc):
     """
     Extract the time and location of release from STILT output based on the
-    identifier string. nc should be a netCDF4.Dataset in STILT format.    
+    identifier string. 
+    
+    Args:
+        nc (netCDF4.Dataset): 
+            netCDF4.Dataset in STILT format. 
+            
+    Returns:
+        release_lat (float):
+            Release latitude.
+        release_lon (float):
+            Release longitude.
+        release_ht (float):
+            Release height (units??).
+        time (float):
+            Release time. 
+        time_seconds (float):
+            ???
+        time_reference (float):
+            ???
+            
+    Todo:
+        Update outputs with units and what they actually are.
     """
     ident = netCDF4.chartostring(nc.variables['ident'][:])[0]
     ident = ident.split('x')
@@ -1733,7 +2089,31 @@ def release_point(nc):
 def stilt_part(nc, Id, domain_N, domain_S, domain_E, domain_W, exitfile, append):
     """
     Extract particle data from STILT output and assign it the given Id.
-    nc should be a netCDF4.Dataset in STILT format; Id should be an integer.
+    
+    Args:
+        nc (netCDF4.Dataset): 
+            netCDF4.Dataset in STILT format. 
+        ID (int):
+            Identifier ID
+        domain_N (float):
+            N latitude 
+        domain_S (float):
+            S latitude
+        domain_E (float):
+            E longitude 
+        domain_W (float):
+            W longitude
+        exitfile (str):
+            Name of out file
+        append (bool):
+            Append header True/False
+        
+        Returns:
+            part (dataframe):
+                Particle data
+            partnames (list):
+                Variable names
+            
     """
     part = pandas.DataFrame(nc.variables['part'][:].T)
     partnames = list(netCDF4.chartostring(nc.variables['partnames'][:]))
@@ -1797,15 +2177,28 @@ def stiltfoot_array(prefix,
     This function reads multiple files at once because STILT output is stored
     as a separate file for each release time. To read a month of output, give
     a prefix like stilt2016x07x.
-    Arguments:
-        prefix: file pattern prefix (including path) for output files to read
-        exitfile: file in which to temporarily store particle data
-        met: not used to interpret STILT footprints, which are already given
+    
+    Args:
+        prefix (str): 
+            File pattern prefix (including path) for output files to read
+        exitfile (str, optional): 
+            File in which to temporarily store particle data.
+            Default = None
+        met (dict): 
+            not used to interpret STILT footprints, which are already given
             in ppm/(mol/m^2/s), but can be included if available.
-        satellite: not implemented; will produce error if True
-        time_step: ignored; not needed to interpret STILT footprints.
+            Default = None.
+        satellite (bool, optional): 
+            Not implemented; will produce error if True.
+            Default=False
+        time_step (float, optional): 
+            Ignored; not needed to interpret STILT footprints.
+            Default=None.
+            
     Returns:
-        fp: an xray dataset as from footprint_concatenate
+        fp (xarray datset): 
+            An xarray dataset as from footprint_concatenate 
+            (see help(process.footprint_concatenate))
     """
     if exitfile is None:
         exitfile = prefix + "stilt_particle_data_temp.csv"

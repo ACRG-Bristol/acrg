@@ -50,8 +50,7 @@ unless you wish to change the format for all config files of this type.
 
 Note: if param_type is not defined, the code will attempt to cast the inputs to the most sensible type.
 This should be fine in most cases but could cause issues.
-This also means the inputs will not be checked for any missing values.
-
+This also means the the set of input parameters will not be checked for any missing values.
 
 How to run
 ++++++++++
@@ -59,8 +58,7 @@ How to run
 The main functions to use for reading in parameters from a config file are:
     
     * all_param(config_file,...)      ; Extract all parameters from a configuration file.
-    * extract_params(config_file,...) ; Extract specific parameters from a file either based on parameter 
-    names, sections or groups.
+    * extract_params(config_file,...) ; Extract specific parameters from a file either based on parameter names, sections or groups.
 
 A param_type dictionary can be defined both to fix expected inputs and to explictly specify the parameter types.
 
@@ -76,7 +74,8 @@ def open_config(config_file):
     The open_config function is used to open configuration files in the ini format.
     
     Args:
-        config_file : filename for input configuration file (str).
+        config_file (str): 
+            Filename for input configuration file (str).
     
     Returns:
         configparser.ConfigParser object
@@ -91,15 +90,19 @@ def open_config(config_file):
 
 def generate_param_dict(config_file):
     '''
-    The generate_param_dict function creates a param_type nested dictionary from an input configuration file.
-    This could be used on some fixed example config file to generate the parameter type dictionary which can then be applied
-    to other configuration files of the same type.
+    The generate_param_dict function creates a param_type nested dictionary from an input configuration 
+    file.
+    This could be used on some fixed template config file to generate the parameter type dictionary which 
+    can then be applied to other configuration files of the same type.
     
     Args:
-        config_file : filename for input configuration file (str).
+        config_file (str) : 
+            Filename for template configuration file (str).
     
     Returns:
-        nested OrderedDict : parameter type dictionary from configuration file input
+        nested OrderedDict : 
+            Parameter type dictionary from configuration file input with sections as keys for parameters
+            and value types.
     '''
     config = open_config(config_file)
     
@@ -110,9 +113,7 @@ def generate_param_dict(config_file):
     for section in sections:
         section_param = config[section].keys()
         if section_param:
-            print section_param
             types = [type(convert(value)) for value in config[section].values()]
-            print types
             section_types = OrderedDict([(key,value) for key,value in zip(section_param,types)])
             param_type[section] = section_types
     
@@ -125,7 +126,10 @@ def str_check(string,error=True):
     This function ensures the input remains as a string and removes any " or ' characters
     
     Args:
-        string : value input from config file
+        string (str) : 
+            Value input from config file
+        error (bool, optional) :
+            Print error message if unable to evaluate (bool).
     
     Returns:
         string (formatted)
@@ -144,7 +148,7 @@ def str_check(string,error=True):
         out.encode('ascii','ignore')
     except (TypeError,SyntaxError):
         if error:
-            print "Could not convert input parameter '{0}' to str.".format(out)
+            print("WARNING: Could not convert input parameter '{0}' to str.".format(out))
         return None
     
     return out
@@ -161,8 +165,10 @@ def eval_check(string,error=True):
     See eval() documentation for full list
     
     Args:
-        string : value input from config file
-        error  : return error message if unable to evaluate (bool).
+        string (str) : 
+            Value input from config file
+        error (bool, optional) :
+            Print error message if unable to evaluate.
     
     Returns:
         Python object
@@ -177,7 +183,7 @@ def eval_check(string,error=True):
             out = eval("'"+string+"'") # An input string without quotes cannot be evaluated so try adding quotes
         except (NameError,SyntaxError):
             if error:
-                print "Could evaluate input '{0}' to any type.".format(string)
+                print("WARNING: Could not evaluate input '{0}' to any type.".format(string))
             return None
     
     return out
@@ -188,9 +194,13 @@ def list_check(string,force_convert=True,error=True):
     The list_check function converts input string to a list.
     
     Args:
-        string (str)         : value input from config file
-        force_convert (bool) : whether the conversion should be forced by creating a list object
-        error (bool)         : return error message if unable to convert.
+        string (str) : 
+            Value input from config file
+        force_convert (bool, optional) : 
+            Specifies whether conversion to a list should be forced. (i.e. out = [out] if unable to
+            evaluate any other way). Default = True
+        error (bool, optional) : 
+            Print error message if unable to evaluate.
     
     Returns:
         List
@@ -209,7 +219,7 @@ def list_check(string,force_convert=True,error=True):
                 out = [out]
             else:
                 if error:
-                    print "Could not convert input parameter '{0}' to list.".format(out)
+                    print("WARNING: Could not convert input parameter '{0}' to list.".format(out))
                 return None
     elif isinstance(out, str):
         out = [out]
@@ -250,8 +260,10 @@ def convert(string,value_type=None):
     If no value_type is stated, the function attempts to discern the appropriate type.
     
     Args:
-        string     : value input from config file
-        value_type : object type. Values accepted: str,list
+        string (str) : 
+            Value input from config file
+        value_type (str/None, optional) : 
+            Object type. Values accepted: "str","list"
     
     Returns:
         Python object of specified type
@@ -316,12 +328,14 @@ def all_parameters_in_param_type(param_type):
     param_type nested dictionary.
     
     Args:
-        param_type : nested dictionary of expected parameter names and types.
-                     Key for each parameter dictionary can be the section heading or the overall group (e.g. for [MCMC.MEASUREMENTS], section group should be 'MCMC').
-                     See module header for expected formats of param_type dictionary.
+        param_type (dict) : 
+            Nested dictionary of expected parameter names and types.
+            Key for each parameter dictionary can be the section heading or the overall group (e.g. for [MCMC.MEASUREMENTS], section group should be 'MCMC').
+            See module header for expected formats of param_type dictionary.
 
     Returns:
-        list : list of all parameters in param_type dictionary
+        list : 
+            list of all parameters in param_type dictionary
     '''
     types = param_type # Get dictionary containing parameter names and types
     keys = types.keys() # Extract all section/section_group headings
@@ -339,15 +353,18 @@ def find_param_key(param_type,section=None,section_group=None):
     Returned key_type is one of 'section' or 'section_group'.
     
     Args:
-        param_type          : nested dictionary of expected parameter names and types.
-                              Key for each parameter dictionary can be the section heading or the overall group (e.g. for [MCMC.MEASUREMENTS], section group should be 'MCMC').
-                              See module header for expected formats of param_type dictionary.
-        section (str)       : name of section in config file for the parameter
-        section_group (str) : name of group in config file for the parameter
+        param_type (dict) : 
+            Nested dictionary of expected parameter names and types.
+            Key for each parameter dictionary can be the section heading or the overall group (e.g. for [MCMC.MEASUREMENTS], section group should be 'MCMC').
+            See module header for expected formats of param_type dictionary.
+        section (str, optional) : 
+            Name of section in config file for the parameter
+        section_group (str, optional) : 
+            Name of group in config file for the parameter
     
     Returns:
-        str,str: key, key_type                      
-    
+        str,str: 
+            key, key_type
     '''
     types = param_type # Get dictionary containing parameter names and types
     keys = types.keys() # Extract all section/classification keys
@@ -370,7 +387,7 @@ def find_param_key(param_type,section=None,section_group=None):
         key = None
         key_type = None
         #raise Exception('Section/Classification {0}/{1} does not match to any key in input param_type'.format(section_group,section))
-        #print 'Param class cannot be found i for section of parameters not defined. Using {0} as default'.format(section_groups[0])
+        #print('Param class cannot be found i for section of parameters not defined. Using {0} as default'.format(section_groups[0]))
         #section_group = section_groups[0]
     
     return key,key_type
@@ -380,15 +397,22 @@ def find_param_key(param_type,section=None,section_group=None):
 def get_value(name,config,section,param_type=None):
     '''
     The get_value function extracts the value of a parameter from the configuration file.
-    This value is then converted to the type specified within param_type (default from mcmc_param_type() function).
+    This value is then converted to the type specified within param_type (default from mcmc_param_type() 
+    function).
     
     Args:
-        name (str)            : name of the parameter to extract
-        config (ConfigParser) : ConfigParser object created using the configparser class. Data from config file should have been read in
-        section (str)         : name of section in config file for the parameter
-        param_type (dict)     : nested dictionary of parameter classes and expected parameter names and types.
-                                Key for each parameter dictionary can be the section heading or the overall classification (e.g. for [MCMC.MEASUREMENTS], classification should be 'MCMC').
-                                See module header for expected formats of param_type dictionary.
+        name (str) : 
+            Name of the parameter to extract
+        config (ConfigParser) :
+            ConfigParser object created using the configparser class. Data from config file should have 
+            been read in.
+        section (str) : 
+            Name of section in config file for the parameter
+        param_type (dict, optional) : 
+            nested dictionary of parameter classes and expected parameter names and types.
+            Key for each parameter dictionary can be the section heading or the overall classification 
+            (e.g. for [MCMC.MEASUREMENTS], classification should be 'MCMC').
+            See module header for expected formats of param_type dictionary.
                                 
     Returns:
         value
@@ -407,7 +431,7 @@ def get_value(name,config,section,param_type=None):
             value_type = types[key][name] # Find specified type of object for input parameter
         except KeyError:
             #raise Exception('Input parameter {0} in section {1} not expected (not found in param_type dictionary [{2}][{0}])'.format(name,section,key))
-            print "Type for input name '{0}' is not specified.".format(name)
+            print("Type for input name '{0}' is not specified.".format(name))
             value_type = None
     else:
         #print "Type for input name '{0}' is not specified.".format(name)
@@ -432,22 +456,33 @@ def extract_params(config_file,section=None,section_group=None,names=[],optional
                    param_type=None):
     '''
     The extract_params function extracts parameter names and values from a configuration file.
-    The parameters which are extracted is dependent on whether the section, section_group and/or names variables are specified.
+    The parameters which are extracted is dependent on whether the section, section_group and/or names 
+    variables are specified.
     A param_type dictionary can be defined to ensure variables are cast to the correct types.
     
     Args:
-        config_file             : filename for input configuration file.
-        section (str)           : extract parameters from section name.
-        section_group (str)     : extract parameters from all sections with this group.
-                                  If section and section_group are both specified - section takes precedence.
-        names (list)            : which parameter names to extract (within section or section_group)
-        optional_param (list)   : parameters which are optional. If the param cannot be found value will be set to None
-        param_type (dict)       : nested dictionary of sections or groups and expected parameter names and types.
-                                  See module header for expected formats of param_type dictionary.                          
-        remove_not_found (bool) : whether to remove parameters which are not found in the input file or include them as None.
+        config_file (str) : 
+            Filename for input configuration file.
+        section (str/None, optional) : 
+            Extract parameters from section name.
+        section_group (str/None, optional) : 
+            Extract parameters from all sections with this group.
+            If section and section_group are both specified - section takes precedence.
+        names (list, optional) : 
+            Parameter names to extract (within section or section_group, if specified)
+        optional_param (list, optional) : 
+            Parameters within configuration file which are optional. If the parameter cannot be found in input file, 
+            value will either be set to None or not included within the output dictionary (dependent on input for 
+            remove_not_found option).
+        param_type (dict, optional) : 
+            Nested dictionary of sections or groups and expected parameter names and types.
+            See module header for expected formats of param_type dictionary.                          
+        remove_not_found (bool, optional) : 
+            Whether to remove parameters which are not found in the input file or include them as None.
         
     Returns:
-        OrderedDict : parameter names and values
+        OrderedDict : 
+            Parameter names and values
         
         If parameter cannot be found (not specified as an optional param)
             Exception raised and program exited
@@ -497,7 +532,7 @@ def extract_params(config_file,section=None,section_group=None,names=[],optional
                for key in keys:
                    names.extend(param_type[key].keys())
             elif (section and key_type == 'section_group'):
-                print 'Cannot create list of necessary input parameters created based on param_type input. Please check all inputs are included manually.'
+                print('WARNING: Cannot create list of necessary input parameters created based on param_type input. Please check all inputs are included manually.')
                 names = extracted_names # Set to just match names extracted from file           
             else:
                 names = all_parameters_in_param_type(param_type) # Extract all parameter names from param_type dictionary
@@ -515,14 +550,14 @@ def extract_params(config_file,section=None,section_group=None,names=[],optional
             try:
                 index = extracted_names.index(name)
             except ValueError:
-                print "Parameter '{0}' not found in configuration file (check specified section {1} or section_group {2} is correct).".format(name,section,section_group)
+                print("WARNING: Parameter '{0}' not found in configuration file (check specified section {1} or section_group {2} is correct).".format(name,section,section_group))
             else:
                 param[name] = get_value(name,config,match_section[index],param_type)
         else:
             if name in optional_param:
                 param[name] = None
             elif not param_type:
-                print "Parameter '{0}' not found in configuration file (check specified section {1} or section_group {2} is correct).".format(name,section,section_group)
+                print("WARNING: Parameter '{0}' not found in configuration file (check specified section {1} or section_group {2} is correct).".format(name,section,section_group))
             else:
                 if section:
                     raise KeyError("Parameter '{0}' not found in input configuration file in section '{1}'".format(name,section))
@@ -551,14 +586,21 @@ def all_param(config_file,optional_param=[],param_type=None,remove_not_found=Fal
     If param_type specified will cast to the specified types, otherwise will attempt to discern the parameter types from the form of the values.
     
     Args:
-        config_file             : filename for input configuration file
-        optional_param          : parameters which are optional. If the param cannot be found in input file, value will be set to None
-        param_type              : nested dictionary of sections or groups and expected parameter names and types.
-                                  See module header for expected formats of param_type dictionary.
-        remove_not_found (bool) : whether to remove parameters which are not found in the input file or include them as None.    
+        config_file (str) : 
+            Filename for input configuration file
+        optional_param (list, optional) : 
+            Parameters within configuration file which are optional. If the parameter cannot be found in input file, 
+            value will either be set to None or not included within the output dictionary (dependent on input for 
+            remove_not_found option).
+        param_type (dict, optional) : 
+            Nested dictionary of sections or groups and expected parameter names and types.
+            See module header for expected formats of param_type dictionary.
+        remove_not_found (bool, optional) : 
+            Whether to remove parameters which are not found in the input file or include them as None.    
     
     Returns:
-        OrderedDict: parameter names and values 
+        OrderedDict: 
+            Parameter names and values 
     '''
     
     param = OrderedDict({})
