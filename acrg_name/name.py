@@ -881,9 +881,11 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
             
             base = start_date.dt.hour.data + start_date.dt.minute.data/60. + start_date.dt.second.data/3600.
             if (ds_timeperiod >= fp_timeperiod) or (resample_to_data == True):
-                site_fp = site_fp.resample(str(ds_timeperiod/3600e9)+'H', dim='time', how='mean', base=base)
+                resample_period = str(round(fp_timeperiod/3600e9,5))+'H'
+                site_fp = site_fp.resample(resample_period, dim='time', how='mean', base=base)
             elif ds_timeperiod < fp_timeperiod or (resample_to_data == False):
-                site_ds = site_ds.resample(str(fp_timeperiod/3600e9)+'H', dim='time', how='mean', base=base)
+                resample_period = str(round(fp_timeperiod/3600e9,5))+'H'
+                site_ds = site_ds.resample(resample_period, dim='time', how='mean', base=base)
                         
             site_ds = combine_datasets(site_ds, site_fp,
                                        method = "ffill",
