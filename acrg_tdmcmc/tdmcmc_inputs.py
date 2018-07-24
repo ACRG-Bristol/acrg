@@ -354,6 +354,7 @@ post_mcmc=run_tdmcmc.run_tdmcmc(sites, meas_period, av_period, species, start_da
     max_level=max_level)
 
 if unique_copy:
+    shutil.copy(config_file,output_dir)
     # Create date-stamped sub-directory of the form:
     #   Output_"sites"_"species"_"start_date"_"creation_dt" e.g. Output_MHD-TAC_CH4_2008-01-01_20171110T12-00-00
     now = dt.datetime.now().replace(microsecond=0)
