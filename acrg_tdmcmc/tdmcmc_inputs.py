@@ -143,7 +143,7 @@ nsub = param['nsub']          # nsub=100=store every 100th iteration)
 
 if verbose:
     print 'Inversion type: {0}'.format(inv_type)
-    print 'Regions in trans-dimesional grid - minimum allowed: {0}, maximum allowed: {1}, starting value: {2}'.format(kmin,kmax,k_ap)
+    print 'Regions in trans-dimensional grid - minimum allowed: {0}, maximum allowed: {1}, starting value: {2}'.format(kmin,kmax,k_ap)
     print 'Burn-in iterations: {0}'.format(burn_in)
     print 'Number of iterations to run: {0} (nsub = {1}, {2} iterations will be saved)\n'.format(nIt,nsub,nIt/nsub)
     print '\n---------------\n' 
@@ -262,8 +262,8 @@ else:
     raise LookupError("No file exists for that bc_basis_case and domain")
 
 for site in sites:
-    if 'GOSAT' in site:
-        nBias = 1           # Change as needed
+    if 'GOSAT' in site and len(sites) > 1: # Will need to update to base on platform rather than searching for "GOSAT"
+        nBias = 1
         break
 else: 
     nBias = 0
@@ -281,7 +281,9 @@ else:
 
 nBC = nBC_basis*nmonths   # No. of bc_basis functions x nmonths
 
-nIC=nfixed+nBC+nBias
+nBC+=nBias
+nIC=nfixed+nBC
+#nIC=nfixed+nBC+nBias
 nIC1=nIC+1
 kICmax=kmax+nIC    
 pdf_param1 = np.zeros((kICmax,nbeta))
@@ -359,8 +361,8 @@ if unique_copy:
     #   Output_"sites"_"species"_"start_date"_"creation_dt" e.g. Output_MHD-TAC_CH4_2008-01-01_20171110T12-00-00
     now = dt.datetime.now().replace(microsecond=0)
     site_str = '-'.join(sites)
-    start_date = start_date.replace('-','')
-    creation_dt = dt.datetime.strftime(now,'%Y%m%dT%H-%M-%S')
+    #start_date_d = start_date.replace('-','')
+    creation_dt = dt.datetime.strftime(now,'%Y-%m-%dT%H-%M-%S')
     sub_dir = 'Output_{0}_{1}_{2}_{3}'.format(site_str, species, start_date, creation_dt)
     datestamp_output_dir = os.path.join(output_dir,sub_dir)
     
