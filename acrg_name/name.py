@@ -25,7 +25,6 @@ import pickle
 from scipy import interpolate
 import dateutil.relativedelta
 import cartopy.crs as ccrs
-import pdb
 
 acrg_path = os.getenv("ACRG_PATH")
 data_path = os.getenv("DATA_PATH")
@@ -875,16 +874,23 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                 end_date = ds_et
             else:
                 end_date = fp_et
-                
-            site_ds = site_ds.sel(time=slice(str(start_date.data), str(end_date.data)))
-            site_fp = site_fp.sel(time=slice(str(start_date.data), str(end_date.data)))
+            
+            # rt17603: 24/07/2018 - Rounding to the nearest second(+/-1). Needed for sub-second dates otherwise sel was giving a KeyError
+            start_s = str(np.round(start_date.data.astype(np.int64)-5e8,-9).astype('datetime64[ns]')) # subtract half a second to ensure lower range covered
+            end_s = str(np.round(end_date.data.astype(np.int64)+5e8,-9).astype('datetime64[ns]')) # add half a second to ensure upper range covered
+            
+            site_ds = site_ds.sel(time=slice(start_s,end_s))
+            site_fp = site_fp.sel(time=slice(start_s,end_s))
+            
+            #site_ds = site_ds.sel(time=slice(str(start_date.data),str(end_date.data)))
+            #site_fp = site_fp.sel(time=slice(str(start_date.data),str(end_date.data)))
             
             base = start_date.dt.hour.data + start_date.dt.minute.data/60. + start_date.dt.second.data/3600.
             if (ds_timeperiod >= fp_timeperiod) or (resample_to_data == True):
-                resample_period = str(round(fp_timeperiod/3600e9,5))+'H'
+                resample_period = str(round(fp_timeperiod/3600e9,5))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
                 site_fp = site_fp.resample(resample_period, dim='time', how='mean', base=base)
             elif ds_timeperiod < fp_timeperiod or (resample_to_data == False):
-                resample_period = str(round(fp_timeperiod/3600e9,5))+'H'
+                resample_period = str(round(fp_timeperiod/3600e9,5))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
                 site_ds = site_ds.resample(resample_period, dim='time', how='mean', base=base)
                         
             site_ds = combine_datasets(site_ds, site_fp,
