@@ -612,7 +612,7 @@ def getNAEI(year, lon_out, lat_out, soi, sector):
         diy = 365
     else:
         diy = 366    
-    grdemis = grdemis*1e3 / (diy * 3600*24) / speciesmm
+    grdemis = grdemis / (diy * 3600*24) / speciesmm
     
     #Regrid to desired lats and lons
     narr, reg = regrid2d(grdemis, latarr, lonarr,
@@ -758,12 +758,12 @@ def getedgarannualsectors(year, lon_out, lat_out, sectors, soi='CH4'):
         if os.path.isfile(edgar):
             ds = xr.open_dataset(edgar)
             soiname = 'emi_'+soi.lower()
-            if tot == None:
+            if tot is None:
                 tot = ds[soiname].values*1e3/speciesmm
             else:
                 tot += ds[soiname].values*1e3/speciesmm
         else:
-            print 'No annual file for sector %s and %s' % sec, soi
+            print 'No annual file for sector %s and %s' % (sec, soi)
         
     lat_in = ds.lat.values
     lon_in = ds.lon.values
