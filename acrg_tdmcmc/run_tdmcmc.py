@@ -368,7 +368,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
         nBias = 0
     
     site_sat = [site for site in sites if "GOSAT" in site]
-  
+    
     ###########################################################
     # EVERYTHING NEEDS TO BE ARRAYS FOR MCMC
     #STACK FPs, FLUXES AND OBS
@@ -377,7 +377,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     y_time = []
     y_error=[]
     #H_bc5=[]
-    H_bc=[]
+    #H_bc=[]
     local_ratio=[]
     pblh=[]
     wind_speed=[]
@@ -392,7 +392,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
         y_site.append([site for i in range(len(fp_data_H3.coords['time']))])
         y_time.append(fp_data_H3.coords['time'].values)
         #H_bc5.append(fp_data_H3.bc.values)
-        H_bc.append(fp_data_H3.H_bc.values)
+        #H_bc.append(fp_data_H3.H_bc.values)
         #sub_flux_temp = fp_data_H['.flux']['all'].sel(lon=lon, lat=lat, method="ffill") #fp_data_H3.flux.sel(lon=lon, lat=lat, method="nearest")
         local_ratio.append(fp_data_H3.local_ratio.values)
         pblh.append(fp_data_H3.PBLH.values)
@@ -407,31 +407,37 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
             dmf_default = 0.002
             print "Default value used: {}. Only appropriate for methane".format(dmf_default)
             y_error.append(dmf_default*fp_data_H3.mf.values) # 0.002 only appropriate for methane
+        
+        H_bc_1=fp_data_H3.H_bc
+        
+        # If Bias factor included, add this as the first term for H_bc for all sites (1 for sat, 0 for other)  
+        if nBias:
+            if site in site_sat:
+                bias = np.ones([len(H_bc_1.time),1])
+            else:
+                bias = np.zeros([len(H_bc_1.time),1])
+            H_bias = xray.DataArray(bias,coords=[("time",H_bc_1.time.values),("region_bc",np.array([0]))])
+            H_bc_1["region_bc"] = np.arange(1,len(H_bc_1["region_bc"])+1)
+            H_bc_1 = xray.concat((H_bias,H_bc_1),dim="region_bc")
+        
         if si ==0:
             H_fixed2=fp_data_H3.H
             H_vary2=fp_data_H3.sub_H
             q_ap2=sub_flux_temp
-#            H_bc2=fp_data_H3.H_bc
-                  
+            #H_bc2=fp_data_H3.H_bc
+            H_bc2=H_bc_1
         else:
             H_fixed2=xray.concat((H_fixed2,fp_data_H3.H), dim="time")    
             H_vary2=xray.concat((H_vary2,fp_data_H3.sub_H),dim="time" ) 
             q_ap2=xray.concat((q_ap2,sub_flux_temp), dim="time") 
-#            H_bc2=xray.concat((H_bc2,fp_data_H3.H_bc), dim="time") 
+            #H_bc2=xray.concat((H_bc2,fp_data_H3.H_bc), dim="time") 
+            H_bc2=xray.concat((H_bc2,H_bc_1), dim="time") 
 
-    	if fp_data_H3.H.dims[0] != "time": 
+    if fp_data_H3.H.dims[0] != "time": 
             axis_insert = 0
-    	else:
+    else:
             axis_insert = 1
 
-    	# If Bias factor included, add this as the first term for H_bc for all sites (1 for sat, 0 for other)  
-    	if nBias:
-    	    if site in site_sat:
-	        H_bc[si] = np.insert(H_bc[si],0,np.ones(len(fp_data_H[sites[si]].mf)), axis = axis_insert)
-	    else:
-           	H_bc[si] = np.insert(H_bc[si],0,np.zeros(len(fp_data_H[sites[si]].mf)), axis = axis_insert)
- 
-    
     q_ap2=q_ap2["flux"].transpose("time","lat","lon")
 
    
@@ -445,14 +451,14 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     H_fixed=H_fixed2.values
     H_vary=H_vary2.values
     q_ap=q_ap2.values
-#    H_bc=H_bc2.values
-     
+    H_bc=H_bc2.values
+
     y = np.hstack(y)
     y_site = np.hstack(y_site)
     y_time = np.hstack(y_time)
     y_error=np.hstack(y_error)
     #H_bc5 = np.hstack(H_bc5)
-    H_bc = np.hstack(H_bc)
+    #H_bc = np.hstack(H_bc)
     local_ratio=np.hstack(local_ratio)
     pblh=np.hstack(pblh)
     wind_speed=np.hstack(wind_speed)
