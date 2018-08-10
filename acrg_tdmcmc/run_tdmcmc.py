@@ -329,7 +329,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     
     ###########################################################################
     # CALCULATE DEGREE OF LOCALNESS FOR EACH FOOTPRINT
-    fp_data_H2,release_lats,release_lons = add_local_ratio(fp_data_H2)
+    fp_data_H2,release_lons,release_lats = add_local_ratio(fp_data_H2)
     
     for si, site in enumerate(sites):     
         fp_data_H2[site].attrs['Domain']=domain
