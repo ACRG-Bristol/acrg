@@ -2,6 +2,10 @@
 """
 Get AGAGE data, average, truncate and filter for baseline
 
+Expected format for filenames is:
+	"network-instrument_site_date_species-height.nc"
+	e.g. AGAGE-GC-FID_MHD_19940101_ch4-10m.nc
+
 Examples:
 
 Get Mace Head CH4 observations and average into 3 hourly periods:
