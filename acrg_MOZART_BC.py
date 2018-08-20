@@ -29,8 +29,21 @@ import datetime as dt
 import getpass
 import collections as c
 import pdb
+from os.path import join
 
-mzt_dir = '/shared_data/air/shared/MOZART/mzt_output/'
+acrg_path = os.getenv("ACRG_PATH")
+data_path = os.getenv("DATA_PATH")
+
+if acrg_path is None:
+    acrg_path = os.getenv("HOME")
+    print("Default ACRG directory is assumed to be home directory. Set path in .bashrc as \
+            export ACRG_PATH=/path/to/acrg/repository/ and restart python terminal")
+if data_path is None:
+    data_path = "/data/shared/"
+    print("Default Data directory is assumed to be /data/shared/. Set path in .bashrc as \
+            export DATA_PATH=/path/to/data/directory/ and restart python terminal")
+
+mzt_dir = join(data_path, 'MOZART/mzt_output/')
 #filename = mzt_dir + 'CH4/FWDModelComparison_NewEDGAR.mz4.h2.2014-01.nc'
 
 
@@ -163,12 +176,12 @@ def MOZART_vmr(species, filename=None, start = "2010-01-01", end = "2016-01-01",
             Alt = np.reshape(Alt,np.shape(conc))
             vmr_var_name = 'vmr'
             
-            # change timestamp to occur in the middle of the month. Currently, only monthly files are correctly
-            # timestamped to the 15th of the month
-            if freq is 'M':
-                timestamp = f.start_date + dt.timedelta(days=14)
-            else:
-                timestamp = f.start_date
+            # change timestamp to occur in the beginning of the month.
+#            if freq is 'M':
+#                timestamp = f.start_date + dt.timedelta(days=14)
+#            else:
+#                timestamp = f.start_date
+            timestamp = f.start_date
 
             MZ = xray.Dataset({vmr_var_name : (['height', 'lat', 'lon','time'], conc),
                    'Alt' : (['height', 'lat', 'lon','time'], Alt)},
@@ -197,7 +210,8 @@ def MOZART_boundaries(MZ, domain):
     MZ is a mozart xray dataset created using MOZART_vmr.
     """
 
-    listoffiles = glob.glob("/shared_data/air/shared/NAME/fp/" + domain + "/*")
+#    listoffiles = glob.glob("/shared_data/air/shared/NAME/fp/" + domain + "/*")
+    listoffiles = glob.glob(join(data_path, "NAME/fp/" + domain + "/*"))
     
     with xray.open_dataset(listoffiles[0]) as temp:
         fields_ds = temp.load()
@@ -205,21 +219,23 @@ def MOZART_boundaries(MZ, domain):
     fp_lat = fields_ds["lat"].values
     fp_lon = fields_ds["lon"].values
     fp_height = fields_ds["height"].values
-    
     vmr_var_name = 'vmr'
+    
+    if any(n<0 for n in fp_lon):
+        pass
+    else:
+#       convert MOZART lons to be on 0 to 360 for consistency with footprints
+        new_coords = MZ.coords["lon"].values
+        new_coords[new_coords < 0] = new_coords[new_coords < 0] + 360
+        MZ = MZ.assign_coords(lon=new_coords)
+        MZ = MZ.sortby("lon")
 
-    #Get info from a EUROPE footprint file:
-#    FP = xray.open_dataset(FPfilename)
-#    fp_lon = FP['lon']
-#    fp_lat = FP['lat']
-#    fp_height = FP['height']
-
-    #Select the gidcells closest to the edges of the EUROPE domain. Bisect finds the 
-    #index of the dimension value that occurs after the specified lons/lats.
-    lat_n = bisect.bisect_left(MZ.coords['lat'], max(fp_lat))
-    lat_s = bisect.bisect_left(MZ.coords['lat'], min(fp_lat))-1
-    lon_e = bisect.bisect_left(MZ.coords['lon'], max(fp_lon))
-    lon_w = bisect.bisect_left(MZ.coords['lon'], min(fp_lon))-1
+    #Select the gidcells closest to the edges of the  domain and make sure outside of fp
+    lat_n = (np.abs(MZ.coords['lat'].values - max(fp_lat))).argmin()+1
+    lat_s = (np.abs(MZ.coords['lat'].values - min(fp_lat))).argmin()-1
+    lon_e = (np.abs(MZ.coords['lon'].values - max(fp_lon))).argmin()+1
+    lon_w = (np.abs(MZ.coords['lon'].values - min(fp_lon))).argmin()-1
+    
 
     north = MZ.sel(lat = MZ.coords['lat'][lat_n],
                    lon = slice(MZ.coords['lon'][lon_w],MZ.coords['lon'][lon_e])).drop(['lat'])
@@ -257,5 +273,5 @@ def MOZART_BC_nc(start = '2012-01-01', end = "2014-09-01", species = 'CH4', file
         MZ = MOZART_vmr(species, start = i, end = i, freq=freq, filename = filename)
         MZ_edges = MOZART_boundaries(MZ, domain)
         yearmonth = str(i.year) + str(i.month).zfill(2)
-        MZ_edges.to_netcdf(path = '/data/shared/NAME/bc/%s/%s_%s_%s.nc'
+        MZ_edges.to_netcdf(path = join(data_path, "NAME/bc/%s/%s_%s_%s.nc")
                                                     %(domain,species.lower(),domain,yearmonth), mode = 'w')

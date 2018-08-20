@@ -96,14 +96,15 @@ def write(lat, lon, time, flux, species, domain,
     if type(time[0]) == np.datetime64:
         time=time
     else:
-        sys.exit('Time format not correct, needs to be type numpy.datetime64')
+        sys.exit('Time format not correct, needs to be a list of type numpy.datetime64. A DatetimeIndex will not work.\
+                 To convert a DatetimeIndex to correct format: time = [np.datetime64(i) for i in DatetimeIndex]')
 
         
     #Open netCDF file
     year = pd.DatetimeIndex([time[0]]).year[0]
     if copy_from_year != None:
         ncname = output_directory + '%s/%s_%s_%s_copy-from-%s.nc' %(domain, file_source, domain, year, copy_from_year)
-    if climatology == True:
+    elif climatology == True:
         ncname = output_directory + '%s/%s_%s_%s_climatology.nc' %(domain, file_source, domain, year)
     else:
         ncname = output_directory + '%s/%s_%s_%s.nc' %(domain, file_source, domain, year)
@@ -126,27 +127,36 @@ def write(lat, lon, time, flux, species, domain,
     lon_attrs = {"long_name" : "longitude",
                  "units" : "degrees_east",
                  "notes" : "centre of cell"}
+
+
+    glob_attrs = c.OrderedDict([("title",title),
+                                ("author" , getpass.getuser()),
+                                ("date_created" , np.str(dt.datetime.today())),
+                                ("number_of_prior_files_used" , len(prior_info_dict.keys()))])
+
+    for i, key in enumerate(prior_info_dict.keys()):
+        prior_number = i+1
+        glob_attrs['prior_file_' + str(prior_number)] = key
+        glob_attrs['prior_file_' + str(prior_number)+'_version'] = prior_info_dict[key][0]
+        glob_attrs['prior_file_' + str(prior_number)+'_raw_resolution']=prior_info_dict[key][1]
+        glob_attrs['prior_file_' + str(prior_number)+'_reference']=prior_info_dict[key][2]
     
-
-    glob_attrs = {"title":title,
-                  "author" : getpass.getuser(),
-                  "date_created" : np.str(dt.datetime.today()),
-                  "prior_used" : ["%s: Version %s, raw resolution %s, reference %s. " %(i, prior_info_dict[i][0], prior_info_dict[i][1], prior_info_dict[i][2]) for i in prior_info_dict.keys()],
-                  "regridder" : "Created using %s" %regridder_used}
-
+    glob_attrs["regridder_used"]= regridder_used
+    
+    
     if flux_comments != None:
         glob_attrs['comments'] = flux_comments
         if copy_from_year != None:
-            glob_attrs['comments'] = "Fluxes copied from year %s." %copy_from_year + glob_attrs['comments']
+            glob_attrs['comments'] = "Fluxes copied from year %s. %s" %(copy_from_year, flux_comments)
     
-    if copy_from_year != None:
+    elif copy_from_year != None:
         glob_attrs['comments'] = "Fluxes copied from year %s." %copy_from_year
 
     flux_ds = xray.Dataset({'flux':(['lat','lon','time'], flux, flux_attrs)},
                               coords = {'lat' : lat,
                                         'lon' : lon,
                                         'time' : time},
-                              attrs = c.OrderedDict(glob_attrs))
+                              attrs = glob_attrs)
     
     flux_ds.lat.attrs = lat_attrs
     flux_ds.lon.attrs = lon_attrs

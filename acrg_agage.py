@@ -2,6 +2,10 @@
 """
 Get AGAGE data, average, truncate and filter for baseline
 
+Expected format for filenames is:
+	"network-instrument_site_date_species-height.nc"
+	e.g. AGAGE-GC-FID_MHD_19940101_ch4-10m.nc
+
 Examples:
 
 Get Mace Head CH4 observations and average into 3 hourly periods:
@@ -369,7 +373,7 @@ def get(site, species_in, network = None, start = None, end = None,
     if network is None:
         network = site_info[site].keys()[0]
         print("Assuming network is %s" %network)
-    
+
     
     data_directory, files = get_file_list(site, species,
                                           network = network,

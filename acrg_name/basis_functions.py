@@ -92,7 +92,7 @@ def basis_blocks(domain, time, blocksize, basis_case=None):
                 
     basis_ds.to_netcdf(basis_dir + domain +"/" + basis_case + "_" + domain + "_" + str(time.year) + ".nc")
 
-def basis_transd(domain, time, basis_case = "transd", sub_lon_min = None,
+def basis_transd(domain, time, basis_case = "sub-transd", sub_lon_min = None,
                  sub_lon_max = None, sub_lat_min = None, sub_lat_max = None): 
     """Creates basis regions for the "transdimensional inversion".
     Creates variable central block based on sub_lat and sub_lon domain
@@ -124,11 +124,11 @@ def basis_transd(domain, time, basis_case = "transd", sub_lon_min = None,
             sub_lon_min = 65, sub_lon_max = 100, sub_lat_min = 5, sub_lat_max = 40)
     """  
     
-    if all([sub_lon_min, sub_lon_max, sub_lat_min, sub_lat_max]) == False:
+    if None in [sub_lon_min, sub_lon_max, sub_lat_min, sub_lat_max]:
         print("At least one sub domain lon or lat is missing on input")
         return        
     
-    # load a Fields file to get the domain
+#     load a Fields file to get the domain
 
     files = glob.glob(fields_file_path + domain + "/*")
     
@@ -171,7 +171,7 @@ def basis_transd(domain, time, basis_case = "transd", sub_lon_min = None,
     basis_ds.to_netcdf(basis_dir + domain +"/" + basis_case + "_" + domain + "_" + str(time.year) + ".nc")
     
 
-def basis_bc_blocks(domain, basis_case, time, vertical=1):
+def basis_bc_blocks(domain, time, basis_case = "NESW", vertical=1):
     """Creates uniform blocks for boundary conditions in each direction (NESW).
     Each direction is split into vertical slabs with number specified by input 'vertical'
     
@@ -195,6 +195,7 @@ def basis_bc_blocks(domain, basis_case, time, vertical=1):
     """
         
     files = glob.glob(fields_file_path + domain + "/*")
+
     
     time = pd.to_datetime(time)
     
@@ -209,6 +210,7 @@ def basis_bc_blocks(domain, basis_case, time, vertical=1):
     lon = fields_ds["lon"].values
     
     regions = range(vertical*4)
+
     heights = range(500,20500,1000)
     
     basis_grid_e = np.zeros((len(heights),len(lat),len(regions),1))
@@ -216,7 +218,7 @@ def basis_bc_blocks(domain, basis_case, time, vertical=1):
     basis_grid_n = np.zeros((len(heights),len(lon),len(regions),1))
     basis_grid_s = np.zeros((len(heights),len(lon),len(regions),1))
     
-    vertical_index = np.round(np.linspace(0,len(heights), vertical+1))
+    vertical_index = np.round(np.linspace(0,len(heights), vertical+1)).astype('int')
     
     for ii in range(vertical):
         
@@ -232,12 +234,11 @@ def basis_bc_blocks(domain, basis_case, time, vertical=1):
                 coords = {'height': (['height'], heights), \
                           'lon':(['lon'], lon), \
                           'lat':(['lat'], lat), \
-                          'region':(['region'],regions), \
                           'time':(['time'],[time])})
-
-    basis_ds.to_netcdf(bc_basis_dir + domain +"/" + basis_case + "_" + domain + "_" + time.strftime('%m')+str(time.year) + ".nc")                
     
-def basis_bc_uniform(domain, basis_case, time):
+    basis_ds.to_netcdf(bc_basis_dir + domain +"/" + basis_case + "_" + domain + "_" + str(time.year) + ".nc")                
+    
+def basis_bc_uniform(domain, time, basis_case = "uniform"):
     """Creates creates one uniform scaling for boundary conditions for all directions
     
     Args:
@@ -293,7 +294,6 @@ def basis_bc_uniform(domain, basis_case, time):
                 coords = {'height': (['height'], heights), \
                           'lon':(['lon'], lon), \
                           'lat':(['lat'], lat), \
-                          'region':(['region'],regions), \
                           'time':(['time'],[time])})
                 
     basis_ds.to_netcdf(bc_basis_dir + domain +"/" + basis_case + "_" + domain + "_" + time.strftime('%m')+str(time.year) + ".nc")
@@ -425,8 +425,8 @@ def basis_bc_all_gradients(domain, time, species, units='ppb', basis_case='horiz
 
                 
         
-    numregions = len(pcs)
-    regions = range(numregions)
+    numpcs = len(pcs)
+    regions = range(numpcs*4)
     
     basis_grid_n = np.zeros((len(heights),len(lon),len(regions)))
     basis_grid_e = np.zeros((len(heights),len(lat),len(regions)))
@@ -440,24 +440,24 @@ def basis_bc_all_gradients(domain, time, species, units='ppb', basis_case='horiz
     pc_s = []
     pc_w = []
     
-    for ii in range(numregions):
+    for ii in range(numpcs):
         pc_n.append(pcs[ii][:,ind[0]])
         pc_e.append(pcs[ii][:,ind[1]])
         pc_s.append(pcs[ii][:,ind[2]])
         pc_w.append(pcs[ii][:,ind[3]])
 
     # reverse pcs for east and south to make same as VMRs
-    for ii in range(numregions):
+    for ii in range(numpcs):
         pc_e[ii] = np.fliplr(pc_e[ii])
         pc_s[ii] = np.fliplr(pc_s[ii])
                 
     # create basis grids in format needed for inversion
         
-    for ii in range(numregions):
+    for ii in range(numpcs):
         basis_grid_n[:,:,ii] = pc_n[ii]/vmr_n
-        basis_grid_e[:,:,ii] = pc_e[ii]/vmr_e
-        basis_grid_s[:,:,ii] = pc_s[ii]/vmr_s
-        basis_grid_w[:,:,ii] = pc_w[ii]/vmr_w
+        basis_grid_e[:,:,ii+3] = pc_e[ii]/vmr_e
+        basis_grid_s[:,:,ii+6] = pc_s[ii]/vmr_s
+        basis_grid_w[:,:,ii+9] = pc_w[ii]/vmr_w
         
     basis_grid_n = basis_grid_n[:,:,:,None]
     basis_grid_e = basis_grid_e[:,:,:,None]
@@ -472,11 +472,145 @@ def basis_bc_all_gradients(domain, time, species, units='ppb', basis_case='horiz
                 coords = {'height': (['height'], heights), \
                           'lon':(['lon'], lon), \
                           'lat':(['lat'], lat), \
-                          'region':(['region'],regions), \
                           'time':(['time'],[time])})
                 
     basis_ds.to_netcdf(bc_basis_dir + domain +"/" + basis_case + "_" + domain + "_" + time.strftime('%m')+str(time.year) + ".nc")           
 
+def basis_bc_horiz_gradients(domain, time, basis_case='horiz-grad'):
+    """Creates three terms for bc basis regions for each direction
+        (1) offset to shift field up and down
+        (2) scaling of N-S gradient on east and west curtains
+        (3) scaling of E-W gradient on north and south curtains
+        
+    Args:
+        domain (str): 
+            String of domain area
+        time (str): 
+            Timestamp for basis functions
+        basis_case (str, optional): 
+            Name of basis case. 
+            Default 'horiz-grad'
+            
+    Returns:
+        None
+        Writes basis boundary condition gradients to netcdf
+        
+    Example:
+        basis_bc_all_gradients('SOUTHASIA', '2012-01-01')
+        
+    """
+    
+    files = glob.glob(fields_file_path + domain + "/*")
+    
+    time = pd.to_datetime(time)
+    
+    with xray.open_dataset(files[0]) as temp:
+        fields_ds = temp.load()
+
+    if len(files) == 0:
+        print("Can't find Fields files: " + domain)
+        return None
+    
+    lat = fields_ds["lat"].values
+    lon = fields_ds["lon"].values
+
+    heights = range(500,20500,1000)
+    
+    # add component that will scale entire field up and down by some amount
+    
+    scale_n = 1*np.ones((len(heights), len(lon)))
+    scale_e = 1*np.ones((len(heights), len(lat)))
+    scale_s = 1*np.ones((len(heights), len(lon)))
+    scale_w = 1*np.ones((len(heights), len(lat)))
+    scale_all = np.concatenate((scale_n, scale_e, scale_s, scale_w), axis = 1)
+    
+    # find indices that correspond to each direction
+    ind = [None]*4
+    ind[0] = range(len(lon)) #N
+    ind[1] = range(max(ind[0])+1,max(ind[0])+1 + len(lat)) #E
+    ind[2] = range(max(ind[1])+1,max(ind[1])+1 + len(lon)) #s
+    ind[3] = range(max(ind[2])+1,max(ind[2])+1 + len(lat)) #w
+    
+    # create field of East-West gradient
+    grad_e_w = np.zeros((len(heights), len(lon)))
+    slope_e_w = (1.0 - -1.0)/len(lon)
+    for ii in range(len(lon)):
+        grad_e_w[:,ii] = slope_e_w*ii + -1
+ 
+    longrad = np.zeros((len(heights), 2*len(lon) + 2*len(lat)))
+    longrad[:,ind[0]] = grad_e_w
+    longrad[:,ind[2]] = np.fliplr(grad_e_w)
+
+    # create field of North-South gradient
+    grad_n_s = np.zeros((len(heights), len(lat)))
+    slope_n_s = (1.0 - -1.0)/len(lat)
+    for ii in range(len(lat)):
+        grad_n_s[:,ii] = slope_n_s*ii + -1
+ 
+    latgrad = np.zeros((len(heights), 2*len(lon) + 2*len(lat)))
+    latgrad[:,ind[1]] = grad_n_s
+    latgrad[:,ind[3]] = np.fliplr(grad_n_s)
+        
+    pcs = []
+    pcs.append(scale_all)
+    pcs.append(latgrad)
+    pcs.append(longrad)
+ 
+
+    numpcs = len(pcs)
+    regions = range(numpcs*4)
+    
+    basis_grid_n = np.zeros((len(heights),len(lon),len(regions)))
+    basis_grid_e = np.zeros((len(heights),len(lat),len(regions)))
+    basis_grid_s = np.zeros((len(heights),len(lon),len(regions)))
+    basis_grid_w = np.zeros((len(heights),len(lat),len(regions)))
+
+
+    # unravel pcs into directions
+    pc_n = []
+    pc_e = []
+    pc_s = []
+    pc_w = []
+    
+    for ii in range(numpcs):
+        pc_n.append(pcs[ii][:,ind[0]])
+        pc_e.append(pcs[ii][:,ind[1]])
+        pc_s.append(pcs[ii][:,ind[2]])
+        pc_w.append(pcs[ii][:,ind[3]])
+
+    # reverse pcs for east and south to make same as VMRs
+    for ii in range(numpcs):
+        pc_e[ii] = np.fliplr(pc_e[ii])
+        pc_s[ii] = np.fliplr(pc_s[ii])
+                
+    # create basis grids in format needed for inversion
+        
+    for ii in range(numpcs):
+        basis_grid_n[:,:,ii] = pc_n[ii]
+        basis_grid_e[:,:,ii+3] = pc_e[ii]
+        basis_grid_s[:,:,ii+6] = pc_s[ii]
+        basis_grid_w[:,:,ii+9] = pc_w[ii]
+        
+    basis_grid_n = basis_grid_n[:,:,:,None]
+    basis_grid_e = basis_grid_e[:,:,:,None]
+    basis_grid_s = basis_grid_s[:,:,:,None]
+    basis_grid_w = basis_grid_w[:,:,:,None]
+    
+
+    basis_ds = xray.Dataset({'bc_basis_n':(['height','lon','region','time'], basis_grid_n), \
+                            'bc_basis_s':(['height','lon','region','time'], basis_grid_s), \
+                            'bc_basis_e':(['height','lat','region','time'], basis_grid_e), \
+                            'bc_basis_w':(['height','lat','region','time'], basis_grid_w)}, \
+                coords = {'height': (['height'], heights), \
+                          'lon':(['lon'], lon), \
+                          'lat':(['lat'], lat), \
+                          'time':(['time'],[time])})
+    
+    basis_ds.bc_basis_n.encoding = {'zlib':True}       
+    basis_ds.bc_basis_s.encoding = {'zlib':True}  
+    basis_ds.bc_basis_e.encoding = {'zlib':True}  
+    basis_ds.bc_basis_w.encoding = {'zlib':True}                                   
+    basis_ds.to_netcdf(bc_basis_dir + domain +"/" + basis_case + "_" + domain + "_" + str(time.year) + ".nc", mode='w')           
  
                
 def basis_bc_pca(domain, time, species, units='ppb', basis_case='pca', numregions = 4):

@@ -154,7 +154,6 @@ def get_nsigma_y(fp_data_H,start_date, end_date, sites,
             nsigma+=nsigma_stn
     
     # INDEX R
-    print ydim1, nsigma
     R_indices = np.zeros((ydim1,nsigma), dtype=np.uint16)
     for ii in range(nsigma):      
         wh_bl=np.where(y_bl == ii)
@@ -216,9 +215,12 @@ def add_local_ratio(fp_data_H,return_release=True):
             release_lat=fp_data_H[site].release_lat[ti].values
             wh_rlon = np.where(abs(fp_data_H[site].sub_lon.values-release_lon) < dlon/2.)
             wh_rlat = np.where(abs(fp_data_H[site].sub_lat.values-release_lat) < dlat/2.)
-            local_sum[ti] = np.sum(fp_data_H[site].sub_fp[
-            wh_rlat[0][0]-2:wh_rlat[0][0]+3,wh_rlon[0][0]-2:wh_rlon[0][0]+3,ti].values)/np.sum(
-            fp_data_H[site].fp[:,:,ti].values)  
+            if np.any(wh_rlon[0]) and np.any(wh_rlat[0]):
+                local_sum[ti] = np.sum(fp_data_H[site].sub_fp[
+                        wh_rlat[0][0]-2:wh_rlat[0][0]+3,wh_rlon[0][0]-2:wh_rlon[0][0]+3,ti].values)/np.sum(
+                        fp_data_H[site].fp[:,:,ti].values)  
+            else:
+                local_sum[ti] = 0.0
             
         local_ds = xray.Dataset({'local_ratio': (['time'], local_sum)},
                                         coords = {'time' : (fp_data_H[site].coords['time'])})
@@ -279,11 +281,11 @@ def average_period_fp(fp_data_H,av_period_site,dim="time"):
     
     sites = [key for key in fp_data_H.keys() if key[0] != '.']
 
-    fp_data_H_av = {}
+    #fp_data_H_av = {}
     for si, site in enumerate(sites):
-        fp_data_H_av[site] = average_period(fp_data_H[site],av_period_site[si],dim=dim)
+        fp_data_H[site] = average_period(fp_data_H[site],av_period_site[si],dim=dim)
     
-    return fp_data_H_av
+    return fp_data_H
 
 
 def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date, 
@@ -295,7 +297,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     pdf_param1,pdf_param2,pdf_p1_hparam1,pdf_p1_hparam2,pdf_p2_hparam1,
     pdf_p2_hparam2,x_pdf ,pdf_param1_pdf,pdf_param2_pdf,inv_type,
     output_dir,tau_ap=None, tau_hparams=None, stepsize_tau=None, tau_pdf=None,
-    bl_split=False, bl_levels=None, filters=None):
+    bl_split=False, bl_levels=None, filters=None,max_level=None):
     #%%
     
     if para_temp is True:
@@ -310,12 +312,13 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
               "corr":False,
               "evencorr":True}
     data = agage.get_obs(sites, species, start = start_date, end = end_date, average = meas_period, 
-                          keep_missing=corr_type[inv_type])
+                          keep_missing=corr_type[inv_type],max_level=max_level)
     
     
     #fp_all = name.footprints_data_merge(data, domain=domain, species=species, calc_bc=True)
     # Commented out and replaced by rt17603 on 11/08 - no species argument in this function.
     fp_all = name.footprints_data_merge(data, domain=domain, calc_bc=True)
+    
     
     if fp_basis_case in ("INTEM"):    
         fp_data_H2 = name.fp_sensitivity(fp_all, domain=domain, basis_case='transd')
@@ -326,7 +329,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     
     ###########################################################################
     # CALCULATE DEGREE OF LOCALNESS FOR EACH FOOTPRINT
-    fp_data_H2,release_lats,release_lons = add_local_ratio(fp_data_H2)
+    fp_data_H2,release_lons,release_lats = add_local_ratio(fp_data_H2)
     
     for si, site in enumerate(sites):     
         fp_data_H2[site].attrs['Domain']=domain
@@ -353,6 +356,18 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     latmin=np.min(lat)
     latmax=np.max(lat)
     Ngrid = nlon*nlat  # Define underlying grid    
+
+    ###########################################################
+    # CHECK IF A BIAS VALUE NEEDS TO BE INCLUDED
+    
+    for site in sites:
+        if "GOSAT" in site and len(sites) > 1: # Will need to update to base on platform rather than searching for "GOSAT"
+            nBias = 1 
+            break
+    else:
+        nBias = 0
+    
+    site_sat = [site for site in sites if "GOSAT" in site]
     
     ###########################################################
     # EVERYTHING NEEDS TO BE ARRAYS FOR MCMC
@@ -361,20 +376,24 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     y_site = []
     y_time = []
     y_error=[]
-    H_bc5=[]
+    #H_bc5=[]
+    #H_bc=[]
     local_ratio=[]
     pblh=[]
     wind_speed=[]
     
+    sub_flux_temp = fp_all[".flux"]["all"].sel(lon=lon, lat=lat, method="ffill")
+    
     for si, site in enumerate(sites):
-              
+            
         fp_data_H3 = fp_data_H[site].dropna("time", how="all")  
         attributes = [key for key in fp_data_H3.keys() if key[0] != '.']  
         y.append(fp_data_H3.mf.values)     
         y_site.append([site for i in range(len(fp_data_H3.coords['time']))])
         y_time.append(fp_data_H3.coords['time'].values)
-        H_bc5.append(fp_data_H3.bc.values)
-        sub_flux_temp = fp_data_H3.flux.sel(lon=lon, lat=lat, method="nearest")
+        #H_bc5.append(fp_data_H3.bc.values)
+        #H_bc.append(fp_data_H3.H_bc.values)
+        #sub_flux_temp = fp_data_H['.flux']['all'].sel(lon=lon, lat=lat, method="ffill") #fp_data_H3.flux.sel(lon=lon, lat=lat, method="nearest")
         local_ratio.append(fp_data_H3.local_ratio.values)
         pblh.append(fp_data_H3.PBLH.values)
         wind_speed.append(fp_data_H3.wind_speed.values)
@@ -388,35 +407,58 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
             dmf_default = 0.002
             print "Default value used: {}. Only appropriate for methane".format(dmf_default)
             y_error.append(dmf_default*fp_data_H3.mf.values) # 0.002 only appropriate for methane
+        
+        H_bc_1=fp_data_H3.H_bc
+        
+        # If Bias factor included, add this as the first term for H_bc for all sites (1 for sat, 0 for other)  
+        if nBias:
+            if site in site_sat:
+                bias = np.ones([len(H_bc_1.time),1])
+            else:
+                bias = np.zeros([len(H_bc_1.time),1])
+            H_bias = xray.DataArray(bias,coords=[("time",H_bc_1.time.values),("region_bc",np.array([0]))])
+            H_bc_1["region_bc"] = np.arange(1,len(H_bc_1["region_bc"])+1)
+            H_bc_1 = xray.concat((H_bias,H_bc_1),dim="region_bc")
+        
         if si ==0:
             H_fixed2=fp_data_H3.H
             H_vary2=fp_data_H3.sub_H
             q_ap2=sub_flux_temp
-            H_bc2=fp_data_H3.H_bc
-                  
+            #H_bc2=fp_data_H3.H_bc
+            H_bc2=H_bc_1
         else:
             H_fixed2=xray.concat((H_fixed2,fp_data_H3.H), dim="time")    
             H_vary2=xray.concat((H_vary2,fp_data_H3.sub_H),dim="time" ) 
             q_ap2=xray.concat((q_ap2,sub_flux_temp), dim="time") 
-            H_bc2=xray.concat((H_bc2,fp_data_H3.H_bc), dim="time") 
-    
+            #H_bc2=xray.concat((H_bc2,fp_data_H3.H_bc), dim="time") 
+            H_bc2=xray.concat((H_bc2,H_bc_1), dim="time") 
+
+    if fp_data_H3.H.dims[0] != "time": 
+            axis_insert = 0
+    else:
+            axis_insert = 1
+
+    q_ap2=q_ap2["flux"].transpose("time","lat","lon")
+
+   
     if H_fixed2.dims[0] != "time":
         H_fixed2=H_fixed2.transpose()
         H_vary2=H_vary2.transpose("time","sub_lat","sub_lon")
-        q_ap2=q_ap2.transpose("time","lat","lon")
-    if H_bc2.dims[0] !="time":
-        H_bc2=H_bc2.transpose()
+        #q_ap2=q_ap2.transpose("time","lat","lon")
+#    if H_bc2.dims[0] !="time":
+#        H_bc2=H_bc2.transpose()
         
     H_fixed=H_fixed2.values
     H_vary=H_vary2.values
     q_ap=q_ap2.values
     H_bc=H_bc2.values
-     
+
     y = np.hstack(y)
     y_site = np.hstack(y_site)
     y_time = np.hstack(y_time)
     y_error=np.hstack(y_error)
-    H_bc5 = np.hstack(H_bc5)
+    #H_bc5 = np.hstack(H_bc5)
+    #H_bc = np.hstack(H_bc)
     local_ratio=np.hstack(local_ratio)
     pblh=np.hstack(pblh)
     wind_speed=np.hstack(wind_speed)
@@ -424,13 +466,12 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     q_ap0=q_ap[0,:,:].copy()
     #q_ap_v = np.ravel(q_ap0)
     nmeasure=len(y)
-    print nmeasure
     h_v = np.zeros((nmeasure,Ngrid))
     #local_sum=np.zeros((nmeasure))
     for ti in range(nmeasure):                        
         # Already multiplied by q in fp_senitivity            
         h_v[ti,:] = np.ravel(H_vary[ti,:,:])   #*q_ap_v   # Create sensitivty matrix spatially vectorised
-    
+
     #%%
     #################################################
     if inv_type in ('evencorr', 'corr'):
@@ -445,7 +486,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
             
     ############################################################
     # Create IC  
-    nBC=len(fp_data_H[sites[0]].region_bc)
+    #nBC=len(fp_data_H[sites[0]].region_bc)
     nfixed = len(fp_data_H[sites[0]].region)
     
     numsites=len(sites)
@@ -473,20 +514,35 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
         
     nBC_basis = len(fp_data_H[sites[0]].region_bc)
     nBC = nBC_basis*nmonths   # No. of bc_basis functions x nmonths
-    
+
+    nBC+=nBias # Add bias to input BC (if needed)
+    #nIC=nBC+nfixed+nBias
+
     nIC=nBC+nfixed
-    h_agg0 = np.zeros((nmeasure,k_ap+nIC))
+    h_agg0 = np.zeros((nmeasure,k_ap+nIC)) # Will be stacked in order of Bias term (if present), H_bc, H_fixed, H_vary
+
+    if nBias:
+	h_agg0[:,0] = H_bc[:,0] # zeroth region has been added to H_bc to be appropriate for bias term (1-sat,0-other)
+
     pdy_time = pandas.to_datetime(y_time)
     months = np.arange(pd_start.to_period('M').month, pd_start.to_period('M').month +nmonths)
     months2 = months.copy()
     months2[months>12]=months2[months>12]-12    # Make sure all months in range 1-12
-    
     for mn,month in enumerate(months2):
         wh_month = np.where(pdy_time.to_period('M').month == month)[0]
         if len(wh_month > 0):
-            h_agg0[wh_month,mn*nBC_basis:(mn+1)*nBC_basis] = H_bc[wh_month,:]  # Assign H_agg separately for each month
-   
-    x_agg=np.zeros((k_ap+nIC))+1.  
+            if nBias: # 0th term is for the bias, set 1:nBC to H_bc region terms
+	        h_agg0[wh_month,nBias+mn*nBC_basis:nBias+(mn+1)*nBC_basis] = H_bc[wh_month,nBias:]  # Assign H_agg separately for each month
+	    else:
+	    	h_agg0[wh_month,mn*nBC_basis:(mn+1)*nBC_basis] = H_bc[wh_month,:]  # Assign H_agg separately for each month
+    
+    #rt17603: Added on 26/07/2018 - Bug fix: H_fixed wasn't being assigned, equivalent values were just 0.0 in h_agg0 (and h_agg)
+    h_agg0[:,nBC:nIC] = H_fixed
+    
+    x_agg=np.zeros((k_ap+nIC))+1.
+    
+    if nBias:
+    	x_agg[0] = 0 # Set zero scaling on bias initially and allow to vary from here
 
     #%%
     # Define prior model uncertainty
@@ -566,17 +622,16 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
             regions_v[:,ib]=regions_v0.copy()+1
     
         for ri in range(k_ap):
-            wh_ri = np.where(regions_v0 == ri)      
+            wh_ri = np.where(regions_v0 == ri)
             for ti in range(nmeasure):
                 h_agg0[ti,ri+nIC]=np.sum(h_v[ti,wh_ri])
-                
-      
+
         y_model = np.dot(h_agg0,x_agg) 
         n0_ap = y_model-y
     
         h_agg[:,:k_ap+nIC,ib] = h_agg0.copy()
         n0[:,ib]=n0_ap.copy()
-       
+    
     #################################
            
     #%%
@@ -731,6 +786,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     endt2 = run_time.time()
     print endt2-endt
     
+    
     ##########################################
     h_v_all=np.zeros((nmeasure,Ngrid+nIC))  
     h_v_all[:,:nIC]=h_agg0[:,:nIC]
@@ -747,8 +803,13 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     props = np.zeros((nIC1+len(props_temp)),dtype=object)
     accepts = np.zeros((nIC1+len(props_temp)))
     rejects = np.zeros((nIC1+len(props_temp)))
-    for ii in range(nBC):
-        props[ii]="bc"+str(ii)
+    if nBias:
+    	props[0] = "bias"
+    	for ii in range(1,nBC):
+            props[ii]="bc"+str(ii)
+    else:
+    	for ii in range(0,nBC):
+            props[ii]="bc"+str(ii)
     for jj in range(nfixed):
         props[jj+nBC]="fixed"+str(jj)
     props[nIC1-1] = "vary"
@@ -835,10 +896,13 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     #Output files from tdmcmc_template.py stored in the form:
     # "output_" + network + "_" + species +  "_" + date + ".nc"
     
+    network_w = network.split('/')[-1]
+    
     fname=os.path.join(output_dir,
-                        "output_" + network + "_" + species + "_" + start_date + ".nc")
+                        "output_" + network_w + "_" + species + "_" + start_date + ".nc")
     for key in post_mcmc.keys():
         post_mcmc[key].encoding['zlib'] = True
     post_mcmc.to_netcdf(path=fname, mode='w')
 
     return post_mcmc
+

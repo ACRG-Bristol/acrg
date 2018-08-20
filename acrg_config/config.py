@@ -148,7 +148,7 @@ def str_check(string,error=True):
         out.encode('ascii','ignore')
     except (TypeError,SyntaxError):
         if error:
-            print "Could not convert input parameter '{0}' to str.".format(out)
+            print("WARNING: Could not convert input parameter '{0}' to str.".format(out))
         return None
     
     return out
@@ -183,7 +183,7 @@ def eval_check(string,error=True):
             out = eval("'"+string+"'") # An input string without quotes cannot be evaluated so try adding quotes
         except (NameError,SyntaxError):
             if error:
-                print "Could evaluate input '{0}' to any type.".format(string)
+                print("WARNING: Could not evaluate input '{0}' to any type.".format(string))
             return None
     
     return out
@@ -219,7 +219,7 @@ def list_check(string,force_convert=True,error=True):
                 out = [out]
             else:
                 if error:
-                    print "Could not convert input parameter '{0}' to list.".format(out)
+                    print("WARNING: Could not convert input parameter '{0}' to list.".format(out))
                 return None
     elif isinstance(out, str):
         out = [out]
@@ -387,7 +387,7 @@ def find_param_key(param_type,section=None,section_group=None):
         key = None
         key_type = None
         #raise Exception('Section/Classification {0}/{1} does not match to any key in input param_type'.format(section_group,section))
-        #print 'Param class cannot be found i for section of parameters not defined. Using {0} as default'.format(section_groups[0])
+        #print('Param class cannot be found i for section of parameters not defined. Using {0} as default'.format(section_groups[0]))
         #section_group = section_groups[0]
     
     return key,key_type
@@ -431,7 +431,7 @@ def get_value(name,config,section,param_type=None):
             value_type = types[key][name] # Find specified type of object for input parameter
         except KeyError:
             #raise Exception('Input parameter {0} in section {1} not expected (not found in param_type dictionary [{2}][{0}])'.format(name,section,key))
-            print "Type for input name '{0}' is not specified.".format(name)
+            print("Type for input name '{0}' is not specified.".format(name))
             value_type = None
     else:
         #print "Type for input name '{0}' is not specified.".format(name)
@@ -532,7 +532,7 @@ def extract_params(config_file,section=None,section_group=None,names=[],optional
                for key in keys:
                    names.extend(param_type[key].keys())
             elif (section and key_type == 'section_group'):
-                print 'Cannot create list of necessary input parameters created based on param_type input. Please check all inputs are included manually.'
+                print('WARNING: Cannot create list of necessary input parameters created based on param_type input. Please check all inputs are included manually.')
                 names = extracted_names # Set to just match names extracted from file           
             else:
                 names = all_parameters_in_param_type(param_type) # Extract all parameter names from param_type dictionary
@@ -550,14 +550,14 @@ def extract_params(config_file,section=None,section_group=None,names=[],optional
             try:
                 index = extracted_names.index(name)
             except ValueError:
-                print "Parameter '{0}' not found in configuration file (check specified section {1} or section_group {2} is correct).".format(name,section,section_group)
+                print("WARNING: Parameter '{0}' not found in configuration file (check specified section {1} or section_group {2} is correct).".format(name,section,section_group))
             else:
                 param[name] = get_value(name,config,match_section[index],param_type)
         else:
             if name in optional_param:
                 param[name] = None
             elif not param_type:
-                print "Parameter '{0}' not found in configuration file (check specified section {1} or section_group {2} is correct).".format(name,section,section_group)
+                print("WARNING: Parameter '{0}' not found in configuration file (check specified section {1} or section_group {2} is correct).".format(name,section,section_group))
             else:
                 if section:
                     raise KeyError("Parameter '{0}' not found in input configuration file in section '{1}'".format(name,section))
