@@ -33,6 +33,7 @@ import json
 import matplotlib.mlab as mlab
 from matplotlib.patches import Polygon
 from matplotlib.colors import BoundaryNorm
+from matplotlib.colors import Normalize
 from matplotlib import ticker
 import cartopy.crs as ccrs
 
@@ -230,7 +231,30 @@ def write_netcdf(flux_mean, flux_percentile, flux_it, flux_prior, flux_ap_percen
     ncF.close()
     print "Written " + experiment + " to " + outfile
 
-def plot_map(data,lon,lat, clevels=None, cmap=plt.cm.RdBu_r, label=None,
+def unbiasedDivergingCmap(data, zero = 0, minValue = None, maxValue = None):
+    """
+    Calculate the normalisation of a diverging cbar around a given value
+    Prevents bias due to asymetry in data affectin scale
+    
+    Args:
+        data : numpy array of data to plot
+        zero : the centre value of the cmap
+        minValue : smallest value to use in calculation
+        maxValue : largest value to use in calculation
+    
+    Returns:
+        a normalization function to be fed into plot
+    """
+    
+    if maxValue is None:
+        maxValue = np.amax(data)
+    if minValue is None:
+        minValue = np.amin(data)
+    maxRange = max(abs(maxValue-zero), abs(minValue-zero) )
+    
+    return Normalize(vmin = zero-maxRange, vmax = zero + maxRange, clip=True)
+
+def plot_map(data,lon,lat, clevels=None, divergeCentre = None, cmap=plt.cm.RdBu_r, label=None,
                  smooth = False, out_filename=None, stations=None, fignum=None,
                  title=None):
     
@@ -268,11 +292,19 @@ def plot_map(data,lon,lat, clevels=None, cmap=plt.cm.RdBu_r, label=None,
         clevels = np.arange(clevels[0], clevels[1], clevels[2])
         
     if smooth == True:
-        plt.contourf(lon, lat, data, transform=ccrs.PlateCarree(), cmap = cmap, levels=clevels)
+        if divergeCentre is None:
+            plt.contourf(lon, lat, data, transform=ccrs.PlateCarree(), cmap = cmap, levels=clevels)
+        else:
+            norm = unbiasedDivergingCmap(data, zero=divergeCentre, minValue=clevels[0], maxValue=clevels[-1])
+            plt.contourf(lon, lat, data, transform=ccrs.PlateCarree(), cmap = cmap, levels=clevels,
+                    norm = norm)
         cb = plt.colorbar(orientation='horizontal', pad=0.05)
     else:
-        norm = BoundaryNorm(clevels,ncolors=cmap.N,clip=True)
         lons, lats = np.meshgrid(lon,lat)
+        if divergeCentre is None:
+            norm = BoundaryNorm(clevels,ncolors=cmap.N,clip=True)
+        else:
+            norm = unbiasedDivergingCmap(data, zero=divergeCentre, minValue=clevels[0], maxValue=clevels[-1])
         cs = plt.pcolormesh(lons, lats, data,cmap=cmap, norm=norm, transform=ccrs.PlateCarree())
         cb = plt.colorbar(cs, orientation='horizontal', pad=0.05, extend='both')
                 
