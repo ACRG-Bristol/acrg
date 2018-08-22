@@ -21,7 +21,7 @@ country_emissions - calculate emissions from given list of countries
 
 import numpy as np
 import matplotlib.pyplot as plt
-from mpl_toolkits.basemap import Basemap
+import cartopy.crs as ccrs
 import xarray as xray
 import acrg_name as name
 from acrg_grid import areagrid
@@ -33,7 +33,9 @@ import json
 import matplotlib.mlab as mlab
 from matplotlib.patches import Polygon
 from matplotlib.colors import BoundaryNorm
+from matplotlib.colors import Normalize
 from matplotlib import ticker
+import cartopy.crs as ccrs
 
 acrg_path = os.getenv("ACRG_PATH")
 
@@ -401,7 +403,19 @@ def flux_percentile(ds,percentiles=[5,16,50,84,95]):
 
 def flux_diff(ds):
     '''
+    The flux_diff function calculates the flux difference between the prior and the posterior.
     
+    Args:
+        ds (xarray.Dataset) :
+            Output from run_tdmcmc() function (tdmcmc_inputs.py script).
+            Expects data set to contain:
+                x_post_vit - posterior values for each iteration flattened along lat-lon axis.
+                             Dimensions = nIt x NGrid (nlat x nlon)
+                q_ap       - a priori flux values on a latitude x longitude grid.
+                             Dimensions = nlat x nlon
+    Returns:
+        numpy.array (nlat x nlon):
+            Array containing flux difference values on a latitude x longitude grid.
     '''
     x_post_m = x_post_mean(ds)
     q_ap = ds.q_ap.values
@@ -479,11 +493,30 @@ def define_stations(ds,sites=[]):
     
     return stations
 
+def unbiasedDivergingCmap(data, zero = 0, minValue = None, maxValue = None):
+    """
+    Calculate the normalisation of a diverging cbar around a given value
+    Prevents bias due to asymetry in data affectin scale
+    
+    Args:
+        data : numpy array of data to plot
+        zero : the centre value of the cmap
+        minValue : smallest value to use in calculation
+        maxValue : largest value to use in calculation
+    
+    Returns:
+        a normalization function to be fed into plot
+    """
+    
+    if maxValue is None:
+        maxValue = np.amax(data)
+    if minValue is None:
+        minValue = np.amin(data)
+    maxRange = max(abs(maxValue-zero), abs(minValue-zero) )
+    
+    return Normalize(vmin = zero-maxRange, vmax = zero + maxRange, clip=True)
 
-#def plot_scaling(data,lon,lat, clevels=None, cmap=plt.cm.RdBu_r, label=None,
-#                 smooth = False, out_filename=None, stations=None, fignum=None,
-#                 title=None):
-def plot_map(data,lon,lat, clevels=None, cmap=plt.cm.RdBu_r, label=None,
+def plot_map(data,lon,lat, clevels=None, divergeCentre = None, cmap=plt.cm.RdBu_r, label=None,
                  smooth = False, out_filename=None, stations=None, fignum=None,
                  title=None):
     
@@ -509,72 +542,47 @@ def plot_map(data,lon,lat, clevels=None, cmap=plt.cm.RdBu_r, label=None,
             Created plot is saved to file
         Else:
             Plot is displayed interactively
-    """    
-    lon_range = (np.min(lon), np.max(lon))
-    lat_range = (np.min(lat), np.max(lat))
-    m = Basemap(projection='gall',
-            llcrnrlat=lat_range[0], urcrnrlat=lat_range[1],
-            llcrnrlon=lon_range[0], urcrnrlon=lon_range[1],
-            resolution='l')
+    """        
+    ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=np.median(lon)))
+    ax.set_extent([lon[0], lon[-1], lat[0], lat[-1]], crs=ccrs.PlateCarree())
+    ax.coastlines()
 
-    lons, lats = np.meshgrid(lon,lat)
-    mapx, mapy = m(lons, lats)
-    
-    fig = plt.figure(fignum,figsize=(8,8))
-    fig.add_axes([0.1,0.1,0.8,0.8])
-    
-    m.drawcoastlines()
-    m.drawcountries() 
-    
-    def draw_screen_poly( lats, lons, m):
-            x, y = m( lons, lats )
-            xy = zip(x,y)
-            poly = Polygon( xy, facecolor='red', alpha=0.4 )
-            plt.gca().add_patch(poly)
-    
     if clevels is None:
         print "Warning: using default contour levels. Include clevels keyword to change"
         clevels = np.arange(-2., 2.1, 0.1)
-
-    if smooth == True:
-        
-        cs = m.contourf(mapx,mapy,data, clevels, extend='both', cmap=cmap)
-        cb = m.colorbar(cs, location='bottom', pad="5%")
-        
     else:
-        norm = BoundaryNorm(clevels,
-                        ncolors=cmap.N,
-                        clip=True)
-        cs = m.pcolormesh(mapx, mapy,
-                data,cmap=cmap, norm=norm)
-        cb = m.colorbar(cs, location='bottom', pad="5%", extend='both')
+        clevels = np.arange(clevels[0], clevels[1], clevels[2])
         
+    if smooth == True:
+        if divergeCentre is None:
+            plt.contourf(lon, lat, data, transform=ccrs.PlateCarree(), cmap = cmap, levels=clevels)
+        else:
+            norm = unbiasedDivergingCmap(data, zero=divergeCentre, minValue=clevels[0], maxValue=clevels[-1])
+            plt.contourf(lon, lat, data, transform=ccrs.PlateCarree(), cmap = cmap, levels=clevels,
+                    norm = norm)
+        cb = plt.colorbar(orientation='horizontal', pad=0.05)
+    else:
+        lons, lats = np.meshgrid(lon,lat)
+        if divergeCentre is None:
+            norm = BoundaryNorm(clevels,ncolors=cmap.N,clip=True)
+        else:
+            norm = unbiasedDivergingCmap(data, zero=divergeCentre, minValue=clevels[0], maxValue=clevels[-1])
+        cs = plt.pcolormesh(lons, lats, data,cmap=cmap, norm=norm, transform=ccrs.PlateCarree())
+        cb = plt.colorbar(cs, orientation='horizontal', pad=0.05, extend='both')
+                
     if label is not None:        
         cb.set_label(label,fontsize=14) 
     if title is not None:
         plt.title(title, fontsize=16) 
-               
-    if stations is not None:
         
-        nsites=len(stations['sites'])
-        sites=stations['sites']
-        #ilon=np.zeros((nsites))
-        #ilat=np.zeros((nsites))
+    if stations is not None:
+       
         for si,site in enumerate(stations['sites']):
-            #ilon[si]=stations[site+'_lon']
-            #ilat[si]=stations[site+'_lat']
             ilon=stations[site+'_lon']
             ilat=stations[site+'_lat']
             
-            mlon,mlat=m(ilon,ilat)
-            site_loc=m.plot(mlon,mlat, linestyle='None',  
-                            marker='o', color='black', markersize=8)
-            #markeredgewidth=0.0,                 
-            yoffset = 0.022*(m.ymax-m.ymin) 
-            xoffset = 0.012*(m.xmax-m.xmin)             
-        #for ii in range(nsites):
-        #    plt.text(mlon[ii]+xoffset,
-        #             mlat[ii]+yoffset,sites[ii], fontsize='24', color='black')   
+            plt.plot(ilon, ilat, color = 'black', marker = 'o', markersize=8,  transform=ccrs.PlateCarree())
+               
     tick_locator = ticker.MaxNLocator(nbins=5)
     cb.locator = tick_locator
     cb.update_ticks()                 
@@ -583,7 +591,6 @@ def plot_map(data,lon,lat, clevels=None, cmap=plt.cm.RdBu_r, label=None,
         plt.close()
     else:
         plt.show()
-
     
     
 def regions_histogram(k_it, out_filename=None, fignum=2):
