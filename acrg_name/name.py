@@ -1258,17 +1258,19 @@ def merge_sensitivity(fp_data_H,
         if remove_nan:
             fp_data_H[site] = fp_data_H[site].dropna("time", how="all")
         
-        y.append(fp_data_H[site].mf.values)
         y_site.append([site for i in range(len(fp_data_H[site].coords['time']))])
         y_time.append(fp_data_H[site].coords['time'].values)        
         
-        # Approximate y_error
-        if "vmf" in fp_data_H[site].keys():
-            y_error.append(fp_data_H[site].vmf.values)
-        elif "dmf" in fp_data_H[site].keys():
-            y_error.append(fp_data_H[site].dmf.values)
-        else:
-            print "Measurement error not found in dataset for site %s" %site
+        if 'mf' in fp_data_H[site].data_vars:
+            y.append(fp_data_H[site].mf.values)
+        
+            # Approximate y_error
+            if "vmf" in fp_data_H[site].keys():
+                y_error.append(fp_data_H[site].vmf.values)
+            elif "dmf" in fp_data_H[site].keys():
+                y_error.append(fp_data_H[site].dmf.values)
+            else:
+                print "Measurement error not found in dataset for site %s" %site
 
         if 'H' in fp_data_H[site].data_vars:        
             # Make sure H matrices are aligned in the correct dimensions
@@ -1276,31 +1278,41 @@ def merge_sensitivity(fp_data_H,
                 H.append(fp_data_H[site].H.values)
             else:
                 H.append(fp_data_H[site].H.values.T)
+                
         if 'H_bc' in fp_data_H[site].data_vars:         
             if fp_data_H[site].H_bc.dims[0] == "time":
                 H_bc.append(fp_data_H[site].H_bc.values)
             else:
                 H_bc.append(fp_data_H[site].H_bc.values.T)
 
-    y = np.hstack(y)
-    y_error = np.hstack(y_error)
+
+    out_variables = ()
+
     y_site = np.hstack(y_site)
     y_time = np.hstack(y_time)
+
+    if len(y) > 0:
+        y = np.hstack(y)
+        out_variables += (y,)
+    else:
+        out_variables += (None,)
     
-    if len(H) > 0:
-        H = np.vstack(H)
-            
-    if len(H_bc) > 0:
-        H_bc = np.vstack(H_bc)
-    
-    out_variables = y, y_error, y_site, y_time
-    
-    if len(H_bc) > 0:
-        out_variables += (H_bc,)
+    if len(y_error) > 0:
+        y_error = np.hstack(y_error)
+        out_variables += (y_error,)
     else:
         out_variables += (None,)
         
+    out_variables += (y_site, y_time)
+    
+    if len(H_bc) > 0:
+        H_bc = np.vstack(H_bc)
+        out_variables += (H_bc,)
+    else:
+        out_variables += (None,) 
+    
     if len(H) > 0:
+        H = np.vstack(H)
         out_variables += (H,)
     else:
         out_variables += (None,)
