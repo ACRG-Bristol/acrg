@@ -93,12 +93,43 @@ network = param['network']
 fp_basis_case = param['fp_basis_case']
 bc_basis_case = param['bc_basis_case']
 
+# Optional variables to set
+
+if 'emissions_name' in param.keys():
+    emissions_name = param['emissions_name']
+else:
+    emissions_name = None
+
+if 'HiTRes' in param.keys():
+    HiTRes = param['HiTRes']
+else:
+    HiTRes = False
+
+
 if verbose:
     print 'Measurement details: sites - {0}, species - {1}, domain - {2}, network - {3}'.format(sites,species,domain,network)
     print 'Date range: {0} - {1}'.format(start_date,end_date)
-    print 'Basis case for footprint: {0}'.format(fp_basis_case)
+    if emissions_name != None:
+        if type(emissions_name) == str:
+            print 'Emissions name: {0}'.format(emissions_name)
+        elif type(emissions_name) == dict:
+            print 'Emissions sources:'
+            for i in emissions_name.keys():
+                if type(emissions_name[i]) == str:
+                    print '     {0} - {1}'.format(i, emissions_name[i])
+                elif type(emissions_name[i]) == dict:
+                    print '     {0} - {1} (HiTRes)'.format(i, emissions_name[i]['high_freq'])
+    if type(fp_basis_case) == str:
+        print 'Basis case for footprint: {0}'.format(fp_basis_case)
+    elif type(fp_basis_case) == dict:
+        print 'Basis case used for each emissions source:'
+        for i in fp_basis_case.keys():
+            print '     {0} - {1}'.format(i, fp_basis_case[i])
     print 'Basis case for boundary conditions: {0}\n'.format(bc_basis_case)
+    if HiTRes == True:
+        print 'Using high time resolution footprints'
     print '\n---------------\n'
+
 
 ################################################################
 # SET OUTPUT DIRECTORY AND OUTPUT DETAILS
@@ -315,8 +346,9 @@ pdf_p2_hparam1[-1]=0.2
 pdf_p2_hparam2[-1]=2.
 pdf_param2[nIC:,:]=1.
 
+
 post_mcmc=run_tdmcmc.run_tdmcmc(sites, meas_period, av_period, species, start_date, end_date,  
-    domain, network, fp_basis_case, bc_basis_case, reversible_jump, parallel_tempering,    
+    domain, network,emissions_name, fp_basis_case, bc_basis_case, HiTRes, reversible_jump, parallel_tempering,    
     bl_period, kmin, kmax, k_ap, nIt, burn_in ,nsub,    
     nbeta, beta, sigma_model_pdf, sigma_model_ap,     
     sigma_model_hparams, stepsize_sigma_y, stepsize_clon, stepsize_clat,    
