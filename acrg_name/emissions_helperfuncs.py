@@ -27,6 +27,7 @@ from acrg_grid import areagrid
 import datetime
 import pandas as pd
 import os
+from acrg_tdmcmc.tdmcmc_post_process import molar_mass
 
 def getGFED(year, lon_out, lat_out, timeframe='monthly', monthrange = [1,2,3,4,5,6,7,8,9,10,11,12], soi='CH4', incagr=False):
     """
@@ -296,15 +297,16 @@ def getedgarannualtotals(year, lon_out, lat_out, soi='CH4'):
     edgar = edpath+'v432_'+soi+'_'+str(year)+'.0.1x0.1.nc'
     
     #Species molar mass
-    if soi == 'CH4':
-        speciesmm = 16.0425
-    elif soi == 'N2O':
-        speciesmm = 44.013
-    else:
-        print "No molar mass for species %s." % soi
-        print "Please add this and rerun the script"
-        print "Returning None"
-        return(None)
+    speciesmm = molar_mass(soi)
+#    if soi == 'CH4':
+#        speciesmm = 16.0425
+#    elif soi == 'N2O':
+#        speciesmm = 44.013
+#    else:
+#        print "No molar mass for species %s." % soi
+#        print "Please add this and rerun the script"
+#        print "Returning None"
+#        return(None)
         
     
     ds = xr.open_dataset(edgar)
@@ -603,11 +605,12 @@ def getNAEI(year, lon_out, lat_out, soi, sector):
         ilon = np.where(abs(lonarr-lon[i]) == np.min(abs(lonarr - lon[i])) )
         grdemis[ilat, ilon] = emissions[i]
 
-    #Convert to mol/m2/s        
-    if soi == 'ch4':
-        speciesmm = 16.0425
-    if soi == 'n2o':
-        speciesmm = 44.013        
+    #Convert to mol/m2/s
+    speciesmm = molar_mass(soi)     
+#    if soi == 'ch4':
+#        speciesmm = 16.0425
+#    if soi == 'n2o':
+#        speciesmm = 44.013        
     if year % 4 == 0:
         diy = 365
     else:
@@ -738,15 +741,17 @@ def getedgarannualsectors(year, lon_out, lat_out, sectors, soi='CH4'):
     
         
     #Species molar mass
-    if soi == 'CH4':
-        speciesmm = 16.0425
-    elif soi == 'N2O':
-        speciesmm = 44.013
-    else:
-        print "No molar mass for species %s." % soi
-        print "Please add this and rerun the script"
-        print "Returning None"
-        return(None)
+    speciesmm = molar_mass(soi)
+#    if soi == 'CH4':
+#        #speciesmm = 16.0425
+#        speciesmm = molar_mass(soi)
+#    elif soi == 'N2O':
+#        speciesmm = 44.013
+#    else:
+#        print "No molar mass for species %s." % soi
+#        print "Please add this and rerun the script"
+#        print "Returning None"
+#        return(None)
     
     
     #Read in EDGAR data of annual mean CH4 emissions for each sector
@@ -877,15 +882,16 @@ def getedgarmonthlysectors(months, lon_out, lat_out, sectors, soi='CH4'):
     print 'Note that the only year for monthly emissions is 2010 so using that.'
         
     #Species molar mass
-    if soi == 'CH4':
-        speciesmm = 16.0425
-    elif soi == 'N2O':
-        speciesmm = 44.013
-    else:
-        print "No molar mass for species %s." % soi
-        print "Please add this and rerun the script"
-        print "Returning None"
-        return(None)
+    speciesmm = molar_mass(soi)
+#    if soi == 'CH4':
+#        speciesmm = 16.0425
+#    elif soi == 'N2O':
+#        speciesmm = 44.013
+#    else:
+#        print "No molar mass for species %s." % soi
+#        print "Please add this and rerun the script"
+#        print "Returning None"
+#        return(None)
     
     
     #Read in EDGAR data of annual mean CH4 emissions for each sector
