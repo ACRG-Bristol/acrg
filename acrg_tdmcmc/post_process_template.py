@@ -18,6 +18,7 @@ import glob
 import pandas
 import os
 import matplotlib.pyplot as plt
+import xarray as xr
 
 acrg_path=os.getenv('ACRG_PATH')
 
@@ -129,9 +130,9 @@ if __name__=="__main__":
 
     dates=["2012-01-01"] # Can be a list of one date or many dates
     species="ch4"
-    domain="SOUTHAMERICA"
+    domain="EUROPE"
 
-    network="GOSAT-BRAZIL"
+    network="AGAGE"
     experiment="MHD_TAC"
     countries=np.asarray(['UNITED KINGDOM', 'IRELAND', 'FRANCE', 'GERMANY', 
                           'DENMARK', 'BELGIUM', 'NETHERLANDS', 'LUXEMBOURG'])
@@ -142,13 +143,14 @@ if __name__=="__main__":
     
     #### POST-PROCESSING OPTIONS ####
     write_outfile=False
-    append_outfile=True
+    append_outfile=False
     
-    calc_country=True # At the moment calc_country must be True to write or append to nc file.
+    calc_country=False # At the moment calc_country must be True to write or append to nc file.
 
     plot_scale_map=False
-    plot_abs_map=False
-    plot_y_timeseries=False
+    plot_diff_map=False
+
+    plot_y_timeseries=True
     plot_regions=False
     plot_density=False
     
@@ -168,15 +170,18 @@ if __name__=="__main__":
     s_cmap = plt.cm.RdBu_r
     s_smooth = True
     s_out_filename = None  # None means plot will not be written to file
+    #s_grid_maps = False
     
-    # plot_abs_map
+    # plot_diff_map
     d_clevels = np.arange(-1.,1.05,0.05) # Set to None to set to defaults.
     d_cmap = plt.cm.RdBu_r
     d_smooth = False
     d_out_filename = None  # None means plot will not be written to file
+    #d_grid_maps = False
     
     # plot_y_timeseries
     y_out_filename = None  # None means plot will not be written to file
+    #combine = True # ** Option not implemented yet **
     
     # plot regions
     r_out_filename = None  # None means plot will not be written to file
@@ -184,6 +189,11 @@ if __name__=="__main__":
     # plot_density
     de_out_filename = None  # None means plot will not be written to file
     
+    
+    ### QUICK INITIAL CHECKS BASED ON INPUTS
+    if write_outfile or append_outfile:
+        if calc_country != True:
+            raise Exception("At the moment, calc_country must be set to True to write or append to file.")
     
     #### IMPLEMENT PROCESSING OPTIONS ####
     print 'Beginning post processing'
@@ -242,7 +252,7 @@ if __name__=="__main__":
                                  stations=stations,out_filename=s_out_filename)
     
     ## Plot absolute difference map
-    if plot_abs_map == True:
+    if plot_diff_map == True:
         for ds in ds_list:
             lon=np.asarray(ds.lon.values)
             lat=np.asarray(ds.lat.values)
@@ -258,6 +268,15 @@ if __name__=="__main__":
      
     ## Plot y timeseries
     if plot_y_timeseries == True:
+#        if combine == True:
+#            for i,ds in enumerate(ds_list):
+#                if i == 0:
+#                    ds_combined = ds
+#                else:
+#                    ds_combined = xr.concat([ds_combined,ds])
+#            y_post_it,y_bg_it=process.plot_timeseries(ds_combined, fig_text=None, 
+#                                                      ylim=None, out_filename=y_out_filename)
+#        else:
         for ds in ds_list:
             y_post_it,y_bg_it=process.plot_timeseries(ds, fig_text=None, 
                                                       ylim=None, out_filename=y_out_filename)
@@ -275,9 +294,6 @@ if __name__=="__main__":
  
     if write_outfile == True or append_outfile == True:
         nc_outfile=os.path.join(output_directory,nc_outfile)
-        
-        if calc_country != True:
-            raise Exception("At the moment, calc_country must be set to True to write or append to file.")
         
         if write_outfile:
             mode = "write"
