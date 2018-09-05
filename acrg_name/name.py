@@ -281,7 +281,7 @@ def footprints(sitecode_or_filename, fp_directory = fp_directory,
         return fp
 
 
-def flux(domain, species, start = None, end = None, flux_directory=flux_directory):
+def flux(domain, species, emissions_name=None, start = None, end = None, flux_directory=flux_directory):
     """
     The flux function reads in all flux files for the domain and species as an xarray Dataset.
     Note that at present ALL flux data is read in per species per domain or by emissions name.
@@ -317,7 +317,6 @@ def flux(domain, species, start = None, end = None, flux_directory=flux_director
         return None
     
     flux_ds = read_netcdfs(files)
-    
     # Check that time coordinate is present
     if not "time" in flux_ds.coords.keys():
         print("ERROR: No 'time' coordinate " + \
@@ -346,7 +345,17 @@ def flux(domain, species, start = None, end = None, flux_directory=flux_director
             end = pd.to_datetime(end)
             month_end = dt.datetime(end.year, end.month, 1, 0, 0) - \
                         dt.timedelta(seconds = 1)
-            
+           
+            if 'climatology' in emissions_name:
+                ndate = pd.to_datetime(flux_ds.time.values)
+                dateadj = ndate[month_start.month-1] - month_start  #Adjust climatology to start in same year as obs  
+                ndate = ndate - dateadj
+                flux_ds = flux_ds.update({'time' : ndate})  
+                flux_tmp = flux_ds.copy()
+                while month_end > ndate[-1]:
+                    ndate = ndate + pd.DateOffset(years=1)      
+                    flux_ds = xr.merge([flux_ds, flux_tmp.update({'time' : ndate})])
+
             flux_timeslice = flux_ds.sel(time=slice(month_start, month_end))
             if len(flux_timeslice.time)==0:
                 flux_timeslice = flux_ds.sel(time=start, method = 'ffill')
@@ -735,7 +744,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
         Dictionary of the form {"MHD": MHD_xarray_dataset, "TAC": TAC_xarray_dataset, ".flux": dictionary_of_flux_datasets, ".bc": boundary_conditions_dataset}:
             combined dataset for each site
     """
-
+    
     sites = [key for key in data.keys() if key[0] != '.']
     attributes = [key for key in data.keys() if key[0] == '.']
     
@@ -875,15 +884,24 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                 end_date = ds_et
             else:
                 end_date = fp_et
-                
-            site_ds = site_ds.sel(time=slice(str(start_date.data), str(end_date.data)))
-            site_fp = site_fp.sel(time=slice(str(start_date.data), str(end_date.data)))
+            
+            # rt17603: 24/07/2018 - Rounding to the nearest second(+/-1). Needed for sub-second dates otherwise sel was giving a KeyError
+            start_s = str(np.round(start_date.data.astype(np.int64)-5e8,-9).astype('datetime64[ns]')) # subtract half a second to ensure lower range covered
+            end_s = str(np.round(end_date.data.astype(np.int64)+5e8,-9).astype('datetime64[ns]')) # add half a second to ensure upper range covered
+            
+            site_ds = site_ds.sel(time=slice(start_s,end_s))
+            site_fp = site_fp.sel(time=slice(start_s,end_s))
+            
+            #site_ds = site_ds.sel(time=slice(str(start_date.data),str(end_date.data)))
+            #site_fp = site_fp.sel(time=slice(str(start_date.data),str(end_date.data)))
             
             base = start_date.dt.hour.data + start_date.dt.minute.data/60. + start_date.dt.second.data/3600.
             if (ds_timeperiod >= fp_timeperiod) or (resample_to_data == True):
-                site_fp = site_fp.resample(str(ds_timeperiod/3600e9)+'H', dim='time', how='mean', base=base)
+                resample_period = str(round(fp_timeperiod/3600e9,5))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
+                site_fp = site_fp.resample(resample_period, dim='time', how='mean', base=base)
             elif ds_timeperiod < fp_timeperiod or (resample_to_data == False):
-                site_ds = site_ds.resample(str(fp_timeperiod/3600e9)+'H', dim='time', how='mean', base=base)
+                resample_period = str(round(fp_timeperiod/3600e9,5))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
+                site_ds = site_ds.resample(resample_period, dim='time', how='mean', base=base)
                         
             site_ds = combine_datasets(site_ds, site_fp,
                                        method = "ffill",
@@ -1034,7 +1052,7 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                 basis_func = basis(domain = domain, basis_case = basis_case[source], basis_directory = basis_directory)
             else:
                 basis_func = basis(domain = domain, basis_case = basis_case['all'], basis_directory = basis_directory)
-
+            
             if type(fp_and_data['.flux'][source]) == dict:
                 if 'fp_HiTRes' in fp_and_data[site].keys():
                     site_bf = xr.Dataset({"fp_HiTRes":fp_and_data[site]["fp_HiTRes"],
@@ -1058,7 +1076,7 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                     basis_func = basis_func.isel(time=0)
             
                 site_bf = xr.merge([site_bf, basis_func])
-            
+                
                 H = np.zeros((len(site_bf.region),len(site_bf.time)))
             
                 base_v = site_bf.basis.values.reshape((len(site_bf.lat)*len(site_bf.lon), len(site_bf.region)))
@@ -1079,7 +1097,7 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                 print("Warning: Using basis functions without a region dimension may be deprecated shortly.")
         
                 site_bf = combine_datasets(site_bf,basis_func, method='ffill')
-            
+ 
                 H = np.zeros((int(np.max(site_bf.basis)),len(site_bf.time)))
 
                 basis_scale = xr.Dataset({'basis_scale': (['lat','lon','time'],
@@ -2092,12 +2110,12 @@ class get_country:
             name=np.asarray(name_temp)
         
         else:
-            name_temp = f.variables['name'][:,:]
+            name_temp = f.variables['names'][:]
             f.close()
     
             name=[]
-            for ii in range(len(name_temp[:,0])):
-                name.append(''.join(name_temp[ii,:]))
+            for ii in range(len(name_temp)):
+                name.append(''.join(name_temp[ii]))
             name=np.asarray(name)
     
     

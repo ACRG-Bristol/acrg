@@ -1,9 +1,0 @@
-# NOTE: step is startStep
-
-alias mars.step = startStep;
-
-# Only ERA15 has time and step 
-if(class != 3) { 
-	unalias mars.time; 
-	unalias mars.step; 
-}

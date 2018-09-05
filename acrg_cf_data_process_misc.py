@@ -1014,6 +1014,8 @@ def nies(fname, species, site, units = "ppt"):
                          }
     
     
+    repeatability = {"CFC-11": 0.008}
+    
     if fname.split(".")[1] == "xlsx":
         df = pd.read_excel(fname, parse_dates = [0], index_col = [0])
     elif fname.split(".")[1] == "csv":
@@ -1040,7 +1042,7 @@ def nies(fname, species, site, units = "ppt"):
 
     
     # Add a repeatability column
-    df[species + "_repeatability"] = df[species]*0.05
+    df[species + "_repeatability"] = df[species]*repeatability[species]
 
     # Convert to dataset
     ds = xray.Dataset.from_dataframe(df)
@@ -1549,10 +1551,8 @@ def uex(species):
                     }
             }
     
-    if species.lower() == 'ch4':
-        fnames = sorted(glob.glob(join(params["directory"],"*.txt")))
-    elif species.lower() == 'n2o':
-        fnames = sorted(glob.glob(join(params["directory"],"*.dat")))
+
+    fnames = sorted(glob.glob(join(params["directory"], ("*" + species.upper() +"*.dat"))))
     
     df = []
     
@@ -1573,7 +1573,7 @@ def uex(species):
                          parse_dates = {"time": ["DATE", "TIME"]},
                          index_col = "time")
         
-        dff = dff[["DATA", "ND", "SD"]]
+        dff = dff[["DATA", "ND", "SD", "F"]]
     
         dff.rename(columns = {"DATA" : species.upper(),
                                 "ND": (species.upper() + "_number_of_observations"),
@@ -1589,10 +1589,13 @@ def uex(species):
     df = df.reset_index().drop_duplicates(subset='index').set_index('index')              
     df.index.name = "time"
     
+    # filter data where the flag > 0 #
+    df = df[df['F']==0]
+    
     if species.lower() == 'n2o':
         # hack to filter spurious data but need more permanent fix from UEx!!!! #
         df = df[df['N2O']>326]
-        df = df[df['N2O']<337]
+#        df = df[df['N2O']<337]
  
     # Convert to xray dataset
     ds = xray.Dataset.from_dataframe(df)

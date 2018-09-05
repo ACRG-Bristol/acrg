@@ -248,7 +248,7 @@ def getGFED(year, lon_out, lat_out, timeframe='monthly', monthrange = [1,2,3,4,5
 def getedgarannualtotals(year, lon_out, lat_out, soi='CH4'):
     """
     Get annual emission totals for species of interest from EDGAR v4.3.2 data.
-    At the time of making this the only species available are CH4 and N20.
+    At the time of making this the only species available are CH4 and N2O.
     Regrids to the desired lats and lons.
     
     Args:
@@ -295,9 +295,21 @@ def getedgarannualtotals(year, lon_out, lat_out, soi='CH4'):
     #units are in kg/m2/s
     edgar = edpath+'v432_'+soi+'_'+str(year)+'.0.1x0.1.nc'
     
+    #Species molar mass
+    if soi == 'CH4':
+        speciesmm = 16.0425
+    elif soi == 'N2O':
+        speciesmm = 44.013
+    else:
+        print "No molar mass for species %s." % soi
+        print "Please add this and rerun the script"
+        print "Returning None"
+        return(None)
+        
+    
     ds = xr.open_dataset(edgar)
     soiname = 'emi_'+soi.lower()    
-    tot = ds[soiname].values*1e3/16.04
+    tot = ds[soiname].values*1e3/speciesmm
     lat_in = ds.lat.values
     lon_in = ds.lon.values
     
@@ -475,8 +487,8 @@ def getnaeiandedgarCH4(lon_out, lat_out):
     
     Note:
         Raw NAEI data are in /dagage2/agage/metoffice/naei/naei_raw_priors
-        Currently this is for CH4 and N20: 2012, 2013, 2015.
-        A more useful function would be to read this in etc. 
+        Currently this is for CH4 and N2O: 2012, 2013, 2015.
+        Use getNAEI for this. 
         
     """
     
@@ -600,10 +612,317 @@ def getNAEI(year, lon_out, lat_out, soi, sector):
         diy = 365
     else:
         diy = 366    
-    grdemis = grdemis*1e3 / (diy * 3600*24) / speciesmm
+    grdemis = grdemis / (diy * 3600*24) / speciesmm
     
     #Regrid to desired lats and lons
     narr, reg = regrid2d(grdemis, latarr, lonarr,
                                  lat_out, lon_out)
 
+    return(narr)
+
+def getedgarannualsectors(year, lon_out, lat_out, sectors, soi='CH4'):
+    """
+    Get annual emission totals for species of interest from EDGAR v4.3.2 data
+    for sector or sectors.
+    Regrids to the desired lats and lons.
+    If there is no data for the species you are looking at you may have to 
+    download it from: 
+    http://edgar.jrc.ec.europa.eu/overview.php?v=432_GHG&SECURE=123
+    and placed in: 
+    /data/shared/Gridded_fluxes/<species>/EDGAR_v4.3.2/<species>_sector_yearly/
+    
+    Args:
+        year (int): 
+            Year of interest
+        lon_out (array): 
+            Longitudes to output the data on
+        lat_out (array):
+            Latitudes to output the data on
+        sectors (list):
+            List of strings of sectors to get emissions for.
+            These will be combined to make one array.
+            See 'Notes' for names of sectors
+        soi (str):
+            Which species you want to look at. 
+            e.g. soi = 'CH4'
+            Default = 'CH4'
+    
+    Returns:
+        narr (array): 
+            Array of regridded emissions in mol/m2/s.
+            Dimensions are [lat, lon]
+        
+    Notes:
+        Names of EDGAR sectors:
+           'powerindustry'; 
+           'oilrefineriesandtransformationindustry'; 
+           'combustionformanufacturing'; 
+           'aviationclimbinganddescent';  
+           'aviationcruise'; 
+           'aviationlandingandtakeoff';  
+           'aviationsupersonic'; 
+           'roadtransport'; 
+           'railwayspipelinesandoffroadtransport'; 
+           'shipping';  
+           'energyforbuildings';  
+           'fuelexploitation'; 
+           'nonmetallicmineralsproduction';  
+           'chemicalprocesses';
+           'ironandsteelproduction'; 
+           'nonferrousmetalsproduction'; 
+           'nonenergyuseoffuels'; 
+           'solventsandproductsuse'; 
+           'entericfermentation'; 
+           'manuremanagement';  
+           'agriculturalsoils';  
+           'indirectN2Oemissionsfromagriculture'; 
+           'agriculturalwasteburning';  
+           'solidwastelandfills';  
+           'wastewaterhandling';  
+           'Solid waste incineration';  
+           'fossilfuelfires'; 
+           'indirectemissionsfromNOxandNH3';  
+    """
+    
+    
+    soi = soi.upper() #Make sure species is uppercase
+    #Path to EDGAR files
+    edpath = '/data/shared/Gridded_fluxes/'+soi+'/EDGAR_v4.3.2/'+soi+'_sector_yearly/'
+    
+    #Dictionary of codes for sectors
+    secdict = {'powerindustry' : '1A1a', 
+               'oilrefineriesandtransformationindustry' : '1A1b_1A1c_1A5b1_1B1b_1B2a5_1B2a6_1B2b5_2C1b',
+               'combustionformanufacturing' : '1A2',
+               'aviationclimbinganddescent' : '1A3a_CDS',
+               'aviationcruise' : '1A3a_CRS',
+               'aviationlandingandtakeoff' : '1A3a_LTO',
+               'aviationsupersonic' : '1A3a_SPS',
+               'roadtransport' : '1A3b',
+               'railwayspipelinesandoffroadtransport' : '1A3c_1A3e',
+               'shipping' : '1A3d_1C2',
+               'energyforbuildings' : '1A4',
+               'fuelexploitation' : '1B1a_1B2a1_1B2a2_1B2a3_1B2a4_1B2c',
+               'nonmetallicmineralsproduction' : '2A',
+               'chemicalprocesses': '2B',
+               'ironandsteelproduction' : '2C1a_2C1c_2C1d_2C1e_2C1f_2C2',
+               'nonferrousmetalsproduction' : '2C3_2C4_2C5',
+               'nonenergyuseoffuels' : '2G',
+               'solventsandproductsuse' :  '3',
+               'entericfermentation' : '4A',
+               'manuremanagement' : '4B',
+               'agriculturalsoils' : '4C_4D',
+               'indirectN2Oemissionsfromagriculture' : '4D3',
+               'agriculturalwasteburning' : '4F',
+               'solidwastelandfills' : '6A_6D',
+               'wastewaterhandling' : '6B',
+               'Solid waste incineration' : '6C',
+               'fossilfuelfires' : '7A',
+               'indirectemissionsfromNOxandNH3' : '7B_7C'           
+    } 
+    
+    #Check to see range of years. If desired year falls outside of this range 
+    #then take closest year
+    possyears = np.empty(shape=[0,0],dtype=int)
+    for f in glob.glob(edpath+'v432_'+soi+'_*'):
+        fname = f.split('/')[-1]
+        fyear = fname[9:13]      #Extract year from filename
+        possyears = np.append(possyears, int(fyear))
+    if year > max(possyears):
+        print "%s is later than max year in EDGAR database" % str(year)
+        print "Using %s as the closest year" % str(max((possyears)))
+        year = max(possyears)
+    if year < min(possyears):
+        print "%s is earlier than min year in EDGAR database" % str(year)
+        print "Using %s as the closest year" % str(min((possyears)))
+        year = min(possyears)
+    
+        
+    #Species molar mass
+    if soi == 'CH4':
+        speciesmm = 16.0425
+    elif soi == 'N2O':
+        speciesmm = 44.013
+    else:
+        print "No molar mass for species %s." % soi
+        print "Please add this and rerun the script"
+        print "Returning None"
+        return(None)
+    
+    
+    #Read in EDGAR data of annual mean CH4 emissions for each sector
+    #These are summed together
+    #units are in kg/m2/s
+    tot = None
+    for sec in sectors:
+        edgar = edpath+'v432_'+soi+'_'+str(year)+'_IPCC_'+secdict[sec]+'.0.1x0.1.nc'    
+        if os.path.isfile(edgar):
+            ds = xr.open_dataset(edgar)
+            soiname = 'emi_'+soi.lower()
+            if tot is None:
+                tot = ds[soiname].values*1e3/speciesmm
+            else:
+                tot += ds[soiname].values*1e3/speciesmm
+        else:
+            print 'No annual file for sector %s and %s' % (sec, soi)
+        
+    lat_in = ds.lat.values
+    lon_in = ds.lon.values
+    
+    nlat = len(lat_out)
+    nlon = len(lon_out) 
+    
+    narr = np.zeros((nlat, nlon))    
+    narr, reg = regrid2d(tot, lat_in, lon_in,
+                             lat_out, lon_out)
+    return(narr)   
+
+def getedgarmonthlysectors(months, lon_out, lat_out, sectors, soi='CH4'):
+    """
+    Get 2010 monthly emissions for species of interest from EDGAR v4.3.2 data
+    for sector or sectors.
+    Regrids to the desired lats and lons.
+    If there is no data for the species you are looking at you may have to 
+    download it from: 
+    http://edgar.jrc.ec.europa.eu/overview.php?v=432_GHG&SECURE=123
+    and place it in: 
+    /data/shared/Gridded_fluxes/<species>/EDGAR_v4.3.2/<species>_sector_monthly/
+    
+    Args:
+        months (list of int): 
+            Desired months.
+        lon_out (array): 
+            Longitudes to output the data on
+        lat_out (array):
+            Latitudes to output the data on
+        sectors (list):
+            List of strings of sectors to get emissions for.
+            These will be combined to make one array.
+            See 'Notes' for names of sectors
+        soi (str):
+            Which species you want to look at. 
+            e.g. soi = 'CH4'
+            Default = 'CH4'
+    
+    Returns:
+        narr (array): 
+            Array of regridded emissions in mol/m2/s.
+            Dimensions are [no of months, lat, lon]
+        
+    Notes:
+        Names of EDGAR sectors:
+           'powerindustry'; 
+           'oilrefineriesandtransformationindustry'; 
+           'combustionformanufacturing'; 
+           'aviationclimbinganddescent';  
+           'aviationcruise'; 
+           'aviationlandingandtakeoff';  
+           'aviationsupersonic'; 
+           'roadtransport'; 
+           'railwayspipelinesandoffroadtransport'; 
+           'shipping';  
+           'energyforbuildings';  
+           'fuelexploitation'; 
+           'nonmetallicmineralsproduction';  
+           'chemicalprocesses';
+           'ironandsteelproduction'; 
+           'nonferrousmetalsproduction'; 
+           'nonenergyuseoffuels'; 
+           'solventsandproductsuse'; 
+           'entericfermentation'; 
+           'manuremanagement';  
+           'agriculturalsoils';  
+           'indirectN2Oemissionsfromagriculture'; 
+           'agriculturalwasteburning';  
+           'solidwastelandfills';  
+           'wastewaterhandling';  
+           'Solid waste incineration';  
+           'fossilfuelfires'; 
+           'indirectemissionsfromNOxandNH3';  
+    """
+    soi = soi.upper() #Make sure species is uppercase
+    #Path to EDGAR files
+    edpath = '/data/shared/Gridded_fluxes/'+soi+'/EDGAR_v4.3.2/'+soi+'_sector_monthly/'
+    
+    #Dictionary of codes for sectors
+    secdict = {'powerindustry' : '1A1a', 
+               'oilrefineriesandtransformationindustry' : '1A1b_1A1c_1A5b1_1B1b_1B2a5_1B2a6_1B2b5_2C1b',
+               'combustionformanufacturing' : '1A2',
+               'aviationclimbinganddescent' : '1A3a_CDS',
+               'aviationcruise' : '1A3a_CRS',
+               'aviationlandingandtakeoff' : '1A3a_LTO',
+               'aviationsupersonic' : '1A3a_SPS',
+               'roadtransport' : '1A3b',
+               'railwayspipelinesandoffroadtransport' : '1A3c_1A3e',
+               'shipping' : '1A3d_1C2',
+               'energyforbuildings' : '1A4',
+               'fuelexploitation' : '1B1a_1B2a1_1B2a2_1B2a3_1B2a4_1B2c',
+               'nonmetallicmineralsproduction' : '2A',
+               'chemicalprocesses': '2B',
+               'ironandsteelproduction' : '2C1a_2C1c_2C1d_2C1e_2C1f_2C2',
+               'nonferrousmetalsproduction' : '2C3_2C4_2C5',
+               'nonenergyuseoffuels' : '2G',
+               'solventsandproductsuse' :  '3',
+               'entericfermentation' : '4A',
+               'manuremanagement' : '4B',
+               'agriculturalsoils' : '4C_4D',
+               'indirectN2Oemissionsfromagriculture' : '4D3',
+               'agriculturalwasteburning' : '4F',
+               'solidwastelandfills' : '6A_6D',
+               'wastewaterhandling' : '6B',
+               'Solid waste incineration' : '6C',
+               'fossilfuelfires' : '7A',
+               'indirectemissionsfromNOxandNH3' : '7B_7C'           
+    }
+    
+    print 'Note that the only year for monthly emissions is 2010 so using that.'
+        
+    #Species molar mass
+    if soi == 'CH4':
+        speciesmm = 16.0425
+    elif soi == 'N2O':
+        speciesmm = 44.013
+    else:
+        print "No molar mass for species %s." % soi
+        print "Please add this and rerun the script"
+        print "Returning None"
+        return(None)
+    
+    
+    #Read in EDGAR data of annual mean CH4 emissions for each sector
+    #These are summed together
+    #units are in kg/m2/s
+    first = 0
+    for month in months:
+        tot = None
+        for sec in sectors:
+            edgar = edpath+'v432_'+soi+'_2010_'+str(month)+'_IPCC_'+secdict[sec]+'.0.1x0.1.nc'    
+            if os.path.isfile(edgar):
+                ds = xr.open_dataset(edgar)
+                soiname = 'emi_'+soi.lower()
+                if tot == None:
+                    tot = ds[soiname].values*1e3/speciesmm
+                else:
+                    tot += ds[soiname].values*1e3/speciesmm
+            else:
+                print 'No monthly file for sector %s' % sec
+        
+            if first == 0:
+                emissions = np.zeros((len(months), tot.shape[0], tot.shape[1]))
+                emissions[0,:,:] = tot
+            else:
+                first += 1
+                emissions[first,:,:] = tot
+                
+            
+    lat_in = ds.lat.values
+    lon_in = ds.lon.values
+    
+    nlat = len(lat_out)
+    nlon = len(lon_out) 
+    
+    narr = np.zeros((nlat, nlon, len(months)))
+       
+    for i in range(len(months)):
+       narr[:,:,i], reg = regrid2d(emissions[i,:,:], lat_in, lon_in,
+                             lat_out, lon_out)
     return(narr)

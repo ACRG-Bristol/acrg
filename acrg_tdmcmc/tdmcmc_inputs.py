@@ -43,7 +43,6 @@ import acrg_name as name
 from acrg_tdmcmc import run_tdmcmc 
 from acrg_tdmcmc import tdmcmc_post_process as process
 import tdmcmc_config
-import pdb
 #import acrg_config as configread
 
 acrg_path = os.getenv("ACRG_PATH")
@@ -80,6 +79,8 @@ sites = param['sites']
 meas_period = param['meas_period'] # Frequency to read in measurements 
 av_period = param['av_period']     # Frequency to average footprints and measuerements for inversion
 
+max_level = param["max_level"] # Only relevant for satellite data
+
 species = param['species']
 if not start_date:
     start_date = param['start_date']
@@ -114,6 +115,9 @@ elif output_dir.startswith("$ACRG_PATH"):
 elif output_dir.startswith("$DATA_PATH"):
     output_dir = output_dir.replace("$DATA_PATH",data_path)
 
+if not os.path.isdir(output_dir):
+    raise Exception("Output directory: {} does not exist.".format(output_dir))
+
 #######################################################
 # DO YOU WANT TO DO REVERSIBLE JUMP OR NOT?????
 reversible_jump = param['reversible_jump']         # True = do reversible jump; False = don't
@@ -139,7 +143,7 @@ nsub = param['nsub']          # nsub=100=store every 100th iteration)
 
 if verbose:
     print 'Inversion type: {0}'.format(inv_type)
-    print 'Regions in trans-dimesional grid - minimum allowed: {0}, maximum allowed: {1}, starting value: {2}'.format(kmin,kmax,k_ap)
+    print 'Regions in trans-dimensional grid - minimum allowed: {0}, maximum allowed: {1}, starting value: {2}'.format(kmin,kmax,k_ap)
     print 'Burn-in iterations: {0}'.format(burn_in)
     print 'Number of iterations to run: {0} (nsub = {1}, {2} iterations will be saved)\n'.format(nIt,nsub,nIt/nsub)
     print '\n---------------\n' 
@@ -257,10 +261,12 @@ if len(f_list2) > 0:
 else:
     raise LookupError("No file exists for that bc_basis_case and domain")
 
-if 'GOSAT' in(sites):
-    nBias = 1           # Change as needed 
+for site in sites:
+    if 'GOSAT' in site and len(sites) > 1: # Will need to update to base on platform rather than searching for "GOSAT"
+        nBias = 1
+        break
 else: 
-    nBias=0
+    nBias = 0
 
 ## Define nBC based on time, so each month is scaled individually
 pd_start=pd.to_datetime(start_date)
@@ -275,7 +281,9 @@ else:
 
 nBC = nBC_basis*nmonths   # No. of bc_basis functions x nmonths
 
-nIC=nfixed+nBC+nBias
+nBC+=nBias
+nIC=nfixed+nBC
+#nIC=nfixed+nBC+nBias
 nIC1=nIC+1
 kICmax=kmax+nIC    
 pdf_param1 = np.zeros((kICmax,nbeta))
@@ -344,15 +352,17 @@ post_mcmc=run_tdmcmc.run_tdmcmc(sites, meas_period, av_period, species, start_da
     pdf_param1, pdf_param2, pdf_p1_hparam1, pdf_p1_hparam2, pdf_p2_hparam1,    
     pdf_p2_hparam2, x_pdf, pdf_param1_pdf, pdf_param2_pdf, inv_type,     
     output_dir,filters=filters,bl_split=bl_split, bl_levels=levels,
-    tau_ap=tau_ap, tau_hparams=tau_hparams, stepsize_tau=stepsize_tau, tau_pdf=tau_pdf)
+    tau_ap=tau_ap, tau_hparams=tau_hparams, stepsize_tau=stepsize_tau, tau_pdf=tau_pdf,
+    max_level=max_level)
 
 if unique_copy:
+    shutil.copy(config_file,output_dir)
     # Create date-stamped sub-directory of the form:
     #   Output_"sites"_"species"_"start_date"_"creation_dt" e.g. Output_MHD-TAC_CH4_20080101_20171110T12-00-00
     now = dt.datetime.now().replace(microsecond=0)
     site_str = '-'.join(sites)
-    start_date = start_date.replace('-','')
-    creation_dt = dt.datetime.strftime(now,'%Y%m%dT%H-%M-%S')
+    #start_date_d = start_date.replace('-','')
+    creation_dt = dt.datetime.strftime(now,'%Y-%m-%dT%H-%M-%S')
     sub_dir = 'Output_{0}_{1}_{2}_{3}'.format(site_str, species, start_date, creation_dt)
     datestamp_output_dir = os.path.join(output_dir,sub_dir)
     
@@ -362,13 +372,13 @@ if unique_copy:
     # Copy config file to output sub-directory
     shutil.copy(config_file,datestamp_output_dir)
     
+    network_w = network.split('/')[-1]
     # Write output from MCMC code again but this time to the subdirectory
-    fname=os.path.join(datestamp_output_dir,
-                            "output_" + network + "_" + species + "_" + start_date + ".nc")
+    fname = os.path.join(datestamp_output_dir,
+                            "output_{network}_{species}_{date}.nc".format(network=network_w,species=species,date=start_date))
     for key in post_mcmc.keys():
         post_mcmc[key].encoding['zlib'] = True
     post_mcmc.to_netcdf(path=fname, mode='w')
 else:
-
     shutil.copy(config_file,output_dir)
 
