@@ -295,7 +295,7 @@ def footprints(sitecode_or_filename, fp_directory = fp_directory,
         return fp
 
 
-def flux(domain, species, start = None, end = None, flux_directory=flux_directory):
+def flux(domain, species, emissions_name=None, start = None, end = None, flux_directory=flux_directory):
     """
     The flux function reads in all flux files for the domain and species as an xarray Dataset.
     Note that at present ALL flux data is read in per species per domain or by emissions name.
@@ -331,7 +331,6 @@ def flux(domain, species, start = None, end = None, flux_directory=flux_director
         return None
     
     flux_ds = read_netcdfs(files)
-    
     # Check that time coordinate is present
     if not "time" in flux_ds.coords.keys():
         print("ERROR: No 'time' coordinate " + \
@@ -360,7 +359,17 @@ def flux(domain, species, start = None, end = None, flux_directory=flux_director
             end = pd.to_datetime(end)
             month_end = dt.datetime(end.year, end.month, 1, 0, 0) - \
                         dt.timedelta(seconds = 1)
-            
+           
+            if 'climatology' in emissions_name:
+                ndate = pd.to_datetime(flux_ds.time.values)
+                dateadj = ndate[month_start.month-1] - month_start  #Adjust climatology to start in same year as obs  
+                ndate = ndate - dateadj
+                flux_ds = flux_ds.update({'time' : ndate})  
+                flux_tmp = flux_ds.copy()
+                while month_end > ndate[-1]:
+                    ndate = ndate + pd.DateOffset(years=1)      
+                    flux_ds = xr.merge([flux_ds, flux_tmp.update({'time' : ndate})])
+
             flux_timeslice = flux_ds.sel(time=slice(month_start, month_end))
             if len(flux_timeslice.time)==0:
                 flux_timeslice = flux_ds.sel(time=start, method = 'ffill')
@@ -752,7 +761,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
         Dictionary of the form {"MHD": MHD_xarray_dataset, "TAC": TAC_xarray_dataset, ".flux": dictionary_of_flux_datasets, ".bc": boundary_conditions_dataset}:
             combined dataset for each site
     """
-
+    
     sites = [key for key in data.keys() if key[0] != '.']
     attributes = [key for key in data.keys() if key[0] == '.']
     
@@ -1060,7 +1069,7 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                 basis_func = basis(domain = domain, basis_case = basis_case[source], basis_directory = basis_directory)
             else:
                 basis_func = basis(domain = domain, basis_case = basis_case['all'], basis_directory = basis_directory)
-
+            
             if type(fp_and_data['.flux'][source]) == dict:
                 if 'fp_HiTRes' in fp_and_data[site].keys():
                     site_bf = xr.Dataset({"fp_HiTRes":fp_and_data[site]["fp_HiTRes"],
@@ -1084,7 +1093,7 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                     basis_func = basis_func.isel(time=0)
             
                 site_bf = xr.merge([site_bf, basis_func])
-            
+                
                 H = np.zeros((len(site_bf.region),len(site_bf.time)))
             
                 base_v = site_bf.basis.values.reshape((len(site_bf.lat)*len(site_bf.lon), len(site_bf.region)))
@@ -1105,7 +1114,7 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                 print("Warning: Using basis functions without a region dimension may be deprecated shortly.")
         
                 site_bf = combine_datasets(site_bf,basis_func, method='ffill')
-            
+ 
                 H = np.zeros((int(np.max(site_bf.basis)),len(site_bf.time)))
 
                 basis_scale = xr.Dataset({'basis_scale': (['lat','lon','time'],
@@ -2156,7 +2165,7 @@ class get_country:
             name=np.asarray(name_temp)
         
         else:
-            name_temp = f.variables['name'][:]
+            name_temp = f.variables['names'][:]
             f.close()
     
             name=[]

@@ -358,7 +358,7 @@ post_mcmc=run_tdmcmc.run_tdmcmc(sites, meas_period, av_period, species, start_da
 if unique_copy:
     shutil.copy(config_file,output_dir)
     # Create date-stamped sub-directory of the form:
-    #   Output_"sites"_"species"_"start_date"_"creation_dt" e.g. Output_MHD-TAC_CH4_2008-01-01_20171110T12-00-00
+    #   Output_"sites"_"species"_"start_date"_"creation_dt" e.g. Output_MHD-TAC_CH4_20080101_20171110T12-00-00
     now = dt.datetime.now().replace(microsecond=0)
     site_str = '-'.join(sites)
     #start_date_d = start_date.replace('-','')
@@ -381,3 +381,4 @@ if unique_copy:
     post_mcmc.to_netcdf(path=fname, mode='w')
 else:
     shutil.copy(config_file,output_dir)
+
