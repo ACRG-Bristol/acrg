@@ -2165,7 +2165,7 @@ class get_country:
             name=np.asarray(name_temp)
         
         else:
-            name_temp = f.variables['names'][:]
+            name_temp = f.variables['name'][:]
             f.close()
     
             name=[]
