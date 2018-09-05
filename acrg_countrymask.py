@@ -434,35 +434,10 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
 
 if __name__=="__main__":
     
+    ## EXAMPLE OF HOW THIS MODULE CAN BE USED ##
     write = True
-    
     domain = "SOUTHAMERICA"
-    grid_size = [0.234,0.352]
-    lat_bounds = [-60.981,22.557]
-    lon_bounds = [-91.329,-24.449]
+    # Lat/Lon can be specified explictly or a domain footprint file can be used to find these values.
 
-    lat = range_from_bounds(lat_bounds,grid_size[0],include_upper=False)
-    lon = range_from_bounds(lon_bounds,grid_size[1],include_upper=False)
-    
-#    domain = "NORTHAFRICA"
-#    grid_size = [0.234,0.352]
-#    lat_bounds = [-15.0,41.160]
-#    lon_bounds = [-50.0,87.632]
-<<<<<<< HEAD
-
-=======
-#
->>>>>>> master
-#    lat = range_from_bounds(lat_bounds,grid_size[0],include_upper=False)
-#    lon = range_from_bounds(lon_bounds,grid_size[1],include_upper=False)
-    
-#    domain = "SOUTHAFRICA"
-#    lat = None
-#    lon = None
-<<<<<<< HEAD
-
-=======
-    
->>>>>>> master
-    ds = create_country_mask(domain,lat=lat,lon=lon,write=write,reset_index=True,ocean_label=True)
+    ds = create_country_mask(domain,write=write,reset_index=True,ocean_label=True)
     

@@ -73,7 +73,7 @@ def mcmc_param_type():
                            ('domain', str),
                            ('network', str)])),
              ('MCMC.MEASUREMENTS',
-              OrderedDict([('meas_period', list), ('av_period', list)])),
+              OrderedDict([('meas_period', list), ('av_period', list),('max_level',int))])),
              ('MCMC.ITERATIONS',
               OrderedDict([('nIt', int), ('burn_in', int), ('nsub', int)])),
              ('MCMC.BASIS_FUNCTIONS',
@@ -232,7 +232,7 @@ def optional_parameters(section_group=None):
         list:
             Optional parameters for MCMC code
     '''
-    meas_params = ["network","start_date","end_date"]
+    meas_params = ["network","start_date","end_date","max_level"]
     mcmc_params = ["unique_copy"]
     tdmcmc_params = []
     

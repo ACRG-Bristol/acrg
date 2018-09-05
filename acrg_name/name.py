@@ -25,7 +25,7 @@ import pickle
 from scipy import interpolate
 import dateutil.relativedelta
 import cartopy.crs as ccrs
-import pdb
+import cartopy
 
 acrg_path = os.getenv("ACRG_PATH")
 data_path = os.getenv("DATA_PATH")
@@ -53,6 +53,16 @@ fp_directory = {'integrated': fp_integrated_directory,
 # Get acrg_site_info file
 with open(join(acrg_path, "acrg_site_info.json")) as f:
     site_info=json.load(f)
+
+def open_ds(path):
+    
+    """
+    Function efficiently opens xray datasets.
+    """
+    # use a context manager, to ensure the file gets closed after use
+    with xr.open_dataset(path) as ds:
+        ds.load()
+    return ds 
 
 def filenames(site, domain, start, end, height, fp_directory):
     """
@@ -127,12 +137,16 @@ def read_netcdfs(files, dim = "time"):
         xarray.Dataset : all files open as one concatenated xarray.Dataset object    
     """
     
-    def process_one_path(path):
-        with xr.open_dataset(path) as ds:
-            ds.load()
-        return ds
+    #def process_one_path(path):
+    #    with xr.open_dataset(path) as ds:
+    #        ds.load()
+    #    return ds
     
-    datasets = [process_one_path(p) for p in sorted(files)]
+    print("Reading and concatenating files: ")
+    for fname in files:
+        print(fname)
+    
+    datasets = [open_ds(p) for p in sorted(files)]
     combined = xr.concat(datasets, dim)
     return combined   
 
@@ -281,7 +295,7 @@ def footprints(sitecode_or_filename, fp_directory = fp_directory,
         return fp
 
 
-def flux(domain, species, start = None, end = None, flux_directory=flux_directory):
+def flux(domain, species, emissions_name=None, start = None, end = None, flux_directory=flux_directory):
     """
     The flux function reads in all flux files for the domain and species as an xarray Dataset.
     Note that at present ALL flux data is read in per species per domain or by emissions name.
@@ -317,7 +331,6 @@ def flux(domain, species, start = None, end = None, flux_directory=flux_director
         return None
     
     flux_ds = read_netcdfs(files)
-    
     # Check that time coordinate is present
     if not "time" in flux_ds.coords.keys():
         print("ERROR: No 'time' coordinate " + \
@@ -346,13 +359,26 @@ def flux(domain, species, start = None, end = None, flux_directory=flux_director
             end = pd.to_datetime(end)
             month_end = dt.datetime(end.year, end.month, 1, 0, 0) - \
                         dt.timedelta(seconds = 1)
-            
+           
+            if 'climatology' in emissions_name:
+                ndate = pd.to_datetime(flux_ds.time.values)
+                dateadj = ndate[month_start.month-1] - month_start  #Adjust climatology to start in same year as obs  
+                ndate = ndate - dateadj
+                flux_ds = flux_ds.update({'time' : ndate})  
+                flux_tmp = flux_ds.copy()
+                while month_end > ndate[-1]:
+                    ndate = ndate + pd.DateOffset(years=1)      
+                    flux_ds = xr.merge([flux_ds, flux_tmp.update({'time' : ndate})])
+
             flux_timeslice = flux_ds.sel(time=slice(month_start, month_end))
             if len(flux_timeslice.time)==0:
                 flux_timeslice = flux_ds.sel(time=start, method = 'ffill')
                 flux_timeslice = flux_timeslice.expand_dims('time',axis=-1)
                 print("Warning: No fluxes available during the time period specified so outputting\
                           flux from %s" %flux_timeslice.time.values[0])
+            else:
+                print("Slicing time to range {} - {}".format(month_start,month_end))
+            
             return flux_timeslice
 
 
@@ -735,7 +761,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
         Dictionary of the form {"MHD": MHD_xarray_dataset, "TAC": TAC_xarray_dataset, ".flux": dictionary_of_flux_datasets, ".bc": boundary_conditions_dataset}:
             combined dataset for each site
     """
-
+    
     sites = [key for key in data.keys() if key[0] != '.']
     attributes = [key for key in data.keys() if key[0] == '.']
     
@@ -875,15 +901,24 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                 end_date = ds_et
             else:
                 end_date = fp_et
-                
-            site_ds = site_ds.sel(time=slice(str(start_date.data), str(end_date.data)))
-            site_fp = site_fp.sel(time=slice(str(start_date.data), str(end_date.data)))
+            
+            # rt17603: 24/07/2018 - Rounding to the nearest second(+/-1). Needed for sub-second dates otherwise sel was giving a KeyError
+            start_s = str(np.round(start_date.data.astype(np.int64)-5e8,-9).astype('datetime64[ns]')) # subtract half a second to ensure lower range covered
+            end_s = str(np.round(end_date.data.astype(np.int64)+5e8,-9).astype('datetime64[ns]')) # add half a second to ensure upper range covered
+            
+            site_ds = site_ds.sel(time=slice(start_s,end_s))
+            site_fp = site_fp.sel(time=slice(start_s,end_s))
+            
+            #site_ds = site_ds.sel(time=slice(str(start_date.data),str(end_date.data)))
+            #site_fp = site_fp.sel(time=slice(str(start_date.data),str(end_date.data)))
             
             base = start_date.dt.hour.data + start_date.dt.minute.data/60. + start_date.dt.second.data/3600.
             if (ds_timeperiod >= fp_timeperiod) or (resample_to_data == True):
-                site_fp = site_fp.resample(str(ds_timeperiod/3600e9)+'H', dim='time', how='mean', base=base)
+                resample_period = str(round(fp_timeperiod/3600e9,5))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
+                site_fp = site_fp.resample(resample_period, dim='time', how='mean', base=base)
             elif ds_timeperiod < fp_timeperiod or (resample_to_data == False):
-                site_ds = site_ds.resample(str(fp_timeperiod/3600e9)+'H', dim='time', how='mean', base=base)
+                resample_period = str(round(fp_timeperiod/3600e9,5))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
+                site_ds = site_ds.resample(resample_period, dim='time', how='mean', base=base)
                         
             site_ds = combine_datasets(site_ds, site_fp,
                                        method = "ffill",
@@ -1034,7 +1069,7 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                 basis_func = basis(domain = domain, basis_case = basis_case[source], basis_directory = basis_directory)
             else:
                 basis_func = basis(domain = domain, basis_case = basis_case['all'], basis_directory = basis_directory)
-
+            
             if type(fp_and_data['.flux'][source]) == dict:
                 if 'fp_HiTRes' in fp_and_data[site].keys():
                     site_bf = xr.Dataset({"fp_HiTRes":fp_and_data[site]["fp_HiTRes"],
@@ -1058,7 +1093,7 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                     basis_func = basis_func.isel(time=0)
             
                 site_bf = xr.merge([site_bf, basis_func])
-            
+                
                 H = np.zeros((len(site_bf.region),len(site_bf.time)))
             
                 base_v = site_bf.basis.values.reshape((len(site_bf.lat)*len(site_bf.lon), len(site_bf.region)))
@@ -1079,7 +1114,7 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                 print("Warning: Using basis functions without a region dimension may be deprecated shortly.")
         
                 site_bf = combine_datasets(site_bf,basis_func, method='ffill')
-            
+ 
                 H = np.zeros((int(np.max(site_bf.basis)),len(site_bf.time)))
 
                 basis_scale = xr.Dataset({'basis_scale': (['lat','lon','time'],
@@ -1246,61 +1281,65 @@ def merge_sensitivity(fp_data_H,
     sites = [key for key in fp_data_H.keys() if key[0] != '.']
     
     for si, site in enumerate(sites):
-
-        y.append(fp_data_H[site].mf.values)
         
-        # Approximate y_error
-        if "vmf" in fp_data_H[site].keys():
-            y_error.append(fp_data_H[site].vmf.values)
-        elif "dmf" in fp_data_H[site].keys():
-            y_error.append(fp_data_H[site].dmf.values)
+        if remove_nan:
+            fp_data_H[site] = fp_data_H[site].dropna("time", how="all")
         
         y_site.append([site for i in range(len(fp_data_H[site].coords['time']))])
+        y_time.append(fp_data_H[site].coords['time'].values)        
+        
+        if 'mf' in fp_data_H[site].data_vars:
+            y.append(fp_data_H[site].mf.values)
+        
+            # Approximate y_error
+            if "vmf" in fp_data_H[site].keys():
+                y_error.append(fp_data_H[site].vmf.values)
+            elif "dmf" in fp_data_H[site].keys():
+                y_error.append(fp_data_H[site].dmf.values)
+            else:
+                print "Measurement error not found in dataset for site %s" %site
 
-        y_time.append(fp_data_H[site].coords['time'].values)
-
-        if 'H' in fp_data_H[site].data_vars:
+        if 'H' in fp_data_H[site].data_vars:        
             # Make sure H matrices are aligned in the correct dimensions
             if fp_data_H[site].H.dims[0] == "time":
                 H.append(fp_data_H[site].H.values)
             else:
                 H.append(fp_data_H[site].H.values.T)
-        if 'H_bc' in fp_data_H[site].data_vars:
+                
+        if 'H_bc' in fp_data_H[site].data_vars:         
             if fp_data_H[site].H_bc.dims[0] == "time":
                 H_bc.append(fp_data_H[site].H_bc.values)
             else:
                 H_bc.append(fp_data_H[site].H_bc.values.T)
 
-    y = np.hstack(y)
-    y_error = np.hstack(y_error)
+
+    out_variables = ()
+
     y_site = np.hstack(y_site)
     y_time = np.hstack(y_time)
+
+    if len(y) > 0:
+        y = np.hstack(y)
+        out_variables += (y,)
+    else:
+        out_variables += (None,)
     
-    if remove_nan:
-        why = np.isfinite(y)
-        y = y[why]
-        y_error = y_error[why]
-        y_site = y_site[why]
-        y_time = y_time[why]
-    
-    if len(H) > 0:
-        H = np.vstack(H)
-        if remove_nan:
-            H = H[why, :]
-            
-    if len(H_bc) > 0:
-        H_bc = np.vstack(H_bc)
-        if remove_nan:
-            H_bc = H_bc[why, :]
-    
-    out_variables = y, y_error, y_site, y_time
-    
-    if len(H_bc) > 0:
-        out_variables += (H_bc,)
+    if len(y_error) > 0:
+        y_error = np.hstack(y_error)
+        out_variables += (y_error,)
     else:
         out_variables += (None,)
         
+    out_variables += (y_site, y_time)
+    
+    if len(H_bc) > 0:
+        H_bc = np.vstack(H_bc)
+        out_variables += (H_bc,)
+    else:
+        out_variables += (None,) 
+    
     if len(H) > 0:
+        H = np.vstack(H)
         out_variables += (H,)
     else:
         out_variables += (None,)
@@ -1553,8 +1592,9 @@ def filtering(datasets_in, filters, keep_missing=False):
 
 
 def plot(fp_data, date, out_filename=None, out_format = 'pdf',
-         lon_range=None, lat_range=None, log_range = [5., 9.], zoom = False,
-         colormap = 'YlGnBu', tolerance = None, interpolate = False, dpi = 300):
+         lon_range=None, lat_range=None, log_range = [5., 9.], plot_borders = False,
+         zoom = False, colormap = 'YlGnBu', tolerance = None, interpolate = False, dpi = 300,
+         figsize=None):
     """
     Plot footprint for a given timestamp.
     
@@ -1575,6 +1615,8 @@ def plot(fp_data, date, out_filename=None, out_format = 'pdf',
             list of min and max latitudes [min, max] to plot
         log_range (list, optional): 
             list of min and max LOG10(footprints) for color scale       
+        plot_borders (bool, optional) :
+            Plot country borders. Default = False.
         zoom (bool, optional): 
             True will plot a zoomed map (+/- 10 degrees around all site in fp_data)
         colormap (str, optional): 
@@ -1588,7 +1630,8 @@ def plot(fp_data, date, out_filename=None, out_format = 'pdf',
             If False, uses the nearest footprint avaialble
         dpi (int, optional):
             Dots per square inch resolution to save image format such as png
-            
+        figsize (tuple, optional):
+            Specify figure size as width, height in inches. e.g. (12,9). Default = None.
             
     Returns
         None
@@ -1646,9 +1689,20 @@ def plot(fp_data, date, out_filename=None, out_format = 'pdf',
         lats = lats_all[indy]
         indy = np.where((lats_all < lat_range[0]) | (lats_all > lat_range[-1]))[0]  
     
+    if figsize:
+        if isinstance(figsize,tuple) and len(figsize) == 2:
+            plt.figure(figsize=figsize)
+        elif len(figsize) == 2:
+            plt.figure(figsize=(figsize[0],figsize[1]))
+        else:
+            print "Could not apply figure size: {}. Expected two item tuple.".format(figsize)
+    
     ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=np.median(lons)))
     ax.set_extent([lons[0], lons[-1], lats[0], lats[-1]], crs=ccrs.PlateCarree())
     ax.coastlines()
+    
+    if plot_borders:
+        ax.add_feature(cartopy.feature.BORDERS,linewidth=0.5)
     
     #Calculate color levels
     rp_color = {"SURFACE": "black",
@@ -1765,7 +1819,8 @@ def plot(fp_data, date, out_filename=None, out_format = 'pdf',
 def plot_particle_location(fp_data, date, particle_direction = 'nw', out_filename=None,
                            out_format = 'pdf', tolerance = None, log_range = [5., 9.], 
                            colormap_fp = 'inferno_r', colormap_part = 'GnBu',
-                           particle_clevs = [0., 0.009, 0.001], dpi = 300):
+                           particle_clevs = [0., 0.009, 0.001], dpi = 300,
+                           figsize = None):
 
     """
     3D plot showing the footprint and particle exit locations for a given timestamp.
@@ -1830,7 +1885,19 @@ def plot_particle_location(fp_data, date, particle_direction = 'nw', out_filenam
     #Set very small elements to zero
     fp_data.where(np.log10(fp_data["fp"]) < log_range[0])
     
-    figure = plt.figure(figsize=(8,6), facecolor='w')
+    if figsize:
+        if len(figsize) == 2:
+            if not isinstance(figsize,tuple):
+                figsize=(figsize[0],figsize[1])
+        else:
+            print "Could not apply figure size: {}. Using default: {}".format(figsize,(8,6))
+            figsize = (8,6)
+    else:
+        figsize = (8,6)
+        print "Using default figsize: {}".format(figsize)
+
+    
+    figure = plt.figure(figsize=figsize, facecolor='w')
     ax = figure.gca(projection='3d')
     
     ax.set_ylim(lat_range)
@@ -1890,11 +1957,11 @@ def plot_particle_location(fp_data, date, particle_direction = 'nw', out_filenam
 
 def animate(fp_data, output_directory, plot_function = "plot", file_label = 'fp', 
             video_os="mac", time_regular = False,        
-            lon_range = None, lat_range = None, log_range = [5., 9.],
+            lon_range = None, lat_range = None, log_range = [5., 9.],plot_borders=False,
             colormap_fp = 'inferno_r', colormap_part = 'GnBu', zoom = False,
             particle_clevs = [0., 0.009, 0.001], overwrite = True, 
             framerate=10, delete_png=False, ffmpeg_only = False,
-            frame_max = None, dpi = 300):
+            frame_max = None, dpi = 300,figsize=None):
 
     """
     Animate footprints into a movie.
@@ -1920,6 +1987,8 @@ def animate(fp_data, output_directory, plot_function = "plot", file_label = 'fp'
             list of min and max latitudes [min, max] to plot
         log_range (list, optional): 
             list of min and max LOG10(footprints) for color scale       
+        plot_borders (bool, optional) :
+            Plot country borders. Only applicable to plot_function="plot" Default = False.
         colormap_fp (str, optional): 
             Color map to use for contour plot of footprint
             (https://matplotlib.org/examples/color/colormaps_reference.html)
@@ -1945,8 +2014,9 @@ def animate(fp_data, output_directory, plot_function = "plot", file_label = 'fp'
             Set the maximum number of frames in the datset to animate. Animation will plot first n 
             frames up to the frame_max. Useful for testing.
         dpi (int, optional):
-            Dots per square inch resolution for each image generate as for example png           
-            
+            Dots per square inch resolution for each image generate as for example png 
+        figsize (tuple, optional):
+            Specify figure size in width, height in inches. e.g. (12,9)
             
     Returns
         None
@@ -2012,16 +2082,19 @@ def animate(fp_data, output_directory, plot_function = "plot", file_label = 'fp'
                 if plot_function == "plot":
                     plot(fp_data, t, out_filename = fname, out_format = 'png',
                          lon_range = lon_range, lat_range = lat_range,
-                         log_range = log_range, zoom = zoom, colormap = colormap_fp,
-                         dpi = dpi)
+                         log_range = log_range, plot_borders = plot_borders, 
+                         zoom = zoom, colormap = colormap_fp,
+                         dpi = dpi, figsize = figsize)
                 elif plot_function == "plot_particle_location":
                     plot_particle_location(fp_data, t, out_filename = fname, out_format = 'png',
                                            log_range = log_range, 
                                            particle_direction = 'nw', colormap_fp = colormap_fp,
                                            colormap_part = colormap_part,
-                                           particle_clevs = particle_clevs, dpi = dpi)
+                                           particle_clevs = particle_clevs, dpi = dpi,
+                                           figsize = figsize)
                      
             pbar.update(ti)
+            print ""
         pbar.finish()
     
     print("")
@@ -2092,7 +2165,7 @@ class get_country:
             name=np.asarray(name_temp)
         
         else:
-            name_temp = f.variables['name'][:]
+            name_temp = f.variables['names'][:]
             f.close()
     
             name=[]
