@@ -28,6 +28,7 @@ from collections import OrderedDict
 import glob
 import getpass
 import os
+import pdb
 
 data_path = os.getenv("DATA_PATH")
 fp_directory = os.path.join(data_path,'NAME/fp/')
@@ -417,7 +418,7 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
     attributes["author"] = "File created by {}".format(getpass.getuser())
     attributes["database"] = "{} database with scale {} used to create this file. Python module regionmask (https://regionmask.readthedocs.io/en/stable/) used to extract data.".format(database,scale)
     attributes["extent"] = "Domain beween latitude {} - {}, longitude {} - {} with resolution {:.3f},{:.3f} degrees".format(np.min(lat),np.max(lat),np.min(lon),np.max(lon),lat[1]-lat[0],lon[1]-lon[0])
- 
+
     ds.attrs = attributes
     
     if write:
@@ -433,7 +434,7 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
 
 if __name__=="__main__":
     
-    write = False
+    write = True
     
     domain = "SOUTHAMERICA"
     grid_size = [0.234,0.352]
@@ -447,13 +448,11 @@ if __name__=="__main__":
 #    grid_size = [0.234,0.352]
 #    lat_bounds = [-15.0,41.160]
 #    lon_bounds = [-50.0,87.632]
-#
 #    lat = range_from_bounds(lat_bounds,grid_size[0],include_upper=False)
 #    lon = range_from_bounds(lon_bounds,grid_size[1],include_upper=False)
     
 #    domain = "SOUTHAFRICA"
 #    lat = None
 #    lon = None
-    
     ds = create_country_mask(domain,lat=lat,lon=lon,write=write,reset_index=True,ocean_label=True)
     

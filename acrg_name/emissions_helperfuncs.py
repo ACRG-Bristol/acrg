@@ -312,6 +312,11 @@ def getedgarannualtotals(year, lon_out, lat_out, soi='CH4'):
     tot = ds[soiname].values*1e3/speciesmm
     lat_in = ds.lat.values
     lon_in = ds.lon.values
+    mtohe = lon_in > 180
+    lon_in[mtohe] = lon_in[mtohe] - 360 
+    ordinds = np.argsort(lon_in)
+    lon_in = lon_in[ordinds]
+    tot = tot[:, ordinds] 
     
     nlat = len(lat_out)
     nlon = len(lon_out) 

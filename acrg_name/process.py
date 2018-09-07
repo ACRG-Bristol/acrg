@@ -25,16 +25,15 @@ in the Processed_Fields_files directory.
 @author: chxmr
 """
 
-import numpy
 from netCDF4 import Dataset
 import netCDF4
 import glob
 import gzip
 import datetime
 import re
-import pandas
 import datetime as dt
 import numpy as np
+import pandas as pd
 import scipy.constants as const
 from acrg_grid import areagrid
 from acrg_time.convert import time2sec, sec2time
@@ -81,7 +80,8 @@ timestep_for_output = 0.
 directory_status_log = os.getenv("HOME")
 
 def load_NAME(file_lines, namever):
-    """Loads the Met Office's NAME III grid output files returning
+    """
+    Loads the Met Office's NAME III grid output files returning
     headers, column definitions and data arrays as 3 separate lists.
     For a technical specification see 
     http://www-hc.metoffice.com/~apdg/nameiii/ModelDocumentation/md2_4_v2%28Output%29.pdf
@@ -90,7 +90,7 @@ def load_NAME(file_lines, namever):
         file_lines (list): 
             list of file text lines (extracted using the extract_file_lines routine)
         namever (int): 
-            the NAME version
+            the NAME version. Options are 2 or 3
         
     Returns:
         headers (list): 
@@ -116,7 +116,6 @@ def load_NAME(file_lines, namever):
     
     # skip the NAME header of the file which looks something like 'NAME III (version X.X.X)'
 #    file_handle.next()
-    #MLR
     file_lines=file_lines[1:]
     
     # read the next 16 lines of header information, putting the form "header name:    header value" into a dictionary
@@ -188,7 +187,7 @@ def load_NAME(file_lines, namever):
             new_time_column_header.append(t)
         
     column_headings['time'] = new_time_column_header
-        
+    
     # skip the blank line after the column headers
 #    file_handle.next()
     #MLR
@@ -197,9 +196,9 @@ def load_NAME(file_lines, namever):
     # make a list of data arrays to hold the data for each column 
     data_shape = (headers['Y grid size'], headers['X grid size'])
     if namever==2:
-        data_arrays = [numpy.zeros(data_shape, dtype=numpy.float32) for i in range(headers['Number of fields'])]
+        data_arrays = [np.zeros(data_shape, dtype=np.float32) for i in range(headers['Number of fields'])]
     elif namever==3:
-        data_arrays = [numpy.zeros(data_shape, dtype=numpy.float32) for i in range(headers['Number of field cols'])]
+        data_arrays = [np.zeros(data_shape, dtype=np.float32) for i in range(headers['Number of field cols'])]
       
     # iterate over the remaining lines which represent the data in a column form
 #    for line in file_handle:
@@ -256,11 +255,12 @@ def extract_file_lines(fname):
 
 
 def read_file(fname):
-    '''Read a given fields file and break into header, column_headings and data_arrays
+    '''
+    Read a given fields file and break into header, column_headings and data_arrays.
      
     Args:
         fname (str): 
-            file name to extract from
+            File name to extract data from.
         
     Returns:
         headers (list): 
@@ -289,8 +289,11 @@ def read_file(fname):
     return header, column_headings, data_arrays
 
 
-def define_grid(header, column_headings, satellite = False):
-    '''Define output grid using file header information.
+def define_grid(header, column_headings, satellite = False, upper_level = None):
+    '''
+    Define output grid using file header information.
+    
+    Note: header, column_headings can be extracted using read_file() function and passed to this function.
     
     Args:
         header (list): 
@@ -298,13 +301,17 @@ def define_grid(header, column_headings, satellite = False):
         column_headings (list): 
             headings for columns
         satellite (bool, optional): 
-            If using satellites then True. Default is False.
+            If using satellites then True. Default = False.
             For satellite instructions, see help(process.satellite_vertical_profile).
+        upper_level (int, optional):
+            Only needed when satellite=True.
+            Highest level number from within the NAME run for the satellite data.
+            Default = None.
     
     Returns:
-        lons (array): 
+        lons (np.array): 
             NAME grid longitudes
-        lats (array): 
+        lats (np.array): 
             NAME grid latitudes
         levs (list): 
             Levels of NAME grid
@@ -315,6 +322,7 @@ def define_grid(header, column_headings, satellite = False):
         
     Example:
         lons, lats, levs, time, timeStep = define_grid(header, column_headings, satellite = False)
+        lons, lats, levs, time, timeStep = define_grid(header, column_headings, satellite = True, upper_level = 17)
         
     Note:
         Largely taken from Met Office Python code.
@@ -323,6 +331,7 @@ def define_grid(header, column_headings, satellite = False):
     #Get file info
     z_level=column_headings['z_level'][4:]
     time=column_headings['time'][4:]
+    
     if namever==2:
         species_name=column_headings['species'][4:]
     else:
@@ -344,11 +353,11 @@ def define_grid(header, column_headings, satellite = False):
     Ystep = header['Y grid resolution']
     Ystart = header['Y grid origin']
     if namever == 2:
-        lons=numpy.arange(Xstart,Xstart+Xcount*Xstep-0.01*Xstep,Xstep) + Xstep/2.
-        lats=numpy.arange(Ystart,Ystart+Ycount*Ystep-0.01*Ystep,Ystep) + Ystep/2.
+        lons=np.arange(Xstart,Xstart+Xcount*Xstep-0.01*Xstep,Xstep) + Xstep/2.
+        lats=np.arange(Ystart,Ystart+Ycount*Ystep-0.01*Ystep,Ystep) + Ystep/2.
     elif namever == 3:
-        lons=numpy.arange(Xstart,Xstart+Xcount*Xstep-0.01*Xstep,Xstep)
-        lats=numpy.arange(Ystart,Ystart+Ycount*Ystep-0.01*Ystep,Ystep)
+        lons=np.arange(Xstart,Xstart+Xcount*Xstep-0.01*Xstep,Xstep)
+        lats=np.arange(Ystart,Ystart+Ycount*Ystep-0.01*Ystep,Ystep)
     else:
         return None
     
@@ -376,12 +385,13 @@ def define_grid(header, column_headings, satellite = False):
         ntime=len(time)/nlevs
         
     else:
-        # Assume only ONE TIME STEP per file
-        #Levels
-        nlevs = len(z_level)
+        if upper_level is None:
+            status_log("Upper Level must be specified for satellite data.",print_to_screen=True,
+                       error_or_warning="error")
+        # Calculate number of time steps in file
+        nlevs = upper_level
         levs = range(nlevs)
-        ntime = 1
-
+        ntime = len(time)/nlevs
 
     #Time steps    
     timeRef=datetime.datetime.strptime(header['End of release'], timeFormat)
@@ -409,7 +419,7 @@ def met_empty():
     Create an empty Met dictionary. Not recommended.
     '''
     
-    met = pandas.DataFrame({key: 0. for key in met_default.keys() if key != "time"},
+    met = pd.DataFrame({key: 0. for key in met_default.keys() if key != "time"},
                           index = [dt.datetime(1900, 1, 1), dt.datetime(2020, 1, 1)])
     met.index.name = "time"
     met["press"] = [100000., 100000.] #Pa
@@ -420,21 +430,24 @@ def met_empty():
     return met
 
 
-def read_met(fnames, met_def_dict=None, vertical_profile=False):
-    '''Given list of filenames, extract site meteorology and concatenate into Pandas dataframe.
+def read_met(fnames, met_def_dict=None,vertical_profile=False,satellite=False):
+    '''
+    Given list of filenames, extract site meteorology and concatenate into Pandas dataframe.
     
     Args:
         fnames (list): 
-            list of filenames
+            List of filenames for met data.
         met_def_dict (dict, optional): 
             Dictionary of met parameters.
-            Default=None, which takes default entries
+            Default=None, which takes default entries.
         vertical_profile (bool, optional): 
             TODO. Default=False
+        satellite (bool, optional):
+            If using satellites then True. Default = False.
     
     Returns:
-        output_df (dataframe): 
-            Dataframe of met data
+        output_df (pandas.Dataframe): 
+            Dataframe of met data. 
         
     Example:
         df = read_met(fnames, met_def_dict=None, vertical_profile=False)
@@ -478,11 +491,11 @@ def read_met(fnames, met_def_dict=None, vertical_profile=False):
                 a=i
                 break
 
-        m = pandas.read_csv(fname, skiprows = a, 
+        m = pd.read_csv(fname, skiprows = a, 
                             compression=compression)
         m = m.fillna('')
         
-        m = numpy.array(m)
+        m = np.array(m)
 
         Xcol = None
         Ycol = None
@@ -535,16 +548,28 @@ def read_met(fnames, met_def_dict=None, vertical_profile=False):
         met_dict["release_lat"] = Y
 
         #Construct dataframe
-        output_df_file = pandas.DataFrame(met_dict,
-                          index=[pandas.to_datetime(d, dayfirst=True)
+        output_df_file = pd.DataFrame(met_dict,
+                          index=[pd.to_datetime(d, dayfirst=True)
                               for d in m2[:,column_indices["time"]]])
 
         output_df.append(output_df_file)
     
-        status_log("Read Met file... " + os.path.split(fname)[1])
+        ## UNCOMMENT BEFORE COMMITTING
+        #status_log("Read Met file... " + os.path.split(fname)[1])
     
     # Concatenate list of data frames
-    output_df = pandas.concat(output_df)
+    output_df = pd.concat(output_df)
+    
+    if satellite:
+        try:
+            re_met_match = re.compile("Met_[-]?\d+[.]\d+_[-]?\d+[.]\d+_\d{2,5}")
+            file_match = [re.search(re_met_match,f).group() for f in fnames]
+        except AttributeError:
+            status_log("Could not match Met data filename to expected format.",error_or_warning="warning")
+            output_df["label"] = np.empty((len(output_df.index)),dtype=str)
+        else:
+            label = [match.split('_')[-1] for match in file_match]
+            output_df["label"] = label
     
     # Check for missing values
     if vertical_profile == True:
@@ -553,52 +578,113 @@ def read_met(fnames, met_def_dict=None, vertical_profile=False):
         output_df = output_df[output_df["press"] > 0.]
     output_df.drop_duplicates(inplace = True)
     
-    # Remove duplicate indices (if found)
-    output_df = output_df.groupby(level = 0).last()
-
-    # Sort the dataframe by time
-    output_df.sort_index(inplace = True)
+    if satellite:
+        # Sort by label axis which includes point number and level
+        output_df.sort_values(by=["label"],inplace = True)
+    else:
+        # Sort the dataframe by time
+        output_df.sort_index(inplace = True)
     
     output_df.index.name = "time"
     
     return output_df
 
 
-def particle_locations(particle_file, time, lats, lons, levs, heights,
-                       id_is_lev = False):
-    '''Read and process a particle location file.
+def met_satellite_split(met):
+    '''
+    Splits the met input into points for satellite data if the data has been grouped into all levels and points
+    for one day.
+    
+    Looks for an additional column in the met dataframe called "label" which contains the label
+    associated with the input point. For data which has been grouped by day the label values should in
+    the format "PPPLL" e.g. '00507' which translates to Point 005, Level 07.
+    If this format or column is not found then the met input will be returned unchanged.
+        
+    Args:
+        met (pandas.DataFrame/list) : 
+            Output from read_met function. Expects a Dataframe but can also handle a list 
+            containing one dataframe.
+    
+    returns:
+        list(pandas.DataFrame):
+            Met data split out into separate points each one containing all the associated levels.
+    '''
+    min_label_digit = 5 # Expect format PPPLL
+    lev_digit = 2 # Expect last 2 digits of the label to be the level
+    
+    if isinstance(met,list):
+        if len(met) == 1:
+            met = met[0]
+        else:
+            print "Only expect pandas.Dataframe or 1 item list as input to met_satellite_split. Len: {}, input included: {}".format(len(met),met)
+            return None
+    
+    if "label" in met.columns.values:
+        if len(met["label"][0]) >= min_label_digit:
+            point_num = np.unique([label[:-lev_digit] for label in met["label"].values])
+            met = [met[met["label"].str.startswith(num)] for num in point_num]
+        else:
+            met = [met]
+    else:
+        met = [met]
+    
+    return met
+ 
+
+def particle_locations(particle_file, time, lats, lons, levs, heights, id_is_lev = False,
+                       satellite = False,upper_level=17):
+    '''
+    Read and process a particle location file.
+    
+    Note: lons, lats, levs, time can be derived from corresponding fields files using define_grid() function
+    and passed to this function.
     
     Args:
         particle_file (str): 
             File of file containing particle locations
-        time (???str or datetime object -> TODO): 
-            Timestamps for particle locations
-        lats (array): 
-            Latitudes of particle locations
-        lons (array): 
-            Longitudes of particle locations
-        levs (???list -> TODO): 
-            Levels of particle locations 
-        heights (???array -> TODO): 
+        time (list): 
+            List of timestamps for NAME run
+        lats (np.array): 
+            Array of latitudes of domain for NAME run
+        lons (np.array): 
+            Array of longitudes of domain for NAME run
+        levs (list): 
+            List of levels within input data for NAME run
+        heights (np.array/list): 
+            TODO: Needs better explanation here.
             Particle location heights
-        id_is_lev (bool, optional): 
-            ???. Default = False
+        id_is_lev (bool, optional):
+            Indicate that the input "Id" value from the particle files relates to the level rather than the 
+            timestamp.
+            Default = False.
+        satellite (bool, optional):
+            Used for satellite data. This flag is used to know how to process the "Id" value to link to time values
+            and levels. Expect all time points have the same number of levels corresponding to upper_level value.
+            Default = False.
+        upper_level (int):
+            Needed if satllite=True. Used to separate out the input "Id" values to link to both time and level 
+            values.
         
     Returns:
-        hist(xarray dataset): Number of particles at locations at each boundary
-        
-    Todo:
-        This doc string should really be written by someone who knows what it's doing...
+        hist (xarray.Dataset):
+            Number of particles at each boundary.
+            Contains "pl_n","pl_e","pl_s""pl_w" data variables.
+            Dimensions are "time", "lev", "lon", "height"
     '''
 
     def particle_location_edges(xvalues, yvalues, x, y):
+        '''
+        The particle_location_edges function calculates the histogram along with the x and y edge values
+        for input xvalues, yvalues.
         
+        
+        '''
         dx = x[1] - x[0]
-        xedges = numpy.append(x - dx/2., x[-1] + dx/2.)
+        xedges = np.append(x - dx/2., x[-1] + dx/2.)
         dy = y[1] - y[0]
-        yedges = numpy.append(y - dy/2., y[-1] + dy/2.)
+        yedges = np.append(y - dy/2., y[-1] + dy/2.)
         
-        hist, xe, ye = numpy.histogram2d(xvalues, yvalues,
+        hist, xe, ye = np.histogram2d(xvalues, yvalues,
                                          bins = (xedges, yedges))
         
         return hist
@@ -631,14 +717,37 @@ def particle_locations(particle_file, time, lats, lons, levs, heights,
     else:
         compression=None
     
-    df = pandas.read_csv(particle_file, compression=compression, sep=r"\s+")
+    df = pd.read_csv(particle_file, compression=compression, sep=r"\s+")
     
     particles_record = []
     
-    for i in set(numpy.array(df["Id"])):
+    id_values = set(np.array(df["Id"]))
+    
+    if satellite:
+        npoints = len(id_values)
+        if np.any(np.isnan(list(id_values))):
+            status_log("Unable to read all id values from particle file. Check final column in particle_location* file is separated by 1 or more spaces.",
+                       error_or_warning="error",print_to_screen=True)     
+        if (npoints)%upper_level != 0:
+            status_log("Total number of fields {} is not exactly divisable by the number of levels {}. Same number of levels must be used for each satellite point.".format(npoints,upper_level),
+                       error_or_warning="error",print_to_screen=True)
+        t=0
+        l=0
+    
+    for i in id_values:
         
-        if id_is_lev:
-            # Only one time step allowed at the moment
+        if satellite:
+            # Loop through time points and levels
+            if i==1: # Use initial t=0,l=0 values
+                pass
+            elif (i-1)%upper_level: # Loop through levels while i is not exactly divisable by upper_level
+                l+=1
+            else: # Set time value to next value and reset level to 0
+                t+=1
+                l=0
+            slice_dict = {"time": [t], "lev": [l]}
+        elif id_is_lev:
+            # Only one time step allowed for id_is_lev option
             slice_dict = {"time": [0], "lev": [i-1]}
         else:
             slice_dict = {"time": [i-1]}
@@ -648,7 +757,7 @@ def particle_locations(particle_file, time, lats, lons, levs, heights,
         hist.pl_n[slice_dict] = \
             particle_location_edges(dfe["Long"].values, dfe["Ht"].values,
                                     lons, heights)
-
+        
         #Eastern edge
         dfe = df[(df["Long"] > edge_lons[1] - dlons/2.) & (df["Id"] == i)]
         hist.pl_e[slice_dict] = \
@@ -682,11 +791,21 @@ def particle_locations(particle_file, time, lats, lons, levs, heights,
             status_log("No particles have reached edge",
                        error_or_warning="warning")
             if i > 1:
+                # Note: i is one-indexed, t,l are zero-indexed. 
                 status_log("Copying lower level/previous time step",
                            error_or_warning="warning")
                 if id_is_lev:
+                    # Copying from previous level
                     slice_dict_prev = {"time": [0], "lev": [i-2]}
+                elif satellite:
+                    if l-1 < 0:
+                        # Copying from lowest level from previous time step
+                        slice_dict_prev = {"time": [t-1], "lev": [0]}
+                    else:
+                        # Copying from previous level
+                        slice_dict_prev = {"time": [t], "lev": [l-1]}
                 else:
+                    # Copying from previous time step
                     slice_dict_prev = {"time": [i-2]}
                 for key in hist.data_vars.keys():
                     hist[key][slice_dict] = hist[key][slice_dict_prev]
@@ -725,29 +844,49 @@ def footprint_array(fields_file,
                     particle_file = None,
                     met = None,
                     satellite = False,
-                    time_step = None):
-    '''Convert text output from a given file files into arrays in an 
-    xray dataset.
+                    time_step = None,
+                    upper_level = None,
+                    obs_file = None):
+    '''
+    Convert text output from given files into arrays in an xarray.Dataset.
     
     Args:
         fields_file (str): 
-            filename of footprint text file
+            Filename of footprint text file.
         particle_file (str, optional): 
-            File containing particle locations. Default=None.
+            File containing particle locations.
+            Default = None.
         met (dict): 
-            Dictionary of Met data
+            Dictionary of Met data.
+            Output from read_met() function.
+            Default = None.
         satellite (bool, optional): 
-            If using satellites then True. Default is False.
+            If using satellites then True. Default = False.
             For satellite instructions, see help(process.satellite_vertical_profile).
         time_step (float, optional): 
-            Timestep of footprint. Default = None 
+            Timestep of footprint. 
+            Needed if timestep cannot be extracted from input fields file.
+            Default = None 
+        upper_level (int, optional):
+            Only needed when satellite=True. Highest level number from within the NAME run for the satellite data.
+            Default = None.
+        obs_file (str, optional):
+            Optional for satellite=True; not used otherwise. Files containing observation data (.nc file).
+            Time values cannot always be accurately determined from the input fields file. If obs_file is
+            specified, time values will be extracted from these files.
+            Default = None.
         
     Returns:
-        fp (xarray dataset): 
-            xarray dataset of footprint data
+        fp (xarray.Dataset): 
+            Dataset of footprint data.       
     '''
-
+    
     global timestep_for_output
+
+    if satellite and not upper_level:
+        status_log("Upper level must be specified for satellite data.",
+                   error_or_warning="error")
+        return None
 
     status_log("Reading... " + os.path.split(fields_file)[1])
     
@@ -761,8 +900,11 @@ def footprint_array(fields_file,
 
     # Define grid, including output heights    
     lons, lats, levs, time, timeStep = define_grid(header, column_headings,
-                                                   satellite = satellite)
-                                 
+                                                   satellite = satellite,
+                                                   upper_level = upper_level)
+    if satellite and obs_file:
+        time = extract_time_obs(obs_file)
+    
     # If time_step is input, overwrite value from NAME output file
     if time_step is not None:
         timeStep = time_step
@@ -770,7 +912,7 @@ def footprint_array(fields_file,
     timestep_for_output = timeStep
 
     dheights = 1000
-    heights = numpy.arange(0, 19001, dheights) + dheights/2.
+    heights = np.arange(0, 19001, dheights) + dheights/2.
 
     # Get area of each grid cell
     area=areagrid(lats, lons)
@@ -779,7 +921,8 @@ def footprint_array(fields_file,
     if particle_file is not None:
         particle_hist = particle_locations(particle_file,
                                            time, lats, lons, levs,
-                                           heights, id_is_lev = satellite)
+                                           heights, satellite = satellite,
+                                           upper_level = upper_level)
     else:
         status_log("No particle location file corresponding to " + fields_file,
                    error_or_warning="error")
@@ -795,7 +938,7 @@ def footprint_array(fields_file,
     
     # Set up footprint dataset
     fp = xray.Dataset({"fp": (["time", "lev", "lat", "lon"],
-                              numpy.zeros((ntime, nlev, nlat, nlon)))},
+                              np.zeros((ntime, nlev, nlat, nlon)))},
                         coords={"lat": lats, "lon":lons, "lev": levs, 
                                 "time":time})
 
@@ -805,58 +948,68 @@ def footprint_array(fields_file,
     fp.time.attrs = {"long_name": "start of time period"}
     
     
+    ## Reformat met data to separate into levels
+    if satellite:
+        met = met_satellite_split(met)
+        if len(met) != len(time):
+            status_log("Expect number of extracted met points to match number of time points. " + \
+                       "Check metError within NAME output to check if met has been generated correctly",
+                       error_or_warning="error")
+
     # Add in met data
     met_dict = {key : (["time", "lev"], np.zeros((len(time), len(levs))))
                 for key in met[0].keys()}
     met_ds = xray.Dataset(met_dict,
                           coords = {"time": (["time"], time),
-                                    "lev": (["lev"], levs)})
+                                   "lev": (["lev"], levs)})
     
-    for levi, lev in enumerate(levs):
-        # If there is only one level in the met list
-        # but more levels in the NAME output, just use the same met level
-        # for all NAME levels. This is probably a bad idea.
-        if len(met) == 1:
-            levi_met = 0
+    for i,t in enumerate(time):
+        
+        if len(met[0].index) == 1:
             if len(levs) > 1:
                 status_log("ONLY ONE MET LEVEL. " + \
                            "ASSUMING MET CONSTANT WITH HEIGHT!",
                            error_or_warning="error")
+        if satellite:
+            metr = met[i] # Same number of met_dataframes in list as time points
         else:
-            levi_met = levi
-
-        metr = met[levi_met].reindex(index = time, method = "pad")
-
-        for key in met[levi_met].keys():
-            met_ds[key][dict(lev = [levi])] = \
-                metr[key].values.reshape((len(time), 1))
+            # Re-index met dataframe to each time point
+            metr = met[0].reindex(index = np.array([t]), method = "pad")
+        
+        for key in metr.keys():
+            if key != "time":
+                met_ds[key][{'time':[i]}] = metr[key].values.reshape((1,len(levs)))
+        
+    if "label" in met_ds.data_vars:
+        met_ds = met_ds.drop("label")
+            
 
     # Merge met dataset into footprint dataset
     fp.merge(met_ds, inplace = True)
 
-
     # Add in particle locations
     if particle_file is not None:
         fp.merge(particle_hist, inplace = True)
-
+    
     # Extract footprint from columns
     def convert_to_ppt(fp, slice_dict, column):
         molm3=fp["press"][slice_dict].values/const.R/\
             const.C2K(fp["temp"][slice_dict].values.squeeze())
-        fp.fp[slice_dict] = data_arrays[i]*area/ \
+        fp.fp[slice_dict] = data_arrays[column]*area/ \
             (3600.*timeStep*1.)/molm3
         #The 1 assumes 1g/s emissions rate
         return fp
 
     if satellite:
-        for i in range(len(levs)):
-            slice_dict = dict(time = [0], lev = [i])
-            fp = convert_to_ppt(fp, slice_dict, i)
+        for t in range(len(time)):
+            for l in range(len(levs)):
+                slice_dict = dict(time = [t], lev = [l])
+                fp = convert_to_ppt(fp, slice_dict, t*len(levs)+l)
     else:
         for i in range(len(time)):
             slice_dict = dict(time = [i], lev = [0])
             fp = convert_to_ppt(fp, slice_dict, i)
-        
+    
     return fp
     
     
@@ -864,7 +1017,9 @@ def footprint_concatenate(fields_prefix,
                           particle_prefix = None,
                           datestr = "*",
                           met = None,
-                          satellite = False, time_step = None):
+                          satellite = False,
+                          time_step = None,
+                          upper_level = None):
     '''Given file search string, finds all fields and particle
     files, reads them and concatenates the output arrays.
     
@@ -875,13 +1030,16 @@ def footprint_concatenate(fields_prefix,
             prefix for particle file search string.
             Default = None
         datestr (str, optional): 
-            Date for particle and fiels files. Default = '*'
+            Date for particle and fields files. Default = '*'
         met (dict, optional): 
             Dictionary of met data. Default = None (empty)
-        satellite (boo, optional): 
+        satellite (bool, optional): 
             Is it for satellite data? Default = False
         time_step (float, optional): 
-            Timestep of footprint. Default = None 
+            Timestep of footprint. Default = None
+        upper_level:
+            Only needed when satellite=True. Highest level number from within the NAME run for the satellite data.
+            Default = None.
     
     Returns:
         fp (xarray dataset): 
@@ -906,7 +1064,6 @@ def footprint_concatenate(fields_prefix,
     else:
         fields_files = sorted(glob.glob(fields_prefix + "*" +
                              datestr + "*.txt*"))
-                             
 
     # Search for particle files                             
     file_datestrs = [f.split(fields_prefix)[-1].split(".txt")[0].split("_")[-1] \
@@ -945,7 +1102,9 @@ def footprint_concatenate(fields_prefix,
                                           particle_file = particle_file,
                                           met = met,
                                           satellite = satellite,
-                                          time_step = time_step))                                  
+                                          time_step = time_step,
+                                          upper_level = upper_level))                                  
+    
     # Concatenate
     if len(fp) > 0:
         fp = xray.concat(fp, "time")
@@ -1046,7 +1205,7 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
     nctime[:]=time_seconds
     nctime.long_name='time'
     nctime.standard_name='time'
-    nctime.units='seconds since ' + numpy.str(time_reference)
+    nctime.units='seconds since ' + np.str(time_reference)
     nctime.label='left'
     nctime.period = str(timestep_for_output) + " hours"
     nctime.comment = 'time stamp corresponds to the beginning of each averaging period'
@@ -1058,7 +1217,7 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
     nclat[:]=lats
     nclat.units='Degrees_north'
 
-    nclev[:]=numpy.array(levs)
+    nclev[:]=np.array(levs)
     
     ncfp[:, :, :]=fp
     ncfp.units='(mol/mol)/(mol/m2/s)'
@@ -1165,7 +1324,7 @@ def satellite_vertical_profile(fp, satellite_obs_file, max_level):
             footprints and particle locations defined at each level
         satellite_obs_file (str):
             Filename of NetCDF-format satellite observation file. 
-            One per time step
+            One per time step.
         max_level (int):
             Maximum vertical level of the retrieval that is included.
             (maximum for GOSAT to include all levels from model is 20). 
@@ -1212,80 +1371,102 @@ def satellite_vertical_profile(fp, satellite_obs_file, max_level):
     status_log("Reading satellite obs file: " + satellite_obs_file)
     with xray.open_dataset(satellite_obs_file) as f:
         sat = f.load()
-        
-    if np.abs(sat.lon.values[0] - fp.release_lon.values[0,0]) > 1.:
-        status_log("Satellite longitude doesn't match footprints",
-                   error_or_warning="error")
-    if np.abs(sat.lat.values[0] - fp.release_lat.values[0,0]) > 1:
-        status_log("Satellite latitude doesn't match footprints",
-                   error_or_warning="error")
-    if np.abs(sat.time.values[0] - fp.time.values[0]).astype(int) > 60*1e9:
-        status_log("Satellite time doesn't match footprints",
-                   error_or_warning="error")
-    if len(fp.time.values) > 1:
-        status_log("satellite comparison only for one time step at the moment",
-                   error_or_warning="error")
-        return fp
-    if len(sat.time.values) > 1:
-        status_log("ERROR: satellite comparison only for one time step at the moment",
-                   error_or_warning="error")
-        return fp
+    
+    ntime = len(fp.time)
+    
+    for t in range(ntime):
+        if np.abs(sat.lon.values[t] - fp.release_lon.values[t,0]) > 1.:
+            status_log("Satellite longitude doesn't match footprints",
+                       error_or_warning="error")
+        if np.abs(sat.lat.values[t] - fp.release_lat.values[t,0]) > 1:
+            status_log("Satellite latitude doesn't match footprints",
+                       error_or_warning="error")
 
-    if not np.allclose((fp.pl_n.sum() + fp.pl_e.sum() + \
-                        fp.pl_s.sum() + fp.pl_w.sum()), \
-                        len(fp.lev)):
-        status_log("Particle histograms dont add up to 1 (or nlev)",
-                   error_or_warning="error")
-        return None
+#        if np.abs(sat.time.values[t] - fp.time.values[t]).astype(int) > 60*1e9:
+#            status_log("Satellite time doesn't match footprints",
+#                       error_or_warning="warning")
+
+#        if len(fp.time.values) > 1:
+#            status_log("satellite comparison only for one time step at the moment",
+#                       error_or_warning="error")
+#            return fp
+#        if len(sat.time.values) > 1:
+#            status_log("ERROR: satellite comparison only for one time step at the moment",
+#                       error_or_warning="error")
+#            return fp
+        
+        if not np.allclose((fp.pl_n[t].sum() + fp.pl_e[t].sum() + \
+                            fp.pl_s[t].sum() + fp.pl_w[t].sum()), \
+                            len(fp.lev)):
+            status_log("Particle histograms dont add up to 1 (or nlev)",
+                       error_or_warning="error")
+            return None
+
+    if ntime == 1:
+        if np.abs(sat.time.values[0] - fp.time.values[0]).astype(int) > 60*1e9:
+            status_log("Satellite time doesn't match footprints",
+                       error_or_warning="warning")
+    else:
+         status_log("Number of satellite time points > 1 so unable to rely on time interpolated from fields files to be correct. Not checking time within obs file against fields file time.",
+                       error_or_warning="status")
+    
+        
 
     # Change timestamp to that from obs file
     #  because NAME output only has 1 minute resolution
-    fp = fp.reindex_like(sat.time, method = "nearest")
+    #fp = fp.reindex_like(sat.time, method = "nearest")
+    fp["time"] = sat.time.values
 
     # Interpolate pressure levels
     variables = ["fp", "pl_n", "pl_e", "pl_s", "pl_w"]
     out = {}
     lower_levels =  range(0,max_level)
-        
+     
     # Weight levels using pressure weight and averaging kernel
-    sum_ak_pw = np.sum(sat.pressure_weights.values.squeeze()[lower_levels] * \
-                       sat.xch4_averaging_kernel.values.squeeze()[lower_levels])
-    sum_particle_count = 0.
-
-    for variable in variables:
-        # get dimensions based on level 0
-        fp_lev = int(np.abs(fp.press - \
-                            sat.pressure_levels[dict(lev = 0)]*100.).argmin()) 
-        var = fp[variable][{"lev": fp_lev}].values.squeeze() * \
-              sat.pressure_weights.values.squeeze()[0] * \
-              sat.xch4_averaging_kernel.values.squeeze()[0]
-        out[variable] = var.reshape((1, 1) + var.shape)
-        # run levels 1 - max_level (note it is reindexed to 0, therefore use lev+1)
-        for lev, press in enumerate(sat.pressure_levels.values.squeeze()[1:max_level]):
-                fp_lev = np.abs(fp.press.values.squeeze() - press*100.).argmin()
-                var = fp[variable][{"lev": fp_lev}].values.squeeze() * \
-                      sat.pressure_weights.values.squeeze()[lev+1] * \
-                      sat.xch4_averaging_kernel.values.squeeze()[lev+1]
-                out[variable] += var.reshape((1, 1) + var.shape)
-        if variable[0:2] == "pl":
-            sum_particle_count += out[variable].sum()
-
-    # Check whether particle sum makes sense
-    if not np.allclose(sum_particle_count, sum_ak_pw):
-        status_log("ERROR: Particle fractions don't match averaging_kernel * " + \
-                   "pressure_weight",
-                   error_or_warning = "error")
-        return None
     
-    # Compress dataset to one level and store column totals
-    fp = fp[dict(lev = [0])]
-    for variable in variables:
-        fp[variable].values = out[variable]
-        
-    fp.attrs["max_level"] = max_level    
-    fp["lev"] = numpy.array(["column"])
+    fp_combined = fp[dict(lev = [0])].copy()
     
-    return fp
+    for t in range(ntime):
+        sum_ak_pw = np.sum(sat.pressure_weights.values[t][lower_levels] * \
+                           sat.xch4_averaging_kernel.values[t][lower_levels])
+        sum_particle_count = 0.
+    
+        for variable in variables:
+            # get dimensions based on level 0
+            fp_lev = int(np.abs(fp.press[{"time":t}] - \
+                                sat.pressure_levels[dict(time = t,lev = 0)]*100.).argmin())
+            var = fp[variable][{"time":t,"lev": fp_lev}].values * \
+                  sat.pressure_weights.values[t][0] * \
+                  sat.xch4_averaging_kernel.values[t][0]
+
+            if t == 0:
+                out[variable] = np.zeros((ntime,1)+var.shape)
+
+            out[variable][t] = var.reshape((1,) + var.shape)
+            # run levels 1 - max_level (note it is reindexed to 0, therefore use lev+1)
+            for lev, press in enumerate(sat.pressure_levels.values[t][1:max_level]):
+                    fp_lev = np.abs(fp.press.values[t] - press*100.).argmin()
+                    var = fp[variable][{"time":t,"lev": fp_lev}].values * \
+                          sat.pressure_weights.values[t][lev+1] * \
+                          sat.xch4_averaging_kernel.values[t][lev+1]
+                    out[variable][t] += var.reshape((1,) + var.shape)
+            if variable[0:2] == "pl":
+                sum_particle_count += out[variable][t].sum()
+    
+        # Check whether particle sum makes sense
+        if not np.allclose(sum_particle_count, sum_ak_pw):
+            status_log("ERROR: Particle fractions don't match averaging_kernel * " + \
+                       "pressure_weight",
+                       error_or_warning = "error")
+            return None
+    
+    for variable in variables:
+        fp_combined[variable].values = out[variable]
+    
+    fp_combined.attrs["max_level"] = max_level    
+    fp_combined["lev"] = np.array(["column"])
+    
+    return fp_combined
 
 
 def status_log(message,
@@ -1378,6 +1559,8 @@ def process(domain, site, height, year, month,
             force_met_empty = False,
             processed_folder = "Processed_Fields_files",
             satellite = False,
+            obs_folder = "Observations",
+            upper_level = None,
             max_level = None,
             force_update = False,
             perturbed_folder = None,
@@ -1424,16 +1607,27 @@ def process(domain, site, height, year, month,
              Default = False.
         processed_folder (str, optional):
              Folder for processed field files.
-             Default = "Processed_Fields_files",
+             Default = "Processed_Fields_files"
         satellite (bool, optional):
-            Read a "column" of footprints? There are very particular rules
-            about how the met, footprints and particle location files are stored
-            and named. See extra instructions in satellite_vertical_profile. 
-            Default = False
+            NAME run was performed over satellite data.
+            This means satellite_vertical_profile function will be used to combined data
+            from multiple levels for each point as defined by upper_level parameter.
+            Default = False.
+        obs_folder (str, optional) :
+            Folder for netCDF format observations. Won't be contained in the original
+            NAME results folder and will need to be copied into the subfolder defined
+            by this parameter.
+            Default = "Observations"
+        upper_level (int/None):
+            Only needed when satellite=True. Highest level number from within the 
+            NAME run for the satellite data.
+            Default = None.
         max_level (int, optional):
-            Specified only for satellite data and indicates the max level to
-            process the foorprints. 
-            Levels above are replaced by the prior profile.
+            Only needed when satellite=True. The max level to
+            process the footprints.
+            Any levels above are replaced by the prior profile.
+            This can be <= upper_level.
+            If max_level is not specified, this will match upper_level.
             Default = None.
         force_update (bool, optional):
             By default, any existing netCDF files are NOT overwritten.
@@ -1492,12 +1686,32 @@ def process(domain, site, height, year, month,
                    error_or_warning="error")
     
     # Check for manual timestep (if footprints are for < 1min,
-    # which is the min resolution of the NAME output file)    
-    if os.path.exists(subfolder + "/time_step.txt"):
-        with open(subfolder + "/time_step.txt") as f:
+    # which is the min resolution of the NAME output file)
+    timestep_file = os.path.join(subfolder,"time_step.txt")
+    if os.path.exists(timestep_file):
+        with open(timestep_file) as f:
             timeStep = float(f.read())
+            if satellite:
+                timeStep = timeStep/3600. # Assume time step input from satellite is in seconds rather than hours.
+    elif satellite == True:
+        status_log("A time step file called 'time_step.txt' must be specified for satellite data. "
+                   +"The file should just contain the number of retrieval seconds for the NAME run in seconds. "
+                   +"This is necessary because the time step cannot be accurately determined from the "
+                   +"input fields file details.", 
+                   error_or_warning="error")
+        return None
     else:
         timeStep = None
+
+    if satellite:
+        if upper_level is None:
+            status_log("Upper Level must be specified for satellite data.",
+                   error_or_warning="error")
+            return None
+        elif max_level is None:
+            status_log("No max level specified, so set to match upper level of footprints.",
+                   error_or_warning="status")
+            max_level = upper_level
 
     # Get date strings for file search
     if satellite:
@@ -1577,12 +1791,12 @@ def process(domain, site, height, year, month,
                            error_or_warning="error")
                 return None
             else:
-                if satellite:
-                    met = []
-                    for met_file in met_files:
-                        met.append(read_met(met_file))
-                else:
-                    met = read_met(met_files)
+                #if satellite:
+                #    met = []
+                #    for met_file in met_files:
+                #        met.append(read_met(met_file))
+                #else:
+                met = read_met(met_files,satellite=satellite)
         else:
             met = None
 
@@ -1601,18 +1815,24 @@ def process(domain, site, height, year, month,
                                             datestr = datestr, met = met,
                                             particle_prefix = particles_prefix,
                                             satellite = satellite,
-                                            time_step = timeStep)
+                                            time_step = timeStep,
+                                            upper_level = upper_level)
             
         # Do satellite process
         if satellite:
             #satellite_obs_file = glob.glob(subfolder + "Observations/*" + \
             #                               datestr + "*.nc")
             # Modified: 06/03/2018 - problems when # files > 100, point 10 was matching multiple
-            satellite_obs_file = glob.glob(subfolder + "Observations/*" + \
-                                           datestr + "_" + "*.nc")
+            #satellite_obs_file = glob.glob(subfolder + "Observations/*" + \
+            #                               datestr + "_" + "*.nc")
+            obs_path = os.path.join(subfolder,obs_folder)
+            search_str = "*{label}_*.nc".format(label=datestr)
+            search_str = os.path.join(obs_path,search_str)
+            satellite_obs_file = glob.glob(search_str)
+            
             if len(satellite_obs_file) != 1:
                 status_log("There must be exactly one matching satellite " + 
-                           "file in the Observations/ folder",
+                           "file in the {}/ folder".format(obs_folder),
                            error_or_warning="error")
                 status_log("Files: " + ','.join(satellite_obs_file),
                            error_or_warning="error")
@@ -2115,7 +2335,7 @@ def stilt_part(nc, Id, domain_N, domain_S, domain_E, domain_W, exitfile, append)
                 Variable names
             
     """
-    part = pandas.DataFrame(nc.variables['part'][:].T)
+    part = pd.DataFrame(nc.variables['part'][:].T)
     partnames = list(netCDF4.chartostring(nc.variables['partnames'][:]))
     part.columns = partnames
     part['Id'] = Id
@@ -2138,7 +2358,7 @@ def stilt_part(nc, Id, domain_N, domain_S, domain_E, domain_W, exitfile, append)
     outpart = part.loc[out,:]
     exittime = outpart.groupby(['Id', 'partno']).apply(lambda df:df.time.argmin())
     if exittime.empty:
-        exittime = pandas.Series(None) #otherwise it will become a DataFrame
+        exittime = pd.Series(None) #otherwise it will become a DataFrame
     
     # compute last timestep for particles that do not exit
     gp = part.groupby(['Id', 'partno'])
@@ -2146,11 +2366,11 @@ def stilt_part(nc, Id, domain_N, domain_S, domain_E, domain_W, exitfile, append)
     leaves = gp.agg({'out' : any})
     lasttime = lasttime[~leaves['out']]
     if lasttime.empty:
-        lasttime = pandas.Series(None) #otherwise it will become a DataFrame
+        lasttime = pd.Series(None) #otherwise it will become a DataFrame
     
     # combine particles that do and do not exit
     
-    end = pandas.concat([exittime, lasttime])
+    end = pd.concat([exittime, lasttime])
     part = part.iloc[end.tolist()]
     part = part.loc[:,['Id','lat','lon','agl']]
     part.columns = ['Id','Lat','Long','Ht']
@@ -2232,7 +2452,7 @@ def stiltfoot_array(prefix,
     
     # set up footprint array and particle dataframe
     
-    fparrays = [numpy.sum(ncin.variables['foot'][:], axis=0)]
+    fparrays = [np.sum(ncin.variables['foot'][:], axis=0)]
     
     part, partnames = stilt_part(ncin, 1, domain_N, domain_S, domain_E, domain_W,
                                  exitfile, append=False)
@@ -2280,14 +2500,14 @@ def stiltfoot_array(prefix,
         time.extend(this_time)
         n=n+1
 #        part = part.append(p, ignore_index=True)
-        fparrays.append(numpy.sum(ncin.variables['foot'][:], axis=0))
+        fparrays.append(np.sum(ncin.variables['foot'][:], axis=0))
     
     fparrays = map(lambda x: x/1000000, fparrays) # convert ppm to mol/mol 
     
     # compute particle domain exit statistics
     
     dheights = 1000
-    heights = numpy.arange(0, 19001, dheights) + dheights/2.
+    heights = np.arange(0, 19001, dheights) + dheights/2.
     
     particle_hist = particle_locations(exitfile,
                                        time, lats, lons, levs,
@@ -2296,7 +2516,7 @@ def stiltfoot_array(prefix,
     # set up footprint dataset 
     ntime=len(time)
     fp = xray.Dataset({"fp": (["time", "lev", "lat", "lon"],
-                              numpy.zeros((ntime, nlev, nlat, nlon)))},
+                              np.zeros((ntime, nlev, nlat, nlon)))},
                         coords={"lat": lats, "lon":lons, "lev": levs, 
                                 "time":time})
     
@@ -2314,7 +2534,7 @@ def stiltfoot_array(prefix,
     if type(met) is not list:
         met = [met]
     
-    met_dict = {key : (["time", "lev"], numpy.zeros((len(time), len(levs))))
+    met_dict = {key : (["time", "lev"], np.zeros((len(time), len(levs))))
                 for key in met[0].keys()}
     met_ds = xray.Dataset(met_dict,
                           coords = {"time": (["time"], time),
@@ -2343,3 +2563,70 @@ def stiltfoot_array(prefix,
         fp.fp[slice_dict] = fparrays[i]
         
     return fp
+
+def open_obs(satellite_obs_file=None,subfolder=None,datestr=None,obs_folder="Observations"):
+    '''
+    Opens the satellite observations file. This should match
+    the points within the NAME input csv and with the output of NAME.
+    Used for satellite data as NAME input is not precise enough (minute precision).
+    
+    Can either specify satellite_obs_file or specify subfolder,datestr,obs_folder so obs_fils can be found. 
+    
+    Args:
+        satellite_obs_file (str) :
+            Observation filename.
+        subfolder (str) :
+            Only include if satellite_obs_file is not specified.
+            Folder containing the output from NAME. Folder containing observations should be
+            within this directory.
+        datestr (str) :
+            Only include if satellite_obs_file is not specified.
+            The date string being used to search for files. This should be of the form
+            'YYYYMMDD' or 'YYYYMMDD-NNN'
+        obs_folder (str, optional) :
+            Only include if satellite_obs_file is not specified.
+            Name of the folder containing the observations data. Will be appended to subfolder
+            to get the full path information.
+    
+     Returns:
+        xarray.dataset:
+            satellite file
+            
+    '''
+    if not satellite_obs_file:
+        try:
+            search_str = os.path.join(subfolder,"Observations/*{}_*.nc".format(datestr))
+        except AttributeError:
+            status_log("There must be exactly one matching satellite " + 
+                           "file in the Observations/ folder",
+                           error_or_warning="error")
+            status_log("Files: " + ','.join(satellite_obs_file),
+                           error_or_warning="error")
+            return None
+        
+        satellite_obs_files = glob.glob(search_str)
+
+        if len(satellite_obs_files) > 1:
+            status_log("There must be exactly one matching satellite " + 
+                               "file in the Observations/ folder",
+                               error_or_warning="error")
+            status_log("Files: " + ','.join(satellite_obs_files),
+                               error_or_warning="error")
+        
+        satellite_obs_file = satellite_obs_files[0]
+    
+    with xray.open_dataset(satellite_obs_file) as f:
+        sat = f.load()
+    
+    return sat
+
+def extract_time_obs(satellite_obs_file=None,subfolder=None,datestr=None,obs_folder="Observations"):
+    '''
+    '''
+    if satellite_obs_file:
+        sat = open_obs(satellite_obs_file)
+    else:
+        sat = open_obs(subfolder=subfolder,datestr=datestr,obs_folder=obs_folder)
+    
+    return sat.time.values
+    
