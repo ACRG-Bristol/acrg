@@ -295,7 +295,7 @@ def footprints(sitecode_or_filename, fp_directory = fp_directory,
         return fp
 
 
-def flux(domain, species, emissions_name=None, start = None, end = None, flux_directory=flux_directory):
+def flux(domain, species, start = None, end = None, flux_directory=flux_directory):
     """
     The flux function reads in all flux files for the domain and species as an xarray Dataset.
     Note that at present ALL flux data is read in per species per domain or by emissions name.
@@ -360,7 +360,7 @@ def flux(domain, species, emissions_name=None, start = None, end = None, flux_di
             month_end = dt.datetime(end.year, end.month, 1, 0, 0) - \
                         dt.timedelta(seconds = 1)
            
-            if 'climatology' in emissions_name:
+            if 'climatology' in species:
                 ndate = pd.to_datetime(flux_ds.time.values)
                 dateadj = ndate[month_start.month-1] - month_start  #Adjust climatology to start in same year as obs  
                 ndate = ndate - dateadj
