@@ -176,7 +176,7 @@
         "height": ["120m", "20m", "60m", "200m"],
         "height_station_masl": 213.0,
         "height_name": ["120magl", "20magl", "60magl", "200magl"],
-        "latitude": 58.97,
+        "latitude": 51.970,
         "longitude": -4.926,
         "network": "ECN"
     },
