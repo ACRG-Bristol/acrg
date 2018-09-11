@@ -128,7 +128,7 @@ if __name__=="__main__":
 
     #### GENERAL INPUTS ####
 
-    dates=["2012-01-01"] # Can be a list of one date or many dates
+    dates=["2013-01-01"] # Can be a list of one date or many dates
     species="ch4"
     domain="EUROPE"
 
@@ -138,8 +138,7 @@ if __name__=="__main__":
                           'DENMARK', 'BELGIUM', 'NETHERLANDS', 'LUXEMBOURG'])
     percentiles = [5,16,50,84,95]
     
-    #output_directory = "/path/to/tdmcmc/outputs/" # ** UPDATE OUTPUT DIRECTORY **
-    output_directory = "/home/rt17603/data/tdmcmc_output/SOUTHAMERICA_ch4/"
+    output_directory = "/path/to/tdmcmc/outputs/" # ** UPDATE OUTPUT DIRECTORY **
     
     #### POST-PROCESSING OPTIONS ####
     write_outfile=False
