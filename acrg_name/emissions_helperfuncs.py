@@ -965,7 +965,7 @@ def _JULESfile(year):
 
 def _SWAMPSfile():
     '''
-    The _SWAMPSfile function open the correct SWAMPS wetland fraction file for
+    The _SWAMPSfile function opens the correct SWAMPS wetland fraction file for
     the given year (int) as an xarray.Dataset object.
     '''
     path = os.path.join(data_path,"Gridded_fluxes/CH4/JULES")
@@ -1053,7 +1053,7 @@ def _SWAMPSwetlandArea(year,lon_out,lat_out,month=1):
 
     return wetl_area_domain,wetl_area_domain/wetl_area
 
-def getJULESwetlands(year,lon_out,lat_out,soi="CH4",scale_wetlands=True,total_emission=185e12):
+def getJULESwetlands(year,lon_out,lat_out,soi="CH4",scale_wetlands=True,total_w_emission=185e12):
     '''
     The getJULESwetlands function creates an emissions grid for wetlands based on JULES wetlands maps.
     Rather than using the modelled  JULES wetland fraction, this is scaled against the observed SWAMPS 
@@ -1071,7 +1071,7 @@ def getJULESwetlands(year,lon_out,lat_out,soi="CH4",scale_wetlands=True,total_em
         scale_wetlands (bool, optional) :
             Whether to scale emissions by the wetland fraction of a total emissions value.
             Default = True.
-        total_emissions (float, optional) :
+        total_w_emission (float, optional) :
             If scale_emissions=True, this is the global emissions assumed for wetlands methane emissions.
             The wetlands fraction within the output area will then be used to find the emissions based on
             total emissions.
@@ -1130,7 +1130,7 @@ def getJULESwetlands(year,lon_out,lat_out,soi="CH4",scale_wetlands=True,total_em
     if scale_wetlands:
         for i in range(nt):
             frac = _SWAMPSwetlandArea(year,lon_out,lat_out,month=i+1)[1]
-            scale = round((total_emission*frac)/1e12,1)*1e12
+            scale = round((total_w_emission*frac)/1e12,1)*1e12
             print "{:02}) Scaling total JULES wetlands emissions within domain to: {} g/yr".format(i+1,scale)
             narr[:,:,i] = scale_emissions(narr[:,:,i],soi,lat_out,lon_out,total_emission=scale)
 

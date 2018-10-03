@@ -65,6 +65,17 @@ def write(lat, lon, time, flux, species, domain,
     Returns:
         None
         Writes flux file to netcdf
+        Naming convention of output file:
+            The output filename depends on both whether a source is specified and if the output is
+            for climatology.
+            "species"-"source"_"domain"_"year".nc      (source specified, not climatology)
+            "species"-climatology-"source"_"domain".nc (source specified, climatology)
+            "species"-total_"domain"_"year".nc         (no source specified, not climatology) 
+            "species"-climatology-total_"domain".nc    (no source specified, climatology)
+            e.g. co2-ff_EUROPE_2012.nc
+            e.g. co2-climatology-ff_EUROPE_2012.nc
+            e.g. ch4-total_SOUTHAMERICA_2010.nc
+            e.g. ch4-climatology-total_SOUTHAMERICA_2010.nc
         
     Example:
         flux.write(lat, lon, time, flux, 'ch4', 'EUROPE', '2012',
