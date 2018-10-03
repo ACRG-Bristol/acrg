@@ -21,13 +21,19 @@ one go.
 import numpy as np
 import glob 
 import h5py
+import os
 from acrg_grid.regrid import regrid2d
-import xarray as xr
 from acrg_grid import areagrid
 import datetime
 import pandas as pd
-import os
+import xarray as xr
+import datetime as dt
+from dateutil.relativedelta import relativedelta
 from acrg_tdmcmc.tdmcmc_post_process import molar_mass
+import matplotlib.pyplot as plt
+import cartopy.crs as ccrs
+
+data_path = os.getenv("DATA_PATH")
 
 def getGFED(year, lon_out, lat_out, timeframe='monthly', months = [1,2,3,4,5,6,7,8,9,10,11,12], soi='CH4', incagr=False):
     """
@@ -946,3 +952,306 @@ def getedgarmonthlysectors(lon_out, lat_out, edgar_sectors, months=[1,2,3,4,5,6,
        narr[:,:,i], reg = regrid2d(emissions[i,:,:], lat_in, lon_in,
                              lat_out, lon_out)
     return(narr)
+
+def _JULESfile(year):
+    '''
+    The _JULESfile function opens the correct JULES wetland file for the given
+    year (int) as an xarray.Dataset object.
+    '''
+    path = os.path.join(data_path,"Gridded_fluxes/CH4/JULES")
+    filename_jules = os.path.join(path,"u-ax751_ch4_{}.nc.gz".format(year))
+
+    return filename_jules
+
+def _SWAMPSfile():
+    '''
+    The _SWAMPSfile function open the correct SWAMPS wetland fraction file for
+    the given year (int) as an xarray.Dataset object.
+    '''
+    path = os.path.join(data_path,"Gridded_fluxes/CH4/JULES")
+    #filename_swamps = os.path.join(path,"fw_swamps-glwd_2000-2012.nc") # Previous file
+    filename_swamps = os.path.join(path,"gcp-ch4_wetlands_2000-2017_05deg.nc")
+    
+    return filename_swamps
+
+def _readJULESwetland(year,species="CH4"):
+    '''
+    The _readJULESwetland function reads and interprets the JULES wetland maps for the 
+    specified year.
+    
+    Note: converts input "month" dimension into "time" co-ordinates containing datetime objects.
+    
+    Args:
+        year (int) :
+            Year of interest.
+        species (str, optional) :
+            Species of interest. At the moment this should just be "CH4"
+            Default = "CH4".
+    
+    Returns:
+        xarray.Dataset :
+            Dataset of JULES flux in expected format.
+    '''
+    
+    if year < 2009 or year > 2016:
+        print "No JULES wetlands data outside the range 2009-2016 for now."
+        return None
+
+    filename_jules = _JULESfile(year)
+    flux_jules = xr.open_dataset(filename_jules)
+
+    ## For flux_jules, reassign month unit as datetime unit
+    flux_base_time = dt.datetime(year=year,month=1,day=1)
+    flux_time = [flux_base_time+relativedelta(months=int(num)) for num in flux_jules.month.values]
+    flux_time = np.array([np.datetime64(date) for date in flux_time])
+    
+    flux_jules = flux_jules.assign_coords(**{"time":("month",flux_time)})
+    flux_jules = flux_jules.swap_dims({"month":"time"})
+
+    return flux_jules
+
+def _SWAMPSwetlandArea(year,lon_out,lat_out,month=1):
+    '''
+    The _SWAMPSwetlandArea function calculates the area of the wetland extent within the specified
+    latitude and longitude grid and the fraction of the total global wetlands area.
+    
+    This is based on the wetlands fraction input for SWAMPS across a global grid.
+    
+    Args:
+        year (int) :
+            Year of interest. Should be between 2000-2012 (at the moment).
+        lat_out (numpy.array) :
+            Latitude grid.
+        lon_out (numpy.array) :
+            Longitude grid.
+        month (int, optional) :
+            Month to extract this area for. Should be between 1 and 12.
+            Default = 1 (i.e. January)
+    
+    Returns:
+        tuple (float,float) :
+            wetland area in m2 within specified latitude and longitude grid, fraction of global
+            wetland area.
+    '''
+    if month >= 1 and month <= 12:
+        month_id = month-1
+    else:
+        raise ValueError("Did not recognise month input: {}. Expect value between 1 and 12.".format(month))
+    
+    frac_swamps = xr.open_dataset(_SWAMPSfile())
+    fw = "Fw" # Name of variable within file
+
+    area_swamps = frac_swamps[fw][month_id,:,:].values
+    area_swamps = np.nan_to_num(area_swamps)
+
+    grid_wetl = areagrid(frac_swamps.lat.values,frac_swamps.lon.values)
+    wetl_area = np.sum(area_swamps*grid_wetl)
+    
+    frac_wetl_domain = regrid2d(area_swamps, frac_swamps.lat, frac_swamps.lon, lat_out, lon_out)[0]
+    grid_domain = areagrid(lat_out,lon_out)
+    wetl_area_domain = np.sum(frac_wetl_domain*grid_domain)
+
+    return wetl_area_domain,wetl_area_domain/wetl_area
+
+def getJULESwetlands(year,lon_out,lat_out,soi="CH4",scale_wetlands=True,total_emission=185e12):
+    '''
+    The getJULESwetlands function creates an emissions grid for wetlands based on JULES wetlands maps.
+    Rather than using the modelled  JULES wetland fraction, this is scaled against the observed SWAMPS 
+    wetland fraction instead.
+    
+    Args:
+        year (int) :
+           Year of interest. Should be between 2009-2012 (at the moment - overlap between available JULES and SWAMPS data). 
+        lon_out (numpy.array) :
+            Longitude grid.
+        lat_out (numpy.array) :
+            Latitude grid.
+        soi (str, optional) :
+            Species of interest. At the moment, this should be "CH4".
+        scale_wetlands (bool, optional) :
+            Whether to scale emissions by the wetland fraction of a total emissions value.
+            Default = True.
+        total_emissions (float, optional) :
+            If scale_emissions=True, this is the global emissions assumed for wetlands methane emissions.
+            The wetlands fraction within the output area will then be used to find the emissions based on
+            total emissions.
+            Value should be specified in g/yr e.g. 185Tg/yr should be 185e12.
+            Default = 185e12 (value for total global wetlands emissions in 2012 from Saunois et al, 2016)
+    
+    Returns:
+        numpy.array :
+            Re-gridded emissions map with dimensions (lat,lon,time)
+    '''
+    
+    if soi.upper() != "CH4":
+        print "Unable to extract JULES wetland values for any species except CH4 (at the moment)"
+        return None
+    
+    flux_jules = _readJULESwetland(year,soi)
+    frac_swamps = xr.open_dataset(_SWAMPSfile())
+    
+    fch4_name = "fch4_wetl_npp"
+    fwetl_name = "fwetl"
+    fw_name = "Fw"
+    
+    # -1.0e30 used as fill value for JULES data - essentially zero pixels/nan
+    # want to set these to 0.0
+    fill_value = np.min(flux_jules[fch4_name].values) # This may incorrect if input file is changed and different fill value is specified
+    fch4_fill_indices = np.where(flux_jules[fch4_name]==fill_value)
+    
+    flux_jules.fch4_wetl_npp.values[fch4_fill_indices] = 0.0
+
+    flux_jules_frac = np.abs(flux_jules[fch4_name] / flux_jules[fwetl_name])
+    flux_jules_frac.values = np.nan_to_num(flux_jules_frac) # Any number divided by 0.0 will be nan, so change these back to 0.0
+    
+    ## Multiply by fractions from SWAMPS to rescale to measured rather than simulated inundation area
+    frac_swamps[fw_name].values = np.nan_to_num(frac_swamps[fw_name])
+    frac_reindex = frac_swamps.reindex_like(flux_jules_frac,method="ffill")
+
+    fch4_wetl_npp_new = flux_jules_frac*frac_reindex[fw_name]
+
+    lat = fch4_wetl_npp_new.lat.values
+    lon = fch4_wetl_npp_new.lon.values
+    emissions = np.moveaxis(fch4_wetl_npp_new.values,0,2) # re-arrange from [time,lat,lon] to [lat,lon,time]
+
+    ## Regrid
+    nlat_out = len(lat_out)
+    nlon_out = len(lon_out)
+    nt = len(fch4_wetl_npp_new.time)
+    
+    narr = np.zeros((nlat_out, nlon_out, nt))
+   
+    for i in range(nt):
+        narr[:,:,i], reg = regrid2d(emissions[:,:,i], lat, lon, lat_out, lon_out)
+
+    # May also want to rescale wetlands as JULES output will be too low.
+    # E.g. 185 Tg/yr for total bottom up wetlands emissions from Saunois et al, 2016
+    # Work out fraction of wetland area within new lat-lon grid and multiply by total.
+    if scale_wetlands:
+        for i in range(nt):
+            frac = _SWAMPSwetlandArea(year,lon_out,lat_out,month=i+1)[1]
+            scale = round((total_emission*frac)/1e12,1)*1e12
+            print "{:02}) Scaling total JULES wetlands emissions within domain to: {} g/yr".format(i+1,scale)
+            narr[:,:,i] = scale_emissions(narr[:,:,i],soi,lat_out,lon_out,total_emission=scale)
+
+    return narr
+
+
+def scale_emissions(emissions_t,soi,lat,lon,total_emission):
+    '''
+    The scale_emissions function scales emissions values for one time grid to a 
+    total_emission value.
+    
+    Args:
+        emissions_t (numpy.array) :
+            Emissions values for one time point. Expect array to have dimensions nlat x nlon
+        soi (str) :
+            Species of interest. Used to extract molar mass. e.g. "CH4"
+        lat (numpy.array) :
+            Latitude grid for emissions.
+        lon (numpy.array) :
+            Longitude grid for emissions.
+        total_emission (float) :
+            Total emissions of the output array. 
+            Value should be specified in g/yr e.g. 185Tg/yr should be 185e12.
+    
+    Returns:
+        numpy.array :
+            Scaled emissions array (nlat x nlon x nt)
+    '''
+
+    # Calculate number of moles
+    molmass = molar_mass(soi)
+    
+    total_time = 365.*3600.*24. # seconds in a year
+
+    areas = areagrid(lat,lon)
+    
+    current_emission = np.sum(emissions_t*areas)*total_time*molmass
+    scaling = total_emission/current_emission
+    print "Current emissions total: {} g/yr (scaling needed to {} g/yr: {})".format(current_emission,total_emission,scaling)
+    
+    emissions_new = np.copy(emissions_t)*scaling
+    #print "New total emissions: {} g/yr".format(np.sum(emissions_new*areas)*total_time*molmass)
+    
+    return emissions_new
+
+def scale_emissions_all(emissions,soi,lat,lon,total_emission):
+    '''
+    The scale_emissions_all function scales emissions values within all time grids to the same 
+    total_emission value.
+    
+    Args:
+        emissions (numpy.array) :
+            Emissions values across multiple times. Expects array to have dimensions nlat x nlon x nt
+        soi (str) :
+            Species of interest. Used to extract molar mass. e.g. "CH4"
+        lat (numpy.array) :
+            Latitude grid for emissions.
+        lon (numpy.array) :
+            Longitude grid for emissions.
+        total_emission (float) :
+            Total emissions of the output array. 
+            Value should be specified in g/yr e.g. 185Tg/yr should be 185e12.
+    
+    Returns:
+        numpy.array :
+            Scaled emissions array (nlat x nlon x nt)
+    '''
+
+    nt = emissions.shape[2]
+    
+    emissions_new = np.copy(emissions)
+    
+    for i in range(nt):
+        emissions_i = emissions[:,:,i]
+        scale_emissions(emissions_i,soi,lat,lon,total_emission)        
+    
+    return emissions_new
+
+def plot_emissions(emissions_t,lat,lon,fignum=None,cmap="inferno_r",show=True):
+    '''
+    The plot_emissions function plots emissions values as a contour plot on a map specified by the
+    latitude and longitude extent.
+    
+    Args:
+        emissions_t (numpy.array) :
+            Emissions values for one time point. Expect array to have dimensions nlat x nlon
+        lat (numpy.array) :
+            Latitude extent of emissions in degrees. Can be just lower and upper bounds or whole 
+            array of latitude values.
+        lon (numpy.array) :
+            Longitude extent of emissions in degrees. Can be just lower and upper bounds or whole 
+            array of longitude values.
+        fignum (int, optional) :
+            Figure number for plot.
+            Default = None
+        cmap (str, optional) :
+            Colour map to use for plotting. See matplotlib.org/users/colormaps.html for some options.
+            Default = "inferno_r"
+        show (bool, optional) :
+            Whether to immediately flush the buffer and produce the plot.
+            Default = True
+    
+    Returns:
+        cartopy axis object:
+            Axis object for plot so far
+        
+        If show is True:
+            Plots emissions countour map.
+    '''
+    
+    if fignum:
+        plt.figure(fignum)
+    
+    ax = plt.axes(projection=ccrs.PlateCarree())
+    ax.set_extent((lon[0],lon[-1],lat[0],lat[-1]),crs=ccrs.PlateCarree())
+    ax.coastlines()
+    
+    plt.contourf(lon,lat,emissions_t, 60,transform=ccrs.PlateCarree(),cmap=cmap)
+    plt.colorbar(orientation="horizontal",pad=0.05)
+    
+    if show:
+        plt.show()
+    
+    return ax
