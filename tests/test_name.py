@@ -392,12 +392,13 @@ def test_fp_data_merge_long(data,measurement_param,fp_directory,flux_directory,b
     Check data variables within dataset for site.
     '''
     site = measurement_param["sites"][0]
-    expected_keys = [".species",".units",site]
-    expected_data_var = ["mf","dmf","fp","particle_locations_n","particle_locations_e","particle_locations_s",
-                         "particle_locations_w","flux","vmr_n","vmr_e","vmr_s","vmr_w","bc"]
+    expected_keys = [".species",".units",".bc",".flux",site]
+    expected_data_var = ["mf","dmf","fp","particle_locations_n","particle_locations_e",
+                         "particle_locations_s","particle_locations_w","bc","mf_mod"]
     
     out = name.footprints_data_merge(data,domain=measurement_param["domain"],fp_directory=fp_directory,
-                                     flux_directory=flux_directory,bc_directory=bc_directory)
+                                     flux_directory=flux_directory,bc_directory=bc_directory,
+                                     calc_bc=True,calc_timeseries=True)
     ds = out[site]
     
     for key in expected_keys:
@@ -410,7 +411,6 @@ def test_fp_data_merge_long(data,measurement_param,fp_directory,flux_directory,b
     
 # TODO:
 #    Add more complete tests for footprints_data_merge function as it is important to check the output
-
 
 #%%
 #----------------------------
@@ -431,7 +431,6 @@ def fp_sensitivity_param(fp_data_merge,measurement_param_small,basis_function_pa
     input_param["domain"] = measurement_param_small["domain"]
     input_param["basis_case"] = basis_function_param["basis_case"]
     input_param["basis_directory"] = basis_directory
-    input_param["flux_directory"] = flux_directory
 
     return input_param
 
