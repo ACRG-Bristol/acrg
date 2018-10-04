@@ -28,6 +28,7 @@ Calculate Cape Grim monthly means, with baseline filtering:
 Created on Sat Dec 27 17:17:01 2014
 @author: chxmr
 """
+from __future__ import print_function
 
 import numpy as np
 import pandas as pd
@@ -602,7 +603,7 @@ def get_gosat(site, species, max_level, start = "1900-01-01", end = "2020-01-01"
             
     """
     if max_level is None:
-        print "ERROR: MAX LEVEL REQUIRED FOR SATELLITE OBS DATA"
+        print("ERROR: MAX LEVEL REQUIRED FOR SATELLITE OBS DATA")
         return None
         
     start_time = convert.reftime(start)

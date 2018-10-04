@@ -19,6 +19,7 @@ Function to use for creating the country file is:
 
 @author: rt17603
 """
+from __future__ import print_function
 
 import regionmask
 import iso3166
@@ -54,7 +55,7 @@ def domain_volume(domain,fp_directory=fp_directory):
     listoffiles = glob.glob(os.path.join(directory,"*"))
     if listoffiles:
         filename = listoffiles[0]
-        print 'Using footprint file: {0} to extract domain'.format(filename)
+        print('Using footprint file: {0} to extract domain'.format(filename))
         with xray.open_dataset(filename) as temp:
             fields_ds = temp.load()
         
@@ -128,12 +129,12 @@ def country_name(code,allow_non_standard=True,supress_print=False):
     except KeyError:
         try:
             if not supress_print:
-                print "Unable to derive country name from input: {}".format(code)
-                print "WARNING: Looking through non-standard list"        
+                print("Unable to derive country name from input: {}".format(code))
+                print("WARNING: Looking through non-standard list")        
             return non_standards[code]
         except KeyError:
             if not supress_print:
-                print "Unable to derive country name from non-standard list".format(code)
+                print("Unable to derive country name from non-standard list".format(code))
             return None
 
 def country_alpha2(code,allow_non_standard=True,supress_print=False):
@@ -174,17 +175,17 @@ def country_alpha2(code,allow_non_standard=True,supress_print=False):
         if allow_non_standard:
             try:
                 if not supress_print:
-                    print "Unable to derive country alpha2 code from input: {}".format(code)
-                    print "WARNING: Having to look through non-standards"
+                    print("Unable to derive country alpha2 code from input: {}".format(code))
+                    print("WARNING: Having to look through non-standards")
                 return non_standards[code]
                 
             except KeyError:
                 if not supress_print:
-                    print "Unable to derive country alpha2 code from non-standard list"
+                    print("Unable to derive country alpha2 code from non-standard list")
                 return None
         else:
             if not supress_print:
-                print "Unable to derive country alpha2 code from input: {}".format(code)
+                print("Unable to derive country alpha2 code from input: {}".format(code))
             return None
 
 def accepted_extra_countries(code):
@@ -425,10 +426,10 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
         filename = "country_{}.nc".format(domain)
         filename = os.path.join(output_dir,filename)
         if not os.path.isfile(filename):    
-            print 'Writing output to {}'.format(filename)
+            print('Writing output to {}'.format(filename))
             ds.to_netcdf(filename)
         else:
-            print "ERROR: DID NOT WRITE TO FILE: {} already exists".format(filename)
+            print("ERROR: DID NOT WRITE TO FILE: {} already exists".format(filename))
     
     return ds
 

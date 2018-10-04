@@ -17,6 +17,7 @@ sitefile = a text file with the site acronym, lat and then lon separated by spac
     
 
 """
+from __future__ import print_function
 import netCDF4
 import numpy as np
 import datetime as dt
@@ -45,7 +46,7 @@ import sys
 class read:
     def __init__(self, filename, conc_tag = '_VMR_avrg'):
     
-        print 'Reading file : ' + filename
+        print('Reading file : ' + filename)
         
         if type(filename) == tuple:
             filename = filename[0]
@@ -58,10 +59,10 @@ class read:
 
         # Check that the conc_tag is actually in the list of variables
         if len(conc_varname) == 0:
-            print 'The concentration tag you gave was not found in the given file'
-            print 'Please retry using one of the below variables:'
+            print('The concentration tag you gave was not found in the given file')
+            print('Please retry using one of the below variables:')
             for i in data.variables.keys():
-                print i
+                print(i)
         
         else:
 
@@ -105,7 +106,7 @@ class read:
             for i in np.arange(len(date)):         
                 P_i = hybrid_coords(hyai, PS[i,:,:],  B=hybi, P0=P0, half=1)
                 P[i,:,:,:] = P_i
-                print 'date ' + str(date[i]) + ' processed'
+                print('date ' + str(date[i]) + ' processed')
              
             self.time = time_t
             self.conc = conc
@@ -183,7 +184,7 @@ variables:
 class read_flux:
     def __init__(self, filename, emissions_tag_ncdf = 'emissions', time_tag = 'time', emiss_varname = None):
     
-        print 'Reading file : ' + filename
+        print('Reading file : ' + filename)
         
         if type(filename) == tuple:
             filename = filename[0]
@@ -208,7 +209,7 @@ class read_flux:
         # Split up the date based on position        
         if (date[0] == 1) and (len(date) == 12):
             # we're dealing with a climatology 
-            print 'This appears to be a climatology. Using 2000 as a default year.'
+            print('This appears to be a climatology. Using 2000 as a default year.')
             year = np.arange(12)
             year[:] = 2000
             month = date
@@ -268,7 +269,7 @@ class read_fixed_sitefile_nc:
             if species in ['CH4','ch4']:
                 sitefile = dir + species.upper() + '/global_obs_stationary_ch4.nc'
             
-        print 'Using site file : ' + sitefile
+        print('Using site file : ' + sitefile)
         
         data=netCDF4.Dataset(sitefile, 'r')
 
@@ -377,8 +378,8 @@ class read_mobile_sitefile_nc:
                 
         if exists :
             
-            print 'Site file being read:'
-            print sitefile
+            print('Site file being read:')
+            print(sitefile)
             
             data=netCDF4.Dataset(sitefile, 'r')
             
@@ -422,7 +423,7 @@ class read_mobile_sitefile_nc:
             self.fileexists = exists
     
         else:
-            print 'Sitefile ' + sitefile + ' does not exist'
+            print('Sitefile ' + sitefile + ' does not exist')
             self.fileexists = exists
 
 
@@ -454,8 +455,8 @@ class calc_pressure:
         elif units =='miles':
             altitude = altitude*1.609344
         elif (units in {'m','km','miles'}) == False:
-            print 'the units you have given are not a listed option'
-            print 'please give the altitude in m, km or miles'
+            print('the units you have given are not a listed option')
+            print('please give the altitude in m, km or miles')
         
         pressure = P0*exp((-1*altitude)/7.64) 
         
@@ -626,8 +627,8 @@ class data_filter_fixed:
             # - north, south, east, west, above and below
 
             # find the lat and lon range
-            print 'site: ' + siteinfo.site[j] 
-            print 'site postion: ' + str(siteinfo.lat[j]) + ', ' + str(siteinfo.lon[j])
+            print('site: ' + siteinfo.site[j]) 
+            print('site postion: ' + str(siteinfo.lat[j]) + ', ' + str(siteinfo.lon[j]))
               
             
             # Adjustments for hitting the edge of the grid
@@ -663,8 +664,8 @@ class data_filter_fixed:
             matched_lons[j,:] = data.lon[lon_range]
             
             
-            print 'model lats: ' + str(matched_lats[j,:])
-            print 'model lons: ' + str(matched_lons[j,:])
+            print('model lats: ' + str(matched_lats[j,:]))
+            print('model lons: ' + str(matched_lons[j,:]))
 
             
 
@@ -696,7 +697,7 @@ class data_filter_fixed:
                 
                 # Convert the altitude to a pressure using P0 from the model
                 site_pressure[j] = (calc_pressure(siteinfo.alt[j], data.P0, units=siteinfo.alt_units)).pressure             
-                print 'site pressure: ' + str(site_pressure[j])               
+                print('site pressure: ' + str(site_pressure[j]))               
                 
                 # Loop through each time step and match site pressure to column level
                 # Extract the cube of data
@@ -851,9 +852,9 @@ class data_filter_column:
             # To identify the closest model point
             latlon_index = match_latlon(columndata.lat[CD_j],columndata.lon[CD_j],data.lat, data.lon)      
 
-            print 'Matching site ' + sites[j]
-            print 'Actual location: ' + str(columndata.lat[CD_j]) + ', ' + str(columndata.lon[CD_j])
-            print 'Model matched location: ' + str(latlon_index.closestpoint[0]) + ', ' + str(latlon_index.closestpoint[1])
+            print('Matching site ' + sites[j])
+            print('Actual location: ' + str(columndata.lat[CD_j]) + ', ' + str(columndata.lon[CD_j]))
+            print('Model matched location: ' + str(latlon_index.closestpoint[0]) + ', ' + str(latlon_index.closestpoint[1]))
 
             # Extract the matched location                
             matched_lats[j] = data.lat[latlon_index.closestindex[0]]
@@ -904,7 +905,7 @@ class data_filter_mobile:
         
         species = data.species
         #print 'reading site file : ' 
-        print sitefile
+        print(sitefile)
         
         # Read site info file        
         siteinfo = read_mobile_sitefile_nc(sitefile = sitefile, species = species, month = data.time[0].month, year = data.time[0].year)
@@ -962,7 +963,7 @@ class data_filter_mobile:
 
             
         else:
-            print 'There is no matching mobile obs data for : ' + mzfile
+            print('There is no matching mobile obs data for : ' + mzfile)
             self.fileexists = False
  
 
@@ -992,32 +993,32 @@ class data_match_mobile:
             # check if the matching will be using alt or P
             if type(obs_pressure) == type(0):
                 if type(obs_alt) == type(0):
-                    print 'Not obs pressure or altitude were given'
-                    print 'Assuming ground level'
+                    print('Not obs pressure or altitude were given')
+                    print('Assuming ground level')
  
  
             # Put in checks of the inputs
             if type(model_time) == type(0):
-                print 'You need to give model time'
+                print('You need to give model time')
             if type(model_conc) == type(0):
-                print 'You need to give model concentrations'
+                print('You need to give model concentrations')
             if type(model_lat) == type(0):
-                print 'You need to give model lat'
+                print('You need to give model lat')
             if type(model_lon) == type(0):
-                print 'You need to give model lon'
+                print('You need to give model lon')
             if type(model_pressure) == type(0):
-                print 'You need to give model pressure'
+                print('You need to give model pressure')
             if type(model_P0) == type(0):
-                print 'You need to give model P0'
+                print('You need to give model P0')
                 
             if type(obs_time) == type(0):
-                print 'You need to give obs time'
+                print('You need to give obs time')
             if type(obs_conc) == type(0):
-                print 'You need to give obs conc'
+                print('You need to give obs conc')
             if type(obs_lat) == type(0):
-                print 'You need to give obs lat'
+                print('You need to give obs lat')
             if type(obs_lon) == type(0):
-                print 'You need to give obs lon'
+                print('You need to give obs lon')
             
 
             
@@ -1060,7 +1061,7 @@ class data_match_mobile:
                 # if it's AFTER the last model point then bisect returns the number of elements in the data.time array
                 if timeindex_j == len(model_time):
                     timeindex_j = len(model_time) - 1
-                    print 'Switched to last element of time array'
+                    print('Switched to last element of time array')
                 
                 matched_time.append(model_time[timeindex_j])
                 
@@ -1115,17 +1116,17 @@ class data_match_mobile:
                 if quiet != 0 :
                     np.shape(obs_lat)
                     type(obs_lat)
-                    print 'Obs lat: ' + str(obs_lat[j])
-                    print 'Model lat: ' + str(matched_lat[j])
-                    print 'Obs lon: ' + str(obs_lon[j])
-                    print 'Model lon: ' + str(matched_lon[j])
+                    print('Obs lat: ' + str(obs_lat[j]))
+                    print('Model lat: ' + str(matched_lat[j]))
+                    print('Obs lon: ' + str(obs_lon[j]))
+                    print('Model lon: ' + str(matched_lon[j]))
                        
-                    print 'Obs time: ' + str(obs_time[j])
-                    print 'Model time: ' + str(matched_time[j])
+                    print('Obs time: ' + str(obs_time[j]))
+                    print('Model time: ' + str(matched_time[j]))
                     
                     if lev_i != -1 :
-                        print 'Obs pressure: ' + str(obs_pressure_j)
-                    print 'Model pressure: ' + str(matched_pressure[j])
+                        print('Obs pressure: ' + str(obs_pressure_j))
+                    print('Model pressure: ' + str(matched_pressure[j]))
                     
             self.obs_time = obs_time    
             self.obs_lat = obs_lat
@@ -1183,7 +1184,7 @@ class write_ncdf_mobile:
                 filetimestamp = filtereddata.mzfile[filtereddata.mzfile.find('h0')+ 2: filtereddata.mzfile.find('.nc')]
             filename = filtereddata.species + '_' + filtereddata.case + '.mzt.h0'+  filetimestamp + '_' + filtereddata.sitetype+'.nc'
         
-        print 'writing file: ' + outdir + '/'+ filename
+        print('writing file: ' + outdir + '/'+ filename)
         
         
         #Write NetCDF file
@@ -1253,7 +1254,7 @@ class write_ncdf_mobile:
         ncmodel_time.units = 'seconds since 2009-01-01 00:00:00'
         
         ncF.close()
-        print "Written " + outdir + '/'+ filename
+        print("Written " + outdir + '/'+ filename)
 
 
 
@@ -1280,7 +1281,7 @@ class write_ncdf_fixed:
                 filetimestamp = mzfile[mzfile.find('h0')+ 2: mzfile.find('.nc')]
             filename = filtereddata.species + '_' + filtereddata.case + '.mzt.h0'+  filetimestamp + '_' + filtereddata.sitetype+'.nc'
         
-        print 'writing file: ' + outdir + '/'+ filename
+        print('writing file: ' + outdir + '/'+ filename)
         
         #Write NetCDF file
         ncF = netCDF4.Dataset(outdir + '/'+ filename, 'w')
@@ -1335,7 +1336,7 @@ class write_ncdf_fixed:
         nctime.units = 'seconds since 2009-01-01 00:00:00'
         
         ncF.close()
-        print "Written " + outdir + '/'+ filename
+        print("Written " + outdir + '/'+ filename)
 
 
 # Class to write out the data from a stationary platform
@@ -1361,7 +1362,7 @@ class write_ncdf_column:
                 filetimestamp = filtereddata.mzfile[filtereddata.mzfile.find('h0')+ 2: filtereddata.mzfile.find('.nc')]
             filename = filtereddata.species + '_' + filtereddata.case + '.mzt.h0'+  filetimestamp + '_' + filtereddata.sitetype+'.nc'
 
-        print 'writing file: ' + outdir + '/'+ filename
+        print('writing file: ' + outdir + '/'+ filename)
         
         #Write NetCDF file
         ncF = netCDF4.Dataset(outdir + '/'+ filename, 'w')
@@ -1413,7 +1414,7 @@ class write_ncdf_column:
 
         
         ncF.close()
-        print "Written " + outdir + '/'+ filename
+        print("Written " + outdir + '/'+ filename)
 
 
             
@@ -1447,13 +1448,13 @@ class read_ncdf_fixed:
         filenames.sort()
         
         if len(filenames) == 0 :
-            print 'There are no files matching the file pattern in the given directory'
+            print('There are no files matching the file pattern in the given directory')
 
         else:
             
             for j in np.arange(len(filenames)):
                 
-                print 'Reading file : ' + str(filenames[j])
+                print('Reading file : ' + str(filenames[j]))
                 
                 data=netCDF4.Dataset(filenames[j])
                 
@@ -1570,12 +1571,12 @@ class read_ncdf_mobile:
         filenames.sort()
         
         if len(filenames) == 0:        
-            print "There are no files in the given directory matching the file pattern"
+            print("There are no files in the given directory matching the file pattern")
         
         else: 
             for j in np.arange(len(filenames)):
                 
-                print 'Reading file : ' + str(filenames[j])
+                print('Reading file : ' + str(filenames[j]))
                 
                 data=netCDF4.Dataset(filenames[j])
                             
@@ -1691,7 +1692,7 @@ class plot_ncdf_fixed:
         sites = data.sitenames
         matched = np.where(sites == sitename)[0]
           
-        print matched          
+        print(matched)          
           
         if len(matched) > 1:
             # This means that the site was listed twice in the site file as two measurement networks share it.
@@ -1701,8 +1702,8 @@ class plot_ncdf_fixed:
             
         
         if len(matched) == 0:
-            print 'There is no sitename matching : ' + sitename
-            print 'Check the sitename or try using lowercase'
+            print('There is no sitename matching : ' + sitename)
+            print('Check the sitename or try using lowercase')
         else: 
             time = data.time
             # conc is lon x lat x lev x time x site
@@ -1791,7 +1792,7 @@ class plot_ncdf_fixed:
             if save_plot != 0:
                 outdir = os.path.dirname(os.path.dirname(data.filenames[0]))
                 fig.savefig(outdir + '/plots/' + data.species+ '_'+ sitename+ '_Model.png', dpi=100)
-                print'Figure saved as : ' + outdir + '/plots/' + data.species+ '_'+ sitename+ '_Model.png'
+                print('Figure saved as : ' + outdir + '/plots/' + data.species+ '_'+ sitename+ '_Model.png')
             
             
             plt.show()
@@ -1804,8 +1805,8 @@ class plot_ncdf_fixed:
                 import acrg_agage
                 import json
                 
-                print 'Plotting site ' + sitename
-                print 'Plotting data from /dagage2/agage/metoffice/processed_obs/'            
+                print('Plotting site ' + sitename)
+                print('Plotting data from /dagage2/agage/metoffice/processed_obs/')            
                 
                 # check if there is UKMO data for that site
                 acrg_path=os.path.split(os.path.realpath(__file__))
@@ -1855,7 +1856,7 @@ class plot_ncdf_fixed:
                     if save_plot != 0:
                         outdir = os.path.dirname(os.path.dirname(data.filenames[0]))
                         fig.savefig(outdir + '/plots/' + data.species+ '_UKMO_'+ sitename+ '.png', dpi=100)
-                        print'Figure saved as : ' + outdir + '/plots/' + data.species+ '_UKMO_'+ sitename+ '.png'
+                        print('Figure saved as : ' + outdir + '/plots/' + data.species+ '_UKMO_'+ sitename+ '.png')
                     
                     
                     plt.show()
@@ -1888,7 +1889,7 @@ class plot_ncdf_mobile:
         matched = np.where(sites == sitename)[0]
         
         if len(matched) == 0 :        
-            print 'There are no sitenames matching ' + str(sitename)
+            print('There are no sitenames matching ' + str(sitename))
             
         else:
             # conc is of dimension time 
@@ -2002,7 +2003,7 @@ class plot_ncdf_mobile:
             if save_plot != 0:
                 outdir = os.path.dirname(os.path.dirname(data.filenames[0]))
                 fig.savefig(outdir + '/plots/' + data.species+ '_'+ sitename+ '.png', dpi=100)
-                print'Figure saved as : ' + outdir + '/plots/' + data.species+ '_'+ sitename+ '.png'
+                print('Figure saved as : ' + outdir + '/plots/' + data.species+ '_'+ sitename+ '.png')
             
             
             plt.show()      
