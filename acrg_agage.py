@@ -535,7 +535,7 @@ def get_single_site(site, species_in,
             data_frame.dropna(inplace = True)
         
         data_frame.mf.units = units
-        data_frame.mf.scale = cal[0]        
+        data_frame.mf.scale = cal[0]
         data_frame.files = files
     
         return data_frame
@@ -766,19 +766,21 @@ def get_obs(sites, species, start_date, end_date,
             units.append(None)
             scales.append(None)
         else:    
-            obs[site] = data.copy()            
+            obs[site] = data.copy()
             if "GOSAT" in site.upper():
                 if data is not None:
                     obs[site].max_level = data.max_level
             units.append(data.mf.units)
             scales.append(data.mf.scale)
     
+    # Raise error if units don't match
     if len(set([u for u in units if u != None])) > 1:
         print(set(units))
         siteUnits = [':'.join([site, u]) for (site, u) in zip(sites, str(units)) if u is not None]
         errorMessage = '''Units don't match for these sites: %s''' % ', '.join(siteUnits)        
         raise ValueError(errorMessage)
 
+    # Warning if scales don't match
     if len(set([s for s in scales if s != None])) > 1:
         siteScales = [':'.join([site, scale]) for (site, scale) in zip(sites, scales) if scale is not None]
         warningMessage = '''WARNING: scales don't match for these sites:
@@ -787,7 +789,8 @@ def get_obs(sites, species, start_date, end_date,
 
     # Add some attributes
     obs[".species"] = species
-    obs[".units"] = [u for u in units if u != None][0]
+    obs[".units"] = units[0]    # since all units are the same
+    obs[".scales"] = {si:s for (si, s) in zip(sites, scales)}
     
     return obs
     

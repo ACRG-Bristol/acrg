@@ -771,7 +771,6 @@ def ale_gage(site, network):
 
     """
     
-    
     import fortranformat as ff
 
     ale_directory = "/dagage2/agage/summary/git/ale_new/complete/"
