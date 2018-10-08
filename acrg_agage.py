@@ -41,27 +41,25 @@ import json
 import datetime as dt
 import xarray as xr
 from collections import OrderedDict
+#from os.path import join
 import os
 
-acrg_path = getenv("ACRG_PATH")
+#acrg_path = getenv("ACRG_PATH")
+acrg_path = os.path.dirname(os.path.realpath(__file__))
 data_path = getenv("DATA_PATH")
 
-if acrg_path is None:
-    acrg_path = getenv("HOME")
-    print("Default ACRG directory is assumed to be home directory. Set path in .bashrc as \
-            export ACRG_PATH=/path/to/acrg/repository/ and restart python terminal")
 if data_path is None:
     data_path = "/data/shared/"
     print("Default Data directory is assumed to be /data/shared/. Set path in .bashrc as \
             export DATA_PATH=/path/to/data/directory/ and restart python terminal")
 
-root_directory = os.path.join(data_path, "obs/")
+root_directory = os.path.join(data_path, "obs_2018/")
 
 #Get site info and species info from JSON files
 with open(os.path.join(acrg_path, "acrg_species_info.json")) as f:
     species_info=json.load(f)
 
-with open(join(acrg_path, "acrg_site_info_2018.json")) as f:
+with open(os.path.join(acrg_path, "acrg_site_info_2018.json")) as f:
     site_info=json.load(f, object_pairs_hook=OrderedDict)
 
 def open_ds(path):
@@ -72,7 +70,7 @@ def open_ds(path):
         ds = open_ds("path/file.nc")
     """
     # use a context manager, to ensure the file gets closed after use
-    with xray.open_dataset(path) as ds:
+    with xr.open_dataset(path) as ds:
         ds.load()
     return ds    
 
@@ -163,7 +161,7 @@ def file_search_and_split(search_string):
     '''
 
     files=glob.glob(search_string)
-    fnames = sorted([split(f)[1] for f in files])
+    fnames = sorted([os.path.split(f)[1] for f in files])
 
     return fnames, [f.split("_") for f in fnames]
 
@@ -176,14 +174,14 @@ def quadratic_sum(x):
         x (array):
             
     """
-    return np.sqrt(np.sum(x**2))/float(len(x))
+    return np.sqrt(np.sum(x**2))/len(x)
     
 
-def get_file_list(site, species,
-                  inlet = None,
-                  network = None,
-                  instrument = None,
-                  data_directory=None):
+def file_list(site, species,
+              inlet = None,
+              network = None,
+              instrument = None,
+              data_directory=None):
     '''
     Find all files that fit the site, species, start and end dates, inlet
     network and instrument.
@@ -221,9 +219,9 @@ def get_file_list(site, species,
     
     # Look for data in data directionry + site name folder
     if data_directory is None:
-        data_directory = join(root_directory, site)
+        data_directory = os.path.join(root_directory, site)
     else:
-        data_directory = join(data_directory, site)
+        data_directory = os.path.join(data_directory, site)
 
     # Test if file path exists
     if not os.path.exists(data_directory):
@@ -231,8 +229,8 @@ def get_file_list(site, species,
         return data_directory, None
 
     #Get file list and break down file name
-    fnames, file_info = file_search_and_split(join(data_directory, "*.nc"))
-
+    fnames, file_info = file_search_and_split(os.path.join(data_directory,
+                                                           "*.nc"))
 
     # Test if there are any files in the directory
     if len(fnames) == 0:
@@ -246,6 +244,16 @@ def get_file_list(site, species,
     if len(fnames) == 0:
         print("Can't find any %s files in %s." %(site, data_directory) )
         return data_directory, None
+    
+    # If network is specified, only return that network
+    if network is not None:
+        # Subset of matching files
+        file_network = [re.split("-", f[0])[0] for f in file_info]
+        fnames = [f for (nwork, f) in zip(file_network, fnames) if nwork == network]
+        file_info = [f for (nwork, f) in zip(file_network, file_info) if nwork == network]
+        if len(fnames) == 0:
+            print("Cant find file matching network %s in %s" %(network, data_directory))
+            return data_directory, None
     
     # Test if species is in folder
     file_species = [re.split("-|\.", f[-1])[0] for f in file_info]
@@ -300,10 +308,12 @@ def get_file_list(site, species,
         return data_directory, sorted(fnames)
 
 
-def get(site, species_in, network = None, start = None, end = None,
-        inlet = None, average = None, keep_missing = False,
-        instrument = None,
-        status_flag_unflagged = [0], data_directory = None):
+
+def get_single_site(site, species_in,
+                    network = None, start_date = None, end_date = None,
+                    inlet = None, average = None, keep_missing = False,
+                    instrument = None,
+                    status_flag_unflagged = [0], data_directory = None):
     '''
     Get measurements from one site
     
@@ -314,18 +324,15 @@ def get(site, species_in, network = None, start = None, end = None,
         species_in (str) :
             Species identifier. All species names should be defined within acrg_species_info.json. 
             E.g. "ch4" for methane.
-        start (str, optional) : 
-            Start date in format "YYYY-MM-DD" for range of files to find.
-            Default = "1900-01-01".
-        end (str, optional) : 
-            End date in same format as start for range of files to find.
-            Default="2020-01-01".
+        start_date (str, optional) : 
+            Output start date in a format that Pandas can interpret
+            Default = None.
+        end_date (str, optional) : 
+            Output end date in a format that Pandas can interpret
+            Default=None.
         height (str/list, optional) : 
             Height of inlet for input data (must match number of sites).
             Default=None
-        baseline (bool, optional) : 
-            *** Not actually used in this function, at present? ***
-            Default=False.
         average (str/list, optional) :
             Averaging period for each dataset (for each site) ((must match number of sites)).
             Each value should be a string of the form e.g. "2H", "30min" (should match pandas offset 
@@ -344,20 +351,17 @@ def get(site, species_in, network = None, start = None, end = None,
             The value to use when filtering by status_flag. 
             Default = [0]
         data_directory (str, optional) :
-            flux_directory can be specified if files are not in the default directory. 
-            Must point to a directory which contains subfolders organized by network.
+            directpry can be specified if files are not in the default directory. 
+            Must point to a directory which contains subfolders organized by site.
             Default=None.
             
     Returns:
-        (xarray dataframe):
-            Get timeseries data frame for observations at site of species.
+        (Pandas dataframe):
+            Timeseries data frame for observations at site of species.
 
-    
     '''
     
-    start_time = convert.reftime(start)
-    end_time = convert.reftime(end)
-    
+    # Check that site is in acrg_site_info.json
     if site not in site_info.keys():
         print("No site called %s." % site)
         print("Either try a different name, or add name to acrg_site_info.json.")
@@ -368,14 +372,19 @@ def get(site, species_in, network = None, start = None, end = None,
         print("No species called %s." % species_in)
         print("Either try a different name, or add name to species_info.json.")
         return
+    if species != species_in:
+        print("Note: changing species from %s to %s" % (species_in, species))
     
     # If no network specified, pick the first network in site_info dictionary
     if network is None:
         network = site_info[site].keys()[0]
-        print("Assuming network is %s" %network)
-
-    
-    data_directory, files = get_file_list(site, species,
+        print("... assuming network is %s" %network)
+    elif network not in site_info[site].keys():
+        print("Error: Available networks for site %s are %s." % (site, site_info[site].keys()))
+        print("       You'll need to add network %s to acrg_site_info.json" %network)
+        return
+        
+    data_directory, files = file_list(site, species,
                                           network = network,
                                           inlet = inlet,
                                           instrument = instrument,
@@ -392,14 +401,14 @@ def get(site, species_in, network = None, start = None, end = None,
             print("Reading: " + f)
             
             # Read files using xarray
-            with xr.open_dataset(join(data_directory, f)) as fxr:
+            with xr.open_dataset(os.path.join(data_directory, f)) as fxr:
                 ds = fxr.load()
                 
             # Record calibration scales
             if "Calibration_scale" in ds.attrs.keys():
                 cal.append(ds.attrs["Calibration_scale"])            
                 
-                ncvarname=listsearch(ds.keys(), species, species_info)
+                ncvarname = listsearch(ds.keys(), species, species_info)
                 
                 if ncvarname is None:
                     print("Can't find mole fraction variable name '" + species + 
@@ -440,14 +449,13 @@ def get(site, species_in, network = None, start = None, end = None,
                         file_lon=ds["longitude"].values
                         if len(file_lon) > 0:
                             df["meas_lon"] = file_lon
-                           
                     
                     #If platform is aircraft, get altitude data
                     if site_info[site]["platform"] == 'aircraft':
                         if "alt" in ds.keys():
                             file_alt=ds["alt"].values
                             if len(file_alt) > 0:
-                                df["altitude"] = file_alt    
+                                df["altitude"] = file_alt
                         
                 #Get status flag
                 if ncvarname + "_status_flag" in ds.keys():
@@ -467,27 +475,30 @@ def get(site, species_in, network = None, start = None, end = None,
                 if len(df) > 0:
                     data_frames.append(df)
     
-        # If multiple files, merge
-        if len(data_frames) > 0:
 
-            # Check if all calibration scales are the same
-            if not all([c == cal[0] for c in cal]):
-                print("ERROR: Can't merge the following files, as calibration scales are different:")
-                for f in files:
-                    print(f)
-                return None
-            
-            data_frame = pd.concat(data_frames).sort_index()
-            data_frame.index.name = 'time'
-            data_frame = data_frame[start_time : end_time]
-            
-            if len(data_frame) == 0:
-                return None
-
-        else:
-
+        if len(data_frames) == 0:
+            warningMessage = '''For some reason, there is no valid data 
+                                within files %s 
+                                (e.g. all flagged)''' % ",".join(files)
+            print(warningMessage)
             return None
+            
+        # Check if all calibration scales are the same
+        if not all([c == cal[0] for c in cal]):
+            errorMessage = '''Can't merge the following files,
+                              as calibration scales 
+                              are different: ''' % ",".join(files)
+            raise ValueError(errorMessage)
 
+        # Merge files        
+        data_frame = pd.concat(data_frames).sort_index()
+        data_frame.index.name = 'time'
+
+        # Cut out requested time period
+        data_frame = data_frame[start_date : end_date]
+        if len(data_frame) == 0:
+            print("Warning, no data within range")
+            return None
 
         # If averaging is set, resample
         if average is not None:
@@ -503,31 +514,28 @@ def get(site, species_in, network = None, start = None, end = None,
                     how[key] = "mean"
             
             if keep_missing == True:
-                if min(data_frame.index) > start_time:
-                    dum_frame = pd.DataFrame({"status_flag": float('nan')},
-                                         index = np.array([start_time]))   
-                    dum_frame["mf"] =  float('nan')
-                    dum_frame["dmf"] =  float('nan')
-                    dum_frame.index.name = 'time'                                                                               
-                    data_frame = data_frame.append(dum_frame)
+                # Pad with an empty entry at the start date
+                if min(data_frame.index) > pd.to_datetime(start_date):
+                    data_frame.loc[pd.to_datetime(start_date)] = \
+                        [np.nan for col in data_frame.columns]           
+                # Pad with an empty entry at the end date
+                if max(data_frame.index) < pd.to_datetime(end_date):
+                    data_frame.loc[pd.to_datetime(end_date)] = \
+                        [np.nan for col in data_frame.columns]
+                # Now sort to get everything in the right order
+                data_frame.sort_index(inplace = True)
             
-                if max(data_frame.index) < end_time:
-                    dum_frame2 = pd.DataFrame({"status_flag": float('nan')},
-                                         index = np.array([end_time]))   
-                    dum_frame2["mf"] =  float('nan')
-                    dum_frame2["dmf"] =  float('nan')
-                    dum_frame2.index.name = 'time'
-                    data_frame = data_frame.append(dum_frame2)
-            
-            data_frame=data_frame.resample(average, how=how)
+            # Resample
+            data_frame=data_frame.resample(average, how = how)
             if keep_missing == True:
                 data_frame=data_frame.drop(data_frame.index[-1])
-              
+             
         # Drop NaNs
         if keep_missing == False:  
             data_frame.dropna(inplace = True)
         
         data_frame.mf.units = units
+        data_frame.mf.scale = cal[0]        
         data_frame.files = files
     
         return data_frame
@@ -537,7 +545,9 @@ def get(site, species_in, network = None, start = None, end = None,
         return None
 
 
-def get_gosat(site, species, max_level, start = "1900-01-01", end = "2020-01-01", data_directory = None):
+def get_gosat(site, species, max_level,
+              start_date = None, end_date = None,
+              data_directory = None):
     """retrieves obervations for a set of sites and species between start and 
     end dates for GOSAT 
     
@@ -550,15 +560,15 @@ def get_gosat(site, species, max_level, start = "1900-01-01", end = "2020-01-01"
             E.g. "ch4" for methane.
         max_level (int) : 
             Required for satellite data only. Maximum level to extract up to from within satellite data.
-        start (str, optional) : 
-            Start date in format "YYYY-MM-DD" for range of files to find.
-            Default = "1900-01-01".
-        end (str, optional) : 
-            End date in same format as start for range of files to find.
-            Default="2020-01-01".
+        start_date (str, optional) : 
+            Start date in Pandas-readable format. E.g. "2000-01-01 00:00"
+            Default = None.
+        end_date (str, optional) : 
+            End date in Pandas-readable format.
+            Default = None.
         data_directory (str, optional) :
-            flux_directory can be specified if files are not in the default directory. 
-            Must point to a directory which contains subfolders organized by network.
+            directory can be specified if files are not in the default directory. 
+            Must point to a directory which contains subfolders organized by site.
             Default=None.
             
     Returns:
@@ -567,25 +577,27 @@ def get_gosat(site, species, max_level, start = "1900-01-01", end = "2020-01-01"
             
     """
     if max_level is None:
-        print "ERROR: MAX LEVEL REQUIRED FOR SATELLITE OBS DATA"
-        return None
+        raise ValueError("MAX LEVEL REQUIRED FOR SATELLITE OBS DATA")
         
-    start_time = convert.reftime(start)
-    end_time = convert.reftime(end)
+#    data_directory, files = file_list(site, species,
+#                                      data_directory = os.path.join(root_directory, "GOSAT"))
+    
+    data_directory = os.path.join(root_directory, "GOSAT", site)
+    files = glob.glob(os.path.join(data_directory, '*.nc'))
+    files = [os.path.split(f)[-1] for f in files]
 
-    data_directory, files = get_file_list(site, species, start_time, end_time,
-                                          None, data_directory = data_directory)
-    files_date = [convert.reftime(f.split("_")[2][0:8]) for f in files]
-    files_keep = [True if d >= start_time and d < end_time else False for d in files_date]
-    files = [f for (f, k) in zip(files, files_keep) if k == True]
+    files_date = [pd.to_datetime(f.split("_")[2][0:8]) for f in files]
 
     data = []
-    for i,f in enumerate(files):
-        #data.append(xray.open_dataset(os.path.join(data_directory,f)))
-        # rt17603: 06/04/2018 Changed this to use function containing with statement. Was possible causing problems with too many files being open at once..
-        data.append(open_ds(os.path.join(data_directory,f)))
-        
-    data = xray.concat(data, dim = "time")
+    for (f, d) in zip(files, files_date):
+        if d >= pd.to_datetime(start_date) and d < pd.to_datetime(end_date):
+            with xr.open_dataset(os.path.join(data_directory,f)) as fxr:
+                data.append(fxr.load())
+    
+    if len(data) == 0:
+        return None
+    
+    data = xr.concat(data, dim = "time")
 
     lower_levels =  range(0,max_level)
 
@@ -623,14 +635,19 @@ def get_gosat(site, species, max_level, start = "1900-01-01", end = "2020-01-01"
     
     data.max_level = max_level
     if species.upper() == "CH4":
-        data.mf.units = 1e-9
+        data.mf.units = '1e-9'
     if species.upper() == "CO2":
-        data.mf.units = 1e-6
+        data.mf.units = '1e-6'
 
+    data.mf.scale = "GOSAT"
 
-def get_obs(sites, species, start, end,
-            height = None, baseline = False, average = None, keep_missing=False,
-            network = None, instrument = None, status_flag_unflagged = None,
+    return data
+    
+def get_obs(sites, species, start_date, end_date,
+            inlet = None, average = None,
+            keep_missing=False,
+            network = None, instrument = None,
+            status_flag_unflagged = None,
             max_level = None, data_directory = None):
     """
     The get_obs function retrieves obervations for a set of sites and species between start and end dates
@@ -668,10 +685,8 @@ def get_obs(sites, species, start, end,
             Start date in format "YYYY-MM-DD" for range of files to find.
         end (str) : 
             End date in same format as start for range of files to find.
-        height (str/list, optional) : 
+        inlet (str/list, optional) : 
             Height of inlet for input data (must match number of sites).
-        baseline (bool, optional) : 
-            *** Not actually used in this function, at present? ***
         average (str/list, optional) :
             Averaging period for each dataset (for each site) ((must match number of sites)).
             Each value should be a string of the form e.g. "2H", "30min" (should match pandas offset 
@@ -697,82 +712,120 @@ def get_obs(sites, species, start, end,
     """
 
     def check_list_and_length(var, sites, error_message_string):
-        if var is not None:
+        if var != None:
             if type(var) is not list:
-                var = [var]
+                raise ValueError("Variable '%s' must be a list" % error_message_string)
             if len(var) != len(sites):
-                print("If you're going to specify {}, make sure the length of ".format(error_message_string) +
-                      "the height list is the same length as sites list. Returning.")
-                return None
+                raise ValueError("Length of variable '%s' is different to 'sites'" % error_message_string)
         else:
             var = [None for i in sites]
         return var
 
     if status_flag_unflagged:
         if len(status_flag_unflagged) != len(sites):
-            print("Status_flag_unflagged must be a LIST OF LISTS with the same dimension as sites")
-            return None
+            errorMessage = '''Status_flag_unflagged must be a 
+                              LIST OF LISTS with the same 
+                              first dimension as sites'''
+            raise ValueError(errorMessage)
     else:
         status_flag_unflagged = [[0] for _ in sites]
         print("Assuming status flag = 0 for all sites")
 
-    # Prepare inputs
-    start_time = convert.reftime(start)
-    end_time = convert.reftime(end)
-
-    if end_time < start_time:
-        print("End time is before start time")
-        return None
-
     if type(sites) is not list:
-        sites = [sites]
+        raise ValueError("Sites variable must be a list")
 
-    height = check_list_and_length(height, sites, "height")
+    inlet = check_list_and_length(inlet, sites, "inlet")
     average = check_list_and_length(average, sites, "average")
     network = check_list_and_length(network, sites, "network")
     instrument = check_list_and_length(instrument, sites, "instrument")
     
-    if height == None or average == None or network == None or instrument == None:
-        #return None
-        raise Exception("All of height, average, network and instrument parameters must match "+
-                        "the dimensionality of sites parameter. "+
-                        "height : {0}; average: {1}; network: {2}; instrument: {3}\n".format(height,average,network,instrument)+
-                        "sites: {}, number of sites: {}".format(sites,len(sites)))
-
     # Get data
     obs = {}
+    units = []
+    scales = []
+    
     for si, site in enumerate(sites):
-
+        print("Getting %s data for %s..." %(species, site))
         if "GOSAT" in site.upper():
             data = get_gosat(site, species,
-                       start = start_time, end = end_time, max_level = max_level,
+                       start_date = start_date, end_date = end_date,
+                       max_level = max_level,
                        data_directory = data_directory)
-            if data is None:
-                return
-                
         else:
-            data = get(site, species, height = height[si],
-                       start = start_time, end = end_time,
-                       average = average[si],
-                       network = network[si],
-                       instrument = instrument[si],
-                       keep_missing = keep_missing,
-                       status_flag_unflagged = status_flag_unflagged[si],
-                       data_directory = data_directory)                     
-                       
-        if data is not None:
+            data = get_single_site(site, species, inlet = inlet[si],
+                                   start_date = start_date, end_date = end_date,
+                                   average = average[si],
+                                   network = network[si],
+                                   instrument = instrument[si],
+                                   keep_missing = keep_missing,
+                                   status_flag_unflagged = status_flag_unflagged[si],
+                                   data_directory = data_directory)
+        
+        if data is None:
+            obs[site] = None
+            units.append(None)
+            scales.append(None)
+        else:    
             obs[site] = data.copy()            
             if "GOSAT" in site.upper():
-                obs[site].max_level = data.max_level
-                
-        # Add some attributes
-        if data is not None:
-            obs[".species"] = species
-            obs[".units"] = data.mf.units
+                if data is not None:
+                    obs[site].max_level = data.max_level
+            units.append(data.mf.units)
+            scales.append(data.mf.scale)
+    
+    if len(set([u for u in units if u != None])) > 1:
+        print(set(units))
+        siteUnits = [':'.join([site, u]) for (site, u) in zip(sites, str(units)) if u is not None]
+        errorMessage = '''Units don't match for these sites: %s''' % ', '.join(siteUnits)        
+        raise ValueError(errorMessage)
 
+    if len(set([s for s in scales if s != None])) > 1:
+        siteScales = [':'.join([site, scale]) for (site, scale) in zip(sites, scales) if scale is not None]
+        warningMessage = '''WARNING: scales don't match for these sites:
+                            %s''' % ', '.join(siteScales)
+        print(warningMessage)
+
+    # Add some attributes
+    obs[".species"] = species
+    obs[".units"] = [u for u in units if u != None][0]
     
-    if len(obs) == 0:
-        return None
-    else:
-        return obs
+    return obs
     
+
+
+def plot_obs(data_dict):
+    '''
+    Plot the data dictionary created by get_obs
+    
+    Args:
+        data_dict (dict) :
+            Dictionary of Pandas DataFrames output by get_obs. 
+            Keys are site names.
+        
+    '''
+    
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as mpatches
+    
+    plots = []
+    
+    for site, df in data_dict.iteritems():
+        if site[0] != '.':
+            if df is None:
+                plots.append(mpatches.Patch(label="%s (no data)" %site, color = "white"))
+            else:
+                if "vmf" in df.columns:
+                    plots.append(plt.errorbar(df.index, df.mf, df.vmf,
+                                 linewidth = 0,
+                                 marker = '.', markersize = 3.,
+                                 label = site))
+                if "dmf" in df.columns:
+                    plots.append(plt.errorbar(df.index, df.mf, df.dmf,
+                                 linewidth = 0, 
+                                 marker = '.', markersize = 3.,
+                                 label = site))
+
+    plt.legend(handles = plots)
+    plt.ylabel("%s (%s)" %(data_dict[".species"], data_dict[".units"]))
+    
+    plt.show()

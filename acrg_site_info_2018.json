@@ -947,6 +947,18 @@
       "latitude": 53.32611, 
       "long_name": "Mace Head, Ireland", 
       "longitude": -9.90389
+    },
+    "ICOS": {
+      "height": [
+        "10m"
+      ], 
+      "height_name": [
+        "10magl"
+      ], 
+      "height_station_masl": 5.0, 
+      "latitude": 53.32611, 
+      "long_name": "Mace Head, Ireland", 
+      "longitude": -9.90389
     }
   }, 
   "MLO": {
