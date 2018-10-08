@@ -532,9 +532,9 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
         wh_month = np.where(pdy_time.to_period('M').month == month)[0]
         if len(wh_month > 0):
             if nBias: # 0th term is for the bias, set 1:nBC to H_bc region terms
-	        h_agg0[wh_month,nBias+mn*nBC_basis:nBias+(mn+1)*nBC_basis] = H_bc[wh_month,nBias:]  # Assign H_agg separately for each month
+	            h_agg0[wh_month,nBias+mn*nBC_basis:nBias+(mn+1)*nBC_basis] = H_bc[wh_month,nBias:]  # Assign H_agg separately for each month
 	    else:
-	    	h_agg0[wh_month,mn*nBC_basis:(mn+1)*nBC_basis] = H_bc[wh_month,:]  # Assign H_agg separately for each month
+        	    	h_agg0[wh_month,mn*nBC_basis:(mn+1)*nBC_basis] = H_bc[wh_month,:]  # Assign H_agg separately for each month
     
     #rt17603: Added on 26/07/2018 - Bug fix: H_fixed wasn't being assigned, equivalent values were just 0.0 in h_agg0 (and h_agg)
     h_agg0[:,nBC:nIC] = H_fixed
@@ -850,6 +850,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
                             ("y", (["nmeasure"], y)),
                             ("y_time", (["nmeasure"], y_time)),
                             ("y_site", (["nmeasure"], y_site)),
+                            ("y_prior", (["nmeasure"], y_model)),
                             ("release_lons", (["sites"], release_lons)),
                             ("release_lats", (["sites"], release_lats)),
                             ("accepts", (["proposal"],accepts)),

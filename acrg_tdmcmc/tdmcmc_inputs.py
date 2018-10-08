@@ -56,12 +56,14 @@ config_file = os.path.join(config_path,config_file)
 parser = argparse.ArgumentParser(description='Running mcmc script')
 parser.add_argument("start", help="Start date string yyyy-mm-dd",nargs="?")                  
 parser.add_argument("end", help="End date sting yyyy-mm-dd",nargs="?")
-parser.add_argument("-c","--config",help="Configuration filename",default=config_file)
+parser.add_argument("-c","--config",help="Name (including path) of configuration file",default=config_file)
+parser.add_argument("-g","--group",help="Group to apply to run. All members of this group will be saved to the same sub-folder named after the group.")
 args = parser.parse_args()
 
 start_date = args.start
 end_date = args.end
 config_file = args.config
+group = args.group
 
 #############################################################
 
@@ -117,6 +119,11 @@ elif output_dir.startswith("$DATA_PATH"):
 
 if not os.path.isdir(output_dir):
     raise Exception("Output directory: {} does not exist.".format(output_dir))
+
+if group:
+    output_dir = os.path.join(output_dir,group)
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
 
 #######################################################
 # DO YOU WANT TO DO REVERSIBLE JUMP OR NOT?????
@@ -358,7 +365,7 @@ post_mcmc=run_tdmcmc.run_tdmcmc(sites, meas_period, av_period, species, start_da
 if unique_copy:
     shutil.copy(config_file,output_dir)
     # Create date-stamped sub-directory of the form:
-    #   Output_"sites"_"species"_"start_date"_"creation_dt" e.g. Output_MHD-TAC_CH4_2008-01-01_20171110T12-00-00
+    #   Output_"sites"_"species"_"start_date"_"creation_dt" e.g. Output_MHD-TAC_CH4_20080101_20171110T12-00-00
     now = dt.datetime.now().replace(microsecond=0)
     site_str = '-'.join(sites)
     #start_date_d = start_date.replace('-','')
@@ -381,3 +388,4 @@ if unique_copy:
     post_mcmc.to_netcdf(path=fname, mode='w')
 else:
     shutil.copy(config_file,output_dir)
+

@@ -33,8 +33,10 @@ def write(lat, lon, time, flux, species, domain,
         time (numpy.datetime64): 
             Either an array (format from xarray) or a datetime index (format from pandas).
             See 'Creating datetime64 data' : http://xarray.pydata.org/en/stable/time-series.html
+            If making a 'climatology' then this can be passed any dates but must be of same length 
+            as time dimension of flux variable.
         flux (array):
-            2D array of size [lat x lon]. Should be in mol/m2/s.
+            2D array of size [lat x lon x time]. Should be in mol/m2/s.
         species (str): 
             Species of interest.
         domain (str): 
@@ -76,12 +78,17 @@ def write(lat, lon, time, flux, species, domain,
             for monthly data or 1st January for yearly data)."
     print "WARNING: Make sure coordinates are centre of the gridbox."
     print "WARNING: Make sure fluxes are in mol/m2/s."
+
+    if climatology == True:
+        name_climatology = "-climatology"
+    else:
+        name_climatology = ""
         
     if source == None:
         file_source = species
-        source_name = species + '-total'
+        source_name = species + name_climatology+ '-total'
     else:
-        file_source = species + '-' + source
+        file_source = species + name_climatology + '-' + source
         source_name = file_source
     
     file_source = file_source.lower()
@@ -93,19 +100,27 @@ def write(lat, lon, time, flux, species, domain,
         print "Reshape your flux array and try again"
         return
         
+    #Set climatology to year 1900
+    if climatology == True:
+        if len(time) == 1:
+            time = [np.datetime64('1900-01-01')]
+        elif len(time) == 12:
+            time = np.arange('1900-01', '1901-01', dtype='datetime64[M]')
+        else:
+           sys.exit('Expecting either yearly or monthly climatology. Make sure time dimension is of size 1 or 12.')
+    
     if type(time[0]) == np.datetime64:
         time=time
     else:
         sys.exit('Time format not correct, needs to be a list of type numpy.datetime64. A DatetimeIndex will not work.\
                  To convert a DatetimeIndex to correct format: time = [np.datetime64(i) for i in DatetimeIndex]')
 
-        
     #Open netCDF file
     year = pd.DatetimeIndex([time[0]]).year[0]
     if copy_from_year != None:
         ncname = output_directory + '%s/%s_%s_%s_copy-from-%s.nc' %(domain, file_source, domain, year, copy_from_year)
     elif climatology == True:
-        ncname = output_directory + '%s/%s_%s_%s_climatology.nc' %(domain, file_source, domain, year)
+        ncname = output_directory + '%s/%s_%s.nc' %(domain, file_source, domain)
     else:
         ncname = output_directory + '%s/%s_%s_%s.nc' %(domain, file_source, domain, year)
 
