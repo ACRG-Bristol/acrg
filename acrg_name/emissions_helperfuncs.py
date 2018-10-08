@@ -27,8 +27,9 @@ from acrg_grid import areagrid
 import datetime
 import pandas as pd
 import os
+from acrg_tdmcmc.tdmcmc_post_process import molar_mass
 
-def getGFED(year, lon_out, lat_out, timeframe='monthly', monthrange = [1,2,3,4,5,6,7,8,9,10,11,12], soi='CH4', incagr=False):
+def getGFED(year, lon_out, lat_out, timeframe='monthly', months = [1,2,3,4,5,6,7,8,9,10,11,12], soi='CH4', incagr=False):
     """
     Gets GFED 4.1s data, puts into mol/m2/s and regrids to desired 
     lats and lons for a given year and months.
@@ -46,7 +47,7 @@ def getGFED(year, lon_out, lat_out, timeframe='monthly', monthrange = [1,2,3,4,5
             Can be either 'monthly', 'daily' or '3hourly'.
             Only 'monthly' data available before 2003.
             Default = 'monthly'
-        monthrange (list):
+        months (list):
             The months that you want data for. NB these don't have to be 
             sequential.
             Default = [1,2,3,4,5,6,7,8,9,10,11,12] (all months)
@@ -73,9 +74,9 @@ def getGFED(year, lon_out, lat_out, timeframe='monthly', monthrange = [1,2,3,4,5
         over all time steps.
         There's definitely a faster way of doing this.
     """    
-    months       = '01','02','03','04','05','06','07','08','09','10','11','12'
+    months_str     = '01','02','03','04','05','06','07','08','09','10','11','12'
     if incagr == False:
-       sources      = 'SAVA','BORF','TEMF','DEFO','PEAT'
+       sources     = 'SAVA','BORF','TEMF','DEFO','PEAT'
        sourceindex = [7,5,3,1,11] #
     else:
        sources      = 'SAVA','BORF','TEMF','DEFO','PEAT','AGRI'
@@ -157,52 +158,56 @@ def getGFED(year, lon_out, lat_out, timeframe='monthly', monthrange = [1,2,3,4,5
     lat = np.flipud(np.unique(np.array(f['lat']) - 0.125))
     lon = np.unique(np.array(f['lon']) + 0.125)
     leapyears = np.arange(1900, 2100, 4)    
-    #dim = np.array([31,28,31,30,31,30,31,30,31,30,31,31])  
+    
     dim = np.array([31,28,31,30,31,30,31,31,30,31,30,31]) #rt17603: Updated to align with days in a month 
     if (np.min(abs(year-leapyears)) == 0):
         dim[1] = 29
     
-    monthrange = [m-1 for m in monthrange] # rt17603: Reset to zero-indexed list (jan=0,feb=1 etc)
-    dim = dim[monthrange]    #Use only desired months
+    months = [m-1 for m in months] # rt17603: Reset to zero-indexed list (jan=0,feb=1 etc)
+    dim = dim[months]    #Use only desired months
     
     if timeframe == 'monthly':
         emissions = np.zeros((len(dim), len(lat), len(lon)))
-        for month in range(len(dim)):
-           convert2secs = dim[month]*24*3600
+        # rt17603: Updated to run over months rather than range(len(dim)), using i for dim dimension
+        for i,month in enumerate(months):
+           convert2secs = dim[i]*24*3600
             # read in DM emissions
-           string = '/emissions/'+months[month]+'/DM'
+           string = '/emissions/'+months_str[month]+'/DM'
            DM_emissions = f[string][:]
            for source in range(len(sources)):
                # read in the fractional contribution of each source
-               string = '/emissions/'+months[month]+'/partitioning/DM_'+sources[source]
+               string = '/emissions/'+months_str[month]+'/partitioning/DM_'+sources[source]
                contribution = f[string][:]
                # calculate emissions as the product of DM emissions (kg DM per 
                # m2 per month), the fraction the specific source contributes to 
                # this (unitless), and the emission factor (g per kg DM burned)
                #emissions += DM_emissions * contribution * EF[sourceindex[source]]
                #Then convert from g/m2/month to mol/m2/s
-               emissions[month, :,:] += (DM_emissions * contribution * EF[sourceindex[source]]) / (EF[0] * convert2secs)
+               emissions[i, :,:] += (DM_emissions * contribution * EF[sourceindex[source]]) / (EF[0] * convert2secs)
     elif timeframe == 'daily':
         emissions = np.zeros((np.sum(dim), len(lat), len(lon)))
         convert2secs = 24*3600
         d = 0
-        for month in range(len(dim)):
-           convert2secs = dim[month]*24*3600
+        
+        for i,month in enumerate(months):
+           days = dim[i]
+           convert2secs = days*24*3600
             # read in DM emissions
-           string = '/emissions/'+months[month]+'/DM'
+           string = '/emissions/'+months_str[month]+'/DM'
            DM_emissions = f[string][:]
            contribution = f[string][:]
-           for day in range(dim[month]):
+           # rt17603: Updated to run over range(days) as defined by dim[i], rather than dim[month]
+           for day in range(days):
                # calculate emissions as the product of DM emissions (kg DM per 
                # m2 per month), the fraction the specific source contributes to 
                # this (unitless), the emission factor (g per kg DM burned), and fractional
                #daily contribution.
                #Then convert from g/m2/day to mol/m2/s
-               daystr = '/emissions/'+months[month]+'/daily_fraction/day_'+str(day+1)
+               daystr = '/emissions/'+months_str[month]+'/daily_fraction/day_'+str(day+1)
                dayfrac = f[daystr][:]
                for source in range(len(sources)):
                    # read in the fractional contribution of each source
-                   string = '/emissions/'+months[month]+'/partitioning/DM_'+sources[source]
+                   string = '/emissions/'+months_str[month]+'/partitioning/DM_'+sources[source]
                    emissions[d, :,:] += (DM_emissions * contribution * dayfrac * EF[sourceindex[source]]) / (EF[0] * convert2secs)
                d += 1
     elif timeframe == '3hourly':
@@ -211,25 +216,28 @@ def getGFED(year, lon_out, lat_out, timeframe='monthly', monthrange = [1,2,3,4,5
         h = 0
         #rt17603: Made into a list rather than a list containing one tuple.
         diurnalcyclenames = ["UTC_0-3h", "UTC_3-6h", "UTC_6-9h", "UTC_9-12h", "UTC_12-15h", "UTC_15-18h", "UTC_18-21h", "UTC_21-24h"]
-        for month in range(len(dim)):
-            # read in DM emissions
-           string = '/emissions/'+months[month]+'/DM'
+        
+        for i,month in enumerate(months):
+           days = dim[i]
+           # read in DM emissions
+           string = '/emissions/'+months_str[month]+'/DM'
            DM_emissions = f[string][:]
            contribution = f[string][:]
-           for day in range(dim[month]):
+           
+           for day in range(days):
                # calculate emissions as the product of DM emissions (kg DM per 
                # m2 per month), the fraction the specific source contributes to 
                # this (unitless), the emission factor (g per kg DM burned), fractional
                #daily contribution and 3 hourly fractional contribution.
                #Then convert from g/m2/3 hour to mol/m2/s
-               daystr = '/emissions/'+months[month]+'/daily_fraction/day_'+str(day+1)
+               daystr = '/emissions/'+months_str[month]+'/daily_fraction/day_'+str(day+1)
                dayfrac = f[daystr][:]
                for dc in range(len(diurnalcyclenames)):
-                   dcstr = '/emissions/'+months[month]+'/diurnal_cycle/'+diurnalcyclenames[dc]
+                   dcstr = '/emissions/'+months_str[month]+'/diurnal_cycle/'+diurnalcyclenames[dc]
                    dcfrac = f[dcstr][:]
                    for source in range(len(sources)):
                        # read in the fractional contribution of each source
-                       string = '/emissions/'+months[month]+'/partitioning/DM_'+sources[source]
+                       string = '/emissions/'+months_str[month]+'/partitioning/DM_'+sources[source]
                        emissions[h, :,:] += (DM_emissions * contribution * dayfrac * dcfrac * EF[sourceindex[source]]) / (EF[0] * convert2secs)
                    h += 1
         
@@ -296,15 +304,16 @@ def getedgarannualtotals(year, lon_out, lat_out, soi='CH4'):
     edgar = edpath+'v432_'+soi+'_'+str(year)+'.0.1x0.1.nc'
     
     #Species molar mass
-    if soi == 'CH4':
-        speciesmm = 16.0425
-    elif soi == 'N2O':
-        speciesmm = 44.013
-    else:
-        print "No molar mass for species %s." % soi
-        print "Please add this and rerun the script"
-        print "Returning None"
-        return(None)
+    speciesmm = molar_mass(soi)
+#    if soi == 'CH4':
+#        speciesmm = 16.0425
+#    elif soi == 'N2O':
+#        speciesmm = 44.013
+#    else:
+#        print "No molar mass for species %s." % soi
+#        print "Please add this and rerun the script"
+#        print "Returning None"
+#        return(None)
         
     
     ds = xr.open_dataset(edgar)
@@ -312,6 +321,11 @@ def getedgarannualtotals(year, lon_out, lat_out, soi='CH4'):
     tot = ds[soiname].values*1e3/speciesmm
     lat_in = ds.lat.values
     lon_in = ds.lon.values
+    mtohe = lon_in > 180
+    lon_in[mtohe] = lon_in[mtohe] - 360 
+    ordinds = np.argsort(lon_in)
+    lon_in = lon_in[ordinds]
+    tot = tot[:, ordinds] 
     
     nlat = len(lat_out)
     nlon = len(lon_out) 
@@ -405,7 +419,7 @@ def getsoilsinkCH4(lon_out, lat_out):
                              lat_out, lon_out)
     return(narr)
     
-def getbloomwetlandsCH4(year, lon_out, lat_out, monthly=True):
+def getbloomwetlandsCH4(year, lon_out, lat_out, timeframe="monthly"):
     """
     Global wetlands CH4 emissions from Bloom et al, regridded to desired 
     lats and lons for year of interest.
@@ -417,10 +431,10 @@ def getbloomwetlandsCH4(year, lon_out, lat_out, monthly=True):
             Longitudes to output the data on.
         lat_out (array):
             Latitudes to output the data on.
-        monthly (bool):
-            Should the data be averaged by month? 
-            True (default) = monthly averaged
-            False = daily averaged
+        timeframe (str, optional) :
+            Should the data be averaged by month or by day? 
+            "monthly" = monthly averaged
+            "daily" = daily averaged
     
     Returns:
         narr (array): 
@@ -449,7 +463,8 @@ def getbloomwetlandsCH4(year, lon_out, lat_out, monthly=True):
     ds.date.values = pd.to_datetime(ddt)
     ds = ds.sel(date=str(year))
     
-    if monthly == True:
+    #if monthly == True:
+    if timeframe == "monthly":
         ds = ds.resample('M', 'date')
     
     bloomch4 = ds.CH4_FLUX.values*1e3/16.04
@@ -540,7 +555,7 @@ def getnaeiandedgarCH4(lon_out, lat_out):
                              lat_out, lon_out)
     return(narr)
     
-def getNAEI(year, lon_out, lat_out, soi, sector):
+def getNAEI(year, lon_out, lat_out, soi, naei_sector):
  
     """
     Converts raw NAEI into gridded emissions data in mol/m2/s
@@ -555,7 +570,7 @@ def getNAEI(year, lon_out, lat_out, soi, sector):
         soi (str):
             Which species you want to look at. 
             Currently only 'CH4' or 'N2O'
-        sector (str):
+        naei_sector (str):
             Which sector to look at. Options are: 
             "energyprod","domcom","indcom","indproc","offshore","roadtrans",
             "othertrans","waste","agric","nature","points","total",
@@ -581,7 +596,7 @@ def getNAEI(year, lon_out, lat_out, soi, sector):
         return None
     sectorlist = ["energyprod","domcom","indcom","indproc","offshore","roadtrans",
     "othertrans","waste","agric","nature","points","total","totalexcship"]
-    if sector not in sectorlist:
+    if naei_sector not in sectorlist:
         print 'Sector not one of:'
         print sectorlist
         print 'Returning None'
@@ -591,7 +606,7 @@ def getNAEI(year, lon_out, lat_out, soi, sector):
     df = pd.DataFrame.from_csv(fn)   
     lat = np.asarray(df.Latitude)
     lon = np.asarray(df.Longitude)    
-    emissions = np.asarray(df[sector])
+    emissions = np.asarray(df[naei_sector])
     
     #Make a square grid for the emissions
     latarr = np.arange(min(lat), max(lat), 0.01)
@@ -603,11 +618,12 @@ def getNAEI(year, lon_out, lat_out, soi, sector):
         ilon = np.where(abs(lonarr-lon[i]) == np.min(abs(lonarr - lon[i])) )
         grdemis[ilat, ilon] = emissions[i]
 
-    #Convert to mol/m2/s        
-    if soi == 'ch4':
-        speciesmm = 16.0425
-    if soi == 'n2o':
-        speciesmm = 44.013        
+    #Convert to mol/m2/s
+    speciesmm = molar_mass(soi)     
+#    if soi == 'ch4':
+#        speciesmm = 16.0425
+#    if soi == 'n2o':
+#        speciesmm = 44.013        
     if year % 4 == 0:
         diy = 365
     else:
@@ -620,7 +636,7 @@ def getNAEI(year, lon_out, lat_out, soi, sector):
 
     return(narr)
 
-def getedgarannualsectors(year, lon_out, lat_out, sectors, soi='CH4'):
+def getedgarannualsectors(year, lon_out, lat_out, edgar_sectors, soi='CH4'):
     """
     Get annual emission totals for species of interest from EDGAR v4.3.2 data
     for sector or sectors.
@@ -638,8 +654,8 @@ def getedgarannualsectors(year, lon_out, lat_out, sectors, soi='CH4'):
             Longitudes to output the data on
         lat_out (array):
             Latitudes to output the data on
-        sectors (list):
-            List of strings of sectors to get emissions for.
+        edgar_sectors (list):
+            List of strings of EDGAR sectors to get emissions for.
             These will be combined to make one array.
             See 'Notes' for names of sectors
         soi (str):
@@ -738,22 +754,24 @@ def getedgarannualsectors(year, lon_out, lat_out, sectors, soi='CH4'):
     
         
     #Species molar mass
-    if soi == 'CH4':
-        speciesmm = 16.0425
-    elif soi == 'N2O':
-        speciesmm = 44.013
-    else:
-        print "No molar mass for species %s." % soi
-        print "Please add this and rerun the script"
-        print "Returning None"
-        return(None)
+    speciesmm = molar_mass(soi)
+#    if soi == 'CH4':
+#        #speciesmm = 16.0425
+#        speciesmm = molar_mass(soi)
+#    elif soi == 'N2O':
+#        speciesmm = 44.013
+#    else:
+#        print "No molar mass for species %s." % soi
+#        print "Please add this and rerun the script"
+#        print "Returning None"
+#        return(None)
     
     
     #Read in EDGAR data of annual mean CH4 emissions for each sector
     #These are summed together
     #units are in kg/m2/s
     tot = None
-    for sec in sectors:
+    for sec in edgar_sectors:
         edgar = edpath+'v432_'+soi+'_'+str(year)+'_IPCC_'+secdict[sec]+'.0.1x0.1.nc'    
         if os.path.isfile(edgar):
             ds = xr.open_dataset(edgar)
@@ -776,7 +794,8 @@ def getedgarannualsectors(year, lon_out, lat_out, sectors, soi='CH4'):
                              lat_out, lon_out)
     return(narr)   
 
-def getedgarmonthlysectors(months, lon_out, lat_out, sectors, soi='CH4'):
+def getedgarmonthlysectors(lon_out, lat_out, edgar_sectors, months=[1,2,3,4,5,6,7,8,9,10,11,12],
+                           soi='CH4'):
     """
     Get 2010 monthly emissions for species of interest from EDGAR v4.3.2 data
     for sector or sectors.
@@ -788,17 +807,17 @@ def getedgarmonthlysectors(months, lon_out, lat_out, sectors, soi='CH4'):
     /data/shared/Gridded_fluxes/<species>/EDGAR_v4.3.2/<species>_sector_monthly/
     
     Args:
-        months (list of int): 
-            Desired months.
         lon_out (array): 
             Longitudes to output the data on
         lat_out (array):
             Latitudes to output the data on
-        sectors (list):
-            List of strings of sectors to get emissions for.
+        edgar_sectors (list):
+            List of strings of EDGAR sectors to get emissions for.
             These will be combined to make one array.
             See 'Notes' for names of sectors
-        soi (str):
+        months (list of int; optional): 
+            Desired months.
+        soi (str, optional):
             Which species you want to look at. 
             e.g. soi = 'CH4'
             Default = 'CH4'
@@ -877,15 +896,16 @@ def getedgarmonthlysectors(months, lon_out, lat_out, sectors, soi='CH4'):
     print 'Note that the only year for monthly emissions is 2010 so using that.'
         
     #Species molar mass
-    if soi == 'CH4':
-        speciesmm = 16.0425
-    elif soi == 'N2O':
-        speciesmm = 44.013
-    else:
-        print "No molar mass for species %s." % soi
-        print "Please add this and rerun the script"
-        print "Returning None"
-        return(None)
+    speciesmm = molar_mass(soi)
+#    if soi == 'CH4':
+#        speciesmm = 16.0425
+#    elif soi == 'N2O':
+#        speciesmm = 44.013
+#    else:
+#        print "No molar mass for species %s." % soi
+#        print "Please add this and rerun the script"
+#        print "Returning None"
+#        return(None)
     
     
     #Read in EDGAR data of annual mean CH4 emissions for each sector
@@ -894,7 +914,7 @@ def getedgarmonthlysectors(months, lon_out, lat_out, sectors, soi='CH4'):
     first = 0
     for month in months:
         tot = None
-        for sec in sectors:
+        for sec in edgar_sectors:
             edgar = edpath+'v432_'+soi+'_2010_'+str(month)+'_IPCC_'+secdict[sec]+'.0.1x0.1.nc'    
             if os.path.isfile(edgar):
                 ds = xr.open_dataset(edgar)
