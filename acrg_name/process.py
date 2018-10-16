@@ -51,7 +51,6 @@ import getpass
 import traceback
 import sys
 import scipy
-import pdb
 
 
 #Default NAME output file version
@@ -1559,7 +1558,7 @@ def process(domain, site, height, year, month,
             base_dir = "/dagage2/agage/metoffice/NAME_output/",
             fields_folder = "Fields_files",
             particles_folder = "Particle_files",
-            met_folder = "Met_daily",
+            met_folder = "Met",
             force_met_empty = False,
             processed_folder = "Processed_Fields_files",
             satellite = False,
