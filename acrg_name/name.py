@@ -369,8 +369,11 @@ def flux(domain, species, start = None, end = None, flux_directory=flux_director
                 while month_end > ndate[-1]:
                     ndate = ndate + pd.DateOffset(years=1)      
                     flux_ds = xr.merge([flux_ds, flux_tmp.update({'time' : ndate})])
-
+                    
             flux_timeslice = flux_ds.sel(time=slice(month_start, month_end))
+            if np.logical_and(month_start.year != month_end.year, len(flux_timeslice.time) != dateutil.relativedelta.relativedelta(end, start).months):
+                month_start = dt.datetime(start.year, 1, 1, 0, 0)
+                flux_timeslice = flux_ds.sel(time=slice(month_start, month_end))
             if len(flux_timeslice.time)==0:
                 flux_timeslice = flux_ds.sel(time=start, method = 'ffill')
                 flux_timeslice = flux_timeslice.expand_dims('time',axis=-1)
