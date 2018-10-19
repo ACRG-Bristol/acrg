@@ -1597,7 +1597,7 @@ def filtering(datasets_in, filters, keep_missing=False):
 def plot(fp_data, date, out_filename=None, out_format = 'pdf',
          lon_range=None, lat_range=None, log_range = [5., 9.], plot_borders = False,
          zoom = False, colormap = 'YlGnBu', tolerance = None, interpolate = False, dpi = 300,
-         figsize=None):
+         figsize=None, nlevels=256):
     """
     Plot footprint for a given timestamp.
     
@@ -1635,6 +1635,8 @@ def plot(fp_data, date, out_filename=None, out_format = 'pdf',
             Dots per square inch resolution to save image format such as png
         figsize (tuple, optional):
             Specify figure size as width, height in inches. e.g. (12,9). Default = None.
+        nlevels (int):
+            Number of levels in contour plot.
             
     Returns
         None
@@ -1713,7 +1715,7 @@ def plot(fp_data, date, out_filename=None, out_format = 'pdf',
                 "AIRCRAFT": "red",
                 "SATELLITE": "green"}
             
-    levels = MaxNLocator(nbins=256).tick_values(log_range[0], log_range[1])
+    levels = MaxNLocator(nbins=nlevels).tick_values(log_range[0], log_range[1])
 
     # Create dictionaries and arrays    
     release_lon = {}
