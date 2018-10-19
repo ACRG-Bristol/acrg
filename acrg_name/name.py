@@ -25,7 +25,7 @@ import pickle
 from scipy import interpolate
 import dateutil.relativedelta
 import cartopy.crs as ccrs
-import pdb
+import cartopy
 
 acrg_path = os.getenv("ACRG_PATH")
 data_path = os.getenv("DATA_PATH")
@@ -53,6 +53,16 @@ fp_directory = {'integrated': fp_integrated_directory,
 # Get acrg_site_info file
 with open(join(acrg_path, "acrg_site_info.json")) as f:
     site_info=json.load(f)
+
+def open_ds(path):
+    
+    """
+    Function efficiently opens xray datasets.
+    """
+    # use a context manager, to ensure the file gets closed after use
+    with xr.open_dataset(path) as ds:
+        ds.load()
+    return ds 
 
 def filenames(site, domain, start, end, height, fp_directory):
     """
@@ -127,12 +137,16 @@ def read_netcdfs(files, dim = "time"):
         xarray.Dataset : all files open as one concatenated xarray.Dataset object    
     """
     
-    def process_one_path(path):
-        with xr.open_dataset(path) as ds:
-            ds.load()
-        return ds
+    #def process_one_path(path):
+    #    with xr.open_dataset(path) as ds:
+    #        ds.load()
+    #    return ds
     
-    datasets = [process_one_path(p) for p in sorted(files)]
+    print("Reading and concatenating files: ")
+    for fname in files:
+        print(fname)
+    
+    datasets = [open_ds(p) for p in sorted(files)]
     combined = xr.concat(datasets, dim)
     return combined   
 
@@ -355,13 +369,19 @@ def flux(domain, species, start = None, end = None, flux_directory=flux_director
                 while month_end > ndate[-1]:
                     ndate = ndate + pd.DateOffset(years=1)      
                     flux_ds = xr.merge([flux_ds, flux_tmp.update({'time' : ndate})])
-
+                    
             flux_timeslice = flux_ds.sel(time=slice(month_start, month_end))
+            if np.logical_and(month_start.year != month_end.year, len(flux_timeslice.time) != dateutil.relativedelta.relativedelta(end, start).months):
+                month_start = dt.datetime(start.year, 1, 1, 0, 0)
+                flux_timeslice = flux_ds.sel(time=slice(month_start, month_end))
             if len(flux_timeslice.time)==0:
                 flux_timeslice = flux_ds.sel(time=start, method = 'ffill')
                 flux_timeslice = flux_timeslice.expand_dims('time',axis=-1)
                 print("Warning: No fluxes available during the time period specified so outputting\
                           flux from %s" %flux_timeslice.time.values[0])
+            else:
+                print("Slicing time to range {} - {}".format(month_start,month_end))
+            
             return flux_timeslice
 
 
@@ -1580,8 +1600,9 @@ def filtering(datasets_in, filters, keep_missing=False):
 
 
 def plot(fp_data, date, out_filename=None, out_format = 'pdf',
-         lon_range=None, lat_range=None, log_range = [5., 9.], zoom = False,
-         colormap = 'YlGnBu', tolerance = None, interpolate = False, dpi = 300):
+         lon_range=None, lat_range=None, log_range = [5., 9.], plot_borders = False,
+         zoom = False, colormap = 'YlGnBu', tolerance = None, interpolate = False, dpi = 300,
+         figsize=None):
     """
     Plot footprint for a given timestamp.
     
@@ -1602,6 +1623,8 @@ def plot(fp_data, date, out_filename=None, out_format = 'pdf',
             list of min and max latitudes [min, max] to plot
         log_range (list, optional): 
             list of min and max LOG10(footprints) for color scale       
+        plot_borders (bool, optional) :
+            Plot country borders. Default = False.
         zoom (bool, optional): 
             True will plot a zoomed map (+/- 10 degrees around all site in fp_data)
         colormap (str, optional): 
@@ -1615,7 +1638,8 @@ def plot(fp_data, date, out_filename=None, out_format = 'pdf',
             If False, uses the nearest footprint avaialble
         dpi (int, optional):
             Dots per square inch resolution to save image format such as png
-            
+        figsize (tuple, optional):
+            Specify figure size as width, height in inches. e.g. (12,9). Default = None.
             
     Returns
         None
@@ -1673,9 +1697,20 @@ def plot(fp_data, date, out_filename=None, out_format = 'pdf',
         lats = lats_all[indy]
         indy = np.where((lats_all < lat_range[0]) | (lats_all > lat_range[-1]))[0]  
     
+    if figsize:
+        if isinstance(figsize,tuple) and len(figsize) == 2:
+            plt.figure(figsize=figsize)
+        elif len(figsize) == 2:
+            plt.figure(figsize=(figsize[0],figsize[1]))
+        else:
+            print "Could not apply figure size: {}. Expected two item tuple.".format(figsize)
+    
     ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=np.median(lons)))
     ax.set_extent([lons[0], lons[-1], lats[0], lats[-1]], crs=ccrs.PlateCarree())
     ax.coastlines()
+    
+    if plot_borders:
+        ax.add_feature(cartopy.feature.BORDERS,linewidth=0.5)
     
     #Calculate color levels
     rp_color = {"SURFACE": "black",
@@ -1792,7 +1827,8 @@ def plot(fp_data, date, out_filename=None, out_format = 'pdf',
 def plot_particle_location(fp_data, date, particle_direction = 'nw', out_filename=None,
                            out_format = 'pdf', tolerance = None, log_range = [5., 9.], 
                            colormap_fp = 'inferno_r', colormap_part = 'GnBu',
-                           particle_clevs = [0., 0.009, 0.001], dpi = 300):
+                           particle_clevs = [0., 0.009, 0.001], dpi = 300,
+                           figsize = None):
 
     """
     3D plot showing the footprint and particle exit locations for a given timestamp.
@@ -1857,7 +1893,19 @@ def plot_particle_location(fp_data, date, particle_direction = 'nw', out_filenam
     #Set very small elements to zero
     fp_data.where(np.log10(fp_data["fp"]) < log_range[0])
     
-    figure = plt.figure(figsize=(8,6), facecolor='w')
+    if figsize:
+        if len(figsize) == 2:
+            if not isinstance(figsize,tuple):
+                figsize=(figsize[0],figsize[1])
+        else:
+            print "Could not apply figure size: {}. Using default: {}".format(figsize,(8,6))
+            figsize = (8,6)
+    else:
+        figsize = (8,6)
+        print "Using default figsize: {}".format(figsize)
+
+    
+    figure = plt.figure(figsize=figsize, facecolor='w')
     ax = figure.gca(projection='3d')
     
     ax.set_ylim(lat_range)
@@ -1917,11 +1965,11 @@ def plot_particle_location(fp_data, date, particle_direction = 'nw', out_filenam
 
 def animate(fp_data, output_directory, plot_function = "plot", file_label = 'fp', 
             video_os="mac", time_regular = False,        
-            lon_range = None, lat_range = None, log_range = [5., 9.],
+            lon_range = None, lat_range = None, log_range = [5., 9.],plot_borders=False,
             colormap_fp = 'inferno_r', colormap_part = 'GnBu', zoom = False,
             particle_clevs = [0., 0.009, 0.001], overwrite = True, 
             framerate=10, delete_png=False, ffmpeg_only = False,
-            frame_max = None, dpi = 300):
+            frame_max = None, dpi = 300,figsize=None):
 
     """
     Animate footprints into a movie.
@@ -1947,6 +1995,8 @@ def animate(fp_data, output_directory, plot_function = "plot", file_label = 'fp'
             list of min and max latitudes [min, max] to plot
         log_range (list, optional): 
             list of min and max LOG10(footprints) for color scale       
+        plot_borders (bool, optional) :
+            Plot country borders. Only applicable to plot_function="plot" Default = False.
         colormap_fp (str, optional): 
             Color map to use for contour plot of footprint
             (https://matplotlib.org/examples/color/colormaps_reference.html)
@@ -1972,8 +2022,9 @@ def animate(fp_data, output_directory, plot_function = "plot", file_label = 'fp'
             Set the maximum number of frames in the datset to animate. Animation will plot first n 
             frames up to the frame_max. Useful for testing.
         dpi (int, optional):
-            Dots per square inch resolution for each image generate as for example png           
-            
+            Dots per square inch resolution for each image generate as for example png 
+        figsize (tuple, optional):
+            Specify figure size in width, height in inches. e.g. (12,9)
             
     Returns
         None
@@ -2039,16 +2090,19 @@ def animate(fp_data, output_directory, plot_function = "plot", file_label = 'fp'
                 if plot_function == "plot":
                     plot(fp_data, t, out_filename = fname, out_format = 'png',
                          lon_range = lon_range, lat_range = lat_range,
-                         log_range = log_range, zoom = zoom, colormap = colormap_fp,
-                         dpi = dpi)
+                         log_range = log_range, plot_borders = plot_borders, 
+                         zoom = zoom, colormap = colormap_fp,
+                         dpi = dpi, figsize = figsize)
                 elif plot_function == "plot_particle_location":
                     plot_particle_location(fp_data, t, out_filename = fname, out_format = 'png',
                                            log_range = log_range, 
                                            particle_direction = 'nw', colormap_fp = colormap_fp,
                                            colormap_part = colormap_part,
-                                           particle_clevs = particle_clevs, dpi = dpi)
+                                           particle_clevs = particle_clevs, dpi = dpi,
+                                           figsize = figsize)
                      
             pbar.update(ti)
+            print ""
         pbar.finish()
     
     print("")

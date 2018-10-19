@@ -36,6 +36,11 @@ from matplotlib.colors import BoundaryNorm
 from matplotlib.colors import Normalize
 from matplotlib import ticker
 import cartopy.crs as ccrs
+from collections import OrderedDict
+import datetime as dt
+import getpass
+
+acrg_path = os.getenv("ACRG_PATH")
 
 def append_netcdf(flux_mean, flux_percentile, flux_it, country_mean, country_percentile,
                   k_mean, k_percentile,
@@ -56,7 +61,8 @@ def append_netcdf(flux_mean, flux_percentile, flux_it, country_mean, country_per
     regionsm_name = "_".join(['regions_mean', experiment])
     regionspc_name = "_".join(['regions_percentile', experiment])
     #countryit_name = "_".join(['country_it', experiment])
-              
+    
+    print "outfile",outfile
     ncF=Dataset(outfile, 'a')
     
     ncfluxm=ncF.createVariable(fm_name, 'f', ('lat', 'lon', 'time'))    
@@ -231,6 +237,265 @@ def write_netcdf(flux_mean, flux_percentile, flux_it, flux_prior, flux_ap_percen
     ncF.close()
     print "Written " + experiment + " to " + outfile
 
+def molar_mass(species):
+    '''
+    This function extracts the molar mass of a species from the acrg_species_info.json file.
+    Returns:
+        float : Molar mass of species
+    '''
+    species_info_file = os.path.join(acrg_path,"acrg_species_info.json")
+    with open(species_info_file) as f:
+            species_info=json.load(f)
+    species_key = agage.synonyms(species, species_info)
+    molmass = float(species_info[species_key]['mol_mass'])
+    return molmass
+
+def g2mol(value,species):
+    ''' Convert a value in g to mol '''
+    molmass = molar_mass(species)
+    return value*molmass
+
+def x_post_mean(ds):
+    '''
+    The x_post_mean function extracts the posterior values for all iterations and calculates 
+    the mean. This is reshaped onto a latitude x longitude grid.
+    
+    Expects latitude and longitude coords within dataset to be named "lat" and "lon".
+    
+    Args:
+        ds (xarray.Dataset) :
+            Output from run_tdmcmc() function (tdmcmc_inputs.py script).
+            Expects data set to contain:
+                x_post_vit - posterior values for each iteration flattened along lat-lon axis.
+                             Dimensions = nIt x NGrid (nlat x nlon)
+    
+    Returns:
+        numpy.array (nlat x nlon):
+            Array containing mean posterior emissions values on a latitude x longitude grid.
+    '''
+    nlon = len(ds["lon"])
+    nlat = len(ds["lat"])
+    
+    x_post_vit = ds.x_post_vit.values
+    x_post_v_mean = np.mean(x_post_vit, axis=0)
+    x_post_m = np.reshape(x_post_v_mean, (nlat,nlon))
+    
+    return x_post_m
+
+def x_post_percentile(ds,percentiles=[5,16,50,84,95]):
+    '''
+    The x_post_percentile function extracts the posterior values for all iterations and calculates
+    a set of percentiles. This is reshaped onto latitude x longitude grid.
+    
+    Expects latitude and longitude coords within dataset to be named "lat" and "lon".
+    
+    Args:
+        ds (xarray.Dataset) :
+            Output from run_tdmcmc() function (tdmcmc_inputs.py script).
+            Expects data set to contain:
+                x_post_vit - posterior values for each iteration flattened along lat-lon axis.
+                             Dimensions = nIt x NGrid (nlat x nlon)
+    
+    Returns:
+        numpy.array (nlat x nlon x npercentiles):
+            Array containing posterior values for each percentile on a latitude 
+            x longitude grid.
+    '''
+    nlon = len(ds["lon"])
+    nlat = len(ds["lat"])
+    
+    x_post_vit = ds.x_post_vit.values
+    
+    x_post_pl = np.zeros((nlat,nlon,len(percentiles)))
+    for i,percent in enumerate(percentiles):
+        x_post_pl[:,:,i] = np.reshape(np.percentile(x_post_vit, percent, axis=0),(nlat,nlon))
+    
+    return x_post_pl
+
+def flux_iterations(ds):
+    '''
+    The flux_iterations function calculates the posterior flux values for each saved iteration 
+    within the tdmcmc output.
+    
+    Expects latitude, longitude and nIt coords within dataset to be named "lat", "lon" and "nIt".
+    
+    Args:
+        ds (xarray.Dataset) :
+            Output from run_tdmcmc() function (tdmcmc_inputs.py script).
+            Expects data set to contain:
+                x_post_vit - posterior values for each iteration flattened along lat-lon axis.
+                             Dimensions = nIt x NGrid (nlat x nlon)
+                q_ap       - a priori flux values on a latitude x longitude grid.
+                             Dimensions = nlat x nlon
+    Returns:
+        numpy.array (nlat x nlon x nIt):
+            Array containing posterior flux values for each saved iteration within tdmcmc.
+    '''
+    nIt = len(ds["nIt"])
+    nlon = len(ds["lon"])
+    nlat = len(ds["lat"])
+    
+    x_post_vit = ds.x_post_vit.values
+    x_post_it = np.reshape(x_post_vit,(nIt,nlat,nlon))
+    
+    q_ap = ds.q_ap.values
+    
+    flux_it = x_post_it*q_ap
+    flux_it = np.moveaxis(flux_it,0,2) # Rearranging axes to make nIt last dimension
+    
+    return flux_it
+
+def flux_mean(ds):
+    '''
+    The flux_mean function calculates the mean flux based on the prior emissions and posterior 
+    values.
+    
+    Expects latitude and longitude coords within dataset to be named "lat" and "lon".
+    
+    Args:
+        ds (xarray.Dataset) :
+            Output from run_tdmcmc() function (tdmcmc_inputs.py script).
+            Expects data set to contain:
+                x_post_vit - posterior values for each iteration flattened along lat-lon axis.
+                             Dimensions = nIt x NGrid (nlat x nlon)
+                q_ap       - a priori flux values on a latitude x longitude grid.
+                             Dimensions = nlat x nlon
+    Returns:
+        numpy.array (nlat x nlon):
+                Array containing posterior flux values on a latitude x longitude grid.     
+    '''
+    q_ap = ds.q_ap.values
+    x_post_m = x_post_mean(ds)
+    
+    flux_mean = x_post_m*q_ap
+    
+    return flux_mean
+
+def flux_percentile(ds,percentiles=[5,16,50,84,95]):
+    '''
+    The flux_percentile function calculates the flux values for a set of percentiles.
+    
+    Expects latitude and longitude coords within dataset to be named "lat" and "lon".
+
+    Args:
+        ds (xarray.Dataset) :
+            Output from run_tdmcmc() function (tdmcmc_inputs.py script).
+            Expects data set to contain:
+                x_post_vit - posterior values for each iteration flattened along lat-lon axis.
+                             Dimensions = nIt x NGrid (nlat x nlon)
+                q_ap       - a priori flux values on a latitude x longitude grid.
+                             Dimensions = nlat x nlon
+    
+    Returns:
+        numpy.array (nlat x nlon x npercentiles):
+            Array containing posterior flux values for each percentile on a latitude x longitude
+            grid.
+    '''
+    nlon = len(ds["lon"])
+    nlat = len(ds["lat"])
+    
+    q_ap = ds.q_ap.values
+    
+    x_post_pl = x_post_percentile(ds,percentiles)
+    flux_pl = np.zeros((nlat,nlon,len(percentiles)))
+    
+    for i in range(x_post_pl.shape[-1]):
+        flux_pl[:,:,i] = x_post_pl[:,:,i]*q_ap
+    
+    return flux_pl
+
+def flux_diff(ds):
+    '''
+    The flux_diff function calculates the flux difference between the prior and the posterior.
+    
+    Args:
+        ds (xarray.Dataset) :
+            Output from run_tdmcmc() function (tdmcmc_inputs.py script).
+            Expects data set to contain:
+                x_post_vit - posterior values for each iteration flattened along lat-lon axis.
+                             Dimensions = nIt x NGrid (nlat x nlon)
+                q_ap       - a priori flux values on a latitude x longitude grid.
+                             Dimensions = nlat x nlon
+    Returns:
+        numpy.array (nlat x nlon):
+            Array containing flux difference values on a latitude x longitude grid.
+    '''
+    x_post_m = x_post_mean(ds)
+    q_ap = ds.q_ap.values
+    
+    q_abs_diff = (x_post_m*q_ap-q_ap)
+    q_abs_diff = q_abs_diff
+    
+    return q_abs_diff
+
+def k_mean_percentile(ds,percentiles=[5,16,50,84,95]):
+    '''
+    The k_mean_percentile function calculates the mean number of regions (k) and a set of percentiles
+    within the saved iterations.
+    
+    Expects nIt coord within dataset to be named "nIt".
+    
+    Args:
+        ds (xarray.Dataset) :
+            Output from run_tdmcmc() function (tdmcmc_inputs.py script).
+            Expects data set to contain:
+                k_it - number of regions for each iteration. Dimensions = nIt
+    Returns:
+        if percentiles are specified:
+            float, np.array (npercentiles) :
+                Mean and percentile array for number of regions within saved iterations.
+        if percentiles are not specified:
+            float :
+                Mean number of regions within saved iterations
+    '''
+    k_it = ds.k_it.values
+    k_mean = np.mean(k_it)
+    
+    if percentiles:
+        k_percentile = np.zeros(len(percentiles))
+        for i,percentile in enumerate(percentiles):
+            k_percentile[i] = np.percentile(k_it, percentile, axis=0)
+    else:
+        k_percentile = np.array([])
+    
+    if percentiles:
+        return k_mean,k_percentile
+    else:
+        return k_mean
+
+def define_stations(ds,sites=[]):
+    '''
+    The define_stations function defines the latitude and longitude values for each site within
+    a dataset.
+    
+    Args:
+        ds (xarray.Dataset) :
+            Output from run_tdmcmc() function (tdmcmc_inputs.py script).
+            Expects dataset to contain:
+                release_lons - Longitude values for each site. Dimension = len(sites)
+                release_lats - Latitude values for each site. Dimension = len(sites)
+                y_site       - Site identifier for each measurement. Dimension = nmeasure
+        sites (list) :
+            List of sites to look for within dataset.
+    
+    Returns:
+        dict :
+            Dictionary containing "site"_lat, "site"_lon values for each site.
+    '''
+    if not sites:
+        sites = ds.sites.values
+    
+    stations={}
+    for si, site in enumerate(sites):
+        #if site in ds.y_site:
+        stations[site+'_lon']=ds.release_lons[si].values
+        stations[site+'_lat']=ds.release_lats[si].values
+        if site not in ds.y_site:
+            print "WARNING: Reference to site not found within dataset"
+    stations['sites']=sites
+    
+    return stations
+
 def unbiasedDivergingCmap(data, zero = 0, minValue = None, maxValue = None):
     """
     Calculate the normalisation of a diverging cbar around a given value
@@ -361,29 +626,61 @@ def regions_histogram(k_it, out_filename=None, fignum=2):
     else:
         plt.show()
     
-def country_emissions(ds_mcmc, x_post_vit, q_ap_abs_v, countries, species,
-                      units = None, ocean=True, domain='EUROPE', uk_split=False, fixed_map = False):
+def country_emissions(ds_mcmc, countries, species, domain, x_post_vit=None, q_ap_abs_v=None, 
+                      percentiles=[5,16,50,84,95], units=None, ocean=True, 
+                      uk_split=False, fixed_map=False):
         
     """
     Generates national totals for a given list of countries
-    Requires: 
-    ds_mcmc - post_mcmc xray dataset
-    countries - list of countries (see data_path/countries files for names)
-                In general names are all capitalized
-    species - CH4, CO2 etc.
-    
-    Optional:
-    units - Need to specify to get something sensible out, otherwise returns in g/yr
+    Args: 
+        ds_mcmc (xarray.Dataset) :
+            Output from run_tdmcmc() function (tdmcmc_inputs.py script). (post_mcmc xarray dataset)
+        countries (list) :
+            List of countries (see data_path/countries files for names)
+            In general names are all capitalized.
+        species (str) :
+            CH4, CO2 etc.
+        domain (str) :
+            Domain name of interest.
+            e.g. EUROPE, SOUTHAMERICA etc.
+        x_post_vit (numpy.array/None, optional) :
+            Posterior values (Dims: nIt x NGrid) (flattened on lat and lon dimensions).
+            If not specified, will be extracted from ds_mcmc.
+        q_ap_abs_v (numpy.array/None, optional) :
+            Flux a priori values (Dims: NGrid) (flattened on lat and lon dimensions).
+            If not specified, will be extracted from ds_mcmc.
+        percentiles (list) :
+            List of percentiles to extract.
+            Default = [5,16,50,84,95]
+        units (str/None, optional) :
+            Need to specify to get something sensible out, otherwise returns in g/yr
             Options are Pg/yr, Tg/yr,Gg/yr Mg/yr
-    ocean - Default is true, If false only include emissions from land surface
-    uk_split - Break UK into devolved administrations
+        ocean (bool, optional) :
+            Default is True, If False only include emissions from land surface
+        uk_split (bool, optional) :
+            Break UK into devolved administrations
                 Country names then have to be ['Eng', 'Sco', 'Wales',
                 NIre', 'IRELAND', 'BENELUX']. Horribly inconsistent I know!
+            Default = False
+        fixed_map (bool, optional) :
+            TODO: Add comment
     
-    Returns: mean, 5th,16th,median,84th,95th percentiles and prior for each country
+    Returns: 
+        (5 x numpy.array) :
+            Country totals for each iteration in units specified (ncountries x nIt),
+            Mean of country totals in units specified (ncountries), 
+            Percentiles for each country in units specified (ncountries x npercentiles),
+            Prior for each country in units specified (ncountries),
+            Country index map (nlat x nlon)
        
     Output in Tg/yr
     """
+    
+    if x_post_vit is None:
+        x_post_vit = ds_mcmc.x_post_vit.values
+    if q_ap_abs_v is None:
+        q_ap = ds_mcmc.q_ap.values
+        q_ap_abs_v = np.ravel(q_ap)
     
     if units == 'Tg/yr':
         unit_factor=1.e12
@@ -397,15 +694,16 @@ def country_emissions(ds_mcmc, x_post_vit, q_ap_abs_v, countries, species,
         print 'Undefined units: outputting in g/yr - let this be a lesson to define your units'
         unit_factor=1.
         
-    acrg_path = os.getenv('ACRG_PATH')
-    with open(acrg_path + "/acrg_species_info.json") as f:
-        species_info=json.load(f)
-            
-    species_key = agage.synonyms(species, species_info)
-    
-    molmass = float(species_info[species_key]['mol_mass'])
+#    acrg_path = os.getenv('ACRG_PATH')
+#    with open(acrg_path + "/acrg_species_info.json") as f:
+#        species_info=json.load(f)
+#            
+#    species_key = agage.synonyms(species, species_info)
+#    
+#    molmass = float(species_info[species_key]['mol_mass'])
     #units = species_info[species_key]['units']    
     
+    molmass = molar_mass(species)
 
     lonmin=np.min(ds_mcmc.lon.values)
     lonmax=np.max(ds_mcmc.lon.values)
@@ -415,7 +713,7 @@ def country_emissions(ds_mcmc, x_post_vit, q_ap_abs_v, countries, species,
     # GET COUNTRY DATA
     if uk_split == True:
         c_object=name.get_country(domain, ocean=True, ukmo=True, uk_split=uk_split)
-    elif ocean==True:
+    elif ocean == True:
         c_object=name.get_country(domain, ocean=True, ukmo=True, uk_split=False)
     else:
         c_object=name.get_country(domain, ocean=False)
@@ -430,6 +728,7 @@ def country_emissions(ds_mcmc, x_post_vit, q_ap_abs_v, countries, species,
     country_v=np.ravel(country)
     
     ncountries=len(countries)
+    npercentiles = len(percentiles)
     #nIt=len(ds_mcmc.k_it.values)
     nIt=len(x_post_vit[:,0])
 
@@ -441,11 +740,12 @@ def country_emissions(ds_mcmc, x_post_vit, q_ap_abs_v, countries, species,
 
         q_country_it = np.zeros((ncountries, nIt))
         q_country_mean=np.zeros((ncountries))
-        q_country_50=np.zeros((ncountries))
-        q_country_05=np.zeros((ncountries))
-        q_country_95=np.zeros((ncountries))
-        q_country_16=np.zeros((ncountries))
-        q_country_84=np.zeros((ncountries))
+        q_country_percentile = np.zeros((ncountries,npercentiles))
+#        q_country_50=np.zeros((ncountries))
+#        q_country_05=np.zeros((ncountries))
+#        q_country_95=np.zeros((ncountries))
+#        q_country_16=np.zeros((ncountries))
+#        q_country_84=np.zeros((ncountries))
         q_country_ap=np.zeros((ncountries))
         q_country_mode=np.zeros((ncountries))
     
@@ -468,16 +768,20 @@ def country_emissions(ds_mcmc, x_post_vit, q_ap_abs_v, countries, species,
             #q_country_mode[ci] = dum[1][dum[0]==np.max(dum[0])][0]
             
             q_country_mean[ci]=np.mean(q_country_it[ci,:])*365.*24.*3600.*molmass/unit_factor # in Tg/yr
-            q_country_50[ci]=np.percentile(q_country_it[ci,:],50)*365.*24.*3600.*molmass/unit_factor
-            q_country_05[ci]=np.percentile(q_country_it[ci,:],5)*365.*24.*3600.*molmass/unit_factor
-            q_country_95[ci]=np.percentile(q_country_it[ci,:],95)*365.*24.*3600.*molmass/unit_factor
-            q_country_16[ci]=np.percentile(q_country_it[ci,:],16)*365.*24.*3600.*molmass/unit_factor
-            q_country_84[ci]=np.percentile(q_country_it[ci,:],84)*365.*24.*3600.*molmass/unit_factor
+            for pi,percentile in enumerate(percentiles):
+                q_country_percentile[ci,pi] = np.percentile(q_country_it[ci,:],percentile)*365.*24.*3600.*molmass/unit_factor
+            #q_country_50[ci]=np.percentile(q_country_it[ci,:],50)*365.*24.*3600.*molmass/unit_factor
+            #q_country_05[ci]=np.percentile(q_country_it[ci,:],5)*365.*24.*3600.*molmass/unit_factor
+            #q_country_95[ci]=np.percentile(q_country_it[ci,:],95)*365.*24.*3600.*molmass/unit_factor
+            #q_country_16[ci]=np.percentile(q_country_it[ci,:],16)*365.*24.*3600.*molmass/unit_factor
+            #q_country_84[ci]=np.percentile(q_country_it[ci,:],84)*365.*24.*3600.*molmass/unit_factor
         
         country_index = np.reshape(country_v_new, (nlat,nlon))   
+        #return q_country_it*365.*24.*3600.*molmass/unit_factor,\
+        #q_country_mean, q_country_05, q_country_16, q_country_50, q_country_84, \
+        #q_country_95, q_country_ap, country_index
         return q_country_it*365.*24.*3600.*molmass/unit_factor,\
-        q_country_mean, q_country_05, q_country_16, q_country_50, q_country_84, \
-        q_country_95, q_country_ap, country_index
+        q_country_mean, q_country_percentile, q_country_ap, country_index
         
     elif len(np.shape(q_ap_abs_v)) == 2:
 
@@ -486,11 +790,12 @@ def country_emissions(ds_mcmc, x_post_vit, q_ap_abs_v, countries, species,
         
         q_country_it = np.zeros((ncountries, ntimes, nIt))
         q_country_mean=np.zeros((ncountries, ntimes))
-        q_country_50=np.zeros((ncountries, ntimes))
-        q_country_05=np.zeros((ncountries, ntimes))
-        q_country_95=np.zeros((ncountries, ntimes))
-        q_country_16=np.zeros((ncountries, ntimes))
-        q_country_84=np.zeros((ncountries, ntimes))
+#        q_country_50=np.zeros((ncountries, ntimes))
+#        q_country_05=np.zeros((ncountries, ntimes))
+#        q_country_95=np.zeros((ncountries, ntimes))
+#        q_country_16=np.zeros((ncountries, ntimes))
+#        q_country_84=np.zeros((ncountries, ntimes))
+        q_country_percentile=np.zeros((ncountries, ntimes,npercentiles))
         q_country_ap=np.zeros((ncountries, ntimes))
     
         for ci,cc in enumerate(countries):
@@ -509,17 +814,60 @@ def country_emissions(ds_mcmc, x_post_vit, q_ap_abs_v, countries, species,
                                 *365.*24.*3600.*molmass/unit_factor, axis = 0) # in Tg/yr
         
             q_country_mean[ci,:]=np.mean(q_country_it[ci,:,:], axis =1)*365.*24.*3600.*molmass/unit_factor # in Tg/yr
-            q_country_50[ci,:]=np.percentile(q_country_it[ci,:,:],50, axis =1)*365.*24.*3600.*molmass/unit_factor
-            q_country_05[ci,:]=np.percentile(q_country_it[ci,:,:],5, axis =1)*365.*24.*3600.*molmass/unit_factor
-            q_country_95[ci,:]=np.percentile(q_country_it[ci,:,:],95, axis =1)*365.*24.*3600.*molmass/unit_factor
-            q_country_16[ci,:]=np.percentile(q_country_it[ci,:,:],16, axis =1)*365.*24.*3600.*molmass/unit_factor
-            q_country_84[ci,:]=np.percentile(q_country_it[ci,:,:],84, axis =1)*365.*24.*3600.*molmass/unit_factor
+            for pi,percentile in enumerate(percentiles):
+                q_country_percentile[ci,:,pi]=np.percentile(q_country_it[ci,:,:],percentile, axis =1)*365.*24.*3600.*molmass/unit_factor
+#            q_country_50[ci,:]=np.percentile(q_country_it[ci,:,:],50, axis =1)*365.*24.*3600.*molmass/unit_factor
+#            q_country_05[ci,:]=np.percentile(q_country_it[ci,:,:],5, axis =1)*365.*24.*3600.*molmass/unit_factor
+#            q_country_95[ci,:]=np.percentile(q_country_it[ci,:,:],95, axis =1)*365.*24.*3600.*molmass/unit_factor
+#            q_country_16[ci,:]=np.percentile(q_country_it[ci,:,:],16, axis =1)*365.*24.*3600.*molmass/unit_factor
+#            q_country_84[ci,:]=np.percentile(q_country_it[ci,:,:],84, axis =1)*365.*24.*3600.*molmass/unit_factor
         
 
         country_index = np.reshape(country_v_new, (nlat,nlon))   
+#        return q_country_it*365.*24.*3600.*molmass/unit_factor,\
+#        q_country_mean, q_country_05, q_country_16, q_country_50, q_country_84, \
+#        q_country_95, q_country_ap, country_index
         return q_country_it*365.*24.*3600.*molmass/unit_factor,\
-        q_country_mean, q_country_05, q_country_16, q_country_50, q_country_84, \
-        q_country_95, q_country_ap, country_index
+        q_country_mean, q_country_percentile, q_country_ap, country_index
+
+def country_emissions_mult(ds_list, countries, species, domain, x_post_vit=None, q_ap_abs_v=None, 
+                      percentiles=[5,16,50,84,95], units=None, ocean=True, 
+                      uk_split=False, fixed_map=False):
+    '''
+    Calculate country emissions across multiple datasets. Combine mean and percentiles into 
+    arrays for all time points.
+    See process.country_emissions() function for details of inputs
+    Returns:
+        (5 x numpy.array) :
+            Country totals for each iteration in units specified (ncountries x nIt),
+            Mean of country totals for each dataset in units specified (ncountries x ntime), 
+            Percentiles for each country for each dataset in units specified (ncountries x npercentiles x ntime),
+            Prior for each country in units specified (ncountries),
+            Country index map (nlat x nlon)
+    '''
+    ncountries=len(countries)
+    ntime = len(ds_list)
+    npercentile=len(percentiles)
+    
+    # Constructed from all datasets
+    country_mean = np.zeros((ncountries,ntime)) 
+    country_percentile = np.zeros((ncountries,ntime,npercentile))
+
+    for i,ds in enumerate(ds_list):
+        country_out = country_emissions(ds, countries, species, domain, 
+                                        percentiles=percentiles,units=units, 
+                                        ocean=ocean, uk_split=uk_split)
+        
+        country_mean[:,i] = country_out[1]
+        country_percentile[:,i,:] = country_out[2]
+
+        if i == 0:
+            # Should be the same for all datasets
+            country_it = country_out[0]
+            country_prior = country_out[3]
+            country_index = country_out[4]
+
+    return country_it,country_mean,country_percentile,country_prior,country_index
 
 def prior_mf(ds):
     '''
@@ -541,15 +889,18 @@ def prior_mf(ds):
     
     return y_prior
 
-def post_bl(ds):
+def post_bc_inner(ds):
     '''
-    The post_bl function calculates the y posterior baseline iterations and mean
+    The post_bc_inner function calculates the y posterior boundary conditions for the inner
+    region for each iteration and the mean.
+    This combines mole fraction contributions for boundary conditions on the whole domain, 
+    any bias factors included and all fixed regions outside the inner region.
     
     Args:
         ds (xarray.Dataset) : output from the run_tdmcmc function
     
     Returns:
-        (np.array,np.array) : y posterior baseline iterations, y posterior baseline mean
+        (np.array,np.array) : y posterior inner bc iterations, y posterior inner bc mean
     '''
 
     nIC = ds.nIC.values         # number of initial conditions (basis functions + boundary conditions + bias)
@@ -599,6 +950,94 @@ def post_mf(ds):
     y_post_mean=np.mean(y_post_it, axis=0) # Take the mean across all iterations
     
     return y_post_it,y_post_mean
+
+def combine_timeseries(*ds_mult):
+    '''
+    The combine_timeseries function takes a list of output datasets from a tdmcmc run and combines
+    the parameters relevant to plotting a mole fraction timeseries.
+
+    Current parameters copied from input and combined:
+        "y_time","y_site","y","sigma_y_it","sites"
+    
+    Posterior boundary conditions (inner) and modelled mole fractions are calculated for each run and
+    combined. Both mean and full iterations are included. Additional parameters within dataset:
+        "bc_inner_post","bc_inner_post_it","mf_post","mf_post_it"
+    
+    If any 
+    
+    Args:
+        ds_mult (xarray.Dataset, xarray.Dataset, ...) :
+            Any number of tdmcmc output datasets can be specified to be combined.
+            All datasets will be combined.
+    
+    Returns:
+        xarray.Dataset :
+            Reduced, combined dataset from tdmcmc output.
+    '''
+    calc_data_vars = {"bc_inner_post":post_bc_inner,"mf_post":post_mf}
+    #data_vars = ["y_time","y_site","y","sigma_y_it","bc_inner_post","mf_post","nIC","h_v_all","x_it","x_post_vit"]
+    data_vars = ["y_time","y_site","y","sigma_y_it","bc_inner_post","mf_post"]
+    match_coords = ["Ngrid","sites"]
+    
+    concat_dim = "nmeasure"
+    iter_dim = "nIt"
+    run_dim = "run"
+    
+    ## Check any coordinates within match_coords are the same for all the datasets.    
+    match_dim = [[ds.dims[coord] for ds in ds_mult] for coord in match_coords]
+    for ds in ds_mult:
+        for i,dim in enumerate(match_dim):
+            if len(set(dim)) != 1:
+                raise Exception("Dimensions of {} do not match between input datasets.".format(match_coords[i]))
+    
+    ## Extract and combine data arrays for data_vars including calculating any new data variables to add
+    data_arrays = OrderedDict()
+    
+    for dv in data_vars:
+        for i,ds in enumerate(ds_mult):
+            if dv in calc_data_vars:
+                calc_dv_it,calc_dv = calc_data_vars[dv](ds)
+                if i == 0:
+                    da = xray.DataArray(calc_dv,dims=concat_dim)
+                    da_it = xray.DataArray(calc_dv_it,dims=[iter_dim,concat_dim])
+                else:
+                    da = xray.concat([da,xray.DataArray(calc_dv,dims=concat_dim)],dim=concat_dim)
+                    da_it = xray.concat([da_it,xray.DataArray(calc_dv_it,dims=[iter_dim,concat_dim])],dim=concat_dim)
+            else:
+                if i == 0:
+                    da = ds[dv]
+                else:
+                    if concat_dim in da.dims:
+                        da = xray.concat([da,ds[dv]],dim=concat_dim)
+                    else:
+                        da = xray.concat([da,ds[dv]],dim=run_dim)
+        data_arrays[dv] = da
+        
+        # Add data arrays containing the full iteration history as well as the mean for bg and x_post
+        if dv in calc_data_vars:
+            data_arrays["{}_it".format(dv)] = da_it
+    
+    ## Create dataset from extracted data arrays
+    combined_ds = xray.Dataset()
+    
+    for d in data_arrays.items():
+        d = {d[0]:d[1]}
+        combined_ds = combined_ds.assign(**d)
+    
+    # Add any coordinates from match_coords which are missing e.g. sites
+    for coord_name in match_coords:
+        if coord_name not in combined_ds.dims:
+            combined_ds = combined_ds.assign_coords(**{coord_name:ds_mult[0].coords[coord_name]})
+    
+    # Add details the nmeasure value for each run (may be useful if we need to extract details for certain runs)
+    run = [ds.attrs["Start date"] for ds in ds_mult]
+    run_nmeasure = xray.DataArray([len(ds.nmeasure) for ds in ds_mult],coords={run_dim:run},dims=run_dim)
+    
+    combined_ds = combined_ds.assign(**{"run_nmeasure":run_nmeasure})
+    combined_ds.attrs["Created by"] = getpass.getuser()
+    combined_ds.attrs["File created"] = str(dt.datetime.now().replace(microsecond=0))
+
+    return combined_ds
  
 def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True):
     
@@ -615,33 +1054,19 @@ def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True
     Specify an out_filename to write to disk
     """
     
-#    x_it=ds.x_it.values
-#    h_v_all=ds.h_v_all.values
-#    x_post_vit = ds.x_post_vit.values
-    sites=ds.coords['sites'].values
-    nsites=len(sites)
-#    nlon=len(ds.lon)
-#    nlat=len(ds.lat)
-#    Ngrid=nlon*nlat
-#    nIt=len(ds.nIt)
-#    nIC=ds.nIC.values
-#    nmeasure=len(ds.nmeasure)
-#
-#    x_post_all_it=np.zeros((nIt,Ngrid+nIC))
-#    y_post_it = np.zeros((nIt,nmeasure))
-#    y_bg_it = np.zeros((nIt,nmeasure))
-#    x_post_all_it[:,:nIC]=x_it[:,:nIC]
-#    x_post_all_it[:,nIC:]=x_post_vit
-#    for it in range(nIt):
-#        y_post_it[it,:]=np.dot(h_v_all,x_post_all_it[it,:])  
-#        y_bg_it[it,:]=np.dot(h_v_all[:,:nIC],x_it[it,:nIC])
-#        #y_bg_it[it,:]=np.dot(h_v_all[:,:10],x_it[it,:10])
-#    y_post_mean=np.mean(y_post_it, axis=0)
-#    y_bg_mean=np.mean(y_bg_it, axis=0)
+    if "run" in ds.coords:
+        y_bg_mean = ds["bc_inner_post"].values
+        y_bg_it = ds["bc_inner_post_it"].values
+        y_post_mean = ds["mf_post"].values
+        y_post_it = ds["mf_post_it"].values
+    else:
+        y_bg_it,y_bg_mean = post_bc_inner(ds)
+        y_post_it,y_post_mean = post_mf(ds)
 
+    sites = ds.coords['sites'].values
+    nsites=len(sites)
+    
     sigma_y_mean=np.mean(ds.sigma_y_it.values, axis=1)
-    y_bg_it,y_bg_mean = post_bl(ds)
-    y_post_it,y_post_mean = post_mf(ds)
 
     y_time = ds.y_time.values
     y_site = ds.y_site.values
