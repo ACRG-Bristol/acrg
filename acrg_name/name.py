@@ -969,17 +969,22 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                 print "Can't get modelled mole fraction timeseries because load_flux is set to False."
             else:
                 sites = [key for key in fp_and_data.keys() if key[0] != '.']
+                print sites
                 sources = fp_and_data['.flux'].keys()
                 for site in sites:
+                    print fp_and_data
+                    print site
+                    print fp_and_data[site]
+                    
                     for source in sources:
                         if type(fp_and_data['.flux'][source]) == dict:
-                            fp_and_data[site]['mf_mod_'+source] = timeseries_HiTRes(fp_and_data[site],fp_and_data['.flux'][source], output_fpXflux=False)
+                            fp_and_data[site]['mf_mod_'+source] = xr.DataArray(timeseries_HiTRes(fp_and_data[site],fp_and_data['.flux'][source], output_fpXflux=False), coords = {'time': fp_and_data[site].time})
                         else:
                             flux_reindex = fp_and_data['.flux'][source].reindex_like(fp_and_data[site], 'ffill')
                             if source == 'all':
-                                fp_and_data[site]['mf_mod'] = (fp_and_data[site].fp*flux_reindex.flux).sum(["lat", "lon"])     
+                                fp_and_data[site]['mf_mod'] = xr.DataArray((fp_and_data[site].fp*flux_reindex.flux).sum(["lat", "lon"]), coords = {'time':fp_and_data[site].time})
                             else:
-                                fp_and_data[site]['mf_mod_'+source] = (fp_and_data[site].fp*flux_reindex.flux).sum(["lat", "lon"])  
+                                fp_and_data[site]['mf_mod_'+source] = xr.DataArray((fp_and_data[site].fp*flux_reindex.flux).sum(["lat", "lon"]), coords = {'time':fp_and_data[site].time})
         
         # Calculate boundary conditions, if required         
         if calc_bc:
@@ -2114,7 +2119,7 @@ class get_country:
             name=np.asarray(name_temp)
         
         else:
-            name_temp = f.variables['names'][:]
+            name_temp = f.variables['name'][:]
             f.close()
     
             name=[]
