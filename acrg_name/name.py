@@ -991,11 +991,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                 sites = [key for key in fp_and_data.keys() if key[0] != '.']
                 print sites
                 sources = fp_and_data['.flux'].keys()
-                for site in sites:
-                    print fp_and_data
-                    print site
-                    print fp_and_data[site]
-                    
+                for site in sites:                    
                     for source in sources:
                         if type(fp_and_data['.flux'][source]) == dict:
                             fp_and_data[site]['mf_mod_'+source] = xr.DataArray(timeseries_HiTRes(fp_and_data[site],fp_and_data['.flux'][source], output_fpXflux=False), coords = {'time': fp_and_data[site].time})
