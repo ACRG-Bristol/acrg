@@ -64,6 +64,7 @@ A param_type dictionary can be defined both to fix expected inputs and to explic
 
 @author: rt17603
 """
+from __future__ import print_function
 
 import configparser
 from collections import OrderedDict
@@ -556,8 +557,8 @@ def extract_params(config_file,section=None,section_group=None,names=[],optional
     
     if optional_section:
         keys,key_type = find_param_key(section=optional_section,param_type=param_type)
-        print "key_type",key_type
-        print "keys",keys
+        print("key_type",key_type)
+        print("keys",keys)
         if key_type == 'section_group':
             print('WARNING: Cannot create list of optional parameters for the section based on param_type input. Please add parameters to optional_parameters list.')
         else:
@@ -569,7 +570,7 @@ def extract_params(config_file,section=None,section_group=None,names=[],optional
         for key in keys:
             optional_param.extend(param_type[key].keys())
     
-    print "optional_param",optional_param
+    print("optional_param",optional_param)
     
     param = OrderedDict({})
  

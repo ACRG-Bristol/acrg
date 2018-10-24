@@ -24,6 +24,7 @@ uncertainties differently (emissions uncertainty > baseline uncertainty).
 
 @author: ml12574
 """
+from __future__ import print_function
 #import tdmcmc_uncorr
 #import tdmcmc_evencorr
 import acrg_name as name
@@ -403,9 +404,9 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
         elif 'vmf' in attributes:   
             y_error.append(fp_data_H3.vmf.values)
         else:
-            print "No variability or repeatability in data file - use a default value"
+            print("No variability or repeatability in data file - use a default value")
             dmf_default = 0.002
-            print "Default value used: {}. Only appropriate for methane".format(dmf_default)
+            print("Default value used: {}. Only appropriate for methane".format(dmf_default))
             y_error.append(dmf_default*fp_data_H3.mf.values) # 0.002 only appropriate for methane
         
         H_bc_1=fp_data_H3.H_bc
@@ -683,7 +684,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
         para_temp_in=0
     #BEGIN ITERATIONS
     ##################################################
-    print 'Starting MCMC...'
+    print('Starting MCMC...')
     startt = run_time.time()
     
     if inv_type == 'uncorrelated':
@@ -770,9 +771,9 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     
     endt=run_time.time()
     
-    print 'Finished MCMC in ', endt-startt
+    print('Finished MCMC in ', endt-startt)
         
-    print 'Beginning post processing'
+    print('Beginning post processing')
     x_post_vit=np.zeros((nit_sub,Ngrid))    
     regions_it=np.transpose(regions_out)-1
     x_it=np.transpose(x_out)
@@ -782,9 +783,9 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
             wh_reg = np.where(regions_it[it,:] == zz)
             x_post_vit[it,wh_reg] = x_it[it,zz+nIC]
     
-    print 'Everything done'
+    print('Everything done')
     endt2 = run_time.time()
-    print endt2-endt
+    print(endt2-endt)
     
     
     ##########################################

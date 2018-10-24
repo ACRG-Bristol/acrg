@@ -17,6 +17,7 @@ This should probably be changed at some point to regrid over all timesteps in
 one go.
 
 """
+from __future__ import print_function
 
 import numpy as np
 import glob 
@@ -140,7 +141,7 @@ def getGFED(year, lon_out, lat_out, timeframe='monthly', months = [1,2,3,4,5,6,7
     
     #Check that there are daily/3 hourly data available
     if (year < 2003) & (timeframe != 'monthly'):
-        print "No %s data before 2003. Switching to monthly emissions." % timeframe
+        print("No %s data before 2003. Switching to monthly emissions." % timeframe)
         timeframe = 'monthly'
     
     #Check to see if desired year has a dataset
@@ -150,12 +151,12 @@ def getGFED(year, lon_out, lat_out, timeframe='monthly', months = [1,2,3,4,5,6,7
         fyear = fname[9:13]      #Extract year from filename
         possyears = np.append(possyears, int(fyear))
     if year > max(possyears):
-        print "%s is later than latest year in GFED v4.1 database" % str(year)
-        print "Using %s as the closest year" % str(max((possyears)))
+        print("%s is later than latest year in GFED v4.1 database" % str(year))
+        print("Using %s as the closest year" % str(max((possyears))))
         year = max(possyears)
     if year < min(possyears):
-        print "%s is earlier than earliest year in GFED v4.1 database" % str(year)
-        print "Using %s as the closest year" % str(min((possyears)))
+        print("%s is earlier than earliest year in GFED v4.1 database" % str(year))
+        print("Using %s as the closest year" % str(min((possyears))))
         year = min(possyears)
     
     #Get emissions
@@ -296,12 +297,12 @@ def getedgarannualtotals(year, lon_out, lat_out, soi='CH4'):
         fyear = fname[9:13]      #Extract year from filename
         possyears = np.append(possyears, int(fyear))
     if year > max(possyears):
-        print "%s is later than max year in EDGAR database" % str(year)
-        print "Using %s as the closest year" % str(max((possyears)))
+        print("%s is later than max year in EDGAR database" % str(year))
+        print("Using %s as the closest year" % str(max((possyears))))
         year = max(possyears)
     if year < min(possyears):
-        print "%s is earlier than min year in EDGAR database" % str(year)
-        print "Using %s as the closest year" % str(min((possyears)))
+        print("%s is earlier than min year in EDGAR database" % str(year))
+        print("Using %s as the closest year" % str(min((possyears))))
         year = min(possyears)
         
     
@@ -452,12 +453,12 @@ def getbloomwetlandsCH4(year, lon_out, lat_out, timeframe="monthly"):
     
     possyears = np.arange(7) + 2003
     if year > max(possyears):
-        print "%s is later than max year in Bloom et al wetlands data" % str(year)
-        print "Using %s as the closest year" % str(max((possyears)))
+        print("%s is later than max year in Bloom et al wetlands data" % str(year))
+        print("Using %s as the closest year" % str(max((possyears))))
         year = max(possyears)
     if year < min(possyears):
-        print "%s is earlier than min year in Bloom et al data" % str(year)
-        print "Using %s as the closest year" % str(min((possyears)))
+        print("%s is earlier than min year in Bloom et al data" % str(year))
+        print("Using %s as the closest year" % str(min((possyears))))
         year = min(possyears)
     
     ds = xr.open_dataset(path+bloomwetlands)
@@ -597,15 +598,15 @@ def getNAEI(year, lon_out, lat_out, soi, naei_sector):
     fn = naeidir+'LatLong1km_'+soi.upper()+'_'+str(year)+'.csv.gz'
     #Checks
     if not os.path.isfile(fn):
-        print 'Raw NAEI file LatLong1km_'+soi.upper()+'_'+str(year)+'.csv.gz does not exist'
-        print 'Returning None'
+        print('Raw NAEI file LatLong1km_'+soi.upper()+'_'+str(year)+'.csv.gz does not exist')
+        print('Returning None')
         return None
     sectorlist = ["energyprod","domcom","indcom","indproc","offshore","roadtrans",
     "othertrans","waste","agric","nature","points","total","totalexcship"]
     if naei_sector not in sectorlist:
-        print 'Sector not one of:'
-        print sectorlist
-        print 'Returning None'
+        print('Sector not one of:')
+        print(sectorlist)
+        print('Returning None')
         return None
         
     #Read emissions as tonnes/km^2/yr and naei lat and lons
@@ -750,12 +751,12 @@ def getedgarannualsectors(year, lon_out, lat_out, edgar_sectors, soi='CH4'):
         fyear = fname[9:13]      #Extract year from filename
         possyears = np.append(possyears, int(fyear))
     if year > max(possyears):
-        print "%s is later than max year in EDGAR database" % str(year)
-        print "Using %s as the closest year" % str(max((possyears)))
+        print("%s is later than max year in EDGAR database" % str(year))
+        print("Using %s as the closest year" % str(max((possyears))))
         year = max(possyears)
     if year < min(possyears):
-        print "%s is earlier than min year in EDGAR database" % str(year)
-        print "Using %s as the closest year" % str(min((possyears)))
+        print("%s is earlier than min year in EDGAR database" % str(year))
+        print("Using %s as the closest year" % str(min((possyears))))
         year = min(possyears)
     
         
@@ -787,7 +788,7 @@ def getedgarannualsectors(year, lon_out, lat_out, edgar_sectors, soi='CH4'):
             else:
                 tot += ds[soiname].values*1e3/speciesmm
         else:
-            print 'No annual file for sector %s and %s' % (sec, soi)
+            print('No annual file for sector %s and %s' % (sec, soi))
         
     lat_in = ds.lat.values
     lon_in = ds.lon.values
@@ -899,7 +900,7 @@ def getedgarmonthlysectors(lon_out, lat_out, edgar_sectors, months=[1,2,3,4,5,6,
                'indirectemissionsfromNOxandNH3' : '7B_7C'           
     }
     
-    print 'Note that the only year for monthly emissions is 2010 so using that.'
+    print('Note that the only year for monthly emissions is 2010 so using that.')
         
     #Species molar mass
     speciesmm = molar_mass(soi)
@@ -930,7 +931,7 @@ def getedgarmonthlysectors(lon_out, lat_out, edgar_sectors, months=[1,2,3,4,5,6,
                 else:
                     tot += ds[soiname].values*1e3/speciesmm
             else:
-                print 'No monthly file for sector %s' % sec
+                print('No monthly file for sector %s' % sec)
         
             if first == 0:
                 emissions = np.zeros((len(months), tot.shape[0], tot.shape[1]))
@@ -994,7 +995,7 @@ def _readJULESwetland(year,species="CH4"):
     '''
     
     if year < 2009 or year > 2016:
-        print "No JULES wetlands data outside the range 2009-2016 for now."
+        print("No JULES wetlands data outside the range 2009-2016 for now.")
         return None
 
     filename_jules = _JULESfile(year)
@@ -1084,7 +1085,7 @@ def getJULESwetlands(year,lon_out,lat_out,soi="CH4",scale_wetlands=True,total_em
     '''
     
     if soi.upper() != "CH4":
-        print "Unable to extract JULES wetland values for any species except CH4 (at the moment)"
+        print("Unable to extract JULES wetland values for any species except CH4 (at the moment)")
         return None
     
     flux_jules = _readJULESwetland(year,soi)
@@ -1131,7 +1132,7 @@ def getJULESwetlands(year,lon_out,lat_out,soi="CH4",scale_wetlands=True,total_em
         for i in range(nt):
             frac = _SWAMPSwetlandArea(year,lon_out,lat_out,month=i+1)[1]
             scale = round((total_emission*frac)/1e12,1)*1e12
-            print "{:02}) Scaling total JULES wetlands emissions within domain to: {} g/yr".format(i+1,scale)
+            print("{:02}) Scaling total JULES wetlands emissions within domain to: {} g/yr".format(i+1,scale))
             narr[:,:,i] = scale_emissions(narr[:,:,i],soi,lat_out,lon_out,total_emission=scale)
 
     return narr
@@ -1169,7 +1170,7 @@ def scale_emissions(emissions_t,soi,lat,lon,total_emission):
     
     current_emission = np.sum(emissions_t*areas)*total_time*molmass
     scaling = total_emission/current_emission
-    print "Current emissions total: {} g/yr (scaling needed to {} g/yr: {})".format(current_emission,total_emission,scaling)
+    print("Current emissions total: {} g/yr (scaling needed to {} g/yr: {})".format(current_emission,total_emission,scaling))
     
     emissions_new = np.copy(emissions_t)*scaling
     #print "New total emissions: {} g/yr".format(np.sum(emissions_new*areas)*total_time*molmass)

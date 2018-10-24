@@ -78,6 +78,7 @@ together but you might prefer a larger range for single sites.
 
 @author: ew14860
 """
+from __future__ import print_function
 
 import netCDF4 as nc
 import numpy as np
@@ -800,8 +801,8 @@ def animate(allfpdata, output_directory,
             pbar.update(ti)
         pbar.finish()
     
-    print ""
-    print "... running ffmpeg"
+    print("")
+    print("... running ffmpeg")
 
     if video_os.lower() == "mac":
         ffmpeg_status = subprocess.call("ffmpeg -r " + str(framerate) + \
@@ -837,16 +838,16 @@ def fp_resample(fp, av_period=None, dimension='time', av_how='mean',
     
     if startM is not None:
         if endM is None:
-                print 'Need to specify an end month as well'
+                print('Need to specify an end month as well')
                 return
         else:
             if endM == startM:
-                print 'End month needs to be different from start month'
+                print('End month needs to be different from start month')
                 return
                 
             year=fp.time[1].timetuple().tm_year
-            da = da.sel(time=slice(dt.datetime(year,startM,01),
-                                   dt.datetime(year,endM,01)))
+            da = da.sel(time=slice(dt.datetime(year,startM,0o1),
+                                   dt.datetime(year,endM,0o1)))
     
     fp_out = deepcopy(fp)
     fp_out.fp = da

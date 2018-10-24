@@ -3,6 +3,7 @@
 Created on Mon Nov 10 10:45:51 2014
 
 """
+from __future__ import print_function
 
 import netCDF4 as nc
 import numpy as np
@@ -350,7 +351,7 @@ def flux(domain, species, start = None, end = None, flux_directory=flux_director
         return flux_ds
     else:
         if end == None:
-            print "To get fluxes for a certain time period you must specify an end date."
+            print("To get fluxes for a certain time period you must specify an end date.")
         else:
             #Change timeslice to be the beginning and end of months in the dates specified.
             start = pd.to_datetime(start)
@@ -463,7 +464,7 @@ def boundary_conditions(domain, species, start = None, end = None, bc_directory=
         return bc_ds
     else:
         if end == None:
-            print "To get boundary conditions for a certain time period you must specify an end date."
+            print("To get boundary conditions for a certain time period you must specify an end date.")
         else:
             #Change timeslice to be the beginning and end of months in the dates specified.
             start = pd.to_datetime(start)
@@ -778,7 +779,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
     if ".species" in data.keys():
         species = data[".species"]
     else:
-        print "Species can't be found in data dictionary."
+        print("Species can't be found in data dictionary.")
 
     if load_flux:
         if emissions_name is not None:
@@ -869,9 +870,9 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                 ml_fp = site_fp.max_level
                 tolerance = 60e9 # footprints must match data with this tolerance in [ns]
                 if ml_obs != ml_fp:
-                    print "ERROR: MAX LEVEL OF SAT OBS DOES NOT EQUAL MAX LEVEL IN FP"
-                    print "max_level_fp =",ml_fp
-                    print "max_level_obs =",ml_obs
+                    print("ERROR: MAX LEVEL OF SAT OBS DOES NOT EQUAL MAX LEVEL IN FP")
+                    print("max_level_fp =",ml_fp)
+                    print("max_level_obs =",ml_obs)
                     return None
             elif "GAUGE-FERRY" in site.upper():
                 tolerance = '5min'
@@ -983,7 +984,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
         # Calculate model time series, if required
         if calc_timeseries:
             if load_flux == False:
-                print "Can't get modelled mole fraction timeseries because load_flux is set to False."
+                print("Can't get modelled mole fraction timeseries because load_flux is set to False.")
             else:
                 sites = [key for key in fp_and_data.keys() if key[0] != '.']
                 sources = fp_and_data['.flux'].keys()
@@ -1001,7 +1002,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
         # Calculate boundary conditions, if required         
         if calc_bc:
             if load_bc == False:
-                print "Can't get modelled baseline timeseries because load_bc is set to False."
+                print("Can't get modelled baseline timeseries because load_bc is set to False.")
             else:
                 sites = [key for key in fp_and_data.keys() if key[0] != '.']
                 for site in sites:
@@ -1297,7 +1298,7 @@ def merge_sensitivity(fp_data_H,
             elif "dmf" in fp_data_H[site].keys():
                 y_error.append(fp_data_H[site].dmf.values)
             else:
-                print "Measurement error not found in dataset for site %s" %site
+                print("Measurement error not found in dataset for site %s" %site)
 
         if 'H' in fp_data_H[site].data_vars:        
             # Make sure H matrices are aligned in the correct dimensions
@@ -1695,7 +1696,7 @@ def plot(fp_data, date, out_filename=None, out_format = 'pdf',
         elif len(figsize) == 2:
             plt.figure(figsize=(figsize[0],figsize[1]))
         else:
-            print "Could not apply figure size: {}. Expected two item tuple.".format(figsize)
+            print("Could not apply figure size: {}. Expected two item tuple.".format(figsize))
     
     ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=np.median(lons)))
     ax.set_extent([lons[0], lons[-1], lats[0], lats[-1]], crs=ccrs.PlateCarree())
@@ -1890,11 +1891,11 @@ def plot_particle_location(fp_data, date, particle_direction = 'nw', out_filenam
             if not isinstance(figsize,tuple):
                 figsize=(figsize[0],figsize[1])
         else:
-            print "Could not apply figure size: {}. Using default: {}".format(figsize,(8,6))
+            print("Could not apply figure size: {}. Using default: {}".format(figsize,(8,6)))
             figsize = (8,6)
     else:
         figsize = (8,6)
-        print "Using default figsize: {}".format(figsize)
+        print("Using default figsize: {}".format(figsize))
 
     
     figure = plt.figure(figsize=figsize, facecolor='w')
@@ -2094,7 +2095,7 @@ def animate(fp_data, output_directory, plot_function = "plot", file_label = 'fp'
                                            figsize = figsize)
                      
             pbar.update(ti)
-            print ""
+            print("")
         pbar.finish()
     
     print("")

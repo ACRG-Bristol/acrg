@@ -4,6 +4,7 @@ Created on Thu Nov 26 18:13:48 2015
 
 @author: chxmr
 """
+from __future__ import print_function
 
 import numpy as np
 import datetime as dt
@@ -85,10 +86,10 @@ def write(lat, lon, time, flux, species, domain,
         Add some error checking (e.g. check that domain is correct)
     '''
     
-    print "WARNING: Make sure time stamp is start of time period (i.e. 1st of month\
-            for monthly data or 1st January for yearly data)."
-    print "WARNING: Make sure coordinates are centre of the gridbox."
-    print "WARNING: Make sure fluxes are in mol/m2/s."
+    print("WARNING: Make sure time stamp is start of time period (i.e. 1st of month\
+            for monthly data or 1st January for yearly data).")
+    print("WARNING: Make sure coordinates are centre of the gridbox.")
+    print("WARNING: Make sure fluxes are in mol/m2/s.")
 
     if climatology == True:
         name_climatology = "-climatology"
@@ -107,8 +108,8 @@ def write(lat, lon, time, flux, species, domain,
         
     # Check that the flux is in the correct shape
     if np.shape(flux) != tuple((np.shape(lat)[0], np.shape(lon)[0], np.shape(time)[0])):
-        print "Flux doesn't have dimensions lat x lon x time"
-        print "Reshape your flux array and try again"
+        print("Flux doesn't have dimensions lat x lon x time")
+        print("Reshape your flux array and try again")
         return
         
     #Set climatology to year 1900
@@ -224,7 +225,7 @@ class EDGARread:
             year = m[0].strip('_')
             date = dt.datetime.strptime(year, '%Y')
         elif len(m) > 1:
-            print "Can't find correct date."
+            print("Can't find correct date.")
             year = None
             date = None
         

@@ -35,6 +35,7 @@ sitelocs returns the FIRST lat/lon listed in each NOAA flask file.
       
 @author: Matt Rigby
 """
+from __future__ import print_function
 
 import numpy as np
 import acrg_cf as cf
@@ -56,10 +57,10 @@ def filename(site, species):
     filename=[f for f in filenames if ('_' + site.upper() )in f.upper()]
     
     if len(filename) > 1:
-        print "More than one matching filename " + site.upper()
+        print("More than one matching filename " + site.upper())
         return 0
     if len(filename) == 0:
-        print "No matching filename " + site.upper()
+        print("No matching filename " + site.upper())
         return 0
 
     return filename[0]

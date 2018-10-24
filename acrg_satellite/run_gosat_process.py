@@ -24,9 +24,10 @@ Run as:
 
 @author: rt17603
 """
+from __future__ import absolute_import
 
-import gosat
-import gosat_config
+from . import gosat
+from . import gosat_config
 import os
 import argparse
 

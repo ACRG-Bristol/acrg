@@ -18,6 +18,7 @@ country_emissions - calculate emissions from given list of countries
 
 @author: ml12574
 """
+from __future__ import print_function
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -59,7 +60,7 @@ def append_netcdf(flux_mean, flux_percentile, flux_it, country_mean, country_per
     regionspc_name = "_".join(['regions_percentile', experiment])
     #countryit_name = "_".join(['country_it', experiment])
     
-    print "outfile",outfile
+    print("outfile",outfile)
     ncF=Dataset(outfile, 'a')
     
     ncfluxm=ncF.createVariable(fm_name, 'f', ('lat', 'lon', 'time'))    
@@ -104,7 +105,7 @@ def append_netcdf(flux_mean, flux_percentile, flux_it, country_mean, country_per
     #nccountryit.long_name='Posterior emissions distribution from individual countries'
     
     ncF.close()
-    print "Appended " + experiment + " to " + outfile 
+    print("Appended " + experiment + " to " + outfile) 
 
 def write_netcdf(flux_mean, flux_percentile, flux_it, flux_prior, flux_ap_percentile,
                  country_mean, country_percentile, country_prior, country_ap_percentile,
@@ -232,7 +233,7 @@ def write_netcdf(flux_mean, flux_percentile, flux_it, flux_prior, flux_ap_percen
 #    nccountryit.long_name='Posterior emissions distribution from individual countries'
     
     ncF.close()
-    print "Written " + experiment + " to " + outfile
+    print("Written " + experiment + " to " + outfile)
 
 def molar_mass(species):
     '''
@@ -488,7 +489,7 @@ def define_stations(ds,sites=[]):
         stations[site+'_lon']=ds.release_lons[si].values
         stations[site+'_lat']=ds.release_lats[si].values
         if site not in ds.y_site:
-            print "WARNING: Reference to site not found within dataset"
+            print("WARNING: Reference to site not found within dataset")
     stations['sites']=sites
     
     return stations
@@ -548,7 +549,7 @@ def plot_map(data,lon,lat, clevels=None, divergeCentre = None, cmap=plt.cm.RdBu_
     ax.coastlines()
 
     if clevels is None:
-        print "Warning: using default contour levels. Include clevels keyword to change"
+        print("Warning: using default contour levels. Include clevels keyword to change")
         clevels = np.arange(-2., 2.1, 0.1)
     else:
         clevels = np.arange(clevels[0], clevels[1], clevels[2])
@@ -688,7 +689,7 @@ def country_emissions(ds_mcmc, countries, species, domain, x_post_vit=None, q_ap
     elif units == 'Mg/yr': 
         unit_factor=1.e6
     else:
-        print 'Undefined units: outputting in g/yr - let this be a lesson to define your units'
+        print('Undefined units: outputting in g/yr - let this be a lesson to define your units')
         unit_factor=1.
         
 #    acrg_path = os.getenv('ACRG_PATH')
