@@ -390,7 +390,7 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
     data_directory, files = get_file_list(site, species, start_time, end_time,
                                           height, network = network,
                                           instrument = instrument, data_directory=data_directory)                                 
-    
+
     #Get files
     #####################################
     if files is not None:

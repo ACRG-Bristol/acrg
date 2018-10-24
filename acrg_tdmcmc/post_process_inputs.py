@@ -23,44 +23,30 @@ import matplotlib.pyplot as plt
 
 acrg_path=os.getenv('ACRG_PATH')
 
-def country_emissions_multi(ds_list, countries, species, domain, x_post_vit=None, q_ap_abs_v=None, 
-                      percentiles=[5,16,50,84,95], units=None, ocean=True, 
-                      uk_split=False, fixed_map=False):
+def extract_tdmcmc_files(directory,species,network,dates,return_filenames=False):
     '''
-    Calculate country emissions across multiple datasets. Combine mean and percentiles into 
-    arrays for all time points.
-    See process.country_emissions() function for details of inputs
-    Returns:
-        (5 x numpy.array) :
-            Country totals for each iteration in units specified (ncountries x nIt),
-            Mean of country totals for each dataset in units specified (ncountries x ntime), 
-            Percentiles for each country for each dataset in units specified (ncountries x npercentiles x ntime),
-            Prior for each country in units specified (ncountries),
-            Country index map (nlat x nlon)
+    Find tdmcmc output filenames based on naming convention:
+        "directory"/output_"network"_"species"_"date".nc e.g. output_AGAGE_ch4_2008-01-01.nc
+    Open as xarray.Dataset objects and return as a list.
     '''
-    ncountries=len(countries)
-    ntime = len(ds_list)
-    npercentile=len(percentiles)
+    ds_list = []
+    filenames = []
+    for tt,date in enumerate(dates):
+        fname_search = "output_{network}_{species}_{date}.nc".format(network=network,species=species,date=date)
+        fname_search = os.path.join(directory,fname_search)
+        filename = glob.glob(fname_search)
+        if len(filename) > 0:
+            ds = process.open_ds(filename[0])
+            ds_list.append(ds)
+            filenames.append(filename[0])
     
-    # Constructed from all datasets
-    country_mean = np.zeros((ncountries,ntime)) 
-    country_percentile = np.zeros((ncountries,ntime,npercentile))
-
-    for i,ds in enumerate(ds_list):
-        country_out = process.country_emissions(ds, countries, species, domain, 
-                                                percentiles=percentiles,units=units, 
-                                                ocean=ocean, uk_split=uk_split)
-        
-        country_mean[:,tt] = country_out[1]
-        country_percentile[:,tt,:] = country_out[2]
-        
-        if i == 0:
-            # Should be the same for all datasets
-            country_it = country_out[0]
-            country_prior = country_out[3]
-            country_index = country_out[4]
-
-    return country_it,country_mean,country_percentile,country_prior,country_index
+    if not ds_list:
+        raise Exception("No data found for dates: {}, species, {}, network {}".format(dates,species,network))
+    
+    if return_filenames:
+        return ds_list,filenames
+    else:
+        return ds_list
 
 def create_output_param(ds_list,dates,experiment,nc_outfile,
                         country_dict=None,percentiles=[5,16,50,84,95],mode="write"):
@@ -129,27 +115,29 @@ if __name__=="__main__":
 
     #### GENERAL INPUTS ####
 
-    dates=["2013-01-01"] # Can be a list of one date or many dates
+    dates=["2012-01-01","2012-02-01","2012-03-01","2012-04-01"] # Can be a list of one date or many dates
     species="ch4"
-    domain="EUROPE"
+    #domain="EUROPE"
+    domain = "SOUTHAMERICA"
 
-    network="AGAGE"
-    experiment="MHD_TAC"
+    network="GOSAT-BRAZIL"
+    #experiment="MHD_TAC"
     countries=np.asarray(['UNITED KINGDOM', 'IRELAND', 'FRANCE', 'GERMANY', 
                           'DENMARK', 'BELGIUM', 'NETHERLANDS', 'LUXEMBOURG'])
     percentiles = [5,16,50,84,95]
     
-    output_directory = "/path/to/tdmcmc/outputs/" # ** UPDATE OUTPUT DIRECTORY **
+    #output_directory = "/path/to/output/directory" # ** UPDATE OUTPUT DIRECTORY **
+    output_directory = "/data/rt17603/tdmcmc_output/SOUTHAMERICA_ch4"
     
     #### POST-PROCESSING OPTIONS ####
     write_outfile=False
-    append_outfile=True
+    append_outfile=False
     
-    calc_country=True # At the moment calc_country must be True to write or append to nc file.
+    calc_country=False # At the moment calc_country must be True to write or append to nc file.
 
     plot_scale_map=False
     plot_abs_map=False
-    plot_y_timeseries=False
+    plot_y_timeseries=True
     plot_regions=False
     plot_density=False
     
@@ -177,7 +165,8 @@ if __name__=="__main__":
     d_out_filename = None  # None means plot will not be written to file
     
     # plot_y_timeseries
-    y_out_filename = None  # None means plot will not be written to file
+    combine_timeseries = True # Plot y timeseries on one axis for multiple input files.
+    y_out_filename = None
     
     # plot regions
     r_out_filename = None  # None means plot will not be written to file
@@ -201,22 +190,22 @@ if __name__=="__main__":
     
     
     # Extract datasets from file
-    ds_list = []
-    for tt,date in enumerate(dates):
-        fname_search = "output_{network}_{species}_{date}.nc".format(network=network,species=species,date=date)
-        fname_search = os.path.join(output_directory,fname_search)
-        filename = glob.glob(fname_search)
-        if len(filename) > 0:
-                ds = process.open_ds(filename[0])
-                ds_list.append(ds)
-    
-    if not ds_list:
-        raise Exception("No data found for dates: {}, species, {}, network {}".format(dates,species,network))
+    ds_list = extract_tdmcmc_files(output_directory,species,network,dates)
+#    for tt,date in enumerate(dates):
+#        fname_search = "output_{network}_{species}_{date}.nc".format(network=network,species=species,date=date)
+#        fname_search = os.path.join(output_directory,fname_search)
+#        filename = glob.glob(fname_search)
+#        if len(filename) > 0:
+#                ds = process.open_ds(filename[0])
+#                ds_list.append(ds)
+#    
+#    if not ds_list:
+#        raise Exception("No data found for dates: {}, species, {}, network {}".format(dates,species,network))
     
     ## Calculate country totals
     if calc_country == True:
         country_it,country_mean,country_percentile,country_prior,country_index \
-         = country_emissions_multi(ds_list, countries, species, domain, percentiles,
+         = process.country_emissions_mult(ds_list, countries, species, domain, percentiles,
                                 units=units, ocean=ocean, uk_split=uk_split)
         country_data = {}
         country_data["country_mean"] = country_mean
@@ -259,9 +248,19 @@ if __name__=="__main__":
      
     ## Plot y timeseries
     if plot_y_timeseries == True:
-        for ds in ds_list:
-            y_post_it,y_bg_it=process.plot_timeseries(ds, fig_text=None, 
-                                                      ylim=None, out_filename=y_out_filename)
+        if combine_timeseries and len(ds_list) > 1:
+            ds_combined = process.combine_timeseries(*ds_list)
+            y_post_it,y_bg_it=process.plot_timeseries(ds_combined, fig_text=None, 
+                                                          ylim=None, out_filename=y_out_filename)
+        else:
+            for i,ds in enumerate(ds_list):
+                if y_out_filename:
+                    stub,ext = os.path.splitext(y_out_filename)
+                    y_out_filename_n = "{}_{}{}".format(stub,i+1,ext)
+                else:
+                    y_out_filename_n = None
+                y_post_it,y_bg_it=process.plot_timeseries(ds, fig_text=None, 
+                                                          ylim=None, out_filename=y_out_filename_n)
 
     ## Plot histogram of regions across iterations
     if plot_regions == True:

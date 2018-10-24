@@ -975,8 +975,11 @@ def footprint_array(fields_file,
             metr = met[i] # Same number of met_dataframes in list as time points
         else:
             # Re-index met dataframe to each time point
-            metr = met[0].reindex(index = np.array([t]), method = "pad")
-        
+#            metr = met[0].reindex(index = np.array([t]))
+            metr = met[0][~met[0].index.duplicated(keep='first')].reindex(index = np.array([t]))
+            if np.isnan(metr.values).any():
+                raise ValueError("No met data for given date")
+            
         for key in metr.keys():
             if key != "time":
                 met_ds[key][{'time':[i]}] = metr[key].values.reshape((1,len(levs)))

@@ -370,8 +370,11 @@ def flux(domain, species, start = None, end = None, flux_directory=flux_director
                 while month_end > ndate[-1]:
                     ndate = ndate + pd.DateOffset(years=1)      
                     flux_ds = xr.merge([flux_ds, flux_tmp.update({'time' : ndate})])
-
+                    
             flux_timeslice = flux_ds.sel(time=slice(month_start, month_end))
+            if np.logical_and(month_start.year != month_end.year, len(flux_timeslice.time) != dateutil.relativedelta.relativedelta(end, start).months):
+                month_start = dt.datetime(start.year, 1, 1, 0, 0)
+                flux_timeslice = flux_ds.sel(time=slice(month_start, month_end))
             if len(flux_timeslice.time)==0:
                 flux_timeslice = flux_ds.sel(time=start, method = 'ffill')
                 flux_timeslice = flux_timeslice.expand_dims('time',axis=-1)
@@ -797,7 +800,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
     flux_bc_start = None
     flux_bc_end = None
     
-    for site in sites:
+    for i, site in enumerate(sites):
 
         # Dataframe for this site            
         site_df = data[site] 
@@ -951,33 +954,33 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
             fp_and_data[site] = site_ds
             
         
-        if load_flux:
+    if load_flux:
             
-            flux_dict = {} 
+        flux_dict = {} 
             
-            for source in emissions_name.keys():
-                if type(emissions_name[source]) == str:
-                    flux_dict[source] = flux(domain, emissions_name[source], start=flux_bc_start, end=flux_bc_end, flux_directory=flux_directory)
-                elif type(emissions_name[source]) == dict:
-                    if HiTRes == False:
-                        print("HiTRes is set to False and a dictionary has been found as the emissions_name dictionary value\
-                              for source %s. Either enter your emissions names as separate entries in the emissions_name\
-                              dictionary or turn HiTRes to True to use the two emissions files together with HiTRes footprints." %source)
-                        return None
-                    else:
-                        flux_dict[source] = flux_for_HiTRes(domain, emissions_name[source], start=flux_bc_start, end=flux_bc_end, flux_directory=flux_directory)
+        for source in emissions_name.keys():
+            if type(emissions_name[source]) == str:
+                flux_dict[source] = flux(domain, emissions_name[source], start=flux_bc_start, end=flux_bc_end, flux_directory=flux_directory)
+            elif type(emissions_name[source]) == dict:
+                if HiTRes == False:
+                    print("HiTRes is set to False and a dictionary has been found as the emissions_name dictionary value\
+                          for source %s. Either enter your emissions names as separate entries in the emissions_name\
+                          dictionary or turn HiTRes to True to use the two emissions files together with HiTRes footprints." %source)
+                    return None
+                else:
+                    flux_dict[source] = flux_for_HiTRes(domain, emissions_name[source], start=flux_bc_start, end=flux_bc_end, flux_directory=flux_directory)
                         
-            fp_and_data['.flux'] = flux_dict
+        fp_and_data['.flux'] = flux_dict
             
         
-        if load_bc:
+    if load_bc:
             
-            bc = boundary_conditions(domain, species, start=flux_bc_start, end=flux_bc_end, bc_directory=bc_directory)
+        bc = boundary_conditions(domain, species, start=flux_bc_start, end=flux_bc_end, bc_directory=bc_directory)
 
-            if  ".units" in attributes:
-                fp_and_data['.bc'] = bc / data[".units"]               
-            else:
-                fp_and_data['.bc'] = bc
+        if  ".units" in attributes:
+            fp_and_data['.bc'] = bc / data[".units"]               
+        else:
+            fp_and_data['.bc'] = bc
             
         
                                            
