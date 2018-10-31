@@ -36,6 +36,9 @@ from matplotlib.colors import BoundaryNorm
 from matplotlib.colors import Normalize
 from matplotlib import ticker
 import cartopy.crs as ccrs
+from collections import OrderedDict
+import datetime as dt
+import getpass
 
 acrg_path = os.getenv("ACRG_PATH")
 
@@ -827,6 +830,45 @@ def country_emissions(ds_mcmc, countries, species, domain, x_post_vit=None, q_ap
         return q_country_it*365.*24.*3600.*molmass/unit_factor,\
         q_country_mean, q_country_percentile, q_country_ap, country_index
 
+def country_emissions_mult(ds_list, countries, species, domain, x_post_vit=None, q_ap_abs_v=None, 
+                      percentiles=[5,16,50,84,95], units=None, ocean=True, 
+                      uk_split=False, fixed_map=False):
+    '''
+    Calculate country emissions across multiple datasets. Combine mean and percentiles into 
+    arrays for all time points.
+    See process.country_emissions() function for details of inputs
+    Returns:
+        (5 x numpy.array) :
+            Country totals for each iteration in units specified (ncountries x nIt),
+            Mean of country totals for each dataset in units specified (ncountries x ntime), 
+            Percentiles for each country for each dataset in units specified (ncountries x npercentiles x ntime),
+            Prior for each country in units specified (ncountries),
+            Country index map (nlat x nlon)
+    '''
+    ncountries=len(countries)
+    ntime = len(ds_list)
+    npercentile=len(percentiles)
+    
+    # Constructed from all datasets
+    country_mean = np.zeros((ncountries,ntime)) 
+    country_percentile = np.zeros((ncountries,ntime,npercentile))
+
+    for i,ds in enumerate(ds_list):
+        country_out = country_emissions(ds, countries, species, domain, 
+                                        percentiles=percentiles,units=units, 
+                                        ocean=ocean, uk_split=uk_split)
+        
+        country_mean[:,i] = country_out[1]
+        country_percentile[:,i,:] = country_out[2]
+
+        if i == 0:
+            # Should be the same for all datasets
+            country_it = country_out[0]
+            country_prior = country_out[3]
+            country_index = country_out[4]
+
+    return country_it,country_mean,country_percentile,country_prior,country_index
+
 def prior_mf(ds):
     '''
     The prior_mf function calculates the y prior mole fraction
@@ -847,15 +889,18 @@ def prior_mf(ds):
     
     return y_prior
 
-def post_bl(ds):
+def post_bc_inner(ds):
     '''
-    The post_bl function calculates the y posterior baseline iterations and mean
+    The post_bc_inner function calculates the y posterior boundary conditions for the inner
+    region for each iteration and the mean.
+    This combines mole fraction contributions for boundary conditions on the whole domain, 
+    any bias factors included and all fixed regions outside the inner region.
     
     Args:
         ds (xarray.Dataset) : output from the run_tdmcmc function
     
     Returns:
-        (np.array,np.array) : y posterior baseline iterations, y posterior baseline mean
+        (np.array,np.array) : y posterior inner bc iterations, y posterior inner bc mean
     '''
 
     nIC = ds.nIC.values         # number of initial conditions (basis functions + boundary conditions + bias)
@@ -905,6 +950,94 @@ def post_mf(ds):
     y_post_mean=np.mean(y_post_it, axis=0) # Take the mean across all iterations
     
     return y_post_it,y_post_mean
+
+def combine_timeseries(*ds_mult):
+    '''
+    The combine_timeseries function takes a list of output datasets from a tdmcmc run and combines
+    the parameters relevant to plotting a mole fraction timeseries.
+
+    Current parameters copied from input and combined:
+        "y_time","y_site","y","sigma_y_it","sites"
+    
+    Posterior boundary conditions (inner) and modelled mole fractions are calculated for each run and
+    combined. Both mean and full iterations are included. Additional parameters within dataset:
+        "bc_inner_post","bc_inner_post_it","mf_post","mf_post_it"
+    
+    If any 
+    
+    Args:
+        ds_mult (xarray.Dataset, xarray.Dataset, ...) :
+            Any number of tdmcmc output datasets can be specified to be combined.
+            All datasets will be combined.
+    
+    Returns:
+        xarray.Dataset :
+            Reduced, combined dataset from tdmcmc output.
+    '''
+    calc_data_vars = {"bc_inner_post":post_bc_inner,"mf_post":post_mf}
+    #data_vars = ["y_time","y_site","y","sigma_y_it","bc_inner_post","mf_post","nIC","h_v_all","x_it","x_post_vit"]
+    data_vars = ["y_time","y_site","y","sigma_y_it","bc_inner_post","mf_post"]
+    match_coords = ["Ngrid","sites"]
+    
+    concat_dim = "nmeasure"
+    iter_dim = "nIt"
+    run_dim = "run"
+    
+    ## Check any coordinates within match_coords are the same for all the datasets.    
+    match_dim = [[ds.dims[coord] for ds in ds_mult] for coord in match_coords]
+    for ds in ds_mult:
+        for i,dim in enumerate(match_dim):
+            if len(set(dim)) != 1:
+                raise Exception("Dimensions of {} do not match between input datasets.".format(match_coords[i]))
+    
+    ## Extract and combine data arrays for data_vars including calculating any new data variables to add
+    data_arrays = OrderedDict()
+    
+    for dv in data_vars:
+        for i,ds in enumerate(ds_mult):
+            if dv in calc_data_vars:
+                calc_dv_it,calc_dv = calc_data_vars[dv](ds)
+                if i == 0:
+                    da = xray.DataArray(calc_dv,dims=concat_dim)
+                    da_it = xray.DataArray(calc_dv_it,dims=[iter_dim,concat_dim])
+                else:
+                    da = xray.concat([da,xray.DataArray(calc_dv,dims=concat_dim)],dim=concat_dim)
+                    da_it = xray.concat([da_it,xray.DataArray(calc_dv_it,dims=[iter_dim,concat_dim])],dim=concat_dim)
+            else:
+                if i == 0:
+                    da = ds[dv]
+                else:
+                    if concat_dim in da.dims:
+                        da = xray.concat([da,ds[dv]],dim=concat_dim)
+                    else:
+                        da = xray.concat([da,ds[dv]],dim=run_dim)
+        data_arrays[dv] = da
+        
+        # Add data arrays containing the full iteration history as well as the mean for bg and x_post
+        if dv in calc_data_vars:
+            data_arrays["{}_it".format(dv)] = da_it
+    
+    ## Create dataset from extracted data arrays
+    combined_ds = xray.Dataset()
+    
+    for d in data_arrays.items():
+        d = {d[0]:d[1]}
+        combined_ds = combined_ds.assign(**d)
+    
+    # Add any coordinates from match_coords which are missing e.g. sites
+    for coord_name in match_coords:
+        if coord_name not in combined_ds.dims:
+            combined_ds = combined_ds.assign_coords(**{coord_name:ds_mult[0].coords[coord_name]})
+    
+    # Add details the nmeasure value for each run (may be useful if we need to extract details for certain runs)
+    run = [ds.attrs["Start date"] for ds in ds_mult]
+    run_nmeasure = xray.DataArray([len(ds.nmeasure) for ds in ds_mult],coords={run_dim:run},dims=run_dim)
+    
+    combined_ds = combined_ds.assign(**{"run_nmeasure":run_nmeasure})
+    combined_ds.attrs["Created by"] = getpass.getuser()
+    combined_ds.attrs["File created"] = str(dt.datetime.now().replace(microsecond=0))
+
+    return combined_ds
  
 def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True):
     
@@ -921,33 +1054,19 @@ def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True
     Specify an out_filename to write to disk
     """
     
-#    x_it=ds.x_it.values
-#    h_v_all=ds.h_v_all.values
-#    x_post_vit = ds.x_post_vit.values
-    sites=ds.coords['sites'].values
-    nsites=len(sites)
-#    nlon=len(ds.lon)
-#    nlat=len(ds.lat)
-#    Ngrid=nlon*nlat
-#    nIt=len(ds.nIt)
-#    nIC=ds.nIC.values
-#    nmeasure=len(ds.nmeasure)
-#
-#    x_post_all_it=np.zeros((nIt,Ngrid+nIC))
-#    y_post_it = np.zeros((nIt,nmeasure))
-#    y_bg_it = np.zeros((nIt,nmeasure))
-#    x_post_all_it[:,:nIC]=x_it[:,:nIC]
-#    x_post_all_it[:,nIC:]=x_post_vit
-#    for it in range(nIt):
-#        y_post_it[it,:]=np.dot(h_v_all,x_post_all_it[it,:])  
-#        y_bg_it[it,:]=np.dot(h_v_all[:,:nIC],x_it[it,:nIC])
-#        #y_bg_it[it,:]=np.dot(h_v_all[:,:10],x_it[it,:10])
-#    y_post_mean=np.mean(y_post_it, axis=0)
-#    y_bg_mean=np.mean(y_bg_it, axis=0)
+    if "run" in ds.coords:
+        y_bg_mean = ds["bc_inner_post"].values
+        y_bg_it = ds["bc_inner_post_it"].values
+        y_post_mean = ds["mf_post"].values
+        y_post_it = ds["mf_post_it"].values
+    else:
+        y_bg_it,y_bg_mean = post_bc_inner(ds)
+        y_post_it,y_post_mean = post_mf(ds)
 
+    sites = ds.coords['sites'].values
+    nsites=len(sites)
+    
     sigma_y_mean=np.mean(ds.sigma_y_it.values, axis=1)
-    y_bg_it,y_bg_mean = post_bl(ds)
-    y_post_it,y_post_mean = post_mf(ds)
 
     y_time = ds.y_time.values
     y_site = ds.y_site.values

@@ -799,7 +799,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
     flux_bc_start = None
     flux_bc_end = None
     
-    for site in sites:
+    for i, site in enumerate(sites):
 
         # Dataframe for this site            
         site_df = data[site] 
@@ -953,66 +953,66 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
             fp_and_data[site] = site_ds
             
         
-        if load_flux:
+    if load_flux:
             
-            flux_dict = {} 
+        flux_dict = {} 
             
-            for source in emissions_name.keys():
-                if type(emissions_name[source]) == str:
-                    flux_dict[source] = flux(domain, emissions_name[source], start=flux_bc_start, end=flux_bc_end, flux_directory=flux_directory)
-                elif type(emissions_name[source]) == dict:
-                    if HiTRes == False:
-                        print("HiTRes is set to False and a dictionary has been found as the emissions_name dictionary value\
-                              for source %s. Either enter your emissions names as separate entries in the emissions_name\
-                              dictionary or turn HiTRes to True to use the two emissions files together with HiTRes footprints." %source)
-                        return None
-                    else:
-                        flux_dict[source] = flux_for_HiTRes(domain, emissions_name[source], start=flux_bc_start, end=flux_bc_end, flux_directory=flux_directory)
+        for source in emissions_name.keys():
+            if type(emissions_name[source]) == str:
+                flux_dict[source] = flux(domain, emissions_name[source], start=flux_bc_start, end=flux_bc_end, flux_directory=flux_directory)
+            elif type(emissions_name[source]) == dict:
+                if HiTRes == False:
+                    print("HiTRes is set to False and a dictionary has been found as the emissions_name dictionary value\
+                          for source %s. Either enter your emissions names as separate entries in the emissions_name\
+                          dictionary or turn HiTRes to True to use the two emissions files together with HiTRes footprints." %source)
+                    return None
+                else:
+                    flux_dict[source] = flux_for_HiTRes(domain, emissions_name[source], start=flux_bc_start, end=flux_bc_end, flux_directory=flux_directory)
                         
-            fp_and_data['.flux'] = flux_dict
+        fp_and_data['.flux'] = flux_dict
             
         
-        if load_bc:
+    if load_bc:
             
-            bc = boundary_conditions(domain, species, start=flux_bc_start, end=flux_bc_end, bc_directory=bc_directory)
+        bc = boundary_conditions(domain, species, start=flux_bc_start, end=flux_bc_end, bc_directory=bc_directory)
 
-            if  ".units" in attributes:
-                fp_and_data['.bc'] = bc / data[".units"]               
-            else:
-                fp_and_data['.bc'] = bc
+        if  ".units" in attributes:
+            fp_and_data['.bc'] = bc / data[".units"]               
+        else:
+            fp_and_data['.bc'] = bc
             
         
                                            
-        # Calculate model time series, if required
-        if calc_timeseries:
-            if load_flux == False:
-                print "Can't get modelled mole fraction timeseries because load_flux is set to False."
-            else:
-                sites = [key for key in fp_and_data.keys() if key[0] != '.']
-                sources = fp_and_data['.flux'].keys()
-                for site in sites:
-                    for source in sources:
-                        if type(fp_and_data['.flux'][source]) == dict:
-                            fp_and_data[site]['mf_mod_'+source] = timeseries_HiTRes(fp_and_data[site],fp_and_data['.flux'][source], output_fpXflux=False)
+    # Calculate model time series, if required
+    if calc_timeseries:
+        if load_flux == False:
+            print "Can't get modelled mole fraction timeseries because load_flux is set to False."
+        else:
+            sites = [key for key in fp_and_data.keys() if key[0] != '.']
+            sources = fp_and_data['.flux'].keys()
+            for site in sites:                    
+                for source in sources:
+                    if type(fp_and_data['.flux'][source]) == dict:
+                        fp_and_data[site]['mf_mod_'+source] = xr.DataArray(timeseries_HiTRes(fp_and_data[site],fp_and_data['.flux'][source], output_fpXflux=False), coords = {'time': fp_and_data[site].time})
+                    else:
+                        flux_reindex = fp_and_data['.flux'][source].reindex_like(fp_and_data[site], 'ffill')
+                        if source == 'all':
+                            fp_and_data[site]['mf_mod'] = xr.DataArray((fp_and_data[site].fp*flux_reindex.flux).sum(["lat", "lon"]), coords = {'time':fp_and_data[site].time})
                         else:
-                            flux_reindex = fp_and_data['.flux'][source].reindex_like(fp_and_data[site], 'ffill')
-                            if source == 'all':
-                                fp_and_data[site]['mf_mod'] = (fp_and_data[site].fp*flux_reindex.flux).sum(["lat", "lon"])     
-                            else:
-                                fp_and_data[site]['mf_mod_'+source] = (fp_and_data[site].fp*flux_reindex.flux).sum(["lat", "lon"])  
+                            fp_and_data[site]['mf_mod_'+source] = xr.DataArray((fp_and_data[site].fp*flux_reindex.flux).sum(["lat", "lon"]), coords = {'time':fp_and_data[site].time})
         
-        # Calculate boundary conditions, if required         
-        if calc_bc:
-            if load_bc == False:
-                print "Can't get modelled baseline timeseries because load_bc is set to False."
-            else:
-                sites = [key for key in fp_and_data.keys() if key[0] != '.']
-                for site in sites:
-                    bc_reindex = fp_and_data['.bc'].reindex_like(fp_and_data[site], 'ffill')
-                    fp_and_data[site]['bc'] = (fp_and_data[site].particle_locations_n*bc_reindex.vmr_n).sum(["height", "lon"]) + \
-                                                (fp_and_data[site].particle_locations_e*bc_reindex.vmr_e).sum(["height", "lat"]) + \
-                                                (fp_and_data[site].particle_locations_s*bc_reindex.vmr_s).sum(["height", "lon"]) + \
-                                                (fp_and_data[site].particle_locations_w*bc_reindex.vmr_w).sum(["height", "lat"])
+    # Calculate boundary conditions, if required         
+    if calc_bc:
+        if load_bc == False:
+            print "Can't get modelled baseline timeseries because load_bc is set to False."
+        else:
+            sites = [key for key in fp_and_data.keys() if key[0] != '.']
+            for site in sites:
+                bc_reindex = fp_and_data['.bc'].reindex_like(fp_and_data[site], 'ffill')
+                fp_and_data[site]['bc'] = (fp_and_data[site].particle_locations_n*bc_reindex.vmr_n).sum(["height", "lon"]) + \
+                                            (fp_and_data[site].particle_locations_e*bc_reindex.vmr_e).sum(["height", "lat"]) + \
+                                            (fp_and_data[site].particle_locations_s*bc_reindex.vmr_s).sum(["height", "lon"]) + \
+                                            (fp_and_data[site].particle_locations_w*bc_reindex.vmr_w).sum(["height", "lat"])
         
     for a in attributes:
         fp_and_data[a] = data[a]
