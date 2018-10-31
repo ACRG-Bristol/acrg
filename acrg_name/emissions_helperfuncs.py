@@ -123,7 +123,7 @@ def getGFED(year, lon_out, lat_out, timeframe='monthly', months = [1,2,3,4,5,6,7
                 species.append(contents[0])
                 xvals = [i for i,x in enumerate(contents) if (x=='x') or (x=='')]
                 for j in xvals:
-                    contents[j] = np.nan
+                    contents[j] = 0
                 EFs[k,:] = np.asarray(contents[1:])
                 k += 1
         break
