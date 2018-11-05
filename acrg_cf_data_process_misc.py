@@ -1748,23 +1748,33 @@ def mpi(species):
         "site" : "NDAO",
         "scale": {
             "CH4": "NOAA2004",
-            "N2O": "WMO N2OX2006A"},
+            "N2O": "WMO N2OX2006A",
+            "CO": "WMO X2004",
+            "CO2": "WMO X2007",
+            "DELTAO2_N2": "SIO",
+            "APO": "SIO"},
         "instrument": {
-                "CH4": "OA-ICOS",
-                "N2O": "OA-ICOS"},
+                "CH4": "CRDS",
+                "N2O": "OA-ICOS",
+                "CO": "OA-ICOS",
+                "CO2": "CRDS",
+                "DELTAO2_N2": "DFCA",
+                "APO": "DFCA"},
         "directory" : "/data/shared/obs_raw/MPI/",
         "directory_output" : "/data/shared/obs/",
         "global_attributes" : {
                 "contact": "Eric Morgan (ejmorgan@ucsd.edu)" ,
-                "averaging": "1 minute OA-ICOS"
+                "averaging": "1 minute"
                 }
         }
             
     fname = "/data/shared/obs_raw/MPI/ndao_2013-2014.csv"
-
+    
+    if species.lower() == 'd(o2/n2)':
+        species = 'deltao2_n2'
 
     df = pd.read_csv(fname, skiprows=10,
-             delimiter=",", names = ["Time", 'CO2', 'CH4','N2O', 'CO','O2N2', \
+             delimiter=",", names = ["Time", 'CO2', 'CH4','N2O', 'CO','DELTAO2_N2', \
                                                'Radiation', 'Pressure', 'RH', 'Temp', \
                                                'Wind speed', 'APO', 'Wind dir'],
              index_col = "Time", parse_dates=["Time"],
@@ -1776,10 +1786,19 @@ def mpi(species):
     df.index.name = "time"
 
 #    df.index = df.index.tz_localize(pytz.timezone("Africa/Johannesburg")).tz_convert(None) # Simpler solution
-    
-    if species.lower() == 'n2o':
-        df = df.drop(['CO2', 'CH4', 'CO','O2N2','Radiation', 'Pressure', 'RH', 'Temp','Wind speed', 'APO', 'Wind dir'], axis=1)
-        
+    if species.lower() == 'co2':
+        df = df.drop(['CH4','N2O', 'CO','DELTAO2_N2','Radiation', 'Pressure', 'RH', 'Temp','Wind speed', 'APO', 'Wind dir'], axis=1)
+    elif species.lower() == 'ch4':
+        df = df.drop(['CO2', 'N2O', 'CO','DELTAO2_N2','Radiation', 'Pressure', 'RH', 'Temp','Wind speed', 'APO', 'Wind dir'], axis=1)    
+    elif species.lower() == 'n2o':
+        df = df.drop(['CO2', 'CH4', 'CO','DELTAO2_N2','Radiation', 'Pressure', 'RH', 'Temp','Wind speed', 'APO', 'Wind dir'], axis=1)
+    elif species.lower() == 'co':
+        df = df.drop(['CO2', 'CH4', 'N2O','DELTAO2_N2','Radiation', 'Pressure', 'RH', 'Temp','Wind speed', 'APO', 'Wind dir'], axis=1)        
+    elif species.lower() == 'deltao2_n2':
+        df = df.drop(['CO2', 'CH4', 'N2O','CO','Radiation', 'Pressure', 'RH', 'Temp','Wind speed', 'APO', 'Wind dir'], axis=1)   
+    elif species.lower() == 'apo':
+        df = df.drop(['CO2', 'CH4', 'N2O', 'CO','DELTAO2_N2','Radiation', 'Pressure', 'RH', 'Temp','Wind speed', 'Wind dir'], axis=1)  
+       
     # remove NaN
     df = df[np.isfinite(df[species.upper()])]    
 
@@ -1788,15 +1807,16 @@ def mpi(species):
     
     
     # Add attributes
-    if species.lower() == 'ch4' or species.lower() == 'n2o':
-        ds = attributes(ds,
-                        species.upper(),
-                        params['site'].upper(),
-                        global_attributes = params["global_attributes"],
-                        scale = params["scale"][species.upper()])
+#    if species.lower() == 'ch4' or species.lower() == 'n2o':
+    ds = attributes(ds,
+                    species.upper(),
+                    params['site'].upper(),
+                    global_attributes = params["global_attributes"],
+                    scale = params["scale"][species.upper()])
 
 
     # Write file
+
     nc_filename = output_filename(params["directory_output"],
                                   "MPI",
                                   params["instrument"][species.upper()],
@@ -1804,7 +1824,7 @@ def mpi(species):
                                   str(ds.time.to_pandas().index.to_pydatetime()[0].year),
                                   ds.species,
                                   site_params[params["site"]]["height"][0])
-    
+
     print("Writing " + nc_filename)
     
     ds.to_netcdf(nc_filename)
@@ -1933,4 +1953,92 @@ def sogeA():
                     print("Writing... " + nc_filename)
                     ds_sp.to_netcdf(nc_filename)
                     print("... written.")
+
+def sio_carboncycle(species):
+    ''' 
+    Observations from the SIO carbon cycle group
+    
+    '''    
+    params = {
+        "site" : "THD",
+        "scale": {
+            "CO2": "WMO X2007",
+            "DELTAO2_N2": "SIO",
+            "APO": "SIO"},
+        "instrument": {
+                "CO2": "LICOR",
+                "DELTAO2_N2": "DFCA",
+                "APO": "DFCA"},
+        "directory" : "/data/shared/obs_raw/SIO_carboncycle/",
+        "directory_output" : "/data/shared/obs/",
+        "global_attributes" : {
+                "contact": "Timothy Lueker <tlueker@ucsd.edu>" ,
+                "averaging": "8 minute"
+                }
+        }
+            
+    fname = "/data/shared/obs_raw/SIO_carboncycle/Trinidad_full.csv"
+    
+    if species.lower() == 'd(o2/n2)':
+        species = 'deltao2_n2'
+
+    df = pd.read_csv(fname, skiprows=3,
+             delimiter=",", names = ["YYYY","MM", "D", "HH", "mm", "VLV", "FG-C", "FG-O", 'CO2','DELTAO2_N2', 'APO'],
+             parse_dates = [[0,1,2,3,4]], index_col = False,  engine='python')  
+
+    df["YYYY_MM_D_HH_mm"] = pd.to_datetime(df["YYYY_MM_D_HH_mm"], format = '%Y %m %d %H %M')     
+    df = df.set_index("YYYY_MM_D_HH_mm", drop = True)
+
+    # remove duplicates
+    df.index.name = "index"
+    df = df.reset_index().drop_duplicates(subset='index').set_index('index')              
+    df.index.name = "time"
+
+    # hack to filter spurious CO2 and APO data but need more permanent fix!!!! #
+    df['CO2'] = np.array(df['CO2'], dtype=float)
+    df['DELTAO2_N2'] = np.array(df['DELTAO2_N2'], dtype=float)
+    df['APO'] = np.array(df['APO'], dtype=float)
+    df = df[df['CO2']<450]
+    df = df[df['CO2']>350]
+    df = df[df['APO']<200]
+    df = df[df['APO']>-400]
+
+#    df.index = df.index.tz_localize(pytz.timezone("Africa/Johannesburg")).tz_convert(None) # Simpler solution
+    if species.lower() == 'co2':
+        df = df.drop(["VLV", "FG-C", "FG-O",'DELTAO2_N2', 'APO'], axis=1)
+    elif species.lower() == 'deltao2_n2':
+        df = df.drop(["VLV", "FG-C", "FG-O", 'CO2', 'APO'], axis=1)   
+    elif species.lower() == 'apo':
+        df = df.drop(["VLV", "FG-C", "FG-O", 'CO2','DELTAO2_N2'], axis=1)  
+       
+    # remove NaN
+    df[species.upper()] = np.array(df[species.upper()], dtype=float)
+    df = df[np.isfinite(df[species.upper()])]    
+    
+    # Sort and convert to dataset
+    ds = xray.Dataset.from_dataframe(df.sort_index())
+    
+    
+    # Add attributes
+#    if species.lower() == 'ch4' or species.lower() == 'n2o':
+    ds = attributes(ds,
+                    species.upper(),
+                    params['site'].upper(),
+                    global_attributes = params["global_attributes"],
+                    scale = params["scale"][species.upper()])
+
+
+    # Write file
+
+    nc_filename = output_filename(params["directory_output"],
+                                  "SIO_carboncycle",
+                                  params["instrument"][species.upper()],
+                                  params["site"],
+                                  str(ds.time.to_pandas().index.to_pydatetime()[0].year),
+                                  ds.species,
+                                  site_params[params["site"]]["height"][0])
+
+    print("Writing " + nc_filename)
+    
+    ds.to_netcdf(nc_filename)
 
