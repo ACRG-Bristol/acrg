@@ -491,16 +491,15 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
                         for f in status_flag_unflagged:
                             flag = flag | (df.status_flag == f)
                         df = df[flag]
-               
-                        
-                if units != "permil":
+                               
+                if units != "permil" and units != "per meg":
                     df = df[df.mf > 0.]
 
                 if len(df) > 0:
                     data_frames.append(df)
     
             ncf.close()
-    
+        
         if len(data_frames) > 0:
             data_frame = pd.concat(data_frames).sort_index()
             data_frame.index.name = 'time'
@@ -509,7 +508,7 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
                 return None
         else:
             return None
-
+        
         #Do baseline filtering
         if baseline:
             #Get flags
@@ -565,7 +564,7 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
             
         data_frame.mf.units = units
         data_frame.files = files
-    
+
         return data_frame
 
     else:
