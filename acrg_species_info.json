@@ -1,4 +1,11 @@
 {
+    "APO": {"alt": [],
+        "group": "Other", 
+        "long_name": "Atmospheric Potential Oxygen", 
+        "mol_mass": "None",
+        "print_string": "APO", 
+        "units": "per meg"
+    },
     "C2F6": {"alt": ["PFC-116", "PFC116"],
         "group": "PFCs", 
         "long_name": "C$_2$F$_6$", 

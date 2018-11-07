@@ -1954,7 +1954,7 @@ def sogeA():
                     ds_sp.to_netcdf(nc_filename)
                     print("... written.")
 
-def sio_carboncycle(species):
+def siocarboncycle(species):
     ''' 
     Observations from the SIO carbon cycle group
     
@@ -1969,7 +1969,7 @@ def sio_carboncycle(species):
                 "CO2": "LICOR",
                 "DELTAO2_N2": "DFCA",
                 "APO": "DFCA"},
-        "directory" : "/data/shared/obs_raw/SIO_carboncycle/",
+        "directory" : "/data/shared/obs_raw/SIOcarboncycle/",
         "directory_output" : "/data/shared/obs/",
         "global_attributes" : {
                 "contact": "Timothy Lueker <tlueker@ucsd.edu>" ,
@@ -1977,7 +1977,7 @@ def sio_carboncycle(species):
                 }
         }
             
-    fname = "/data/shared/obs_raw/SIO_carboncycle/Trinidad_full.csv"
+    fname = "/data/shared/obs_raw/SIOcarboncycle/Trinidad_full.csv"
     
     if species.lower() == 'd(o2/n2)':
         species = 'deltao2_n2'
@@ -2000,7 +2000,7 @@ def sio_carboncycle(species):
     df['APO'] = np.array(df['APO'], dtype=float)
     df = df[df['CO2']<450]
     df = df[df['CO2']>350]
-    df = df[df['APO']<200]
+    df = df[df['APO']<0]
     df = df[df['APO']>-400]
 
 #    df.index = df.index.tz_localize(pytz.timezone("Africa/Johannesburg")).tz_convert(None) # Simpler solution
@@ -2031,7 +2031,7 @@ def sio_carboncycle(species):
     # Write file
 
     nc_filename = output_filename(params["directory_output"],
-                                  "SIO_carboncycle",
+                                  "SIOcarboncycle",
                                   params["instrument"][species.upper()],
                                   params["site"],
                                   str(ds.time.to_pandas().index.to_pydatetime()[0].year),
