@@ -121,7 +121,7 @@ def write(lat, lon, time, flux, species, domain,
            sys.exit('Expecting either yearly or monthly climatology. Make sure time dimension is of size 1 or 12.')
     
     if type(time[0]) == np.datetime64:
-        #time=time
+#        time=time
         time = time.astype(dtype="datetime64[ns]")
     else:
         sys.exit('Time format not correct, needs to be a list of type numpy.datetime64. A DatetimeIndex will not work.\
