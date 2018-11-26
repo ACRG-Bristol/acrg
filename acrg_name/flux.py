@@ -121,8 +121,13 @@ def write(lat, lon, time, flux, species, domain,
            sys.exit('Expecting either yearly or monthly climatology. Make sure time dimension is of size 1 or 12.')
     
     if type(time[0]) == np.datetime64:
-#        time=time
-        time = time.astype(dtype="datetime64[ns]")
+        #time=time
+        if isinstance(time,np.ndarray):
+            time = time.astype(dtype="datetime64[ns]")
+        elif isinstance(time,list):
+            time = [t.astype("datetime64[ns]") for t in time]
+        else:
+            time = time
     else:
         sys.exit('Time format not correct, needs to be a list of type numpy.datetime64. A DatetimeIndex will not work.\
                  To convert a DatetimeIndex to correct format: time = [np.datetime64(i) for i in DatetimeIndex]')
@@ -194,7 +199,6 @@ def write(lat, lon, time, flux, species, domain,
     if not os.path.exists(os.path.join(output_directory,domain)):
         print "Creating {} subdirectory in output directory: {}".format(domain,output_directory)
         os.makedirs(os.path.join(output_directory,domain))
-
 
     flux_ds.flux.encoding = {'zlib':True}                        
     flux_ds.to_netcdf(ncname, mode='w')    

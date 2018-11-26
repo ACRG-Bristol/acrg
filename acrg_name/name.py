@@ -362,7 +362,10 @@ def flux(domain, species, start = None, end = None, flux_directory=flux_director
            
             if 'climatology' in species:
                 ndate = pd.to_datetime(flux_ds.time.values)
-                dateadj = ndate[month_start.month-1] - month_start  #Adjust climatology to start in same year as obs  
+                if len(ndate) == 1:  #If it's a single climatology value
+                    dateadj = ndate - month_start  #Adjust climatology to start in same year as obs  
+                else: #Else if a monthly climatology
+                    dateadj = ndate[month_start.month-1] - month_start  #Adjust climatology to start in same year as obs  
                 ndate = ndate - dateadj
                 flux_ds = flux_ds.update({'time' : ndate})  
                 flux_tmp = flux_ds.copy()
