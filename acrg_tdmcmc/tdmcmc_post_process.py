@@ -35,7 +35,7 @@ from matplotlib.patches import Polygon
 from matplotlib.colors import BoundaryNorm
 from matplotlib.colors import Normalize
 from matplotlib import ticker
-import cartopy.crs as ccrs
+from cartopy.feature import BORDERS
 from collections import OrderedDict
 import datetime as dt
 import getpass
@@ -250,10 +250,59 @@ def molar_mass(species):
     molmass = float(species_info[species_key]['mol_mass'])
     return molmass
 
-def g2mol(value,species):
-    ''' Convert a value in g to mol '''
+def mol2g(value,species):
+    ''' Convert a value in moles to grams '''
     molmass = molar_mass(species)
     return value*molmass
+
+def check_platform(site):
+    site_info_file = os.path.join(acrg_path,"acrg_site_info.json")
+    with open(site_info_file) as f:
+        site_info=json.load(f)
+    if "platform" in site_info[site].keys():
+        return site_info[site]["platform"]
+    else:
+        return None
+
+def subplot_fmt(num,row_dims=[3,2,4],fill=False):
+    '''
+    The subplot_fmt function decides the placement of a grid of figures dependent on the number.
+    The row_dims input determines which placement is preferable for the user.
+    
+    Args:
+        num (int) :
+            Number of figures to be placed
+        row_dims (list, optional) : 
+            Row dimensions in order of preference.
+            For the default row_dims=[3,2,4] the preferences of placement is as follows:
+                - equal rows of 3
+                - equal rows of 2
+                - equal rows of 4
+            If none of the above are possible the format will be num x number of columns if fill 
+            is True or the configuration suitable for num+1 if fill is False.
+        fill (bool, optional) :
+            All panels in subplot must be filled. If not, for uneven numbers an extra panel will
+            be added which will be left blank when plotting.
+            Default = False (i.e. allow an empty panel to be included within subplot)
+                         
+    Returns:
+        List (int): [row_num,col_num]
+                    2 item list containing the row number and column number for the subplots. 
+    '''
+    for r in row_dims:
+        if not num%r:
+            subplot = [r,num/r]
+            break
+    else:
+        if fill or num == 1:
+            subplot = [1,num]
+        else:
+            for r in row_dims:
+                if not (num+1)%r:
+                    subplot = [r,(num+1)/r]
+                    break
+    
+    return subplot
 
 def x_post_mean(ds):
     '''
@@ -463,7 +512,7 @@ def k_mean_percentile(ds,percentiles=[5,16,50,84,95]):
     else:
         return k_mean
 
-def define_stations(ds,sites=[]):
+def define_stations(ds,sites=None):
     '''
     The define_stations function defines the latitude and longitude values for each site within
     a dataset.
@@ -482,7 +531,7 @@ def define_stations(ds,sites=[]):
         dict :
             Dictionary containing "site"_lat, "site"_lon values for each site.
     '''
-    if not sites:
+    if sites is None:
         sites = ds.sites.values
     
     stations={}
@@ -492,7 +541,10 @@ def define_stations(ds,sites=[]):
         stations[site+'_lat']=ds.release_lats[si].values
         if site not in ds.y_site:
             print "WARNING: Reference to site not found within dataset"
-    stations['sites']=sites
+    if sites:
+        stations['sites']=sites
+    else:
+        stations = None
     
     return stations
 
@@ -519,25 +571,57 @@ def unbiasedDivergingCmap(data, zero = 0, minValue = None, maxValue = None):
     
     return Normalize(vmin = zero-maxRange, vmax = zero + maxRange, clip=True)
 
-def plot_map(data,lon,lat, clevels=None, divergeCentre = None, cmap=plt.cm.RdBu_r, label=None,
-                 smooth = False, out_filename=None, stations=None, fignum=None,
-                 title=None):
+def plot_map(data, lon, lat, clevels=None, divergeCentre = None, cmap=plt.cm.RdBu_r, borders=True,
+             label=None, smooth = False, out_filename=None, stations=None, fignum=None,
+                 title=None, fig=None, ax=None, show=True):
     
     """
-    Plot 2d scaling map of posterior x
-    i.e. degree of scaling applied to prior emissions 
+    Plot 2d map of data
+    e.g. scaling map of posterior x i.e. degree of scaling applied to prior emissions 
     
     Args:
-        data     : 2D (lat,lon) array of whatever you want
-        clevels  : Contour levels; defaults to np.arange(-2., 2.1, 0.1)
-        cmap     : Colormap - defaults to Red Blue reverse
-        label    : String - to appear at bottom
-        smooth   : If true plot smooth contours, otherwise use pcolormesh
-        stations : Default is None. If specified needs to be a dictionary containing:
-                    sites: 'MHD', 'TAC'
-                    MHD_lon: -9.02
-                    MHHD_lat: 55.2
-                    TAC_lon: etc...
+        data (numpy.array) : 
+            2D (lat,lon) array of whatever you want
+        lon (numpy.array) : 
+            Longitude array matching to data grid
+        lat (numpy.array) : 
+            Latitude array  matching to data grid
+        clevels (numpy.array, optional) : 
+            Array of contour levels; defaults to np.arange(-2., 2.1, 0.1)
+        divergeCentre (bool/None, optional):
+            TODO
+        cmap (matplotlib.cm, optional) : 
+            Colormap object; defaults to Red Blue reverse
+        borders (bool, optional) :
+            Add country borders as well as coastlines. Default = True.
+        label (str, optional) : 
+            Label to appear underneath the colorbar. Default = None
+        smooth (bool, optional) : 
+            If True plot smooth contours; otherwise use pcolormesh. Default = False.
+        out_filename (str, optional) :
+            Output filename. If this is specified the plot will be written to file. 
+            Will be shown interactively otherwise (if show=True). Default = None.
+        stations (dict, optional) : 
+            Default is None. If specified needs to be a dictionary containing the list of sites
+            and site locations for each site. For example:
+                {"sites": ['MHD', 'TAC'],
+                 MHD_lon: -9.02,
+                 MHD_lat: 55.2,
+                 TAC_lon: etc...
+        fignum (int, optional) : 
+            Figure number for created plot. Default = None
+        title (str, optional) : 
+            Title for the plot or sub-plot. Default = None
+        fig (matplotlib.pyplot.Figure, optional) :
+            Figure object for plot. If not specified this will be created. Default = None
+        ax (matplotlib.pyplot.Axes, optional) :
+            Axes object for plot domain. If not specified this will be created. Default = None
+        show (bool, optional) :
+            Whether to plot immediately upon completion of plotting within this function.
+            Note that out_filename supercedes this option and plot will be written to file even
+            if this is set to True.
+            Default = True.
+        
     Returns:
         None
         
@@ -545,38 +629,46 @@ def plot_map(data,lon,lat, clevels=None, divergeCentre = None, cmap=plt.cm.RdBu_
             Created plot is saved to file
         Else:
             Plot is displayed interactively
-    """        
-    ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=np.median(lon)))
+    """
+    if fig is None and ax is None:
+        fig = plt.figure(fignum)
+        ax = fig.add_subplot(1,1,1,projection=ccrs.PlateCarree(central_longitude=np.median(lon)))
+    
+    #ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=np.median(lon)))
     ax.set_extent([lon[0], lon[-1], lat[0], lat[-1]], crs=ccrs.PlateCarree())
     ax.coastlines()
+    if borders:
+        ax.add_feature(BORDERS,linewidth=0.5)
 
     if clevels is None:
         print "Warning: using default contour levels. Include clevels keyword to change"
         clevels = np.arange(-2., 2.1, 0.1)
-    else:
-        clevels = np.arange(clevels[0], clevels[1], clevels[2])
+    #else:
+    #    clevels = np.arange(clevels[0], clevels[1], clevels[2])
         
     if smooth == True:
         if divergeCentre is None:
-            plt.contourf(lon, lat, data, transform=ccrs.PlateCarree(), cmap = cmap, levels=clevels)
+            cp = ax.contourf(lon, lat, data, transform=ccrs.PlateCarree(), cmap = cmap, levels=clevels)
         else:
             norm = unbiasedDivergingCmap(data, zero=divergeCentre, minValue=clevels[0], maxValue=clevels[-1])
-            plt.contourf(lon, lat, data, transform=ccrs.PlateCarree(), cmap = cmap, levels=clevels,
+            cp = ax.contourf(lon, lat, data, transform=ccrs.PlateCarree(), cmap = cmap, levels=clevels,
                     norm = norm)
-        cb = plt.colorbar(orientation='horizontal', pad=0.05)
+        cb = plt.colorbar(cp, ax=ax, orientation='horizontal', pad=0.05)
     else:
         lons, lats = np.meshgrid(lon,lat)
         if divergeCentre is None:
             norm = BoundaryNorm(clevels,ncolors=cmap.N,clip=True)
         else:
             norm = unbiasedDivergingCmap(data, zero=divergeCentre, minValue=clevels[0], maxValue=clevels[-1])
-        cs = plt.pcolormesh(lons, lats, data,cmap=cmap, norm=norm, transform=ccrs.PlateCarree())
-        cb = plt.colorbar(cs, orientation='horizontal', pad=0.05, extend='both')
+        cs = ax.pcolormesh(lons, lats, data,cmap=cmap, norm=norm, transform=ccrs.PlateCarree())
+        cb = plt.colorbar(cs, ax=ax, orientation='horizontal', pad=0.05, extend='both')
                 
     if label is not None:        
         cb.set_label(label,fontsize=14) 
     if title is not None:
-        plt.title(title, fontsize=16) 
+        print "plot_map title",title
+        #ax.set_title(title, fontsize=16) 
+        fig.suptitle(title, fontsize=16)
         
     if stations is not None:
        
@@ -584,18 +676,182 @@ def plot_map(data,lon,lat, clevels=None, divergeCentre = None, cmap=plt.cm.RdBu_
             ilon=stations[site+'_lon']
             ilat=stations[site+'_lat']
             
-            plt.plot(ilon, ilat, color = 'black', marker = 'o', markersize=8,  transform=ccrs.PlateCarree())
+            ax.plot(ilon, ilat, color = 'black', marker = 'o', markersize=8,  transform=ccrs.PlateCarree())
                
     tick_locator = ticker.MaxNLocator(nbins=5)
     cb.locator = tick_locator
     cb.update_ticks()                 
     if out_filename is not None:
-        plt.savefig(out_filename)
-        plt.close()
+        fig.savefig(out_filename)
+        fig.close()
+    elif show:
+        fig.show()
     else:
-        plt.show()
+        return fig,ax
+
+def plot_map_grid(grid_data, lon, lat, subplot="auto", clevels=None, divergeCentre=None, 
+                 cmap=plt.cm.RdBu_r, borders=True, labels=None,
+                 smooth=False, out_filename=None, stations=None, fignum=None,
+                 title=None):
+    '''
+    Uses plot_map function to plot a set of maps on a grid. Grid to plot on is either determined
+    automatically based on shape of input or using subplot input.
     
+    Expect grid_data to either be:
+         - a numpy.array of the shape: nlat x nlon x ngrid
+         - list of numpy.array objects each of shape nlat x nlon.
+    Either the ngrid dimension or the len of the list is taken as the number of panels to 
+    include on the plot.
     
+    Args:
+        grid_data (numpy.array/list) :
+            Multiple lat-lon grids to be plotted on one figure as a set of sub-plots.
+            Can either be a list of grids or an array of dimension nlat x nlon x ngrid
+        lon (numpy.array) :
+            Longitude array matching to longitude points is each grid in grid_data.
+        lat (numpy.array) :
+            Latitude array matching to longitude points is each grid in grid_data.
+        subplot (str/list) :
+            Subplot grid to use. If this is set to "auto" this will be automatically determined
+            based on the size of ngrid (see subplot_fmt() function).
+            Otherwise, this should be a two item list of [nrows, ncols]
+            Default = "auto".
+        labels (str/list) :
+            Can specify either one label for all gridded plots (str) or a different label for 
+            each plot.
+            If list is specified, it must match ngrid length.
+        
+        See plot_map() function for definition of remaining inputs.
+    
+    Returns:
+        None
+        
+        If out_filename specified:
+            Plot is written to file
+        Otherwise:
+            Plot is displayed interactively
+    '''
+    if isinstance(grid_data,list):
+        grid_data = np.moveaxis(np.stack(grid_data),0,2)
+    
+    nlat,nlon,nrun = grid_data.shape
+    if nlat != len(lat) or nlon != len(lon):
+        raise Exception("First two dimensions of grid_data ({},{}) must match length of lat ({}) and lon ({}) co-ordinates.".format(nlat,nlon,len(lat),len(lon)))
+  
+    if subplot == "auto":
+        subplot = subplot_fmt(nrun)
+    
+    if isinstance(labels,list):
+        if len(labels) == 1:
+            labels = labels*nrun
+        elif len(labels) != nrun:
+            print "Unable to apply labels to gridded plots. Length of the list ({}) does not match the number of plots ({}).".format(len(labels),nrun)
+            labels = [None]*nrun
+    else:
+        labels = [labels]*nrun
+    
+    fig = plt.figure(fignum)
+    
+    for i in range(nrun):
+        data = grid_data[...,i]
+        
+        ax = fig.add_subplot(subplot[0],subplot[1],i+1,projection=ccrs.PlateCarree())
+
+        if i < nrun-1:
+            plot_map(data,lon,lat,clevels=clevels, divergeCentre = divergeCentre, 
+                 cmap=plt.cm.RdBu_r, borders=borders, label=labels[i], smooth=smooth, stations=stations,
+                 title=None,out_filename=None,show=False,ax=ax,fig=fig)
+        else:
+            plot_map(data,lon,lat,clevels=clevels, divergeCentre = divergeCentre, 
+                 cmap=plt.cm.RdBu_r, borders=borders, label=labels[i], smooth=smooth, stations=stations,
+                 title=title,out_filename=out_filename,show=True,ax=ax,fig=fig)
+  
+def plot_scale_map(ds_list, grid=True, clevels=None, divergeCentre=None, 
+                   cmap=plt.cm.RdBu_r, borders=True, labels=None, smooth=False, 
+                   out_filename=None, stations=None, fignum=None, title=None):
+    '''
+    The plot_scale_map function plots 2D scaling map(s) of posterior x. This is the degree of 
+    scaling which has been applied to prior emissions.
+    
+    Args:
+        ds_list (list) :
+            List of xarray.Dataset objects. Each dataset is an output from run_tdmcmc() 
+            function (tdmcmc_inputs.py script).
+            Expects data set to contain:
+                x_post_vit - posterior values for each iteration flattened along lat-lon axis.
+                             Dimensions = nIt x NGrid (nlat x nlon)
+        grid (bool, optional) :
+            Whether to plot the posterior on one figure as a grid or on individual plots.
+        labels (str/list) :
+            Can specify either one label for all plots (str) or a different label for 
+            each plot.
+            If list is specified, it must match number of datasets in ds_list.
+        
+        See plot_map() function for definition of remaining inputs.
+    
+    Returns:
+        None
+        
+        If out_filename specified:
+            Plot is written to file
+        Otherwise:
+            Plot is displayed interactively
+    '''
+
+    nrun = len(ds_list)
+
+    if isinstance(labels,list):
+        if len(labels) == 1:
+            labels = labels*nrun
+        elif len(labels) != nrun:
+            print "Unable to apply labels plots. Length of the labels ({}) does not match the number of plots ({}).".format(len(labels),nrun)
+            labels = [None]*nrun
+    else:
+        labels = [labels]*nrun
+    
+    if grid:
+        nlat = len(ds_list[0].lat)
+        nlon = len(ds_list[0].lon)
+        nrun = len(ds_list)
+    
+        x_post_mean_all = np.zeros([nlat,nlon,nrun])
+    
+        for i,ds in enumerate(ds_list):
+            x_post_mean_all[...,i] = x_post_mean(ds)
+        
+        lon = ds_list[0]["lon"].values
+        lat = ds_list[0]["lat"].values
+        
+        if stations is None:
+            sites = list(ds_list[0].sites.values)
+            for site in sites:
+                if check_platform(site) == "aircraft" or check_platform(site) == "satellite":
+                    sites.remove(site)
+            stations = define_stations(ds_list[0],sites=sites)
+
+        plot_map_grid(x_post_mean_all,lon,lat,clevels=clevels, divergeCentre=divergeCentre, 
+                   cmap=plt.cm.RdBu_r, labels=labels, smooth=smooth, out_filename=out_filename, 
+                   stations=stations, fignum=fignum, title=title)
+        
+    else:
+        for i,ds in enumerate(ds_list):
+            x_post_mean_i = x_post_mean(ds)
+            lon = ds["lon"].values
+            lat = ds["lat"].values
+            
+            if stations is None:
+                sites = list(ds.sites.values)
+                for site in sites:
+                    if check_platform(site) == "aircraft" or check_platform(site) == "satellite":
+                        sites.remove(site)
+                stations = define_stations(ds_list[0],sites=sites)
+            
+            if len(ds_list) != 1:
+                out_filename = None
+            plot_map(x_post_mean_i, lon, lat, clevels=clevels, divergeCentre=divergeCentre, 
+                   cmap=plt.cm.RdBu_r, label=labels[i], smooth = smooth, out_filename=out_filename, 
+                   stations=stations, fignum=fignum, title=title)
+
 def regions_histogram(k_it, out_filename=None, fignum=2):
     
     """
