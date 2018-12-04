@@ -822,3 +822,33 @@ def plot_obs(data_dict):
     plt.ylabel("%s (%s)" %(data_dict[".species"], data_dict[".units"]))
     
     plt.show()
+
+
+def tidy():
+    
+    site = "BSD"
+    data_directory = os.path.join(obs_directory, site)
+    files = glob.glob(os.path.join(data_directory, "*.nc"))
+    
+
+    instrument = []
+    site = []
+    suffix = []
+    
+    for f in files:
+        f_data = os.path.split(f)[1].split(".")[0].split("_")
+        instrument.append(f_data[0])
+        site.append(f_data[2])
+        suffix.append(f_data[3])
+        
+    species = [s.split("-")[0] for s in suffix]
+    version = [s.split("-")[-1] for s in suffix]
+
+    unique_versions = set(version)
+
+    latest_version = max(unique_versions)
+    
+    archive_versions = [v for v in unique_versions if v != max_version]
+
+
+

@@ -15,8 +15,7 @@ import glob
 import xarray as xray
 import json
 from os import getenv, stat
-import shutil
-
+import time
 
 # Read site info file
 acrg_path = getenv("ACRG_PATH")
@@ -270,7 +269,8 @@ def output_filename(output_directory,
                     site,
                     time_start,
                     species,
-                    inlet):
+                    inlet = None,
+                    version = None):
     """
     Create an output filename in the format 
     output_directory/site/network-instrument_site_YYYYMMDD_species[-inlet].nc
@@ -285,6 +285,10 @@ def output_filename(output_directory,
     suffix = species
     if inlet is not None:
         suffix += "-" + inlet
+    if version is not None:
+        suffix += "-" + version
+    else:
+        suffix += "-" + time.strftime("%Y%m%d")
     
     # Return output filename
     return join(output_directory,
@@ -296,7 +300,6 @@ def output_filename(output_directory,
                                                    time_start.month,
                                                    time_start.day,
                                                    suffix))
-    
 
 
 # ICOS
@@ -709,7 +712,8 @@ def crds_data_read(data_file):
 
 def crds(site, network,
          input_directory = None,
-         output_directory = None):
+         output_directory = None,
+         version = None):
     """
     Process CRDS data
 
@@ -761,7 +765,8 @@ def crds(site, network,
                                           site.upper(),
                                           ds_sp.time.to_pandas().index.to_pydatetime()[0],
                                           ds_sp.species,
-                                          inlet)
+                                          inlet = inlet,
+                                          version = version)
             print("Writing " + nc_filename)
             ds_sp.to_netcdf(nc_filename)
             print("... written.")
