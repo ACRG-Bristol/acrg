@@ -35,16 +35,10 @@ import glob
 import os
 from os import getenv
 import re
-from netCDF4 import Dataset
-from acrg_time import convert
 import json
-import datetime as dt
 import xarray as xr
 from collections import OrderedDict
-#from os.path import join
-import os
 
-#acrg_path = getenv("ACRG_PATH")
 acrg_path = os.path.dirname(os.path.realpath(__file__))
 data_path = getenv("DATA_PATH")
 
@@ -53,7 +47,8 @@ if data_path is None:
     print("Default Data directory is assumed to be /data/shared/. Set path in .bashrc as \
             export DATA_PATH=/path/to/data/directory/ and restart python terminal")
 
-root_directory = os.path.join(data_path, "obs_2018/")
+# Set default obs folder
+obs_directory = os.path.join(data_path, "obs_2018/")
 
 #Get site info and species info from JSON files
 with open(os.path.join(acrg_path, "acrg_species_info.json")) as f:
@@ -219,7 +214,7 @@ def file_list(site, species,
     
     # Look for data in data directionry + site name folder
     if data_directory is None:
-        data_directory = os.path.join(root_directory, site)
+        data_directory = os.path.join(obs_directory, site)
     else:
         data_directory = os.path.join(data_directory, site)
 
@@ -576,11 +571,8 @@ def get_gosat(site, species, max_level,
     """
     if max_level is None:
         raise ValueError("MAX LEVEL REQUIRED FOR SATELLITE OBS DATA")
-        
-#    data_directory, files = file_list(site, species,
-#                                      data_directory = os.path.join(root_directory, "GOSAT"))
-    
-    data_directory = os.path.join(root_directory, "GOSAT", site)
+            
+    data_directory = os.path.join(obs_directory, "GOSAT", site)
     files = glob.glob(os.path.join(data_directory, '*.nc'))
     files = [os.path.split(f)[-1] for f in files]
 
@@ -669,7 +661,7 @@ def get_obs(sites, species, start_date, end_date,
     For example if we wanted to read in daily averaged methane data for Mace Head and Tacolneston for 2012 
     we could include:
     
-        get_obs(sites=["MHD","TAC"],species="ch4",start="2012-01-01",end="2013-01-01",height=["10m","100m"],
+        get_obs(sites=["MHD","TAC"],species="ch4",start_date="2012-01-01",end_date="2013-01-01",height=["10m","100m"],
                 average=["24H","24H"],network=["AGAGE","DECC"])
     
     Args:
@@ -679,9 +671,9 @@ def get_obs(sites, species, start_date, end_date,
         species (str) :
             Species identifier. All species names should be defined within acrg_species_info.json. 
             E.g. "ch4" for methane.
-        start (str) : 
+        start_date (str) : 
             Start date in format "YYYY-MM-DD" for range of files to find.
-        end (str) : 
+        end_date (str) : 
             End date in same format as start for range of files to find.
         inlet (str/list, optional) : 
             Height of inlet for input data (must match number of sites).
