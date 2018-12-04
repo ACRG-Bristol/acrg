@@ -974,8 +974,11 @@ def footprint_array(fields_file,
             metr = met[i] # Same number of met_dataframes in list as time points
         else:
             # Re-index met dataframe to each time point
-            metr = met[0].reindex(index = np.array([t]), method = "pad")
-        
+#            metr = met[0].reindex(index = np.array([t]))
+            metr = met[0][~met[0].index.duplicated(keep='first')].reindex(index = np.array([t]))
+            if np.isnan(metr.values).any():
+                raise ValueError("No met data for given date")
+            
         for key in metr.keys():
             if key != "time":
                 met_ds[key][{'time':[i]}] = metr[key].values.reshape((1,len(levs)))
@@ -1939,6 +1942,7 @@ def process_all(domain, site,
                 years_in = None,
                 months_in = None,
                 base_dir = "/dagage2/agage/metoffice/NAME_output/",
+                met_folder = "Met",
                 force_update = False,
                 satellite = False,
                 perturbed_folder = None,
@@ -2054,7 +2058,7 @@ def process_all(domain, site,
         for year, month in set(zip(years, months)):
             #try:
             out = process(domain, site, height, year, month,
-                    base_dir = base_dir, force_update = force_update,
+                    base_dir = base_dir, met_folder = met_folder, force_update = force_update,
                     satellite = satellite, perturbed_folder = perturbed_folder,
                     max_level = max_level, force_met_empty = force_met_empty,
                     vertical_profile=vertical_profile,

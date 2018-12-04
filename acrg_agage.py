@@ -467,15 +467,13 @@ def get_single_site(site, species_in,
                         for f in status_flag_unflagged:
                             flag = flag | (df.status_flag == f)
                         df = df[flag]
-               
-                        
-                if units != "permil":
+                               
+                if units != "permil" and units != "per meg":
                     df = df[df.mf > 0.]
 
                 if len(df) > 0:
                     data_frames.append(df)
     
-
         if len(data_frames) == 0:
             warningMessage = '''For some reason, there is no valid data 
                                 within files %s 
@@ -537,7 +535,7 @@ def get_single_site(site, species_in,
         data_frame.mf.units = units
         data_frame.mf.scale = cal[0]
         data_frame.files = files
-    
+
         return data_frame
 
     else:

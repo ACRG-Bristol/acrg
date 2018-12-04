@@ -34,8 +34,10 @@ unit_species = {"CO2": "1e-6",
                 "CH4": "1e-9",
                 "C2H6": "1e-9",
                 "N2O": "1e-9",
-                "CO": "1e-6",
-                "CH4C13": "permil"}
+                "CO": "1e-9",
+                "CH4C13": "permil",
+                "DELTAO2_N2" : "per meg",
+                "APO" : "per meg"}
 
 unit_interpret = {"ppm": "1e-6",
                   "ppb": "1e-9",
@@ -185,7 +187,11 @@ def attributes(ds, species, site,
     #############################################
 
     # Long name
-    if species.upper() in species_translator.keys():
+    if species.upper() == 'DELTAO2_N2':
+        sp_long = 'd(O2/N2)'
+    elif species.upper() == 'APO':
+        sp_long = 'APO'
+    elif species.upper() in species_translator.keys():
         sp_long = "mole_fraction_of_" + species_translator[species.upper()][1] + "_in_air"
     else:
         sp_long = "mole_fraction_of_" + species_out + "_in_air"

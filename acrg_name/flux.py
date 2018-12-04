@@ -65,6 +65,17 @@ def write(lat, lon, time, flux, species, domain,
     Returns:
         None
         Writes flux file to netcdf
+        Naming convention of output file:
+            The output filename depends on both whether a source is specified and if the output is
+            for climatology.
+            "species"-"source"_"domain"_"year".nc      (source specified, not climatology)
+            "species"-climatology-"source"_"domain".nc (source specified, climatology)
+            "species"-total_"domain"_"year".nc         (no source specified, not climatology) 
+            "species"-climatology-total_"domain".nc    (no source specified, climatology)
+            e.g. co2-ff_EUROPE_2012.nc
+            e.g. co2-climatology-ff_EUROPE.nc
+            e.g. ch4-total_SOUTHAMERICA_2010.nc
+            e.g. ch4-climatology-total_SOUTHAMERICA.nc
         
     Example:
         flux.write(lat, lon, time, flux, 'ch4', 'EUROPE', '2012',
@@ -110,22 +121,31 @@ def write(lat, lon, time, flux, species, domain,
            sys.exit('Expecting either yearly or monthly climatology. Make sure time dimension is of size 1 or 12.')
     
     if type(time[0]) == np.datetime64:
-        time=time
+        #time=time
+        if isinstance(time,np.ndarray):
+            time = time.astype(dtype="datetime64[ns]")
+        elif isinstance(time,list):
+            time = [t.astype("datetime64[ns]") for t in time]
+        else:
+            time = time
     else:
         sys.exit('Time format not correct, needs to be a list of type numpy.datetime64. A DatetimeIndex will not work.\
                  To convert a DatetimeIndex to correct format: time = [np.datetime64(i) for i in DatetimeIndex]')
 
+    if not os.path.exists(output_directory):
+        raise IOError("Unable to write file to specified output directory. Does not exist: {}.".format(output_directory))        
+
     #Open netCDF file
     year = pd.DatetimeIndex([time[0]]).year[0]
     if copy_from_year != None:
-        ncname = output_directory + '%s/%s_%s_%s_copy-from-%s.nc' %(domain, file_source, domain, year, copy_from_year)
+        ncname = os.path.join(output_directory, '%s/%s_%s_%s_copy-from-%s.nc' %(domain, file_source, domain, year, copy_from_year))
     elif climatology == True:
-        ncname = output_directory + '%s/%s_%s.nc' %(domain, file_source, domain)
+        ncname = os.path.join(output_directory, '%s/%s_%s.nc' %(domain, file_source, domain))
     else:
-        ncname = output_directory + '%s/%s_%s_%s.nc' %(domain, file_source, domain, year)
+        ncname = os.path.join(output_directory, '%s/%s_%s_%s.nc' %(domain, file_source, domain, year))
 
     if os.path.isfile(ncname) == True:
-        answer = raw_input("You are about to overwrite an existing file, do you want to continue? Y/N")
+        answer = raw_input("You are about to overwrite an existing file, do you want to continue? Y/N ")
         if answer == 'N':
             sys.exit()
         elif answer == 'Y':
@@ -158,7 +178,6 @@ def write(lat, lon, time, flux, species, domain,
     
     glob_attrs["regridder_used"]= regridder_used
     
-    
     if flux_comments != None:
         glob_attrs['comments'] = flux_comments
         if copy_from_year != None:
@@ -177,6 +196,9 @@ def write(lat, lon, time, flux, species, domain,
     flux_ds.lon.attrs = lon_attrs
     flux_ds.time.attrs['notes'] = "Start of time period"
     
+    if not os.path.exists(os.path.join(output_directory,domain)):
+        print "Creating {} subdirectory in output directory: {}".format(domain,output_directory)
+        os.makedirs(os.path.join(output_directory,domain))
 
     flux_ds.flux.encoding = {'zlib':True}                        
     flux_ds.to_netcdf(ncname, mode='w')    

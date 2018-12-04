@@ -28,7 +28,7 @@ import glob
 import getpass
 from datetime import datetime as dt
 
-def getCAMSdata(st_date, end_date, gridsize, NESW, species, outputname):
+def getCAMSdata(st_date, end_date, gridsize, NESW, species, outputname, nearrealtime = False):
     """
     Used by makeCAMS_BC to download ECMWF CAMS data 
     
@@ -55,13 +55,19 @@ def getCAMSdata(st_date, end_date, gridsize, NESW, species, outputname):
     from ecmwfapi import ECMWFDataServer
     area = "%s/%s/%s/%s" % (NESW[0], NESW[2], NESW[4], NESW[6])
     params = {'ch4' : '4.217'}     #Dictionary of species' paramater number 
-    
+    if nearrealtime == True:
+        dataset = "cams_nrealtime"
+        expver = "0001"
+    else:
+        dataset = "cams_reanalysis"
+        expver = "eac4"
+
     server = ECMWFDataServer()
     server.retrieve({
         "class": "mc",
-        "dataset": "cams_nrealtime",
+        "dataset": dataset,
         "date": st_date+"/to/"+end_date,
-        "expver": "0001",
+        "expver": expver,
         "levelist": "1/2/3/5/7/10/20/30/50/70/100/150/200/250/300/400/500/600/700/800/850/900/925/950/1000",
         "levtype": "pl",
         "param": params[species]+"/129.128",
