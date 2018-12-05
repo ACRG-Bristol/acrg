@@ -824,31 +824,72 @@ def plot_obs(data_dict):
     plt.show()
 
 
-def tidy():
+def cleanup(site):
+    '''
+    Archive old versions of files in an archive folder within each site folder.
+    Will keep the maxiumum version number for each NETWORK-INSTRUMENT, and move
+    older ones to a zip file.
     
-    site = "BSD"
-    data_directory = os.path.join(obs_directory, site)
-    files = glob.glob(os.path.join(data_directory, "*.nc"))
+    Args:
+        site (string): Measurement site
+    '''
     
+    
+    import zipfile
 
+    # Directories and files
+    data_directory = os.path.join(obs_directory, site)
+    archive_directory = os.path.join(data_directory, "archive")
+    files = glob.glob(os.path.join(data_directory, "*.nc"))
+
+    print("Checking for files to archive in %s ..." % data_directory)
+
+    # Work out instrument (NETWORK-INSTRUMENT) and suffix from filename    
     instrument = []
-    site = []
     suffix = []
     
     for f in files:
         f_data = os.path.split(f)[1].split(".")[0].split("_")
         instrument.append(f_data[0])
-        site.append(f_data[2])
         suffix.append(f_data[3])
+
+    # Identify unique instruments
+    unique_instruments = set(instrument)
+
+    # Cycle through each NETWORK-INSTRUMENT        
+    for i in unique_instruments:
+
+        # Find versions
+        version = [s.split("-")[-1] for (s, inst) in zip(suffix, instrument) if inst == i]
+        unique_versions = set(version)
+        latest_version = max(unique_versions)
+        archive_versions = [v for v in unique_versions if v != latest_version]
+
+        if len(archive_versions) == 0:
+            print("... everything up-to-date for %s" % i)
+
+        # For any old versions, archive and delete files
+        for v in archive_versions:
+
+            print("... archiving %s files, version %s" % (i, v) )
+            
+            # Check if archive directory exists, and create if not
+            if not os.path.exists(archive_directory):
+                os.makedirs(archive_directory)
+
+            # Archive filepath for this instrument and version
+            archive = os.path.join(archive_directory,
+                                   "%s_%s_%s.zip" % (i, site, v))
+
+            # Files to archive for this instrument and version
+            archive_files = [f for f in files if v in f and i in f]
+
+            # Write archive and delete file
+            zipf = zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED)
+            for f in archive_files:
+                zipf.write(f, os.path.basename(f))
+                os.remove(f)
+            zipf.close()
         
-    species = [s.split("-")[0] for s in suffix]
-    version = [s.split("-")[-1] for s in suffix]
-
-    unique_versions = set(version)
-
-    latest_version = max(unique_versions)
-    
-    archive_versions = [v for v in unique_versions if v != max_version]
-
-
+        
 
