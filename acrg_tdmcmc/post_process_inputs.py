@@ -151,19 +151,21 @@ if __name__=="__main__":
     
     # plot_scale_map
     grid_scale_map = True
-    s_clevels = np.arange(0.,2.1,0.1) # Set to None to set to defaults.
+    s_clevels = None # Set to None to set to defaults.
     s_cmap = plt.cm.RdBu_r
     s_smooth = True
     s_out_filename = None  # None means plot will not be written to file
 
     # plot_abs_map
-    a_clevels = np.arange(-1.,1.05,0.05) # Set to None to set to defaults.
+    grid_abs_map = True
+    a_clevels = None  # Set to None to set to defaults.
     a_cmap = plt.cm.RdBu_r
     a_smooth = False
     a_out_filename = None  # None means plot will not be written to file
     
     # plot_diff_map
-    d_clevels = np.arange(-1.,1.05,0.05) # Set to None to set to defaults.
+    grid_diff_map = True
+    d_clevels = None # Set to None to set to defaults.
     d_cmap = plt.cm.RdBu_r
     d_smooth = False
     d_out_filename = None  # None means plot will not be written to file
@@ -210,36 +212,19 @@ if __name__=="__main__":
     if plot_scale_map == True:
         process.plot_scale_map(ds_list,grid=grid_scale_map,clevels=s_clevels, 
                                cmap=s_cmap,labels=None,title=None,smooth=s_smooth,
-                               out_filename=s_out_filename)
+                               out_filename=s_out_filename,extend="both")
     
     ## Plot absolute difference map
     if plot_diff_map == True:
-        for ds in ds_list:
-            lon=np.asarray(ds.lon.values)
-            lat=np.asarray(ds.lat.values)
-          
-            #x_post_mean = process.x_post_mean(ds)
-            q_abs_diff = process.mol2g(process.flux_diff(ds),species)*1e6
-            stations = process.define_stations(ds)
-            
-            process.plot_map(q_abs_diff,lon,lat,clevels=d_clevels, 
-                                 cmap=d_cmap,label=None,
-                                 smooth=d_smooth,fignum=None, 
-                                 stations=stations,out_filename=d_out_filename)
+        process.plot_diff_map(ds_list,species,grid=grid_diff_map,clevels=d_clevels, 
+                               cmap=d_cmap,labels=None,title=None,smooth=d_smooth,
+                               out_filename=d_out_filename,extend="both")
 
     ## Plot absolute map
     if plot_abs_map == True:
-        for ds in ds_list:
-            lon=np.asarray(ds.lon.values)
-            lat=np.asarray(ds.lat.values)
-          
-            q_abs = process.mol2g(process.flux_mean(ds),species)
-            stations = process.define_stations(ds)
-            
-            process.plot_map(q_abs,lon,lat,clevels=a_clevels, 
-                                 cmap=a_cmap,label=None,
-                                 smooth=a_smooth,fignum=None, 
-                                 stations=stations,out_filename=a_out_filename)
+        process.plot_abs_map(ds_list,species,grid=grid_abs_map,clevels=a_clevels, 
+                               cmap=a_cmap,labels=None,title=None,smooth=a_smooth,
+                               out_filename=a_out_filename,extend="max")
 
      
     ## Plot y timeseries
