@@ -588,8 +588,10 @@ def plot_map(data, lon, lat, clevels=None, divergeCentre = None, cmap=plt.cm.RdB
             Latitude array  matching to data grid
         clevels (numpy.array, optional) : 
             Array of contour levels; defaults to np.arange(-2., 2.1, 0.1)
-        divergeCentre (bool/None, optional):
-            TODO
+        divergeCentre (float/None, optional):
+            Default is None, to replicate original clevels behaviour.
+	    If given a float, this value is used to manually set the centre value of a diverging cmap,
+	    while using the min and max values of clevels as the min and max values of the cmap.
         cmap (matplotlib.cm, optional) : 
             Colormap object; defaults to Red Blue reverse
         borders (bool, optional) :
