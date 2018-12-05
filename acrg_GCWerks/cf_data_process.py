@@ -626,7 +626,8 @@ def gc(site, instrument, network,
                             sp + " repeatability",
                             sp + " status_flag",
                             sp + " integration_flag"]]
-                inlet_label = params["GC"][site.upper()]["inlet_label"][0]
+                #inlet_label = params["GC"][site.upper()]["inlet_label"][0]
+                inlet_label = None
                 global_attributes["inlet_height_magl"] = \
                                     ", ".join(set(ds["Inlet"].values))
 
@@ -643,7 +644,7 @@ def gc(site, instrument, network,
 #            else:
 #               inlet_label = inlet
 
-            global_attributes["inlet_height_magl"] = float(inlet_label[:-1])
+            global_attributes["inlet_height_magl"] = float(params["GC"][site.upper()]["inlet_label"][0])
 
             # Drop NaNs
             ds_sp = ds_sp.dropna("time")
@@ -675,7 +676,7 @@ def gc(site, instrument, network,
                                               site.upper(),
                                               ds_sp.time.to_pandas().index.to_pydatetime()[0],
                                               ds_sp.species,
-                                              None)
+                                              inlet = inlet_label)
                 print("Writing... " + nc_filename)
                 ds_sp.to_netcdf(nc_filename)
                 print("... written.")
