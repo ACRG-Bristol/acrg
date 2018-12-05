@@ -1,6 +1,5 @@
 {
     "global_attributes": {
-        "Processed by": "Matt Rigby, University of Bristol (matt.rigby@bristol.ac.uk)",
         "Conditions of use": "Ensure that you contact the data owner at the outset of your project.",
         "Source": "In situ measurements of air"
     },
@@ -49,7 +48,7 @@
             "GCMS": "Gas chromatograph-mass spectrometer measurements. Output from GCWerks.",
             "medusa": "Medusa measurements. Output from GCWerks. See Miller et al. (2008)."
         },
-        "directory_output" : "/dagage2/agage/metoffice/processed_observations_2018",
+        "directory_output" : "/data/shared/obs_2018",
         "BSD" : {
             "gcwerks_site_name": "bilsdale",
             "inlets": ["108m", "42m", "248m"],
@@ -200,7 +199,7 @@
     },
     "CRDS": {
         "directory" : "/dagage2/agage/%site-picarro/results-gcwerks/",
-        "directory_output" : "/dagage2/agage/metoffice/processed_observations_2018",
+        "directory_output" : "/data/shared/obs_2018",
         "comment": "Cavity ring-down measurements. Output from GCWerks",
         "BSD" : {
             "gcwerks_site_name": "bilsdale",
@@ -247,7 +246,7 @@
     },
     "ICOS": {
         "directory" : "/dagage2/agage/%site-picarro/results-icos/",
-        "directory_output" : "/dagage2/agage/metoffice/processed_observations_2018",
+        "directory_output" : "/data/shared/obs_2018",
         "MHD" : {
             "gcwerks_site_name": "macehead",
             "inlet_rename": {"15m": "10m"},

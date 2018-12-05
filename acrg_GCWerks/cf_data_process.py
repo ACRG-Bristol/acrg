@@ -16,6 +16,7 @@ import xarray as xray
 import json
 from os import getenv, stat
 import time
+import getpass
 
 # Read site info file
 acrg_path = getenv("ACRG_PATH")
@@ -28,32 +29,40 @@ site_info_file = join(acrg_path, "acrg_site_info.json")
 with open(site_info_file) as sf:
     site_params = json.load(sf)
 
-# Output unit strings
+# Output unit strings (upper case for matching)
 unit_species = {"CO2": "1e-6",
                 "CH4": "1e-9",
                 "C2H6": "1e-9",
                 "N2O": "1e-9",
                 "CO": "1e-9",
-                "CH4C13": "permil",
-                "DELTAO2_N2" : "per meg",
-                "APO" : "per meg"}
+                "DCH4C13": "1",
+                "DCH4D": "1",
+                "DCO2C13": "1",
+                "DCO2C14": "1",
+                "DO2N2" : "1",
+                "APO" : "1"}
+
+# If units are non-standard, this attribute can be used
+unit_species_long = {"DCH4C13": "permil",
+                     "DCH4D": "permil",
+                     "DCO2C13": "permil",
+                     "DCO2C14": "permil",
+                     "DO2N2" : "per meg",
+                     "APO" : "per meg"}
 
 unit_interpret = {"ppm": "1e-6",
                   "ppb": "1e-9",
                   "ppt": "1e-12",
+                  "ppq": "1e-15",
                   "else": "unknown"}
 
 # Default calibration scales
+# TODO: Remove this? seems dangerous
 scales = {"CO2": "NOAA-2007",
           "CH4": "NOAA-2004A",
           "N2O": "SIO-98",
           "CO": "Unknown"}
 
-## Species long-names for output
-#species_long = {"CO2": "carbon_dioxide",
-#                "CH4": "methane",
-#                "N2O": "nitrous_oxide",
-#                "CO": "carbon_monoxide"}
 
 # For species which need more than just a hyphen removing or changing to lower case
 # First element of list is the output variable name,
@@ -78,14 +87,19 @@ species_translator = {"CO2": ["co2", "carbon_dioxide"],
                       "PFC-116": ["c2f6", "hexafluoroethane"],
                       "PFC-218": ["c3f8", "octafluoropropane"],
                       "PFC-318": ["c4f8", "cyclooctafluorobutane"],
-                      "F-113": ["cfc113", "cfc113"]
+                      "F-113": ["cfc113", "cfc113"],
+                      "DO2N2": ["do2n2", "ratio_of_oxygen_to_nitrogen"],
+                      "DCH4C13": ["dch4c13", "delta_ch4_c13"],
+                      "DCH4D": ["dch4d", "delta_ch4_d"],
+                      "DCO2C13": ["dco2c13", "delta_co2_c13"],
+                      "DCO2C14": ["dco2c14", "delta_co2_c14"],
+                      "APO": ["apo", "atmospheric_potential_oxygen"]
                       }
 
 # Translate header strings
 crds_header_string_interpret = {"C": "",
-                                "stdev": "_variability",
-                                "N": "_number_of_observations"}
-
+                                "stdev": " variability",
+                                "N": " number_of_observations"}
 
 def parser_YYMMDD(yymmdd):
     return dt.strptime(yymmdd, '%y%m%d')
@@ -161,6 +175,10 @@ def attributes(ds, species, site,
     global_attributes["File created"] = str(dt.now())
     global_attributes["Conventions"] = "CF-1.6"
 
+    # Add user
+    global_attributes["Processed by"] = "%s@bristol.ac.uk" % getpass.getuser()    
+
+
     for key, values in global_attributes.iteritems():
         ds.attrs[key] = values
 
@@ -186,10 +204,8 @@ def attributes(ds, species, site,
     #############################################
 
     # Long name
-    if species.upper() == 'DELTAO2_N2':
-        sp_long = 'd(O2/N2)'
-    elif species.upper() == 'APO':
-        sp_long = 'APO'
+    if species.upper()[0] == "D" or species.upper() == "APO":
+        sp_long = species_translator[species.upper()][1]
     elif species.upper() in species_translator.keys():
         sp_long = "mole_fraction_of_" + species_translator[species.upper()][1] + "_in_air"
     else:
@@ -202,9 +218,10 @@ def attributes(ds, species, site,
         if species_out in key:
 
             # Standard name attribute
-            ds[key].attrs["standard_name"]=key.replace(species_out, sp_long)
+            #ds[key].attrs["standard_name"]=key.replace(species_out, sp_long)
             ds[key].attrs["long_name"]=key.replace(species_out, sp_long)
 
+            # If units are required for variable, add attribute
             if (key == species_out) or \
                 ("variability" in key) or \
                 ("repeatability" in key):
@@ -215,34 +232,41 @@ def attributes(ds, species, site,
                         ds[key].attrs["units"] = unit_interpret[units]
                     else:
                         ds[key].attrs["units"] = unit_interpret["else"]
+
+                # if units are non-standard, add explanation
+                if species.upper() in unit_species_long.keys():
+                    ds[key].attrs["units_description"] = unit_species_long[species.upper()]
+
+            # Add to list of ancilliary variables                    
             if key != species_out:
                 ancillary_variables += " " + key
 
+    # Write ancilliary variable list
     ds[species_out].attrs["ancilliary_variables"] = ancillary_variables.strip()
 
     # Add quality flag attributes
     ##################################
 
-    flag_key = [key for key in ds.keys() if "_status_flag" in key]
+    flag_key = [key for key in ds.keys() if " status_flag" in key]
     if len(flag_key) > 0:
         flag_key = flag_key[0]
         ds[flag_key] = ds[flag_key].astype(int)
         ds[flag_key].attrs = {"flag_meaning":
                               "0 = unflagged, 1 = flagged",
-                              "standard_name":
-                              ds[species_out].attrs["standard_name"] + "_status_flag"}
+                              "long_name":
+                              ds[species_out].attrs["standard_name"] + " status_flag"}
 
     # Add integration flag attributes
     ##################################
 
-    flag_key = [key for key in ds.keys() if "_integration_flag" in key]
+    flag_key = [key for key in ds.keys() if " integration_flag" in key]
     if len(flag_key) > 0:
         flag_key = flag_key[0]
         ds[flag_key] = ds[flag_key].astype(int)
         ds[flag_key].attrs = {"flag_meaning":
                               "0 = area, 1 = height",
                               "standard_name":
-                              ds[species_out].attrs["standard_name"] + "_integration_flag",
+                              ds[species_out].attrs["long_name"] + " integration_flag",
                               "comment":
                               "GC peak integration method (by height or by area). " +
                               "Does not indicate data quality"}
@@ -275,6 +299,7 @@ def output_filename(output_directory,
     Create an output filename in the format 
     output_directory/site/network-instrument_site_YYYYMMDD_species[-inlet].nc
     
+    Also creates a site directory in output_directory, if one doesn't exist
     """
     
     # Check if directory exists. If not, create it
@@ -349,8 +374,8 @@ def icos_data_read(data_file, species):
 
     # Rename columns
     df.rename(columns = {species.lower(): species.upper(),
-                         "Stdev": species.upper() + "_variability",
-                         "NbPoints": species.upper() + "_number_of_observations"},
+                         "Stdev": species.upper() + " variability",
+                         "NbPoints": species.upper() + " number_of_observations"},
                inplace = True)
 
     df.index.name = "time"
@@ -462,8 +487,8 @@ def gc_data_read(dotC_file, scale = {}, units = {}):
                     area_height_flag.append(1)  # Height
 
             df = df.rename(columns = {key: df.keys()[i-1] + "_flag"})
-            df[df.keys()[i-1] + "_status_flag"] = quality_flag
-            df[df.keys()[i-1] + "_integration_flag"] = area_height_flag
+            df[df.keys()[i-1] + " status_flag"] = quality_flag
+            df[df.keys()[i-1] + " integration_flag"] = area_height_flag
             scale[df.keys()[i-1]] = header[i-1][0]
             units[df.keys()[i-1]] = header[i-1][1]
             species.append(df.keys()[i-1])
@@ -561,7 +586,7 @@ def gc(site, instrument, network,
         # Merge precisions into dataframe
         for sp in species:
             precision_index = precision_species.index(sp)*2+1
-            df[sp + "_repeatability"] = precision[precision_index].\
+            df[sp + " repeatability"] = precision[precision_index].\
                                             astype(float).\
                                             reindex_like(df, "pad")
 
@@ -598,18 +623,18 @@ def gc(site, instrument, network,
 
             if (inlet == "any") or (inlet == "air"):
                 ds_sp = ds[[sp,
-                            sp + "_repeatability",
-                            sp + "_status_flag",
-                            sp + "_integration_flag"]]
+                            sp + " repeatability",
+                            sp + " status_flag",
+                            sp + " integration_flag"]]
                 inlet_label = params["GC"][site.upper()]["inlet_label"][0]
                 global_attributes["inlet_height_magl"] = \
                                     ", ".join(set(ds["Inlet"].values))
 
             else:
                 ds_sp = ds.where(ds.Inlet == inlet)[[sp,
-                                                     sp + "_repeatability",
-                                                     sp + "_status_flag",
-                                                     sp + "_integration_flag"]]
+                                                     sp + " repeatability",
+                                                     sp + " status_flag",
+                                                     sp + " integration_flag"]]
                 inlet_label = inlet
 
 #            # re-label inlet if required
@@ -649,7 +674,6 @@ def gc(site, instrument, network,
                                               instrument_out,
                                               site.upper(),
                                               ds_sp.time.to_pandas().index.to_pydatetime()[0],
-#                                              ds_sp.time.to_pandas().index.to_pydatetime()[-1],
                                               ds_sp.species,
                                               None)
                 print("Writing... " + nc_filename)
@@ -745,8 +769,8 @@ def crds(site, network,
 
             # Species-specific dataset
             ds_sp = ds[[sp,
-                        sp + "_variability",
-                        sp + "_number_of_observations"]]
+                        sp + " variability",
+                        sp + " number_of_observations"]]
             ds_sp = ds_sp.dropna("time")
 
             global_attributes = params_crds[site]["global_attributes"]
@@ -787,7 +811,7 @@ def ale_gage(site, network):
     ale_directory = "/dagage2/agage/summary/git/ale_new/complete/"
     gage_directory = "/dagage2/agage/summary/git/gage_new/complete/"
 
-    output_directory = "/dagage2/agage/metoffice/processed_observations_2018/"
+    output_directory = "/data/shared/obs_2018/"
 
     site_translate = {"ADR": "adrigole",
                       "RPB": "barbados",
