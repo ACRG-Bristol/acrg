@@ -254,7 +254,7 @@ def attributes(ds, species, site,
         ds[flag_key].attrs = {"flag_meaning":
                               "0 = unflagged, 1 = flagged",
                               "long_name":
-                              ds[species_out].attrs["standard_name"] + " status_flag"}
+                              ds[species_out].attrs["long_name"] + " status_flag"}
 
     # Add integration flag attributes
     ##################################
