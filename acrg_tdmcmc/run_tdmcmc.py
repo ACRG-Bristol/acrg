@@ -289,7 +289,7 @@ def average_period_fp(fp_data_H,av_period_site,dim="time"):
 
 
 def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date, 
-    domain,network,fp_basis_case ,bc_basis_case,rjmcmc,para_temp,
+    domain,network,emissions_name, flux_directory, fp_basis_case ,bc_basis_case,rjmcmc,para_temp,
     bl_period,kmin,kmax,k_ap,nIt,burn_in,nsub,
     nbeta,beta,sigma_model_pdf,sigma_model_ap, 
     sigma_model_hparams,stepsize_sigma_y,stepsize_clon,stepsize_clat,
@@ -311,13 +311,15 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     corr_type={"uncorrelated":False,
               "corr":False,
               "evencorr":True}
-    data = agage.get_obs(sites, species, start = start_date, end = end_date, average = meas_period, 
+    data = agage.get_obs(sites, species, start = start_date, end = end_date, average = meas_period,
+                         #data_directory = "/data/al18242/obs_pseudo/",
                           keep_missing=corr_type[inv_type],max_level=max_level)
     
     
     #fp_all = name.footprints_data_merge(data, domain=domain, species=species, calc_bc=True)
     # Commented out and replaced by rt17603 on 11/08 - no species argument in this function.
-    fp_all = name.footprints_data_merge(data, domain=domain, calc_bc=True)
+    fp_all = name.footprints_data_merge(data, domain=domain, calc_bc=True,
+                                        emissions_name = emissions_name, flux_directory = flux_directory)
     
     
     if fp_basis_case in ("INTEM"):    

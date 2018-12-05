@@ -761,7 +761,6 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
         Dictionary of the form {"MHD": MHD_xarray_dataset, "TAC": TAC_xarray_dataset, ".flux": dictionary_of_flux_datasets, ".bc": boundary_conditions_dataset}:
             combined dataset for each site
     """
-    
     sites = [key for key in data.keys() if key[0] != '.']
     attributes = [key for key in data.keys() if key[0] == '.']
     
@@ -797,7 +796,6 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
     flux_bc_end = None
     
     for site in sites:
-
         # Dataframe for this site            
         site_df = data[site] 
             
@@ -859,7 +857,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                              emissions_name = None,
                              HiTRes = HiTRes,
                              interp_vmr_freq=interp_vmr_freq)                         
-                        
+        
         if site_fp is not None:                        
             # If satellite data, check that the max_level in the obs and the max level in the processed FPs are the same
             # Set tolerance tin time to merge footprints and data   
@@ -915,15 +913,15 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
             base = start_date.dt.hour.data + start_date.dt.minute.data/60. + start_date.dt.second.data/3600.
             if (ds_timeperiod >= fp_timeperiod) or (resample_to_data == True):
                 resample_period = str(round(fp_timeperiod/3600e9,5))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
-                site_fp = site_fp.resample(resample_period, dim='time', how='mean', base=base)
+                #site_fp = site_fp.resample(resample_period, dim='time', how='mean', base=base)
             elif ds_timeperiod < fp_timeperiod or (resample_to_data == False):
                 resample_period = str(round(fp_timeperiod/3600e9,5))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
                 site_ds = site_ds.resample(resample_period, dim='time', how='mean', base=base)
-                        
+            
             site_ds = combine_datasets(site_ds, site_fp,
                                        method = "ffill",
                                        tolerance = tolerance)
-            
+
             #transpose to keep time in the last dimension position in case it has been moved in resample
             if 'H_back' in site_ds.dims.keys():
                 site_ds = site_ds.transpose('height','lat','lon','lev','time', 'H_back')
@@ -2151,6 +2149,8 @@ class get_country:
                     filename=glob.glob(countryDirectory + 
                          "/" + "country-ukmo_"
                          + domain + ".nc")
+                    
+        print(filename)
         
         f = nc.Dataset(filename[0], 'r')
     

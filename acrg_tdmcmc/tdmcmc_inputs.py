@@ -96,12 +96,23 @@ network = param['network']
 fp_basis_case = param['fp_basis_case']
 bc_basis_case = param['bc_basis_case']
 
+if 'emissions_name' in param.keys():
+    emissions_name = {"all": param["emissions_name"]}
+else:
+    emissions_name = None
+if 'flux_directory' in param.keys():
+    flux_directory = param["flux_directory"]
+else:
+    flux_directory = os.path.join(data_path, 'NAME/emissions/')
+
 if verbose:
     print 'Measurement details: sites - {0}, species - {1}, domain - {2}, network - {3}'.format(sites,species,domain,network)
     print 'Date range: {0} - {1}'.format(start_date,end_date)
     print 'Basis case for footprint: {0}'.format(fp_basis_case)
     print 'Basis case for boundary conditions: {0}\n'.format(bc_basis_case)
     print '\n---------------\n'
+    print 'Emissions_name : {}'.format(emissions_name)
+    print 'flux_directory : {}'.format(flux_directory)
 
 ################################################################
 # SET OUTPUT DIRECTORY AND OUTPUT DETAILS
@@ -344,7 +355,7 @@ pdf_p2_hparam2[-1]=2.
 pdf_param2[nIC:,:]=1.
 
 post_mcmc=run_tdmcmc.run_tdmcmc(sites, meas_period, av_period, species, start_date, end_date,  
-    domain, network, fp_basis_case, bc_basis_case, reversible_jump, parallel_tempering,    
+    domain, network, emissions_name, flux_directory, fp_basis_case, bc_basis_case, reversible_jump, parallel_tempering,    
     bl_period, kmin, kmax, k_ap, nIt, burn_in ,nsub,    
     nbeta, beta, sigma_model_pdf, sigma_model_ap,     
     sigma_model_hparams, stepsize_sigma_y, stepsize_clon, stepsize_clat,    

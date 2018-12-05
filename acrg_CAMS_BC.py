@@ -150,7 +150,7 @@ def makeCAMS_BC(domain, species, st_date, end_date, gridsize):
         netcdf file: Boundary conditions at domain boundaries
         
     Example:
-        makeCAMS_BC('EUROPE', 'ch4', '2017-08-01', '2017-08-31', 3)
+#        makeCAMS_BC('EUROPE', 'ch4', '2017-08-01', '2017-08-31', 3)
         
     NOTES:
         If working with a species other than ch4 then you'll have to update 
@@ -195,12 +195,16 @@ def makeCAMS_BC(domain, species, st_date, end_date, gridsize):
     outputname = "BC_CAMS_"+species+"_"+"".join(NESW)+"_"+str(gridsize)+"x"+str(gridsize)+"_"+st_date+".nc"
     if os.path.isfile(pathtoBCs+outputname) == False: 
         #Download data
-        getCAMSdata(st_date, end_date, gridsize, NESW, species, pathtoBCs+outputname)
+        getCAMSdata(st_date, end_date, gridsize, NESW, species, "/data/al18242/CAMS/raw/"+outputname)
     
     #Open CAM dataset and average over the month 
     fn = pathtoBCs+outputname
     ds = xr.open_dataset(fn)
     ds = ds.mean('time')
+    try:
+        ds.rename({"ch4_c":"ch4"}, inplace=True)
+    except:
+        print("Terrible coding")
        
     if species == 'ch4':
         speciesmm = 16.0425
@@ -233,13 +237,15 @@ def makeCAMS_BC(domain, species, st_date, end_date, gridsize):
     
     
     BC_edges = vmr_n.merge(vmr_e).merge(vmr_s).merge(vmr_w)
-    BC_edges.expand_dims('time',2)
+    
     BC_edges.coords['time'] = (dt.strptime(st_date, '%Y-%m-%d'))
+    BC_edges = BC_edges.expand_dims('time',2)
     
     BC_edges.attrs['title'] = "ECMWF CAMS "+species+" volume mixing ratios at domain edges"
     BC_edges.attrs['author'] = getpass.getuser()
     BC_edges.attrs['date_created'] = np.str(dt.today())
     
+    BC_edges["lon"].values = fields_ds["lon"].values
     BC_edges.to_netcdf(path = data_path+"NAME/bc/%s/%s_%s_%s.nc"
                        %(domain,species.lower(),domain,dt.strptime(st_date, '%Y-%m-%d').strftime('%Y%m')), mode = 'w')
 
