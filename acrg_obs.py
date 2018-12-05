@@ -271,19 +271,24 @@ def file_list(site, species,
             return data_directory, None
  
     # See if any sites are separated by height
-    file_inlet = [re.split("-|\.", f[-1])[1] for f in file_info]
-    file_inlet = [None if fh == "nc" else fh for fh in file_inlet]
+    # Test to see whether there are 3 hyphen-delimited entries in file suffix
+    # If only 2, there isn't an inlet
+    # If there is an inlet, it'll be in the second position
+    # This will need to change if we ever change that suffix
+    file_suffix_length = [len(re.split("-", f[-1])) for f in file_info]
+    
+    # Check if there are a mix of inlet and non-inlet files (can't handle this)
+    if len(set(file_suffix_length)) > 1:
+        print("ERROR: Can't have a mix of files with and without inlets defined in %s." %data_directory)
+        return data_directory, None
+
     # Are there any files in the folder for which no inlet height is defined?
-    if any([f is None for f in file_inlet]):
-        # If so, do none of the matching files have a height? If so, we need more info
-        if not all([f is None for f in file_inlet]):
-            print("It looks like there are some files in %s" %data_directory)
-            print(" for which an inlet height has been defined, and others where none has been defined.")
-            print("Make sure an inlet height is defined for all files, or change this function!")
-            return data_directory, None
-        # Else, we don't need to do anything            
-    else:
-        # If no inlet specified, pick first element in height list
+    # If so, don't need to do anything. Otherwise, choose inlet
+    if file_suffix_length[0] > 2:
+        
+        file_inlet = [re.split("-|\.", f[-1])[1] for f in file_info]
+        
+        # If no inlet specified, pick first element in parameters height list
         if inlet is None:
             file_inlet_string = site_info[site][network]["height"][0]
         else:
@@ -291,6 +296,7 @@ def file_list(site, species,
         # Subset of matching files
         fnames = [f for (ht, f) in zip(file_inlet, fnames) if ht == file_inlet_string]
         file_info = [f for (ht, f) in zip(file_inlet, file_info) if ht == file_inlet_string]
+        
         if len(fnames) == 0:
             print("Can't find any matching inlets: %s" %inlet)
             return data_directory, None
