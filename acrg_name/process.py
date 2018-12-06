@@ -1950,15 +1950,14 @@ def process_all(domain, site,
                 years_in = None,
                 months_in = None,
                 base_dir = "/dagage2/agage/metoffice/NAME_output/",
-                met_folder = "Met",
+                met_folder = ["Met", "Met_daily"],
                 force_update = False,
                 satellite = False,
                 perturbed_folder = None,
                 max_level = None,
                 force_met_empty=False,
                 vertical_profile=False,
-                transport_model="NAME",
-                met_folder = "Met"):
+                transport_model="NAME"):
     '''For a given domain and site, process all available fields files (including
     multiple heights).
     If you want to specify a subset of years/months to process, use the years_in
