@@ -721,18 +721,21 @@ def noaa_ccgg(species):
         "units": {"CH4": "ppb",
                   "C2H6": "ppb",
                   "CO2": "ppm",
-                  "CH4C13": "permil"},
+                  "CH4C13": "permil",
+                  "CO": "ppb"},
         "instrument": {"CH4": "GC-FID",
                        "C2H6": "GC-FID",
                        "CO2": "NDIR",
-                       "CH4C13": "IRMS"},
+                       "CH4C13": "IRMS",
+                       "CO": "GC-HgO-VUV"},
         "scale": {"CH4": "NOAA04",
                   "C2H6": "NOAA12",
                   "CO2": "WMO_X2007",
-                  "CH4C13": "NOAA-INSTAAR"},
+                  "CH4C13": "NOAA-INSTAAR",
+                  "CO": "WMO CO_X2014A"},
         "global_attributes": {
-            "data_owner": "Ed Dlugokencky",
-            "data_owner_email": "ed.dlugokencky@noaa.gov"
+            "data_owner": "Ed Dlugokencky, Gabrielle Petron (CO)",
+            "data_owner_email": "ed.dlugokencky@noaa.gov, gabrielle.petron@noaa.gov"
             }
         }
 
@@ -1768,7 +1771,7 @@ def mpi(species):
                 }
         }
             
-    fname = "/data/shared/obs_raw/MPI/ndao_2013-2014.csv"
+    fname = "/data/shared/obs_raw/MPI/ndao_2013-2015.csv"
     
     if species.lower() == 'd(o2/n2)':
         species = 'deltao2_n2'

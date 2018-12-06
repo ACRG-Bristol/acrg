@@ -207,7 +207,7 @@
         "long_name": "Carbon monoxide", 
         "mol_mass": 28.01, 
         "print_string": "CO", 
-        "units": "ppm"
+        "units": "ppb"
     }, 
     "CO2": {"alt": ["carbon_dioxide", "carbon dioxide"],
         "group": "CO2", 
