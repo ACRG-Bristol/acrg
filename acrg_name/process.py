@@ -2073,7 +2073,7 @@ def process_all(domain, site,
                     satellite = satellite, perturbed_folder = perturbed_folder,
                     max_level = max_level, force_met_empty = force_met_empty,
                     vertical_profile=vertical_profile,
-                    transport_model=transport_model, met_folder = met_folder)
+                    transport_model=transport_model)
 
 
 def copy_processed(domain):
