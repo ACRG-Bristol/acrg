@@ -137,8 +137,8 @@
         },
         "SDZ" : {
             "gcwerks_site_name": "shangdianzi",
-            "inlets": ["any"],
-            "inlet_label": ["10m"],
+            "inlets": ["date_20000101_20150101", "date_20150101_21000101"],
+            "inlet_label": ["10m", "80m"],
             "global_attributes": {
                 "data_owner": "Bo Yao",
                 "data_owner_email": "yaob@cams.cma.gov.cn"

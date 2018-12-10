@@ -154,6 +154,36 @@ def attributes(ds, species, site,
                sampling_period = None):
     """
     Format attributes for netCDF file
+    Attributes of xarray DataSet are modified, and variable names are changed
+    
+    If the species is a standard mole fraction then either:
+        - species name will used in lower case in the file and variable names
+            but with any hyphens taken out
+        - name will be changed according to the species_translator dictionary
+    
+    If the species is isotopic data or a non-standard variable (e.g. APO):
+        - Isotopes species names should begin with a "D"
+            (Annoyingly, the code currently picks up "Desflurane" too. I've
+             fixed this for now, but if we get a lot of other "D" species, we 
+             should make this better)
+        - I suggest naming for isotopologues should be d<species><isotope>, e.g.
+            dCH4C13, or dCO2C14
+        - Any non-standard variables should be listed in the species_translator
+            dictionary
+    
+    Args:
+        ds (xarray dataset): Should contain variables such as "ch4", "ch4 repeatability".
+            Must have a "time" dimension.
+        species (string): Species name. e.g. "CH4", "HFC-134a", "dCH4C13"
+        site (string): Three-letter site code
+        
+        global_attribuates (dict, optional): Dictionary containing any info you want to 
+            add to the file header (e.g. {"Contact": "Matt Rigby"})
+        units (string, optional): This routine will try to guess the units
+            unless this is specified. Options are in units_interpret
+        scale (string, optional): Calibration scale for file header.
+        sampling_period (int, optional): Number of seconds for which air 
+            sample is taken. Only for time variable attribute
     """
 
     # Rename species
@@ -207,7 +237,7 @@ def attributes(ds, species, site,
     #############################################
 
     # Long name
-    if species.upper()[0] == "D" or species.upper() == "APO":
+    if (species.upper()[0] == "D" and species.upper() != "DESFLURANE") or species.upper() == "APO":
         sp_long = species_translator[species.upper()][1]
     elif species.upper() in species_translator.keys():
         sp_long = "mole_fraction_of_" + species_translator[species.upper()][1] + "_in_air"
@@ -277,6 +307,10 @@ def attributes(ds, species, site,
     # Set time encoding
     #########################################
 
+    # Check if there are duplicate time stamps
+    if len(set(ds.time.values)) < len(ds.time.values):
+        print("WARNING. Dupliate time stamps")
+
     first_year = str(ds.time.to_pandas().index.to_pydatetime()[0].year)
 
     ds.time.encoding = {"units": "seconds since " + \
@@ -290,6 +324,7 @@ def attributes(ds, species, site,
 
     return ds
 
+
 def output_filename(output_directory,
                     network,
                     instrument,
@@ -300,9 +335,17 @@ def output_filename(output_directory,
                     version = None):
     """
     Create an output filename in the format 
-    output_directory/site/network-instrument_site_YYYYMMDD_species[-inlet].nc
+    output_directory/site/network-instrument_site_YYYYMMDD_species[-inlet]-version.nc
     
     Also creates a site directory in output_directory, if one doesn't exist
+    
+    Args:
+        
+        inlet (string, optional): Label for inlet. If none supplied, assumes that there
+            is only one inlet, and no inlet info is added to file name
+        version (string, optional): Version number for file. If none supplied, will
+            use YYYYMMDD for day processed
+    
     """
     
     # Check if directory exists. If not, create it
@@ -647,32 +690,45 @@ def gc(site, instrument, network,
                 
                 print("Processing " + sp + ", " + inlet + "...")
                 
-                # Use UNIX pattern matching to find matching inlets
-                # select_inlet is a list of True or False
-                select_inlet = [fnmatch.fnmatch(i, inlet) for i in ds.Inlet.values]
-                # now create a DataArray of True or False
-                select_ds = xray.DataArray(select_inlet, coords = [ds.time],
-                                           dims = ["time"])
+                # if inlet is in the format "date_YYYYMMDD_YYYYMMDD", split by date
+                if inlet[0:4] == "date":
+                    dates = inlet.split("_")[1:]
+                    slice_dict = dict(time = slice(dates[0], dates[1]))
+                    ds_sliced = ds.loc[slice_dict]
+                    ds_sp = ds_sliced[[sp,
+                                       sp + " repeatability",
+                                       sp + " status_flag",
+                                       sp + " integration_flag"]]
+    
+                    global_attributes["inlet_height_magl"] = \
+                        ", ".join(set(ds_sliced.Inlet.values))
                 
-                # sub-set ds
-                ds_sp = ds.where(select_ds, drop = True)[[sp,
-                                                          sp + " repeatability",
-                                                          sp + " status_flag",
-                                                          sp + " integration_flag"]]
+                else:
+                    
+                    # Use UNIX pattern matching to find matching inlets
+                    # select_inlet is a list of True or False
+                    select_inlet = [fnmatch.fnmatch(i, inlet) for i in ds.Inlet.values]
+                    # now create a DataArray of True or False
+                    select_ds = xray.DataArray(select_inlet, coords = [ds.time],
+                                               dims = ["time"])
+                    
+                    # sub-set ds
+                    ds_sp = ds.where(select_ds, drop = True)[[sp,
+                                                              sp + " repeatability",
+                                                              sp + " status_flag",
+                                                              sp + " integration_flag"]]
 
+                    # Keep a record of which inlets were included
+                    global_attributes["inlet_height_magl"] = \
+                        ", ".join(set(ds.where(select_ds, drop = True).Inlet.values))
+    
                 # re-label inlet if required
                 if "inlet_label" in params["GC"][site].keys():
                     inlet_label = params["GC"][site]["inlet_label"][inleti]
                 else:
                    inlet_label = inlet
-
-#                global_attributes["inlet_height_magl"] = \
-#                    params["GC"][site.upper()]["inlet_label"][inleti]
                   
-                # Keep a record of which inlets were included
-                global_attributes["inlet_height_magl"] = \
-                    ", ".join(set(ds.where(select_ds, drop = True).Inlet.values))
-
+    
 
             # Drop NaNs
             ds_sp = ds_sp.dropna("time")

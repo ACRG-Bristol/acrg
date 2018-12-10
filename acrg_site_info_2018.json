@@ -1135,10 +1135,10 @@
   "SDZ": {
     "AGAGE": {
       "height": [
-        "10m"
+        "80m", "10m"
       ], 
       "height_name": [
-        "10magl"
+        "80magl", "10magl"
       ], 
       "height_station_masl": 287.0, 
       "latitude": 40.65, 

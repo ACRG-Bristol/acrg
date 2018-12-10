@@ -428,14 +428,14 @@ def get_single_site(site, species_in,
                     units = str(ds[ncvarname].units)
                 
                 #Get repeatability
-                if ncvarname + "_repeatability" in ds.keys():
-                    file_dmf=ds[ncvarname + "_repeatability"].values
+                if ncvarname + " repeatability" in ds.keys():
+                    file_dmf=ds[ncvarname + " repeatability"].values
                     if len(file_dmf) > 0:
                         df["dmf"] = file_dmf[:]
         
                 #Get variability
-                if ncvarname + "_variability" in ds.keys():
-                    file_vmf=ds[ncvarname + "_variability"]
+                if ncvarname + " variability" in ds.keys():
+                    file_vmf=ds[ncvarname + " variability"]
                     if len(file_vmf) > 0:
                         df["vmf"] = file_vmf[:]
                 
@@ -459,8 +459,8 @@ def get_single_site(site, species_in,
                                 df["altitude"] = file_alt
                         
                 #Get status flag
-                if ncvarname + "_status_flag" in ds.keys():
-                    file_flag=ds[ncvarname + "_status_flag"].values
+                if ncvarname + " status_flag" in ds.keys():
+                    file_flag=ds[ncvarname + " status_flag"].values
                     if len(file_flag) > 0:
                         df["status_flag"] = file_flag                
                         # Flag out multiple flags
@@ -469,8 +469,8 @@ def get_single_site(site, species_in,
                             flag = flag | (df.status_flag == f)
                         df = df[flag]
                                
-                if units != "permil" and units != "per meg":
-                    df = df[df.mf > 0.]
+#                if units != "permil" and units != "per meg":
+#                    df = df[df.mf > 0.]
 
                 if len(df) > 0:
                     data_frames.append(df)
@@ -792,7 +792,7 @@ def get_obs(sites, species, start_date, end_date,
     
 
 
-def plot_obs(data_dict):
+def plot(data_dict):
     '''
     Plot the data dictionary created by get_obs
     
@@ -830,7 +830,8 @@ def plot_obs(data_dict):
     plt.show()
 
 
-def cleanup(site):
+def cleanup(site,
+            version = None):
     '''
     Archive old versions of files in an archive folder within each site folder.
     Will keep the maxiumum version number for each NETWORK-INSTRUMENT, and move
@@ -838,6 +839,8 @@ def cleanup(site):
     
     Args:
         site (string): Measurement site
+        
+        version (string): Specify a version to archive. If None, will archive older versions
     '''
     
     
@@ -866,10 +869,20 @@ def cleanup(site):
     for i in unique_instruments:
 
         # Find versions
-        version = [s.split("-")[-1] for (s, inst) in zip(suffix, instrument) if inst == i]
-        unique_versions = set(version)
+        versions = [s.split("-")[-1] for (s, inst) in zip(suffix, instrument) if inst == i]
+        unique_versions = set(versions)
         latest_version = max(unique_versions)
+        
+        # By default, archive everything apart from the latest version
         archive_versions = [v for v in unique_versions if v != latest_version]
+
+        # If a particular version is specified, only archive that one
+        if version is not None:
+            if version not in unique_versions:
+                print("Error: version %s not in %s. Versions in this folder: %s" %
+                      (version, data_directory, ",".join(unique_versions)))
+                return
+            archive_versions = [version]
 
         if len(archive_versions) == 0:
             print("... everything up-to-date for %s" % i)
