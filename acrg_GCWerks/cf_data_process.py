@@ -17,6 +17,7 @@ import json
 from os import getenv, stat
 import time
 import getpass
+import fnmatch
 
 # Read site info file
 acrg_path = getenv("ACRG_PATH")
@@ -88,6 +89,8 @@ species_translator = {"CO2": ["co2", "carbon_dioxide"],
                       "PFC-218": ["c3f8", "octafluoropropane"],
                       "PFC-318": ["c4f8", "cyclooctafluorobutane"],
                       "F-113": ["cfc113", "cfc113"],
+                      "H2_PDD": ["h2", "hydrogen"],
+                      "NE_PDD": ["Ne", "neon"],                      
                       "DO2N2": ["do2n2", "ratio_of_oxygen_to_nitrogen"],
                       "DCH4C13": ["dch4c13", "delta_ch4_c13"],
                       "DCH4D": ["dch4d", "delta_ch4_d"],
@@ -612,39 +615,64 @@ def gc(site, instrument, network,
 
     inlets = params["GC"][site]["inlets"]
 
+    # Process each species in file
     for sp in species:
 
         global_attributes = params["GC"][site.upper()]["global_attributes"]
         global_attributes["comment"] = params["GC"]["comment"][instrument]
 
+
+        # Now go through each inlet (if required)
         for inleti, inlet in enumerate(inlets):
 
-            print("Processing " + sp + ", " + inlet + "...")
-
+            # There is only one inlet, just use all data, and don't lable inlet in filename
             if (inlet == "any") or (inlet == "air"):
+                
+                print("Processing %s, assuming single inlet..." %sp)
+                
                 ds_sp = ds[[sp,
                             sp + " repeatability",
                             sp + " status_flag",
                             sp + " integration_flag"]]
-                #inlet_label = params["GC"][site.upper()]["inlet_label"][0]
+                
+                # No inlet label in file name
                 inlet_label = None
+                
+                # Add list of all inlet lables, for record
                 global_attributes["inlet_height_magl"] = \
                                     ", ".join(set(ds["Inlet"].values))
 
             else:
-                ds_sp = ds.where(ds.Inlet == inlet)[[sp,
-                                                     sp + " repeatability",
-                                                     sp + " status_flag",
-                                                     sp + " integration_flag"]]
-                inlet_label = inlet
+                # Get specific inlet
+                
+                print("Processing " + sp + ", " + inlet + "...")
+                
+                # Use UNIX pattern matching to find matching inlets
+                # select_inlet is a list of True or False
+                select_inlet = [fnmatch.fnmatch(i, inlet) for i in ds.Inlet.values]
+                # now create a DataArray of True or False
+                select_ds = xray.DataArray(select_inlet, coords = [ds.time],
+                                           dims = ["time"])
+                
+                # sub-set ds
+                ds_sp = ds.where(select_ds, drop = True)[[sp,
+                                                          sp + " repeatability",
+                                                          sp + " status_flag",
+                                                          sp + " integration_flag"]]
 
-#            # re-label inlet if required
-#            if "inlet_label" in params["GC"][site].keys():
-#                inlet_label = params["GC"][site]["inlet_label"][inleti]
-#            else:
-#               inlet_label = inlet
+                # re-label inlet if required
+                if "inlet_label" in params["GC"][site].keys():
+                    inlet_label = params["GC"][site]["inlet_label"][inleti]
+                else:
+                   inlet_label = inlet
 
-            global_attributes["inlet_height_magl"] = float(params["GC"][site.upper()]["inlet_label"][0])
+#                global_attributes["inlet_height_magl"] = \
+#                    params["GC"][site.upper()]["inlet_label"][inleti]
+                  
+                # Keep a record of which inlets were included
+                global_attributes["inlet_height_magl"] = \
+                    ", ".join(set(ds.where(select_ds, drop = True).Inlet.values))
+
 
             # Drop NaNs
             ds_sp = ds_sp.dropna("time")

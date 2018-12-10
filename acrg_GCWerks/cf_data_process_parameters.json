@@ -59,8 +59,8 @@
         },
         "CGO" : {
             "gcwerks_site_name": "capegrim",
-            "inlets": ["any"],
-            "inlet_label": ["70m"],
+            "inlets": ["7?m*", "10m"],
+            "inlet_label": ["70m", "10m"],
             "global_attributes": {
                 "data_owner": "Paul Krummel",
                 "data_owner_email": "paul.krummel@csiro.au"
