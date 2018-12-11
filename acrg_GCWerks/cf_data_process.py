@@ -151,7 +151,8 @@ def attributes(ds, species, site,
                global_attributes = None,
                units = None,
                scale = None,
-               sampling_period = None):
+               sampling_period = None,
+               date_range = None):
     """
     Format attributes for netCDF file
     Attributes of xarray DataSet are modified, and variable names are changed
@@ -184,7 +185,16 @@ def attributes(ds, species, site,
         scale (string, optional): Calibration scale for file header.
         sampling_period (int, optional): Number of seconds for which air 
             sample is taken. Only for time variable attribute
+        date_range (list of two strings, optional): Start and end date for output
+            If you only want an end date, just put a very early start date
+            (e.g. ["1900-01-01", "2010-01-01"])
     """
+
+    # If a date range is specified, slice dataset
+    if date_range != None:
+        ds = ds.loc[dict(time = slice(*date_range))]
+        if len(ds.time.values) == 0:
+            return ds
 
     # Rename species
     for key in ds.keys():
@@ -434,7 +444,9 @@ def icos_data_read(data_file, species):
 
 def icos(site, network = "ICOS",
          input_directory = None,
-         output_directory = None):
+         output_directory = None,
+         date_range = None,
+         version = None):
 
     # Get directories and site strings
     params_icos = params["ICOS"]
@@ -468,20 +480,30 @@ def icos(site, network = "ICOS",
                             species.upper(),
                             site.upper(),
                             global_attributes = global_attributes,
-                            sampling_period = 60)
+                            sampling_period = 60,
+                            date_range = date_range)
 
-            # Write file
-            nc_filename = output_filename(output_folder,
-                                          network,
-                                          "CRDS",
-                                          site.upper(),
-                                          ds.time.to_pandas().index.to_pydatetime()[0],
-                                          ds.species,
-                                          params_icos[site]["inlet_rename"][inlet])
+            if len(ds.time.values) == 0:
+                
+                # Then must have not passed date_range filter?
+                print(" ... no data in range")
+                # then do nothing
 
-            ds.to_netcdf(nc_filename)
-
-            print("Written " + nc_filename)
+            else:
+    
+                # Write file
+                nc_filename = output_filename(output_folder,
+                                              network,
+                                              "CRDS",
+                                              site.upper(),
+                                              ds.time.to_pandas().index.to_pydatetime()[0],
+                                              ds.species,
+                                              params_icos[site]["inlet_rename"][inlet],
+                                              version = version)
+    
+                ds.to_netcdf(nc_filename)
+    
+                print("Written " + nc_filename)
 
         else:
             print("Skipping empty file: %s" % data_files[i])
@@ -571,7 +593,9 @@ def gc_precisions_read(precisions_file):
 
 def gc(site, instrument, network,
        input_directory = None,
-       output_directory = None):
+       output_directory = None,
+       date_range = None,
+       version = None):
     """
     Process GC data per site and instrument
     Instruments can be:
@@ -744,26 +768,36 @@ def gc(site, instrument, network,
                                    global_attributes = global_attributes,
                                    units = units[sp],
                                    scale = scale[sp],
-                                   sampling_period = params["GC"]["sampling_period"][instrument])
+                                   sampling_period = params["GC"]["sampling_period"][instrument],
+                                   date_range = date_range)
 
-                # Get instrument name for output
-                if sp.upper() in params["GC"]["instruments_out"][instrument]:
-                    instrument_out = params["GC"]["instruments_out"][instrument][sp]
+                if len(ds_sp.time.values) == 0:
+                    
+                    # Then must have not passed date_range filter?
+                    print(" ... no data in range")
+                    # then do nothing
+
                 else:
-                    instrument_out = params["GC"]["instruments_out"][instrument]["else"]
-
-                # Write file
-                print(output_folder)
-                nc_filename = output_filename(output_folder,
-                                              network,
-                                              instrument_out,
-                                              site.upper(),
-                                              ds_sp.time.to_pandas().index.to_pydatetime()[0],
-                                              ds_sp.species,
-                                              inlet = inlet_label)
-                print("Writing... " + nc_filename)
-                ds_sp.to_netcdf(nc_filename)
-                print("... written.")
+    
+                    # Get instrument name for output
+                    if sp.upper() in params["GC"]["instruments_out"][instrument]:
+                        instrument_out = params["GC"]["instruments_out"][instrument][sp]
+                    else:
+                        instrument_out = params["GC"]["instruments_out"][instrument]["else"]
+    
+                    # Write file
+                    print(output_folder)
+                    nc_filename = output_filename(output_folder,
+                                                  network,
+                                                  instrument_out,
+                                                  site.upper(),
+                                                  ds_sp.time.to_pandas().index.to_pydatetime()[0],
+                                                  ds_sp.species,
+                                                  inlet = inlet_label,
+                                                  version = version)
+                    print("Writing... " + nc_filename)
+                    ds_sp.to_netcdf(nc_filename)
+                    print("... written.")
 
 
 
@@ -822,6 +856,7 @@ def crds_data_read(data_file):
 def crds(site, network,
          input_directory = None,
          output_directory = None,
+         date_range = None,
          version = None):
     """
     Process CRDS data
@@ -865,20 +900,30 @@ def crds(site, network,
             ds_sp = attributes(ds_sp, sp, site.upper(),
                                global_attributes = global_attributes,
                                scale = scales[sp],
-                               sampling_period=60)
+                               sampling_period=60,
+                               date_range = date_range)
 
-            # Write file
-            nc_filename = output_filename(output_folder,
-                                          network,
-                                          "CRDS",
-                                          site.upper(),
-                                          ds_sp.time.to_pandas().index.to_pydatetime()[0],
-                                          ds_sp.species,
-                                          inlet = inlet,
-                                          version = version)
-            print("Writing " + nc_filename)
-            ds_sp.to_netcdf(nc_filename)
-            print("... written.")
+            if len(ds_sp.time.values) == 0:
+                
+                # Then must have not passed date_range filter?
+                print(" ... no data in range")
+                # then do nothing
+
+            else:
+
+                # Write file
+                nc_filename = output_filename(output_folder,
+                                              network,
+                                              "CRDS",
+                                              site.upper(),
+                                              ds_sp.time.to_pandas().index.to_pydatetime()[0],
+                                              ds_sp.species,
+                                              inlet = inlet,
+                                              version = version)
+                
+                print("Writing " + nc_filename)
+                ds_sp.to_netcdf(nc_filename)
+                print("... written.")
 
 
 def ale_gage(site, network):
@@ -995,8 +1040,7 @@ def ale_gage(site, network):
                                       "GCECD",
                                       site.upper(),
                                       ds.time.to_pandas().index.to_pydatetime()[0],
-                                      ds.species,
-                                      None)
+                                      ds.species)
         print("Writing " + nc_filename)
         ds.to_netcdf(nc_filename)
         print("... written.")
