@@ -77,7 +77,7 @@ species_translator = {"CO2": ["co2", "carbon_dioxide"],
                       "BENZENE": ["c6h6", "benzene"],
                       "TOLUENE": ["c6h5ch3", "methylbenzene"],
                       "ETHENE": ["c2f4", "ethene"],
-                      "ETHYNE": ["c2f2", "ethyne"],
+                      "ETHYNE": ["c2h2", "ethyne"],
                       "N2O": ["n2o", "nitrous_oxide"],
                       "CO": ["co", "carbon_monoxide"],
                       "H-1211": ["halon1211", "halon1211"],
@@ -666,10 +666,28 @@ def gc(site, instrument, network,
     dfs = pd.concat(dfs).sort_index()
 
     # Apply timestamp offset so that timestamp reflects start of sampling
-    time = dfs.index.values
-    time_offset = np.timedelta64(td(seconds = params["GC"]["timestamp_correct_seconds"][instrument]))
-    time = [t + time_offset for t in time]
-    dfs.index = time
+    time = dfs.index.values    
+    # If site-specific time-stamp correction, use that
+    #   otherwise, use the default
+
+    global_attributes_comment_append = ""
+    if "timestamp_correct_seconds" in params["GC"][site].keys():
+        time_offset_dates = params["GC"][site]["timestamp_correct_seconds"]["date"]
+        time_offsets = params["GC"][site]["timestamp_correct_seconds"][instrument]
+
+        dfs["new_index"] = dfs.index
+        for d, o in sorted(zip(time_offset_dates, time_offsets)):
+            dfs[d[0]:d[1]]["new_index"] += pd.Timedelta(seconds = o)
+            global_attributes_comment_append += " %s : %s subtracted %i s from analysis time." %\
+                        (d[0], d[1], o)            
+        dfs.set_index("new_index", inplace = True)
+                
+    else:
+        time_offset = np.timedelta64(td(seconds = params["GC"]["timestamp_correct_seconds"][instrument]))
+        time = [t + time_offset for t in time]
+        dfs.index = time
+        global_attributes_comment_append += " Subtracted %i from analysis time." % \
+                    params["GC"]["timestamp_correct_seconds"][instrument]
 
     # Label time index
     dfs.index.name = "time"
@@ -686,7 +704,8 @@ def gc(site, instrument, network,
     for sp in species:
 
         global_attributes = params["GC"][site.upper()]["global_attributes"]
-        global_attributes["comment"] = params["GC"]["comment"][instrument]
+        global_attributes["comment"] = params["GC"]["comment"][instrument] + \
+            global_attributes_comment_append
 
 
         # Now go through each inlet (if required)
@@ -700,15 +719,12 @@ def gc(site, instrument, network,
                 ds_sp = ds[[sp,
                             sp + " repeatability",
                             sp + " status_flag",
-                            sp + " integration_flag"]]
+                            sp + " integration_flag",
+                            "Inlet"]]
                 
                 # No inlet label in file name
                 inlet_label = None
                 
-                # Add list of all inlet lables, for record
-                global_attributes["inlet_height_magl"] = \
-                                    ", ".join(set(ds["Inlet"].values))
-
             else:
                 # Get specific inlet
                 
@@ -722,11 +738,9 @@ def gc(site, instrument, network,
                     ds_sp = ds_sliced[[sp,
                                        sp + " repeatability",
                                        sp + " status_flag",
-                                       sp + " integration_flag"]]
-    
-                    global_attributes["inlet_height_magl"] = \
-                        ", ".join(set(ds_sliced.Inlet.values))
-                
+                                       sp + " integration_flag",
+                                       "Inlet"]]
+                    
                 else:
                     
                     # Use UNIX pattern matching to find matching inlets
@@ -740,18 +754,19 @@ def gc(site, instrument, network,
                     ds_sp = ds.where(select_ds, drop = True)[[sp,
                                                               sp + " repeatability",
                                                               sp + " status_flag",
-                                                              sp + " integration_flag"]]
+                                                              sp + " integration_flag",
+                                                              "Inlet"]]
 
-                    # Keep a record of which inlets were included
-                    global_attributes["inlet_height_magl"] = \
-                        ", ".join(set(ds.where(select_ds, drop = True).Inlet.values))
-    
                 # re-label inlet if required
                 if "inlet_label" in params["GC"][site].keys():
                     inlet_label = params["GC"][site]["inlet_label"][inleti]
                 else:
                    inlet_label = inlet
                   
+            # Record Inlets from the .C file, for the record
+            Inlets = set(ds_sp.where(ds_sp[sp + " status_flag"] == 0, drop = True).Inlet.values)
+            global_attributes["inlet_height_magl"] = ", ".join(Inlets)
+            ds_sp = ds_sp.drop(["Inlet"])
     
 
             # Drop NaNs
@@ -1098,79 +1113,83 @@ def mhd_o3():
     print("... written.")
 
 
-def decc_data_freeze():
+def data_freeze(version,
+                end_date,
+                input_directory = "/dagage2/agage/summary/gccompare-net/snapshot/current-frozendata/data-net/",
+                output_directory = "/dagage2/agage/summary/gccompare-net/snapshot/current-frozendata/data-net/processed/"):
 
-    input_directory = "/dagage2/agage/summary/gccompare-net/snapshot/current-frozendata/data-net/"
-    output_directory = "/dagage2/agage/summary/gccompare-net/snapshot/current-frozendata/data-net/processed/"
+    date_range = ["19000101", end_date]
 
     # ICOS
-    icos("MHD", network = "ICOS", input_directory = input_directory, output_directory = output_directory)
+    icos("MHD", network = "ICOS", input_directory = input_directory,
+         output_directory = output_directory, version = version, date_range = date_range)
 
     # GAUGE CRDS data
-    crds("HFD", "GAUGE", input_directory = input_directory, output_directory = output_directory)
-    crds("BSD", "GAUGE", input_directory = input_directory, output_directory = output_directory)
+    crds("HFD", "GAUGE", input_directory = input_directory, output_directory = output_directory, version = version, date_range = date_range)
+
+    crds("BSD", "GAUGE", input_directory = input_directory, output_directory = output_directory, version = version, date_range = date_range)
+
 
     # GAUGE GC data
-    gc("BSD", "GCMD", "GAUGE", input_directory = input_directory, output_directory = output_directory)
-    gc("HFD", "GCMD", "GAUGE", input_directory = input_directory, output_directory = output_directory)
+    gc("BSD", "GCMD", "GAUGE", input_directory = input_directory, output_directory = output_directory, version = version, date_range = date_range)
+    gc("HFD", "GCMD", "GAUGE", input_directory = input_directory, output_directory = output_directory, version = version, date_range = date_range)
 
     # DECC CRDS data
-    crds("TTA", "DECC", input_directory = input_directory, output_directory = output_directory)
-    crds("RGL", "DECC", input_directory = input_directory, output_directory = output_directory)
-    crds("TAC", "DECC", input_directory = input_directory, output_directory = output_directory)
+    crds("TTA", "DECC", input_directory = input_directory, output_directory = output_directory, version = version, date_range = date_range)
+    crds("RGL", "DECC", input_directory = input_directory, output_directory = output_directory, version = version, date_range = date_range)
+    crds("TAC", "DECC", input_directory = input_directory, output_directory = output_directory, version = version, date_range = date_range)
 
     # DECC GC data
-    gc("TAC", "GCMD", "DECC", input_directory = input_directory, output_directory = output_directory)
-    gc("RGL", "GCMD", "DECC", input_directory = input_directory, output_directory = output_directory)
+    gc("TAC", "GCMD", "DECC", input_directory = input_directory, output_directory = output_directory, version = version, date_range = date_range)
+    gc("RGL", "GCMD", "DECC", input_directory = input_directory, output_directory = output_directory, version = version, date_range = date_range)
 
     # DECC Medusa
-    gc("TAC", "medusa", "DECC", input_directory = input_directory, output_directory = output_directory)
+    gc("TAC", "medusa", "DECC", input_directory = input_directory, output_directory = output_directory, version = version, date_range = date_range)
 
     # AGAGE GC data
-    gc("MHD", "GCMD", "AGAGE", input_directory = input_directory, output_directory = output_directory)
+    gc("MHD", "GCMD", "AGAGE", input_directory = input_directory, output_directory = output_directory, version = version, date_range = date_range)
 
     # AGAGE GCMS data
-    gc("MHD", "GCMS", "AGAGE", input_directory = input_directory, output_directory = output_directory)
+    gc("MHD", "GCMS", "AGAGE", input_directory = input_directory, output_directory = output_directory, version = version, date_range = date_range)
 
     # AGAGE Medusa
-    gc("MHD", "medusa", "AGAGE", input_directory = input_directory, output_directory = output_directory)
-
+    gc("MHD", "medusa", "AGAGE", input_directory = input_directory, output_directory = output_directory, version = version, date_range = date_range)
 
 
 
 
 if __name__ == "__main__":
 
-#    # AGAGE Medusa
+    # AGAGE Medusa
 #    gc("MHD", "medusa", "AGAGE")
 #    gc("CGO", "medusa", "AGAGE")
 #    gc("GSN", "medusa", "AGAGE")
-#    gc("SDZ", "medusa", "AGAGE")
-#    gc("THD", "medusa", "AGAGE")
-#    gc("RPB", "medusa", "AGAGE")
-#    gc("SMO", "medusa", "AGAGE")
-#    gc("SIO", "medusa", "AGAGE")
-#    gc("JFJ", "medusa", "AGAGE")
-#    gc("CMN", "medusa", "AGAGE")
-#    gc("ZEP", "medusa", "AGAGE")
-#
-#    # AGAGE GC data
-#    gc("RPB", "GCMD", "AGAGE")
-#    gc("CGO", "GCMD", "AGAGE")
-#    gc("MHD", "GCMD", "AGAGE")
-#    gc("SMO", "GCMD", "AGAGE")
-#    gc("THD", "GCMD", "AGAGE")
-#
-#    # AGAGE GCMS data
-#    gc("CGO", "GCMS", "AGAGE")
-#    gc("MHD", "GCMS", "AGAGE")
-#    gc("RPB", "GCMS", "AGAGE")
-#    gc("SMO", "GCMS", "AGAGE")
-#    gc("THD", "GCMS", "AGAGE")
-#    gc("JFJ", "GCMS", "AGAGE")
-#    gc("CMN", "GCMS", "AGAGE")
-#    gc("ZEP", "GCMS", "AGAGE")
-#
+    gc("SDZ", "medusa", "AGAGE")
+    gc("THD", "medusa", "AGAGE")
+    gc("RPB", "medusa", "AGAGE")
+    gc("SMO", "medusa", "AGAGE")
+    gc("SIO", "medusa", "AGAGE")
+    gc("JFJ", "medusa", "AGAGE")
+    gc("CMN", "medusa", "AGAGE")
+    gc("ZEP", "medusa", "AGAGE")
+
+    # AGAGE GC data
+    gc("RPB", "GCMD", "AGAGE")
+    gc("CGO", "GCMD", "AGAGE")
+    gc("MHD", "GCMD", "AGAGE")
+    gc("SMO", "GCMD", "AGAGE")
+    gc("THD", "GCMD", "AGAGE")
+
+    # AGAGE GCMS data
+    gc("CGO", "GCMS", "AGAGE")
+    gc("MHD", "GCMS", "AGAGE")
+    gc("RPB", "GCMS", "AGAGE")
+    gc("SMO", "GCMS", "AGAGE")
+    gc("THD", "GCMS", "AGAGE")
+    gc("JFJ", "GCMS", "AGAGE")
+    gc("CMN", "GCMS", "AGAGE")
+    gc("ZEP", "GCMS", "AGAGE")
+
     # AGAGE CRDS data
     crds("RPB", "AGAGE")
 

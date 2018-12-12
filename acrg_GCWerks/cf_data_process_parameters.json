@@ -87,6 +87,10 @@
             "gcwerks_site_name": "gosan",
             "inlets": ["any"],
             "inlet_label": ["10m"],
+            "timestamp_correct_seconds": {
+                "date": [["20000101", "20131102"], ["20131102", "20990101"]],
+                "medusa": [-1730, -2300]
+            },
             "global_attributes": {
                 "data_owner": "Sunyoung Park",
                 "data_owner_email": "sparky@kpu.ac.kr"
