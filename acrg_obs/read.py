@@ -39,7 +39,8 @@ import json
 import xarray as xr
 from collections import OrderedDict
 
-acrg_path = os.path.dirname(os.path.realpath(__file__))
+#acrg_path = os.path.dirname(os.path.realpath(__file__))
+acrg_path = getenv("ACRG_PATH")
 data_path = getenv("DATA_PATH")
 
 if data_path is None:
