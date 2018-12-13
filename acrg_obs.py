@@ -176,6 +176,7 @@ def file_list(site, species,
               inlet = None,
               network = None,
               instrument = None,
+              version = None,
               data_directory=None):
     '''
     Find all files that fit the site, species, start and end dates, inlet
@@ -286,35 +287,56 @@ def file_list(site, species,
     # If so, don't need to do anything. Otherwise, choose inlet
     if file_suffix_length[0] > 2:
         
-        file_inlet = [re.split("-|\.", f[-1])[1] for f in file_info]
+        # If all inlets are selected, do nothing
+        if inlet != "all":
         
-        # If no inlet specified, pick first element in parameters height list
-        if inlet is None:
-            file_inlet_string = site_info[site][network]["height"][0]
-        else:
-            file_inlet_string = inlet
-        # Subset of matching files
-        fnames = [f for (ht, f) in zip(file_inlet, fnames) if ht == file_inlet_string]
-        file_info = [f for (ht, f) in zip(file_inlet, file_info) if ht == file_inlet_string]
-        
-        if len(fnames) == 0:
-            print("Can't find any matching inlets: %s" %inlet)
-            return data_directory, None
+            file_inlet = [re.split("-|\.", f[-1])[1] for f in file_info]
+            
+            # If no inlet specified, pick first element in parameters height list
+            if inlet is None:
+                file_inlet_string = site_info[site][network]["height"][0]
+            else:
+                file_inlet_string = inlet
+            # Subset of matching files
+            fnames = [f for (ht, f) in zip(file_inlet, fnames) if ht == file_inlet_string]
+            file_info = [f for (ht, f) in zip(file_inlet, file_info) if ht == file_inlet_string]
+            
+            if len(fnames) == 0:
+                print("Can't find any matching inlets: %s, or use 'all'" %inlet)
+                return data_directory, None
 
-    # Return output
+
+    # specify version number
+    file_version = [re.split("-|\.", f[-1])[-2] for f in file_info]
+    
+    # If specific version is requested, use that, otherwise, take the max version
+    if version is None:
+        file_version_string = max(file_version)
+    else:
+        file_version_string = version
+        
+    # Subset of matching files
+    fnames = [f for (v, f) in zip(file_version, fnames) if v == file_version_string]
+    file_info = [f for (v, f) in zip(file_version, file_info) if v == file_version_string]
+    
     if len(fnames) == 0:
-        print("For some reason I got to this stage and there aren't any files here...")
+        print("Can't find any matching versions: %s" %version)
         return data_directory, None
     else:
+        # Return file list
         return data_directory, sorted(fnames)
 
 
 
 def get_single_site(site, species_in,
-                    network = None, start_date = None, end_date = None,
-                    inlet = None, average = None, keep_missing = False,
+                    network = None,
+                    start_date = None, end_date = None,
+                    inlet = None, average = None,
+                    keep_missing = False,
                     instrument = None,
-                    status_flag_unflagged = [0], data_directory = None):
+                    status_flag_unflagged = [0],
+                    version = None,
+                    data_directory = None):
     '''
     Get measurements from one site
     
@@ -331,8 +353,8 @@ def get_single_site(site, species_in,
         end_date (str, optional) : 
             Output end date in a format that Pandas can interpret
             Default=None.
-        height (str/list, optional) : 
-            Height of inlet for input data (must match number of sites).
+        inlet (str/list, optional) : 
+            Inlet label. If you want to merge all inlets, use "all"
             Default=None
         average (str/list, optional) :
             Averaging period for each dataset (for each site) ((must match number of sites)).
@@ -374,7 +396,7 @@ def get_single_site(site, species_in,
         print("Either try a different name, or add name to species_info.json.")
         return
     if species != species_in:
-        print("Note: changing species from %s to %s" % (species_in, species))
+        print("... changing species from %s to %s" % (species_in, species))
     
     # If no network specified, pick the first network in site_info dictionary
     if network is None:
@@ -386,10 +408,11 @@ def get_single_site(site, species_in,
         return
         
     data_directory, files = file_list(site, species,
-                                          network = network,
-                                          inlet = inlet,
-                                          instrument = instrument,
-                                          data_directory = data_directory)
+                                      network = network,
+                                      inlet = inlet,
+                                      instrument = instrument,
+                                      version = version,
+                                      data_directory = data_directory)
 
     # Iterate through files
     if files is not None:
@@ -399,7 +422,7 @@ def get_single_site(site, species_in,
         
         for f in files:
             
-            print("Reading: " + f)
+            print("... reading: " + f)
             
             # Read files using xarray
             with xr.open_dataset(os.path.join(data_directory, f)) as fxr:
@@ -639,12 +662,17 @@ def get_gosat(site, species, max_level,
 
     return data
     
-def get_obs(sites, species, start_date, end_date,
-            inlet = None, average = None,
+def get_obs(sites, species,
+            start_date = None, end_date = None,
+            inlet = None,
+            average = None,
             keep_missing=False,
-            network = None, instrument = None,
+            network = None,
+            instrument = None,
+            version = None,
             status_flag_unflagged = None,
-            max_level = None, data_directory = None):
+            max_level = None,
+            data_directory = None):
     """
     The get_obs function retrieves obervations for a set of sites and species between start and end dates
     Note: max_level only pertains to satellite data
@@ -678,9 +706,9 @@ def get_obs(sites, species, start_date, end_date,
             Species identifier. All species names should be defined within acrg_species_info.json. 
             E.g. "ch4" for methane.
         start_date (str) : 
-            Start date in format "YYYY-MM-DD" for range of files to find.
+            Output start date in a format that Pandas can interpret
         end_date (str) : 
-            End date in same format as start for range of files to find.
+            Output end date in a format that Pandas can interpret
         inlet (str/list, optional) : 
             Height of inlet for input data (must match number of sites).
         average (str/list, optional) :
@@ -734,6 +762,7 @@ def get_obs(sites, species, start_date, end_date,
     average = check_list_and_length(average, sites, "average")
     network = check_list_and_length(network, sites, "network")
     instrument = check_list_and_length(instrument, sites, "instrument")
+    version = check_list_and_length(version, sites, "version")
     
     # Get data
     obs = {}
@@ -753,6 +782,7 @@ def get_obs(sites, species, start_date, end_date,
                                    average = average[si],
                                    network = network[si],
                                    instrument = instrument[si],
+                                   version = version[si],
                                    keep_missing = keep_missing,
                                    status_flag_unflagged = status_flag_unflagged[si],
                                    data_directory = data_directory)
