@@ -68,6 +68,8 @@ A param_type dictionary can be defined both to fix expected inputs and to explic
 import configparser
 from collections import OrderedDict
 import numpy as np
+import os
+import sys
 
 def open_config(config_file):
     '''
@@ -118,6 +120,58 @@ def generate_param_dict(config_file):
             param_type[section] = section_types
     
     return param_type
+
+def generate_from_template(template_file,output_file):
+    '''
+    The generate_from_template function generates an example configuration file based on
+    a template file. Template files are normally used to inform the expected format of any
+    input configuration file.
+    
+    Args:
+        template_file (str) :
+            Input template file in expected .ini format.
+        output_file (str) :
+            Name of output file including path information.
+    
+    Returns
+        None
+    
+    Writes output file.
+    
+    If output file is already present, the user will be asked whether the file should be 
+    overwritten. If the response is 'N' or 'no' or an unrecognised input an expection will 
+    be raised.
+    '''
+    if os.path.exists(output_file):
+        answer = raw_input("This action with overwrite existing {} file. Do you wish to proceed (Y/N): ".format(output_file))
+        if answer.lower() == "y" or answer.lower() == "yes":
+            out = open(output_file,"w")
+        elif answer.lower() == "n" or answer.lower() == "no":
+            raise Exception("Configuration file has not been generated.")
+        else:
+            raise Exception("Did not understand input: '{}'. Configuration file has not been regenerated.".format(answer))
+    else:
+        out = open(output_file,"w")
+    
+    copy = False
+    with open(template_file) as fname:
+        for i,line in enumerate(fname):
+            if copy:
+                out.write(line)
+            elif not line.strip():
+                #print('Empty line',i)
+                continue
+            elif line.strip().startswith('##'):
+                #print("##",i)
+                continue
+            else:
+                copy = True
+                #print("Writing out from line: {}".format(i))
+                out.write(line)
+
+    print("Configuration file: {} has been generated.".format(output_file)) 
+
+    out.close()
 
 
 def str_check(string,error=True):
