@@ -1658,7 +1658,8 @@ def obspack_co2(site, height, obspack_name):
                        'SSL':'NDIR',
                        'LMP':'NDIR',
                        'OPE':'CRDS',
-                       'TRN':'GC-FID'}
+                       'TRN':'GC-FID',
+                       'WAO':'NDIR'}
 
     if len(fname) == 0:
         print "Can't find file for obspack %s, site %s and height %s" %(obspack_name, site, height)
