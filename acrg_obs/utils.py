@@ -8,21 +8,15 @@ Created on Thu Dec 13 17:31:42 2018
 
 import glob
 import os
-import numpy as np
-import pandas as pd
-from os.path import join, split
+from os.path import join
 from datetime import datetime as dt
-from datetime import timedelta as td
-import xarray as xray
 import json
-from os import getenv, stat
 import time
 import getpass
-import fnmatch
 
 #acrg_path = os.path.dirname(os.path.realpath(__file__))
-acrg_path = getenv("ACRG_PATH")
-data_path = getenv("DATA_PATH")
+acrg_path = os.getenv("ACRG_PATH")
+data_path = os.getenv("DATA_PATH")
 
 if data_path is None:
     data_path = "/data/shared/"
@@ -31,17 +25,6 @@ if data_path is None:
 
 # Set default obs folder
 obs_directory = os.path.join(data_path, "obs_2018/")
-
-
-# Read site info file
-info_file = join(acrg_path,
-                 "acrg_GCWerks/cf_data_process_parameters.json")
-with open(info_file) as sf:
-    params = json.load(sf)
-
-site_info_file = join(acrg_path, "acrg_site_info.json")
-with open(site_info_file) as sf:
-    site_params = json.load(sf)
 
 # Output unit strings (upper case for matching)
 unit_species = {"CO2": "1e-6",
@@ -70,15 +53,7 @@ unit_interpret = {"ppm": "1e-6",
                   "ppq": "1e-15",
                   "else": "unknown"}
 
-# Default calibration scales
-# TODO: Remove this? seems dangerous
-scales = {"CO2": "NOAA-2007",
-          "CH4": "NOAA-2004A",
-          "N2O": "SIO-98",
-          "CO": "Unknown"}
-
-
-# For species which need more than just a hyphen removing or changing to lower case
+# For species which need more than just a hyphen removing and/or changing to lower case
 # First element of list is the output variable name,
 # second is the long name for variable standard_name and long_name
 # Keys are upper case
@@ -116,6 +91,11 @@ species_translator = {"CO2": ["co2", "carbon_dioxide"],
 
 def site_info_attributes(site):
 
+    # Read site info file
+    site_info_file = join(acrg_path, "acrg_site_info.json")
+    with open(site_info_file) as sf:
+        site_params = json.load(sf)
+        
     attributes = {}
     attributes_list = {"longitude": "station_longitude",
                        "latitude": "station_latitude",
@@ -131,7 +111,9 @@ def site_info_attributes(site):
         return None
 
 def attributes(ds, species, site,
-               global_attributes = None,
+               global_attributes = {"Conditions of use": "Ensure that you contact the data owner at the outset of your project.",
+                                    "Source": "In situ measurements of air",
+                                    "Conventions": "CF-1.6"},
                units = None,
                scale = None,
                sampling_period = None,
@@ -196,10 +178,7 @@ def attributes(ds, species, site,
         global_attributes = {}
 
     # Add some defaults
-    for key, value in params["global_attributes"].iteritems():
-        global_attributes[key] = value
     global_attributes["File created"] = str(dt.now())
-    global_attributes["Conventions"] = "CF-1.6"
 
     # Add user
     global_attributes["Processed by"] = "%s@bristol.ac.uk" % getpass.getuser()    
@@ -218,10 +197,7 @@ def attributes(ds, species, site,
     if scale:
         ds.attrs["Calibration_scale"] = scale
     else:
-        if species.upper() in scales.keys():
-            ds.attrs["Calibration_scale"] = scales[species.upper()]
-        else:
-            ds.attrs["Calibration_scale"] = "unknown"
+        ds.attrs["Calibration_scale"] = "unknown"
 
     # Add species name
     ds.attrs["species"] = species_out

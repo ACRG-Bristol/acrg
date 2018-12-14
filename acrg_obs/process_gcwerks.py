@@ -20,7 +20,7 @@ from acrg_obs.utils import attributes, output_filename
 # Read site info file
 acrg_path = getenv("ACRG_PATH")
 info_file = join(acrg_path,
-                 "acrg_GCWerks/cf_data_process_parameters.json")
+                 "acrg_obs/process_gcwerks_parameters.json")
 with open(info_file) as sf:
     params = json.load(sf)
 
@@ -274,9 +274,15 @@ def gc_data_read(dotC_file, scale = {}, units = {}):
                      sep=r"\s+")
 
     # Time index
-    time = [dt(df.yyyy[i], df.mm[i], df.dd[i], df.hh[i], df.mi[i]) \
-            for i in range(len(df))]
+    
+    time = []
+    time_analysis = []
+    for i in range(len(df)):
+        time.append(dt(df.yyyy[i], df.mm[i], df.dd[i], df.hh[i], df.mi[i]))
+        time_analysis.append(dt(df.ryyy[i], df.rm[i], df.rd[i], df.rh[i], df.ri[i]))
+        
     df.index = time
+    df["analysis_time"] = time_analysis
 
     # Drop duplicates
     df = df.reset_index().drop_duplicates(subset='index').set_index('index')
@@ -411,30 +417,6 @@ def gc(site, instrument, network,
     # Concatenate
     dfs = pd.concat(dfs).sort_index()
 
-    # Apply timestamp offset so that timestamp reflects start of sampling
-    time = dfs.index.values    
-    # If site-specific time-stamp correction, use that
-    #   otherwise, use the default
-
-    global_attributes_comment_append = ""
-    if "timestamp_correct_seconds" in params["GC"][site].keys():
-        time_offset_dates = params["GC"][site]["timestamp_correct_seconds"]["date"]
-        time_offsets = params["GC"][site]["timestamp_correct_seconds"][instrument]
-
-        dfs["new_index"] = dfs.index
-        for d, o in sorted(zip(time_offset_dates, time_offsets)):
-            dfs[d[0]:d[1]]["new_index"] += pd.Timedelta(seconds = o)
-            global_attributes_comment_append += " %s : %s subtracted %i s from analysis time." %\
-                        (d[0], d[1], o)            
-        dfs.set_index("new_index", inplace = True)
-                
-    else:
-        time_offset = np.timedelta64(td(seconds = params["GC"]["timestamp_correct_seconds"][instrument]))
-        time = [t + time_offset for t in time]
-        dfs.index = time
-        global_attributes_comment_append += " Subtracted %i from analysis time." % \
-                    params["GC"]["timestamp_correct_seconds"][instrument]
-
     # Label time index
     dfs.index.name = "time"
 
@@ -450,8 +432,7 @@ def gc(site, instrument, network,
     for sp in species:
 
         global_attributes = params["GC"][site.upper()]["global_attributes"]
-        global_attributes["comment"] = params["GC"]["comment"][instrument] + \
-            global_attributes_comment_append
+        global_attributes["comment"] = params["GC"]["comment"][instrument]
 
 
         # Now go through each inlet (if required)
@@ -466,6 +447,7 @@ def gc(site, instrument, network,
                             sp + " repeatability",
                             sp + " status_flag",
                             sp + " integration_flag",
+#                            "analysis_time",
                             "Inlet"]]
                 
                 # No inlet label in file name
@@ -485,6 +467,7 @@ def gc(site, instrument, network,
                                        sp + " repeatability",
                                        sp + " status_flag",
                                        sp + " integration_flag",
+#                                       "analysis_time",
                                        "Inlet"]]
                     
                 else:
@@ -501,6 +484,7 @@ def gc(site, instrument, network,
                                                               sp + " repeatability",
                                                               sp + " status_flag",
                                                               sp + " integration_flag",
+#                                                              "analysis_time"
                                                               "Inlet"]]
 
                 # re-label inlet if required
@@ -508,10 +492,18 @@ def gc(site, instrument, network,
                     inlet_label = params["GC"][site]["inlet_label"][inleti]
                 else:
                    inlet_label = inlet
-                  
+
+            if inlet_label == None:
+                global_attributes["inlet_magl"] = params["GC"][site]["inlet_label"][inleti]
+            else:
+                global_attributes["inlet_magl"] = inlet_label
+            
             # Record Inlets from the .C file, for the record
+            # TODO: figure out why xarray raises an error at this line
+            #   if "analysis time" column is included (commented out above)
             Inlets = set(ds_sp.where(ds_sp[sp + " status_flag"] == 0, drop = True).Inlet.values)
-            global_attributes["inlet_height_magl"] = ", ".join(Inlets)
+            global_attributes["inlet_gcwerks"] = ", ".join(Inlets)           
+            # Now remove "Inlet" column from dataframe. Don't need it
             ds_sp = ds_sp.drop(["Inlet"])
     
 
@@ -907,9 +899,9 @@ def data_freeze(version,
 if __name__ == "__main__":
 
     # AGAGE Medusa
-#    gc("MHD", "medusa", "AGAGE")
-#    gc("CGO", "medusa", "AGAGE")
-#    gc("GSN", "medusa", "AGAGE")
+    gc("MHD", "medusa", "AGAGE")
+    gc("CGO", "medusa", "AGAGE")
+    gc("GSN", "medusa", "AGAGE")
     gc("SDZ", "medusa", "AGAGE")
     gc("THD", "medusa", "AGAGE")
     gc("RPB", "medusa", "AGAGE")
