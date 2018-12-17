@@ -274,7 +274,7 @@ def get_file_list(site, species, start, end, height,
         file_height_string = listsearch(height, site, site_info, 
                                         label="height")                        
         if file_height_string is None:
-            print("Height " + height + " doesn't exist in site_info.json. "
+            print("Height " + height[0] + " doesn't exist in site_info.json. "
                 + "Available heights are " + str(site_info[site]["height"])
                 + ". Leave blank for default height.")
             return data_directory, None

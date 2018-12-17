@@ -1501,7 +1501,8 @@ def combine_timeseries(*ds_mult):
 
     return combined_ds
  
-def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True):
+def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True, 
+                    lower_percentile = 16., upper_percentile = 84.):
     
     """
     Plot measurement timeseries of posterior and observed measurements
@@ -1509,9 +1510,17 @@ def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True
     For future: incorporate model & measurement uncertainty
     Plots separate subplots for each of the measurement sites - hopefully!
     
-    ds = dataset output from run_tdmcmc script
-    fig_text = String e.g. "CH$_{4}$ mole fraction (ppb)"
-    ylim = array [ymin,ymax]
+    Args:
+        ds (xarray dataset) : dataset output from run_tdmcmc script
+        fig_text (String) : e.g. "CH$_{4}$ mole fraction (ppb)"
+        ylim (array) : y-axis limits [ymin,ymax]
+        out_filename (string) : Filename to save file
+        doplot (bool) : Plot to console? (optional)
+        lower_percentile (float) : Lower percetile of predicted time series 
+                                   uncertainty (default = 16)
+        upper_percentile (float) : Upper percetile of predicted time series 
+                                   uncertainty (default = 84)
+        
     
     Specify an out_filename to write to disk
     """
@@ -1533,8 +1542,8 @@ def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True
     y_time = ds.y_time.values
     y_site = ds.y_site.values
     y_obs = ds.y.values
-    upper = y_post_mean+sigma_y_mean
-    lower = y_post_mean-sigma_y_mean
+    upper = np.percentile(y_post_it, upper_percentile, axis=0)#y_post_mean+sigma_y_mean # 
+    lower = np.percentile(y_post_it, lower_percentile, axis=0)# y_post_mean-sigma_y_mean # 
     
 
     if doplot is True:
