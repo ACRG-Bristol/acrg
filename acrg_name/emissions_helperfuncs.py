@@ -198,7 +198,6 @@ def getGFED(year, lon_out, lat_out, timeframe='monthly', months = [1,2,3,4,5,6,7
                #emissions += DM_emissions * contribution * EF[sourceindex[source]]
                #Then convert from g/m2/month to mol/m2/s
                emissions[i, :,:] += (DM_emissions * contribution * EF[sourceindex[source]]) / (EF[0] * convert2secs)
-               #print "i",i
     elif timeframe == 'daily':
         emissions = np.zeros((np.sum(dim), len(lat), len(lon)))
         convert2secs = 24*3600
@@ -267,7 +266,7 @@ def getGFED(year, lon_out, lat_out, timeframe='monthly', months = [1,2,3,4,5,6,7
     for i in range(nt):
        narr[:,:,i], reg = regrid2d(emissions[i,:,:], lat, lon,
                              lat_out, lon_out)
-    return narr
+    return(narr)
     
 def getedgarannualtotals(year, lon_out, lat_out, species='CH4'):
     """
@@ -980,8 +979,8 @@ def _SWAMPSfile():
     '''
     path = os.path.join(data_path,"Gridded_fluxes/CH4/SWAMPS")
     #filename_swamps = os.path.join(path,"fw_swamps-glwd_2000-2012.nc") # Previous version
-    filename_swamps = os.path.join(path,"gcp-ch4_wetlands_2000-2017_05deg.nc") # Without inland water
-    #filename_swamps = os.path.join(path,"gcp-ch4_wetlands-and-inland-water_2000-2017_025deg.nc")
+    #filename_swamps = os.path.join(path,"gcp-ch4_wetlands_2000-2017_05deg.nc") # Without inland water
+    filename_swamps = os.path.join(path,"gcp-ch4_wetlands-and-inland-water_2000-2017_025deg.nc")
     
     return filename_swamps
 

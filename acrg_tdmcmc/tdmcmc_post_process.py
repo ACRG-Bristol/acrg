@@ -663,7 +663,7 @@ def unbiasedDivergingCmap(data, zero = 0, minValue = None, maxValue = None):
 
 def plot_map(data, lon, lat, clevels=None, divergeCentre = None, cmap=plt.cm.RdBu_r, borders=True,
              label=None, smooth = False, out_filename=None, stations=None, fignum=None,
-                 title=None, extend="both", fig=None, ax=None, show=True):
+                 title=None, extend="both", figsize=None, fig=None, ax=None, show=True):
     
     """
     Plot 2d map of data
@@ -708,6 +708,9 @@ def plot_map(data, lon, lat, clevels=None, divergeCentre = None, cmap=plt.cm.RdB
             Extend colorbar for out-of-range values.
             Options are [ 'neither' | 'both' | 'min' | 'max' ]
             Default = "both". Set to "neither" to not extend.
+        figsize (tuple/None, optional) :
+            Figure size tuple if creating a new fig object.
+            Default = None.
         fig (matplotlib.pyplot.Figure, optional) :
             Figure object for plot. If not specified this will be created. Default = None
         ax (matplotlib.pyplot.Axes, optional) :
@@ -727,7 +730,7 @@ def plot_map(data, lon, lat, clevels=None, divergeCentre = None, cmap=plt.cm.RdB
             Plot is displayed interactively
     """
     if fig is None and ax is None:
-        fig = plt.figure(fignum)
+        fig = plt.figure(fignum,figsize=figsize)
         ax = fig.add_subplot(1,1,1,projection=ccrs.PlateCarree(central_longitude=np.median(lon)))
     
     #ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=np.median(lon)))
@@ -779,6 +782,8 @@ def plot_map(data, lon, lat, clevels=None, divergeCentre = None, cmap=plt.cm.RdB
     tick_locator = ticker.MaxNLocator(nbins=5)
     cb.locator = tick_locator
     cb.update_ticks()                 
+    
+    fig.tight_layout()
     if out_filename is not None:
         fig.savefig(out_filename)
         #plt.close(fig=fig)
@@ -788,9 +793,9 @@ def plot_map(data, lon, lat, clevels=None, divergeCentre = None, cmap=plt.cm.RdB
         return fig,ax
 
 def plot_map_mult(data_all, lon, lat, grid=True, subplot="auto", clevels=None, divergeCentre=None, 
-                 cmap=plt.cm.RdBu_r, borders=True, labels=None,
+                 centre_zero=False,cmap=plt.cm.RdBu_r, borders=True, labels=None,
                  smooth=False, out_filename=None, stations=None, fignum=None,
-                 title=None, extend="both"):
+                 title=None, extend="both",figsize=None):
     '''
     Uses plot_map function to plot a set of maps either on a grid or as separate figures.
     If plotting on a grid the subplots are either determined automatically based on shape of 
@@ -876,14 +881,18 @@ def plot_map_mult(data_all, lon, lat, grid=True, subplot="auto", clevels=None, d
         out_filename = None
         fignum = None
     
+    if clevels is None:
+        # Standarises clevels across all plots.
+        clevels = set_clevels(data_all,centre_zero=centre_zero,robust=True)
+    
     for i in range(nrun):
         data = data_all[...,i]
         
         if i == 0 and grid:
-            fig = plt.figure(fignum)
+            fig = plt.figure(fignum,figsize=figsize)
             position = i+1
         elif grid is False:
-            fig = plt.figure()
+            fig = plt.figure(figsize=figsize)
             position = 1
         else:
             position = i+1
@@ -899,9 +908,10 @@ def plot_map_mult(data_all, lon, lat, grid=True, subplot="auto", clevels=None, d
                  cmap=plt.cm.RdBu_r, borders=borders, label=labels[i], smooth=smooth, stations=stations[i],
                  title=title, extend=extend, out_filename=out_filename, show=True, ax=ax, fig=fig)
 
-def plot_scale_map(ds_list, grid=True, clevels=None, divergeCentre=None, 
+def plot_scale_map(ds_list, grid=True, clevels=None, divergeCentre=None, centre_zero=True,
                    cmap=plt.cm.RdBu_r, borders=True, labels=None, plot_stations=True,
-                   smooth=False, out_filename=None, fignum=None, title=None, extend="both"):
+                   smooth=False, out_filename=None, fignum=None, title=None, extend="both",
+                   figsize=None):
     '''
     The plot_scale_map function plots 2D scaling map(s) of posterior x. This is the degree of 
     scaling which has been applied to prior emissions.
@@ -940,13 +950,15 @@ def plot_scale_map(ds_list, grid=True, clevels=None, divergeCentre=None,
     x_post_mean_list = [x_post_mean(ds) for ds in ds_list]
     
     plot_map_mult(x_post_mean_list, lon=ds_list[0]["lon"], lat=ds_list[0]["lat"], grid=grid,
-                  clevels=clevels, divergeCentre=divergeCentre, cmap=plt.cm.RdBu_r, labels=labels, 
-                  smooth=smooth, out_filename=out_filename, stations=stations, fignum=fignum, 
-                  title=title, extend=extend)
+                  clevels=clevels, divergeCentre=divergeCentre, centre_zero=centre_zero, 
+                  cmap=plt.cm.RdBu_r, labels=labels, smooth=smooth, out_filename=out_filename, 
+                  stations=stations, fignum=fignum, 
+                  title=title, extend=extend, figsize=figsize)
 
 def plot_abs_map(ds_list, species, grid=True, clevels=None, divergeCentre=None, 
                    cmap=plt.cm.RdBu_r, borders=True, labels=None, plot_stations=True,
-                   smooth=False, out_filename=None, fignum=None, title=None, extend="both"):
+                   smooth=False, out_filename=None, fignum=None, title=None, extend="both",
+                   figsize=None):
     '''
     The plot_abs_map function plots 2D map(s) of posterior x in g/m2/s.
     
@@ -991,11 +1003,12 @@ def plot_abs_map(ds_list, species, grid=True, clevels=None, divergeCentre=None,
     plot_map_mult(q_abs_list, lon=ds_list[0]["lon"], lat=ds_list[0]["lat"], grid=grid,
                   clevels=clevels, divergeCentre=divergeCentre, cmap=plt.cm.RdBu_r, labels=labels, 
                   smooth=smooth, out_filename=out_filename, stations=stations, fignum=fignum, 
-                  title=title, extend=extend)
+                  title=title, extend=extend, figsize=figsize)
 
 def plot_diff_map(ds_list, species, grid=True, clevels=None, divergeCentre=None, 
-                   cmap=plt.cm.RdBu_r, borders=True, labels=None, plot_stations=True,
-                   smooth=False, out_filename=None, fignum=None, title=None, extend="both"):
+                   centre_zero=True,cmap=plt.cm.RdBu_r, borders=True, labels=None, plot_stations=True,
+                   smooth=False, out_filename=None, fignum=None, title=None, extend="both",
+                   figsize=None):
     '''
     The plot_diff_map function plots 2D map(s) of the difference between the prior and 
     posterior x in g/m2/s.
@@ -1039,9 +1052,9 @@ def plot_diff_map(ds_list, species, grid=True, clevels=None, divergeCentre=None,
     q_diff_list = [mol2g(flux_diff(ds),species) for ds in ds_list]
     
     plot_map_mult(q_diff_list, lon=ds_list[0]["lon"], lat=ds_list[0]["lat"], grid=grid,
-                  clevels=clevels, divergeCentre=divergeCentre, cmap=plt.cm.RdBu_r, labels=labels, 
-                  smooth=smooth, out_filename=out_filename, stations=stations, fignum=fignum, 
-                  title=title, extend=extend)
+                  clevels=clevels, divergeCentre=divergeCentre, centre_zero=centre_zero,
+                  cmap=plt.cm.RdBu_r, labels=labels, smooth=smooth, out_filename=out_filename, stations=stations, fignum=fignum, 
+                  title=title, extend=extend, figsize=figsize)
 
 def regions_histogram(k_it, out_filename=None, fignum=2):
     
@@ -1299,6 +1312,7 @@ def country_emissions_mult(ds_list, countries, species, domain, x_post_vit=None,
     # Constructed from all datasets
     country_mean = np.zeros((ncountries,ntime)) 
     country_percentile = np.zeros((ncountries,ntime,npercentile))
+    country_prior = np.zeros((ncountries,ntime))
 
     for i,ds in enumerate(ds_list):
         country_out = country_emissions(ds, countries, species, domain, 
@@ -1307,11 +1321,12 @@ def country_emissions_mult(ds_list, countries, species, domain, x_post_vit=None,
         
         country_mean[:,i] = country_out[1]
         country_percentile[:,i,:] = country_out[2]
+        country_prior[:,i] = country_out[3]
 
         if i == 0:
             # Should be the same for all datasets
             country_it = country_out[0]
-            country_prior = country_out[3]
+            #country_prior = country_out[3]
             country_index = country_out[4]
 
     return country_it,country_mean,country_percentile,country_prior,country_index
