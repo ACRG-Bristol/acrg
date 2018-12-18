@@ -9,7 +9,6 @@ import numpy as np
 import pandas as pd
 from os.path import join, split
 from datetime import datetime as dt
-from datetime import timedelta as td
 import glob
 import xarray as xray
 import json
@@ -278,11 +277,14 @@ def gc_data_read(dotC_file, scale = {}, units = {}):
     time = []
     time_analysis = []
     for i in range(len(df)):
+        # sampling time
         time.append(dt(df.yyyy[i], df.mm[i], df.dd[i], df.hh[i], df.mi[i]))
-        time_analysis.append(dt(df.ryyy[i], df.rm[i], df.rd[i], df.rh[i], df.ri[i]))
+        # Read analysis time
+        if "ryyy" in df.keys():
+            time_analysis.append(dt(df.ryyy[i], df.rm[i], df.rd[i], df.rh[i], df.ri[i]))
         
     df.index = time
-    df["analysis_time"] = time_analysis
+#    df["analysis_time"] = time_analysis
 
     # Drop duplicates
     df = df.reset_index().drop_duplicates(subset='index').set_index('index')
@@ -417,6 +419,12 @@ def gc(site, instrument, network,
     # Concatenate
     dfs = pd.concat(dfs).sort_index()
 
+    # Apply timestamp correction, because GCwerks currently outputs
+    #   the CENTRE of the sampling period
+    dfs["new_time"] = dfs.index - \
+            pd.Timedelta(seconds = params["GC"]["sampling_period"][instrument]/2.)
+    dfs.set_index("new_time", inplace = True, drop = True)
+    
     # Label time index
     dfs.index.name = "time"
 
