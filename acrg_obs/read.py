@@ -307,18 +307,34 @@ def file_list(site, species,
                 return data_directory, None
 
 
-    # specify version number
-    file_version = [re.split("-|\.", f[-1])[-2] for f in file_info]
+    # Work out which file version to use
+    
     
     # If specific version is requested, use that, otherwise, take the max version
+    # Dropping file_info after this bit, because we don't use it again
     if version is None:
-        file_version_string = max(file_version)
+        # Split filenames before version number
+        first_part_of_fname = []
+        last_part_of_fname = []
+        for f in fnames:
+            # search backward for last hyphen in string
+            version_pos = len(f) - f[::-1].find("-")
+            first_part_of_fname.append(f[:version_pos])
+            last_part_of_fname.append(f[version_pos:])
+
+        fnames_out = []
+        for first in set(first_part_of_fname):
+            # Get maximum version number for each set of files where every 
+            # early part of the filename is identical
+            fnames_out.append(sorted([f for f in fnames if first in f])[-1])
+        fnames = fnames_out[:]
+
     else:
+        file_version = [re.split("-|\.", f[-1])[-2] for f in file_info]
         file_version_string = version
-        
-    # Subset of matching files
-    fnames = [f for (v, f) in zip(file_version, fnames) if v == file_version_string]
-    file_info = [f for (v, f) in zip(file_version, file_info) if v == file_version_string]
+        # Subset of matching files
+        fnames = [f for (v, f) in zip(file_version, fnames) if v == file_version_string]
+#        file_info = [f for (v, f) in zip(file_version, file_info) if v == file_version_string]
     
     if len(fnames) == 0:
         print("Can't find any matching versions: %s" %version)
@@ -845,15 +861,15 @@ def plot(data_dict):
                 plots.append(mpatches.Patch(label="%s (no data)" %site, color = "white"))
             else:
                 if "vmf" in df.columns:
-                    plots.append(plt.errorbar(df.index, df.mf, df.vmf,
-                                 linewidth = 0,
-                                 marker = '.', markersize = 3.,
-                                 label = site))
+                    error_col = "vmf"
                 if "dmf" in df.columns:
-                    plots.append(plt.errorbar(df.index, df.mf, df.dmf,
-                                 linewidth = 0, 
-                                 marker = '.', markersize = 3.,
-                                 label = site))
+                    error_col = "dmf"
+                
+                plots.append(plt.errorbar(df.index, df.mf,
+                                          yerr = df[error_col],
+                                          linewidth = 0, 
+                                          marker = '.', markersize = 3.,
+                                          label = site))
 
     plt.legend(handles = plots)
     plt.ylabel("%s (%s)" %(data_dict[".species"], data_dict[".units"]))

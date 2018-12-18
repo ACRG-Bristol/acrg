@@ -161,17 +161,29 @@ def attributes(ds, species, site,
         if len(ds.time.values) == 0:
             return ds
 
-    # Rename species
+    # Rename all columns to lower case! Could this cause problems?
     for key in ds.keys():
-        if species in key:
+        ds.rename({key: key.lower()}, inplace = True)
+
+    # Rename species, if required
+    for key in ds.keys():
+        if species.lower() in key:
             if species.upper() in species_translator.keys():
                 # Rename based on species_translator, if available
                 species_out = species_translator[species.upper()][0]
             else:
                 # Rename species to be lower case and without hyphens
                 species_out = species.lower().replace("-", "")
-            ds.rename({key: key.replace(species, species_out)}, inplace = True)
-
+                
+            rename_dict = {key: key.replace(species.lower(), species_out)}
+            ds.rename(rename_dict, inplace = True)
+            
+    # Check if these was a variable with the species name in it
+    try:
+      species_out
+    except NameError:
+      print("ERROR: Can't find species %s in column names %s" %(species, ds.keys()))
+      
     # Global attributes
     #############################################
     if global_attributes is None:
@@ -241,7 +253,7 @@ def attributes(ds, species, site,
 
             # Add to list of ancilliary variables                    
             if key != species_out:
-                ancillary_variables += " " + key
+                ancillary_variables += key + ", "
 
     # Write ancilliary variable list
     ds[species_out].attrs["ancilliary_variables"] = ancillary_variables.strip()
