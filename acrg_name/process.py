@@ -977,7 +977,7 @@ def footprint_array(fields_file,
 #            metr = met[0].reindex(index = np.array([t]))
             metr = met[0][~met[0].index.duplicated(keep='first')].reindex(index = np.array([t]))
             if np.isnan(metr.values).any():
-                raise ValueError("No met data for given date")
+                raise ValueError("No met data for given date %s" % t)
             
         for key in metr.keys():
             if key != "time":
@@ -1569,6 +1569,7 @@ def process(domain, site, height, year, month,
             perturbed_folder = None,
             vertical_profile=False,
             transport_model="NAME"):
+    
     '''Process a single month of footprints for a given domain, site, height,
     year, month. 
     
@@ -1602,8 +1603,8 @@ def process(domain, site, height, year, month,
         particles_folder (str, optional):
             Folder containing particles data.
             Default = "Particle_files",
-        met_folder (str, optional):
-            Folder containing met data
+        met_folder (str or list, optional):
+            Folder(s) containing met data
             Default = "Met"
         force_met_empty (bool, optional):
              Force the met data to be empty?
@@ -1784,11 +1785,18 @@ def process(domain, site, height, year, month,
                 #met_search_str = subfolder + met_folder + "/*" + datestr + "*/*.txt*"
                 # Modified: 06/03/2018 - problems when # files > 100, point 10 was matching multiple
                 met_search_str = subfolder + met_folder + "/*" + datestr + "/*.txt*"
+                met_files = sorted(glob.glob(met_search_str))
             else:
-                met_search_str = subfolder + met_folder + "/*.txt*"
-      
-            met_files = sorted(glob.glob(met_search_str))
-        
+                if type(met_folder) == list:
+                    met_files = []
+                    for metf in met_folder:
+                        met_search_str = subfolder + metf + "/*.txt*"
+                        met_files = met_files + sorted(glob.glob(met_search_str))
+                else:
+                    met_search_str = subfolder + met_folder + "/*.txt*"
+                    met_files = sorted(glob.glob(met_search_str))
+                
+           
             if len(met_files) == 0:
                 status_log("Can't file MET files: " + met_search_str,
                            error_or_warning="error")
@@ -1802,7 +1810,7 @@ def process(domain, site, height, year, month,
                 met = read_met(met_files,satellite=satellite)
         else:
             met = None
-
+        
             # Get footprints
         if transport_model is "STILT":
             fp_file = stiltfoot_array(subfolder + fields_folder + "/" + datestr, 
@@ -1942,7 +1950,7 @@ def process_all(domain, site,
                 years_in = None,
                 months_in = None,
                 base_dir = "/dagage2/agage/metoffice/NAME_output/",
-                met_folder = "Met",
+                met_folder = ["Met", "Met_daily"],
                 force_update = False,
                 satellite = False,
                 perturbed_folder = None,
@@ -2006,6 +2014,9 @@ def process_all(domain, site,
             ncdf format created by the STILT model. Other values are invalid. 
             Notset up to read satellite column footprints from STILT format.
             Default="NAME".
+        met_folder (str or list, optional):
+            Folder(s) containing met data
+            Default = ["Met", "Met_daily"]
         
     Returns:
         None.
