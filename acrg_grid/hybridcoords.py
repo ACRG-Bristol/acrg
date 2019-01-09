@@ -60,13 +60,13 @@ def hybridcoords(A, PS, B=B, P0=P0, half=half):
   #Check default inputs
   if len(B) > 1:
     if len(B) != LevSize:
-        print "A and B must have same dimensions"
+        print("A and B must have same dimensions")
     has_B=1
   else: 
     has_B=0
   
   if len(np.shape(PS)) > 2:
-      print "PS variable needs to be 2D i.e. lat by lon"
+      print("PS variable needs to be 2D i.e. lat by lon")
   
   #if np.shape(PS) != np.shape(P)[0:2]:
     #  PS = np.transpose(PS)
