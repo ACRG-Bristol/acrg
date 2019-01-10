@@ -212,6 +212,7 @@ def makeCAMS_BC(domain, species, st_date, end_date, gridsize):
         speciesmm = 16.0425
     airmm = 28.9644 #Molar mass of air g/mol
     ds['z'] = ds.z/9.80665   #Convert to height (N.B. this is geopotential height!)
+    ds = ds.rename({species+'_c' :  species})   #ECMWF seemed to change their naming convention – quick fix
     ds[species] = ds[species] *airmm/speciesmm #Convert into mol/mol
     
     
@@ -245,6 +246,9 @@ def makeCAMS_BC(domain, species, st_date, end_date, gridsize):
     BC_edges.attrs['title'] = "ECMWF CAMS "+species+" volume mixing ratios at domain edges"
     BC_edges.attrs['author'] = getpass.getuser()
     BC_edges.attrs['date_created'] = np.str(dt.today())
+    
+    if os.path.isdir(data_path+"NAME/bc/%s/" % domain) == False:
+        os.mkdir(data_path+"NAME/bc/%s/" % domain)
     
     BC_edges.to_netcdf(path = data_path+"NAME/bc/%s/%s_%s_%s.nc"
                        %(domain,species.lower(),domain,dt.strptime(st_date, '%Y-%m-%d').strftime('%Y%m')), mode = 'w')
