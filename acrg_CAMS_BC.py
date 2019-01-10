@@ -27,21 +27,24 @@ import os
 import glob
 import getpass
 from datetime import datetime as dt
+from acrg_tdmcmc.tdmcmc_post_process import molar_mass
 
-def getCAMSdata(st_date, end_date, gridsize, NESW, species, outputname, nearrealtime = False):
+def getCAMSdata(st_date, end_date, gridsize, NESW, species, outputname, nearrealtime = False,
+                timeframe="daily"):
     """
     Used by makeCAMS_BC to download ECMWF CAMS data 
     
     Args:
-        domain (string): The domain which you want the boundary conditions for.
-        
         st_date (string): Start date of form "YYYY-MM-dd"
         end_date (string): End date of form "YYYY-MM-dd". 
             For 1 month use last day of month. 
         gridsize (int/float): Resolution of CAMS output in degrees.
             Possible are: 0.125, 0.25, 0.4, 0.5, 0.75, 1, 1.125, 1.5, 2, 2.5, 3
-        species (string): The species (currently only 'ch4') 
+        NESW (list?) : TODO (should be NWSE?)
+        species (string): The species (currently only 'ch4' or 'co') 
         outputname (string): The ECMWF CAMS data output file name
+        nearrealtime (bool) : TODO
+        timeframe (string) : Extract "daily" or "3hourly" data.
         
     Returns:
         Creates a netcdf file containing CAMS data in data_path/ECMWF_CAMS
@@ -54,13 +57,18 @@ def getCAMSdata(st_date, end_date, gridsize, NESW, species, outputname, nearreal
     """
     from ecmwfapi import ECMWFDataServer
     area = "%s/%s/%s/%s" % (NESW[0], NESW[2], NESW[4], NESW[6])
-    params = {'ch4' : '4.217'}     #Dictionary of species' paramater number 
+    params = {'ch4' : '4.217','co': '123.210'}     #Dictionary of species' paramater number 
     if nearrealtime == True:
         dataset = "cams_nrealtime"
         expver = "0001"
     else:
         dataset = "cams_reanalysis"
         expver = "eac4"
+
+    if timeframe == "daily":
+        time = "00:00:00"
+    elif timeframe == "3hourly":
+        time = "00:00:00/03:00:00/06:00:00/09:00:00/12:00:00/15:00:00/18:00:00/21:00:00"
 
     server = ECMWFDataServer()
     server.retrieve({
@@ -74,7 +82,8 @@ def getCAMSdata(st_date, end_date, gridsize, NESW, species, outputname, nearreal
         "step": "0",
         "stream": "oper",
         "grid" : str(gridsize)+"/"+str(gridsize),
-        "time": "00:00:00",
+        #"time": "00:00:00",
+        "time": time,
         "type": "an",
         "format" : "netcdf",
         "area" : area,                     #NWSE
@@ -208,10 +217,12 @@ def makeCAMS_BC(domain, species, st_date, end_date, gridsize):
     ds = xr.open_dataset(fn)
     ds = ds.mean('time')
        
-    if species == 'ch4':
-        speciesmm = 16.0425
+    #if species == 'ch4':
+    #    speciesmm = 16.0425
+    speciesmm = molar_mass(species)
     airmm = 28.9644 #Molar mass of air g/mol
     ds['z'] = ds.z/9.80665   #Convert to height (N.B. this is geopotential height!)
+    ds = ds.rename({species+'_c' :  species})   #ECMWF seemed to change their naming convention – quick fix
     ds[species] = ds[species] *airmm/speciesmm #Convert into mol/mol
     
     
@@ -245,6 +256,9 @@ def makeCAMS_BC(domain, species, st_date, end_date, gridsize):
     BC_edges.attrs['title'] = "ECMWF CAMS "+species+" volume mixing ratios at domain edges"
     BC_edges.attrs['author'] = getpass.getuser()
     BC_edges.attrs['date_created'] = np.str(dt.today())
+    
+    if os.path.isdir(data_path+"NAME/bc/%s/" % domain) == False:
+        os.mkdir(data_path+"NAME/bc/%s/" % domain)
     
     BC_edges.to_netcdf(path = data_path+"NAME/bc/%s/%s_%s_%s.nc"
                        %(domain,species.lower(),domain,dt.strptime(st_date, '%Y-%m-%d').strftime('%Y%m')), mode = 'w')
