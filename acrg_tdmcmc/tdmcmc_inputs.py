@@ -36,6 +36,7 @@ import os
 import argparse
 import glob
 import shutil
+import sys
 import numpy as np
 import pandas as pd
 import datetime as dt
@@ -54,14 +55,24 @@ config_file = os.path.join(config_path,config_file)
 
 #############################################################
 parser = argparse.ArgumentParser(description='Running mcmc script')
+
 parser.add_argument("start", help="Start date string yyyy-mm-dd",nargs="?")                  
 parser.add_argument("end", help="End date sting yyyy-mm-dd",nargs="?")
-parser.add_argument("-c","--config",help="Configuration filename",default=config_file)
+parser.add_argument("-c","--config",help="Name (including path) of configuration file",default=config_file)
+parser.add_argument("-g","--group",help="Group to apply to run. All members of this group will be saved to the same sub-folder named after the group.")
+parser.add_argument("-r","--regenerate",action="store_true",help="Regenerate configuration file from template and exit. This will overwrite any pre-existing config file.")
 args = parser.parse_args()
 
+regenerate_then_exit = args.regenerate
 start_date = args.start
 end_date = args.end
 config_file = args.config
+group = args.group
+
+if regenerate_then_exit:
+    tdmcmc_config.regenerate_tdmcmc_config(config_file)
+    print("Note: new configuration file includes all parameters including optional ones.")
+    sys.exit("Exiting.")
 
 #############################################################
 
@@ -128,6 +139,11 @@ elif output_dir.startswith("$DATA_PATH"):
 
 if not os.path.isdir(output_dir):
     raise Exception("Output directory: {} does not exist.".format(output_dir))
+
+if group:
+    output_dir = os.path.join(output_dir,group)
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
 
 #######################################################
 # DO YOU WANT TO DO REVERSIBLE JUMP OR NOT?????

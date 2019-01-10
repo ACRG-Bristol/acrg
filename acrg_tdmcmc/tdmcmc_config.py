@@ -47,6 +47,10 @@ acrg_path = os.getenv("ACRG_PATH")
 
 ## Functions below are specifically related to the MCMC code which build on the functions within acrg_config module
 
+def tdmcmc_template_file():
+    reference_file = os.path.join(acrg_path,"acrg_config/templates/tdmcmc_template.ini")
+    return reference_file
+
 def mcmc_param_type():
     '''
     The mcmc_param_type function defines the names of expected input parameters from the config file and 
@@ -178,7 +182,8 @@ def mcmc_param_type():
 #    param_dict = OrderedDict([('MEASUREMENTS', measurements),
 #                              ('MCMC', mcmc),
 #                              ('TDMCMC', tdmcmc)])
-    reference_file = os.path.join(acrg_path,"acrg_config/templates/tdmcmc_template.ini")
+    #reference_file = os.path.join(acrg_path,"acrg_config/templates/tdmcmc_template.ini")
+    reference_file = tdmcmc_template_file()
     param_dict = config.generate_param_dict(reference_file)
     
     return param_dict
@@ -212,6 +217,26 @@ def mcmc_param_type():
 #    key = 'TDMCMC'
 #    return mcmc_param_type()[key].keys(),key
   
+def regenerate_tdmcmc_config(config_file = os.path.join(acrg_path,"acrg_tdmcmc/param.ini")):
+    '''
+    The regenerate_config function regenerates the tdmcmc configuration file (usually named 
+    param.ini).
+    
+    WARNING: This will overwrite the original configuration file.
+    
+    Args:
+        config_file (str):
+            Name of configuration file to regenerate (overwrite).
+            Default = $ACRG_PATH/acrg_tdmcmc/param.ini
+    
+    Returns
+        None
+        
+        Writes to file.
+    '''    
+    reference_file = tdmcmc_template_file()
+    config.generate_from_template(reference_file,config_file)
+
 
 def optional_parameters(section_group=None):
     '''
