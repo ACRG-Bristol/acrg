@@ -1939,6 +1939,8 @@ def process_all(domain, site,
                 years_in = None,
                 months_in = None,
                 base_dir = "/dagage2/agage/metoffice/NAME_output/",
+                processed_folder = "Processed_Fields_files",
+                fields_folder = "Fields_files",
                 force_update = False,
                 satellite = False,
                 perturbed_folder = None,
@@ -2058,6 +2060,8 @@ def process_all(domain, site,
                     satellite = satellite, perturbed_folder = perturbed_folder,
                     max_level = max_level, force_met_empty = force_met_empty,
                     vertical_profile=vertical_profile,
+                    fields_folder = fields_folder,
+                    processed_folder = processed_folder,
                     transport_model=transport_model)
 
 

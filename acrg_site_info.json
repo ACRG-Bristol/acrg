@@ -1087,5 +1087,13 @@
         "latitude": 78.925,
         "longitude": 11.92222,
         "network": "AGAGE"
+    },
+    "TMB" : {
+        "long_name" : "Thames Barrier, London",
+        "height": ["10m"],
+        "height_name": ["10masl"],
+        "latitude": 51.497,
+        "longitude": 0.037,
+        "network": "CRANFIELD"
     }
 }
