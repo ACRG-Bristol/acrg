@@ -155,11 +155,13 @@ def getGFED(year, lon_out, lat_out, timeframe='monthly', months = [1,2,3,4,5,6,7
         fname = f.split('/')[-1]
         fyear = fname[9:13]      #Extract year from filename
         possyears = np.append(possyears, int(fyear))
-    if year > max(possyears):
+    possyears.sort()
+    #print "Possible years to use for GFED data: {}".format(possyears)
+    if int(year) > max(possyears):
         print "%s is later than latest year in GFED v4.1 database" % str(year)
         print "Using %s as the closest year" % str(max((possyears)))
         year = max(possyears)
-    if year < min(possyears):
+    if int(year) < min(possyears):
         print "%s is earlier than earliest year in GFED v4.1 database" % str(year)
         print "Using %s as the closest year" % str(min((possyears)))
         year = min(possyears)
@@ -252,7 +254,8 @@ def getGFED(year, lon_out, lat_out, timeframe='monthly', months = [1,2,3,4,5,6,7
                        string = '/emissions/'+months_str[month]+'/partitioning/DM_'+sources[source]
                        emissions[h, :,:] += (DM_emissions * contribution * dayfrac * dcfrac * EF[sourceindex[source]]) / (EF[0] * convert2secs)
                    h += 1
-        
+    
+   
     #Regrid the data to desired region
     nlat = len(lat_out)
     nlon = len(lon_out) 
@@ -1087,12 +1090,13 @@ def _JULESfile(year):
 
 def _SWAMPSfile():
     '''
-    The _SWAMPSfile function opens the correct SWAMPS wetland fraction file for
-    the given year (int) as an xarray.Dataset object.
+    The _SWAMPSfile function opens the correct SWAMPS wetland fraction file as an 
+    xarray.Dataset object.
     '''
     path = os.path.join(data_path,"Gridded_fluxes/CH4/SWAMPS")
-    #filename_swamps = os.path.join(path,"fw_swamps-glwd_2000-2012.nc") # Previous file
-    filename_swamps = os.path.join(path,"gcp-ch4_wetlands_2000-2017_05deg.nc")
+    #filename_swamps = os.path.join(path,"fw_swamps-glwd_2000-2012.nc") # Previous version
+    #filename_swamps = os.path.join(path,"gcp-ch4_wetlands_2000-2017_05deg.nc") # Without inland water
+    filename_swamps = os.path.join(path,"gcp-ch4_wetlands-and-inland-water_2000-2017_025deg.nc")
     
     return filename_swamps
 
@@ -1512,7 +1516,7 @@ def _define_prior_dict(databases):
     prior_info = {"EDGAR":["v4.3.2",resolution["EDGAR"],"http://edgar.jrc.ec.europa.eu/overview.php?v=432&SECURE=123"],
                   "GFED":["v4.1",resolution["GFED"],"https://daac.ornl.gov/cgi-bin/dsviewer.pl?ds_id=1293"],
                   "JULES_wetlands":["v4.1",resolution["JULES_wetlands"],"Created by: nicola.gedney@metoffice.gov.uk"],
-                  "SWAMPS":["v1.0",resolution["SWAMPS"],"Schroeder et al. 2015\nCreated by: benjamin.poulter@montana.edu"],
+                  "SWAMPS":["Global Carbon Project CH4 v2",resolution["SWAMPS"],"Schroeder et al. 2015\nBased on v3.2 SWAMPS\nCreated by: benjamin.poulter@nasa.gov"],
                   "natural":["v1",resolution["natural"],"Fung et al. 1987"],
                   "soilsink":["v1",resolution["soilsink"],"Bousquet et al. 2006"],
                   "Bloom":["v1",resolution["Bloom"],"Bloom et al. 2012"],
@@ -1704,8 +1708,12 @@ def create_emissions(databases,species,domain,year=None,lon_out=[],lat_out=[],
     if not os.path.exists(output_directory):
         raise IOError("Specified output directory does not exist: {}".format(output_directory))
     
-    if not lat_out and not lon_out:
-        lat_out,lon_out,height = domain_volume(domain)
+    if not np.any(lat_out) and not np.any(lon_out):
+        if domain:
+            lat_out,lon_out,height = domain_volume(domain)
+        else:
+            lat_out = []
+            lon_out = []
     
     if "timeframe" in kwargs:
         timeframe = kwargs["timeframe"]

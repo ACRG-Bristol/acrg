@@ -1030,7 +1030,7 @@
     "WAO" : {
         "alt": ["WEYBOURNE"],
         "long_name" : "Weybourne Observatory, UK",
-        "height": ["21m"],
+        "height": ["21m", "10m"],
         "height_station_masl": 10.0,
         "height_name": ["20magl"],
         "latitude": 52.95042,
