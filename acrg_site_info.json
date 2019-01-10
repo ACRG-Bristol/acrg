@@ -426,6 +426,14 @@
         "height_name": ["column"],
         "network": "GOSAT/GOSAT-EUROPE",
         "platform": "satellite"
+    },
+    "GOSAT-SAHARA" : {
+        "alt": ["GOSAT"],
+        "long_name" : "GOSAT, Sahara",
+        "height": ["column"],
+        "height_name": ["column"],
+        "network": "GOSAT/GOSAT-SAHARA",
+        "platform": "satellite"
     },        
     "GOSAT-UK" : {
         "alt": ["GOSAT"],
