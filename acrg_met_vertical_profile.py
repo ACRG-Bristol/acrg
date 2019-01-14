@@ -141,7 +141,7 @@ def get_met_Part(lat, lon):
     return PT
 
 
-def get_vertical_profile(site, start_date, end_date, output_vars, temp_dir, output_dir, met_dir = "/mnt/storage/private/acrg/met_archive/NAME/Met/"):
+def get_vertical_profile(site, start_date, end_date, output_vars, temp_dir, output_dir, met_dir = "/mnt/storage/private/acrg/met_archive/NAME/Met/Global/"):
     
     """
     Function extracts a vertical meteorological profile at the location requested (the nearest grid cell in the met files) for the required variables
@@ -149,7 +149,7 @@ def get_vertical_profile(site, start_date, end_date, output_vars, temp_dir, outp
     site: site code for the location of the vertical profile to be extracted
     start_date: start of vertical profile timeseries
     end_date: end of vertical profile timeseries
-    output_vars: options are air_pressure, air_temperature, specific_humidity, upward_air_velocity, wind_speed, wind_direction
+    output_vars: options are air_pressure, air_temperature, specific_humidity, wind_speed, wind_direction
                             (wind_speed and wind_direction calculated automatically from x_wind and y_wind)
     temp_dir: pathname to directory where met files are stored as they are unzipped (they are deleted once used)
     output_dir: where to save the netcdf file of the vertical profile
