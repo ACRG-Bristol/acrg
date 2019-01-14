@@ -651,6 +651,8 @@ def get_gosat(site, species, max_level, start = "1900-01-01", end = "2020-01-01"
     #data = data.drop("lev")
     #data = data.drop(["xch4", "xch4_uncertainty", "lon", "lat"])
     data = data.to_dataframe()
+    data = data.reset_index(level=0, drop=False) # Added to change to index values to an Index rather than MultiIndex
+    data = data.set_index("time") # Reassign time as the index
     # rt17603: 06/04/2018 Added sort because some data was not being read in time order. 
     # Causing problems in footprints_data_merge() function
     data = data.sort_index()
