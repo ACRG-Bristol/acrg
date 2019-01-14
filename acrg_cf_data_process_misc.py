@@ -1545,17 +1545,18 @@ def uex(species):
             "site" : "CVO",
             "scale": {
                 "CH4": "NOAA2004",
-                "N2O": "WMO N2OX2006A"},
+                "N2O": "WMO N2OX2006A",
+                "CO": "WMO CO X2014A"},
             "directory" : "/data/shared/obs_raw/UEX/",
             "directory_output" : "/data/shared/obs/",
             "global_attributes" : {
-                    "contact": "Elena Kozlova",
+                    "contact": "Elena Kozlova, University of Exeter",
                     "averaging": "minute averaged OA-ICOS"
                     }
             }
     
 
-    fnames = sorted(glob.glob(join(params["directory"], ("*" + species.upper() +"*.dat"))))
+    fnames = sorted(glob.glob(join(params["directory"], ("*" + species.upper() + '.' +"*.dat"))))
     
     df = []
     
