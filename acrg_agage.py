@@ -40,7 +40,6 @@ from acrg_time import convert
 import json
 import datetime as dt
 import xarray as xray
-import pdb
 
 acrg_path = getenv("ACRG_PATH")
 data_path = getenv("DATA_PATH")
@@ -274,7 +273,7 @@ def get_file_list(site, species, start, end, height,
         file_height_string = listsearch(height, site, site_info, 
                                         label="height")                        
         if file_height_string is None:
-            print("Height " + height + " doesn't exist in site_info.json. "
+            print("Height " + height[0] + " doesn't exist in site_info.json. "
                 + "Available heights are " + str(site_info[site]["height"])
                 + ". Leave blank for default height.")
             return data_directory, None
@@ -651,6 +650,8 @@ def get_gosat(site, species, max_level, start = "1900-01-01", end = "2020-01-01"
     #data = data.drop("lev")
     #data = data.drop(["xch4", "xch4_uncertainty", "lon", "lat"])
     data = data.to_dataframe()
+    data = data.reset_index(level=0, drop=False) # Added to change to index values to an Index rather than MultiIndex
+    data = data.set_index("time") # Reassign time as the index
     # rt17603: 06/04/2018 Added sort because some data was not being read in time order. 
     # Causing problems in footprints_data_merge() function
     data = data.sort_index()

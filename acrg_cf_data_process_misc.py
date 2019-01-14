@@ -1643,6 +1643,8 @@ def obspack_co2(site, height, obspack_name):
     if height == 'surface':
         if site == "PAL":
             fname = glob.glob("/data/shared/obs_raw/EUROCOM_ObsPack/"+obspack_name_dict[obspack_name]+"/co2_" + site.lower() + "*" + "nonlocal.nc" )
+        elif site == "JFJ":
+            fname = glob.glob("/data/shared/obs_raw/EUROCOM_ObsPack/"+obspack_name_dict[obspack_name]+"/co2_" + site.lower() + "*" + "_5_allvalid.nc" )
         else:
             fname = glob.glob("/data/shared/obs_raw/EUROCOM_ObsPack/"+obspack_name_dict[obspack_name]+"/co2_" + site.lower() + "*" + ".nc" )
     else:    
@@ -1662,7 +1664,10 @@ def obspack_co2(site, height, obspack_name):
                        'SSL':'NDIR',
                        'LMP':'NDIR',
                        'OPE':'CRDS',
-                       'TRN':'GC-FID'}
+                       'TRN':'GC-FID',
+                       'WAO':'NDIR',
+                       'CMN':'GC-FID',
+                       'JFJ':'CRDS'}
 
     if len(fname) == 0:
         print "Can't find file for obspack %s, site %s and height %s" %(obspack_name, site, height)
