@@ -70,6 +70,16 @@ def open_ds(path):
         ds.load()
     return ds    
 
+def is_number(s):
+    """
+    Is it a number?
+    """
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
+
 
 def synonyms(search_string, info, alternative_label = "alt"):
     '''
@@ -462,7 +472,7 @@ def get_single_site(site, species_in,
                 df = pd.DataFrame({"mf": ds[ncvarname][:]},
                                   index = ds.time)
                 
-                if ds[ncvarname].units.isdigit():
+                if is_number(ds[ncvarname].units):
                     units = float(ds[ncvarname].units)
                 else:
                     units = str(ds[ncvarname].units)
