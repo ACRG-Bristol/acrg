@@ -544,7 +544,10 @@ def get_single_site(site, species_in,
         data_frame.index.name = 'time'
 
         # Cut out requested time period
-        data_frame = data_frame[start_date : end_date]
+        # subtract one day from the end date as pandas indexing is inclusive of end point
+        # convert back to string to avoid issues with specifying exact time
+        end_date_minus_1 = (pd.to_datetime(end_date)-pd.Timedelta(days=1)).strftime("%Y%m%d")
+        data_frame = data_frame[start_date : end_date_minus_1]
         if len(data_frame) == 0:
             print("Warning, no data within range")
             return None
