@@ -891,6 +891,11 @@ def footprint_array(fields_file,
     status_log("Reading... " + os.path.split(fields_file)[1])
     
     header, column_headings, data_arrays = read_file(fields_file)
+    
+    # Define grid, including output heights    
+    lons, lats, levs, time, timeStep = define_grid(header, column_headings,
+                                                   satellite = satellite,
+                                                   upper_level = upper_level)
 
     if met is None:
         met = met_empty()
@@ -898,10 +903,6 @@ def footprint_array(fields_file,
     if type(met) is not list:
         met = [met]
 
-    # Define grid, including output heights    
-    lons, lats, levs, time, timeStep = define_grid(header, column_headings,
-                                                   satellite = satellite,
-                                                   upper_level = upper_level)
     if satellite and obs_file:
         time = extract_time_obs(obs_file)
     
@@ -997,7 +998,7 @@ def footprint_array(fields_file,
     # Extract footprint from columns
     def convert_to_ppt(fp, slice_dict, column):
         molm3=fp["press"][slice_dict].values/const.R/\
-            const.C2K(fp["temp"][slice_dict].values.squeeze())
+            (273.15+fp["temp"][slice_dict].values.squeeze())
         fp.fp[slice_dict] = data_arrays[column]*area/ \
             (3600.*timeStep*1.)/molm3
         #The 1 assumes 1g/s emissions rate

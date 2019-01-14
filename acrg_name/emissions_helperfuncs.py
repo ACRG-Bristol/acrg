@@ -1001,11 +1001,7 @@ def getedgarmonthlysectors(lon_out, lat_out, edgar_sectors, months=[1,2,3,4,5,6,
             if os.path.isfile(edgar):
                 ds = xr.open_dataset(edgar)
                 soiname = 'emi_'+species.lower()
-<<<<<<< HEAD
-                if tot == None:
-=======
                 if tot.any() == None:
->>>>>>> a5bbe762a8cbfb326faf59a217fe2335af7ba197
                     tot = ds[soiname].values*1e3/speciesmm
                 else:
                     tot += ds[soiname].values*1e3/speciesmm
@@ -1036,8 +1032,7 @@ def getedgarmonthlysectors(lon_out, lat_out, edgar_sectors, months=[1,2,3,4,5,6,
                              lat_out, lon_out)
     return(narr)
 
-<<<<<<< HEAD
-=======
+
 def getScarpelliFossilFuelsCH4(lon_out, lat_out, scarpelli_sector='all'):
     """
     NOTE THAT THIS IS NOT YET PUBLISHED. SPEAK TO ME (LUKE) BEFORE USING IT.
@@ -1083,7 +1078,6 @@ def getScarpelliFossilFuelsCH4(lon_out, lat_out, scarpelli_sector='all'):
                              lat_out, lon_out)
     return(narr)
 
->>>>>>> a5bbe762a8cbfb326faf59a217fe2335af7ba197
 def _JULESfile(year):
     '''
     The _JULESfile function opens the correct JULES wetland file for the given
@@ -1096,22 +1090,13 @@ def _JULESfile(year):
 
 def _SWAMPSfile():
     '''
-<<<<<<< HEAD
     The _SWAMPSfile function opens the correct SWAMPS wetland fraction file for
     the given year (int) as an xarray.Dataset object.
     '''
     path = os.path.join(data_path,"Gridded_fluxes/CH4/SWAMPS")
     #filename_swamps = os.path.join(path,"fw_swamps-glwd_2000-2012.nc") # Previous file
     filename_swamps = os.path.join(path,"gcp-ch4_wetlands_2000-2017_05deg.nc")
-=======
-    The _SWAMPSfile function opens the correct SWAMPS wetland fraction file as an 
-    xarray.Dataset object.
-    '''
-    path = os.path.join(data_path,"Gridded_fluxes/CH4/SWAMPS")
-    #filename_swamps = os.path.join(path,"fw_swamps-glwd_2000-2012.nc") # Previous version
-    #filename_swamps = os.path.join(path,"gcp-ch4_wetlands_2000-2017_05deg.nc") # Without inland water
-    filename_swamps = os.path.join(path,"gcp-ch4_wetlands-and-inland-water_2000-2017_025deg.nc")
->>>>>>> a5bbe762a8cbfb326faf59a217fe2335af7ba197
+
     
     return filename_swamps
 
@@ -1524,33 +1509,21 @@ def _define_prior_dict(databases):
                   "soilsink":"1.0 x 1.0 degrees",
                   "Bloom":"3.0 x 3.0 degrees",
                   "NAEI_and_EDGAR":"0.234 x 0.352 degrees",
-<<<<<<< HEAD
-                  "NAEI":"0.009 x 0.014 degrees (1.0 x 1.0 km)"}
-=======
                   "NAEI":"0.009 x 0.014 degrees (1.0 x 1.0 km)",
                   "Scarpelli":"0.1 x 0.1 degrees",
                   "Bloom2017":"0.5 x 0.5 degrees"}
->>>>>>> a5bbe762a8cbfb326faf59a217fe2335af7ba197
 
     prior_info = {"EDGAR":["v4.3.2",resolution["EDGAR"],"http://edgar.jrc.ec.europa.eu/overview.php?v=432&SECURE=123"],
                   "GFED":["v4.1",resolution["GFED"],"https://daac.ornl.gov/cgi-bin/dsviewer.pl?ds_id=1293"],
                   "JULES_wetlands":["v4.1",resolution["JULES_wetlands"],"Created by: nicola.gedney@metoffice.gov.uk"],
-<<<<<<< HEAD
-                  "SWAMPS":["v1.0",resolution["SWAMPS"],"Schroeder et al. 2015\nCreated by: benjamin.poulter@montana.edu"],
-=======
                   "SWAMPS":["Global Carbon Project CH4 v2",resolution["SWAMPS"],"Schroeder et al. 2015\nBased on v3.2 SWAMPS\nCreated by: benjamin.poulter@nasa.gov"],
->>>>>>> a5bbe762a8cbfb326faf59a217fe2335af7ba197
                   "natural":["v1",resolution["natural"],"Fung et al. 1987"],
                   "soilsink":["v1",resolution["soilsink"],"Bousquet et al. 2006"],
                   "Bloom":["v1",resolution["Bloom"],"Bloom et al. 2012"],
                   "NAEI_and_EDGAR":["v1",resolution["NAEI_and_EDGAR"],"Provided by: UK Met Office"],
-<<<<<<< HEAD
-                  "NAEI":["unknown",resolution["NAEI"],"http://naei.beis.gov.uk/data/"]}
-=======
                   "NAEI":["unknown",resolution["NAEI"],"http://naei.beis.gov.uk/data/"],
                   "Scarpelli":["v0",resolution["Scarpelli"],"Tia Scarpelli (personal communication - Luke Western)"],
                   "Bloom2017":["v1",resolution["Bloom2017"], "Bloom et al. 2017 https://doi.org/10.5194/gmd-10-2141-2017"]}
->>>>>>> a5bbe762a8cbfb326faf59a217fe2335af7ba197
 
     prior_info_dict = {}
     
@@ -1587,13 +1560,9 @@ def database_options(print_options=False):
                     "Bloom":getbloomwetlandsCH4,
                     "NAEI":getNAEI,
                     "NAEI_and_EDGAR":getnaeiandedgarCH4,
-<<<<<<< HEAD
-                    "JULES_wetlands":getJULESwetlands}
-=======
                     "JULES_wetlands":getJULESwetlands,
                     "Scarpelli":getScarpelliFossilFuelsCH4,
                     "Bloom2017":getBloom2017}
->>>>>>> a5bbe762a8cbfb326faf59a217fe2335af7ba197
 
     # Note GFED species not defined here yet.
     db_species = {"EDGAR":["CH4","N2O"],
@@ -1602,16 +1571,6 @@ def database_options(print_options=False):
                   "Bloom":["CH4"],
                   "NAEI_and_EDGAR":["CH4","N2O"],
                   "NAEI":["CH4","N2O"],
-<<<<<<< HEAD
-                  "JULES_wetlands":["CH4"]}
-    
-    db_timeframes = {"GFED":["monthly","daily","3hourly"],"Bloom":["daily","monthly"]}
-    
-    db_sector = {"GFED":"fire","EDGAR":"anthro","natural":"natural","soilsink":"soilsink",
-                 "Bloom":"wetlands","NAEI_and_EDGAR":"anthro","NAEI":"anthro","JULES_wetlands":"wetlands"}
-    
-    db_climatology = ["natural","soilsink"]
-=======
                   "JULES_wetlands":["CH4"],
                   "Scarpelli":["CH4"],
                   "Bloom2017":["CH4"]}
@@ -1630,7 +1589,6 @@ def database_options(print_options=False):
                  "Bloom2017":"wetlands"}
     
     db_climatology = ["natural","soilsink","Scarpelli"]
->>>>>>> a5bbe762a8cbfb326faf59a217fe2335af7ba197
 
     if print_options:
         for db,fn in db_functions.items():
@@ -1681,10 +1639,7 @@ def create_emissions(databases,species,domain,year=None,lon_out=[],lat_out=[],
                 - "NAEI"                 - NAEI anthropogenic database
                 - "NAEI_and_EDGAR"       - Combined dataset of NAEI and EDGAR
                 - "JULES_wetlands"       - CH4 wetlands emissions from combining JULES model emissions output and SWAMPS wetlands extent.
-<<<<<<< HEAD
-=======
                 - "Scarpelli"            - CH4 from fugitive fossil fuel emissions (NB this is not yet published)
->>>>>>> a5bbe762a8cbfb326faf59a217fe2335af7ba197
             See database_options() function for full and correct list of options.
         species (str) :
             Species of interest. All listed databases must have data for this species.
@@ -1724,11 +1679,8 @@ def create_emissions(databases,species,domain,year=None,lon_out=[],lat_out=[],
                 or "EDGAR_sector_monthly" databases are used.
             naei_sector :
                 Specific sector for NAEI database. MUST be specified if "NAEI" database is used.
-<<<<<<< HEAD
-=======
             scarpelli_sector :
                 Specific sector for Scarpelli inventory. MUST be specified if "Scarpelli" inventory is used.
->>>>>>> a5bbe762a8cbfb326faf59a217fe2335af7ba197
             incagr :
                 Include agricultural waste burning. Optional for "GFED" database.
             scale_wetlands :
@@ -1756,17 +1708,12 @@ def create_emissions(databases,species,domain,year=None,lon_out=[],lat_out=[],
     if not os.path.exists(output_directory):
         raise IOError("Specified output directory does not exist: {}".format(output_directory))
     
-<<<<<<< HEAD
-    if not lat_out and not lon_out:
-        lat_out,lon_out,height = domain_volume(domain)
-=======
     if not np.any(lat_out) and not np.any(lon_out):
         if domain:
             lat_out,lon_out,height = domain_volume(domain)
         else:
             lat_out = []
             lon_out = []
->>>>>>> a5bbe762a8cbfb326faf59a217fe2335af7ba197
     
     if "timeframe" in kwargs:
         timeframe = kwargs["timeframe"]

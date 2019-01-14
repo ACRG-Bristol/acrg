@@ -20,4 +20,5 @@ from name import filtering
 import process
 import basis_functions
 import flux
+import process_HiSRes
 
