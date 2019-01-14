@@ -628,7 +628,7 @@ def get_gosat(site, species, max_level,
     if max_level is None:
         raise ValueError("MAX LEVEL REQUIRED FOR SATELLITE OBS DATA")
             
-    data_directory = os.path.join(obs_directory, "GOSAT", site)
+    data_directory = os.path.join(data_directory, "GOSAT", site)
     files = glob.glob(os.path.join(data_directory, '*.nc'))
     files = [os.path.split(f)[-1] for f in files]
 
@@ -784,6 +784,9 @@ def get_obs(sites, species,
 
     if type(sites) is not list:
         raise ValueError("Sites variable must be a list")
+
+    if (data_directory is None):
+        data_directory = obs_directory
 
     inlet = check_list_and_length(inlet, sites, "inlet")
     average = check_list_and_length(average, sites, "average")
