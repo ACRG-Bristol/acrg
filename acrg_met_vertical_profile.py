@@ -77,7 +77,7 @@ def get_met_Mark(date):
 def get_met_Part(lat, lon):
     
     """
-    Input lat (-90 - 90) and lon (-180 - 180)
+    Input lat (-90 - 90) and lon (-180 - 180) - defaults from acrg_site_info.json
     Returns Part number of met
 
     PT 1: lat 79.921875 - 89.921875, lon 0.1171875 - 359.8828
@@ -98,11 +98,7 @@ def get_met_Part(lat, lon):
     
     #Convert lat lon to convention for met ( lat: -90 to 90, lon: 0 - 360)
     
-    print lat, lon
-    
     lon = lon + 180.
-    
-    print lat, lon
 
     if lat > 79.921875:
         PT = 1
@@ -160,7 +156,6 @@ def get_vertical_profile(site, start_date, end_date, output_vars, temp_dir, outp
     met_dir: where the met is stored (default is storage location on BC4)
     """
     
-
     # Get lat lon from site_name
 
     with open(acrg_path + "/acrg_site_info.json") as f:
@@ -211,8 +206,6 @@ def get_vertical_profile(site, start_date, end_date, output_vars, temp_dir, outp
                 print v
                 cube = met[vi]
                 if len(cube.shape) == 3:
-                    print v + " has correct dimensions"
-            
                     i+=1
             
                     # Find lat and lon closest to desired point
@@ -226,8 +219,6 @@ def get_vertical_profile(site, start_date, end_date, output_vars, temp_dir, outp
             
                     wh_lon = (np.abs(lon - lon_coord)).argmin()
                     wh_lat = (np.abs(lat - lat_coord)).argmin()
-            
-                    print "Closest coords: " +str(lon[wh_lon])+", " + str(lat[wh_lat])
             
                     # Extract vertical profile
             
@@ -247,7 +238,6 @@ def get_vertical_profile(site, start_date, end_date, output_vars, temp_dir, outp
                         ds = xr.merge([ds,da])
         
                 else:
-                    print v + " has incorrect dimensions"
                     pass
             else:
                 pass
