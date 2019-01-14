@@ -40,7 +40,6 @@ from acrg_time import convert
 import json
 import datetime as dt
 import xarray as xray
-import pdb
 
 acrg_path = getenv("ACRG_PATH")
 data_path = getenv("DATA_PATH")

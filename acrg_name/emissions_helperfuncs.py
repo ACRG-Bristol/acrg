@@ -456,6 +456,9 @@ def getbloomwetlandsCH4(year, lon_out, lat_out, timeframe="monthly"):
             Array of regridded emissions in mol/m2/s.
             Dimensions are [lat, lon, time]
     """
+    print('There is a newer (much better) Bloom wetlands model!!!')
+    print("Use the function getBloom2017() instead")
+    
     path = '/data/shared/GAUGE/CH4/'
     bloomwetlands = 'CH4_flux_wetlands_rice_global_2003_2009.nc'
     
@@ -497,6 +500,70 @@ def getbloomwetlandsCH4(year, lon_out, lat_out, timeframe="monthly"):
                                  lat_out, lon_out)
     return(narr)
     
+def getBloom2017(year, lon_out, lat_out, modeltype='extended'):
+    """
+    Global wetlands CH4 emissions from Bloom et al 2017, regridded to desired 
+    lats and lons for year of interest.
+    This function takes the mean from an ensemle, but individuals models are 
+    available in the Gridded_fluxes folder.
+    
+    Args:
+        year (int):
+            Year of interest.
+        lon_out (array): 
+            Longitudes to output the data on.
+        lat_out (array):
+            Latitudes to output the data on.
+        modeltype (str):
+            Which ensembel model to use. Options are 'extended' or 'full'.
+            'full' uses more ensemble members
+    
+    Returns:
+        narr (array): 
+            Array of regridded emissions in mol/m2/s.
+            Dimensions are [lat, lon, time]
+    """    
+    path = '/data/shared/Gridded_fluxes/CH4/Bloom2017/'
+    if modeltype == 'extended':
+        bloomwetlands = 'WetCHARTs_extended_ensemble_mean.nc4'
+        possyears = np.arange(15) + 2001
+    elif modeltype == 'full':
+        bloomwetlands = 'WetCHARTs_full_ensemble_mean.nc4'
+        possyears = np.arange(2) + 2009
+    else:
+        raise Exception('There is no model type %s. Using "extended" instead' % modeltype)
+        bloomwetlands = 'WetCHARTs_extended_ensemble_mean.nc4'
+        possyears = np.arange(15) + 2001
+    
+    
+    if year > max(possyears):
+        print "%s is later than max year in Bloom 2017 wetlands data" % str(year)
+        print "Using %s as the closest year" % str(max((possyears)))
+        year = max(possyears)
+    if year < min(possyears):
+        print "%s is earlier than min year in Bloom 2017 data" % str(year)
+        print "Using %s as the closest year" % str(min((possyears)))
+        year = min(possyears)
+    
+    yearloc = np.where(possyears == year)[0][0]
+    
+    with xr.open_dataset(path+bloomwetlands) as load:
+        ds = load.load()   
+    
+    bloomch4 = ds.ch4.values[:,:,yearloc*12:yearloc*12+12]
+    lat_in = ds.lat.values
+    lon_in = ds.lon.values
+    
+    nlat = len(lat_out)
+    nlon = len(lon_out) 
+    nt = 12
+    
+    narr = np.zeros((nlat, nlon, nt))
+    
+    for i in range(nt):
+       narr[:,:,i], reg = regrid2d(bloomch4[:,:,i], lat_in, lon_in,
+                                 lat_out, lon_out)
+    return(narr)
 
 def getnaeiandedgarCH4(lon_out, lat_out):
     """
@@ -926,20 +993,22 @@ def getedgarmonthlysectors(lon_out, lat_out, edgar_sectors, months=[1,2,3,4,5,6,
     #Read in EDGAR data of annual mean CH4 emissions for each sector
     #These are summed together
     #units are in kg/m2/s
+    warnings = []
     first = 0
     for month in months:
-        tot = None
+        tot = np.array(None)
         for sec in edgar_sectors:
             edgar = edpath+'v432_'+species+'_2010_'+str(month)+'_IPCC_'+secdict[sec]+'.0.1x0.1.nc'    
             if os.path.isfile(edgar):
                 ds = xr.open_dataset(edgar)
                 soiname = 'emi_'+species.lower()
-                if tot == None:
+                if tot.any() == None:
                     tot = ds[soiname].values*1e3/speciesmm
                 else:
                     tot += ds[soiname].values*1e3/speciesmm
             else:
-                print 'No monthly file for sector %s' % sec
+                warnings.append('No monthly file for sector %s' % sec)
+                #print 'No monthly file for sector %s' % sec
         
             if first == 0:
                 emissions = np.zeros((len(months), tot.shape[0], tot.shape[1]))
@@ -947,8 +1016,10 @@ def getedgarmonthlysectors(lon_out, lat_out, edgar_sectors, months=[1,2,3,4,5,6,
             else:
                 first += 1
                 emissions[first,:,:] = tot
-                
             
+    for warning in np.unique(warnings):
+        print(warning)
+                           
     lat_in = ds.lat.values
     lon_in = ds.lon.values
     
@@ -959,6 +1030,51 @@ def getedgarmonthlysectors(lon_out, lat_out, edgar_sectors, months=[1,2,3,4,5,6,
        
     for i in range(len(months)):
        narr[:,:,i], reg = regrid2d(emissions[i,:,:], lat_in, lon_in,
+                             lat_out, lon_out)
+    return(narr)
+
+def getScarpelliFossilFuelsCH4(lon_out, lat_out, scarpelli_sector='all'):
+    """
+    NOTE THAT THIS IS NOT YET PUBLISHED. SPEAK TO ME (LUKE) BEFORE USING IT.
+    The inventory is currently for 2012 methane emissions from fuel 
+    exploitation (including oil/gas/coal) - this pertains to fugitive emissions 
+    from these activities (so not combustion emissions). The inventory was 
+    built by downscaling national emissions reported by countries to the UN to 
+    the grid scale (0.1 degree resolution). Emissions were allocated to grid 
+    scale based on infrastructure locations from various sources, including the 
+    Global Oil and Gas Infrastructure Inventory and Geodatabase (includes 
+    refineries, pipelines, storage, stations, etc.) and wells locations from 
+    DrillingInfo.
+    
+    Args:
+        lon_out (array): 
+            Longitudes to output the data on
+        lat_out (array):
+            Latitudes to output the data on
+        sector (string):
+            Source of emissions. Options are: 'coal', 'oil', 'gas' or 'all'.
+            Default = 'all'
+    
+    Returns:
+        narr (array): 
+            Array of regridded emissions in mol/m2/s.
+            Dimensions are [lat, lon]
+    """
+    
+    sectors = {'coal' : 'Coal', 'gas' : 'Gas_All', 'oil' : 'Oil_All', 'all' : 'Total_Fuel_Exploitation'}
+
+    path = '/data/shared/Gridded_fluxes/CH4/Scarpelli_FossilFuel_CH4/'
+    fnroot = 'Global_Fuel_Exploitation_Inventory_'
+    sourcefn = path+fnroot+sectors[scarpelli_sector]+'.nc'
+    
+    with xr.open_dataset(sourcefn) as load:
+        ds = load.load()         #Units are Mg / km2 / year
+    
+    ffemis = ds.emis_ch4.values/(365*24*3600)/molar_mass('ch4') #Convert to mol/m2/s
+    lat_in = ds.lat.values
+    lon_in = ds.lon.values
+    
+    narr, reg = regrid2d(ffemis, lat_in, lon_in,
                              lat_out, lon_out)
     return(narr)
 
@@ -1393,7 +1509,9 @@ def _define_prior_dict(databases):
                   "soilsink":"1.0 x 1.0 degrees",
                   "Bloom":"3.0 x 3.0 degrees",
                   "NAEI_and_EDGAR":"0.234 x 0.352 degrees",
-                  "NAEI":"0.009 x 0.014 degrees (1.0 x 1.0 km)"}
+                  "NAEI":"0.009 x 0.014 degrees (1.0 x 1.0 km)",
+                  "Scarpelli":"0.1 x 0.1 degrees",
+                  "Bloom2017":"0.5 x 0.5 degrees"}
 
     prior_info = {"EDGAR":["v4.3.2",resolution["EDGAR"],"http://edgar.jrc.ec.europa.eu/overview.php?v=432&SECURE=123"],
                   "GFED":["v4.1",resolution["GFED"],"https://daac.ornl.gov/cgi-bin/dsviewer.pl?ds_id=1293"],
@@ -1403,7 +1521,9 @@ def _define_prior_dict(databases):
                   "soilsink":["v1",resolution["soilsink"],"Bousquet et al. 2006"],
                   "Bloom":["v1",resolution["Bloom"],"Bloom et al. 2012"],
                   "NAEI_and_EDGAR":["v1",resolution["NAEI_and_EDGAR"],"Provided by: UK Met Office"],
-                  "NAEI":["unknown",resolution["NAEI"],"http://naei.beis.gov.uk/data/"]}
+                  "NAEI":["unknown",resolution["NAEI"],"http://naei.beis.gov.uk/data/"],
+                  "Scarpelli":["v0",resolution["Scarpelli"],"Tia Scarpelli (personal communication - Luke Western)"],
+                  "Bloom2017":["v1",resolution["Bloom2017"], "Bloom et al. 2017 https://doi.org/10.5194/gmd-10-2141-2017"]}
 
     prior_info_dict = {}
     
@@ -1440,7 +1560,9 @@ def database_options(print_options=False):
                     "Bloom":getbloomwetlandsCH4,
                     "NAEI":getNAEI,
                     "NAEI_and_EDGAR":getnaeiandedgarCH4,
-                    "JULES_wetlands":getJULESwetlands}
+                    "JULES_wetlands":getJULESwetlands,
+                    "Scarpelli":getScarpelliFossilFuelsCH4,
+                    "Bloom2017":getBloom2017}
 
     # Note GFED species not defined here yet.
     db_species = {"EDGAR":["CH4","N2O"],
@@ -1449,14 +1571,24 @@ def database_options(print_options=False):
                   "Bloom":["CH4"],
                   "NAEI_and_EDGAR":["CH4","N2O"],
                   "NAEI":["CH4","N2O"],
-                  "JULES_wetlands":["CH4"]}
+                  "JULES_wetlands":["CH4"],
+                  "Scarpelli":["CH4"],
+                  "Bloom2017":["CH4"]}
     
     db_timeframes = {"GFED":["monthly","daily","3hourly"],"Bloom":["daily","monthly"]}
     
-    db_sector = {"GFED":"fire","EDGAR":"anthro","natural":"natural","soilsink":"soilsink",
-                 "Bloom":"wetlands","NAEI_and_EDGAR":"anthro","NAEI":"anthro","JULES_wetlands":"wetlands"}
+    db_sector = {"GFED":"fire",
+                 "EDGAR":"anthro",
+                 "natural":"natural",
+                 "soilsink":"soilsink",
+                 "Bloom":"wetlands",
+                 "NAEI_and_EDGAR":"anthro",
+                 "NAEI":"anthro",
+                 "JULES_wetlands":"wetlands",
+                 "Scarpelli":"fossilfuels",
+                 "Bloom2017":"wetlands"}
     
-    db_climatology = ["natural","soilsink"]
+    db_climatology = ["natural","soilsink","Scarpelli"]
 
     if print_options:
         for db,fn in db_functions.items():
@@ -1507,6 +1639,7 @@ def create_emissions(databases,species,domain,year=None,lon_out=[],lat_out=[],
                 - "NAEI"                 - NAEI anthropogenic database
                 - "NAEI_and_EDGAR"       - Combined dataset of NAEI and EDGAR
                 - "JULES_wetlands"       - CH4 wetlands emissions from combining JULES model emissions output and SWAMPS wetlands extent.
+                - "Scarpelli"            - CH4 from fugitive fossil fuel emissions (NB this is not yet published)
             See database_options() function for full and correct list of options.
         species (str) :
             Species of interest. All listed databases must have data for this species.
@@ -1546,6 +1679,8 @@ def create_emissions(databases,species,domain,year=None,lon_out=[],lat_out=[],
                 or "EDGAR_sector_monthly" databases are used.
             naei_sector :
                 Specific sector for NAEI database. MUST be specified if "NAEI" database is used.
+            scarpelli_sector :
+                Specific sector for Scarpelli inventory. MUST be specified if "Scarpelli" inventory is used.
             incagr :
                 Include agricultural waste burning. Optional for "GFED" database.
             scale_wetlands :

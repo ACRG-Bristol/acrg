@@ -178,6 +178,7 @@ def makeCAMS_BC(domain, species, st_date, end_date, gridsize):
     #Set-up a few things and do some checks
     species = species.lower()
     domain = domain.upper()
+    gridsize = float(gridsize)
     
     if os.path.isfile(data_path+"NAME/bc/%s/%s_%s_%s.nc"
                        %(domain,species,domain,dt.strptime(st_date, '%Y-%m-%d').strftime('%Y%m'))):
@@ -201,12 +202,12 @@ def makeCAMS_BC(domain, species, st_date, end_date, gridsize):
     with xr.open_dataset(listoffiles[0]) as temp:
         fields_ds = temp.load()
     fp_lat = fields_ds["lat"].values
-    fp_lon = fields_ds["lon"].values + 180
+    fp_lon = fields_ds["lon"].values #+ 180
     fp_height = fields_ds["height"].values
     
     #Check to see if BC file already exists. If not then download data
-    NESW = [str(int(np.ceil(max(fp_lat)))), ".", str(int(np.floor(max(fp_lon)))), 
-                ".", str(int(np.floor(min(fp_lat)))),".", str(int(np.ceil(min(fp_lon))))]
+    NESW = [str(int(np.ceil(max(fp_lat)))), ".", str(int(np.floor(max(fp_lon+180)))), 
+                ".", str(int(np.floor(min(fp_lat)))),".", str(int(np.ceil(min(fp_lon+180))))]
     outputname = "BC_CAMS_"+species+"_"+"".join(NESW)+"_"+str(gridsize)+"x"+str(gridsize)+"_"+st_date+".nc"
     if os.path.isfile(pathtoBCs+outputname) == False: 
         #Download data
@@ -222,15 +223,26 @@ def makeCAMS_BC(domain, species, st_date, end_date, gridsize):
     speciesmm = molar_mass(species)
     airmm = 28.9644 #Molar mass of air g/mol
     ds['z'] = ds.z/9.80665   #Convert to height (N.B. this is geopotential height!)
+    ds = ds.rename({species+'_c' :  species})   #ECMWF seemed to change their naming convention – quick fix
     ds[species] = ds[species] *airmm/speciesmm #Convert into mol/mol
     
-    
     #Select the gridcells closest to the edges of the  domain and make sure outside of fp
-    lat_n = min( (np.abs(ds.coords['latitude'].values - max(fp_lat))).argmin()+1, len(ds.coords['latitude'].values)-1)
-    lat_s = max( (np.abs(ds.coords['latitude'].values - min(fp_lat))).argmin()-1, 0)
-    lon_e = min( (np.abs(ds.coords['longitude'].values - max(fp_lon))).argmin()+1, len(ds.coords['longitude'].values)-1)
-    lon_w = max( (np.abs(ds.coords['longitude'].values - min(fp_lon))).argmin()-1, 0)
-    
+    #lat_n = min( (np.abs(ds.coords['latitude'].values - max(fp_lat))).argmin()+1, len(ds.coords['latitude'].values)-1)
+    lat_n =(np.abs(ds.coords['latitude'].values - max(fp_lat))).argmin()
+    if ds.coords['latitude'].values[lat_n] < np.max(fp_lat) and lat_n != 0:
+        lat_n -= 1
+    #lat_s = max( (np.abs(ds.coords['latitude'].values - min(fp_lat))).argmin()-1, 0)
+    lat_s = (np.abs(ds.coords['latitude'].values - min(fp_lat))).argmin()
+    if ds.coords['latitude'].values[lat_s] > np.min(fp_lat) and lat_s != (len(ds.coords['latitude'].values)-1):
+        lat_s += 1
+    #lon_e = min( (np.abs(ds.coords['longitude'].values - max(fp_lon))).argmin()+1, len(ds.coords['longitude'].values)-1)
+    lon_e =  (np.abs(ds.coords['longitude'].values - max(fp_lon))).argmin()
+    if ds.coords['longitude'].values[lon_e] < max(fp_lon) and lon_e != (len(ds.coords['longitude'].values)-1):
+        lon_e += 1
+    #lon_w = max( (np.abs(ds.coords['longitude'].values - min(fp_lon))).argmin()-1, 0)
+    lon_w =  (np.abs(ds.coords['longitude'].values - min(fp_lon))).argmin()
+    if ds.coords['longitude'].values[lon_w] > min(fp_lon) and lon_w != 0:
+        lon_e -= 1
     
     #Cut to these and then interpolate
     north = ds.sel(latitude = ds.coords['latitude'][lat_n],
@@ -255,6 +267,9 @@ def makeCAMS_BC(domain, species, st_date, end_date, gridsize):
     BC_edges.attrs['title'] = "ECMWF CAMS "+species+" volume mixing ratios at domain edges"
     BC_edges.attrs['author'] = getpass.getuser()
     BC_edges.attrs['date_created'] = np.str(dt.today())
+    
+    if os.path.isdir(data_path+"NAME/bc/%s/" % domain) == False:
+        os.mkdir(data_path+"NAME/bc/%s/" % domain)
     
     BC_edges.to_netcdf(path = data_path+"NAME/bc/%s/%s_%s_%s.nc"
                        %(domain,species.lower(),domain,dt.strptime(st_date, '%Y-%m-%d').strftime('%Y%m')), mode = 'w')
