@@ -147,7 +147,6 @@ def icos_data_read(data_file, species):
     df =  pd.read_csv(data_file,
                       skiprows = nheader-1,
                       parse_dates = {"time": ["Year", "Month", "Day", "Hour", "Minute"]},
-#                      date_parser = lambda s: pd.to_datetime(s, format = "%Y %m %d %H %M"),
                       index_col = "time",
                       sep = ";",
                       usecols = ["Day", "Month", "Year", "Hour", "Minute",
@@ -547,7 +546,6 @@ def gc(site, instrument, network,
                         instrument_out = params["GC"]["instruments_out"][instrument]["else"]
     
                     # Write file
-                    print(output_folder)
                     nc_filename = output_filename(output_folder,
                                                   network,
                                                   instrument_out,

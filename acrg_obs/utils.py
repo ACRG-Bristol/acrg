@@ -47,10 +47,10 @@ unit_species_long = {"DCH4C13": "permil",
                      "DO2N2" : "per meg",
                      "APO" : "per meg"}
 
-unit_interpret = {"ppm": "1e-6",
-                  "ppb": "1e-9",
-                  "ppt": "1e-12",
-                  "ppq": "1e-15",
+unit_interpret = {"ppm": 1e-6,
+                  "ppb": 1e-9,
+                  "ppt": 1e-12,
+                  "ppq": 1e-15,
                   "else": "unknown"}
 
 # For species which need more than just a hyphen removing and/or changing to lower case
@@ -154,12 +154,6 @@ def attributes(ds, species, site,
             If you only want an end date, just put a very early start date
             (e.g. ["1900-01-01", "2010-01-01"])
     """
-
-    # If a date range is specified, slice dataset
-    if date_range != None:
-        ds = ds.loc[dict(time = slice(*date_range))]
-        if len(ds.time.values) == 0:
-            return ds
 
     # Rename all columns to lower case! Could this cause problems?
     for key in ds.keys():
@@ -302,6 +296,10 @@ def attributes(ds, species, site,
                                "Note that sampling periods are approximate."
     if sampling_period:
         ds.time.attrs["sampling_period_seconds"] = sampling_period
+
+    # If a date range is specified, slice dataset
+    if date_range != None:
+        ds = ds.loc[dict(time = slice(*date_range))]
 
     return ds
 

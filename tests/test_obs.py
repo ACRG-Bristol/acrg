@@ -9,8 +9,11 @@ import acrg_obs
 import pytest
 import numpy as np
 import pandas as pd
-    
-    
+import xarray as xr
+import os
+
+test_dir = os.path.dirname(os.path.abspath(__file__))
+
 def checkUnits(data):
     '''
     Check the data units are numbers as needed in footprints_data_merge
@@ -150,3 +153,33 @@ def test_file_list():
     assert isinstance(fnames, list)
     checkFilenames(fnames)
     
+def test_process_utils_attributes():
+    '''
+    Test the acrg_obs.utils.attributes function
+    
+    Just makes sure that the function is returning a dataset with a few select 
+    things changed. Could make this more comprehensive.
+    '''
+    
+    attributes_test_file = os.path.join(test_dir,
+                                        "files/obs/process_attributes_input.nc")
+
+    with xr.open_dataset(attributes_test_file) as ds:
+        ds.load()
+    
+    out = acrg_obs.utils.attributes(ds, "CFC-113", "MHD",
+                                   global_attributes = {"test": "testing"},
+                                   units = "ppt",
+                                   scale = "TEST",
+                                   sampling_period = 60,
+                                   date_range = ["2000-01-01", "2000-01-10"])
+
+    assert "cfc113" in out.keys()
+    assert "time" in out.keys()
+    assert out.time.attrs["sampling_period_seconds"] == 60
+    assert "seconds since" in out.time.encoding["units"]
+    assert out.attrs["Calibration_scale"] == "TEST"
+    assert out.attrs['station_long_name'] == u'Mace Head, Ireland'
+    assert out.attrs['test'] == u'testing'
+    assert out.cfc113.units == 1e-12
+
