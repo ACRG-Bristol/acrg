@@ -544,9 +544,9 @@ def get_single_site(site, species_in,
         data_frame.index.name = 'time'
 
         # Cut out requested time period
-        # subtract one day from the end date as pandas indexing is inclusive of end point
+        # subtract one us from the end date as pandas indexing is inclusive of end point
         # convert back to string to avoid issues with specifying exact time
-        end_date_minus_1 = (pd.to_datetime(end_date)-pd.Timedelta(days=1)).strftime("%Y%m%d")
+        end_date_minus_1 = (pd.to_datetime(end_date)-pd.Timedelta(microseconds=1))
         data_frame = data_frame[start_date : end_date_minus_1]
         if len(data_frame) == 0:
             print("Warning, no data within range")
@@ -684,9 +684,9 @@ def get_gosat(site, species, max_level,
     
     data.max_level = max_level
     if species.upper() == "CH4":
-        data.mf.units = '1e-9'
+        data.mf.units = 1e-9
     if species.upper() == "CO2":
-        data.mf.units = '1e-6'
+        data.mf.units = 1e-6
 
     data.mf.scale = "GOSAT"
 
@@ -825,7 +825,8 @@ def get_obs(sites, species,
             units.append(None)
             scales.append(None)
         else:    
-            obs[site] = data.copy()
+            # reset mutli index into the expected standard index
+            obs[site] = data.reset_index().set_index("time")
             if "GOSAT" in site.upper():
                 if data is not None:
                     obs[site].max_level = data.max_level
