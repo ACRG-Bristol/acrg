@@ -29,6 +29,8 @@ import getpass
 from datetime import datetime as dt
 from acrg_tdmcmc.tdmcmc_post_process import molar_mass
 
+data_path = os.getenv("DATA_PATH")
+
 def getCAMSdata(st_date, end_date, gridsize, NESW, species, outputname, nearrealtime = False,
                 timeframe="daily"):
     """
@@ -145,6 +147,35 @@ def interplonlat(nesw, fp_lonorlat, species, lonorlat=None):
     ds2 = ds2.to_dataset(name=species)
     return ds2
 
+def write_CAMS_BC_tonetcdf(vmr_n, vmr_e, vmr_s, vmr_w, st_date, species, domain):
+    """
+    Writes the CAMS BC data to a ncdf file.
+    
+    Args:
+        vmr_n (array): Molar ratio at northern boundary
+        vmr_e (array): Molar ratio at eastern boundary
+        vmr_s (array): Molar ratio at western boundary
+        vmr_w (array): Molar ratio at southern boundary
+        st_date (string): Start date of form "YYYY-MM-dd"
+        species (string): The species 
+        domain (string): The domain which you want the boundary conditions for.
+    
+    Returns
+        netcdf file: Boundary conditions at domain boundaries
+    """
+    BC_edges = vmr_n.merge(vmr_e).merge(vmr_s).merge(vmr_w)
+    BC_edges.expand_dims('time',2)
+    BC_edges.coords['time'] = (dt.strptime(st_date, '%Y-%m-%d'))
+    
+    BC_edges.attrs['title'] = "ECMWF CAMS "+species+" volume mixing ratios at domain edges"
+    BC_edges.attrs['author'] = getpass.getuser()
+    BC_edges.attrs['date_created'] = np.str(dt.today())
+    
+    if os.path.isdir(data_path+"NAME/bc/%s/" % domain) == False:
+        os.mkdir(data_path+"NAME/bc/%s/" % domain)
+    
+    BC_edges.to_netcdf(path = data_path+"NAME/bc/%s/%s_%s_%s.nc"
+                       %(domain,species.lower(),domain,dt.strptime(st_date, '%Y-%m-%d').strftime('%Y%m')), mode = 'w')
 
 def makeCAMS_BC(domain, species, st_date, end_date, gridsize):
     """
@@ -154,7 +185,7 @@ def makeCAMS_BC(domain, species, st_date, end_date, gridsize):
     
     Args:
         domain (string): The domain which you want the boundary conditions for.
-        species (string): The species (currently only 'ch4')
+        species (string): The species 
         st_date (string): Start date of form "YYYY-MM-dd"
         end_date (string): End date of form "YYYY-MM-dd". 
             For 1 month use last day of month (see example). 
@@ -168,11 +199,11 @@ def makeCAMS_BC(domain, species, st_date, end_date, gridsize):
         makeCAMS_BC('EUROPE', 'ch4', '2017-08-01', '2017-08-31', 3)
         
     NOTES:
-        If working with a species other than ch4 then you'll have to update 
+        If working with a species other than ch4 or co then you'll have to update 
         the molar masses and getCAMSdata().
     """
     
-    data_path = os.getenv("DATA_PATH")
+    #data_path = os.getenv("DATA_PATH")
     pathtoBCs = data_path+'/ECMWF_CAMS/'
     
     #Set-up a few things and do some checks
@@ -223,7 +254,8 @@ def makeCAMS_BC(domain, species, st_date, end_date, gridsize):
     speciesmm = molar_mass(species)
     airmm = 28.9644 #Molar mass of air g/mol
     ds['z'] = ds.z/9.80665   #Convert to height (N.B. this is geopotential height!)
-    ds = ds.rename({species+'_c' :  species})   #ECMWF seemed to change their naming convention – quick fix
+    if species == 'ch4':
+        ds = ds.rename({species+'_c' :  species})   #ECMWF seemed to change their naming convention – quick fix
     ds[species] = ds[species] *airmm/speciesmm #Convert into mol/mol
     
     #Select the gridcells closest to the edges of the  domain and make sure outside of fp
@@ -259,18 +291,6 @@ def makeCAMS_BC(domain, species, st_date, end_date, gridsize):
     vmr_e = interplonlat(interpheight(east, fp_height, species, lonorlat='latitude'), fp_lat, species, lonorlat='latitude').rename({species : 'vmr_e'}) 
     vmr_w = interplonlat(interpheight(west, fp_height, species, lonorlat='latitude'), fp_lat, species, lonorlat='latitude').rename({species : 'vmr_w'})      
     
+    write_CAMS_BC_tonetcdf(vmr_n, vmr_e, vmr_s, vmr_w, st_date, species, domain)
     
-    BC_edges = vmr_n.merge(vmr_e).merge(vmr_s).merge(vmr_w)
-    BC_edges.expand_dims('time',2)
-    BC_edges.coords['time'] = (dt.strptime(st_date, '%Y-%m-%d'))
-    
-    BC_edges.attrs['title'] = "ECMWF CAMS "+species+" volume mixing ratios at domain edges"
-    BC_edges.attrs['author'] = getpass.getuser()
-    BC_edges.attrs['date_created'] = np.str(dt.today())
-    
-    if os.path.isdir(data_path+"NAME/bc/%s/" % domain) == False:
-        os.mkdir(data_path+"NAME/bc/%s/" % domain)
-    
-    BC_edges.to_netcdf(path = data_path+"NAME/bc/%s/%s_%s_%s.nc"
-                       %(domain,species.lower(),domain,dt.strptime(st_date, '%Y-%m-%d').strftime('%Y%m')), mode = 'w')
 
