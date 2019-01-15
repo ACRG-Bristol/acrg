@@ -185,10 +185,7 @@ def quadratic_sum(x):
     else:
         return np.nan
     return out
-
-def quadratic_sum2(x):
-    return np.mean( np.square(x) )
-    
+  
 
 def file_list(site, species,
               inlet = None,

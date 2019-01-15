@@ -20,6 +20,14 @@ def checkUnits(data):
     '''
     assert isinstance(data[".units"], int) or isinstance(data[".units"], float)
     
+def checkFilenames(fnames):
+    '''
+    lists of file names should be strings, without / in them
+    '''
+    for f in fnames:
+        assert isinstance(f, str)
+        assert "/" not in f
+    
 def test_get_obs_structure():
     '''
     Test that the get_obs function returns the correct output structure
@@ -95,5 +103,43 @@ def test_is_number():
     '''
     assert acrg_obs.read.is_number(1e-9) == True
     assert acrg_obs.read.is_number("1e-9") == True
-
-#def test_process_raw_obs():
+    
+def test_listsearch():
+    '''
+    Test the listsearch function is able to get a correct string from a dictionary of synonyms, 
+    and that it reutrns None when this is not possible
+    '''
+    correctString = "Correct"
+    synonyms = {
+            "Correct": {
+                    "alt":["AlsoCorrect"]
+                    }
+            }
+    assert acrg_obs.read.listsearch(["Correct"], correctString, synonyms) is "Correct"
+    assert acrg_obs.read.listsearch(["correct"], correctString, synonyms) is "correct"
+    assert acrg_obs.read.listsearch(["AlsoCorrect"], correctString, synonyms) is "AlsoCorrect"
+    assert acrg_obs.read.listsearch(["Alsocorrect"], correctString, synonyms) is "Alsocorrect"
+    assert acrg_obs.read.listsearch(["Wrong", "AlsoCorrect"], correctString, synonyms) is "AlsoCorrect"
+    assert acrg_obs.read.listsearch(["Wrong"], correctString, synonyms) is None
+    
+def test_file_search_and_split():
+    '''
+    Test that file_search_and_split correctly returns lists, where the filename is seperated from directory
+    '''
+    fnames, split = acrg_obs.read.file_search_and_split("files/obs/GOSAT/GOSAT-UK/*.nc")
+    
+    assert isinstance(fnames, list)
+    assert isinstance(split, list)
+    checkFilenames(fnames)
+    
+    assert len(fnames) == len(split)
+    
+def test_file_list():
+    '''
+    Test file-list returns the correct types
+    '''
+    directory, fnames = acrg_obs.read.file_list("MHD", "CH4", network="AGAGE", data_directory="files/obs")
+    assert isinstance(directory, str)
+    assert isinstance(fnames, list)
+    checkFilenames(fnames)
+    
