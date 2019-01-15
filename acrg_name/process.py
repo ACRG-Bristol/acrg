@@ -1661,7 +1661,24 @@ def process(domain, site, height, year, month,
     subfolder = base_dir + domain + "_" + site + "_" + height + "/"
     
     directory_status_log = subfolder
+
+    # Check that there are no errors from the NAME run
+    input_folder = subfolder + 'Input_files/'
+    error_files = 'BackRun_' + domain + '_' + site + '_' + height + '_' + year + month
+    error_days = []
     
+    for file_name in os.listdir(input_folder):
+        if file_name.startswith(error_files) and \
+        file_name.endswith('Error.txt') and \
+        os.stat(input_folder+file_name).st_size != 0:
+            error_days.append(file_name[-11:-9]+'/'+month+'/'+year)
+            error_days.sort()
+            num_days = len(error_days)
+        
+    if len(error_days) > 0:
+        raise Exception('This month cannot be processed as there are '+str(num_days)+' days with with errors: '+str(error_days))
+        
+   # Check for existance of subfolder
     if not os.path.isdir(subfolder):
         raise Exception("Subfolder: {} does not exist.\nExpect NAME output folder of format: domain_site_height".format(subfolder))
     
