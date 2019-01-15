@@ -14,6 +14,8 @@ data_path = os.getenv("DATA_PATH")
 def test_write(tmpdir):
     with xr.open_dataset(data_path+'/NAME/emissions/EUROPE/n2o-ocean_EUROPE_2009.nc') as load:
         ds = load.load()
+    del ds.attrs['author']
+    del ds.attrs['date_created']
     lat = ds.lat.values
     lon = ds.lon.values
     time = ds.time.values
@@ -28,5 +30,8 @@ def test_write(tmpdir):
           output_directory = str(tmpdir))
     with xr.open_dataset(str(tmpdir)+'/EUROPE/n2o-ocean_EUROPE_2009.nc') as load:
         testds = load.load()
-    testds.equals(ds)
+    del testds.attrs['author']
+    del testds.attrs['date_created']
+    assert testds.equals(ds)
+    assert testds.attrs == ds.attrs
     
