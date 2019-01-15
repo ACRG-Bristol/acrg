@@ -14,9 +14,19 @@ Using a Parametrised test
 """
 
 import numpy as np
+import os
 import netCDF4 as nc
 import pytest
 from acrg_grid.areagrid import areagrid
+
+acrg_path = os.getenv("ACRG_PATH")
+data_path = os.getenv("DATA_PATH")
+
+@pytest.fixture(scope="module")
+def gen_netcdf_file():
+    ''' Define directory and file containing netcdf example. '''
+    filename_path = os.path.join(acrg_path,"tests/files/NAME/emissions/EUROPE/ch4_EUROPE_2013.nc")
+    return filename_path
 
 def test_acrg_areagrid_shape_size():
     '''
@@ -33,12 +43,13 @@ def test_acrg_areagrid_shape_size():
     assert temp_areagrid_size == len(lat_array)*len(lon_array)
 
 
-def test_acrg_areagrid_netcdf_shape_size():
+def test_acrg_areagrid_netcdf_shape_size(gen_netcdf_file):
     '''
     Test if the shape and size of the output 2D array is correct for 
     a netcdf file
     '''
-    f = nc.Dataset( '/home/mi19881/programs/acrg/tests/files/NAME/emissions/EUROPE/ch4_EUROPE_2014.nc')
+    filename = gen_netcdf_file
+    f = nc.Dataset(filename)
     lon_array = f.variables['lon'][:]
     lat_array = f.variables['lat'][:]
     temp_areagrid = areagrid(lat_array, lon_array)
