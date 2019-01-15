@@ -341,7 +341,8 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     stepsize_bd,stepsize_all,stepsize_pdf_p1_all,stepsize_pdf_p2_all,
     pdf_param1,pdf_param2,pdf_p1_hparam1,pdf_p1_hparam2,pdf_p2_hparam1,
     pdf_p2_hparam2,x_pdf ,pdf_param1_pdf,pdf_param2_pdf,inv_type,
-    output_dir,tau_ap=None, tau_hparams=None, stepsize_tau=None, tau_pdf=None,
+    output_dir,fp_dir=None, flux_dir = None, data_dir=None, basis_dir=None, bc_basis_dir=None, bc_dir = None,
+    tau_ap=None, tau_hparams=None, stepsize_tau=None, tau_pdf=None,
     bl_split=False, bl_levels=None, filters=None,max_level=None):
     #%%
     
@@ -357,20 +358,19 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
               "corr":False,
               "evencorr":True}
     data = agage.get_obs(sites, species, start = start_date, end = end_date, average = meas_period, 
-                          keep_missing=corr_type[inv_type],max_level=max_level)
+                          keep_missing=corr_type[inv_type],max_level=max_level, data_directory = data_dir)
     
     
-    #fp_all = name.footprints_data_merge(data, domain=domain, species=species, calc_bc=True)
-    # Commented out and replaced by rt17603 on 11/08 - no species argument in this function.
-    fp_all = name.footprints_data_merge(data, domain=domain, calc_bc=True)
+    fp_all = name.footprints_data_merge(data, domain=domain, calc_bc=True, fp_directory = fp_dir, flux_directory = flux_dir, bc_directory = bc_dir)
     
     
     if fp_basis_case in ("INTEM"):    
-        fp_data_H2 = name.fp_sensitivity(fp_all, domain=domain, basis_case='transd')
-        basis_func = name.name.basis(domain = domain, basis_case = 'INTEM')
+        fp_data_H2 = name.fp_sensitivity(fp_all, domain=domain, basis_case='transd', basis_directory = basis_dir)
+        basis_func = name.name.basis(domain = domain, basis_case = 'INTEM', basis_directory = basis_dir)
     else:                            
-        fp_data_H2 = name.fp_sensitivity(fp_all, domain=domain, basis_case=fp_basis_case)
-    fp_data_H2=name.bc_sensitivity(fp_data_H2, domain=domain,basis_case=bc_basis_case)
+        fp_data_H2 = name.fp_sensitivity(fp_all, domain=domain, basis_case=fp_basis_case, basis_directory = basis_dir)
+        
+    fp_data_H2=name.bc_sensitivity(fp_data_H2, domain=domain,basis_case=bc_basis_case, bc_basis_directory = bc_basis_dir)
     
     ###########################################################################
     # CALCULATE DEGREE OF LOCALNESS FOR EACH FOOTPRINT
@@ -732,6 +732,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
         para_temp_in=1
     else:
         para_temp_in=0
+        
     #BEGIN ITERATIONS
     ##################################################
     print 'Starting MCMC...'
