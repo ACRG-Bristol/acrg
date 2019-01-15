@@ -36,13 +36,10 @@ def xy_wind_to_speed_direction(x_wind, y_wind):
     wind_speed = np.sqrt(x_wind**2+y_wind**2)
     
     # Wind direction is angle from North of x_wind, y_wind vector
-    # Need to rotate x and y wind 90 degrees clockwise to use math.atan2 function
-    # Then find angle from 0-360 by removing answer from 360 (and modulus to one rotation of 360 degrees)
+    # Need to switch x and y wind to use math.atan2 function
+    # Then find angle from 0-360 by adding 360 (and modulus to one rotation of 360 degrees)
     
-    x_rot = y_wind
-    y_rot = x_wind*-1
-    
-    wind_direction = np.rad2deg(2*math.pi - np.arctan2(y_rot,x_rot))%360
+    wind_direction = (np.rad2deg(np.arctan2(x_wind,y_wind))+360)%360
     
     return wind_speed, wind_direction
     
@@ -77,7 +74,7 @@ def get_met_Mark(date):
 def get_met_Part(lat, lon):
     
     """
-    Input lat (-90 - 90) and lon (-180 - 180)
+    Input lat (-90 - 90) and lon (-180 - 180) - defaults from acrg_site_info.json
     Returns Part number of met
 
     PT 1: lat 79.921875 - 89.921875, lon 0.1171875 - 359.8828
@@ -98,11 +95,7 @@ def get_met_Part(lat, lon):
     
     #Convert lat lon to convention for met ( lat: -90 to 90, lon: 0 - 360)
     
-    print lat, lon
-    
-    lon = lon + 180.
-    
-    print lat, lon
+    lon = (lon + 360)%360.
 
     if lat > 79.921875:
         PT = 1
@@ -145,7 +138,7 @@ def get_met_Part(lat, lon):
     return PT
 
 
-def get_vertical_profile(site, start_date, end_date, output_vars, temp_dir, output_dir, met_dir = "/mnt/storage/private/acrg/met_archive/NAME/Met/"):
+def get_vertical_profile(site, start_date, end_date, output_vars, temp_dir, output_dir, met_dir = "/mnt/storage/private/acrg/met_archive/NAME/Met/Global/"):
     
     """
     Function extracts a vertical meteorological profile at the location requested (the nearest grid cell in the met files) for the required variables
@@ -153,20 +146,21 @@ def get_vertical_profile(site, start_date, end_date, output_vars, temp_dir, outp
     site: site code for the location of the vertical profile to be extracted
     start_date: start of vertical profile timeseries
     end_date: end of vertical profile timeseries
-    output_vars: options are air_pressure, air_temperature, specific_humidity, upward_air_velocity, wind_speed, wind_direction
+    output_vars: options are air_pressure, air_temperature, specific_humidity, wind_speed, wind_direction
                             (wind_speed and wind_direction calculated automatically from x_wind and y_wind)
     temp_dir: pathname to directory where met files are stored as they are unzipped (they are deleted once used)
     output_dir: where to save the netcdf file of the vertical profile
     met_dir: where the met is stored (default is storage location on BC4)
     """
     
-
     # Get lat lon from site_name
 
     with open(acrg_path + "/acrg_site_info.json") as f:
             site_info=json.load(f)
     lat_coord = site_info[site]['latitude']
     lon_coord = site_info[site]['longitude']
+    
+    print "Getting vertical profile for grid cell closest to " +str(lat_coord) + " degrees latitude (-90 - 90) and " + str(lon_coord) + " degrees longitude (-180 - 180)."
 
     # If wind_speed and wind_direction required, add x_wind and y_wind to output_vars
 
@@ -208,11 +202,8 @@ def get_vertical_profile(site, start_date, end_date, output_vars, temp_dir, outp
         i = -1
         for vi, v in enumerate(variables):
             if v in output_vars:
-                print v
                 cube = met[vi]
                 if len(cube.shape) == 3:
-                    print v + " has correct dimensions"
-            
                     i+=1
             
                     # Find lat and lon closest to desired point
@@ -221,13 +212,12 @@ def get_vertical_profile(site, start_date, end_date, output_vars, temp_dir, outp
                     lat = cube.coord('latitude').points
                 
                     #Make sure lon_coord is in the right format (originally -180 - 180, change to 45.1172 - 405.1172)
+                    lon_coord = (lon_coord + 360)%360
                     if lon_coord < 45.1172:
                         lon_coord = lon_coord +360
             
                     wh_lon = (np.abs(lon - lon_coord)).argmin()
                     wh_lat = (np.abs(lat - lat_coord)).argmin()
-            
-                    print "Closest coords: " +str(lon[wh_lon])+", " + str(lat[wh_lat])
             
                     # Extract vertical profile
             
@@ -239,7 +229,7 @@ def get_vertical_profile(site, start_date, end_date, output_vars, temp_dir, outp
                     dates = time.units.num2date(time.points)
             
                     da = xr.DataArray(vertical_profile[None,:], coords=[dates,cube.coord('model_level_number').points], dims=['time','level'], name = v,
-                                      attrs = {'units': str(cube.units), 'lat': str(lon[wh_lon]), 'lon': str(lat[wh_lat])})
+                                      attrs = c.OrderedDict([('units', str(cube.units)), ('lat', str(lat[wh_lat])), ('lon', str(lon[wh_lon]))]))
             
                     if i == 0:
                         ds = da.to_dataset()
@@ -247,13 +237,14 @@ def get_vertical_profile(site, start_date, end_date, output_vars, temp_dir, outp
                         ds = xr.merge([ds,da])
         
                 else:
-                    print v + " has incorrect dimensions"
                     pass
             else:
                 pass
 
         if di == 0:
             DS = ds
+            print "Closest grid cell is " + str(lat[wh_lat]) + " latitude (-90 - 90) and " +str(lon[wh_lon])+ " longitude (45.1 - 405.1)."
+            
         else:
             DS = xr.concat((DS,ds), dim = 'time')
         
