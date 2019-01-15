@@ -36,13 +36,10 @@ def xy_wind_to_speed_direction(x_wind, y_wind):
     wind_speed = np.sqrt(x_wind**2+y_wind**2)
     
     # Wind direction is angle from North of x_wind, y_wind vector
-    # Need to rotate x and y wind 90 degrees clockwise to use math.atan2 function
-    # Then find angle from 0-360 by removing answer from 360 (and modulus to one rotation of 360 degrees)
+    # Need to switch x and y wind to use math.atan2 function
+    # Then find angle from 0-360 by adding 360 (and modulus to one rotation of 360 degrees)
     
-    x_rot = y_wind
-    y_rot = x_wind*-1
-    
-    wind_direction = np.rad2deg(2*math.pi - np.arctan2(y_rot,x_rot))%360
+    wind_direction = (np.rad2deg(np.arctan2(x_wind,y_wind))+360)%360
     
     return wind_speed, wind_direction
     
@@ -203,7 +200,6 @@ def get_vertical_profile(site, start_date, end_date, output_vars, temp_dir, outp
         i = -1
         for vi, v in enumerate(variables):
             if v in output_vars:
-                print v
                 cube = met[vi]
                 if len(cube.shape) == 3:
                     i+=1
@@ -214,6 +210,7 @@ def get_vertical_profile(site, start_date, end_date, output_vars, temp_dir, outp
                     lat = cube.coord('latitude').points
                 
                     #Make sure lon_coord is in the right format (originally -180 - 180, change to 45.1172 - 405.1172)
+                    lon_coord = lon_coord + 180
                     if lon_coord < 45.1172:
                         lon_coord = lon_coord +360
             
@@ -230,7 +227,7 @@ def get_vertical_profile(site, start_date, end_date, output_vars, temp_dir, outp
                     dates = time.units.num2date(time.points)
             
                     da = xr.DataArray(vertical_profile[None,:], coords=[dates,cube.coord('model_level_number').points], dims=['time','level'], name = v,
-                                      attrs = {'units': str(cube.units), 'lat': str(lon[wh_lon]), 'lon': str(lat[wh_lat])})
+                                      attrs = {'units': str(cube.units), 'lat': str(lat[wh_lat]), 'lon': str(lon[wh_lon])})
             
                     if i == 0:
                         ds = da.to_dataset()
