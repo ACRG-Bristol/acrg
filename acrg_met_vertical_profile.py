@@ -159,6 +159,8 @@ def get_vertical_profile(site, start_date, end_date, output_vars, temp_dir, outp
             site_info=json.load(f)
     lat_coord = site_info[site]['latitude']
     lon_coord = site_info[site]['longitude']
+    
+    print "Getting vertical profile for grid cell closest to " +str(lat_coord) + " degrees latitude (-90 - 90) and " + str(lon_coord) + " degrees longitude (-180 - 180)."
 
     # If wind_speed and wind_direction required, add x_wind and y_wind to output_vars
 
@@ -227,7 +229,7 @@ def get_vertical_profile(site, start_date, end_date, output_vars, temp_dir, outp
                     dates = time.units.num2date(time.points)
             
                     da = xr.DataArray(vertical_profile[None,:], coords=[dates,cube.coord('model_level_number').points], dims=['time','level'], name = v,
-                                      attrs = {'units': str(cube.units), 'lat': str(lat[wh_lat]), 'lon': str(lon[wh_lon])})
+                                      attrs = c.OrderedDict([('units', str(cube.units)), ('lat', str(lat[wh_lat])), ('lon', str(lon[wh_lon]))]))
             
                     if i == 0:
                         ds = da.to_dataset()
@@ -241,6 +243,8 @@ def get_vertical_profile(site, start_date, end_date, output_vars, temp_dir, outp
 
         if di == 0:
             DS = ds
+            print "Closest grid cell is " + str(lat[wh_lat]) + " latitude (-90 - 90) and " +str(lon[wh_lon])+ " longitude (45.1 - 405.1)."
+            
         else:
             DS = xr.concat((DS,ds), dim = 'time')
         
