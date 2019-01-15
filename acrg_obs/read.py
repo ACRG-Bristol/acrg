@@ -180,7 +180,14 @@ def quadratic_sum(x):
         x (array):
             
     """
-    return np.sqrt(np.sum(x**2))/len(x)
+    if len(x) > 0:
+        return np.sqrt(np.sum(x**2))/len(x)
+    else:
+        return np.nan
+    return out
+
+def quadratic_sum2(x):
+    return np.mean( np.square(x) )
     
 
 def file_list(site, species,
@@ -581,7 +588,7 @@ def get_single_site(site, species_in,
                 data_frame.sort_index(inplace = True)
             
             # Resample
-            data_frame=data_frame.resample(average, how = how)
+            data_frame = data_frame.resample(average).agg(how)
             if keep_missing == True:
                 data_frame=data_frame.drop(data_frame.index[-1])
              
@@ -591,7 +598,6 @@ def get_single_site(site, species_in,
         
         data_frame.mf.units = units
         data_frame.mf.scale = cal[0]
-        data_frame.files = files
 
         return data_frame
 
@@ -632,7 +638,7 @@ def get_gosat(site, species, max_level,
             
     """
     if max_level is None:
-        raise ValueError("MAX LEVEL REQUIRED FOR SATELLITE OBS DATA")
+        raise ValueError("'max_level' ARGUMENT REQUIRED FOR SATELLITE OBS DATA")
             
     data_directory = os.path.join(data_directory, "GOSAT", site)
     files = glob.glob(os.path.join(data_directory, '*.nc'))
