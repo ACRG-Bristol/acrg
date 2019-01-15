@@ -6,7 +6,7 @@ Created on Mon Jan 14 11:31:20 2019
 @author: al18242
 """
 import acrg_obs
-
+import pytest
 import numpy as np
 import pandas as pd
     
@@ -122,6 +122,13 @@ def test_listsearch():
     assert acrg_obs.read.listsearch(["Wrong", "AlsoCorrect"], correctString, synonyms) is "AlsoCorrect"
     assert acrg_obs.read.listsearch(["Wrong"], correctString, synonyms) is None
     
+    assert acrg_obs.read.listsearch(["Correct"], "AlsoCorrect", synonyms) is "Correct"
+    
+    with pytest.raises(ValueError):
+        acrg_obs.read.listsearch(["Correct"], "NotCorrect", synonyms)
+        
+        
+    
 def test_file_search_and_split():
     '''
     Test that file_search_and_split correctly returns lists, where the filename is seperated from directory
@@ -138,7 +145,7 @@ def test_file_list():
     '''
     Test file-list returns the correct types
     '''
-    directory, fnames = acrg_obs.read.file_list("MHD", "CH4", network="AGAGE", data_directory="files/obs")
+    directory, fnames = acrg_obs.read.file_list("MHD", "CH4", "AGAGE", data_directory="files/obs")
     assert isinstance(directory, str)
     assert isinstance(fnames, list)
     checkFilenames(fnames)
