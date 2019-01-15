@@ -14,7 +14,7 @@ For this first version just keep BC and fixed reigons separate from rest
 """
 import acrg_name as name
 import numpy as np
-import acrg_agage as agage
+import acrg_obs
 import pandas
 import datetime as dt
 from numba import jit
@@ -279,7 +279,7 @@ else:
 #########################################
 # READ IN DATA AND FOOTPRINTS THEN MERGE
 
-data = agage.get_obs(sites, species, start = start_date, end = end_date, average = meas_period, 
+data = acrg_obs.get_obs(sites, species, start_date = start_date, end_date = end_date, average = meas_period, 
                       keep_missing=False, height=heights)                      
 
 

@@ -90,7 +90,7 @@ import xarray as xray
 import datetime as dt
 from collections import OrderedDict
 import itertools
-import acrg_agage as agage
+import acrg_obs
 from barometric import pressure_at_height
 from acrg_countrymask import domain_volume
 
@@ -2319,7 +2319,7 @@ def gosat_output(ds,site,species="ch4",file_per_day=False,output_directory=obs_d
     ident = "exposure_id"    
     
     try:
-        network = agage.site_info[site]["network"]
+        network = acrg_obs.read.site_info[site]["network"]
     except KeyError:
         network = "unknown"
     instrument = 'gosat-fts'
@@ -2453,7 +2453,7 @@ def gosat_output_name(ds,site,max_level=17,use_name_pressure=False,pressure_doma
                                                        max_days=pressure_max_days,
                                                        day_template=pressure_day_template)
     try:
-        network = agage.site_info[site]["network"]
+        network = acrg_obs.read.site_info[site]["network"]
     except KeyError:
         network = "unknown"
     
