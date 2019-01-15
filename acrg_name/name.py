@@ -808,10 +808,10 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
         site_df = data[site] 
             
         # Get time range
-        df_start = min(site_df.index).to_pydatetime()
+        df_start = min(site_df.index)[0].to_pydatetime()
         start = dt.datetime(df_start.year, df_start.month, 1, 0, 0)
         
-        df_end = max(site_df.index).to_pydatetime()
+        df_end = max(site_df.index)[0].to_pydatetime()
         month_days = calendar.monthrange(df_end.year, df_end.month)[1]
         end = dt.datetime(df_end.year, df_end.month, 1, 0, 0) + \
                 dt.timedelta(days = month_days)

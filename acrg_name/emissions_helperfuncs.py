@@ -1061,6 +1061,8 @@ def getScarpelliFossilFuelsCH4(lon_out, lat_out, scarpelli_sector='all'):
             Dimensions are [lat, lon]
     """
     
+    print('NOTE THAT THE SCARPELLI DATASET IS NOT YET PUBLISHED. SPEAK TO ME (LUKE) BEFORE USING IT.')
+    
     sectors = {'coal' : 'Coal', 'gas' : 'Gas_All', 'oil' : 'Oil_All', 'all' : 'Total_Fuel_Exploitation'}
 
     path = '/data/shared/Gridded_fluxes/CH4/Scarpelli_FossilFuel_CH4/'
