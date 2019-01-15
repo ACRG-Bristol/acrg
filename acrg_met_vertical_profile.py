@@ -95,7 +95,7 @@ def get_met_Part(lat, lon):
     
     #Convert lat lon to convention for met ( lat: -90 to 90, lon: 0 - 360)
     
-    lon = lon + 180.
+    lon = (lon + 360)%360.
 
     if lat > 79.921875:
         PT = 1
@@ -212,7 +212,7 @@ def get_vertical_profile(site, start_date, end_date, output_vars, temp_dir, outp
                     lat = cube.coord('latitude').points
                 
                     #Make sure lon_coord is in the right format (originally -180 - 180, change to 45.1172 - 405.1172)
-                    lon_coord = lon_coord + 180
+                    lon_coord = (lon_coord + 360)%360
                     if lon_coord < 45.1172:
                         lon_coord = lon_coord +360
             
