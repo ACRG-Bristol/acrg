@@ -135,12 +135,28 @@ def listsearch(possible_strings, correct_string,
         "possible_strings"
     '''
     
+    correct_key = None
+    #find correct_string
+    for k in further_info.keys():
+        if k.upper() == correct_string.upper():
+            correct_key = k
+            break
+        matched_strings=[s for s in further_info[k][further_info_alternative_label] \
+                if s.upper() == correct_string.upper()]
+        if len(matched_strings) is not 0:
+            correct_key = k
+            break
+        
+    if not correct_key:
+        errorMessage = "Cannot find {} in synonym dict 'further_info'".format(correct_string)
+        raise ValueError(errorMessage)   
+
     for v in possible_strings:
-        if correct_string.upper() == v.upper():
+        if correct_key.upper() == v.upper():
             out_string = v
             break
         else:
-            matched_strings=[s for s in further_info[correct_string][further_info_alternative_label] \
+            matched_strings=[s for s in further_info[correct_key][further_info_alternative_label] \
                 if s.upper() == v.upper()]
             if len(matched_strings) is not 0:
                 out_string = v
@@ -187,9 +203,8 @@ def quadratic_sum(x):
     return out
   
 
-def file_list(site, species,
+def file_list(site, species, network,
               inlet = None,
-              network = None,
               instrument = None,
               version = None,
               data_directory=None):
@@ -203,15 +218,14 @@ def file_list(site, species,
         species (str) :
             Species identifier. All species names should be defined within acrg_species_info.json. 
             E.g. "ch4" for methane.
+        network (str/list) : 
+            Network for the site/instrument (must match number of sites).
         start (str) : 
             Start date in format "YYYY-MM-DD" for range of files to find.
         end (str) : 
             End date in same format as start for range of files to find.
         height (str/list) : 
             Height of inlet for input data (must match number of sites).
-        network (str/list, optional) : 
-            Network for the site/instrument (must match number of sites).
-            Default = None.
         instrument (str/list, optional):
             Specific instrument for the site (must match number of sites).
             Default = None.
@@ -438,8 +452,7 @@ def get_single_site(site, species_in,
         print("       You'll need to add network %s to acrg_site_info.json" %network)
         return
         
-    data_directory, files = file_list(site, species,
-                                      network = network,
+    data_directory, files = file_list(site, species, network,
                                       inlet = inlet,
                                       instrument = instrument,
                                       version = version,
