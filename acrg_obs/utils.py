@@ -47,10 +47,10 @@ unit_species_long = {"DCH4C13": "permil",
                      "DO2N2" : "per meg",
                      "APO" : "per meg"}
 
-unit_interpret = {"ppm": 1e-6,
-                  "ppb": 1e-9,
-                  "ppt": 1e-12,
-                  "ppq": 1e-15,
+unit_interpret = {"ppm": "1e-6",
+                  "ppb": "1e-9",
+                  "ppt": "1e-12",
+                  "ppq": "1e-15",
                   "else": "unknown"}
 
 # For species which need more than just a hyphen removing and/or changing to lower case
