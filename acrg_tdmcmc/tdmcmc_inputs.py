@@ -117,6 +117,15 @@ if verbose:
 ################################################################
 # SET OUTPUT DIRECTORY AND OUTPUT DETAILS
 output_dir = param['output_dir']
+
+data_dir = param['data_dir']
+fp_dir = param['fp_dir']
+flux_dir = param['flux_dir']
+basis_dir = param['basis_dir']
+bc_basis_dir = param['bc_basis_dir']
+bc_dir = param['bc_dir']
+
+
 unique_copy = param['unique_copy']
 
 if output_dir == "/path/to/output/directory/":
@@ -128,12 +137,36 @@ elif output_dir.startswith("$DATA_PATH"):
 
 if not os.path.isdir(output_dir):
     raise Exception("Output directory: {} does not exist.".format(output_dir))
-
+    
 if group:
     output_dir = os.path.join(output_dir,group)
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
+    
+if data_dir is not None and data_dir.startswith("$ACRG_PATH"):
+    data_dir = data_dir.replace("$ACRG_PATH",acrg_path)
+    print("data_directory is ", data_dir)
 
+if fp_dir is not None and fp_dir.startswith("$ACRG_PATH"):
+    fp_dir = fp_dir.replace("$ACRG_PATH",acrg_path)
+    print("fp_directory is ", fp_dir)
+
+if flux_dir is not None and flux_dir.startswith("$ACRG_PATH"):
+    flux_dir = flux_dir.replace("$ACRG_PATH",acrg_path)
+    print("flux_directory is ", flux_dir)
+
+if bc_dir is not None and bc_dir.startswith("$ACRG_PATH"):
+    bc_dir = bc_dir.replace("$ACRG_PATH",acrg_path)
+    print("bc_directory is ", bc_dir)    
+
+if basis_dir is not None and basis_dir.startswith("$ACRG_PATH"):
+    basis_dir = basis_dir.replace("$ACRG_PATH",acrg_path)
+    print("basis_directory is ", basis_dir)
+
+if bc_basis_dir is not None and bc_basis_dir.startswith("$ACRG_PATH"):
+    bc_basis_dir = bc_basis_dir.replace("$ACRG_PATH",acrg_path)
+    print("bc_basis_directory is ", bc_basis_dir)
+    
 #######################################################
 # DO YOU WANT TO DO REVERSIBLE JUMP OR NOT?????
 reversible_jump = param['reversible_jump']         # True = do reversible jump; False = don't
@@ -367,7 +400,8 @@ post_mcmc=run_tdmcmc.run_tdmcmc(sites, meas_period, av_period, species, start_da
     stepsize_bd, stepsize_all, stepsize_pdf_p1_all, stepsize_pdf_p2_all,    
     pdf_param1, pdf_param2, pdf_p1_hparam1, pdf_p1_hparam2, pdf_p2_hparam1,    
     pdf_p2_hparam2, x_pdf, pdf_param1_pdf, pdf_param2_pdf, inv_type,     
-    output_dir,filters=filters,bl_split=bl_split, bl_levels=levels,
+    output_dir,fp_dir=fp_dir, flux_dir = flux_dir, data_dir=data_dir, basis_dir=basis_dir, bc_basis_dir=bc_basis_dir, bc_dir = bc_dir,
+    filters=filters,bl_split=bl_split, bl_levels=levels,
     tau_ap=tau_ap, tau_hparams=tau_hparams, stepsize_tau=stepsize_tau, tau_pdf=tau_pdf,
     max_level=max_level)
 

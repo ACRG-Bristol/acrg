@@ -1501,7 +1501,7 @@ def combine_timeseries(*ds_mult):
 
     return combined_ds
  
-def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True, 
+def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True, figsize=None,
                     lower_percentile = 16., upper_percentile = 84.):
     
     """
@@ -1547,7 +1547,7 @@ def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True
     
 
     if doplot is True:
-        fig,ax=plt.subplots(nsites,sharex=True)
+        fig,ax=plt.subplots(nsites,sharex=True,figsize=figsize)
         
         if nsites > 1:
             for si,site in enumerate(sites):

@@ -1545,17 +1545,18 @@ def uex(species):
             "site" : "CVO",
             "scale": {
                 "CH4": "NOAA2004",
-                "N2O": "WMO N2OX2006A"},
+                "N2O": "WMO N2OX2006A",
+                "CO": "WMO CO X2014A"},
             "directory" : "/data/shared/obs_raw/UEX/",
             "directory_output" : "/data/shared/obs/",
             "global_attributes" : {
-                    "contact": "Elena Kozlova",
+                    "contact": "Elena Kozlova, University of Exeter",
                     "averaging": "minute averaged OA-ICOS"
                     }
             }
     
 
-    fnames = sorted(glob.glob(join(params["directory"], ("*" + species.upper() +"*.dat"))))
+    fnames = sorted(glob.glob(join(params["directory"], ("*" + species.upper() + '.' +"*.dat"))))
     
     df = []
     
@@ -1642,6 +1643,8 @@ def obspack_co2(site, height, obspack_name):
     if height == 'surface':
         if site == "PAL":
             fname = glob.glob("/data/shared/obs_raw/EUROCOM_ObsPack/"+obspack_name_dict[obspack_name]+"/co2_" + site.lower() + "*" + "nonlocal.nc" )
+        elif site == "JFJ":
+            fname = glob.glob("/data/shared/obs_raw/EUROCOM_ObsPack/"+obspack_name_dict[obspack_name]+"/co2_" + site.lower() + "*" + "_5_allvalid.nc" )
         else:
             fname = glob.glob("/data/shared/obs_raw/EUROCOM_ObsPack/"+obspack_name_dict[obspack_name]+"/co2_" + site.lower() + "*" + ".nc" )
     else:    
@@ -1662,7 +1665,9 @@ def obspack_co2(site, height, obspack_name):
                        'LMP':'NDIR',
                        'OPE':'CRDS',
                        'TRN':'GC-FID',
-                       'WAO':'NDIR'}
+                       'WAO':'NDIR',
+                       'CMN':'GC-FID',
+                       'JFJ':'CRDS'}
 
     if len(fname) == 0:
         print "Can't find file for obspack %s, site %s and height %s" %(obspack_name, site, height)

@@ -1,4 +1,5 @@
 *.pyc
+*.so
 tests/.cache/v/cache/lastfailed
 acrg_tdmcmc/param.ini
 acrg_satellite/gosat_process.ini
@@ -8,4 +9,3 @@ tests/files/NAME/raw_output/*/*/Processed_Fields_files_Org
 tests/files/output/*
 *.ipynb_checkpoints*
 *~
-
