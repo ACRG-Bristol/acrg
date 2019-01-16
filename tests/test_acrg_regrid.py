@@ -38,7 +38,7 @@ def gen_netcdf_file_old():
 
 def test_acrg_regrid2d_netcdf_shape(gen_netcdf_file_old, gen_netcdf_file_new):
     '''
-    Test if the shape of the regriddded 3D array is correct
+    Test if the shape of the regriddded 2D array is correct
     '''
     f_new = nc.Dataset(gen_netcdf_file_new)
     f_old = nc.Dataset(gen_netcdf_file_old)
@@ -80,7 +80,8 @@ def test_acrg_regrid3d_netcdf_shape(gen_netcdf_file_old, gen_netcdf_file_new):
 
 def test_acrg_regrid2d_netcdf_conservation():
     '''
-    Test if the shape of the regriddded 3D array is correct
+    Test if the regridding function conserves the emission over the domain when
+    using regrid2d
     '''
     data_array = np.array(([1.,2.,3.],[4.,5.,6.],[7.,8.,9.]))
     lat_array = np.array([5.,15.,25.])
@@ -109,7 +110,8 @@ def test_acrg_regrid2d_netcdf_conservation():
 
 def test_acrg_regrid3d_netcdf_conservation():
     '''
-    Test if the shape of the regriddded 3D array is correct
+    Test if the regridding function conserves the emission over the domain when
+    using regrid3d
     '''
     data_array = np.array(([[1.,2.,3.],[4.,5.,6.],[7.,8.,9.]], [[0.1,0.2,0.3],[0.4,0.5,0.6],[0.7,0.8,0.9]]))
     lat_array = np.array([5.,15.,25.])
