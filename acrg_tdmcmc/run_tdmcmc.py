@@ -334,7 +334,7 @@ def reorder_dims(fp_data_H,first_dims=["time"]):
     return fp_data_H
 
 def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date, 
-    domain,network,emissions_name, flux_directory, fp_basis_case ,bc_basis_case,rjmcmc,para_temp,
+    domain,network,emissions_name, fp_basis_case ,bc_basis_case,rjmcmc,para_temp,
     bl_period,kmin,kmax,k_ap,nIt,burn_in,nsub,
     nbeta,beta,sigma_model_pdf,sigma_model_ap, 
     sigma_model_hparams,stepsize_sigma_y,stepsize_clon,stepsize_clat,
@@ -362,7 +362,9 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
                           keep_missing=corr_type[inv_type],max_level=max_level, data_directory = data_dir)
     
     
-    fp_all = name.footprints_data_merge(data, domain=domain, calc_bc=True, fp_directory = fp_dir, flux_directory = flux_dir, bc_directory = bc_dir)
+    fp_all = name.footprints_data_merge(data, domain=domain, calc_bc=True,
+                            emissions_name = emissions_name,
+                            fp_directory = fp_dir, flux_directory = flux_dir, bc_directory = bc_dir)
     
     
     if fp_basis_case in ("INTEM"):    
