@@ -358,7 +358,8 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
               "corr":False,
               "evencorr":True}
     data = acrg_obs.get_obs(sites, species, start_date = start_date, end_date = end_date, average = meas_period, 
-                          keep_missing=corr_type[inv_type],max_level=max_level, data_directory = data_dir)
+                          keep_missing=corr_type[inv_type],max_level=max_level, data_directory = data_dir,
+                          network=network)
     
     
     fp_all = name.footprints_data_merge(data, domain=domain, calc_bc=True, fp_directory = fp_dir, flux_directory = flux_dir, bc_directory = bc_dir)
@@ -947,12 +948,12 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     #output_directory="/home/ml12574/work/programs/Python/my_acrg/td_uncorr/"
     
     #Output files from tdmcmc_template.py stored in the form:
-    # "output_" + network + "_" + species +  "_" + date + ".nc"
+    # "output_" + site names + "_" + species +  "_" + date + ".nc"
     
-    network_w = network.split('/')[-1]
+    site_names = "-".join(sites)
     
     fname=os.path.join(output_dir,
-                        "output_" + network_w + "_" + species + "_" + start_date + ".nc")
+                        "output_" + site_names + "_" + species + "_" + start_date + ".nc")
     for key in post_mcmc.keys():
         post_mcmc[key].encoding['zlib'] = True
     post_mcmc.to_netcdf(path=fname, mode='w')

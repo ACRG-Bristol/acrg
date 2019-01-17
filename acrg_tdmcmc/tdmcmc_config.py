@@ -269,8 +269,7 @@ def add_defaults(param,section_group=None):
     '''
     if section_group is None or section_group == "MEASUREMENTS":
         if ("network" not in param.keys()) or (not param["network"]):
-            site1 = param['sites'][0]
-            param["network"] = acrg_obs.read.site_info[site1]["network"]
+            param["network"] = None
             print 'Extracting network for first site from json file'
     
     if section_group is None or section_group == "MCMC":
