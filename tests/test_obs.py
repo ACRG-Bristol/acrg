@@ -181,5 +181,5 @@ def test_process_utils_attributes():
     assert out.attrs["Calibration_scale"] == "TEST"
     assert out.attrs['station_long_name'] == u'Mace Head, Ireland'
     assert out.attrs['test'] == u'testing'
-    assert out.cfc113.units == 1e-12
+    assert out.cfc113.units == "1e-12"
 

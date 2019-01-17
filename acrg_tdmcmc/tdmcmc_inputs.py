@@ -426,10 +426,10 @@ if unique_copy:
     # Copy config file to output sub-directory
     shutil.copy(config_file,datestamp_output_dir)
     
-    network_w = network.split('/')[-1]
+    site_names = "-".join(sites)
     # Write output from MCMC code again but this time to the subdirectory
     fname = os.path.join(datestamp_output_dir,
-                            "output_{network}_{species}_{date}.nc".format(network=network_w,species=species,date=start_date))
+                            "output_{site_names}_{species}_{date}.nc".format(site_names=site_names,species=species,date=start_date))
     for key in post_mcmc.keys():
         post_mcmc[key].encoding['zlib'] = True
     post_mcmc.to_netcdf(path=fname, mode='w')
