@@ -28,7 +28,7 @@ from acrg_grid import areagrid
 from netCDF4 import Dataset
 from acrg_time.convert import time2sec
 import os
-import acrg_agage as agage
+import acrg_obs
 import json
 import matplotlib.mlab as mlab
 from matplotlib.patches import Polygon
@@ -246,7 +246,7 @@ def molar_mass(species):
     species_info_file = os.path.join(acrg_path,"acrg_species_info.json")
     with open(species_info_file) as f:
             species_info=json.load(f)
-    species_key = agage.synonyms(species, species_info)
+    species_key = acrg_obs.read.synonyms(species, species_info)
     molmass = float(species_info[species_key]['mol_mass'])
     return molmass
 
@@ -1501,7 +1501,7 @@ def combine_timeseries(*ds_mult):
 
     return combined_ds
  
-def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True, 
+def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True, figsize=None,
                     lower_percentile = 16., upper_percentile = 84.):
     
     """
@@ -1547,7 +1547,7 @@ def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True
     
 
     if doplot is True:
-        fig,ax=plt.subplots(nsites,sharex=True)
+        fig,ax=plt.subplots(nsites,sharex=True,figsize=figsize)
         
         if nsites > 1:
             for si,site in enumerate(sites):
