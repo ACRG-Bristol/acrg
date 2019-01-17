@@ -27,21 +27,26 @@ import os
 import glob
 import getpass
 from datetime import datetime as dt
+from acrg_tdmcmc.tdmcmc_post_process import molar_mass
 
-def getCAMSdata(st_date, end_date, gridsize, NESW, species, outputname):
+data_path = os.getenv("DATA_PATH")
+
+def getCAMSdata(st_date, end_date, gridsize, NESW, species, outputname, nearrealtime = False,
+                timeframe="daily"):
     """
     Used by makeCAMS_BC to download ECMWF CAMS data 
     
     Args:
-        domain (string): The domain which you want the boundary conditions for.
-        
         st_date (string): Start date of form "YYYY-MM-dd"
         end_date (string): End date of form "YYYY-MM-dd". 
             For 1 month use last day of month. 
         gridsize (int/float): Resolution of CAMS output in degrees.
             Possible are: 0.125, 0.25, 0.4, 0.5, 0.75, 1, 1.125, 1.5, 2, 2.5, 3
-        species (string): The species (currently only 'ch4') 
+        NESW (list?) : TODO (should be NWSE?)
+        species (string): The species (currently only 'ch4' or 'co') 
         outputname (string): The ECMWF CAMS data output file name
+        nearrealtime (bool) : TODO
+        timeframe (string) : Extract "daily" or "3hourly" data.
         
     Returns:
         Creates a netcdf file containing CAMS data in data_path/ECMWF_CAMS
@@ -54,21 +59,33 @@ def getCAMSdata(st_date, end_date, gridsize, NESW, species, outputname):
     """
     from ecmwfapi import ECMWFDataServer
     area = "%s/%s/%s/%s" % (NESW[0], NESW[2], NESW[4], NESW[6])
-    params = {'ch4' : '4.217'}     #Dictionary of species' paramater number 
-    
+    params = {'ch4' : '4.217','co': '123.210'}     #Dictionary of species' paramater number 
+    if nearrealtime == True:
+        dataset = "cams_nrealtime"
+        expver = "0001"
+    else:
+        dataset = "cams_reanalysis"
+        expver = "eac4"
+
+    if timeframe == "daily":
+        time = "00:00:00"
+    elif timeframe == "3hourly":
+        time = "00:00:00/03:00:00/06:00:00/09:00:00/12:00:00/15:00:00/18:00:00/21:00:00"
+
     server = ECMWFDataServer()
     server.retrieve({
         "class": "mc",
-        "dataset": "cams_nrealtime",
+        "dataset": dataset,
         "date": st_date+"/to/"+end_date,
-        "expver": "0001",
+        "expver": expver,
         "levelist": "1/2/3/5/7/10/20/30/50/70/100/150/200/250/300/400/500/600/700/800/850/900/925/950/1000",
         "levtype": "pl",
         "param": params[species]+"/129.128",
         "step": "0",
         "stream": "oper",
         "grid" : str(gridsize)+"/"+str(gridsize),
-        "time": "00:00:00",
+        #"time": "00:00:00",
+        "time": time,
         "type": "an",
         "format" : "netcdf",
         "area" : area,                     #NWSE
@@ -130,6 +147,35 @@ def interplonlat(nesw, fp_lonorlat, species, lonorlat=None):
     ds2 = ds2.to_dataset(name=species)
     return ds2
 
+def write_CAMS_BC_tonetcdf(vmr_n, vmr_e, vmr_s, vmr_w, st_date, species, domain):
+    """
+    Writes the CAMS BC data to a ncdf file.
+    
+    Args:
+        vmr_n (array): Molar ratio at northern boundary
+        vmr_e (array): Molar ratio at eastern boundary
+        vmr_s (array): Molar ratio at western boundary
+        vmr_w (array): Molar ratio at southern boundary
+        st_date (string): Start date of form "YYYY-MM-dd"
+        species (string): The species 
+        domain (string): The domain which you want the boundary conditions for.
+    
+    Returns
+        netcdf file: Boundary conditions at domain boundaries
+    """
+    BC_edges = vmr_n.merge(vmr_e).merge(vmr_s).merge(vmr_w)
+    BC_edges.expand_dims('time',2)
+    BC_edges.coords['time'] = (dt.strptime(st_date, '%Y-%m-%d'))
+    
+    BC_edges.attrs['title'] = "ECMWF CAMS "+species+" volume mixing ratios at domain edges"
+    BC_edges.attrs['author'] = getpass.getuser()
+    BC_edges.attrs['date_created'] = np.str(dt.today())
+    
+    if os.path.isdir(data_path+"NAME/bc/%s/" % domain) == False:
+        os.mkdir(data_path+"NAME/bc/%s/" % domain)
+    
+    BC_edges.to_netcdf(path = data_path+"NAME/bc/%s/%s_%s_%s.nc"
+                       %(domain,species.lower(),domain,dt.strptime(st_date, '%Y-%m-%d').strftime('%Y%m')), mode = 'w')
 
 def makeCAMS_BC(domain, species, st_date, end_date, gridsize):
     """
@@ -139,7 +185,7 @@ def makeCAMS_BC(domain, species, st_date, end_date, gridsize):
     
     Args:
         domain (string): The domain which you want the boundary conditions for.
-        species (string): The species (currently only 'ch4')
+        species (string): The species 
         st_date (string): Start date of form "YYYY-MM-dd"
         end_date (string): End date of form "YYYY-MM-dd". 
             For 1 month use last day of month (see example). 
@@ -153,16 +199,17 @@ def makeCAMS_BC(domain, species, st_date, end_date, gridsize):
         makeCAMS_BC('EUROPE', 'ch4', '2017-08-01', '2017-08-31', 3)
         
     NOTES:
-        If working with a species other than ch4 then you'll have to update 
+        If working with a species other than ch4 or co then you'll have to update 
         the molar masses and getCAMSdata().
     """
     
-    data_path = os.getenv("DATA_PATH")
+    #data_path = os.getenv("DATA_PATH")
     pathtoBCs = data_path+'/ECMWF_CAMS/'
     
     #Set-up a few things and do some checks
     species = species.lower()
     domain = domain.upper()
+    gridsize = float(gridsize)
     
     if os.path.isfile(data_path+"NAME/bc/%s/%s_%s_%s.nc"
                        %(domain,species,domain,dt.strptime(st_date, '%Y-%m-%d').strftime('%Y%m'))):
@@ -186,12 +233,12 @@ def makeCAMS_BC(domain, species, st_date, end_date, gridsize):
     with xr.open_dataset(listoffiles[0]) as temp:
         fields_ds = temp.load()
     fp_lat = fields_ds["lat"].values
-    fp_lon = fields_ds["lon"].values + 180
+    fp_lon = fields_ds["lon"].values #+ 180
     fp_height = fields_ds["height"].values
     
     #Check to see if BC file already exists. If not then download data
-    NESW = [str(int(np.ceil(max(fp_lat)))), ".", str(int(np.floor(max(fp_lon)))), 
-                ".", str(int(np.floor(min(fp_lat)))),".", str(int(np.ceil(min(fp_lon))))]
+    NESW = [str(int(np.ceil(max(fp_lat)))), ".", str(int(np.floor(max(fp_lon+180)))), 
+                ".", str(int(np.floor(min(fp_lat)))),".", str(int(np.ceil(min(fp_lon+180))))]
     outputname = "BC_CAMS_"+species+"_"+"".join(NESW)+"_"+str(gridsize)+"x"+str(gridsize)+"_"+st_date+".nc"
     if os.path.isfile(pathtoBCs+outputname) == False: 
         #Download data
@@ -202,19 +249,32 @@ def makeCAMS_BC(domain, species, st_date, end_date, gridsize):
     ds = xr.open_dataset(fn)
     ds = ds.mean('time')
        
-    if species == 'ch4':
-        speciesmm = 16.0425
+    #if species == 'ch4':
+    #    speciesmm = 16.0425
+    speciesmm = molar_mass(species)
     airmm = 28.9644 #Molar mass of air g/mol
     ds['z'] = ds.z/9.80665   #Convert to height (N.B. this is geopotential height!)
+    if species == 'ch4':
+        ds = ds.rename({species+'_c' :  species})   #ECMWF seemed to change their naming convention – quick fix
     ds[species] = ds[species] *airmm/speciesmm #Convert into mol/mol
     
-    
     #Select the gridcells closest to the edges of the  domain and make sure outside of fp
-    lat_n = min( (np.abs(ds.coords['latitude'].values - max(fp_lat))).argmin()+1, len(ds.coords['latitude'].values)-1)
-    lat_s = max( (np.abs(ds.coords['latitude'].values - min(fp_lat))).argmin()-1, 0)
-    lon_e = min( (np.abs(ds.coords['longitude'].values - max(fp_lon))).argmin()+1, len(ds.coords['longitude'].values)-1)
-    lon_w = max( (np.abs(ds.coords['longitude'].values - min(fp_lon))).argmin()-1, 0)
-    
+    #lat_n = min( (np.abs(ds.coords['latitude'].values - max(fp_lat))).argmin()+1, len(ds.coords['latitude'].values)-1)
+    lat_n =(np.abs(ds.coords['latitude'].values - max(fp_lat))).argmin()
+    if ds.coords['latitude'].values[lat_n] < np.max(fp_lat) and lat_n != 0:
+        lat_n -= 1
+    #lat_s = max( (np.abs(ds.coords['latitude'].values - min(fp_lat))).argmin()-1, 0)
+    lat_s = (np.abs(ds.coords['latitude'].values - min(fp_lat))).argmin()
+    if ds.coords['latitude'].values[lat_s] > np.min(fp_lat) and lat_s != (len(ds.coords['latitude'].values)-1):
+        lat_s += 1
+    #lon_e = min( (np.abs(ds.coords['longitude'].values - max(fp_lon))).argmin()+1, len(ds.coords['longitude'].values)-1)
+    lon_e =  (np.abs(ds.coords['longitude'].values - max(fp_lon))).argmin()
+    if ds.coords['longitude'].values[lon_e] < max(fp_lon) and lon_e != (len(ds.coords['longitude'].values)-1):
+        lon_e += 1
+    #lon_w = max( (np.abs(ds.coords['longitude'].values - min(fp_lon))).argmin()-1, 0)
+    lon_w =  (np.abs(ds.coords['longitude'].values - min(fp_lon))).argmin()
+    if ds.coords['longitude'].values[lon_w] > min(fp_lon) and lon_w != 0:
+        lon_e -= 1
     
     #Cut to these and then interpolate
     north = ds.sel(latitude = ds.coords['latitude'][lat_n],
@@ -231,15 +291,6 @@ def makeCAMS_BC(domain, species, st_date, end_date, gridsize):
     vmr_e = interplonlat(interpheight(east, fp_height, species, lonorlat='latitude'), fp_lat, species, lonorlat='latitude').rename({species : 'vmr_e'}) 
     vmr_w = interplonlat(interpheight(west, fp_height, species, lonorlat='latitude'), fp_lat, species, lonorlat='latitude').rename({species : 'vmr_w'})      
     
+    write_CAMS_BC_tonetcdf(vmr_n, vmr_e, vmr_s, vmr_w, st_date, species, domain)
     
-    BC_edges = vmr_n.merge(vmr_e).merge(vmr_s).merge(vmr_w)
-    BC_edges.expand_dims('time',2)
-    BC_edges.coords['time'] = (dt.strptime(st_date, '%Y-%m-%d'))
-    
-    BC_edges.attrs['title'] = "ECMWF CAMS "+species+" volume mixing ratios at domain edges"
-    BC_edges.attrs['author'] = getpass.getuser()
-    BC_edges.attrs['date_created'] = np.str(dt.today())
-    
-    BC_edges.to_netcdf(path = data_path+"NAME/bc/%s/%s_%s_%s.nc"
-                       %(domain,species.lower(),domain,dt.strptime(st_date, '%Y-%m-%d').strftime('%Y%m')), mode = 'w')
 

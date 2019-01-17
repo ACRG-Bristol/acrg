@@ -283,10 +283,55 @@ def average_period_fp(fp_data_H,av_period_site,dim="time"):
 
     #fp_data_H_av = {}
     for si, site in enumerate(sites):
-        fp_data_H[site] = average_period(fp_data_H[site],av_period_site[si],dim=dim)
+        av_period = av_period_site[si]
+        if av_period is not None:
+            fp_data_H[site] = average_period(fp_data_H[site],av_period,dim=dim)
     
     return fp_data_H
 
+def reorder_dims(fp_data_H,first_dims=["time"]):
+    '''
+    The reorder_dims function orders the dimensions to always have the first_dims before
+    any other dimensions e.g. 'time'
+
+    All other dimensions should retain their previous order as long as they are consistent
+    between data variables e.g. if "height","lat" on one data variable and "lat","height" on
+    another then one of these will be rearranged.
+    
+    Use ds.transpose() function.
+    
+    Args:
+        fp_data_H (dict) :
+            Dictionary of datasets. Output from footprints_data_merge() function.
+        first_dims (list) :
+            Dimensions to always include first.
+            Default = ["time"]
+    
+    Returns:
+        dict:
+            fp_data_H with re-ordered dimensions
+    '''
+
+    sites = [key for key in fp_data_H.keys() if key[0] != '.']
+    
+    for site in sites:
+        fp_data_H_site = fp_data_H[site]
+        
+        dims = first_dims
+        for dv in fp_data_H_site.data_vars:
+            for d in fp_data_H_site[dv].dims:
+                if d not in dims:
+                    dims.append(d)
+        
+        all_dims = fp_data_H_site.dims
+        if len(dims) != len(all_dims):
+            for d in all_dims:
+                if d not in dims:
+                    dims.append(d)
+
+        fp_data_H[site] = fp_data_H_site.transpose(*dims)
+    
+    return fp_data_H
 
 def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date, 
     domain,network,fp_basis_case ,bc_basis_case,rjmcmc,para_temp,
@@ -296,7 +341,8 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     stepsize_bd,stepsize_all,stepsize_pdf_p1_all,stepsize_pdf_p2_all,
     pdf_param1,pdf_param2,pdf_p1_hparam1,pdf_p1_hparam2,pdf_p2_hparam1,
     pdf_p2_hparam2,x_pdf ,pdf_param1_pdf,pdf_param2_pdf,inv_type,
-    output_dir,tau_ap=None, tau_hparams=None, stepsize_tau=None, tau_pdf=None,
+    output_dir,fp_dir=None, flux_dir = None, data_dir=None, basis_dir=None, bc_basis_dir=None, bc_dir = None,
+    tau_ap=None, tau_hparams=None, stepsize_tau=None, tau_pdf=None,
     bl_split=False, bl_levels=None, filters=None,max_level=None):
     #%%
     
@@ -312,20 +358,19 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
               "corr":False,
               "evencorr":True}
     data = agage.get_obs(sites, species, start = start_date, end = end_date, average = meas_period, 
-                          keep_missing=corr_type[inv_type],max_level=max_level)
+                          keep_missing=corr_type[inv_type],max_level=max_level, data_directory = data_dir)
     
     
-    #fp_all = name.footprints_data_merge(data, domain=domain, species=species, calc_bc=True)
-    # Commented out and replaced by rt17603 on 11/08 - no species argument in this function.
-    fp_all = name.footprints_data_merge(data, domain=domain, calc_bc=True)
+    fp_all = name.footprints_data_merge(data, domain=domain, calc_bc=True, fp_directory = fp_dir, flux_directory = flux_dir, bc_directory = bc_dir)
     
     
     if fp_basis_case in ("INTEM"):    
-        fp_data_H2 = name.fp_sensitivity(fp_all, domain=domain, basis_case='transd')
-        basis_func = name.name.basis(domain = domain, basis_case = 'INTEM')
+        fp_data_H2 = name.fp_sensitivity(fp_all, domain=domain, basis_case='transd', basis_directory = basis_dir)
+        basis_func = name.name.basis(domain = domain, basis_case = 'INTEM', basis_directory = basis_dir)
     else:                            
-        fp_data_H2 = name.fp_sensitivity(fp_all, domain=domain, basis_case=fp_basis_case)
-    fp_data_H2=name.bc_sensitivity(fp_data_H2, domain=domain,basis_case=bc_basis_case)
+        fp_data_H2 = name.fp_sensitivity(fp_all, domain=domain, basis_case=fp_basis_case, basis_directory = basis_dir)
+        
+    fp_data_H2=name.bc_sensitivity(fp_data_H2, domain=domain,basis_case=bc_basis_case, bc_basis_directory = bc_basis_dir)
     
     ###########################################################################
     # CALCULATE DEGREE OF LOCALNESS FOR EACH FOOTPRINT
@@ -356,6 +401,12 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     latmin=np.min(lat)
     latmax=np.max(lat)
     Ngrid = nlon*nlat  # Define underlying grid    
+
+    #### EXPLICITLY REORDER DIMENSIONS TO ALWAYS HAVE TIME FIRST
+    # Had to add this function when av_period is not applied (is None), as otherwise, the
+    # dimensions are not necessarily time first and this is relied upon later when
+    # constructing the inputs to pass to the FORTRAN code.
+    fp_data_H = reorder_dims(fp_data_H,first_dims=["time"]) # added 09/01/2019
 
     ###########################################################
     # CHECK IF A BIAS VALUE NEEDS TO BE INCLUDED
@@ -522,7 +573,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     h_agg0 = np.zeros((nmeasure,k_ap+nIC)) # Will be stacked in order of Bias term (if present), H_bc, H_fixed, H_vary
 
     if nBias:
-	h_agg0[:,0] = H_bc[:,0] # zeroth region has been added to H_bc to be appropriate for bias term (1-sat,0-other)
+	    h_agg0[:,0] = H_bc[:,0] # zeroth region has been added to H_bc to be appropriate for bias term (1-sat,0-other)
 
     pdy_time = pandas.to_datetime(y_time)
     months = np.arange(pd_start.to_period('M').month, pd_start.to_period('M').month +nmonths)
@@ -533,8 +584,8 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
         if len(wh_month > 0):
             if nBias: # 0th term is for the bias, set 1:nBC to H_bc region terms
 	            h_agg0[wh_month,nBias+mn*nBC_basis:nBias+(mn+1)*nBC_basis] = H_bc[wh_month,nBias:]  # Assign H_agg separately for each month
-	    else:
-        	    	h_agg0[wh_month,mn*nBC_basis:(mn+1)*nBC_basis] = H_bc[wh_month,:]  # Assign H_agg separately for each month
+            else:
+                h_agg0[wh_month,mn*nBC_basis:(mn+1)*nBC_basis] = H_bc[wh_month,:]  # Assign H_agg separately for each month
     
     #rt17603: Added on 26/07/2018 - Bug fix: H_fixed wasn't being assigned, equivalent values were just 0.0 in h_agg0 (and h_agg)
     h_agg0[:,nBC:nIC] = H_fixed
@@ -681,6 +732,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
         para_temp_in=1
     else:
         para_temp_in=0
+        
     #BEGIN ITERATIONS
     ##################################################
     print 'Starting MCMC...'

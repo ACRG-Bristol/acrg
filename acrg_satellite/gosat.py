@@ -1206,7 +1206,7 @@ def extract_dates(ds,dim="time",dtype='M8[D]'):
     '''
     return ds[dim].values.astype(dtype).astype(str) # Extract dates from time column (cast as 8 byte datetime format (M8) in whole days [D] then cast as a string)
 
-def extract_files(directory,search_str=None,start=None,end=None,date_separator=''):
+def extract_files(directory,search_str=None,start=None,end=None,date_separator='',day=True):
     '''
     The extract_files function extracts filenames from a directory based on a search_str and/or based on a start
     and end dates (if filename contains details of a datestamp).
@@ -1232,6 +1232,10 @@ def extract_files(directory,search_str=None,start=None,end=None,date_separator='
         date_separator (str) : 
             Date separator string between year, month and day in filename.
             By default this is "", meaning dates of the form "YYYYMMDD" will be searched for.
+        day (bool) :
+            Expect day to be included in any date within the filename.
+            If day is True expect dates of the form e.g. 20120101 or 2012-01-01.
+            If day is False expect dates of the form e.g. 201201 or 2012-01
     
     Returns:
         list : 
@@ -1268,17 +1272,24 @@ def extract_files(directory,search_str=None,start=None,end=None,date_separator='
  
     if start and end:
         date_range = np.arange(start,end,dtype="datetime64[D]").astype(str)
+        if not day:
+           date_range = ['-'.join(date.split('-')[0:2]) for date in date_range] 
         date_range = [date.replace('-',date_separator) for date in date_range]
         print('Finding files in range: {0} - {1} in directory {2} using search string {3}'.format(start,end,directory,search_str_short))
         
         files = []
         for filename in filenames:
             try:
-                if date_separator:
+                if date_separator and day:
                     d_sep = "[{0}]".format(date_separator)
                     re_str = "\d{4}"+d_sep+"\d{2}"+d_sep+"\d{2}"  # Creating a regular expression to find 8 digits separated by date_separator e.g. 2012-01-01
-                else:
+                elif date_separator and not day:
+                    d_sep = "[{0}]".format(date_separator)
+                    re_str = "\d{4}"+d_sep+"\d{2}"  # Creating a regular expression to find 6 digits separated by date_separator e.g. 2012-01
+                elif day:
                     re_str = "\d{8}" # Creating a regular expression to find an 8 digit number (should be the date) e.g. 20120101
+                elif not day:
+                    re_str = "\d{6}" # Creating a regular expression to find an 6 digit number (should be the date) e.g. 201201
                 d = re.search(re_str,filename) 
                 d = d.group() # Extract value from regular expression compiler
             except AttributeError:
@@ -2497,17 +2508,17 @@ def gosat_output_name(ds,site,max_level=17,use_name_pressure=False,pressure_doma
                         break
                     elif not os.path.isfile(filename):
                         print('Writing to filename: {}'.format(filename))
-                        df_output.to_csv(filename)
+                        df_output.to_csv(filename,float_format='%f')
                     else:
                         #print('Appending to filename: {}'.format(filename))
-                        df_output.to_csv(filename,mode='a',header=False)    
+                        df_output.to_csv(filename,float_format='%f',mode='a',header=False)    
                 else:
                     if (not os.path.isfile(filename)) or (os.path.isfile(filename) and ID_1 == 0):
                         print('Writing to filename: {}'.format(filename))
-                        df_output.to_csv(filename)
+                        df_output.to_csv(filename,float_format='%f')
                     else:
                         #print('Appending to filename: {}'.format(filename))
-                        df_output.to_csv(filename,mode='a',header=False)
+                        df_output.to_csv(filename,float_format='%f',mode='a',header=False)
             else:
                 filename = "{site}_{date}-{ID}.csv".format(site=site,date=date.replace('-',''),ID=ID_str)
                 filename = os.path.join(name_directory,filename)
@@ -2517,20 +2528,21 @@ def gosat_output_name(ds,site,max_level=17,use_name_pressure=False,pressure_doma
                         break
                     else:
                         print('Writing to filename: {}'.format(filename))
-                        df_output.to_csv(filename)
+                        df_output.to_csv(filename,float_format='%f')
                 else:
                         print('Writing to filename: {}'.format(filename))    
-                        df_output.to_csv(filename)
+                        df_output.to_csv(filename,float_format='%f')
                 
     
 def gosat_process_file(filename,site,species="ch4",lat_bounds=[],lon_bounds=[],domain=None,
-                       coord_bin=None,quality_filt=True,bad_pressure_filt=True,name_sp_filt=False,
-                       name_filters=[],cutoff=5.,layer_range=[50.,500.],                       
+                       coord_bin=None,quality_filt=True,bad_pressure_filt=True,
+                       name_sp_filt=False,name_filters=[],cutoff=5.,layer_range=[50.,500.],                       
                        mode=None,use_name_pressure=False,pressure_base_dir=name_pressure_directory,
                        pressure_domain=None,pressure_max_days=31.,pressure_day_template=True,
                        write_nc=False,output_directory=obs_directory,
                        write_name=False,name_directory=name_csv_directory,
-                       file_per_day=False,max_name_points=None,overwrite=False,verbose=True):
+                       file_per_day=False,max_name_level=17,max_name_points=None,overwrite=False,
+                       verbose=True):
     '''
     The gosat_process_file function processes input gosat data for one file, applying designated filters, 
     binning and writing output as required.
@@ -2640,6 +2652,9 @@ def gosat_process_file(filename,site,species="ch4",lat_bounds=[],lon_bounds=[],d
             Group together all points into create one output file per day rather than one per 
             data point (bool).
             Default = False.
+        max_name_level (int, optional) :
+        	Maximum level to use when writing out NAME csv files.
+        	Default = 17
         max_name_points (int/None, optional) :
             Only applicable if file_per_day is True.
             Maximum number of points to write to NAME csv file if writing file per day. 
@@ -2754,7 +2769,7 @@ def gosat_process_file(filename,site,species="ch4",lat_bounds=[],lon_bounds=[],d
                          file_per_day=file_per_day,overwrite=overwrite)
         
         if write_name:
-            gosat_output_name(gosat,site=site,use_name_pressure=use_name_pressure,
+            gosat_output_name(gosat,site=site,max_level=max_name_level,use_name_pressure=use_name_pressure,
                               pressure_domain=pressure_domain,pressure_base_dir=pressure_base_dir,
                               pressure_max_days=pressure_max_days,pressure_day_template=pressure_day_template,
                               name_directory=name_directory,file_per_day=file_per_day,
@@ -2772,7 +2787,7 @@ def gosat_process(site,species="ch4",input_directory=input_directory,start=None,
                   pressure_domain=None,pressure_max_days=31,pressure_day_template=True,
                   write_nc=False,output_directory=obs_directory,
                   write_name=False,name_directory=name_csv_directory,file_per_day=False,
-                  max_name_points=None,overwrite=False):
+                  max_name_level=17,max_name_points=None,overwrite=False):
     '''
     The gosat_process function processes GOSAT input files from a directory.
     As part of processing the GOSAT input data there are multiple options including filtering based on
@@ -2879,6 +2894,9 @@ def gosat_process(site,species="ch4",input_directory=input_directory,start=None,
         file_per_day (bool, optional) : 
             Group together all points into create one output file per day rather than one per data point.
             Default = False.
+        max_name_level (int, optional) :
+        	Maximum level to use when writing out NAME csv files.
+        	Default = 17
         max_name_points (int/None, optional) :
             Only applicable if file_per_day is True.
             Maximum number of points to write to NAME csv file if writing file per day. 
@@ -2942,6 +2960,7 @@ def gosat_process(site,species="ch4",input_directory=input_directory,start=None,
                                     coord_bin=coord_bin,
                                     quality_filt=quality_filt,
                                     bad_pressure_filt=bad_pressure_filt,
+                                    max_name_level=max_name_level,
                                     name_sp_filt=name_sp_filt,
                                     name_filters=name_filters,
                                     cutoff=cutoff,

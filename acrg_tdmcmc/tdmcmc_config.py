@@ -47,6 +47,10 @@ acrg_path = os.getenv("ACRG_PATH")
 
 ## Functions below are specifically related to the MCMC code which build on the functions within acrg_config module
 
+def tdmcmc_template_file():
+    reference_file = os.path.join(acrg_path,"acrg_config/templates/tdmcmc_template.ini")
+    return reference_file
+
 def mcmc_param_type():
     '''
     The mcmc_param_type function defines the names of expected input parameters from the config file and 
@@ -178,40 +182,32 @@ def mcmc_param_type():
 #    param_dict = OrderedDict([('MEASUREMENTS', measurements),
 #                              ('MCMC', mcmc),
 #                              ('TDMCMC', tdmcmc)])
-    reference_file = os.path.join(acrg_path,"acrg_config/templates/tdmcmc_template.ini")
+    #reference_file = os.path.join(acrg_path,"acrg_config/templates/tdmcmc_template.ini")
+    reference_file = tdmcmc_template_file()
     param_dict = config.generate_param_dict(reference_file)
     
     return param_dict
 
-#def get_meas_params():
-#    '''
-#    The get_meas_param function returns all parameter names associated the the 'MEASUREMENTS' group
-#    Returns:
-#        OrderedDict: parameter names, str: group name
-#    '''
-#    key = 'MEASUREMENTS'
-#    return mcmc_param_type()[key].keys(),key
-#
-#
-#def get_mcmc_params():
-#    '''
-#    The get_meas_param function returns all parameter names associated the the 'MCMC' group
-#    Returns:
-#        OrderedDict: parameter names, str: group name
-#    '''
-#    key = 'MCMC'
-#    return mcmc_param_type()[key].keys(),key
-#
-#
-#def get_tdmcmc_params():
-#    '''
-#    The get_meas_param function returns all parameter names associated the the 'TDMCMC' group
-#    Returns:
-#        OrderedDict: parameter names, str: group name
-#    '''
-#    key = 'TDMCMC'
-#    return mcmc_param_type()[key].keys(),key
-  
+def regenerate_tdmcmc_config(config_file = os.path.join(acrg_path,"acrg_tdmcmc/param.ini")):
+    '''
+    The regenerate_config function regenerates the tdmcmc configuration file (usually named 
+    param.ini).
+    
+    WARNING: This will overwrite the original configuration file.
+    
+    Args:
+        config_file (str):
+            Name of configuration file to regenerate (overwrite).
+            Default = $ACRG_PATH/acrg_tdmcmc/param.ini
+    
+    Returns
+        None
+        
+        Writes to file.
+    '''    
+    reference_file = tdmcmc_template_file()
+    config.generate_from_template(reference_file,config_file)
+
 
 def optional_parameters(section_group=None):
     '''
@@ -232,8 +228,8 @@ def optional_parameters(section_group=None):
         list:
             Optional parameters for MCMC code
     '''
-    meas_params = ["network","start_date","end_date","max_level"]
-    mcmc_params = ["unique_copy"]
+    meas_params = ["network","start_date","end_date","species","emissions_name"]
+    mcmc_params = ["unique_copy","max_level","data_dir","fp_dir","flux_dir","bc_dir","basis_dir","bc_basis_dir"]
     tdmcmc_params = []
     
     optional_param = []
@@ -283,6 +279,38 @@ def add_defaults(param,section_group=None):
 
     return param
 
+def check_inputs(param,section_group=None):
+    '''
+    The check_inputs function checks combinations of input values to ensure everything needed
+    has been specified.
+    
+    Args:
+        param (dict) :
+            Dictionary of parameter names and values.
+            Output from all_mcmc_param, measurements_param, mcmc_param, tdmcmc_param functions.
+        section_group (str/None, optional):
+            Only applies check applicable to the specific section group 
+            Should be one of: "MEASUREMENTS","MCMC","TDMCMC"
+            If None is specified, checks will be applied for all section_groups
+    
+    Returns:
+        dict:
+            param dictionary after checks have been made with some values removed if necessary.
+    
+    '''
+    if not section_group or section_group == "MEASUREMENTS":
+        if ("species" not in param and "emissions_name" not in param) or (param["species"] is None and param["emissions_name"] is None):
+            raise Exception("Either species or emissions_name must be specified.")
+        elif "emissions_name" in param:
+            # Since emissions_name can be a dictionary or a string, it is defined as a string
+            # in the template and then the type is re-evaluated afterwards.
+            if isinstance(param["emissions_name"],str):
+                param["emissions_name"] = config.eval_check(param["emissions_name"])
+            elif param["emissions_name"] is None:
+                param.pop("emissions_name")
+
+    return param
+
 def measurements_param(config_file,optional_param=[]):
     '''
     The measurements_param function extracts all parameters relevant to measurement details (see mcmc_param_type for full list)
@@ -310,9 +338,10 @@ def measurements_param(config_file,optional_param=[]):
     optional_param += optional_parameters(section_group=meas_group)
     param_type = mcmc_param_type()
 
-    param = config.extract_params(config_file,section_group=meas_group,optional_param=optional_param,param_type=param_type)
+    param = config.extract_params(config_file,section_group=meas_group,optional_param=optional_param,param_type=param_type,exclude_not_found=False)
     
     param = add_defaults(param,section_group=meas_group)
+    param = check_inputs(param,section_group=meas_group)
     
     return param
 
@@ -344,9 +373,10 @@ def mcmc_param(config_file,optional_param=[]):
     optional_param += optional_parameters(section_group=mcmc_group)
     param_type = mcmc_param_type()
     
-    param = config.extract_params(config_file,section_group=mcmc_group,optional_param=optional_param,param_type=param_type)
+    param = config.extract_params(config_file,section_group=mcmc_group,optional_param=optional_param,param_type=param_type,exclude_not_found=False)
     
     param = add_defaults(param,section_group=mcmc_group)
+    param = check_inputs(param,section_group=mcmc_group)
     
     return param
 
@@ -377,9 +407,10 @@ def tdmcmc_param(config_file,optional_param=[]):
     optional_param += optional_parameters(section_group=tdmcmc_group)
     param_type = mcmc_param_type()
     
-    param = config.extract_params(config_file,section_group=tdmcmc_group,optional_param=optional_param,param_type=param_type)
+    param = config.extract_params(config_file,section_group=tdmcmc_group,optional_param=optional_param,param_type=param_type,exclude_not_found=False)
     
     param = add_defaults(param,section_group=tdmcmc_group)
+    param = check_inputs(param,section_group=tdmcmc_group)
     
     return param
 
@@ -407,27 +438,28 @@ def all_mcmc_param(config_file,optional_param=[]):
     
     param_type = mcmc_param_type()
     optional_param += optional_parameters()
-    param = config.extract_params(config_file,optional_param=optional_param,param_type=param_type)
+    param = config.extract_params(config_file,optional_param=optional_param,param_type=param_type,exclude_not_found=False)
     param = add_defaults(param)
-    
-#    meas_parameters = measurements_param(config_file,optional_param)
-#    mcmc_parameters = mcmc_param(config_file,optional_param)
-#    tdmcmc_parameters = tdmcmc_param(config_file,optional_param)
-    
-#    param = OrderedDict({})
-#    param.update(meas_parameters)
-#    param.update(mcmc_parameters)
-#    param.update(tdmcmc_parameters)
-    
-#    # Checking if any additional keys are present except those explictly used above
-#    known_keys = [get_meas_params()[1],get_mcmc_params()[1],get_tdmcmc_params()[1]]
-#    param_type = mcmc_param_type()
-#    
-#    for key in param_type:
-#        if key not in known_keys:
-#            # Extract the extra parameters but print a warning as these values should really be incorporated into code
-#            print 'WARNING: Additional unknown key {0} extracted from mcmc_param_type. May be worth adding additional functions for this?'.format(key)
-#            extra_parameters = config.extract_params(config_file,section_group=key,optional_param=optional_param,param_type=param_type)
-#            param.update(extra_parameters)
+    param = check_inputs(param)
     
     return param
+
+def fill_param_defaults(source_param,source_names,default_param):
+    '''
+    The fill_param_defaults function fills in a set of names with defaults if the values
+    are not specified.
+    Relevant to tdmcmc_time.py script.
+    '''
+    for name in source_names:
+        if name not in source_param:
+            source_param[name] = default_param
+        else:
+            for p in default_param:
+                if p not in source_param[name]:
+                    source_param[name][p] = default_param[p]
+    
+    return source_param
+   
+#def reevaluate_param(param):
+#    out = config.eval_check(param)
+#    return out

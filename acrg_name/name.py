@@ -22,7 +22,7 @@ import xarray as xr
 from acrg_time import convert
 import calendar
 import pickle
-from scipy import interpolate
+from scipy.interpolate import interp1d
 import dateutil.relativedelta
 import cartopy.crs as ccrs
 import cartopy
@@ -39,16 +39,6 @@ if data_path is None:
     print("Default Data directory is assumed to be /data/shared/. Set path in .bashrc as \
             export DATA_PATH=/path/to/data/directory/ and restart python terminal")
 
-# These are the default directories if no optional arguments are specified in footprints_data_merge,
-# bc_sensitivity or fp_sensitivity
-fp_integrated_directory = join(data_path, 'NAME/fp/')
-fp_HiTRes_directory = join(data_path,'NAME/fp_high_time_res/')
-flux_directory = join(data_path, 'NAME/emissions/')
-basis_directory = join(data_path, 'NAME/basis_functions/')
-bc_directory = join(data_path, 'NAME/bc/')
-bc_basis_directory = join(data_path,'NAME/bc_basis_functions/')
-fp_directory = {'integrated': fp_integrated_directory,
-               'HiTRes': fp_HiTRes_directory}
 
 # Get acrg_site_info file
 with open(join(acrg_path, "acrg_site_info.json")) as f:
@@ -181,7 +171,7 @@ def interp_time(bc_ds,vmr_var_names, new_times):
         for j in range(len(bc_ds.height)):
             for i in range(len(bc_ds[vmr_var_name][0,:,0])):
                 y = bc_ds[vmr_var_name][j,i,:]
-                f = interpolate.interp1d(x_id,y, bounds_error = False,kind='linear', 
+                f = interp1d(x_id,y, bounds_error = False,kind='linear', 
                                          fill_value = np.max(y))
                 vmr_new[j,i,:] = f(new_times_id)
 
@@ -197,8 +187,8 @@ def interp_time(bc_ds,vmr_var_names, new_times):
     return ds2
 
 
-def footprints(sitecode_or_filename, fp_directory = fp_directory, 
-               flux_directory = flux_directory, bc_directory = bc_directory,
+def footprints(sitecode_or_filename, fp_directory = None, 
+               flux_directory = None, bc_directory = None,
                start = None, end = None, domain = None, height = None,
                species = None, emissions_name = None, HiTRes = False,interp_vmr_freq=None):
 
@@ -220,11 +210,16 @@ def footprints(sitecode_or_filename, fp_directory = fp_directory,
 
     Args:
         sitecode_or_filename : Site (e.g. 'MHD') or a netCDF filename (*.nc) (str)
-        fp_directory (str)   : fp_directory can be specified if files are not in 
-                               the default directory. Must point to a directory 
-                               which contains subfolders organized by domain. (optional)
-        flux_directory (str) : Same sytax as fp_directory (optional)
-        bc_directory (str)   : Same sytax as bc_directory (optional)
+        fp_directory         : fp_directory must be a dictionary of the form 
+                               fp_directory = {"integrated":PATH_TO_INTEGRATED_FP, 
+                                               "HiTRes":PATH_TO_HIGHTRES_FP}
+                               if the high time resolution footprints are used (HiTRes = True)
+                               otherwise can be a single string if only integrated FPs are used and 
+                               non-default.
+        flux_directory (str) : flux_directory can be specified if files are not in the default directory. 
+                               Must point to a directory which contains subfolders organized by domain.
+                               (optional)
+        bc_directory (str)   : Same sytax as flux_directory (optional)
         start (str)          : Start date in format "YYYY-MM-DD" for range of files to find.
         end (str)            : End date in same format as start for range of files to find.
         domain (str)         : Domain name. The footprint files should be sub-categorised by the domain.
@@ -243,6 +238,25 @@ def footprints(sitecode_or_filename, fp_directory = fp_directory,
     # If it's a three-letter site code, assume it's been processed
     # into an annual footprint file in (mol/mol) / (mol/m2/s)
     # using acrg_name_process
+    
+    if fp_directory is None:
+        fp_integrated_directory = join(data_path, 'NAME/fp/')
+        fp_HiTRes_directory = join(data_path,'NAME/fp_high_time_res/')
+        fp_directory = {'integrated': fp_integrated_directory,
+                        'HiTRes': fp_HiTRes_directory}
+
+    #   Error message if looking for HiTRes files and fp_directory is not a dictionary        
+        if HiTRes is True:
+            if type(fp_directory) is not dict:
+                print("fp_directory needs to be a dictionary containing paths \
+                       to integrated and HiTRes footprints \
+                       {integrated:path1, HiTRes:path2}")
+                return None
+                
+                print("As HiTRes is set to True, make sure that the high and low time resolution emissions name\
+                      pairs are input correctly for the emissions sources where HiTRes applies. They should look like:\
+                      emissions_name = {source_name:{'high_res':emissions_file_identifier,\
+                      'low_res':emissions_file_identifier}.")
     
     if '.nc' in sitecode_or_filename:
         if not '/' in sitecode_or_filename:
@@ -295,7 +309,7 @@ def footprints(sitecode_or_filename, fp_directory = fp_directory,
         return fp
 
 
-def flux(domain, species, start = None, end = None, flux_directory=flux_directory):
+def flux(domain, species, start = None, end = None, flux_directory=None):
     """
     The flux function reads in all flux files for the domain and species as an xarray Dataset.
     Note that at present ALL flux data is read in per species per domain or by emissions name.
@@ -323,6 +337,9 @@ def flux(domain, species, start = None, end = None, flux_directory=flux_director
     Returns:
         xarray.Dataset : combined dataset of all matching flux files
     """
+    
+    if flux_directory is None:
+        flux_directory = join(data_path, 'NAME/emissions/')
 
     files = sorted(glob.glob(flux_directory + domain + "/" + 
                    species.lower() + "_" + "*.nc"))
@@ -362,15 +379,21 @@ def flux(domain, species, start = None, end = None, flux_directory=flux_director
            
             if 'climatology' in species:
                 ndate = pd.to_datetime(flux_ds.time.values)
-                dateadj = ndate[month_start.month-1] - month_start  #Adjust climatology to start in same year as obs  
+                if len(ndate) == 1:  #If it's a single climatology value
+                    dateadj = ndate - month_start  #Adjust climatology to start in same year as obs  
+                else: #Else if a monthly climatology
+                    dateadj = ndate[month_start.month-1] - month_start  #Adjust climatology to start in same year as obs  
                 ndate = ndate - dateadj
                 flux_ds = flux_ds.update({'time' : ndate})  
                 flux_tmp = flux_ds.copy()
                 while month_end > ndate[-1]:
                     ndate = ndate + pd.DateOffset(years=1)      
                     flux_ds = xr.merge([flux_ds, flux_tmp.update({'time' : ndate})])
-
+                    
             flux_timeslice = flux_ds.sel(time=slice(month_start, month_end))
+            if np.logical_and(month_start.year != month_end.year, len(flux_timeslice.time) != dateutil.relativedelta.relativedelta(end, start).months):
+                month_start = dt.datetime(start.year, 1, 1, 0, 0)
+                flux_timeslice = flux_ds.sel(time=slice(month_start, month_end))
             if len(flux_timeslice.time)==0:
                 flux_timeslice = flux_ds.sel(time=start, method = 'ffill')
                 flux_timeslice = flux_timeslice.expand_dims('time',axis=-1)
@@ -382,7 +405,7 @@ def flux(domain, species, start = None, end = None, flux_directory=flux_director
             return flux_timeslice
 
 
-def flux_for_HiTRes(domain, emissions_dict, start=None, end=None, flux_directory=flux_directory):
+def flux_for_HiTRes(domain, emissions_dict, start=None, end=None, flux_directory=None):
     """
     Creates a dictionary of high and low frequency fluxes for use with HiTRes footprints.
     
@@ -431,7 +454,7 @@ def flux_for_HiTRes(domain, emissions_dict, start=None, end=None, flux_directory
     return flux_dict
 
 
-def boundary_conditions(domain, species, start = None, end = None, bc_directory=bc_directory):
+def boundary_conditions(domain, species, start = None, end = None, bc_directory=None):
     """
     The boundary_conditions function reads in the files with the global model vmrs at the domain edges 
     to give the boundary conditions as an xarray Dataset.
@@ -450,6 +473,9 @@ def boundary_conditions(domain, species, start = None, end = None, bc_directory=
     Returns:
         xarray.Dataset : combined dataset of matching boundary conditions files
     """
+    
+    if bc_directory is None:
+        bc_directory = join(data_path, 'NAME/bc/')
     
     files = sorted(glob.glob(bc_directory + domain + "/" + 
                    species.lower() + "_" + "*.nc"))
@@ -482,7 +508,7 @@ def boundary_conditions(domain, species, start = None, end = None, bc_directory=
             return bc_timeslice
 
 
-def basis(domain, basis_case, basis_directory = basis_directory):
+def basis(domain, basis_case, basis_directory = None):
     """
     The basis function reads in the all matching files for the basis case and domain as an xarray Dataset.
     
@@ -496,13 +522,15 @@ def basis(domain, basis_case, basis_directory = basis_directory):
         domain (str)       : Domain name. The basis files should be sub-categorised by the domain.
         basis_case (str)   : Basis case to read in. Examples of basis cases are "voroni","sub-transd",
                              "sub-country_mask","INTEM".
-        bc_directory (str) : bc_directory can be specified if files are not in 
+        basis_directory (str) : basis_directory can be specified if files are not in 
                              the default directory. Must point to a directory 
                              which contains subfolders organized by domain. (optional)
     Returns:
         xarray.Dataset : combined dataset of matching basis functions
     """
-    
+    if basis_directory is None:
+        basis_directory = join(data_path, 'NAME/basis_functions/')
+        
     files = sorted(glob.glob(basis_directory + domain + "/" +
                     basis_case + "_" + domain + "*.nc"))
     if len(files) == 0:
@@ -513,7 +541,7 @@ def basis(domain, basis_case, basis_directory = basis_directory):
 
     return basis_ds
 
-def basis_boundary_conditions(domain, basis_case, bc_basis_directory=bc_basis_directory):
+def basis_boundary_conditions(domain, basis_case, bc_basis_directory = None):
     """
     The basis_boundary_conditions function reads in all matching files for the boundary conditions 
     basis case and domain as an xarray Dataset.
@@ -533,6 +561,10 @@ def basis_boundary_conditions(domain, basis_case, bc_basis_directory=bc_basis_di
     Returns:
         xarray.Datset : combined dataset of matching basis functions
     """
+    
+    if bc_basis_directory is None:
+        bc_basis_directory = join(data_path,'NAME/bc_basis_functions/')
+    
     files = sorted(glob.glob(bc_basis_directory + domain + "/" +
                     basis_case + '_' + domain + "*.nc"))
 
@@ -699,9 +731,9 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                           calc_timeseries = True, calc_bc = True, HiTRes = False,
                           average = None, site_modifier = {}, height = None,
                           emissions_name = None, interp_vmr_freq = None,
-                          fp_directory = fp_directory,
-                          flux_directory = flux_directory,
-                          bc_directory = bc_directory,
+                          fp_directory = None,
+                          flux_directory = None,
+                          bc_directory = None,
                           resample_to_data = False):
 #                          perturbed=False, fp_dir_pert=None, pert_year=None, pert_month=None):
 
@@ -796,11 +828,10 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
     flux_bc_start = None
     flux_bc_end = None
     
-    for site in sites:
+    for i, site in enumerate(sites):
 
         # Dataframe for this site            
         site_df = data[site] 
-            
         # Get time range
         df_start = min(site_df.index).to_pydatetime()
         start = dt.datetime(df_start.year, df_start.month, 1, 0, 0)
@@ -835,19 +866,6 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
             height_site = height
         
         # Get footprints
-
-#   Error message if looking for HiTRes files and fp_directory is not a dictionary        
-        if HiTRes is True:
-            if type(fp_directory) is not dict:
-                print("fp_directory needs to be a dictionary containing paths \
-                       to integrated and HiTRes footprints \
-                       {integrated:path1, HiTRes:path2}")
-                return None
-                
-                print("As HiTRes is set to True, make sure that the high and low time resolution emissions name\
-                      pairs are input correctly for the emissions sources where HiTRes applies. They should look like:\
-                      emissions_name = {source_name:{'high_res':emissions_file_identifier,\
-                      'low_res':emissions_file_identifier}.")
 
         site_fp = footprints(site_modifier_fp, fp_directory = fp_directory, 
                              flux_directory = flux_directory, 
@@ -950,66 +968,66 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
             fp_and_data[site] = site_ds
             
         
-        if load_flux:
+    if load_flux:
             
-            flux_dict = {} 
+        flux_dict = {} 
             
-            for source in emissions_name.keys():
-                if type(emissions_name[source]) == str:
-                    flux_dict[source] = flux(domain, emissions_name[source], start=flux_bc_start, end=flux_bc_end, flux_directory=flux_directory)
-                elif type(emissions_name[source]) == dict:
-                    if HiTRes == False:
-                        print("HiTRes is set to False and a dictionary has been found as the emissions_name dictionary value\
-                              for source %s. Either enter your emissions names as separate entries in the emissions_name\
-                              dictionary or turn HiTRes to True to use the two emissions files together with HiTRes footprints." %source)
-                        return None
-                    else:
-                        flux_dict[source] = flux_for_HiTRes(domain, emissions_name[source], start=flux_bc_start, end=flux_bc_end, flux_directory=flux_directory)
+        for source in emissions_name.keys():
+            if type(emissions_name[source]) == str:
+                flux_dict[source] = flux(domain, emissions_name[source], start=flux_bc_start, end=flux_bc_end, flux_directory=flux_directory)
+            elif type(emissions_name[source]) == dict:
+                if HiTRes == False:
+                    print("HiTRes is set to False and a dictionary has been found as the emissions_name dictionary value\
+                          for source %s. Either enter your emissions names as separate entries in the emissions_name\
+                          dictionary or turn HiTRes to True to use the two emissions files together with HiTRes footprints." %source)
+                    return None
+                else:
+                    flux_dict[source] = flux_for_HiTRes(domain, emissions_name[source], start=flux_bc_start, end=flux_bc_end, flux_directory=flux_directory)
                         
-            fp_and_data['.flux'] = flux_dict
+        fp_and_data['.flux'] = flux_dict
             
         
-        if load_bc:
+    if load_bc:
             
-            bc = boundary_conditions(domain, species, start=flux_bc_start, end=flux_bc_end, bc_directory=bc_directory)
+        bc = boundary_conditions(domain, species, start=flux_bc_start, end=flux_bc_end, bc_directory=bc_directory)
 
-            if  ".units" in attributes:
-                fp_and_data['.bc'] = bc / data[".units"]               
-            else:
-                fp_and_data['.bc'] = bc
+        if  ".units" in attributes:
+            fp_and_data['.bc'] = bc / data[".units"]               
+        else:
+            fp_and_data['.bc'] = bc
             
         
                                            
-        # Calculate model time series, if required
-        if calc_timeseries:
-            if load_flux == False:
-                print "Can't get modelled mole fraction timeseries because load_flux is set to False."
-            else:
-                sites = [key for key in fp_and_data.keys() if key[0] != '.']
-                sources = fp_and_data['.flux'].keys()
-                for site in sites:
-                    for source in sources:
-                        if type(fp_and_data['.flux'][source]) == dict:
-                            fp_and_data[site]['mf_mod_'+source] = timeseries_HiTRes(fp_and_data[site],fp_and_data['.flux'][source], output_fpXflux=False)
+    # Calculate model time series, if required
+    if calc_timeseries:
+        if load_flux == False:
+            print "Can't get modelled mole fraction timeseries because load_flux is set to False."
+        else:
+            sites = [key for key in fp_and_data.keys() if key[0] != '.']
+            sources = fp_and_data['.flux'].keys()
+            for site in sites:                    
+                for source in sources:
+                    if type(fp_and_data['.flux'][source]) == dict:
+                        fp_and_data[site]['mf_mod_'+source] = xr.DataArray(timeseries_HiTRes(fp_and_data[site],fp_and_data['.flux'][source], output_fpXflux=False), coords = {'time': fp_and_data[site].time})
+                    else:
+                        flux_reindex = fp_and_data['.flux'][source].reindex_like(fp_and_data[site], 'ffill')
+                        if source == 'all':
+                            fp_and_data[site]['mf_mod'] = xr.DataArray((fp_and_data[site].fp*flux_reindex.flux).sum(["lat", "lon"]), coords = {'time':fp_and_data[site].time})
                         else:
-                            flux_reindex = fp_and_data['.flux'][source].reindex_like(fp_and_data[site], 'ffill')
-                            if source == 'all':
-                                fp_and_data[site]['mf_mod'] = (fp_and_data[site].fp*flux_reindex.flux).sum(["lat", "lon"])     
-                            else:
-                                fp_and_data[site]['mf_mod_'+source] = (fp_and_data[site].fp*flux_reindex.flux).sum(["lat", "lon"])  
+                            fp_and_data[site]['mf_mod_'+source] = xr.DataArray((fp_and_data[site].fp*flux_reindex.flux).sum(["lat", "lon"]), coords = {'time':fp_and_data[site].time})
         
-        # Calculate boundary conditions, if required         
-        if calc_bc:
-            if load_bc == False:
-                print "Can't get modelled baseline timeseries because load_bc is set to False."
-            else:
-                sites = [key for key in fp_and_data.keys() if key[0] != '.']
-                for site in sites:
-                    bc_reindex = fp_and_data['.bc'].reindex_like(fp_and_data[site], 'ffill')
-                    fp_and_data[site]['bc'] = (fp_and_data[site].particle_locations_n*bc_reindex.vmr_n).sum(["height", "lon"]) + \
-                                                (fp_and_data[site].particle_locations_e*bc_reindex.vmr_e).sum(["height", "lat"]) + \
-                                                (fp_and_data[site].particle_locations_s*bc_reindex.vmr_s).sum(["height", "lon"]) + \
-                                                (fp_and_data[site].particle_locations_w*bc_reindex.vmr_w).sum(["height", "lat"])
+    # Calculate boundary conditions, if required         
+    if calc_bc:
+        if load_bc == False:
+            print "Can't get modelled baseline timeseries because load_bc is set to False."
+        else:
+            sites = [key for key in fp_and_data.keys() if key[0] != '.']
+            for site in sites:
+                bc_reindex = fp_and_data['.bc'].reindex_like(fp_and_data[site], 'ffill')
+                fp_and_data[site]['bc'] = (fp_and_data[site].particle_locations_n*bc_reindex.vmr_n).sum(["height", "lon"]) + \
+                                            (fp_and_data[site].particle_locations_e*bc_reindex.vmr_e).sum(["height", "lat"]) + \
+                                            (fp_and_data[site].particle_locations_s*bc_reindex.vmr_s).sum(["height", "lon"]) + \
+                                            (fp_and_data[site].particle_locations_w*bc_reindex.vmr_w).sum(["height", "lat"])
         
     for a in attributes:
         fp_and_data[a] = data[a]
@@ -1018,7 +1036,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
 
 
 def fp_sensitivity(fp_and_data, domain, basis_case,
-                   basis_directory = basis_directory):
+                   basis_directory = None):
     """
     The fp_sensitivity function adds a sensitivity matrix, H, to each site xarray dataframe in fp_and_data.
 
@@ -1178,7 +1196,7 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
     return fp_and_data
 
 
-def bc_sensitivity(fp_and_data, domain, basis_case, bc_basis_directory=bc_basis_directory):
+def bc_sensitivity(fp_and_data, domain, basis_case, bc_basis_directory = None):
 
     """
     The bc_sensitivity adds H_bc to the sensitivity matrix, to each site xarray dataframe in fp_and_data.
@@ -1594,7 +1612,7 @@ def filtering(datasets_in, filters, keep_missing=False):
 def plot(fp_data, date, out_filename=None, out_format = 'pdf',
          lon_range=None, lat_range=None, log_range = [5., 9.], plot_borders = False,
          zoom = False, colormap = 'YlGnBu', tolerance = None, interpolate = False, dpi = 300,
-         figsize=None):
+         figsize=None, nlevels=256):
     """
     Plot footprint for a given timestamp.
     
@@ -1632,6 +1650,8 @@ def plot(fp_data, date, out_filename=None, out_format = 'pdf',
             Dots per square inch resolution to save image format such as png
         figsize (tuple, optional):
             Specify figure size as width, height in inches. e.g. (12,9). Default = None.
+        nlevels (int):
+            Number of levels in contour plot.
             
     Returns
         None
@@ -1710,7 +1730,7 @@ def plot(fp_data, date, out_filename=None, out_format = 'pdf',
                 "AIRCRAFT": "red",
                 "SATELLITE": "green"}
             
-    levels = MaxNLocator(nbins=256).tick_values(log_range[0], log_range[1])
+    levels = MaxNLocator(nbins=nlevels).tick_values(log_range[0], log_range[1])
 
     # Create dictionaries and arrays    
     release_lon = {}

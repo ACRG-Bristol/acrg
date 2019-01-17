@@ -180,7 +180,7 @@ def gosat_param(config_file):
         optional_param.remove(p)
     
     param = config.all_param(config_file,optional_param=optional_param,param_type=param_dict,
-                             remove_not_found=True)
+                             exclude_not_found=True)
     gosat_check(param)
     
     return param

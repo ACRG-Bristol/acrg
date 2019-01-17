@@ -974,8 +974,11 @@ def footprint_array(fields_file,
             metr = met[i] # Same number of met_dataframes in list as time points
         else:
             # Re-index met dataframe to each time point
-            metr = met[0].reindex(index = np.array([t]), method = "pad")
-        
+#            metr = met[0].reindex(index = np.array([t]))
+            metr = met[0][~met[0].index.duplicated(keep='first')].reindex(index = np.array([t]))
+            if np.isnan(metr.values).any():
+                raise ValueError("No met data for given date %s" % t)
+            
         for key in metr.keys():
             if key != "time":
                 met_ds[key][{'time':[i]}] = metr[key].values.reshape((1,len(levs)))
@@ -994,7 +997,7 @@ def footprint_array(fields_file,
     # Extract footprint from columns
     def convert_to_ppt(fp, slice_dict, column):
         molm3=fp["press"][slice_dict].values/const.R/\
-            const.C2K(fp["temp"][slice_dict].values.squeeze())
+            const.convert_temperature(fp["temp"][slice_dict].values.squeeze(),"C","K")
         fp.fp[slice_dict] = data_arrays[column]*area/ \
             (3600.*timeStep*1.)/molm3
         #The 1 assumes 1g/s emissions rate
@@ -1566,6 +1569,7 @@ def process(domain, site, height, year, month,
             perturbed_folder = None,
             vertical_profile=False,
             transport_model="NAME"):
+    
     '''Process a single month of footprints for a given domain, site, height,
     year, month. 
     
@@ -1599,8 +1603,8 @@ def process(domain, site, height, year, month,
         particles_folder (str, optional):
             Folder containing particles data.
             Default = "Particle_files",
-        met_folder (str, optional):
-            Folder containing met data
+        met_folder (str or list, optional):
+            Folder(s) containing met data
             Default = "Met"
         force_met_empty (bool, optional):
              Force the met data to be empty?
@@ -1798,11 +1802,18 @@ def process(domain, site, height, year, month,
                 #met_search_str = subfolder + met_folder + "/*" + datestr + "*/*.txt*"
                 # Modified: 06/03/2018 - problems when # files > 100, point 10 was matching multiple
                 met_search_str = subfolder + met_folder + "/*" + datestr + "/*.txt*"
+                met_files = sorted(glob.glob(met_search_str))
             else:
-                met_search_str = subfolder + met_folder + "/*.txt*"
-      
-            met_files = sorted(glob.glob(met_search_str))
-        
+                if type(met_folder) == list:
+                    met_files = []
+                    for metf in met_folder:
+                        met_search_str = subfolder + metf + "/*.txt*"
+                        met_files = met_files + sorted(glob.glob(met_search_str))
+                else:
+                    met_search_str = subfolder + met_folder + "/*.txt*"
+                    met_files = sorted(glob.glob(met_search_str))
+                
+           
             if len(met_files) == 0:
                 status_log("Can't file MET files: " + met_search_str,
                            error_or_warning="error")
@@ -1816,7 +1827,7 @@ def process(domain, site, height, year, month,
                 met = read_met(met_files,satellite=satellite)
         else:
             met = None
-
+        
             # Get footprints
         if transport_model is "STILT":
             fp_file = stiltfoot_array(subfolder + fields_folder + "/" + datestr, 
@@ -1956,6 +1967,7 @@ def process_all(domain, site,
                 years_in = None,
                 months_in = None,
                 base_dir = "/dagage2/agage/metoffice/NAME_output/",
+                met_folder = ["Met", "Met_daily"],
                 force_update = False,
                 satellite = False,
                 perturbed_folder = None,
@@ -2019,6 +2031,9 @@ def process_all(domain, site,
             ncdf format created by the STILT model. Other values are invalid. 
             Notset up to read satellite column footprints from STILT format.
             Default="NAME".
+        met_folder (str or list, optional):
+            Folder(s) containing met data
+            Default = ["Met", "Met_daily"]
         
     Returns:
         None.
@@ -2071,7 +2086,7 @@ def process_all(domain, site,
         for year, month in set(zip(years, months)):
             #try:
             out = process(domain, site, height, year, month,
-                    base_dir = base_dir, force_update = force_update,
+                    base_dir = base_dir, met_folder = met_folder, force_update = force_update,
                     satellite = satellite, perturbed_folder = perturbed_folder,
                     max_level = max_level, force_met_empty = force_met_empty,
                     vertical_profile=vertical_profile,

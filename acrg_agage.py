@@ -40,7 +40,6 @@ from acrg_time import convert
 import json
 import datetime as dt
 import xarray as xray
-import pdb
 
 acrg_path = getenv("ACRG_PATH")
 data_path = getenv("DATA_PATH")
@@ -274,7 +273,7 @@ def get_file_list(site, species, start, end, height,
         file_height_string = listsearch(height, site, site_info, 
                                         label="height")                        
         if file_height_string is None:
-            print("Height " + height + " doesn't exist in site_info.json. "
+            print("Height " + height[0] + " doesn't exist in site_info.json. "
                 + "Available heights are " + str(site_info[site]["height"])
                 + ". Leave blank for default height.")
             return data_directory, None
@@ -389,7 +388,7 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
     data_directory, files = get_file_list(site, species, start_time, end_time,
                                           height, network = network,
                                           instrument = instrument, data_directory=data_directory)                                 
-    
+
     #Get files
     #####################################
     if files is not None:
@@ -491,16 +490,15 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
                         for f in status_flag_unflagged:
                             flag = flag | (df.status_flag == f)
                         df = df[flag]
-               
-                        
-                if units != "permil":
+                               
+                if units != "permil" and units != "per meg":
                     df = df[df.mf > 0.]
 
                 if len(df) > 0:
                     data_frames.append(df)
     
             ncf.close()
-    
+        
         if len(data_frames) > 0:
             data_frame = pd.concat(data_frames).sort_index()
             data_frame.index.name = 'time'
@@ -509,7 +507,7 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
                 return None
         else:
             return None
-
+        
         #Do baseline filtering
         if baseline:
             #Get flags
@@ -565,7 +563,7 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
             
         data_frame.mf.units = units
         data_frame.files = files
-    
+
         return data_frame
 
     else:
@@ -652,6 +650,8 @@ def get_gosat(site, species, max_level, start = "1900-01-01", end = "2020-01-01"
     #data = data.drop("lev")
     #data = data.drop(["xch4", "xch4_uncertainty", "lon", "lat"])
     data = data.to_dataframe()
+    data = data.reset_index(level=0, drop=False) # Added to change to index values to an Index rather than MultiIndex
+    data = data.set_index("time") # Reassign time as the index
     # rt17603: 06/04/2018 Added sort because some data was not being read in time order. 
     # Causing problems in footprints_data_merge() function
     data = data.sort_index()

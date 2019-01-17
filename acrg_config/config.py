@@ -68,6 +68,8 @@ A param_type dictionary can be defined both to fix expected inputs and to explic
 import configparser
 from collections import OrderedDict
 import numpy as np
+import os
+import sys
 
 def open_config(config_file):
     '''
@@ -118,6 +120,58 @@ def generate_param_dict(config_file):
             param_type[section] = section_types
     
     return param_type
+
+def generate_from_template(template_file,output_file):
+    '''
+    The generate_from_template function generates an example configuration file based on
+    a template file. Template files are normally used to inform the expected format of any
+    input configuration file.
+    
+    Args:
+        template_file (str) :
+            Input template file in expected .ini format.
+        output_file (str) :
+            Name of output file including path information.
+    
+    Returns
+        None
+    
+    Writes output file.
+    
+    If output file is already present, the user will be asked whether the file should be 
+    overwritten. If the response is 'N' or 'no' or an unrecognised input an expection will 
+    be raised.
+    '''
+    if os.path.exists(output_file):
+        answer = raw_input("This action with overwrite existing {} file. Do you wish to proceed (Y/N): ".format(output_file))
+        if answer.lower() == "y" or answer.lower() == "yes":
+            out = open(output_file,"w")
+        elif answer.lower() == "n" or answer.lower() == "no":
+            raise Exception("Configuration file has not been generated.")
+        else:
+            raise Exception("Did not understand input: '{}'. Configuration file has not been regenerated.".format(answer))
+    else:
+        out = open(output_file,"w")
+    
+    copy = False
+    with open(template_file) as fname:
+        for i,line in enumerate(fname):
+            if copy:
+                out.write(line)
+            elif not line.strip():
+                #print('Empty line',i)
+                continue
+            elif line.strip().startswith('##'):
+                #print("##",i)
+                continue
+            else:
+                copy = True
+                #print("Writing out from line: {}".format(i))
+                out.write(line)
+
+    print("Configuration file: {} has been generated.".format(output_file)) 
+
+    out.close()
 
 
 def str_check(string,error=True):
@@ -348,7 +402,7 @@ def all_parameters_in_param_type(param_type):
 def find_param_key(param_type,section=None,section_group=None):
     '''
     The find_param_key function checks whether the keys within the param_type dictionary are for sections (e.g. 'MCMC.MEASUREMENTS') 
-    or groups (e.g. 'MCMC') and returns the relevant key.
+    or groups (e.g. 'MCMC') and returns the relevant key(s).
     One of section or section_group should be specified.
     Returned key_type is one of 'section' or 'section_group'.
     
@@ -363,34 +417,35 @@ def find_param_key(param_type,section=None,section_group=None):
             Name of group in config file for the parameter
     
     Returns:
-        str,str: 
-            key, key_type
+        list,str: 
+            keys, key_type
     '''
     types = param_type # Get dictionary containing parameter names and types
-    keys = types.keys() # Extract all section/classification keys
+    all_keys = types.keys() # Extract all section/classification keys
     
     # Find oarameter class if not specified (should be defined as first part of section split by '.' e.g. MCMC.MEASUREMENTS, section_group='MCMC')
     if not section_group:
         section_group = section.split('.')[0]
         
-    if section in keys:
-        key = section
+    if section in all_keys:
+        keys = [section]
         key_type = 'section'
-    elif section_group in keys:
-        key = section_group
+    elif section_group in all_keys:
+        keys = [section_group]
         key_type = 'section_group'
-    elif section_group in [k.split('.')[0] for k in keys]:
-        keys_starter = [k.split('.')[0] for k in keys]
-        key = keys[keys_starter.index(section_group)]
+    elif section_group in [k.split('.')[0] for k in all_keys]:
+        keys = [k for k in all_keys if k.split('.')[0].lower() == section_group.lower()]
+        #keys_starter = [k.split('.')[0] for k in all_keys]
+        #keys = all_keys[keys_starter.index(section_group)]
         key_type = 'section'
     else:
-        key = None
+        keys = None
         key_type = None
         #raise Exception('Section/Classification {0}/{1} does not match to any key in input param_type'.format(section_group,section))
         #print('Param class cannot be found i for section of parameters not defined. Using {0} as default'.format(section_groups[0]))
         #section_group = section_groups[0]
     
-    return key,key_type
+    return keys,key_type
     
 
 
@@ -425,7 +480,8 @@ def get_value(name,config,section,param_type=None):
     '''
     
     if param_type:
-        key,key_type = find_param_key(param_type,section)
+        keys,key_type = find_param_key(param_type,section)
+        key = keys[0] # Should only ever be one key for a section
         types = param_type
         try:
             value_type = types[key][name] # Find specified type of object for input parameter
@@ -452,7 +508,8 @@ def get_value(name,config,section,param_type=None):
     return value
 
 
-def extract_params(config_file,section=None,section_group=None,names=[],optional_param=[],remove_not_found=False,
+def extract_params(config_file,section=None,section_group=None,names=[],ignore_sections=[],optional_param=[],
+                   optional_section=[],optional_section_group=[],exclude_not_found=False,allow_new=False,
                    param_type=None):
     '''
     The extract_params function extracts parameter names and values from a configuration file.
@@ -470,15 +527,31 @@ def extract_params(config_file,section=None,section_group=None,names=[],optional
             If section and section_group are both specified - section takes precedence.
         names (list, optional) : 
             Parameter names to extract (within section or section_group, if specified)
+        ignore_sections (list, optional) :
+            Sections to ignore when reading in the configuration file (even if parameters are specified).            
         optional_param (list, optional) : 
             Parameters within configuration file which are optional. If the parameter cannot be found in input file, 
             value will either be set to None or not included within the output dictionary (dependent on input for 
-            remove_not_found option).
+            exclude_not_found option).
+        optional_section (list, optional) :
+            If param_type is specified, all parameters within a section are treated as optional
+            parameters.
+            Note: if param_type dictionary is based on section groups and not sections, this
+            input cannot be used to identify the optional parameters.
+        optional_section_group (list, optional) :
+            If param_type is specified, all parameters within a section group are treated as 
+            optional parameters.
+        exclude_not_found (bool, optional) : 
+            Whether to remove parameters which are not found in the input file or include them 
+            as None.
+            Default = False.
+        allow_new (bool, optional) :
+            If a param_type is specified, whether to allow unrecognised parameters to be added
+            without printing a warning.
+            Default = False.   (i.e. Warning will be printed)
         param_type (dict, optional) : 
             Nested dictionary of sections or groups and expected parameter names and types.
             See module header for expected formats of param_type dictionary.                          
-        remove_not_found (bool, optional) : 
-            Whether to remove parameters which are not found in the input file or include them as None.
         
     Returns:
         OrderedDict : 
@@ -500,51 +573,82 @@ def extract_params(config_file,section=None,section_group=None,names=[],optional
             raise KeyError('Specified section {0} could not be found in configuration file: {1}'.format(section,config_file[0]))
             #select_sections = []
     elif section_group:
-        sections = all_sections
-        select_sections = [s for s in sections if s.split('.')[0].lower() == section_group.lower()] # Find all sections covered by section_group (section_group.name)
+        #sections = all_sections
+        select_sections = [s for s in all_sections if s.split('.')[0].lower() == section_group.lower()] # Find all sections covered by section_group (section_group.name)
         if not select_sections:
             raise KeyError('No sections could be found for specified section_group {0} in configuration file: {1}'.format(section_group,config_file[0]))
+    elif ignore_sections:
+        select_sections = all_sections
+        for es in ignore_sections:
+            if es in select_sections:
+                select_sections.remove(es)
     else:
         select_sections = all_sections # Find all sections
     
     # Finding all parameter names in the sections we want to extract
     extracted_names = []
     match_section = []
-    for sect in select_sections:
-        k = config[sect].keys()
-        s = [sect]*len(k)
-        extracted_names.extend(k) # List of the parameter names within the input file, within specified sections
-        match_section.extend(s)   # Associated list with the section heading for each parameter
-       
+    if names:
+        for sect in select_sections:
+            k = config[sect].keys()
+            for name in names:
+                if name in k:
+                    extracted_names.append(name)
+                    match_section.append(sect)
+    else:
+        for sect in select_sections:
+            k = config[sect].keys()
+            s = [sect]*len(k)
+            extracted_names.extend(k) # List of the parameter names within the input file, within specified sections
+            match_section.extend(s)   # Associated list with the section heading for each parameter
+
     if not names:
         if param_type:
             if section_group:
-                key_value,key_type = find_param_key(section_group=section_group,param_type=param_type)
-                keys = [key_value]
+                keys,key_type = find_param_key(section_group=section_group,param_type=param_type)
+                #keys = [key_value]
             elif section:
-                key_value,key_type = find_param_key(section=section,param_type=param_type)
-                keys = [key_value]
+                keys,key_type = find_param_key(section=section,param_type=param_type)
+                #keys = [key_value]
+            elif ignore_sections:
+                keys = param_type.keys()
+                for es in ignore_sections:
+                    if es in keys:
+                        keys.remove(es)
             else:
                 keys = param_type.keys()
+
+
+
             #print 'Keys to extract input names from param_type: {0}'.format(keys)
             names = []
-            if (section_group and key_type == 'section_group') or (section and key_type == 'section') or (section_group and key_type == 'section'):
+            if (section and key_type == 'section_group'):
+                print('WARNING: Cannot create list of necessary input parameters created based on param_type input. Please check all inputs are included manually.')
+                names = extracted_names # Set to just match names extracted from file 
+#            elif (section_group and key_type == 'section_group') or (section and key_type == 'section') or (section_group and key_type == 'section'):
+            else:
                for key in keys:
                    names.extend(param_type[key].keys())
-            elif (section and key_type == 'section_group'):
-                print('WARNING: Cannot create list of necessary input parameters created based on param_type input. Please check all inputs are included manually.')
-                names = extracted_names # Set to just match names extracted from file           
-            else:
-                names = all_parameters_in_param_type(param_type) # Extract all parameter names from param_type dictionary
+#            else:
+#                names = all_parameters_in_param_type(param_type) # Extract all parameter names from param_type dictionary
         else:
             names = extracted_names # Set to just match names extracted from file
     
-    #print 'Parameter names to extract from configuration file: {0}'.format(names)
-    #print 'Relevant parameter names within configuration file: {0}'.format(extracted_names)
+    if optional_section:
+        keys,key_type = find_param_key(section=optional_section,param_type=param_type)
+        if key_type == 'section_group':
+            print('WARNING: Cannot create list of optional parameters for the section based on param_type input. Please add parameters to optional_parameters list.')
+        else:
+            for key in keys:
+                optional_param.extend(param_type[key].keys())
+    
+    if optional_section_group:
+        keys,key_type = find_param_key(section_group=optional_section_group,param_type=param_type)
+        for key in keys:
+            optional_param.extend(param_type[key].keys())
     
     param = OrderedDict({})
-    
-    #if param_type:
+ 
     for name in names:
         if name in extracted_names:
             try:
@@ -555,7 +659,10 @@ def extract_params(config_file,section=None,section_group=None,names=[],optional
                 param[name] = get_value(name,config,match_section[index],param_type)
         else:
             if name in optional_param:
-                param[name] = None
+                if exclude_not_found:
+                    pass
+                else:
+                    param[name] = None
             elif not param_type:
                 print("WARNING: Parameter '{0}' not found in configuration file (check specified section {1} or section_group {2} is correct).".format(name,section,section_group))
             else:
@@ -565,22 +672,19 @@ def extract_params(config_file,section=None,section_group=None,names=[],optional
                     raise KeyError("Parameter '{0}' not found in input configuration file within section_group '{1}'".format(name,section_group))
                 else:
                     raise KeyError("Parameter '{0}' not found in input configuration file.".format(name))
-    #else:
-    #    for name in names:
-    #        try:
-    #            index = extracted_names.index(name)
-    #        except ValueError:
-    #            print "Parameter '{0}' not found in configuration file (check specified section {1} or section_group {2} is correct).".format(name,section,section_group)
-    #        else:
-    #            section = match_section[index]
-    #            param[name] = get_value(name,config,section,param_type)
     
-    if remove_not_found:
-        param = OrderedDict([(key,value) for key,value in param.iteritems() if value != None])
+    for index,extracted_name in enumerate(extracted_names):
+        if extracted_name not in param:
+            if not allow_new:
+                print("WARNING: Unknown parameter '{0}' found in configuration file. Please add to template file and define input type.".format(extracted_name))
+            param[extracted_name] = get_value(extracted_name,config,match_section[index])
+    
+    #if exclude_not_found:
+    #    param = OrderedDict([(key,value) for key,value in param.iteritems() if value != None])
     
     return param
 
-def all_param(config_file,optional_param=[],param_type=None,remove_not_found=False):
+def all_param(config_file,optional_param=[],param_type=None,exclude_not_found=False,allow_new=False):
     '''
     The all_param function extracts all parameters from a config file.
     If param_type specified will cast to the specified types, otherwise will attempt to discern the parameter types from the form of the values.
@@ -591,12 +695,16 @@ def all_param(config_file,optional_param=[],param_type=None,remove_not_found=Fal
         optional_param (list, optional) : 
             Parameters within configuration file which are optional. If the parameter cannot be found in input file, 
             value will either be set to None or not included within the output dictionary (dependent on input for 
-            remove_not_found option).
+            exclude_not_found option).
         param_type (dict, optional) : 
             Nested dictionary of sections or groups and expected parameter names and types.
             See module header for expected formats of param_type dictionary.
-        remove_not_found (bool, optional) : 
+        exclude_not_found (bool, optional) : 
             Whether to remove parameters which are not found in the input file or include them as None.    
+        allow_new (bool, optional) :
+            If a param_type is specified, whether to allow unrecognised parameters to be added
+            without printing a warning.
+            Default = False.   (i.e. Warning will be printed)
     
     Returns:
         OrderedDict: 
@@ -604,7 +712,8 @@ def all_param(config_file,optional_param=[],param_type=None,remove_not_found=Fal
     '''
     
     param = OrderedDict({})
-    param = extract_params(config_file,optional_param=optional_param,param_type=param_type,remove_not_found=remove_not_found)
+    param = extract_params(config_file,optional_param=optional_param,param_type=param_type,
+                           exclude_not_found=exclude_not_found,allow_new=allow_new)
     
     return param
 

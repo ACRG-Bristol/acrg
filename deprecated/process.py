@@ -840,9 +840,19 @@ def footprint_array(fields_file,
         fp.merge(particle_hist, inplace = True)
 
     # Extract footprint from columns
+    ### scipy.constants.C2K() module has been depreceated
+    #def convert_to_ppt(fp, slice_dict, column):
+    #    molm3=fp["press"][slice_dict].values/const.R/\
+    #        const.C2K(fp["temp"][slice_dict].values.squeeze())
+    #    fp.fp[slice_dict] = data_arrays[i]*area/ \
+    #        (3600.*timeStep*1.)/molm3
+    #    #The 1 assumes 1g/s emissions rate
+    #    return fp
+
+    # Extract footprint from columns
     def convert_to_ppt(fp, slice_dict, column):
         molm3=fp["press"][slice_dict].values/const.R/\
-            const.C2K(fp["temp"][slice_dict].values.squeeze())
+            const.convert_temperature(fp["temp"][slice_dict].values.squeeze(),"C","K")
         fp.fp[slice_dict] = data_arrays[i]*area/ \
             (3600.*timeStep*1.)/molm3
         #The 1 assumes 1g/s emissions rate
