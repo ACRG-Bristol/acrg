@@ -189,7 +189,11 @@ def get_vertical_profile(site, start_date, end_date, output_vars, temp_dir, outp
         Mark = get_met_Mark(str(d))
         Part = get_met_Part(lat_coord, lon_coord)
 
-        fname = met_dir + "UMG_Mk" + str(Mark) + "PT/" "MO" + file_date + ".UMG_Mk" + str(Mark) + "_I_L59PT" + str(Part) + ".pp.gz"
+        if Mark == 6:
+            fname = met_dir + "UMG_Mk" + str(Mark) + "PT/" "MO" + file_date + ".UMG_Mk" + str(Mark) + "_L59PT" + str(Part) + ".pp.gz"
+        else:
+            fname = met_dir + "UMG_Mk" + str(Mark) + "PT/" "MO" + file_date + ".UMG_Mk" + str(Mark) + "_I_L59PT" + str(Part) + ".pp.gz"
+            
         temp_dest = temp_dir + fname.split('/')[-1][:-3]
 
         # Unzip file
