@@ -22,7 +22,7 @@ import xarray as xr
 from acrg_time import convert
 import calendar
 import pickle
-from scipy import interpolate
+from scipy.interpolate import interp1d
 import dateutil.relativedelta
 import cartopy.crs as ccrs
 import cartopy
@@ -171,7 +171,7 @@ def interp_time(bc_ds,vmr_var_names, new_times):
         for j in range(len(bc_ds.height)):
             for i in range(len(bc_ds[vmr_var_name][0,:,0])):
                 y = bc_ds[vmr_var_name][j,i,:]
-                f = interpolate.interp1d(x_id,y, bounds_error = False,kind='linear', 
+                f = interp1d(x_id,y, bounds_error = False,kind='linear', 
                                          fill_value = np.max(y))
                 vmr_new[j,i,:] = f(new_times_id)
 
@@ -832,7 +832,6 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
 
         # Dataframe for this site            
         site_df = data[site] 
-            
         # Get time range
         df_start = min(site_df.index).to_pydatetime()
         start = dt.datetime(df_start.year, df_start.month, 1, 0, 0)
