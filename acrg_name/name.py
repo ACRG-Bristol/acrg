@@ -2146,29 +2146,26 @@ def animate(fp_data, output_directory, plot_function = "plot", file_label = 'fp'
 
 
 class get_country:
-  def __init__(self, domain, ocean=False, ukmo=False, uk_split=False):
-
+  def __init__(self, domain, ocean=False, ukmo=False, uk_split=False, country_dir = None):
+        if country_dir is None:
+            countryDirectory=data_path +'NAME/countries/' 
+            
         if ocean is False:
-
-            countryDirectory=data_path +'NAME/countries/'
             filename=glob.glob(countryDirectory + 
                  "/" + "country_" 
                  + domain + ".nc")
              
         else:
             if uk_split is True:
-                countryDirectory=data_path +'NAME/countries/'
                 filename=glob.glob(countryDirectory + 
                      "/" + "country-ukmo-split_"
                      + domain + ".nc")
             else:
                 if ukmo is False:
-                    countryDirectory=data_path +'NAME/countries/'
                     filename=glob.glob(countryDirectory + 
                          "/" + "country_ocean_"
                          + domain + ".nc")
                 else:
-                    countryDirectory=data_path +'NAME/countries/'
                     filename=glob.glob(countryDirectory + 
                          "/" + "country-ukmo_"
                          + domain + ".nc")
