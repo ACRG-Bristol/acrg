@@ -11,7 +11,6 @@ Functions used to generate and process HiSRes (High spatial resolution) footprin
 import acrg_name as name
 import xarray as xr
 import numpy as np
-import acrg_agage as agage
 import os
 import pandas as pd
 from acrg_name import emissions_helperfuncs as emfuncs
@@ -156,10 +155,11 @@ def getFlux(ds, output_dir, name):
             "lat_low":np.unique(lats_low),
             "lon_low":np.unique(lons_low),
             "lat_high":np.unique(lats_high),
-            "lon_high":np.unique(lons_high)
+            "lon_high":np.unique(lons_high),
+            "time":[np.datetime64(str( pd.to_datetime(ds.time.values[0]).year), 'Y')]
             }
     output = xr.Dataset(data_vars=data_vars, coords=coords)
-    output.to_netcdf("{}/{}.nc".format(output_dir, name))
+    output.to_netcdf("{}/{}_{}.nc".format(output_dir, name,year))
     
 #    import acrg_name.flux as flux
 #    from datetime import datetime
@@ -168,3 +168,31 @@ def getFlux(ds, output_dir, name):
 #    flux.write(lat,lon,time,np.expand_dims(combined,2),"CH4-NAEI-fixed","EUROPE",source=None,title="NAEI in EDGAR",
 #                   prior_info_dict={"TODO":["todo","todo","todo"]},flux_comments="NAEI + EDGAR",climatology=False,
 #                   regridder_used='acrg_grid.regrid.regrid_2D',output_directory="/data/al18242/flux/")
+
+def makeBasisFromExisting():
+    #flux = name.name.flux("EUROPE", "CH4-BTT-5", flux_directory="/data/al18242/flux_HR/")
+    with xr.open_dataset("/data/al18242/flux_HR/ch4-BTT-5.nc") as ds:
+        flux = ds.load()
+    with xr.open_dataset("/data/shared/NAME/basis_functions/EUROPE/sub-country_mask_uk-split_EUROPE_2014.nc") as ds:
+        existing = ds.load()
+    basis_out = existing.copy(deep=True)
+    
+    #do the high res section as a simple grid for now
+    start_region = np.amax(existing.basis.values) + 1
+    high_res_basis = np.zeros_like(flux.high_res)
+    X, Y = np.meshgrid(np.arange(0,55), np.arange(0,55))
+    X = np.floor(X/5.0)
+    Y = np.floor(Y/5.0)
+    high_res_basis[:,:,0] = start_region + Y * 11 + X
+    
+    lowsize, highsize, lons_low, lats_low, lons_high, lats_high, indicies_to_remove, lons_out, lats_out = \
+        getOverlapParameters(flux.lat_low.values, flux.lon_low.values, flux.lat_high.values, flux.lon_high.values)
+        
+    combined = existing.basis.values.reshape(lowsize, -1,order="F")
+    combined = np.delete(combined, indicies_to_remove, axis=0)
+    combined = np.append(combined, high_res_basis.reshape(highsize, -1,order="F"),axis=0)
+    basis_out["combined_basis"] = (["index", "time"], combined.astype(np.int32))
+    
+    basis_out.to_netcdf("/data/al18242/basis_hr/btt-5.nc")
+    
+    
