@@ -423,7 +423,7 @@ def cleanup(site,
                                    "%s_%s_%s.zip" % (i, site, v))
 
             # Files to archive for this instrument and version
-            archive_files = [f for f in files if v in f and i in f]
+            archive_files = [f for f in files if "-" + v in f and i + "_" in f]
 
             # Write archive and delete file
             zipf = zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED)

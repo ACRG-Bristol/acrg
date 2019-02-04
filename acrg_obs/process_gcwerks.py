@@ -14,7 +14,7 @@ import xarray as xray
 import json
 from os import getenv, stat
 import fnmatch
-from acrg_obs.utils import attributes, output_filename
+from acrg_obs.utils import attributes, output_filename, cleanup
 
 # Read site info file
 acrg_path = getenv("ACRG_PATH")
@@ -961,6 +961,23 @@ if __name__ == "__main__":
     # DECC Medusa
     gc("TAC", "medusa", "DECC")
 
+    cleanup("CGO")
+    cleanup("MHD")
+    cleanup("RPB")
+    cleanup("THD")
+    cleanup("SMO")
+    cleanup("GSN")
+    cleanup("SDZ")
+    cleanup("JFJ")
+    cleanup("CMN")
+    cleanup("ZEP")
+
+    cleanup("TAC")
+    cleanup("RGL")
+    cleanup("HFD")
+    cleanup("BSD")
+    cleanup("TTA")
+    
 
 #    # Copy files
 #    networks = ["AGAGE", "GAUGE", "DECC", "ICOS"]
