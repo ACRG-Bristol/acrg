@@ -216,7 +216,12 @@ def add_local_ratio(fp_data_H,return_release=True):
             wh_rlon = np.where(abs(fp_data_H[site].sub_lon.values-release_lon) < dlon/2.)
             wh_rlat = np.where(abs(fp_data_H[site].sub_lat.values-release_lat) < dlat/2.)
             if np.any(wh_rlon[0]) and np.any(wh_rlat[0]):
-                local_sum[ti] = np.sum(fp_data_H[site].sub_fp[
+                if 'index' in fp_data_H[site].dims.keys():
+                    local_sum[ti] = np.sum(fp_data_H[site].sub_fp[
+                        wh_rlat[0][0]-2:wh_rlat[0][0]+3,wh_rlon[0][0]-2:wh_rlon[0][0]+3,ti].values)/np.sum(
+                        fp_data_H[site].fp[:,ti].values)
+                else:
+                    local_sum[ti] = np.sum(fp_data_H[site].sub_fp[
                         wh_rlat[0][0]-2:wh_rlat[0][0]+3,wh_rlon[0][0]-2:wh_rlon[0][0]+3,ti].values)/np.sum(
                         fp_data_H[site].fp[:,:,ti].values)  
             else:
@@ -334,7 +339,7 @@ def reorder_dims(fp_data_H,first_dims=["time"]):
     return fp_data_H
 
 def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date, 
-    domain,network,emissions_name, fp_basis_case ,bc_basis_case,rjmcmc,para_temp,
+    domain,network,height, emissions_name, fp_basis_case ,bc_basis_case,rjmcmc,para_temp,
     bl_period,kmin,kmax,k_ap,nIt,burn_in,nsub,
     nbeta,beta,sigma_model_pdf,sigma_model_ap, 
     sigma_model_hparams,stepsize_sigma_y,stepsize_clon,stepsize_clat,
@@ -364,6 +369,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     
     
     fp_all = name.footprints_data_merge(data, domain=domain, calc_bc=True,
+                            height=height,
                             emissions_name = emissions_name,
                             fp_directory = fp_dir, flux_directory = flux_dir, bc_directory = bc_dir)
     
@@ -493,7 +499,10 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     else:
             axis_insert = 1
 
-    q_ap2=q_ap2["flux"].transpose("time","lat","lon")
+    if 'index' in q_ap2.dims.keys():
+        q_ap2=q_ap2["low_res"].transpose("time","lat","lon")
+    else:
+        q_ap2=q_ap2["flux"].transpose("time","lat","lon")
 
    
     if H_fixed2.dims[0] != "time":

@@ -204,8 +204,8 @@ def makeCAMS_BC(domain, species, st_date, end_date, gridsize):
     """
     
     #data_path = os.getenv("DATA_PATH")
-    pathtoBCs = data_path+'/ECMWF_CAMS/'
-    
+    #pathtoBCs = data_path+'/ECMWF_CAMS/'
+    pathtoBCs = "/data/al18242/CAMS/raw/"
     #Set-up a few things and do some checks
     species = species.lower()
     domain = domain.upper()
@@ -242,16 +242,12 @@ def makeCAMS_BC(domain, species, st_date, end_date, gridsize):
     outputname = "BC_CAMS_"+species+"_"+"".join(NESW)+"_"+str(gridsize)+"x"+str(gridsize)+"_"+st_date+".nc"
     if os.path.isfile(pathtoBCs+outputname) == False: 
         #Download data
-        getCAMSdata(st_date, end_date, gridsize, NESW, species, "/data/al18242/CAMS/raw/"+outputname)
+        getCAMSdata(st_date, end_date, gridsize, NESW, species, "/data/al18242/CAMS/raw/"+outputname, nearrealtime=True)
     
     #Open CAM dataset and average over the month 
     fn = pathtoBCs+outputname
     ds = xr.open_dataset(fn)
     ds = ds.mean('time')
-    try:
-        ds.rename({"ch4_c":"ch4"}, inplace=True)
-    except:
-        print("Terrible coding")
        
     #if species == 'ch4':
     #    speciesmm = 16.0425

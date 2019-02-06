@@ -103,6 +103,7 @@ if not end_date:
         raise Exception("End date of observations must be specified either on the command line or within the configuration file")
 domain = param['domain']
 network = param['network']
+height = param['height']
 
 fp_basis_case = param['fp_basis_case']
 bc_basis_case = param['bc_basis_case']
@@ -292,7 +293,7 @@ tau_pdf = param['tau_pdf']
 # nBIAS - seems to be specific to GOSAT?
 # nIC - a combination of all the above dimesions
 
-f_list=glob.glob(data_path + "/NAME/basis_functions/" 
+f_list=glob.glob(basis_dir 
                     + domain + "/" + fp_basis_case + 
                     "_" + domain + "_*.nc") 
 
@@ -397,7 +398,7 @@ pdf_p2_hparam2[-1]=2.
 pdf_param2[nIC:,:]=1.
 
 post_mcmc=run_tdmcmc.run_tdmcmc(sites, meas_period, av_period, species, start_date, end_date,  
-    domain, network, emissions_name, fp_basis_case, bc_basis_case, reversible_jump, parallel_tempering,    
+    domain, network, height, emissions_name, fp_basis_case, bc_basis_case, reversible_jump, parallel_tempering,    
     bl_period, kmin, kmax, k_ap, nIt, burn_in ,nsub,    
     nbeta, beta, sigma_model_pdf, sigma_model_ap,     
     sigma_model_hparams, stepsize_sigma_y, stepsize_clon, stepsize_clat,    

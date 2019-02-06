@@ -599,7 +599,7 @@ def combine_datasets(dsa, dsb, method = "ffill", tolerance = None):
     # merge the two datasets within a tolerance and remove times that are NaN (i.e. when FPs don't exist)
     
     ds_temp = dsa.merge(dsb.reindex_like(dsa, method, tolerance = tolerance))
-    if 'fp' in ds_temp.keys():
+    if 'fp' in ds_temp.keys() and not ("index" in ds_temp.fp.dims):
         flag = np.where(np.isfinite(ds_temp.fp.mean(dim=["lat","lon"]).values))
         ds_temp = ds_temp[dict(time = flag[0])]
     return ds_temp
@@ -942,7 +942,9 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                                        tolerance = tolerance)
 
             #transpose to keep time in the last dimension position in case it has been moved in resample
-            if 'H_back' in site_ds.dims.keys():
+            if 'index' in site_ds.dims.keys():
+                site_ds = site_ds.transpose('height','index','lat_high', 'lon_high','lat','lon','lev','time')
+            elif 'H_back' in site_ds.dims.keys():
                 site_ds = site_ds.transpose('height','lat','lon','lev','time', 'H_back')
             else:
                 site_ds = site_ds.transpose('height','lat','lon','lev','time')
@@ -1011,7 +1013,10 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                     else:
                         flux_reindex = fp_and_data['.flux'][source].reindex_like(fp_and_data[site], 'ffill')
                         if source == 'all':
-                            fp_and_data[site]['mf_mod'] = xr.DataArray((fp_and_data[site].fp*flux_reindex.flux).sum(["lat", "lon"]), coords = {'time':fp_and_data[site].time})
+                            if 'index' in fp_and_data[site].fp.dims:
+                                fp_and_data[site]['mf_mod'] = xr.DataArray((fp_and_data[site].fp*flux_reindex.flux).sum(["index"]), coords = {'time':fp_and_data[site].time})
+                            else:
+                                fp_and_data[site]['mf_mod'] = xr.DataArray((fp_and_data[site].fp*flux_reindex.flux).sum(["lat", "lon"]), coords = {'time':fp_and_data[site].time})
                         else:
                             fp_and_data[site]['mf_mod_'+source] = xr.DataArray((fp_and_data[site].fp*flux_reindex.flux).sum(["lat", "lon"]), coords = {'time':fp_and_data[site].time})
         
@@ -1101,7 +1106,10 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                 H_all=site_bf.fp*site_bf.flux 
                 H_all_arr = H_all.values
             
-            H_all_v=H_all.values.reshape((len(site_bf.lat)*len(site_bf.lon),len(site_bf.time)))        
+            if 'index' in site_bf.dims.keys():
+                H_all_v=H_all.values
+            else:
+                H_all_v=H_all.values.reshape((len(site_bf.lat)*len(site_bf.lon),len(site_bf.time)))        
         
         
             if 'region' in basis_func.dims.keys():
@@ -1131,16 +1139,26 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                 print("Warning: Using basis functions without a region dimension may be deprecated shortly.")
         
                 site_bf = combine_datasets(site_bf,basis_func, method='ffill')
- 
+
                 H = np.zeros((int(np.max(site_bf.basis)),len(site_bf.time)))
+                
+                if 'index' in site_bf.dims.keys():
+                    basis_scale = xr.Dataset({'basis_scale': (['index','time'],
 
-                basis_scale = xr.Dataset({'basis_scale': (['lat','lon','time'],
+                                                        np.zeros(np.shape(site_bf.basis)))},
+                                           coords = site_bf.coords)
+                    site_bf = site_bf.merge(basis_scale)
+                else:
+                    basis_scale = xr.Dataset({'basis_scale': (['lat','lon','time'],
 
-                                                    np.zeros(np.shape(site_bf.basis)))},
-                                       coords = site_bf.coords)
-                site_bf = site_bf.merge(basis_scale)
-
-                base_v = np.ravel(site_bf.basis.values[:,:,0])
+                                                        np.zeros(np.shape(site_bf.basis)))},
+                                           coords = site_bf.coords)
+                    site_bf = site_bf.merge(basis_scale)
+                
+                if 'index' in site_bf.dims.keys():
+                    base_v = site_bf.basis.values[:,0]
+                else:
+                    base_v = np.ravel(site_bf.basis.values[:,:,0])
                 for i in range(int(np.max(site_bf.basis))):
                     wh_ri = np.where(base_v == i+1)
                     H[i,:]=np.sum(H_all_v[wh_ri[0],:], axis = 0)      
@@ -1171,14 +1189,22 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                 if sub_basis_cases > 1:
                     print("Can currently only use a sub basis case for one source. Skipping...")
                 else:
-                    sub_fp_temp = site_bf.fp.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
+                    if 'index' in site_bf.dims.keys():
+                        sub_fp_temp = fp_and_data[site].fp_low.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
+                                                 method="nearest") 
+                    else:
+                        sub_fp_temp = site_bf.fp.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
                                                  method="nearest") 
                     sub_fp = xr.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
                                            coords = {'sub_lat': (site_bf.coords['sub_lat']),
                                                      'sub_lon': (site_bf.coords['sub_lon']),
                                                      'time' : (fp_and_data[site].coords['time'])})
-                                
-                    sub_H_temp = H_all.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
+                    if 'index' in site_bf.dims.keys():
+                        #sub_H_temp = (fp_and_data[site].fp_low*fp_and_data['.flux']["all"].low_res).sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
+                        #                   method="nearest") 
+                        sub_H_temp = sub_fp_temp
+                    else:
+                        sub_H_temp = H_all.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
                                            method="nearest")                             
                     sub_H = xr.Dataset({'sub_H': (['sub_lat','sub_lon','time'], sub_H_temp)},
                                           coords = {'sub_lat': (site_bf.coords['sub_lat']),
@@ -1188,8 +1214,8 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
        
                     fp_and_data[site] = fp_and_data[site].merge(sub_fp)
                     fp_and_data[site] = fp_and_data[site].merge(sub_H)
-            
-        fp_and_data[site]['H'] = concat_sensitivity                             
+
+        fp_and_data[site]['H'] = concat_sensitivity                           
 
                     
     return fp_and_data
