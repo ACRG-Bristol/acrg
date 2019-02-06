@@ -13,7 +13,7 @@ import xarray as xr
 import numpy as np
 import os
 import pandas as pd
-#from acrg_name import emissions_helperfuncs as emfuncs
+from acrg_name import emissions_helperfuncs as emfuncs
 
 def process_all(domain, site, height,
                 force_met_empty = False,
@@ -197,6 +197,8 @@ def makeBasisFromExisting():
     combined = np.append(combined, high_res_basis.reshape(highsize, -1,order="F"),axis=0)
     basis_out["basis_old"] = basis_out["basis"].copy(deep=True)
     basis_out["basis"] = (["index", "time"], combined.astype(np.int32))
+    basis_out["lat_high"] = flux.lat_high
+    basis_out["lon_high"] = flux.lon_high
     
     basis_out.to_netcdf("/data/al18242/basis_hr/EUROPE/sub_btt-5-london_EUROPE_2000.nc")
     
