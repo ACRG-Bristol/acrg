@@ -1599,7 +1599,7 @@ def uex(species):
     if species.lower() == 'n2o':
         # hack to filter spurious data but need more permanent fix from UEx!!!! #
         df = df[df['N2O']>326]
-#        df = df[df['N2O']<337]
+        df = df[df['N2O']<332]
  
     # Convert to xray dataset
     ds = xray.Dataset.from_dataframe(df)
