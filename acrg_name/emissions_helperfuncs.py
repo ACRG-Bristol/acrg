@@ -156,7 +156,7 @@ def getGFED(year, lon_out, lat_out, timeframe='monthly', months = [1,2,3,4,5,6,7
         fname = f.split('/')[-1]
         fyear = fname[9:13]      #Extract year from filename
         possyears = np.append(possyears, int(fyear))
-<<<<<<< HEAD
+    possyears.sort()
     if year > max(possyears):
         print("%s is later than latest year in GFED v4.1 database" % str(year))
         print("Using %s as the closest year" % str(max((possyears))))
@@ -164,17 +164,6 @@ def getGFED(year, lon_out, lat_out, timeframe='monthly', months = [1,2,3,4,5,6,7
     if year < min(possyears):
         print("%s is earlier than earliest year in GFED v4.1 database" % str(year))
         print("Using %s as the closest year" % str(min((possyears))))
-=======
-    possyears.sort()
-    #print "Possible years to use for GFED data: {}".format(possyears)
-    if int(year) > max(possyears):
-        print "%s is later than latest year in GFED v4.1 database" % str(year)
-        print "Using %s as the closest year" % str(max((possyears)))
-        year = max(possyears)
-    if int(year) < min(possyears):
-        print "%s is earlier than earliest year in GFED v4.1 database" % str(year)
-        print "Using %s as the closest year" % str(min((possyears)))
->>>>>>> master
         year = min(possyears)
     
     #Get emissions
