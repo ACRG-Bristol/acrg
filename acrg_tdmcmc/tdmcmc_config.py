@@ -51,7 +51,7 @@ def tdmcmc_template_file():
     reference_file = os.path.join(acrg_path,"acrg_config/templates/tdmcmc_template.ini")
     return reference_file
 
-def mcmc_param_type():
+def mcmc_param_type(alt_filename=None):
     '''
     The mcmc_param_type function defines the names of expected input parameters from the config file and 
     the required Python object types.
@@ -183,7 +183,10 @@ def mcmc_param_type():
 #                              ('MCMC', mcmc),
 #                              ('TDMCMC', tdmcmc)])
     #reference_file = os.path.join(acrg_path,"acrg_config/templates/tdmcmc_template.ini")
-    reference_file = tdmcmc_template_file()
+    if alt_filename is None:
+        reference_file = tdmcmc_template_file()
+    else:
+        reference_file = alt_filename
     param_dict = config.generate_param_dict(reference_file)
     
     return param_dict
