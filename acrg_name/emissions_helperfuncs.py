@@ -535,14 +535,13 @@ def getBloom2017(year, lon_out, lat_out, modeltype='extended'):
         bloomwetlands = 'WetCHARTs_extended_ensemble_mean.nc4'
         possyears = np.arange(15) + 2001
     
-    
     if year > max(possyears):
-        print "%s is later than max year in Bloom 2017 wetlands data" % str(year)
-        print "Using %s as the closest year" % str(max((possyears)))
+        print("%s is later than max year in Bloom 2017 wetlands data" % str(year))
+        print("Using %s as the closest year" % str(max((possyears))))
         year = max(possyears)
     if year < min(possyears):
-        print "%s is earlier than min year in Bloom 2017 data" % str(year)
-        print "Using %s as the closest year" % str(min((possyears)))
+        print("%s is earlier than min year in Bloom 2017 data" % str(year))
+        print("Using %s as the closest year" % str(min((possyears))))
         year = min(possyears)
     
     yearloc = np.where(possyears == year)[0][0]

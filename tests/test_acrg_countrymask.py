@@ -5,6 +5,7 @@ Created on Mon Jan 14 15:13:44 2019
 
 @author: rt17603
 """
+from __future__ import print_function
 
 import pytest
 import acrg_countrymask as countrymask
@@ -44,8 +45,8 @@ def test_other_directory():
     Test that function can used with file read from a different directory
     '''
     fp_dir = os.path.join(acrg_path,"tests/files/NAME/fp/")
-    print "acrg_path",acrg_path
-    print "fp_dir",fp_dir
+    print("acrg_path",acrg_path)
+    print("fp_dir",fp_dir)
     domain = "EUROPE"
     fp_lat,fp_lon,fp_height = countrymask.domain_volume(domain,fp_directory=fp_dir)
     

@@ -308,7 +308,7 @@ def define_stations(ds,sites=None):
         stations[site+'_lon']=ds.release_lons[si].values
         stations[site+'_lat']=ds.release_lats[si].values
         if site not in ds.y_site:
-            print "WARNING: Reference to site not found within dataset"
+            print("WARNING: Reference to site not found within dataset")
 
     if sites:
         stations['sites']=sites
@@ -400,8 +400,6 @@ def set_clevels(data,num_tick=20.,tick=None,centre_zero=False,rescale=False,robu
     
     scale = 1
 
-    print "q_max",q_max
-    print "q_min",q_min
     if rescale:
         # Allow q to be rescaled according to the most appropriate unit
         while abs(q_max) <= 1e-3:
@@ -417,7 +415,7 @@ def set_clevels(data,num_tick=20.,tick=None,centre_zero=False,rescale=False,robu
             elif abs(q_max) < abs(q_min):
                 q_max = -1*q_min
         else:
-            print 'Cannot centre on zero as min and max are not less than and greater than zero respectively'
+            print('Cannot centre on zero as min and max are not less than and greater than zero respectively')
         
     if not tick and num_tick:
         tick = (q_max-q_min)/num_tick
@@ -894,7 +892,7 @@ def plot_map_mult(data_all, lon, lat, grid=True, subplot="auto", clevels=None, d
         if len(labels) == 1:
             labels = labels*nrun
         elif len(labels) != nrun:
-            print "Unable to apply labels to sub-plots. Length of the list ({}) does not match the number of plots ({}).".format(len(labels),nrun)
+            print("Unable to apply labels to sub-plots. Length of the list ({}) does not match the number of plots ({}).".format(len(labels),nrun))
             labels = [None]*nrun
     else:
         labels = [labels]*nrun
@@ -905,7 +903,7 @@ def plot_map_mult(data_all, lon, lat, grid=True, subplot="auto", clevels=None, d
         if isinstance(stations,dict):
             stations = [stations]*nrun
         elif len(stations) != nrun:
-            print "Unable to apply station positions to sub-plots. Number of station dictionaries ({}}) does not match the number of plots ({}).".format(len(stations),nrun)
+            print("Unable to apply station positions to sub-plots. Number of station dictionaries ({}}) does not match the number of plots ({}).".format(len(stations),nrun))
             labels = [None]*nrun
     
     if not grid and nrun > 1:
