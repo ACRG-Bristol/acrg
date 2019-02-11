@@ -58,13 +58,13 @@ def bc_directory():
 @pytest.fixture(scope="module")
 def basis_directory():
     ''' Define base directory containing basis function files'''
-    directory = os.path.join(acrg_path,"tests/files/NAME/basis_function/")
+    directory = os.path.join(acrg_path,"tests/files/NAME/basis_functions/")
     return directory
 
 @pytest.fixture(scope="module")
 def bc_basis_directory():
     ''' Define base directory containing boundary condition basis function files '''
-    directory = os.path.join(acrg_path,"tests/files/NAME/bc_basis_function/")
+    directory = os.path.join(acrg_path,"tests/files/NAME/bc_basis_functions/")
     return directory
 
 

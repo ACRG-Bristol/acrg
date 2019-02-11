@@ -1208,7 +1208,7 @@ def extract_dates(ds,dim="time",dtype='M8[D]'):
     '''
     return ds[dim].values.astype(dtype).astype(str) # Extract dates from time column (cast as 8 byte datetime format (M8) in whole days [D] then cast as a string)
 
-def extract_files(directory,search_str=None,start=None,end=None,date_separator=''):
+def extract_files(directory,search_str=None,start=None,end=None,date_separator='',day=True):
     '''
     The extract_files function extracts filenames from a directory based on a search_str and/or based on a start
     and end dates (if filename contains details of a datestamp).
@@ -1234,6 +1234,10 @@ def extract_files(directory,search_str=None,start=None,end=None,date_separator='
         date_separator (str) : 
             Date separator string between year, month and day in filename.
             By default this is "", meaning dates of the form "YYYYMMDD" will be searched for.
+        day (bool) :
+            Expect day to be included in any date within the filename.
+            If day is True expect dates of the form e.g. 20120101 or 2012-01-01.
+            If day is False expect dates of the form e.g. 201201 or 2012-01
     
     Returns:
         list : 
@@ -1270,17 +1274,24 @@ def extract_files(directory,search_str=None,start=None,end=None,date_separator='
  
     if start and end:
         date_range = np.arange(start,end,dtype="datetime64[D]").astype(str)
+        if not day:
+           date_range = ['-'.join(date.split('-')[0:2]) for date in date_range] 
         date_range = [date.replace('-',date_separator) for date in date_range]
         print('Finding files in range: {0} - {1} in directory {2} using search string {3}'.format(start,end,directory,search_str_short))
         
         files = []
         for filename in filenames:
             try:
-                if date_separator:
+                if date_separator and day:
                     d_sep = "[{0}]".format(date_separator)
                     re_str = "\d{4}"+d_sep+"\d{2}"+d_sep+"\d{2}"  # Creating a regular expression to find 8 digits separated by date_separator e.g. 2012-01-01
-                else:
+                elif date_separator and not day:
+                    d_sep = "[{0}]".format(date_separator)
+                    re_str = "\d{4}"+d_sep+"\d{2}"  # Creating a regular expression to find 6 digits separated by date_separator e.g. 2012-01
+                elif day:
                     re_str = "\d{8}" # Creating a regular expression to find an 8 digit number (should be the date) e.g. 20120101
+                elif not day:
+                    re_str = "\d{6}" # Creating a regular expression to find an 6 digit number (should be the date) e.g. 201201
                 d = re.search(re_str,filename) 
                 d = d.group() # Extract value from regular expression compiler
             except AttributeError:
@@ -2499,17 +2510,17 @@ def gosat_output_name(ds,site,max_level=17,use_name_pressure=False,pressure_doma
                         break
                     elif not os.path.isfile(filename):
                         print('Writing to filename: {}'.format(filename))
-                        df_output.to_csv(filename)
+                        df_output.to_csv(filename,float_format='%f')
                     else:
                         #print('Appending to filename: {}'.format(filename))
-                        df_output.to_csv(filename,mode='a',header=False)    
+                        df_output.to_csv(filename,float_format='%f',mode='a',header=False)    
                 else:
                     if (not os.path.isfile(filename)) or (os.path.isfile(filename) and ID_1 == 0):
                         print('Writing to filename: {}'.format(filename))
-                        df_output.to_csv(filename)
+                        df_output.to_csv(filename,float_format='%f')
                     else:
                         #print('Appending to filename: {}'.format(filename))
-                        df_output.to_csv(filename,mode='a',header=False)
+                        df_output.to_csv(filename,float_format='%f',mode='a',header=False)
             else:
                 filename = "{site}_{date}-{ID}.csv".format(site=site,date=date.replace('-',''),ID=ID_str)
                 filename = os.path.join(name_directory,filename)
@@ -2519,10 +2530,10 @@ def gosat_output_name(ds,site,max_level=17,use_name_pressure=False,pressure_doma
                         break
                     else:
                         print('Writing to filename: {}'.format(filename))
-                        df_output.to_csv(filename)
+                        df_output.to_csv(filename,float_format='%f')
                 else:
                         print('Writing to filename: {}'.format(filename))    
-                        df_output.to_csv(filename)
+                        df_output.to_csv(filename,float_format='%f')
                 
     
 def gosat_process_file(filename,site,species="ch4",lat_bounds=[],lon_bounds=[],domain=None,

@@ -10,11 +10,10 @@ import numpy as np
 from iris.coords import DimCoord
 from iris.cube import Cube
 from iris.analysis import AreaWeighted
-import datetime as dt
 
 
 def regrid2d(array_in, lat_in, lon_in,
-             lat_out, lon_out):
+             lat_out, lon_out, global_grid=False):
     '''2D mass-conservative regrid
     
     Args:
@@ -28,6 +27,10 @@ def regrid2d(array_in, lat_in, lon_in,
             latitude to regrid onto
         lon_out (array): 
             longitude to regrid onto
+        global_grid (boolean):
+            True if grid covers the whole Earth, otherwise it does not realise 
+            that 0 and 360 deg longitude are the same, and your grid will have 
+            a strange gap in. 
         
     Returns:
         array: 
@@ -48,7 +51,8 @@ def regrid2d(array_in, lat_in, lon_in,
                            units='degrees')
     cube_lon_in = DimCoord(lon_in,
                            standard_name='longitude',
-                           units='degrees')
+                           units='degrees',
+                           circular=global_grid)
     cube_in = Cube(array_in,
                    dim_coords_and_dims=[(cube_lat_in, 0),
                                         (cube_lon_in, 1)])                                   
@@ -61,12 +65,23 @@ def regrid2d(array_in, lat_in, lon_in,
                             units='degrees')
     cube_lon_out = DimCoord(lon_out,
                             standard_name='longitude',
-                            units='degrees')
+                            units='degrees',
+                            circular=global_grid)
     cube_out = Cube(np.zeros((len(lat_out), len(lon_out)),
                              np.float32),
                     dim_coords_and_dims=[(cube_lat_out, 0),
                                          (cube_lon_out, 1)])
-    cube_out.coord('latitude').guess_bounds()
+    if global_grid:
+        # If global grid then need to have lat limits that stop at the poles. 
+        # Guessing bounds does not do this.
+        lat_bounds = np.zeros((len(lat_out),2))
+        lat_bounds[1:,0] = (lat_out[1:]+lat_out[:-1])/2
+        lat_bounds[:-1,1] = (lat_out[1:]+lat_out[:-1])/2
+        lat_bounds[0,0] = lat_out[0]
+        lat_bounds[-1,1] = lat_out[-1]
+        cube_out.coord('latitude').bounds = lat_bounds[:,:]
+    else:
+        cube_out.coord('latitude').guess_bounds()
     cube_out.coord('longitude').guess_bounds()
     
     # Regrid

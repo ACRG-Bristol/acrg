@@ -7,7 +7,7 @@ Output will contain the timestamp, lat, lon, surface emissions and concentration
 If you want any other fields then you'll need to add them in
     import acrg_MOZART as mozart    
     data=mozart.read('filename')
-    print data.time
+    print(data.time
     
 Can also extract data for sites given lats and lons
 sitefile = a text file with the site acronym, lat and then lon separated by spaces or tabs
@@ -22,15 +22,14 @@ import netCDF4
 import numpy as np
 import datetime as dt
 from acrg_grid.hybridcoords import hybridcoords as hybrid_coords
-import pdb
 import bisect
 import os
 import matplotlib.pyplot as plt
-from mpl_toolkits.basemap import Basemap
+#from mpl_toolkits.basemap import Basemap
 from matplotlib import ticker
 import pandas as pd
-import dateutil.relativedelta
-import sys
+#import dateutil.relativedelta
+#import sys
 # ___________________________________________________________________________________________________________________
 # CODE TO READ THE DIFFERENT DATA TYPES
 # ___________________________________________________________________________________________________________________
@@ -96,7 +95,7 @@ class read:
             hybi=data.variables['hybi'][:].astype('float')
                     
             # Split up the date using datetime.strptime
-            dt_time = [dt.timedelta(seconds=(secs[i]).astype('int')) for i in np.arange(len(date))]
+            dt_time = [dt.timedelta(seconds=int(secs[i])) for i in np.arange(len(date))]
             dt_date = [dt.datetime.strptime(str(date[i]),'%Y%m%d') for i in np.arange(len(date))]
             
             time_t = [dt_time[i] + dt_date[i] for i in np.arange(len(date))]
@@ -627,7 +626,7 @@ class data_filter_fixed:
             # - north, south, east, west, above and below
 
             # find the lat and lon range
-            print('site: ' + siteinfo.site[j]) 
+            print('site: ' + siteinfo.site[j])
             print('site postion: ' + str(siteinfo.lat[j]) + ', ' + str(siteinfo.lon[j]))
               
             
@@ -697,7 +696,7 @@ class data_filter_fixed:
                 
                 # Convert the altitude to a pressure using P0 from the model
                 site_pressure[j] = (calc_pressure(siteinfo.alt[j], data.P0, units=siteinfo.alt_units)).pressure             
-                print('site pressure: ' + str(site_pressure[j]))               
+                print('site pressure: ' + str(site_pressure[j]))
                 
                 # Loop through each time step and match site pressure to column level
                 # Extract the cube of data
@@ -734,7 +733,7 @@ class data_filter_fixed:
                         # store the level numbers used                    
                         levs[j,i,0:2] =  [55, 56]                  
                         
-                        #print 'lev_i: ' + str(lev_i)                        
+                        #print('lev_i: ' + str(lev_i)                        
                         
                         # extract and store the pressure levels used and corresponding concs
                         if len(lat_range) == 2:
@@ -753,7 +752,7 @@ class data_filter_fixed:
                         # NB: levels are 1 based while the index is 0 based
                         levs[j,i,:] =  [lev_index, lev_index+1, lev_index+2]                    
                         
-                        #print 'lev_i: ' + str(lev_i)
+                        #print('lev_i: ' + str(lev_i)
                         
                         # extract and store the pressure levels used and corresponding concs
                         if len(lat_range) == 2:
@@ -904,7 +903,8 @@ class data_filter_mobile:
         data = read(mzfile, conc_tag = conc_tag)
         
         species = data.species
-        #print 'reading site file : ' 
+
+        #print('reading site file : ' 
         print(sitefile)
         
         # Read site info file        
@@ -1692,7 +1692,7 @@ class plot_ncdf_fixed:
         sites = data.sitenames
         matched = np.where(sites == sitename)[0]
           
-        print(matched)          
+        print(matched)
           
         if len(matched) > 1:
             # This means that the site was listed twice in the site file as two measurement networks share it.
@@ -1806,7 +1806,7 @@ class plot_ncdf_fixed:
                 import json
                 
                 print('Plotting site ' + sitename)
-                print('Plotting data from /dagage2/agage/metoffice/processed_obs/')            
+                print('Plotting data from /dagage2/agage/metoffice/processed_obs/')
                 
                 # check if there is UKMO data for that site
                 acrg_path=os.path.split(os.path.realpath(__file__))

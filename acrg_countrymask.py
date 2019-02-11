@@ -263,10 +263,13 @@ def region_mapping(upper=True):
             Dictionary containing the mapping of the region number to the country name.
     '''
     all_regions = regionmask.defined_regions.natural_earth.countries_50.region_ids
-    codes = [key for key in all_regions.keys() if isinstance(key,unicode) and len(key) == 2]
-    names = [country_name(code,supress_print=True) for code in codes]
+    #codes = [key for key in all_regions.keys() if isinstance(key,unicode) and len(key) == 2]
+    #names = [country_name(code,supress_print=True) for code in codes]
+    
     #names = [name.split(',')[0] if name else name for name in names]
-    numbers = [all_regions[key] for key in codes]
+    
+    names = regionmask.defined_regions.natural_earth.countries_50.names
+    numbers = [all_regions[key] for key in names]
 
     # Check all numbers are covered
     max_num = np.max(numbers)
@@ -437,8 +440,8 @@ if __name__=="__main__":
     
     ## EXAMPLE OF HOW THIS MODULE CAN BE USED ##
     write = True
-    domain = "SOUTHAMERICA"
+    domain = "NORTHAFRICA"
     # Lat/Lon can be specified explictly or a domain footprint file can be used to find these values.
-
+    
     ds = create_country_mask(domain,write=write,reset_index=True,ocean_label=True)
     

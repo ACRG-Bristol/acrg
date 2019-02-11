@@ -7,7 +7,7 @@ Template file for creating plots with output of tdmcmc
 Uses tdmcmc_post_process
 
 
-@author: ml12574
+@author: ml12574 (updated by rt17603)
 """
 from __future__ import print_function
 from __future__ import absolute_import
@@ -115,19 +115,17 @@ if __name__=="__main__":
 
     #### GENERAL INPUTS ####
 
-    dates=["2012-01-01","2012-02-01","2012-03-01","2012-04-01"] # Can be a list of one date or many dates
+    dates=["2012-01-01"] # Can be a list of one date or many dates
     species="ch4"
-    #domain="EUROPE"
-    domain = "SOUTHAMERICA"
+    domain="EUROPE"
 
-    network="GOSAT-BRAZIL"
-    #experiment="MHD_TAC"
+    network="AGAGE"
+    experiment="MHD_TAC"
     countries=np.asarray(['UNITED KINGDOM', 'IRELAND', 'FRANCE', 'GERMANY', 
                           'DENMARK', 'BELGIUM', 'NETHERLANDS', 'LUXEMBOURG'])
     percentiles = [5,16,50,84,95]
     
-    #output_directory = "/path/to/output/directory" # ** UPDATE OUTPUT DIRECTORY **
-    output_directory = "/data/rt17603/tdmcmc_output/SOUTHAMERICA_ch4"
+    output_directory = "/path/to/output/directory" # ** UPDATE OUTPUT DIRECTORY **
     
     #### POST-PROCESSING OPTIONS ####
     write_outfile=False
@@ -137,7 +135,8 @@ if __name__=="__main__":
 
     plot_scale_map=False
     plot_abs_map=False
-    plot_y_timeseries=True
+    plot_diff_map=False
+    plot_y_timeseries=False
     plot_regions=False
     plot_density=False
     
@@ -153,13 +152,22 @@ if __name__=="__main__":
     uk_split = False
     
     # plot_scale_map
-    s_clevels = np.arange(0.,2.1,0.1) # Set to None to set to defaults.
+    grid_scale_map = True
+    s_clevels = None # Set to None to set to defaults.
     s_cmap = plt.cm.RdBu_r
     s_smooth = True
     s_out_filename = None  # None means plot will not be written to file
-    
+
     # plot_abs_map
-    d_clevels = np.arange(-1.,1.05,0.05) # Set to None to set to defaults.
+    grid_abs_map = True
+    a_clevels = None  # Set to None to set to defaults.
+    a_cmap = plt.cm.RdBu_r
+    a_smooth = False
+    a_out_filename = None  # None means plot will not be written to file
+    
+    # plot_diff_map
+    grid_diff_map = True
+    d_clevels = None # Set to None to set to defaults.
     d_cmap = plt.cm.RdBu_r
     d_smooth = False
     d_out_filename = None  # None means plot will not be written to file
@@ -178,29 +186,13 @@ if __name__=="__main__":
     #### IMPLEMENT PROCESSING OPTIONS ####
     print('Beginning post processing')
     
-    #results = post_process(species, dates, network, output_directory, countries=countries,
-    #                       write_outfile=False, append_outfile=False, calc_country=True,
-    #                       plot_scale_map=True, plot_regions=True, plot_y_timeseries=True)
-    
     if output_directory == "/path/to/output/directory/":
         raise Exception("Please set output directory.")
     if not os.path.isdir(output_directory):
         raise Exception("Output directory: {} does not exist.".format(output_directory))
     
-    
-    
     # Extract datasets from file
     ds_list = extract_tdmcmc_files(output_directory,species,network,dates)
-#    for tt,date in enumerate(dates):
-#        fname_search = "output_{network}_{species}_{date}.nc".format(network=network,species=species,date=date)
-#        fname_search = os.path.join(output_directory,fname_search)
-#        filename = glob.glob(fname_search)
-#        if len(filename) > 0:
-#                ds = process.open_ds(filename[0])
-#                ds_list.append(ds)
-#    
-#    if not ds_list:
-#        raise Exception("No data found for dates: {}, species, {}, network {}".format(dates,species,network))
     
     ## Calculate country totals
     if calc_country == True:
@@ -220,31 +212,22 @@ if __name__=="__main__":
     
     ## Plot scaling map
     if plot_scale_map == True:
-        for ds in ds_list:
-            lon=np.asarray(ds.lon.values)
-            lat=np.asarray(ds.lat.values)
-            x_post_mean = process.x_post_mean(ds)
-            
-            stations = process.define_stations(ds)
-            process.plot_map(x_post_mean,lon,lat,clevels=s_clevels, 
-                                 cmap=s_cmap,label=None,
-                                 smooth=s_smooth,fignum=None, 
-                                 stations=stations,out_filename=s_out_filename)
+        process.plot_scale_map(ds_list,grid=grid_scale_map,clevels=s_clevels, 
+                               cmap=s_cmap,labels=None,title=None,smooth=s_smooth,
+                               out_filename=s_out_filename,extend="both")
     
     ## Plot absolute difference map
+    if plot_diff_map == True:
+        process.plot_diff_map(ds_list,species,grid=grid_diff_map,clevels=d_clevels, 
+                               cmap=d_cmap,labels=None,title=None,smooth=d_smooth,
+                               out_filename=d_out_filename,extend="both")
+
+    ## Plot absolute map
     if plot_abs_map == True:
-        for ds in ds_list:
-            lon=np.asarray(ds.lon.values)
-            lat=np.asarray(ds.lat.values)
-          
-            x_post_mean = process.x_post_mean(ds)
-            q_abs_diff = process.g2mol(process.flux_diff(ds),species)*1e6
-            stations = process.define_stations(ds)
-            
-            process.plot_map(q_abs_diff,lon,lat,clevels=d_clevels, 
-                                 cmap=d_cmap,label=None,
-                                 smooth=d_smooth,fignum=None, 
-                                 stations=stations,out_filename=d_out_filename)
+        process.plot_abs_map(ds_list,species,grid=grid_abs_map,clevels=a_clevels, 
+                               cmap=a_cmap,labels=None,title=None,smooth=a_smooth,
+                               out_filename=a_out_filename,extend="max")
+
      
     ## Plot y timeseries
     if plot_y_timeseries == True:
