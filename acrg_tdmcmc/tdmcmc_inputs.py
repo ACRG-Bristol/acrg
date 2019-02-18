@@ -31,6 +31,7 @@ to adjust the uncertainties differently (emissions uncertainty > baseline uncert
 
 @author: ml12574 (updated by rt17603)
 """
+from __future__ import print_function
 
 import os
 import argparse
@@ -43,7 +44,7 @@ import datetime as dt
 import acrg_name as name
 from acrg_tdmcmc import run_tdmcmc 
 from acrg_tdmcmc import tdmcmc_post_process as process
-import tdmcmc_config
+import acrg_tdmcmc.tdmcmc_config as tdmcmc_config
 #import acrg_config as configread
 
 acrg_path = os.getenv("ACRG_PATH")
@@ -78,8 +79,8 @@ if regenerate_then_exit:
 
 verbose = True
 if verbose:
-    print '\n---------------\n'
-    print 'Input configuration file: {0}'.format(config_file)
+    print('\n---------------\n')
+    print('Input configuration file: {0}'.format(config_file))
 
 # Extract parameters from configuration file
 param = tdmcmc_config.all_mcmc_param(config_file)
@@ -108,11 +109,11 @@ fp_basis_case = param['fp_basis_case']
 bc_basis_case = param['bc_basis_case']
 
 if verbose:
-    print 'Measurement details: sites - {0}, species - {1}, domain - {2}, network - {3}'.format(sites,species,domain,network)
-    print 'Date range: {0} - {1}'.format(start_date,end_date)
-    print 'Basis case for footprint: {0}'.format(fp_basis_case)
-    print 'Basis case for boundary conditions: {0}\n'.format(bc_basis_case)
-    print '\n---------------\n'
+    print('Measurement details: sites - {0}, species - {1}, domain - {2}, network - {3}'.format(sites,species,domain,network))
+    print('Date range: {0} - {1}'.format(start_date,end_date))
+    print('Basis case for footprint: {0}'.format(fp_basis_case))
+    print('Basis case for boundary conditions: {0}\n'.format(bc_basis_case))
+    print('\n---------------\n')
 
 ################################################################
 # SET OUTPUT DIRECTORY AND OUTPUT DETAILS
@@ -145,27 +146,27 @@ if group:
     
 if data_dir is not None and data_dir.startswith("$ACRG_PATH"):
     data_dir = data_dir.replace("$ACRG_PATH",acrg_path)
-    print("data_directory is ", data_dir)
+    print(("data_directory is ", data_dir))
 
 if fp_dir is not None and fp_dir.startswith("$ACRG_PATH"):
     fp_dir = fp_dir.replace("$ACRG_PATH",acrg_path)
-    print("fp_directory is ", fp_dir)
+    print(("fp_directory is ", fp_dir))
 
 if flux_dir is not None and flux_dir.startswith("$ACRG_PATH"):
     flux_dir = flux_dir.replace("$ACRG_PATH",acrg_path)
-    print("flux_directory is ", flux_dir)
+    print(("flux_directory is ", flux_dir))
 
 if bc_dir is not None and bc_dir.startswith("$ACRG_PATH"):
     bc_dir = bc_dir.replace("$ACRG_PATH",acrg_path)
-    print("bc_directory is ", bc_dir)    
+    print(("bc_directory is ", bc_dir))    
 
 if basis_dir is not None and basis_dir.startswith("$ACRG_PATH"):
     basis_dir = basis_dir.replace("$ACRG_PATH",acrg_path)
-    print("basis_directory is ", basis_dir)
+    print(("basis_directory is ", basis_dir))
 
 if bc_basis_dir is not None and bc_basis_dir.startswith("$ACRG_PATH"):
     bc_basis_dir = bc_basis_dir.replace("$ACRG_PATH",acrg_path)
-    print("bc_basis_directory is ", bc_basis_dir)
+    print(("bc_basis_directory is ", bc_basis_dir))
     
 #######################################################
 # DO YOU WANT TO DO REVERSIBLE JUMP OR NOT?????
@@ -191,11 +192,11 @@ burn_in = param['burn_in']    # of discarded burn-in iterations
 nsub = param['nsub']          # nsub=100=store every 100th iteration)
 
 if verbose:
-    print 'Inversion type: {0}'.format(inv_type)
-    print 'Regions in trans-dimensional grid - minimum allowed: {0}, maximum allowed: {1}, starting value: {2}'.format(kmin,kmax,k_ap)
-    print 'Burn-in iterations: {0}'.format(burn_in)
-    print 'Number of iterations to run: {0} (nsub = {1}, {2} iterations will be saved)\n'.format(nIt,nsub,nIt/nsub)
-    print '\n---------------\n' 
+    print('Inversion type: {0}'.format(inv_type))
+    print('Regions in trans-dimensional grid - minimum allowed: {0}, maximum allowed: {1}, starting value: {2}'.format(kmin,kmax,k_ap))
+    print('Burn-in iterations: {0}'.format(burn_in))
+    print('Number of iterations to run: {0} (nsub = {1}, {2} iterations will be saved)\n'.format(nIt,nsub,nIt/nsub))
+    print('\n---------------\n') 
     
 ############################################################
 # FILTERS
@@ -416,7 +417,7 @@ if unique_copy:
     sub_dir = 'Output_{0}_{1}_{2}_{3}'.format(site_str, species, start_date, creation_dt)
     datestamp_output_dir = os.path.join(output_dir,sub_dir)
     
-    print 'Creating new unique directory for output: {0}'.format(datestamp_output_dir)
+    print('Creating new unique directory for output: {0}'.format(datestamp_output_dir))
     os.mkdir(datestamp_output_dir)    
     
     # Copy config file to output sub-directory
