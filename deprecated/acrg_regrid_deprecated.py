@@ -12,6 +12,7 @@ It will be saved in /data/shared/NAME/emissions/DOMAIN-NAME/SPECIES_DOMAIN-NAME_
 
 @author: ew14860
 """
+from __future__ import print_function
 
 import acrg_name as name
 import acrg_agage as agage
@@ -64,7 +65,7 @@ def find_domain(filename_of_footprint):
     if len(splitfile) == 3:
         domain = splitfile[1]
     elif len(splitfile) != 3:
-        print "Can't find domain name, make sure file name is in the correct format: site_domain_year.nc."
+        print("Can't find domain name, make sure file name is in the correct format: site_domain_year.nc.")
     return domain
 
 #Find the year the EDGAR emissions data is for    
@@ -76,7 +77,7 @@ def find_EDGAR_year(filename_of_EDGAR_emissions):
         year = m[0].strip('_')
         date = dt.datetime.strptime(year, '%Y')
     elif len(m) > 1:
-        print "Can't find correct date."
+        print("Can't find correct date.")
     return date, year
     
 #Regridding EDGAR data
