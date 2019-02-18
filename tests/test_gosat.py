@@ -7,6 +7,7 @@ Test cases for acrg_gosat module
 
 @author: rt17603
 """
+from __future__ import print_function
 
 import pytest
 import acrg_satellite.gosat as gosat
@@ -198,7 +199,7 @@ def test_str_filter(dummy_dataset):
     with pytest.raises(KeyError) as e_info:
         gosat.apply_filter(dummy_dataset,filter_array)
     #self.assertRaises("KeyError",gosat.apply_filter(ds,filter_array))
-    print e_info
+    print(e_info)
     
 def test_out_of_range_filter(ds_dimensions,dummy_dataset):
     '''
@@ -209,7 +210,7 @@ def test_out_of_range_filter(ds_dimensions,dummy_dataset):
     with pytest.raises(IndexError) as e_info:
         gosat.apply_filter(dummy_dataset,filter_array)
     #self.assertRaises("IndexError",gosat.apply_filter(ds,filter_array))
-    print e_info
+    print(e_info)
 
 def test_first_dim_filter(ds_dimensions,extra_dimension_ds):
     '''
@@ -286,7 +287,7 @@ def test_no_quality_filter(gosat_dataset):
         
     with pytest.raises(KeyError) as e_info:
         gosat.gosat_quality_filter(ds_no_qf)
-    print e_info
+    print(e_info)
 
 def test_full_gosat_qf(ds_dimensions,gosat_dataset):
     '''
@@ -320,7 +321,7 @@ def test_no_lat(coord_boundaries,gosat_dataset):
     columns = ["wrong_col","longitude"]
     with pytest.raises(KeyError) as e_info:
         gosat.latlon_filter(gosat_dataset,lat_bounds,lon_bounds,columns=columns)
-    print e_info
+    print(e_info)
 
 def test_no_lon(coord_boundaries,gosat_dataset):
     '''
@@ -330,7 +331,7 @@ def test_no_lon(coord_boundaries,gosat_dataset):
     columns = ["latitude","wrong_col"]
     with pytest.raises(KeyError) as e_info:
         gosat.latlon_filter(gosat_dataset,lat_bounds,lon_bounds,columns=columns)
-    print e_info
+    print(e_info)
 
 def test_latlon(coord_boundaries,ds_dimensions,gosat_dataset):
     '''
