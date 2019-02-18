@@ -6,6 +6,7 @@ Created on Sat Jul 25 15:46:31 2015
 
 Creat basis functions for domain
 """
+from __future__ import print_function
 
 import numpy as np
 import xarray as xray

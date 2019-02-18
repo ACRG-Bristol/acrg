@@ -39,6 +39,7 @@ Created on Wed Nov 19 10:56:48 2014
 
 @author: as13988
 """
+from __future__ import print_function
 
 import numpy as np
 

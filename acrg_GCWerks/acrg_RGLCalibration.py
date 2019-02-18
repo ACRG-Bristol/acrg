@@ -4,6 +4,8 @@ Created on Wed Sep  9 10:56:36 2015
 
 @author: as13988
 """
+from __future__ import print_function
+from __future__ import absolute_import
 
 
 import numpy as np
@@ -17,8 +19,8 @@ import time
 import csv 
 from itertools import chain
 import pdb
-import acrg_read_GCwerks as read_GCwerks
-import acrg_ICP
+from . import acrg_read_GCwerks as read_GCwerks
+from . import acrg_ICP
 
 # Class that contains the USNs and associated DNos
 class USNsDNos():
@@ -50,7 +52,7 @@ class Calcmulti:
         files = glob.glob(basedir+'*'+USN_tank+'*.dat')
         
         for i in np.arange(len(files)):
-            print 'Reading file: ' + files[i]
+            print('Reading file: ' + files[i])
             data_i = read_data(files[i])
             
             acrg_ICP.PlotRawMM(data_i, outputdir='/Users/as13988/Documents/Work/Cylinders/Calibrations/RGL/Plots/')
