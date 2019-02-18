@@ -24,6 +24,7 @@ in the Processed_Fields_files directory.
 
 @author: chxmr
 """
+from __future__ import print_function
 
 from netCDF4 import Dataset
 import netCDF4
@@ -616,7 +617,7 @@ def met_satellite_split(met):
         if len(met) == 1:
             met = met[0]
         else:
-            print "Only expect pandas.Dataframe or 1 item list as input to met_satellite_split. Len: {}, input included: {}".format(len(met),met)
+            print("Only expect pandas.Dataframe or 1 item list as input to met_satellite_split. Len: {}, input included: {}".format(len(met),met))
             return None
     
     if "label" in met.columns.values:
