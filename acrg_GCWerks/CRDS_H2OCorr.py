@@ -4,6 +4,7 @@ Created on Thu Jun 11 12:24:37 2015
 
 @author: as13988
 """
+from __future__ import print_function
 from acrg_GCWerks import acrg_read_GCwerks
 import matplotlib.pylab as plt
 import numpy as np
@@ -39,7 +40,7 @@ h2o_jump = 0.4, ignorefirst = 5, dry_cutoff = 0.005, h2o_sd = 0.2, co2_sd = 0.05
         #loop through the years
         for j in years:
             #find the files
-            print 'Processing ' + i + ' ' + str(j)
+            print('Processing ' + i + ' ' + str(j))
             raw_files = find_files(i, date=j, indir = basedir + 'raw/'+dir_suffix)
             instcorr_files = find_files(i, date=j, indir = basedir + 'inbuiltcorr/'+dir_suffix)
 
@@ -102,7 +103,7 @@ def define_wetdry(infile, dry_cutoff = 0.0001, h2o_sd = 0.2, h2o_jump = 0.4, co2
     good = (np.where((data_all.co2flags == 0) & (h2o_sd > data_all.h2osd) & (co2_sd > data_all.co2sd)& (ch4_sd > data_all.ch4sd)))[0]
     
     if len(good) == 0:
-        print 'There are no good points in file: ' + infile
+        print('There are no good points in file: ' + infile)
     h2o = data_all.h2o[good]
     
     datetime = [data_all.datetime[i] for i in good]    
@@ -111,7 +112,7 @@ def define_wetdry(infile, dry_cutoff = 0.0001, h2o_sd = 0.2, h2o_jump = 0.4, co2
     dry_data = dry_sections(data_all, dry_cutoff)
     
     if len(dry_data.co2) == 0:
-        print 'There was no data with H2O < '+ str(dry_cutoff) + ' for file ' + data_all.filename
+        print('There was no data with H2O < '+ str(dry_cutoff) + ' for file ' + data_all.filename)
         
     # This determines the runs based on intervening dry sections but not every test run has dry bewtween it
     if use_drygaps is not None:
@@ -138,7 +139,7 @@ def define_wetdry(infile, dry_cutoff = 0.0001, h2o_sd = 0.2, h2o_jump = 0.4, co2
 
         # find where these increases are grouped together
         gaps_start = []
-        for k, g in groupby(enumerate(index), lambda (i,x):i-x):
+        for k, g in groupby(enumerate(index), lambda i_x:i_x[0]-i_x[1]):
             group =  map(itemgetter(1), g)
             #print group
             gaps_start.append(group[0])
@@ -162,7 +163,7 @@ def define_wetdry(infile, dry_cutoff = 0.0001, h2o_sd = 0.2, h2o_jump = 0.4, co2
 
 
 
-        print 'Have identified ' + str(len(gaps_start)) + ' runs'
+        print('Have identified ' + str(len(gaps_start)) + ' runs')
         
     # Extract the data for each run
     wet_runs = []
@@ -283,7 +284,7 @@ def read_data(datafile):
 # Plot the raw CO2, CH4 and H2O data
 def plot_raw(data, outdir = '/Users/as13988/Documents/Work/Picarro/H2OCorr/Plots/'):
    
-    print 'Plotting: ' + data.filename
+    print('Plotting: ' + data.filename)
     
     splitstr = data.filename.split('.')
     site = (splitstr[0])[0:3]
@@ -333,7 +334,7 @@ def plot_raw(data, outdir = '/Users/as13988/Documents/Work/Picarro/H2OCorr/Plots
     plt.figtext(0.82, 0.2, 'Dry = solid' , verticalalignment='bottom', horizontalalignment='left', fontsize=6)
     plt.figtext(0.82, 0.17, 'Wet = dashed', verticalalignment='bottom', horizontalalignment='left', fontsize=6)       
 
-    print 'Plot saved as: ' + outdir+ '/' + site+ '/'+'Raw_'+tag+'_'+site+'.' + testdate + '.png'
+    print('Plot saved as: ' + outdir+ '/' + site+ '/'+'Raw_'+tag+'_'+site+'.' + testdate + '.png')
     plt.savefig(outdir+ '/' + site+ '/'+'Raw_'+tag+'_'+site+'.' + testdate + '.png', dpi=200)
         
     plt.show()
@@ -391,7 +392,7 @@ def plot_H2O(data, outdir = '/Users/as13988/Documents/Work/Picarro/H2OCorr/Plots
     
     plt.subplots_adjust(hspace = 0.3) 
  
-    print 'Plot saved as: ' + outdir+ '/' + site+ '/'+'VsH2O_'+tag+'_'+site+'.' + testdate + '_'+ species+'.png'
+    print('Plot saved as: ' + outdir+ '/' + site+ '/'+'VsH2O_'+tag+'_'+site+'.' + testdate + '_'+ species+'.png')
     plt.savefig(outdir+ '/' + site+ '/'+'VsH2O_'+tag+'_'+site+'.' + testdate + '_'+ species + '.png', dpi=200)
         
     plt.show()
@@ -456,19 +457,19 @@ def plot_ratio_multi(wetdata, drydata, nocorrdata=None, outdir = '/Users/as13988
         output[gases[j]] = gas_j
     
     # Print out the fits
-    print 'Fit Y =  1 + a*X + b*(X*X)'
-    print output['CO2']['filenames'][0][0:3]
-    print 'CO2 parameters'
-    print 'datetime, a, a_sd, b, b_sd'
+    print('Fit Y =  1 + a*X + b*(X*X)')
+    print(output['CO2']['filenames'][0][0:3])
+    print('CO2 parameters')
+    print('datetime, a, a_sd, b, b_sd')
     a_co2 = []
     b_co2 = []
     
     for i, item in enumerate(output['CO2']['params']):
-        print str(output['CO2']['dates'][i]) + ', ' \
+        print(str(output['CO2']['dates'][i]) + ', ' \
                     + '{:.7f}'.format(item[0]) +', ' \
                     + '{:.7f}'.format(output['CO2']['corr'][i][0]) + ', ' \
                     + '{:.7f}'.format(item[1]) + ', ' \
-                    + '{:.7f}'.format(output['CO2']['corr'][i][1])
+                    + '{:.7f}'.format(output['CO2']['corr'][i][1]))
         a_co2.append(item[0])
         b_co2.append(item[1])
     
@@ -477,27 +478,27 @@ def plot_ratio_multi(wetdata, drydata, nocorrdata=None, outdir = '/Users/as13988
     mean_b_co2 = np.mean(np.array(b_co2))
     stdev_b_co2 = np.std(np.array(b_co2))
     
-    print ''
-    print 'mean' + ', ' \
+    print('')
+    print('mean' + ', ' \
         + '{:.7f}'.format(mean_a_co2) + ', ' \
         + '{:.7f}'.format(stdev_a_co2) +  ', ' \
         + '{:.7f}'.format(mean_b_co2) + ', ' \
-        + '{:.7f}'.format(stdev_b_co2)
+        + '{:.7f}'.format(stdev_b_co2))
        
     
-    print ''
-    print ''
-    print 'CH4 parameters'
-    print 'datetime, a, a_sd, b, b_sd'
+    print('')
+    print('')
+    print('CH4 parameters')
+    print('datetime, a, a_sd, b, b_sd')
     a_ch4 = []
     b_ch4 = []
 
     for i, item in enumerate(output['CH4']['params']):
-        print str(output['CH4']['dates'][i]) + ', ' \
+        print(str(output['CH4']['dates'][i]) + ', ' \
                     + '{:.6f}'.format(item[0]) +', ' \
                     + '{:.6f}'.format(output['CH4']['corr'][i][0]) + ', ' \
                     + '{:.6f}'.format(item[1]) + ', ' \
-                    + '{:.6f}'.format(output['CH4']['corr'][i][1])
+                    + '{:.6f}'.format(output['CH4']['corr'][i][1]))
         
         a_ch4.append(item[0])
         b_ch4.append(item[1])
@@ -507,12 +508,12 @@ def plot_ratio_multi(wetdata, drydata, nocorrdata=None, outdir = '/Users/as13988
     mean_b_ch4 = np.mean(np.array(b_ch4))
     stdev_b_ch4 = np.std(np.array(b_ch4))
     
-    print ''
-    print 'mean' + ', ' \
+    print('')
+    print('mean' + ', ' \
             + '{:.7f}'.format(mean_a_ch4) + ', ' \
             + '{:.7f}'.format(stdev_a_ch4) + ', ' \
             + '{:.7f}'.format(mean_b_ch4) + ', ' \
-            + '{:.7f}'.format(stdev_b_ch4)
+            + '{:.7f}'.format(stdev_b_ch4))
 
     means = {"a_co2" : [mean_a_co2], \
             "a_co2_sd" : [stdev_a_co2], \
@@ -613,8 +614,8 @@ def plot_ratio(data, drydata, nocorrdata=None, outdir = '/Users/as13988/Document
         plt.plot(h2o, fit, '-', color = 'red')
      
         fit_str = 'y = ' + '1 + ' + str("{:.3E}".format(params[0])) + 'x + ' + str("{:.3E}".format(params[1])) + 'x^2'
-        print fit_str
-        print np.sqrt(corr)
+        print(fit_str)
+        print(np.sqrt(corr))
         
         plt.figtext(0.25, 0.2, fit_str , verticalalignment='bottom', horizontalalignment='left', fontsize=8)
      
@@ -622,7 +623,7 @@ def plot_ratio(data, drydata, nocorrdata=None, outdir = '/Users/as13988/Document
         if h2o_tag == 'h2o_reported': 
            outname = 'Ratio_'+tag+'_'+site+'.' + testdate+ '_'+ species + '_ICOS.png'
 
-        print 'Plot saved as: ' + outdir+ '/' + site+ '/'+dir_suffix+outname
+        print('Plot saved as: ' + outdir+ '/' + site+ '/'+dir_suffix+outname)
         plt.savefig(outdir+ '/' + site+ '/'+dir_suffix+outname, dpi=200)
             
         plt.show()
@@ -692,7 +693,7 @@ def plot_fit(rawwetdata, h2o, drymean, fit_params, sd, h2o_sd, instcorrdata=None
             plt3.set_ylim(-6, 6)             
              
         if saveas is not None:
-            print 'Plot saved as: ' + saveas
+            print('Plot saved as: ' + saveas)
             plt.savefig(saveas, dpi=200)
             
         plt.show()
@@ -751,7 +752,7 @@ def plot_residual_multi(data, outdir = '/Users/as13988/Documents/Work/Picarro/H2
     plt2.yaxis.set_major_formatter(y_formatter)
          
     if saveas is not None:
-       print 'Plot saved as: ' + outdir + saveas
+       print('Plot saved as: ' + outdir + saveas)
        plt.savefig(outdir+saveas, dpi=200)
         
     plt.show()
@@ -807,13 +808,13 @@ def plot_residual(means, wet_data, wet_data_nocorr, dry_data, outdir = '/Users/a
     ch4_dry_mean = np.mean(np.array(ch4_dry)[dry_index])
 
     index = np.where(np.array(flags) == 0)[0]
-    print 'No. good flagged data points: ' + str(len(index))
+    print('No. good flagged data points: ' + str(len(index)))
     
     # optional SD flag
     if sd_flag is not None:
         index = np.where((np.array(flags) == 0) & (np.array(co2_sd) < sd_flag))[0]
     
-    print 'No. data points used: ' + str(len(index))
+    print('No. data points used: ' + str(len(index)))
             
     co2 = np.array(co2)[index]
     ch4 = np.array(ch4)[index]
@@ -858,7 +859,7 @@ def plot_residual(means, wet_data, wet_data_nocorr, dry_data, outdir = '/Users/a
        index = np.where( h2o < H2O_Range) [0]
        index_rest = np.where( h2o >= H2O_Range)[0]
        
-       print 'Residual mean H2O < ' + str(H2O_Range) + '%'
+       print('Residual mean H2O < ' + str(H2O_Range) + '%')
        for i,item in enumerate([index, index_rest]):
            co2_LT_mean_N = np.mean(np.abs(co2_res[item]))
            co2_LT_sd_N = np.std(np.abs(co2_res[item]))
@@ -870,13 +871,13 @@ def plot_residual(means, wet_data, wet_data_nocorr, dry_data, outdir = '/Users/a
            ch4_LT_mean_O = np.mean(np.abs(ch4_res_inbuilt[item]))
            ch4_LT_sd_O = np.std(np.abs(ch4_res_inbuilt[item]))   
         
-           print 'CO2 new mean ± 1SD = ' +  '{:.4f}'.format(co2_LT_mean_N) + ' ± ' + '{:.4f}'.format(co2_LT_sd_N) + 'mumol/mol'
-           print 'CO2 inbuilt mean ± 1SD = ' +  '{:.4f}'.format(co2_LT_mean_O) + ' ± ' + '{:.4f}'.format(co2_LT_sd_O) + 'mumol/mol'
-           print 'CH4 new mean ± 1SD = ' +  '{:.4f}'.format(ch4_LT_mean_N) + ' ± ' + '{:.4f}'.format(ch4_LT_sd_N) + 'nmol/mol'
-           print 'CH4 inbuilt mean ± 1SD = ' +  '{:.4f}'.format(ch4_LT_mean_O) + ' ± ' + '{:.4f}'.format(ch4_LT_sd_N) + 'nmol/mol'
-           print ' '
+           print('CO2 new mean ± 1SD = ' +  '{:.4f}'.format(co2_LT_mean_N) + ' ± ' + '{:.4f}'.format(co2_LT_sd_N) + 'mumol/mol')
+           print('CO2 inbuilt mean ± 1SD = ' +  '{:.4f}'.format(co2_LT_mean_O) + ' ± ' + '{:.4f}'.format(co2_LT_sd_O) + 'mumol/mol')
+           print('CH4 new mean ± 1SD = ' +  '{:.4f}'.format(ch4_LT_mean_N) + ' ± ' + '{:.4f}'.format(ch4_LT_sd_N) + 'nmol/mol')
+           print('CH4 inbuilt mean ± 1SD = ' +  '{:.4f}'.format(ch4_LT_mean_O) + ' ± ' + '{:.4f}'.format(ch4_LT_sd_N) + 'nmol/mol')
+           print(' ')
            if i == 0:
-               print 'Residual mean H2O >= ' + str(H2O_Range) + '%'
+               print('Residual mean H2O >= ' + str(H2O_Range) + '%')
        
     labelx = -0.1
 
@@ -911,7 +912,7 @@ def plot_residual(means, wet_data, wet_data_nocorr, dry_data, outdir = '/Users/a
         if useinbuilt is not None:
             outname = '/' +means['site'] + '/'+ dir_suffix+ means['site'] + '_' + means['date']+'_RunResiduals_InBuiltCorr.png'
             
-        print 'Plot saved as: ' + outdir +  outname
+        print('Plot saved as: ' + outdir +  outname)
         plt.savefig(outdir+  outname, dpi=200)
         
     plt.show()
@@ -1012,7 +1013,7 @@ def compare_fits(data, drydata, fit_params,  outdir = '/Users/as13988/Documents/
     plt.figtext(0.22, 0.16, 'Built in correction', color ='red', verticalalignment='bottom', horizontalalignment='left', fontsize=10)
         
     
-    print 'Plot saved as: ' + outdir + '/' + site+ '/'+ 'FitComparison_' + tag+ '.' + site + testdate +'.'+ species + '.png'
+    print('Plot saved as: ' + outdir + '/' + site+ '/'+ 'FitComparison_' + tag+ '.' + site + testdate +'.'+ species + '.png')
     plt.savefig(outdir+ '/' + site + '/' + 'FitComparison_' + tag+ '.' + site + testdate + species + '.png', dpi=200)
     plt.show()
     
@@ -1090,7 +1091,7 @@ def compare_runs(data, drydata,  outdir = '/Users/as13988/Documents/Work/Picarro
     y_formatter = ticker.ScalarFormatter(useOffset=False)
     plt3.yaxis.set_major_formatter(y_formatter)
  
-    print 'Plot saved as: ' + outdir+ '/' + site+ '/'+'RatioComparison'+site+'.' + testdate+ '.'+ species + '.png'
+    print('Plot saved as: ' + outdir+ '/' + site+ '/'+'RatioComparison'+site+'.' + testdate+ '.'+ species + '.png')
     plt.savefig(outdir+ '/' + site+ '/'+'RatioComparison'+site+'.' + testdate+ '.'+ species + '.png', dpi=200)
         
     plt.show()
@@ -1182,7 +1183,7 @@ def plot_drymeans(means, outdir = '/Users/as13988/Documents/Work/Picarro/H2OCorr
     plt2.set_ylabel('CH$_4$')
     plt3.set_ylabel('H$_2$O')
  
-    print 'Plot saved as: ' + outdir+ '/' + site+ '/'+'drymeans.png'
+    print('Plot saved as: ' + outdir+ '/' + site+ '/'+'drymeans.png')
     plt.savefig(outdir+ '/' + site+ '/'+'drymeans.png', dpi=200)
         
     plt.show()
