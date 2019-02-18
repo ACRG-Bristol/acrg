@@ -4,6 +4,7 @@ Created on Fri Oct  9 12:24:18 2015
 
 @author: as13988
 """
+from __future__ import print_function
 
 import acrg_agage
 import numpy as np
@@ -63,10 +64,10 @@ def plotagainstother(site, gas, suffix='', yscale=None, xscale=None, other_site=
                 site_name = site_name + '_scaled'
                 suffix = 'scaled'
     else:
-        print 'Site ' + site + ' does not match any listed'
-        print 'Please use: ' 
+        print('Site ' + site + ' does not match any listed')
+        print('Please use: ') 
         for i in sites_list().sites_tag:
-            print i
+            print(i)
     
     if (np.where(np.array(sites_list().sites_tag) == other_site)[0]).size > 0:   
         if other_site_name is None:
@@ -74,10 +75,10 @@ def plotagainstother(site, gas, suffix='', yscale=None, xscale=None, other_site=
         if n2o_scale_other:
             other_site_name = other_site_name + '_scaled'
     else:
-        print 'Site ' + other_site + ' does not match any listed'
-        print 'Please use: ' 
+        print('Site ' + other_site + ' does not match any listed')
+        print('Please use: ') 
         for i in sites_list().sites_tag:
-            print i
+            print(i)
             
     if outdir is None:    
         outdir = '/home/as13988/GAUGE/MHDComparisons/'
@@ -134,9 +135,9 @@ def plotagainstother(site, gas, suffix='', yscale=None, xscale=None, other_site=
             plt.savefig(outdir+site+'Vs' + other_site + '_' + gas+suffix + '.png', dpi=200)
             
         else:
-                 print 'Can not find data for ' + gas + ' at ' + other_site 
+                 print('Can not find data for ' + gas + ' at ' + other_site) 
     else:
-        print 'Can not find data for ' + gas + ' at ' + site 
+        print('Can not find data for ' + gas + ' at ' + site) 
 
 # Make the plot and save it    
 def plotagainstflask(site, flasksite, gas, suffix=None, yscale=None, xscale=None, network=None,\
@@ -340,7 +341,7 @@ def plotagainstflask(site, flasksite, gas, suffix=None, yscale=None, xscale=None
             plt.savefig(outdir+site+'Vs' + flasksite + '_flaskconc_' + gas+'_' + suffix + '.png', dpi=200)
 
     else:
-        print 'Can not find data for ' + gas + ' at ' + site 
+        print('Can not find data for ' + gas + ' at ' + site) 
 
 
 # READ CODE!
@@ -455,7 +456,7 @@ class read_wao():
             index = np.where(np.array(gases_measured()) == gas)[0]    
             mean_header = meancolumnheaders[index]
             
-            print 'Reading : ' + infile
+            print('Reading : ' + infile)
             
             # read in the file
             f = open(datadir+infile, 'r')
@@ -531,7 +532,7 @@ class read_gla():
             
         if OK == 1:        
                 
-            print 'Reading : ' + infile
+            print('Reading : ' + infile)
             
             # read in the file
             ncfile = netCDF4.Dataset(datadir+infile, 'r')
@@ -553,5 +554,5 @@ class read_gla():
 # Plot all the sites for a given gas
 def plotallsites(gas):
     for i in sites_list().sites_tag:
-        print 'Plotting for site: ' + i
+        print('Plotting for site: ' + i)
         plotagainstother(i, gas)

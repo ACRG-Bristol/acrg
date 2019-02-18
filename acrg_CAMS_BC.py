@@ -21,6 +21,7 @@ To download new CAMS data you will have to:
       pip install --user https://software.ecmwf.int/wiki/download/attachments/56664858/ecmwf-api-client-python.tgz
 
 """
+from __future__ import print_function
 import xarray as xr
 import numpy as np
 import os
@@ -112,7 +113,7 @@ def interpheight(nesw, fp_height, species, lonorlat=None):
     elif lonorlat == 'latitude':
         interp = np.zeros((len(fp_height),len(nesw.latitude) ))
     else:
-        print "Please specify either lonorlat='longitude' or 'latitude'"
+        print("Please specify either lonorlat='longitude' or 'latitude'")
         return None
     for j in range(len(nesw['z'][0,:])):
         interp[:,j] = np.interp(fp_height, nesw['z'][:,j][::-1], nesw[species][:,j][::-1])
@@ -213,19 +214,19 @@ def makeCAMS_BC(domain, species, st_date, end_date, gridsize):
     
     if os.path.isfile(data_path+"NAME/bc/%s/%s_%s_%s.nc"
                        %(domain,species,domain,dt.strptime(st_date, '%Y-%m-%d').strftime('%Y%m'))):
-        print 'Boundary condition file %s_%s_%s.nc already exists.' %(species,domain,dt.strptime(st_date, '%Y-%m-%d').strftime('%Y%m')) 
-        print 'Delete old one first to replace it.'
+        print('Boundary condition file %s_%s_%s.nc already exists.' %(species,domain,dt.strptime(st_date, '%Y-%m-%d').strftime('%Y%m'))) 
+        print('Delete old one first to replace it.')
         return(None)
     
     if gridsize not in [0.125, 0.25, 0.4, 0.5, 0.75, 1, 1.125, 1.5, 2, 2.5, 3]:
-        print "'gridsize' must be either:"
-        print 0.125, 0.25, 0.4, 0.5, 0.75, 1, 1.125, 1.5, 2, 2.5, 3
-        print " Change it and try again"
+        print("'gridsize' must be either:")
+        print(0.125, 0.25, 0.4, 0.5, 0.75, 1, 1.125, 1.5, 2, 2.5, 3)
+        print(" Change it and try again")
         return(None)
         
     if os.path.isdir(data_path+"NAME/fp/" + domain) == False:
-        print "No footprint file for domain %s" % domain
-        print "Make this first and then generate the BCs"
+        print("No footprint file for domain %s" % domain)
+        print("Make this first and then generate the BCs")
         return(None)
     
     #Get NAME lats/lons and heights
