@@ -499,7 +499,7 @@ def gc(site, instrument, network,
                             params["GC"]["directory_output"],
                             user_specified_input_directory = input_directory,
                             user_specified_output_directory = output_directory)
-
+            
     search_strings = []
     for suffix in params["GC"]["instruments_suffix"][instrument]:
         # Search string
