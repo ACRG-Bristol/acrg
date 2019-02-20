@@ -64,6 +64,7 @@ A param_type dictionary can be defined both to fix expected inputs and to explic
 
 @author: rt17603
 """
+from __future__ import print_function
 
 import configparser
 from collections import OrderedDict
@@ -509,7 +510,7 @@ def get_value(name,config,section,param_type=None):
 
 
 def extract_params(config_file,section=None,section_group=None,names=[],ignore_sections=[],optional_param=[],
-                   optional_section=[],optional_section_group=[],exclude_not_found=False,allow_new=False,
+                   optional_section=[],optional_section_group=[],exclude_not_found=True,allow_new=False,
                    param_type=None):
     '''
     The extract_params function extracts parameter names and values from a configuration file.
@@ -544,7 +545,7 @@ def extract_params(config_file,section=None,section_group=None,names=[],ignore_s
         exclude_not_found (bool, optional) : 
             Whether to remove parameters which are not found in the input file or include them 
             as None.
-            Default = False.
+            Default = True.
         allow_new (bool, optional) :
             If a param_type is specified, whether to allow unrecognised parameters to be added
             without printing a warning.

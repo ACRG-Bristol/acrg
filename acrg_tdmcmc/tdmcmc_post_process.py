@@ -18,6 +18,7 @@ country_emissions - calculate emissions from given list of countries
 
 @author: ml12574
 """
+from __future__ import print_function
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -62,7 +63,7 @@ def append_netcdf(flux_mean, flux_percentile, flux_it, country_mean, country_per
     regionspc_name = "_".join(['regions_percentile', experiment])
     #countryit_name = "_".join(['country_it', experiment])
     
-    print "outfile",outfile
+    print("outfile",outfile)
     ncF=Dataset(outfile, 'a')
     
     ncfluxm=ncF.createVariable(fm_name, 'f', ('lat', 'lon', 'time'))    
@@ -107,7 +108,7 @@ def append_netcdf(flux_mean, flux_percentile, flux_it, country_mean, country_per
     #nccountryit.long_name='Posterior emissions distribution from individual countries'
     
     ncF.close()
-    print "Appended " + experiment + " to " + outfile 
+    print("Appended " + experiment + " to " + outfile) 
 
 def write_netcdf(flux_mean, flux_percentile, flux_it, flux_prior, flux_ap_percentile,
                  country_mean, country_percentile, country_prior, country_ap_percentile,
@@ -235,7 +236,7 @@ def write_netcdf(flux_mean, flux_percentile, flux_it, flux_prior, flux_ap_percen
 #    nccountryit.long_name='Posterior emissions distribution from individual countries'
     
     ncF.close()
-    print "Written " + experiment + " to " + outfile
+    print("Written " + experiment + " to " + outfile)
 
 def molar_mass(species):
     '''
@@ -307,7 +308,7 @@ def define_stations(ds,sites=None):
         stations[site+'_lon']=ds.release_lons[si].values
         stations[site+'_lat']=ds.release_lats[si].values
         if site not in ds.y_site:
-            print "WARNING: Reference to site not found within dataset"
+            print("WARNING: Reference to site not found within dataset")
 
     if sites:
         stations['sites']=sites
@@ -399,8 +400,8 @@ def set_clevels(data,num_tick=20.,tick=None,centre_zero=False,rescale=False,robu
     
     scale = 1
 
-    print "q_max",q_max
-    print "q_min",q_min
+    print("q_max",q_max)
+    print("q_min",q_min)
     if rescale:
         # Allow q to be rescaled according to the most appropriate unit
         while abs(q_max) <= 1e-3:
@@ -416,7 +417,7 @@ def set_clevels(data,num_tick=20.,tick=None,centre_zero=False,rescale=False,robu
             elif abs(q_max) < abs(q_min):
                 q_max = -1*q_min
         else:
-            print 'Cannot centre on zero as min and max are not less than and greater than zero respectively'
+            print('Cannot centre on zero as min and max are not less than and greater than zero respectively')
         
     if not tick and num_tick:
         tick = (q_max-q_min)/num_tick
@@ -742,7 +743,7 @@ def plot_map(data, lon, lat, clevels=None, divergeCentre = None, cmap=plt.cm.RdB
     if clevels is None:
         #print "Warning: using default contour levels. Include clevels keyword to change"
         #clevels = np.arange(-2., 2.1, 0.1)
-        print "Warning: using default contour levels which uses 2nd-98th percentile. Include clevels keyword to change."
+        print("Warning: using default contour levels which uses 2nd-98th percentile. Include clevels keyword to change.")
         clevels = set_clevels(data,robust=True)
     #else:
     #    clevels = np.arange(clevels[0], clevels[1], clevels[2])
@@ -860,7 +861,7 @@ def plot_map_mult(data_all, lon, lat, grid=True, subplot="auto", clevels=None, d
         if len(labels) == 1:
             labels = labels*nrun
         elif len(labels) != nrun:
-            print "Unable to apply labels to sub-plots. Length of the list ({}) does not match the number of plots ({}).".format(len(labels),nrun)
+            print("Unable to apply labels to sub-plots. Length of the list ({}) does not match the number of plots ({}).".format(len(labels),nrun))
             labels = [None]*nrun
     else:
         labels = [labels]*nrun
@@ -871,7 +872,7 @@ def plot_map_mult(data_all, lon, lat, grid=True, subplot="auto", clevels=None, d
         if isinstance(stations,dict):
             stations = [stations]*nrun
         elif len(stations) != nrun:
-            print "Unable to apply station positions to sub-plots. Number of station dictionaries ({}}) does not match the number of plots ({}).".format(len(stations),nrun)
+            print("Unable to apply station positions to sub-plots. Number of station dictionaries ({}}) does not match the number of plots ({}).".format(len(stations),nrun))
             labels = [None]*nrun
     
     if not grid and nrun > 1:
@@ -954,6 +955,7 @@ def plot_scale_map(ds_list, grid=True, clevels=None, divergeCentre=None, centre_
                   cmap=plt.cm.RdBu_r, labels=labels, smooth=smooth, out_filename=out_filename, 
                   stations=stations, fignum=fignum, 
                   title=title, extend=extend, figsize=figsize)
+    return x_post_mean_list
 
 def plot_abs_map(ds_list, species, grid=True, clevels=None, divergeCentre=None, 
                    cmap=plt.cm.RdBu_r, borders=True, labels=None, plot_stations=True,
@@ -1004,6 +1006,7 @@ def plot_abs_map(ds_list, species, grid=True, clevels=None, divergeCentre=None,
                   clevels=clevels, divergeCentre=divergeCentre, cmap=plt.cm.RdBu_r, labels=labels, 
                   smooth=smooth, out_filename=out_filename, stations=stations, fignum=fignum, 
                   title=title, extend=extend, figsize=figsize)
+    return q_abs_list
 
 def plot_diff_map(ds_list, species, grid=True, clevels=None, divergeCentre=None, 
                    centre_zero=True,cmap=plt.cm.RdBu_r, borders=True, labels=None, plot_stations=True,
@@ -1055,6 +1058,7 @@ def plot_diff_map(ds_list, species, grid=True, clevels=None, divergeCentre=None,
                   clevels=clevels, divergeCentre=divergeCentre, centre_zero=centre_zero,
                   cmap=plt.cm.RdBu_r, labels=labels, smooth=smooth, out_filename=out_filename, stations=stations, fignum=fignum, 
                   title=title, extend=extend, figsize=figsize)
+    return q_diff_list
 
 def regions_histogram(k_it, out_filename=None, fignum=2):
     
@@ -1151,7 +1155,7 @@ def country_emissions(ds_mcmc, countries, species, domain, x_post_vit=None, q_ap
     elif units == 'Mg/yr': 
         unit_factor=1.e6
     else:
-        print 'Undefined units: outputting in g/yr - let this be a lesson to define your units'
+        print('Undefined units: outputting in g/yr - let this be a lesson to define your units')
         unit_factor=1.
         
 #    acrg_path = os.getenv('ACRG_PATH')
@@ -1331,6 +1335,24 @@ def country_emissions_mult(ds_list, countries, species, domain, x_post_vit=None,
 
     return country_it,country_mean,country_percentile,country_prior,country_index
 
+def prior_bc_inner(ds):
+    '''
+    The prior_bc_inner function calculates the y prior boundary conditions for the inner
+    region.
+    
+    Args:
+        ds (xarray.Dataset) : output from the run_tdmcmc function
+    
+    Returns:
+        np.array : y prior inner boundary conditions
+    '''
+    nIC = ds.nIC.values  # number of initial conditions (basis functions + boundary conditions + bias)
+    h_v_all = ds.h_v_all.values # nmeasure x NgridIC (Ngrid + nIC)
+    
+    y_prior_bg = np.sum(h_v_all[:,:nIC],axis=1)
+    
+    return y_prior_bg
+
 def prior_mf(ds):
     '''
     The prior_mf function calculates the y prior mole fraction
@@ -1436,9 +1458,19 @@ def combine_timeseries(*ds_mult):
         xarray.Dataset :
             Reduced, combined dataset from tdmcmc output.
     '''
-    calc_data_vars = {"bc_inner_post":post_bc_inner,"mf_post":post_mf}
+    calc_data_vars = {"bc_inner_post":post_bc_inner,"mf_post":post_mf,
+                      "bc_inner_prior":prior_bc_inner,"mf_prior":prior_mf}
     #data_vars = ["y_time","y_site","y","sigma_y_it","bc_inner_post","mf_post","nIC","h_v_all","x_it","x_post_vit"]
-    data_vars = ["y_time","y_site","y","sigma_y_it","bc_inner_post","mf_post"]
+    data_vars = ["y_time","y_site","y","sigma_y_it","bc_inner_post","mf_post",
+                 "bc_inner_prior","mf_prior"]
+
+#    if prior:
+#        calc_data_vars["mf_prior"] = prior_mf
+#        data_vars.append("mf_prior")
+#    if bc_prior:
+#        calc_data_vars["bc_inner_prior"] = prior_bc_inner
+#        data_vars.append("bc_inner_prior")
+
     match_coords = ["Ngrid","sites"]
     
     concat_dim = "nmeasure"
@@ -1458,13 +1490,20 @@ def combine_timeseries(*ds_mult):
     for dv in data_vars:
         for i,ds in enumerate(ds_mult):
             if dv in calc_data_vars:
-                calc_dv_it,calc_dv = calc_data_vars[dv](ds)
-                if i == 0:
-                    da = xray.DataArray(calc_dv,dims=concat_dim)
-                    da_it = xray.DataArray(calc_dv_it,dims=[iter_dim,concat_dim])
+                if "post" in dv: # Posterior data variables
+                    calc_dv_it,calc_dv = calc_data_vars[dv](ds)
+                    if i == 0:
+                        da = xray.DataArray(calc_dv,dims=concat_dim)
+                        da_it = xray.DataArray(calc_dv_it,dims=[iter_dim,concat_dim])
+                    else:
+                        da = xray.concat([da,xray.DataArray(calc_dv,dims=concat_dim)],dim=concat_dim)
+                        da_it = xray.concat([da_it,xray.DataArray(calc_dv_it,dims=[iter_dim,concat_dim])],dim=concat_dim)
                 else:
-                    da = xray.concat([da,xray.DataArray(calc_dv,dims=concat_dim)],dim=concat_dim)
-                    da_it = xray.concat([da_it,xray.DataArray(calc_dv_it,dims=[iter_dim,concat_dim])],dim=concat_dim)
+                    calc_dv = calc_data_vars[dv](ds)
+                    if i == 0:
+                        da = xray.DataArray(calc_dv,dims=concat_dim)
+                    else:
+                        da = xray.concat([da,xray.DataArray(calc_dv,dims=concat_dim)],dim=concat_dim)
             else:
                 if i == 0:
                     da = ds[dv]
@@ -1476,7 +1515,7 @@ def combine_timeseries(*ds_mult):
         data_arrays[dv] = da
         
         # Add data arrays containing the full iteration history as well as the mean for bg and x_post
-        if dv in calc_data_vars:
+        if dv in calc_data_vars and "post" in dv:
             data_arrays["{}_it".format(dv)] = da_it
     
     ## Create dataset from extracted data arrays
@@ -1502,6 +1541,7 @@ def combine_timeseries(*ds_mult):
     return combined_ds
  
 def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True, figsize=None,
+                    plot_prior=False, plot_bc_prior=False,
                     lower_percentile = 16., upper_percentile = 84.):
     
     """
@@ -1516,6 +1556,9 @@ def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True
         ylim (array) : y-axis limits [ymin,ymax]
         out_filename (string) : Filename to save file
         doplot (bool) : Plot to console? (optional)
+        figsize (tuple) : Specify size of figure as a two-item tuple.
+        plot_prior (bool) : Plot mole fraction prior.
+        plot_bc_prior (bool) : Plot inner boundary conditions prior.
         lower_percentile (float) : Lower percetile of predicted time series 
                                    uncertainty (default = 16)
         upper_percentile (float) : Upper percetile of predicted time series 
@@ -1530,9 +1573,17 @@ def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True
         y_bg_it = ds["bc_inner_post_it"].values
         y_post_mean = ds["mf_post"].values
         y_post_it = ds["mf_post_it"].values
+        if plot_prior:
+            y_prior = ds["mf_prior"].values
+        if plot_bc_prior:
+            y_bc_prior = ds["bc_inner_prior"].values
     else:
         y_bg_it,y_bg_mean = post_bc_inner(ds)
         y_post_it,y_post_mean = post_mf(ds)
+        if plot_prior:
+            y_prior = prior_mf(ds)
+        if plot_bc_prior:
+            y_bc_prior = prior_bc_inner(ds)
 
     sites = ds.coords['sites'].values
     nsites=len(sites)
@@ -1558,6 +1609,13 @@ def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True
                 ax[si].plot(y_time[wh_site[0]],y_post_mean[wh_site[0]], color='blue', label='Modelled observations')
                 ax[si].plot(y_time[wh_site[0]],y_bg_mean[wh_site[0]],color='black', 
                          label='Modelled baseline')
+                if plot_prior:
+                    ax[si].plot(y_time[wh_site[0]],y_prior[wh_site[0]], color='green', label='Prior')
+                
+                if plot_bc_prior:
+                    ax[si].plot(y_time[wh_site[0]],y_bc_prior[wh_site[0]], color='0.6', label='Prior baseline (bc inner)')
+                    
+                
                 if ylim is not None:
                     ax[si].set_ylim(ylim)
                 start, end = ax[si].get_ylim()
@@ -1575,8 +1633,17 @@ def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True
             ax.plot(y_time,y_post_mean, color='blue', label='Modelled observations')
             ax.plot(y_time,y_bg_mean,color='black', 
                      label='Modelled baseline')
+
+            if plot_prior:
+                ax.plot(y_time,y_prior, color='green', label='Prior')
+            
+            if plot_bc_prior:
+                ax.plot(y_time,y_bc_prior, color='0.6', label='Prior baseline (bc inner)')
+
             start, end = ax.get_ylim()
             ax.yaxis.set_ticks(np.arange(start, end+1, (end-start)/5))
+            #ax.tick_params(axis='both',labelsize=20)
+            #legend=ax.legend(loc='upper left',fontsize=20)
             legend=ax.legend(loc='upper left')
             for label in legend.get_texts():
                 label.set_fontsize('small')

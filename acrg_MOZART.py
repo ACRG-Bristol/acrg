@@ -17,6 +17,7 @@ sitefile = a text file with the site acronym, lat and then lon separated by spac
     
 
 """
+from __future__ import print_function
 import netCDF4
 import numpy as np
 import datetime as dt

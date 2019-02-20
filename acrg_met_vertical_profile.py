@@ -5,6 +5,7 @@ Created on Thu Jan  3 13:29:24 2019
 
 @author: ew14860
 """
+from __future__ import print_function
 
 import iris
 import xarray as xr
@@ -12,7 +13,6 @@ import gzip
 import numpy as np
 import pandas as pd
 import os
-import math
 import json
 import collections as c
 
@@ -37,9 +37,11 @@ def xy_wind_to_speed_direction(x_wind, y_wind):
     
     # Wind direction is angle from North of x_wind, y_wind vector
     # Need to switch x and y wind to use math.atan2 function
-    # Then find angle from 0-360 by adding 360 (and modulus to one rotation of 360 degrees)
+    # Then find angle from 0-360 (rather than -180 - 180) by adding 360, but minus 180 to
+    # get direction vector is coming from rather than going to (and modulus to one
+    # rotation of 360 degrees)
     
-    wind_direction = (np.rad2deg(np.arctan2(x_wind,y_wind))+360)%360
+    wind_direction = (np.rad2deg(np.arctan2(x_wind,y_wind))+180)%360
     
     return wind_speed, wind_direction
     
@@ -138,7 +140,9 @@ def get_met_Part(lat, lon):
     return PT
 
 
-def get_vertical_profile(site, start_date, end_date, output_vars, temp_dir, output_dir, met_dir = "/mnt/storage/private/acrg/met_archive/NAME/Met/Global/"):
+def get_vertical_profile(site, start_date, end_date, output_vars, temp_dir, output_dir,
+                         met_dir = "/mnt/storage/private/acrg/met_archive/NAME/Met/Global/",
+                         topog_dir = "/mnt/storage/private/acrg/NAME/Model/NAMEIII_v7_2_particlelocation/Resources/Topog/"):
     
     """
     Function extracts a vertical meteorological profile at the location requested (the nearest grid cell in the met files) for the required variables
@@ -160,7 +164,12 @@ def get_vertical_profile(site, start_date, end_date, output_vars, temp_dir, outp
     lat_coord = site_info[site]['latitude']
     lon_coord = site_info[site]['longitude']
     
-    print "Getting vertical profile for grid cell closest to " +str(lat_coord) + " degrees latitude (-90 - 90) and " + str(lon_coord) + " degrees longitude (-180 - 180)."
+    # Make sure lon_coord is in the right format to compare to coordinates in met files
+    # (originally -180 - 180, change to 45.1172 - 405.1172)
+    if lon_coord < 45.1172:
+        lon_coord_adj = lon_coord +360
+    
+    print("Getting vertical profile for grid cell closest to " +str(lat_coord) + " degrees latitude (-90 - 90) and " + str(lon_coord) + " degrees longitude (-180 - 180).")
 
     # If wind_speed and wind_direction required, add x_wind and y_wind to output_vars
 
@@ -181,7 +190,11 @@ def get_vertical_profile(site, start_date, end_date, output_vars, temp_dir, outp
         Mark = get_met_Mark(str(d))
         Part = get_met_Part(lat_coord, lon_coord)
 
-        fname = met_dir + "UMG_Mk" + str(Mark) + "PT/" "MO" + file_date + ".UMG_Mk" + str(Mark) + "_I_L59PT" + str(Part) + ".pp.gz"
+        if Mark == 6:
+            fname = met_dir + "UMG_Mk" + str(Mark) + "PT/" "MO" + file_date + ".UMG_Mk" + str(Mark) + "_L59PT" + str(Part) + ".pp.gz"
+        else:
+            fname = met_dir + "UMG_Mk" + str(Mark) + "PT/" "MO" + file_date + ".UMG_Mk" + str(Mark) + "_I_L59PT" + str(Part) + ".pp.gz"
+            
         temp_dest = temp_dir + fname.split('/')[-1][:-3]
 
         # Unzip file
@@ -210,12 +223,8 @@ def get_vertical_profile(site, start_date, end_date, output_vars, temp_dir, outp
             
                     lon = cube.coord('longitude').points
                     lat = cube.coord('latitude').points
-                
-                    #Make sure lon_coord is in the right format (originally -180 - 180, change to 45.1172 - 405.1172)
-                    if lon_coord < 45.1172:
-                        lon_coord = lon_coord +360
             
-                    wh_lon = (np.abs(lon - lon_coord)).argmin()
+                    wh_lon = (np.abs(lon - lon_coord_adj)).argmin()
                     wh_lat = (np.abs(lat - lat_coord)).argmin()
             
                     # Extract vertical profile
@@ -226,9 +235,20 @@ def get_vertical_profile(site, start_date, end_date, output_vars, temp_dir, outp
                     #Get datetime from time
                     time = cube.coord('time')
                     dates = time.units.num2date(time.points)
+                    
+                    # Convert levels to heights in m agl
+                    #(taken from /mnt/storage/private/acrg/NAME/Model/NAMEIII_v7_2_particlelocation/Resources/Defns/MetDefnUMG_Mk9_L59PTpp.txt)
             
-                    da = xr.DataArray(vertical_profile[None,:], coords=[dates,cube.coord('model_level_number').points], dims=['time','level'], name = v,
+                    heights = np.array([10.000,36.667,76.667,130.000,196.667,276.667,370.000,476.667,596.667,730.000,876.667,1036.667,
+                                        1210.000,1396.667,1596.667,1810.000,2036.667,2276.667,2530.000,2796.667,3076.667,3370.001,
+                                        3676.667,3996.667,4330.001,4676.668,5036.667,5410.001,5796.668,6196.667,6610.001,7036.672,
+                                        7476.690,7930.085,8396.920,8877.306,9371.434,9879.598,10402.239,10939.989,11493.719,12064.604,
+                                        12654.205,13264.532,13898.152,14558.290,15248.947,15975.034,16742.518,17558.574,18431.783,
+                                        19372.307,20392.113,21505.199,22727.850,24078.898,25580.037,27256.115,29135.490])
+            
+                    da = xr.DataArray(vertical_profile[None,:], coords=[dates,heights], dims=['time','height'], name = v,
                                       attrs = c.OrderedDict([('units', str(cube.units)), ('lat', str(lat[wh_lat])), ('lon', str(lon[wh_lon]))]))
+                    da.height.attrs = c.OrderedDict([("units", "magl")])
             
                     if i == 0:
                         ds = da.to_dataset()
@@ -240,9 +260,28 @@ def get_vertical_profile(site, start_date, end_date, output_vars, temp_dir, outp
             else:
                 pass
 
+        # Add a variable for the topog height above sea level of the grid cell
+        topog_file = topog_dir + "TopogUMG_Mk" + str(Mark) + "_PT" + str(Part) + ".pp"
+        
+        topog = iris.load(topog_file)
+        topog_cube = topog[0]
+        
+        lon_t = topog_cube.coord('longitude').points
+        lat_t = topog_cube.coord('latitude').points
+        
+        wh_lon_t = (np.abs(lon_t - lon_coord_adj)).argmin()
+        wh_lat_t = (np.abs(lat_t - lat_coord)).argmin()
+
+        constraint_t = iris.Constraint(latitude=lat_t[wh_lat_t], longitude = lon_t[wh_lon_t])
+        site_topog = topog_cube.extract(constraint_t).data
+        
+        da_t = xr.DataArray(site_topog[None], coords=[dates], dims=['time'], name = 'grid_cell_topography',
+                                      attrs = c.OrderedDict([('units', str(topog_cube.units)), ('lat', str(lat_t[wh_lat_t])), ('lon', str(lon_t[wh_lon_t]))]))
+        ds = xr.merge([ds,da_t])
+
         if di == 0:
             DS = ds
-            print "Closest grid cell is " + str(lat[wh_lat]) + " latitude (-90 - 90) and " +str(lon[wh_lon])+ " longitude (45.1 - 405.1)."
+            print("Closest grid cell is " + str(lat[wh_lat]) + " latitude (-90 - 90) and " +str(lon[wh_lon])+ " longitude (45.1 - 405.1).")
             
         else:
             DS = xr.concat((DS,ds), dim = 'time')
@@ -257,30 +296,16 @@ def get_vertical_profile(site, start_date, end_date, output_vars, temp_dir, outp
             wind_speed, wind_direction = xy_wind_to_speed_direction(DS.x_wind.values, DS.y_wind.values)
         
             if "wind_speed" in output_vars:
-                ws = xr.DataArray(wind_speed, coords=[DS.time,DS.level], dims=['time','level'], name = "wind_speed", attrs = {'units': DS.x_wind.units})
+                ws = xr.DataArray(wind_speed, coords=[DS.time,DS.height], dims=['time','height'], name = "wind_speed", attrs = {'units': DS.x_wind.units})
                 DS = xr.merge([DS,ws])
             if "wind_direction" in output_vars:
-                wd = xr.DataArray(wind_direction, coords=[DS.time,DS.level], dims=['time','level'], name = "wind_direction", attrs = {'units': "Degrees from North"})
-                DS = xr.merge([DS,wd])
-
-    # Convert levels to heights in m asl
-    #(taken from /mnt/storage/private/acrg/NAME/Model/NAMEIII_v7_2_particlelocation/Resources/Defns/MetDefnUMG_Mk9_L59PTpp.txt)
-            
-    heights = np.array([10.000,36.667,76.667,130.000,196.667,276.667,370.000,476.667,596.667,730.000,876.667,1036.667,
-                        1210.000,1396.667,1596.667,1810.000,2036.667,2276.667,2530.000,2796.667,3076.667,3370.001,
-                        3676.667,3996.667,4330.001,4676.668,5036.667,5410.001,5796.668,6196.667,6610.001,7036.672,
-                        7476.690,7930.085,8396.920,8877.306,9371.434,9879.598,10402.239,10939.989,11493.719,12064.604,
-                        12654.205,13264.532,13898.152,14558.290,15248.947,15975.034,16742.518,17558.574,18431.783,
-                        19372.307,20392.113,21505.199,22727.850,24078.898,25580.037,27256.115,29135.490])
-
-    DS = DS.update({'level': heights})
-    DS = DS.rename({'level': "height"})
-    DS.height.attrs = c.OrderedDict([("units", "masl")])
+                wd = xr.DataArray(wind_direction, coords=[DS.time,DS.height], dims=['time','height'], name = "wind_direction", attrs = {'units': "Degrees from North"})
+                DS = xr.merge([DS,wd])    
     
     # Give DS attributes
-    glob_attrs = c.OrderedDict([("title" , "Vertical meteorology profiles (masl)"),
+    glob_attrs = c.OrderedDict([("title" , "Vertical meteorology profiles"),
                                 ("site" , site),
-                                ("site_height_asl", site_info[site]['height_station_masl']),
+                                ("site_height_masl", site_info[site]['height_station_masl']),
                                 ("comments" , "Vertical profiles taken from nearest grid cell to site in raw meterology files from Met Office (.pp files)")])
 
     DS.attrs = c.OrderedDict(glob_attrs)

@@ -4,6 +4,7 @@ Created on Mon Mar 23 10:22:22 2015
 
 @author: as13988
 """
+from __future__ import print_function
 
 import os
 import numpy as np
@@ -13,8 +14,8 @@ import pdb
 # Class to read in the txt output of CRDS gcexport made using the standard peak.list and report config on Dagage2
 def read_gcexport_crds(datafile):
         
-        print 'Reading:'
-        print datafile
+        print('Reading:')
+        print(datafile)
         
         if type(datafile) == tuple:
             #data=np.genfromtxt(datafile[0], dtype=str, skip_header=3)
@@ -410,8 +411,8 @@ class read_gcexport_crds_new:
 class read_gcexport_lgr:
     def __init__(self, datafile):
         
-        print 'Reading:'
-        print datafile
+        print('Reading:')
+        print(datafile)
         if type(datafile) == tuple:
             #data=np.genfromtxt(datafile[0], dtype=str, skip_header=3)
             data=np.genfromtxt(datafile[0], dtype=str, skip_header=1)
@@ -526,8 +527,8 @@ class read_gcexport_lgr:
 class read_gcexport_medusa:
     def __init__(self, datafile):
         
-        print 'Reading:'
-        print datafile
+        print('Reading:')
+        print(datafile)
         
         if type(datafile) == tuple:
             #data=np.genfromtxt(datafile[0], dtype=str, skip_header=3)
@@ -694,8 +695,8 @@ def read_gcexport_means(infile):
         if type(infile) == tuple:
              infile = infile[0]
              
-        print 'Reading:'
-        print infile
+        print('Reading:')
+        print(infile)
         
         # Read in the end header line and the rest of the file
         data=np.genfromtxt(infile, dtype=str, skip_header=1)
@@ -735,7 +736,7 @@ def read_portslogs(site = 'MHD', std_only = None, logdir = '/Users/as13988/Docum
     reg_out = []
     
     for i in logfiles:
-        print 'Reading file : ' + i
+        print('Reading file : ' + i)
         indata = np.genfromtxt(i, dtype=str)
     
         
@@ -889,8 +890,8 @@ def read_MDstdsfactors(infile='/Users/as13988/Documents/Work/Cylinders/Calibrati
 # Class to read in the txt output of gcexport made using the standard peak.list and report config on Dagage2
 def read_gcexport_md(datafile='/Users/as13988/Documents/Work/Cylinders/Calibrations/N2OScaleConversion/MHD_Tanks/MHD_air.dat'):
         
-        print 'Reading:'
-        print datafile
+        print('Reading:')
+        print(datafile)
         if type(datafile) == tuple:
             #data=np.genfromtxt(datafile[0], dtype=str, skip_header=3)
             data=np.genfromtxt(datafile[0], dtype=str, skip_header=3)
@@ -944,8 +945,8 @@ def read_gcexport_md(datafile='/Users/as13988/Documents/Work/Cylinders/Calibrati
 # The tank format is different to the air format
 def read_gcexport_md_tank(datafile='/Users/as13988/Documents/Work/Cylinders/Calibrations/N2OScaleConversion/MHD_Tanks/MHD_air.dat'):
         
-        print 'Reading:'
-        print datafile
+        print('Reading:')
+        print(datafile)
         if type(datafile) == tuple:
             #data=np.genfromtxt(datafile[0], dtype=str, skip_header=3)
             data=np.genfromtxt(datafile[0], dtype=str, skip_header=2)
