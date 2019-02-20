@@ -4,6 +4,7 @@ Created on Fri Oct 16 14:08:07 2015
 
 @author: chxmr
 """
+from __future__ import print_function
 
 import numpy as np
 import pandas as pd
@@ -367,7 +368,7 @@ def gc(site, instrument, network,
                             params["GC"]["directory_output"],
                             user_specified_input_directory = input_directory,
                             user_specified_output_directory = output_directory)
-
+            
     search_strings = []
     for suffix in params["GC"]["instruments_suffix"][instrument]:
         # Search string

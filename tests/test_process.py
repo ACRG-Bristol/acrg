@@ -25,6 +25,7 @@ Alternativey to run without these tests (i.e. to not rely on deprecated folder c
 
 @author: rt17603
 """
+from __future__ import print_function
 
 import pytest
 import os
@@ -885,7 +886,7 @@ def test_footprint_array_satellite_bypoint(get_fields_files_satellite_bypoint,
     out = process.footprint_array(fields_file_1,particle_file_1,met,satellite=True,upper_level=upper_level,
                                   time_step=time_step)
     
-    print out["wind_direction"]
+    print(out["wind_direction"])
 
 def test_footprint_array_site(get_fields_files_site,
                               get_particle_files_site,
@@ -1095,7 +1096,7 @@ def test_footprint_concatenate_satellite_bypoint_against_org(fc_param_satellite_
     
     out_org_all = []
     for met,datestr in zip(met_points_org,date_strings_org):
-        print "inputs",param_org
+        print("inputs",param_org)
         param_org["met"] = met
         param_org["datestr"] = datestr
         out_org_all.append(process_org.footprint_concatenate(**param_org))

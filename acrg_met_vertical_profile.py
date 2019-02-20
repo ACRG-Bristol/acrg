@@ -5,6 +5,7 @@ Created on Thu Jan  3 13:29:24 2019
 
 @author: ew14860
 """
+from __future__ import print_function
 
 import iris
 import xarray as xr
@@ -168,7 +169,7 @@ def get_vertical_profile(site, start_date, end_date, output_vars, temp_dir, outp
     if lon_coord < 45.1172:
         lon_coord_adj = lon_coord +360
     
-    print "Getting vertical profile for grid cell closest to " +str(lat_coord) + " degrees latitude (-90 - 90) and " + str(lon_coord) + " degrees longitude (-180 - 180)."
+    print("Getting vertical profile for grid cell closest to " +str(lat_coord) + " degrees latitude (-90 - 90) and " + str(lon_coord) + " degrees longitude (-180 - 180).")
 
     # If wind_speed and wind_direction required, add x_wind and y_wind to output_vars
 
@@ -189,7 +190,11 @@ def get_vertical_profile(site, start_date, end_date, output_vars, temp_dir, outp
         Mark = get_met_Mark(str(d))
         Part = get_met_Part(lat_coord, lon_coord)
 
-        fname = met_dir + "UMG_Mk" + str(Mark) + "PT/" "MO" + file_date + ".UMG_Mk" + str(Mark) + "_I_L59PT" + str(Part) + ".pp.gz"
+        if Mark == 6:
+            fname = met_dir + "UMG_Mk" + str(Mark) + "PT/" "MO" + file_date + ".UMG_Mk" + str(Mark) + "_L59PT" + str(Part) + ".pp.gz"
+        else:
+            fname = met_dir + "UMG_Mk" + str(Mark) + "PT/" "MO" + file_date + ".UMG_Mk" + str(Mark) + "_I_L59PT" + str(Part) + ".pp.gz"
+            
         temp_dest = temp_dir + fname.split('/')[-1][:-3]
 
         # Unzip file
@@ -276,7 +281,7 @@ def get_vertical_profile(site, start_date, end_date, output_vars, temp_dir, outp
 
         if di == 0:
             DS = ds
-            print "Closest grid cell is " + str(lat[wh_lat]) + " latitude (-90 - 90) and " +str(lon[wh_lon])+ " longitude (45.1 - 405.1)."
+            print("Closest grid cell is " + str(lat[wh_lat]) + " latitude (-90 - 90) and " +str(lon[wh_lon])+ " longitude (45.1 - 405.1).")
             
         else:
             DS = xr.concat((DS,ds), dim = 'time')

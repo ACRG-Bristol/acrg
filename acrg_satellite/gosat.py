@@ -78,6 +78,8 @@ This could be run as:
                             write_nc=False,
                             write_name=False)
 """
+from __future__ import print_function
+from __future__ import absolute_import
 
 import glob
 import os
@@ -91,7 +93,7 @@ import datetime as dt
 from collections import OrderedDict
 import itertools
 import acrg_obs
-from barometric import pressure_at_height
+from .barometric import pressure_at_height
 from acrg_countrymask import domain_volume
 
 data_path = os.getenv("DATA_PATH")
@@ -1341,7 +1343,7 @@ def extract_files_dir_split(directory,search_str=None,start=None,end=None,date_s
         all_dir_years = [d for d in all_dir if len(d) == 4 and re.match("\d{4}",d)]
         year_start = min(all_dir_years)
         year_end = max(all_dir_years)
-        print "No start and end date specified, so processing all files from all date labelled sub-directories within input directory {} for year range: {}-{}".format(directory,year_start,year_end)
+        print("No start and end date specified, so processing all files from all date labelled sub-directories within input directory {} for year range: {}-{}".format(directory,year_start,year_end))
     year_range = range(int(year_start),int(year_end)+1)
     
     # Extracting files from directory based on start and end dates (if present). Otherwise extract all files.    
@@ -2162,7 +2164,7 @@ def gosat_split_output(ds,index,mapping=None,data_vars=[],split_dim="time",ident
    
     if data_vars:
         if ident not in data_vars:
-            print 'WARNING: Identifier column {0} is not within input data_vars: {1}. No ident column will be included'.format(ident,data_vars)
+            print('WARNING: Identifier column {0} is not within input data_vars: {1}. No ident column will be included'.format(ident,data_vars))
     
     if isinstance(index,int):
         indices = [index]
@@ -2257,12 +2259,12 @@ def write_netcdf(ds,filename,overwrite=False):
     '''    
     if not overwrite:
         if os.path.isfile(filename):
-            print '\nERROR: {0} already exists. Data has not been written to file because overwrite=False.\n'.format(filename)
+            print('\nERROR: {0} already exists. Data has not been written to file because overwrite=False.\n'.format(filename))
         else:
-            print 'Writing to filename:',filename    
+            print('Writing to filename:',filename)    
             ds.to_netcdf(filename)
     else:
-        print 'Writing to filename:',filename    
+        print('Writing to filename:',filename)    
         ds.to_netcdf(filename,mode="w")
 
 def gosat_output(ds,site,species="ch4",file_per_day=False,output_directory=obs_directory,
@@ -2739,7 +2741,7 @@ def gosat_process_file(filename,site,species="ch4",lat_bounds=[],lon_bounds=[],d
     
     if domain and not (lat_bounds and lon_bounds):
         if verbose:
-            print "Extracting latitude and longitude bounds from footprints associated with domain: {}".format(domain)
+            print("Extracting latitude and longitude bounds from footprints associated with domain: {}".format(domain))
         lat,lon,height = domain_volume(domain)
         lat_bounds = [np.min(lat),np.max(lat)]
         lon_bounds = [np.min(lon),np.max(lon)]
@@ -2940,10 +2942,10 @@ def gosat_process(site,species="ch4",input_directory=input_directory,start=None,
         pressure_domain = domain
     
     if not write_nc and not write_name:
-        print "\n**** WARNING: GOSAT_PROCESS IS SET TO NOT OUTPUT ANYTHING TO FILE. ****"
-        print "Please cancel this run and restart with write_nc or write_name "
-        print "parameters set to True if you want to write the processed output to disk."
-        print "*************************************************************************"
+        print("\n**** WARNING: GOSAT_PROCESS IS SET TO NOT OUTPUT ANYTHING TO FILE. ****")
+        print("Please cancel this run and restart with write_nc or write_name ")
+        print("parameters set to True if you want to write the processed output to disk.")
+        print("*************************************************************************")
     
     if len(files) > 0:
         for i,filename in enumerate(files):
@@ -2986,7 +2988,7 @@ def gosat_process(site,species="ch4",input_directory=input_directory,start=None,
                 gosat = gosat.merge(ds)
                 
     else:
-        print "No gosat files found within directory: {0} using search_str: {1} for dates {2} - {3}".format(input_directory,search_str,start,end)
+        print("No gosat files found within directory: {0} using search_str: {1} for dates {2} - {3}".format(input_directory,search_str,start,end))
         gosat = None
     
     return gosat       

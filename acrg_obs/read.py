@@ -200,7 +200,6 @@ def quadratic_sum(x):
         return np.sqrt(np.sum(x**2))/len(x)
     else:
         return np.nan
-    return out
   
 
 def file_list(site, species, network,

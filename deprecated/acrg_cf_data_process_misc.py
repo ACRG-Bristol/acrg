@@ -6,6 +6,7 @@ Created on Thu Jan 14 10:47:45 2016
 
 @author: chxmr
 """
+from __future__ import print_function
 
 import numpy as np
 import pandas as pd
@@ -1547,7 +1548,7 @@ def uex(species):
                 "CH4": "NOAA2004",
                 "N2O": "WMO N2OX2006A",
                 "CO": "WMO CO X2014A"},
-            "directory" : "/data/shared/obs_raw/UEX/",
+            "directory" : "/data/shared/obs_raw/UEX/20181201/",
             "directory_output" : "/data/shared/obs/",
             "global_attributes" : {
                     "contact": "Elena Kozlova, University of Exeter",
@@ -1596,10 +1597,10 @@ def uex(species):
     # filter data where the flag > 0 #
     df = df[df['F']==0]
     
-    if species.lower() == 'n2o':
-        # hack to filter spurious data but need more permanent fix from UEx!!!! #
-        df = df[df['N2O']>326]
-#        df = df[df['N2O']<337]
+#    if species.lower() == 'n2o':
+#        # hack to filter spurious data but need more permanent fix from UEx!!!! #
+#        df = df[df['N2O']>326]
+#        df = df[df['N2O']<332]
  
     # Convert to xray dataset
     ds = xray.Dataset.from_dataframe(df)
@@ -1670,9 +1671,9 @@ def obspack_co2(site, height, obspack_name):
                        'JFJ':'CRDS'}
 
     if len(fname) == 0:
-        print "Can't find file for obspack %s, site %s and height %s" %(obspack_name, site, height)
+        print("Can't find file for obspack %s, site %s and height %s" %(obspack_name, site, height))
     elif len(fname) > 1:
-        print "Ambiguous filename for obspack %s, site %s and height %s" %(obspack_name,site, height)
+        print("Ambiguous filename for obspack %s, site %s and height %s" %(obspack_name,site, height))
     elif len(fname) == 1:
         ds = xray.open_dataset(fname[0])
         
@@ -1683,16 +1684,16 @@ def obspack_co2(site, height, obspack_name):
             site = ds.site_code
             
         if ds.value.units == "mol mol-1":
-            print ds.value.values[0], float(unit_species[species.upper()])
+            print(ds.value.values[0], float(unit_species[species.upper()]))
             values = ds.value.values/float(unit_species[species.upper()])
             if 'value_unc' in ds.keys(): 
                 unc_values = ds.value_unc.values/float(unit_species[species.upper()])
             else:
-                print "Can't find data error in file. Using data*0.001 as error"
+                print("Can't find data error in file. Using data*0.001 as error")
                 unc_values = values*0.001
-            print values[0], unc_values[0]
+            print(values[0], unc_values[0])
         else:
-            print "You need to create a unit conversion for the input units"
+            print("You need to create a unit conversion for the input units")
         
         if 'dataset_intake_ht' in ds.attrs.keys():
             intake_ht = ds.dataset_intake_ht

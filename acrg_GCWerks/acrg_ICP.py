@@ -4,6 +4,7 @@ Created on Wed Jan 14 16:17:55 2015
 
 @author: as13988
 """
+from __future__ import print_function
 
 import numpy as np
 import os
@@ -110,11 +111,11 @@ class read_data:
         in_sitekey =  indata.filename.split('.')[0] +'_'+ (indata.filename.split('.')[1]).split('_')[0]
         scale_index = np.where(scales.sitekey == in_sitekey)
 
-        print in_sitekey
-        print scale_index
-        print scales.co2_scale[scale_index]
-        print scales.ch4_scale[scale_index]
-        print scales.co_scale[scale_index]
+        print(in_sitekey)
+        print(scale_index)
+        print(scales.co2_scale[scale_index])
+        print(scales.ch4_scale[scale_index])
+        print(scales.co_scale[scale_index])
         
 
            
@@ -413,7 +414,7 @@ class Calcmulti:
         files = glob.glob(basedir+'*'+USN_tank+'*.dat')
         
         for i in np.arange(len(files)):
-            print 'Reading file: ' + files[i]
+            print('Reading file: ' + files[i])
             
             if 'Medusa' in basedir:
                 data_i = read_medusa_raw(files[i])    
@@ -491,7 +492,7 @@ class Printmeans:
             
         with open(outputdir + means[keys[0]]['USN'] + '_' +  means[keys[0]]['DNo'] + '_Means.csv', 'wb') as csvfile:
             
-            print 'Filename : ' + outputdir + means[keys[0]]['USN'] + '_' +  means[keys[0]]['DNo'] + '_Means.csv'
+            print('Filename : ' + outputdir + means[keys[0]]['USN'] + '_' +  means[keys[0]]['DNo'] + '_Means.csv')
             
             linewriter = csv.writer(csvfile, delimiter=',')
                 
@@ -510,7 +511,7 @@ def find_files(basedir =  '/Users/as13988/Documents/Work/Cylinders/ICP/Results/P
     
     # Cylinder number not given
     if CylinderNo == 0:
-        print 'You need to give a CylinderNo OR a list of files'
+        print('You need to give a CylinderNo OR a list of files')
             
         out = ['You did not give a CylinderNo OR a list of files so I could not read in any data']
     
@@ -653,8 +654,8 @@ class Read_co2_meansmulti:
                 for j in np.arange(len(datetime[i])):
                     datetimes.append(datetime[i][j])        
 
-            print co2_list[np.where([i == 'MPI_Picarro' for i in sitekey_list])[0]]
-            print type(co2_list[np.where([i == 'MPI_Picarro' for i in sitekey_list])[0]])
+            print(co2_list[np.where([i == 'MPI_Picarro' for i in sitekey_list])[0]])
+            print(type(co2_list[np.where([i == 'MPI_Picarro' for i in sitekey_list])[0]]))
             MPI_co2 = co2_list[np.where([i == 'MPI_Picarro' for i in sitekey_list])[0]]
             MPI_ch4 = ch4_list[np.where([i == 'MPI_Picarro' for i in sitekey_list])[0]]
             MPI_co = co_list[np.where([i == 'MPI_Aerolaser' for i in sitekey_list])[0]]
@@ -706,7 +707,7 @@ class Read_co2_meansmulti:
             self.species = ['co2','ch4','co']
             
         else:
-            print 'No files found for ' + CylinderNo + ' in ' + basedir
+            print('No files found for ' + CylinderNo + ' in ' + basedir)
             self.fail = 'No files found'
          
  # Code to read in the files printed by Printmeans
@@ -858,7 +859,7 @@ class Read_n2o_meansmulti:
             self.species = ['sf6','n2o']      
         
         else:
-            print 'No files found for ' + CylinderNo + ' in ' + basedir
+            print('No files found for ' + CylinderNo + ' in ' + basedir)
             self.fail = 'No files found'
             
 # Code to read in the files printed by Printmeans
@@ -954,7 +955,7 @@ class Read_medusa_meansmulti:
 class Read_co2_means:
     def __init__(self, infile, DNo_tank, USN_tank):
        
-        print 'Reading file: ' + infile
+        print('Reading file: ' + infile)
         
         if type(infile) == tuple:
             data=np.genfromtxt(infile[0], dtype=str, skip_header=3, delimiter = ',')
@@ -1014,7 +1015,7 @@ class Read_co2_means:
 class Read_medusa_means:
     def __init__(self, infile, DNo_tank, USN_tank):
        
-        print 'Reading file: ' + infile
+        print('Reading file: ' + infile)
  
         if type(infile) == tuple:
             data=np.genfromtxt(infile[0], dtype=str, skip_header=2, delimiter = ',', names = True)
@@ -1060,7 +1061,7 @@ class Read_medusa_means:
 class Read_n2o_means:
     def __init__(self, infile, DNo_tank, USN_tank):
        
-        print 'Reading file: ' + infile
+        print('Reading file: ' + infile)
        
        
         if type(infile) == tuple:
@@ -1068,8 +1069,8 @@ class Read_n2o_means:
         elif type(infile) != tuple:
             data=np.genfromtxt(infile, dtype=str, skip_header=3, delimiter = ',')     
         
-        print 'reading file : '
-        print infile        
+        print('reading file : ')
+        print(infile)        
         
         
         
@@ -1264,9 +1265,9 @@ class Plot_co2_means:
                 # check if they're all from the same instrument
                 plt1 = plt.subplot(3, 1, 1)
                 
-                daterange = (dt.date(2014,6,1),dt.date(2016,03,1))
+                daterange = (dt.date(2014,6,1),dt.date(2016,0o3,1))
                 if sum(np.array(means.site) == 'MPI')> 0:                
-                    daterange = (dt.date(2013,11,1),dt.date(2016,03,1))
+                    daterange = (dt.date(2013,11,1),dt.date(2016,0o3,1))
                 
                 
                 
@@ -1311,7 +1312,7 @@ class Plot_co2_means:
                 
                 # Plot the CO data if it exists
                 if np.isnan(plot_co[0]):
-                    print 'No CO'
+                    print('No CO')
                 else:          
                     plt.figtext(0.78, 0.85-(0.03*legend_spacing[ls_2]), plot_sitekey[0] +  ' - CO '+ plot_co_scale[0], verticalalignment='bottom',\
                         horizontalalignment='left', color=SiteColours(sitein=site).outcolour, fontsize=6)
@@ -1329,7 +1330,7 @@ class Plot_co2_means:
             plt.figtext(0.64, 0.05, 'Mean +/- WMO compatibility goals', verticalalignment='bottom', horizontalalignment='left', fontsize=6, color ='grey')
         
 
-        print 'Plot saved as: ' + outputdir+'Means_'+means.USN+suffix+'.png'
+        print('Plot saved as: ' + outputdir+'Means_'+means.USN+suffix+'.png')
         plt.savefig(outputdir+'Means_'+means.USN+suffix+'.png', dpi=200)
         
         plt.show()
@@ -1510,8 +1511,8 @@ class Plot_n2o_means:
 
         plt.savefig(outputdir+'N2O_SF6_Means_'+means.USN+suffix+'.png', dpi=200)
         
-        print "Figure saved as:"
-        print outputdir+'N2O_SF6_Means_'+means.USN+suffix+'.png'
+        print("Figure saved as:")
+        print(outputdir+'N2O_SF6_Means_'+means.USN+suffix+'.png')
         
         plt.show()
        
@@ -1670,7 +1671,7 @@ class Plot_summary:
         for i in np.arange(n_colours):      
             # extract the site name
             site = list(set(sites))[i]
-            print site
+            print(site)
             
             # find all the results from that site
             co2_siteindex = (np.where(np.array(co2_sites) == site))[0]
@@ -1687,7 +1688,7 @@ class Plot_summary:
                 n2o_sitekey_tag=''
     
             sitekey = co2_sitekey_tag + ', ' + n2o_sitekey_tag            
-            print sitekey
+            print(sitekey)
           
             co2_site_datetime = [co2_datetimes[j] for j in co2_siteindex]     
             n2o_site_datetime = [n2o_datetimes[j] for j in n2o_siteindex]     
@@ -1705,10 +1706,10 @@ class Plot_summary:
             # check if they're all from the same instrument
             plt1 = plt.subplot(3, 1, 1)
             
-            daterange = (dt.date(2014,6,1),dt.date(2016,03,1))
+            daterange = (dt.date(2014,6,1),dt.date(2016,0o3,1))
             
             if sum(np.array(sites) == 'MPI') > 0:            
-                daterange = (dt.date(2013,11,1),dt.date(2016,03,1))
+                daterange = (dt.date(2013,11,1),dt.date(2016,0o3,1))
             
             plt1.errorbar(co2_site_datetime, site_co2_diffs, yerr=site_co2sd, fmt='o', color = SiteColours(sitein=site).outcolour, markersize = 3)
             plt1.set_ylim(Calcrange(co2_diffs, co2sd, even=1))
@@ -1823,7 +1824,7 @@ class Plot_summary:
                 n2o_sitekey_tag=''
     
             sitekey = co2_sitekey_tag + ', ' + n2o_sitekey_tag            
-            print sitekey
+            print(sitekey)
             
             
             
@@ -2009,7 +2010,7 @@ class Plot_individualsite:
         if use_EMPA == 1:
             sf6_diffs = np.zeros(len(n2o_diffs))
             sf6_diffs[:] = np.nan
-            print 'There are no EMPA SF6 values'
+            print('There are no EMPA SF6 values')
             sf6_ylabel = 'Site - EMPA [SF$\mathregular{_6}$] (ppt)'
         
 
@@ -2329,7 +2330,7 @@ class Plot_individualgas:
                         ylabel = 'EMPA  - Site [CO$\mathregular{_2}$] (ppm)'
                 
                 if use_MHD == 1:
-                    print "You can only use MHD for N2O"
+                    print("You can only use MHD for N2O")
                     diffs = [np.nan]
                     
             if any(gas in i for i in ['ch4', 'CH4']):
@@ -2357,7 +2358,7 @@ class Plot_individualgas:
                             ylabel = 'EMPA  - Site [CH$\mathregular{_4}$] (ppb)'
                  
                 if use_MHD == 1:
-                    print "You can only use MHD for N2O"
+                    print("You can only use MHD for N2O")
                     diffs = [np.nan]
                     
             if any(gas in i for i in ['co', 'CO']):
@@ -2385,7 +2386,7 @@ class Plot_individualgas:
                             ylabel = 'EMPA  - Site [CO] (ppb)'
 
                 if use_MHD == 1:
-                    print "You can only use MHD for N2O"
+                    print("You can only use MHD for N2O")
                     diffs = [np.nan]
                     
         if any(gas in i for i in ['n2o','sf6','N2O', 'SF6']):
@@ -2454,7 +2455,7 @@ class Plot_individualgas:
                         ylabel = 'EMPA - Site [SF$\mathregular{_6}$] (ppt)'
                 
                 if use_MHD == 1:
-                    print "You can only use MHD for N2O"
+                    print("You can only use MHD for N2O")
                     diffs = [np.nan]
         # combine into one long list
         sites = list(chain(*sites))  
@@ -2485,7 +2486,7 @@ class Plot_individualgas:
         fit_dict['x_parameter'] = 'site concentration'
         for i in np.arange(len(sites_all)):
             
-            print sites_all[i]
+            print(sites_all[i])
             
             # find all the results from that site
             siteindex = (np.where(np.array(sites) == sites_all[i]))[0]
@@ -2536,13 +2537,13 @@ class Plot_individualgas:
                         y = -1 * (np.array(site_diffs)[j_index])
                 
                     plt1.errorbar(np.array(site_conc)[j_index], y, yerr=np.array(site_sd)[j_index], fmt=fmts[j], color = SiteColours(sitein=sites_all[i]).outcolour, markersize = 3)
-                    print sites_all[i] + ' ' + np.array(site_inst)[j_index][0]
+                    print(sites_all[i] + ' ' + np.array(site_inst)[j_index][0])
                     
                     yloc = 0.85 - (j * 0.08)
                     
                     if no_label != None:
                         if '_NoLabel' in suffix:
-                            print 'b'
+                            print('b')
                         else:                            
                             suffix = suffix + '_NoLabel'
                     
@@ -2550,7 +2551,7 @@ class Plot_individualgas:
                         plt1.text(0.15, yloc, sites_all[i] + ' ' + np.array(site_inst)[j_index][0]+ '-' + fmts[j], horizontalalignment='left', verticalalignment='center', transform = plt1.transAxes, fontsize=6)
             
                     error_fit = np.polyfit(np.array(site_conc)[j_index], y, 1)
-                    print error_fit            
+                    print(error_fit)            
                     fit_dict[tag_j] = error_fit.tolist()
                     
             if np.isfinite(site_conc).any():  
@@ -2628,7 +2629,7 @@ class Plot_individualgas:
         
         jsondir='/Users/as13988/Documents/Work/Cylinders/ICP/Results/ErrorFits/'
         
-        print 'Writing file: ' + jsondir+gas+suffix+".json"
+        print('Writing file: ' + jsondir+gas+suffix+".json")
         
         json_file = open(jsondir+gas+suffix+".json", "w")
         json.dump(fit_dict, json_file, indent=4)
@@ -2839,7 +2840,7 @@ class Plot_medusa_individualgas:
         for i in np.arange(len(sites_all)):
             
             if sites_all[i] in sites:
-                print sites_all[i]
+                print(sites_all[i])
                 
                 # find all the results from that site
                 siteindex = (np.where(np.array(all_data['site']) == sites_all[i]))[0]
@@ -2897,21 +2898,21 @@ class Plot_medusa_individualgas:
                             for k in [site_tank_id[l] for l in j_index]:
                                 x.append(MHD_conc[(np.where(np.array(MHD_USN) == k))[0]])
                             
-                        print np.array(site_conc)[j_index]
-                        print y
+                        print(np.array(site_conc)[j_index])
+                        print(y)
                         if reverse == 1:
                             y = -1 * (np.array(site_diffs)[j_index])
     
                         #plt1.errorbar(np.array(site_conc)[j_index], y, yerr=np.array(site_sd)[j_index], fmt=fmts[j], color = SiteColours(sitein=sites_all[i]).outcolour, markersize = 3)
                         plt1.errorbar(x, y, yerr=np.array(site_sd)[j_index], fmt=fmts[j], color = SiteColours(sitein=sites_all[i]).outcolour, markersize = 3)
                         
-                        print sites_all[i] + ' ' + np.array(site_inst)[j_index][0]
+                        print(sites_all[i] + ' ' + np.array(site_inst)[j_index][0])
                                     
                         yloc = 0.05 + (j * 0.08)
                         
                         if no_label != None:
                             if '_NoLabel' in suffix:
-                                print 'b'
+                                print('b')
                             else:                            
                                 suffix = suffix + '_NoLabel'
                         

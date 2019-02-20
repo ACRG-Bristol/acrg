@@ -26,7 +26,10 @@ Created on Thu Nov 20 12:27:48 2014
 
 @author: chxmr
 """
+from __future__ import division
 
+from builtins import range
+from past.utils import old_div
 import numpy as np
 import matplotlib.dates as dates
 
@@ -39,7 +42,7 @@ def kz_filter(x_in, y_in, \
     x=dates.date2num(x)
 
     if growth is True:
-        y=(y[1:-1] - y[0:-2])/(x[1:-1] - x[0:-2])
+        y=old_div((y[1:-1] - y[0:-2]),(x[1:-1] - x[0:-2]))
         x=(x[0:-2] + x[1:-1])/2.
     else:
         y=y

@@ -16,6 +16,7 @@ agree with NAME output.
 
 @author: ew14860
 """
+from __future__ import print_function
 
 import xarray as xray
 import numpy as np
