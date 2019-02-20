@@ -441,7 +441,6 @@ def gc(site, instrument, network,
         global_attributes = params["GC"][site.upper()]["global_attributes"]
         global_attributes["comment"] = params["GC"]["comment"][instrument]
 
-
         # Now go through each inlet (if required)
         for inleti, inlet in enumerate(inlets):
 
