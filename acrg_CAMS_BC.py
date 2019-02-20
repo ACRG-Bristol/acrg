@@ -21,11 +21,13 @@ To download new CAMS data you will have to:
       pip install --user https://software.ecmwf.int/wiki/download/attachments/56664858/ecmwf-api-client-python.tgz
 
 """
+from __future__ import print_function
 import xarray as xr
 import numpy as np
 import os
 import glob
 import getpass
+from acrg_name import name
 from datetime import datetime as dt
 from acrg_tdmcmc.tdmcmc_post_process import molar_mass
 
@@ -112,7 +114,7 @@ def interpheight(nesw, fp_height, species, lonorlat=None):
     elif lonorlat == 'latitude':
         interp = np.zeros((len(fp_height),len(nesw.latitude) ))
     else:
-        print "Please specify either lonorlat='longitude' or 'latitude'"
+        print("Please specify either lonorlat='longitude' or 'latitude'")
         return None
     for j in range(len(nesw['z'][0,:])):
         interp[:,j] = np.interp(fp_height, nesw['z'][:,j][::-1], nesw[species][:,j][::-1])
@@ -147,7 +149,7 @@ def interplonlat(nesw, fp_lonorlat, species, lonorlat=None):
     ds2 = ds2.to_dataset(name=species)
     return ds2
 
-def write_CAMS_BC_tonetcdf(vmr_n, vmr_e, vmr_s, vmr_w, st_date, species, domain):
+def write_CAMS_BC_tonetcdf(vmr_n, vmr_e, vmr_s, vmr_w, st_date, species, domain, outdir):
     """
     Writes the CAMS BC data to a ncdf file.
     
@@ -171,13 +173,13 @@ def write_CAMS_BC_tonetcdf(vmr_n, vmr_e, vmr_s, vmr_w, st_date, species, domain)
     BC_edges.attrs['author'] = getpass.getuser()
     BC_edges.attrs['date_created'] = np.str(dt.today())
     
-    if os.path.isdir(data_path+"NAME/bc/%s/" % domain) == False:
-        os.mkdir(data_path+"NAME/bc/%s/" % domain)
+    if os.path.isdir(outdir+"/NAME/bc/%s/" % domain) == False:
+        os.mkdir(outdir+"/NAME/bc/%s/" % domain)
     
-    BC_edges.to_netcdf(path = data_path+"NAME/bc/%s/%s_%s_%s.nc"
+    BC_edges.to_netcdf(path = outdir+"/NAME/bc/%s/%s_%s_%s.nc"
                        %(domain,species.lower(),domain,dt.strptime(st_date, '%Y-%m-%d').strftime('%Y%m')), mode = 'w')
 
-def makeCAMS_BC(domain, species, st_date, end_date, gridsize):
+def makeCAMS_BC(domain, species, st_date, end_date, gridsize, outdir=None):
     """
     This function makes boundary conditions ncdf file for a given NAME domain. 
     The boundary conditions are the mean of daily estimates at midnight for the 
@@ -203,6 +205,10 @@ def makeCAMS_BC(domain, species, st_date, end_date, gridsize):
         the molar masses and getCAMSdata().
     """
     
+    
+    if outdir == None:
+        outdir = data_path
+    
     #data_path = os.getenv("DATA_PATH")
     pathtoBCs = data_path+'/ECMWF_CAMS/'
     
@@ -211,25 +217,25 @@ def makeCAMS_BC(domain, species, st_date, end_date, gridsize):
     domain = domain.upper()
     gridsize = float(gridsize)
     
-    if os.path.isfile(data_path+"NAME/bc/%s/%s_%s_%s.nc"
+    if os.path.isfile(outdir+"/NAME/bc/%s/%s_%s_%s.nc"
                        %(domain,species,domain,dt.strptime(st_date, '%Y-%m-%d').strftime('%Y%m'))):
-        print 'Boundary condition file %s_%s_%s.nc already exists.' %(species,domain,dt.strptime(st_date, '%Y-%m-%d').strftime('%Y%m')) 
-        print 'Delete old one first to replace it.'
+        print('Boundary condition file %s_%s_%s.nc already exists.' %(species,domain,dt.strptime(st_date, '%Y-%m-%d').strftime('%Y%m'))) 
+        print('Delete old one first to replace it.')
         return(None)
     
     if gridsize not in [0.125, 0.25, 0.4, 0.5, 0.75, 1, 1.125, 1.5, 2, 2.5, 3]:
-        print "'gridsize' must be either:"
-        print 0.125, 0.25, 0.4, 0.5, 0.75, 1, 1.125, 1.5, 2, 2.5, 3
-        print " Change it and try again"
+        print("'gridsize' must be either:")
+        print(0.125, 0.25, 0.4, 0.5, 0.75, 1, 1.125, 1.5, 2, 2.5, 3)
+        print(" Change it and try again")
         return(None)
         
     if os.path.isdir(data_path+"NAME/fp/" + domain) == False:
-        print "No footprint file for domain %s" % domain
-        print "Make this first and then generate the BCs"
+        print("No footprint file for domain %s" % domain)
+        print("Make this first and then generate the BCs")
         return(None)
     
     #Get NAME lats/lons and heights
-    listoffiles = glob.glob(data_path+"NAME/fp/" + domain + "/*")
+    listoffiles = glob.glob(data_path+"/NAME/fp/" + domain + "/*")
     with xr.open_dataset(listoffiles[0]) as temp:
         fields_ds = temp.load()
     fp_lat = fields_ds["lat"].values
@@ -246,7 +252,8 @@ def makeCAMS_BC(domain, species, st_date, end_date, gridsize):
     
     #Open CAM dataset and average over the month 
     fn = pathtoBCs+outputname
-    ds = xr.open_dataset(fn)
+    #ds = xr.open_dataset(fn)
+    ds = name.open_ds(fn)
     ds = ds.mean('time')
        
     #if species == 'ch4':
@@ -291,6 +298,6 @@ def makeCAMS_BC(domain, species, st_date, end_date, gridsize):
     vmr_e = interplonlat(interpheight(east, fp_height, species, lonorlat='latitude'), fp_lat, species, lonorlat='latitude').rename({species : 'vmr_e'}) 
     vmr_w = interplonlat(interpheight(west, fp_height, species, lonorlat='latitude'), fp_lat, species, lonorlat='latitude').rename({species : 'vmr_w'})      
     
-    write_CAMS_BC_tonetcdf(vmr_n, vmr_e, vmr_s, vmr_w, st_date, species, domain)
+    write_CAMS_BC_tonetcdf(vmr_n, vmr_e, vmr_s, vmr_w, st_date, species, domain, outdir)
     
 

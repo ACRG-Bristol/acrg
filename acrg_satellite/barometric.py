@@ -5,6 +5,7 @@ Created on Fri Feb  2 16:02:01 2018
 
 @author: rt17603
 """
+from __future__ import print_function
 
 # Barometric formula
 
@@ -29,25 +30,25 @@ def height_at_pressure(P):
 
 if __name__ == "__main__":
 
-    print '-----------------'
-    print 'Checking pressure_at_height() function'
+    print('-----------------')
+    print('Checking pressure_at_height() function')
     height = np.arange(0,1000,100)
     pressure = np.zeros(len(height))
     for i,h in enumerate(height):
         P = pressure_at_height(h)
-        print 'Pressure at height {0} m, {1} Pa'.format(h,P)
+        print('Pressure at height {0} m, {1} Pa'.format(h,P))
         pressure[i] = P
     
-    print '-----------------'
-    print 'Checking height_at_pressure() function'
+    print('-----------------')
+    print('Checking height_at_pressure() function')
     for p in pressure:
-        print 'Height at pressure {0} Pa, {1} m'.format(p,height_at_pressure(p))
+        print('Height at pressure {0} Pa, {1} m'.format(p,height_at_pressure(p)))
     
     percentage = np.arange(1.0,11.0)
-    print '-----------------'
-    print 'Ground pressure, {0} Pa, {1} m'.format(P_b,height_at_pressure(P_b))
+    print('-----------------')
+    print('Ground pressure, {0} Pa, {1} m'.format(P_b,height_at_pressure(P_b)))
     for p in percentage:
         Pb_1 = P_b - P_b*p/100.
-        print '{0}% above ground pressure, {1} Pa, {2} m'.format(p,Pb_1,height_at_pressure(Pb_1))
+        print('{0}% above ground pressure, {1} Pa, {2} m'.format(p,Pb_1,height_at_pressure(Pb_1)))
 
     

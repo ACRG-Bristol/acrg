@@ -9,11 +9,13 @@ Uses tdmcmc_post_process
 
 @author: ml12574 (updated by rt17603)
 """
+from __future__ import print_function
+from __future__ import absolute_import
 
 ########### INPUTS ####################
 
 import numpy as np
-import tdmcmc_post_process as process
+from . import tdmcmc_post_process as process
 import glob
 import pandas
 import os
@@ -182,7 +184,7 @@ if __name__=="__main__":
     
     
     #### IMPLEMENT PROCESSING OPTIONS ####
-    print 'Beginning post processing'
+    print('Beginning post processing')
     
     if output_directory == "/path/to/output/directory/":
         raise Exception("Please set output directory.")
@@ -265,12 +267,12 @@ if __name__=="__main__":
             param = create_output_param(ds_list,dates,experiment,nc_outfile,
                                         country_dict=country_data,mode=mode,
                                         percentiles=percentiles)
-            print "Writing flux to file: {}".format(nc_outfile)
+            print("Writing flux to file: {}".format(nc_outfile))
             process.write_netcdf(**param)
         elif append_outfile:
             mode = "append"
             param = create_output_param(ds_list,dates,experiment,nc_outfile,
                             country_dict=country_data,mode=mode,
                             percentiles=percentiles)
-            print "Appending flux to file: {}".format(nc_outfile)
+            print("Appending flux to file: {}".format(nc_outfile))
             process.append_netcdf(**param)

@@ -4,6 +4,7 @@ Created on Fri Oct 16 14:08:07 2015
 
 @author: chxmr
 """
+from __future__ import print_function
 
 import numpy as np
 import pandas as pd

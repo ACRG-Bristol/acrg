@@ -12,6 +12,7 @@ For this first version just keep BC and fixed reigons separate from rest
 
 @author: Mark Lunt
 """
+from __future__ import print_function
 import acrg_name as name
 import numpy as np
 import acrg_agage as agage
@@ -241,7 +242,7 @@ def get_nsigma_y(fp_data_H, sites, nmeasure):
         nsigma+=nsigma_stn
     
     # INDEX R
-    print ydim1, nsigma
+    print(ydim1, nsigma)
     R_indices = np.zeros((ydim1,nsigma), dtype=np.uint16)
     for ii in range(nsigma):      
         wh_bl=np.where(y_bl == ii)
@@ -532,7 +533,7 @@ for ss, si in enumerate(sites):
     wh_site = np.ravel(np.where(y_site == si))
     nmeasure_site[ss]=len(wh_site)
  
-print nmeasure_site, nmeasure
+print(nmeasure_site, nmeasure)
 
 ################################################
 # CALCULATE INDICES OF Y CORRESPONDING TO DIFFERENT SIGMA_Ys   
@@ -690,7 +691,7 @@ pdf_param1_pdf=pdf_param1_pdf0
 pdf_param2_pdf=pdf_param2_pdf0
 
 ##################################################
-print 'Starting MCMC...'
+print('Starting MCMC...')
 startt = run_time.time()
 if inv_type is 'corr':
     from acrg_tdmcmc import tdmcmc_time_corr
@@ -741,9 +742,9 @@ elif inv_type is 'uncorr':
     
 endt=run_time.time()
 
-print 'Finished MCMC in ', endt-startt
+print('Finished MCMC in ', endt-startt)
 
-print 'Beginning post processing'
+print('Beginning post processing')
 
 # Need to somehow map the output back onto a regular time grid I think. 
 
@@ -771,7 +772,7 @@ for it in range(nit_sub):
             x_post_temp[it,si,wh_reg] = x_it[it,z2+nIC]
 
 endt3 = run_time.time()
-print endt3-endt
+print(endt3-endt)
 
 #%%
 x_post_vit = np.zeros((nit_sub, k_raw, len(unique_hour)))
@@ -795,9 +796,9 @@ x_post_v_05 = np.percentile(x_post_vit,5,axis=0)
 xrange_90v=x_post_v_95-x_post_v_05
 #xrange_90=np.reshape(xrange_90v, (nlat,nlon))
 
-print 'Everything done'
+print('Everything done')
 endt2 = run_time.time()
-print endt2-endt
+print(endt2-endt)
 
 ##########################################
 # y_post
