@@ -1547,7 +1547,7 @@ def uex(species):
                 "CH4": "NOAA2004",
                 "N2O": "WMO N2OX2006A",
                 "CO": "WMO CO X2014A"},
-            "directory" : "/data/shared/obs_raw/UEX/",
+            "directory" : "/data/shared/obs_raw/UEX/20181201/",
             "directory_output" : "/data/shared/obs/",
             "global_attributes" : {
                     "contact": "Elena Kozlova, University of Exeter",
@@ -1596,10 +1596,10 @@ def uex(species):
     # filter data where the flag > 0 #
     df = df[df['F']==0]
     
-    if species.lower() == 'n2o':
-        # hack to filter spurious data but need more permanent fix from UEx!!!! #
-        df = df[df['N2O']>326]
-        df = df[df['N2O']<332]
+#    if species.lower() == 'n2o':
+#        # hack to filter spurious data but need more permanent fix from UEx!!!! #
+#        df = df[df['N2O']>326]
+#        df = df[df['N2O']<332]
  
     # Convert to xray dataset
     ds = xray.Dataset.from_dataframe(df)
