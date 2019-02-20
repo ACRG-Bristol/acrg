@@ -25,8 +25,10 @@ Run as:
 @author: rt17603
 """
 
-import gosat
-import gosat_config
+#import gosat
+#import gosat_config
+import acrg_satellite.gosat as gosat
+import acrg_satellite.gosat_config as gosat_config
 import os
 import argparse
 

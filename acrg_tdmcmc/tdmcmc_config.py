@@ -36,6 +36,7 @@ acrg_config.generate_param_dict() function for more details.
 
 @author: rt17603
 """
+from __future__ import print_function
 
 import os
 import acrg_agage as agage
@@ -51,7 +52,7 @@ def tdmcmc_template_file():
     reference_file = os.path.join(acrg_path,"acrg_config/templates/tdmcmc_template.ini")
     return reference_file
 
-def mcmc_param_type():
+def mcmc_param_type(alt_filename=None):
     '''
     The mcmc_param_type function defines the names of expected input parameters from the config file and 
     the required Python object types.
@@ -183,7 +184,10 @@ def mcmc_param_type():
 #                              ('MCMC', mcmc),
 #                              ('TDMCMC', tdmcmc)])
     #reference_file = os.path.join(acrg_path,"acrg_config/templates/tdmcmc_template.ini")
-    reference_file = tdmcmc_template_file()
+    if alt_filename is None:
+        reference_file = tdmcmc_template_file()
+    else:
+        reference_file = alt_filename
     param_dict = config.generate_param_dict(reference_file)
     
     return param_dict
@@ -271,7 +275,7 @@ def add_defaults(param,section_group=None):
         if ("network" not in param.keys()) or (not param["network"]):
             site1 = param['sites'][0]
             param["network"] = agage.site_info[site1]["network"]
-            print 'Extracting network for first site from json file'
+            print('Extracting network for first site from json file')
     
     if section_group is None or section_group == "MCMC":
         if ("unique_copy" not in param.keys()) or (param["unique_copy"] == None):

@@ -4,6 +4,7 @@ Created on Thu Mar 19 15:06:16 2015
 
 @author: as13988
 """
+from __future__ import print_function
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 import numpy as np
@@ -26,8 +27,8 @@ class generate_data:
         x1 = np.asarray(x1)
         y1 = y*noise
         
-        print x1.mean()
-        print y1.mean()
+        print(x1.mean())
+        print(y1.mean())
     
         self.x = x1
         self.y = y1
@@ -129,7 +130,7 @@ class fit_data:
         """
         Print the coefficients and plot the funcion.
         """
-        print popt
+        print(popt)
         
         self.fit = fit
         self.coeffs = popt

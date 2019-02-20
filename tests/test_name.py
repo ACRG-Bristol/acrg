@@ -103,6 +103,20 @@ def basis_function_param():
     
     return param
 
+@pytest.fixture(scope="module")
+def measurement_param_sat():
+    ''' Define set of satellite measurement parameters to be used throughout the test suite '''
+    param = {}
+    param["site"] = "GOSAT-UK"
+    param["domain"] = "EUROPE"
+    param["start"] = "2014-02-01"
+    param["end"] = "2014-02-10"
+    param["height"] = "column"
+    param["species"] = "ch4"
+    param["max_level"] = 17
+    
+    return param
+
 #%%
 #------------------------------
 
@@ -361,6 +375,22 @@ def data(measurement_param_small):
     
     return measurement_data
 
+@pytest.fixture(scope="module")
+def data_sat(measurement_param_sat):
+    ''' Define set of input parameters to use with footprint_data_merge() function. Edited for use with satellite data.
+    Note: cannot specify data directory directly. '''
+    input_param = {}
+    input_param["sites"] = measurement_param_sat["site"]
+    input_param["species"] = measurement_param_sat["species"]
+    input_param["start"] = measurement_param_sat["start"]
+    input_param["end"] = measurement_param_sat["end"]
+    input_param["max_level"] = measurement_param_sat["max_level"]
+    # Can't specify data directory
+    
+    measurement_data_sat = agage.get_obs(**input_param)
+    
+    return measurement_data_sat
+
 @pytest.mark.basic
 def test_fp_data_merge(data,measurement_param_small,fp_directory,flux_directory,bc_directory):
     '''
@@ -408,6 +438,46 @@ def test_fp_data_merge_long(data,measurement_param,fp_directory,flux_directory,b
         assert data_var in ds.data_vars
 
     return out
+
+def test_fp_data_merge_sat(data_sat,measurement_param_sat,fp_directory,flux_directory,bc_directory):
+    '''
+    Test footprints_data_merge() function with GOSAT data.
+    Check parameters within dictionary.
+    Check data variables within dataset for site.
+    '''
+    site = measurement_param_sat["site"]
+    expected_keys = [".species",".units",".bc",".flux",site]
+    expected_data_var = ["mf","dmf","fp","particle_locations_n","particle_locations_e",
+                         "particle_locations_s","particle_locations_w","bc","mf_mod"]
+    
+    out = name.footprints_data_merge(data=data_sat,domain=measurement_param_sat["domain"],fp_directory=fp_directory,
+                                     flux_directory=flux_directory,bc_directory=bc_directory)
+    
+    ds = out[site]
+    
+    for key in expected_keys:
+        assert key in out
+        
+    for data_var in expected_data_var:
+        assert data_var in ds.data_vars
+        
+    return out
+    
+def test_fp_data_merge_output_dimentions(data,measurement_param,fp_directory,flux_directory,bc_directory):
+    '''
+    Test the output of footprints_data_merge() when using site data.
+    Compares dimentions of input data and footprints to dimentions of output dictionary.
+    '''
+    site_ds = data(measurement_param)
+    
+    site_ds_dim = []
+    for site_index in range(len(measurement_param['sites'])):
+        site = measurement_param['sites'][site_index]
+        site_ds_dim.append(len(site_ds[site]))
+        return site_ds_dim
+    
+    fp_filenames = name.filenames(measurement_param)
+    site_fp = name.footprints(fp_directory)
     
 # TODO:
 #    Add more complete tests for footprints_data_merge function as it is important to check the output

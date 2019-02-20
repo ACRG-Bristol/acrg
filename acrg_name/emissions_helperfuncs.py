@@ -17,6 +17,7 @@ This should probably be changed at some point to regrid over all timesteps in
 one go.
 
 """
+from __future__ import print_function
 
 import numpy as np
 import xarray as xray
@@ -146,7 +147,7 @@ def getGFED(year, lon_out, lat_out, timeframe='monthly', months = [1,2,3,4,5,6,7
     
     #Check that there are daily/3 hourly data available
     if (year < 2003) & (timeframe != 'monthly'):
-        print "No %s data before 2003. Switching to monthly emissions." % timeframe
+        print("No %s data before 2003. Switching to monthly emissions." % timeframe)
         timeframe = 'monthly'
     
     #Check to see if desired year has a dataset
@@ -158,12 +159,12 @@ def getGFED(year, lon_out, lat_out, timeframe='monthly', months = [1,2,3,4,5,6,7
     possyears.sort()
     #print "Possible years to use for GFED data: {}".format(possyears)
     if int(year) > max(possyears):
-        print "%s is later than latest year in GFED v4.1 database" % str(year)
-        print "Using %s as the closest year" % str(max((possyears)))
+        print("%s is later than latest year in GFED v4.1 database" % str(year))
+        print("Using %s as the closest year" % str(max((possyears))))
         year = max(possyears)
     if int(year) < min(possyears):
-        print "%s is earlier than earliest year in GFED v4.1 database" % str(year)
-        print "Using %s as the closest year" % str(min((possyears)))
+        print("%s is earlier than earliest year in GFED v4.1 database" % str(year))
+        print("Using %s as the closest year" % str(min((possyears))))
         year = min(possyears)
     
     #Get emissions
@@ -305,12 +306,12 @@ def getedgarannualtotals(year, lon_out, lat_out, species='CH4'):
         fyear = fname[9:13]      #Extract year from filename
         possyears = np.append(possyears, int(fyear))
     if year > max(possyears):
-        print "%s is later than max year in EDGAR database" % str(year)
-        print "Using %s as the closest year" % str(max((possyears)))
+        print("%s is later than max year in EDGAR database" % str(year))
+        print("Using %s as the closest year" % str(max((possyears))))
         year = max(possyears)
     if year < min(possyears):
-        print "%s is earlier than min year in EDGAR database" % str(year)
-        print "Using %s as the closest year" % str(min((possyears)))
+        print("%s is earlier than min year in EDGAR database" % str(year))
+        print("Using %s as the closest year" % str(min((possyears))))
         year = min(possyears)
         
     
@@ -464,12 +465,12 @@ def getbloomwetlandsCH4(year, lon_out, lat_out, timeframe="monthly"):
     
     possyears = np.arange(7) + 2003
     if year > max(possyears):
-        print "%s is later than max year in Bloom et al wetlands data" % str(year)
-        print "Using %s as the closest year" % str(max((possyears)))
+        print("%s is later than max year in Bloom et al wetlands data" % str(year))
+        print("Using %s as the closest year" % str(max((possyears))))
         year = max(possyears)
     if year < min(possyears):
-        print "%s is earlier than min year in Bloom et al data" % str(year)
-        print "Using %s as the closest year" % str(min((possyears)))
+        print("%s is earlier than min year in Bloom et al data" % str(year))
+        print("Using %s as the closest year" % str(min((possyears))))
         year = min(possyears)
     
     ds = xr.open_dataset(path+bloomwetlands)
@@ -537,12 +538,12 @@ def getBloom2017(year, lon_out, lat_out, modeltype='extended'):
     
     
     if year > max(possyears):
-        print "%s is later than max year in Bloom 2017 wetlands data" % str(year)
-        print "Using %s as the closest year" % str(max((possyears)))
+        print("%s is later than max year in Bloom 2017 wetlands data" % str(year))
+        print("Using %s as the closest year" % str(max((possyears))))
         year = max(possyears)
     if year < min(possyears):
-        print "%s is earlier than min year in Bloom 2017 data" % str(year)
-        print "Using %s as the closest year" % str(min((possyears)))
+        print("%s is earlier than min year in Bloom 2017 data" % str(year))
+        print("Using %s as the closest year" % str(min((possyears))))
         year = min(possyears)
     
     yearloc = np.where(possyears == year)[0][0]
@@ -673,15 +674,15 @@ def getNAEI(year, lon_out, lat_out, species, naei_sector):
     fn = naeidir+'LatLong1km_'+species.upper()+'_'+str(year)+'.csv.gz'
     #Checks
     if not os.path.isfile(fn):
-        print 'Raw NAEI file LatLong1km_'+species.upper()+'_'+str(year)+'.csv.gz does not exist'
-        print 'Returning None'
+        print('Raw NAEI file LatLong1km_'+species.upper()+'_'+str(year)+'.csv.gz does not exist')
+        print('Returning None')
         return None
     sectorlist = ["energyprod","domcom","indcom","indproc","offshore","roadtrans",
     "othertrans","waste","agric","nature","points","total","totalexcship"]
     if naei_sector not in sectorlist:
-        print 'Sector not one of:'
-        print sectorlist
-        print 'Returning None'
+        print('Sector not one of:')
+        print(sectorlist)
+        print('Returning None')
         return None
         
     #Read emissions as tonnes/km^2/yr and naei lat and lons
@@ -826,12 +827,12 @@ def getedgarannualsectors(year, lon_out, lat_out, edgar_sectors, species='CH4'):
         fyear = fname[9:13]      #Extract year from filename
         possyears = np.append(possyears, int(fyear))
     if year > max(possyears):
-        print "%s is later than max year in EDGAR database" % str(year)
-        print "Using %s as the closest year" % str(max((possyears)))
+        print("%s is later than max year in EDGAR database" % str(year))
+        print("Using %s as the closest year" % str(max((possyears))))
         year = max(possyears)
     if year < min(possyears):
-        print "%s is earlier than min year in EDGAR database" % str(year)
-        print "Using %s as the closest year" % str(min((possyears)))
+        print("%s is earlier than min year in EDGAR database" % str(year))
+        print("Using %s as the closest year" % str(min((possyears))))
         year = min(possyears)
     
         
@@ -863,7 +864,7 @@ def getedgarannualsectors(year, lon_out, lat_out, edgar_sectors, species='CH4'):
             else:
                 tot += ds[soiname].values*1e3/speciesmm
         else:
-            print 'No annual file for sector %s and %s' % (sec, species)
+            print('No annual file for sector %s and %s' % (sec, species))
         
     lat_in = ds.lat.values
     lon_in = ds.lon.values
@@ -975,7 +976,7 @@ def getedgarmonthlysectors(lon_out, lat_out, edgar_sectors, months=[1,2,3,4,5,6,
                'indirectemissionsfromNOxandNH3' : '7B_7C'           
     }
     
-    print 'Note that the only year for monthly emissions is 2010 so using that.'
+    print('Note that the only year for monthly emissions is 2010 so using that.')
         
     #Species molar mass
     speciesmm = molar_mass(species)
@@ -1098,7 +1099,7 @@ def _SWAMPSfile():
     path = os.path.join(data_path,"Gridded_fluxes/CH4/SWAMPS")
     #filename_swamps = os.path.join(path,"fw_swamps-glwd_2000-2012.nc") # Previous version
     #filename_swamps = os.path.join(path,"gcp-ch4_wetlands_2000-2017_05deg.nc") # Without inland water
-    filename_swamps = os.path.join(path,"gcp-ch4_wetlands-and-inland-water_2000-2017_025deg.nc")
+    filename_swamps = os.path.join(path,"gcp-ch4_wetlands-and-inland-water_2000-2017_025deg_norm.nc")
     
     return filename_swamps
 
@@ -1122,7 +1123,7 @@ def _readJULESwetland(year,species="CH4"):
     '''
     
     if year < 2009 or year > 2016:
-        print "No JULES wetlands data outside the range 2009-2016 for now."
+        print("No JULES wetlands data outside the range 2009-2016 for now.")
         return None
 
     filename_jules = _JULESfile(year)
@@ -1241,7 +1242,7 @@ def getJULESwetlands(year,lon_out,lat_out,species="CH4",extent_db="SWAMPS",scale
     '''
     
     if species.upper() != "CH4":
-        print "Unable to extract JULES wetland values for any species except CH4 (at the moment)"
+        print("Unable to extract JULES wetland values for any species except CH4 (at the moment)")
         return None
     
     flux_jules = _readJULESwetland(year,species)
@@ -1293,7 +1294,7 @@ def getJULESwetlands(year,lon_out,lat_out,species="CH4",extent_db="SWAMPS",scale
             if extent_db == "SWAMPS":
                 frac = _SWAMPSwetlandArea(year,lon_out,lat_out,month=i+1)[1]
             scale = round((total_w_emission*frac)/1e12,1)*1e12
-            print "{:02}) Scaling total JULES wetlands emissions within domain to: {} g/yr".format(i+1,scale)
+            print("{:02}) Scaling total JULES wetlands emissions within domain to: {} g/yr".format(i+1,scale))
             narr[:,:,i] = scale_emissions(narr[:,:,i],species,lat_out,lon_out,total_emission=scale)
 
     return narr
@@ -1331,7 +1332,7 @@ def scale_emissions(emissions_t,species,lat,lon,total_emission):
     
     current_emission = np.sum(emissions_t*areas)*total_time*molmass
     scaling = total_emission/current_emission
-    print "Current emissions total: {} g/yr (scaling needed to {} g/yr: {})".format(current_emission,total_emission,scaling)
+    print("Current emissions total: {} g/yr (scaling needed to {} g/yr: {})".format(current_emission,total_emission,scaling))
     
     emissions_new = np.copy(emissions_t)*scaling
     #print "New total emissions: {} g/yr".format(np.sum(emissions_new*areas)*total_time*molmass)
@@ -1719,7 +1720,7 @@ def create_emissions(databases,species,domain,year=None,lon_out=[],lat_out=[],
     
     if "timeframe" in kwargs:
         timeframe = kwargs["timeframe"]
-        print "When applicable, using timeframe: {}".format(timeframe)
+        print("When applicable, using timeframe: {}".format(timeframe))
     else:
         timeframe = None
     
@@ -1745,24 +1746,24 @@ def create_emissions(databases,species,domain,year=None,lon_out=[],lat_out=[],
                 elif timeframe == "monthly" and "sectors" in kwargs and "months" in kwargs:
                     functions.append(db_functions[database]["sector_monthly"])
                 elif timeframe == "monthly" and "sectors" in kwargs and not "months" in kwargs:
-                    print "Sectors specified and monthly timeframe specified but no months specified. Using EDGAR annual sectors as default."
+                    print("Sectors specified and monthly timeframe specified but no months specified. Using EDGAR annual sectors as default.")
                     functions.append(db_functions[database]["sector_yearly"])
                 elif timeframe != "monthly" and timeframe != "yearly" and "sectors" in kwargs:
-                    print "Sectors specified but timeframe of monthly or yearly is not specified. Using EDGAR annual sectors as default."
+                    print("Sectors specified but timeframe of monthly or yearly is not specified. Using EDGAR annual sectors as default.")
                     functions.append(db_functions[database]["sector_yearly"])
                 elif timeframe == "monthly" and "sectors" not in kwargs:
-                    print "Only able to extract monthly EDGAR data when sectors are also specified. Using EDGAR annual totals."
+                    print("Only able to extract monthly EDGAR data when sectors are also specified. Using EDGAR annual totals.")
                     functions.append(db_functions[database]["yearly"])
                 elif timeframe != "yearly" and "sectors" not in kwargs:
-                    print "Using EDGAR annual totals as default."
+                    print("Using EDGAR annual totals as default.")
                     functions.append(db_functions[database]["yearly"])
                 else:
                     raise Exception("Did not recognise combined input for EDGAR database: {}".format(kwargs))
             elif "sectors" in kwargs:
-                print "Sectors specified but timeframe of monthly or yearly is not specified. Using EDGAR annual sectors as default."
+                print("Sectors specified but timeframe of monthly or yearly is not specified. Using EDGAR annual sectors as default.")
                 functions.append(db_functions[database]["sector_yearly"])
             else:
-                print "No timeframe specified. Using EDGAR annual totals as default."
+                print("No timeframe specified. Using EDGAR annual totals as default.")
                 functions.append(db_functions[database]["yearly"])
         else:
             functions.append(db_functions[database])
@@ -1826,9 +1827,9 @@ def create_emissions(databases,species,domain,year=None,lon_out=[],lat_out=[],
                 else:
                     param[p] = kwargs[p]
         
-        print "--------------------------------"
-        print "Calling function: {}(...)".format(fn.__name__)
-        print "Calling with inputs: {} (not specified {}, using defaults)\n".format(param.keys(),[k for k in all_param if k not in param])
+        print("--------------------------------")
+        print("Calling function: {}(...)".format(fn.__name__))
+        print("Calling with inputs: {} (not specified {}, using defaults)\n".format(param.keys(),[k for k in all_param if k not in param]))
         
         narr = fn(**param)
         if len(narr.shape) == 2:
@@ -1899,7 +1900,7 @@ def create_emissions(databases,species,domain,year=None,lon_out=[],lat_out=[],
         if not flux_comments:
             flux_comments = None
         
-        print "Writing output to directory: {}".format(output_directory)
+        print("Writing output to directory: {}".format(output_directory))
         
         flux.write(lat_out,lon_out,time,emissions,species,domain,source=source,title=title,
                prior_info_dict=prior_info_dict,flux_comments=flux_comments,climatology=climatology,
