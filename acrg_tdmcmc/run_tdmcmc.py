@@ -366,6 +366,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     data = acrg_obs.get_obs(sites, species, start_date = start_date, end_date = end_date, average = meas_period, 
                           keep_missing=corr_type[inv_type],max_level=max_level, data_directory = data_dir,
                           network=network)
+
     
     
     fp_all = name.footprints_data_merge(data, domain=domain, calc_bc=True,

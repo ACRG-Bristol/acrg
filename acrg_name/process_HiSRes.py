@@ -181,11 +181,11 @@ def makeBasisFromExisting():
     start_region = np.amax(existing.basis.values) + 1
     high_res_basis = np.zeros_like(flux.high_res)
     high_res_basis[:,:,0] = start_region
-    xVals = np.arange(17,52)
-    yVals = np.arange(22,37)
+    xVals = np.arange(22,55)
+    yVals = np.arange(22,55)
     X, Y = np.meshgrid(yVals, xVals)
-    Xc = np.floor( (X-np.amin(X))/5.0)
-    Yc = np.floor( (Y-np.amin(Y))/5.0)
+    Xc = np.floor( (X-np.amin(X))/1.0)
+    Yc = np.floor( (Y-np.amin(Y))/1.0)
     rows = np.amax(Yc-np.amin(Yc))-1
     high_res_basis[X.astype(int),Y.astype(int),0] = 1+start_region + Yc + Xc * rows
     
@@ -200,6 +200,6 @@ def makeBasisFromExisting():
     basis_out["lat_high"] = flux.lat_high
     basis_out["lon_high"] = flux.lon_high
     
-    basis_out.to_netcdf("/data/al18242/basis_hr/EUROPE/sub_btt-5-london_EUROPE_2000.nc")
+    basis_out.to_netcdf("/data/al18242/basis_hr/EUROPE/sub_btt-1-london_EUROPE_2000.nc")
     
     

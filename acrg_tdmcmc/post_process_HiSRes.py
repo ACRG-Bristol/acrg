@@ -8,6 +8,10 @@ Created on Wed Feb  6 11:09:10 2019
 import numpy as np
 import acrg_name as name
 from matplotlib import pyplot as plt
+from matplotlib import cm as cm
+import pandas as pd
+import geopandas as gpd
+import shapely
 
 def forwardModel(fp, flux):
     '''
@@ -41,11 +45,13 @@ def forwardModel(fp, flux):
     
     return output_model_low, output_model_high, output_model, bg*1e9
 
-def plotMultiResMesh(data_low, lat_low, lon_low, data_high, lat_high, lon_high,
-              vmin, vmax, scale_high = False, logPlot=True, cmap="viridis"):
+def plotMultiResMesh(_data_low, lat_low, lon_low, data_high, lat_high, lon_high,
+              vmin, vmax, scale_high = False, logPlot=True, cmap="viridis", ax=None,
+              **kwargs):
     '''
     Plots low resolution and high resolution data on top of eachother using pcolormesh
     '''
+    data_low = _data_low * 1.
     dlat_low = lat_low[1] - lat_low[0]
     dlon_low = lon_low[1] - lon_low[0]
     low_lat_bounds = np.append(lat_low,lat_low[-1] + dlat_low) - dlat_low/2.0
@@ -57,17 +63,28 @@ def plotMultiResMesh(data_low, lat_low, lon_low, data_high, lat_high, lon_high,
     high_lat_bounds = np.append(lat_high,lat_high[-1] + dlat_high) - dlat_high/2.0
     high_lon_bounds = np.append(lon_high,lon_high[-1] + dlon_high) - dlon_high/2.0
     lats_high, lons_high = np.meshgrid(high_lat_bounds, high_lon_bounds)
+    
+    #calc null values for the high res region
+    whereLat = np.where((lat_low > lat_high[0]) & (lat_low < lat_high[-1]))[0]
+    whereLon = np.where((lon_low > lon_high[0]) & (lon_low < lon_high[-1]))[0]
+    data_low[slice (int(whereLat[0]), int(whereLat[-1])+1), slice (int(whereLon[0]), int(whereLon[-1])+1)] = -9999
+    
+    #deal with cmap
+    cmap = cm.get_cmap(cmap)
+    cmap.set_under(color='w',alpha=0.)
+    
     if (scale_high):
         data_high *= ((dlat_low/dlat_high)**2)
-    fig, ax = plt.subplots()
+    if ax is None:
+        fig, ax = plt.subplots()
     if (logPlot):
-        ax.pcolormesh(lons_low, lats_low, np.log10(data_low.T), vmin=vmin, vmax=vmax, cmap=cmap)
-        ax.pcolormesh(lons_high, lats_high, data_high.T*0, vmin=0, vmax=100, cmap="Greys")
-        cs = ax.pcolormesh(lons_high, lats_high, np.log10(data_high.T), vmin=vmin, vmax=vmax, cmap=cmap)
+        ax.pcolormesh(lons_low, lats_low, data_low.T, vmin=vmin, vmax=vmax, cmap=cmap, **kwargs)
+        #ax.pcolormesh(lons_high, lats_high, data_high.T*0, vmin=0, vmax=100, cmap="Greys", **kwargs)
+        cs = ax.pcolormesh(lons_high, lats_high, data_high.T, vmin=vmin, vmax=vmax, cmap=cmap, **kwargs)
     else:
-        ax.pcolormesh(lons_low, lats_low, data_low.T, vmin=vmin, vmax=vmax, cmap=cmap)
-        ax.pcolormesh(lons_high, lats_high, data_high.T*0, vmin=0, vmax=100, cmap="Greys")
-        cs = ax.pcolormesh(lons_high, lats_high, data_high.T, vmin=vmin, vmax=vmax, cmap=cmap)
+        ax.pcolormesh(lons_low, lats_low, data_low.T, vmin=vmin, vmax=vmax, cmap=cmap, **kwargs)
+        #ax.pcolormesh(lons_high, lats_high, data_high.T*0, vmin=0, vmax=100, cmap="Greys", **kwargs)
+        cs = ax.pcolormesh(lons_high, lats_high, data_high.T, vmin=vmin, vmax=vmax, cmap=cmap, **kwargs)
     plt.colorbar(cs, ax=ax)
     return ax
     
@@ -116,14 +133,15 @@ def postProcess(ds, basis):
         object containing various useful parameters
     '''
     output = lambda: None
-    output.H_bg = ds.h_v_all[:,:4].values
-    output.x_v_bg = ds.x_it[:,:4].values
+    nBoundary = (ds.nIC.values - ds.nfixed.values)
+    output.H_bg = ds.h_v_all[:,:nBoundary].values
+    output.x_v_bg = ds.x_it[:,:nBoundary].values
     output.bg_post = np.zeros((len(ds.nIt), len(ds.nmeasure)))
     for it in range(len(ds.nIt)):
         output.bg_post[it,:] = np.dot(output.H_bg, output.x_v_bg[it,:])
         
-    output.H = ds.h_v_all[:,4:ds.nIC.values].values
-    output.x_v = ds.x_it[:,4:ds.nIC.values].values
+    output.H = ds.h_v_all[:,nBoundary:ds.nIC.values].values
+    output.x_v = ds.x_it[:,nBoundary:ds.nIC.values].values
     output.y_post = np.zeros((len(ds.nIt), len(ds.nmeasure)))
     for it in range(len(ds.nIt)):
         output.y_post[it,:] = np.dot(output.H, output.x_v[it,:])
@@ -139,3 +157,14 @@ def postProcess(ds, basis):
     output.h_high, output.h_low = unflattenArray(output.h_fine, basis)
     
     return output
+
+def shpToGrid(shape, lats, lons):
+    XX, YY = np.meshgrid(lats, lons)
+    XX, YY = XX.flatten(), YY.flatten()
+    df = pd.DataFrame({'Coordinates': list(zip(YY, XX))})
+    df['Coordinates'] = df['Coordinates'].apply(shapely.geometry.Point)
+    gdf = gpd.GeoDataFrame(df, geometry='Coordinates')
+    within = gdf.within(shape.geometry[0])
+    within = within.values.reshape(len(lons), len(lats)).T
+    return within
+
