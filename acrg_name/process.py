@@ -1669,7 +1669,7 @@ def process(domain, site, height, year, month,
 
     # Check that there are no errors from the NAME run
     input_folder = subfolder + 'Input_files/'
-    error_files = 'BackRun_' + domain + '_' + site + '_' + height + '_' + year + month
+    error_files = 'BackRun_' + domain + '_' + site + '_' + height + '_' + str(year) + str(month).zfill(2)
     error_days = []
     
     for file_name in os.listdir(input_folder):
