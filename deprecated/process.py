@@ -246,7 +246,7 @@ def extract_file_lines(fname):
     
     if fname[-3:].upper() == ".GZ":
         #Unzip file
-        f=gzip.open(fname, 'r')
+        f=gzip.open(fname, 'rt')
         file_text=f.read()
         f.close()
         file_lines=file_text.splitlines()
@@ -374,7 +374,7 @@ def define_grid(header, column_headings, satellite = False):
     
         #Time
         #ESTIMATE NUMBER OF TIMESTEPS PER FILE: ASSUMES ONLY ONE SPECIES PER FILE
-        ntime=len(time)/nlevs
+        ntime=len(time)//nlevs
         
     else:
         # Assume only ONE TIME STEP per file
@@ -458,7 +458,7 @@ def read_met(fnames, met_def_dict=None, vertical_profile=False):
         met_default2 = met_default
         #column_indices = {key: -1 for key, value in met_def_dict.iteritems()}
     #else:
-    column_indices = {key: -1 for key, value in met_default2.iteritems()}
+    column_indices = {key: -1 for key, value in met_default2.items()}
     
     output_df = []
         
@@ -690,7 +690,7 @@ def particle_locations(particle_file, time, lats, lons, levs, heights,
                 else:
                     slice_dict_prev = {"time": [i-2]}
                 for key in hist.data_vars.keys():
-                    hist[key][slice_dict] = hist[key][slice_dict_prev]
+                    hist[key][slice_dict] = hist[key][slice_dict_prev].values
         
         # Store extremes
         if max(df["Lat"]) > particle_extremes["N"]:

@@ -16,7 +16,7 @@ from matplotlib import ticker
 import pandas as pd
 import bisect
 import subprocess
-from progressbar import ProgressBar
+#from progressbar import ProgressBar
 import json
 from os.path import join
 import xarray as xr
