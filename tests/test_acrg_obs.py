@@ -3,24 +3,25 @@
 """
 Created on Wed Mar 28 10:23:51 2018
 
-Test suite for acrg_agage module.
+Test suite for acrg_obs module.
 
 To run this test suite only from within the tests/ directory use the syntax
->> pytest test_acrg_agage.py
+>> pytest test_acrg_obs.py
 
 Some tests have an additional decorator:
     @pytest.mark.basic
 which marks these tests as being part of a "basic" subset to be run if a full test run is not required.
 
 To run only the basic tests use the syntax
->> pytest test_acrg_agage.py -m basic
+>> pytest test_acrg_obs.py -m basic
 
 @author: rt17603
 """
 
 import pytest
 
-import acrg_agage as agage
+#import acrg_agage as agage
+import acrg_obs.read as read
 from builtins import str
 
 @pytest.fixture(scope="module")
@@ -28,9 +29,9 @@ def measurement_param():
     ''' Define set of measurement parameters to be used throughout the test suite '''
     param = {}
     param["sites"] = ["MHD","TAC"]
-    param["start"] = str("2014-02-01")
-    param["end"] = str("2014-03-01")
-    param["heights"] = ["10magl","100magl"]
+    param["start_date"] = str("2014-02-01")
+    param["end_date"] = str("2014-03-01")
+    param["inlets"] = ["10magl","100magl"]
     param["species"] = "ch4"
     
     return param
@@ -40,9 +41,9 @@ def sat_measurement_param():
     ''' Define set of measurement parameters for satellite data '''
     param = {}
     param["sites"] = ["GOSAT-INDIA"]
-    param["start"] = str("2013-07-01")
-    param["end"] = str("2013-08-01")
-    param["heights"] = [None]
+    param["start_date"] = str("2013-07-01")
+    param["end_date"] = str("2013-08-01")
+    param["inlets"] = [None]
     param["species"] = "ch4"
     param["max_level"] = 17
     
@@ -52,21 +53,21 @@ def sat_measurement_param():
 #%%
 #----------------------------
 
-# TODO: Decide on other tests (if necessary) for functions within acrg_agage module:
+# TODO: Decide on other tests (if necessary) for functions within acrg_obs suite:
     # is_number(s)
     # synonyms(search_string, info)
     # listsearch(varnames, species, species_info, label="alt")
     # file_search_and_split(search_string)
     # quadratic_sum
     # ukmo_flags(site, site_info):
-    # get_file_list(site, species, start, end, height,network = None, instrument = None, data_directory=None)
+    # get_file_list(site, species, start, end, inlet,network = None, instrument = None, data_directory=None)
     # get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
-    #        height=None, baseline=False, average=None, keep_missing=False,
+    #        inlet=None, baseline=False, average=None, keep_missing=False,
     #        network = None, instrument = None,
     #        status_flag_unflagged = [0], data_directory=None)
     # get_gosat(site, species, max_level, start = "1900-01-01", end = "2020-01-01")
     # get_obs(sites, species, start = "1900-01-01", end = "2020-01-01",
-    #            height = None, baseline = False, average = None, keep_missing=False,
+    #            inlet = None, baseline = False, average = None, keep_missing=False,
     #            network = None, instrument = None, status_flag_unflagged = None,
     #            max_level = None):
 
@@ -83,9 +84,9 @@ def get_obs_sites_param(measurement_param):
     input_param = {}
     input_param["sites"] = measurement_param["sites"]
     input_param["species"] = measurement_param["species"]
-    input_param["start"] = measurement_param["start"]
-    input_param["end"] = measurement_param["end"]
-    input_param["height"] = None
+    input_param["start_date"] = measurement_param["start_date"]
+    input_param["end_date"] = measurement_param["end_date"]
+    input_param["inlet"] = None
 
     return input_param
 
@@ -98,9 +99,9 @@ def get_obs_satellite_param(sat_measurement_param):
     input_param = {}
     input_param["sites"] = sat_measurement_param["sites"]
     input_param["species"] = sat_measurement_param["species"]
-    input_param["start"] = sat_measurement_param["start"]
-    input_param["end"] = sat_measurement_param["end"]
-    input_param["height"] = sat_measurement_param["heights"][0]
+    input_param["start_date"] = sat_measurement_param["start_date"]
+    input_param["end_date"] = sat_measurement_param["end_date"]
+    input_param["inlet"] = sat_measurement_param["inlets"][0]
     input_param["max_level"] = sat_measurement_param["max_level"]
 
     return input_param
@@ -111,7 +112,7 @@ def test_get_obs(get_obs_sites_param):
     Test get_obs() function returns a output in expected format when ground-based sites are specified.
     '''
     sites = get_obs_sites_param["sites"]
-    out = agage.get_obs(**get_obs_sites_param)
+    out = read.get_obs(**get_obs_sites_param)
     assert isinstance(out,dict)
     
     for site in sites:
@@ -123,7 +124,7 @@ def test_get_obs_sat(get_obs_satellite_param):
     Test get_obs() function returns output in expected format when satellite (GOSAT) sites are specified.
     '''
     sites = get_obs_satellite_param["sites"]
-    out = agage.get_obs(**get_obs_satellite_param)
+    out = read.get_obs(**get_obs_satellite_param)
     assert isinstance(out,dict)
     
     for site in sites:
@@ -131,10 +132,11 @@ def test_get_obs_sat(get_obs_satellite_param):
     
 def test_get_obs_sat_nolevel(get_obs_satellite_param) :
     '''
-    Test get_obs() returns None when max_level is not specified for a satellite (GOSAT) site.
+    Test get_obs() raises ValueError when max_level is not specified for a satellite (GOSAT) site.
     '''
-    get_obs_satellite_param["max_level"] = None
-    out = agage.get_obs(**get_obs_satellite_param)
-    assert out is None
+    with pytest.raises(ValueError) as e_info:
+        get_obs_satellite_param["max_level"] = None
+        out = read.get_obs(**get_obs_satellite_param)
+        #assert out is None
 
 
