@@ -554,6 +554,7 @@ def gc(site, instrument, network,
                                                   ds_sp.species,
                                                   inlet = inlet_label,
                                                   version = version)
+
                     print("Writing... " + nc_filename)
                     ds_sp.to_netcdf(nc_filename)
                     print("... written.")

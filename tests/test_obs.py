@@ -11,6 +11,8 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import os
+import shutil
+import glob
 
 test_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -183,3 +185,39 @@ def test_process_utils_attributes():
     assert out.attrs['test'] == u'testing'
     assert out.cfc113.units == "1e-12"
 
+
+def test_obs_process_gc():
+
+    gc_files_directory = os.path.join(test_dir,
+                                      "files/obs/GC")
+    
+    acrg_obs.process_gcwerks.gc("CGO", "medusa", "AGAGE",
+                                input_directory = gc_files_directory,
+                                output_directory = gc_files_directory)
+
+    # Test if CGO directory has been created
+    assert os.path.exists(os.path.join(gc_files_directory, "CGO"))
+    
+    # Check that enough files have been created
+    assert len(glob.glob(os.path.join(gc_files_directory, "CGO/*.nc"))) == 56
+    
+    # As an example, get CF4 data
+    cf4_file = os.path.join(gc_files_directory,
+                            "CGO/AGAGE-GCMSMedusa_CGO_20180101_cf4-70m-20190221.nc")
+    # Check if file exists
+    assert os.path.exists(cf4_file)
+    
+    # Open dataset
+    with xr.open_dataset(cf4_file) as f:
+        ds = f.load()
+    
+    # Check a particular value (note that time stamp is 10 minutes before analysis time,
+    # because in GCWerks files, times are at the beginning of the sampling period)
+    assert ds.sel(time = slice("2018-01-01 04:33", "2018-01-01 04:35")).cf4.values == \
+           83.546
+
+    assert ds.sel(time = slice("2018-01-20", "2018-01-20"))["cf4 repeatability"].values[0] == \
+           0.03679
+
+    # clean up
+    shutil.rmtree(os.path.join(gc_files_directory, "CGO"))
