@@ -193,7 +193,8 @@ def test_obs_process_gc():
     
     acrg_obs.process_gcwerks.gc("CGO", "medusa", "AGAGE",
                                 input_directory = gc_files_directory,
-                                output_directory = gc_files_directory)
+                                output_directory = gc_files_directory,
+                                version = "TEST")
 
     # Test if CGO directory has been created
     assert os.path.exists(os.path.join(gc_files_directory, "CGO"))
@@ -203,7 +204,7 @@ def test_obs_process_gc():
     
     # As an example, get CF4 data
     cf4_file = os.path.join(gc_files_directory,
-                            "CGO/AGAGE-GCMSMedusa_CGO_20180101_cf4-70m-20190221.nc")
+                            "CGO/AGAGE-GCMSMedusa_CGO_20180101_cf4-70m-TEST.nc")
     # Check if file exists
     assert os.path.exists(cf4_file)
     
@@ -213,11 +214,49 @@ def test_obs_process_gc():
     
     # Check a particular value (note that time stamp is 10 minutes before analysis time,
     # because in GCWerks files, times are at the beginning of the sampling period)
-    assert ds.sel(time = slice("2018-01-01 04:33", "2018-01-01 04:35")).cf4.values == \
-           83.546
+    assert np.allclose(ds.sel(time = slice("2018-01-01 04:33", "2018-01-01 04:35")).cf4.values,
+                       np.array(83.546))
 
-    assert ds.sel(time = slice("2018-01-20", "2018-01-20"))["cf4 repeatability"].values[0] == \
-           0.03679
+    assert np.allclose(ds.sel(time = slice("2018-01-20", "2018-01-20"))["cf4 repeatability"].values[0:1],
+                       np.array(0.03679))
 
     # clean up
     shutil.rmtree(os.path.join(gc_files_directory, "CGO"))
+    
+def test_obs_process_crds():
+    
+    gc_files_directory = os.path.join(test_dir,
+                                      "files/obs/CRDS")
+    
+    acrg_obs.process_gcwerks.crds("BSD", "DECC",
+                                input_directory = gc_files_directory,
+                                output_directory = gc_files_directory,
+                                version = "TEST")
+
+    # Test if CGO directory has been created
+    assert os.path.exists(os.path.join(gc_files_directory, "BSD"))
+    
+    # Check that enough files have been created
+    assert len(glob.glob(os.path.join(gc_files_directory, "BSD/*.nc"))) == 3
+    
+    # As an example, get CF4 data
+    ch4_file = os.path.join(gc_files_directory,
+                            "BSD/DECC-CRDS_BSD_20140130_ch4-248m-TEST.nc")
+    # Check if file exists
+    assert os.path.exists(ch4_file)
+    
+    # Open dataset
+    with xr.open_dataset(ch4_file) as f:
+        ds = f.load()
+    
+    # Check a particular value (note that time stamp is 10 minutes before analysis time,
+    # because in GCWerks files, times are at the beginning of the sampling period)
+    assert np.allclose(ds.sel(time = slice("2014-01-30 14:00:00", "2014-01-30 14:01:00")).ch4.values,
+                       np.array(1953.88))
+    assert np.allclose(ds.sel(time = slice("2014-01-30 14:00:00", "2014-01-30 14:01:00"))["ch4 variability"].values,
+                       np.array(0.398))
+
+    # clean up
+    shutil.rmtree(os.path.join(gc_files_directory, "BSD"))
+    
+    
