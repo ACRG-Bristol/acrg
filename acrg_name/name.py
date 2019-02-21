@@ -888,7 +888,14 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
             # If satellite data, check that the max_level in the obs and the max level in the processed FPs are the same
             # Set tolerance tin time to merge footprints and data   
             # This needs to be made more general to 'satellite', 'aircraft' or 'ship'                
-            if "GOSAT" in site.upper():
+
+            if "platform" in site_info[site]:
+                platform = site_info[site]["platform"]
+            else:
+                platform = None
+
+            if platform == "satellite":
+            #if "GOSAT" in site.upper():
                 ml_obs = site_df.max_level
                 ml_fp = site_fp.max_level
                 tolerance = 60e9 # footprints must match data with this tolerance in [ns]
@@ -936,13 +943,14 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
             #site_ds = site_ds.sel(time=slice(str(start_date.data),str(end_date.data)))
             #site_fp = site_fp.sel(time=slice(str(start_date.data),str(end_date.data)))
             
-            base = start_date.dt.hour.data + start_date.dt.minute.data/60. + start_date.dt.second.data/3600.
-            if (ds_timeperiod >= fp_timeperiod) or (resample_to_data == True):
-                resample_period = str(round(fp_timeperiod/3600e9,5))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
-                site_fp = site_fp.resample(resample_period, dim='time', how='mean', base=base)
-            elif ds_timeperiod < fp_timeperiod or (resample_to_data == False):
-                resample_period = str(round(fp_timeperiod/3600e9,5))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
-                site_ds = site_ds.resample(resample_period, dim='time', how='mean', base=base)
+            if platform != "satellite":
+                base = start_date.dt.hour.data + start_date.dt.minute.data/60. + start_date.dt.second.data/3600.
+                if (ds_timeperiod >= fp_timeperiod) or (resample_to_data == True):
+                    resample_period = str(round(fp_timeperiod/3600e9,5))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
+                    site_fp = site_fp.resample(resample_period, dim='time', how='mean', base=base)
+                elif ds_timeperiod < fp_timeperiod or (resample_to_data == False):
+                    resample_period = str(round(fp_timeperiod/3600e9,5))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
+                    site_ds = site_ds.resample(resample_period, dim='time', how='mean', base=base)
                         
             site_ds = combine_datasets(site_ds, site_fp,
                                        method = "ffill",
