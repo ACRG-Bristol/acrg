@@ -18,7 +18,12 @@ one go.
 
 """
 from __future__ import print_function
+from __future__ import division
 
+from builtins import zip
+from builtins import str
+from builtins import range
+from past.utils import old_div
 import numpy as np
 import xarray as xray
 import glob 
@@ -198,7 +203,7 @@ def getGFED(year, lon_out, lat_out, timeframe='monthly', months = [1,2,3,4,5,6,7
                # this (unitless), and the emission factor (g per kg DM burned)
                #emissions += DM_emissions * contribution * EF[sourceindex[source]]
                #Then convert from g/m2/month to mol/m2/s
-               emissions[i, :,:] += (DM_emissions * contribution * EF[sourceindex[source]]) / (EF[0] * convert2secs)
+               emissions[i, :,:] += old_div((DM_emissions * contribution * EF[sourceindex[source]]), (EF[0] * convert2secs))
     elif timeframe == 'daily':
         emissions = np.zeros((np.sum(dim), len(lat), len(lon)))
         convert2secs = 24*3600
@@ -223,7 +228,7 @@ def getGFED(year, lon_out, lat_out, timeframe='monthly', months = [1,2,3,4,5,6,7
                for source in range(len(sources)):
                    # read in the fractional contribution of each source
                    string = '/emissions/'+months_str[month]+'/partitioning/DM_'+sources[source]
-                   emissions[d, :,:] += (DM_emissions * contribution * dayfrac * EF[sourceindex[source]]) / (EF[0] * convert2secs)
+                   emissions[d, :,:] += old_div((DM_emissions * contribution * dayfrac * EF[sourceindex[source]]), (EF[0] * convert2secs))
                d += 1
     elif timeframe == '3hourly':
         emissions = np.zeros((np.sum(dim)*8, len(lat), len(lon)))
@@ -253,7 +258,7 @@ def getGFED(year, lon_out, lat_out, timeframe='monthly', months = [1,2,3,4,5,6,7
                    for source in range(len(sources)):
                        # read in the fractional contribution of each source
                        string = '/emissions/'+months_str[month]+'/partitioning/DM_'+sources[source]
-                       emissions[h, :,:] += (DM_emissions * contribution * dayfrac * dcfrac * EF[sourceindex[source]]) / (EF[0] * convert2secs)
+                       emissions[h, :,:] += old_div((DM_emissions * contribution * dayfrac * dcfrac * EF[sourceindex[source]]), (EF[0] * convert2secs))
                    h += 1
     
    
@@ -334,7 +339,7 @@ def getedgarannualtotals(year, lon_out, lat_out, species='CH4'):
     
     ds = xr.open_dataset(edgar)
     soiname = 'emi_'+species.lower()    
-    tot = ds[soiname].values*1e3/speciesmm
+    tot = old_div(ds[soiname].values*1e3,speciesmm)
     lat_in = ds.lat.values
     lon_in = ds.lon.values
     mtohe = lon_in > 180
@@ -478,7 +483,7 @@ def getbloomwetlandsCH4(year, lon_out, lat_out, timeframe="monthly"):
     d = ds.date.values.astype(str)
     ddt = np.empty_like(d)
     for i in range(len(ddt)):
-       ddt[i] = datetime.datetime.strptime(d[i], '%Y%m%d')
+       ddt[i] = datetime.datetime.strptime(str(d[i]), '%Y%m%d')
     ds.date.values = pd.to_datetime(ddt)
     ds = ds.sel(date=str(year))
     
@@ -711,7 +716,7 @@ def getNAEI(year, lon_out, lat_out, species, naei_sector):
         diy = 365
     else:
         diy = 366    
-    grdemis = grdemis / (diy * 3600*24) / speciesmm
+    grdemis = old_div(grdemis, (diy * 3600*24) / speciesmm)
     
     #Regrid to desired lats and lons
     narr, reg = regrid2d(grdemis, latarr, lonarr,
@@ -860,9 +865,9 @@ def getedgarannualsectors(year, lon_out, lat_out, edgar_sectors, species='CH4'):
             ds = xr.open_dataset(edgar)
             soiname = 'emi_'+species.lower()
             if tot is None:
-                tot = ds[soiname].values*1e3/speciesmm
+                tot = old_div(ds[soiname].values*1e3,speciesmm)
             else:
-                tot += ds[soiname].values*1e3/speciesmm
+                tot += old_div(ds[soiname].values*1e3,speciesmm)
         else:
             print('No annual file for sector %s and %s' % (sec, species))
         
@@ -1004,9 +1009,9 @@ def getedgarmonthlysectors(lon_out, lat_out, edgar_sectors, months=[1,2,3,4,5,6,
                 ds = xr.open_dataset(edgar)
                 soiname = 'emi_'+species.lower()
                 if tot.any() == None:
-                    tot = ds[soiname].values*1e3/speciesmm
+                    tot = old_div(ds[soiname].values*1e3,speciesmm)
                 else:
-                    tot += ds[soiname].values*1e3/speciesmm
+                    tot += old_div(ds[soiname].values*1e3,speciesmm)
             else:
                 warnings.append('No monthly file for sector %s' % sec)
                 #print 'No monthly file for sector %s' % sec
@@ -1073,7 +1078,7 @@ def getScarpelliFossilFuelsCH4(lon_out, lat_out, scarpelli_sector='all'):
     with xr.open_dataset(sourcefn) as load:
         ds = load.load()         #Units are Mg / km2 / year
     
-    ffemis = ds.emis_ch4.values/(365*24*3600)/molar_mass('ch4') #Convert to mol/m2/s
+    ffemis = old_div(ds.emis_ch4.values,(365*24*3600)/molar_mass('ch4')) #Convert to mol/m2/s
     lat_in = ds.lat.values
     lon_in = ds.lon.values
     
@@ -1164,7 +1169,7 @@ def _wetlandArea(frac,lon_in,lat_in,lon_out,lat_out):
     grid_domain = areagrid(lat_out,lon_out)
     wetl_area_domain = np.sum(frac_wetl_domain*grid_domain)
     
-    return wetl_area_domain,wetl_area_domain/wetl_area
+    return wetl_area_domain,old_div(wetl_area_domain,wetl_area)
 
 def _SWAMPSwetlandArea(year,lon_out,lat_out,month=1):
     '''
@@ -1257,7 +1262,7 @@ def getJULESwetlands(year,lon_out,lat_out,species="CH4",extent_db="SWAMPS",scale
     
     flux_jules.fch4_wetl_npp.values[fch4_fill_indices] = 0.0
 
-    flux_jules_frac = np.abs(flux_jules[fch4_name] / flux_jules[fwetl_name])
+    flux_jules_frac = np.abs(old_div(flux_jules[fch4_name], flux_jules[fwetl_name]))
     flux_jules_frac.values = np.nan_to_num(flux_jules_frac) # Any number divided by 0.0 will be nan, so change these back to 0.0
     
     if extent_db == "SWAMPS":
@@ -1293,7 +1298,7 @@ def getJULESwetlands(year,lon_out,lat_out,species="CH4",extent_db="SWAMPS",scale
         for i in range(nt):
             if extent_db == "SWAMPS":
                 frac = _SWAMPSwetlandArea(year,lon_out,lat_out,month=i+1)[1]
-            scale = round((total_w_emission*frac)/1e12,1)*1e12
+            scale = round(old_div((total_w_emission*frac),1e12),1)*1e12
             print("{:02}) Scaling total JULES wetlands emissions within domain to: {} g/yr".format(i+1,scale))
             narr[:,:,i] = scale_emissions(narr[:,:,i],species,lat_out,lon_out,total_emission=scale)
 
@@ -1331,7 +1336,7 @@ def scale_emissions(emissions_t,species,lat,lon,total_emission):
     areas = areagrid(lat,lon)
     
     current_emission = np.sum(emissions_t*areas)*total_time*molmass
-    scaling = total_emission/current_emission
+    scaling = old_div(total_emission,current_emission)
     print("Current emissions total: {} g/yr (scaling needed to {} g/yr: {})".format(current_emission,total_emission,scaling))
     
     emissions_new = np.copy(emissions_t)*scaling
@@ -1450,8 +1455,8 @@ def _define_time(year,timeframe=None,periods=None,months=[]):
     '''
     freq_dict = {"yearly":"AS","monthly":"MS","daily":"D","3hourly":"3H"}
     
-    if (timeframe not in freq_dict.keys()) and (not periods) and (not months):
-        raise KeyError("Did not recognise input '{}'. Should be one of: {}".format(timeframe,freq_dict.keys()))
+    if (timeframe not in list(freq_dict.keys())) and (not periods) and (not months):
+        raise KeyError("Did not recognise input '{}'. Should be one of: {}".format(timeframe,list(freq_dict.keys())))
     elif periods and not timeframe:
         if periods == 1:
             timeframe="yearly"
@@ -1470,7 +1475,7 @@ def _define_time(year,timeframe=None,periods=None,months=[]):
     elif months and timeframe:
         start_datetime = ["{}-{:02}-01".format(year,int(month)) for month in months]
         end_datetime = ["{}-{:02}-01".format(year,int(month)+1) if month != 12 else "{}-{:02}-01".format(year+1,1) for month in months]
-        for i,start,end in zip(range(len(start_datetime)),start_datetime,end_datetime):
+        for i,start,end in zip(list(range(len(start_datetime))),start_datetime,end_datetime):
             if i == 0:   
                 datetimeindex = pd.DatetimeIndex(start=start,end=end,freq=freq_dict[timeframe],closed="left")
             else:
@@ -1594,13 +1599,13 @@ def database_options(print_options=False):
     db_climatology = ["natural","soilsink","Scarpelli"]
 
     if print_options:
-        for db,fn in db_functions.items():
+        for db,fn in list(db_functions.items()):
             if not isinstance(fn,dict):
                 print('"{}"'.format(db))
                 print("    - {}() function".format(fn.__name__))
             else:
                 print('"{}"  (uses one of multiple functions depending on inputs)'.format(db))
-                for identifier,option in fn.items():
+                for identifier,option in list(fn.items()):
                     print("   - {}() function ({} data)".format(option.__name__,identifier))
         #return None
     
@@ -1703,7 +1708,7 @@ def create_emissions(databases,species,domain,year=None,lon_out=[],lat_out=[],
     db_functions,db_species,db_timeframes,db_sector,db_climatology = database_options()
     
     EDGAR_options = ["EDGAR_yearly","EDGAR_sector_yearly","EDGAR_sector_monthly"]
-    timeframe_options = {"monthly":12,"daily":365,"3hourly":365*24/3}
+    timeframe_options = {"monthly":12,"daily":365,"3hourly":old_div(365*24,3)}
     
     #if "EDGAR" in databases and "GFED" in databases and "sectors" not in kwargs:
     #    raise Exception("Cannot combine EDGAR and GFED ")
@@ -1773,7 +1778,7 @@ def create_emissions(databases,species,domain,year=None,lon_out=[],lat_out=[],
    
     # Checks species can be resolved for all databases in list.
     for database in databases:
-        if database in db_species.keys():
+        if database in list(db_species.keys()):
             if species.upper() not in db_species[database]:
                 raise Exception("Cannot create emissions map including '{}' database for species {}".format(database,species))
     
@@ -1829,7 +1834,7 @@ def create_emissions(databases,species,domain,year=None,lon_out=[],lat_out=[],
         
         print("--------------------------------")
         print("Calling function: {}(...)".format(fn.__name__))
-        print("Calling with inputs: {} (not specified {}, using defaults)\n".format(param.keys(),[k for k in all_param if k not in param]))
+        print("Calling with inputs: {} (not specified {}, using defaults)\n".format(list(param.keys()),[k for k in all_param if k not in param]))
         
         narr = fn(**param)
         if len(narr.shape) == 2:

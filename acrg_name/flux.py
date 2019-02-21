@@ -6,6 +6,9 @@ Created on Thu Nov 26 18:13:48 2015
 """
 from __future__ import print_function
 
+from builtins import input
+from builtins import str
+from builtins import object
 import numpy as np
 import datetime as dt
 import os
@@ -146,7 +149,7 @@ def write(lat, lon, time, flux, species, domain,
         ncname = os.path.join(output_directory, '%s/%s_%s_%s.nc' %(domain, file_source, domain, year))
 
     if os.path.isfile(ncname) == True:
-        answer = raw_input("You are about to overwrite an existing file, do you want to continue? Y/N ")
+        answer = input("You are about to overwrite an existing file, do you want to continue? Y/N ")
         if answer == 'N':
             sys.exit()
         elif answer == 'Y':
@@ -168,7 +171,7 @@ def write(lat, lon, time, flux, species, domain,
     glob_attrs = c.OrderedDict([("title",title),
                                 ("author" , getpass.getuser()),
                                 ("date_created" , np.str(dt.datetime.today())),
-                                ("number_of_prior_files_used" , len(prior_info_dict.keys()))])
+                                ("number_of_prior_files_used" , len(list(prior_info_dict.keys())))])
 
     for i, key in enumerate(prior_info_dict.keys()):
         prior_number = i+1
@@ -205,7 +208,7 @@ def write(lat, lon, time, flux, species, domain,
     flux_ds.to_netcdf(ncname, mode='w')    
 
 
-class EDGARread:
+class EDGARread(object):
     def __init__(self, filename_of_EDGAR_emissions):
 
         f = nc.Dataset(filename_of_EDGAR_emissions, 'r')
@@ -217,7 +220,7 @@ class EDGARread:
         #Get flux of species
 #        variables = f.variables.keys()
 #        species = str(variables[2])
-        variables = [str(i) for i in f.variables.keys()]
+        variables = [str(i) for i in list(f.variables.keys())]
         for i in variables:
             while i not in ['lat','lon','time']:
                 species = i
