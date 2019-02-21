@@ -39,7 +39,7 @@ acrg_config.generate_param_dict() function for more details.
 from __future__ import print_function
 
 import os
-import acrg_agage as agage
+import acrg_obs
 import numpy as np
 import acrg_config.config as config
 from collections import OrderedDict
@@ -274,8 +274,8 @@ def add_defaults(param,section_group=None):
     if section_group is None or section_group == "MEASUREMENTS":
         if ("network" not in list(param.keys())) or (not param["network"]):
             site1 = param['sites'][0]
-            param["network"] = agage.site_info[site1]["network"]
-            print('Extracting network for first site from json file')
+            param["network"] = acrg_obs.read.site_info[site1]["network"]
+            print 'Extracting network for first site from json file'
     
     if section_group is None or section_group == "MCMC":
         if ("unique_copy" not in list(param.keys())) or (param["unique_copy"] == None):
