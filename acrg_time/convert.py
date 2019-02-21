@@ -23,6 +23,7 @@ Created on Fri Nov 21 10:48:30 2014
 @author: chxmr
 """
 from __future__ import division
+from builtins import str
 
 from past.utils import old_div
 import datetime as dt
@@ -56,7 +57,8 @@ def reftime(time_reference):
     
     #If reference time is a string, assume it's in CF convention 
     # and convert to datetime
-    if type(time_reference[0]) is str or type(time_reference[0]) is str:
+    #if type(time_reference[0]) is str or type(time_reference[0]) is str:
+    if isinstance(time_reference[0],str):
         time_ref=dateutil.parser.parse(time_reference[0])
     else:
         time_ref=time_reference[0]

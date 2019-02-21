@@ -51,7 +51,7 @@ import xarray as xray
 import shutil
 from scipy.interpolate import interp1d
 import copy
-import dirsync
+import dirsync 
 import matplotlib.pyplot as plt
 import getpass
 import traceback
