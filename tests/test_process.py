@@ -27,6 +27,8 @@ Alternativey to run without these tests (i.e. to not rely on deprecated folder c
 """
 from __future__ import print_function
 
+from builtins import zip
+from builtins import str
 import pytest
 import os
 import glob
@@ -297,7 +299,7 @@ def test_define_grid_satellite_byday(read_fields_file_satellite_byday,satellite_
     assert out
 
     ### TODO: ADD MORE STRINGENT TEST
-   
+
 def test_define_grid_satellite_bypoint(read_fields_file_satellite_bypoint,satellite_param):
     '''
     Test that grid can be defined correctly when extracted from a NAME run over satellite data with separate 
@@ -1038,7 +1040,7 @@ def fc_param_org_satellite_bypoint(fc_param_satellite_bypoint,read_met_separate_
     passing to function **
     '''
     param = fc_param_satellite_bypoint.copy()
-    if "upper_level" in param.keys():
+    if "upper_level" in list(param.keys()):
         param.pop("upper_level")
     param["met"] = read_met_separate_satellite_bypoint # Re-define based on orginal script expected input.
     
@@ -1271,7 +1273,7 @@ def process_satellite_org_bypoint_param(satellite_param,folder_names,satellite_b
     '''    
     param = process_param(satellite_param,folder_names,satellite=True)
     param["base_dir"] = satellite_bypoint_directory
-    if "upper_level" in param.keys():
+    if "upper_level" in list(param.keys()):
         param.pop("upper_level")
     
     return param
