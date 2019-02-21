@@ -42,7 +42,15 @@ import acrg_name.basis_functions
 acrg_name.basis_functions.fields_file_path = join(acrg_path, 'tests/files/NAME/fp/')
 acrg_name.basis_functions.basis_dir = join(acrg_path, 'tests/files/output/')
 acrg_name.basis_functions.bc_basis_dir = join(acrg_path,'tests/files/output/')
-
+if not os.path.exists(acrg_name.basis_functions.basis_dir):
+    os.makedirs(acrg_name.basis_functions.basis_dir)
+output_folder_to_create = join(acrg_name.basis_functions.basis_dir, 'EUROPE/')
+if not os.path.exists(output_folder_to_create):
+    os.makedirs(output_folder_to_create)
+output_folder_to_create = join(acrg_name.basis_functions.bc_basis_dir, 'EUROPE/')
+if not os.path.exists(output_folder_to_create):
+    os.makedirs(output_folder_to_create)
+        
 import acrg_name.name
 acrg_name.name.data_path = join(acrg_path, 'tests/files/')
 
