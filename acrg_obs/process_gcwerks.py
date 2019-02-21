@@ -6,6 +6,8 @@ Created on Fri Oct 16 14:08:07 2015
 """
 from __future__ import print_function
 
+from builtins import zip
+from builtins import range
 import numpy as np
 import pandas as pd
 from os.path import join, split
@@ -280,7 +282,7 @@ def gc_data_read(dotC_file, scale = {}, units = {}):
         # sampling time
         time.append(dt(df.yyyy[i], df.mm[i], df.dd[i], df.hh[i], df.mi[i]))
         # Read analysis time
-        if "ryyy" in df.keys():
+        if "ryyy" in list(df.keys()):
             time_analysis.append(dt(df.ryyy[i], df.rm[i], df.rd[i], df.rh[i], df.ri[i]))
         
     df.index = time
@@ -308,12 +310,12 @@ def gc_data_read(dotC_file, scale = {}, units = {}):
                 else:
                     area_height_flag.append(1)  # Height
 
-            df = df.rename(columns = {key: df.keys()[i-1] + "_flag"})
-            df[df.keys()[i-1] + " status_flag"] = quality_flag
-            df[df.keys()[i-1] + " integration_flag"] = area_height_flag
-            scale[df.keys()[i-1]] = header[i-1][0]
-            units[df.keys()[i-1]] = header[i-1][1]
-            species.append(df.keys()[i-1])
+            df = df.rename(columns = {key: list(df.keys())[i-1] + "_flag"})
+            df[list(df.keys())[i-1] + " status_flag"] = quality_flag
+            df[list(df.keys())[i-1] + " integration_flag"] = area_height_flag
+            scale[list(df.keys())[i-1]] = header[i-1][0]
+            units[list(df.keys())[i-1]] = header[i-1][1]
+            species.append(list(df.keys())[i-1])
 
     return df, species, units, scale
 
@@ -432,7 +434,7 @@ def gc(site, instrument, network,
     ds = xray.Dataset.from_dataframe(dfs)
 
     # Get species from scale dictionary
-    species = scale.keys()
+    species = list(scale.keys())
 
     inlets = params["GC"][site]["inlets"]
 
@@ -495,7 +497,7 @@ def gc(site, instrument, network,
                                                               "Inlet"]]
 
                 # re-label inlet if required
-                if "inlet_label" in params["GC"][site].keys():
+                if "inlet_label" in list(params["GC"][site].keys()):
                     inlet_label = params["GC"][site]["inlet_label"][inleti]
                 else:
                    inlet_label = inlet

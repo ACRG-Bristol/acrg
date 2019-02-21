@@ -155,7 +155,7 @@ def test_file_list():
     assert isinstance(fnames, list)
     checkFilenames(fnames)
     
-def test_process_utils_attributes():
+def test_process_utils_attributes():    
     '''
     Test the acrg_obs.utils.attributes function
     
@@ -176,8 +176,8 @@ def test_process_utils_attributes():
                                    sampling_period = 60,
                                    date_range = ["2000-01-01", "2000-01-10"])
 
-    assert "cfc113" in out.keys()
-    assert "time" in out.keys()
+    assert "cfc113" in out.variables
+    assert "time" in out.variables
     assert out.time.attrs["sampling_period_seconds"] == 60
     assert "seconds since" in out.time.encoding["units"]
     assert out.attrs["Calibration_scale"] == "TEST"
@@ -224,7 +224,7 @@ def test_obs_process_gc():
     shutil.rmtree(os.path.join(gc_files_directory, "CGO"))
     
 def test_obs_process_crds():
-    
+
     gc_files_directory = os.path.join(test_dir,
                                       "files/obs/CRDS")
     

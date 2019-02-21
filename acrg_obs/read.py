@@ -28,7 +28,13 @@ Calculate Cape Grim monthly means, with baseline filtering:
 Created on Sat Dec 27 17:17:01 2014
 @author: chxmr
 """
+from __future__ import print_function
+from __future__ import division
 
+from builtins import zip
+from builtins import str
+from builtins import range
+from past.utils import old_div
 import numpy as np
 import pandas as pd
 import glob
@@ -95,7 +101,7 @@ def synonyms(search_string, info, alternative_label = "alt"):
         corrected string
     '''
     
-    keys=info.keys()
+    keys=list(info.keys())
     
     #First test whether site matches keys (case insensitive)
     out_strings = \
@@ -137,7 +143,7 @@ def listsearch(possible_strings, correct_string,
     
     correct_key = None
     #find correct_string
-    for k in further_info.keys():
+    for k in list(further_info.keys()):
         if k.upper() == correct_string.upper():
             correct_key = k
             break
@@ -197,7 +203,7 @@ def quadratic_sum(x):
             
     """
     if len(x) > 0:
-        return np.sqrt(np.sum(x**2))/len(x)
+        return old_div(np.sqrt(np.sum(x**2)),len(x))
     else:
         return np.nan
   
@@ -280,7 +286,7 @@ def file_list(site, species, network,
             return data_directory, None
     
     # Test if species is in folder
-    file_species = [re.split("-|\.", f[-1])[0] for f in file_info]
+    file_species = [re.split(r"-|\.", f[-1])[0] for f in file_info]
     file_species_string = listsearch(file_species, species, species_info)
     if file_species_string is None:
         print("Can't find files for %s in %s" %(species, data_directory) )
@@ -318,7 +324,7 @@ def file_list(site, species, network,
         # If all inlets are selected, do nothing
         if inlet != "all":
         
-            file_inlet = [re.split("-|\.", f[-1])[1] for f in file_info]
+            file_inlet = [re.split(r"-|\.", f[-1])[1] for f in file_info]
             
             # If no inlet specified, pick first element in parameters height list
             if inlet is None:
@@ -355,7 +361,7 @@ def file_list(site, species, network,
         fnames = fnames_out[:]
 
     else:
-        file_version = [re.split("-|\.", f[-1])[-2] for f in file_info]
+        file_version = [re.split(r"-|\.", f[-1])[-2] for f in file_info]
         file_version_string = version
         # Subset of matching files
         fnames = [f for (v, f) in zip(file_version, fnames) if v == file_version_string]
@@ -427,7 +433,7 @@ def get_single_site(site, species_in,
     '''
     
     # Check that site is in acrg_site_info.json
-    if site not in site_info.keys():
+    if site not in list(site_info.keys()):
         print("No site called %s." % site)
         print("Either try a different name, or add name to acrg_site_info.json.")
         return
@@ -442,10 +448,10 @@ def get_single_site(site, species_in,
     
     # If no network specified, pick the first network in site_info dictionary
     if network is None:
-        network = site_info[site].keys()[0]
+        network = list(site_info[site].keys())[0]
         print("... assuming network is %s" %network)
-    elif network not in site_info[site].keys():
-        print("Error: Available networks for site %s are %s." % (site, site_info[site].keys()))
+    elif network not in list(site_info[site].keys()):
+        print("Error: Available networks for site %s are %s." % (site, list(site_info[site].keys())))
         print("       You'll need to add network %s to acrg_site_info.json" %network)
         return
         
@@ -483,11 +489,14 @@ def get_single_site(site, species_in,
                 continue
 
             # Record calibration scales
-            if "Calibration_scale" in ds.attrs.keys():
+            if "Calibration_scale" in list(ds.attrs.keys()):
                 cal.append(ds.attrs["Calibration_scale"])            
             
             # Look for a valid species name
-            ncvarname = listsearch(ds.keys(), species, species_info)
+            #ncvarname = listsearch([*ds.variables],
+            ncvarname = listsearch(list(ds.variables.keys()),
+                                    species,
+                                   species_info)
             
             if ncvarname is None:
                 print("Can't find mole fraction variable name '" + species + 
@@ -509,20 +518,20 @@ def get_single_site(site, species_in,
                 raise ValueError(errorMessage)
             
             #Get repeatability
-            if ncvarname + " repeatability" in ds.keys():
+            if ncvarname + " repeatability" in ds.variables:
                 file_dmf=ds[ncvarname + " repeatability"].values
                 if len(file_dmf) > 0:
                     df["dmf"] = file_dmf[:]
     
             #Get variability
-            if ncvarname + " variability" in ds.keys():
+            if ncvarname + " variability" in ds.variables:
                 file_vmf=ds[ncvarname + " variability"]
                 if len(file_vmf) > 0:
                     df["vmf"] = file_vmf[:]
             
             # If ship read lat and lon data
             # Check if site info has a keyword called platform
-            if 'platform' in site_info[site].keys():
+            if 'platform' in list(site_info[site].keys()):
                 if site_info[site][network]["platform"] == 'ship':
                     file_lat=ds["latitude"].values
                     if len(file_lat) > 0:                                
@@ -535,13 +544,13 @@ def get_single_site(site, species_in,
                 #If platform is aircraft, get altitude data
                 #TODO: Doesn't seem to pull through aircraft lat/lon!
                 if site_info[site]["platform"] == 'aircraft':
-                    if "alt" in ds.keys():
+                    if "alt" in list(ds.keys()):
                         file_alt=ds["alt"].values
                         if len(file_alt) > 0:
                             df["altitude"] = file_alt
                     
             #Get status flag
-            if ncvarname + " status_flag" in ds.keys():
+            if ncvarname + " status_flag" in ds.variables:
                 file_flag=ds[ncvarname + " status_flag"].values
                 if len(file_flag) > 0:
                     df["status_flag"] = file_flag                
@@ -670,13 +679,13 @@ def get_gosat(site, species, max_level,
     
     data = xr.concat(data, dim = "time")
 
-    lower_levels =  range(0,max_level)
+    lower_levels =  list(range(0,max_level))
 
     prior_factor = (data.pressure_weights[dict(lev=list(lower_levels))]* \
                     (1.-data.xch4_averaging_kernel[dict(lev=list(lower_levels))])* \
                     data.ch4_profile_apriori[dict(lev=list(lower_levels))]).sum(dim = "lev")
                     
-    upper_levels = range(max_level, len(data.lev.values))            
+    upper_levels = list(range(max_level, len(data.lev.values)))            
     prior_upper_level_factor = (data.pressure_weights[dict(lev=list(upper_levels))]* \
                     data.ch4_profile_apriori[dict(lev=list(upper_levels))]).sum(dim = "lev")
                 
@@ -894,7 +903,7 @@ def plot(data_dict):
     
     plots = []
     
-    for site, df in data_dict.iteritems():
+    for site, df in data_dict.items():
         if site[0] != '.':
             if df is None:
                 plots.append(mpatches.Patch(label="%s (no data)" %site, color = "white"))

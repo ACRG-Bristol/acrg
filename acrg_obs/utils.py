@@ -5,7 +5,10 @@ Created on Thu Dec 13 17:31:42 2018
 
 @author: chxmr
 """
+from __future__ import print_function
 
+from builtins import str
+from builtins import zip
 import glob
 import os
 from os.path import join
@@ -102,9 +105,9 @@ def site_info_attributes(site):
                        "long_name": "station_long_name",
                        "height_station_masl": "station_height_masl"}
 
-    if site in site_params.keys():
-        for at in attributes_list.keys():
-            if at in site_params[site].keys():
+    if site in list(site_params.keys()):
+        for at in list(attributes_list.keys()):
+            if at in list(site_params[site].keys()):
                 attributes[attributes_list[at]] = site_params[site][at]
         return attributes
     else:
@@ -156,13 +159,13 @@ def attributes(ds, species, site,
     """
 
     # Rename all columns to lower case! Could this cause problems?
-    for key in ds.keys():
+    for key in ds.variables:
         ds.rename({key: key.lower()}, inplace = True)
 
     # Rename species, if required
-    for key in ds.keys():
+    for key in ds.variables:
         if species.lower() in key:
-            if species.upper() in species_translator.keys():
+            if species.upper() in list(species_translator.keys()):
                 # Rename based on species_translator, if available
                 species_out = species_translator[species.upper()][0]
             else:
@@ -176,7 +179,7 @@ def attributes(ds, species, site,
     try:
       species_out
     except NameError:
-      print("ERROR: Can't find species %s in column names %s" %(species, ds.keys()))
+      print("ERROR: Can't find species %s in column names %s" %(species, list(ds.keys())))
       
     # Global attributes
     #############################################
@@ -190,13 +193,13 @@ def attributes(ds, species, site,
     global_attributes["Processed by"] = "%s@bristol.ac.uk" % getpass.getuser()    
 
 
-    for key, values in global_attributes.iteritems():
+    for key, values in global_attributes.items():
         ds.attrs[key] = values
 
     # Add some site attributes
     global_attributes_site = site_info_attributes(site.upper())
     if global_attributes_site is not None:
-        for key, values in global_attributes_site.iteritems():
+        for key, values in global_attributes_site.items():
             ds.attrs[key] = values
 
     # Add calibration scale
@@ -214,14 +217,14 @@ def attributes(ds, species, site,
     # Long name
     if (species.upper()[0] == "D" and species.upper() != "DESFLURANE") or species.upper() == "APO":
         sp_long = species_translator[species.upper()][1]
-    elif species.upper() in species_translator.keys():
+    elif species.upper() in list(species_translator.keys()):
         sp_long = "mole_fraction_of_" + species_translator[species.upper()][1] + "_in_air"
     else:
         sp_long = "mole_fraction_of_" + species_out + "_in_air"
 
     ancillary_variables = ""
 
-    for key in ds.keys():
+    for key in ds.variables:
 
         if species_out in key:
 
@@ -236,13 +239,13 @@ def attributes(ds, species, site,
                 if units is None:
                     ds[key].attrs["units"] = unit_species[species.upper()]
                 else:
-                    if units in unit_interpret.keys():
+                    if units in list(unit_interpret.keys()):
                         ds[key].attrs["units"] = unit_interpret[units]
                     else:
                         ds[key].attrs["units"] = unit_interpret["else"]
 
                 # if units are non-standard, add explanation
-                if species.upper() in unit_species_long.keys():
+                if species.upper() in list(unit_species_long.keys()):
                     ds[key].attrs["units_description"] = unit_species_long[species.upper()]
 
             # Add to list of ancilliary variables                    
@@ -255,7 +258,7 @@ def attributes(ds, species, site,
     # Add quality flag attributes
     ##################################
 
-    flag_key = [key for key in ds.keys() if " status_flag" in key]
+    flag_key = [key for key in ds.variables if " status_flag" in key]
     if len(flag_key) > 0:
         flag_key = flag_key[0]
         ds[flag_key] = ds[flag_key].astype(int)
@@ -267,7 +270,7 @@ def attributes(ds, species, site,
     # Add integration flag attributes
     ##################################
 
-    flag_key = [key for key in ds.keys() if " integration_flag" in key]
+    flag_key = [key for key in ds.variables if " integration_flag" in key]
     if len(flag_key) > 0:
         flag_key = flag_key[0]
         ds[flag_key] = ds[flag_key].astype(int)

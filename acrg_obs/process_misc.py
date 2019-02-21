@@ -5,6 +5,7 @@ Created on Fri Dec 14 14:02:12 2018
 
 @author: chxmr
 """
+from __future__ import print_function
 
 import json
 import pandas as pd

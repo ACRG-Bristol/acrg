@@ -1,5 +1,6 @@
 *.pyc
 *.so
+*.bak
 tests/.cache/v/cache/lastfailed
 acrg_tdmcmc/param.ini
 acrg_satellite/gosat_process.ini
