@@ -21,7 +21,7 @@ from matplotlib import ticker
 import pandas as pd
 import bisect
 import subprocess
-#from progressbar import ProgressBar    -- Was not Python 3 compatible
+#from progressbar import ProgressBar
 import json
 from os.path import join
 import xarray as xr
