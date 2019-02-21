@@ -32,6 +32,7 @@ import os
 import glob
 import numpy as np
 import xarray as xray
+import pandas as pd
 
 import acrg_name.name as name
 import acrg_agage as agage
@@ -374,8 +375,13 @@ def data(measurement_param_small):
     input_param["end"] = measurement_param_small["end"]
     # Can't specify data directory
     
-    measurement_data = agage.get_obs(**input_param)
-    
+    #measurement_data = agage.get_obs(**input_param)
+    time = pd.date_range(input_param["start"], input_param["end"], freq='2H')
+    nt = len(time)
+    obsdf = pd.DataFrame({"mf":np.random.rand(nt)*1000.,"dmf":np.random.rand(nt), "status_flag":np.zeros(nt)}, index=time)
+    obsdf.index.name = 'time'
+    measurement_data = {'.species' : 'ch4', '.units' : 1e-9, 'MHD' : obsdf}    
+
     return measurement_data
 
 @pytest.fixture(scope="module")
@@ -390,9 +396,16 @@ def data_sat(measurement_param_sat):
     input_param["max_level"] = measurement_param_sat["max_level"]
     # Can't specify data directory
     
-    measurement_data_sat = agage.get_obs(**input_param)
+    #measurement_data_sat = agage.get_obs(**input_param)
+    time = pd.date_range(input_param["start"], input_param["end"], freq='0.5H')
+    nt = len(time)
+    obsdf = pd.DataFrame({"mf":np.random.rand(nt)*1000.,"dmf":10*np.random.rand(nt), "mf_prior_factor":10*np.random.rand(nt), "mf_prior_upper_level_factor":15*np.random.rand(nt)}, index=time)
+    obsdf.index.name = 'time'
+    obsdf.max_level = input_param["max_level"]
+    measurement_data_sat = {'.species' : input_param["species"], '.units' : 1e-9, input_param["sites"] : obsdf}  
     
     return measurement_data_sat
+
 
 @pytest.mark.basic
 def test_fp_data_merge(data,measurement_param_small,fp_directory,flux_directory,bc_directory):
@@ -465,23 +478,6 @@ def test_fp_data_merge_sat(data_sat,measurement_param_sat,fp_directory,flux_dire
         assert data_var in ds.data_vars
         
     return out
-
-@pytest.mark.badtest    
-def test_fp_data_merge_output_dimentions(data,measurement_param,fp_directory,flux_directory,bc_directory):
-    '''
-    Test the output of footprints_data_merge() when using site data.
-    Compares dimentions of input data and footprints to dimentions of output dictionary.
-    '''
-    site_ds = data(measurement_param)
-    
-    site_ds_dim = []
-    for site_index in range(len(measurement_param['sites'])):
-        site = measurement_param['sites'][site_index]
-        site_ds_dim.append(len(site_ds[site]))
-        return site_ds_dim
-    
-    fp_filenames = name.filenames(measurement_param)
-    site_fp = name.footprints(fp_directory)
     
 # TODO:
 #    Add more complete tests for footprints_data_merge function as it is important to check the output

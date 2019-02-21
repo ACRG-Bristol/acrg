@@ -982,7 +982,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
     if load_flux:
             
         flux_dict = {} 
-            
+        basestring = (str, bytes)    
         for source in list(emissions_name.keys()):
             #if type(emissions_name[source]) == str:
             if isinstance(emissions_name[source], basestring):
@@ -1158,11 +1158,11 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                 for i in range(int(np.max(site_bf.basis))):
                     wh_ri = np.where(base_v == i+1)
                     H[i,:]=np.sum(H_all_v[wh_ri[0],:], axis = 0)      
-                    
+                  
                 if source == all:
-                    region_name = list(range(1,np.max(site_bf.basis)+1))
+                    region_name = list(range(1,np.max(site_bf.basis.values)+1))
                 else:
-                    region_name = [source+'-'+str(reg) for reg in range(1,np.max(site_bf.basis)+1)]
+                    region_name = [source+'-'+str(reg) for reg in range(1,int(np.max(site_bf.basis.values)+1))]
 
                 sensitivity = xr.DataArray(H, 
                                              coords=[('region', region_name), 
