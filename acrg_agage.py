@@ -29,6 +29,7 @@ Created on Sat Dec 27 17:17:01 2014
 @author: chxmr
 """
 from __future__ import print_function
+from builtins import str
 
 import numpy as np
 import pandas as pd
@@ -423,7 +424,7 @@ def get(site_in, species_in, start = "1900-01-01", end = "2020-01-01",
                                             ncf.variables["time"].units[11:])
                 else: 
                     print("Time unit is not a recognized unit (seconds, minuties or days since")
-                            
+               
                 if max(time) < start_time:
                     skip = True
                 if min(time) > end_time:
