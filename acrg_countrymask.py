@@ -21,6 +21,8 @@ Function to use for creating the country file is:
 """
 from __future__ import print_function
 
+from builtins import zip
+from builtins import range
 import regionmask
 import iso3166
 import numpy as np
@@ -275,9 +277,10 @@ def region_mapping(upper=True):
     max_num = np.max(numbers)
     for i in range(max_num+1):
         if i not in numbers:
+            #for key,item in list(all_regions.items()):
             for key,item in all_regions.items():
                 if item == i:
-                    if isinstance(key,unicode) and len(key) > 1:
+                    if isinstance(key,str) and len(key) > 1:
                         name = country_name(key,supress_print=True)
                         if name:
                             numbers.append(i)
@@ -292,6 +295,7 @@ def region_mapping(upper=True):
     names = manage_country_descriptor(names)
     if upper:
         names = np.core.defchararray.upper(names)
+    #region_dict = {num:name for num,name in list(zip(numbers,names))}
     region_dict = {num:name for num,name in zip(numbers,names)}
 
     return region_dict
@@ -406,7 +410,7 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
     
     ds = mask.to_dataset(name="country")
 
-    countries = np.array(countries).astype(unicode)
+    countries = np.array(countries).astype(str)
     if reset_index:
         ds["name"] = xray.DataArray(countries,dims="ncountries")
     else:
