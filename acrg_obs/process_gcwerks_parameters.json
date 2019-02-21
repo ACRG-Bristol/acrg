@@ -1,9 +1,4 @@
 {
-    "global_attributes": {
-        "Processed by": "Matt Rigby, University of Bristol (matt.rigby@bristol.ac.uk)",
-        "Conditions of use": "Ensure that you contact the data owner at the outset of your project.",
-        "Source": "In situ measurements of air"
-    },
     "GC": {
         "instruments": {
             "GCMD": "",
@@ -17,16 +12,16 @@
         },
         "instruments_out": {
             "GCMD": {
-                "CH4": "GC-FID",
-                "CO": "GC-RGA",
-                "H2": "GC-RGA",
-                "else": "GC-ECD"
+                "CH4": "GCFID",
+                "CO": "GCRGA",
+                "H2": "GCRGA",
+                "else": "GCECD"
             },
             "GCMS": {
                 "else": "GCMS"
             },
             "medusa": {
-                "else": "GCMS-Medusa"
+                "else": "GCMSMedusa"
             }
         },
         "directory" : {
@@ -39,17 +34,12 @@
             "GCMS": 1200,
             "medusa": 1200
         },
-        "timestamp_correct_seconds": {
-            "GCMD": -85,
-            "GCMS": -1380,
-            "medusa": -2300
-        },
         "comment": {
             "GCMD": "Gas chromatograph measurements. Output from GCWerks.",
             "GCMS": "Gas chromatograph-mass spectrometer measurements. Output from GCWerks.",
             "medusa": "Medusa measurements. Output from GCWerks. See Miller et al. (2008)."
         },
-        "directory_output" : "/dagage2/agage/metoffice/processed_observations",
+        "directory_output" : "/data/shared/obs_2018",
         "BSD" : {
             "gcwerks_site_name": "bilsdale",
             "inlets": ["108m", "42m", "248m"],
@@ -60,8 +50,8 @@
         },
         "CGO" : {
             "gcwerks_site_name": "capegrim",
-            "inlets": ["any"],
-            "inlet_label": ["70m"],
+            "inlets": ["7?m*", "10m*"],
+            "inlet_label": ["70m", "10m"],
             "global_attributes": {
                 "data_owner": "Paul Krummel",
                 "data_owner_email": "paul.krummel@csiro.au"
@@ -138,8 +128,8 @@
         },
         "SDZ" : {
             "gcwerks_site_name": "shangdianzi",
-            "inlets": ["any"],
-            "inlet_label": ["10m"],
+            "inlets": ["date_20000101_20150101", "date_20150101_21000101"],
+            "inlet_label": ["10m", "80m"],
             "global_attributes": {
                 "data_owner": "Bo Yao",
                 "data_owner_email": "yaob@cams.cma.gov.cn"
@@ -200,7 +190,7 @@
     },
     "CRDS": {
         "directory" : "/dagage2/agage/%site-picarro/results-gcwerks/",
-        "directory_output" : "/dagage2/agage/metoffice/processed_observations",
+        "directory_output" : "/data/shared/obs_2018",
         "comment": "Cavity ring-down measurements. Output from GCWerks",
         "BSD" : {
             "gcwerks_site_name": "bilsdale",
@@ -247,7 +237,7 @@
     },
     "ICOS": {
         "directory" : "/dagage2/agage/%site-picarro/results-icos/",
-        "directory_output" : "/dagage2/agage/metoffice/processed_observations",
+        "directory_output" : "/data/shared/obs_2018",
         "MHD" : {
             "gcwerks_site_name": "macehead",
             "inlet_rename": {"15m": "10m"},
