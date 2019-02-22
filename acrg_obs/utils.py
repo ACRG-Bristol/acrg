@@ -160,10 +160,13 @@ def attributes(ds, species, site,
     """
 
     # Rename all columns to lower case! Could this cause problems?
+    rename_dict = {}
     for key in ds.variables:
-        ds.rename({key: key.lower()}, inplace = True)
+        rename_dict[key] = key.lower()
+    ds = ds.rename(rename_dict)
 
     # Rename species, if required
+    rename_dict = {}
     for key in ds.variables:
         if species.lower() in key:
             if species.upper() in list(species_translator.keys()):
@@ -173,8 +176,8 @@ def attributes(ds, species, site,
                 # Rename species to be lower case and without hyphens
                 species_out = species.lower().replace("-", "")
                 
-            rename_dict = {key: key.replace(species.lower(), species_out)}
-            ds.rename(rename_dict, inplace = True)
+            rename_dict[key] = key.replace(species.lower(), species_out)
+    ds = ds.rename(rename_dict)
             
     # Check if these was a variable with the species name in it
     try:

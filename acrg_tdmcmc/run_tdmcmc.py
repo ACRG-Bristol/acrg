@@ -25,8 +25,12 @@ uncertainties differently (emissions uncertainty > baseline uncertainty).
 @author: ml12574
 """
 from __future__ import print_function
+from __future__ import division
 #import tdmcmc_uncorr
 #import tdmcmc_evencorr
+from builtins import str
+from builtins import range
+from past.utils import old_div
 import acrg_name as name
 import numpy as np
 import acrg_obs
@@ -86,7 +90,7 @@ def get_nsigma_y(fp_data_H,start_date, end_date, sites,
     y_bl=np.zeros((nmeasure))
     
     nsigma=0
-    nsigma_max = np.int(np.ceil(ndays/np.float(bl_period)))
+    nsigma_max = np.int(np.ceil(old_div(ndays,np.float(bl_period))))
     ntime_stn=np.zeros((nsites))
     if levels is not None:
         ngroups=len(levels)-1
@@ -199,7 +203,7 @@ def add_local_ratio(fp_data_H,return_release=True):
             dict (xarray Datasets and identifiers) : fp_data_H with "local_ratio" data variable added
     '''
     
-    sites = [key for key in fp_data_H.keys() if key[0] != '.']
+    sites = [key for key in list(fp_data_H.keys()) if key[0] != '.']
     
     release_lons=np.zeros((len(sites)))
     release_lats=np.zeros((len(sites)))
@@ -217,9 +221,9 @@ def add_local_ratio(fp_data_H,return_release=True):
             wh_rlon = np.where(abs(fp_data_H[site].sub_lon.values-release_lon) < dlon/2.)
             wh_rlat = np.where(abs(fp_data_H[site].sub_lat.values-release_lat) < dlat/2.)
             if np.any(wh_rlon[0]) and np.any(wh_rlat[0]):
-                local_sum[ti] = np.sum(fp_data_H[site].sub_fp[
-                        wh_rlat[0][0]-2:wh_rlat[0][0]+3,wh_rlon[0][0]-2:wh_rlon[0][0]+3,ti].values)/np.sum(
-                        fp_data_H[site].fp[:,:,ti].values)  
+                local_sum[ti] = old_div(np.sum(fp_data_H[site].sub_fp[
+                        wh_rlat[0][0]-2:wh_rlat[0][0]+3,wh_rlon[0][0]-2:wh_rlon[0][0]+3,ti].values),np.sum(
+                        fp_data_H[site].fp[:,:,ti].values))  
             else:
                 local_sum[ti] = 0.0
             
@@ -253,7 +257,7 @@ def average_period(ds,av_period,dim="time"):
         xarray.Dataset: 
             original dataset averaged along the specified dimension
     '''
-    ds_av = ds.resample(av_period, dim = "time")
+    ds_av = ds.resample(indexer={'time':av_period}).mean()
     ds_av = ds_av.dropna(dim, how="all")
     
     return ds_av
@@ -280,7 +284,7 @@ def average_period_fp(fp_data_H,av_period_site,dim="time"):
             fp_data_H with datasets averaged along the specified dimension    
     '''
     
-    sites = [key for key in fp_data_H.keys() if key[0] != '.']
+    sites = [key for key in list(fp_data_H.keys()) if key[0] != '.']
 
     #fp_data_H_av = {}
     for si, site in enumerate(sites):
@@ -313,7 +317,7 @@ def reorder_dims(fp_data_H,first_dims=["time"]):
             fp_data_H with re-ordered dimensions
     '''
 
-    sites = [key for key in fp_data_H.keys() if key[0] != '.']
+    sites = [key for key in list(fp_data_H.keys()) if key[0] != '.']
     
     for site in sites:
         fp_data_H_site = fp_data_H[site]
@@ -439,7 +443,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     for si, site in enumerate(sites):
             
         fp_data_H3 = fp_data_H[site].dropna("time", how="all")  
-        attributes = [key for key in fp_data_H3.keys() if key[0] != '.']  
+        attributes = [key for key in list(fp_data_H3.keys()) if key[0] != '.']  
         y.append(fp_data_H3.mf.values)     
         y_site.append([site for i in range(len(fp_data_H3.coords['time']))])
         y_time.append(fp_data_H3.coords['time'].values)
@@ -625,7 +629,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
             
             for whi in wh_site:
                 tdelta = np.absolute(y_time[wh_site]-y_time[whi]).astype('timedelta64[m]')
-                deltatime_site=tdelta/np.timedelta64(1, 'h')
+                deltatime_site=old_div(tdelta,np.timedelta64(1, 'h'))
                 deltatime[whi,wh_site] = deltatime_site
 
         nsite_max=np.max(nmeasure_site)
@@ -689,7 +693,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     #%%
     # MCMC Parameters
     #########################################
-    nit_sub=nIt/nsub
+    nit_sub=old_div(nIt,nsub)
     k=np.zeros((nbeta),dtype=np.int)+k_ap
     
     x=np.zeros((kICmax,nbeta))
@@ -954,7 +958,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     
     fname=os.path.join(output_dir,
                         "output_" + network_w + "_" + species + "_" + start_date + ".nc")
-    for key in post_mcmc.keys():
+    for key in list(post_mcmc.keys()):
         post_mcmc[key].encoding['zlib'] = True
     post_mcmc.to_netcdf(path=fname, mode='w')
 
