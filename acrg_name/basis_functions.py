@@ -7,6 +7,10 @@ Created on Sat Jul 25 15:46:31 2015
 Creat basis functions for domain
 """
 from __future__ import print_function
+from __future__ import division
+
+from builtins import str
+from builtins import range
 
 import numpy as np
 import xarray as xray
@@ -79,7 +83,7 @@ def basis_blocks(domain, time, blocksize, basis_case=None):
     
     arr = basis_grid
     
-    x,y = cut_array2d(arr,(len(lat)/blocksize,len(lon)/blocksize))
+    x,y = cut_array2d(arr,(len(lat)//blocksize,len(lon)//blocksize))
     
     for ii in range(len(x)):
         basis_grid[x[ii][0]:x[ii][1],y[ii][0]:y[ii][1]]=ii+1
@@ -210,9 +214,9 @@ def basis_bc_blocks(domain, time, basis_case = "NESW", vertical=1):
     lat = fields_ds["lat"].values
     lon = fields_ds["lon"].values
     
-    regions = range(vertical*4)
+    regions = list(range(vertical*4))
 
-    heights = range(500,20500,1000)
+    heights = list(range(500,20500,1000))
     
     basis_grid_e = np.zeros((len(heights),len(lat),len(regions),1))
     basis_grid_w = np.zeros((len(heights),len(lat),len(regions),1))
@@ -274,8 +278,8 @@ def basis_bc_uniform(domain, time, basis_case = "uniform"):
     lat = fields_ds["lat"].values
     lon = fields_ds["lon"].values
     
-    regions = range(1)
-    heights = range(500,20500,1000)
+    regions = list(range(1))
+    heights = list(range(500,20500,1000))
     
     basis_grid_e = np.zeros((len(heights),len(lat),len(regions),1))
     basis_grid_w = np.zeros((len(heights),len(lat),len(regions),1))
@@ -346,7 +350,7 @@ def basis_bc_all_gradients(domain, time, species, units='ppb', basis_case='horiz
     lat = fields_ds["lat"].values
     lon = fields_ds["lon"].values
 
-    heights = range(500,20500,1000)
+    heights = list(range(500,20500,1000))
     
     bc_ds =  name.boundary_conditions(domain, species)
              
@@ -381,10 +385,10 @@ def basis_bc_all_gradients(domain, time, species, units='ppb', basis_case='horiz
     scale_all = np.concatenate((scale_n, scale_e, scale_s, scale_w), axis = 1)
     
     # find indices that correspond to each direction
-    ind[0] = range(len(lon)) #N
-    ind[1] = range(max(ind[0])+1,max(ind[0])+1 + len(lat)) #E
-    ind[2] = range(max(ind[1])+1,max(ind[1])+1 + len(lon)) #s
-    ind[3] = range(max(ind[2])+1,max(ind[2])+1 + len(lat)) #w
+    ind[0] = list(range(len(lon))) #N
+    ind[1] = list(range(max(ind[0])+1,max(ind[0])+1 + len(lat))) #E
+    ind[2] = list(range(max(ind[1])+1,max(ind[1])+1 + len(lon))) #s
+    ind[3] = list(range(max(ind[2])+1,max(ind[2])+1 + len(lat))) #w
     
     # create field of East-West gradient
     grad_e_w = np.zeros(np.shape(vmr_n))
@@ -415,7 +419,7 @@ def basis_bc_all_gradients(domain, time, species, units='ppb', basis_case='horiz
     stratgradient =  np.zeros(np.shape(vmr_all)) 
     
     for ii in range(2*(len(lat)+len(lon))):
-        stratgradient[tropopause[ii]:,ii] = -20*np.array(range(len(heights)-tropopause[ii]))      
+        stratgradient[tropopause[ii]:,ii] = -20*np.array(list(range(len(heights)-tropopause[ii])))      
         
     pcs = []
     pcs.append(scale_all)
@@ -427,7 +431,7 @@ def basis_bc_all_gradients(domain, time, species, units='ppb', basis_case='horiz
                 
         
     numpcs = len(pcs)
-    regions = range(numpcs*4)
+    regions = list(range(numpcs*4))
     
     basis_grid_n = np.zeros((len(heights),len(lon),len(regions)))
     basis_grid_e = np.zeros((len(heights),len(lat),len(regions)))
@@ -515,7 +519,7 @@ def basis_bc_horiz_gradients(domain, time, basis_case='horiz-grad'):
     lat = fields_ds["lat"].values
     lon = fields_ds["lon"].values
 
-    heights = range(500,20500,1000)
+    heights = list(range(500,20500,1000))
     
     # add component that will scale entire field up and down by some amount
     
@@ -527,10 +531,10 @@ def basis_bc_horiz_gradients(domain, time, basis_case='horiz-grad'):
     
     # find indices that correspond to each direction
     ind = [None]*4
-    ind[0] = range(len(lon)) #N
-    ind[1] = range(max(ind[0])+1,max(ind[0])+1 + len(lat)) #E
-    ind[2] = range(max(ind[1])+1,max(ind[1])+1 + len(lon)) #s
-    ind[3] = range(max(ind[2])+1,max(ind[2])+1 + len(lat)) #w
+    ind[0] = list(range(len(lon))) #N
+    ind[1] = list(range(max(ind[0])+1,max(ind[0])+1 + len(lat))) #E
+    ind[2] = list(range(max(ind[1])+1,max(ind[1])+1 + len(lon))) #s
+    ind[3] = list(range(max(ind[2])+1,max(ind[2])+1 + len(lat))) #w
     
     # create field of East-West gradient
     grad_e_w = np.zeros((len(heights), len(lon)))
@@ -559,7 +563,7 @@ def basis_bc_horiz_gradients(domain, time, basis_case='horiz-grad'):
  
 
     numpcs = len(pcs)
-    regions = range(numpcs*4)
+    regions = list(range(numpcs*4))
     
     basis_grid_n = np.zeros((len(heights),len(lon),len(regions)))
     basis_grid_e = np.zeros((len(heights),len(lat),len(regions)))
@@ -655,8 +659,8 @@ def basis_bc_pca(domain, time, species, units='ppb', basis_case='pca', numregion
     lat = fields_ds["lat"].values
     lon = fields_ds["lon"].values
     
-    regions = range(numregions)
-    heights = range(500,20500,1000)
+    regions = list(range(numregions))
+    heights = list(range(500,20500,1000))
     
     basis_grid_n = np.zeros((len(heights),len(lon),numregions))
     basis_grid_e = np.zeros((len(heights),len(lat),numregions))
@@ -687,10 +691,10 @@ def basis_bc_pca(domain, time, species, units='ppb', basis_case='pca', numregion
     
     ind = [None]*4
     vmr_all = np.concatenate((vmr_n, vmr_e_fl, vmr_s_fl, vmr_w), axis = 1)
-    ind[0] = range(len(lon))
-    ind[1] = range(max(ind[0])+1,max(ind[0])+1 + len(lat))
-    ind[2] = range(max(ind[1])+1,max(ind[1])+1 + len(lon))
-    ind[3] = range(max(ind[2])+1,max(ind[2])+1 + len(lat))
+    ind[0] = list(range(len(lon)))
+    ind[1] = list(range(max(ind[0])+1,max(ind[0])+1 + len(lat)))
+    ind[2] = list(range(max(ind[1])+1,max(ind[1])+1 + len(lon)))
+    ind[3] = list(range(max(ind[2])+1,max(ind[2])+1 + len(lat)))
     
     pca = np.linalg.svd(vmr_all)
     
