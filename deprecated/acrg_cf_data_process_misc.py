@@ -8,6 +8,10 @@ Created on Thu Jan 14 10:47:45 2016
 """
 from __future__ import print_function
 
+from builtins import zip
+from builtins import map
+from builtins import str
+from builtins import range
 import numpy as np
 import pandas as pd
 from os.path import join, split
@@ -141,8 +145,8 @@ def ucam(site, species):
                        ucam_site + "_pic_SD": species.upper() + "_repeatability"}
 
     rename_dict = {}
-    for key in rename_dict_all.keys():
-        if key in df.keys():
+    for key in list(rename_dict_all.keys()):
+        if key in list(df.keys()):
             rename_dict[key] = rename_dict_all[key]
                    
     df.rename(columns = rename_dict,
@@ -311,7 +315,7 @@ def ec(site):
     def ec_correct_time(df):
         time = []
         for t in df.index:
-            year, month, day, hour, minute = map(int, re.split(" |:|-", t))
+            year, month, day, hour, minute = list(map(int, re.split(" |:|-", t)))
             if hour == 24:
                 hour = 0
                 if day == calendar.monthrange(year, month)[1]:
@@ -834,7 +838,7 @@ def gla(species):
     for fname in fnames:
         with xray.open_dataset(fname) as f:
             dsf = f.load()
-        if species.lower() in dsf.variables.keys():
+        if species.lower() in list(dsf.variables.keys()):
             dsf.rename({species.lower(): species.upper()}, inplace = True)
         dsf.rename({"uncertainty": species.upper() + "_variability"}, inplace = True)
         ds.append(dsf)
@@ -899,7 +903,7 @@ def wdcgg_read(fname, species,
     if repeatability_column:
         output_columns[repeatability_column] = species.lower() + "_repeatability"
     
-    df = df[output_columns.keys()]
+    df = df[list(output_columns.keys())]
 
     df.rename(columns = output_columns, inplace = True)
 
@@ -1273,7 +1277,7 @@ def uw_13ch4():
              "BRW": "PB",
              "SMO": "SM"}
     
-    for site in sites.keys():
+    for site in list(sites.keys()):
         
         fname = glob.glob("/data/shared/obs_raw/UW/" + sites[site] + "Extract.prn.txt")[0]
 
@@ -1340,7 +1344,7 @@ def uhei_13ch4():
     sites = {"ALT": "/data/shared/obs_raw/UHei/d13Cdata_Alert.txt",
              "IZA": "/data/shared/obs_raw/UHei/d13Cdata_Izana.txt"}
 
-    for site, fname in sites.iteritems():
+    for site, fname in sites.items():
         with open(fname, "r") as f:
             lines = f.readlines()
 
@@ -1686,7 +1690,7 @@ def obspack_co2(site, height, obspack_name):
         if ds.value.units == "mol mol-1":
             print(ds.value.values[0], float(unit_species[species.upper()]))
             values = ds.value.values/float(unit_species[species.upper()])
-            if 'value_unc' in ds.keys(): 
+            if 'value_unc' in list(ds.keys()): 
                 unc_values = ds.value_unc.values/float(unit_species[species.upper()])
             else:
                 print("Can't find data error in file. Using data*0.001 as error")
@@ -1695,14 +1699,14 @@ def obspack_co2(site, height, obspack_name):
         else:
             print("You need to create a unit conversion for the input units")
         
-        if 'dataset_intake_ht' in ds.attrs.keys():
+        if 'dataset_intake_ht' in list(ds.attrs.keys()):
             intake_ht = ds.dataset_intake_ht
-        elif 'intake_height' in ds.keys():
+        elif 'intake_height' in list(ds.keys()):
             intake_ht = str(ds.intake_height.values[0])
             
-        if 'dataset_intake_ht_unit' in ds.attrs.keys():
+        if 'dataset_intake_ht_unit' in list(ds.attrs.keys()):
             intake_ht_unit = ds.dataset_intake_ht_unit
-        elif 'intake_height' in ds.keys():
+        elif 'intake_height' in list(ds.keys()):
             intake_ht_unit = ds.intake_height.units
         
         
@@ -1891,7 +1895,7 @@ def sogeA():
     ds = xray.Dataset.from_dataframe(dfs)
 
     # Get species from scale dictionary
-    species = scale.keys()
+    species = list(scale.keys())
 
     inlets = params["GC"][site]["inlets"]
 
