@@ -444,4 +444,9 @@ def cleanup(site,
                 zipf.write(f, os.path.basename(f))
                 os.remove(f)
             zipf.close()
+            
+def cleanup_all():
+    site_list = [site_dir for site_dir in os.listdir(obs_directory) if os.path.isdir(os.path.join(obs_directory,site_dir))]
+    for site in site_list:
+        cleanup(site)
         
