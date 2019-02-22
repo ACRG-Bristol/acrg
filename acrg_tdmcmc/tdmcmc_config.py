@@ -274,7 +274,7 @@ def add_defaults(param,section_group=None):
     if section_group is None or section_group == "MEASUREMENTS":
         if ("network" not in list(param.keys())) or (not param["network"]):
             site1 = param['sites'][0]
-            param["network"] = acrg_obs.read.site_info[site1].keys()[0] # Use first network by default?
+            param["network"] = list(acrg_obs.read.site_info[site1].keys())[0] # Use first network by default?
             #param["network"] = acrg_obs.read.site_info[site1]["network"]
             print('Extracting network for first site from json file')
     

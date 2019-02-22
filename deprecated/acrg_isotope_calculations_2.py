@@ -4,7 +4,9 @@ Created on Mon Jul 27 14:32:15 2015
 
 @author: aw12579
 """
+from __future__ import division
 
+from past.utils import old_div
 import pandas as pd
 import glob
 import matplotlib.pyplot as plt   
@@ -69,16 +71,16 @@ def caclulateRH(site,start,end,permil):
     
 def C14_molpermol_to_bigdelta(molpermol_C14,molpermol_C12=0.0004, delta_C13=-8.8):
     Rref=0.000000000001176
-    Delta14=((molpermol_C14/molpermol_C12)*(1-2*(25+delta_C13)/1000)/Rref-1.0)*1000.0
+    Delta14=(old_div((old_div(molpermol_C14,molpermol_C12))*(1-old_div(2*(25+delta_C13),1000)),Rref)-1.0)*1000.0
     return Delta14
     
 def C14_bigdelta_to_molpermol(Delta_C14,molpermol_C12=0.0004, delta_C13=-8.8):
     Rref=0.000000000001176     
-    molpermol_C14=(Delta_C14/1000.0+1.0)*Rref/(1.0-(2.0*(25.0+delta_C13))/1000.0)*molpermol_C12 
+    molpermol_C14=old_div((Delta_C14/1000.0+1.0)*Rref,(1.0-(2.0*(25.0+delta_C13))/1000.0)*molpermol_C12) 
     return molpermol_C14
     
 def C13_molpermol_to_smalldelta(molpermol_C13,molpermol_C12=0.0004):
-    delta13= (molpermol_C13/(molpermol_C12)/0.0112372-1.0)*1000.0
+    delta13= (old_div(molpermol_C13,(molpermol_C12)/0.0112372)-1.0)*1000.0
     return delta13
     
 def C13_smalldelta_to_molpermol(delta_C13,molpermol_C12=0.0004):

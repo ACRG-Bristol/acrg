@@ -73,6 +73,7 @@ MLR: Added distancelist. Given a list of lon/lat pairs, outputs a list of
 
 """
  
+from builtins import object
 import math
 import numpy as np
 from numba import jit
@@ -124,7 +125,7 @@ def fn_multipledistances(origin, lat, lon, distances, index):
     return distances
     
     
-class multipledistances:
+class multipledistances(object):
     def __init__(self, origin, lat, lon, \
         radius=radius):
           
@@ -147,8 +148,8 @@ class multipledistances:
         # Extract the lat and lon that correspond to the minimum distance
         min_index = np.where(distances == mindist)
         
-        lat_index = min_index[0] -((min_index[0]/len(lat))*len(lat)) 
-        lon_index = (min_index[0]/len(lat))
+        lat_index = min_index[0] -((min_index[0]//len(lat))*len(lat)) 
+        lon_index = (min_index[0]//len(lat))
         
         mindist_index=[lat_index, lon_index]        
         

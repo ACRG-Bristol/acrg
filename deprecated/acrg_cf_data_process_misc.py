@@ -1344,7 +1344,7 @@ def uhei_13ch4():
     sites = {"ALT": "/data/shared/obs_raw/UHei/d13Cdata_Alert.txt",
              "IZA": "/data/shared/obs_raw/UHei/d13Cdata_Izana.txt"}
 
-    for site, fname in sites.items():
+    for site, fname in list(sites.items()):
         with open(fname, "r") as f:
             lines = f.readlines()
 
