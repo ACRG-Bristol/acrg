@@ -10,3 +10,5 @@ tests/files/output/*
 *.ipynb_checkpoints*
 *~
 .cache
+.cache*
+.pytest*
