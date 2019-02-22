@@ -22,6 +22,10 @@ To download new CAMS data you will have to:
 
 """
 from __future__ import print_function
+from __future__ import division
+from builtins import str
+from builtins import range
+from past.utils import old_div
 import xarray as xr
 import numpy as np
 import os
@@ -174,7 +178,7 @@ def write_CAMS_BC_tonetcdf(vmr_n, vmr_e, vmr_s, vmr_w, st_date, species, domain,
     BC_edges.attrs['date_created'] = np.str(dt.today())
     
     if os.path.isdir(outdir+"/NAME/bc/%s/" % domain) == False:
-        os.mkdir(outdir+"/NAME/bc/%s/" % domain)
+        os.makedirs(outdir+"/NAME/bc/%s/" % domain)
     
     BC_edges.to_netcdf(path = outdir+"/NAME/bc/%s/%s_%s_%s.nc"
                        %(domain,species.lower(),domain,dt.strptime(st_date, '%Y-%m-%d').strftime('%Y%m')), mode = 'w')
@@ -263,7 +267,7 @@ def makeCAMS_BC(domain, species, st_date, end_date, gridsize, outdir=None):
     ds['z'] = ds.z/9.80665   #Convert to height (N.B. this is geopotential height!)
     if species == 'ch4':
         ds = ds.rename({species+'_c' :  species})   #ECMWF seemed to change their naming convention – quick fix
-    ds[species] = ds[species] *airmm/speciesmm #Convert into mol/mol
+    ds[species] = old_div(ds[species] *airmm,speciesmm) #Convert into mol/mol
     
     #Select the gridcells closest to the edges of the  domain and make sure outside of fp
     #lat_n = min( (np.abs(ds.coords['latitude'].values - max(fp_lat))).argmin()+1, len(ds.coords['latitude'].values)-1)
