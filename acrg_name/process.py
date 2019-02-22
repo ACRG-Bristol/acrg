@@ -583,14 +583,14 @@ def read_met(fnames, met_def_dict=None,vertical_profile=False,satellite=False):
         output_df = output_df[output_df["press20"] > 0.]
     else:
         output_df = output_df[output_df["press"] > 0.]
-    output_df.drop_duplicates(inplace = True)
+    output_df = output_df.drop_duplicates()
     
     if satellite:
         # Sort by label axis which includes point number and level
-        output_df.sort_values(by=["label"],inplace = True)
+        output_df = output_df.sort_values(by=["label"])
     else:
         # Sort the dataframe by time
-        output_df.sort_index(inplace = True)
+        output_df = output_df.sort_index()
     
     output_df.index.name = "time"
     
@@ -994,11 +994,11 @@ def footprint_array(fields_file,
             
 
     # Merge met dataset into footprint dataset
-    fp.merge(met_ds, inplace = True)
+    fp = fp.merge(met_ds)
 
     # Add in particle locations
     if particle_file is not None:
-        fp.merge(particle_hist, inplace = True)
+        fp = fp.merge(particle_hist)
     
     # Extract footprint from columns
     def convert_to_ppt(fp, slice_dict, column):
@@ -2591,8 +2591,8 @@ def stiltfoot_array(prefix,
             
     # merge datasets
         
-    fp.merge(met_ds, inplace = True)
-    fp.merge(particle_hist, inplace = True)
+    fp = fp.merge(met_ds)
+    fp = fp.merge(particle_hist)
     
     # insert footprint arrays into dataset
     

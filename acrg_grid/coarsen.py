@@ -5,6 +5,7 @@ Created on Thu Aug 13 16:09:07 2015
 @author: chxmr
 """
 
+from builtins import range
 import numpy as np
 from numba import jit
 
@@ -42,12 +43,12 @@ def coarsen(arrayFine, latFine, lonFine, factor = 2, mean = True):
     
     '''
     
-    out = np.zeros((len(latFine)/factor, len(lonFine)/factor))
-    latOut = np.zeros(len(latFine)/factor)
-    lonOut = np.zeros(len(lonFine)/factor)
+    out = np.zeros((len(latFine)//factor, len(lonFine)//factor))
+    latOut = np.zeros(len(latFine)//factor)
+    lonOut = np.zeros(len(lonFine)//factor)
 
-    for lati in range(len(latFine)/factor):
-        for loni in range(len(lonFine)/factor):
+    for lati in range(len(latFine)//factor):
+        for loni in range(len(lonFine)//factor):
             count = 0
             for f in range(factor):
                 out[lati, loni] += arrayFine[lati*factor + f,
@@ -57,10 +58,10 @@ def coarsen(arrayFine, latFine, lonFine, factor = 2, mean = True):
                 out[lati, loni] = out[lati, loni]/count
 
     # Output grid
-    for lati in range(len(latFine)/factor):
+    for lati in range(len(latFine)//factor):
         for f in range(factor):
             latOut[lati] += latFine[lati*factor + f]/float(factor)
-    for loni in range(len(lonFine)/factor):
+    for loni in range(len(lonFine)//factor):
         for f in range(factor):
             lonOut[loni] += lonFine[loni*factor + f]/float(factor)
 
