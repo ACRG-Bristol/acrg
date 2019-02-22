@@ -4,7 +4,12 @@ Created on Mon Nov 10 10:45:51 2014
 
 """
 from __future__ import print_function
+from __future__ import division
 
+from builtins import str
+from builtins import range
+from builtins import object
+from past.utils import old_div
 import netCDF4 as nc
 import numpy as np
 import matplotlib.pyplot as plt
@@ -85,7 +90,7 @@ def filenames(site, domain, start, end, height, fp_directory):
         
     # Read site info for heights
     if height is None:
-        if not site in site_info.keys():
+        if not site in list(site_info.keys()):
             print("Site code not found in arcg_site_info.json to get height information. " + \
                   "Check that site code is as intended. "+ \
                   "If so, either add new site to file or input height manually.")
@@ -351,13 +356,13 @@ def flux(domain, species, start = None, end = None, flux_directory=None):
     
     flux_ds = read_netcdfs(files)
     # Check that time coordinate is present
-    if not "time" in flux_ds.coords.keys():
+    if not "time" in list(flux_ds.coords.keys()):
         print("ERROR: No 'time' coordinate " + \
               "in flux dataset for " + domain + ", " + species)
         return None
 
     # Check for level coordinate. If one level, assume surface and drop
-    if "lev" in flux_ds.coords.keys():
+    if "lev" in list(flux_ds.coords.keys()):
         print("WARNING: Can't support multi-level fluxes. Trying to remove 'lev' coordinate " + \
               "from flux dataset for " + domain + ", " + species)
         if len(flux_ds.lev) > 1:
@@ -432,10 +437,10 @@ def flux_for_HiTRes(domain, emissions_dict, start=None, end=None, flux_directory
             dictionary containing xray datasets for both high and low frequency fluxes.
     """
     
-    if 'low_freq' not in emissions_dict.keys():
+    if 'low_freq' not in list(emissions_dict.keys()):
         print("low_freq must be a key in the emissions_dict in order to combine with HiTRes footprints.")
         return None
-    elif 'high_freq' not in emissions_dict.keys():
+    elif 'high_freq' not in list(emissions_dict.keys()):
         print("high_freq must be a key in the emissions_dict in order to use HiTRes footprints.")
         return None
     
@@ -601,7 +606,7 @@ def combine_datasets(dsa, dsb, method = "ffill", tolerance = None):
     # merge the two datasets within a tolerance and remove times that are NaN (i.e. when FPs don't exist)
     
     ds_temp = dsa.merge(dsb.reindex_like(dsa, method, tolerance = tolerance))
-    if 'fp' in ds_temp.keys():
+    if 'fp' in list(ds_temp.keys()):
         flag = np.where(np.isfinite(ds_temp.fp.mean(dim=["lat","lon"]).values))
         ds_temp = ds_temp[dict(time = flag[0])]
     return ds_temp
@@ -621,7 +626,7 @@ def timeseries(ds):
         xarray.Dataset        
     """
 
-    if "flux" in ds.keys():
+    if "flux" in list(ds.keys()):
         return (ds.fp*ds.flux).sum(["lat", "lon"])
     else:
         print("Can't calculate time series " + \
@@ -800,8 +805,8 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
             combined dataset for each site
     """
     
-    sites = [key for key in data.keys() if key[0] != '.']
-    attributes = [key for key in data.keys() if key[0] == '.']
+    sites = [key for key in list(data.keys()) if key[0] != '.']
+    attributes = [key for key in list(data.keys()) if key[0] == '.']
     
     if average is not None:
         if type(average) is not dict:
@@ -813,7 +818,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
 
     # If not given, check if species is defined in data dictionary:
 #    if species is None:
-    if ".species" in data.keys():
+    if ".species" in list(data.keys()):
         species = data[".species"]
     else:
         print("Species can't be found in data dictionary.")
@@ -856,7 +861,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
         # Convert to dataset
         site_ds = xr.Dataset.from_dataframe(site_df)
         
-        if site in site_modifier.keys():
+        if site in list(site_modifier.keys()):
             site_modifier_fp = site_modifier[site]
         else:    
             site_modifier_fp = site
@@ -888,7 +893,14 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
             # If satellite data, check that the max_level in the obs and the max level in the processed FPs are the same
             # Set tolerance tin time to merge footprints and data   
             # This needs to be made more general to 'satellite', 'aircraft' or 'ship'                
-            if "GOSAT" in site.upper():
+
+            if "platform" in site_info[site]:
+                platform = site_info[site]["platform"]
+            else:
+                platform = None
+
+            if platform == "satellite":
+            #if "GOSAT" in site.upper():
                 ml_obs = site_df.max_level
                 ml_fp = site_fp.max_level
                 tolerance = 60e9 # footprints must match data with this tolerance in [ns]
@@ -936,27 +948,28 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
             #site_ds = site_ds.sel(time=slice(str(start_date.data),str(end_date.data)))
             #site_fp = site_fp.sel(time=slice(str(start_date.data),str(end_date.data)))
             
-            base = start_date.dt.hour.data + start_date.dt.minute.data/60. + start_date.dt.second.data/3600.
-            if (ds_timeperiod >= fp_timeperiod) or (resample_to_data == True):
-                resample_period = str(round(fp_timeperiod/3600e9,5))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
-                site_fp = site_fp.resample(resample_period, dim='time', how='mean', base=base)
-            elif ds_timeperiod < fp_timeperiod or (resample_to_data == False):
-                resample_period = str(round(fp_timeperiod/3600e9,5))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
-                site_ds = site_ds.resample(resample_period, dim='time', how='mean', base=base)
-                        
+            if platform != "satellite":
+                base = start_date.dt.hour.data + start_date.dt.minute.data/60. + start_date.dt.second.data/3600.
+                if (ds_timeperiod >= fp_timeperiod) or (resample_to_data == True):
+                    resample_period = str(round(fp_timeperiod/3600e9,5))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
+                    site_fp = site_fp.resample(resample_period, dim='time', how='mean', base=base)
+                elif ds_timeperiod < fp_timeperiod or (resample_to_data == False):
+                    resample_period = str(round(fp_timeperiod/3600e9,5))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
+                    site_ds = site_ds.resample(resample_period, dim='time', how='mean', base=base)
+                       
             site_ds = combine_datasets(site_ds, site_fp,
                                        method = "ffill",
                                        tolerance = tolerance)
             
             #transpose to keep time in the last dimension position in case it has been moved in resample
-            if 'H_back' in site_ds.dims.keys():
+            if 'H_back' in list(site_ds.dims.keys()):
                 site_ds = site_ds.transpose('height','lat','lon','lev','time', 'H_back')
             else:
                 site_ds = site_ds.transpose('height','lat','lon','lev','time')
                 
             # If units are specified, multiply by scaling factor
             if ".units" in attributes:
-                site_ds.update({'fp' : (site_ds.fp.dims, site_ds.fp / data[".units"])})
+                site_ds.update({'fp' : (site_ds.fp.dims, old_div(site_ds.fp, data[".units"]))})
 #                if calc_bc:
 #                    for key in site_ds.keys():
 #                        if "vmr" in key:
@@ -965,7 +978,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
 #                                            data[".units"])})
                 if HiTRes:
                     site_ds.update({'fp_HiTRes' : (site_ds.fp_HiTRes.dims, 
-                                                   site_ds.fp_HiTRes / data[".units"])})
+                                                   old_div(site_ds.fp_HiTRes, data[".units"]))})
         
             # Resample, if required
             if average[site] is not None:
@@ -977,11 +990,13 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
     if load_flux:
             
         flux_dict = {} 
-            
-        for source in emissions_name.keys():
-            if type(emissions_name[source]) == str:
+        basestring = (str, bytes)    
+        for source in list(emissions_name.keys()):
+            #if type(emissions_name[source]) == str:
+            if isinstance(emissions_name[source], basestring):
                 flux_dict[source] = flux(domain, emissions_name[source], start=flux_bc_start, end=flux_bc_end, flux_directory=flux_directory)
-            elif type(emissions_name[source]) == dict:
+        #elif type(emissions_name[source]) == dict:
+            elif isinstance(emissions_name[source], dict):
                 if HiTRes == False:
                     print("HiTRes is set to False and a dictionary has been found as the emissions_name dictionary value\
                           for source %s. Either enter your emissions names as separate entries in the emissions_name\
@@ -998,7 +1013,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
         bc = boundary_conditions(domain, species, start=flux_bc_start, end=flux_bc_end, bc_directory=bc_directory)
 
         if  ".units" in attributes:
-            fp_and_data['.bc'] = bc / data[".units"]               
+            fp_and_data['.bc'] = old_div(bc, data[".units"])               
         else:
             fp_and_data['.bc'] = bc
             
@@ -1009,8 +1024,8 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
         if load_flux == False:
             print("Can't get modelled mole fraction timeseries because load_flux is set to False.")
         else:
-            sites = [key for key in fp_and_data.keys() if key[0] != '.']
-            sources = fp_and_data['.flux'].keys()
+            sites = [key for key in list(fp_and_data.keys()) if key[0] != '.']
+            sources = list(fp_and_data['.flux'].keys())
             for site in sites:                    
                 for source in sources:
                     if type(fp_and_data['.flux'][source]) == dict:
@@ -1027,7 +1042,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
         if load_bc == False:
             print("Can't get modelled baseline timeseries because load_bc is set to False.")
         else:
-            sites = [key for key in fp_and_data.keys() if key[0] != '.']
+            sites = [key for key in list(fp_and_data.keys()) if key[0] != '.']
             for site in sites:
                 bc_reindex = fp_and_data['.bc'].reindex_like(fp_and_data[site], 'ffill')
                 fp_and_data[site]['bc'] = (fp_and_data[site].particle_locations_n*bc_reindex.vmr_n).sum(["height", "lon"]) + \
@@ -1066,9 +1081,9 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
         dict (xarray.Dataset) : Same format as fp_and_data with sensitivity matrix added.
     """    
     
-    sites = [key for key in fp_and_data.keys() if key[0] != '.']
+    sites = [key for key in list(fp_and_data.keys()) if key[0] != '.']
     
-    flux_sources = fp_and_data['.flux'].keys()
+    flux_sources = list(fp_and_data['.flux'].keys())
     
     if type(basis_case) is not dict:
         if len(flux_sources) == 1:
@@ -1076,9 +1091,9 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
         else:
             basis_case = {'all':basis_case}
     
-    if len(basis_case.keys()) != len(flux_sources):
-        if len(basis_case.keys()) == 1:
-            print("Using %s as the basis case for all sources" %basis_case[basis_case.keys()[0]])
+    if len(list(basis_case.keys())) != len(flux_sources):
+        if len(list(basis_case.keys())) == 1:
+            print("Using %s as the basis case for all sources" %basis_case[list(basis_case.keys())[0]])
         else:
             print("There should either only be one basis_case, or it should be a dictionary the same length\
                   as the number of sources.")
@@ -1089,13 +1104,13 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
         
         for si, source in enumerate(flux_sources):
         
-            if source in basis_case.keys():
+            if source in list(basis_case.keys()):
                 basis_func = basis(domain = domain, basis_case = basis_case[source], basis_directory = basis_directory)
             else:
                 basis_func = basis(domain = domain, basis_case = basis_case['all'], basis_directory = basis_directory)
             
             if type(fp_and_data['.flux'][source]) == dict:
-                if 'fp_HiTRes' in fp_and_data[site].keys():
+                if 'fp_HiTRes' in list(fp_and_data[site].keys()):
                     site_bf = xr.Dataset({"fp_HiTRes":fp_and_data[site]["fp_HiTRes"],
                                          "fp":fp_and_data[site]["fp"]})
                     H_all_arr=timeseries_HiTRes(site_bf, fp_and_data['.flux'][source], output_TS = False, output_fpXflux = True)
@@ -1111,7 +1126,7 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
             H_all_v=H_all.values.reshape((len(site_bf.lat)*len(site_bf.lon),len(site_bf.time)))        
         
         
-            if 'region' in basis_func.dims.keys():
+            if 'region' in list(basis_func.dims.keys()):
             
                 if 'time' in basis_func.basis.dims:
                     basis_func = basis_func.isel(time=0)
@@ -1151,11 +1166,11 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                 for i in range(int(np.max(site_bf.basis))):
                     wh_ri = np.where(base_v == i+1)
                     H[i,:]=np.sum(H_all_v[wh_ri[0],:], axis = 0)      
-                    
+                  
                 if source == all:
-                    region_name = range(1,np.max(site_bf.basis)+1)
+                    region_name = list(range(1,np.max(site_bf.basis.values)+1))
                 else:
-                    region_name = [source+'-'+str(reg) for reg in range(1,np.max(site_bf.basis)+1)]
+                    region_name = [source+'-'+str(reg) for reg in range(1,int(np.max(site_bf.basis.values)+1))]
 
                 sensitivity = xr.DataArray(H, 
                                              coords=[('region', region_name), 
@@ -1220,7 +1235,7 @@ def bc_sensitivity(fp_and_data, domain, basis_case, bc_basis_directory = None):
     """    
     
     
-    sites = [key for key in fp_and_data.keys() if key[0] != '.']
+    sites = [key for key in list(fp_and_data.keys()) if key[0] != '.']
 
     basis_func = basis_boundary_conditions(domain = domain,
                                            basis_case = basis_case, bc_basis_directory=bc_basis_directory)
@@ -1302,7 +1317,7 @@ def merge_sensitivity(fp_data_H,
     H = []
     H_bc = []
     
-    sites = [key for key in fp_data_H.keys() if key[0] != '.']
+    sites = [key for key in list(fp_data_H.keys()) if key[0] != '.']
     
     for si, site in enumerate(sites):
         
@@ -1316,9 +1331,9 @@ def merge_sensitivity(fp_data_H,
             y.append(fp_data_H[site].mf.values)
         
             # Approximate y_error
-            if "vmf" in fp_data_H[site].keys():
+            if "vmf" in list(fp_data_H[site].keys()):
                 y_error.append(fp_data_H[site].vmf.values)
-            elif "dmf" in fp_data_H[site].keys():
+            elif "dmf" in list(fp_data_H[site].keys()):
                 y_error.append(fp_data_H[site].dmf.values)
             else:
                 print("Measurement error not found in dataset for site %s" %site)
@@ -1509,7 +1524,7 @@ def filtering(datasets_in, filters, keep_missing=False):
         """
         in_height = dataset.inlet
         lapse_norm = dataset.theta_slope*in_height/500.
-        lr_norm = dataset.local_ratio*500./in_height
+        lr_norm = old_div(dataset.local_ratio*500.,in_height)
         comb_norm = lr_norm + lapse_norm
         cutoff=0.5
         ti = [i for i, lr in enumerate(comb_norm) if lr < cutoff]
@@ -1543,7 +1558,7 @@ def filtering(datasets_in, filters, keep_missing=False):
         """
         in_height = dataset.inlet
         lapse_norm = dataset.theta_slope*in_height/500.
-        lr_norm = dataset.local_ratio*500./in_height
+        lr_norm = old_div(dataset.local_ratio*500.,in_height)
         comb_norm = lr_norm + lapse_norm
         cutoff=0.45
         ti = [i for i, lr in enumerate(comb_norm) if lr < cutoff]
@@ -1601,7 +1616,7 @@ def filtering(datasets_in, filters, keep_missing=False):
                          "local_lapse_045":local_lapse_045}
 
     # Get list of sites
-    sites = [key for key in datasets.keys() if key[0] != '.']
+    sites = [key for key in list(datasets.keys()) if key[0] != '.']
     
     # Do filtering
     for site in sites:
@@ -1679,7 +1694,7 @@ def plot(fp_data, date, out_filename=None, out_format = 'pdf',
     date = np.datetime64(convert.reftime(date))
 
     # Get sites
-    sites = [key for key in fp_data.keys() if key[0] != '.']
+    sites = [key for key in list(fp_data.keys()) if key[0] != '.']
     
     # Find lat and lon range of the footprints
     if lon_range is None:
@@ -1700,8 +1715,8 @@ def plot(fp_data, date, out_filename=None, out_format = 'pdf',
     
 #    Zoom in. Get min and max release lat lons to zoom the map around the data (+/- 10 degrees)
     if zoom:
-        release_lons = [fp_data[key].release_lon for key in fp_data.keys() if key[0] != '.']     
-        release_lats = [fp_data[key].release_lat for key in fp_data.keys() if key[0] != '.']
+        release_lons = [fp_data[key].release_lon for key in list(fp_data.keys()) if key[0] != '.']     
+        release_lats = [fp_data[key].release_lat for key in list(fp_data.keys()) if key[0] != '.']
                       
         lon_range = [np.min(release_lons)-10, np.max(release_lons)+10]
         lat_range = [np.min(release_lats)-10, np.max(release_lats)+10]
@@ -1766,7 +1781,7 @@ def plot(fp_data, date, out_filename=None, out_format = 'pdf',
 
                 if np.float(date - time[ti-1]) < np.float(tol):
 
-                    dt = np.float(date - time[ti-1])/np.float(time[ti] - time[ti-1])
+                    dt = old_div(np.float(date - time[ti-1]),np.float(time[ti] - time[ti-1]))
                     fp_ti_0 = fp_data[site][dict(time = ti-1)].fp.values.squeeze()
                     fp_ti_1 = fp_data[site][dict(time = ti)].fp.values.squeeze()
                     fp_ti = fp_ti_0 + (fp_ti_1 - fp_ti_0)*dt
@@ -1774,7 +1789,7 @@ def plot(fp_data, date, out_filename=None, out_format = 'pdf',
                     data += np.nan_to_num(fp_ti)
     
                     # Store release location to overplot later
-                    if "release_lat" in fp_data[site].keys():
+                    if "release_lat" in list(fp_data[site].keys()):
                         lon_0 = fp_data[site][dict(time = ti-1)].release_lon.values.squeeze()
                         lon_1 = fp_data[site][dict(time = ti)].release_lon.values.squeeze()                
                         lat_0 = fp_data[site][dict(time = ti-1)].release_lat.values.squeeze()
@@ -1897,7 +1912,7 @@ def plot_particle_location(fp_data, date, particle_direction = 'nw', out_filenam
                         method = "nearest",
                         tolerance = tolerance)
     
-    sites = [key for key in fp_data.keys() if key[0] != '.']
+    sites = [key for key in list(fp_data.keys()) if key[0] != '.']
     fp_data = fp_data[sites[0]]
 
     date = np.datetime64(convert.reftime(date))
@@ -2055,7 +2070,7 @@ def animate(fp_data, output_directory, plot_function = "plot", file_label = 'fp'
     
     def time_unique(fp_data, time_regular = False):
     
-        sites = [key for key in fp_data.keys() if key[0] != '.']
+        sites = [key for key in list(fp_data.keys()) if key[0] != '.']
         
         time_array = fp_data[sites[0]].time
         time_array.name = "times"
@@ -2096,7 +2111,7 @@ def animate(fp_data, output_directory, plot_function = "plot", file_label = 'fp'
             times = times[:min([frame_max, len(times)])]
 
         # Start progress bar
-        pbar = ProgressBar(maxval=len(times)).start()
+        #pbar = ProgressBar(maxval=len(times)).start()
 
         # Plot each timestep
         for ti, t in enumerate(times):
@@ -2119,9 +2134,9 @@ def animate(fp_data, output_directory, plot_function = "plot", file_label = 'fp'
                                            particle_clevs = particle_clevs, dpi = dpi,
                                            figsize = figsize)
                      
-            pbar.update(ti)
-            print("")
-        pbar.finish()
+            #pbar.update(ti)
+            #print("")
+        #pbar.finish()
     
     print("")
     print("... running ffmpeg")
@@ -2150,7 +2165,7 @@ def animate(fp_data, output_directory, plot_function = "plot", file_label = 'fp'
             os.remove(f)
 
 
-class get_country:
+class get_country(object):
   def __init__(self, domain, ocean=False, ukmo=False, uk_split=False, country_dir = None):
       
         if country_dir is None:

@@ -66,6 +66,9 @@ A param_type dictionary can be defined both to fix expected inputs and to explic
 """
 from __future__ import print_function
 
+from builtins import str
+from builtins import input
+from builtins import zip
 import configparser
 from collections import OrderedDict
 import numpy as np
@@ -87,7 +90,7 @@ def open_config(config_file):
     config.optionxform=str # Keeps case when inputting option names
     
     with open(config_file) as fp:
-        config.readfp(fp)
+        config.read_file(fp)
     
     return config
 
@@ -114,9 +117,9 @@ def generate_param_dict(config_file):
     param_type = OrderedDict([])
     
     for section in sections:
-        section_param = config[section].keys()
+        section_param = list(config[section].keys())
         if section_param:
-            types = [type(convert(value)) for value in config[section].values()]
+            types = [type(convert(value)) for value in list(config[section].values())]
             section_types = OrderedDict([(key,value) for key,value in zip(section_param,types)])
             param_type[section] = section_types
     
@@ -144,7 +147,7 @@ def generate_from_template(template_file,output_file):
     be raised.
     '''
     if os.path.exists(output_file):
-        answer = raw_input("This action with overwrite existing {} file. Do you wish to proceed (Y/N): ".format(output_file))
+        answer = input("This action with overwrite existing {} file. Do you wish to proceed (Y/N): ".format(output_file))
         if answer.lower() == "y" or answer.lower() == "yes":
             out = open(output_file,"w")
         elif answer.lower() == "n" or answer.lower() == "no":
@@ -328,7 +331,6 @@ def convert(string,value_type=None):
         If unable to find a suitable type when value_type is not specified:
             None
     '''
-    
     if value_type is str:
         out = str_check(string)
     elif value_type is list:
@@ -393,10 +395,10 @@ def all_parameters_in_param_type(param_type):
             list of all parameters in param_type dictionary
     '''
     types = param_type # Get dictionary containing parameter names and types
-    keys = types.keys() # Extract all section/section_group headings
+    keys = list(types.keys()) # Extract all section/section_group headings
     parameters = []
     for key in keys:
-        parameters.extend(types[key].keys()) # For each section/section_group extract all the associated parameters
+        parameters.extend(list(types[key].keys())) # For each section/section_group extract all the associated parameters
     
     return parameters
 
@@ -422,7 +424,7 @@ def find_param_key(param_type,section=None,section_group=None):
             keys, key_type
     '''
     types = param_type # Get dictionary containing parameter names and types
-    all_keys = types.keys() # Extract all section/classification keys
+    all_keys = list(types.keys()) # Extract all section/classification keys
     
     # Find oarameter class if not specified (should be defined as first part of section split by '.' e.g. MCMC.MEASUREMENTS, section_group='MCMC')
     if not section_group:
@@ -591,14 +593,14 @@ def extract_params(config_file,section=None,section_group=None,names=[],ignore_s
     match_section = []
     if names:
         for sect in select_sections:
-            k = config[sect].keys()
+            k = list(config[sect].keys())
             for name in names:
                 if name in k:
                     extracted_names.append(name)
                     match_section.append(sect)
     else:
         for sect in select_sections:
-            k = config[sect].keys()
+            k = list(config[sect].keys())
             s = [sect]*len(k)
             extracted_names.extend(k) # List of the parameter names within the input file, within specified sections
             match_section.extend(s)   # Associated list with the section heading for each parameter
@@ -612,12 +614,12 @@ def extract_params(config_file,section=None,section_group=None,names=[],ignore_s
                 keys,key_type = find_param_key(section=section,param_type=param_type)
                 #keys = [key_value]
             elif ignore_sections:
-                keys = param_type.keys()
+                keys = list(param_type.keys())
                 for es in ignore_sections:
                     if es in keys:
                         keys.remove(es)
             else:
-                keys = param_type.keys()
+                keys = list(param_type.keys())
 
 
 
@@ -629,7 +631,7 @@ def extract_params(config_file,section=None,section_group=None,names=[],ignore_s
 #            elif (section_group and key_type == 'section_group') or (section and key_type == 'section') or (section_group and key_type == 'section'):
             else:
                for key in keys:
-                   names.extend(param_type[key].keys())
+                   names.extend(list(param_type[key].keys()))
 #            else:
 #                names = all_parameters_in_param_type(param_type) # Extract all parameter names from param_type dictionary
         else:
@@ -641,12 +643,12 @@ def extract_params(config_file,section=None,section_group=None,names=[],ignore_s
             print('WARNING: Cannot create list of optional parameters for the section based on param_type input. Please add parameters to optional_parameters list.')
         else:
             for key in keys:
-                optional_param.extend(param_type[key].keys())
+                optional_param.extend(list(param_type[key].keys()))
     
     if optional_section_group:
         keys,key_type = find_param_key(section_group=optional_section_group,param_type=param_type)
         for key in keys:
-            optional_param.extend(param_type[key].keys())
+            optional_param.extend(list(param_type[key].keys()))
     
     param = OrderedDict({})
  

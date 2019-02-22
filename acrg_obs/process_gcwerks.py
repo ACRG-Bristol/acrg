@@ -6,22 +6,23 @@ Created on Fri Oct 16 14:08:07 2015
 """
 from __future__ import print_function
 
+from builtins import zip
+from builtins import range
 import numpy as np
 import pandas as pd
 from os.path import join, split
 from datetime import datetime as dt
-from datetime import timedelta as td
 import glob
 import xarray as xray
 import json
 from os import getenv, stat
-import shutil
-
+import fnmatch
+from acrg_obs.utils import attributes, output_filename, cleanup
 
 # Read site info file
 acrg_path = getenv("ACRG_PATH")
 info_file = join(acrg_path,
-                 "acrg_GCWerks/cf_data_process_parameters.json")
+                 "acrg_obs/process_gcwerks_parameters.json")
 with open(info_file) as sf:
     params = json.load(sf)
 
@@ -29,32 +30,40 @@ site_info_file = join(acrg_path, "acrg_site_info.json")
 with open(site_info_file) as sf:
     site_params = json.load(sf)
 
-# Output unit strings
+# Output unit strings (upper case for matching)
 unit_species = {"CO2": "1e-6",
                 "CH4": "1e-9",
                 "C2H6": "1e-9",
                 "N2O": "1e-9",
                 "CO": "1e-9",
-                "CH4C13": "permil",
-                "DELTAO2_N2" : "per meg",
-                "APO" : "per meg"}
+                "DCH4C13": "1",
+                "DCH4D": "1",
+                "DCO2C13": "1",
+                "DCO2C14": "1",
+                "DO2N2" : "1",
+                "APO" : "1"}
+
+# If units are non-standard, this attribute can be used
+unit_species_long = {"DCH4C13": "permil",
+                     "DCH4D": "permil",
+                     "DCO2C13": "permil",
+                     "DCO2C14": "permil",
+                     "DO2N2" : "per meg",
+                     "APO" : "per meg"}
 
 unit_interpret = {"ppm": "1e-6",
                   "ppb": "1e-9",
                   "ppt": "1e-12",
+                  "ppq": "1e-15",
                   "else": "unknown"}
 
 # Default calibration scales
+# TODO: Remove this? seems dangerous
 scales = {"CO2": "NOAA-2007",
           "CH4": "NOAA-2004A",
           "N2O": "SIO-98",
           "CO": "Unknown"}
 
-## Species long-names for output
-#species_long = {"CO2": "carbon_dioxide",
-#                "CH4": "methane",
-#                "N2O": "nitrous_oxide",
-#                "CO": "carbon_monoxide"}
 
 # For species which need more than just a hyphen removing or changing to lower case
 # First element of list is the output variable name,
@@ -68,7 +77,7 @@ species_translator = {"CO2": ["co2", "carbon_dioxide"],
                       "BENZENE": ["c6h6", "benzene"],
                       "TOLUENE": ["c6h5ch3", "methylbenzene"],
                       "ETHENE": ["c2f4", "ethene"],
-                      "ETHYNE": ["c2f2", "ethyne"],
+                      "ETHYNE": ["c2h2", "ethyne"],
                       "N2O": ["n2o", "nitrous_oxide"],
                       "CO": ["co", "carbon_monoxide"],
                       "H-1211": ["halon1211", "halon1211"],
@@ -79,14 +88,21 @@ species_translator = {"CO2": ["co2", "carbon_dioxide"],
                       "PFC-116": ["c2f6", "hexafluoroethane"],
                       "PFC-218": ["c3f8", "octafluoropropane"],
                       "PFC-318": ["c4f8", "cyclooctafluorobutane"],
-                      "F-113": ["cfc113", "cfc113"]
+                      "F-113": ["cfc113", "cfc113"],
+                      "H2_PDD": ["h2", "hydrogen"],
+                      "NE_PDD": ["Ne", "neon"],                      
+                      "DO2N2": ["do2n2", "ratio_of_oxygen_to_nitrogen"],
+                      "DCH4C13": ["dch4c13", "delta_ch4_c13"],
+                      "DCH4D": ["dch4d", "delta_ch4_d"],
+                      "DCO2C13": ["dco2c13", "delta_co2_c13"],
+                      "DCO2C14": ["dco2c14", "delta_co2_c14"],
+                      "APO": ["apo", "atmospheric_potential_oxygen"]
                       }
 
 # Translate header strings
 crds_header_string_interpret = {"C": "",
-                                "stdev": "_variability",
-                                "N": "_number_of_observations"}
-
+                                "stdev": " variability",
+                                "N": " number_of_observations"}
 
 def parser_YYMMDD(yymmdd):
     return dt.strptime(yymmdd, '%y%m%d')
@@ -115,173 +131,6 @@ def get_directories(default_input_directory,
     return data_folder, output_folder
 
 
-def site_info_attributes(site):
-
-    attributes = {}
-    attributes_list = {"longitude": "station_longitude",
-                       "latitude": "station_latitude",
-                       "long_name": "station_long_name",
-                       "height_station_masl": "station_height_masl"}
-
-    if site in site_params.keys():
-        for at in attributes_list.keys():
-            if at in site_params[site].keys():
-                attributes[attributes_list[at]] = site_params[site][at]
-        return attributes
-    else:
-        return None
-
-def attributes(ds, species, site,
-               global_attributes = None,
-               units = None,
-               scale = None,
-               sampling_period = None):
-    """
-    Format attributes for netCDF file
-    """
-
-    # Rename species
-    for key in ds.keys():
-        if species in key:
-            if species.upper() in species_translator.keys():
-                # Rename based on species_translator, if available
-                species_out = species_translator[species.upper()][0]
-            else:
-                # Rename species to be lower case and without hyphens
-                species_out = species.lower().replace("-", "")
-            ds.rename({key: key.replace(species, species_out)}, inplace = True)
-
-    # Global attributes
-    #############################################
-    if global_attributes is None:
-        global_attributes = {}
-
-    # Add some defaults
-    for key, value in params["global_attributes"].iteritems():
-        global_attributes[key] = value
-    global_attributes["File created"] = str(dt.now())
-    global_attributes["Conventions"] = "CF-1.6"
-
-    for key, values in global_attributes.iteritems():
-        ds.attrs[key] = values
-
-    # Add some site attributes
-    global_attributes_site = site_info_attributes(site.upper())
-    if global_attributes_site is not None:
-        for key, values in global_attributes_site.iteritems():
-            ds.attrs[key] = values
-
-    # Add calibration scale
-    if scale:
-        ds.attrs["Calibration_scale"] = scale
-    else:
-        if species.upper() in scales.keys():
-            ds.attrs["Calibration_scale"] = scales[species.upper()]
-        else:
-            ds.attrs["Calibration_scale"] = "unknown"
-
-    # Add species name
-    ds.attrs["species"] = species_out
-
-    # Species-specific attributes
-    #############################################
-
-    # Long name
-    if species.upper() == 'DELTAO2_N2':
-        sp_long = 'd(O2/N2)'
-    elif species.upper() == 'APO':
-        sp_long = 'APO'
-    elif species.upper() in species_translator.keys():
-        sp_long = "mole_fraction_of_" + species_translator[species.upper()][1] + "_in_air"
-    else:
-        sp_long = "mole_fraction_of_" + species_out + "_in_air"
-
-    ancillary_variables = ""
-
-    for key in ds.keys():
-
-        if species_out in key:
-
-            # Standard name attribute
-            ds[key].attrs["standard_name"]=key.replace(species_out, sp_long)
-            ds[key].attrs["long_name"]=key.replace(species_out, sp_long)
-
-            if (key == species_out) or \
-                ("variability" in key) or \
-                ("repeatability" in key):
-                if units is None:
-                    ds[key].attrs["units"] = unit_species[species.upper()]
-                else:
-                    if units in unit_interpret.keys():
-                        ds[key].attrs["units"] = unit_interpret[units]
-                    else:
-                        ds[key].attrs["units"] = unit_interpret["else"]
-            if key != species_out:
-                ancillary_variables += " " + key
-
-    ds[species_out].attrs["ancilliary_variables"] = ancillary_variables.strip()
-
-    # Add quality flag attributes
-    ##################################
-
-    flag_key = [key for key in ds.keys() if "_status_flag" in key]
-    if len(flag_key) > 0:
-        flag_key = flag_key[0]
-        ds[flag_key] = ds[flag_key].astype(int)
-        ds[flag_key].attrs = {"flag_meaning":
-                              "0 = unflagged, 1 = flagged",
-                              "standard_name":
-                              ds[species_out].attrs["standard_name"] + "_status_flag"}
-
-    # Add integration flag attributes
-    ##################################
-
-    flag_key = [key for key in ds.keys() if "_integration_flag" in key]
-    if len(flag_key) > 0:
-        flag_key = flag_key[0]
-        ds[flag_key] = ds[flag_key].astype(int)
-        ds[flag_key].attrs = {"flag_meaning":
-                              "0 = area, 1 = height",
-                              "standard_name":
-                              ds[species_out].attrs["standard_name"] + "_integration_flag",
-                              "comment":
-                              "GC peak integration method (by height or by area). " +
-                              "Does not indicate data quality"}
-
-    # Set time encoding
-    #########################################
-
-    first_year = str(ds.time.to_pandas().index.to_pydatetime()[0].year)
-
-    ds.time.encoding = {"units": "seconds since " + \
-                        first_year + "-01-01 00:00:00"}
-    ds.time.attrs["label"] = "left"
-    ds.time.attrs["comment"] = "Time stamp corresponds to beginning of sampling period. " + \
-                               "Time since midnight UTC of reference date. " + \
-                               "Note that sampling periods are approximate."
-    if sampling_period:
-        ds.time.attrs["sampling_period_seconds"] = sampling_period
-
-    return ds
-
-def output_filename(output_directory,
-                    network,
-                    instrument,
-                    site,
-                    year,
-                    species,
-                    inlet):
-
-    return join(output_directory,
-                network + "/" + \
-                network + "-" + \
-                instrument + "_" + \
-                site + "_" + \
-                year + "0101_" + \
-                species + "-" + \
-                inlet + ".nc")
-
-
 # ICOS
 ########################################################
 
@@ -301,7 +150,6 @@ def icos_data_read(data_file, species):
     df =  pd.read_csv(data_file,
                       skiprows = nheader-1,
                       parse_dates = {"time": ["Year", "Month", "Day", "Hour", "Minute"]},
-#                      date_parser = lambda s: pd.to_datetime(s, format = "%Y %m %d %H %M"),
                       index_col = "time",
                       sep = ";",
                       usecols = ["Day", "Month", "Year", "Hour", "Minute",
@@ -329,8 +177,8 @@ def icos_data_read(data_file, species):
 
     # Rename columns
     df.rename(columns = {species.lower(): species.upper(),
-                         "Stdev": species.upper() + "_variability",
-                         "NbPoints": species.upper() + "_number_of_observations"},
+                         "Stdev": species.upper() + " variability",
+                         "NbPoints": species.upper() + " number_of_observations"},
                inplace = True)
 
     df.index.name = "time"
@@ -343,7 +191,9 @@ def icos_data_read(data_file, species):
 
 def icos(site, network = "ICOS",
          input_directory = None,
-         output_directory = None):
+         output_directory = None,
+         date_range = None,
+         version = None):
 
     # Get directories and site strings
     params_icos = params["ICOS"]
@@ -377,20 +227,30 @@ def icos(site, network = "ICOS",
                             species.upper(),
                             site.upper(),
                             global_attributes = global_attributes,
-                            sampling_period = 60)
+                            sampling_period = 60,
+                            date_range = date_range)
 
-            # Write file
-            nc_filename = output_filename(output_folder,
-                                          network,
-                                          "CRDS",
-                                          site.upper(),
-                                          str(ds.time.to_pandas().index.to_pydatetime()[0].year),
-                                          ds.species,
-                                          params_icos[site]["inlet_rename"][inlet])
+            if len(ds.time.values) == 0:
+                
+                # Then must have not passed date_range filter?
+                print(" ... no data in range")
+                # then do nothing
 
-            ds.to_netcdf(nc_filename)
-
-            print("Written " + nc_filename)
+            else:
+    
+                # Write file
+                nc_filename = output_filename(output_folder,
+                                              network,
+                                              "CRDS",
+                                              site.upper(),
+                                              ds.time.to_pandas().index.to_pydatetime()[0],
+                                              ds.species,
+                                              params_icos[site]["inlet_rename"][inlet],
+                                              version = version)
+    
+                ds.to_netcdf(nc_filename)
+    
+                print("Written " + nc_filename)
 
         else:
             print("Skipping empty file: %s" % data_files[i])
@@ -415,9 +275,18 @@ def gc_data_read(dotC_file, scale = {}, units = {}):
                      sep=r"\s+")
 
     # Time index
-    time = [dt(df.yyyy[i], df.mm[i], df.dd[i], df.hh[i], df.mi[i]) \
-            for i in range(len(df))]
+    
+    time = []
+    time_analysis = []
+    for i in range(len(df)):
+        # sampling time
+        time.append(dt(df.yyyy[i], df.mm[i], df.dd[i], df.hh[i], df.mi[i]))
+        # Read analysis time
+        if "ryyy" in list(df.keys()):
+            time_analysis.append(dt(df.ryyy[i], df.rm[i], df.rd[i], df.rh[i], df.ri[i]))
+        
     df.index = time
+#    df["analysis_time"] = time_analysis
 
     # Drop duplicates
     df = df.reset_index().drop_duplicates(subset='index').set_index('index')
@@ -441,12 +310,12 @@ def gc_data_read(dotC_file, scale = {}, units = {}):
                 else:
                     area_height_flag.append(1)  # Height
 
-            df = df.rename(columns = {key: df.keys()[i-1] + "_flag"})
-            df[df.keys()[i-1] + "_status_flag"] = quality_flag
-            df[df.keys()[i-1] + "_integration_flag"] = area_height_flag
-            scale[df.keys()[i-1]] = header[i-1][0]
-            units[df.keys()[i-1]] = header[i-1][1]
-            species.append(df.keys()[i-1])
+            df = df.rename(columns = {key: list(df.keys())[i-1] + "_flag"})
+            df[list(df.keys())[i-1] + " status_flag"] = quality_flag
+            df[list(df.keys())[i-1] + " integration_flag"] = area_height_flag
+            scale[list(df.keys())[i-1]] = header[i-1][0]
+            units[list(df.keys())[i-1]] = header[i-1][1]
+            species.append(list(df.keys())[i-1])
 
     return df, species, units, scale
 
@@ -480,7 +349,9 @@ def gc_precisions_read(precisions_file):
 
 def gc(site, instrument, network,
        input_directory = None,
-       output_directory = None):
+       output_directory = None,
+       date_range = None,
+       version = None):
     """
     Process GC data per site and instrument
     Instruments can be:
@@ -541,7 +412,7 @@ def gc(site, instrument, network,
         # Merge precisions into dataframe
         for sp in species:
             precision_index = precision_species.index(sp)*2+1
-            df[sp + "_repeatability"] = precision[precision_index].\
+            df[sp + " repeatability"] = precision[precision_index].\
                                             astype(float).\
                                             reindex_like(df, "pad")
 
@@ -550,12 +421,12 @@ def gc(site, instrument, network,
     # Concatenate
     dfs = pd.concat(dfs).sort_index()
 
-    # Apply timestamp offset so that timestamp reflects start of sampling
-    time = dfs.index.values
-    time_offset = np.timedelta64(td(seconds = params["GC"]["timestamp_correct_seconds"][instrument]))
-    time = [t + time_offset for t in time]
-    dfs.index = time
-
+    # Apply timestamp correction, because GCwerks currently outputs
+    #   the CENTRE of the sampling period
+    dfs["new_time"] = dfs.index - \
+            pd.Timedelta(seconds = params["GC"]["sampling_period"][instrument]/2.)
+    dfs.set_index("new_time", inplace = True, drop = True)
+    
     # Label time index
     dfs.index.name = "time"
 
@@ -563,42 +434,87 @@ def gc(site, instrument, network,
     ds = xray.Dataset.from_dataframe(dfs)
 
     # Get species from scale dictionary
-    species = scale.keys()
+    species = list(scale.keys())
 
     inlets = params["GC"][site]["inlets"]
 
+    # Process each species in file
     for sp in species:
 
         global_attributes = params["GC"][site.upper()]["global_attributes"]
         global_attributes["comment"] = params["GC"]["comment"][instrument]
 
+        # Now go through each inlet (if required)
         for inleti, inlet in enumerate(inlets):
 
-            print("Processing " + sp + ", " + inlet + "...")
-
+            # There is only one inlet, just use all data, and don't lable inlet in filename
             if (inlet == "any") or (inlet == "air"):
+                
+                print("Processing %s, assuming single inlet..." %sp)
+                
                 ds_sp = ds[[sp,
-                            sp + "_repeatability",
-                            sp + "_status_flag",
-                            sp + "_integration_flag"]]
-                inlet_label = params["GC"][site.upper()]["inlet_label"][0]
-                global_attributes["inlet_height_magl"] = \
-                                    ", ".join(set(ds["Inlet"].values))
-
+                            sp + " repeatability",
+                            sp + " status_flag",
+                            sp + " integration_flag",
+#                            "analysis_time",
+                            "Inlet"]]
+                
+                # No inlet label in file name
+                inlet_label = None
+                
             else:
-                ds_sp = ds.where(ds.Inlet == inlet)[[sp,
-                                                     sp + "_repeatability",
-                                                     sp + "_status_flag",
-                                                     sp + "_integration_flag"]]
-                inlet_label = inlet
+                # Get specific inlet
+                
+                print("Processing " + sp + ", " + inlet + "...")
+                
+                # if inlet is in the format "date_YYYYMMDD_YYYYMMDD", split by date
+                if inlet[0:4] == "date":
+                    dates = inlet.split("_")[1:]
+                    slice_dict = dict(time = slice(dates[0], dates[1]))
+                    ds_sliced = ds.loc[slice_dict]
+                    ds_sp = ds_sliced[[sp,
+                                       sp + " repeatability",
+                                       sp + " status_flag",
+                                       sp + " integration_flag",
+#                                       "analysis_time",
+                                       "Inlet"]]
+                    
+                else:
+                    
+                    # Use UNIX pattern matching to find matching inlets
+                    # select_inlet is a list of True or False
+                    select_inlet = [fnmatch.fnmatch(i, inlet) for i in ds.Inlet.values]
+                    # now create a DataArray of True or False
+                    select_ds = xray.DataArray(select_inlet, coords = [ds.time],
+                                               dims = ["time"])
+                    
+                    # sub-set ds
+                    ds_sp = ds.where(select_ds, drop = True)[[sp,
+                                                              sp + " repeatability",
+                                                              sp + " status_flag",
+                                                              sp + " integration_flag",
+#                                                              "analysis_time"
+                                                              "Inlet"]]
 
-#            # re-label inlet if required
-#            if "inlet_label" in params["GC"][site].keys():
-#                inlet_label = params["GC"][site]["inlet_label"][inleti]
-#            else:
-#               inlet_label = inlet
+                # re-label inlet if required
+                if "inlet_label" in list(params["GC"][site].keys()):
+                    inlet_label = params["GC"][site]["inlet_label"][inleti]
+                else:
+                   inlet_label = inlet
 
-            global_attributes["inlet_height_magl"] = float(inlet_label[:-1])
+            if inlet_label == None:
+                global_attributes["inlet_magl"] = params["GC"][site]["inlet_label"][inleti]
+            else:
+                global_attributes["inlet_magl"] = inlet_label
+            
+            # Record Inlets from the .C file, for the record
+            # TODO: figure out why xarray raises an error at this line
+            #   if "analysis time" column is included (commented out above)
+            Inlets = set(ds_sp.where(ds_sp[sp + " status_flag"] == 0, drop = True).Inlet.values)
+            global_attributes["inlet_gcwerks"] = ", ".join(Inlets)           
+            # Now remove "Inlet" column from dataframe. Don't need it
+            ds_sp = ds_sp.drop(["Inlet"])
+    
 
             # Drop NaNs
             ds_sp = ds_sp.dropna("time")
@@ -614,25 +530,36 @@ def gc(site, instrument, network,
                                    global_attributes = global_attributes,
                                    units = units[sp],
                                    scale = scale[sp],
-                                   sampling_period = params["GC"]["sampling_period"][instrument])
+                                   sampling_period = params["GC"]["sampling_period"][instrument],
+                                   date_range = date_range)
 
-                # Get instrument name for output
-                if sp.upper() in params["GC"]["instruments_out"][instrument]:
-                    instrument_out = params["GC"]["instruments_out"][instrument][sp]
+                if len(ds_sp.time.values) == 0:
+                    
+                    # Then must have not passed date_range filter?
+                    print(" ... no data in range")
+                    # then do nothing
+
                 else:
-                    instrument_out = params["GC"]["instruments_out"][instrument]["else"]
+    
+                    # Get instrument name for output
+                    if sp.upper() in params["GC"]["instruments_out"][instrument]:
+                        instrument_out = params["GC"]["instruments_out"][instrument][sp]
+                    else:
+                        instrument_out = params["GC"]["instruments_out"][instrument]["else"]
+    
+                    # Write file
+                    nc_filename = output_filename(output_folder,
+                                                  network,
+                                                  instrument_out,
+                                                  site.upper(),
+                                                  ds_sp.time.to_pandas().index.to_pydatetime()[0],
+                                                  ds_sp.species,
+                                                  inlet = inlet_label,
+                                                  version = version)
 
-                # Write file
-                nc_filename = output_filename(output_folder,
-                                              network,
-                                              instrument_out,
-                                              site.upper(),
-                                              str(ds_sp.time.to_pandas().index.to_pydatetime()[0].year),
-                                              ds_sp.species,
-                                              inlet_label)
-                print("Writing... " + nc_filename)
-                ds_sp.to_netcdf(nc_filename)
-                print("... written.")
+                    print("Writing... " + nc_filename)
+                    ds_sp.to_netcdf(nc_filename)
+                    print("... written.")
 
 
 
@@ -690,7 +617,9 @@ def crds_data_read(data_file):
 
 def crds(site, network,
          input_directory = None,
-         output_directory = None):
+         output_directory = None,
+         date_range = None,
+         version = None):
     """
     Process CRDS data
 
@@ -722,8 +651,8 @@ def crds(site, network,
 
             # Species-specific dataset
             ds_sp = ds[[sp,
-                        sp + "_variability",
-                        sp + "_number_of_observations"]]
+                        sp + " variability",
+                        sp + " number_of_observations"]]
             ds_sp = ds_sp.dropna("time")
 
             global_attributes = params_crds[site]["global_attributes"]
@@ -733,29 +662,48 @@ def crds(site, network,
             ds_sp = attributes(ds_sp, sp, site.upper(),
                                global_attributes = global_attributes,
                                scale = scales[sp],
-                               sampling_period=60)
+                               sampling_period=60,
+                               date_range = date_range)
 
-            # Write file
-            nc_filename = output_filename(output_folder,
-                                          network,
-                                          "CRDS",
-                                          site.upper(),
-                                          str(ds_sp.time.to_pandas().index.to_pydatetime()[0].year),
-                                          ds_sp.species,
-                                          inlet)
-            print("Writing " + nc_filename)
-            ds_sp.to_netcdf(nc_filename)
-            print("... written.")
+            if len(ds_sp.time.values) == 0:
+                
+                # Then must have not passed date_range filter?
+                print(" ... no data in range")
+                # then do nothing
+
+            else:
+
+                # Write file
+                nc_filename = output_filename(output_folder,
+                                              network,
+                                              "CRDS",
+                                              site.upper(),
+                                              ds_sp.time.to_pandas().index.to_pydatetime()[0],
+                                              ds_sp.species,
+                                              inlet = inlet,
+                                              version = version)
+                
+                print("Writing " + nc_filename)
+                ds_sp.to_netcdf(nc_filename)
+                print("... written.")
 
 
 def ale_gage(site, network):
+    """
+    Process Georgia Tech ALE or GAGE observations
+    
+    Args:
+        site (str): ADR, RPB, ORG, SMO, CGO or MHD
+        network (str): ALE or GAGE
 
+    """
+    
     import fortranformat as ff
 
     ale_directory = "/dagage2/agage/summary/git/ale_new/complete/"
     gage_directory = "/dagage2/agage/summary/git/gage_new/complete/"
 
-    output_directory = "/dagage2/agage/metoffice/processed_observations/"
+    output_directory = "/data/shared/obs_2018/"
 
     site_translate = {"ADR": "adrigole",
                       "RPB": "barbados",
@@ -766,8 +714,11 @@ def ale_gage(site, network):
 
     if network == "ALE":
         data_directory = ale_directory
-    if network == "GAGE":
+    elif network == "GAGE":
         data_directory = gage_directory
+    else:
+        print("Network needs to be ALE or GAGE")
+        return None
 
 
     fnames = sorted(glob.glob(join(data_directory,
@@ -848,11 +799,10 @@ def ale_gage(site, network):
         # Write file
         nc_filename = output_filename(output_directory,
                                       network,
-                                      "GC-ECD",
+                                      "GCECD",
                                       site.upper(),
-                                      str(ds.time.to_pandas().index.to_pydatetime()[0].year),
-                                      ds.species,
-                                      site_params[site]["height"][0])
+                                      ds.time.to_pandas().index.to_pydatetime()[0],
+                                      ds.species)
         print("Writing " + nc_filename)
         ds.to_netcdf(nc_filename)
         print("... written.")
@@ -898,7 +848,7 @@ def mhd_o3():
                     units = "ppb")
 
     # Write file
-    nc_filename = output_filename("/dagage2/agage/metoffice/processed_observations",
+    nc_filename = output_filename("/dagage2/agage/metoffice/processed_observations_2018",
                                   "AURN",
                                   "thermo",
                                   "MHD",
@@ -910,43 +860,47 @@ def mhd_o3():
     print("... written.")
 
 
-def decc_data_freeze():
+def data_freeze(version,
+                end_date,
+                input_directory = "/dagage2/agage/summary/gccompare-net/snapshot/current-frozendata/data-net/",
+                output_directory = "/dagage2/agage/summary/gccompare-net/snapshot/current-frozendata/data-net/processed/"):
 
-    input_directory = "/dagage2/agage/summary/gccompare-net/snapshot/current-frozendata/data-net/"
-    output_directory = "/dagage2/agage/summary/gccompare-net/snapshot/current-frozendata/data-net/processed/"
+    date_range = ["19000101", end_date]
 
     # ICOS
-    icos("MHD", network = "LSCE", input_directory = input_directory, output_directory = output_directory)
+    icos("MHD", network = "ICOS", input_directory = input_directory,
+         output_directory = output_directory, version = version, date_range = date_range)
 
     # GAUGE CRDS data
-    crds("HFD", "GAUGE", input_directory = input_directory, output_directory = output_directory)
-    crds("BSD", "GAUGE", input_directory = input_directory, output_directory = output_directory)
+    crds("HFD", "GAUGE", input_directory = input_directory, output_directory = output_directory, version = version, date_range = date_range)
+
+    crds("BSD", "GAUGE", input_directory = input_directory, output_directory = output_directory, version = version, date_range = date_range)
+
 
     # GAUGE GC data
-    gc("BSD", "GCMD", "GAUGE", input_directory = input_directory, output_directory = output_directory)
-    gc("HFD", "GCMD", "GAUGE", input_directory = input_directory, output_directory = output_directory)
+    gc("BSD", "GCMD", "GAUGE", input_directory = input_directory, output_directory = output_directory, version = version, date_range = date_range)
+    gc("HFD", "GCMD", "GAUGE", input_directory = input_directory, output_directory = output_directory, version = version, date_range = date_range)
 
     # DECC CRDS data
-    crds("TTA", "DECC", input_directory = input_directory, output_directory = output_directory)
-    crds("RGL", "DECC", input_directory = input_directory, output_directory = output_directory)
-    crds("TAC", "DECC", input_directory = input_directory, output_directory = output_directory)
+    crds("TTA", "DECC", input_directory = input_directory, output_directory = output_directory, version = version, date_range = date_range)
+    crds("RGL", "DECC", input_directory = input_directory, output_directory = output_directory, version = version, date_range = date_range)
+    crds("TAC", "DECC", input_directory = input_directory, output_directory = output_directory, version = version, date_range = date_range)
 
     # DECC GC data
-    gc("TAC", "GCMD", "DECC", input_directory = input_directory, output_directory = output_directory)
-    gc("RGL", "GCMD", "DECC", input_directory = input_directory, output_directory = output_directory)
+    gc("TAC", "GCMD", "DECC", input_directory = input_directory, output_directory = output_directory, version = version, date_range = date_range)
+    gc("RGL", "GCMD", "DECC", input_directory = input_directory, output_directory = output_directory, version = version, date_range = date_range)
 
     # DECC Medusa
-    gc("TAC", "medusa", "DECC", input_directory = input_directory, output_directory = output_directory)
+    gc("TAC", "medusa", "DECC", input_directory = input_directory, output_directory = output_directory, version = version, date_range = date_range)
 
     # AGAGE GC data
-    gc("MHD", "GCMD", "AGAGE", input_directory = input_directory, output_directory = output_directory)
+    gc("MHD", "GCMD", "AGAGE", input_directory = input_directory, output_directory = output_directory, version = version, date_range = date_range)
 
     # AGAGE GCMS data
-    gc("MHD", "GCMS", "AGAGE", input_directory = input_directory, output_directory = output_directory)
+    gc("MHD", "GCMS", "AGAGE", input_directory = input_directory, output_directory = output_directory, version = version, date_range = date_range)
 
     # AGAGE Medusa
-    gc("MHD", "medusa", "AGAGE", input_directory = input_directory, output_directory = output_directory)
-
+    gc("MHD", "medusa", "AGAGE", input_directory = input_directory, output_directory = output_directory, version = version, date_range = date_range)
 
 
 
@@ -987,16 +941,16 @@ if __name__ == "__main__":
     crds("RPB", "AGAGE")
 
     # ICOS
-#    icos("TTA")
-    icos("MHD", network = "LSCE")
+#    icos("TTA", network = "DECC")
+    icos("MHD", network = "ICOS")
 
     # GAUGE CRDS data
-    crds("HFD", "GAUGE")
-    crds("BSD", "GAUGE")
+    crds("HFD", "DECC")
+    crds("BSD", "DECC")
 
     # GAUGE GC data
-    gc("BSD", "GCMD", "GAUGE")
-    gc("HFD", "GCMD", "GAUGE")
+    gc("BSD", "GCMD", "DECC")
+    gc("HFD", "GCMD", "DECC")
 
     # DECC CRDS data
     crds("TTA", "DECC")
@@ -1010,14 +964,31 @@ if __name__ == "__main__":
     # DECC Medusa
     gc("TAC", "medusa", "DECC")
 
+    cleanup("CGO")
+    cleanup("MHD")
+    cleanup("RPB")
+    cleanup("THD")
+    cleanup("SMO")
+    cleanup("GSN")
+    cleanup("SDZ")
+    cleanup("JFJ")
+    cleanup("CMN")
+    cleanup("ZEP")
 
-    # Copy files
-    networks = ["AGAGE", "GAUGE", "DECC", "LSCE"]
-    src_dir = "/dagage2/agage/metoffice/processed_observations"
-    dest_dir = "/data/shared/obs"
+    cleanup("TAC")
+    cleanup("RGL")
+    cleanup("HFD")
+    cleanup("BSD")
+    cleanup("TTA")
+    
 
-    for network in networks:
-        files = glob.glob(join(src_dir, network, "*.nc"))
-        for f in files:
-            print("Copying %s..." % (split(f)[-1]))
-            shutil.copy(f, join(dest_dir, network))
+#    # Copy files
+#    networks = ["AGAGE", "GAUGE", "DECC", "ICOS"]
+#    src_dir = "/dagage2/agage/metoffice/processed_observations_2018"
+#    dest_dir = "/data/shared/obs_2018"
+#
+#    for network in networks:
+#        files = glob.glob(join(src_dir, network, "*.nc"))
+#        for f in files:
+#            print("Copying %s..." % (split(f)[-1]))
+#            shutil.copy(f, join(dest_dir, network))
