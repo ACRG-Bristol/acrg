@@ -22,15 +22,15 @@ import pytest
 
 #import acrg_agage as agage
 import acrg_obs.read as read
-from builtins import str
+#from builtins import str
 
 @pytest.fixture(scope="module")
 def measurement_param():
     ''' Define set of measurement parameters to be used throughout the test suite '''
     param = {}
     param["sites"] = ["MHD","TAC"]
-    param["start_date"] = str("2014-02-01")
-    param["end_date"] = str("2014-03-01")
+    param["start_date"] = "2014-02-01"
+    param["end_date"] = "2014-03-01"
     param["inlets"] = ["10magl","100magl"]
     param["species"] = "ch4"
     
@@ -41,8 +41,8 @@ def sat_measurement_param():
     ''' Define set of measurement parameters for satellite data '''
     param = {}
     param["sites"] = ["GOSAT-INDIA"]
-    param["start_date"] = str("2013-07-01")
-    param["end_date"] = str("2013-08-01")
+    param["start_date"] = "2013-07-01"
+    param["end_date"] = "2013-08-01"
     param["inlets"] = [None]
     param["species"] = "ch4"
     param["max_level"] = 17

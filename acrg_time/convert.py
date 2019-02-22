@@ -23,7 +23,7 @@ Created on Fri Nov 21 10:48:30 2014
 @author: chxmr
 """
 from __future__ import division
-from builtins import str
+#from builtins import str
 
 from past.utils import old_div
 import datetime as dt
