@@ -257,7 +257,7 @@ def average_period(ds,av_period,dim="time"):
         xarray.Dataset: 
             original dataset averaged along the specified dimension
     '''
-    ds_av = ds.resample(av_period, dim = "time")
+    ds_av = ds.resample(indexer={'time':av_period}).mean()
     ds_av = ds_av.dropna(dim, how="all")
     
     return ds_av
