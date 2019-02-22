@@ -14,7 +14,7 @@ from os import getenv
 from os.path import join, split
 import xarray as xr
 from acrg_obs.utils import attributes, output_filename
-
+import pytz
 
 # Site info file
 acrg_path = getenv("ACRG_PATH")
@@ -27,7 +27,87 @@ with open(site_info_file) as sf:
 obs_directory = join(data_path, "obs_2018/")
 
 
-def ufrank(site):
+def nies_n2o_ch4(species):
+    '''
+    N2O files from NIES
+    '''            
+    params = {
+        "site" : "COI",
+        "scale": {
+            "CH4": "NIES-94",
+            "N2O": "NIES-96"},
+        "instrument": {
+                "CH4": "GCFID",
+                "N2O": "GCECD"},
+        "global_attributes" : {
+                "contact": "Yasunori Tohjima (tohjima@nies.go.jp)" ,
+                "averaging": "20 minutes"
+                }
+        }
+    if species.lower() == 'ch4':
+        fname = "/data/shared/obs_raw/NIES/COI/COICH4_Hourly_withSTD.TXT"
+        df = pd.read_csv(fname, skiprows=1,
+                 delimiter=",", names = ["Time", species.upper(), 'sd', 'N'],
+                 index_col = "Time", parse_dates=["Time"],
+                 dayfirst=True)
+    elif species.lower() == 'n2o':
+        fname = "/data/shared/obs_raw/NIES/COI/COIN2O_Hourly_withSTD.txt"
+        df = pd.read_csv(fname, skiprows=1,
+                 delimiter=",", names = ["Time", species.upper(), 'STD', 'n'],
+                 index_col = "Time", parse_dates=["Time"],
+                 dayfirst=True)
+              
+    
+    print("Assuming data is in JST. Check input file. CONVERTING TO UTC.")
+    
+    df.index = df.index.tz_localize(pytz.timezone("Japan")).tz_convert(None) # Simpler solution
+
+    # Sort
+    df.sort_index(inplace = True)
+
+    # Rename columns to species
+    df.rename(columns = {df.columns[0]: species.upper()}, inplace = True)
+
+    df.rename(columns = {df.columns[1]: species.upper() + " repeatability"}, inplace = True)
+    df.rename(columns = {df.columns[2]: species.upper() + " number_of_observations"}, inplace = True)
+    
+    # Drop duplicates and rename index
+    df.index.name = "index"
+    df = df.reset_index().drop_duplicates(subset='index').set_index('index')              
+    df.index.name = "time"
+    
+    # remove 9999
+    df = df[df[species.upper()]<9999]
+
+    # Convert to dataset
+    ds = xr.Dataset.from_dataframe(df)
+    
+
+    ds = ds.where((ds[species.upper() + " repeatability"] < 9000), drop = True)
+    
+    # Add attributes
+
+    ds = attributes(ds,
+                    species.upper(),
+                    params['site'].upper(),
+                    global_attributes = params["global_attributes"],
+                    scale = params["scale"][species.upper()])
+   
+    # Write file
+    nc_filename = output_filename(obs_directory,
+                                  "NIES",
+                                  params["instrument"][species.upper()],
+                                  params["site"],
+                                  ds.time.to_pandas().index.to_pydatetime()[0],
+                                  ds.species)
+    
+    print("Writing " + nc_filename)
+    ds.to_netcdf(nc_filename)
+
+
+
+
+def ufrank(site = "TAU"):
     '''
     Process Goethe Frankfurt University data files for Taunus
 
