@@ -772,6 +772,7 @@ def get_obs(sites, species,
             Output end date in a format that Pandas can interpret
         inlet (str/list, optional) : 
             Height of inlet for input data (must match number of sites).
+            If you want to merge all inlets, use "all"
         average (str/list, optional) :
             Averaging period for each dataset (for each site) ((must match number of sites)).
             Each value should be a string of the form e.g. "2H", "30min" (should match pandas offset 
@@ -818,6 +819,9 @@ def get_obs(sites, species,
 
     if type(sites) is not list:
         raise ValueError("Sites variable must be a list")
+
+    if type(average) is not list:
+        average = [average]*len(sites)
 
     if (data_directory is None):
         data_directory = obs_directory
