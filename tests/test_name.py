@@ -35,7 +35,8 @@ import xarray as xray
 import pandas as pd
 
 import acrg_name.name as name
-import acrg_agage as agage
+#import acrg_agage as agage
+import acrg_obs.read as read
 
 #%%
 
@@ -375,7 +376,7 @@ def data(measurement_param_small):
     input_param["end"] = measurement_param_small["end"]
     # Can't specify data directory
     
-    #measurement_data = agage.get_obs(**input_param)
+    #measurement_data = read.get_obs(**input_param)
     time = pd.date_range(input_param["start"], input_param["end"], freq='2H')
     nt = len(time)
     obsdf = pd.DataFrame({"mf":np.random.rand(nt)*1000.,"dmf":np.random.rand(nt), "status_flag":np.zeros(nt)}, index=time)
@@ -396,7 +397,7 @@ def data_sat(measurement_param_sat):
     input_param["max_level"] = measurement_param_sat["max_level"]
     # Can't specify data directory
     
-    #measurement_data_sat = agage.get_obs(**input_param)
+    #measurement_data_sat = read.get_obs(**input_param)
     time = pd.date_range(input_param["start"], input_param["end"], freq='0.5H')
     nt = len(time)
     obsdf = pd.DataFrame({"mf":np.random.rand(nt)*1000.,"dmf":10*np.random.rand(nt), "mf_prior_factor":10*np.random.rand(nt), "mf_prior_upper_level_factor":15*np.random.rand(nt)}, index=time)

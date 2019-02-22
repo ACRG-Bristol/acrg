@@ -554,9 +554,10 @@ def read_met(fnames, met_def_dict=None,vertical_profile=False,satellite=False):
         met_dict["release_lat"] = Y
 
         #Construct dataframe
+        # calling to_datetime on a series is MUCH faster than the previous list comprehension
+        times = pd.Series([d.strip() for d in m2[:,column_indices["time"]]])
         output_df_file = pd.DataFrame(met_dict,
-                          index=[pd.to_datetime(d, dayfirst=True)
-                              for d in m2[:,column_indices["time"]]])
+                        index=pd.to_datetime(times, format='%d/%m/%Y %H:%M %Z'))
 
         output_df.append(output_df_file)
     

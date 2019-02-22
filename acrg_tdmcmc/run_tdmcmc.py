@@ -33,7 +33,7 @@ from builtins import range
 from past.utils import old_div
 import acrg_name as name
 import numpy as np
-import acrg_agage as agage
+import acrg_obs
 import pandas
 import datetime as dt
 from numba import jit
@@ -362,7 +362,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     corr_type={"uncorrelated":False,
               "corr":False,
               "evencorr":True}
-    data = agage.get_obs(sites, species, start = start_date, end = end_date, average = meas_period, 
+    data = acrg_obs.get_obs(sites, species, start_date = start_date, end_date = end_date, average = meas_period, 
                           keep_missing=corr_type[inv_type],max_level=max_level, data_directory = data_dir)
     
     
