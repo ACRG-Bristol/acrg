@@ -9,3 +9,4 @@ tests/files/NAME/raw_output/*/*/Processed_Fields_files_Org
 tests/files/output/*
 *.ipynb_checkpoints*
 *~
+.cache
