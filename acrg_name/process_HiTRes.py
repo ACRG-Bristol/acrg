@@ -9,8 +9,8 @@ Created on Mon Feb 19 11:09:53 2018
 """
 Functions for processing HiTRes footprint files
 """
-from __future__ import print_function
 
+from past.utils import old_div
 import acrg_name.process as proc
 import datetime as dt
 from dateutil import parser
@@ -240,7 +240,7 @@ def process_HiTRes_all(domain, site_height_dict, start_date, end_date, user_max_
     
     dates = pd.date_range(start=start_date, end = end_date, freq = 'MS')
 
-    for i in site_height_dict.keys():
+    for i in list(site_height_dict.keys()):
         for d in dates:
             print("Getting HiTRes footprints for %02d %04d at %s" %(d.year, d.month, i))
             process_HiTRes(domain, i, site_height_dict[i], "%04d" %d.year, "%02d" %d.month, user_max_hour_back,
