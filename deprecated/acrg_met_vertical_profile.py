@@ -7,6 +7,7 @@ Created on Thu Jan  3 13:29:24 2019
 """
 from __future__ import print_function
 
+from builtins import str
 import iris
 import xarray as xr
 import gzip
@@ -291,8 +292,8 @@ def get_vertical_profile(site, start_date, end_date, output_vars, temp_dir, outp
 
     # If x and y wind present in DS: Get wind speed and direction
 
-    if "x_wind" in DS.keys():
-        if "y_wind" in DS.keys():
+    if "x_wind" in list(DS.keys()):
+        if "y_wind" in list(DS.keys()):
             wind_speed, wind_direction = xy_wind_to_speed_direction(DS.x_wind.values, DS.y_wind.values)
         
             if "wind_speed" in output_vars:
@@ -312,7 +313,7 @@ def get_vertical_profile(site, start_date, end_date, output_vars, temp_dir, outp
         
     # Compress and save as netcdf
     
-    for key in DS.keys():
+    for key in list(DS.keys()):
             DS[key].encoding['zlib'] = True                    
     DS.to_netcdf(path=output_dir+"vertical_profile_" + site.upper() + ".nc", mode='w')
 

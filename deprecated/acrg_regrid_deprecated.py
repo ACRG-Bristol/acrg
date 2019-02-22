@@ -13,7 +13,12 @@ It will be saved in /data/shared/NAME/emissions/DOMAIN-NAME/SPECIES_DOMAIN-NAME_
 @author: ew14860
 """
 from __future__ import print_function
+from __future__ import division
 
+from builtins import input
+from builtins import str
+from past.utils import old_div
+from builtins import object
 import acrg_name as name
 import acrg_agage as agage
 import netCDF4 as nc
@@ -29,7 +34,7 @@ import datetime as dt
 
 
 #Read in EDGAR data
-class EDGARread:
+class EDGARread(object):
     def __init__(self, filename_of_EDGAR_emissions):
 
         f = nc.Dataset(filename_of_EDGAR_emissions, 'r')
@@ -41,7 +46,7 @@ class EDGARread:
         #Get flux of species
 #        variables = f.variables.keys()
 #        species = str(variables[2])
-        variables = [str(i) for i in f.variables.keys()]
+        variables = [str(i) for i in list(f.variables.keys())]
         for i in variables:
             while i not in ['lat','lon','time']:
                 species = i
@@ -101,8 +106,8 @@ def regrid(filename_of_EDGAR_emissions,
         lon_ed = lon_ed-180
         flux_ed0 = flux_ed.copy()
         flux_ed = np.zeros(np.shape(flux_ed0))
-        flux_ed[:,0:(len(lon_ed)/2)]=flux_ed0[:,(len(lon_ed)/2):]
-        flux_ed[:,(len(lon_ed)/2):]=flux_ed0[:,0:(len(lon_ed)/2)]
+        flux_ed[:,0:(old_div(len(lon_ed),2))]=flux_ed0[:,(old_div(len(lon_ed),2)):]
+        flux_ed[:,(old_div(len(lon_ed),2)):]=flux_ed0[:,0:(old_div(len(lon_ed),2))]
     
     elif lon_ed[0] < 0:
         lon_ed = lon_ed
@@ -156,7 +161,7 @@ def kg2mol(kgflux, species_in):
         
     species = agage.synonyms(species_in, species_info)
     mol_mass = float(species_info[species]['mol_mass'])
-    molflux = kgflux*(1/(mol_mass*10**-3))
+    molflux = kgflux*(old_div(1,(mol_mass*10**-3)))
     
     return molflux
 
@@ -187,7 +192,7 @@ def write(lat, lon, flux, species, domain, year, EDGAR_filename = None, footprin
     ncname = '/data/shared/NAME/emissions/%s/%s_%s_%s.nc' %(domain, species, domain, year)
 
     if os.path.isfile(ncname) == True:
-        answer = raw_input("You are about to overwrite an existing file, do you want to continue? Y/N")
+        answer = input("You are about to overwrite an existing file, do you want to continue? Y/N")
         if answer == 'N':
             return
         elif answer == 'Y':

@@ -5,15 +5,19 @@ Created on Tue Aug  8 12:13:25 2017
 
 @author: as13988
 """
+from __future__ import division
 
 # Generates N HSV or RGB tuples spread over colour space 
-class generatecolours:
+from builtins import range
+from builtins import object
+from past.utils import old_div
+class generatecolours(object):
     def __init__(self, N):
         
         import colorsys        
         
-        HSV_tuples = [(x*1.0/N, 0.5, 0.5) for x in range(N)]
-        RGB_tuples = map(lambda x: colorsys.hsv_to_rgb(*x), HSV_tuples)
+        HSV_tuples = [(old_div(x*1.0,N), 0.5, 0.5) for x in range(N)]
+        RGB_tuples = [colorsys.hsv_to_rgb(*x) for x in HSV_tuples]
         
         self.RGB = RGB_tuples
         self.HSV = HSV_tuples
@@ -28,7 +32,7 @@ class generatecolours:
 #      h (high), f (full) or None. If None, no boundary data will be read in. Resolution drops off by roughly 
 #      80% between datasets. Higher res datasets are much slower to draw. Default l
     
-class plot_map_setup:
+class plot_map_setup(object):
     def __init__(self, data,
                  lon_range = None, lat_range = None,
                  bottom_left = False,
