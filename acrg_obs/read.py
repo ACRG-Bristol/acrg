@@ -607,7 +607,7 @@ def get_single_site(site, species_in,
                     data_frame.loc[pd.to_datetime(end_date)] = \
                         [np.nan for col in data_frame.columns]
                 # Now sort to get everything in the right order
-                data_frame.sort_index(inplace = True)
+                data_frame = data_frame.sort_index()
             
             # Resample
             data_frame = data_frame.resample(average).agg(how)
@@ -616,7 +616,7 @@ def get_single_site(site, species_in,
              
         # Drop NaNs
         if keep_missing == False:  
-            data_frame.dropna(inplace = True)
+            data_frame = data_frame.dropna()
         
         data_frame.mf.units = units
         data_frame.mf.scale = cal[0]
