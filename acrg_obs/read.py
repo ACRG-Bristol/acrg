@@ -495,7 +495,7 @@ def get_single_site(site, species_in,
             # Look for a valid species name
             #ncvarname = listsearch([*ds.variables],
             ncvarname = listsearch(list(ds.variables.keys()),
-                                    species,
+                                   species,
                                    species_info)
             
             if ncvarname is None:
@@ -914,11 +914,16 @@ def plot(data_dict):
             else:
                 if "vmf" in df.columns:
                     error_col = "vmf"
-                if "dmf" in df.columns:
+                    errors = df[error_col]
+                elif "dmf" in df.columns:
                     error_col = "dmf"
+                    errors = df[error_col]
+                else:
+                    #TODO: Make this faster by duing a line plot, if there are no error bars
+                    errors = df.mf*0.
                 
                 plots.append(plt.errorbar(df.index, df.mf,
-                                          yerr = df[error_col],
+                                          yerr = errors,
                                           linewidth = 0, 
                                           marker = '.', markersize = 3.,
                                           label = site))
