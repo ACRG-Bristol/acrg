@@ -32,7 +32,10 @@ to adjust the uncertainties differently (emissions uncertainty > baseline uncert
 @author: ml12574 (updated by rt17603)
 """
 from __future__ import print_function
+from __future__ import division
+from builtins import str
 
+from past.utils import old_div
 import os
 import argparse
 import glob
@@ -93,15 +96,25 @@ av_period = param['av_period']     # Frequency to average footprints and measuer
 
 max_level = param["max_level"] # Only relevant for satellite data
 
+if "site_modifier" in param:
+    site_modifier = param["site_modifier"]
+else:
+    site_modifier = {}
+
 species = param['species']
 if not start_date:
-    start_date = param['start_date']
+    start_date = str(param['start_date'])
     if not start_date:
         raise Exception("Start date of observations must be specified either on the command line or within the configuration file")
+else:
+    start_date = str(start_date)
 if not end_date:
-    end_date = param['end_date']
+    end_date = str(param['end_date'])
     if not end_date:
         raise Exception("End date of observations must be specified either on the command line or within the configuration file")
+else:
+    end_date = str(end_date)
+    
 domain = param['domain']
 network = param['network']
 
@@ -195,7 +208,7 @@ if verbose:
     print('Inversion type: {0}'.format(inv_type))
     print('Regions in trans-dimensional grid - minimum allowed: {0}, maximum allowed: {1}, starting value: {2}'.format(kmin,kmax,k_ap))
     print('Burn-in iterations: {0}'.format(burn_in))
-    print('Number of iterations to run: {0} (nsub = {1}, {2} iterations will be saved)\n'.format(nIt,nsub,nIt/nsub))
+    print('Number of iterations to run: {0} (nsub = {1}, {2} iterations will be saved)\n'.format(nIt,nsub,old_div(nIt,nsub)))
     print('\n---------------\n') 
     
 ############################################################
@@ -404,7 +417,7 @@ post_mcmc=run_tdmcmc.run_tdmcmc(sites, meas_period, av_period, species, start_da
     output_dir,fp_dir=fp_dir, flux_dir = flux_dir, data_dir=data_dir, basis_dir=basis_dir, bc_basis_dir=bc_basis_dir, bc_dir = bc_dir,
     filters=filters,bl_split=bl_split, bl_levels=levels,
     tau_ap=tau_ap, tau_hparams=tau_hparams, stepsize_tau=stepsize_tau, tau_pdf=tau_pdf,
-    max_level=max_level)
+    max_level=max_level, site_modifier=site_modifier)
 
 if unique_copy:
     shutil.copy(config_file,output_dir)
@@ -427,7 +440,7 @@ if unique_copy:
     # Write output from MCMC code again but this time to the subdirectory
     fname = os.path.join(datestamp_output_dir,
                             "output_{network}_{species}_{date}.nc".format(network=network_w,species=species,date=start_date))
-    for key in post_mcmc.keys():
+    for key in list(post_mcmc.keys()):
         post_mcmc[key].encoding['zlib'] = True
     post_mcmc.to_netcdf(path=fname, mode='w')
 else:
