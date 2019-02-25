@@ -1212,7 +1212,8 @@ def extract_dates(ds,dim="time",dtype='M8[D]'):
     Returns:
         np.array (str) : dates as an array of strings
     '''
-    return ds[dim].values.astype(dtype).astype(str) # Extract dates from time column (cast as 8 byte datetime format (M8) in whole days [D] then cast as a string)
+    #return ds[dim].values.astype(dtype).astype(str) # Extract dates from time column (cast as 8 byte datetime format (M8) in whole days [D] then cast as a string)
+    return np.datetime_as_string(ds[dim].values.astype(dtype)) # Extract dates from time column (cast as 8 byte datetime format (M8) in whole days [D] then cast as a string)
 
 def extract_files(directory,search_str=None,start=None,end=None,date_separator='',day=True):
     '''
