@@ -80,7 +80,13 @@ This could be run as:
 """
 from __future__ import print_function
 from __future__ import absolute_import
+from __future__ import division
 
+from builtins import zip
+from builtins import str
+from builtins import chr
+from builtins import range
+from past.utils import old_div
 import glob
 import os
 import re
@@ -388,14 +394,14 @@ def coord_order(ds,data_vars=[],check_consistent=False):
         dims = ds[name].dims
         for i,d in enumerate(dims):
             order = str(i+1) # Set order as 1 for first order, 2 for second order...
-            if order in dim_order.keys(): # Check if key already exists
+            if order in list(dim_order.keys()): # Check if key already exists
                 if d not in dim_order[order]: # Check that dimension is not already present for that key
                     dim_order[order].append(d)
             else:
                 dim_order[order] = [d] # Create key if it doesn't exist
             
             if check_consistent:
-                for key in dim_order.keys():
+                for key in list(dim_order.keys()):
                     if key != order: # Check all other keys except where we just added the dimension name
                         if d in dim_order[key]:
                             # If the dimension is being used for different orders by different data variables
@@ -574,7 +580,7 @@ def distance_lat(distance,radius=radius):
             Latitude difference in degrees
     '''
     # Haversine distance formula is given as distance = 2*asin(sqrt(a))*radius
-    a = math.sin(distance/(2.*radius))*math.sin(distance/(2.*radius))
+    a = math.sin(old_div(distance,(2.*radius)))*math.sin(old_div(distance,(2.*radius)))
     
     # Full formula for a = sin(dlat/2)**2 + cos(lat1)*cos(lat2)*sin(dLon/2)**2
     # When dlon=0, lon1=lon2, a reduces to a = sin(dlat/2)**2
@@ -602,11 +608,11 @@ def distance_lon(distance,lat,radius=radius):
     '''
     lat = math.radians(lat)
     # Haversine distance formula is given as distance = 2*asin(sqrt(a))*radius
-    a = math.sin(distance/(2.*radius))*math.sin(distance/(2.*radius))
+    a = math.sin(old_div(distance,(2.*radius)))*math.sin(old_div(distance,(2.*radius)))
     
     # Full formula for a = sin(dlat/2)**2 + cos(lat1)*cos(lat2)*sin(dLon/2)**2
     # When dlat=0, lat1=lat2, a reduces to a = cos^2(lat)*sin^2(dlat/2)
-    b = math.sqrt(a)/math.cos(lat)
+    b = old_div(math.sqrt(a),math.cos(lat))
     dlon = 2.*math.asin(b)
     dlon = np.abs(dlon)
     
@@ -792,10 +798,10 @@ def gosat_add_coords(ds,data_vars=[]):
     dims_current = ['n','m']
     dims = ['time','lev']
     
-    if ds.dims.keys() != dims_current and ds.dims.keys() != dims_current[::-1]: # Check dimensions match what we expect (check forward and reverse list)
+    if list(ds.dims.keys()) != dims_current and list(ds.dims.keys()) != dims_current[::-1]: # Check dimensions match what we expect (check forward and reverse list)
         print('WARNING: Do not recognise dimensions of input gosat dataset. Unable to add new dimensions.')
         return None
-        
+    #dims_current = ['n','m']
     
     # Define co-ordinate values. Extract from Dataset if already present (e.g. time), construct if not (e.g. lev)
     coords = {}
@@ -1273,7 +1279,9 @@ def extract_files(directory,search_str=None,start=None,end=None,date_separator='
     filenames.sort()
  
     if start and end:
-        date_range = np.arange(start,end,dtype="datetime64[D]").astype(str)
+        #date_range = (np.arange(start,end,dtype="datetime64[D]").astype(str))
+        date_range = np.arange(start,end,dtype="datetime64[D]")
+        date_range = [str(date) for date in date_range]
         if not day:
            date_range = ['-'.join(date.split('-')[0:2]) for date in date_range] 
         date_range = [date.replace('-',date_separator) for date in date_range]
@@ -1344,7 +1352,7 @@ def extract_files_dir_split(directory,search_str=None,start=None,end=None,date_s
         year_start = min(all_dir_years)
         year_end = max(all_dir_years)
         print("No start and end date specified, so processing all files from all date labelled sub-directories within input directory {} for year range: {}-{}".format(directory,year_start,year_end))
-    year_range = range(int(year_start),int(year_end)+1)
+    year_range = list(range(int(year_start),int(year_end)+1))
     
     # Extracting files from directory based on start and end dates (if present). Otherwise extract all files.    
     files = []
@@ -1541,8 +1549,8 @@ def name_pressure(directory,start_date=None,end_date=None,name="surface_pressure
     
     if start_date and end_date:
         print('Setting tolerance of {0} days back when searching for NAME pressure files.'.format(max_days))
-        start_date = (np.datetime64(start_date) - np.timedelta64(max_days-1,'D')).astype(str)
-        end_date = (np.datetime64(end_date) + np.timedelta64(1,'D')).astype(str)
+        start_date = str(np.datetime64(start_date) - np.timedelta64(max_days-1,'D'))#.astype(str)
+        end_date = str(np.datetime64(end_date) + np.timedelta64(1,'D'))#.astype(str)
     
     files = extract_files(directory,search_str=search_str,start=start_date,end=end_date)
     
@@ -1631,7 +1639,7 @@ def name_pressure_match(ds,pressure_domain,columns=["latitude","longitude","time
     matched_pressure_NAME = np.zeros(len(lat))
     if day_template:
         end_datetime = np.max(pressure_NAME[columns[2]].values) # Extract maximum datetime value
-    for i,la,lo,t in zip(range(len(lat)),lat,lon,time):
+    for i,la,lo,t in zip(list(range(len(lat))),lat,lon,time):
         if not day_template or t <= end_datetime:
             match = pressure_NAME.sel(method="nearest",**{columns[0]:la,columns[1]:lo,columns[2]:t})
         else:
@@ -1641,6 +1649,7 @@ def name_pressure_match(ds,pressure_domain,columns=["latitude","longitude","time
             # Have to add extra line to explicitly copy the time coordinates because of an xarray bug - https://github.com/pydata/xarray/issues/1463
             pressure_NAME_offset.coords[columns[2]].data = np.copy(pressure_NAME_offset.coords[columns[2]].data)
             pressure_NAME_offset[columns[2]].values += max_offset_days # Create copy of dataset with date offset to date we're looking for.
+
             #day_tolerance = tolerance[:1] + [np.timedelta64(1,'D')]
             match = pressure_NAME_offset.sel(method="nearest",**{columns[0]:la,columns[1]:lo,columns[2]:t})
         matched_pressure_NAME[i] = match[p_column].values
@@ -1793,7 +1802,7 @@ def name_pressure_filter(ds,filters,pressure_NAME=None,columns=["latitude","long
     
     if "cutoff" in filters:
         model_diff = pressure_NAME - pressure_levels[:,0]
-        percent_diff = np.abs(model_diff*100./pressure_NAME)
+        percent_diff = np.abs(old_div(model_diff*100.,pressure_NAME))
         ds_new = ds_new.where(percent_diff <= cutoff, drop=True)
         #filt_1 = np.where(percent_diff <= cutoff)[0]
         #filt = filt_1
@@ -2048,7 +2057,7 @@ def ds_check_internal_unique(ds,axis="time"):
         
         # Add attribute describing modification made to original data
         mod_attr = "repeat_time_modified"
-        if mod_attr not in ds.attrs.keys():
+        if mod_attr not in list(ds.attrs.keys()):
             ds = add_history_attr(ds,mod_attr)
             ds.attrs[mod_attr] = "Repeated times were found at original indices {} (may not be the same if data has been binned). Small random increments were added to any repeat values to allow xarry to distinguish them.".format(repeat_all_index)
         else:
@@ -2177,7 +2186,7 @@ def gosat_split_output(ds,index,mapping=None,data_vars=[],split_dim="time",ident
     data = OrderedDict([])
     
     # Create data and coords to be included within dataset
-    for name,new_name in mapping.items():
+    for name,new_name in list(mapping.items()):
         
         dims = ds[name].dims # Extract dimensions for variable from current dataset
         data_var = ds[name][indices]
@@ -2185,7 +2194,7 @@ def gosat_split_output(ds,index,mapping=None,data_vars=[],split_dim="time",ident
         # Format the identifier data variable (e.g. exposure_id) to contain an extra "id" dimension to allow for multiple values
         if name == ident:
             identifiers = [value.split(ident_sep) for value in data_var.values] # Split identifier value by the ident_sep value (e.g. ',')
-            identifiers = np.array(list(itertools.izip_longest(*identifiers,fillvalue=np.nan))).T # Create array with consistent dimensions for "id" and fill in any gaps with np.nan values
+            identifiers = np.array(list(itertools.zip_longest(*identifiers,fillvalue=np.nan))).T # Create array with consistent dimensions for "id" and fill in any gaps with np.nan values
             
             id_dim_name = "id" # Define new dimension name
             split_dim_dim,id_dim_dim = identifiers.shape # Define dimensionality of new dimension and dimension we're splitting on
@@ -2218,7 +2227,7 @@ def gosat_split_output(ds,index,mapping=None,data_vars=[],split_dim="time",ident
         
         # Extract relevant coords from input dataset
         for dim in dims:
-            if dim not in coords.keys(): 
+            if dim not in list(coords.keys()): 
                 if dim == split_dim:
                     coords[dim] = ds[dim][indices] # If dim is split_dim dimension (e.g. time), extract only the relevant values
                 else:
@@ -2438,7 +2447,7 @@ def gosat_output_name(ds,site,max_level=17,use_name_pressure=False,pressure_doma
         dlon_da = xray.DataArray(dlon,coords={axis1:ds[axis1]},dims={axis1:len(ds[axis1])})
         ds = ds.assign(**{col_mapping['dx']:dlon_da,col_mapping['dy']:dlat_da})
     
-    columns=col_mapping.keys()
+    columns=list(col_mapping.keys())
     
     if site is None:
         site = 'global'
@@ -2498,7 +2507,7 @@ def gosat_output_name(ds,site,max_level=17,use_name_pressure=False,pressure_doma
                 filename = site+"_"+date.replace('-','')
                 if max_points:
                     if len(wh_date) > max_points:
-                        letter_split = chr(ord("A")+int(ID/max_points))
+                        letter_split = chr(ord("A")+int(old_div(ID,max_points)))
                         filename = "{}-{}".format(filename,letter_split)
                     ID_1 = ID%max_points
                 else:
