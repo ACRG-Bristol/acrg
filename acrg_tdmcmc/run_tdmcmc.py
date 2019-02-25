@@ -348,7 +348,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     pdf_p2_hparam2,x_pdf ,pdf_param1_pdf,pdf_param2_pdf,inv_type,
     output_dir,fp_dir=None, flux_dir = None, data_dir=None, basis_dir=None, bc_basis_dir=None, bc_dir = None,
     tau_ap=None, tau_hparams=None, stepsize_tau=None, tau_pdf=None,
-    bl_split=False, bl_levels=None, filters=None,max_level=None):
+    bl_split=False, bl_levels=None, filters=None, max_level=None, site_modifier={}):
     #%%
     
     if para_temp is True:
@@ -366,7 +366,8 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
                           keep_missing=corr_type[inv_type],max_level=max_level, data_directory = data_dir)
     
     
-    fp_all = name.footprints_data_merge(data, domain=domain, calc_bc=True, fp_directory = fp_dir, flux_directory = flux_dir, bc_directory = bc_dir)
+    fp_all = name.footprints_data_merge(data, domain=domain, calc_bc=True, fp_directory = fp_dir, flux_directory = flux_dir, bc_directory = bc_dir,
+                                        site_modifier=site_modifier)
     
     
     if fp_basis_case in ("INTEM"):    
@@ -381,7 +382,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     # CALCULATE DEGREE OF LOCALNESS FOR EACH FOOTPRINT
     fp_data_H2,release_lons,release_lats = add_local_ratio(fp_data_H2)
     
-    for si, site in enumerate(sites):     
+    for si, site in enumerate(sites): 
         fp_data_H2[site].attrs['Domain']=domain
 #        fp_data_H2[site].attrs['Height']=fp_heights[site] # ** fp_heights needs to be defined **
     

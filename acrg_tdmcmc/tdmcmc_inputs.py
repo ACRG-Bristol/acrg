@@ -96,6 +96,11 @@ av_period = param['av_period']     # Frequency to average footprints and measuer
 
 max_level = param["max_level"] # Only relevant for satellite data
 
+if "site_modifier" in param:
+    site_modifier = param["site_modifier"]
+else:
+    site_modifier = {}
+
 species = param['species']
 if not start_date:
     start_date = str(param['start_date'])
@@ -412,7 +417,7 @@ post_mcmc=run_tdmcmc.run_tdmcmc(sites, meas_period, av_period, species, start_da
     output_dir,fp_dir=fp_dir, flux_dir = flux_dir, data_dir=data_dir, basis_dir=basis_dir, bc_basis_dir=bc_basis_dir, bc_dir = bc_dir,
     filters=filters,bl_split=bl_split, bl_levels=levels,
     tau_ap=tau_ap, tau_hparams=tau_hparams, stepsize_tau=stepsize_tau, tau_pdf=tau_pdf,
-    max_level=max_level)
+    max_level=max_level, site_modifier=site_modifier)
 
 if unique_copy:
     shutil.copy(config_file,output_dir)
