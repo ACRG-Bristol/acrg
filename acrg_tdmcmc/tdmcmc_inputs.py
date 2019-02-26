@@ -96,7 +96,7 @@ av_period = param['av_period']     # Frequency to average footprints and measuer
 
 max_level = param["max_level"] # Only relevant for satellite data
 
-if "site_modifier" in param:
+if "site_modifier" in param and param["site_modifier"] is not None:
     site_modifier = param["site_modifier"]
 else:
     site_modifier = {}

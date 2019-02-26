@@ -858,7 +858,8 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     else:
         props_temp=["birth", "death", "move", "sigma_y", "tau", "swap"]
         
-    props = np.zeros((nIC1+len(props_temp)),dtype=object)
+    #props = np.zeros((nIC1+len(props_temp)),dtype=object)
+    props = np.zeros((nIC1+len(props_temp)),dtype="S{}".format(max([len(s) for s in props_temp])))
     accepts = np.zeros((nIC1+len(props_temp)))
     rejects = np.zeros((nIC1+len(props_temp)))
     if nBias:
@@ -947,7 +948,6 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     post_mcmc.coords["proposal"]=props
     post_mcmc.coords["sites"]=sites
     
-   
     # Also:
     #Attributes: Sites, av_period, basis_case, accepts and rejects names
     #output_directory="/home/ml12574/work/programs/Python/my_acrg/td_uncorr/"
@@ -959,6 +959,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     
     fname=os.path.join(output_dir,
                         "output_" + network_w + "_" + species + "_" + start_date + ".nc")
+
     for key in list(post_mcmc.keys()):
         post_mcmc[key].encoding['zlib'] = True
     post_mcmc.to_netcdf(path=fname, mode='w')

@@ -48,7 +48,7 @@ if data_path is None:
     print("Default Data directory is assumed to be /data/shared/. Set path in .bashrc as \
             export DATA_PATH=/path/to/data/directory/ and restart python terminal")
 
-mzt_dir = join(data_path, 'MOZART/mzt_output/')
+mzt_dir = join(data_path, 'MOZART/model/mzt_output/')
 #filename = mzt_dir + 'CH4/FWDModelComparison_NewEDGAR.mz4.h2.2014-01.nc'
 
 
