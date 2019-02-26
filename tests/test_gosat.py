@@ -466,7 +466,7 @@ def test_full_gosat_mid(ds_data_variables,gosat_dataset):
     out = gosat.calc_mid(gosat_dataset,name)
     
     if isinstance(out,xray.core.dataarray.DataArray):
-        assert out.dtype == float
+        assert out.dtype == np.float32 or out.dtype == np.float64
         assert out.size == 1
     else:
         assert isinstance(out,float)
