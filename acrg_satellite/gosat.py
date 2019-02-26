@@ -1293,14 +1293,14 @@ def extract_files(directory,search_str=None,start=None,end=None,date_separator='
             try:
                 if date_separator and day:
                     d_sep = "[{0}]".format(date_separator)
-                    re_str = "\d{4}"+d_sep+"\d{2}"+d_sep+"\d{2}"  # Creating a regular expression to find 8 digits separated by date_separator e.g. 2012-01-01
+                    re_str = r"\d{4}"+d_sep+r"\d{2}"+d_sep+r"\d{2}"  # Creating a regular expression to find 8 digits separated by date_separator e.g. 2012-01-01
                 elif date_separator and not day:
                     d_sep = "[{0}]".format(date_separator)
-                    re_str = "\d{4}"+d_sep+"\d{2}"  # Creating a regular expression to find 6 digits separated by date_separator e.g. 2012-01
+                    re_str = r"\d{4}"+d_sep+r"\d{2}"  # Creating a regular expression to find 6 digits separated by date_separator e.g. 2012-01
                 elif day:
-                    re_str = "\d{8}" # Creating a regular expression to find an 8 digit number (should be the date) e.g. 20120101
+                    re_str = r"\d{8}" # Creating a regular expression to find an 8 digit number (should be the date) e.g. 20120101
                 elif not day:
-                    re_str = "\d{6}" # Creating a regular expression to find an 6 digit number (should be the date) e.g. 201201
+                    re_str = r"\d{6}" # Creating a regular expression to find an 6 digit number (should be the date) e.g. 201201
                 d = re.search(re_str,filename) 
                 d = d.group() # Extract value from regular expression compiler
             except AttributeError:
@@ -1349,7 +1349,7 @@ def extract_files_dir_split(directory,search_str=None,start=None,end=None,date_s
             year_end = end.split(input_date_separator)[0]
     elif not start and not end:
         all_dir = os.listdir(directory)
-        all_dir_years = [d for d in all_dir if len(d) == 4 and re.match("\d{4}",d)]
+        all_dir_years = [d for d in all_dir if len(d) == 4 and re.match(r"\d{4}",d)]
         year_start = min(all_dir_years)
         year_end = max(all_dir_years)
         print("No start and end date specified, so processing all files from all date labelled sub-directories within input directory {} for year range: {}-{}".format(directory,year_start,year_end))
