@@ -301,7 +301,7 @@ def footprints(sitecode_or_filename, fp_directory = None,
             if bc_ds is not None:                   
                 if interp_vmr_freq is not None:
                     # Interpolate bc_ds between months to same timescale as footprints
-                    dum_ds = bc_ds.resample(interp_vmr_freq, "time")
+                    dum_ds = bc_ds.resample(indexer={'time':interp_vmr_freq})
                     new_times=dum_ds.time            
                     vmr_var_names=["vmr_n", "vmr_e", "vmr_s", "vmr_w"]
                     bc_ds = interp_time(bc_ds,vmr_var_names, new_times)  
@@ -952,10 +952,10 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                 base = start_date.dt.hour.data + start_date.dt.minute.data/60. + start_date.dt.second.data/3600.
                 if (ds_timeperiod >= fp_timeperiod) or (resample_to_data == True):
                     resample_period = str(round(fp_timeperiod/3600e9,5))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
-                    site_fp = site_fp.resample(resample_period, dim='time', how='mean', base=base)
+                    site_fp = site_fp.resample(indexer={'time':resample_period}, base=base).mean()
                 elif ds_timeperiod < fp_timeperiod or (resample_to_data == False):
                     resample_period = str(round(fp_timeperiod/3600e9,5))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
-                    site_ds = site_ds.resample(resample_period, dim='time', how='mean', base=base)
+                    site_ds = site_ds.resample(indexer={'time':resample_period}, base=base).mean()
                        
             site_ds = combine_datasets(site_ds, site_fp,
                                        method = "ffill",
@@ -982,7 +982,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
         
             # Resample, if required
             if average[site] is not None:
-                site_ds = site_ds.resample(average[site], dim = "time")
+                site_ds = site_ds.resample(indexer={'time':average[site]})
             
             fp_and_data[site] = site_ds
             
@@ -1434,11 +1434,11 @@ def filtering(datasets_in, filters, keep_missing=False):
     # Filter functions
     def daily_median(dataset, keep_missing=False):
         """ Calculate daily median """
-        return dataset.resample("1D", "time", how = "median")
+        return dataset.resample(indexer={'time':"1D"}).median()
         
     def six_hr_mean(dataset, keep_missing=False):
         """ Calculate daily median """
-        return dataset.resample("6H", "time", how = "mean")
+        return dataset.resample(indexer={'time':"6H"}).mean()
     
 
     def daytime(dataset, site,keep_missing=False):

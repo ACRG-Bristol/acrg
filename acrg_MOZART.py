@@ -18,6 +18,10 @@ sitefile = a text file with the site acronym, lat and then lon separated by spac
 
 """
 from __future__ import print_function
+from __future__ import division
+from builtins import str
+from past.utils import old_div
+from builtins import object
 import netCDF4
 import numpy as np
 import datetime as dt
@@ -42,7 +46,7 @@ import pandas as pd
  
  # Please not this DOES NOT read in all the variables.
  # If you want a variable that it doesn't read in then add it!
-class read:
+class read(object):
     def __init__(self, filename, conc_tag = '_VMR_avrg'):
     
         print('Reading file : ' + filename)
@@ -54,13 +58,13 @@ class read:
         
 
         # Might be multiple tracers
-        conc_varname = [i for i in data.variables.keys() if conc_tag in i]      
+        conc_varname = [i for i in list(data.variables.keys()) if conc_tag in i]      
 
         # Check that the conc_tag is actually in the list of variables
         if len(conc_varname) == 0:
             print('The concentration tag you gave was not found in the given file')
             print('Please retry using one of the below variables:')
-            for i in data.variables.keys():
+            for i in list(data.variables.keys()):
                 print(i)
         
         else:
@@ -75,7 +79,7 @@ class read:
             
             if 'h0' in filename:
                 # Might be multiple tracers
-                emis_varname = [i for i in data.variables.keys() if '_SRF_EMIS_avrg' in i]      
+                emis_varname = [i for i in list(data.variables.keys()) if '_SRF_EMIS_avrg' in i]      
         
                 emis = []
                 emis_units = []
@@ -180,7 +184,7 @@ variables:
      
  # Please not this DOES NOT read in all the variables.
  # If you want a variable that it doesn't read in then add it!
-class read_flux:
+class read_flux(object):
     def __init__(self, filename, emissions_tag_ncdf = 'emissions', time_tag = 'time', emiss_varname = None):
     
         print('Reading file : ' + filename)
@@ -260,7 +264,7 @@ class read_flux:
 # species: the gas species of interest.
 # dir: file path to file of interest
 
-class read_fixed_sitefile_nc:
+class read_fixed_sitefile_nc(object):
     def __init__(self, sitefile = None, species = 'CH4', dir = '/shared_data/snowy/shared/GAUGE/'):
         
         if sitefile == None:
@@ -313,7 +317,7 @@ class read_fixed_sitefile_nc:
  # dir: file path to file of interest
  # month: the number month file you want to read in e.g. for Jan set = 1
  # year: the year you want to read in 
-class read_column_sitefile_nc:
+class read_column_sitefile_nc(object):
     def __init__(self, sitefile = 0, species = 'CH4', dir = '/shared_data/snowy/shared/GAUGE/', month = 1, year = 2009):
         
         if type(sitefile) == int:
@@ -362,7 +366,7 @@ class read_column_sitefile_nc:
  # dir: file path to file of interest
  # month: the number month file you want to read in e.g. for Jan set = 1
  # year: the year you want to read in 
-class read_mobile_sitefile_nc:
+class read_mobile_sitefile_nc(object):
     def __init__(self, sitefile = 0, species = 'CH4', dir = '/shared_data/snowy/shared/GAUGE/', month = 1, year = 2003):
         
         if sitefile is None:
@@ -440,7 +444,7 @@ class read_mobile_sitefile_nc:
  # -Z = altitude (km)
  # H = scale height (km) this is hard coded to be 7.64km which is the global mean
  # This assumes that the altitude is in m unless other units are given
-class calc_pressure:
+class calc_pressure(object):
     def __init__(self, altitude, P0, units='m'):
 
         from math import exp
@@ -466,11 +470,11 @@ class calc_pressure:
  # P0 = surface pressure in Pa
  # P =  pressure in Pa
 def calc_altitude(P, P0, h0=7.64e3):
-    alt = -h0*np.log(P/P0)
+    alt = -h0*np.log(old_div(P,P0))
     return alt
 
  # Class to read in the site file txt version
-class read_sitefile_txt:
+class read_sitefile_txt(object):
     def __init__(self, sitefile):
         
         if type(sitefile) == tuple:
@@ -490,7 +494,7 @@ class read_sitefile_txt:
         self.filename = sitefile
         
  # Class to extract the lat lon for the correct site from the text site files  
-class extract_site_info:
+class extract_site_info(object):
     def __init__(self, sitefile, sitename):
         
         if sum([sitefile[0].find('acf'), sitefile[0].find('ferry')])  < -1:
@@ -512,7 +516,7 @@ class extract_site_info:
 # lat_array: 2D array of latitudes in degress
 # lon_array: 2D array of longitudes in degress
 
-class match_latlon:
+class match_latlon(object):
     def __init__(self, lat, lon, lat_array, lon_array):
         
         # NB: Assuming evenly spaced grid
@@ -533,8 +537,8 @@ class match_latlon:
             lon = 360 - lon
         
         
-        lat_index = bisect.bisect(lat_array+(lat_spacing/2), lat) # nb: the adjustment shifts the grid so that it returns the closest point
-        lon_index = bisect.bisect(lon_array+(lon_spacing/2), lon) # nb: the adjustment shifts the grid so that it returns the closest point
+        lat_index = bisect.bisect(lat_array+(old_div(lat_spacing,2)), lat) # nb: the adjustment shifts the grid so that it returns the closest point
+        lon_index = bisect.bisect(lon_array+(old_div(lon_spacing,2)), lon) # nb: the adjustment shifts the grid so that it returns the closest point
 
 
         # Check the edges of the lon grid
@@ -573,7 +577,7 @@ class match_latlon:
 # Ave: set if you want to take the average of the bottom 7 levels rather than try and match the height to the pressure levels
 
 # NB: returns a 3D array (3x3x3) where the central point is the closest to the given fixed location
-class data_filter_fixed:
+class data_filter_fixed(object):
     def __init__(self, mzfile, conc_tag = '_VMR_avrg', sitefile=None, Ave=0):
         
         # Read MOZART file name
@@ -809,7 +813,7 @@ class data_filter_fixed:
 # sitefile: file listing the fixed sites
 # singlesite: set to the three letter acronym of a single site if you just want a single site
 
-class data_filter_column:
+class data_filter_column(object):
     def __init__(self, mzfile, sitefile, conc_tag = '_VMR_avrg', singlesite = None):
         
         # Read MOZART file name
@@ -895,7 +899,7 @@ class data_filter_column:
 # e.g for the variable CO2_VMR_avrg the suffix is '_VMR_avrg' 
 # sitefile: file listing the fixed sites
 
-class data_filter_mobile:
+class data_filter_mobile(object):
     def __init__(self, mzfile, conc_tag = '_VMR_avrg', sitefile = None):   
                 
     
@@ -970,7 +974,7 @@ class data_filter_mobile:
 # Generalised code to match model 4D array (time/lat/lon/P) to given obs vector (dim = time) with associated lat, lons and P (alt) 
 # Assumes that the model and obs times are given as datetimes
 # Set quiet = 0 to stop matched info being printed
-class data_match_mobile:
+class data_match_mobile(object):
     def __init__(self, species = 0, \
                 model_conc = 0, \
                 model_lat = 0, \
@@ -1052,7 +1056,7 @@ class data_match_mobile:
                 
                 # Match obs timestamp to the closest model timestamp
                 time_gap = model_secs[1] - model_secs[0]
-                timeindex_j = bisect.bisect(model_secs + (time_gap/2), obs_secs[j])
+                timeindex_j = bisect.bisect(model_secs + (old_div(time_gap,2)), obs_secs[j])
                 
                 
                 #pdb.set_trace()                
@@ -1165,7 +1169,7 @@ class data_match_mobile:
 # outdir: the directory you wish to write the file to. Defaults to the directory containing the original MOZART file.
 # filename: name for output file defaults to "species"_"casename".mzt.h0."Timestamp"_"sitetype".nc
 
-class write_ncdf_mobile:
+class write_ncdf_mobile(object):
     def __init__(self, filtereddata, outdir = 0, filename=0):
         
         import os
@@ -1263,7 +1267,7 @@ class write_ncdf_mobile:
 # outdir: the directory you wish to write the file to. Defaults to the directory containing the original MOZART file.
 # filename: name for output file defaults to "species"_"casename".mzt.h0."Timestamp"_"sitetype".nc
 
-class write_ncdf_fixed:
+class write_ncdf_fixed(object):
     def __init__(self, filtereddata, outdir = 0, filename=0):
         
         import os
@@ -1344,7 +1348,7 @@ class write_ncdf_fixed:
 # outdir: the directory you wish to write the file to. Defaults to the directory containing the original MOZART file.
 # filename: name for output file defaults to "species"_"casename".mzt.h0."Timestamp"_"sitetype".nc
 
-class write_ncdf_column:
+class write_ncdf_column(object):
     def __init__(self, filtereddata, outdir = 0, filename=0):
         
         import os
@@ -1425,7 +1429,7 @@ class write_ncdf_column:
 # filename: files you'd like to read in. This overides setting the filepattern variable.
 # filepattern: suffix on end of files that you'd like to read in
 # species: speies of interest (set this if using filepattern)
-class read_ncdf_fixed:
+class read_ncdf_fixed(object):
     def __init__(self, filenames = None, filepattern = '*_TT.nc',  species='CH4', directory = None):
         
         if filenames is None:
@@ -1482,7 +1486,7 @@ class read_ncdf_fixed:
                     conc_varname = '_VMR_avrg'
         
                 # Might be multiple tracers
-                conc_varname = [i for i in data.variables.keys() if conc_tag in i]      
+                conc_varname = [i for i in list(data.variables.keys()) if conc_tag in i]      
                 conc_j = []
                 if j == 0: conc_units = []
                 
@@ -1492,7 +1496,7 @@ class read_ncdf_fixed:
                     
                 if 'h0' in filename:
                     # Might be multiple tracers
-                    emis_varname = [i for i in data.variables.keys() if '_SRF_EMIS_avrg' in i]      
+                    emis_varname = [i for i in list(data.variables.keys()) if '_SRF_EMIS_avrg' in i]      
                     
                     emis_j = []
                     if j==0 : emis_units = []
@@ -1545,7 +1549,7 @@ class read_ncdf_fixed:
 # filename: files you'd like to read in this overides setting the filepattern variable
 # filepattern: suffix on end of files that you'd like to read in
 # species: speies of interest (set this if using filepattern)
-class read_ncdf_mobile:
+class read_ncdf_mobile(object):
     def __init__(self,  filenames = None, species = 'CH4', filepattern = '*_mobile.nc',\
         directory = None):
         
@@ -1680,7 +1684,7 @@ class read_ncdf_mobile:
 # speciesname: set if you wish to plot of a single species only. Otherwise default to plotting all species given in the file.
 # diff: set to plot the difference between the MOZART output and the observations
 
-class plot_ncdf_fixed:
+class plot_ncdf_fixed(object):
     def __init__(self, data, sitename = 'mhd', scaling = 1e06, x_range = None, save_plot = 0, network = None, height = None, speciesname = None, diff=None):
         
         import matplotlib.ticker as ticker
@@ -1877,7 +1881,7 @@ class plot_ncdf_fixed:
 # save_plot: set if you'd like to save the plot. Saves the pot to a new subdirectory 'plots' in the same location as the data file
 # no_obs: set if you don't want to plot the observations
 
-class plot_ncdf_mobile:
+class plot_ncdf_mobile(object):
     def __init__(self, data, sitename = 'ferry', save_plot = 0, scaling = 1e06, no_obs=1):
         
         import matplotlib.ticker as ticker
@@ -2010,7 +2014,7 @@ class plot_ncdf_mobile:
 
 
 # Code to set up input for contour plotting
-class plot_map_setup:
+class plot_map_setup(object):
     def __init__(self, data, lat, lon, 
                  lon_range = None, lat_range = None):
 
@@ -2111,18 +2115,18 @@ def plotlevel_MZT(data, lat = None, lon = None, time = None, level = -1, timeste
     
     if minconc == None:
         if range_all == None:
-            minconc = np.floor(np.nanmin(conc)/rangescale)*rangescale
+            minconc = np.floor(old_div(np.nanmin(conc),rangescale))*rangescale
         else:
-            minconc = np.floor(np.nanmin(data)/rangescale)*rangescale
+            minconc = np.floor(old_div(np.nanmin(data),rangescale))*rangescale
             
     if maxconc == None:
         if range_all == None:
-            maxconc = np.ceil(np.nanmax(conc)/rangescale)*rangescale
+            maxconc = np.ceil(old_div(np.nanmax(conc),rangescale))*rangescale
         else:
-            maxconc = np.ceil(np.nanmax(data)/rangescale)*rangescale
+            maxconc = np.ceil(old_div(np.nanmax(data),rangescale))*rangescale
     
     
-    step = (maxconc - minconc)/nlevels
+    step = old_div((maxconc - minconc),nlevels)
     
     if levels == None:
         levels = np.arange(minconc, maxconc+step, step)
@@ -2214,8 +2218,8 @@ def plotprofiles_MZT(data, timestep = 0, latindex = 48, lonindex = 0, out_filena
     # extract the corresponding pressures
     conc_lons = np.squeeze(data.conc[timestep, :, latindex,:])*scale
     conc_lats = np.squeeze(data.conc[timestep, :, :,lonindex])*scale
-    p_lons = np.squeeze(data.pressure[timestep, :, latindex,:])/1000
-    p_lats = np.squeeze(data.pressure[timestep, :, :,lonindex])/1000
+    p_lons = old_div(np.squeeze(data.pressure[timestep, :, latindex,:]),1000)
+    p_lats = old_div(np.squeeze(data.pressure[timestep, :, :,lonindex]),1000)
     lon_lons, b = np.meshgrid(data.lon, np.arange(56))
     lat_lats, b = np.meshgrid(data.lat, np.arange(56))
     
@@ -2224,7 +2228,7 @@ def plotprofiles_MZT(data, timestep = 0, latindex = 48, lonindex = 0, out_filena
     ax = fig.gca(projection='3d')
     
     
-    for i in np.arange(len(data.lon)/3)*3:
+    for i in np.arange(old_div(len(data.lon),3))*3:
         y = conc_lons[:,i]
         z = p_lons[:,i]
         x = lon_lons[:,i]

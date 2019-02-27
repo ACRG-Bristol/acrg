@@ -42,8 +42,14 @@ def tdmcmc_config_file():
     return filename
 
 @pytest.mark.long
-def test_tdmcmc_run(tdmcmc_input_file,tdmcmc_config_file):
+def test_tdmcmc_inputs(tdmcmc_input_file,tdmcmc_config_file):
     ''' Check that tdmcmc_inputs.py can be run with a standard tdmcmc config file '''
     result = subprocess.call(["python",tdmcmc_input_file,"-c{}".format(tdmcmc_config_file)])
+    assert result == 0
+
+@pytest.mark.long
+def test_tdmcmc_inputs_command_line(tdmcmc_input_file,tdmcmc_config_file):
+    ''' Check that tdmcmc_inputs.py can be run with a standard tdmcmc config file '''
+    result = subprocess.call(["python",tdmcmc_input_file, "2013-03-01", "2013-04-01", "-c{}".format(tdmcmc_config_file)])
     assert result == 0
     

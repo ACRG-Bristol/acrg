@@ -53,7 +53,7 @@ def run_tdmcmc_benchmark_file():
 
 @pytest.fixture(scope="module")
 def run_tdmcmc_output_file():
-    ''' Define benchmark post_mcmc.nc file '''
+    ''' Define generated post_mcmc.nc file '''
     filename = os.path.join(acrg_path,'tests/files/tdmcmc/output/output_AGAGE_ch4_2014-02-01.nc')
     return filename
 
