@@ -5,8 +5,10 @@ Created on Thu Aug 20 10:28:38 2015
 @author: chxmr
 """
 
-from cPickle import dump as cpdump
-from cPickle import load as cpload
+from future import standard_library
+standard_library.install_aliases()
+from pickle import dump as cpdump
+from pickle import load as cpload
 import gzip
 
 def save(filename, list_of_objects):

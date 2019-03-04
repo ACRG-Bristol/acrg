@@ -6,6 +6,8 @@ Created on Fri Oct  9 12:24:18 2015
 """
 from __future__ import print_function
 
+from builtins import str
+from builtins import object
 import acrg_agage
 import numpy as np
 import matplotlib.pyplot as plt
@@ -26,7 +28,7 @@ def gases_measured():
     return gases
 
 # list of sites
-class sites_list():
+class sites_list(object):
     def __init__(self):
         sites_tag = ['MHD','TTA','BSD','HFD','RGL','TAC', 'ferry','WAO','HAD','TIL', 'GLA','EHL', 'WAO_UCAM', 'BTT']
         sites_name = ['Mace Head','Angus', 'Bilsdale','Heathfield','Ridge Hill','Tacolneston', 'Ferry','Weybourne','Haddenham','Tilney','Glatton',"Earl's Hall", 'Weybourne UCam', 'BT Tower']
@@ -399,7 +401,7 @@ def read_MHD(gas, start = '1900-01-01 00:00:00', end = '2020-01-01 00:00:00', al
 
 
 # Read in the flask files
-class read_flask():
+class read_flask(object):
     def __init__(self, site, gas, start = None, end = None):
         
         # need to set some parameters to get the data to reaTACd in properly
@@ -419,7 +421,7 @@ class read_flask():
 
 
 # Read in the WAO files
-class read_wao():
+class read_wao(object):
     def __init__(self, gas):
         filenames = ['wao-CO2_weybourne_20120101_compilation_hourlyaverage.na',\
                     'wao-rga3_weybourne_20080306_h2-co-compilation-hourlyaverage.na',\
@@ -502,7 +504,7 @@ class read_wao():
         self.data = df
 
 # Read in the GLA files
-class read_gla():
+class read_gla(object):
     def __init__(self, gas):
 
                
@@ -540,7 +542,7 @@ class read_gla():
             startdate = ncfile.variables['datestart']
             startdate_dt = [dt.datetime.strptime(str(i), '%Y%m%d') for i in startdate[:]]
             startdatesec = ncfile.variables['datesecstart']
-            time = [startdate_dt[i] + dt.timedelta(seconds=long(startdatesec[i])) for i in np.arange(len(startdatesec))]
+            time = [startdate_dt[i] + dt.timedelta(seconds=int(startdatesec[i])) for i in np.arange(len(startdatesec))]
 
             df = pd.DataFrame({"mf": ncfile.variables['mf'][:]}, index = time)
             df['umf'] = ncfile.variables['u_mf'][:]

@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import division
+from past.utils import old_div
 import numpy as np
 
 def smooth(x,window_len=11,window='hanning'):
@@ -58,7 +60,7 @@ def smooth(x,window_len=11,window='hanning'):
     else:
         w=eval('np.'+window+'(window_len)')
 
-    y=np.convolve(w/w.sum(),s,mode='valid')
+    y=np.convolve(old_div(w,w.sum()),s,mode='valid')
 
     #MLR cut off edges
-    return y[window_len/2:-window_len/2+1]
+    return y[old_div(window_len,2):old_div(-window_len,2)+1]

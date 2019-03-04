@@ -37,6 +37,7 @@ sitelocs returns the FIRST lat/lon listed in each NOAA flask file.
 """
 from __future__ import print_function
 
+from builtins import object
 import numpy as np
 import acrg_cf as cf
 import glob
@@ -85,7 +86,7 @@ def sites(species):
 
     return site
 
-class sitelocs:
+class sitelocs(object):
     def __init__(self, species):
     
         sitenames = sites(species)    
@@ -107,7 +108,7 @@ class sitelocs:
         self.alt = alt
 
 
-class read:
+class read(object):
     def __init__(self, site, species, \
         startYear=2000, endYear=2014, monthly=True):
         

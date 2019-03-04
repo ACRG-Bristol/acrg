@@ -1352,6 +1352,18 @@
       "latitude": 41.0541, 
       "long_name": "Trinidad Head, California", 
       "longitude": -124.151
+    },
+    "SIOCC": {	
+      "height": [
+        "10m"
+      ], 
+      "height_name": [
+        "10magl"
+      ], 
+      "height_station_masl": 107.0, 
+      "latitude": 41.0541, 
+      "long_name": "Trinidad Head, California", 
+      "longitude": -124.151
     }
   }, 
   "TIL": {

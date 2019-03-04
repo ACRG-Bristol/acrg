@@ -79,7 +79,12 @@ together but you might prefer a larger range for single sites.
 @author: ew14860
 """
 from __future__ import print_function
+from __future__ import division
 
+from builtins import str
+from builtins import range
+from past.utils import old_div
+from builtins import object
 import netCDF4 as nc
 import numpy as np
 import matplotlib.pyplot as plt
@@ -168,7 +173,7 @@ def read_particle_locations(filenames):
     f = nc.Dataset(filenames[0], 'r')
     
     # Test if particle locations are in file
-    if "particle_locations_n" in f.variables.keys():
+    if "particle_locations_n" in list(f.variables.keys()):
     
         #Get grid and time first
         pl_height = f.variables['height'][:]
@@ -200,7 +205,7 @@ def read_release_locations(filenames):
     f = nc.Dataset(filenames[0], 'r')
     
     # Test if particle locations are in file
-    if "release_lon" in f.variables.keys():
+    if "release_lon" in list(f.variables.keys()):
     
         #Get grid and time first
         release_lon = f.variables['release_lon'][:]
@@ -216,7 +221,7 @@ def read_release_locations(filenames):
     else:
         return None, None
 
-class read:
+class read(object):
     def __init__(self, sitecode_or_filename, years=[2012], domain="small",
                  height = None):
 
@@ -273,7 +278,7 @@ class read:
                 self.particle_height = pl_height
         
 
-class flux:
+class flux(object):
     def __init__(self, species_or_filename, years=[2010], domain="small"):
 
         #Chose whether we've input a species or a file name
@@ -295,7 +300,7 @@ class flux:
         self.flux = np.asarray(flux)
         self.time = time
 
-class basis_function:    
+class basis_function(object):    
     def __init__(self, case_or_filename, years=[2012], domain='small'):
     
         if '/' in case_or_filename and \
@@ -335,7 +340,7 @@ def footprint_x_flux(fp_data, flux_data, basis=None, basis_scale=1.,
     if len(flux_data.time) == 1:
         flux_time_delta=dt.timedelta(0) 
     else:
-        flux_time_delta=(flux_data.time[1] - flux_data.time[0])/2
+        flux_time_delta=old_div((flux_data.time[1] - flux_data.time[0]),2)
 
     #Calculate scaling to apply to flux field
     #CONSTANT SCALING IN TIME AT THE MOMENT!
@@ -427,7 +432,7 @@ def sensitivity(obs, species, years=[2012], flux_years=None,
     y_site=[]
     y=[]
 
-    for site in sorted(obs.iterkeys()):
+    for site in sorted(obs.keys()):
         if alt_fp_filename is not None:
             ts, Hs = sensitivity_single_site(alt_fp_filename, species, years, 
                                 flux_years=flux_years, domain=domain,
@@ -480,7 +485,7 @@ def baseline(y, y_time, y_site, x_error = 10000, days_to_average = 5):
     return HB, xerror
 
 
-class analytical_inversion:
+class analytical_inversion(object):
     def __init__(self, obs, species, years=[2012], flux_years=None,
                 domain="small", basis_case='voronoi', filt=None,
                 species_key = None, baseline_days = 5, alt_fp_filename = None):
@@ -593,7 +598,7 @@ class analytical_inversion:
 #
 #    return H_time, H_site_name, H
 
-class addfp:
+class addfp(object):
     def __init__(self, filenames, start, end, frequency = 2):
         
         timeslice = pandas.date_range(start, end, freq = '%iH' %frequency)
@@ -625,7 +630,7 @@ class addfp:
         self.fp = fpadd
 
 
-class plot_map_setup:
+class plot_map_setup(object):
     def __init__(self, fp_data, 
                  lon_range = None, lat_range = None):
 
@@ -855,7 +860,7 @@ def fp_resample(fp, av_period=None, dimension='time', av_how='mean',
     
     return fp_out
     
-class get_country:
+class get_country(object):
   def __init__(self, domain, ocean=None):
 
         if ocean is None:
