@@ -18,6 +18,8 @@ To run only the basic tests use the syntax
 @author: rt17603
 """
 
+from builtins import zip
+from builtins import str
 import numpy as np
 import os
 import pytest
@@ -46,7 +48,7 @@ def tdmcmc_config_option():
 
 @pytest.fixture(scope="module")
 def tdmcmc_config_missing():
-    ''' Define tdmcmc config file input with optional parameters not included '''
+    ''' Define tdmcmc config file input with optional parameters and an expected parameter not included '''
     filename = os.path.join(test_config_path,'tdmcmc_input_3.ini')
     return filename
 
@@ -65,7 +67,8 @@ def tdmcmc_config_missing_section():
 @pytest.fixture(scope="module")
 def mcmc_param_type():
     ''' Define MCMC parameter type nested dictionary for tdmcmc config input '''
-    param_type = config_tdmcmc.mcmc_param_type()
+    alt_filename = os.path.join(acrg_path,"tests/files/config/tdmcmc_template.ini")
+    param_type = config_tdmcmc.mcmc_param_type(alt_filename)
     return param_type
 
 @pytest.fixture(scope="module")
@@ -159,16 +162,42 @@ def test_extract_IncorrectSectionGroup(tdmcmc_config):
         extract_params(tdmcmc_config,section_group='FLIBBLE',param_type=None)
     #assert not x
 
+#@pytest.mark.basic
+#def test_extract_all_param_type(tdmcmc_config,mcmc_param_type):
+#    ''' Test correct types are created when extracting using a param_type dictionary '''
+#    x = extract_params(tdmcmc_config,param_type=mcmc_param_type)
+#    
+#    parameters = []
+#    types = []
+#    for section_group in mcmc_param_type.values():
+#        parameters.extend(section_group.keys())
+#        types.extend(section_group.values())
+#    
+#    for param,t in zip(parameters,types):
+#        assert isinstance(x[param],t)
+
 @pytest.mark.basic
-def test_extract_all_param_type(tdmcmc_config,mcmc_param_type):
+def test_extract_all_param_type(example_config):
     ''' Test correct types are created when extracting using a param_type dictionary '''
-    x = extract_params(tdmcmc_config,param_type=mcmc_param_type)
+    
+    param_type = {"SECTION":
+                      {"parameter_1":float,
+                       "parameter_2":int,
+                       "parameter_3":list},
+                  "NAME.OTHER_SECTION":
+                      {"parameter_4":float,
+                       "parameter_5":list},
+                  "NAME.THIRD_SECTION":
+                      {"parameter_6":bool}
+                  }
+    
+    x = extract_params(example_config,param_type=param_type)
     
     parameters = []
     types = []
-    for section_group in mcmc_param_type.values():
-        parameters.extend(section_group.keys())
-        types.extend(section_group.values())
+    for section in list(param_type.values()):
+        parameters.extend(list(section.keys()))
+        types.extend(list(section.values()))
     
     for param,t in zip(parameters,types):
         assert isinstance(x[param],t)
@@ -186,14 +215,14 @@ def check_types(param_output,param_type,section=None,section_group=None):
         param_spec = configread.find_param_key(param_type,section_group)[1]
 
     if param_spec == spec:
-        parameters = param_type[key].keys()
-        types = param_type[key].values()
+        parameters = list(param_type[key].keys())
+        types = list(param_type[key].values())
         for param,t in zip(parameters,types):
             assert isinstance(param_output[param],t)
     elif (param_spec == 'section_group') and (spec == 'section'):
-        all_parameters = param_type[section_group].keys()
-        all_types = param_type[section_group].values()
-        parameters = param_output.keys()
+        all_parameters = list(param_type[section_group].keys())
+        all_types = list(param_type[section_group].values())
+        parameters = list(param_output.keys())
         for param,t in zip(all_parameters,all_types):
             if param in parameters:
                 assert isinstance(param_output[param],t)
@@ -224,12 +253,12 @@ def test_extract_section_group_2_param_type(tdmcmc_config,mcmc_param_type):
 @pytest.mark.basic
 def test_extract_param_optional(tdmcmc_config_option,mcmc_param_type):
     ''' Test optional parameters can be specified for the whole config file '''
-    x = extract_params(tdmcmc_config_option,optional_param=['network','unique_copy'],param_type=mcmc_param_type)
+    x = extract_params(tdmcmc_config_option,optional_param=['network','unique_copy','emissions_name'],param_type=mcmc_param_type)
     assert x
 
 def test_extract_param_section_optional(tdmcmc_config_option,mcmc_param_type):
     ''' Test optional parameters can be specified for one section '''    
-    x = extract_params(tdmcmc_config_option,section_group='MEASUREMENTS',optional_param=['network'],param_type=mcmc_param_type)
+    x = extract_params(tdmcmc_config_option,section_group='MEASUREMENTS',optional_param=['network','emissions_name'],param_type=mcmc_param_type)
     assert x
 
 def test_extract_WrongSectionForName_param_type(tdmcmc_config,mcmc_param_type):
@@ -251,18 +280,18 @@ def test_extract_NameNotInFile(tdmcmc_config,mcmc_param_type):
 def test_extract_param_keep_empty(tdmcmc_config_option,mcmc_param_type):
     ''' Test functionality of exclude_not_found=False option. 
     Check empty values are included for optional parameters when not found in configuration file '''
-    optional_param = ['network','unique_copy']
+    optional_param = ['network','unique_copy','emissions_name']
     x = extract_params(tdmcmc_config_option,optional_param=optional_param,exclude_not_found=False,param_type=mcmc_param_type)
-    assert optional_param[0] in x.keys()
-    assert optional_param[1] in x.keys()
+    assert optional_param[0] in list(x.keys())
+    assert optional_param[1] in list(x.keys())
 
 def test_extract_param_remove_empty(tdmcmc_config_option,mcmc_param_type):
     ''' Test functionality of exclude_not_found=True option.
     Check optional parameters are not included in output when not found in configuration file '''
-    optional_param = ['network','unique_copy']
+    optional_param = ['network','unique_copy','emissions_name']
     x = extract_params(tdmcmc_config_option,optional_param=optional_param,exclude_not_found=True,param_type=mcmc_param_type)
-    assert optional_param[0] not in x.keys()
-    assert optional_param[1] not in x.keys()
+    assert optional_param[0] not in list(x.keys())
+    assert optional_param[1] not in list(x.keys())
 
 @pytest.mark.basic
 def test_all_params(tdmcmc_config_option):
@@ -282,9 +311,9 @@ def test_all_params_param_type_2(example_config,example_param_type):
         
     parameters = []
     types = []
-    for section_group in example_param_type.values():
-        parameters.extend(section_group.keys())
-        types.extend(section_group.values())
+    for section_group in list(example_param_type.values()):
+        parameters.extend(list(section_group.keys()))
+        types.extend(list(section_group.values()))
     
     for param,t in zip(parameters,types):
         assert isinstance(x[param],t)

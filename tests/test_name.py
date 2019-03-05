@@ -23,15 +23,20 @@ To run all tests except those labelled 'long' use the syntax
 
 @author: rt17603
 """
+from __future__ import division
 
+from builtins import range
+from past.utils import old_div
 import pytest
 import os
 import glob
 import numpy as np
 import xarray as xray
+import pandas as pd
 
 import acrg_name.name as name
-import acrg_agage as agage
+#import acrg_agage as agage
+import acrg_obs.read as read
 
 #%%
 
@@ -58,13 +63,13 @@ def bc_directory():
 @pytest.fixture(scope="module")
 def basis_directory():
     ''' Define base directory containing basis function files'''
-    directory = os.path.join(acrg_path,"tests/files/NAME/basis_function/")
+    directory = os.path.join(acrg_path,"tests/files/NAME/basis_functions/")
     return directory
 
 @pytest.fixture(scope="module")
 def bc_basis_directory():
     ''' Define base directory containing boundary condition basis function files '''
-    directory = os.path.join(acrg_path,"tests/files/NAME/bc_basis_function/")
+    directory = os.path.join(acrg_path,"tests/files/NAME/bc_basis_functions/")
     return directory
 
 
@@ -100,6 +105,20 @@ def basis_function_param():
     param = {}
     param["basis_case"] = "sub-transd"
     param["bc_basis_case"] = "NESW"
+    
+    return param
+
+@pytest.fixture(scope="module")
+def measurement_param_sat():
+    ''' Define set of satellite measurement parameters to be used throughout the test suite '''
+    param = {}
+    param["site"] = "GOSAT-UK"
+    param["domain"] = "EUROPE"
+    param["start"] = "2014-02-20"
+    param["end"] = "2014-02-21"
+    param["height"] = "column"
+    param["species"] = "ch4"
+    param["max_level"] = 17
     
     return param
 
@@ -357,9 +376,37 @@ def data(measurement_param_small):
     input_param["end"] = measurement_param_small["end"]
     # Can't specify data directory
     
-    measurement_data = agage.get_obs(**input_param)
-    
+    #measurement_data = read.get_obs(**input_param)
+    time = pd.date_range(input_param["start"], input_param["end"], freq='2H')
+    nt = len(time)
+    obsdf = pd.DataFrame({"mf":np.random.rand(nt)*1000.,"dmf":np.random.rand(nt), "status_flag":np.zeros(nt)}, index=time)
+    obsdf.index.name = 'time'
+    measurement_data = {'.species' : 'ch4', '.units' : 1e-9, 'MHD' : obsdf}    
+
     return measurement_data
+
+@pytest.fixture(scope="module")
+def data_sat(measurement_param_sat):
+    ''' Define set of input parameters to use with footprint_data_merge() function. Edited for use with satellite data.
+    Note: cannot specify data directory directly. '''
+    input_param = {}
+    input_param["sites"] = measurement_param_sat["site"]
+    input_param["species"] = measurement_param_sat["species"]
+    input_param["start"] = measurement_param_sat["start"]
+    input_param["end"] = measurement_param_sat["end"]
+    input_param["max_level"] = measurement_param_sat["max_level"]
+    # Can't specify data directory
+    
+    #measurement_data_sat = read.get_obs(**input_param)
+    time = pd.date_range(input_param["start"], input_param["end"], freq='0.5H')
+    nt = len(time)
+    obsdf = pd.DataFrame({"mf":np.random.rand(nt)*1000.,"dmf":10*np.random.rand(nt), "mf_prior_factor":10*np.random.rand(nt), "mf_prior_upper_level_factor":15*np.random.rand(nt)}, index=time)
+    obsdf.index.name = 'time'
+    obsdf.max_level = input_param["max_level"]
+    measurement_data_sat = {'.species' : input_param["species"], '.units' : 1e-9, input_param["sites"] : obsdf}  
+    
+    return measurement_data_sat
+
 
 @pytest.mark.basic
 def test_fp_data_merge(data,measurement_param_small,fp_directory,flux_directory,bc_directory):
@@ -394,7 +441,7 @@ def test_fp_data_merge_long(data,measurement_param,fp_directory,flux_directory,b
     site = measurement_param["sites"][0]
     expected_keys = [".species",".units",".bc",".flux",site]
     expected_data_var = ["mf","dmf","fp","particle_locations_n","particle_locations_e",
-                         "particle_locations_s","particle_locations_w","bc","mf_mod"]
+                         "particle_locations_s","particle_locations_w","bc"]#,"mf_mod"]
     
     out = name.footprints_data_merge(data,domain=measurement_param["domain"],fp_directory=fp_directory,
                                      flux_directory=flux_directory,bc_directory=bc_directory,
@@ -407,6 +454,30 @@ def test_fp_data_merge_long(data,measurement_param,fp_directory,flux_directory,b
     for data_var in expected_data_var:
         assert data_var in ds.data_vars
 
+    return out
+
+def test_fp_data_merge_sat(data_sat,measurement_param_sat,fp_directory,flux_directory,bc_directory):
+    '''
+    Test footprints_data_merge() function with GOSAT data.
+    Check parameters within dictionary.
+    Check data variables within dataset for site.
+    '''
+    site = measurement_param_sat["site"]
+    expected_keys = [".species",".units",".bc",".flux",site]
+    expected_data_var = ["mf","dmf","fp","particle_locations_n","particle_locations_e",
+                         "particle_locations_s","particle_locations_w","bc"]#,"mf_mod"]
+    
+    out = name.footprints_data_merge(data=data_sat,domain=measurement_param_sat["domain"],fp_directory=fp_directory,
+                                     flux_directory=flux_directory,bc_directory=bc_directory)
+    
+    ds = out[site]
+    
+    for key in expected_keys:
+        assert key in out
+        
+    for data_var in expected_data_var:
+        assert data_var in ds.data_vars
+        
     return out
     
 # TODO:
@@ -507,7 +578,7 @@ def fp_data_H_merge(fp_data_merge,fp_sensitivity_param,bc_sensitivity_param):
 @pytest.fixture()
 def fp_data_H_pblh_merge(fp_data_H_merge):
     ''' '''
-    sites = [key for key in fp_data_H_merge.keys() if key[0] != '.']
+    sites = [key for key in list(fp_data_H_merge.keys()) if key[0] != '.']
     fp_data_H_pblh = fp_data_H_merge.copy()
     for site in sites:
         fp_data_H_pblh = fp_data_H_pblh[site].assign(**{"pblh_threshold":500})
@@ -515,7 +586,7 @@ def fp_data_H_pblh_merge(fp_data_H_merge):
     
 def add_local_ratio(fp_data_H):
     
-    sites = [key for key in fp_data_H.keys() if key[0] != '.']
+    sites = [key for key in list(fp_data_H.keys()) if key[0] != '.']
     
     release_lons=np.zeros((len(sites)))
     release_lats=np.zeros((len(sites)))
@@ -531,9 +602,9 @@ def add_local_ratio(fp_data_H):
             release_lat=fp_data_H[site].release_lat[ti].values
             wh_rlon = np.where(abs(fp_data_H[site].sub_lon.values-release_lon) < dlon/2.)
             wh_rlat = np.where(abs(fp_data_H[site].sub_lat.values-release_lat) < dlat/2.)
-            local_sum[ti] = np.sum(fp_data_H[site].sub_fp[
-            wh_rlat[0][0]-2:wh_rlat[0][0]+3,wh_rlon[0][0]-2:wh_rlon[0][0]+3,ti].values)/np.sum(
-            fp_data_H[site].fp[:,:,ti].values)  
+            local_sum[ti] = old_div(np.sum(fp_data_H[site].sub_fp[
+            wh_rlat[0][0]-2:wh_rlat[0][0]+3,wh_rlon[0][0]-2:wh_rlon[0][0]+3,ti].values),np.sum(
+            fp_data_H[site].fp[:,:,ti].values))  
             
         local_ds = xray.Dataset({'local_ratio': (['time'], local_sum)},
                                         coords = {'time' : (fp_data_H[site].coords['time'])})

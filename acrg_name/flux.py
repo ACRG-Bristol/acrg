@@ -4,7 +4,11 @@ Created on Thu Nov 26 18:13:48 2015
 
 @author: chxmr
 """
+from __future__ import print_function
 
+from builtins import input
+from builtins import str
+from builtins import object
 import numpy as np
 import datetime as dt
 import os
@@ -85,10 +89,10 @@ def write(lat, lon, time, flux, species, domain,
         Add some error checking (e.g. check that domain is correct)
     '''
     
-    print "WARNING: Make sure time stamp is start of time period (i.e. 1st of month\
-            for monthly data or 1st January for yearly data)."
-    print "WARNING: Make sure coordinates are centre of the gridbox."
-    print "WARNING: Make sure fluxes are in mol/m2/s."
+    print("WARNING: Make sure time stamp is start of time period (i.e. 1st of month\
+            for monthly data or 1st January for yearly data).")
+    print("WARNING: Make sure coordinates are centre of the gridbox.")
+    print("WARNING: Make sure fluxes are in mol/m2/s.")
 
     if climatology == True:
         name_climatology = "-climatology"
@@ -107,8 +111,8 @@ def write(lat, lon, time, flux, species, domain,
         
     # Check that the flux is in the correct shape
     if np.shape(flux) != tuple((np.shape(lat)[0], np.shape(lon)[0], np.shape(time)[0])):
-        print "Flux doesn't have dimensions lat x lon x time"
-        print "Reshape your flux array and try again"
+        print("Flux doesn't have dimensions lat x lon x time")
+        print("Reshape your flux array and try again")
         return
         
     #Set climatology to year 1900
@@ -145,7 +149,7 @@ def write(lat, lon, time, flux, species, domain,
         ncname = os.path.join(output_directory, '%s/%s_%s_%s.nc' %(domain, file_source, domain, year))
 
     if os.path.isfile(ncname) == True:
-        answer = raw_input("You are about to overwrite an existing file, do you want to continue? Y/N ")
+        answer = input("You are about to overwrite an existing file, do you want to continue? Y/N ")
         if answer == 'N':
             sys.exit()
         elif answer == 'Y':
@@ -167,7 +171,7 @@ def write(lat, lon, time, flux, species, domain,
     glob_attrs = c.OrderedDict([("title",title),
                                 ("author" , getpass.getuser()),
                                 ("date_created" , np.str(dt.datetime.today())),
-                                ("number_of_prior_files_used" , len(prior_info_dict.keys()))])
+                                ("number_of_prior_files_used" , len(list(prior_info_dict.keys())))])
 
     for i, key in enumerate(prior_info_dict.keys()):
         prior_number = i+1
@@ -197,14 +201,14 @@ def write(lat, lon, time, flux, species, domain,
     flux_ds.time.attrs['notes'] = "Start of time period"
     
     if not os.path.exists(os.path.join(output_directory,domain)):
-        print "Creating {} subdirectory in output directory: {}".format(domain,output_directory)
+        print("Creating {} subdirectory in output directory: {}".format(domain,output_directory))
         os.makedirs(os.path.join(output_directory,domain))
 
     flux_ds.flux.encoding = {'zlib':True}                        
     flux_ds.to_netcdf(ncname, mode='w')    
 
 
-class EDGARread:
+class EDGARread(object):
     def __init__(self, filename_of_EDGAR_emissions):
 
         f = nc.Dataset(filename_of_EDGAR_emissions, 'r')
@@ -216,7 +220,7 @@ class EDGARread:
         #Get flux of species
 #        variables = f.variables.keys()
 #        species = str(variables[2])
-        variables = [str(i) for i in f.variables.keys()]
+        variables = [str(i) for i in list(f.variables.keys())]
         for i in variables:
             while i not in ['lat','lon','time']:
                 species = i
@@ -235,7 +239,7 @@ class EDGARread:
             year = m[0].strip('_')
             date = dt.datetime.strptime(year, '%Y')
         elif len(m) > 1:
-            print "Can't find correct date."
+            print("Can't find correct date.")
             year = None
             date = None
         

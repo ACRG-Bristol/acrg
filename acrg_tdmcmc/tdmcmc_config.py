@@ -36,6 +36,7 @@ acrg_config.generate_param_dict() function for more details.
 
 @author: rt17603
 """
+from __future__ import print_function
 
 import os
 import acrg_obs
@@ -51,7 +52,7 @@ def tdmcmc_template_file():
     reference_file = os.path.join(acrg_path,"acrg_config/templates/tdmcmc_template.ini")
     return reference_file
 
-def mcmc_param_type():
+def mcmc_param_type(alt_filename=None):
     '''
     The mcmc_param_type function defines the names of expected input parameters from the config file and 
     the required Python object types.
@@ -183,7 +184,10 @@ def mcmc_param_type():
 #                              ('MCMC', mcmc),
 #                              ('TDMCMC', tdmcmc)])
     #reference_file = os.path.join(acrg_path,"acrg_config/templates/tdmcmc_template.ini")
-    reference_file = tdmcmc_template_file()
+    if alt_filename is None:
+        reference_file = tdmcmc_template_file()
+    else:
+        reference_file = alt_filename
     param_dict = config.generate_param_dict(reference_file)
     
     return param_dict
@@ -228,7 +232,7 @@ def optional_parameters(section_group=None):
         list:
             Optional parameters for MCMC code
     '''
-    meas_params = ["network","start_date","end_date","species","emissions_name", "height"]
+    meas_params = ["network","start_date","end_date","species","emissions_name","site_modifier"]
     mcmc_params = ["unique_copy","max_level","data_dir","fp_dir","flux_dir","bc_dir","basis_dir","bc_basis_dir"]
     tdmcmc_params = []
     
@@ -268,14 +272,14 @@ def add_defaults(param,section_group=None):
     
     '''
     if section_group is None or section_group == "MEASUREMENTS":
-        if ("network" not in param.keys()) or (not param["network"]):
-            param["network"] = None
-            print 'Extracting network for first site from json file'
-        if ("height" not in param.keys()) or (not param["height"]):
-            param["height"] = None
+        if ("network" not in list(param.keys())) or (not param["network"]):
+            site1 = param['sites'][0]
+            param["network"] = list(acrg_obs.read.site_info[site1].keys())[0] # Use first network by default?
+            #param["network"] = acrg_obs.read.site_info[site1]["network"]
+            print('Extracting network for first site from json file')
     
     if section_group is None or section_group == "MCMC":
-        if ("unique_copy" not in param.keys()) or (param["unique_copy"] == None):
+        if ("unique_copy" not in list(param.keys())) or (param["unique_copy"] == None):
             param["unique_copy"] = False
 
     return param

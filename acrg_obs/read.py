@@ -28,7 +28,13 @@ Calculate Cape Grim monthly means, with baseline filtering:
 Created on Sat Dec 27 17:17:01 2014
 @author: chxmr
 """
+from __future__ import print_function
+from __future__ import division
 
+from builtins import zip
+from builtins import str
+from builtins import range
+from past.utils import old_div
 import numpy as np
 import pandas as pd
 import glob
@@ -95,7 +101,7 @@ def synonyms(search_string, info, alternative_label = "alt"):
         corrected string
     '''
     
-    keys=info.keys()
+    keys=list(info.keys())
     
     #First test whether site matches keys (case insensitive)
     out_strings = \
@@ -137,7 +143,7 @@ def listsearch(possible_strings, correct_string,
     
     correct_key = None
     #find correct_string
-    for k in further_info.keys():
+    for k in list(further_info.keys()):
         if k.upper() == correct_string.upper():
             correct_key = k
             break
@@ -197,10 +203,9 @@ def quadratic_sum(x):
             
     """
     if len(x) > 0:
-        return np.sqrt(np.sum(x**2))/len(x)
+        return old_div(np.sqrt(np.sum(x**2)),len(x))
     else:
         return np.nan
-    return out
   
 
 def file_list(site, species, network,
@@ -281,7 +286,7 @@ def file_list(site, species, network,
             return data_directory, None
     
     # Test if species is in folder
-    file_species = [re.split("-|\.", f[-1])[0] for f in file_info]
+    file_species = [re.split(r"-|\.", f[-1])[0] for f in file_info]
     file_species_string = listsearch(file_species, species, species_info)
     if file_species_string is None:
         print("Can't find files for %s in %s" %(species, data_directory) )
@@ -319,7 +324,7 @@ def file_list(site, species, network,
         # If all inlets are selected, do nothing
         if inlet != "all":
         
-            file_inlet = [re.split("-|\.", f[-1])[1] for f in file_info]
+            file_inlet = [re.split(r"-|\.", f[-1])[1] for f in file_info]
             
             # If no inlet specified, pick first element in parameters height list
             if inlet is None:
@@ -336,8 +341,6 @@ def file_list(site, species, network,
 
 
     # Work out which file version to use
-    
-    
     # If specific version is requested, use that, otherwise, take the max version
     # Dropping file_info after this bit, because we don't use it again
     if version is None:
@@ -358,7 +361,7 @@ def file_list(site, species, network,
         fnames = fnames_out[:]
 
     else:
-        file_version = [re.split("-|\.", f[-1])[-2] for f in file_info]
+        file_version = [re.split(r"-|\.", f[-1])[-2] for f in file_info]
         file_version_string = version
         # Subset of matching files
         fnames = [f for (v, f) in zip(file_version, fnames) if v == file_version_string]
@@ -430,7 +433,7 @@ def get_single_site(site, species_in,
     '''
     
     # Check that site is in acrg_site_info.json
-    if site not in site_info.keys():
+    if site not in list(site_info.keys()):
         print("No site called %s." % site)
         print("Either try a different name, or add name to acrg_site_info.json.")
         return
@@ -445,10 +448,10 @@ def get_single_site(site, species_in,
     
     # If no network specified, pick the first network in site_info dictionary
     if network is None:
-        network = site_info[site].keys()[0]
+        network = list(site_info[site].keys())[0]
         print("... assuming network is %s" %network)
-    elif network not in site_info[site].keys():
-        print("Error: Available networks for site %s are %s." % (site, site_info[site].keys()))
+    elif network not in list(site_info[site].keys()):
+        print("Error: Available networks for site %s are %s." % (site, list(site_info[site].keys())))
         print("       You'll need to add network %s to acrg_site_info.json" %network)
         return
         
@@ -471,80 +474,98 @@ def get_single_site(site, species_in,
             # Read files using xarray
             with xr.open_dataset(os.path.join(data_directory, f)) as fxr:
                 ds = fxr.load()
-                
+            
+            # Sub-select the data, if required
+            if start_date:
+                ds = ds.sel(time = slice(pd.Timestamp(start_date),
+                                         None))
+            if end_date:
+                ds = ds.sel(time = slice(None,
+                                         pd.Timestamp(end_date) - pd.Timedelta("1 ns")))
+
+            # If no data in date range, skip this file
+            if len(ds.time) == 0:
+                print("No data in date range in %s" % f)
+                continue
+
             # Record calibration scales
-            if "Calibration_scale" in ds.attrs.keys():
+            if "Calibration_scale" in list(ds.attrs.keys()):
                 cal.append(ds.attrs["Calibration_scale"])            
-                
-                ncvarname = listsearch(ds.keys(), species, species_info)
-                
-                if ncvarname is None:
-                    print("Can't find mole fraction variable name '" + species + 
-                          "' or alternatives in file. Either change " + 
-                          "variable name, or add alternative to " + 
-                          "acrg_species_info.json")
-                    return None
+            
+            # Look for a valid species name
+            #ncvarname = listsearch([*ds.variables],
+            ncvarname = listsearch(list(ds.variables.keys()),
+                                   species,
+                                   species_info)
+            
+            if ncvarname is None:
+                print("Can't find mole fraction variable name '" + species + 
+                      "' or alternatives in file. Either change " + 
+                      "variable name, or add alternative to " + 
+                      "acrg_species_info.json")
+                return None
 
-                # Create single site data frame
-                df = pd.DataFrame({"mf": ds[ncvarname][:]},
-                                  index = ds.time)
+            # Create single site data frame
+            df = pd.DataFrame({"mf": ds[ncvarname][:]},
+                              index = ds.time)
 
-                if is_number(ds[ncvarname].units):
-                    units = float(ds[ncvarname].units)
-                else:
-                    errorMessage = '''Units must be numeric. 
-                                      Check your data file.
-                                   '''
-                    raise ValueError(errorMessage)
-                
-                #Get repeatability
-                if ncvarname + " repeatability" in ds.keys():
-                    file_dmf=ds[ncvarname + " repeatability"].values
-                    if len(file_dmf) > 0:
-                        df["dmf"] = file_dmf[:]
-        
-                #Get variability
-                if ncvarname + " variability" in ds.keys():
-                    file_vmf=ds[ncvarname + " variability"]
-                    if len(file_vmf) > 0:
-                        df["vmf"] = file_vmf[:]
-                
-                # If ship read lat and lon data
-                # Check if site info has a keyword called platform
-                if 'platform' in site_info[site].keys():
-                    if site_info[site][network]["platform"] == 'ship':
-                        file_lat=ds["latitude"].values
-                        if len(file_lat) > 0:                                
-                            df["meas_lat"] = file_lat
-                            
-                        file_lon=ds["longitude"].values
-                        if len(file_lon) > 0:
-                            df["meas_lon"] = file_lon
-                    
-                    #If platform is aircraft, get altitude data
-                    if site_info[site]["platform"] == 'aircraft':
-                        if "alt" in ds.keys():
-                            file_alt=ds["alt"].values
-                            if len(file_alt) > 0:
-                                df["altitude"] = file_alt
-                        
-                #Get status flag
-                if ncvarname + " status_flag" in ds.keys():
-                    file_flag=ds[ncvarname + " status_flag"].values
-                    if len(file_flag) > 0:
-                        df["status_flag"] = file_flag                
-                        # Flag out multiple flags
-                        flag = [False for _ in range(len(df.index))]
-                        for f in status_flag_unflagged:
-                            flag = flag | (df.status_flag == f)
-                        df = df[flag]
-                               
-#                if units != "permil" and units != "per meg":
-#                    df = df[df.mf > 0.]
-
-                if len(df) > 0:
-                    data_frames.append(df)
+            if is_number(ds[ncvarname].units):
+                units = float(ds[ncvarname].units)
+            else:
+                errorMessage = '''Units must be numeric. 
+                                  Check your data file.
+                               '''
+                raise ValueError(errorMessage)
+            
+            #Get repeatability
+            if ncvarname + " repeatability" in ds.variables:
+                file_dmf=ds[ncvarname + " repeatability"].values
+                if len(file_dmf) > 0:
+                    df["dmf"] = file_dmf[:]
     
+            #Get variability
+            if ncvarname + " variability" in ds.variables:
+                file_vmf=ds[ncvarname + " variability"]
+                if len(file_vmf) > 0:
+                    df["vmf"] = file_vmf[:]
+            
+            # If ship read lat and lon data
+            # Check if site info has a keyword called platform
+            if 'platform' in list(site_info[site].keys()):
+                if site_info[site][network]["platform"] == 'ship':
+                    file_lat=ds["latitude"].values
+                    if len(file_lat) > 0:                                
+                        df["meas_lat"] = file_lat
+                        
+                    file_lon=ds["longitude"].values
+                    if len(file_lon) > 0:
+                        df["meas_lon"] = file_lon
+                
+
+                #If platform is aircraft, get altitude data
+                #TODO: Doesn't seem to pull through aircraft lat/lon!
+                if site_info[site]["platform"] == 'aircraft':
+                    if "alt" in list(ds.keys()):
+                        file_alt=ds["alt"].values
+                        if len(file_alt) > 0:
+                            df["altitude"] = file_alt
+                    
+            #Get status flag
+            if ncvarname + " status_flag" in ds.variables:
+                file_flag=ds[ncvarname + " status_flag"].values
+                if len(file_flag) > 0:
+                    df["status_flag"] = file_flag                
+                    # Flag out multiple flags
+                    flag = [False for _ in range(len(df.index))]
+                    for f in status_flag_unflagged:
+                        flag = flag | (df.status_flag == f)
+                    df = df[flag]
+
+            # Append to data_frames
+            if len(df) > 0:
+                data_frames.append(df)
+        
+        
         if len(data_frames) == 0:
             warningMessage = '''For some reason, there is no valid data 
                                 within files %s 
@@ -563,15 +584,7 @@ def get_single_site(site, species_in,
         data_frame = pd.concat(data_frames).sort_index()
         data_frame.index.name = 'time'
 
-        # Cut out requested time period
-        # subtract one us from the end date as pandas indexing is inclusive of end point
-        # convert back to string to avoid issues with specifying exact time
-        end_date_minus_1 = (pd.to_datetime(end_date)-pd.Timedelta(microseconds=1))
-        data_frame = data_frame[start_date : end_date_minus_1]
-        if len(data_frame) == 0:
-            print("Warning, no data within range")
-            return None
-
+        
         # If averaging is set, resample
         if average is not None:
             how = {}
@@ -595,7 +608,7 @@ def get_single_site(site, species_in,
                     data_frame.loc[pd.to_datetime(end_date)] = \
                         [np.nan for col in data_frame.columns]
                 # Now sort to get everything in the right order
-                data_frame.sort_index(inplace = True)
+                data_frame = data_frame.sort_index()
             
             # Resample
             data_frame = data_frame.resample(average).agg(how)
@@ -604,7 +617,7 @@ def get_single_site(site, species_in,
              
         # Drop NaNs
         if keep_missing == False:  
-            data_frame.dropna(inplace = True)
+            data_frame = data_frame.dropna()
         
         data_frame.mf.units = units
         data_frame.mf.scale = cal[0]
@@ -667,13 +680,13 @@ def get_gosat(site, species, max_level,
     
     data = xr.concat(data, dim = "time")
 
-    lower_levels =  range(0,max_level)
+    lower_levels =  list(range(0,max_level))
 
     prior_factor = (data.pressure_weights[dict(lev=list(lower_levels))]* \
                     (1.-data.xch4_averaging_kernel[dict(lev=list(lower_levels))])* \
                     data.ch4_profile_apriori[dict(lev=list(lower_levels))]).sum(dim = "lev")
                     
-    upper_levels = range(max_level, len(data.lev.values))            
+    upper_levels = list(range(max_level, len(data.lev.values)))            
     prior_upper_level_factor = (data.pressure_weights[dict(lev=list(upper_levels))]* \
                     data.ch4_profile_apriori[dict(lev=list(upper_levels))]).sum(dim = "lev")
                 
@@ -760,6 +773,7 @@ def get_obs(sites, species,
             Output end date in a format that Pandas can interpret
         inlet (str/list, optional) : 
             Height of inlet for input data (must match number of sites).
+            If you want to merge all inlets, use "all"
         average (str/list, optional) :
             Averaging period for each dataset (for each site) ((must match number of sites)).
             Each value should be a string of the form e.g. "2H", "30min" (should match pandas offset 
@@ -806,6 +820,9 @@ def get_obs(sites, species,
 
     if type(sites) is not list:
         raise ValueError("Sites variable must be a list")
+
+    if type(average) is not list:
+        average = [average]*len(sites)
 
     if (data_directory is None):
         data_directory = obs_directory
@@ -891,18 +908,23 @@ def plot(data_dict):
     
     plots = []
     
-    for site, df in data_dict.iteritems():
+    for site, df in data_dict.items():
         if site[0] != '.':
             if df is None:
                 plots.append(mpatches.Patch(label="%s (no data)" %site, color = "white"))
             else:
                 if "vmf" in df.columns:
                     error_col = "vmf"
-                if "dmf" in df.columns:
+                    errors = df[error_col]
+                elif "dmf" in df.columns:
                     error_col = "dmf"
+                    errors = df[error_col]
+                else:
+                    #TODO: Make this faster by duing a line plot, if there are no error bars
+                    errors = df.mf*0.
                 
                 plots.append(plt.errorbar(df.index, df.mf,
-                                          yerr = df[error_col],
+                                          yerr = errors,
                                           linewidth = 0, 
                                           marker = '.', markersize = 3.,
                                           label = site))

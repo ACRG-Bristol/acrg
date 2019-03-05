@@ -31,7 +31,11 @@ to adjust the uncertainties differently (emissions uncertainty > baseline uncert
 
 @author: ml12574 (updated by rt17603)
 """
+from __future__ import print_function
+from __future__ import division
+from builtins import str
 
+from past.utils import old_div
 import os
 import argparse
 import glob
@@ -43,7 +47,7 @@ import datetime as dt
 import acrg_name as name
 from acrg_tdmcmc import run_tdmcmc 
 from acrg_tdmcmc import tdmcmc_post_process as process
-import tdmcmc_config
+import acrg_tdmcmc.tdmcmc_config as tdmcmc_config
 #import acrg_config as configread
 
 acrg_path = os.getenv("ACRG_PATH")
@@ -78,8 +82,8 @@ if regenerate_then_exit:
 
 verbose = True
 if verbose:
-    print '\n---------------\n'
-    print 'Input configuration file: {0}'.format(config_file)
+    print('\n---------------\n')
+    print('Input configuration file: {0}'.format(config_file))
 
 # Extract parameters from configuration file
 param = tdmcmc_config.all_mcmc_param(config_file)
@@ -92,15 +96,25 @@ av_period = param['av_period']     # Frequency to average footprints and measuer
 
 max_level = param["max_level"] # Only relevant for satellite data
 
+if "site_modifier" in param and param["site_modifier"] is not None:
+    site_modifier = param["site_modifier"]
+else:
+    site_modifier = {}
+
 species = param['species']
 if not start_date:
-    start_date = param['start_date']
+    start_date = str(param['start_date'])
     if not start_date:
         raise Exception("Start date of observations must be specified either on the command line or within the configuration file")
+else:
+    start_date = str(start_date)
 if not end_date:
-    end_date = param['end_date']
+    end_date = str(param['end_date'])
     if not end_date:
         raise Exception("End date of observations must be specified either on the command line or within the configuration file")
+else:
+    end_date = str(end_date)
+    
 domain = param['domain']
 network = param['network']
 height = param['height']
@@ -150,27 +164,27 @@ if group:
     
 if data_dir is not None and data_dir.startswith("$ACRG_PATH"):
     data_dir = data_dir.replace("$ACRG_PATH",acrg_path)
-    print("data_directory is ", data_dir)
+    print(("data_directory is ", data_dir))
 
 if fp_dir is not None and fp_dir.startswith("$ACRG_PATH"):
     fp_dir = fp_dir.replace("$ACRG_PATH",acrg_path)
-    print("fp_directory is ", fp_dir)
+    print(("fp_directory is ", fp_dir))
 
 if flux_dir is not None and flux_dir.startswith("$ACRG_PATH"):
     flux_dir = flux_dir.replace("$ACRG_PATH",acrg_path)
-    print("flux_directory is ", flux_dir)
+    print(("flux_directory is ", flux_dir))
 
 if bc_dir is not None and bc_dir.startswith("$ACRG_PATH"):
     bc_dir = bc_dir.replace("$ACRG_PATH",acrg_path)
-    print("bc_directory is ", bc_dir)    
+    print(("bc_directory is ", bc_dir))    
 
 if basis_dir is not None and basis_dir.startswith("$ACRG_PATH"):
     basis_dir = basis_dir.replace("$ACRG_PATH",acrg_path)
-    print("basis_directory is ", basis_dir)
+    print(("basis_directory is ", basis_dir))
 
 if bc_basis_dir is not None and bc_basis_dir.startswith("$ACRG_PATH"):
     bc_basis_dir = bc_basis_dir.replace("$ACRG_PATH",acrg_path)
-    print("bc_basis_directory is ", bc_basis_dir)
+    print(("bc_basis_directory is ", bc_basis_dir))
     
 #######################################################
 # DO YOU WANT TO DO REVERSIBLE JUMP OR NOT?????
@@ -196,11 +210,11 @@ burn_in = param['burn_in']    # of discarded burn-in iterations
 nsub = param['nsub']          # nsub=100=store every 100th iteration)
 
 if verbose:
-    print 'Inversion type: {0}'.format(inv_type)
-    print 'Regions in trans-dimensional grid - minimum allowed: {0}, maximum allowed: {1}, starting value: {2}'.format(kmin,kmax,k_ap)
-    print 'Burn-in iterations: {0}'.format(burn_in)
-    print 'Number of iterations to run: {0} (nsub = {1}, {2} iterations will be saved)\n'.format(nIt,nsub,nIt/nsub)
-    print '\n---------------\n' 
+    print('Inversion type: {0}'.format(inv_type))
+    print('Regions in trans-dimensional grid - minimum allowed: {0}, maximum allowed: {1}, starting value: {2}'.format(kmin,kmax,k_ap))
+    print('Burn-in iterations: {0}'.format(burn_in))
+    print('Number of iterations to run: {0} (nsub = {1}, {2} iterations will be saved)\n'.format(nIt,nsub,old_div(nIt,nsub)))
+    print('\n---------------\n') 
     
 ############################################################
 # FILTERS
@@ -408,7 +422,7 @@ post_mcmc=run_tdmcmc.run_tdmcmc(sites, meas_period, av_period, species, start_da
     output_dir,fp_dir=fp_dir, flux_dir = flux_dir, data_dir=data_dir, basis_dir=basis_dir, bc_basis_dir=bc_basis_dir, bc_dir = bc_dir,
     filters=filters,bl_split=bl_split, bl_levels=levels,
     tau_ap=tau_ap, tau_hparams=tau_hparams, stepsize_tau=stepsize_tau, tau_pdf=tau_pdf,
-    max_level=max_level)
+    max_level=max_level, site_modifier=site_modifier)
 
 if unique_copy:
     shutil.copy(config_file,output_dir)
@@ -421,7 +435,7 @@ if unique_copy:
     sub_dir = 'Output_{0}_{1}_{2}_{3}'.format(site_str, species, start_date, creation_dt)
     datestamp_output_dir = os.path.join(output_dir,sub_dir)
     
-    print 'Creating new unique directory for output: {0}'.format(datestamp_output_dir)
+    print('Creating new unique directory for output: {0}'.format(datestamp_output_dir))
     os.mkdir(datestamp_output_dir)    
     
     # Copy config file to output sub-directory
@@ -431,7 +445,7 @@ if unique_copy:
     # Write output from MCMC code again but this time to the subdirectory
     fname = os.path.join(datestamp_output_dir,
                             "output_{site_names}_{species}_{date}.nc".format(site_names=site_names,species=species,date=start_date))
-    for key in post_mcmc.keys():
+    for key in list(post_mcmc.keys()):
         post_mcmc[key].encoding['zlib'] = True
     post_mcmc.to_netcdf(path=fname, mode='w')
 else:

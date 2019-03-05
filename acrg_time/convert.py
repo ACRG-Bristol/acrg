@@ -22,7 +22,10 @@ Created on Fri Nov 21 10:48:30 2014
 
 @author: chxmr
 """
+from __future__ import division
+#from builtins import str
 
+from past.utils import old_div
 import datetime as dt
 import time as tm
 import calendar
@@ -54,7 +57,8 @@ def reftime(time_reference):
     
     #If reference time is a string, assume it's in CF convention 
     # and convert to datetime
-    if type(time_reference[0]) is str or type(time_reference[0]) is unicode:
+    #if type(time_reference[0]) is str or type(time_reference[0]) is str:
+    if isinstance(time_reference[0],str):
         time_ref=dateutil.parser.parse(time_reference[0])
     else:
         time_ref=time_reference[0]
@@ -69,7 +73,7 @@ def sec2time(seconds, time_reference):
     time_ref = reftime(time_reference)
 
     return return_iter([time_ref + 
-        dt.timedelta(seconds=long(s)) for s in seconds], notIter)
+        dt.timedelta(seconds=int(s)) for s in seconds], notIter)
 
 
 def min2time(minutes, time_reference):
@@ -130,7 +134,7 @@ def time2decimal(dates):
     
         yearElapsed = s(date) - s(startOfThisYear)
         yearDuration = s(startOfNextYear) - s(startOfThisYear)
-        fraction = yearElapsed/yearDuration
+        fraction = old_div(yearElapsed,yearDuration)
 
         frac.append(date.year + fraction)
         

@@ -24,8 +24,13 @@ uncertainties differently (emissions uncertainty > baseline uncertainty).
 
 @author: ml12574
 """
+from __future__ import print_function
+from __future__ import division
 #import tdmcmc_uncorr
 #import tdmcmc_evencorr
+from builtins import str
+from builtins import range
+from past.utils import old_div
 import acrg_name as name
 import numpy as np
 import acrg_obs
@@ -85,7 +90,7 @@ def get_nsigma_y(fp_data_H,start_date, end_date, sites,
     y_bl=np.zeros((nmeasure))
     
     nsigma=0
-    nsigma_max = np.int(np.ceil(ndays/np.float(bl_period)))
+    nsigma_max = np.int(np.ceil(old_div(ndays,np.float(bl_period))))
     ntime_stn=np.zeros((nsites))
     if levels is not None:
         ngroups=len(levels)-1
@@ -198,7 +203,7 @@ def add_local_ratio(fp_data_H,return_release=True):
             dict (xarray Datasets and identifiers) : fp_data_H with "local_ratio" data variable added
     '''
     
-    sites = [key for key in fp_data_H.keys() if key[0] != '.']
+    sites = [key for key in list(fp_data_H.keys()) if key[0] != '.']
     
     release_lons=np.zeros((len(sites)))
     release_lats=np.zeros((len(sites)))
@@ -216,6 +221,7 @@ def add_local_ratio(fp_data_H,return_release=True):
             wh_rlon = np.where(abs(fp_data_H[site].sub_lon.values-release_lon) < dlon/2.)
             wh_rlat = np.where(abs(fp_data_H[site].sub_lat.values-release_lat) < dlat/2.)
             if np.any(wh_rlon[0]) and np.any(wh_rlat[0]):
+
                 if 'index' in fp_data_H[site].dims.keys():
                     local_sum[ti] = np.sum(fp_data_H[site].sub_fp[
                         wh_rlat[0][0]-2:wh_rlat[0][0]+3,wh_rlon[0][0]-2:wh_rlon[0][0]+3,ti].values)/np.sum(
@@ -257,7 +263,7 @@ def average_period(ds,av_period,dim="time"):
         xarray.Dataset: 
             original dataset averaged along the specified dimension
     '''
-    ds_av = ds.resample(av_period, dim = "time")
+    ds_av = ds.resample(indexer={'time':av_period}).mean()
     ds_av = ds_av.dropna(dim, how="all")
     
     return ds_av
@@ -284,7 +290,7 @@ def average_period_fp(fp_data_H,av_period_site,dim="time"):
             fp_data_H with datasets averaged along the specified dimension    
     '''
     
-    sites = [key for key in fp_data_H.keys() if key[0] != '.']
+    sites = [key for key in list(fp_data_H.keys()) if key[0] != '.']
 
     #fp_data_H_av = {}
     for si, site in enumerate(sites):
@@ -317,7 +323,7 @@ def reorder_dims(fp_data_H,first_dims=["time"]):
             fp_data_H with re-ordered dimensions
     '''
 
-    sites = [key for key in fp_data_H.keys() if key[0] != '.']
+    sites = [key for key in list(fp_data_H.keys()) if key[0] != '.']
     
     for site in sites:
         fp_data_H_site = fp_data_H[site]
@@ -348,7 +354,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     pdf_p2_hparam2,x_pdf ,pdf_param1_pdf,pdf_param2_pdf,inv_type,
     output_dir,fp_dir=None, flux_dir = None, data_dir=None, basis_dir=None, bc_basis_dir=None, bc_dir = None,
     tau_ap=None, tau_hparams=None, stepsize_tau=None, tau_pdf=None,
-    bl_split=False, bl_levels=None, filters=None,max_level=None):
+    bl_split=False, bl_levels=None, filters=None, max_level=None, site_modifier={}):
     #%%
     
     if para_temp is True:
@@ -372,7 +378,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     fp_all = name.footprints_data_merge(data, domain=domain, calc_bc=True,
                             height=height,
                             emissions_name = emissions_name,
-                            fp_directory = fp_dir, flux_directory = flux_dir, bc_directory = bc_dir)
+                            fp_directory = fp_dir, flux_directory = flux_dir, bc_directory = bc_dir, site_modifier=site_modifier)
     
     
     if fp_basis_case in ("INTEM"):    
@@ -387,7 +393,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     # CALCULATE DEGREE OF LOCALNESS FOR EACH FOOTPRINT
     fp_data_H2,release_lons,release_lats = add_local_ratio(fp_data_H2)
     
-    for si, site in enumerate(sites):     
+    for si, site in enumerate(sites): 
         fp_data_H2[site].attrs['Domain']=domain
 #        fp_data_H2[site].attrs['Height']=fp_heights[site] # ** fp_heights needs to be defined **
     
@@ -449,7 +455,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     for si, site in enumerate(sites):
             
         fp_data_H3 = fp_data_H[site].dropna("time", how="all")  
-        attributes = [key for key in fp_data_H3.keys() if key[0] != '.']  
+        attributes = [key for key in list(fp_data_H3.keys()) if key[0] != '.']  
         y.append(fp_data_H3.mf.values)     
         y_site.append([site for i in range(len(fp_data_H3.coords['time']))])
         y_time.append(fp_data_H3.coords['time'].values)
@@ -465,9 +471,9 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
         elif 'vmf' in attributes:   
             y_error.append(fp_data_H3.vmf.values)
         else:
-            print "No variability or repeatability in data file - use a default value"
+            print("No variability or repeatability in data file - use a default value")
             dmf_default = 0.002
-            print "Default value used: {}. Only appropriate for methane".format(dmf_default)
+            print("Default value used: {}. Only appropriate for methane".format(dmf_default))
             y_error.append(dmf_default*fp_data_H3.mf.values) # 0.002 only appropriate for methane
         
         H_bc_1=fp_data_H3.H_bc
@@ -638,7 +644,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
             
             for whi in wh_site:
                 tdelta = np.absolute(y_time[wh_site]-y_time[whi]).astype('timedelta64[m]')
-                deltatime_site=tdelta/np.timedelta64(1, 'h')
+                deltatime_site=old_div(tdelta,np.timedelta64(1, 'h'))
                 deltatime[whi,wh_site] = deltatime_site
 
         nsite_max=np.max(nmeasure_site)
@@ -702,7 +708,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     #%%
     # MCMC Parameters
     #########################################
-    nit_sub=nIt/nsub
+    nit_sub=old_div(nIt,nsub)
     k=np.zeros((nbeta),dtype=np.int)+k_ap
     
     x=np.zeros((kICmax,nbeta))
@@ -749,7 +755,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
         
     #BEGIN ITERATIONS
     ##################################################
-    print 'Starting MCMC...'
+    print('Starting MCMC...')
     startt = run_time.time()
     
     if inv_type == 'uncorrelated':
@@ -836,9 +842,9 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     
     endt=run_time.time()
     
-    print 'Finished MCMC in ', endt-startt
+    print('Finished MCMC in ', endt-startt)
         
-    print 'Beginning post processing'
+    print('Beginning post processing')
     x_post_vit=np.zeros((nit_sub,Ngrid))    
     regions_it=np.transpose(regions_out)-1
     x_it=np.transpose(x_out)
@@ -848,9 +854,9 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
             wh_reg = np.where(regions_it[it,:] == zz)
             x_post_vit[it,wh_reg] = x_it[it,zz+nIC]
     
-    print 'Everything done'
+    print('Everything done')
     endt2 = run_time.time()
-    print endt2-endt
+    print(endt2-endt)
     
     
     ##########################################
@@ -866,7 +872,8 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     else:
         props_temp=["birth", "death", "move", "sigma_y", "tau", "swap"]
         
-    props = np.zeros((nIC1+len(props_temp)),dtype=object)
+    #props = np.zeros((nIC1+len(props_temp)),dtype=object)
+    props = np.zeros((nIC1+len(props_temp)),dtype="S{}".format(max([len(s) for s in props_temp])))
     accepts = np.zeros((nIC1+len(props_temp)))
     rejects = np.zeros((nIC1+len(props_temp)))
     if nBias:
@@ -955,7 +962,6 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     post_mcmc.coords["proposal"]=props
     post_mcmc.coords["sites"]=sites
     
-   
     # Also:
     #Attributes: Sites, av_period, basis_case, accepts and rejects names
     #output_directory="/home/ml12574/work/programs/Python/my_acrg/td_uncorr/"
@@ -967,7 +973,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     
     fname=os.path.join(output_dir,
                         "output_" + site_names + "_" + species + "_" + start_date + ".nc")
-    for key in post_mcmc.keys():
+    for key in list(post_mcmc.keys()):
         post_mcmc[key].encoding['zlib'] = True
     post_mcmc.to_netcdf(path=fname, mode='w')
 

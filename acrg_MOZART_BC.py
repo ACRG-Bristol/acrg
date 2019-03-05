@@ -16,7 +16,12 @@ agree with NAME output.
 
 @author: ew14860
 """
+from __future__ import print_function
+from __future__ import division
 
+from builtins import str
+from builtins import range
+from past.utils import old_div
 import xarray as xray
 import numpy as np
 import bisect
@@ -43,7 +48,7 @@ if data_path is None:
     print("Default Data directory is assumed to be /data/shared/. Set path in .bashrc as \
             export DATA_PATH=/path/to/data/directory/ and restart python terminal")
 
-mzt_dir = join(data_path, 'MOZART/mzt_output/')
+mzt_dir = join(data_path, 'MOZART/model/mzt_output/')
 #filename = mzt_dir + 'CH4/FWDModelComparison_NewEDGAR.mz4.h2.2014-01.nc'
 
 
@@ -80,7 +85,7 @@ def convert_lon(DS, data_var):
     WARNING: variable must have dimensions ('height','lat','lon','time') in that order.
     """
     DS.coords['lon'] = DS.coords['lon'] - 180
-    L = len(DS.coords['lon'])/2
+    L = old_div(len(DS.coords['lon']),2)
     var0 = DS[data_var]
     var = np.zeros(np.shape(var0))
     if 'height' in DS[data_var].dims:
@@ -260,12 +265,13 @@ def MOZART_boundaries(MZ, domain):
     return MZT_edges
     
 
-def MOZART_BC_nc(start = '2012-01-01', end = "2014-09-01", species = 'CH4', filename = None, domain = 'EUROPE', freq = 'M', runname = 'NewEDGAR'):   
+def MOZART_BC_nc(start = '2012-01-01', end = "2014-09-01", species = 'CH4', filename = None, domain = 'EUROPE', freq = 'M', runname = 'NewEDGAR', output_dir = data_path):   
     """
     Specify end date as 2 months after the month of the last file
     (because the date specified is actually the first day of the next month and
     the range goes up to but doesn't include the last date). Only monthly
     frequency because this is the frequency of the mozart files we have so far.
+    
     """
     start_dates = pd.DatetimeIndex(start=start, end = end, freq=freq, closed='left')
 
@@ -273,5 +279,5 @@ def MOZART_BC_nc(start = '2012-01-01', end = "2014-09-01", species = 'CH4', file
         MZ = MOZART_vmr(species, start = i, end = i, freq=freq, filename = filename)
         MZ_edges = MOZART_boundaries(MZ, domain)
         yearmonth = str(i.year) + str(i.month).zfill(2)
-        MZ_edges.to_netcdf(path = join(data_path, "NAME/bc/%s/%s_%s_%s.nc")
+        MZ_edges.to_netcdf(path = join(output_dir, "NAME/bc/%s/%s_%s_%s.nc")
                                                     %(domain,species.lower(),domain,yearmonth), mode = 'w')

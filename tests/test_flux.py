@@ -5,6 +5,7 @@ Created on Tue Jan 15 14:50:50 2019
 
 @author: lw13938
 """
+from builtins import str
 from acrg_name.flux import write
 import xarray as xr
 import os

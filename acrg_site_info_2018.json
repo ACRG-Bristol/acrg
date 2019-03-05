@@ -275,9 +275,11 @@
   "CGO": {
     "AGAGE": {
       "height": [
-        "70m"
+        "70m",
+        "10m"
       ], 
       "height_name": [
+        "70magl",
         "70magl"
       ], 
       "height_station_masl": 94.0, 
@@ -1340,6 +1342,18 @@
       "longitude": -124.151
     },
     "NOAA": {
+      "height": [
+        "10m"
+      ], 
+      "height_name": [
+        "10magl"
+      ], 
+      "height_station_masl": 107.0, 
+      "latitude": 41.0541, 
+      "long_name": "Trinidad Head, California", 
+      "longitude": -124.151
+    },
+    "SIOCC": {	
       "height": [
         "10m"
       ], 

@@ -10,6 +10,7 @@ Created on Mon Feb 19 11:09:53 2018
 Functions for processing HiTRes footprint files
 """
 
+from past.utils import old_div
 import acrg_name.process as proc
 import datetime as dt
 from dateutil import parser
@@ -59,9 +60,9 @@ def update_release_time(fname):
     dt_hour = filelines[20].split(',')[-2].split(' ')[2]
     
     if filestart == fileend + dt.timedelta(hours = int(dt_hour)):
-        print "File dates already changed for file: %s" %filename
+        print("File dates already changed for file: %s" %filename)
     else:
-        print "Modifying dates in file: %s" %filename
+        print("Modifying dates in file: %s" %filename)
         start_release = fileend + dt.timedelta(hours = int(release_hr)+int(dt_hour))
         end_release = fileend + dt.timedelta(hours = int(release_hr))
     
@@ -105,7 +106,7 @@ def process_HiTRes(domain, site, height, year, month, user_max_hour_back,
     fnames.sort()
 
     if len(fnames) == 0:
-        print "Can't find high time resolution footprint files " + HiTRes_search_string
+        print("Can't find high time resolution footprint files " + HiTRes_search_string)
         return None
 
     met_search_str = subfolder + met_folder + "/*.txt*"
@@ -119,7 +120,7 @@ def process_HiTRes(domain, site, height, year, month, user_max_hour_back,
     else:
         met = proc.read_met(met_files)
     
-    print "Getting normal integrated footprints from: %s" %(normal_fp_dir)
+    print("Getting normal integrated footprints from: %s" %(normal_fp_dir))
     
     if month == '12':
         totfp = nm.footprints(site, start="%s-%s-01" %(year,month), end = "%s-%s-01" %(int(year)+1, '01'), domain=domain, height = height+'m', fp_directory= normal_fp_dir)
@@ -138,8 +139,8 @@ def process_HiTRes(domain, site, height, year, month, user_max_hour_back,
         release_hr = splitfile[-3]
         hr_back = int(splitfile[-1].split('.')[0])
         
-        print hr_back
-        print user_max_hour_back
+        print(hr_back)
+        print(user_max_hour_back)
         
         if hr_back <= user_max_hour_back:
             
@@ -176,10 +177,10 @@ def process_HiTRes(domain, site, height, year, month, user_max_hour_back,
     file_max_hour_back = np.max(FDS.H_back.values)
     
     if file_max_hour_back != user_max_hour_back:
-        print "WARNING: The maximum number of hours back specified by the user (%s)\
+        print("WARNING: The maximum number of hours back specified by the user (%s)\
         is greater than the maximum number of hours back available in the high\
         time resolution footprint file (%s). Creating a footprint file with the\
-        available number of hours back (%s)." %(user_max_hour_back, np.max(FDS.H_back.values), np.max(FDS.H_back.values))
+        available number of hours back (%s)." %(user_max_hour_back, np.max(FDS.H_back.values), np.max(FDS.H_back.values)))
     
     FDS = FDS0.copy()
     addfp = FDS.sum(dim='H_back')
@@ -191,16 +192,16 @@ def process_HiTRes(domain, site, height, year, month, user_max_hour_back,
     HiTRes_fp_time_period = int((FDS.time[1].values-FDS.time[0].values).astype('timedelta64[h]')/np.timedelta64(1,'h'))
     
     if HiTRes_fp_time_period > tot_fp_time_period:
-        print "Time resolution of total footprints (%d hourly) is higher than\
+        print("Time resolution of total footprints (%d hourly) is higher than\
         time resolution in 'time' dimension of HiTRes footprints (%d hourly).\
-        Averaging total footprints to match time resolution of HiTRes footprints." %(tot_fp_time_period, HiTRes_fp_time_period)
+        Averaging total footprints to match time resolution of HiTRes footprints." %(tot_fp_time_period, HiTRes_fp_time_period))
         totfp = totfp.resample('%dH' %HiTRes_fp_time_period,'time', how='mean')
         totfp = totfp.transpose('lat','lon','time')
     
     elif HiTRes_fp_time_period < tot_fp_time_period:
-        print "Time resolution of total footprints (%d hourly) is too low for\
+        print("Time resolution of total footprints (%d hourly) is too low for\
         time resolution in 'time' dimension of HiTRes footprints (%d hourly).\
-        Aborting." %(tot_fp_time_period, HiTRes_fp_time_period)
+        Aborting." %(tot_fp_time_period, HiTRes_fp_time_period))
         exit
         
     remfp = totfp.fp - addfp
@@ -229,7 +230,7 @@ def process_HiTRes(domain, site, height, year, month, user_max_hour_back,
     
     FDS.fp_HiTRes.encoding = {'zlib':True}
     FDS.to_netcdf(path = out_folder+'%s-%smagl_%s_%s%s.nc' %(site, height, domain, year, month), mode = 'w')
-    print "%s-%smagl_%s_%s%s.nc Done" %(site, height, domain, year, month)
+    print("%s-%smagl_%s_%s%s.nc Done" %(site, height, domain, year, month))
 
 
 def process_HiTRes_all(domain, site_height_dict, start_date, end_date, user_max_hour_back,
@@ -239,9 +240,9 @@ def process_HiTRes_all(domain, site_height_dict, start_date, end_date, user_max_
     
     dates = pd.date_range(start=start_date, end = end_date, freq = 'MS')
 
-    for i in site_height_dict.keys():
+    for i in list(site_height_dict.keys()):
         for d in dates:
-            print "Getting HiTRes footprints for %02d %04d at %s" %(d.year, d.month, i)
+            print("Getting HiTRes footprints for %02d %04d at %s" %(d.year, d.month, i))
             process_HiTRes(domain, i, site_height_dict[i], "%04d" %d.year, "%02d" %d.month, user_max_hour_back,
                            base_dir = base_dir, HiTRes_fields_folder = HiTRes_fields_folder,
                            met_folder = met_folder, normal_fp_dir=normal_fp_dir)

@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import division
+from past.utils import old_div
 import numpy as np
 
 def smooth(x,window_len=11,window='hanning'):
@@ -37,10 +39,10 @@ def smooth(x,window_len=11,window='hanning'):
     """
 
     if x.ndim != 1:
-        raise ValueError, "smooth only accepts 1 dimension arrays."
+        raise ValueError("smooth only accepts 1 dimension arrays.")
 
     if x.size < window_len:
-        raise ValueError, "Input vector needs to be bigger than window size."
+        raise ValueError("Input vector needs to be bigger than window size.")
 
 
     if window_len<3:
@@ -48,7 +50,7 @@ def smooth(x,window_len=11,window='hanning'):
 
 
     if not window in ['flat', 'hanning', 'hamming', 'bartlett', 'blackman']:
-        raise ValueError, "Window is on of 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'"
+        raise ValueError("Window is on of 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'")
 
 
     s=np.r_[x[window_len-1:0:-1],x,x[-1:-window_len:-1]]
@@ -58,7 +60,7 @@ def smooth(x,window_len=11,window='hanning'):
     else:
         w=eval('np.'+window+'(window_len)')
 
-    y=np.convolve(w/w.sum(),s,mode='valid')
+    y=np.convolve(old_div(w,w.sum()),s,mode='valid')
 
     #MLR cut off edges
-    return y[window_len/2:-window_len/2+1]
+    return y[old_div(window_len,2):old_div(-window_len,2)+1]

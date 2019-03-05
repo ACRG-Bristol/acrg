@@ -24,7 +24,13 @@ in the Processed_Fields_files directory.
 
 @author: chxmr
 """
+from __future__ import print_function
+from __future__ import division
 
+from builtins import zip
+#from builtins import str
+from builtins import range
+from past.utils import old_div
 import numpy
 from netCDF4 import Dataset
 import netCDF4
@@ -245,7 +251,7 @@ def extract_file_lines(fname):
     
     if fname[-3:].upper() == ".GZ":
         #Unzip file
-        f=gzip.open(fname, 'r')
+        f=gzip.open(fname, 'rt')
         file_text=f.read()
         f.close()
         file_lines=file_text.splitlines()
@@ -373,13 +379,13 @@ def define_grid(header, column_headings, satellite = False):
     
         #Time
         #ESTIMATE NUMBER OF TIMESTEPS PER FILE: ASSUMES ONLY ONE SPECIES PER FILE
-        ntime=len(time)/nlevs
+        ntime=len(time)//nlevs
         
     else:
         # Assume only ONE TIME STEP per file
         #Levels
         nlevs = len(z_level)
-        levs = range(nlevs)
+        levs = list(range(nlevs))
         ntime = 1
 
 
@@ -409,7 +415,7 @@ def met_empty():
     Create an empty Met dictionary. Not recommended.
     '''
     
-    met = pandas.DataFrame({key: 0. for key in met_default.keys() if key != "time"},
+    met = pandas.DataFrame({key: 0. for key in list(met_default.keys()) if key != "time"},
                           index = [dt.datetime(1900, 1, 1), dt.datetime(2020, 1, 1)])
     met.index.name = "time"
     met["press"] = [100000., 100000.] #Pa
@@ -457,7 +463,7 @@ def read_met(fnames, met_def_dict=None, vertical_profile=False):
         met_default2 = met_default
         #column_indices = {key: -1 for key, value in met_def_dict.iteritems()}
     #else:
-    column_indices = {key: -1 for key, value in met_default2.iteritems()}
+    column_indices = {key: -1 for key, value in list(met_default2.items())}
     
     output_df = []
         
@@ -495,7 +501,7 @@ def read_met(fnames, met_def_dict=None, vertical_profile=False):
                 if type(col) is str:
                     
                     #Work out column indices by searching through met_default
-                    for key in met_default2.keys():
+                    for key in list(met_default2.keys()):
                         if met_default2[key] in col:
                             column_indices[key] = coli
 
@@ -510,6 +516,7 @@ def read_met(fnames, met_def_dict=None, vertical_profile=False):
                         X_file = float(col.strip().split(" ")[2])
                     if "Y = " in col:
                         Y_file = float(col.strip().split(" ")[2])
+                
                     
         #Find where data starts
         for i, mi in enumerate(m[:, 0]):
@@ -528,7 +535,7 @@ def read_met(fnames, met_def_dict=None, vertical_profile=False):
         
         #Construct dictionary
         met_dict = {}
-        for key in met_default2.keys():
+        for key in list(met_default2.keys()):
             if column_indices[key] != -1 and key != "time":
                 met_dict[key] = m2[:, column_indices[key]].astype(float)
         met_dict["release_lon"] = X
@@ -669,15 +676,15 @@ def particle_locations(particle_file, time, lats, lons, levs, heights,
 
         #Calculate total particles and normalise
         hist_sum = hist[slice_dict].sum()
-        particles = int(sum([hist_sum[key].values for key in hist_sum.keys()]))
+        particles = int(sum([hist_sum[key].values for key in list(hist_sum.keys())]))
         particles_record.append(str(particles))
 
 #        print("Number of particles reaching edge: %f02" %particles)
 
         if particles > 0.:
-            for key in hist.data_vars.keys():
-                hist[key][slice_dict] = hist[key][slice_dict]/\
-                                                particles
+            for key in list(hist.data_vars.keys()):
+                hist[key][slice_dict] = old_div(hist[key][slice_dict],\
+                                                particles)
         else:
             status_log("No particles have reached edge",
                        error_or_warning="warning")
@@ -688,8 +695,8 @@ def particle_locations(particle_file, time, lats, lons, levs, heights,
                     slice_dict_prev = {"time": [0], "lev": [i-2]}
                 else:
                     slice_dict_prev = {"time": [i-2]}
-                for key in hist.data_vars.keys():
-                    hist[key][slice_dict] = hist[key][slice_dict_prev]
+                for key in list(hist.data_vars.keys()):
+                    hist[key][slice_dict] = hist[key][slice_dict_prev].values
         
         # Store extremes
         if max(df["Lat"]) > particle_extremes["N"]:
@@ -807,7 +814,7 @@ def footprint_array(fields_file,
     
     # Add in met data
     met_dict = {key : (["time", "lev"], np.zeros((len(time), len(levs))))
-                for key in met[0].keys()}
+                for key in list(met[0].keys())}
     met_ds = xray.Dataset(met_dict,
                           coords = {"time": (["time"], time),
                                     "lev": (["lev"], levs)})
@@ -827,17 +834,19 @@ def footprint_array(fields_file,
 
         metr = met[levi_met].reindex(index = time, method = "pad")
 
-        for key in met[levi_met].keys():
+        for key in list(met[levi_met].keys()):
             met_ds[key][dict(lev = [levi])] = \
                 metr[key].values.reshape((len(time), 1))
 
     # Merge met dataset into footprint dataset
-    fp.merge(met_ds, inplace = True)
+    #fp.merge(met_ds, inplace = True)
+    fp = fp.merge(met_ds)
 
 
     # Add in particle locations
     if particle_file is not None:
-        fp.merge(particle_hist, inplace = True)
+        #fp.merge(particle_hist, inplace = True)
+        fp = fp.merge(particle_hist)
 
     # Extract footprint from columns
     ### scipy.constants.C2K() module has been depreceated
@@ -849,6 +858,7 @@ def footprint_array(fields_file,
     #    #The 1 assumes 1g/s emissions rate
     #    return fp
 
+    # Extract footprint from columns
     # Extract footprint from columns
     def convert_to_ppt(fp, slice_dict, column):
         molm3=fp["press"][slice_dict].values/const.R/\
@@ -1040,7 +1050,7 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
     ncF.createDimension('lev', 1)
     
     # pass any global attributes in fp to the netcdf file
-    for key in global_attributes.keys():
+    for key in list(global_attributes.keys()):
         ncF.__setattr__(key,global_attributes[key])
     ncF.__setattr__("author", getpass.getuser())
     ncF.__setattr__("created", str(dt.datetime.now()))
@@ -1255,7 +1265,7 @@ def satellite_vertical_profile(fp, satellite_obs_file, max_level):
     # Interpolate pressure levels
     variables = ["fp", "pl_n", "pl_e", "pl_s", "pl_w"]
     out = {}
-    lower_levels =  range(0,max_level)
+    lower_levels =  list(range(0,max_level))
         
     # Weight levels using pressure weight and averaging kernel
     sum_ak_pw = np.sum(sat.pressure_weights.values.squeeze()[lower_levels] * \
@@ -1680,7 +1690,7 @@ def process(domain, site, height, year, month,
         #######################################
         
         # Define particle locations dictionary (annoying)
-        if "pl_n" in fp.keys():
+        if "pl_n" in list(fp.keys()):
             pl = {"N": fp.pl_n.transpose("height", "lon", "time").values.squeeze(),
                   "E": fp.pl_e.transpose("height", "lat", "time").values.squeeze(),
                   "S": fp.pl_s.transpose("height", "lon", "time").values.squeeze(),
@@ -2289,7 +2299,7 @@ def stiltfoot_array(prefix,
 #        part = part.append(p, ignore_index=True)
         fparrays.append(numpy.sum(ncin.variables['foot'][:], axis=0))
     
-    fparrays = map(lambda x: x/1000000, fparrays) # convert ppm to mol/mol 
+    fparrays = [old_div(x,1000000) for x in fparrays] # convert ppm to mol/mol 
     
     # compute particle domain exit statistics
     
@@ -2322,7 +2332,7 @@ def stiltfoot_array(prefix,
         met = [met]
     
     met_dict = {key : (["time", "lev"], numpy.zeros((len(time), len(levs))))
-                for key in met[0].keys()}
+                for key in list(met[0].keys())}
     met_ds = xray.Dataset(met_dict,
                           coords = {"time": (["time"], time),
                                     "lev": (["lev"], levs)})
@@ -2334,14 +2344,16 @@ def stiltfoot_array(prefix,
     metr['release_lat'] = release_lat
     metr['release_lon'] = release_lon
     
-    for key in met[levi_met].keys():
+    for key in list(met[levi_met].keys()):
         met_ds[key][dict(lev = [levi])] = \
         metr[key].values.reshape((len(time), 1))
             
     # merge datasets
         
-    fp.merge(met_ds, inplace = True)
-    fp.merge(particle_hist, inplace = True)
+    #fp.merge(met_ds, inplace = True)
+    #fp.merge(particle_hist, inplace = True)
+    fp = fp.merge(met_ds)
+    fp = fp.merge(particle_hist)
     
     # insert footprint arrays into dataset
     

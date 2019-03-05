@@ -50,7 +50,7 @@
         },
         "CGO" : {
             "gcwerks_site_name": "capegrim",
-            "inlets": ["7?m*", "10m"],
+            "inlets": ["7?m*", "10m*"],
             "inlet_label": ["70m", "10m"],
             "global_attributes": {
                 "data_owner": "Paul Krummel",

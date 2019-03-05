@@ -4,7 +4,10 @@ Created on Fri Oct 16 14:08:07 2015
 
 @author: chxmr
 """
+from __future__ import print_function
 
+from builtins import zip
+from builtins import range
 import numpy as np
 import pandas as pd
 from os.path import join, split
@@ -14,7 +17,7 @@ import xarray as xray
 import json
 from os import getenv, stat
 import fnmatch
-from acrg_obs.utils import attributes, output_filename
+from acrg_obs.utils import attributes, output_filename, cleanup
 
 # Read site info file
 acrg_path = getenv("ACRG_PATH")
@@ -279,7 +282,7 @@ def gc_data_read(dotC_file, scale = {}, units = {}):
         # sampling time
         time.append(dt(df.yyyy[i], df.mm[i], df.dd[i], df.hh[i], df.mi[i]))
         # Read analysis time
-        if "ryyy" in df.keys():
+        if "ryyy" in list(df.keys()):
             time_analysis.append(dt(df.ryyy[i], df.rm[i], df.rd[i], df.rh[i], df.ri[i]))
         
     df.index = time
@@ -307,12 +310,12 @@ def gc_data_read(dotC_file, scale = {}, units = {}):
                 else:
                     area_height_flag.append(1)  # Height
 
-            df = df.rename(columns = {key: df.keys()[i-1] + "_flag"})
-            df[df.keys()[i-1] + " status_flag"] = quality_flag
-            df[df.keys()[i-1] + " integration_flag"] = area_height_flag
-            scale[df.keys()[i-1]] = header[i-1][0]
-            units[df.keys()[i-1]] = header[i-1][1]
-            species.append(df.keys()[i-1])
+            df = df.rename(columns = {key: list(df.keys())[i-1] + "_flag"})
+            df[list(df.keys())[i-1] + " status_flag"] = quality_flag
+            df[list(df.keys())[i-1] + " integration_flag"] = area_height_flag
+            scale[list(df.keys())[i-1]] = header[i-1][0]
+            units[list(df.keys())[i-1]] = header[i-1][1]
+            species.append(list(df.keys())[i-1])
 
     return df, species, units, scale
 
@@ -367,7 +370,7 @@ def gc(site, instrument, network,
                             params["GC"]["directory_output"],
                             user_specified_input_directory = input_directory,
                             user_specified_output_directory = output_directory)
-
+            
     search_strings = []
     for suffix in params["GC"]["instruments_suffix"][instrument]:
         # Search string
@@ -431,7 +434,7 @@ def gc(site, instrument, network,
     ds = xray.Dataset.from_dataframe(dfs)
 
     # Get species from scale dictionary
-    species = scale.keys()
+    species = list(scale.keys())
 
     inlets = params["GC"][site]["inlets"]
 
@@ -440,7 +443,6 @@ def gc(site, instrument, network,
 
         global_attributes = params["GC"][site.upper()]["global_attributes"]
         global_attributes["comment"] = params["GC"]["comment"][instrument]
-
 
         # Now go through each inlet (if required)
         for inleti, inlet in enumerate(inlets):
@@ -495,7 +497,7 @@ def gc(site, instrument, network,
                                                               "Inlet"]]
 
                 # re-label inlet if required
-                if "inlet_label" in params["GC"][site].keys():
+                if "inlet_label" in list(params["GC"][site].keys()):
                     inlet_label = params["GC"][site]["inlet_label"][inleti]
                 else:
                    inlet_label = inlet
@@ -554,6 +556,7 @@ def gc(site, instrument, network,
                                                   ds_sp.species,
                                                   inlet = inlet_label,
                                                   version = version)
+
                     print("Writing... " + nc_filename)
                     ds_sp.to_netcdf(nc_filename)
                     print("... written.")
@@ -961,6 +964,23 @@ if __name__ == "__main__":
     # DECC Medusa
     gc("TAC", "medusa", "DECC")
 
+    cleanup("CGO")
+    cleanup("MHD")
+    cleanup("RPB")
+    cleanup("THD")
+    cleanup("SMO")
+    cleanup("GSN")
+    cleanup("SDZ")
+    cleanup("JFJ")
+    cleanup("CMN")
+    cleanup("ZEP")
+
+    cleanup("TAC")
+    cleanup("RGL")
+    cleanup("HFD")
+    cleanup("BSD")
+    cleanup("TTA")
+    
 
 #    # Copy files
 #    networks = ["AGAGE", "GAUGE", "DECC", "ICOS"]
