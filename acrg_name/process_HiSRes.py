@@ -168,6 +168,69 @@ def getFlux(ds, output_dir, name):
 #    flux.write(lat,lon,time,np.expand_dims(combined,2),"CH4-NAEI-fixed","EUROPE",source=None,title="NAEI in EDGAR",
 #                   prior_info_dict={"TODO":["todo","todo","todo"]},flux_comments="NAEI + EDGAR",climatology=False,
 #                   regridder_used='acrg_grid.regrid.regrid_2D',output_directory="/data/al18242/flux/")
+    
+class quadTreeNode:    
+    
+    def __init__(self, xStart, xEnd, yStart, yEnd):
+        self.xStart = xStart
+        self.xEnd = xEnd
+        self.yStart = yStart
+        self.yEnd = yEnd
+        
+        self.child1 = None #top left
+        self.child2 = None #top right
+        self.child3 = None #bottom left
+        self.child4 = None #bottom right
+    
+    def isLeaf(self):
+        if self.child1 or self.child2 or self.child3 or self.child4:
+            return False
+        else:
+            return True
+        
+    def createChildren(self, grid, limit):
+        value = np.sum(grid[self.xStart:self.xEnd, self.yStart:self.yEnd]).values
+        if (value < limit or
+            (self.xEnd-self.xStart < 2) or (self.yEnd-self.yStart <2)):
+            return
+        dx = (self.xEnd-self.xStart)
+        dy = (self.yEnd-self.yStart)
+        self.child1 = quadTreeNode(self.xStart, self.xStart + dx//2, self.yStart, self.yStart + dy//2)
+        self.child2 = quadTreeNode(self.xStart + dx//2, self.xStart + dx, self.yStart, self.yStart + dy//2)
+        self.child3 = quadTreeNode(self.xStart, self.xStart + dx//2, self.yStart + dy//2, self.yStart + dy)
+        self.child4 = quadTreeNode(self.xStart + dx//2, self.xStart + dx, self.yStart + dy//2, self.yStart + dy)
+        
+        self.child1.createChildren(grid, limit)
+        self.child2.createChildren(grid, limit)
+        self.child3.createChildren(grid, limit)
+        self.child4.createChildren(grid, limit)
+        
+    def appendLeaves(self, leafList):
+        if (self.isLeaf()):
+            leafList.append(self)
+        else:
+            self.child1.appendLeaves(leafList)
+            self.child2.appendLeaves(leafList)
+            self.child3.appendLeaves(leafList)
+            self.child4.appendLeaves(leafList)
+        
+    
+    
+def quadTreeGrid(grid, limit):
+    parentNode = quadTreeNode(0, grid.shape[0], 0, grid.shape[1])
+    parentNode.createChildren(grid, limit)
+    leafList = []
+    boxList = []
+    parentNode.appendLeaves(leafList)
+    
+    outputGrid = np.zeros_like(grid)
+    for i, leaf in enumerate(leafList):
+        outputGrid[leaf.xStart:leaf.xEnd, leaf.yStart:leaf.yEnd] = i
+        boxList.append([leaf.xStart, leaf.xEnd, leaf.yStart, leaf.yEnd])
+    
+    return outputGrid, boxList
+        
+
 
 def makeBasisFromExisting():
     #flux = name.name.flux("EUROPE", "CH4-BTT-5", flux_directory="/data/al18242/flux_HR/")
