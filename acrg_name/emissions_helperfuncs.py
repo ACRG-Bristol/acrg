@@ -489,7 +489,7 @@ def getbloomwetlandsCH4(year, lon_out, lat_out, timeframe="monthly"):
     
     #if monthly == True:
     if timeframe == "monthly":
-        ds = ds.resample('M', 'date')
+        ds = ds.resample(date='M').mean()
     
     bloomch4 = ds.CH4_FLUX.values*1e3/16.04
     lat_in = ds.latitude.values
