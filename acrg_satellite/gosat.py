@@ -992,7 +992,7 @@ def zbin_filter(ds,dim_apply="time"):
     attrs = ds[filter_name].attrs
     
     for string in remove:
-        ds[filter_name] = ds[filter_name].astype(dtype=str) # Have to recast as explicit string type
+        ds[filter_name] = ds[filter_name].astype(dtype="str") # Update for new xarray version? - Have to recast as explicit string type
         filt = np.where(np.char.find(ds[filter_name].values,string)==-1)
         ds = apply_filter(ds,filt,dim_apply=dim_apply)    
         #ds = ds.where(np.char.find(ds[filter_name].values,string)==-1,drop=True)
@@ -2195,8 +2195,9 @@ def gosat_split_output(ds,index,mapping=None,data_vars=[],split_dim="time",ident
         # Format the identifier data variable (e.g. exposure_id) to contain an extra "id" dimension to allow for multiple values
         if name == ident:
             identifiers = [value.split(ident_sep) for value in data_var.values] # Split identifier value by the ident_sep value (e.g. ',')
-            identifiers = np.array(list(itertools.zip_longest(*identifiers,fillvalue=np.nan))).T # Create array with consistent dimensions for "id" and fill in any gaps with np.nan values
-            
+            #identifiers = np.array(list(itertools.zip_longest(*identifiers,fillvalue=np.nan))).T # Create array with consistent dimensions for "id" and fill in any gaps with np.nan values
+            identifiers = np.array(list(itertools.izip_longest(*identifiers,fillvalue=np.nan))).T # Create array with consistent dimensions for "id" and fill in any gaps with np.nan values
+           
             id_dim_name = "id" # Define new dimension name
             split_dim_dim,id_dim_dim = identifiers.shape # Define dimensionality of new dimension and dimension we're splitting on
             id_dim_coord = np.arange(1,id_dim_dim+1)
@@ -2279,6 +2280,27 @@ def write_netcdf(ds,filename,overwrite=False):
         print('Writing to filename:',filename)    
         ds.to_netcdf(filename,mode="w")
 
+def find_network(site):
+    '''
+    The find_network function identifies the associated networks for a given site from the
+    "acrg_site_info_2018.json" file.
+    Args:
+        site (str) :
+            Site identifier. See "acrg_site_info_2018.json" for full list of options.
+    Returns:
+        list :
+            List of networks for each site.
+    '''
+    try:
+        networks = list(acrg_obs.read.site_info[site].keys())
+    except KeyError:
+        networks = ["unknown"]
+    if len(networks) > 1:
+        print("Multiple networks detected for site {}: {}".format(site,networks))
+
+    return networks
+
+
 def gosat_output(ds,site,species="ch4",file_per_day=False,output_directory=obs_directory,
                  overwrite=False):
     '''
@@ -2332,10 +2354,7 @@ def gosat_output(ds,site,species="ch4",file_per_day=False,output_directory=obs_d
     # Set name of data variable which includes the data point identifiers
     ident = "exposure_id"    
     
-    try:
-        network = acrg_obs.read.site_info[site]["network"]
-    except KeyError:
-        network = "unknown"
+    network = find_network(site)[0] # Using first site as default.
     instrument = 'gosat-fts'
     inlet = 'column'
     species = species.lower()
@@ -2466,10 +2485,8 @@ def gosat_output_name(ds,site,max_level=17,use_name_pressure=False,pressure_doma
                                                        pressure_base_dir=pressure_base_dir,
                                                        max_days=pressure_max_days,
                                                        day_template=pressure_day_template)
-    try:
-        network = acrg_obs.read.site_info[site]["network"]
-    except KeyError:
-        network = "unknown"
+    
+    network = find_network(site)[0] # Using first site as default
     
     name_directory = os.path.join(name_directory,network)
     if not os.path.isdir(name_directory):
@@ -2491,10 +2508,10 @@ def gosat_output_name(ds,site,max_level=17,use_name_pressure=False,pressure_doma
                         
                         if file_per_day:
                             # Write out ID as a str combination of the point number and level each with leading zeros
-                            data[col] = np.array([ID_str+value.zfill(2) for value in (ds_column[:max_level].values+1).astype(str)])
+                            data[col] = np.array([ID_str+value.zfill(2) for value in (ds_column[:max_level].values+1).astype("str")])
                         else:
                             # Write out ID (levels) as two digit numbers with a leading zero e.g. 01, 02, ... 21, 22
-                            data[col] = np.array([value.zfill(2) for value in (ds_column[:max_level].values+1).astype(str)])
+                            data[col] = np.array([value.zfill(2) for value in (ds_column[:max_level].values+1).astype("str")])
                     else:
                         data[col] = np.array([ds_column[index].values]*max_level) # Populate each level with the same values e.g. lat,lon,dlat,dlon
                 else:
