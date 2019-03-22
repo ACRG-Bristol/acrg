@@ -58,8 +58,11 @@ def dummy_dataset(ds_dimensions,ds_data_variables):
     data_dict[ds_data_variables["ak"]] = ([dimension_1,dimension_2],np.array(averaging_kernel,dtype=np.float64))
     
     qf_name = ds_data_variables["qf_flag"]
-    qf_0 = [0]*int(round(dim_1/2.0))
-    qf_1 = [1]*int(round(dim_1/2))
+    h = int(round(dim_1/2.0))
+    #qf_0 = [0]*int(round(dim_1/2.0))
+    #qf_1 = [1]*int(round(dim_1//2))
+    qf_0 = [0]*h
+    qf_1 = [1]*(dim_1-h)
     quality_flag = qf_0 + qf_1
     data_dict[qf_name] = (dimension_1,np.array(quality_flag))
     
@@ -102,7 +105,9 @@ def inconsistent_dimension_ds(ds_dimensions,dummy_dataset):
     dim_2 = ds_small.dims[dimension_2]
     
     dv = np.array([range(1,dim_1+1,1)]*dim_2)
-    da = xray.DataArray(dv,coords={dimension_1:datetimes,dimension_2:levels},dims={dimension_1:dim_1,dimension_2:dim_2})
+
+    #da = xray.DataArray(dv,coords={dimension_1:datetimes,dimension_2:levels},dims={dimension_1:dim_1,dimension_2:dim_2})
+    da = xray.DataArray(dv,coords={dimension_1:datetimes,dimension_2:levels},dims=(dimension_2,dimension_1))
     ds_inconsistent = ds_small.assign(extra=da)
     
     return ds_inconsistent

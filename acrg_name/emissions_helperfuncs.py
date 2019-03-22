@@ -715,7 +715,7 @@ def getNAEI(year, lon_out, lat_out, species, naei_sector):
         diy = 365
     else:
         diy = 366    
-    grdemis = old_div(grdemis, (diy * 3600*24) / speciesmm)
+    grdemis = old_div(grdemis, (diy * 3600*24) * speciesmm)
     
     #Regrid to desired lats and lons
     narr, reg = regrid2d(grdemis, latarr, lonarr,
