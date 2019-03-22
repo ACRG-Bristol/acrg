@@ -122,19 +122,19 @@ def combine_date(output_base, processed_folder, processed_folder_HR, filename):
         os.makedirs(out_directory)
     output_file.to_netcdf("{}/{}".format(out_directory, filename))
     
-def getFlux(ds, output_dir, name):
+def getFlux(ds, output_dir, name, species="CH4"):
     """
     get Flux using edgar and NAEI for footprint file given
     Currently only good for static annual emissions
     """
     year = pd.to_datetime(ds.time.values[0]).year
     
-    edgar_low = emfuncs.getedgarannualtotals(year, ds.lon.values, ds.lat.values, species='CH4')
-    naei_low = emfuncs.getNAEI(year, ds.lon.values, ds.lat.values, species="CH4", naei_sector="total")
+    edgar_low = emfuncs.getedgarannualtotals(year, ds.lon.values, ds.lat.values, species=species)
+    naei_low = emfuncs.getNAEI(year, ds.lon.values, ds.lat.values, species=species, naei_sector="total")
     combined = naei_low.data
     combined[np.where(naei_low.mask == True)] = edgar_low[np.where(naei_low.mask == True)]
     combined[np.where(naei_low.data == 0)] = edgar_low[np.where(naei_low.data == 0)]
-    naei_high = emfuncs.getNAEI(year, ds.lon_high.values, ds.lat_high.values, species="CH4", naei_sector="total")
+    naei_high = emfuncs.getNAEI(year, ds.lon_high.values, ds.lat_high.values, species=species, naei_sector="total")
     
     lowsize, highsize, lons_low, lats_low, lons_high, lats_high, indicies_to_remove, lons_out, lats_out = \
         getOverlapParameters(ds.lat.values, ds.lon.values, ds.lat_high.values, ds.lon_high.values)

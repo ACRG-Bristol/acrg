@@ -13,7 +13,7 @@ import pandas as pd
 import geopandas as gpd
 import shapely
 
-def forwardModel(fp, flux):
+def forwardModel(fp, flux, hr=True):
     '''
     Calculate the predicted mf as fp*flux + bg
     
@@ -45,13 +45,14 @@ def forwardModel(fp, flux):
     
     return output_model_low, output_model_high, output_model, bg*1e9
 
-def plotMultiResMesh(_data_low, lat_low, lon_low, data_high, lat_high, lon_high,
+def plotMultiResMesh(_data_low, lat_low, lon_low, _data_high, lat_high, lon_high,
               vmin, vmax, scale_high = False, logPlot=True, cmap="viridis", ax=None,
               **kwargs):
     '''
     Plots low resolution and high resolution data on top of eachother using pcolormesh
     '''
     data_low = _data_low * 1.
+    data_high = _data_high*1.
     dlat_low = lat_low[1] - lat_low[0]
     dlon_low = lon_low[1] - lon_low[0]
     low_lat_bounds = np.append(lat_low,lat_low[-1] + dlat_low) - dlat_low/2.0
@@ -67,11 +68,12 @@ def plotMultiResMesh(_data_low, lat_low, lon_low, data_high, lat_high, lon_high,
     #calc null values for the high res region
     whereLat = np.where((lat_low > lat_high[0]) & (lat_low < lat_high[-1]))[0]
     whereLon = np.where((lon_low > lon_high[0]) & (lon_low < lon_high[-1]))[0]
-    data_low[slice (int(whereLat[0]), int(whereLat[-1])+1), slice (int(whereLon[0]), int(whereLon[-1])+1)] = -9999
+    data_low[slice (int(whereLat[0]), int(whereLat[-1])+1), slice (int(whereLon[0]), int(whereLon[-1])+1)] = np.nan
     
     #deal with cmap
     cmap = cm.get_cmap(cmap)
-    cmap.set_under(color='w',alpha=0.)
+    cmap.set_bad(color='k',alpha=1.)
+    cmap.set_under(color='k',alpha=1.)
     
     if (scale_high):
         data_high *= ((dlat_low/dlat_high)**2)
@@ -85,7 +87,7 @@ def plotMultiResMesh(_data_low, lat_low, lon_low, data_high, lat_high, lon_high,
         ax.pcolormesh(lons_low, lats_low, data_low.T, vmin=vmin, vmax=vmax, cmap=cmap, **kwargs)
         #ax.pcolormesh(lons_high, lats_high, data_high.T*0, vmin=0, vmax=100, cmap="Greys", **kwargs)
         cs = ax.pcolormesh(lons_high, lats_high, data_high.T, vmin=vmin, vmax=vmax, cmap=cmap, **kwargs)
-    plt.colorbar(cs, ax=ax)
+    #plt.colorbar(cs, ax=ax)
     return ax
     
 def unflattenArray(stacked_array, template):
@@ -166,5 +168,14 @@ def shpToGrid(shape, lats, lons):
     gdf = gpd.GeoDataFrame(df, geometry='Coordinates')
     within = gdf.within(shape.geometry[0])
     within = within.values.reshape(len(lons), len(lats)).T
+    return within
+
+def shpToGrid2d(shape, lats, lons):
+    XX, YY = lats.flatten(), lons.flatten()
+    df = pd.DataFrame({'Coordinates': list(zip(YY, XX))})
+    df['Coordinates'] = df['Coordinates'].apply(shapely.geometry.Point)
+    gdf = gpd.GeoDataFrame(df, geometry='Coordinates')
+    within = gdf.within(shape.geometry[0])
+    within = within.values.reshape(lats.shape).T
     return within
 
