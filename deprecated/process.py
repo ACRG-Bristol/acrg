@@ -28,7 +28,7 @@ from __future__ import print_function
 from __future__ import division
 
 from builtins import zip
-from builtins import str
+#from builtins import str
 from builtins import range
 from past.utils import old_div
 import numpy
@@ -516,6 +516,7 @@ def read_met(fnames, met_def_dict=None, vertical_profile=False):
                         X_file = float(col.strip().split(" ")[2])
                     if "Y = " in col:
                         Y_file = float(col.strip().split(" ")[2])
+                
                     
         #Find where data starts
         for i, mi in enumerate(m[:, 0]):
@@ -838,12 +839,14 @@ def footprint_array(fields_file,
                 metr[key].values.reshape((len(time), 1))
 
     # Merge met dataset into footprint dataset
-    fp.merge(met_ds, inplace = True)
+    #fp.merge(met_ds, inplace = True)
+    fp = fp.merge(met_ds)
 
 
     # Add in particle locations
     if particle_file is not None:
-        fp.merge(particle_hist, inplace = True)
+        #fp.merge(particle_hist, inplace = True)
+        fp = fp.merge(particle_hist)
 
     # Extract footprint from columns
     ### scipy.constants.C2K() module has been depreceated
@@ -855,6 +858,7 @@ def footprint_array(fields_file,
     #    #The 1 assumes 1g/s emissions rate
     #    return fp
 
+    # Extract footprint from columns
     # Extract footprint from columns
     def convert_to_ppt(fp, slice_dict, column):
         molm3=old_div(fp["press"][slice_dict].values,const.R/\
@@ -2346,8 +2350,10 @@ def stiltfoot_array(prefix,
             
     # merge datasets
         
-    fp.merge(met_ds, inplace = True)
-    fp.merge(particle_hist, inplace = True)
+    #fp.merge(met_ds, inplace = True)
+    #fp.merge(particle_hist, inplace = True)
+    fp = fp.merge(met_ds)
+    fp = fp.merge(particle_hist)
     
     # insert footprint arrays into dataset
     

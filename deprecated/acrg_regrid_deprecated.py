@@ -192,7 +192,7 @@ def write(lat, lon, flux, species, domain, year, EDGAR_filename = None, footprin
     ncname = '/data/shared/NAME/emissions/%s/%s_%s_%s.nc' %(domain, species, domain, year)
 
     if os.path.isfile(ncname) == True:
-        answer = input("You are about to overwrite an existing file, do you want to continue? Y/N")
+        answer = eval(input("You are about to overwrite an existing file, do you want to continue? Y/N"))
         if answer == 'N':
             return
         elif answer == 'Y':

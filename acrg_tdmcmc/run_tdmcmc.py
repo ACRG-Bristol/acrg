@@ -348,7 +348,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     pdf_p2_hparam2,x_pdf ,pdf_param1_pdf,pdf_param2_pdf,inv_type,
     output_dir,fp_dir=None, flux_dir = None, data_dir=None, basis_dir=None, bc_basis_dir=None, bc_dir = None,
     tau_ap=None, tau_hparams=None, stepsize_tau=None, tau_pdf=None,
-    bl_split=False, bl_levels=None, filters=None,max_level=None):
+    bl_split=False, bl_levels=None, filters=None, max_level=None, site_modifier={}):
     #%%
     
     if para_temp is True:
@@ -366,7 +366,8 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
                           keep_missing=corr_type[inv_type],max_level=max_level, data_directory = data_dir)
     
     
-    fp_all = name.footprints_data_merge(data, domain=domain, calc_bc=True, fp_directory = fp_dir, flux_directory = flux_dir, bc_directory = bc_dir)
+    fp_all = name.footprints_data_merge(data, domain=domain, calc_bc=True, fp_directory = fp_dir, flux_directory = flux_dir, bc_directory = bc_dir,
+                                        site_modifier=site_modifier)
     
     
     if fp_basis_case in ("INTEM"):    
@@ -381,7 +382,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     # CALCULATE DEGREE OF LOCALNESS FOR EACH FOOTPRINT
     fp_data_H2,release_lons,release_lats = add_local_ratio(fp_data_H2)
     
-    for si, site in enumerate(sites):     
+    for si, site in enumerate(sites): 
         fp_data_H2[site].attrs['Domain']=domain
 #        fp_data_H2[site].attrs['Height']=fp_heights[site] # ** fp_heights needs to be defined **
     
@@ -857,7 +858,8 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     else:
         props_temp=["birth", "death", "move", "sigma_y", "tau", "swap"]
         
-    props = np.zeros((nIC1+len(props_temp)),dtype=object)
+    #props = np.zeros((nIC1+len(props_temp)),dtype=object)
+    props = np.zeros((nIC1+len(props_temp)),dtype="S{}".format(max([len(s) for s in props_temp])))
     accepts = np.zeros((nIC1+len(props_temp)))
     rejects = np.zeros((nIC1+len(props_temp)))
     if nBias:
@@ -946,7 +948,6 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     post_mcmc.coords["proposal"]=props
     post_mcmc.coords["sites"]=sites
     
-   
     # Also:
     #Attributes: Sites, av_period, basis_case, accepts and rejects names
     #output_directory="/home/ml12574/work/programs/Python/my_acrg/td_uncorr/"
@@ -958,6 +959,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     
     fname=os.path.join(output_dir,
                         "output_" + network_w + "_" + species + "_" + start_date + ".nc")
+
     for key in list(post_mcmc.keys()):
         post_mcmc[key].encoding['zlib'] = True
     post_mcmc.to_netcdf(path=fname, mode='w')

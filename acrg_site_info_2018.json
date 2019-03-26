@@ -85,6 +85,21 @@
       "longitude": 5.632
     }
   }, 
+  "ATO": {
+    "ATTO": {
+      "long_name": "Amazon Tall Tower Observatory, State of Amazonas, Brazil",
+      "height": [
+        "79m",
+        "53m",
+        "38m",
+        "24m",
+        "4m"
+      ], 
+      "height_station_masl": 85.0, 
+      "latitude": -2.1441, 
+      "longitude": -58.9999
+    }
+  },
   "AZR": {
     "NOAA": {
       "height": [
@@ -582,6 +597,30 @@
       "platform": "satellite"
     }
   }, 
+  "GOSAT-BRAZIL-LAND": {
+    "GOSAT/GOSAT-BRAZIL-LAND": {
+      "height": [
+        "column"
+      ], 
+      "height_name": [
+        "column"
+      ], 
+      "long_name": "GOSAT, Brazil, land points", 
+      "platform": "satellite"
+    }
+  }, 
+  "GOSAT-BRAZIL-OCEAN": {
+    "GOSAT/GOSAT-BRAZIL-OCEAN": {
+      "height": [
+        "column"
+      ], 
+      "height_name": [
+        "column"
+      ], 
+      "long_name": "GOSAT, Brazil, ocean (glint) points", 
+      "platform": "satellite"
+    }
+  },
   "GOSAT-EUROPE": {
     "GOSAT/GOSAT-EUROPE": {
       "height": [
@@ -1342,6 +1381,18 @@
       "longitude": -124.151
     },
     "NOAA": {
+      "height": [
+        "10m"
+      ], 
+      "height_name": [
+        "10magl"
+      ], 
+      "height_station_masl": 107.0, 
+      "latitude": 41.0541, 
+      "long_name": "Trinidad Head, California", 
+      "longitude": -124.151
+    },
+    "SIOCC": {	
       "height": [
         "10m"
       ], 

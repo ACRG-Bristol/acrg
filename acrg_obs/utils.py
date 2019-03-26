@@ -114,13 +114,14 @@ def site_info_attributes(site):
         return None
 
 def attributes(ds, species, site,
-               global_attributes = {"Conditions of use": "Ensure that you contact the data owner at the outset of your project.",
-                                    "Source": "In situ measurements of air",
-                                    "Conventions": "CF-1.6"},
+               global_attributes = None,
                units = None,
                scale = None,
                sampling_period = None,
-               date_range = None):
+               date_range = None,
+               global_attributes_default = {"Conditions of use": "Ensure that you contact the data owner at the outset of your project.",
+                                            "Source": "In situ measurements of air",
+                                            "Conventions": "CF-1.6"}):
     """
     Format attributes for netCDF file
     Attributes of xarray DataSet are modified, and variable names are changed
@@ -186,8 +187,14 @@ def attributes(ds, species, site,
       
     # Global attributes
     #############################################
+    
     if global_attributes is None:
         global_attributes = {}
+        for key in global_attributes_default:
+            global_attributes[key] = global_attributes_default[key]
+    else:
+        for key in global_attributes_default:
+            global_attributes[key] = global_attributes_default[key]
 
     # Add some defaults
     global_attributes["File created"] = str(dt.now())
@@ -437,4 +444,9 @@ def cleanup(site,
                 zipf.write(f, os.path.basename(f))
                 os.remove(f)
             zipf.close()
+            
+def cleanup_all():
+    site_list = [site_dir for site_dir in os.listdir(obs_directory) if os.path.isdir(os.path.join(obs_directory,site_dir))]
+    for site in site_list:
+        cleanup(site)
         

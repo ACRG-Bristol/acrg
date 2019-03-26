@@ -3,14 +3,8 @@
 Created on Thu Jun 11 12:24:37 2015
 
 @author: as13988
-
-updated Fri Mar 1 by mi19881 to ensure that an outdir is passed to all plot functions.
 """
 from __future__ import print_function
-from builtins import zip
-from builtins import map
-from builtins import str
-from builtins import object
 from acrg_GCWerks import acrg_read_GCwerks
 import matplotlib.pylab as plt
 import numpy as np
@@ -35,7 +29,7 @@ from scipy.odr import ODR, Model, Data, RealData
 # use_drygaps = set if you want to identify the wet periods as the "non dry" bits
 # h2o_jump = set to the gap between consecutive h2o measurments that's used to identify the start of wet section defaults to 0.4
 # H2Orange = set the H2O x axis range on the residual plots
-def calcread_multi(sites, years, basedir = '/Users/as13988/Documents/Work/Picarro/H2OCorr/', outdir = '/home/mi19881/programs/acrg/tests/files/raw_obs/H2OCorr/Plots/', dir_suffix = '', quick_plot = None, \
+def calcread_multi(sites, years, basedir = '/Users/as13988/Documents/Work/Picarro/H2OCorr/', dir_suffix = '', quick_plot = None, \
 h2o_jump = 0.4, ignorefirst = 5, dry_cutoff = 0.005, h2o_sd = 0.2, co2_sd = 0.05, ch4_sd = 0.4,  H2O_Range = None, No_plots = None, sd_flag = None):
     
     outputs = {}
@@ -78,10 +72,10 @@ h2o_jump = 0.4, ignorefirst = 5, dry_cutoff = 0.005, h2o_sd = 0.2, co2_sd = 0.05
                                     
             # calculate the fits and plot individual runs
             # THIS ASSUMES THAT THERE ARE THE SAME NUMBER OF INSTCORR FILES AS THERE ARE NORMAL FILES!
-            output, means = plot_ratio_multi(wet_raw, dry_data, wet_instcorr, outdir = outdir, dir_suffix = dir_suffix, No_plots = No_plots, sd_flag = sd_flag)
+            output, means = plot_ratio_multi(wet_raw, dry_data, wet_instcorr, dir_suffix = dir_suffix, No_plots = No_plots, sd_flag = sd_flag)
             
             # plot the change from the built in residual for ALL runs
-            plot_residual(means, wet_raw, wet_instcorr, dry_data, outdir=outdir, saveas=1, dir_suffix = dir_suffix, useinbuilt=1, H2O_Range = H2O_Range, sd_flag = sd_flag)
+            plot_residual(means, wet_raw, wet_instcorr, dry_data, saveas=1, dir_suffix = dir_suffix, useinbuilt=1, H2O_Range = H2O_Range, sd_flag = sd_flag)
             
             outputs[i + '_' + str(j)] = output
             means_all[i + '_' + str(j)] = means
@@ -89,7 +83,7 @@ h2o_jump = 0.4, ignorefirst = 5, dry_cutoff = 0.005, h2o_sd = 0.2, co2_sd = 0.05
     return outputs, means_all
 
 
-# Read in a file that contains both wet and dary data
+# Read in a file that contains both wet and dry data
 # Identify the dry periods based on a given H2O tolerance
 # The identify the wet periods and how many "runs" there have been in the episode.
 # defaults to a dry_cutoff of 0.0001
@@ -146,7 +140,7 @@ def define_wetdry(infile, dry_cutoff = 0.0001, h2o_sd = 0.2, h2o_jump = 0.4, co2
         # find where these increases are grouped together
         gaps_start = []
         for k, g in groupby(enumerate(index), lambda i_x:i_x[0]-i_x[1]):
-            group =  list(map(itemgetter(1), g))
+            group =  map(itemgetter(1), g)
             #print group
             gaps_start.append(group[0])
         
@@ -192,15 +186,13 @@ def define_wetdry(infile, dry_cutoff = 0.0001, h2o_sd = 0.2, h2o_jump = 0.4, co2
             plt.plot(run_i.datetime, run_i.h2o, mec=blue, mfc=blue, marker = 'o', linestyle = '')
         
         plt.plot(dry_data.datetime, dry_data.h2o, mec='r', mfc='r', marker = 'o', linestyle = '')
-        plt.ion()
-        plt.pause(0.001)
-        plt.close()
+        plt.show()
         
     return wet_runs, dry_data
 
 
 # extract the dry sections
-class dry_sections(object):
+class dry_sections:
     def __init__(self, data_all, dry_cutoff):
         good = (np.where(data_all.co2flags == 0))[0]
         h2o = data_all.h2o[good]
@@ -209,7 +201,7 @@ class dry_sections(object):
         dry_index = (np.where(h2o < dry_cutoff))[0]
         
         # want to replicate the class structure of data_all         
-        for i in list(data_all.__dict__.keys()):
+        for i in data_all.__dict__.keys():
             # if it's a numpy array then extract the data using the index
             if isinstance(getattr(data_all, i), np.ndarray):
                 setattr(self, i, getattr(data_all, i)[good][dry_index])
@@ -226,13 +218,13 @@ class dry_sections(object):
 
         
 # extract the wet sections
-class wet_sections(object):
+class wet_sections:
     def __init__(self, data_all, start_gap, end_gap, h2o_sd = 0.2, co2_sd = None):
     
         good = (np.where((data_all.co2flags == 0) & (h2o_sd > data_all.h2osd) & (co2_sd > data_all.co2sd)))[0]
 
         # want to replicate the class structure of data_all         
-        for i in list(data_all.__dict__.keys()):
+        for i in data_all.__dict__.keys():
             # if it's a numpy array then extract the data using the start and ends of the gaps
             if isinstance(getattr(data_all, i), np.ndarray):
                 setattr(self, i, getattr(data_all, i)[good][start_gap:end_gap])
@@ -345,9 +337,7 @@ def plot_raw(data, outdir = '/Users/as13988/Documents/Work/Picarro/H2OCorr/Plots
     print('Plot saved as: ' + outdir+ '/' + site+ '/'+'Raw_'+tag+'_'+site+'.' + testdate + '.png')
     plt.savefig(outdir+ '/' + site+ '/'+'Raw_'+tag+'_'+site+'.' + testdate + '.png', dpi=200)
         
-    plt.ion()
-    plt.pause(0.001)
-    plt.close()
+    plt.show()
     
     return 
 
@@ -405,9 +395,7 @@ def plot_H2O(data, outdir = '/Users/as13988/Documents/Work/Picarro/H2OCorr/Plots
     print('Plot saved as: ' + outdir+ '/' + site+ '/'+'VsH2O_'+tag+'_'+site+'.' + testdate + '_'+ species+'.png')
     plt.savefig(outdir+ '/' + site+ '/'+'VsH2O_'+tag+'_'+site+'.' + testdate + '_'+ species + '.png', dpi=200)
         
-    plt.ion()
-    plt.pause(0.001)
-    plt.close()
+    plt.show()
     
     return 
 
@@ -638,8 +626,7 @@ def plot_ratio(data, drydata, nocorrdata=None, outdir = '/Users/as13988/Document
         print('Plot saved as: ' + outdir+ '/' + site+ '/'+dir_suffix+outname)
         plt.savefig(outdir+ '/' + site+ '/'+dir_suffix+outname, dpi=200)
             
-        plt.ion()
-        plt.pause(0.001)
+        plt.show()
         plt.close()
     
     # PLot the fit of the new correction compared to the in build correction
@@ -709,9 +696,8 @@ def plot_fit(rawwetdata, h2o, drymean, fit_params, sd, h2o_sd, instcorrdata=None
             print('Plot saved as: ' + saveas)
             plt.savefig(saveas, dpi=200)
             
-        plt.ion()
-        plt.pause(0.001)
-        plt.close()  
+        plt.show()
+        plt.close()    
     
         """
         # quick plot of the relationship between sd and residual
@@ -722,7 +708,7 @@ def plot_fit(rawwetdata, h2o, drymean, fit_params, sd, h2o_sd, instcorrdata=None
             plt.xlabel('Minutes since start of run')
             plt.xlim()
             plt.savefig('/Users/as13988/Documents/Work/Picarro/H2OCorr/temp/'+ saveas.split('/')[-1])
-            plt.ion()
+            plt.show()
         """
     return h2o, err_new_fit, sd, h2o_sd
 
@@ -769,10 +755,8 @@ def plot_residual_multi(data, outdir = '/Users/as13988/Documents/Work/Picarro/H2
        print('Plot saved as: ' + outdir + saveas)
        plt.savefig(outdir+saveas, dpi=200)
         
-    plt.ion()
-    plt.pause(0.001)
-    plt.close()  
-    
+    plt.show()
+    plt.close()    
     
 
 # Uses the "means" outputs of plot_ratio_multi and the wet and dry data as read in using read_data_multi
@@ -911,12 +895,12 @@ def plot_residual(means, wet_data, wet_data_nocorr, dry_data, outdir = '/Users/a
 
     plt.figtext(0.6, 0.03, 'Residual = corrected - dry mean', verticalalignment='bottom', horizontalalignment='left', fontsize=8)
 
-    plt.figtext(0.63, 0.58, r'$\bar{x}$$\pm 1 \sigma = ' +  '{:.3f}'.format(np.mean(np.abs(co2_res))) + r'$\pm$' + '{:.3f}'.format(np.std(np.abs(co2_res))) + r'$\,  \mu mol/mol$', verticalalignment='bottom', horizontalalignment='left', fontsize=8)
-    plt.figtext(0.63, 0.2, r'$\bar{x}$$\pm 1 \sigma = ' +  '{:.3f}'.format(np.mean(np.abs(ch4_res))) + r'$\pm$' + '{:.3f}'.format(np.std(np.abs(ch4_res))) + r'$\, nmol/mol$', verticalalignment='bottom', horizontalalignment='left', fontsize=8)
+    plt.figtext(0.63, 0.58, r'$\bar{x}$$\pm 1 \sigma = ' +  '{:.3f}'.format(np.mean(np.abs(co2_res))) + '\pm' + '{:.3f}'.format(np.std(np.abs(co2_res))) + '\,  \mu mol/mol$', verticalalignment='bottom', horizontalalignment='left', fontsize=8)
+    plt.figtext(0.63, 0.2, r'$\bar{x}$$\pm 1 \sigma = ' +  '{:.3f}'.format(np.mean(np.abs(ch4_res))) + '\pm' + '{:.3f}'.format(np.std(np.abs(ch4_res))) + '\, nmol/mol$', verticalalignment='bottom', horizontalalignment='left', fontsize=8)
 
     if useinbuilt is not None:
-        plt.figtext(0.63, 0.61, r'$\bar{x}$$\pm 1 \sigma = ' +  '{:.3f}'.format(np.mean(np.abs(co2_res_inbuilt))) + r'$\pm$' + '{:.3f}'.format(np.std(np.abs(co2_res_inbuilt))) + r'$\,  \mu mol/mol$', verticalalignment='bottom', horizontalalignment='left', fontsize=8, color = 'grey')
-        plt.figtext(0.63, 0.23, r'$\bar{x}$$\pm 1 \sigma = ' +  '{:.3f}'.format(np.mean(np.abs(ch4_res_inbuilt))) + r'$\pm$' + '{:.3f}'.format(np.std(np.abs(ch4_res_inbuilt))) + r'$\, nmol/mol$', verticalalignment='bottom', horizontalalignment='left', fontsize=8, color = 'grey')
+        plt.figtext(0.63, 0.61, r'$\bar{x}$$\pm 1 \sigma = ' +  '{:.3f}'.format(np.mean(np.abs(co2_res_inbuilt))) + '\pm' + '{:.3f}'.format(np.std(np.abs(co2_res_inbuilt))) + '\,  \mu mol/mol$', verticalalignment='bottom', horizontalalignment='left', fontsize=8, color = 'grey')
+        plt.figtext(0.63, 0.23, r'$\bar{x}$$\pm 1 \sigma = ' +  '{:.3f}'.format(np.mean(np.abs(ch4_res_inbuilt))) + '\pm' + '{:.3f}'.format(np.std(np.abs(ch4_res_inbuilt))) + '\, nmol/mol$', verticalalignment='bottom', horizontalalignment='left', fontsize=8, color = 'grey')
     
 
     y_formatter = ticker.ScalarFormatter(useOffset=False)
@@ -931,8 +915,7 @@ def plot_residual(means, wet_data, wet_data_nocorr, dry_data, outdir = '/Users/a
         print('Plot saved as: ' + outdir +  outname)
         plt.savefig(outdir+  outname, dpi=200)
         
-    plt.ion()
-    plt.pause(0.001)
+    plt.show()
     plt.close()
     
     """
@@ -943,7 +926,7 @@ def plot_residual(means, wet_data, wet_data_nocorr, dry_data, outdir = '/Users/a
     plt.ylim([0, 0.2]) 
     #plt.xlim([0, 0.06])             
     plt.savefig('/Users/as13988/Documents/Work/Picarro/H2OCorr/temp/CO2'+outname.split('/')[-1])
-    plt.ion()
+    plt.show()
 
     plt.scatter(ch4_sd, h2o_sd, c=ch4_res, lw=0)
     plt.xlabel('CH4 sd')
@@ -951,7 +934,7 @@ def plot_residual(means, wet_data, wet_data_nocorr, dry_data, outdir = '/Users/a
     plt.ylim([0, 0.2]) 
     #plt.xlim([0, 1]) 
     plt.savefig('/Users/as13988/Documents/Work/Picarro/H2OCorr/temp/CH4'+outname.split('/')[-1])
-    plt.ion()
+    plt.show()
     """
     
 # data =  the set of wet data that you want the different fits to be applied to
@@ -1032,8 +1015,8 @@ def compare_fits(data, drydata, fit_params,  outdir = '/Users/as13988/Documents/
     
     print('Plot saved as: ' + outdir + '/' + site+ '/'+ 'FitComparison_' + tag+ '.' + site + testdate +'.'+ species + '.png')
     plt.savefig(outdir+ '/' + site + '/' + 'FitComparison_' + tag+ '.' + site + testdate + species + '.png', dpi=200)
-    plt.ion()
-    plt.pause(0.001)
+    plt.show()
+    
     plt.close()
 
 
@@ -1111,8 +1094,7 @@ def compare_runs(data, drydata,  outdir = '/Users/as13988/Documents/Work/Picarro
     print('Plot saved as: ' + outdir+ '/' + site+ '/'+'RatioComparison'+site+'.' + testdate+ '.'+ species + '.png')
     plt.savefig(outdir+ '/' + site+ '/'+'RatioComparison'+site+'.' + testdate+ '.'+ species + '.png', dpi=200)
         
-    plt.ion()
-    plt.pause(0.001)
+    plt.show()
     plt.close()
 
 
@@ -1204,9 +1186,7 @@ def plot_drymeans(means, outdir = '/Users/as13988/Documents/Work/Picarro/H2OCorr
     print('Plot saved as: ' + outdir+ '/' + site+ '/'+'drymeans.png')
     plt.savefig(outdir+ '/' + site+ '/'+'drymeans.png', dpi=200)
         
-    plt.ion()
-    plt.pause(0.001)
-    plt.close()
+    plt.show()
     
     return 
 

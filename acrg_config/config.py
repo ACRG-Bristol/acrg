@@ -511,8 +511,9 @@ def get_value(name,config,section,param_type=None):
     return value
 
 
-def extract_params(config_file,section=None,section_group=None,names=[],ignore_sections=[],optional_param=[],
-                   optional_section=[],optional_section_group=[],exclude_not_found=True,allow_new=False,
+def extract_params(config_file,section=None,section_group=None,names=[],ignore_sections=[],
+                   ignore_section_groups=[],optional_param=[],optional_section=[],
+                   optional_section_group=[],exclude_not_found=True,allow_new=False,
                    param_type=None):
     '''
     The extract_params function extracts parameter names and values from a configuration file.
@@ -523,15 +524,17 @@ def extract_params(config_file,section=None,section_group=None,names=[],ignore_s
     Args:
         config_file (str) : 
             Filename for input configuration file.
-        section (str/None, optional) : 
-            Extract parameters from section name.
-        section_group (str/None, optional) : 
-            Extract parameters from all sections with this group.
+        section (list/str/None, optional) : 
+            Extract parameters from section name(s).
+        section_group (list/str/None, optional) : 
+            Extract parameters from all sections with this group (these groups).
             If section and section_group are both specified - section takes precedence.
         names (list, optional) : 
             Parameter names to extract (within section or section_group, if specified)
         ignore_sections (list, optional) :
             Sections to ignore when reading in the configuration file (even if parameters are specified).            
+        ignore_section_groups (list, optional) :
+            Sections groups to ignore when reading in the configuration file (even if parameters are specified).            
         optional_param (list, optional) : 
             Parameters within configuration file which are optional. If the parameter cannot be found in input file, 
             value will either be set to None or not included within the output dictionary (dependent on input for 
@@ -570,21 +573,39 @@ def extract_params(config_file,section=None,section_group=None,names=[],ignore_s
     all_sections = config.sections() # Extract all section names from the config file
     
     if section:
-        if section in all_sections:
-            select_sections = [section] # Only look within selected section
-        else:
-            raise KeyError('Specified section {0} could not be found in configuration file: {1}'.format(section,config_file[0]))
-            #select_sections = []
+        if isinstance(section,str):
+            section = [section]
+        select_sections = []
+        for s in section:
+            if s in all_sections:
+                select_sections.append(s)
+            else:
+                raise KeyError('Specified section {0} could not be found in configuration file: {1}'.format(s,config_file))
     elif section_group:
-        #sections = all_sections
-        select_sections = [s for s in all_sections if s.split('.')[0].lower() == section_group.lower()] # Find all sections covered by section_group (section_group.name)
+        if isinstance(section_group,str):
+            section_group = [section_group]
+        select_sections = []
+        for sg in section_group:
+            s_sections = [s for s in all_sections if s.split('.')[0].lower() == sg.lower()] # Find all sections covered by section_group (section_group.name)
+            select_sections.extend(s_sections)
         if not select_sections:
-            raise KeyError('No sections could be found for specified section_group {0} in configuration file: {1}'.format(section_group,config_file[0]))
+            raise KeyError('No sections could be found for specified section_group {0} in configuration file: {1}'.format(section_group,config_file))
     elif ignore_sections:
         select_sections = all_sections
         for es in ignore_sections:
             if es in select_sections:
                 select_sections.remove(es)
+            else:
+                raise KeyError('Specified section {0} could not be found in configuration file: {1}'.format(es,config_file))
+    elif ignore_section_groups:
+        select_sections = all_sections
+        for esg in ignore_section_groups:
+            ignore_s = [s for s in all_sections if s.split('.')[0].lower() == esg.lower()]
+            if not ignore_s:
+                raise KeyError('No sections could be found for specified section_group {0} in configuration file: {1}'.format(esg,config_file))
+            for es in ignore_s:
+                if es in select_sections:
+                    select_sections.remove(es)
     else:
         select_sections = all_sections # Find all sections
     
@@ -608,25 +629,46 @@ def extract_params(config_file,section=None,section_group=None,names=[],ignore_s
     if not names:
         if param_type:
             if section_group:
-                keys,key_type = find_param_key(section_group=section_group,param_type=param_type)
+                keys = []
+                for i,sg in enumerate(section_group):
+                    if i == 0:
+                        k,key_type = find_param_key(section_group=sg,param_type=param_type)
+                    else:
+                        k = find_param_key(section_group=sg,param_type=param_type)[0]
+                    keys.extend(k)
+                #keys,key_type = find_param_key(section_group=section_group,param_type=param_type)
                 #keys = [key_value]
             elif section:
-                keys,key_type = find_param_key(section=section,param_type=param_type)
+                keys = []
+                for i,s in enumerate(section):
+                    if i == 0:
+                        k,key_type = find_param_key(section=s,param_type=param_type)
+                    else:
+                        k = find_param_key(section=s,param_type=param_type)[0]
+                    keys.extend(k)
+                #keys,key_type = find_param_key(section=section,param_type=param_type)
                 #keys = [key_value]
             elif ignore_sections:
                 keys = list(param_type.keys())
                 for es in ignore_sections:
+                    key_type = find_param_key(section=es,param_type=param_type)[1]
                     if es in keys:
                         keys.remove(es)
+            elif ignore_section_groups:
+                keys = list(param_type.keys())
+                for esg in ignore_section_groups:
+                    ignore_s = [k for k in keys if k.split('.')[0].lower() != esg.lower()]
+                    key_type = find_param_key(section_group=esg,param_type=param_type)[1]
+                    for es in ignore_s:
+                        if es in keys:
+                            keys.remove(es)
             else:
                 keys = list(param_type.keys())
 
-
-
-            #print 'Keys to extract input names from param_type: {0}'.format(keys)
+            #print('Keys to extract input names from param_type: {0}'.format(keys))
             names = []
-            if (section and key_type == 'section_group'):
-                print('WARNING: Cannot create list of necessary input parameters created based on param_type input. Please check all inputs are included manually.')
+            if (section and key_type == 'section_group') or (ignore_sections and key_type == 'section_group'):
+                print('WARNING: Cannot create list of necessary input parameters based on param_type input. Please check all inputs are included (or excluded) manually.')
                 names = extracted_names # Set to just match names extracted from file 
 #            elif (section_group and key_type == 'section_group') or (section and key_type == 'section') or (section_group and key_type == 'section'):
             else:
@@ -684,6 +726,8 @@ def extract_params(config_file,section=None,section_group=None,names=[],ignore_s
     
     #if exclude_not_found:
     #    param = OrderedDict([(key,value) for key,value in param.iteritems() if value != None])
+    
+    #print("names",names)
     
     return param
 
