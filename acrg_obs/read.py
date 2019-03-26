@@ -889,7 +889,19 @@ def get_obs(sites, species,
     
     return obs
     
-
+def label_species(species):
+    '''
+    Write species label in correct format for plotting with subscripts for number of atoms.
+    e.g. "CH4" becomes "CH$_{4}$" or "CHCl3" becomes "CHCl$_{3}$"
+    '''
+    import re
+    num = re.findall("\d+",species)
+    species_str = species
+    if num:
+        for n in num:
+            species_str = species_str.replace(n,"$_{{{num}}}$".format(num=n)) # {{{}}} needed to both use string formatting and print literal curly brackets.
+    
+    return species_str
 
 def plot(data_dict):
     '''
@@ -925,13 +937,11 @@ def plot(data_dict):
                 plots.append(plt.errorbar(df.index, df.mf,
                                           yerr = errors,
                                           linewidth = 0, 
-                                          marker = '.', markersize = 3.,
+                                          marker = '.', markersize = 6.,
                                           label = site))
 
     plt.legend(handles = plots)
-    plt.ylabel("%s (%s)" %(data_dict[".species"], data_dict[".units"]))
+    #plt.ylabel("%s (%s)" %(data_dict[".species"], data_dict[".units"]))
+    plt.ylabel("%s (%s)" %(label_species(data_dict[".species"]), data_dict[".units"]))
     
     plt.show()
-
-
-
