@@ -160,19 +160,19 @@ def postProcess(ds, basis):
     
     return output
 
-def shpToGrid(shape, lats, lons):
-    XX, YY = np.meshgrid(lats, lons)
+def shpToGrid(shape, lons, lats):
+    XX, YY = np.meshgrid(lons, lats)
     XX, YY = XX.flatten(), YY.flatten()
-    df = pd.DataFrame({'Coordinates': list(zip(YY, XX))})
+    df = pd.DataFrame({'Coordinates': list(zip(XX, YY))})
     df['Coordinates'] = df['Coordinates'].apply(shapely.geometry.Point)
     gdf = gpd.GeoDataFrame(df, geometry='Coordinates')
     within = gdf.within(shape.geometry[0])
-    within = within.values.reshape(len(lons), len(lats)).T
+    within = within.values.reshape(len(lons), len(lats))
     return within
 
-def shpToGrid2d(shape, lats, lons):
-    XX, YY = lats.flatten(), lons.flatten()
-    df = pd.DataFrame({'Coordinates': list(zip(YY, XX))})
+def shpToGrid2d(shape, lons, lats):
+    XX, YY = lons.flatten(), lats.flatten()
+    df = pd.DataFrame({'Coordinates': list(zip(XX, YY))})
     df['Coordinates'] = df['Coordinates'].apply(shapely.geometry.Point)
     gdf = gpd.GeoDataFrame(df, geometry='Coordinates')
     within = gdf.within(shape.geometry[0])

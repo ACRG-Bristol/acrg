@@ -230,8 +230,6 @@ def quadTreeGrid(grid, limit):
     
     return outputGrid, boxList
         
-
-
 def makeBasisFromExisting():
     #flux = name.name.flux("EUROPE", "CH4-BTT-5", flux_directory="/data/al18242/flux_HR/")
     with xr.open_dataset("/data/al18242/flux_hr/ch4-BTT-5.nc") as ds:
