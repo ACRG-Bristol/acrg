@@ -1,0 +1,76 @@
+ 
+ NAME III (version 7.2)
+ 
+ Compile time: Thu Jul 12 09:48:43 BST 2018
+ 
+ Compiler version: ifort (IFORT) 17.0.1 20161005 Copyright (C) 1985-2016 Intel
+ Corporation.  All rights reserved.
+ 
+ Run started at 26/04/2019 11:24:06.613 UTC+01:00
+ 
+ The log file for this run is
+ BackRun_SOUTHAMERICA_GOSAT-BRAZIL_column_20130101_metLog.txt.
+ 
+ The restart files (if any) for this run have names that begin with
+ BackRun_SOUTHAMERICA_GOSAT-BRAZIL_column_20130101_metRestart.
+ 
+ Reading and checking input file(s)
+ Main input file used is
+ BackRun_SOUTHAMERICA_GOSAT-BRAZIL_column_20130101_met.txt
+ Code compiled in parallel mode.
+ Number of Particle Threads          : 1
+ Number of Particle Update Threads   : 1
+ Number of Chemistry Threads         : 1
+ Number of Output Group Threads      : 1
+ Number of Output Process Threads    : 1
+ Parallel MetRead disabled
+ Input file(s) successfully read and checked
+ 
+ Case 1 started
+ 
+ First pair of random seeds is   1345347079         497
+ Random seed array allocated
+ 
+ Preparing to update met and flow modules at time 01/01/2013 16:44 UTC
+ NWP met data for 01/01/2013 18:00 UTC read from file
+ /mnt/storage/private/acrg/temp/rt17603/met_data/MO201301011800.UMG_Mk6_L59PT13.
+ pp
+ NWP met data for 01/01/2013 15:00 UTC read from file
+ /mnt/storage/private/acrg/temp/rt17603/met_data/MO201301011500.UMG_Mk6_L59PT13.
+ pp
+ Met module "NWP Met.Global_Mk6_PT13" now valid until 01/01/2013 15:00 UTC
+ Flow module "NWP Flow.Global_Mk6_PT13 Flow" now valid until 01/01/2013 15:00
+ UTC
+ NWP met data for 01/01/2013 18:00 UTC read from file
+ /mnt/storage/private/acrg/temp/rt17603/met_data/MO201301011800.UMG_Mk6_L59PT9.p
+ p
+ NWP met data for 01/01/2013 15:00 UTC read from file
+ /mnt/storage/private/acrg/temp/rt17603/met_data/MO201301011500.UMG_Mk6_L59PT9.p
+ p
+ Met module "NWP Met.Global_Mk6_PT9" now valid until 01/01/2013 15:00 UTC
+ Flow module "NWP Flow.Global_Mk6_PT9 Flow" now valid until 01/01/2013 15:00 UTC
+ NWP met data for 01/01/2013 18:00 UTC read from file
+ /mnt/storage/private/acrg/temp/rt17603/met_data/MO201301011800.UMG_Mk6_L59PT6.p
+ p
+ NWP met data for 01/01/2013 15:00 UTC read from file
+ /mnt/storage/private/acrg/temp/rt17603/met_data/MO201301011500.UMG_Mk6_L59PT6.p
+ p
+ Met module "NWP Met.Global_Mk6_PT6" now valid until 01/01/2013 15:00 UTC
+ Flow module "NWP Flow.Global_Mk6_PT6 Flow" now valid until 01/01/2013 15:00 UTC
+ 
+ Preparing to update met and flow modules at time 01/01/2013 15:00 UTC
+ NWP met data for 01/01/2013 15:00 UTC read from file
+ /mnt/storage/private/acrg/temp/rt17603/met_data/MO201301011500.UMG_Mk6_L59PT2.p
+ p
+ NWP met data for 01/01/2013 12:00 UTC read from file
+ /mnt/storage/private/acrg/temp/rt17603/met_data/MO201301011200.UMG_Mk6_L59PT2.p
+ p
+ Met module "NWP Met.Global_Mk6_PT2" now valid until 01/01/2013 12:00 UTC
+ Flow module "NWP Flow.Global_Mk6_PT2 Flow" now valid until 01/01/2013 12:00 UTC
+ NWP met data for 01/01/2013 12:00 UTC read from file
+ /mnt/storage/private/acrg/temp/rt17603/met_data/MO201301011200.UMG_Mk6_L59PT6.p
+ p
+ Met module "NWP Met.Global_Mk6_PT6" now valid until 01/01/2013 12:00 UTC
+ Flow module "NWP Flow.Global_Mk6_PT6 Flow" now valid until 01/01/2013 12:00 UTC
+ 
+ Run completed successfully at 26/04/2019 11:24:26.006 UTC+01:00

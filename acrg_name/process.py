@@ -569,7 +569,7 @@ def read_met(fnames, met_def_dict=None,vertical_profile=False,satellite=False):
     
     if satellite:
         try:
-            re_met_match = re.compile("Met_[-]?\d+[.]\d+_[-]?\d+[.]\d+_\d{2,5}")
+            re_met_match = re.compile(r"Met_[-]?\d+[.]\d+_[-]?\d+[.]\d+_\d{2,5}")
             file_match = [re.search(re_met_match,f).group() for f in fnames]
         except AttributeError:
             status_log("Could not match Met data filename to expected format.",error_or_warning="warning")
@@ -941,6 +941,7 @@ def footprint_array(fields_file,
     
     z_level=column_headings['z_level'][4:]
     time_column=column_headings['time'][4:]
+    units_column=column_headings["unit"][4:] # Find column containing NAME output units (e.g. g s/m3 or ppm s)
     
     # Set up footprint dataset
     fp = xray.Dataset({"fp": (["time", "lev", "lat", "lon"],
@@ -999,25 +1000,59 @@ def footprint_array(fields_file,
     # Add in particle locations
     if particle_file is not None:
         fp = fp.merge(particle_hist)
-    
-    # Extract footprint from columns
-    def convert_to_ppt(fp, slice_dict, column):
-        molm3=fp["press"][slice_dict].values/const.R/\
-            const.convert_temperature(fp["temp"][slice_dict].values.squeeze(),"C","K")
-        fp.fp[slice_dict] = data_arrays[column]*area/ \
-            (3600.*timeStep*1.)/molm3
-        #The 1 assumes 1g/s emissions rate
+ 
+    # Extract footprint from columns assuming ppm s units
+    def convert_units(fp, slice_dict, column, units):
+        '''
+        Conversion is based on inputs units
+        
+        If units are 'ppm s':
+            Convert from [ppm s] (i.e. mu-mol/mol) units to [(mol/mol) / (mol/m2/s)].
+            
+            Using conversion:
+                sensitivity [mu-mol/mol s] * area [m2] * molar mass [g/mol] * 1e-6 [mu] 
+                    / (time [s] * release rate [g/s])
+        
+        If units are 'g s / m^3' (or 'gs/m3'):
+            Convert from [g s/m3] units to [(mol/mol) / (mol/m2/s)].
+            
+            Using conversion:
+                sensitivity [g s/m3] * area [m2] * RT/P [m3/mol]
+                / (time [s] * release rate [g/s])
+            
+        Note:
+            release rate is assumed to be 1. [g/s]
+            molecular weight in the NAME run itself was set to 1.0, so molar mass will
+            be 1.0 in this calculation as well.
+        '''
+        units_no_space = units.replace(' ','')
+        if units == "g s / m^3" or units == "gs/m3" or units_no_space == "gs/m^3"  or units_no_space == "gs/m3":
+            molm3=fp["press"][slice_dict].values/const.R/\
+                const.convert_temperature(fp["temp"][slice_dict].values.squeeze(),"C","K")
+    #        molm3=350./const.R ## Experiment to compare to surface P/T ratio we would expect (350).
+            fp.fp[slice_dict] = data_arrays[column]*area/ \
+                (3600.*timeStep*1.)/molm3
+        elif units == "ppm s" or units_no_space == "ppms":
+            fp.fp[slice_dict] = data_arrays[column]*area*1e-6*1./(3600.*timeStep*1.)
+        else:
+            status_log("DO NOT RECOGNISE UNITS OF {} FROM NAME INPUT (expect 'g s / m^3' or 'ppm s')".format(units),
+                       error_or_warning="error")
+        
         return fp
 
     if satellite:
         for t in range(len(time)):
             for l in range(len(levs)):
                 slice_dict = dict(time = [t], lev = [l])
-                fp = convert_to_ppt(fp, slice_dict, t*len(levs)+l)
+                column = t*len(levs)+l
+                if units_column[column] == 'g s / m^3' or units_column[column].replace(' ','') == 'gs/m^3':
+                    status_log("NOT RECOMMENDED TO CREATE SATELLITE FOOTPRINTS USING CONVERTED g s / m3 UNITS. IF POSSIBILE, NAME FOOTPRINTS SHOULD BE RE-GENERATED IN UNITS OF ppm s.",
+                                error_or_warning="warning")
+                fp = convert_units(fp, slice_dict, column, units_column[column])
     else:
         for i in range(len(time)):
             slice_dict = dict(time = [i], lev = [0])
-            fp = convert_to_ppt(fp, slice_dict, i)
+            fp = convert_units(fp, slice_dict, i, units_column[i])
     
     return fp
     
@@ -1139,9 +1174,11 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
             1D array of longitudes
         lats (array): 
             1D array of latitudes
-        levs (???array or list -> TODO): 
+        levs (???array or list):
+            TODO: Clarify inputs
             1D array of particle levels
-        time (???str or datetime object -> TODO): 
+        time (???str or datetime object): 
+            TODO: Clarify inputs
             Timestamps for footprints
         outfile (str): 
             Name of output file
@@ -1383,6 +1420,8 @@ def satellite_vertical_profile(fp, satellite_obs_file, max_level):
     
     ntime = len(fp.time)
     
+    #import pdb
+    #pdb.set_trace()
     for t in range(ntime):
         if np.abs(sat.lon.values[t] - fp.release_lon.values[t,0]) > 1.:
             status_log("Satellite longitude doesn't match footprints",
