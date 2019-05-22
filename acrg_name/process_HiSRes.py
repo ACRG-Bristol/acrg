@@ -165,7 +165,8 @@ def combine_date(output_base, processed_folder, processed_folder_HR, filename):
     
 def getFlux(ds, output_dir, name,
             NAEI_directory = "/data/al18242/flux/NAEI_RAW",
-            NAEI_file = "totalch416.asc"):
+            NAEI_file = "totalch416.asc",
+            species="ch4"):
     """
     get Flux using edgar and NAEI for footprint file given
     Currently only good for static annual emissions
@@ -173,7 +174,13 @@ def getFlux(ds, output_dir, name,
     year = pd.to_datetime(ds.time.values[0]).year
     
     naei_methane = loadAscii("{}/{}".format(NAEI_directory, NAEI_file))
-    template = open_ds("/data/shared/Gridded_fluxes/CH4/EDGAR_v4.3.2/v432_CH4_TOTALS_nc/v432_CH4_2012.0.1x0.1.nc")
+    if species.lower() == "ch4":
+        template = open_ds("/data/shared/Gridded_fluxes/CH4/EDGAR_v4.3.2/v432_CH4_TOTALS_nc/v432_CH4_2012.0.1x0.1.nc")
+    elif species.lower() == "co2":
+        template = open_ds("/data/shared/Gridded_fluxes/CO2/EDGARv4.2/v42_FT2010_CO2_excl_short-cycle_org_C_2010-1990_TOT_nc/v42_FT2010_CO2_excl_short-cycle_org_C_2010_TOT.0.1x0.1.nc")
+    else:
+        print("Invalid species")
+        return 0;
     
     ################################################
     #Create the input grid
@@ -209,7 +216,12 @@ def getFlux(ds, output_dir, name,
     ################################################
     combined = naei_methane_regridded * 1e-3 / (3600*24*365)
     edgar_indicies = np.where(naei_methane_regridded  == 0)
-    combined[edgar_indicies] = template.emi_ch4.values[edgar_indicies]
+    if species.lower() == "ch4":
+        combined[edgar_indicies] = template.emi_ch4.values[edgar_indicies]
+        mw = 16.
+    elif species.lower() == "co2":
+        combined[edgar_indicies] = template.emi_co2.values[edgar_indicies]
+        mw = 12.
     
     ################################################
     #Create the output grid and convert data too this grid
@@ -223,7 +235,7 @@ def getFlux(ds, output_dir, name,
                              'lat_b': (['x_b', 'y_b'], YY_b)})
     regridder = xesmf.Regridder(output_grid, output_grid2, 'conservative')
     naei_edgar_out = regridder( np.nan_to_num(combined,copy=True))
-    naei_edgar_out = np.expand_dims(naei_edgar_out,2) / (1000 * 16) *1e6
+    naei_edgar_out = np.expand_dims(naei_edgar_out,2) / (1000 * mw) *1e6
     
     ################################################
     #Create the hi-res grid and convert data too this grid
@@ -236,7 +248,7 @@ def getFlux(ds, output_dir, name,
                              'lat_b': (['x_b', 'y_b'], YY_b)})
     regridder = xesmf.Regridder(input_grid, output_grid_hr, 'conservative')
     naei_edgar_out_hr = regridder( np.nan_to_num(naei_methane.data,copy=True))
-    naei_edgar_out_hr = np.expand_dims(naei_edgar_out_hr,2) * 1e-3 / (3600*24*365) / (1000 * 16) *1e6
+    naei_edgar_out_hr = np.expand_dims(naei_edgar_out_hr,2) * 1e-3 / (3600*24*365) / (1000 * mw) *1e6
     
     ################################################
     #1D array book-keeping

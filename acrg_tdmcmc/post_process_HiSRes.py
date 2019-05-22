@@ -13,7 +13,7 @@ import pandas as pd
 import geopandas as gpd
 import shapely
 
-def forwardModel(fp, flux, hr=True):
+def forwardModel(fp, flux, species = "CH4", hr=True):
     '''
     Calculate the predicted mf as fp*flux + bg
     
@@ -31,7 +31,7 @@ def forwardModel(fp, flux, hr=True):
     output_model = np.sum( flux.flux.values * fp.fp.values, axis=0)
     output_model_high = np.sum( flux.high_res.values * fp.fp_high.values, axis=(0,1))
     #temp = temp + footprint[site].bc
-    bc=name.boundary_conditions("EUROPE", "CH4",
+    bc=name.boundary_conditions("EUROPE", species,
                                 start=fp.time.values[0],
                                 end=fp.time.values[-1])
     bc=bc.reindex_like(fp, 'ffill')
