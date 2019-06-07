@@ -196,7 +196,7 @@ def interp_time(bc_ds,vmr_var_names, new_times):
 def footprints(sitecode_or_filename, fp_directory = None, 
                flux_directory = None, bc_directory = None,
                start = None, end = None, domain = None, height = None,
-               species = None, emissions_name = None, HiTRes = False,interp_vmr_freq=None):
+               species = None, emissions_name = None, HiTRes = False, HiSRes = False, interp_vmr_freq=None):
 
     """
     The footprints function loads a NAME footprint netCDF files into an xarray Dataset.
@@ -277,7 +277,10 @@ def footprints(sitecode_or_filename, fp_directory = None,
         if type(fp_directory) is dict:
             files = filenames(site, domain, start, end, height, fp_directory["integrated"])
         else:
-            files = filenames(site, domain, start, end, height, fp_directory)
+            if HiSRes:
+                files = filenames(site+"-HR", domain, start, end, height, fp_directory)
+            else:
+                files = filenames(site, domain, start, end, height, fp_directory)
 
     if len(files) == 0:
         print("Can't find files, " + sitecode_or_filename)
@@ -739,7 +742,7 @@ def timeseries_boundary_conditions(ds):
 
     
 def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
-                          calc_timeseries = True, calc_bc = True, HiTRes = False,
+                          calc_timeseries = True, calc_bc = True, HiTRes = False, HiSRes = False,
                           average = None, site_modifier = {}, height = None,
                           emissions_name = None, interp_vmr_freq = None,
                           fp_directory = None,
@@ -804,7 +807,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
         Dictionary of the form {"MHD": MHD_xarray_dataset, "TAC": TAC_xarray_dataset, ".flux": dictionary_of_flux_datasets, ".bc": boundary_conditions_dataset}:
             combined dataset for each site
     """
- 
+    
     sites = [key for key in list(data.keys()) if key[0] != '.']
     attributes = [key for key in list(data.keys()) if key[0] == '.']
     
@@ -887,6 +890,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                              height = height_site,
                              emissions_name = None,
                              HiTRes = HiTRes,
+                             HiSRes = HiSRes,
                              interp_vmr_freq=interp_vmr_freq)                         
         
         if site_fp is not None:                        

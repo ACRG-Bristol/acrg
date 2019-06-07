@@ -1566,5 +1566,89 @@
       "long_name": "Zeppelin, Ny Alesund, Norway", 
       "longitude": 11.92222
     }
+  },
+  "LICOR01016": {
+    "CRANFIELD": {
+      "height": [
+        "5m"
+      ], 
+      "height_name": [
+        "5magl"
+      ], 
+      "height_station_masl": 5.0, 
+      "latitude": 51.497, 
+      "long_name": "Thames Barrier, UK", 
+      "longitude": 0.037
+    }
+  },
+  "LICOR01017": {
+    "CRANFIELD": {
+      "height": [
+        "5m"
+      ], 
+      "height_name": [
+        "5magl"
+      ], 
+      "height_station_masl": 5.0, 
+      "latitude": 51.497, 
+      "long_name": "Thames Barrier, UK", 
+      "longitude": 0.037
+    }
+  },
+  "LICOR01033": {
+    "CRANFIELD": {
+      "height": [
+        "5m"
+      ], 
+      "height_name": [
+        "5magl"
+      ], 
+      "height_station_masl": 5.0, 
+      "latitude": 51.497, 
+      "long_name": "Thames Barrier, UK", 
+      "longitude": 0.037
+    }
+  },
+  "LICOR01038": {
+    "CRANFIELD": {
+      "height": [
+        "5m"
+      ], 
+      "height_name": [
+        "5magl"
+      ], 
+      "height_station_masl": 5.0, 
+      "latitude": 51.497, 
+      "long_name": "Thames Barrier, UK", 
+      "longitude": 0.037
+    }
+  },
+  "LICOR01044": {
+    "CRANFIELD": {
+      "height": [
+        "5m"
+      ], 
+      "height_name": [
+        "5magl"
+      ], 
+      "height_station_masl": 5.0, 
+      "latitude": 51.497, 
+      "long_name": "Thames Barrier, UK", 
+      "longitude": 0.037
+    }
+  },
+  "LICOR01045": {
+    "CRANFIELD": {
+      "height": [
+        "5m"
+      ], 
+      "height_name": [
+        "5magl"
+      ], 
+      "height_station_masl": 5.0, 
+      "latitude": 51.497, 
+      "long_name": "Thames Barrier, UK", 
+      "longitude": 0.037
+    }
   }
 }
