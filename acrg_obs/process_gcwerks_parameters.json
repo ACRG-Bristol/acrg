@@ -103,7 +103,8 @@
         },
         "MHD" : {
             "gcwerks_site_name": "macehead",
-            "inlets": ["10m"],
+            "inlets": ["any"],
+            "inlet_label": ["10m"],
             "global_attributes": {
                 "data_owner": "Simon O'Doherty",
                 "data_owner_email": "s.odoherty@bristol.ac.uk"

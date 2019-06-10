@@ -429,7 +429,7 @@ def gc(site, instrument, network,
     
     # Label time index
     dfs.index.name = "time"
-
+    
     # Convert to xray dataset
     ds = xray.Dataset.from_dataframe(dfs)
 
@@ -461,7 +461,7 @@ def gc(site, instrument, network,
                 
                 # No inlet label in file name
                 inlet_label = None
-                
+
             else:
                 # Get specific inlet
                 
@@ -500,7 +500,7 @@ def gc(site, instrument, network,
                 if "inlet_label" in list(params["GC"][site].keys()):
                     inlet_label = params["GC"][site]["inlet_label"][inleti]
                 else:
-                   inlet_label = inlet
+                    inlet_label = inlet
 
             if inlet_label == None:
                 global_attributes["inlet_magl"] = params["GC"][site]["inlet_label"][inleti]
@@ -514,7 +514,6 @@ def gc(site, instrument, network,
             global_attributes["inlet_gcwerks"] = ", ".join(Inlets)           
             # Now remove "Inlet" column from dataframe. Don't need it
             ds_sp = ds_sp.drop(["Inlet"])
-    
 
             # Drop NaNs
             ds_sp = ds_sp.dropna("time")
@@ -673,6 +672,11 @@ def crds(site, network,
 
             else:
 
+                if len(inlets) < 2:
+                    inlet_out = None
+                else:
+                    inlet_out = inlet
+                
                 # Write file
                 nc_filename = output_filename(output_folder,
                                               network,
@@ -680,7 +684,7 @@ def crds(site, network,
                                               site.upper(),
                                               ds_sp.time.to_pandas().index.to_pydatetime()[0],
                                               ds_sp.species,
-                                              inlet = inlet,
+                                              inlet = inlet_out,
                                               version = version)
                 
                 print("Writing " + nc_filename)
@@ -940,10 +944,6 @@ if __name__ == "__main__":
     # AGAGE CRDS data
     crds("RPB", "AGAGE")
 
-    # ICOS
-#    icos("TTA", network = "DECC")
-    icos("MHD", network = "ICOS")
-
     # GAUGE CRDS data
     crds("HFD", "DECC")
     crds("BSD", "DECC")
@@ -980,6 +980,10 @@ if __name__ == "__main__":
     cleanup("HFD")
     cleanup("BSD")
     cleanup("TTA")
+
+    # ICOS
+    icos("TTA", network = "DECC")
+    icos("MHD", network = "ICOS")
     
 
 #    # Copy files
