@@ -103,7 +103,7 @@
         },
         "MHD" : {
             "gcwerks_site_name": "macehead",
-            "inlets": ["any"],
+            "inlets": ["10m"],
             "inlet_label": ["10m"],
             "global_attributes": {
                 "data_owner": "Simon O'Doherty",

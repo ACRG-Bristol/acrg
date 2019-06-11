@@ -140,7 +140,7 @@ def icos_data_read(data_file, species):
 
     # Find out how many header lines there are
     nheader = 0
-    with open(data_file, "rb") as f:
+    with open(data_file, "r") as f:
         for l in f:
             if l[0] != "#":
                 break
@@ -195,6 +195,20 @@ def icos(site, network = "ICOS",
          date_range = None,
          version = None):
 
+    def find_species_inlet_model(filenames):
+        out = []
+        for f in filenames:
+            f_elements = f.split(".")
+            if len(f_elements) == 6:
+                out.append((f_elements[1],
+                            f_elements[4],
+                            "picarro" + f_elements[3].upper()))
+            else:
+                out.append((f_elements[1],
+                            f_elements[3],
+                            "picarro"))
+        return(out)
+    
     # Get directories and site strings
     params_icos = params["ICOS"]
     site_string = params_icos[site]["gcwerks_site_name"]
@@ -205,14 +219,15 @@ def icos(site, network = "ICOS",
                             user_specified_input_directory = input_directory,
                             user_specified_output_directory = output_directory)
 
-    # Search for species and inlets from file names
+    # Search for species, inlets and model from file names
     data_file_search = join(data_folder, site.lower() + ".*.1minute.*.dat")
     data_files = glob.glob(data_file_search)
     data_file_names = [split(f)[1] for f in data_files]
-    species_and_inlet = [(f.split(".")[1], f.split(".")[-2]) \
-                         for f in data_file_names]
+    species_inlet_model = find_species_inlet_model(data_file_names)
 
-    for i, (species, inlet) in enumerate(species_and_inlet):
+    inlets = set([i for (s, i, m) in species_inlet_model])
+    
+    for i, (species, inlet, model) in enumerate(species_inlet_model):
 
         if stat(data_files[i]).st_size > 0:
 
@@ -238,14 +253,16 @@ def icos(site, network = "ICOS",
 
             else:
     
+                inlet_label = params_icos[site]["inlet_rename"][inlet]
+                
                 # Write file
                 nc_filename = output_filename(output_folder,
                                               network,
-                                              "CRDS",
+                                              model,
                                               site.upper(),
                                               ds.time.to_pandas().index.to_pydatetime()[0],
                                               ds.species,
-                                              params_icos[site]["inlet_rename"][inlet],
+                                              inlet = [None, inlet_label][len(inlets) > 1],
                                               version = version)
     
                 ds.to_netcdf(nc_filename)
@@ -553,7 +570,7 @@ def gc(site, instrument, network,
                                                   site.upper(),
                                                   ds_sp.time.to_pandas().index.to_pydatetime()[0],
                                                   ds_sp.species,
-                                                  inlet = inlet_label,
+                                                  inlet = [None, inlet_label][len(inlets) > 1],
                                                   version = version)
 
                     print("Writing... " + nc_filename)
@@ -671,11 +688,6 @@ def crds(site, network,
                 # then do nothing
 
             else:
-
-                if len(inlets) < 2:
-                    inlet_out = None
-                else:
-                    inlet_out = inlet
                 
                 # Write file
                 nc_filename = output_filename(output_folder,
@@ -684,7 +696,7 @@ def crds(site, network,
                                               site.upper(),
                                               ds_sp.time.to_pandas().index.to_pydatetime()[0],
                                               ds_sp.species,
-                                              inlet = inlet_out,
+                                              inlet = [None, inlet][len(inlets) > 1],
                                               version = version)
                 
                 print("Writing " + nc_filename)
