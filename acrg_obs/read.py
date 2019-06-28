@@ -39,29 +39,20 @@ import numpy as np
 import pandas as pd
 import glob
 import os
-from os import getenv
 import re
 import json
 import xarray as xr
 from collections import OrderedDict
+from acrg_config.paths import paths
 
-#acrg_path = os.path.dirname(os.path.realpath(__file__))
-acrg_path = getenv("ACRG_PATH")
-data_path = getenv("DATA_PATH")
-
-if data_path is None:
-    data_path = "/data/shared/"
-    print("Default Data directory is assumed to be /data/shared/. Set path in .bashrc as \
-            export DATA_PATH=/path/to/data/directory/ and restart python terminal")
-
-# Set default obs folder
-obs_directory = os.path.join(data_path, "obs_2018/")
+acrg_path = paths.acrg
+obs_directory = paths.obs
 
 #Get site info and species info from JSON files
-with open(os.path.join(acrg_path, "acrg_species_info.json")) as f:
+with open(acrg_path / "acrg_species_info.json") as f:
     species_info=json.load(f)
 
-with open(os.path.join(acrg_path, "acrg_site_info_2018.json")) as f:
+with open(acrg_path / "acrg_site_info_2018.json") as f:
     site_info=json.load(f, object_pairs_hook=OrderedDict)
 
 def open_ds(path):
