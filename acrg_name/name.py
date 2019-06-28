@@ -32,6 +32,7 @@ from scipy.interpolate import interp1d
 import dateutil.relativedelta
 import cartopy.crs as ccrs
 import cartopy
+from mpl_toolkits import mplot3d
 
 acrg_path = os.getenv("ACRG_PATH")
 data_path = os.getenv("DATA_PATH")
@@ -962,10 +963,15 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                                        tolerance = tolerance)
             
             #transpose to keep time in the last dimension position in case it has been moved in resample
-            if 'H_back' in list(site_ds.dims.keys()):
-                site_ds = site_ds.transpose('height','lat','lon','lev','time', 'H_back')
-            else:
-                site_ds = site_ds.transpose('height','lat','lon','lev','time')
+            expected_dim_order = ['height','lat','lon','lev','time','H_back']
+            for d in expected_dim_order[:]:
+                if d not in list(site_ds.dims.keys()):
+                    expected_dim_order.remove(d)
+            #if 'H_back' in list(site_ds.dims.keys()):
+            #    site_ds = site_ds.transpose('height','lat','lon','lev','time', 'H_back')
+            #else:
+            #    site_ds = site_ds.transpose('height','lat','lon','lev','time')
+            site_ds = site_ds.transpose(*expected_dim_order)
                 
             # If units are specified, multiply by scaling factor
             if ".units" in attributes:
@@ -1750,6 +1756,7 @@ def plot(fp_data, date, out_filename=None, out_format = 'pdf',
                 "SHIP": "purple",
                 "AIRCRAFT": "red",
                 "SATELLITE": "green"}
+
             
     levels = MaxNLocator(nbins=nlevels).tick_values(log_range[0], log_range[1])
 
@@ -2199,7 +2206,11 @@ class get_country(object):
         lat = f.variables['lat'][:]
     
         #Get country indices and names
-        country = f.variables['country'][:, :]
+        if "country" in f.variables:
+            country = f.variables['country'][:, :]
+        elif "region" in f.variables:
+            country = f.variables['region'][:, :]
+        
         if (ukmo is True) or (uk_split is True):
             name_temp = f.variables['name'][:]  
             f.close()
@@ -2208,7 +2219,10 @@ class get_country(object):
         else:
             name_temp = f.variables['name'][:]
             f.close()
-    
+
+            # rt17603 (11/03/2019): Added to change any masked arrays back into arrays
+            name_temp = np.ma.filled(name_temp,fill_value=None)
+   
             name=[]
             for ii in range(len(name_temp)):
                 name.append(''.join(name_temp[ii]))
