@@ -6,6 +6,7 @@ Created on Fri Feb  2 16:02:01 2018
 @author: rt17603
 """
 from __future__ import print_function
+from __future__ import division
 
 # Barometric formula
 

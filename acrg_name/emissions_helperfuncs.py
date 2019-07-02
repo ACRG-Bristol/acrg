@@ -203,7 +203,7 @@ def getGFED(year, lon_out, lat_out, timeframe='monthly', months = [1,2,3,4,5,6,7
                # this (unitless), and the emission factor (g per kg DM burned)
                #emissions += DM_emissions * contribution * EF[sourceindex[source]]
                #Then convert from g/m2/month to mol/m2/s
-               emissions[i, :,:] += old_div((DM_emissions * contribution * EF[sourceindex[source]]), (EF[0] * convert2secs))
+               emissions[i, :,:] += (DM_emissions * contribution * EF[sourceindex[source]]) / (EF[0] * convert2secs)
     elif timeframe == 'daily':
         emissions = np.zeros((np.sum(dim), len(lat), len(lon)))
         convert2secs = 24*3600
@@ -211,11 +211,9 @@ def getGFED(year, lon_out, lat_out, timeframe='monthly', months = [1,2,3,4,5,6,7
         
         for i,month in enumerate(months):
            days = dim[i]
-           convert2secs = days*24*3600
             # read in DM emissions
            string = '/emissions/'+months_str[month]+'/DM'
            DM_emissions = f[string][:]
-           contribution = f[string][:]
            # rt17603: Updated to run over range(days) as defined by dim[i], rather than dim[month]
            for day in range(days):
                # calculate emissions as the product of DM emissions (kg DM per 
@@ -228,7 +226,8 @@ def getGFED(year, lon_out, lat_out, timeframe='monthly', months = [1,2,3,4,5,6,7
                for source in range(len(sources)):
                    # read in the fractional contribution of each source
                    string = '/emissions/'+months_str[month]+'/partitioning/DM_'+sources[source]
-                   emissions[d, :,:] += old_div((DM_emissions * contribution * dayfrac * EF[sourceindex[source]]), (EF[0] * convert2secs))
+                   contribution = f[string][:] #rt17603: Moved to loop as contribution wasn't being assigned per source.
+                   emissions[d, :,:] += (DM_emissions * contribution * dayfrac * EF[sourceindex[source]]) / (EF[0] * convert2secs)
                d += 1
     elif timeframe == '3hourly':
         emissions = np.zeros((np.sum(dim)*8, len(lat), len(lon)))
@@ -258,7 +257,7 @@ def getGFED(year, lon_out, lat_out, timeframe='monthly', months = [1,2,3,4,5,6,7
                    for source in range(len(sources)):
                        # read in the fractional contribution of each source
                        string = '/emissions/'+months_str[month]+'/partitioning/DM_'+sources[source]
-                       emissions[h, :,:] += old_div((DM_emissions * contribution * dayfrac * dcfrac * EF[sourceindex[source]]), (EF[0] * convert2secs))
+                       emissions[h, :,:] += (DM_emissions * contribution * dayfrac * dcfrac * EF[sourceindex[source]]) / (EF[0] * convert2secs)
                    h += 1
     
    
@@ -716,7 +715,7 @@ def getNAEI(year, lon_out, lat_out, species, naei_sector):
         diy = 365
     else:
         diy = 366    
-    grdemis = old_div(grdemis, (diy * 3600*24) / speciesmm)
+    grdemis = old_div(grdemis, (diy * 3600*24) * speciesmm)
     
     #Regrid to desired lats and lons
     narr, reg = regrid2d(grdemis, latarr, lonarr,

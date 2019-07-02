@@ -12,3 +12,4 @@ tests/files/output/*
 *.ipynb_checkpoints*
 *~
 .cache
+acrg_config/paths.y*ml

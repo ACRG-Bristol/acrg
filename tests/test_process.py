@@ -36,6 +36,7 @@ import numpy as np
 import xarray as xray
 import acrg_name.process as process
 import deprecated.process as process_org
+from acrg_name.name import open_ds
 
 acrg_path = os.getenv("ACRG_PATH")
 
@@ -57,6 +58,12 @@ def satellite_bypoint_directory():
 def site_directory():
     ''' Define base directory containing satellite footprint files with separated data points '''
     directory = os.path.join(acrg_path,"tests/files/NAME/raw_output/Site/")
+    return directory
+
+@pytest.fixture()
+def satellite_byday_mf_directory():
+    ''' Define base directory containing grouped satellite footprint files '''
+    directory = os.path.join(acrg_path,"tests/files/NAME/raw_output/Satellite_ByDay_MF/")
     return directory
 
 @pytest.fixture()
@@ -121,6 +128,12 @@ def subfolder_satellite_byday(satellite_byday_directory,subfolder_satellite):
 def subfolder_satellite_bypoint(satellite_bypoint_directory,subfolder_satellite):
     ''' Define full subfolder path for satellite data with separate points'''
     subfolder = os.path.join(satellite_bypoint_directory,subfolder_satellite)  
+    return subfolder
+
+@pytest.fixture()
+def subfolder_satellite_byday_mf(satellite_byday_mf_directory,subfolder_satellite):
+    ''' Define full subfolder path for satellite data with points grouped by day'''
+    subfolder = os.path.join(satellite_byday_mf_directory,subfolder_satellite)  
     return subfolder
 
 @pytest.fixture()
@@ -223,6 +236,19 @@ def get_fields_files_site(subfolder_site,folder_names,site_param):
     return fields_files
 
 @pytest.fixture()
+def get_fields_files_satellite_byday_mf(subfolder_satellite_byday_mf,folder_names,satellite_param):
+    '''
+    Get filenames of fields files for satellite run with points grouped by day.
+    Finds field files based on datestr (see create_datestr), one file per day.
+    '''
+    datestr = create_datestr(satellite_param)
+    fields_folder = folder_names["fields_folder"]
+    
+    fields_files = get_fields_files(subfolder_satellite_byday_mf,fields_folder,datestr)
+    
+    return fields_files
+
+@pytest.fixture()
 def read_fields_file_satellite_byday(get_fields_files_satellite_byday):
     ''' Read first satellite by day field file using process.read_file() function and create output. '''
     fields_file = get_fields_files_satellite_byday[0]
@@ -244,6 +270,14 @@ def read_fields_file_satellite_bypoint(get_fields_files_satellite_bypoint):
 def read_fields_file_site(get_fields_files_site):
     ''' Read first site field file using process.read_file() function and create output. '''
     fields_file = get_fields_files_site[0]
+    header, column_headings, data_arrays = process.read_file(fields_file)
+    
+    return header, column_headings, data_arrays
+
+@pytest.fixture()
+def read_fields_file_satellite_byday_mf(get_fields_files_satellite_byday_mf):
+    ''' Read first satellite by day field file using process.read_file() function and create output. '''
+    fields_file = get_fields_files_satellite_byday_mf[0]
     header, column_headings, data_arrays = process.read_file(fields_file)
     
     return header, column_headings, data_arrays
@@ -321,6 +355,25 @@ def test_define_grid_site(read_fields_file_site):
     assert out
     ### TODO: ADD MORE STRINGENT TEST
 
+def test_satellite_byday_units(read_fields_file_satellite_byday):
+    '''
+    Test units column heading for satellite by day input is being read in correctly (expect g s/m^3)
+    '''    
+    header,column_headings,data_arrays = read_fields_file_satellite_byday
+    units_column = column_headings["unit"]
+    units = units_column[4:][0] # First 4 headings are empty
+    print("units",units)
+    print(units.replace(' ',''))
+    assert units.replace(' ','') == "gs/m^3" or units.replace(' ','') == "gs/m3"
+
+def test_satellite_byday_mf_units(read_fields_file_satellite_byday_mf):
+    '''
+    Test units column heading for mol fraction input is being read in correctly (expect ppm s)
+    '''    
+    header,column_headings,data_arrays = read_fields_file_satellite_byday_mf
+    units_column = column_headings["unit"]
+    units = units_column[4:][0] # First 4 headings are empty
+    assert units.replace(' ','') == "ppms"
  
 #%%    
   
@@ -1289,6 +1342,51 @@ def process_site_param(site_param,folder_names,site_directory):
     
     return param
 
+@pytest.fixture()
+def process_satellite_byday_mf_param(satellite_param,folder_names,satellite_byday_mf_directory):
+    '''
+    Define input parameters for process.process function for satellite data grouped by day.
+    Additional "base_dir" parameter added to point to Satellite_ByDay folder.
+    '''
+    param = process_param(satellite_param,folder_names,satellite=True)
+    param["base_dir"] = satellite_byday_mf_directory
+    
+    return param
+
+def find_processed_file(subfolder,processed_folder,param):
+    '''
+    Find NAME processed file based on search string:
+        "{site}-{height}_{domain}_{year}{month:02}*.nc"
+    Args:
+        subfolder (str) :
+            Main sub-folder containing NAME output files
+        processed_folder (str) :
+            Directory containing the processed file.
+        param (dict) :
+            Parameter dictionary containing
+            'site','height','domain','year','month'
+    Returns
+        str / list:
+            Filename
+        None :
+            If no files or more than one file are found
+    '''
+    directory = os.path.join(subfolder,processed_folder)
+    search_str = "{site}-{height}_{domain}_{year}{month:02}*.nc".format(site=param["site"],height=param["height"],domain=param["domain"],year=param["year"],month=param["month"])
+    full_search_str = os.path.join(directory,search_str)
+    print("search string",full_search_str)
+    processed_file = glob.glob(full_search_str)
+    if len(processed_file) == 1:
+        processed_file = processed_file[0]
+    elif len(processed_file) == 0:
+        print("No processed file found")
+        processed_file = None
+    elif len(processed_file) > 1:
+        print("Too many processed files found. Not unique")
+        processed_file = None
+    
+    return processed_file
+
 def remove_processed_file(subfolder,processed_folder,param):
     '''
     Check and remove any files matching datestr extracted from param input from processed files folder.
@@ -1297,14 +1395,16 @@ def remove_processed_file(subfolder,processed_folder,param):
     param["year"] + param["month"].zfill(2)
     '''
     
-    folder = os.path.join(subfolder,processed_folder)
+    files_in_folder = find_processed_file(subfolder,processed_folder,param)
     
-    search_str = "*{}*.nc".format(create_datestr(param))
-    search_str = os.path.join(folder,search_str)
-    files_in_folder = glob.glob(search_str)
+#    folder = os.path.join(subfolder,processed_folder)
+#    
+#    search_str = "*{}*.nc".format(create_datestr(param))
+#    search_str = os.path.join(folder,search_str)
+#    files_in_folder = glob.glob(search_str)
     
-    if len(files_in_folder) == 1:
-        os.remove(files_in_folder[0])
+    if files_in_folder is not None:
+        os.remove(files_in_folder)
     
        
 def test_process_satellite_byday(process_satellite_byday_param,
@@ -1337,6 +1437,17 @@ def test_process_site(process_site_param,subfolder_site,folder_names,site_param)
     remove_processed_file(subfolder_site,processed_folder,site_param)
     
     out = process.process(**process_site_param)
+
+def test_process_satellite_mf_byday(process_satellite_byday_mf_param,
+                                 subfolder_satellite_byday_mf,folder_names,satellite_param):
+    '''
+    Test process function produces an output for satellite data grouped by day in mole fraction output.
+    '''
+    
+    processed_folder = folder_names["processed_folder"]
+    remove_processed_file(subfolder_satellite_byday_mf,processed_folder,satellite_param)
+    
+    out = process.process(**process_satellite_byday_mf_param)
 
 @pytest.mark.compare
 def test_process_site_against_org(process_site_param,subfolder_site,folder_names,site_param):
@@ -1392,3 +1503,34 @@ def test_process_satellite_bypoint_against_org(process_satellite_bypoint_param,
     
     for dv in data_vars:
         assert np.array_equal(out[dv].values,out_org[dv].values)   
+
+@pytest.mark.bench
+def test_process_satellite_byday_mf_against_bench(process_satellite_byday_mf_param,
+                                                  subfolder_satellite_byday_mf,
+                                                  folder_names,satellite_param): 
+    '''
+    Test mol fraction output against benchmarked file (created 2019-05-20). This marks
+    a code update to use check the units within the fields file and then the correct unit 
+    conversion. NAME output should now primarily be in ppm s units rather than gs/m3 but 
+    this should ensure backwards compatibility with previous runs.
+    '''
+    processed_folder = folder_names["processed_folder"]
+    remove_processed_file(subfolder_satellite_byday_mf,processed_folder,satellite_param)
+
+    process.process(**process_satellite_byday_mf_param)
+    output_file = find_processed_file(subfolder_satellite_byday_mf,
+                                      processed_folder,
+                                      satellite_param)
+    out = open_ds(output_file)
+
+    processed_folder_bench = "Processed_Fields_files_Benchmark"    
+    bench_file = find_processed_file(subfolder_satellite_byday_mf,
+                                     processed_folder_bench,
+                                     satellite_param)
+    out_bench = open_ds(bench_file) # Need to open comparison file and put in the same format
+
+    data_vars = out.data_vars
+    
+    for dv in data_vars:
+        assert np.array_equal(out[dv].values,out_bench[dv].values)   
+

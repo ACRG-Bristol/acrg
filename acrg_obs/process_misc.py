@@ -16,6 +16,8 @@ import xarray as xr
 from acrg_obs.utils import attributes, output_filename
 import pytz
 import numpy as np
+import datetime as dt
+from collections import OrderedDict
 
 # Site info file
 acrg_path = getenv("ACRG_PATH")
@@ -505,3 +507,224 @@ def ufrank(site = "TAU"):
         
         ds.to_netcdf(nc_filename)
 
+def atto(species="CH4",inlet=1,version="v1"):
+    '''
+    Process Amazon Tall Tower Observatory data.
+
+    Search string used is "*{version}*.dat" and currently reprocesses all matching files in
+    folder.
+    
+    General notes:
+       - For the period of 2013-06-01 to 2013-10-29 one of the two CRDS instruments (D9) was 
+       substituted and then replaced. Multiple files are created if this time period is covered.
+       - CO2 was measured by two instruments (one of which was substituted) as described above,
+       so multiple files for CO2 covering the same time period are generated.
+       - Due to the buffer system and the length of the inlets, there is some time delay 
+       between the arrival of the air mass at the inlet and the time of the measurement. This
+       has *not* been factored into the time points in the output.
+
+    Example of input file (ATTO_Pic89_db30_v1_f201203_v1.dat) (line numbers added in []) 
+    [1]   60 1001
+    [...]
+    [57]  20120301	1	1	1	1	1	1	1	1	1	1	1	1	1	1	1	1	1	1	1	1
+    [58]	9999	9999	9999	9999	9999	9999	9999	9999	9999	9999	9999	9999	9999	9999	9999	9999	9999	9999	9999	9999
+    [59]  [s]	[ppb]	[ppb]	[ppb]	[ppb]	[ppb]	[ppm]	[ppm]	[ppm]	[ppm]	[ppm]	[ppb]	[ppb]	[ppb]	[ppb]	[ppb]	[ppm]	[ppm]	[ppm]	[ppm]	[ppm]
+    [60]  TimeUTC	D8CO1_1	D8CO1_3	D8CO1_4	D8CO1_5	D8CO1_6	D8CO2_1	D8CO2_3	D8CO2_4	D8CO2_5	D8CO2_6	D9CH4_1	D9CH4_3	D9CH4_4	D9CH4_5	D9CH4_6	D9CO2_1	D9CO2_3	D9CO2_4	D9CO2_5	D9CO2_6
+    [61]  518400	117.39	113.91	118.48	120.00	123.70	399.57	397.99	402.17	430.73	431.23	1841.28	1841.43	1840.63	1839.96	1839.38	399.51	398.05	402.19	430.69	431.20
+    [62]  520200	115.15	117.60	123.04	124.25	125.12	396.45	396.08	399.77	420.84	425.70	1839.65	1840.56	1841.10	1841.07	1841.22	396.42	396.14	399.87	420.83	425.62
+
+    Args:
+        species (str) :
+            Options are:
+                "CH4","CO2" and "CO".
+        inlet (int) :
+            5 different inlet heights are available corresponding to:
+                1 - 79m
+                3 - 53m
+                4 - 38m
+                5 - 24m
+                6 - 4m
+        version (str, optional) :
+            Version of the data. At the moment only "v1" is available but other data may become
+            available with new versions in future.
+    
+    TODO: There is a BUG that when splitting between the different instruments there is an 
+    overlap between the end date of the first file (2013-06-01) and the start date of the secof
+    file. Xarray selection here doesn't seem to be doing what we expect. May cause issues when
+    using the data over this period.
+    '''
+    
+    ## Time input notes:
+    # TimeUTC column contains seconds since UTC 0
+    #  Data have been averaged over 30 minute intervals.
+    #  The time of measurement by the Picarro instruments has been taken.
+    #  Due to the buffer system and the length of the inlets, there is some time delay 
+    #  between the arrival of the air mass at the inlet and the time of the measurement.
+    ## Instrument notes:
+    # The data have been measured by CRDS instruments 'Picarro G1302 CKADS-18' (column names starting with 'D8') and 'Picarro G1301 CFADS-109' (column names starting with 'D9').
+    # except for 2013-06-01 to 2013-10-29, where a 'Los Gatos OA-ICOS' analyser was used as replacement ('Los Gatos OA-ICOS' (column names starting with 'D9').
+    # The data is calibrated on the scales NOAA-2004 (CH4), WMOX2007 (CO2), WMO CO X2004 (CO), which are implemented at MPI-BGC, via primary standards from NOAA, and are propagated to ATTO.
+    
+    params = {
+        "site" : "ATO",
+        "network":"ATTO",
+        "scale": {
+            "CO2": "WMO X2007",
+            "CH4": "NOAA-2004",
+            "CO": "WMO CO X2004"},
+        "instrument": {
+                "CO2": ["CRDS-CKADS-18","CRDS-CFADS-109"],
+                "CH4": ["CRDS-CFADS-109"],
+                "CO": ["CRDS-CKADS-18"]},
+        "substitute" : {
+                "start_date":"2013-06-01",
+                "end_date":"2013-11-01",
+                "org_instrument":'CRDS-CFADS-109',
+                "sub_instrument":"OA-ICOS"},
+        "inlet" :
+            {1:"79m",
+             3:"53m",
+             4:"38m",
+             5:"24m",
+             6:"4m"},
+        "units":
+            {"CO2":"ppm",
+             "CH4":"ppb",
+             "CO":"ppb"},
+        "measurement_period":30,
+        "directory" : "/data/shared/obs_raw/ATTO/",
+        "directory_output" : "/data/shared/obs_2018",
+        "global_attributes" : OrderedDict([
+                ("data_owner","Jost Lavric"),
+                ("data_owner_email", "jost.lavric@bgc-jena.mpg.de"),
+                ("data_creator","David Walter"),
+                ("data_creator_email","david.walter@mpic.de")])
+               }
+
+    search_str = join(params["directory"],"*{}*.dat".format(version))
+    fnames = glob.glob(search_str)
+    fnames.sort()
+
+    title_line = 0
+    na_values = "9999"
+    time_col = "TimeUTC"
+
+    def define_meas_time(t,date,date_fmt="%Y%m%d"):
+        if isinstance(date,str):
+            date = dt.datetime.strptime(date,date_fmt)
+            date = np.datetime64(date)
+        datetime = date + np.timedelta64(t,'s')# + np.timedelta64(int(meas_period/2.),'s')
+        return datetime
+    
+    for instrument in params["instrument"][species]:
+        
+        ds_list = []
+        for fname in fnames:
+    
+            if instrument == "CRDS-CKADS-18":
+                col_start = "D8"
+            elif instrument == "CRDS-CFADS-109":
+                col_start = "D9"
+            
+            if species.upper() == "CO":
+                species_str = species.upper()+"1"
+            else:
+                species_str = species.upper()
+                
+            data_col = "{col}{species}_{inlet}".format(col=col_start,species=species_str,inlet=inlet)#,"D9CH4_3","D9CH4_4","D9CH4_5","D9CH4_6"]
+            
+            ## Number of header lines is included in first line of file and date is included
+            # two before the end of the header lines. Extract these values from each file.
+            with open(fname) as fl:
+                header_lines = int(fl.readline().split(' ')[0])-1
+                fl.seek(0) # Reset to top of file
+                line_containing_date = header_lines-2
+                date_str = fl.readlines()[line_containing_date-1].split('\t')[0]
+
+            df = pd.read_csv(fname,header=title_line,delim_whitespace=True,
+                             skiprows=header_lines,usecols=[time_col,data_col],na_values=na_values)
+            
+       
+            ## Remove any NaN values
+            df = df[np.isfinite(df[data_col])]    
+        
+            ## Rename data column to species name
+            df = df.rename({data_col:species.upper()},axis="columns")
+            
+            ## Construct UTC time
+            df["time"] = df[time_col].apply(define_meas_time,date=date_str)
+            df = df.drop(time_col,axis=1)
+            df = df.set_index("time")
+    
+            # TODO: No error included so could arbitrarily set to e.g. 5% of data?
+            #df[species+"_repeatability"] = df[species]*0.05
+            
+            if not df.empty:
+                ds_list.append(xr.Dataset.from_dataframe(df.sort_index()))
+            else:
+                print("No data for {} for {} instrument from file: {}".format(species,params["site"],split(fname)[1]))
+    
+        ds = xr.concat(ds_list,dim="time")
+    
+        ## One instrument was substituted for a period of time so need to create different
+        # file for these dates.
+        ds_mult = []
+        if params["substitute"]["org_instrument"] == instrument:
+            instrument_sub = params["substitute"]["sub_instrument"]
+            
+            sub_start = np.datetime64(params["substitute"]["start_date"])
+            sub_end = np.datetime64(params["substitute"]["end_date"])
+            
+            start = ds.time.values[0]
+            end = ds.time.values[-1]
+    
+            date_range = [start,sub_start,sub_end,end]        
+            instruments = [instrument,instrument_sub,instrument]
+    
+            for i,ins in enumerate(instruments):
+    
+                if i != len(instruments)-1:
+                    s = date_range[i]
+                    e = date_range[i+1]-np.timedelta64(1,"D")
+                else:
+                    s = date_range[i]
+                    e = date_range[i+1]
+                
+                ds_1 = ds.sel(**{"time":slice(s,e)})
+                #print("Sub-set dataset start and end time",ds_1["time"].values[0],ds_1["time"].values[-1])
+                num_t = ds_1.dims["time"]
+    
+                if num_t > 0:
+                    ds_mult.append((ins,ds_1))
+        else:
+            ds_mult.append((instrument,ds))
+                
+        for inst,ds in ds_mult:        
+            
+            ## Add attributes including global attributes
+            global_attributes = params["global_attributes"]
+            global_attributes["averaging"] = "{} minutes".format(params["measurement_period"])
+            global_attributes["inlet_magl"] = params["inlet"][inlet]
+            
+            ds = attributes(ds,
+                            species,
+                            params["site"],
+                            global_attributes = global_attributes,
+                            scale = params["scale"][species],
+                            sampling_period = params["measurement_period"]*60,
+                            units = params["units"][species])
+         
+            ## Define filename and write to netcdf
+            nc_filename = output_filename(params["directory_output"],
+                                              params["network"],
+                                              inst,
+                                              params["site"].upper(),
+                                              ds.time.to_pandas().index.to_pydatetime()[0],
+                                              ds.species,
+                                              inlet=params["inlet"][inlet],
+                                              version="v1")
+        
+            print(" ... writing " + nc_filename)
+                
+            ds.to_netcdf(nc_filename)
+    
