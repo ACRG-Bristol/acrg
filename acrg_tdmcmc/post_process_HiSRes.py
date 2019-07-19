@@ -166,16 +166,16 @@ def shpToGrid(shape, lons, lats):
     df = pd.DataFrame({'Coordinates': list(zip(XX, YY))})
     df['Coordinates'] = df['Coordinates'].apply(shapely.geometry.Point)
     gdf = gpd.GeoDataFrame(df, geometry='Coordinates')
-    within = gdf.within(shape.geometry[0])
+    within = gdf.within(shape.geometry)
     within = within.values.reshape(len(lons), len(lats))
     return within
 
-def shpToGrid2d(shape, lons, lats):
+def shpToGrid2d(shape, lons, lats, index=0):
     XX, YY = lons.flatten(), lats.flatten()
     df = pd.DataFrame({'Coordinates': list(zip(XX, YY))})
     df['Coordinates'] = df['Coordinates'].apply(shapely.geometry.Point)
     gdf = gpd.GeoDataFrame(df, geometry='Coordinates')
-    within = gdf.within(shape.geometry[0])
+    within = gdf.within(shape.geometry[index])
     within = within.values.reshape(lats.shape).T
     return within
 
