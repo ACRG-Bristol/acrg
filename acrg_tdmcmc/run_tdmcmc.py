@@ -348,7 +348,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     pdf_p2_hparam2,x_pdf ,pdf_param1_pdf,pdf_param2_pdf,inv_type,
     output_dir,fp_dir=None, flux_dir = None, data_dir=None, basis_dir=None, bc_basis_dir=None, bc_dir = None,
     tau_ap=None, tau_hparams=None, stepsize_tau=None, tau_pdf=None,
-    bl_split=False, bl_levels=None, filters=None, max_level=None, site_modifier={}):
+    bl_split=False, bl_levels=None, filters=None, max_level=None, site_modifier={}, prior_uncertainty=False):
     #%%
     
     if para_temp is True:
@@ -455,7 +455,12 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
         pblh.append(fp_data_H3.PBLH.values)
         wind_speed.append(fp_data_H3.wind_speed.values)
         
-        if 'dmf' in attributes:    
+        if prior_uncertainty == True:
+            # To calculate prior uncertainity reduction we can set the error on the measurements to a very 
+            # large value so that the measurements don't have any influence when calculating the posterior.
+            # Setting error to 10000*input mol fraction values.
+            y_error.append(fp_data_H3.mf.values*10000)
+        elif 'dmf' in attributes:    
             y_error.append(fp_data_H3.dmf.values)
         elif 'vmf' in attributes:   
             y_error.append(fp_data_H3.vmf.values)

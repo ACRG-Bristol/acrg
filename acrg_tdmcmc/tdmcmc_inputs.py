@@ -180,7 +180,22 @@ if basis_dir is not None and basis_dir.startswith("$ACRG_PATH"):
 if bc_basis_dir is not None and bc_basis_dir.startswith("$ACRG_PATH"):
     bc_basis_dir = bc_basis_dir.replace("$ACRG_PATH",acrg_path)
     print(("bc_basis_directory is ", bc_basis_dir))
-    
+
+
+################################################
+# CALCULATE PRIOR UNCERTAINTY
+# This switches modes to allow calculation prior uncertainty reduction
+# This is as alternative to completing a posterior estimation based on the input measurements
+# **This parameter should be set to True only in those circumstances.**
+
+if "prior_uncertainty" in param:
+    prior_uncertainty = param["prior_uncertainty"]
+    print("WARNING: Run will calculate prior uncertainty reduction by setting dmf to a large number so there is no improvement based on measurements.")
+    print("Output of this run should NOT be used as an improved posterior output.")
+else:
+    prior_uncertainty = False
+
+
 #######################################################
 # DO YOU WANT TO DO REVERSIBLE JUMP OR NOT?????
 reversible_jump = param['reversible_jump']         # True = do reversible jump; False = don't
@@ -293,6 +308,8 @@ tau_ap = param['tau_ap']
 tau_hparams = param['tau_hparams']
 stepsize_tau = param['stepsize_tau'] 
 tau_pdf = param['tau_pdf'] 
+
+
 
 # TUNING OF INDIVIDUAL PARAMETER STEPSIZES AND UNCERTAINTIES
 ################################################
@@ -417,7 +434,7 @@ post_mcmc=run_tdmcmc.run_tdmcmc(sites, meas_period, av_period, species, start_da
     output_dir,fp_dir=fp_dir, flux_dir = flux_dir, data_dir=data_dir, basis_dir=basis_dir, bc_basis_dir=bc_basis_dir, bc_dir = bc_dir,
     filters=filters,bl_split=bl_split, bl_levels=levels,
     tau_ap=tau_ap, tau_hparams=tau_hparams, stepsize_tau=stepsize_tau, tau_pdf=tau_pdf,
-    max_level=max_level, site_modifier=site_modifier)
+    max_level=max_level, site_modifier=site_modifier,prior_uncertainty=prior_uncertainty)
 
 if unique_copy:
     shutil.copy(config_file,output_dir)
@@ -443,6 +460,14 @@ if unique_copy:
     for key in list(post_mcmc.keys()):
         post_mcmc[key].encoding['zlib'] = True
     post_mcmc.to_netcdf(path=fname, mode='w')
+    
+    if prior_uncertainty:
+        pu_string = "This run is to calculate the prior uncertainty reduction and does NOT provide an improved posterior output based on measurements.\n"
+        pu_string += "Note: Measurement uncertainity was set to an artifically high value (mf*10000) to achieve this."
+        pu_fname = os.path.join(datestamp_output_dir,"README_uncertainty_reduction.txt")
+        pu_warn_file = open(pu_fname,'w')
+        pu_warn_file.write(pu_string)
+        pu_warn_file.close()
 else:
     shutil.copy(config_file,output_dir)
 
