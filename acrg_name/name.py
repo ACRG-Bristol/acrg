@@ -67,7 +67,7 @@ def filenames(site, domain, start, end, height, fp_directory):
     
     Expect filenames of the form:
         [fp_directory]/domain/site*-height*domain*yearmonth*.nc
-        e.g. [/data/shared/NAME/fp]/EUROPE/MHD-10magl_EUROPE_201401.nc
+        e.g. [/data/shared/LPDM/fp_NAME/EUROPE/MHD-10magl_EUROPE_201401.nc
     
     Args:
         site (str)         : Site name. Full list of site names should be 
@@ -246,8 +246,8 @@ def footprints(sitecode_or_filename, fp_directory = None,
     # using acrg_name_process
     
     if fp_directory is None:
-        fp_integrated_directory = join(data_path, 'NAME/fp/')
-        fp_HiTRes_directory = join(data_path,'NAME/fp_high_time_res/')
+        fp_integrated_directory = join(data_path, 'LPDM/fp_NAME/')
+        fp_HiTRes_directory = join(data_path,'LPDM/fp_NAME_high_time_res/')
         fp_directory = {'integrated': fp_integrated_directory,
                         'HiTRes': fp_HiTRes_directory}
 
@@ -323,7 +323,7 @@ def flux(domain, species, start = None, end = None, flux_directory=None):
     
     Expect filenames of the form:
         [flux_directory]/domain/species.lower()_*.nc
-        e.g. [/data/shared/NAME/emissions]/EUROPE/ch4_EUROPE_2013.nc
+        e.g. [/data/shared/LPDM/emissions]/EUROPE/ch4_EUROPE_2013.nc
     
     TODO: This may get slow for very large flux datasets, and we may want to subset.
     
@@ -345,7 +345,7 @@ def flux(domain, species, start = None, end = None, flux_directory=None):
     """
     
     if flux_directory is None:
-        flux_directory = join(data_path, 'NAME/emissions/')
+        flux_directory = join(data_path, 'LPDM/emissions/')
 
     print(("filename",flux_directory + domain + "/" + species.lower() + "_" + "*.nc"))
     files = sorted(glob.glob(flux_directory + domain + "/" + 
@@ -468,7 +468,7 @@ def boundary_conditions(domain, species, start = None, end = None, bc_directory=
 
     Expect filenames of the form:
         [bc_directory]/domain/species.lower()_*.nc
-        e.g. [/data/shared/NAME/bc]/EUROPE/ch4_EUROPE_201301.nc
+        e.g. [/data/shared/LPDM/bc]/EUROPE/ch4_EUROPE_201301.nc
 
     Args:
         domain (str)       : Domain name. The boundary condition files should be sub-categorised by the 
@@ -482,7 +482,7 @@ def boundary_conditions(domain, species, start = None, end = None, bc_directory=
     """
     
     if bc_directory is None:
-        bc_directory = join(data_path, 'NAME/bc/')
+        bc_directory = join(data_path, 'LPDM/bc/')
     
     files = sorted(glob.glob(bc_directory + domain + "/" + 
                    species.lower() + "_" + "*.nc"))
@@ -521,7 +521,7 @@ def basis(domain, basis_case, basis_directory = None):
     
     Expect filenames of the form:
         [basis_directory]/domain/"basis_case"_"domain"*.nc
-        e.g. [/data/shared/NAME/basis_functions]/EUROPE/sub_transd_EUROPE_2014.nc
+        e.g. [/data/shared/LPDM/basis_functions]/EUROPE/sub_transd_EUROPE_2014.nc
 
     TODO: More info on options for basis functions.
 
@@ -536,7 +536,7 @@ def basis(domain, basis_case, basis_directory = None):
         xarray.Dataset : combined dataset of matching basis functions
     """
     if basis_directory is None:
-        basis_directory = join(data_path, 'NAME/basis_functions/')
+        basis_directory = join(data_path, 'LPDM/basis_functions/')
         
     files = sorted(glob.glob(basis_directory + domain + "/" +
                     basis_case + "_" + domain + "*.nc"))
@@ -555,7 +555,7 @@ def basis_boundary_conditions(domain, basis_case, bc_basis_directory = None):
     
     Expect filesnames of the form:
         [bc_basis_directory]/domain/"basis_case"_"domain"*.nc
-        e.g. [/data/shared/NAME/bc_basis_directory]/EUROPE/NESW_EUROPE_2013.nc
+        e.g. [/data/shared/LPDM/bc_basis_directory]/EUROPE/NESW_EUROPE_2013.nc
 
     TODO: More info on options for basis functions.
     
@@ -570,7 +570,7 @@ def basis_boundary_conditions(domain, basis_case, bc_basis_directory = None):
     """
     
     if bc_basis_directory is None:
-        bc_basis_directory = join(data_path,'NAME/bc_basis_functions/')
+        bc_basis_directory = join(data_path,'LPDM/bc_basis_functions/')
     
     files = sorted(glob.glob(bc_basis_directory + domain + "/" +
                     basis_case + '_' + domain + "*.nc"))
@@ -2169,7 +2169,7 @@ class get_country(object):
   def __init__(self, domain, ocean=False, ukmo=False, uk_split=False, country_dir = None):
       
         if country_dir is None:
-            countryDirectory=data_path +'NAME/countries/' 
+            countryDirectory=data_path +'LPDM/countries/' 
         else:
             countryDirectory = country_dir
             

@@ -44,7 +44,7 @@ from acrg_name import flux
 
 data_path = os.getenv("DATA_PATH")
 
-output_directory = os.path.join(data_path,"NAME/emissions/")
+output_directory = os.path.join(data_path,"LPDM/emissions/")
 
 
 def getGFED(year, lon_out, lat_out, timeframe='monthly', months = [1,2,3,4,5,6,7,8,9,10,11,12], species='CH4', incagr=False):
@@ -1653,7 +1653,7 @@ def create_emissions(databases,species,domain,year=None,lon_out=[],lat_out=[],
             Species of interest. All listed databases must have data for this species.
         domain (str) :
             Name of domain e.g. "EUROPE","SOUTHAMERICA","NORTHAFRICA".
-            See $DATA_PATH/NAME/fp/* for all available domains.
+            See $DATA_PATH/LPDM/fp_NAME/* for all available domains.
             If lat_out and lon_out not specified, domain will be used to extract grid values.
         year (int) :
             Year of emissions to use.
@@ -1673,7 +1673,7 @@ def create_emissions(databases,species,domain,year=None,lon_out=[],lat_out=[],
             Default = True.
         output_directory (str, optional) :
             Base directory for output file. Domain name will be used as subdirectory name.
-            Default = $DATA_PATH/NAME/emissions/
+            Default = $DATA_PATH/LPDM/emissions/
 
         
         kwargs :
