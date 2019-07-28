@@ -6,7 +6,6 @@ Created on Mon Mar 23 10:22:22 2015
 """
 from __future__ import print_function
 
-from builtins import object
 import os
 import numpy as np
 import datetime as dt
@@ -63,7 +62,7 @@ def read_gcexport_crds(datafile):
         return data
 
 # More flexible approach using the headers in the file
-class read_gcexport_crds_flexi(object):
+class read_gcexport_crds_flexi:
     def __init__(self, data, datafile, headers):
         
         date = data[:, np.where(headers == 'date')[0]][:,0]
@@ -202,7 +201,7 @@ class read_gcexport_crds_flexi(object):
 #  date   time      type       sample     standard port      temp     press       h2o         C   stdev         C   stdev         C   stdev 
 # 140710 093530      tank  USN20132963        H-239    6    45.000   139.999     0.532    418.42*  0.188*  1993.75*  0.204*   200.84*  5.913*
 
-class read_gcexport_crds_old(object):
+class read_gcexport_crds_old:
     def __init__(self, data, datafile):
         
         date = data[:,0]
@@ -297,7 +296,7 @@ class read_gcexport_crds_old(object):
 #150605 104930  150605 1049       std USN-20121603 USN-20121603    5    45.000   139.963     1.567    519.74F   503.22F   516.28F216.126    14      5.92F  1950.83F  1990.64F154.924    14       nan       nan       nan     nan   nan 
 
 
-class read_gcexport_crds_new(object):
+class read_gcexport_crds_new:
     def __init__(self, data, datafile):
         
         pdb.set_trace()        
@@ -409,7 +408,7 @@ class read_gcexport_crds_new(object):
         self.datadir = dirname
 
 # More flexible approach using the headers in the file
-class read_gcexport_lgr(object):
+class read_gcexport_lgr:
     def __init__(self, datafile):
         
         print('Reading:')
@@ -525,7 +524,7 @@ class read_gcexport_lgr(object):
         self.datadir = dirname
 
 # More flexible approach using the headers in the file
-class read_gcexport_medusa(object):
+class read_gcexport_medusa:
     def __init__(self, datafile):
         
         print('Reading:')
@@ -606,7 +605,7 @@ class read_gcexport_medusa(object):
 # Class to make the flags
 # nb: an * flag will =  a 1 flag
 # an F flag will = a 2 flag
-class Makeflags(object):
+class Makeflags:
     def __init__(self, gas):    
         
         
@@ -638,7 +637,7 @@ class Makeflags(object):
         
 
 # Class to strip the *,x and F flags from the raw data
-class Stripflags(object):
+class Stripflags:
     def __init__(self, gas):    
         
         orig_gas = gas        
@@ -792,7 +791,7 @@ def read_portslogs(site = 'MHD', std_only = None, logdir = '/Users/as13988/Docum
 
 
 # More flexible approach using the headers in the file
-class read_gcexport_means_flexi(object):
+class read_gcexport_means_flexi:
     def __init__(self, data, infile, headers):
         
         # Extract columns common to all means files

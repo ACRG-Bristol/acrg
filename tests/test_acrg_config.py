@@ -103,26 +103,89 @@ def test_extract_all(tdmcmc_config):
 
 @pytest.mark.basic
 def test_extract_section_1(tdmcmc_config):
-    ''' Test a simple form section can be specified '''
-    x = extract_params(tdmcmc_config,section='MEASUREMENTS',param_type=None)
-    assert x
+    ''' Test a simple form section can be specified. Compare to expected result. '''
+    x = extract_params(tdmcmc_config,section=str('MEASUREMENTS'),param_type=None)
+    
+    expected = ["sites","species","start_date","end_date","domain","network","emissions_name"]
+    assert list(x.keys()) == expected
 
 @pytest.mark.basic
 def test_extract_section_2(tdmcmc_config):
     ''' Test a more complex form section can be specified '''
-    x = extract_params(tdmcmc_config,section='MCMC.MEASUREMENTS',param_type=None)
+    x = extract_params(tdmcmc_config,section=str('MCMC.MEASUREMENTS'),param_type=None)
     assert x        
+
+@pytest.mark.basic
+def test_extract_section_mult(tdmcmc_config):
+    ''' Test multiple sections can be specified. Compare to expected result. '''
+    x = extract_params(tdmcmc_config,section=['MCMC.ITERATIONS','MCMC.PDFS'],param_type=None)
+    
+    expected = ['nIt','burn_in','nsub','x_pdf0','pdf_param1_pdf0','pdf_param2_pdf0','sigma_model_pdf']
+    assert list(x.keys()) == expected       
 
 @pytest.mark.basic
 def test_extract_section_group_1(tdmcmc_config):
     ''' Test a section group can be specified '''
-    x = extract_params(tdmcmc_config,section_group='MEASUREMENTS',param_type=None)
-    assert x
+    x = extract_params(tdmcmc_config,section_group=str('MEASUREMENTS'),param_type=None)
+    
+    expected = ["sites","species","start_date","end_date","domain","network","emissions_name"]
+    assert list(x.keys()) == expected
 
 def test_extract_section_group_2(tdmcmc_config):
     ''' Test a different section group can be specified '''
-    x = extract_params(tdmcmc_config,section_group='MCMC',param_type=None)
+    x = extract_params(tdmcmc_config,section_group=str('MCMC'),param_type=None)
     assert x
+
+def test_extract_section_group_mult(tdmcmc_config):
+    ''' Test multiple sections can be specified. Compare to expected result. '''
+    x = extract_params(tdmcmc_config,section_group=['MEASUREMENTS','TDMCMC'],param_type=None)
+    
+    expected = ["sites","species","start_date","end_date","domain","network","emissions_name","reversible_jump","kmin","kmax","k_ap"]
+    assert list(x.keys()) == expected       
+
+@pytest.mark.basic
+def test_ignore_sections_1(tdmcmc_config):
+    ''' Test section can be specified to ignore. '''
+    x = extract_params(tdmcmc_config,ignore_sections=['MEASUREMENTS'],param_type=None)
+    
+    not_expected = ["sites","species","start_date","end_date","domain","network","emissions_name"]
+    for ne in not_expected:
+        assert ne not in x       
+
+def test_ignore_sections_2(tdmcmc_config):
+    ''' Test a more complex form section can be specified to ignore. '''
+    x = extract_params(tdmcmc_config,ignore_sections=['MCMC.ITERATIONS'],param_type=None)
+    
+    not_expected = ["nIt","burn_in","nsub"]
+    for ne in not_expected:
+        assert ne not in x       
+
+def test_ignore_sections_mult(tdmcmc_config):
+    ''' Test multiple sections can be specified to be ignored. '''
+    x = extract_params(tdmcmc_config,ignore_sections=['MEASUREMENTS','TDMCMC.SET_UP'],param_type=None)
+    
+    #print("x",x)
+    not_expected = ["sites","species","start_date","end_date","domain","network","emissions_name","reversible_jump","kmin","kmax","k_ap"]
+    for ne in not_expected:
+        assert ne not in x       
+
+@pytest.mark.basic
+def test_ignore_section_groups_1(tdmcmc_config):
+    ''' Test section group can be specified to ignore. '''
+    x = extract_params(tdmcmc_config,ignore_section_groups=['MEASUREMENTS'],param_type=None)
+    
+    not_expected = ["sites","species","start_date","end_date","domain","network","emissions_name"]
+    for ne in not_expected:
+        assert ne not in x
+
+def test_ignore_section_groups_mult(tdmcmc_config):
+    ''' Test multiple section groups can be specified to ignore. '''
+    x = extract_params(tdmcmc_config,ignore_section_groups=['MEASUREMENTS','TDMCMC'],param_type=None)
+    
+    not_expected = ["sites","species","start_date","end_date","domain","network","emissions_name","reversible_jump","kmin","kmax","k_ap"]
+    for ne in not_expected:
+        assert ne not in x       
+
 
 @pytest.mark.basic
 def test_extract_names(tdmcmc_config):
@@ -132,35 +195,50 @@ def test_extract_names(tdmcmc_config):
 
 def test_extract_names_section(tdmcmc_config):
     ''' Test specific parameter names can be found within the specified section '''
-    x = extract_params(tdmcmc_config,section='MEASUREMENTS',names=['sites','species','domain'],param_type=None)
-    assert x
+    names = ['sites','species','domain']
+    x = extract_params(tdmcmc_config,section=str('MEASUREMENTS'),names=names,param_type=None)
+    assert list(x.keys()) == names
 
 def test_extract_names_section_group(tdmcmc_config):
     ''' Test parameter names can be found within a section covered by the specified section group '''
-    x = extract_params(tdmcmc_config,section_group='MCMC',names=['meas_period','nIt'],param_type=None)
-    assert x
+    names = ['meas_period','nIt']
+    x = extract_params(tdmcmc_config,section_group=str('MCMC'),names=names,param_type=None)
+    assert list(x.keys()) == names
 
 def test_extract_names_WrongSectionForName(tdmcmc_config):
     ''' Test an empty object is returned if parameter names cannot be found within the input section.'''
-    x = extract_params(tdmcmc_config,section='MEASUREMENTS',names=['meas_period','nIt'],param_type=None)
+    x = extract_params(tdmcmc_config,section=str('MEASUREMENTS'),names=['meas_period','nIt'],param_type=None)
     assert not x
 
 def test_extract_names_WrongSectionGroupForName(tdmcmc_config):
     ''' Test an empty object is returned if parameter names cannot be found within the input sections within the section group. '''
-    x = extract_params(tdmcmc_config,section_group='MCMC',names=['sites','species','domain'],param_type=None)
+    x = extract_params(tdmcmc_config,section_group=str('MCMC'),names=['sites','species','domain'],param_type=None)
     assert not x
 
 def test_extract_IncorrectSection(tdmcmc_config):
     ''' Test an error is raised if the specified section cannot be found '''
     with pytest.raises(KeyError) as e_info:
-        extract_params(tdmcmc_config,section='FLIBBLE',param_type=None)
+        extract_params(tdmcmc_config,section=str('FLIBBLE'),param_type=None)
     #assert not x
 
 def test_extract_IncorrectSectionGroup(tdmcmc_config):
     ''' Test an error is raised when no sections are found for the specified section group. '''
     with pytest.raises(KeyError) as e_info:
-        extract_params(tdmcmc_config,section_group='FLIBBLE',param_type=None)
+        extract_params(tdmcmc_config,section_group=str('FLIBBLE'),param_type=None)
     #assert not x
+
+def test_extract_IncorrectSection_Ignore(tdmcmc_config):
+    ''' Test an error is raised if one of the specified sections cannot be found '''
+    with pytest.raises(KeyError) as e_info:
+        extract_params(tdmcmc_config,ignore_sections=['MEASUREMENTS','FLIBBLE'],param_type=None)
+    #assert not x
+
+def test_extract_IncorrectSectionGroup_Ignore(tdmcmc_config):
+    ''' Test an error is raised when no sections are found for the specified section group. '''
+    with pytest.raises(KeyError) as e_info:
+        extract_params(tdmcmc_config,ignore_section_groups=["TDMCMC",'FLIBBLE'],param_type=None)
+    #assert not x
+
 
 #@pytest.mark.basic
 #def test_extract_all_param_type(tdmcmc_config,mcmc_param_type):
@@ -232,24 +310,40 @@ def check_types(param_output,param_type,section=None,section_group=None):
 @pytest.mark.basic
 def test_extract_section_1_param_type(tdmcmc_config,mcmc_param_type):
     ''' Test a parameter type dictionary can be used when extracting a specific simple form section '''
-    x = extract_params(tdmcmc_config,section='MEASUREMENTS',param_type=mcmc_param_type)
-    check_types(x,mcmc_param_type,section='MEASUREMENTS')
+    x = extract_params(tdmcmc_config,section=str('MEASUREMENTS'),param_type=mcmc_param_type)
+    check_types(x,mcmc_param_type,section=str('MEASUREMENTS'))
 
 def test_extract_section_2_param_type(tdmcmc_config,mcmc_param_type):
     ''' Test a parameter type dictionary can be used to extracting a specific more complex form section '''
-    x = extract_params(tdmcmc_config,section='MCMC.MEASUREMENTS',param_type=mcmc_param_type)
-    check_types(x,mcmc_param_type,section='MCMC.MEASUREMENTS')        
+    x = extract_params(tdmcmc_config,section=str('MCMC.MEASUREMENTS'),param_type=mcmc_param_type)
+    check_types(x,mcmc_param_type,section=str('MCMC.MEASUREMENTS'))        
 
 def test_extract_section_group_1_param_type(tdmcmc_config,mcmc_param_type):
     ''' Test a parameter type dictionary can be used to extracting a sections covered by a specific section group '''
-    x = extract_params(tdmcmc_config,section_group='MEASUREMENTS',param_type=mcmc_param_type)
-    check_types(x,mcmc_param_type,section_group='MEASUREMENTS')
+    x = extract_params(tdmcmc_config,section_group=str('MEASUREMENTS'),param_type=mcmc_param_type)
+    check_types(x,mcmc_param_type,section_group=str('MEASUREMENTS'))
 
 def test_extract_section_group_2_param_type(tdmcmc_config,mcmc_param_type):
     ''' Test a parameter type dictionary can be used to extracting a sections covered by a specific section group '''
-    x = extract_params(tdmcmc_config,section_group='MCMC',param_type=mcmc_param_type)
-    check_types(x,mcmc_param_type,section_group='MCMC')
+    x = extract_params(tdmcmc_config,section_group=str('MCMC'),param_type=mcmc_param_type)
+    check_types(x,mcmc_param_type,section_group=str('MCMC'))
 
+def test_extract_ignore_section_mult_param_type(tdmcmc_config,mcmc_param_type):
+    ''' Test a parameter type dictionary can be used when ignoring sections '''
+    x = extract_params(tdmcmc_config,ignore_sections=['MEASUREMENTS','TDMCMC.SET_UP'],param_type=mcmc_param_type)
+    
+    not_expected = ["sites","species","start_date","end_date","domain","network","emissions_name","reversible_jump","kmin","kmax","k_ap"]
+    for ne in not_expected:
+        assert ne not in x       
+
+def test_extract_ignore_section_group_mult_param_type(tdmcmc_config,mcmc_param_type):
+    ''' Test a parameter type dictionary can be used when ignoring section '''
+    x = extract_params(tdmcmc_config,ignore_section_groups=['MEASUREMENTS','TDMCMC'],param_type=mcmc_param_type)
+    
+    not_expected = ["sites","species","start_date","end_date","domain","network","emissions_name","reversible_jump","kmin","kmax","k_ap"]
+    for ne in not_expected:
+        assert ne not in x       
+        
 @pytest.mark.basic
 def test_extract_param_optional(tdmcmc_config_option,mcmc_param_type):
     ''' Test optional parameters can be specified for the whole config file '''
@@ -258,19 +352,19 @@ def test_extract_param_optional(tdmcmc_config_option,mcmc_param_type):
 
 def test_extract_param_section_optional(tdmcmc_config_option,mcmc_param_type):
     ''' Test optional parameters can be specified for one section '''    
-    x = extract_params(tdmcmc_config_option,section_group='MEASUREMENTS',optional_param=['network','emissions_name'],param_type=mcmc_param_type)
+    x = extract_params(tdmcmc_config_option,section_group=str('MEASUREMENTS'),optional_param=['network','emissions_name'],param_type=mcmc_param_type)
     assert x
 
 def test_extract_WrongSectionForName_param_type(tdmcmc_config,mcmc_param_type):
     ''' Test an error is raised if parameter names cannot be found within the input section when param type dictionary is specified. '''
     with pytest.raises(KeyError) as e_info:
-        extract_params(tdmcmc_config,section='MEASUREMENTS',names=['meas_period','nIt'],param_type=mcmc_param_type)
+        extract_params(tdmcmc_config,section=str('MEASUREMENTS'),names=['meas_period','nIt'],param_type=mcmc_param_type)
 
 def test_extract_WrongSectionGroupForName_param_type(tdmcmc_config,mcmc_param_type):
     ''' Test an error is raised if parameter names cannot be found within a section covered by the the input section group
     when param type dictionary is specified. '''
     with pytest.raises(KeyError) as e_info:
-        extract_params(tdmcmc_config,section_group='MCMC',names=['sites','species','domain'],param_type=mcmc_param_type)
+        extract_params(tdmcmc_config,section_group=str('MCMC'),names=['sites','species','domain'],param_type=mcmc_param_type)
 
 def test_extract_NameNotInFile(tdmcmc_config,mcmc_param_type):
     ''' Test an error is raised when the input parameter names cannot be found within the file. '''
@@ -345,9 +439,9 @@ def test_extra_param_section(tdmcmc_config_extra,mcmc_param_type):
     Test parameters which are within the input file but not in the configuration file will still
     be extracted and the correct type determined when a section is specified.
     '''
-    param_name = "extra_param1"
+    param_name = str("extra_param1")
     param_type = int
-    section = "MEASUREMENTS"
+    section = str("MEASUREMENTS")
     x = extract_params(tdmcmc_config_extra,param_type=mcmc_param_type,section=section)
     assert isinstance(x[param_name],param_type)
 
@@ -356,9 +450,9 @@ def test_extra_param_section_group(tdmcmc_config_extra,mcmc_param_type):
     Test parameters which are within the input file but not in the configuration file will still
     be extracted and the correct type determined when a section group is specified.
     '''
-    param_name = "extra_param2"
+    param_name = str("extra_param2")
     param_type = dict
-    section_group = "MCMC"
+    section_group = str("MCMC")
     x = extract_params(tdmcmc_config_extra,param_type=mcmc_param_type,section_group=section_group)
     assert isinstance(x[param_name],param_type)
     
@@ -397,7 +491,7 @@ def test_missing_section(tdmcmc_config_missing_section,mcmc_param_type):
     Test optional section can be specified. Also checking all optional parameters
     are not included in output (matching set up o config file)
     '''
-    optional_section = "MCMC.MEASUREMENTS"
+    optional_section = str("MCMC.MEASUREMENTS")
     
     x = extract_params(tdmcmc_config_missing_section,param_type=mcmc_param_type,
                        optional_section=optional_section,exclude_not_found=True)
@@ -412,7 +506,7 @@ def test_missing_section(tdmcmc_config_missing_section,mcmc_param_type):
     
 def test_missing_section_group(tdmcmc_config_missing_section,mcmc_param_type):
     ''' Test optional section group can be specified '''
-    optional_section_group = "MCMC"
+    optional_section_group = str("MCMC")
 
     x = extract_params(tdmcmc_config_missing_section,param_type=mcmc_param_type,
                        optional_section_group=optional_section_group,exclude_not_found=True)
@@ -421,3 +515,4 @@ def test_missing_section_group(tdmcmc_config_missing_section,mcmc_param_type):
     
     for name in expected_names:
         assert name in x
+

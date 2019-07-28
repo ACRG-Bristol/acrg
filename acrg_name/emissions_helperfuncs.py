@@ -489,7 +489,7 @@ def getbloomwetlandsCH4(year, lon_out, lat_out, timeframe="monthly"):
     
     #if monthly == True:
     if timeframe == "monthly":
-        ds = ds.resample('M', 'date')
+        ds = ds.resample(date='M').mean()
     
     bloomch4 = ds.CH4_FLUX.values*1e3/16.04
     lat_in = ds.latitude.values
@@ -716,7 +716,7 @@ def getNAEI(year, lon_out, lat_out, species, naei_sector):
         diy = 365
     else:
         diy = 366    
-    grdemis = old_div(grdemis, (diy * 3600*24) / speciesmm)
+    grdemis = old_div(grdemis, (diy * 3600*24) * speciesmm)
     
     #Regrid to desired lats and lons
     narr, reg = regrid2d(grdemis, latarr, lonarr,
