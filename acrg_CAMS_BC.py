@@ -177,10 +177,10 @@ def write_CAMS_BC_tonetcdf(vmr_n, vmr_e, vmr_s, vmr_w, st_date, species, domain,
     BC_edges.attrs['author'] = getpass.getuser()
     BC_edges.attrs['date_created'] = np.str(dt.today())
     
-    if os.path.isdir(outdir+"/NAME/bc/%s/" % domain) == False:
-        os.makedirs(outdir+"/NAME/bc/%s/" % domain)
+    if os.path.isdir(outdir+"/LPDM/bc/%s/" % domain) == False:
+        os.makedirs(outdir+"/LPDM/bc/%s/" % domain)
     
-    BC_edges.to_netcdf(path = outdir+"/NAME/bc/%s/%s_%s_%s.nc"
+    BC_edges.to_netcdf(path = outdir+"/LPDM/bc/%s/%s_%s_%s.nc"
                        %(domain,species.lower(),domain,dt.strptime(st_date, '%Y-%m-%d').strftime('%Y%m')), mode = 'w')
 
 def makeCAMS_BC(domain, species, st_date, end_date, gridsize, outdir=None):
@@ -221,7 +221,7 @@ def makeCAMS_BC(domain, species, st_date, end_date, gridsize, outdir=None):
     domain = domain.upper()
     gridsize = float(gridsize)
     
-    if os.path.isfile(outdir+"/NAME/bc/%s/%s_%s_%s.nc"
+    if os.path.isfile(outdir+"/LPDM/bc/%s/%s_%s_%s.nc"
                        %(domain,species,domain,dt.strptime(st_date, '%Y-%m-%d').strftime('%Y%m'))):
         print('Boundary condition file %s_%s_%s.nc already exists.' %(species,domain,dt.strptime(st_date, '%Y-%m-%d').strftime('%Y%m'))) 
         print('Delete old one first to replace it.')
@@ -233,13 +233,13 @@ def makeCAMS_BC(domain, species, st_date, end_date, gridsize, outdir=None):
         print(" Change it and try again")
         return(None)
         
-    if os.path.isdir(data_path+"NAME/fp/" + domain) == False:
+    if os.path.isdir(data_path+"LPDM/fp_NAME/" + domain) == False:
         print("No footprint file for domain %s" % domain)
         print("Make this first and then generate the BCs")
         return(None)
     
     #Get NAME lats/lons and heights
-    listoffiles = glob.glob(data_path+"/NAME/fp/" + domain + "/*")
+    listoffiles = glob.glob(data_path+"/LPDM/fp_NAME/" + domain + "/*")
     with xr.open_dataset(listoffiles[0]) as temp:
         fields_ds = temp.load()
     fp_lat = fields_ds["lat"].values

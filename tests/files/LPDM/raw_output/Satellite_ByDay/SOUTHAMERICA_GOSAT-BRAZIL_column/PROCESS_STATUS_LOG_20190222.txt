@@ -1,0 +1,92 @@
+2019-02-22 17:30:34.484918: Testing whether file exists or needs updating: /home/ag12733/Python/acrg/tests/files/NAME/raw_output/Satellite_ByDay/SOUTHAMERICA_GOSAT-BRAZIL_column/Processed_Fields_files/GOSAT-BRAZIL-column_SOUTHAMERICA_201301.nc
+2019-02-22 17:30:34.485147: Looking for files with date string: 20130101 in /home/ag12733/Python/acrg/tests/files/NAME/raw_output/Satellite_ByDay/SOUTHAMERICA_GOSAT-BRAZIL_column/
+2019-02-22 17:30:37.594830: Reading... Fields_SOUTHAMERICA_GOSAT-BRAZIL_column_Fixed_ByDay_20130101.txt.gz
+2019-02-22 17:30:50.673002: Bottom-left grid point (CENTRE): -91.329E, -60.981N
+2019-02-22 17:30:50.673394: Timestep: 4 minutes
+2019-02-22 17:30:50.673472: Levels: 17 
+2019-02-22 17:30:50.673540: NAME version: 3
+2019-02-22 17:30:50.709872: Particle locations /home/ag12733/Python/acrg/tests/files/NAME/raw_output/Satellite_ByDay/SOUTHAMERICA_GOSAT-BRAZIL_column/Particle_files/particle_location_SOUTHAMERICA_GOSAT-BRAZIL_column_Fixed_ByDay_20130101.txt.gz
+WARNING: 2019-02-22 17:30:51.483755: No particles have reached edge
+WARNING: 2019-02-22 17:30:51.483932: Copying lower level/previous time step
+WARNING: 2019-02-22 17:30:52.151324: No particles have reached edge
+WARNING: 2019-02-22 17:30:52.151502: Copying lower level/previous time step
+WARNING: 2019-02-22 17:30:52.827727: No particles have reached edge
+WARNING: 2019-02-22 17:30:52.827903: Copying lower level/previous time step
+WARNING: 2019-02-22 17:30:53.501192: No particles have reached edge
+WARNING: 2019-02-22 17:30:53.501405: Copying lower level/previous time step
+WARNING: 2019-02-22 17:30:54.192516: No particles have reached edge
+WARNING: 2019-02-22 17:30:54.192717: Copying lower level/previous time step
+WARNING: 2019-02-22 17:30:54.876794: No particles have reached edge
+WARNING: 2019-02-22 17:30:54.876969: Copying lower level/previous time step
+WARNING: 2019-02-22 17:30:55.555544: No particles have reached edge
+WARNING: 2019-02-22 17:30:55.555771: Copying lower level/previous time step
+WARNING: 2019-02-22 17:30:56.234959: No particles have reached edge
+WARNING: 2019-02-22 17:30:56.235127: Copying lower level/previous time step
+WARNING: 2019-02-22 17:30:56.928304: No particles have reached edge
+WARNING: 2019-02-22 17:30:56.928496: Copying lower level/previous time step
+WARNING: 2019-02-22 17:30:57.622858: No particles have reached edge
+WARNING: 2019-02-22 17:30:57.623035: Copying lower level/previous time step
+WARNING: 2019-02-22 17:30:58.965464: No particles have reached edge
+WARNING: 2019-02-22 17:30:58.965660: Copying lower level/previous time step
+WARNING: 2019-02-22 17:31:01.707294: No particles have reached edge
+WARNING: 2019-02-22 17:31:01.707537: Copying lower level/previous time step
+WARNING: 2019-02-22 17:31:02.391257: No particles have reached edge
+WARNING: 2019-02-22 17:31:02.391455: Copying lower level/previous time step
+WARNING: 2019-02-22 17:31:03.074182: No particles have reached edge
+WARNING: 2019-02-22 17:31:03.074391: Copying lower level/previous time step
+WARNING: 2019-02-22 17:31:03.768599: No particles have reached edge
+WARNING: 2019-02-22 17:31:03.768767: Copying lower level/previous time step
+WARNING: 2019-02-22 17:31:05.799948: No particles have reached edge
+WARNING: 2019-02-22 17:31:05.800115: Copying lower level/previous time step
+2019-02-22 17:31:07.901792: Number of particles reaching edge: 181, 181, 181, 181, 181, 181, 181, 181, 178, 176, 173, 161, 172, 172, 179, 141, 0, 181, 181, 181, 181, 181, 181, 181, 181, 179, 164, 159, 164, 178, 168, 176, 132, 0, 181, 181, 181, 181, 181, 181, 181, 181, 181, 174, 160, 168, 172, 162, 176, 137, 0, 181, 181, 181, 181, 181, 181, 181, 181, 180, 168, 162, 174, 179, 169, 178, 101, 0, 181, 181, 181, 181, 181, 181, 181, 181, 180, 174, 157, 171, 179, 178, 173, 101, 0, 181, 181, 181, 181, 181, 181, 181, 181, 181, 170, 156, 172, 178, 172, 180, 116, 0, 181, 181, 181, 181, 181, 181, 181, 181, 174, 167, 162, 169, 178, 173, 171, 110, 0, 181, 181, 181, 181, 181, 181, 181, 181, 170, 165, 169, 167, 178, 176, 169, 96, 0, 181, 181, 181, 181, 181, 181, 181, 179, 176, 159, 170, 170, 180, 176, 167, 94, 0, 181, 181, 181, 181, 181, 181, 181, 174, 170, 159, 167, 167, 176, 174, 169, 95, 0, 179, 180, 181, 180, 180, 181, 181, 174, 160, 163, 168, 164, 165, 161, 134, 73, 1, 181, 180, 181, 180, 181, 179, 181, 180, 177, 177, 169, 170, 156, 144, 154, 137, 0, 181, 179, 181, 179, 180, 178, 181, 179, 178, 174, 167, 160, 153, 167, 168, 129, 2, 180, 179, 177, 181, 180, 170, 173, 178, 179, 180, 177, 155, 149, 154, 152, 124, 1, 180, 180, 180, 181, 178, 175, 177, 173, 165, 180, 177, 176, 161, 171, 142, 121, 1, 181, 181, 181, 180, 177, 180, 180, 174, 166, 168, 181, 181, 181, 180, 161, 66, 0, 181, 178, 181, 181, 181, 181, 180, 179, 177, 175, 178, 181, 181, 180, 156, 99, 0, 177, 173, 175, 181, 181, 177, 179, 178, 178, 180, 177, 181, 181, 181, 181, 133, 0, 176, 178, 174, 181, 181, 181, 179, 176, 171, 168, 179, 181, 181, 181, 181, 138, 0, 180, 180, 181, 180, 180, 180, 181, 181, 181, 181, 181, 181, 181, 181, 181, 163, 3, 177, 178, 178, 179, 181, 181, 180, 181, 181, 181, 181, 181, 181, 181, 181, 172, 5, 179, 176, 173, 179, 181, 181, 180, 174, 179, 179, 181, 181, 181, 181, 181, 165, 0, 181, 181, 181, 179, 181, 181, 180, 179, 179, 181, 181, 181, 181, 181, 181, 173, 7, 179, 179, 180, 179, 181, 178, 172, 166, 177, 181, 181, 181, 181, 181, 181, 166, 9, 178, 176, 179, 178, 180, 178, 173, 171, 174, 177, 181, 181, 181, 181, 181, 169, 7
+2019-02-22 17:31:07.902049: Time steps in file: 25
+2019-02-22 17:31:10.292794: Reading satellite obs file: /home/ag12733/Python/acrg/tests/files/NAME/raw_output/Satellite_ByDay/SOUTHAMERICA_GOSAT-BRAZIL_column/Observations/gosat-fts_gosat_20130101_ch4-column.nc
+2019-02-22 17:31:10.560025: Number of satellite time points > 1 so unable to rely on time interpolated from fields files to be correct. Not checking time within obs file against fields file time.
+2019-02-22 17:31:14.772033: Writing file: /home/ag12733/Python/acrg/tests/files/NAME/raw_output/Satellite_ByDay/SOUTHAMERICA_GOSAT-BRAZIL_column/Processed_Fields_files/GOSAT-BRAZIL-column_SOUTHAMERICA_201301.nc
+2019-02-22 17:31:15.051601: Written... GOSAT-BRAZIL-column_SOUTHAMERICA_201301.nc
+2019-02-22 17:57:44.596727: Testing whether file exists or needs updating: /home/ag12733/Python/acrg/tests/files/NAME/raw_output/Satellite_ByDay/SOUTHAMERICA_GOSAT-BRAZIL_column/Processed_Fields_files/GOSAT-BRAZIL-column_SOUTHAMERICA_201301.nc
+2019-02-22 17:57:44.596884: Looking for files with date string: 20130101 in /home/ag12733/Python/acrg/tests/files/NAME/raw_output/Satellite_ByDay/SOUTHAMERICA_GOSAT-BRAZIL_column/
+2019-02-22 17:57:47.403494: Reading... Fields_SOUTHAMERICA_GOSAT-BRAZIL_column_Fixed_ByDay_20130101.txt.gz
+2019-02-22 17:58:00.000673: Bottom-left grid point (CENTRE): -91.329E, -60.981N
+2019-02-22 17:58:00.001054: Timestep: 4 minutes
+2019-02-22 17:58:00.001132: Levels: 17 
+2019-02-22 17:58:00.001199: NAME version: 3
+2019-02-22 17:58:00.050042: Particle locations /home/ag12733/Python/acrg/tests/files/NAME/raw_output/Satellite_ByDay/SOUTHAMERICA_GOSAT-BRAZIL_column/Particle_files/particle_location_SOUTHAMERICA_GOSAT-BRAZIL_column_Fixed_ByDay_20130101.txt.gz
+WARNING: 2019-02-22 17:58:00.776984: No particles have reached edge
+WARNING: 2019-02-22 17:58:00.777198: Copying lower level/previous time step
+WARNING: 2019-02-22 17:58:01.420422: No particles have reached edge
+WARNING: 2019-02-22 17:58:01.420608: Copying lower level/previous time step
+WARNING: 2019-02-22 17:58:02.077011: No particles have reached edge
+WARNING: 2019-02-22 17:58:02.077193: Copying lower level/previous time step
+WARNING: 2019-02-22 17:58:02.731187: No particles have reached edge
+WARNING: 2019-02-22 17:58:02.731370: Copying lower level/previous time step
+WARNING: 2019-02-22 17:58:03.365836: No particles have reached edge
+WARNING: 2019-02-22 17:58:03.366026: Copying lower level/previous time step
+WARNING: 2019-02-22 17:58:04.022281: No particles have reached edge
+WARNING: 2019-02-22 17:58:04.022481: Copying lower level/previous time step
+WARNING: 2019-02-22 17:58:04.674271: No particles have reached edge
+WARNING: 2019-02-22 17:58:04.674514: Copying lower level/previous time step
+WARNING: 2019-02-22 17:58:05.304979: No particles have reached edge
+WARNING: 2019-02-22 17:58:05.305161: Copying lower level/previous time step
+WARNING: 2019-02-22 17:58:05.952670: No particles have reached edge
+WARNING: 2019-02-22 17:58:05.952886: Copying lower level/previous time step
+WARNING: 2019-02-22 17:58:06.599145: No particles have reached edge
+WARNING: 2019-02-22 17:58:06.599341: Copying lower level/previous time step
+WARNING: 2019-02-22 17:58:07.893476: No particles have reached edge
+WARNING: 2019-02-22 17:58:07.893662: Copying lower level/previous time step
+WARNING: 2019-02-22 17:58:10.477631: No particles have reached edge
+WARNING: 2019-02-22 17:58:10.477807: Copying lower level/previous time step
+WARNING: 2019-02-22 17:58:11.121765: No particles have reached edge
+WARNING: 2019-02-22 17:58:11.121965: Copying lower level/previous time step
+WARNING: 2019-02-22 17:58:11.762237: No particles have reached edge
+WARNING: 2019-02-22 17:58:11.762450: Copying lower level/previous time step
+WARNING: 2019-02-22 17:58:12.405206: No particles have reached edge
+WARNING: 2019-02-22 17:58:12.405404: Copying lower level/previous time step
+WARNING: 2019-02-22 17:58:14.317833: No particles have reached edge
+WARNING: 2019-02-22 17:58:14.318012: Copying lower level/previous time step
+2019-02-22 17:58:16.271083: Number of particles reaching edge: 181, 181, 181, 181, 181, 181, 181, 181, 178, 176, 173, 161, 172, 172, 179, 141, 0, 181, 181, 181, 181, 181, 181, 181, 181, 179, 164, 159, 164, 178, 168, 176, 132, 0, 181, 181, 181, 181, 181, 181, 181, 181, 181, 174, 160, 168, 172, 162, 176, 137, 0, 181, 181, 181, 181, 181, 181, 181, 181, 180, 168, 162, 174, 179, 169, 178, 101, 0, 181, 181, 181, 181, 181, 181, 181, 181, 180, 174, 157, 171, 179, 178, 173, 101, 0, 181, 181, 181, 181, 181, 181, 181, 181, 181, 170, 156, 172, 178, 172, 180, 116, 0, 181, 181, 181, 181, 181, 181, 181, 181, 174, 167, 162, 169, 178, 173, 171, 110, 0, 181, 181, 181, 181, 181, 181, 181, 181, 170, 165, 169, 167, 178, 176, 169, 96, 0, 181, 181, 181, 181, 181, 181, 181, 179, 176, 159, 170, 170, 180, 176, 167, 94, 0, 181, 181, 181, 181, 181, 181, 181, 174, 170, 159, 167, 167, 176, 174, 169, 95, 0, 179, 180, 181, 180, 180, 181, 181, 174, 160, 163, 168, 164, 165, 161, 134, 73, 1, 181, 180, 181, 180, 181, 179, 181, 180, 177, 177, 169, 170, 156, 144, 154, 137, 0, 181, 179, 181, 179, 180, 178, 181, 179, 178, 174, 167, 160, 153, 167, 168, 129, 2, 180, 179, 177, 181, 180, 170, 173, 178, 179, 180, 177, 155, 149, 154, 152, 124, 1, 180, 180, 180, 181, 178, 175, 177, 173, 165, 180, 177, 176, 161, 171, 142, 121, 1, 181, 181, 181, 180, 177, 180, 180, 174, 166, 168, 181, 181, 181, 180, 161, 66, 0, 181, 178, 181, 181, 181, 181, 180, 179, 177, 175, 178, 181, 181, 180, 156, 99, 0, 177, 173, 175, 181, 181, 177, 179, 178, 178, 180, 177, 181, 181, 181, 181, 133, 0, 176, 178, 174, 181, 181, 181, 179, 176, 171, 168, 179, 181, 181, 181, 181, 138, 0, 180, 180, 181, 180, 180, 180, 181, 181, 181, 181, 181, 181, 181, 181, 181, 163, 3, 177, 178, 178, 179, 181, 181, 180, 181, 181, 181, 181, 181, 181, 181, 181, 172, 5, 179, 176, 173, 179, 181, 181, 180, 174, 179, 179, 181, 181, 181, 181, 181, 165, 0, 181, 181, 181, 179, 181, 181, 180, 179, 179, 181, 181, 181, 181, 181, 181, 173, 7, 179, 179, 180, 179, 181, 178, 172, 166, 177, 181, 181, 181, 181, 181, 181, 166, 9, 178, 176, 179, 178, 180, 178, 173, 171, 174, 177, 181, 181, 181, 181, 181, 169, 7
+2019-02-22 17:58:16.271373: Time steps in file: 25
+2019-02-22 17:58:18.218278: Reading satellite obs file: /home/ag12733/Python/acrg/tests/files/NAME/raw_output/Satellite_ByDay/SOUTHAMERICA_GOSAT-BRAZIL_column/Observations/gosat-fts_gosat_20130101_ch4-column.nc
+2019-02-22 17:58:18.479765: Number of satellite time points > 1 so unable to rely on time interpolated from fields files to be correct. Not checking time within obs file against fields file time.
+2019-02-22 17:58:21.510520: Writing file: /home/ag12733/Python/acrg/tests/files/NAME/raw_output/Satellite_ByDay/SOUTHAMERICA_GOSAT-BRAZIL_column/Processed_Fields_files/GOSAT-BRAZIL-column_SOUTHAMERICA_201301.nc
+2019-02-22 17:58:21.703497: Written... GOSAT-BRAZIL-column_SOUTHAMERICA_201301.nc

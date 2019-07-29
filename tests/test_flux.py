@@ -13,7 +13,7 @@ import os
 data_path = os.getenv("DATA_PATH")
 
 def test_write(tmpdir):
-    with xr.open_dataset(data_path+'/NAME/emissions/EUROPE/n2o-ocean_EUROPE_2009.nc') as load:
+    with xr.open_dataset(data_path+'/LPDM/emissions/EUROPE/n2o-ocean_EUROPE_2009.nc') as load:
         ds = load.load()
     del ds.attrs['author']
     del ds.attrs['date_created']

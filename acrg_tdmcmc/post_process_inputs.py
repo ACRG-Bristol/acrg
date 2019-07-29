@@ -141,6 +141,17 @@ if __name__=="__main__":
     dates=["2012-01-01"] # Can be a list of one date or many dates
     species="ch4"
     domain="EUROPE"
+    # Name that specifies the naming of the country file. This allows one to specify
+    # a region that is smaller than sub-transd to compute totals over different areas
+    # Example: domain_name = 'THD_coastal' corresponds to a country file called
+    # country_THD_coastal.nc
+    # country_THD_coastal can define a region smaller than sub-transd but MUST 
+    # be on the same lat/lon grid!
+    domain_name = domain     
+    # country_dir allows you to specify a different directory where a custom
+    #country file can live. Default of None points to the /data/shared/LPDM/countries/
+    #Example: country_dir = '/data/ag12733/countries/'
+    country_dir = None
 
     network="AGAGE"
     experiment="MHD_TAC"
@@ -221,8 +232,8 @@ if __name__=="__main__":
     ## Calculate country totals
     if calc_country == True:
         country_it,country_mean,country_percentile,country_prior,country_index \
-         = process.country_emissions_mult(ds_list, countries, species, domain, percentiles,
-                                units=units, ocean=ocean, uk_split=uk_split)
+         = process.country_emissions_mult(ds_list, countries, species, domain_name, percentiles,
+                                units=units, ocean=ocean, uk_split=uk_split, country_dir = country_dir)
         country_data = {}
         country_data["country_mean"] = country_mean
         country_data["country_percentile"] = country_percentile

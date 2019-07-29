@@ -852,7 +852,7 @@ def test_open_name_pressure_file():
     '''
     Test pressure file can be opened using name_pressure_file() function.
     '''
-    filename = os.path.join(acrg_path,"tests/files/NAME/surface_pressure/SOUTHAMERICA/Pressure_C1_20120101_1d.txt")
+    filename = os.path.join(acrg_path,"tests/files/LPDM/surface_pressure/SOUTHAMERICA/Pressure_C1_20120101_1d.txt")
     out = gosat.name_pressure_file(filename)
     assert out != None
 
@@ -862,7 +862,7 @@ def test_name_pressure():
     '''
     Test pressure file can be opened and extracted with name_pressure() function.
     '''
-    directory = os.path.join(acrg_path,"tests/files/NAME/surface_pressure/SOUTHAMERICA")
+    directory = os.path.join(acrg_path,"tests/files/LPDM/surface_pressure/SOUTHAMERICA")
     start_date = "2012-01-01"
     end_date = "2012-01-02"
     max_days = 1
@@ -876,7 +876,7 @@ def test_name_match_diff_columns(gosat_dataset):
     Test different column names can be used when calling name_pressure_match() function suitable output
     is produced.
     '''
-    directory = os.path.join(acrg_path,"tests/files/NAME/surface_pressure")
+    directory = os.path.join(acrg_path,"tests/files/LPDM/surface_pressure")
     pressure_domain="SOUTHAMERICA"
     
     dimension_1 = "time"
@@ -914,7 +914,7 @@ def test_pressure_match_offset(gosat_brazil_day_offset_dataset,ds_dimensions,ds_
     over the course of a day.
     '''
     
-    directory = os.path.join(acrg_path,"tests/files/NAME/surface_pressure/")
+    directory = os.path.join(acrg_path,"tests/files/LPDM/surface_pressure/")
     pressure_domain="SOUTHAMERICA"
     full_directory = os.path.join(directory,pressure_domain)
 
@@ -963,7 +963,7 @@ def test_pressure_match_offset_day(gosat_brazil_day_offset_dataset,ds_dimensions
     Test one day can be successfully used as a template for all days of a month when looking
     at the pressure profile.
     '''
-    directory = os.path.join(acrg_path,"tests/files/NAME/surface_pressure/")
+    directory = os.path.join(acrg_path,"tests/files/LPDM/surface_pressure/")
     pressure_domain="SOUTHAMERICA"
 
     gosat_brazil_day_offset_dataset_dummy = gosat_brazil_day_offset_dataset.copy(deep=True)

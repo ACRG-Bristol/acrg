@@ -34,9 +34,9 @@ if data_path is None:
 
 # These are the default directories if no optional arguments are specified in footprints_data_merge,
 # bc_sensitivity or fp_sensitivity
-fields_file_path = join(data_path, 'NAME/fp/')
-basis_dir = join(data_path, 'NAME/basis_functions/')
-bc_basis_dir = join(data_path,'NAME/bc_basis_functions/')
+fields_file_path = join(data_path, 'LPDM/fp_NAME/')
+basis_dir = join(data_path, 'LPDM/basis_functions/')
+bc_basis_dir = join(data_path,'LPDM/bc_basis_functions/')
 
 
 def basis_blocks(domain, time, blocksize, basis_case=None): 

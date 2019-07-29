@@ -2189,7 +2189,7 @@ def copy_processed(domain):
     Routine to copy files from:
         /dagage2/agage/metoffice/NAME_output/DOMAIN_SITE_HEIGHT/Processed_Fields_files
         to:
-        air.chm:/data/shared/NAME/fp_netcdf/DOMAIN/
+        air.chm:/data/shared/LPDM/fp_netcdf/DOMAIN/
         
     Args:
         domain (str):
@@ -2200,7 +2200,7 @@ def copy_processed(domain):
     '''
     
     src_folder = "/dagage2/agage/metoffice/NAME_output/"
-    dst_folder = "/data/shared/NAME/fp/" + domain + "/"
+    dst_folder = "/data/shared/LPDM/fp_NAME/" + domain + "/"
     
     files = glob.glob(src_folder + domain +
         "_*/Processed_Fields_files/*.nc")
