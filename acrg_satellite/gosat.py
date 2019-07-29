@@ -105,10 +105,10 @@ from acrg_countrymask import domain_volume
 data_path = os.getenv("DATA_PATH")
 home = os.getenv("HOME")
 input_directory=os.path.join(data_path,"obs_raw/GOSAT/CH4_GOS_OCPR_v7.2/")
-fp_directory = os.path.join(data_path,'NAME/fp/')
+fp_directory = os.path.join(data_path,'LPDM/fp_NAME/')
 obs_directory = os.path.join(data_path,'obs/') # Where to write output nc files
 name_csv_directory = os.path.join(home,"NAME_files") # Where to write output NAME csv files
-name_pressure_directory = os.path.join(data_path,"NAME/surface_pressure/")
+name_pressure_directory = os.path.join(data_path,"LPDM/surface_pressure/")
 
 def apply_filter(ds,filter_array,dim_apply='time'):
     '''
@@ -1583,7 +1583,7 @@ def name_pressure_match(ds,pressure_domain,columns=["latitude","longitude","time
         pressure_domain (str) :
             Domain over which surface pressure values have been extracted (can be distinct from 
             domain if pressure_domain contains area of domain).
-            Check $DATA_PATH/NAME/surface_pressure folder to see which domains currently exist.
+            Check $DATA_PATH/LPDM/surface_pressure folder to see which domains currently exist.
         columns (list, optional) : 
             Names of data variables or co-ords within input Dataset for the latitude, longitude and time values.
             Default = ["latitude","longitude","time"]
@@ -1673,7 +1673,7 @@ def name_topog_match(ds,pressure_domain,columns=["latitude","longitude"],name="t
         pressure_domain (str) :
             Domain over which topography (and surface pressure) values have been extracted (can be 
             distinct from domain if pressure_domain contains area of domain).
-            Check $DATA_PATH/NAME/surface_pressure folder to see which domains currently exist.
+            Check $DATA_PATH/LPDM/surface_pressure folder to see which domains currently exist.
         columns (list, optional) : 
             Names of data variables or co-ords within input Dataset for the latitude and longitude values.
             Default = ["latitude","longitude"]
@@ -1759,7 +1759,7 @@ def name_pressure_filter(ds,filters,pressure_NAME=None,columns=["latitude","long
             Domain over which surface pressure values have been extracted (can be distinct from 
             domain if pressure_domain contains area of domain).
             * Must be specified if pressure_NAME has not been specified *
-            Check $DATA_PATH/NAME/surface_pressure folder to see which domains currently exist.
+            Check $DATA_PATH/LPDM/surface_pressure folder to see which domains currently exist.
         max_days (int, optional) : 
             Number of days tolerance to allow when using time stamp to find relevant NAME pressure values. 
             Default = 31 (days).
@@ -1947,7 +1947,7 @@ def define_pressure_levels(ds,pressure_domain=None,p_column="pressure_levels",se
             Domain over which surface pressure values have been extracted (can be distinct from 
             domain if pressure_domain contains area of domain).
             Must be specified if pressure_NAME is not included explicitly.
-            Check $DATA_PATH/NAME/surface_pressure folder to see which domains currently exist.
+            Check $DATA_PATH/LPDM/surface_pressure folder to see which domains currently exist.
         p_column (str, optional) : 
             Name for the pressure_levels data (str). Default = "pressure_levels"
         set_as_edges (bool, optional) : 
@@ -2411,7 +2411,7 @@ def gosat_output_name(ds,site,max_level=17,use_name_pressure=False,pressure_doma
             Domain over which surface pressure values have been extracted (can be distinct from 
             domain if pressure_domain contains area of domain).
             Must be included if use_name_pressure=True.
-            Check $DATA_PATH/NAME/surface_pressure folder to see which domains currently exist.
+            Check $DATA_PATH/LPDM/surface_pressure folder to see which domains currently exist.
         pressure_base_dir (str, optional) : 
             Base directory containing the NAME output files for the SurfacePressure run.
             Filename is assumed to be of the form "Pressure_C1_*.txt"
@@ -2654,7 +2654,7 @@ def gosat_process_file(filename,site,species="ch4",lat_bounds=[],lon_bounds=[],d
         pressure_base_dir (str, optional) : 
             Base directory containing the NAME output files for the SurfacePressure run.
             If pressure_domain (or domain) is specified this will be appended to the pressure_base_dir
-            Default = "$DATA_PATH/NAME/surface_pressure/"
+            Default = "$DATA_PATH/LPDM/surface_pressure/"
         pressure_domain (str, optional) :
             Domain over which surface pressure has been created. Only needs to be specified if this is 
             different (i.e. wider domain) than domain, or domain has not been explictly specified.
@@ -2897,7 +2897,7 @@ def gosat_process(site,species="ch4",input_directory=input_directory,start=None,
         pressure_base_dir (str, optional) : 
             Base directory containing the NAME output files for the SurfacePressure run.
             If pressure_domain (or domain) is specified this will be appended to the pressure_base_dir.
-            Default = "$DATA_PATH/NAME/surface_pressure/"
+            Default = "$DATA_PATH/LPDM/surface_pressure/"
         pressure_domain (str, optional) :
             Domain over which surface pressure has been created. Only needs to be specified if this is 
             different (i.e. wider domain) than domain, or domain has not been explictly specified.

@@ -45,31 +45,31 @@ acrg_path = os.getenv("ACRG_PATH")
 @pytest.fixture(scope="module")
 def fp_directory():
     ''' Define base directory containing footprint files '''
-    directory = os.path.join(acrg_path,"tests/files/NAME/fp/")
+    directory = os.path.join(acrg_path,"tests/files/LPDM/fp/")
     return directory
 
 @pytest.fixture(scope="module")
 def flux_directory():
     ''' Define base directory containing flux files '''
-    directory = os.path.join(acrg_path,"tests/files/NAME/emissions/")
+    directory = os.path.join(acrg_path,"tests/files/LPDM/emissions/")
     return directory
 
 @pytest.fixture(scope="module")
 def bc_directory():
     ''' Define base directory containing boundary condition files '''
-    directory = os.path.join(acrg_path,"tests/files/NAME/bc/")
+    directory = os.path.join(acrg_path,"tests/files/LPDM/bc/")
     return directory
 
 @pytest.fixture(scope="module")
 def basis_directory():
     ''' Define base directory containing basis function files'''
-    directory = os.path.join(acrg_path,"tests/files/NAME/basis_functions/")
+    directory = os.path.join(acrg_path,"tests/files/LPDM/basis_functions/")
     return directory
 
 @pytest.fixture(scope="module")
 def bc_basis_directory():
     ''' Define base directory containing boundary condition basis function files '''
-    directory = os.path.join(acrg_path,"tests/files/NAME/bc_basis_functions/")
+    directory = os.path.join(acrg_path,"tests/files/LPDM/bc_basis_functions/")
     return directory
 
 

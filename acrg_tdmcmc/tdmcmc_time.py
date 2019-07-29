@@ -80,7 +80,7 @@ domain='EUROPE'
 run_name="test"
 
 
-lapse_dir = data_path + "/NAME/vertical_profiles/"
+lapse_dir = data_path + "/LPDM/vertical_profiles/"
 output_directory="path/to/output/"
 fp_basis_case = 'country_mask'
 bc_basis_case = 'NESW'

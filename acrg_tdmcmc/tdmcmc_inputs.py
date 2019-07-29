@@ -319,7 +319,7 @@ tau_pdf = param['tau_pdf']
 # nBIAS - seems to be specific to GOSAT?
 # nIC - a combination of all the above dimesions
 
-f_list=glob.glob(data_path + "/NAME/basis_functions/" 
+f_list=glob.glob(data_path + "/LPDM/basis_functions/" 
                     + domain + "/" + fp_basis_case + 
                     "_" + domain + "_*.nc") 
 
@@ -332,7 +332,7 @@ if len(f_list) > 0:
 else:
     raise LookupError("No file exists for that fp_basis_case and domain")
 
-f_list2=glob.glob(data_path + "/NAME/bc_basis_functions/" 
+f_list2=glob.glob(data_path + "/LPDM/bc_basis_functions/" 
                     + domain + "/" + bc_basis_case + 
                     "_" + domain + "_*.nc") 
 if len(f_list2) > 0:                    

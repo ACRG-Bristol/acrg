@@ -126,7 +126,7 @@ if __name__=="__main__":
     # be on the same lat/lon grid!
     domain_name = domain     
     # country_dir allows you to specify a different directory where a custom
-    #country file can live. Default of None points to the /data/shared/NAME/countries/
+    #country file can live. Default of None points to the /data/shared/LPDM/countries/
     #Example: country_dir = '/data/ag12733/countries/'
     country_dir = None
 

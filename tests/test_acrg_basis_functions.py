@@ -39,7 +39,7 @@ if data_path is None:
           export DATA_PATH=/path/to/data/directory/ and restart python terminal")
     
 import acrg_name.basis_functions
-acrg_name.basis_functions.fields_file_path = join(acrg_path, 'tests/files/NAME/fp/')
+acrg_name.basis_functions.fields_file_path = join(acrg_path, 'tests/files/LPDM/fp_NAME/')
 acrg_name.basis_functions.basis_dir = join(acrg_path, 'tests/files/output/')
 acrg_name.basis_functions.bc_basis_dir = join(acrg_path,'tests/files/output/')
 if not os.path.exists(acrg_name.basis_functions.basis_dir):
@@ -61,7 +61,7 @@ def test_acrg_basis_blocks_shape():
     '''
     acrg_name.basis_functions.basis_blocks(domain = "EUROPE", time = "2014-02-01", blocksize = 5, basis_case="Test_block")
     ##Read in one of the field datasets
-    filename_field = os.path.join(acrg_path,"tests/files/NAME/fp/EUROPE/MHD-10magl_EUROPE_201402.nc")
+    filename_field = os.path.join(acrg_path,"tests/files/LPDM/fp_NAME/EUROPE/MHD-10magl_EUROPE_201402.nc")
     with xray.open_dataset(filename_field) as temp:
         field_dataset = temp.load()
 
@@ -92,7 +92,7 @@ def test_acrg_basis_blocks_output():
         test_basis_block = temp.load()
 
     basis_array = test_basis_block.variables['basis'][:]
-    filename_benchmark = os.path.join(acrg_path,"tests/files/NAME/basis_functions/EUROPE/Benchmark_block_EUROPE_2014.nc")
+    filename_benchmark = os.path.join(acrg_path,"tests/files/LPDM/basis_functions/EUROPE/Benchmark_block_EUROPE_2014.nc")
     with xray.open_dataset(filename_benchmark) as temp:
         benchmark_dataset = temp.load()
 
@@ -107,7 +107,7 @@ def test_acrg_basis_transd_shape():
     '''
     acrg_name.basis_functions.basis_transd(domain = "EUROPE", time = "2014-02-01", basis_case="sub-transd", sub_lon_min = -80., sub_lon_max = 20., sub_lat_min = 30., sub_lat_max = 70.)
     ##Read in one of the field datasets
-    filename_field = os.path.join(acrg_path,"tests/files/NAME/fp/EUROPE/MHD-10magl_EUROPE_201402.nc")
+    filename_field = os.path.join(acrg_path,"tests/files/LPDM/fp_NAME/EUROPE/MHD-10magl_EUROPE_201402.nc")
     with xray.open_dataset(filename_field) as temp:
         field_dataset = temp.load()
 
@@ -135,7 +135,7 @@ def test_acrg_basis_transd_output():
         test_basis_transd = temp.load()
 
     basis_array = test_basis_transd.variables['basis'][:]
-    filename_benchmark = os.path.join(acrg_path,"tests/files/NAME/basis_functions/EUROPE/Benchmark_sub-transd_EUROPE_2014.nc")
+    filename_benchmark = os.path.join(acrg_path,"tests/files/LPDM/basis_functions/EUROPE/Benchmark_sub-transd_EUROPE_2014.nc")
     with xray.open_dataset(filename_benchmark) as temp:
         benchmark_dataset = temp.load()
     benchmark_basis_array = benchmark_dataset.variables['basis'][:]
@@ -150,7 +150,7 @@ def test_acrg_basis_bc_blocks_shape():
     '''
     acrg_name.basis_functions.basis_bc_blocks(domain = "EUROPE", basis_case='Test_NESW', time = "2014-02-01", vertical = 4)
     ##Read in one of the field datasets
-    filename_field = os.path.join(acrg_path,"tests/files/NAME/fp/EUROPE/MHD-10magl_EUROPE_201402.nc")
+    filename_field = os.path.join(acrg_path,"tests/files/LPDM/fp_NAME/EUROPE/MHD-10magl_EUROPE_201402.nc")
     with xray.open_dataset(filename_field) as temp:
         field_dataset = temp.load()
 
@@ -194,7 +194,7 @@ def test_acrg_basis_bc_blocks_output():
     bc_basis_s_array = test_basis_bc_block.variables['bc_basis_s'][:]
     bc_basis_w_array = test_basis_bc_block.variables['bc_basis_w'][:]
 
-    filename_benchmark = os.path.join(acrg_path,"tests/files/NAME/bc_basis_functions/EUROPE/Benchmark_NESW_EUROPE_2014.nc")
+    filename_benchmark = os.path.join(acrg_path,"tests/files/LPDM/bc_basis_functions/EUROPE/Benchmark_NESW_EUROPE_2014.nc")
     with xray.open_dataset(filename_benchmark) as temp:
         benchmark_dataset = temp.load()
  
@@ -217,7 +217,7 @@ def test_acrg_basis_bc_uniform_shape():
     '''
     acrg_name.basis_functions.basis_bc_uniform(domain = "EUROPE", time = "2014-02-01", basis_case='Test_uniform')
     ##Read in one of the field datasets
-    filename_field = os.path.join(acrg_path,"tests/files/NAME/fp/EUROPE/MHD-10magl_EUROPE_201402.nc")
+    filename_field = os.path.join(acrg_path,"tests/files/LPDM/fp_NAME/EUROPE/MHD-10magl_EUROPE_201402.nc")
     with xray.open_dataset(filename_field) as temp:
         field_dataset = temp.load()
     lon_field_dim = len(field_dataset['lon'][:])
@@ -260,7 +260,7 @@ def test_acrg_basis_bc_uniform_output():
     bc_basis_s_array = test_basis_bc_uniform.variables['bc_basis_s'][:]
     bc_basis_w_array = test_basis_bc_uniform.variables['bc_basis_w'][:]
 
-    filename_benchmark = os.path.join(acrg_path,"tests/files/NAME/bc_basis_functions/EUROPE/Benchmark_uniform_EUROPE_022014.nc")
+    filename_benchmark = os.path.join(acrg_path,"tests/files/LPDM/bc_basis_functions/EUROPE/Benchmark_uniform_EUROPE_022014.nc")
     with xray.open_dataset(filename_benchmark) as temp:
         benchmark_dataset = temp.load()
     benchmark_bc_basis_n_array = benchmark_dataset.variables['bc_basis_n'][:]
@@ -288,7 +288,7 @@ def test_acrg_basis_bc_all_gradients():
     bc_basis_s_array = test_basis_bc_uniform.variables['bc_basis_s'][:]
     bc_basis_w_array = test_basis_bc_uniform.variables['bc_basis_w'][:]
 
-    filename_benchmark = os.path.join(acrg_path,"tests/files/NAME/bc_basis_functions/EUROPE/Benchmark_horiz-strat-grad_EUROPE_022014.nc")
+    filename_benchmark = os.path.join(acrg_path,"tests/files/LPDM/bc_basis_functions/EUROPE/Benchmark_horiz-strat-grad_EUROPE_022014.nc")
     with xray.open_dataset(filename_benchmark) as temp:
         benchmark_dataset = temp.load()
     benchmark_bc_basis_n_array = benchmark_dataset.variables['bc_basis_n'][:]
@@ -320,7 +320,7 @@ def test_acrg_basis_bc_horiz_gradient():
     bc_basis_s_array = test_basis_bc_uniform.variables['bc_basis_s'][:]
     bc_basis_w_array = test_basis_bc_uniform.variables['bc_basis_w'][:]
 
-    filename_benchmark = os.path.join(acrg_path,"tests/files/NAME/bc_basis_functions/EUROPE/Benchmark_horiz-grad_EUROPE_2014.nc")
+    filename_benchmark = os.path.join(acrg_path,"tests/files/LPDM/bc_basis_functions/EUROPE/Benchmark_horiz-grad_EUROPE_2014.nc")
     with xray.open_dataset(filename_benchmark) as temp:
         benchmark_dataset = temp.load()
     benchmark_bc_basis_n_array = benchmark_dataset.variables['bc_basis_n'][:]
@@ -352,7 +352,7 @@ def test_acrg_basis_bc_pca():
     bc_basis_s_array = test_basis_bc_uniform.variables['bc_basis_s'][:]
     bc_basis_w_array = test_basis_bc_uniform.variables['bc_basis_w'][:]
 
-    filename_benchmark = os.path.join(acrg_path,"tests/files/NAME/bc_basis_functions/EUROPE/Benchmark_ch4_pca_EUROPE_022014.nc")
+    filename_benchmark = os.path.join(acrg_path,"tests/files/LPDM/bc_basis_functions/EUROPE/Benchmark_ch4_pca_EUROPE_022014.nc")
     with xray.open_dataset(filename_benchmark) as temp:
         benchmark_dataset = temp.load()
     benchmark_bc_basis_n_array = benchmark_dataset.variables['bc_basis_n'][:]
