@@ -45,7 +45,7 @@ acrg_path = os.getenv("ACRG_PATH")
 @pytest.fixture(scope="module")
 def fp_directory():
     ''' Define base directory containing footprint files '''
-    directory = os.path.join(acrg_path,"tests/files/LPDM/fp/")
+    directory = os.path.join(acrg_path,"tests/files/LPDM/fp_NAME/")
     return directory
 
 @pytest.fixture(scope="module")

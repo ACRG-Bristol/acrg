@@ -1,0 +1,74 @@
+2019-02-22 17:31:44.577568: Testing whether file exists or needs updating: /home/ag12733/Python/acrg/tests/files/NAME/raw_output/Site/EUROPE_MHD_10magl/Processed_Fields_files/MHD-10magl_EUROPE_201201.nc
+2019-02-22 17:31:44.577859: Looking for files with date string: 201201 in /home/ag12733/Python/acrg/tests/files/NAME/raw_output/Site/EUROPE_MHD_10magl/
+2019-02-22 17:31:45.077428: Reading... Fields_MACE_HEAD_20120101.txt.gz
+2019-02-22 17:31:45.994897: Bottom-left grid point (CENTRE): -97.89999999999999E, 10.729000000000001N
+2019-02-22 17:31:45.995582: Timestep: 120 minutes
+2019-02-22 17:31:45.995667: Levels: 1 
+2019-02-22 17:31:45.995754: NAME version: 2
+2019-02-22 17:31:46.014496: Particle locations /home/ag12733/Python/acrg/tests/files/NAME/raw_output/Site/EUROPE_MHD_10magl/Particle_files/Particles_MACE_HEAD_20120101.txt.gz
+2019-02-22 17:31:47.947452: Number of particles reaching edge: 39985, 39984, 39972, 39941, 39873, 39853, 39909, 39885, 39901, 39908, 39863, 39850
+2019-02-22 17:31:47.947695: Time steps in file: 12
+2019-02-22 17:31:48.144457: Writing file: /home/ag12733/Python/acrg/tests/files/NAME/raw_output/Site/EUROPE_MHD_10magl/Processed_Fields_files/MHD-10magl_EUROPE_201201.nc
+2019-02-22 17:31:48.393683: Written... MHD-10magl_EUROPE_201201.nc
+2019-02-22 17:31:48.398026: Testing whether file exists or needs updating: /home/ag12733/Python/acrg/tests/files/NAME/raw_output/Site/EUROPE_MHD_10magl/Processed_Fields_files/MHD-10magl_EUROPE_201201.nc
+2019-02-22 17:31:48.398231: Looking for files with date string: 201201 in /home/ag12733/Python/acrg/tests/files/NAME/raw_output/Site/EUROPE_MHD_10magl/
+2019-02-22 17:31:48.898371: Reading... Fields_MACE_HEAD_20120101.txt.gz
+2019-02-22 17:31:49.808708: Bottom-left grid point (CENTRE): -97.89999999999999E, 10.729000000000001N
+2019-02-22 17:31:49.809104: Timestep: 120 minutes
+2019-02-22 17:31:49.809179: Levels: 1 
+2019-02-22 17:31:49.809265: NAME version: 2
+2019-02-22 17:31:49.829126: Particle locations /home/ag12733/Python/acrg/tests/files/NAME/raw_output/Site/EUROPE_MHD_10magl/Particle_files/Particles_MACE_HEAD_20120101.txt.gz
+2019-02-22 17:31:51.753663: Number of particles reaching edge: 39985, 39984, 39972, 39941, 39873, 39853, 39909, 39885, 39901, 39908, 39863, 39850
+2019-02-22 17:31:51.753946: Time steps in file: 12
+2019-02-22 17:31:51.954444: Writing file: /home/ag12733/Python/acrg/tests/files/NAME/raw_output/Site/EUROPE_MHD_10magl/Processed_Fields_files/MHD-10magl_EUROPE_201201.nc
+2019-02-22 17:31:52.206903: Written... MHD-10magl_EUROPE_201201.nc
+2019-02-22 17:31:52.207479: Testing whether file exists or needs updating: /home/ag12733/Python/acrg/tests/files/NAME/raw_output/Site/EUROPE_MHD_10magl/Processed_Fields_files_Org/MHD-10magl_EUROPE_201201.nc
+2019-02-22 17:31:52.207580: Looking for files with date string: 201201 in /home/ag12733/Python/acrg/tests/files/NAME/raw_output/Site/EUROPE_MHD_10magl/
+2019-02-22 17:31:58.296164: Read Met file... UMG_MHD_10magl.txt
+2019-02-22 17:31:58.308830: Reading... Fields_MACE_HEAD_20120101.txt.gz
+2019-02-22 17:31:59.228309: Bottom-left grid point (CENTRE): -97.89999999999999E, 10.729000000000001N
+2019-02-22 17:31:59.228643: Timestep: 120 minutes
+2019-02-22 17:31:59.228706: Levels: 1 
+2019-02-22 17:31:59.228762: NAME version: 2
+2019-02-22 17:31:59.248525: Particle locations /home/ag12733/Python/acrg/tests/files/NAME/raw_output/Site/EUROPE_MHD_10magl/Particle_files/Particles_MACE_HEAD_20120101.txt.gz
+2019-02-22 17:32:01.159431: Number of particles reaching edge: 39985, 39984, 39972, 39941, 39873, 39853, 39909, 39885, 39901, 39908, 39863, 39850
+2019-02-22 17:32:01.159659: Time steps in file: 12
+2019-02-22 17:32:01.275201: Writing file: /home/ag12733/Python/acrg/tests/files/NAME/raw_output/Site/EUROPE_MHD_10magl/Processed_Fields_files_Org/MHD-10magl_EUROPE_201201.nc
+2019-02-22 17:32:01.525311: Written... MHD-10magl_EUROPE_201201.nc
+2019-02-22 17:58:48.921615: Testing whether file exists or needs updating: /home/ag12733/Python/acrg/tests/files/NAME/raw_output/Site/EUROPE_MHD_10magl/Processed_Fields_files/MHD-10magl_EUROPE_201201.nc
+2019-02-22 17:58:48.921739: Looking for files with date string: 201201 in /home/ag12733/Python/acrg/tests/files/NAME/raw_output/Site/EUROPE_MHD_10magl/
+2019-02-22 17:58:49.224773: Reading... Fields_MACE_HEAD_20120101.txt.gz
+2019-02-22 17:58:50.032024: Bottom-left grid point (CENTRE): -97.89999999999999E, 10.729000000000001N
+2019-02-22 17:58:50.032453: Timestep: 120 minutes
+2019-02-22 17:58:50.032558: Levels: 1 
+2019-02-22 17:58:50.032636: NAME version: 2
+2019-02-22 17:58:50.056673: Particle locations /home/ag12733/Python/acrg/tests/files/NAME/raw_output/Site/EUROPE_MHD_10magl/Particle_files/Particles_MACE_HEAD_20120101.txt.gz
+2019-02-22 17:58:52.287011: Number of particles reaching edge: 39985, 39984, 39972, 39941, 39873, 39853, 39909, 39885, 39901, 39908, 39863, 39850
+2019-02-22 17:58:52.287442: Time steps in file: 12
+2019-02-22 17:58:52.469135: Writing file: /home/ag12733/Python/acrg/tests/files/NAME/raw_output/Site/EUROPE_MHD_10magl/Processed_Fields_files/MHD-10magl_EUROPE_201201.nc
+2019-02-22 17:58:52.599570: Written... MHD-10magl_EUROPE_201201.nc
+2019-02-22 17:58:52.602718: Testing whether file exists or needs updating: /home/ag12733/Python/acrg/tests/files/NAME/raw_output/Site/EUROPE_MHD_10magl/Processed_Fields_files/MHD-10magl_EUROPE_201201.nc
+2019-02-22 17:58:52.602832: Looking for files with date string: 201201 in /home/ag12733/Python/acrg/tests/files/NAME/raw_output/Site/EUROPE_MHD_10magl/
+2019-02-22 17:58:52.903201: Reading... Fields_MACE_HEAD_20120101.txt.gz
+2019-02-22 17:58:53.707466: Bottom-left grid point (CENTRE): -97.89999999999999E, 10.729000000000001N
+2019-02-22 17:58:53.707836: Timestep: 120 minutes
+2019-02-22 17:58:53.707909: Levels: 1 
+2019-02-22 17:58:53.707973: NAME version: 2
+2019-02-22 17:58:53.731193: Particle locations /home/ag12733/Python/acrg/tests/files/NAME/raw_output/Site/EUROPE_MHD_10magl/Particle_files/Particles_MACE_HEAD_20120101.txt.gz
+2019-02-22 17:58:55.915335: Number of particles reaching edge: 39985, 39984, 39972, 39941, 39873, 39853, 39909, 39885, 39901, 39908, 39863, 39850
+2019-02-22 17:58:55.915789: Time steps in file: 12
+2019-02-22 17:58:56.100071: Writing file: /home/ag12733/Python/acrg/tests/files/NAME/raw_output/Site/EUROPE_MHD_10magl/Processed_Fields_files/MHD-10magl_EUROPE_201201.nc
+2019-02-22 17:58:56.230420: Written... MHD-10magl_EUROPE_201201.nc
+2019-02-22 17:58:56.231246: Testing whether file exists or needs updating: /home/ag12733/Python/acrg/tests/files/NAME/raw_output/Site/EUROPE_MHD_10magl/Processed_Fields_files_Org/MHD-10magl_EUROPE_201201.nc
+2019-02-22 17:58:56.231363: Looking for files with date string: 201201 in /home/ag12733/Python/acrg/tests/files/NAME/raw_output/Site/EUROPE_MHD_10magl/
+2019-02-22 17:58:59.930827: Read Met file... UMG_MHD_10magl.txt
+2019-02-22 17:58:59.945249: Reading... Fields_MACE_HEAD_20120101.txt.gz
+2019-02-22 17:59:00.761728: Bottom-left grid point (CENTRE): -97.89999999999999E, 10.729000000000001N
+2019-02-22 17:59:00.762136: Timestep: 120 minutes
+2019-02-22 17:59:00.762213: Levels: 1 
+2019-02-22 17:59:00.762278: NAME version: 2
+2019-02-22 17:59:00.786035: Particle locations /home/ag12733/Python/acrg/tests/files/NAME/raw_output/Site/EUROPE_MHD_10magl/Particle_files/Particles_MACE_HEAD_20120101.txt.gz
+2019-02-22 17:59:02.940300: Number of particles reaching edge: 39985, 39984, 39972, 39941, 39873, 39853, 39909, 39885, 39901, 39908, 39863, 39850
+2019-02-22 17:59:02.940800: Time steps in file: 12
+2019-02-22 17:59:03.054518: Writing file: /home/ag12733/Python/acrg/tests/files/NAME/raw_output/Site/EUROPE_MHD_10magl/Processed_Fields_files_Org/MHD-10magl_EUROPE_201201.nc
+2019-02-22 17:59:03.185290: Written... MHD-10magl_EUROPE_201201.nc
