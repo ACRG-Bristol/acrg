@@ -569,7 +569,7 @@ def read_met(fnames, met_def_dict=None,vertical_profile=False,satellite=False):
     
     if satellite:
         try:
-            re_met_match = re.compile("Met_[-]?\d+[.]\d+_[-]?\d+[.]\d+_\d{2,5}")
+            re_met_match = re.compile(r"Met_[-]?\d+[.]\d+_[-]?\d+[.]\d+_\d{2,5}")
             file_match = [re.search(re_met_match,f).group() for f in fnames]
         except AttributeError:
             status_log("Could not match Met data filename to expected format.",error_or_warning="warning")
@@ -852,7 +852,8 @@ def footprint_array(fields_file,
                     satellite = False,
                     time_step = None,
                     upper_level = None,
-                    obs_file = None):
+                    obs_file = None,
+                    use_surface_conditions = True):
     '''
     Convert text output from given files into arrays in an xarray.Dataset.
     
@@ -881,6 +882,11 @@ def footprint_array(fields_file,
             Time values cannot always be accurately determined from the input fields file. If obs_file is
             specified, time values will be extracted from these files.
             Default = None.
+        use_surface_conditions (bool, optional) :
+            Use default expected surface conditions for meteorological values
+            if converting from gs/m3 to mol/mol / mol/m2/s units.
+            P/T ratio is fixed as 345 based on typical surface conditions.
+            Default = True.
         
     Returns:
         fp (xarray.Dataset): 
@@ -942,6 +948,7 @@ def footprint_array(fields_file,
     
     z_level=column_headings['z_level'][4:]
     time_column=column_headings['time'][4:]
+    units_column=column_headings["unit"][4:] # Find column containing NAME output units (e.g. g s/m3 or ppm s)
     
     # Set up footprint dataset
     fp = xray.Dataset({"fp": (["time", "lev", "lat", "lon"],
@@ -1000,25 +1007,67 @@ def footprint_array(fields_file,
     # Add in particle locations
     if particle_file is not None:
         fp = fp.merge(particle_hist)
-    
-    # Extract footprint from columns
-    def convert_to_ppt(fp, slice_dict, column):
-        molm3=fp["press"][slice_dict].values/const.R/\
-            const.convert_temperature(fp["temp"][slice_dict].values.squeeze(),"C","K")
-        fp.fp[slice_dict] = data_arrays[column]*area/ \
-            (3600.*timeStep*1.)/molm3
-        #The 1 assumes 1g/s emissions rate
+ 
+    # Extract footprint from columns assuming ppm s units
+    def convert_units(fp, slice_dict, column, units, use_surface_conditions = True):
+        '''
+        Conversion is based on inputs units
+        
+        If units are 'ppm s':
+            Convert from [ppm s] (i.e. mu-mol/mol) units to [(mol/mol) / (mol/m2/s)].
+            
+            Using conversion:
+                sensitivity [mu-mol/mol s] * area [m2] * molar mass [g/mol] * 1e-6 [mu] 
+                    / (time [s] * release rate [g/s])
+        
+        If units are 'g s / m^3' (or 'gs/m3'):
+            Convert from [g s/m3] units to [(mol/mol) / (mol/m2/s)].
+            
+            Using conversion:
+                sensitivity [g s/m3] * area [m2] * RT/P [m3/mol]
+                / (time [s] * release rate [g/s])
+            
+        Note:
+            release rate is assumed to be 1. [g/s]
+            molecular weight in the NAME run itself was set to 1.0, so molar mass will
+            be 1.0 in this calculation as well.
+        
+        Optional args:
+            use_surface_conditions (bool, optional) :
+                If the input units are 'gs/m3', use representation surface P/T ratio of 345 rather
+                than using the input meteorological data.
+                Default = True
+        '''
+        units_no_space = units.replace(' ','')
+        if units == "g s / m^3" or units == "gs/m3" or units_no_space == "gs/m^3"  or units_no_space == "gs/m3":
+            if use_surface_conditions:
+                molm3=345./const.R ## Surface P/T ratio we would expect over Europe (345).
+            else:
+                molm3=fp["press"][slice_dict].values/const.R/\
+                    const.convert_temperature(fp["temp"][slice_dict].values.squeeze(),"C","K")
+            fp.fp[slice_dict] = data_arrays[column]*area/ \
+                (3600.*timeStep*1.)/molm3
+        elif units == "ppm s" or units_no_space == "ppms":
+            fp.fp[slice_dict] = data_arrays[column]*area*1e-6*1./(3600.*timeStep*1.)
+        else:
+            status_log("DO NOT RECOGNISE UNITS OF {} FROM NAME INPUT (expect 'g s / m^3' or 'ppm s')".format(units),
+                       error_or_warning="error")
+        
         return fp
 
     if satellite:
         for t in range(len(time)):
             for l in range(len(levs)):
                 slice_dict = dict(time = [t], lev = [l])
-                fp = convert_to_ppt(fp, slice_dict, t*len(levs)+l)
+                column = t*len(levs)+l
+                if units_column[column] == 'g s / m^3' or units_column[column].replace(' ','') == 'gs/m^3':
+                    status_log("NOT RECOMMENDED TO CREATE SATELLITE FOOTPRINTS USING CONVERTED g s / m3 UNITS. IF POSSIBILE, NAME FOOTPRINTS SHOULD BE RE-GENERATED IN UNITS OF ppm s.",
+                                error_or_warning="warning")
+                fp = convert_units(fp, slice_dict, column, units_column[column],use_surface_conditions=use_surface_conditions)
     else:
         for i in range(len(time)):
             slice_dict = dict(time = [i], lev = [0])
-            fp = convert_to_ppt(fp, slice_dict, i)
+            fp = convert_units(fp, slice_dict, i, units_column[i],use_surface_conditions=use_surface_conditions)
     
     return fp
     
@@ -1029,7 +1078,8 @@ def footprint_concatenate(fields_prefix,
                           met = None,
                           satellite = False,
                           time_step = None,
-                          upper_level = None):
+                          upper_level = None,
+                          use_surface_conditions = True):
     '''Given file search string, finds all fields and particle
     files, reads them and concatenates the output arrays.
     
@@ -1047,9 +1097,14 @@ def footprint_concatenate(fields_prefix,
             Is it for satellite data? Default = False
         time_step (float, optional): 
             Timestep of footprint. Default = None
-        upper_level:
+        upper_level (int):
             Only needed when satellite=True. Highest level number from within the NAME run for the satellite data.
             Default = None.
+        use_surface_conditions (bool, optional) :
+            Use default expected surface conditions for meteorological values
+            if converting from gs/m3 to mol/mol / mol/m2/s units.
+            P/T ratio is fixed as 345 based on typical surface conditions.
+            Default = True.
     
     Returns:
         fp (xarray dataset): 
@@ -1113,7 +1168,8 @@ def footprint_concatenate(fields_prefix,
                                           met = met,
                                           satellite = satellite,
                                           time_step = time_step,
-                                          upper_level = upper_level))                                  
+                                          upper_level = upper_level,
+                                          use_surface_conditions = use_surface_conditions))                                  
     
     # Concatenate
     if len(fp) > 0:
@@ -1140,9 +1196,11 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
             1D array of longitudes
         lats (array): 
             1D array of latitudes
-        levs (???array or list -> TODO): 
+        levs (???array or list):
+            TODO: Clarify inputs
             1D array of particle levels
-        time (???str or datetime object -> TODO): 
+        time (???str or datetime object): 
+            TODO: Clarify inputs
             Timestamps for footprints
         outfile (str): 
             Name of output file
@@ -1384,6 +1442,8 @@ def satellite_vertical_profile(fp, satellite_obs_file, max_level):
     
     ntime = len(fp.time)
     
+    #import pdb
+    #pdb.set_trace()
     for t in range(ntime):
         if np.abs(sat.lon.values[t] - fp.release_lon.values[t,0]) > 1.:
             status_log("Satellite longitude doesn't match footprints",
@@ -1568,6 +1628,7 @@ def process(domain, site, height, year, month,
             met_folder = "Met",
             force_met_empty = False,
             processed_folder = "Processed_Fields_files",
+            use_surface_conditions = True,
             satellite = False,
             obs_folder = "Observations",
             upper_level = None,
@@ -1619,6 +1680,13 @@ def process(domain, site, height, year, month,
         processed_folder (str, optional):
              Folder for processed field files.
              Default = "Processed_Fields_files"
+        use_surface_conditions (bool, optional) :
+            Use default expected surface conditions for meteorological values
+            if converting from gs/m3 to mol/mol / mol/m2/s units.
+            This involves fixing the P/T ratio to 345 based on typical surface conditions 
+            in Europe and not using the meteorlogical data extracted from NAME release
+            points.
+            Default = True.
         satellite (bool, optional):
             NAME run was performed over satellite data.
             This means satellite_vertical_profile function will be used to combined data
@@ -1741,6 +1809,13 @@ def process(domain, site, height, year, month,
                    error_or_warning="status")
             max_level = upper_level
 
+    if use_surface_conditions:
+        status_log("Setting use_surface_conditions to True means that a representative Pressure/Temperature "
+                   +"ratio will be used instead of meteorological data from the NAME output. "
+                   +"This is only applied when converting units from gs/m3",
+                   error_or_warning="warning")
+
+
     # Get date strings for file search
     if satellite:
         file_search_string = subfolder + fields_folder +"/*" + str(year) \
@@ -1851,7 +1926,8 @@ def process(domain, site, height, year, month,
                                             particle_prefix = particles_prefix,
                                             satellite = satellite,
                                             time_step = timeStep,
-                                            upper_level = upper_level)
+                                            upper_level = upper_level,
+                                            use_surface_conditions=use_surface_conditions)
             
         # Do satellite process
         if satellite:
@@ -1978,6 +2054,7 @@ def process_all(domain, site,
                 fields_folder = "Fields_files",
                 met_folder = ["Met", "Met_daily"],
                 force_update = False,
+                use_surface_conditions = True,
                 satellite = False,
                 perturbed_folder = None,
                 max_level = None,
@@ -2010,6 +2087,13 @@ def process_all(domain, site,
         force_update (bool, optional):
             By default, any existing netCDF files are NOT overwritten.
             To explicitly over-write a file, set force_update = True.
+        use_surface_conditions (bool, optional) :
+            Use default expected surface conditions for meteorological values
+            if converting from gs/m3 to mol/mol / mol/m2/s units.
+            This involves fixing the P/T ratio to 345 based on typical surface conditions 
+            in Europe and not using the meteorlogical data extracted from NAME release
+            points.
+            Default = True.
         satellite (bool, optional):
             Read a "column" of footprints? There are very particular rules
             about how the met, footprints and particle location files are stored
@@ -2097,7 +2181,8 @@ def process_all(domain, site,
             out = process(domain, site, height, year, month,
                     base_dir = base_dir, met_folder = met_folder, force_update = force_update,
                     satellite = satellite, perturbed_folder = perturbed_folder,
-                    max_level = max_level, force_met_empty = force_met_empty,
+                    max_level = max_level, use_surface_conditions=use_surface_conditions,
+                    force_met_empty = force_met_empty,
                     vertical_profile=vertical_profile,
                     fields_folder = fields_folder,
                     processed_folder = processed_folder,
@@ -2109,7 +2194,7 @@ def copy_processed(domain):
     Routine to copy files from:
         /dagage2/agage/metoffice/NAME_output/DOMAIN_SITE_HEIGHT/Processed_Fields_files
         to:
-        air.chm:/data/shared/NAME/fp_netcdf/DOMAIN/
+        air.chm:/data/shared/LPDM/fp_netcdf/DOMAIN/
         
     Args:
         domain (str):
@@ -2120,7 +2205,7 @@ def copy_processed(domain):
     '''
     
     src_folder = "/dagage2/agage/metoffice/NAME_output/"
-    dst_folder = "/data/shared/NAME/fp/" + domain + "/"
+    dst_folder = "/data/shared/LPDM/fp_NAME/" + domain + "/"
     
     files = glob.glob(src_folder + domain +
         "_*/Processed_Fields_files/*.nc")

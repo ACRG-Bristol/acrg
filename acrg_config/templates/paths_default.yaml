@@ -1,0 +1,3 @@
+# COPY THIS FILE TO acrg_config/paths.yaml
+obs_folder: /data/shared/obs_2018/
+lpdm_folder: /data/shared/LPDM/

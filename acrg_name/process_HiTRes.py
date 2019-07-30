@@ -32,7 +32,7 @@ if data_path is None:
     print("Default Data directory is assumed to be /data/shared/. Set path in .bashrc as \
             export DATA_PATH=/path/to/data/directory/ and restart python terminal")
 
-normal_fp_dir = join(data_path, 'NAME/fp/')
+normal_fp_dir = join(data_path, 'LPDM/fp_NAME/')
 
 
 def update_release_time(fname):

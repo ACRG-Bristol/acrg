@@ -215,8 +215,7 @@ def MOZART_boundaries(MZ, domain):
     MZ is a mozart xray dataset created using MOZART_vmr.
     """
 
-#    listoffiles = glob.glob("/shared_data/air/shared/NAME/fp/" + domain + "/*")
-    listoffiles = glob.glob(join(data_path, "NAME/fp/" + domain + "/*"))
+    listoffiles = glob.glob(join(data_path, "LPDM/fp_NAME/" + domain + "/*"))
     
     with xray.open_dataset(listoffiles[0]) as temp:
         fields_ds = temp.load()
@@ -279,5 +278,5 @@ def MOZART_BC_nc(start = '2012-01-01', end = "2014-09-01", species = 'CH4', file
         MZ = MOZART_vmr(species, start = i, end = i, freq=freq, filename = filename)
         MZ_edges = MOZART_boundaries(MZ, domain)
         yearmonth = str(i.year) + str(i.month).zfill(2)
-        MZ_edges.to_netcdf(path = join(output_dir, "NAME/bc/%s/%s_%s_%s.nc")
+        MZ_edges.to_netcdf(path = join(output_dir, "LPDM/bc/%s/%s_%s_%s.nc")
                                                     %(domain,species.lower(),domain,yearmonth), mode = 'w')
