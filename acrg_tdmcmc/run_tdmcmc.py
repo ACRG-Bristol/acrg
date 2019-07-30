@@ -348,7 +348,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     pdf_p2_hparam2,x_pdf ,pdf_param1_pdf,pdf_param2_pdf,inv_type,
     output_dir,fp_dir=None, flux_dir = None, data_dir=None, basis_dir=None, bc_basis_dir=None, bc_dir = None,
     tau_ap=None, tau_hparams=None, stepsize_tau=None, tau_pdf=None,
-    bl_split=False, bl_levels=None, filters=None, max_level=None, site_modifier={}):
+    bl_split=False, bl_levels=None, filters=None, max_level=None, site_modifier={}, prior_uncertainty=False):
     #%%
     
     if para_temp is True:
@@ -455,7 +455,12 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
         pblh.append(fp_data_H3.PBLH.values)
         wind_speed.append(fp_data_H3.wind_speed.values)
         
-        if 'dmf' in attributes:    
+        if prior_uncertainty == True:
+            # To calculate prior uncertainity reduction we can set the error on the measurements to a very 
+            # large value so that the measurements don't have any influence when calculating the posterior.
+            # Setting error to 10000*input mol fraction values.
+            y_error.append(fp_data_H3.mf.values*10000)
+        elif 'dmf' in attributes:    
             y_error.append(fp_data_H3.dmf.values)
         elif 'vmf' in attributes:   
             y_error.append(fp_data_H3.vmf.values)
@@ -746,9 +751,9 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     
     if inv_type == 'uncorrelated':
         if para_temp:
-            import acrg_tdmcmc.tdmcmc_uncorr_pt as tdmcmc_uncorr
+            import acrg_tdmcmc.tdmcmc_uncorr_pt_py36 as tdmcmc_uncorr
         else:
-            from acrg_tdmcmc import tdmcmc_uncorr
+            from acrg_tdmcmc import tdmcmc_uncorr_py36 as tdmcmc_uncorr
 
         k_it, x_out, regions_out, plon_out, plat_out, sigma_model_out,sigma_y_out, \
         n0T_out,pdf_param1_out,pdf_param2_out, accept, reject, \
@@ -770,9 +775,9 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     
     elif inv_type == 'evencorr':
         if para_temp:
-            import acrg_tdmcmc.tdmcmc_evencorr_pt as tdmcmc_evencorr
+            import acrg_tdmcmc.tdmcmc_evencorr_pt_py36 as tdmcmc_evencorr
         else:
-            from acrg_tdmcmc import tdmcmc_evencorr
+            from acrg_tdmcmc import tdmcmc_evencorr_py36 as tdmcmc_evencorr
         
         k_it, x_out, regions_out, plon_out, plat_out, sigma_y_out, sigma_model_out, \
         n0T_out,pdf_param1_out,pdf_param2_out, tau_out, y_out,accept, reject, \
@@ -800,9 +805,9 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     
     elif inv_type == 'corr':
         if para_temp:
-            import acrg_tdmcmc.tdmcmc_corr_pt as tdmcmc_corr
+            import acrg_tdmcmc.tdmcmc_corr_pt_py36 as tdmcmc_corr
         else:
-            from acrg_tdmcmc import tdmcmc_corr
+            from acrg_tdmcmc import tdmcmc_corr_py36 as tdmcmc_corr
         
         k_it, x_out, regions_out, plon_out, plat_out, sigma_y_out, sigma_model_out, \
         n0T_out,pdf_param1_out,pdf_param2_out, tau_out, y_out,accept, reject, \

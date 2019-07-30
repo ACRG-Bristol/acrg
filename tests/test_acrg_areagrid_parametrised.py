@@ -25,7 +25,7 @@ data_path = os.getenv("DATA_PATH")
 @pytest.fixture(scope="module")
 def gen_netcdf_file():
     ''' Define directory and file containing netcdf example. '''
-    filename_path = os.path.join(acrg_path,"tests/files/NAME/emissions/EUROPE/ch4_EUROPE_2013.nc")
+    filename_path = os.path.join(acrg_path,"tests/files/LPDM/emissions/EUROPE/ch4_EUROPE_2013.nc")
     return filename_path
 
 def test_acrg_areagrid_shape_size():

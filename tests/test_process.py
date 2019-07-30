@@ -45,25 +45,25 @@ acrg_path = os.getenv("ACRG_PATH")
 @pytest.fixture()
 def satellite_byday_directory():
     ''' Define base directory containing grouped satellite footprint files '''
-    directory = os.path.join(acrg_path,"tests/files/NAME/raw_output/Satellite_ByDay/")
+    directory = os.path.join(acrg_path,"tests/files/LPDM/raw_output/Satellite_ByDay/")
     return directory
 
 @pytest.fixture()
 def satellite_bypoint_directory():
     ''' Define base directory containing satellite footprint files with separated data points '''
-    directory = os.path.join(acrg_path,"tests/files/NAME/raw_output/Satellite_ByPoint/")
+    directory = os.path.join(acrg_path,"tests/files/LPDM/raw_output/Satellite_ByPoint/")
     return directory
 
 @pytest.fixture()
 def site_directory():
     ''' Define base directory containing satellite footprint files with separated data points '''
-    directory = os.path.join(acrg_path,"tests/files/NAME/raw_output/Site/")
+    directory = os.path.join(acrg_path,"tests/files/LPDM/raw_output/Site/")
     return directory
 
 @pytest.fixture()
 def satellite_byday_mf_directory():
     ''' Define base directory containing grouped satellite footprint files '''
-    directory = os.path.join(acrg_path,"tests/files/NAME/raw_output/Satellite_ByDay_MF/")
+    directory = os.path.join(acrg_path,"tests/files/LPDM/raw_output/Satellite_ByDay_MF/")
     return directory
 
 @pytest.fixture()

@@ -44,7 +44,7 @@ def test_other_directory():
     '''
     Test that function can used with file read from a different directory
     '''
-    fp_dir = os.path.join(acrg_path,"tests/files/NAME/fp/")
+    fp_dir = os.path.join(acrg_path,"tests/files/LPDM/fp_NAME/")
     print("acrg_path",acrg_path)
     print("fp_dir",fp_dir)
     domain = "EUROPE"

@@ -1,5 +1,4 @@
 *.pyc
-*.so
 *.bak
 tests/.cache/v/cache/lastfailed
 acrg_tdmcmc/param.ini
@@ -9,6 +8,8 @@ tests/files/NAME/raw_output/*/*/Processed_Fields_files/*
 tests/files/NAME/raw_output/*/*/Processed_Fields_files_Org
 tests/files/raw_obs/H2OCorr/Plots/BSD/*
 tests/files/output/*
+tests/files/NAME/bc/EUROPE/ch4_EUROPE_20140*.nc
 *.ipynb_checkpoints*
 *~
 .cache
+acrg_config/paths.y*ml

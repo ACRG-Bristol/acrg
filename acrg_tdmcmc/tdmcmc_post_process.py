@@ -297,6 +297,7 @@ def define_stations(ds,sites=None):
     '''
     if sites is None:
         sites = list(ds.sites.values)
+#        sites = [site.astype("unicode") for site in sites]
 
         for site in sites:
             if check_platform(site) == "aircraft" or check_platform(site) == "satellite":
@@ -902,11 +903,11 @@ def plot_map_mult(data_all, lon, lat, grid=True, subplot="auto", clevels=None, d
 
         if i < nrun-1 and grid:
             plot_map(data,lon,lat,clevels=clevels, divergeCentre = divergeCentre, 
-                 cmap=plt.cm.RdBu_r, borders=borders, label=labels[i], smooth=smooth, stations=stations[i],
+                 cmap=cmap, borders=borders, label=labels[i], smooth=smooth, stations=stations[i],
                  title=None, extend=extend, out_filename=None, show=False, ax=ax, fig=fig)
         else:
             plot_map(data,lon,lat,clevels=clevels, divergeCentre = divergeCentre, 
-                 cmap=plt.cm.RdBu_r, borders=borders, label=labels[i], smooth=smooth, stations=stations[i],
+                 cmap=cmap, borders=borders, label=labels[i], smooth=smooth, stations=stations[i],
                  title=title, extend=extend, out_filename=out_filename, show=True, ax=ax, fig=fig)
 
 def plot_scale_map(ds_list, grid=True, clevels=None, divergeCentre=None, centre_zero=True,
@@ -1003,7 +1004,7 @@ def plot_abs_map(ds_list, species, grid=True, clevels=None, divergeCentre=None,
     q_abs_list = [mol2g(flux_mean(ds),species) for ds in ds_list]
     
     plot_map_mult(q_abs_list, lon=ds_list[0]["lon"], lat=ds_list[0]["lat"], grid=grid,
-                  clevels=clevels, divergeCentre=divergeCentre, cmap=plt.cm.RdBu_r, labels=labels, 
+                  clevels=clevels, divergeCentre=divergeCentre, cmap=cmap, labels=labels, 
                   smooth=smooth, out_filename=out_filename, stations=stations, fignum=fignum, 
                   title=title, extend=extend, figsize=figsize)
     return q_abs_list
@@ -1092,7 +1093,7 @@ def regions_histogram(k_it, out_filename=None, fignum=2):
     
 def country_emissions(ds_mcmc, countries, species, domain, x_post_vit=None, q_ap_abs_v=None, 
                       percentiles=[5,16,50,84,95], units=None, ocean=True, 
-                      uk_split=False, fixed_map=False):
+                      uk_split=False, fixed_map=False, country_dir = None):
         
     """
     Generates national totals for a given list of countries
@@ -1157,23 +1158,20 @@ def country_emissions(ds_mcmc, countries, species, domain, x_post_vit=None, q_ap
     else:
         print('Undefined units: outputting in g/yr - let this be a lesson to define your units')
         unit_factor=1.
-        
-#    acrg_path = os.getenv('ACRG_PATH')
-#    with open(acrg_path + "/acrg_species_info.json") as f:
-#        species_info=json.load(f)
-#            
-#    species_key = agage.synonyms(species, species_info)
-#    
-#    molmass = float(species_info[species_key]['mol_mass'])
-    #units = species_info[species_key]['units']    
     
     molmass = molar_mass(species)
+    
+    lon=ds_mcmc.lon.values
+    lat=ds_mcmc.lat.values
 
     lonmin=np.min(ds_mcmc.lon.values)
     lonmax=np.max(ds_mcmc.lon.values)
     latmin=np.min(ds_mcmc.lat.values)
     latmax=np.max(ds_mcmc.lat.values)
-    area=areagrid(ds_mcmc.lat.values,ds_mcmc.lon.values)
+    
+    nlon=len(ds_mcmc.lon)
+    nlat=len(ds_mcmc.lat)    
+    
     # GET COUNTRY DATA
     if uk_split == True:
         c_object=name.get_country(domain, ocean=True, ukmo=True, uk_split=uk_split)
@@ -1188,16 +1186,39 @@ def country_emissions(ds_mcmc, countries, species, domain, x_post_vit=None, q_ap
     country = cds.country.sel(lon=slice(lonmin,lonmax), 
                                         lat=slice(latmin,latmax))
     
+    lonmin_cds = np.min(country.lon.values.astype('float32'))
+    lonmax_cds = np.max(country.lon.values.astype('float32'))
+    latmin_cds = np.min(country.lat.values.astype('float32'))
+    latmax_cds = np.max(country.lat.values.astype('float32'))
+
+    x_post_vit=ds_mcmc.x_post_vit.values
+    nIt=len(x_post_vit[:,0])
+    x_post_vit = x_post_vit[:,:, np.newaxis]
+    x_post_it = np.reshape(x_post_vit, (nIt, nlat,nlon))
+    
+    x_post_it_ds = xray.Dataset({"x_post_it" : 
+                        (["nIt", "lat", "lon"], x_post_it)},
+                       coords = {"lon": lon,
+                                 "lat": lat})
+        
+    ds_mcmc = ds_mcmc.sel(lon=slice(lonmin_cds,lonmax_cds), 
+                                        lat=slice(latmin_cds,latmax_cds))
+
+    x_post_it_ds = x_post_it_ds.sel(lon=slice(lonmin_cds,lonmax_cds), 
+                                        lat=slice(latmin_cds,latmax_cds))
+    
+    x_post_it = x_post_it_ds["x_post_it"].values
+    
+    q_ap=ds_mcmc.q_ap.values
+    q_ap_abs_v=np.ravel(q_ap)
+    
+    area=areagrid(ds_mcmc.lat.values,ds_mcmc.lon.values)
     area_v=np.ravel(area)
     country_v=np.ravel(country)
     
     ncountries=len(countries)
     npercentiles = len(percentiles)
-    #nIt=len(ds_mcmc.k_it.values)
-    nIt=len(x_post_vit[:,0])
 
-    nlon=len(ds_mcmc.lon)
-    nlat=len(ds_mcmc.lat)
     country_v_new=np.zeros((nlon*nlat))
 
     if len(np.shape(q_ap_abs_v)) == 1:
@@ -1205,11 +1226,6 @@ def country_emissions(ds_mcmc, countries, species, domain, x_post_vit=None, q_ap
         q_country_it = np.zeros((ncountries, nIt))
         q_country_mean=np.zeros((ncountries))
         q_country_percentile = np.zeros((ncountries,npercentiles))
-#        q_country_50=np.zeros((ncountries))
-#        q_country_05=np.zeros((ncountries))
-#        q_country_95=np.zeros((ncountries))
-#        q_country_16=np.zeros((ncountries))
-#        q_country_84=np.zeros((ncountries))
         q_country_ap=np.zeros((ncountries))
         q_country_mode=np.zeros((ncountries))
     
@@ -1218,7 +1234,7 @@ def country_emissions(ds_mcmc, countries, species, domain, x_post_vit=None, q_ap
             c_index = np.where(country_v == name_country[0])
             country_v_new[c_index[0]]=ci+1
             for it in range(nIt):
-                x_vit_temp=x_post_vit[it,:]
+                x_vit_temp=np.ravel(x_post_it[it,:,:])
                 if fixed_map == False:
                     q_country_it[ci,it]=np.sum(x_vit_temp[c_index[0]]*area_v[c_index[0]]
                                     *q_ap_abs_v[c_index[0]]) 
@@ -1234,16 +1250,9 @@ def country_emissions(ds_mcmc, countries, species, domain, x_post_vit=None, q_ap
             q_country_mean[ci]=np.mean(q_country_it[ci,:])*365.*24.*3600.*molmass/unit_factor # in Tg/yr
             for pi,percentile in enumerate(percentiles):
                 q_country_percentile[ci,pi] = np.percentile(q_country_it[ci,:],percentile)*365.*24.*3600.*molmass/unit_factor
-            #q_country_50[ci]=np.percentile(q_country_it[ci,:],50)*365.*24.*3600.*molmass/unit_factor
-            #q_country_05[ci]=np.percentile(q_country_it[ci,:],5)*365.*24.*3600.*molmass/unit_factor
-            #q_country_95[ci]=np.percentile(q_country_it[ci,:],95)*365.*24.*3600.*molmass/unit_factor
-            #q_country_16[ci]=np.percentile(q_country_it[ci,:],16)*365.*24.*3600.*molmass/unit_factor
-            #q_country_84[ci]=np.percentile(q_country_it[ci,:],84)*365.*24.*3600.*molmass/unit_factor
         
         country_index = np.reshape(country_v_new, (nlat,nlon))   
-        #return q_country_it*365.*24.*3600.*molmass/unit_factor,\
-        #q_country_mean, q_country_05, q_country_16, q_country_50, q_country_84, \
-        #q_country_95, q_country_ap, country_index
+
         return q_country_it*365.*24.*3600.*molmass/unit_factor,\
         q_country_mean, q_country_percentile, q_country_ap, country_index
         
@@ -1254,11 +1263,7 @@ def country_emissions(ds_mcmc, countries, species, domain, x_post_vit=None, q_ap
         
         q_country_it = np.zeros((ncountries, ntimes, nIt))
         q_country_mean=np.zeros((ncountries, ntimes))
-#        q_country_50=np.zeros((ncountries, ntimes))
-#        q_country_05=np.zeros((ncountries, ntimes))
-#        q_country_95=np.zeros((ncountries, ntimes))
-#        q_country_16=np.zeros((ncountries, ntimes))
-#        q_country_84=np.zeros((ncountries, ntimes))
+
         q_country_percentile=np.zeros((ncountries, ntimes,npercentiles))
         q_country_ap=np.zeros((ncountries, ntimes))
     
@@ -1267,7 +1272,8 @@ def country_emissions(ds_mcmc, countries, species, domain, x_post_vit=None, q_ap
             c_index = np.where(country_v == name_country[0])
             country_v_new[c_index[0]]=ci+1
             for it in range(nIt):
-                x_vit_temp=x_post_vit[it,:]
+                x_vit_temp=np.ravel(x_post_it[it,:,:])
+#                x_vit_temp=x_post_vit[it,:]
                 if fixed_map == False:
                     q_country_it[ci,:,it]=np.sum(x_vit_temp[c_index[0],None]*area_v[c_index[0],None]
                                     *q_ap_abs_v[c_index[0],:], axis = 0) 
@@ -1280,17 +1286,11 @@ def country_emissions(ds_mcmc, countries, species, domain, x_post_vit=None, q_ap
             q_country_mean[ci,:]=np.mean(q_country_it[ci,:,:], axis =1)*365.*24.*3600.*molmass/unit_factor # in Tg/yr
             for pi,percentile in enumerate(percentiles):
                 q_country_percentile[ci,:,pi]=np.percentile(q_country_it[ci,:,:],percentile, axis =1)*365.*24.*3600.*molmass/unit_factor
-#            q_country_50[ci,:]=np.percentile(q_country_it[ci,:,:],50, axis =1)*365.*24.*3600.*molmass/unit_factor
-#            q_country_05[ci,:]=np.percentile(q_country_it[ci,:,:],5, axis =1)*365.*24.*3600.*molmass/unit_factor
-#            q_country_95[ci,:]=np.percentile(q_country_it[ci,:,:],95, axis =1)*365.*24.*3600.*molmass/unit_factor
-#            q_country_16[ci,:]=np.percentile(q_country_it[ci,:,:],16, axis =1)*365.*24.*3600.*molmass/unit_factor
-#            q_country_84[ci,:]=np.percentile(q_country_it[ci,:,:],84, axis =1)*365.*24.*3600.*molmass/unit_factor
+
         
 
         country_index = np.reshape(country_v_new, (nlat,nlon))   
-#        return q_country_it*365.*24.*3600.*molmass/unit_factor,\
-#        q_country_mean, q_country_05, q_country_16, q_country_50, q_country_84, \
-#        q_country_95, q_country_ap, country_index
+
         return q_country_it*365.*24.*3600.*molmass/unit_factor,\
         q_country_mean, q_country_percentile, q_country_ap, country_index
 
@@ -1335,6 +1335,83 @@ def country_emissions_mult(ds_list, countries, species, domain, x_post_vit=None,
 
     return country_it,country_mean,country_percentile,country_prior,country_index
 
+def find_BC_index(ds,include_bias=False):
+    '''
+    Find the indices of the boundary condition terms.
+    This includes the assumption that relevant "proposal" values will begin with "bc".
+    Bias factors are included if include_bias is set to True and "proposal" values are expected to start
+    with "bias".
+
+    Args:
+        ds (xarray.Dataset) : output from the run_tdmcmc function
+        include_bias (bool, optional) :
+            Include any bias terms.
+            Default = False.
+    
+    Returns:
+        np.array : indices for boundary conditions within proposal / nIC / kICmax / NgridIC dimensions
+    '''
+    proposal = ds.proposal.values.astype("unicode") # name of proposed variables for each tdmcmc update loop
+    nIC = ds.nIC.values # number of initial conditions (basis functions + boundary conditions + bias)
+    
+    bc_name = "bc"
+    if include_bias:
+        bias_name = "bias"
+        BC_index = np.array([i for i,p in enumerate(proposal[:nIC]) if p.startswith(bc_name) or p.startswith(bias_name)],dtype=int)
+    else:
+        BC_index = np.array([i for i,p in enumerate(proposal[:nIC]) if p.startswith(bc_name)],dtype=int)
+    
+    if not np.any(BC_index):
+        raise Exception("No boundary conditions (starting with {}) found within proposal values.".format(bc_name))
+    
+    return BC_index
+
+def find_fixed_index(ds):
+    '''
+    Find the indices of the fixed domains outside the sub-domain.
+    This includes the assumption that relevant "proposal" values will begin with "fixed".
+
+    Args:
+        ds (xarray.Dataset) : output from the run_tdmcmc function
+    
+    Returns:
+        np.array : indices for fixed regions within proposal / nIC / kICmax / NgridIC dimensions
+    '''
+    proposal = ds.proposal.values.astype("unicode") # name of proposed variables for each tdmcmc update loop
+    nIC = ds.nIC.values # number of initial conditions (basis functions + boundary conditions + bias)
+    
+    fixed_name = "fixed"
+    fixed_index = np.array([i for i,p in enumerate(proposal[:nIC]) if p.startswith(fixed_name)],dtype=int)
+    
+    if not np.any(fixed_index):
+        raise Exception("No fixed regions (starting with {}) found within proposal values.".format(fixed_name))
+    
+    return fixed_index
+
+def prior_bc_outer(ds,include_bias=False):
+    '''
+    The prior_bc_outer function calculates the y prior boundary conditions for the edges of the whole
+    domain.
+    Bias factors are included if include_bias is set to True.
+    
+    Args:
+        ds (xarray.Dataset) : output from the run_tdmcmc function
+        include_bias (bool, optional) :
+            Include any bias terms.
+            Default = False.
+    
+    Returns:
+        np.array : y prior boundary conditions for full domain
+    '''
+    
+    # Indicies of boundary condition values wtihin NgridIC dimension (up to nIC)
+    BC_index = find_BC_index(ds,include_bias=include_bias)
+    
+    h_v_all = ds.h_v_all.values # nmeasure x NgridIC (Ngrid + nIC)
+    y_prior_bg = np.sum(h_v_all[:,BC_index],axis=1)
+    
+    return y_prior_bg
+    
 def prior_bc_inner(ds):
     '''
     The prior_bc_inner function calculates the y prior boundary conditions for the inner
@@ -1373,6 +1450,39 @@ def prior_mf(ds):
     
     return y_prior
 
+def post_bc_outer(ds,include_bias=False):
+    '''
+    The post_bc_outer function calculates the y posterior boundary conditions for the whole domain
+    region for each iteration and the mean.
+    Bias factors are included if include_bias is set to True.
+    
+    Args:
+        ds (xarray.Dataset) : output from the run_tdmcmc function
+        include_bias (bool, optional) :
+            Include any bias terms.
+            Default = False.
+    
+    Returns:
+        (np.array,np.array) : y posterior inner bc iterations, y posterior inner bc mean
+    '''
+
+    # Indicies of boundary condition values wtihin NgridIC dimension (up to nIC)
+    BC_index = find_BC_index(ds,include_bias=include_bias)
+
+    nIt = len(ds.nIt)           # number of iterations
+    nmeasure = len(ds.nmeasure) # number of measurement points
+    
+    h_v_all = ds.h_v_all.values # nmeasure x NgridIC (Ngrid + nIC)
+    x_it = ds.x_it.values       # nIt x kICmax (nIC + kmax  - maximum number of regions in sub-domain)
+    
+    y_bg_it = np.zeros((nIt,nmeasure))
+    for it in range(nIt):
+        y_bg_it[it,:]=np.dot(h_v_all[:,BC_index],x_it[it,BC_index]) # Find y posterior for each iteration
+    
+    y_bg_mean=np.mean(y_bg_it, axis=0) # Take the mean across all iterations
+    
+    return y_bg_it,y_bg_mean
+
 def post_bc_inner(ds):
     '''
     The post_bc_inner function calculates the y posterior boundary conditions for the inner
@@ -1405,7 +1515,7 @@ def post_bc_inner(ds):
 
 def post_mf(ds):
     '''
-    The post_mf function calculates the y posterior mole fraction ierations and mean
+    The post_mf function calculates the y posterior mole fraction iterations and mean
     
     Args:
         ds (xarray.Dataset) : output from the run_tdmcmc function
