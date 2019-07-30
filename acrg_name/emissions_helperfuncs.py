@@ -1078,7 +1078,7 @@ def getScarpelliFossilFuelsCH4(lon_out, lat_out, scarpelli_sector='all'):
     with xr.open_dataset(sourcefn) as load:
         ds = load.load()         #Units are Mg / km2 / year
     
-    ffemis = old_div(ds.emis_ch4.values,(365*24*3600)/molar_mass('ch4')) #Convert to mol/m2/s
+    ffemis = ds.emis_ch4.values/(365*24*3600)/molar_mass('ch4') #Convert to mol/m2/s
     lat_in = ds.lat.values
     lon_in = ds.lon.values
     
