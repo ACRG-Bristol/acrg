@@ -143,7 +143,7 @@ def generate_from_template(template_file,output_file):
     Writes output file.
     
     If output file is already present, the user will be asked whether the file should be 
-    overwritten. If the response is 'N' or 'no' or an unrecognised input an expection will 
+    overwritten. If the response is 'N' or 'no' or an unrecognised input an exception will 
     be raised.
     '''
     if os.path.exists(output_file):

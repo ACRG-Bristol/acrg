@@ -46,135 +46,135 @@ def test_acrg_GCWerks_CRDS_H2OCorr():
     outdir = acrg_path+'/tests/files/raw_obs/H2OCorr/Plots/'
     out1, out2 = H2OCorr.calcread_multi(sites = "BSD", years = "2018", basedir = basedir, outdir = outdir)
     
-    assert out2['B_0']['a_ch4'] == [-0.013575487881732743]
-    assert out2['B_0']['a_ch4_sd'] == [0.00039055989852777856]
-    assert out2['B_0']['a_co2'] == [-0.015701211986319952]
-    assert out2['B_0']['a_co2_sd'] == [0.000140195409087726]
-    assert out2['B_0']['b_ch4'] == [0.00038558091627252346]
-    assert out2['B_0']['b_ch4_sd'] == [0.0002448045992507221]
-    assert out2['B_0']['b_co2'] == [0.0001707911430824349]
-    assert out2['B_0']['b_co2_sd'] == [8.870913991012779e-05]
+    assert round(out2['B_0']['a_ch4'][0],6) == -0.013575
+    assert round(out2['B_0']['a_ch4_sd'][0],6) == 0.000391
+    assert round(out2['B_0']['a_co2'][0],6) == -0.015701
+    assert round(out2['B_0']['a_co2_sd'][0],6) == 0.000140
+    assert round(out2['B_0']['b_ch4'][0],6) == 0.000386
+    assert round(out2['B_0']['b_ch4_sd'][0],6) == 0.000245
+    assert round(out2['B_0']['b_co2'][0],6) == 0.000171
+    assert round(out2['B_0']['b_co2_sd'][0],6) == 8.9e-05
     assert out2['B_0']['date'] == '20180814'
     assert out2['B_0']['site'] == 'BSD'
     
-    assert out2['B_1']['a_ch4'] == [-0.013575487881732743]
-    assert out2['B_1']['a_ch4_sd'] == [0.00039055989852777856]
-    assert out2['B_1']['a_co2'] == [-0.015701211986319952]
-    assert out2['B_1']['a_co2_sd'] == [0.000140195409087726]
-    assert out2['B_1']['b_ch4'] == [0.00038558091627252346]
-    assert out2['B_1']['b_ch4_sd'] == [0.0002448045992507221]
-    assert out2['B_1']['b_co2'] == [0.0001707911430824349]
-    assert out2['B_1']['b_co2_sd'] == [8.870913991012779e-05]
+    assert round(out2['B_1']['a_ch4'][0],6) == -0.013575
+    assert round(out2['B_1']['a_ch4_sd'][0],6) == 0.000391
+    assert round(out2['B_1']['a_co2'][0],6) == -0.015701
+    assert round(out2['B_1']['a_co2_sd'][0],6) == 0.000140
+    assert round(out2['B_1']['b_ch4'][0],6) == 0.000386
+    assert round(out2['B_1']['b_ch4_sd'][0],6) == 0.000245
+    assert round(out2['B_1']['b_co2'][0],6) == 0.000171
+    assert round(out2['B_1']['b_co2_sd'][0],6) == 8.9e-05
     assert out2['B_1']['date'] == '20180814'
     assert out2['B_1']['site'] == 'BSD'
     
-    assert out2['B_2']['a_ch4'] == [-0.013575487881732743]
-    assert out2['B_2']['a_ch4_sd'] == [0.00039055989852777856]
-    assert out2['B_2']['a_co2'] == [-0.015701211986319952]
-    assert out2['B_2']['a_co2_sd'] == [0.000140195409087726]
-    assert out2['B_2']['b_ch4'] == [0.00038558091627252346]
-    assert out2['B_2']['b_ch4_sd'] == [0.0002448045992507221]
-    assert out2['B_2']['b_co2'] == [0.0001707911430824349]
-    assert out2['B_2']['b_co2_sd'] == [8.870913991012779e-05]
+    assert round(out2['B_2']['a_ch4'][0],6) == -0.013575
+    assert round(out2['B_2']['a_ch4_sd'][0],6) == 0.000391
+    assert round(out2['B_2']['a_co2'][0],6) == -0.015701
+    assert round(out2['B_2']['a_co2_sd'][0],6) == 0.000140
+    assert round(out2['B_2']['b_ch4'][0],6) == 0.000386
+    assert round(out2['B_2']['b_ch4_sd'][0],6) == 0.000245
+    assert round(out2['B_2']['b_co2'][0],6) == 0.000171
+    assert round(out2['B_2']['b_co2_sd'][0],6) == 8.9e-05
     assert out2['B_2']['date'] == '20180814'
     assert out2['B_2']['site'] == 'BSD'
     
-    assert out2['B_8']['a_ch4'] == [-0.013575487881732743]
-    assert out2['B_8']['a_ch4_sd'] == [0.00039055989852777856]
-    assert out2['B_8']['a_co2'] == [-0.015701211986319952]
-    assert out2['B_8']['a_co2_sd'] == [0.000140195409087726]
-    assert out2['B_8']['b_ch4'] == [0.00038558091627252346]
-    assert out2['B_8']['b_ch4_sd'] == [0.0002448045992507221]
-    assert out2['B_8']['b_co2'] == [0.0001707911430824349]
-    assert out2['B_8']['b_co2_sd'] == [8.870913991012779e-05]
+    assert round(out2['B_8']['a_ch4'][0],6) == -0.013575
+    assert round(out2['B_8']['a_ch4_sd'][0],6) == 0.000391
+    assert round(out2['B_8']['a_co2'][0],6) == -0.015701
+    assert round(out2['B_8']['a_co2_sd'][0],6) == 0.000140
+    assert round(out2['B_8']['b_ch4'][0],6) == 0.000386
+    assert round(out2['B_8']['b_ch4_sd'][0],6) == 0.000245
+    assert round(out2['B_8']['b_co2'][0],6) == 0.000171
+    assert round(out2['B_8']['b_co2_sd'][0],6) == 8.9e-05
     assert out2['B_8']['date'] == '20180814'
     assert out2['B_8']['site'] == 'BSD'
     
-    assert out2['D_0']['a_ch4'] == [-0.013575487881732743]
-    assert out2['D_0']['a_ch4_sd'] == [0.00039055989852777856]
-    assert out2['D_0']['a_co2'] == [-0.015701211986319952]
-    assert out2['D_0']['a_co2_sd'] == [0.000140195409087726]
-    assert out2['D_0']['b_ch4'] == [0.00038558091627252346]
-    assert out2['D_0']['b_ch4_sd'] == [0.0002448045992507221]
-    assert out2['D_0']['b_co2'] == [0.0001707911430824349]
-    assert out2['D_0']['b_co2_sd'] == [8.870913991012779e-05]
+    assert round(out2['D_0']['a_ch4'][0],6) == -0.013575
+    assert round(out2['D_0']['a_ch4_sd'][0],6) == 0.000391
+    assert round(out2['D_0']['a_co2'][0],6) == -0.015701
+    assert round(out2['D_0']['a_co2_sd'][0],6) == 0.000140
+    assert round(out2['D_0']['b_ch4'][0],6) == 0.000386
+    assert round(out2['D_0']['b_ch4_sd'][0],6) == 0.000245
+    assert round(out2['D_0']['b_co2'][0],6) == 0.000171
+    assert round(out2['D_0']['b_co2_sd'][0],6) == 8.9e-05
     assert out2['D_0']['date'] == '20180814'
     assert out2['D_0']['site'] == 'BSD'
     
-    assert out2['D_1']['a_ch4'] == [-0.013575487881732743]
-    assert out2['D_1']['a_ch4_sd'] == [0.00039055989852777856]
-    assert out2['D_1']['a_co2'] == [-0.015701211986319952]
-    assert out2['D_1']['a_co2_sd'] == [0.000140195409087726]
-    assert out2['D_1']['b_ch4'] == [0.00038558091627252346]
-    assert out2['D_1']['b_ch4_sd'] == [0.0002448045992507221]
-    assert out2['D_1']['b_co2'] == [0.0001707911430824349]
-    assert out2['D_1']['b_co2_sd'] == [8.870913991012779e-05]
+    assert round(out2['D_1']['a_ch4'][0],6) == -0.013575
+    assert round(out2['D_1']['a_ch4_sd'][0],6) == 0.000391
+    assert round(out2['D_1']['a_co2'][0],6) == -0.015701
+    assert round(out2['D_1']['a_co2_sd'][0],6) == 0.000140
+    assert round(out2['D_1']['b_ch4'][0],6) == 0.000386
+    assert round(out2['D_1']['b_ch4_sd'][0],6) == 0.000245
+    assert round(out2['D_1']['b_co2'][0],6) == 0.000171
+    assert round(out2['D_1']['b_co2_sd'][0],6) == 8.9e-05
     assert out2['D_1']['date'] == '20180814'
     assert out2['D_1']['site'] == 'BSD'
     
-    assert out2['D_2']['a_ch4'] == [-0.013575487881732743]
-    assert out2['D_2']['a_ch4_sd'] == [0.00039055989852777856]
-    assert out2['D_2']['a_co2'] == [-0.015701211986319952]
-    assert out2['D_2']['a_co2_sd'] == [0.000140195409087726]
-    assert out2['D_2']['b_ch4'] == [0.00038558091627252346]
-    assert out2['D_2']['b_ch4_sd'] == [0.0002448045992507221]
-    assert out2['D_2']['b_co2'] == [0.0001707911430824349]
-    assert out2['D_2']['b_co2_sd'] == [8.870913991012779e-05]
+    assert round(out2['D_2']['a_ch4'][0],6) == -0.013575
+    assert round(out2['D_2']['a_ch4_sd'][0],6) == 0.000391
+    assert round(out2['D_2']['a_co2'][0],6) == -0.015701
+    assert round(out2['D_2']['a_co2_sd'][0],6) == 0.000140
+    assert round(out2['D_2']['b_ch4'][0],6) == 0.000386
+    assert round(out2['D_2']['b_ch4_sd'][0],6) == 0.000245
+    assert round(out2['D_2']['b_co2'][0],6) == 0.000171
+    assert round(out2['D_2']['b_co2_sd'][0],6) == 8.9e-05
     assert out2['D_2']['date'] == '20180814'
     assert out2['D_2']['site'] == 'BSD'
     
-    assert out2['D_8']['a_ch4'] == [-0.013575487881732743]
-    assert out2['D_8']['a_ch4_sd'] == [0.00039055989852777856]
-    assert out2['D_8']['a_co2'] == [-0.015701211986319952]
-    assert out2['D_8']['a_co2_sd'] == [0.000140195409087726]
-    assert out2['D_8']['b_ch4'] == [0.00038558091627252346]
-    assert out2['D_8']['b_ch4_sd'] == [0.0002448045992507221]
-    assert out2['D_8']['b_co2'] == [0.0001707911430824349]
-    assert out2['D_8']['b_co2_sd'] == [8.870913991012779e-05]
+    assert round(out2['D_8']['a_ch4'][0],6) == -0.013575
+    assert round(out2['D_8']['a_ch4_sd'][0],6) == 0.000391
+    assert round(out2['D_8']['a_co2'][0],6) == -0.015701
+    assert round(out2['D_8']['a_co2_sd'][0],6) == 0.000140
+    assert round(out2['D_8']['b_ch4'][0],6) == 0.000386
+    assert round(out2['D_8']['b_ch4_sd'][0],6) == 0.000245
+    assert round(out2['D_8']['b_co2'][0],6) == 0.000171
+    assert round(out2['D_8']['b_co2_sd'][0],6) == 8.9e-05
     assert out2['D_8']['date'] == '20180814'
     assert out2['D_8']['site'] == 'BSD'
     
-    assert out2['S_0']['a_ch4'] == [-0.013575487881732743]
-    assert out2['S_0']['a_ch4_sd'] == [0.00039055989852777856]
-    assert out2['S_0']['a_co2'] == [-0.015701211986319952]
-    assert out2['S_0']['a_co2_sd'] == [0.000140195409087726]
-    assert out2['S_0']['b_ch4'] == [0.00038558091627252346]
-    assert out2['S_0']['b_ch4_sd'] == [0.0002448045992507221]
-    assert out2['S_0']['b_co2'] == [0.0001707911430824349]
-    assert out2['S_0']['b_co2_sd'] == [8.870913991012779e-05]
+    assert round(out2['S_0']['a_ch4'][0],6) == -0.013575
+    assert round(out2['S_0']['a_ch4_sd'][0],6) == 0.000391
+    assert round(out2['S_0']['a_co2'][0],6) == -0.015701
+    assert round(out2['S_0']['a_co2_sd'][0],6) == 0.000140
+    assert round(out2['S_0']['b_ch4'][0],6) == 0.000386
+    assert round(out2['S_0']['b_ch4_sd'][0],6) == 0.000245
+    assert round(out2['S_0']['b_co2'][0],6) == 0.000171
+    assert round(out2['S_0']['b_co2_sd'][0],6) == 8.9e-05
     assert out2['S_0']['date'] == '20180814'
     assert out2['S_0']['site'] == 'BSD'
     
-    assert out2['S_1']['a_ch4'] == [-0.013575487881732743]
-    assert out2['S_1']['a_ch4_sd'] == [0.00039055989852777856]
-    assert out2['S_1']['a_co2'] == [-0.015701211986319952]
-    assert out2['S_1']['a_co2_sd'] == [0.000140195409087726]
-    assert out2['S_1']['b_ch4'] == [0.00038558091627252346]
-    assert out2['S_1']['b_ch4_sd'] == [0.0002448045992507221]
-    assert out2['S_1']['b_co2'] == [0.0001707911430824349]
-    assert out2['S_1']['b_co2_sd'] == [8.870913991012779e-05]
+    assert round(out2['S_1']['a_ch4'][0],6) == -0.013575
+    assert round(out2['S_1']['a_ch4_sd'][0],6) == 0.000391
+    assert round(out2['S_1']['a_co2'][0],6) == -0.015701
+    assert round(out2['S_1']['a_co2_sd'][0],6) == 0.000140
+    assert round(out2['S_1']['b_ch4'][0],6) == 0.000386
+    assert round(out2['S_1']['b_ch4_sd'][0],6) == 0.000245
+    assert round(out2['S_1']['b_co2'][0],6) == 0.000171
+    assert round(out2['S_1']['b_co2_sd'][0],6) == 8.9e-05
     assert out2['S_1']['date'] == '20180814'
     assert out2['S_1']['site'] == 'BSD'
     
-    assert out2['S_2']['a_ch4'] == [-0.013575487881732743]
-    assert out2['S_2']['a_ch4_sd'] == [0.00039055989852777856]
-    assert out2['S_2']['a_co2'] == [-0.015701211986319952]
-    assert out2['S_2']['a_co2_sd'] == [0.000140195409087726]
-    assert out2['S_2']['b_ch4'] == [0.00038558091627252346]
-    assert out2['S_2']['b_ch4_sd'] == [0.0002448045992507221]
-    assert out2['S_2']['b_co2'] == [0.0001707911430824349]
-    assert out2['S_2']['b_co2_sd'] == [8.870913991012779e-05]
+    assert round(out2['S_2']['a_ch4'][0],6) == -0.013575
+    assert round(out2['S_2']['a_ch4_sd'][0],6) == 0.000391
+    assert round(out2['S_2']['a_co2'][0],6) == -0.015701
+    assert round(out2['S_2']['a_co2_sd'][0],6) == 0.000140
+    assert round(out2['S_2']['b_ch4'][0],6) == 0.000386
+    assert round(out2['S_2']['b_ch4_sd'][0],6) == 0.000245
+    assert round(out2['S_2']['b_co2'][0],6) == 0.000171
+    assert round(out2['S_2']['b_co2_sd'][0],6) == 8.9e-05
     assert out2['S_2']['date'] == '20180814'
     assert out2['S_2']['site'] == 'BSD'
     
-    assert out2['S_8']['a_ch4'] == [-0.013575487881732743]
-    assert out2['S_8']['a_ch4_sd'] == [0.00039055989852777856]
-    assert out2['S_8']['a_co2'] == [-0.015701211986319952]
-    assert out2['S_8']['a_co2_sd'] == [0.000140195409087726]
-    assert out2['S_8']['b_ch4'] == [0.00038558091627252346]
-    assert out2['S_8']['b_ch4_sd'] == [0.0002448045992507221]
-    assert out2['S_8']['b_co2'] == [0.0001707911430824349]
-    assert out2['S_8']['b_co2_sd'] == [8.870913991012779e-05]
+    assert round(out2['S_8']['a_ch4'][0],6) == -0.013575
+    assert round(out2['S_8']['a_ch4_sd'][0],6) == 0.000391
+    assert round(out2['S_8']['a_co2'][0],6) == -0.015701
+    assert round(out2['S_8']['a_co2_sd'][0],6) == 0.000140
+    assert round(out2['S_8']['b_ch4'][0],6) == 0.000386
+    assert round(out2['S_8']['b_ch4_sd'][0],6) == 0.000245
+    assert round(out2['S_8']['b_co2'][0],6) == 0.000171
+    assert round(out2['S_8']['b_co2_sd'][0],6) == 8.9e-05
     assert out2['S_8']['date'] == '20180814'
     assert out2['S_8']['site'] == 'BSD'       
     

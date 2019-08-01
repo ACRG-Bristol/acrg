@@ -43,16 +43,24 @@ import re
 import json
 import xarray as xr
 from collections import OrderedDict
-from acrg_config.paths import paths
+import sys
 
-acrg_path = paths.acrg
-obs_directory = paths.obs
+if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
+    acrg_path = os.getenv("ACRG_PATH")
+    data_path = os.getenv("DATA_PATH")
+    obs_directory = os.path.join(data_path,"obs_2018")    
+else:
+    from acrg_config.paths import paths
+
+    acrg_path = paths.acrg
+    obs_directory = paths.obs
 
 #Get site info and species info from JSON files
-with open(acrg_path / "acrg_species_info.json") as f:
+#with open(acrg_path / "acrg_species_info.json") as f:
+with open(os.path.join(acrg_path,"acrg_species_info.json")) as f:
     species_info=json.load(f)
 
-with open(acrg_path / "acrg_site_info_2018.json") as f:
+with open(os.path.join(acrg_path,"acrg_site_info_2018.json")) as f:
     site_info=json.load(f, object_pairs_hook=OrderedDict)
 
 def open_ds(path):

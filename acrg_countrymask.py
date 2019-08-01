@@ -34,8 +34,8 @@ import os
 import pdb
 
 data_path = os.getenv("DATA_PATH")
-fp_directory = os.path.join(data_path,'NAME/fp/')
-country_directory = os.path.join(data_path,'NAME/countries/')
+fp_directory = os.path.join(data_path,'LPDM/fp_NAME/')
+country_directory = os.path.join(data_path,'LPDM/countries/')
 
 def domain_volume(domain,fp_directory=fp_directory):
     '''

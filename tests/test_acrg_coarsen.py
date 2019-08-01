@@ -28,7 +28,7 @@ def test_acrg_coarsen_shape():
     '''
     Test if the shape of the regriddded 2D array is correct
     '''
-    f = os.path.join(acrg_path,"tests/files/NAME/emissions/EUROPE/ch4_EUROPE_2013.nc")
+    f = os.path.join(acrg_path,"tests/files/LPDM/emissions/EUROPE/ch4_EUROPE_2013.nc")
     f_emission = nc.Dataset(f)
 
     lon_array = f_emission.variables['lon'][:]

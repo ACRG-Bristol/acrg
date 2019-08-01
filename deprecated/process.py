@@ -861,10 +861,10 @@ def footprint_array(fields_file,
     # Extract footprint from columns
     # Extract footprint from columns
     def convert_to_ppt(fp, slice_dict, column):
-        molm3=fp["press"][slice_dict].values/const.R/\
-            const.convert_temperature(fp["temp"][slice_dict].values.squeeze(),"C","K")
-        fp.fp[slice_dict] = data_arrays[i]*area/ \
-            (3600.*timeStep*1.)/molm3
+        molm3=old_div(fp["press"][slice_dict].values,const.R/\
+            const.convert_temperature(fp["temp"][slice_dict].values.squeeze(),"C","K"))
+        fp.fp[slice_dict] = old_div(data_arrays[i]*area, \
+            (3600.*timeStep*1.)/molm3)
         #The 1 assumes 1g/s emissions rate
         return fp
 

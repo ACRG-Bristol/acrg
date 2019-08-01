@@ -26,7 +26,7 @@ def write(lat, lon, time, flux, species, domain,
           source, title, prior_info_dict,
           regridder_used = 'acrg_grid.regrid.regrid_3D',
           copy_from_year = None, climatology = False, flux_comments = None,
-          output_directory = '/data/shared/NAME/emissions/'):
+          output_directory = '/data/shared/LPDM/emissions/'):
     '''Write a flux file for emissions
     
     Args:
@@ -64,7 +64,7 @@ def write(lat, lon, time, flux, species, domain,
         flux_comments (str, optional): 
             Extra comments. Default is None.
         output_directory (str, optional): 
-            Output directory. Default is '/data/shared/NAME/emissions/'.
+            Output directory. Default is '/data/shared/LPDM/emissions/'.
     
     Returns:
         None
