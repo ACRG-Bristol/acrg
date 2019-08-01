@@ -894,7 +894,7 @@ def label_species(species):
     
     return species_str
 
-def plot(data_dict):
+def plot(data_dict, output_file = None):
     '''
     Plot the data dictionary created by get_obs
     
@@ -902,7 +902,8 @@ def plot(data_dict):
         data_dict (dict) :
             Dictionary of Pandas DataFrames output by get_obs. 
             Keys are site names.
-        
+    kwargs:
+        output_file (str): specify a file path, if you want to save the figure
     '''
     
     import matplotlib.pyplot as plt
@@ -934,5 +935,8 @@ def plot(data_dict):
     plt.legend(handles = plots)
     #plt.ylabel("%s (%s)" %(data_dict[".species"], data_dict[".units"]))
     plt.ylabel("%s (%s)" %(label_species(data_dict[".species"]), data_dict[".units"]))
+
+    if output_file:
+        plt.savefig(output_file)
     
     plt.show()
