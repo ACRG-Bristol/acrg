@@ -53,13 +53,13 @@ if data_path is None:
 with open(join(acrg_path, "acrg_site_info.json")) as f:
     site_info=json.load(f)
 
-def open_ds(path):
+def open_ds(path, group=None):
     
     """
     Function efficiently opens xray datasets.
     """
     # use a context manager, to ensure the file gets closed after use
-    with xr.open_dataset(path) as ds:
+    with xr.open_dataset(path, group=group) as ds:
         ds.load()
     return ds 
 
