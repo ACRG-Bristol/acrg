@@ -10,7 +10,7 @@ from __future__ import print_function
 import json
 import pandas as pd
 import glob
-from os import getenv
+import os
 from os.path import join, split
 import xarray as xr
 from acrg_obs.utils import attributes, output_filename
@@ -18,16 +18,32 @@ import pytz
 import numpy as np
 import datetime as dt
 from collections import OrderedDict
+import sys
 
-# Site info file
-acrg_path = getenv("ACRG_PATH")
-data_path = getenv("DATA_PATH")
-site_info_file = join(acrg_path, "acrg_site_info.json")
-with open(site_info_file) as sf:
-    site_params = json.load(sf)
+## Site info file
+#acrg_path = getenv("ACRG_PATH")
+#data_path = getenv("DATA_PATH")
+#site_info_file = join(acrg_path, "acrg_site_info.json")
+#with open(site_info_file) as sf:
+#    site_params = json.load(sf)
+#
+## Set default obs folder
+#obs_directory = join(data_path, "obs_2018/")
 
-# Set default obs folder
-obs_directory = join(data_path, "obs_2018/")
+if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
+    acrg_path = os.getenv("ACRG_PATH")
+    data_path = os.getenv("DATA_PATH")
+    obs_directory = os.path.join(data_path,"obs")    
+else:
+    from acrg_config.paths import paths
+
+    acrg_path = paths.acrg
+    obs_directory = paths.obs
+    data_path = obs_directory.parent
+
+
+with open(os.path.join(acrg_path, "acrg_site_info.json")) as f:
+    site_params=json.load(f, object_pairs_hook=OrderedDict)
 
 
 

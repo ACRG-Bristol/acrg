@@ -233,7 +233,7 @@ def optional_parameters(section_group=None):
             Optional parameters for MCMC code
     '''
     meas_params = ["network","start_date","end_date","species","emissions_name","site_modifier"]
-    mcmc_params = ["unique_copy","max_level","data_dir","fp_dir","flux_dir","bc_dir","basis_dir","bc_basis_dir","prior_uncertainty"]
+    mcmc_params = ["unique_copy","max_level","lpdm","data_dir","fp_dir","flux_dir","bc_dir","basis_dir","bc_basis_dir","prior_uncertainty"]
     tdmcmc_params = []
     
     optional_param = []
@@ -254,6 +254,7 @@ def add_defaults(param,section_group=None):
     The current defaults that can be added are:
         "network" (within MEASUREMENTS section group) - extracted from acrg_site_info.json file
         "unique_copy" (within MCMC section group)     - set to False as a default
+        "lpdm" (within MCMC section group)            - set to 'name' if value is not specified
     
     TODO: Add additional defaults as the configuration set-up changes and expands.
     
@@ -281,6 +282,8 @@ def add_defaults(param,section_group=None):
     if section_group is None or section_group == "MCMC":
         if ("unique_copy" not in list(param.keys())) or (param["unique_copy"] == None):
             param["unique_copy"] = False
+        if ("lpdm" not in list(param.keys())) or (param["lpdm"] == None):
+            param["lpdm"] = "name"
 
     return param
 

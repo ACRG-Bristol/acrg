@@ -48,6 +48,29 @@ def extract_tdmcmc_files(directory,species,network,dates,return_filenames=False)
     else:
         return ds_list
 
+def check_missing_dates(filenames,dates,labels=[]):
+    
+    if len(filenames) != len(dates):
+        no_data = []
+        for date in dates:
+            for fname in filenames:
+                if date in fname:
+                    break
+            else:
+                no_data.append(date)
+        
+        new_dates = dates[:]
+        for date in no_data:
+            new_dates.remove(date)
+        if labels == dates:
+            labels = new_dates
+        dates = new_dates
+    
+    if labels:
+        return dates,labels
+    else:
+        return dates
+
 def create_output_param(ds_list,dates,experiment,nc_outfile,
                         country_dict=None,percentiles=[5,16,50,84,95],mode="write"):
     '''
@@ -203,7 +226,8 @@ if __name__=="__main__":
         raise Exception("Output directory: {} does not exist.".format(output_directory))
     
     # Extract datasets from file
-    ds_list = extract_tdmcmc_files(output_directory,species,network,dates)
+    ds_list,filenames = extract_tdmcmc_files(output_directory,species,network,dates,return_filenames=True)
+    dates = check_missing_dates(filenames,dates)
     
     ## Calculate country totals
     if calc_country == True:

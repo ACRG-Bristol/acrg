@@ -297,6 +297,7 @@ def define_stations(ds,sites=None):
     '''
     if sites is None:
         sites = list(ds.sites.values)
+#        sites = [site.astype("unicode") for site in sites]
 
         for site in sites:
             if check_platform(site) == "aircraft" or check_platform(site) == "satellite":
@@ -902,11 +903,11 @@ def plot_map_mult(data_all, lon, lat, grid=True, subplot="auto", clevels=None, d
 
         if i < nrun-1 and grid:
             plot_map(data,lon,lat,clevels=clevels, divergeCentre = divergeCentre, 
-                 cmap=plt.cm.RdBu_r, borders=borders, label=labels[i], smooth=smooth, stations=stations[i],
+                 cmap=cmap, borders=borders, label=labels[i], smooth=smooth, stations=stations[i],
                  title=None, extend=extend, out_filename=None, show=False, ax=ax, fig=fig)
         else:
             plot_map(data,lon,lat,clevels=clevels, divergeCentre = divergeCentre, 
-                 cmap=plt.cm.RdBu_r, borders=borders, label=labels[i], smooth=smooth, stations=stations[i],
+                 cmap=cmap, borders=borders, label=labels[i], smooth=smooth, stations=stations[i],
                  title=title, extend=extend, out_filename=out_filename, show=True, ax=ax, fig=fig)
 
 def plot_scale_map(ds_list, grid=True, clevels=None, divergeCentre=None, centre_zero=True,
@@ -1003,7 +1004,7 @@ def plot_abs_map(ds_list, species, grid=True, clevels=None, divergeCentre=None,
     q_abs_list = [mol2g(flux_mean(ds),species) for ds in ds_list]
     
     plot_map_mult(q_abs_list, lon=ds_list[0]["lon"], lat=ds_list[0]["lat"], grid=grid,
-                  clevels=clevels, divergeCentre=divergeCentre, cmap=plt.cm.RdBu_r, labels=labels, 
+                  clevels=clevels, divergeCentre=divergeCentre, cmap=cmap, labels=labels, 
                   smooth=smooth, out_filename=out_filename, stations=stations, fignum=fignum, 
                   title=title, extend=extend, figsize=figsize)
     return q_abs_list
@@ -1334,6 +1335,83 @@ def country_emissions_mult(ds_list, countries, species, domain, x_post_vit=None,
 
     return country_it,country_mean,country_percentile,country_prior,country_index
 
+def find_BC_index(ds,include_bias=False):
+    '''
+    Find the indices of the boundary condition terms.
+    This includes the assumption that relevant "proposal" values will begin with "bc".
+    Bias factors are included if include_bias is set to True and "proposal" values are expected to start
+    with "bias".
+
+    Args:
+        ds (xarray.Dataset) : output from the run_tdmcmc function
+        include_bias (bool, optional) :
+            Include any bias terms.
+            Default = False.
+    
+    Returns:
+        np.array : indices for boundary conditions within proposal / nIC / kICmax / NgridIC dimensions
+    '''
+    proposal = ds.proposal.values.astype("unicode") # name of proposed variables for each tdmcmc update loop
+    nIC = ds.nIC.values # number of initial conditions (basis functions + boundary conditions + bias)
+    
+    bc_name = "bc"
+    if include_bias:
+        bias_name = "bias"
+        BC_index = np.array([i for i,p in enumerate(proposal[:nIC]) if p.startswith(bc_name) or p.startswith(bias_name)],dtype=int)
+    else:
+        BC_index = np.array([i for i,p in enumerate(proposal[:nIC]) if p.startswith(bc_name)],dtype=int)
+    
+    if not np.any(BC_index):
+        raise Exception("No boundary conditions (starting with {}) found within proposal values.".format(bc_name))
+    
+    return BC_index
+
+def find_fixed_index(ds):
+    '''
+    Find the indices of the fixed domains outside the sub-domain.
+    This includes the assumption that relevant "proposal" values will begin with "fixed".
+
+    Args:
+        ds (xarray.Dataset) : output from the run_tdmcmc function
+    
+    Returns:
+        np.array : indices for fixed regions within proposal / nIC / kICmax / NgridIC dimensions
+    '''
+    proposal = ds.proposal.values.astype("unicode") # name of proposed variables for each tdmcmc update loop
+    nIC = ds.nIC.values # number of initial conditions (basis functions + boundary conditions + bias)
+    
+    fixed_name = "fixed"
+    fixed_index = np.array([i for i,p in enumerate(proposal[:nIC]) if p.startswith(fixed_name)],dtype=int)
+    
+    if not np.any(fixed_index):
+        raise Exception("No fixed regions (starting with {}) found within proposal values.".format(fixed_name))
+    
+    return fixed_index
+
+def prior_bc_outer(ds,include_bias=False):
+    '''
+    The prior_bc_outer function calculates the y prior boundary conditions for the edges of the whole
+    domain.
+    Bias factors are included if include_bias is set to True.
+    
+    Args:
+        ds (xarray.Dataset) : output from the run_tdmcmc function
+        include_bias (bool, optional) :
+            Include any bias terms.
+            Default = False.
+    
+    Returns:
+        np.array : y prior boundary conditions for full domain
+    '''
+    
+    # Indicies of boundary condition values wtihin NgridIC dimension (up to nIC)
+    BC_index = find_BC_index(ds,include_bias=include_bias)
+    
+    h_v_all = ds.h_v_all.values # nmeasure x NgridIC (Ngrid + nIC)
+    y_prior_bg = np.sum(h_v_all[:,BC_index],axis=1)
+    
+    return y_prior_bg
+    
 def prior_bc_inner(ds):
     '''
     The prior_bc_inner function calculates the y prior boundary conditions for the inner
@@ -1372,6 +1450,39 @@ def prior_mf(ds):
     
     return y_prior
 
+def post_bc_outer(ds,include_bias=False):
+    '''
+    The post_bc_outer function calculates the y posterior boundary conditions for the whole domain
+    region for each iteration and the mean.
+    Bias factors are included if include_bias is set to True.
+    
+    Args:
+        ds (xarray.Dataset) : output from the run_tdmcmc function
+        include_bias (bool, optional) :
+            Include any bias terms.
+            Default = False.
+    
+    Returns:
+        (np.array,np.array) : y posterior inner bc iterations, y posterior inner bc mean
+    '''
+
+    # Indicies of boundary condition values wtihin NgridIC dimension (up to nIC)
+    BC_index = find_BC_index(ds,include_bias=include_bias)
+
+    nIt = len(ds.nIt)           # number of iterations
+    nmeasure = len(ds.nmeasure) # number of measurement points
+    
+    h_v_all = ds.h_v_all.values # nmeasure x NgridIC (Ngrid + nIC)
+    x_it = ds.x_it.values       # nIt x kICmax (nIC + kmax  - maximum number of regions in sub-domain)
+    
+    y_bg_it = np.zeros((nIt,nmeasure))
+    for it in range(nIt):
+        y_bg_it[it,:]=np.dot(h_v_all[:,BC_index],x_it[it,BC_index]) # Find y posterior for each iteration
+    
+    y_bg_mean=np.mean(y_bg_it, axis=0) # Take the mean across all iterations
+    
+    return y_bg_it,y_bg_mean
+
 def post_bc_inner(ds):
     '''
     The post_bc_inner function calculates the y posterior boundary conditions for the inner
@@ -1404,7 +1515,7 @@ def post_bc_inner(ds):
 
 def post_mf(ds):
     '''
-    The post_mf function calculates the y posterior mole fraction ierations and mean
+    The post_mf function calculates the y posterior mole fraction iterations and mean
     
     Args:
         ds (xarray.Dataset) : output from the run_tdmcmc function

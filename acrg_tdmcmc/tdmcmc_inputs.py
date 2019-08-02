@@ -195,8 +195,9 @@ if bc_basis_dir is not None and bc_basis_dir.startswith("$ACRG_PATH"):
 
 if "prior_uncertainty" in param:
     prior_uncertainty = param["prior_uncertainty"]
-    print("WARNING: Run will calculate prior uncertainty reduction by setting dmf to a large number so there is no improvement based on measurements.")
-    print("Output of this run should NOT be used as an improved posterior output.")
+    if prior_uncertainty == True:
+        print("WARNING: Run will calculate prior uncertainty reduction by setting dmf to a large number so there is no improvement based on measurements.")
+        print("Output of this run should NOT be used as an improved posterior output.")
 else:
     prior_uncertainty = False
 

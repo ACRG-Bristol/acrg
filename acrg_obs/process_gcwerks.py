@@ -876,7 +876,7 @@ def mhd_o3():
                                   "MHD",
                                   str(ds.time.to_pandas().index.to_pydatetime()[0].year),
                                   ds.species,
-                                  site_params["MHD"]["height"][0])
+                                  site_params["MHD"]["AGAGE"]["height"][0])
     print("Writing " + nc_filename)
     ds.to_netcdf(nc_filename)
     print("... written.")
