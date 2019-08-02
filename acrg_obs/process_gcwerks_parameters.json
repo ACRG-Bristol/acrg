@@ -39,7 +39,7 @@
             "GCMS": "Gas chromatograph-mass spectrometer measurements. Output from GCWerks.",
             "medusa": "Medusa measurements. Output from GCWerks. See Miller et al. (2008)."
         },
-        "directory_output" : "/data/shared/obs_2018",
+        "directory_output" : "/data/shared/obs",
         "BSD" : {
             "gcwerks_site_name": "bilsdale",
             "inlets": ["108m", "42m", "248m"],
@@ -191,7 +191,7 @@
     },
     "CRDS": {
         "directory" : "/dagage2/agage/%site-picarro/results-gcwerks/",
-        "directory_output" : "/data/shared/obs_2018",
+        "directory_output" : "/data/shared/obs",
         "comment": "Cavity ring-down measurements. Output from GCWerks",
         "BSD" : {
             "gcwerks_site_name": "bilsdale",
@@ -238,7 +238,7 @@
     },
     "ICOS": {
         "directory" : "/dagage2/agage/%site-picarro/results-icos/",
-        "directory_output" : "/data/shared/obs_2018",
+        "directory_output" : "/data/shared/obs",
         "MHD" : {
             "gcwerks_site_name": "macehead",
             "inlet_rename": {"15m": "10m"},
