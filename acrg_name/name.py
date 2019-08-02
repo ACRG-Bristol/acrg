@@ -35,6 +35,7 @@ import dateutil.relativedelta
 import cartopy.crs as ccrs
 import cartopy
 from mpl_toolkits import mplot3d
+from collections import OrderedDict
 
 acrg_path = os.getenv("ACRG_PATH")
 data_path = os.getenv("DATA_PATH")
@@ -51,7 +52,7 @@ if data_path is None:
 
 # Get acrg_site_info file
 with open(join(acrg_path, "acrg_site_info.json")) as f:
-    site_info=json.load(f)
+    site_info=json.load(f,object_pairs_hook=OrderedDict)
 
 def open_ds(path):
     
@@ -63,7 +64,7 @@ def open_ds(path):
         ds.load()
     return ds 
 
-def filenames(site, domain, start, end, height, fp_directory):
+def filenames(site, domain, start, end, height, fp_directory, network=None):
     """
     The filenames function outputs a list of available footprint file names,
     for given site, domain, directory and date range.
@@ -73,18 +74,22 @@ def filenames(site, domain, start, end, height, fp_directory):
         e.g. [/data/shared/LPDM/fp_NAME/EUROPE/MHD-10magl_EUROPE_201401.nc
     
     Args:
-        site (str)         : Site name. Full list of site names should be 
-                             defined within acrg_site_info.json
-        domain (str)       : Domain name. The footprint files should be 
-                             sub-categorised by the NAME domain name.
-        start (str)        : Start date in format "YYYY-MM-DD" for range of files
-                             to find.
-        end (str)          : End date in same format as start for range of files
-                             to find.
-        height (str)       : Height related to input data. 
-        fp_directory (str) : fp_directory can be specified if files are not in 
-                             the default directory must point to a directory 
-                             which contains subfolders organized by domain.
+        site (str) : 
+            Site name. Full list of site names should be defined within acrg_site_info.json
+        domain (str) : 
+            Domain name. The footprint files should be sub-categorised by the NAME domain name.
+        start (str) : 
+            Start date in format "YYYY-MM-DD" for range of files to find.
+        end (str) : 
+            End date in same format as start for range of files to find.
+        height (str) : 
+            Height related to input data. 
+        fp_directory (str) :
+            fp_directory can be specified if files are not in the default directory must point to a directory 
+            which contains subfolders organized by domain.
+        network (str, optional) : 
+            Network for site. 
+            If not specified, first entry in acrg_site_info.json file will be used (if there are multiple).
     Returns:
         list (str): matched filenames
     """
@@ -98,7 +103,9 @@ def filenames(site, domain, start, end, height, fp_directory):
                   "Check that site code is as intended. "+ \
                   "If so, either add new site to file or input height manually.")
             return None
-        height = site_info[site]["height_name"][0]
+        if network is None:
+            network = list(site_info[site].keys())[0]
+        height = site_info[site][network]["height_name"][0]
     
     # Convert into time format
     months = pd.DatetimeIndex(start = start, end = end, freq = "M").to_pydatetime()
@@ -128,12 +135,15 @@ def read_netcdfs(files, dim = "time"):
     Note: this function makes sure that file is closed after open_dataset call.
     
     Args:
-        files (list) : List of netCDF filenames.
-        dim (str)    : Dimension of netCDF to use for concatenating the files.
-                       Default= "time".
+        files (list) : 
+            List of netCDF filenames.
+        dim (str, optional) : 
+            Dimension of netCDF to use for concatenating the files.
+            Default = "time".
     
     Returns:
-        xarray.Dataset : all files open as one concatenated xarray.Dataset object    
+        xarray.Dataset : 
+            All files open as one concatenated xarray.Dataset object    
     """
     
     #def process_one_path(path):
@@ -161,12 +171,16 @@ def interp_time(bc_ds,vmr_var_names, new_times):
     TODO: Add details for vmr_var_names and new_times
 
     Args:
-        bc_ds (xarray.Dataset)   : Output from boundary_conditions() function
-        vmr_var_names (iterable) : ???
-        new_times                : ???
+        bc_ds (xarray.Dataset) : 
+            Output from boundary_conditions() function
+        vmr_var_names (iterable) : 
+            ???
+        new_times (???) : 
+            ???
     
     Returns:
-        xarray.Dataset : new dataset with the VMRs recalculated at interpolated times.
+        xarray.Dataset : 
+            New dataset with the VMRs recalculated at interpolated times.
 
     """
 
@@ -198,7 +212,7 @@ def interp_time(bc_ds,vmr_var_names, new_times):
 
 def footprints(sitecode_or_filename, fp_directory = None, 
                flux_directory = None, bc_directory = None,
-               start = None, end = None, domain = None, height = None,
+               start = None, end = None, domain = None, height = None, network = None,
                species = None, emissions_name = None, HiTRes = False,interp_vmr_freq=None):
 
     """
@@ -218,30 +232,44 @@ def footprints(sitecode_or_filename, fp_directory = None,
     but if not specified, default directories will be used (set at the top of file).
 
     Args:
-        sitecode_or_filename : Site (e.g. 'MHD') or a netCDF filename (*.nc) (str)
-        fp_directory         : fp_directory must be a dictionary of the form 
-                               fp_directory = {"integrated":PATH_TO_INTEGRATED_FP, 
-                                               "HiTRes":PATH_TO_HIGHTRES_FP}
-                               if the high time resolution footprints are used (HiTRes = True)
-                               otherwise can be a single string if only integrated FPs are used and 
-                               non-default.
-        flux_directory (str) : flux_directory can be specified if files are not in the default directory. 
-                               Must point to a directory which contains subfolders organized by domain.
-                               (optional)
-        bc_directory (str)   : Same sytax as flux_directory (optional)
-        start (str)          : Start date in format "YYYY-MM-DD" for range of files to find.
-        end (str)            : End date in same format as start for range of files to find.
-        domain (str)         : Domain name. The footprint files should be sub-categorised by the domain.
-        height (str)         : Height related to NAME. If the HEIGHT keyword is not specified, the default 
-                               height from the acrg_site_info.json file is assumed.
-        species (str)        : Species name. All species names are defined acrg_species_info.json.
-        emissions_name (str) : Allows emissions files such as co2nee_EUROPE_2012.nc to be read in. 
-                               In this case EMISSIONS_NAME would be 'co2nee'
-        HiTRes (bool)        : Whether to include high time resolution footprints.
-        interp_vmr_freq      : Frequency to interpolate vmr time. (float/int)
+        sitecode_or_filename (str) : 
+            Site (e.g. 'MHD') or a netCDF filename (*.nc) (str)
+        fp_directory (str/dict) : 
+            If the high time resolution footprints are used (HiTRes = True) fp_directory must be a dictionary
+            of the form :
+                fp_directory = {"integrated":PATH_TO_INTEGRATED_FP,"HiTRes":PATH_TO_HIGHTRES_FP}
+            otherwise can be a single string if only integrated FPs are used and non-default.
+        flux_directory (str, optional) : 
+            flux_directory can be specified if files are not in the default directory. 
+            Must point to a directory which contains subfolders organized by domain.
+        bc_directory (str, optional) : 
+            Same sytax as flux_directory
+        start (str) : 
+            Start date in format "YYYY-MM-DD" for range of files to find.
+        end (str) : 
+            End date in same format as start for range of files to find.
+        domain (str) : 
+            Domain name. The footprint files should be sub-categorised by the domain.
+        height (str, optional) : 
+            Height related to NAME. If the HEIGHT keyword is not specified, the default height from the 
+            acrg_site_info.json file is assumed.
+        network (str, optional) :
+            Network associated with the site. This is only needed if there are multiple network options.
+            This is used to extract site information e.g. height from acrg_site_info.json. 
+        species (str) : 
+            Species name. All species names are defined acrg_species_info.json.
+        emissions_name (str) : 
+            Allows emissions files such as co2nee_EUROPE_2012.nc to be read in. 
+            In this case EMISSIONS_NAME would be 'co2nee'
+        HiTRes (bool, optional) : 
+            Whether to include high time resolution footprints.
+            Default = False.
+        interp_vmr_freq (float/int, optional) : 
+            Frequency to interpolate vmr time. 
         
     Returns:
-        xarray.Dataset : combined footprint files
+        xarray.Dataset : 
+            Combined footprint files
     """
     # Chose whether we've input a site code or a file name
     # If it's a three-letter site code, assume it's been processed
@@ -278,9 +306,9 @@ def footprints(sitecode_or_filename, fp_directory = None,
     # Finds integrated footprints if specified as a dictionary with multiple entries (HiTRes = True) 
     # or a string with one entry        
         if type(fp_directory) is dict:
-            files = filenames(site, domain, start, end, height, fp_directory["integrated"])
+            files = filenames(site, domain, start, end, height, fp_directory["integrated"], network=network)
         else:
-            files = filenames(site, domain, start, end, height, fp_directory)
+            files = filenames(site, domain, start, end, height, fp_directory, network=network)
 
     if len(files) == 0:
         print("Can't find files, " + sitecode_or_filename)
@@ -331,18 +359,23 @@ def flux(domain, species, start = None, end = None, flux_directory=None):
     TODO: This may get slow for very large flux datasets, and we may want to subset.
     
     Args:
-        domain (str)         : Domain name. The flux files should be sub-categorised by the domain.
-        species (str)        : Species name. All species names are defined acrg_species_info.json.
-        start (str)          : Start date in format "YYYY-MM-DD" to output only a time slice of all the flux files.
-                               The start date used will be the first of the input month. I.e. if "2014-01-06" is input,
-                               "2014-01-01" will be used.  This is to mirror the time slice functionality of the filenames function.
-        end (str)            : End date in same format as start to output only a time slice of all the flux files.
-                               The end date used will be the first of the input month and the timeslice will go up
-                               to, but not include, this time. I.e. if "2014-02-25' is input, "2014-02-01" will be used.
-                               This is to mirror the time slice functionality of the filenames function.
-        flux_directory (str) : flux_directory can be specified if files are not in 
-                               the default directory. Must point to a directory 
-                               which contains subfolders organized by domain. (optional)
+        domain (str) : 
+            Domain name. The flux files should be sub-categorised by the domain.
+        species (str) : 
+            Species name. All species names are defined acrg_species_info.json.
+        start (str, optional) : 
+            Start date in format "YYYY-MM-DD" to output only a time slice of all the flux files.
+            The start date used will be the first of the input month. I.e. if "2014-01-06" is input,
+            "2014-01-01" will be used.  This is to mirror the time slice functionality of the filenames 
+            function.
+        end (str, optional) : 
+            End date in same format as start to output only a time slice of all the flux files.
+            The end date used will be the first of the input month and the timeslice will go up
+            to, but not include, this time. I.e. if "2014-02-25' is input, "2014-02-01" will be used.
+            This is to mirror the time slice functionality of the filenames function.
+        flux_directory (str, optional) : 
+            flux_directory can be specified if files are not in the default directory.
+            Must point to a directory which contains subfolders organized by domain.
     Returns:
         xarray.Dataset : combined dataset of all matching flux files
     """
@@ -420,24 +453,28 @@ def flux_for_HiTRes(domain, emissions_dict, start=None, end=None, flux_directory
     Creates a dictionary of high and low frequency fluxes for use with HiTRes footprints.
     
     Args:
-        domain (str)          : Domain name. The flux files should be sub-categorised by the 
-                                domain.
-        emissions_dict (dict) : This should be a dictionary of the form:
-                                {'high_freq':high_freq_emissions_name, 'low_freq':low_freq_emissions_name}
-                                e.g. {'high_freq':'co2-ff-2hr', 'low_freq':'co2-ff-mth'}.
-        start (str)           : Start date in format "YYYY-MM-DD" to output only a time slice of all the flux files.
-                                The start date used will be the first of the input month. I.e. if "2014-01-06" is input,
-                                "2014-01-01" will be used.  This is to mirror the time slice functionality of the filenames function.
-        end (str)             : End date in same format as start to output only a time slice of all the flux files.
-                                The end date used will be the first of the input month and the timeslice will go up
-                                to, but not include, this time. I.e. if "2014-02-25' is input, "2014-02-01" will be used.
-                                This is to mirror the time slice functionality of the filenames function.
-        flux_directory (str)  : flux_directory can be specified if files are not in 
-                                the default directory. Must point to a directory 
-                                which contains subfolders organized by domain. (optional)
+        domain (str) : 
+            Domain name. The flux files should be sub-categorised by the domain.
+        emissions_dict (dict) : 
+            This should be a dictionary of the form:
+                {'high_freq':high_freq_emissions_name, 'low_freq':low_freq_emissions_name}
+                e.g. {'high_freq':'co2-ff-2hr', 'low_freq':'co2-ff-mth'}.
+        start (str, optional) : 
+            Start date in format "YYYY-MM-DD" to output only a time slice of all the flux files.
+            The start date used will be the first of the input month. I.e. if "2014-01-06" is input,
+            "2014-01-01" will be used.  This is to mirror the time slice functionality of the filenames 
+            function.
+        end (str, optional): 
+            End date in same format as start to output only a time slice of all the flux files.
+            The end date used will be the first of the input month and the timeslice will go up
+            to, but not include, this time. I.e. if "2014-02-25' is input, "2014-02-01" will be used.
+            This is to mirror the time slice functionality of the filenames function.
+        flux_directory (str, optional) : 
+            flux_directory can be specified if files are not in the default directory. 
+            Must point to a directory which contains subfolders organized by domain.
     Returns:
         dictionary {'high_freq': flux_xray_dataset, 'low_freq': flux_xray_dataset} :
-            dictionary containing xray datasets for both high and low frequency fluxes.
+            Dictionary containing xray datasets for both high and low frequency fluxes.
     """
     
     if 'low_freq' not in list(emissions_dict.keys()):
@@ -474,14 +511,27 @@ def boundary_conditions(domain, species, start = None, end = None, bc_directory=
         e.g. [/data/shared/LPDM/bc]/EUROPE/ch4_EUROPE_201301.nc
 
     Args:
-        domain (str)       : Domain name. The boundary condition files should be sub-categorised by the 
-                             domain.
-        species (str)      : Species name. All species names are defined acrg_species_info.json.
-        bc_directory (str) : bc_directory can be specified if files are not in 
-                             the default directory. Must point to a directory 
-                             which contains subfolders organized by domain. (optional)
+        domain (str) : 
+            Domain name. The boundary condition files should be sub-categorised by the domain.
+        species (str) : 
+            Species name. All species names are defined acrg_species_info.json.
+        start (str, optional) : 
+            Start date in format "YYYY-MM-DD" to output only a time slice of all the flux files.
+            The start date used will be the first of the input month. I.e. if "2014-01-06" is input,
+            "2014-01-01" will be used.  This is to mirror the time slice functionality of the filenames 
+            function.
+        end (str, optional): 
+            End date in same format as start to output only a time slice of all the flux files.
+            The end date used will be the first of the input month and the timeslice will go up
+            to, but not include, this time. I.e. if "2014-02-25' is input, "2014-02-01" will be used.
+            This is to mirror the time slice functionality of the filenames function.
+        bc_directory (str, optional) : 
+            bc_directory can be specified if files are not in the default directory. 
+            Must point to a directory which contains subfolders organized by domain.
+
     Returns:
-        xarray.Dataset : combined dataset of matching boundary conditions files
+        xarray.Dataset : 
+            Combined dataset of matching boundary conditions files
     """
     
     if bc_directory is None:
@@ -529,12 +579,15 @@ def basis(domain, basis_case, basis_directory = None):
     TODO: More info on options for basis functions.
 
     Args:
-        domain (str)       : Domain name. The basis files should be sub-categorised by the domain.
-        basis_case (str)   : Basis case to read in. Examples of basis cases are "voroni","sub-transd",
-                             "sub-country_mask","INTEM".
-        basis_directory (str) : basis_directory can be specified if files are not in 
-                             the default directory. Must point to a directory 
-                             which contains subfolders organized by domain. (optional)
+        domain (str) : 
+            Domain name. The basis files should be sub-categorised by the domain.
+        basis_case (str) : 
+            Basis case to read in. Examples of basis cases are "voroni","sub-transd",
+            "sub-country_mask","INTEM".
+        basis_directory (str, optional) : 
+            basis_directory can be specified if files are not in the default directory. 
+            Must point to a directory which contains subfolders organized by domain.
+    
     Returns:
         xarray.Dataset : combined dataset of matching basis functions
     """
@@ -563,11 +616,14 @@ def basis_boundary_conditions(domain, basis_case, bc_basis_directory = None):
     TODO: More info on options for basis functions.
     
     Args:
-        domain (str)             : Domain name. The basis files should be sub-categorised by the domain.
-        basis_case (str)         : Basis case to read in. Examples of basis cases are "NESW","stratgrad".
-        bc_basis_directory (str) : bc_basis_directory can be specified if files are not in 
-                                   the default directory. Must point to a directory 
-                                   which contains subfolders organized by domain. (optional)
+        domain (str) : 
+            Domain name. The basis files should be sub-categorised by the domain.
+        basis_case (str) : 
+            Basis case to read in. Examples of basis cases are "NESW","stratgrad".
+        bc_basis_directory (str, optional) : 
+            bc_basis_directory can be specified if files are not in the default directory. 
+            Must point to a directory which contains subfolders organized by domain.
+    
     Returns:
         xarray.Datset : combined dataset of matching basis functions
     """
@@ -597,14 +653,20 @@ def combine_datasets(dsa, dsb, method = "ffill", tolerance = None):
         ds = combine_datasets(dsa, dsb)
 
     Args:
-        dsa (xarray.Dataset) : First dataset to merge
-        dsb (xarray.Dataset) : Second dataset to merge
-        method (str)         : One of {None, ‘nearest’, ‘pad’/’ffill’, ‘backfill’/’bfill’}
-                               See xarray.DataArray.reindex_like for list of options and meaning.
-        tolerance (??)      : Maximum allowed tolerance between matches.
+        dsa (xarray.Dataset) : 
+            First dataset to merge
+        dsb (xarray.Dataset) : 
+            Second dataset to merge
+        method (str, optional) : 
+            One of {None, ‘nearest’, ‘pad’/’ffill’, ‘backfill’/’bfill’}
+            See xarray.DataArray.reindex_like for list of options and meaning.
+            Default = "ffill" (forward fill)
+        tolerance (int/float??) : 
+            Maximum allowed tolerance between matches.
 
     Returns:
-        xarray.Dataset: combined dataset indexed to dsa
+        xarray.Dataset: 
+            Combined dataset indexed to dsa
     """
     # merge the two datasets within a tolerance and remove times that are NaN (i.e. when FPs don't exist)
     
@@ -624,7 +686,9 @@ def timeseries(ds):
     TODO: There are almost certainly much more efficient ways of doing this.
 
     Args:
-        ds (xarray.Dataset) : Dataset with both the flux and footprint fields present
+        ds (xarray.Dataset) : 
+            Dataset with both the flux and footprint fields present
+    
     Returns:
         xarray.Dataset        
     """
@@ -646,19 +710,18 @@ def timeseries_HiTRes(fp_HiTRes_ds, flux_dict, output_TS = True, output_fpXflux 
     day period.
     
     Args:
-        fp_HiTRes_ds (xarray.Dataset) : Dataset of High Time resolution footprint. HiTRes footprints 
-                                        record the footprint at each 2 hour period back in time for the 
-                                        first 24 hours.
-        domain (str)                  : Domain name. The footprint files should be sub-categorised by the 
-                                        domain.
-        flux_dict (dict)              : This should be a dictionary of the form output in the function
-                                        flux_for_HiTRes: {'high_freq': flux_dataset, 'low_freq': flux_dataset}.
-                                        This is because this function needs two time resolutions of fluxes as
-                                        explained in the header.
-        output_TS (bool)              : Output the timeseries. Default is True.
-        output_fpXflux (bool)         : Output the sensitivity map. Default is True.
+        fp_HiTRes_ds (xarray.Dataset) : 
+            Dataset of High Time resolution footprint. HiTRes footprints record the footprint at each 2 hour 
+            period back in time for the first 24 hours.
+        flux_dict (dict) : 
+            This should be a dictionary of the form output in the function flux_for_HiTRes: 
+                {'high_freq': flux_dataset, 'low_freq': flux_dataset}.
+            This is because this function needs two time resolutions of fluxes as explained in the header.
+        output_TS (bool, optional) : 
+            Output the timeseries. Default is True.
+        output_fpXflux (bool) : 
+            Output the sensitivity map. Default is True.
 
-    
     Returns:
         xarray.Dataset / tuple(xarray.Dataset,xarray.Dataset)
         
@@ -728,8 +791,8 @@ def timeseries_boundary_conditions(ds):
     The timeseries_boundary_conditions function compute particle location * global model edges time series.
     
     Args:
-        ds (xarray.Dataset) : Dataset with both the particle locations and vmr at domain edge fields 
-                              present.
+        ds (xarray.Dataset) : 
+            Dataset with both the particle locations and vmr at domain edge fields present.
     
     Returns:
         xarray.Dataset
@@ -743,7 +806,7 @@ def timeseries_boundary_conditions(ds):
     
 def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                           calc_timeseries = True, calc_bc = True, HiTRes = False,
-                          average = None, site_modifier = {}, height = None,
+                          average = None, site_modifier = {}, height = None, network = None,
                           emissions_name = None, interp_vmr_freq = None,
                           fp_directory = None,
                           flux_directory = None,
@@ -776,6 +839,9 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                                site_modifier = {"DJI":"DJI-SAM"} - station called DJI, FPs called DJI-SAM
         height (dict)        : Height related to input data. Should be a dictionary with
                                {site: height} key:value pairs. Can be found from acrg_sites_info.json
+        network (str)        : Network associated with the site. This is only needed if there are multiple 
+                               network options. This is used to extract site information 
+                               e.g. height from acrg_site_info.json. 
         emissions_name (dict): Allows emissions files with filenames that are longer than just the species name
                                to be read in (e.g. co2-ff-mth_EUROPE_2014.nc). This should be a dictionary
                                with {source_name: emissions_file_identifier} (e.g. {'anth':'co2-ff-mth'}). This way
@@ -844,6 +910,9 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
     
     for i, site in enumerate(sites):
 
+        if network is None:
+            network = list(site_info[site].keys())[0]
+        
         # Dataframe for this site            
         site_df = data[site] 
         # Get time range
@@ -888,6 +957,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                              domain = domain,
                              species = None,
                              height = height_site,
+                             network = network,
                              emissions_name = None,
                              HiTRes = HiTRes,
                              interp_vmr_freq=interp_vmr_freq)                         
@@ -897,8 +967,8 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
             # Set tolerance tin time to merge footprints and data   
             # This needs to be made more general to 'satellite', 'aircraft' or 'ship'                
 
-            if "platform" in site_info[site]:
-                platform = site_info[site]["platform"]
+            if "platform" in site_info[site][network]:
+                platform = site_info[site][network]["platform"]
             else:
                 platform = None
 
@@ -1638,7 +1708,7 @@ def filtering(datasets_in, filters, keep_missing=False):
     return datasets
 
 
-def plot(fp_data, date, out_filename=None, out_format = 'pdf',
+def plot(fp_data, date, network = None, out_filename=None, out_format = 'pdf',
          lon_range=None, lat_range=None, log_range = [5., 9.], plot_borders = False,
          zoom = False, colormap = 'YlGnBu', tolerance = None, interpolate = False, dpi = 300,
          figsize=None, nlevels=256):
@@ -1840,9 +1910,11 @@ def plot(fp_data, date, out_filename=None, out_format = 'pdf',
     # over-plot release location
     if len(release_lon) > 0:
         for site in sites:
+            if network is None:
+                network = list(site_info[site].keys())[0]
             if site in release_lon:
-                if "platform" in site_info[site]:
-                    color = rp_color[site_info[site]["platform"].upper()]
+                if "platform" in site_info[site][network]:
+                    color = rp_color[site_info[site][network]["platform"].upper()]
                 else:
                     color = rp_color["SURFACE"]
                 plt.plot(release_lon[site], release_lat[site], color = color, marker = 'o', markersize=4,  transform=ccrs.PlateCarree())
