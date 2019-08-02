@@ -95,6 +95,13 @@
         "24m",
         "4m"
       ], 
+      "height_name": [
+        "79magl",
+        "53magl",
+        "38magl",
+        "24magl",
+        "4magl"
+       ], 
       "height_station_masl": 85.0, 
       "latitude": -2.1441, 
       "longitude": -58.9999

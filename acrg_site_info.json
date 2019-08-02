@@ -65,6 +65,16 @@
         "longitude": 5.632,
         "network": "NOAA"
     },
+    "ATO" : {
+        "alt": [],
+        "long_name" : "Amazon Tall Tower Observatory, State of Amazonas, Brazil",
+        "height": ["79m","53m","38m","24m","4m"],
+        "height_name": ["79magl","53magl","38magl","24magl","4magl"],
+        "height_station_masl": 85.0,
+        "latitude": -2.1441,
+        "longitude": -58.9999,
+        "network": "ATTO"
+    },
     "AZR" : {
         "alt": [],
         "long_name" : "Terceira Island, Azores, Portugal",
@@ -417,6 +427,22 @@
         "height": ["column"],
         "height_name": ["column"],
         "network": "GOSAT/GOSAT-BRAZIL",
+        "platform": "satellite"
+    },
+    "GOSAT-BRAZIL-LAND" : {
+        "alt": ["GOSAT"],
+        "long_name" : "GOSAT, Brazil, land points",
+        "height": ["column"],
+        "height_name": ["column"],
+        "network": "GOSAT/GOSAT-BRAZIL-LAND",
+        "platform": "satellite"
+    },
+    "GOSAT-BRAZIL-OCEAN" : {
+        "alt": ["GOSAT"],
+        "long_name" : "GOSAT, Brazil, ocean (glint) points",
+        "height": ["column"],
+        "height_name": ["column"],
+        "network": "GOSAT/GOSAT-BRAZIL-OCEAN",
         "platform": "satellite"
     },
     "GOSAT-EUROPE" : {
