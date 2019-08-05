@@ -189,7 +189,16 @@ CompDom_Ymax='57.3'
 
 
 
-
 # WESTUSA
+Grid1_nX=140
+Grid1_nY=200
+Grid1_dX='0.352'
+Grid1_dY='0.234'
+Grid1_Xmin='-150'
+Grid1_Ymin='20'
 
-
+# Computational domain (recommend 5 deg buffer (long) and 4 deg buffer (lat))
+CompDom_Xmin='-155'
+CompDom_Xmax='-96'
+CompDom_Ymin='16'
+CompDom_Ymax='70'
