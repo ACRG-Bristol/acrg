@@ -839,9 +839,11 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                                site_modifier = {"DJI":"DJI-SAM"} - station called DJI, FPs called DJI-SAM
         height (dict)        : Height related to input data. Should be a dictionary with
                                {site: height} key:value pairs. Can be found from acrg_sites_info.json
-        network (str)        : Network associated with the site. This is only needed if there are multiple 
+        network (str/list)   : Network associated with the site. This is only needed if there are multiple 
                                network options. This is used to extract site information 
                                e.g. height from acrg_site_info.json. 
+                               Can be specified as a string for one network for all sites or as a list for
+                               multiple networks.
         emissions_name (dict): Allows emissions files with filenames that are longer than just the species name
                                to be read in (e.g. co2-ff-mth_EUROPE_2014.nc). This should be a dictionary
                                with {source_name: emissions_file_identifier} (e.g. {'anth':'co2-ff-mth'}). This way
@@ -911,8 +913,12 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
     for i, site in enumerate(sites):
 
         if network is None:
-            network = list(site_info[site].keys())[0]
-        
+            network_site = list(site_info[site].keys())[0]
+        elif not isinstance(network,str):
+            network_site = network[i]
+        else:
+            network_site = network
+
         # Dataframe for this site            
         site_df = data[site] 
         # Get time range
@@ -937,16 +943,15 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
             site_modifier_fp = site_modifier[site]
         else:    
             site_modifier_fp = site
-         
+        
         if height is not None:
             
             if type(height) is not dict:
                 print("Height input needs to be a dictionary with {sitename:height}")
-                return None
-                
+                return None 
             height_site = height[site] 
         else:
-            height_site = height
+            height_site = site_info[site][network_site]["height_name"][0]
         
         # Get footprints
 
@@ -957,7 +962,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                              domain = domain,
                              species = None,
                              height = height_site,
-                             network = network,
+                             network = network_site,
                              emissions_name = None,
                              HiTRes = HiTRes,
                              interp_vmr_freq=interp_vmr_freq)                         
@@ -967,8 +972,8 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
             # Set tolerance tin time to merge footprints and data   
             # This needs to be made more general to 'satellite', 'aircraft' or 'ship'                
 
-            if "platform" in site_info[site][network]:
-                platform = site_info[site][network]["platform"]
+            if "platform" in site_info[site][network_site]:
+                platform = site_info[site][network_site]["platform"]
             else:
                 platform = None
 
