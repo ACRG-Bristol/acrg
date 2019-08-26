@@ -505,8 +505,8 @@ def get_single_site(site, species_in,
                 return None
 
             # Create single site data frame
-            df = pd.DataFrame({"mf": ds[ncvarname][:]},
-                              index = ds.time)
+            df = pd.DataFrame({"mf": ds[ncvarname].values},
+                              index = ds.time.values)
 
             if is_number(ds[ncvarname].units):
                 units = float(ds[ncvarname].units)
