@@ -2336,7 +2336,8 @@ def gosat_output(ds,site,species="ch4",file_per_day=False,output_directory=obs_d
     '''
     # Define data variables to be written to output
     out_data_vars = ["xch4","xch4_uncertainty","lat","lon","pressure_levels","pressure_weights",
-                     "xch4_averaging_kernel","ch4_profile_apriori","exposure_id"]
+                     "xch4_averaging_kernel","ch4_profile_apriori","exposure_id",
+                     "retr_flag"]
     
     # Map to input dataset (from GOSAT data)
     data_vars = ["latitude" if item=="lat" else item for item in out_data_vars]
