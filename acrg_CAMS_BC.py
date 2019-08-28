@@ -153,7 +153,7 @@ def interplonlat(nesw, fp_lonorlat, species, lonorlat=None):
     ds2 = ds2.to_dataset(name=species)
     return ds2
 
-def write_CAMS_BC_tonetcdf(vmr_n, vmr_e, vmr_s, vmr_w, st_date, species, domain, outdir):
+def write_CAMS_BC_tonetcdf(vmr_n, vmr_e, vmr_s, vmr_w, st_date, species, domain, outdir, gridsize):
     """
     Writes the CAMS BC data to a ncdf file.
     
@@ -174,6 +174,7 @@ def write_CAMS_BC_tonetcdf(vmr_n, vmr_e, vmr_s, vmr_w, st_date, species, domain,
     BC_edges.coords['time'] = (dt.strptime(st_date, '%Y-%m-%d'))
     
     BC_edges.attrs['title'] = "ECMWF CAMS "+species+" volume mixing ratios at domain edges"
+    BC_edges.attrs['CAMS_resolution'] = gridsize
     BC_edges.attrs['author'] = getpass.getuser()
     BC_edges.attrs['date_created'] = np.str(dt.today())
     
@@ -302,6 +303,6 @@ def makeCAMS_BC(domain, species, st_date, end_date, gridsize, outdir=None):
     vmr_e = interplonlat(interpheight(east, fp_height, species, lonorlat='latitude'), fp_lat, species, lonorlat='latitude').rename({species : 'vmr_e'}) 
     vmr_w = interplonlat(interpheight(west, fp_height, species, lonorlat='latitude'), fp_lat, species, lonorlat='latitude').rename({species : 'vmr_w'})      
     
-    write_CAMS_BC_tonetcdf(vmr_n, vmr_e, vmr_s, vmr_w, st_date, species, domain, outdir)
+    write_CAMS_BC_tonetcdf(vmr_n, vmr_e, vmr_s, vmr_w, st_date, species, domain, outdir, gridsize)
     
 
