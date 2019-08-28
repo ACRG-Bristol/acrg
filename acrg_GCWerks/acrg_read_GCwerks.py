@@ -10,7 +10,6 @@ from builtins import object
 import os
 import numpy as np
 import datetime as dt
-import pdb
 
 # Class to read in the txt output of CRDS gcexport made using the standard peak.list and report config on Dagage2
 def read_gcexport_crds(datafile):

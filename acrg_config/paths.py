@@ -25,7 +25,7 @@ else:
     _data_paths_file = _user_defined_data_paths[0]
 
 with open(_data_paths_file, 'r') as f:
-    _data_paths = yaml.load(f)
+    _data_paths = yaml.load(f, Loader = yaml.SafeLoader)
 
 
 class paths:
