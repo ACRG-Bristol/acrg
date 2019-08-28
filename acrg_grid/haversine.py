@@ -77,7 +77,6 @@ from builtins import object
 import math
 import numpy as np
 from numba import jit
-import pdb
 
 radius = 6371 #km
  

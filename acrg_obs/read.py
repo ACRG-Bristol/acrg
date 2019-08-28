@@ -48,7 +48,7 @@ import sys
 if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
     acrg_path = os.getenv("ACRG_PATH")
     data_path = os.getenv("DATA_PATH")
-    obs_directory = os.path.join(data_path,"obs_2018")    
+    obs_directory = os.path.join(data_path,"obs")    
 else:
     from acrg_config.paths import paths
 
@@ -60,7 +60,7 @@ else:
 with open(os.path.join(acrg_path,"acrg_species_info.json")) as f:
     species_info=json.load(f)
 
-with open(os.path.join(acrg_path,"acrg_site_info_2018.json")) as f:
+with open(os.path.join(acrg_path,"acrg_site_info.json")) as f:
     site_info=json.load(f, object_pairs_hook=OrderedDict)
 
 def open_ds(path):
@@ -505,8 +505,8 @@ def get_single_site(site, species_in,
                 return None
 
             # Create single site data frame
-            df = pd.DataFrame({"mf": ds[ncvarname][:]},
-                              index = ds.time)
+            df = pd.DataFrame({"mf": ds[ncvarname].values},
+                              index = ds.time.values)
 
             if is_number(ds[ncvarname].units):
                 units = float(ds[ncvarname].units)
@@ -902,7 +902,7 @@ def label_species(species):
     
     return species_str
 
-def plot(data_dict):
+def plot(data_dict, output_file = None):
     '''
     Plot the data dictionary created by get_obs
     
@@ -910,7 +910,8 @@ def plot(data_dict):
         data_dict (dict) :
             Dictionary of Pandas DataFrames output by get_obs. 
             Keys are site names.
-        
+    kwargs:
+        output_file (str): specify a file path, if you want to save the figure
     '''
     
     import matplotlib.pyplot as plt
@@ -942,5 +943,8 @@ def plot(data_dict):
     plt.legend(handles = plots)
     #plt.ylabel("%s (%s)" %(data_dict[".species"], data_dict[".units"]))
     plt.ylabel("%s (%s)" %(label_species(data_dict[".species"]), data_dict[".units"]))
+
+    if output_file:
+        plt.savefig(output_file)
     
     plt.show()

@@ -1,0 +1,22 @@
+name: acrg
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - numpy
+  - iris
+  - ipython
+  - scipy
+  - future
+  - xarray
+  - yaml
+  - scipy
+  - matplotlib
+  - cartopy
+  - numba
+  - pandas
+  - h5py
+  - python-dateutil
+  - netCDF4
+  
+
