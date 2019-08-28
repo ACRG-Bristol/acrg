@@ -1720,5 +1720,17 @@
       "long_name": "Thames Barrier, UK", 
       "longitude": 0.037
     }
+  },
+  "TROPOMI-UK": {
+    "TROPOMI/TROPOMI-UK": {
+      "height": [
+        "column"
+      ],
+      "height_name": [
+        "column"
+      ],
+      "long_name": "TROPOMI, UK",
+      "platform": "satellite"
+    }
   }
 }
