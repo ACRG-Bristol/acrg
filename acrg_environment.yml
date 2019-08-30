@@ -1,4 +1,4 @@
-name: acrg
+name: acrg-hr
 channels:
   - conda-forge
   - defaults
@@ -18,5 +18,6 @@ dependencies:
   - h5py
   - python-dateutil
   - netCDF4
-  
+  - xESMF
+  - geopandas
 
