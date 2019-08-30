@@ -1084,6 +1084,52 @@ def getScarpelliFossilFuelsCH4(lon_out, lat_out, scarpelli_sector='all'):
     narr, reg = regrid2d(ffemis, lat_in, lon_in,
                              lat_out, lon_out)
     return(narr)
+    
+def getYanetalRiceCH4(lon_out, lat_out):
+    """
+    Global rice emissions from Yan et al. 2009 (for year 2000).
+    https://doi.org/10.1029/2008GB003299
+    Data is broken down by month.
+    
+    Args:
+        lon_out (array): 
+            Longitudes to output the data on.
+        lat_out (array):
+            Latitudes to output the data on.
+    
+    Returns:
+        narr (array): 
+            Array of regridded emissions in mol/m2/s.
+            Dimensions are [lat, lon, time]
+    """    
+    species = "ch4"
+    #Base year is 2000   
+    dim = np.array([31,29,31,30,31,30,31,31,30,31,30,31]) 
+    speciesmm = molar_mass(species)
+    months = [str(x).zfill(2) for x in np.arange(12)+1]
+    nt = len(months)
+    lat_in = np.arange(360)*0.5 - 89.75
+    lon_in = np.arange(720)*0.5 + 180.25
+    area = areagrid(lat_in,lon_in)
+    emissions = np.zeros((len(lat_in),len(lon_in),nt))
+    
+    for m,month in enumerate(months):
+        #Units Gg / 0.5x0.5 degree / month 
+        datain = np.genfromtxt(data_path+'/Gridded_fluxes/CH4/YanetalRice/rice_CH4_half_dg_m'+month+'.txt', skip_header=2)
+        data = datain.reshape((360,720))
+        data[data < 0] = 0.
+        emis = data*1e9/area/speciesmm/(dim[m]*24.*3600.)
+        emissions[:,:,m] = emis
+    
+    nlat = len(lat_out)
+    nlon = len(lon_out) 
+    nt = 12
+    narr = np.zeros((nlat, nlon, nt))   
+    for i in range(nt):
+       narr[:,:,i], reg = regrid2d(emissions[:,:,i], lat_in, lon_in,
+                                 lat_out, lon_out)
+    return(narr)
+
 
 def _JULESfile(year):
     '''
