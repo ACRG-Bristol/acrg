@@ -107,12 +107,14 @@ def site_info_attributes(site, network):
 
     if network is None:
         net = site_params[site].keys()[0]
+    else:
+        net = network
 
     if site in list(site_params.keys()):
         for at in list(attributes_list.keys()):
             if at in list(site_params[site][net].keys()):
                 attributes[attributes_list[at]] = site_params[site][net][at]
-            return attributes
+        return attributes
     else:
         return None
 
