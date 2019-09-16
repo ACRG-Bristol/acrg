@@ -98,7 +98,7 @@ def getCAMSdata(st_date, end_date, gridsize, NESW, species, outputname, nearreal
         "target": outputname,
     })
     
-def interpheight(nesw, fp_height, species, lonorlat=None):
+def interpheight(nesw, fp_height, species, lonorlat=None, reverse=None, z_dim="level"):
     """
     Interpolates the CAMS data to the NAME heights
     
@@ -108,6 +108,11 @@ def interpheight(nesw, fp_height, species, lonorlat=None):
         species (string) :  The species of interest
         lonorlat (string) : Whether you're interpolating along the 'longitude' 
             (N or S) or the 'latitude' (E or W).
+        reverse (bool/None) : Whether height values within is nesw input are in reverse order 
+            (i.e. nesw["z"] level 1 values > nesw["z"] level 2 values).
+            Default = None. If this is set to None this will be automatically determined.
+        z_dim (str, optional) : Used if reverse is not defined to extract appropriate
+            height values to compare.
             
     Returns:
         dataset : CAMS BC data interpolated to NAME heights
@@ -120,14 +125,28 @@ def interpheight(nesw, fp_height, species, lonorlat=None):
     else:
         print("Please specify either lonorlat='longitude' or 'latitude'")
         return None
+    
+    if reverse is None:
+        z_coords = nesw[z_dim].values
+        z_0 = nesw['z'].sel(**{z_dim:z_coords[0]}).values[0]
+        z_1 = nesw['z'].sel(**{z_dim:z_coords[1]}).values[0]
+
+        if z_1 >= z_0:
+            reverse=False
+        elif z_0 > z_1:
+            reverse=True        
+    
     for j in range(len(nesw['z'][0,:])):
-        interp[:,j] = np.interp(fp_height, nesw['z'][:,j][::-1], nesw[species][:,j][::-1])
+        if reverse == True:
+            interp[:,j] = np.interp(fp_height, nesw['z'][:,j][::-1], nesw[species][:,j][::-1])
+        elif reverse == False:
+            interp[:,j] = np.interp(fp_height, nesw['z'][:,j], nesw[species][:,j])
             
     ds2 = xr.DataArray(interp, coords=[fp_height, nesw[lonorlat].values], dims=['height', lonorlat])
     ds2 = ds2.to_dataset(name=species)
     return ds2
 
-def interplonlat(nesw, fp_lonorlat, species, lonorlat=None):
+def interplonlat(nesw, fp_lonorlat, species, lonorlat=None, reverse=None):
     """
     Interpolates the CAMS data to the NAME longitudes and latitudes
     
@@ -137,16 +156,31 @@ def interplonlat(nesw, fp_lonorlat, species, lonorlat=None):
         species (string) :  The species of interest
         lonorlat (string) : Whether you're interpolating along the 'longitude' 
             (N or S) or the 'latitude' (E or W).
+        reverse (bool/None) : Whether lon or lat values within nesw input are in reverse order
+            (i.e. nesw[lonorlat][0] > nesw[lonorlat][1]).
+            Default = None. If this is set to None this will be automatically determined.
             
     Returns:
         dataset : CAMS BC data interpolated to NAME longitudes or latitudes
         
     """
+
+#    print("nesw[lonorlat]",nesw[lonorlat])
+#    print("nesw[lonorlat].values",nesw[lonorlat].values)
+#    print("nesw[lonorlat].values[1]",nesw[lonorlat].values[1])
+    if reverse is None:
+        if nesw[lonorlat].values[1] >= nesw[lonorlat].values[0]:
+            reverse=False
+        elif nesw[lonorlat].values[0] > nesw[lonorlat].values[1]:
+            reverse=True
+    
+    print("reverse",lonorlat,reverse,nesw[lonorlat][0],nesw[lonorlat][1])
+    
     interp = np.zeros(( len(nesw.height),len(fp_lonorlat) ))
     for j in range(len(nesw.height)):
-        if lonorlat == 'latitude':
+        if reverse == True:
             interp[j, :] = np.interp(fp_lonorlat, nesw[lonorlat].values[::-1], nesw[species][j,:][::-1])
-        else:
+        elif reverse == False:
             interp[j, :] = np.interp(fp_lonorlat, nesw[lonorlat].values, nesw[species][j,:])
             
     ds2 = xr.DataArray(interp, coords=[nesw.height.values, fp_lonorlat], dims=['height', lonorlat[0:3]])
@@ -296,7 +330,7 @@ def makeCAMS_BC(domain, species, st_date, end_date, gridsize, outdir=None):
                   latitude = slice(ds.coords['latitude'][lat_n],ds.coords['latitude'][lat_s])).drop(['longitude'])
     west = ds.sel(longitude = ds.coords['longitude'][lon_w],
                   latitude = slice(ds.coords['latitude'][lat_n],ds.coords['latitude'][lat_s])).drop(['longitude'])
-     
+    
     vmr_n = interplonlat(interpheight(north, fp_height, species, lonorlat='longitude'), fp_lon, species, lonorlat='longitude').rename({species : 'vmr_n'})   
     vmr_s = interplonlat(interpheight(south, fp_height, species, lonorlat='longitude'), fp_lon, species, lonorlat='longitude').rename({species : 'vmr_s'}) 
     vmr_e = interplonlat(interpheight(east, fp_height, species, lonorlat='latitude'), fp_lat, species, lonorlat='latitude').rename({species : 'vmr_e'}) 
