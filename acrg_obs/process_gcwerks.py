@@ -96,7 +96,7 @@ species_translator = {"CO2": ["co2", "carbon_dioxide"],
                       "PFC-318": ["c4f8", "cyclooctafluorobutane"],
                       "F-113": ["cfc113", "cfc113"],
                       "H2_PDD": ["h2", "hydrogen"],
-                      "NE_PDD": ["Ne", "neon"],                      
+                      "NE_PDD": ["Ne", "neon"],
                       "DO2N2": ["do2n2", "ratio_of_oxygen_to_nitrogen"],
                       "DCH4C13": ["dch4c13", "delta_ch4_c13"],
                       "DCH4D": ["dch4d", "delta_ch4_d"],
@@ -214,7 +214,7 @@ def icos(site, network = "ICOS",
                             f_elements[3],
                             "picarro"))
         return(out)
-    
+
     # Get directories and site strings
     params_icos = params["ICOS"]
     site_string = params_icos[site]["gcwerks_site_name"]
@@ -232,7 +232,7 @@ def icos(site, network = "ICOS",
     species_inlet_model = find_species_inlet_model(data_file_names)
 
     inlets = set([i for (s, i, m) in species_inlet_model])
-    
+
     for i, (species, inlet, model) in enumerate(species_inlet_model):
 
         if stat(data_files[i]).st_size > 0:
@@ -247,20 +247,21 @@ def icos(site, network = "ICOS",
             ds = attributes(ds,
                             species.upper(),
                             site.upper(),
+                            network = network,
                             global_attributes = global_attributes,
                             sampling_period = 60,
                             date_range = date_range)
 
             if len(ds.time.values) == 0:
-                
+
                 # Then must have not passed date_range filter?
                 print(" ... no data in range")
                 # then do nothing
 
             else:
-    
+
                 inlet_label = params_icos[site]["inlet_rename"][inlet]
-                
+
                 # Write file
                 nc_filename = output_filename(output_folder,
                                               network,
@@ -270,9 +271,9 @@ def icos(site, network = "ICOS",
                                               ds.species,
                                               inlet = [None, inlet_label][len(inlets) > 1],
                                               version = version)
-    
+
                 ds.to_netcdf(nc_filename)
-    
+
                 print("Written " + nc_filename)
 
         else:
@@ -298,7 +299,7 @@ def gc_data_read(dotC_file, scale = {}, units = {}):
                      sep=r"\s+")
 
     # Time index
-    
+
     time = []
     time_analysis = []
     for i in range(len(df)):
@@ -307,7 +308,7 @@ def gc_data_read(dotC_file, scale = {}, units = {}):
         # Read analysis time
         if "ryyy" in list(df.keys()):
             time_analysis.append(dt(df.ryyy[i], df.rm[i], df.rd[i], df.rh[i], df.ri[i]))
-        
+
     df.index = time
 #    df["analysis_time"] = time_analysis
 
@@ -393,7 +394,7 @@ def gc(site, instrument, network,
                             params["GC"]["directory_output"],
                             user_specified_input_directory = input_directory,
                             user_specified_output_directory = output_directory)
-            
+
     search_strings = []
     for suffix in params["GC"]["instruments_suffix"][instrument]:
         # Search string
@@ -449,10 +450,10 @@ def gc(site, instrument, network,
     dfs["new_time"] = dfs.index - \
             pd.Timedelta(seconds = params["GC"]["sampling_period"][instrument]/2.)
     dfs.set_index("new_time", inplace = True, drop = True)
-    
+
     # Label time index
     dfs.index.name = "time"
-    
+
     # Convert to xray dataset
     ds = xray.Dataset.from_dataframe(dfs)
 
@@ -472,24 +473,24 @@ def gc(site, instrument, network,
 
             # There is only one inlet, just use all data, and don't lable inlet in filename
             if (inlet == "any") or (inlet == "air"):
-                
+
                 print("Processing %s, assuming single inlet..." %sp)
-                
+
                 ds_sp = ds[[sp,
                             sp + " repeatability",
                             sp + " status_flag",
                             sp + " integration_flag",
 #                            "analysis_time",
                             "Inlet"]]
-                
+
                 # No inlet label in file name
                 inlet_label = None
 
             else:
                 # Get specific inlet
-                
+
                 print("Processing " + sp + ", " + inlet + "...")
-                
+
                 # if inlet is in the format "date_YYYYMMDD_YYYYMMDD", split by date
                 if inlet[0:4] == "date":
                     dates = inlet.split("_")[1:]
@@ -501,16 +502,16 @@ def gc(site, instrument, network,
                                        sp + " integration_flag",
 #                                       "analysis_time",
                                        "Inlet"]]
-                    
+
                 else:
-                    
+
                     # Use UNIX pattern matching to find matching inlets
                     # select_inlet is a list of True or False
                     select_inlet = [fnmatch.fnmatch(i, inlet) for i in ds.Inlet.values]
                     # now create a DataArray of True or False
                     select_ds = xray.DataArray(select_inlet, coords = [ds.time],
                                                dims = ["time"])
-                    
+
                     # sub-set ds
                     ds_sp = ds.where(select_ds, drop = True)[[sp,
                                                               sp + " repeatability",
@@ -529,12 +530,12 @@ def gc(site, instrument, network,
                 global_attributes["inlet_magl"] = params["GC"][site]["inlet_label"][inleti]
             else:
                 global_attributes["inlet_magl"] = inlet_label
-            
+
             # Record Inlets from the .C file, for the record
             # TODO: figure out why xarray raises an error at this line
             #   if "analysis time" column is included (commented out above)
             Inlets = set(ds_sp.where(ds_sp[sp + " status_flag"] == 0, drop = True).Inlet.values)
-            global_attributes["inlet_gcwerks"] = ", ".join(Inlets)           
+            global_attributes["inlet_gcwerks"] = ", ".join(Inlets)
             # Now remove "Inlet" column from dataframe. Don't need it
             ds_sp = ds_sp.drop(["Inlet"])
 
@@ -549,6 +550,7 @@ def gc(site, instrument, network,
 
                 # Sort out attributes
                 ds_sp = attributes(ds_sp, sp, site.upper(),
+                                   network = network,
                                    global_attributes = global_attributes,
                                    units = units[sp],
                                    scale = scale[sp],
@@ -556,19 +558,19 @@ def gc(site, instrument, network,
                                    date_range = date_range)
 
                 if len(ds_sp.time.values) == 0:
-                    
+
                     # Then must have not passed date_range filter?
                     print(" ... no data in range")
                     # then do nothing
 
                 else:
-    
+
                     # Get instrument name for output
                     if sp.upper() in params["GC"]["instruments_out"][instrument]:
                         instrument_out = params["GC"]["instruments_out"][instrument][sp]
                     else:
                         instrument_out = params["GC"]["instruments_out"][instrument]["else"]
-    
+
                     # Write file
                     nc_filename = output_filename(output_folder,
                                                   network,
@@ -682,19 +684,20 @@ def crds(site, network,
             global_attributes["comment"] = params_crds["comment"]
 
             ds_sp = attributes(ds_sp, sp, site.upper(),
+                               network = network,
                                global_attributes = global_attributes,
                                scale = scales[sp],
                                sampling_period=60,
                                date_range = date_range)
 
             if len(ds_sp.time.values) == 0:
-                
+
                 # Then must have not passed date_range filter?
                 print(" ... no data in range")
                 # then do nothing
 
             else:
-                
+
                 # Write file
                 nc_filename = output_filename(output_folder,
                                               network,
@@ -704,7 +707,7 @@ def crds(site, network,
                                               ds_sp.species,
                                               inlet = [None, inlet][len(inlets) > 1],
                                               version = version)
-                
+
                 print("Writing " + nc_filename)
                 ds_sp.to_netcdf(nc_filename)
                 print("... written.")
@@ -713,13 +716,13 @@ def crds(site, network,
 def ale_gage(site, network):
     """
     Process Georgia Tech ALE or GAGE observations
-    
+
     Args:
         site (str): ADR, RPB, ORG, SMO, CGO or MHD
         network (str): ALE or GAGE
 
     """
-    
+
     import fortranformat as ff
 
     ale_directory = "/dagage2/agage/summary/git/ale_new/complete/"
@@ -814,6 +817,7 @@ def ale_gage(site, network):
         ds = ds.dropna("time")
 
         ds = attributes(ds, sp, site.upper(),
+                        network = network,
                        scale = scales[si],
                        sampling_period=60,
                        units = units[si])
@@ -865,6 +869,7 @@ def mhd_o3():
     ds = attributes(ds,
                     "ozone",
                     "MHD",
+                    network = network,
                     scale = "SCALE",
                     sampling_period=60*60,
                     units = "ppb")
@@ -1002,7 +1007,7 @@ if __name__ == "__main__":
     # ICOS
     icos("TTA", network = "DECC")
     icos("MHD", network = "ICOS")
-    
+
 
 #    # Copy files
 #    networks = ["AGAGE", "GAUGE", "DECC", "ICOS"]

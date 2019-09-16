@@ -151,9 +151,9 @@ def read_netcdfs(files, dim = "time"):
     #        ds.load()
     #    return ds
     
-    print("Reading and concatenating files: ")
-    for fname in files:
-        print(fname)
+    #print("Reading and concatenating files: ")
+    #for fname in files:
+    #    print(fname)
     
     datasets = [open_ds(p) for p in sorted(files)]
     combined = xr.concat(datasets, dim)

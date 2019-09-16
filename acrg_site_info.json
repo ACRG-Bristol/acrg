@@ -664,6 +664,18 @@
       "platform": "satellite"
     }
   },
+  "GOSAT-SAHARA": {
+    "GOSAT/GOSAT-SAHARA": {
+      "height": [
+        "column"
+      ],
+      "height_name": [
+        "column"
+      ],
+      "long_name": "GOSAT, Sahara",
+      "platform": "satellite"
+    }
+  },
   "GSN": {
     "AGAGE": {
       "height": [
