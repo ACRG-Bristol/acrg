@@ -27,9 +27,15 @@ def forwardModel(fp, flux, species = "CH4", hr=True):
         3. 1 + 2
         4. bg mf level, common to low and high resolutions
     '''
-    output_model_low = np.sum( flux.low_res.values * fp.fp_low.values, axis=(0,1))
-    output_model = np.sum( flux.flux.values * fp.fp.values, axis=0)
-    output_model_high = np.sum( flux.high_res.values * fp.fp_high.values, axis=(0,1))
+    if hr:
+        output_model_low = np.sum( flux.low_res.values * fp.fp_low.values, axis=(0,1))
+        output_model_high = np.sum( flux.high_res.values * fp.fp_high.values, axis=(0,1))
+        output_model = np.sum( flux.flux.values * fp.fp.values, axis=0)
+    else:
+        output_model_low = np.sum( flux.low_res.values * fp.fp.values, axis=(0,1))
+        output_model_high = np.sum( flux.low_res.values * fp.fp.values, axis=(0,1))
+        output_model = np.sum( flux.low_res.values * fp.fp.values, axis=(0,1))
+    
     #temp = temp + footprint[site].bc
     bc=name.boundary_conditions("EUROPE", species,
                                 start=fp.time.values[0],
@@ -39,14 +45,14 @@ def forwardModel(fp, flux, species = "CH4", hr=True):
         (fp.particle_locations_e*bc.vmr_e).sum(["height", "lat"]) + \
         (fp.particle_locations_s*bc.vmr_s).sum(["height", "lon"]) + \
         (fp.particle_locations_w*bc.vmr_w).sum(["height", "lat"])
-    output_model = (output_model+bg) * 1e9
+    output_model = (output_model*1e-9+bg) * 1e9
     output_model_low = (output_model_low+bg) * 1e9
     output_model_high = (output_model_high) * 1e9
     
     return output_model_low, output_model_high, output_model, bg*1e9
 
 def plotMultiResMesh(_data_low, lat_low, lon_low, _data_high, lat_high, lon_high,
-              vmin, vmax, scale_high = False, logPlot=True, cmap="viridis", ax=None,
+              vmin, vmax, scale_high = False, logPlot=True, cmap="viridis", ax=None, cbar = None,
               **kwargs):
     '''
     Plots low resolution and high resolution data on top of eachother using pcolormesh
@@ -87,7 +93,9 @@ def plotMultiResMesh(_data_low, lat_low, lon_low, _data_high, lat_high, lon_high
         ax.pcolormesh(lons_low, lats_low, data_low.T, vmin=vmin, vmax=vmax, cmap=cmap, **kwargs)
         #ax.pcolormesh(lons_high, lats_high, data_high.T*0, vmin=0, vmax=100, cmap="Greys", **kwargs)
         cs = ax.pcolormesh(lons_high, lats_high, data_high.T, vmin=vmin, vmax=vmax, cmap=cmap, **kwargs)
-    #plt.colorbar(cs, ax=ax)
+    if cbar:
+        cb = plt.colorbar(cs, ax=ax)
+        cb.set_label(cbar)
     return ax
     
 def unflattenArray(stacked_array, template):
@@ -160,13 +168,13 @@ def postProcess(ds, basis):
     
     return output
 
-def shpToGrid(shape, lons, lats):
+def shpToGrid(shape, lons, lats, index = 0):
     XX, YY = np.meshgrid(lons, lats)
     XX, YY = XX.flatten(), YY.flatten()
     df = pd.DataFrame({'Coordinates': list(zip(XX, YY))})
     df['Coordinates'] = df['Coordinates'].apply(shapely.geometry.Point)
     gdf = gpd.GeoDataFrame(df, geometry='Coordinates')
-    within = gdf.within(shape.geometry)
+    within = gdf.within(shape.geometry[index])
     within = within.values.reshape(len(lons), len(lats))
     return within
 

@@ -989,13 +989,14 @@ def footprint_array(fields_file,
         else:
             # Re-index met dataframe to each time point
 #            metr = met[0].reindex(index = np.array([t]))
-            metr = met[0][~met[0].index.duplicated(keep='first')].reindex(index = np.array([t]))
+            #metr = met[0][~met[0].index.duplicated(keep='first')].reindex(index = np.array([t]))
+            metr = met[0][~met[0].index.duplicated(keep='first')].loc[t, :]
             if np.isnan(metr.values).any():
                 raise ValueError("No met data for given date %s" % t)
             
         for key in list(metr.keys()):
             if key != "time":
-                met_ds[key][{'time':[i]}] = metr[key].values.reshape((1,len(levs)))
+                met_ds[key][{'time':[i]}] = metr[key].reshape((1,len(levs)))
         
     if "label" in met_ds.data_vars:
         met_ds = met_ds.drop("label")
@@ -1750,7 +1751,7 @@ def process(domain, site, height, year, month,
         if file_name.startswith(error_files) and \
         file_name.endswith('Error.txt') and \
         os.stat(input_folder+file_name).st_size != 0:
-            error_days.append(file_name[-11:-9]+'/'+month+'/'+year)
+            error_days.append(file_name[-11:-9]+'/'+str(month)+'/'+str(year))
             error_days.sort()
             num_days = len(error_days)
         

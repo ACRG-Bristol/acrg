@@ -85,6 +85,33 @@ def process_all(domain, site, height,
     filenames = os.listdir("{}{}".format(output_base, processed_folder_HR))
     for i, filename in enumerate(filenames):
         combine_date(output_base, processed_folder, processed_folder_HR, filename)
+        
+def process(domain, site, height, year, month,
+            force_met_empty = False,
+            processed_folder = "Processed_Fields_files",
+            processed_folder_HR = "Processed_Fields_files_HR",
+            base_dir = "/data/al18242/name_out/"):
+    """
+    Process high resolution footprints, by seperately processing the low and high resolution outputs
+    These are then combined together into a single dataset ready for further use
+    """
+    
+    #process low resolution:
+    name.process.process(domain, site, height, year, month,
+                         force_met_empty = force_met_empty,
+                         processed_folder = processed_folder,
+                         base_dir=base_dir)
+    #process high resolution:
+    name.process.process(domain, site, height, year, month,
+                             force_met_empty = force_met_empty,
+                             fields_folder = "Fields_files_HR",
+                             processed_folder = processed_folder_HR,
+                             base_dir=base_dir)
+    
+    #open processed datasets to be combined
+    output_base = "{}{}_{}_{}/".format(base_dir,domain,site,height)
+    filename = "{}-{}_{}_{}{}.nc".format(site,height,domain,str(year),str(month))
+    combine_date(output_base, processed_folder, processed_folder_HR, filename)
     
 def getOverlapParameters(lat_low, lon_low, lat_high, lon_high):
     """
@@ -122,6 +149,45 @@ def getOverlapParameters(lat_low, lon_low, lat_high, lon_high):
     
     return (lowsize, highsize, lons_low, lats_low, lons_high, lats_high, indicies_to_remove, lons_out, lats_out)
     
+def merge_resolutions(fp_low, fp_high, base, dataType = "fp"):
+    if dataType == "fp":
+        lowName = "fp_low"
+        highName = "fp_high"
+        combinedName = "fp"
+    elif dataType=="flux":
+        lowName = "low_res"
+        highName = "high_res"
+        combinedName = "flux"
+    else:
+        raise Exception("dateType must be flux or fp")
+    lowsize, highsize, lons_low, lats_low, lons_high, lats_high, indicies_to_remove, lons_out, lats_out = \
+        getOverlapParameters(fp_low.lat.values, fp_low.lon.values, fp_high.lat_high.values, fp_high.lon_high.values)
+    
+    #flatten footprints ready to combine
+    fp_low_flat = fp_low.values.reshape(lowsize, -1, order="F")#(["index", "time"] ,fp_low.values.reshape(lowsize, -1, order="F"))
+    fp_high_flat = fp_high.values.reshape(highsize, -1, order="F")#(["index", "time"] ,fp_high.values.reshape(highsize, -1, order="F"))
+    
+    lons_out = np.delete(lons_low, indicies_to_remove)
+    lats_out = np.delete(lats_low, indicies_to_remove)
+    fp_out = np.delete(fp_low_flat, indicies_to_remove, axis=0)
+    
+    lons_out=np.append(lons_out,lons_high)
+    lats_out=np.append(lats_out,lats_high)
+    fp_out=np.append(fp_out,fp_high_flat,axis=0)
+    
+    #create output file from existing
+    output_file = base.copy(deep=True)
+    output_file[lowName] = fp_low
+    output_file[highName] = (["lat_high", "lon_high", "time"], fp_high.values)
+    output_file["lat_high"] = (["lat_high"], fp_high.lat_high.values, {"units":"Degrees_north"})
+    output_file["lon_high"] = (["lon_high"], fp_high.lon_high.values, {"units":"Degrees_east"})
+    output_file[combinedName] = (["index", "time"], fp_out)
+    
+    output_file["index_lons"] = (["index"], lons_out)
+    output_file["index_lats"] = (["index"], lats_out)
+    
+    return output_file
+
 def combine_date(output_base, processed_folder, processed_folder_HR, filename):
     """
     Combine the low and high resolution outputs into a single file
