@@ -1077,13 +1077,59 @@ def getScarpelliFossilFuelsCH4(lon_out, lat_out, scarpelli_sector='all'):
     with xr.open_dataset(sourcefn) as load:
         ds = load.load()         #Units are Mg / km2 / year
     
-    ffemis = old_div(ds.emis_ch4.values,(365*24*3600)/molar_mass('ch4')) #Convert to mol/m2/s
+    ffemis = ds.emis_ch4.values/(365*24*3600)/molar_mass('ch4') #Convert to mol/m2/s
     lat_in = ds.lat.values
     lon_in = ds.lon.values
     
     narr, reg = regrid2d(ffemis, lat_in, lon_in,
                              lat_out, lon_out)
     return(narr)
+    
+def getYanetalRiceCH4(lon_out, lat_out):
+    """
+    Global rice emissions from Yan et al. 2009 (for year 2000).
+    https://doi.org/10.1029/2008GB003299
+    Data is broken down by month.
+    
+    Args:
+        lon_out (array): 
+            Longitudes to output the data on.
+        lat_out (array):
+            Latitudes to output the data on.
+    
+    Returns:
+        narr (array): 
+            Array of regridded emissions in mol/m2/s.
+            Dimensions are [lat, lon, time]
+    """    
+    species = "ch4"
+    #Base year is 2000   
+    dim = np.array([31,29,31,30,31,30,31,31,30,31,30,31]) 
+    speciesmm = molar_mass(species)
+    months = [str(x).zfill(2) for x in np.arange(12)+1]
+    nt = len(months)
+    lat_in = np.arange(360)*0.5 - 89.75
+    lon_in = np.arange(720)*0.5 + 180.25
+    area = areagrid(lat_in,lon_in)
+    emissions = np.zeros((len(lat_in),len(lon_in),nt))
+    
+    for m,month in enumerate(months):
+        #Units Gg / 0.5x0.5 degree / month 
+        datain = np.genfromtxt(data_path+'/Gridded_fluxes/CH4/YanetalRice/rice_CH4_half_dg_m'+month+'.txt', skip_header=2)
+        data = datain.reshape((360,720))
+        data[data < 0] = 0.
+        emis = data*1e9/area/speciesmm/(dim[m]*24.*3600.)
+        emissions[:,:,m] = emis
+    
+    nlat = len(lat_out)
+    nlon = len(lon_out) 
+    nt = 12
+    narr = np.zeros((nlat, nlon, nt))   
+    for i in range(nt):
+       narr[:,:,i], reg = regrid2d(emissions[:,:,i], lat_in, lon_in,
+                                 lat_out, lon_out)
+    return(narr)
+
 
 def _JULESfile(year):
     '''
@@ -1259,11 +1305,16 @@ def getJULESwetlands(year,lon_out,lat_out,species="CH4",extent_db="SWAMPS",scale
     fill_value = np.min(flux_jules[fch4_name].values) # This may incorrect if input file is changed and different fill value is specified
     fch4_fill_indices = np.where(flux_jules[fch4_name]==fill_value)
     
-    flux_jules.fch4_wetl_npp.values[fch4_fill_indices] = 0.0
+    #flux_jules.fch4_wetl_npp.values[fch4_fill_indices] = 0.0
+    flux_jules[fch4_name].values[fch4_fill_indices] = 0.0
+
+    ## Want to convert from units of kg/m2/s to mol/m2/s
+    molmass = molar_mass(species)
+    flux_jules[fch4_name].values = flux_jules[fch4_name].values*1000./molmass
 
     flux_jules_frac = np.abs(old_div(flux_jules[fch4_name], flux_jules[fwetl_name]))
     flux_jules_frac.values = np.nan_to_num(flux_jules_frac) # Any number divided by 0.0 will be nan, so change these back to 0.0
-    
+
     if extent_db == "SWAMPS":
         ## Multiply by fractions from SWAMPS to rescale to measured rather than simulated inundation area
         frac_swamps = xr.open_dataset(_SWAMPSfile())
@@ -1271,10 +1322,15 @@ def getJULESwetlands(year,lon_out,lat_out,species="CH4",extent_db="SWAMPS",scale
         
         frac_swamps[fw_name].values = np.nan_to_num(frac_swamps[fw_name])
         frac_reindex = frac_swamps.reindex_like(flux_jules_frac,method="ffill")
+    elif extent_db == None:
+        frac_reindex = None
     else:
         raise Exception("Input for wetland extent database not understood: {}".format(extent_db))
     
-    fch4_wetl_npp_new = flux_jules_frac*frac_reindex[fw_name]
+    if frac_reindex:
+        fch4_wetl_npp_new = flux_jules_frac*frac_reindex[fw_name]
+    else:
+        fch4_wetl_npp_new = flux_jules[fch4_name]
 
     lat = fch4_wetl_npp_new.lat.values
     lon = fch4_wetl_npp_new.lon.values
@@ -1286,7 +1342,7 @@ def getJULESwetlands(year,lon_out,lat_out,species="CH4",extent_db="SWAMPS",scale
     nt = len(fch4_wetl_npp_new.time)
     
     narr = np.zeros((nlat_out, nlon_out, nt))
-   
+
     for i in range(nt):
         narr[:,:,i], reg = regrid2d(emissions[:,:,i], lat, lon, lat_out, lon_out)
 
@@ -1312,6 +1368,7 @@ def scale_emissions(emissions_t,species,lat,lon,total_emission):
     Args:
         emissions_t (numpy.array) :
             Emissions values for one time point. Expect array to have dimensions nlat x nlon
+            Assumes emissions are in units of mol/m2/s
         species (str) :
             Species of interest. Used to extract molar mass. e.g. "CH4"
         lat (numpy.array) :
@@ -1371,8 +1428,9 @@ def scale_emissions_all(emissions,species,lat,lon,total_emission):
     emissions_new = np.copy(emissions)
     
     for i in range(nt):
-        emissions_i = emissions[:,:,i]
-        scale_emissions(emissions_i,species,lat,lon,total_emission)        
+        emissions_i = emissions_new[:,:,i]
+        #scale_emissions(emissions_i,species,lat,lon,total_emission)        
+        emissions_new[:,:,i] = scale_emissions(emissions_i,species,lat,lon,total_emission)
     
     return emissions_new
 
@@ -1643,6 +1701,7 @@ def create_emissions(databases,species,domain,year=None,lon_out=[],lat_out=[],
                 - "natural"              - other natural CH4 emissions (volcanoes, termites, hydrates) from Fung et al 1987
                 - "soilsink"             - soil sink CH4 emissions from Bousquet et al 2006
                 - "Bloom"                - CH4 wetland emissions from Bloom et al
+                - "Bloom2017"            - CH4 wetland emissions for updated WetCHARTS map from Bloom et al 2017
                 - "NAEI"                 - NAEI anthropogenic database
                 - "NAEI_and_EDGAR"       - Combined dataset of NAEI and EDGAR
                 - "JULES_wetlands"       - CH4 wetlands emissions from combining JULES model emissions output and SWAMPS wetlands extent.
@@ -1690,10 +1749,15 @@ def create_emissions(databases,species,domain,year=None,lon_out=[],lat_out=[],
                 Specific sector for Scarpelli inventory. MUST be specified if "Scarpelli" inventory is used.
             incagr :
                 Include agricultural waste burning. Optional for "GFED" database.
+            extent_db :
+                Use a different extent database with the JULES emissions. Optional for "JULES_wetlands"
             scale_wetlands :
                 Scale wetlands to match a fraction of a total emissions value. Optional for "JULES_wetlands"
             total_w_emission :
                 Total wetland emissions to scale emissions map to. Only used if scale_wetlands=True. Optional for "JULES_wetlands"
+            modeltype :
+                Model type to use for WetCHARTS based on options available. One of 'extended' or 'full'.
+                Optional for "Bloom2017"
 
     Returns:
         numpy.array (nlat x nlon x nt), numpy.array (nt):
@@ -1763,7 +1827,7 @@ def create_emissions(databases,species,domain,year=None,lon_out=[],lat_out=[],
                     functions.append(db_functions[database]["yearly"])
                 else:
                     raise Exception("Did not recognise combined input for EDGAR database: {}".format(kwargs))
-            elif "sectors" in kwargs:
+            elif "edgar_sectors" in kwargs:
                 print("Sectors specified but timeframe of monthly or yearly is not specified. Using EDGAR annual sectors as default.")
                 functions.append(db_functions[database]["sector_yearly"])
             else:
@@ -1773,6 +1837,7 @@ def create_emissions(databases,species,domain,year=None,lon_out=[],lat_out=[],
             functions.append(db_functions[database])
         
         if database in EDGAR_options:
+            databases = databases[:]
             databases[i] = "EDGAR"
    
     # Checks species can be resolved for all databases in list.
@@ -1868,7 +1933,8 @@ def create_emissions(databases,species,domain,year=None,lon_out=[],lat_out=[],
     if write:
         ## Constructing attribute inputs for emissions file
         if len(databases) == 1:
-            title = "{} emissions from {} database.".format(species,databases[0])
+            db = databases[0]
+            title = "{} emissions from {} database.".format(species,db)
         else:
             title = "Combined {} emissions between ".format(species)
             for i,database in enumerate(databases):
@@ -1880,7 +1946,8 @@ def create_emissions(databases,species,domain,year=None,lon_out=[],lat_out=[],
                     title += " and {} ({}) databases.".format(database,db_sector[database])
     
         if len(databases) == 1:
-            source = db_sector[databases[0]]
+            db = databases[0]
+            source = db_sector[db]
         else:
             source = "all"
             
