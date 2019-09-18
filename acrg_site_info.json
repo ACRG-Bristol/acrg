@@ -418,10 +418,11 @@
     }
   }, 
   "CVO": {
-    "WMO": {
+    "UEXETER": {
       "height": [
         "30m"
-      ], 
+      ],
+      "height_name": ["30m"], 
       "height_station_masl": 10.0, 
       "latitude": 16.8636, 
       "long_name": "Cape Verde, Africa", 
