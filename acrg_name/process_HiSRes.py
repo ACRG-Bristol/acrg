@@ -11,6 +11,7 @@ Functions used to generate and process HiSRes (High spatial resolution) footprin
 import acrg_name as name
 import xarray as xr
 import numpy as np
+import numpy.ma as ma
 import os
 import pandas as pd
 from acrg_name import emissions_helperfuncs as emfuncs
@@ -53,6 +54,12 @@ def getGridCC(x, y):
     y = np.append(y, y[-1] + dy)
     x -= dx/2.
     y -= dy/2.
+    XX, YY = np.meshgrid(x, y)
+    return XX, YY
+
+def getGridLL(x, y):
+    x = np.append(x, x[-1] + x[2]-x[1])
+    y = np.append(y, y[-1] + y[2]-y[1])
     XX, YY = np.meshgrid(x, y)
     return XX, YY
 
@@ -355,64 +362,72 @@ def getFlux(ds, output_dir, name,
     
 class quadTreeNode:    
     
-    def __init__(self, xStart, xEnd, yStart, yEnd):
-        self.xStart = xStart
-        self.xEnd = xEnd
-        self.yStart = yStart
-        self.yEnd = yEnd
-        
-        self.child1 = None #top left
-        self.child2 = None #top right
-        self.child3 = None #bottom left
-        self.child4 = None #bottom right
+    def __init__(self, maskedArray):
+        self.maskedArray = maskedArray
+        if not (type(self.maskedArray) == ma.core.MaskedArray):
+            self.maskedArray = ma.array(self.maskedArray, mask = np.zeros_like(self.maskedArray, dtype=bool))
+        self.XX, self.YY = np.meshgrid(np.arange(maskedArray.shape[1]), np.arange(maskedArray.shape[0]))
+        self.children = []
     
     def isLeaf(self):
-        if self.child1 or self.child2 or self.child3 or self.child4:
+        if self.children:
             return False
         else:
             return True
         
-    def createChildren(self, grid, limit):
-        value = np.sum(grid[self.xStart:self.xEnd, self.yStart:self.yEnd]).values
-        if (value < limit or
-            (self.xEnd-self.xStart < 2) or (self.yEnd-self.yStart <2)):
-            return
-        dx = (self.xEnd-self.xStart)
-        dy = (self.yEnd-self.yStart)
-        self.child1 = quadTreeNode(self.xStart, self.xStart + dx//2, self.yStart, self.yStart + dy//2)
-        self.child2 = quadTreeNode(self.xStart + dx//2, self.xStart + dx, self.yStart, self.yStart + dy//2)
-        self.child3 = quadTreeNode(self.xStart, self.xStart + dx//2, self.yStart + dy//2, self.yStart + dy)
-        self.child4 = quadTreeNode(self.xStart + dx//2, self.xStart + dx, self.yStart + dy//2, self.yStart + dy)
+    def createChildrenWithInit(self, limit, init):
+        for grid in init:
+            self.children.append(quadTreeNode(ma.array(self.maskedArray.data, mask = grid)))
         
-        self.child1.createChildren(grid, limit)
-        self.child2.createChildren(grid, limit)
-        self.child3.createChildren(grid, limit)
-        self.child4.createChildren(grid, limit)
+        leafList = []
+        self.appendLeaves(leafList)
+        for leaf in leafList:
+            leaf.createChildren(limit)      
+        
+    def createChildren(self, limit):
+        value = np.sum(self.maskedArray)
+        if (value < limit or
+            (np.sum(~self.maskedArray.mask) <=1 )):
+            return
+        
+        weight = ~self.maskedArray.mask
+        mx = np.sum(self.XX * weight) / np.sum(weight)
+        my = np.sum(self.YY * weight) / np.sum(weight)
+        TL = ma.array(self.maskedArray.data, mask = self.maskedArray.mask | ~((self.XX <= mx) & (self.YY <= my)))
+        TR = ma.array(self.maskedArray.data, mask = self.maskedArray.mask | ~((self.XX > mx) & (self.YY <= my)))
+        BR = ma.array(self.maskedArray.data, mask = self.maskedArray.mask | ~((self.XX > mx) & (self.YY > my)))
+        BL = ma.array(self.maskedArray.data, mask = self.maskedArray.mask | ~((self.XX <= mx) & (self.YY > my)))
+        
+        self.children.append(quadTreeNode(TL))
+        self.children.append(quadTreeNode(TR))
+        self.children.append(quadTreeNode(BR))
+        self.children.append(quadTreeNode(BL))
+        
+        for child in self.children:
+            child.createChildren(limit)
         
     def appendLeaves(self, leafList):
         if (self.isLeaf()):
             leafList.append(self)
         else:
-            self.child1.appendLeaves(leafList)
-            self.child2.appendLeaves(leafList)
-            self.child3.appendLeaves(leafList)
-            self.child4.appendLeaves(leafList)
+            for child in self.children:
+                child.appendLeaves(leafList)
         
     
-    
-def quadTreeGrid(grid, limit):
-    parentNode = quadTreeNode(0, grid.shape[0], 0, grid.shape[1])
-    parentNode.createChildren(grid, limit)
+def quadTreeGrid(grid, limit, init = None):
+    parentNode = quadTreeNode(grid)
+    if init:
+        parentNode.createChildrenWithInit(limit, init)
+    else:
+        parentNode.createChildren(limit)
     leafList = []
-    boxList = []
     parentNode.appendLeaves(leafList)
     
-    outputGrid = np.zeros_like(grid)
+    outputGrid = np.zeros_like(grid.data)
     for i, leaf in enumerate(leafList):
-        outputGrid[leaf.xStart:leaf.xEnd, leaf.yStart:leaf.yEnd] = i
-        boxList.append([leaf.xStart, leaf.xEnd, leaf.yStart, leaf.yEnd])
+        outputGrid[~leaf.maskedArray.mask] = i
     
-    return outputGrid, boxList
+    return outputGrid
         
 def makeBasisFromExisting():
     #flux = name.name.flux("EUROPE", "CH4-BTT-5", flux_directory="/data/al18242/flux_HR/")
