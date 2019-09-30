@@ -52,7 +52,7 @@ def forwardModel(fp, flux, species = "CH4", hr=True):
     return output_model_low, output_model_high, output_model, bg*1e9
 
 def plotMultiResMesh(_data_low, lat_low, lon_low, _data_high, lat_high, lon_high,
-              vmin, vmax, scale_high = False, logPlot=True, cmap="viridis", ax=None, cbar = None,
+              vmin, vmax, scale_high = False, logPlot=True, cmap="viridis", ax=None, cbar = None, cax = None,
               **kwargs):
     '''
     Plots low resolution and high resolution data on top of eachother using pcolormesh
@@ -94,7 +94,7 @@ def plotMultiResMesh(_data_low, lat_low, lon_low, _data_high, lat_high, lon_high
         #ax.pcolormesh(lons_high, lats_high, data_high.T*0, vmin=0, vmax=100, cmap="Greys", **kwargs)
         cs = ax.pcolormesh(lons_high, lats_high, data_high.T, vmin=vmin, vmax=vmax, cmap=cmap, **kwargs)
     if cbar:
-        cb = plt.colorbar(cs, ax=ax)
+        cb = plt.colorbar(cs, ax=cax)
         cb.set_label(cbar)
     return ax
     
@@ -125,7 +125,7 @@ def unflattenArray(stacked_array, template):
     #insert inserts at indicies based on original array, so each insert location must be incremented to work as expected
     out_low = np.insert(stacked_array[:-highsize],
                       [ (indicies_to_remove.tolist()[i] - i) for i in range(len(indicies_to_remove))],
-                      np.nan,
+                      -9999,
                       axis=0)
     out_low = out_low.reshape((template.dims["lat"],template.dims["lon"],newaxis), order="F")
     
