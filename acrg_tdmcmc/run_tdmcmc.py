@@ -348,7 +348,8 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     pdf_p2_hparam2,x_pdf ,pdf_param1_pdf,pdf_param2_pdf,inv_type,
     output_dir,fp_dir=None, flux_dir = None, data_dir=None, basis_dir=None, bc_basis_dir=None, bc_dir = None,
     tau_ap=None, tau_hparams=None, stepsize_tau=None, tau_pdf=None,
-    bl_split=False, bl_levels=None, filters=None, max_level=None, site_modifier={}, prior_uncertainty=False):
+    bl_split=False, bl_levels=None, filters=None, max_level=None, site_modifier={}, prior_uncertainty=False,
+    include_bias=True):
     #%%
     
     if para_temp is True:
@@ -417,10 +418,13 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     ###########################################################
     # CHECK IF A BIAS VALUE NEEDS TO BE INCLUDED
     
-    for site in sites:
-        if "GOSAT" in site and len(sites) > 1: # Will need to update to base on platform rather than searching for "GOSAT"
-            nBias = 1 
-            break
+    if include_bias:
+        for site in sites:
+            if "GOSAT" in site and len(sites) > 1: # Will need to update to base on platform rather than searching for "GOSAT"
+                nBias = 1 
+                break
+        else:
+            nBias = 0
     else:
         nBias = 0
     

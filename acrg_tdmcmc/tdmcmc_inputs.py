@@ -128,6 +128,13 @@ if verbose:
     print('Basis case for boundary conditions: {0}\n'.format(bc_basis_case))
     print('\n---------------\n')
 
+
+################################################################
+# SET STATUS RELATED TO BIAS AND BOUNDARY CONDITIONS
+
+include_bias = param["include_bias"]
+fix_bc = param["fix_bc"]
+
 ################################################################
 # SET OUTPUT DIRECTORY AND OUTPUT DETAILS
 output_dir = param['output_dir']
@@ -342,11 +349,14 @@ if len(f_list2) > 0:
 else:
     raise LookupError("No file exists for that bc_basis_case and domain")
 
-for site in sites:
-    if 'GOSAT' in site and len(sites) > 1: # Will need to update to base on platform rather than searching for "GOSAT"
-        nBias = 1
-        break
-else: 
+if include_bias:
+    for site in sites:
+        if 'GOSAT' in site and len(sites) > 1: # Will need to update to base on platform rather than searching for "GOSAT"
+            nBias = 1
+            break
+    else: 
+        nBias = 0
+else:
     nBias = 0
 
 ## Define nBC based on time, so each month is scaled individually
@@ -391,13 +401,53 @@ As ever aim for 25-50%  (Roberts et al. 1997) for each element.
 The births deaths and moves are not so intuitive so maybe don't worry about
 those so much.
 """
+
+## CREATING LISTS FOR PARAMETERS
+
 stepsize_all=np.zeros((nIC1))+stepsize
 stepsize_pdf_p1_all=np.zeros((nIC1))+(stepsize_pdf_p1*pdf_param10)
 stepsize_pdf_p2_all=np.zeros((nIC1))+(stepsize_pdf_p2*pdf_param20)
-stepsize_all[:nBC]=stepsize_all[:nBC]/200.
-stepsize_all[1:3]=stepsize_all[1:3]*70.
-stepsize_pdf_p1_all[:nBC]=stepsize_pdf_p1_all[:nBC]/10.
-stepsize_pdf_p2_all[:nBC]=stepsize_pdf_p2_all[:nBC]/10.
+
+x_pdf = np.zeros((nIC1), dtype=np.int)+x_pdf0
+
+pdf_param1_pdf=np.zeros((nIC1), dtype=np.int)+pdf_param1_pdf0
+pdf_param2_pdf=np.zeros((nIC1), dtype=np.int)+pdf_param2_pdf0
+
+pdf_p1_hparam1=np.zeros((nIC1))+pdf_p1_hparam10
+pdf_p1_hparam2=np.zeros((nIC1))+pdf_p1_hparam20
+
+pdf_p2_hparam1=np.zeros((nIC1))+pdf_p2_hparam10
+pdf_p2_hparam2=np.zeros((nIC1))+pdf_p2_hparam20
+
+### SET PARAMETERS FOR ANY BIAS PARAMETER
+
+if nBias > 0:
+    stepsize_all[0:nBias]=stepsize_all[0:nBias]*10.
+    
+    pdf_param1[0:nBias,:]=0.
+    pdf_param2[0:nBias,:]=50.
+    
+    x_pdf[0:nBias]=2 # GAUSSIAN PROFILE
+
+## SET PARAMETERS FOR THE BOUNDARY CONDITIONS
+ 
+if fix_bc == True:
+    # Include this line which defines boundary conditions stepsize as zero (not including bias)
+    stepsize_all[nBias:nBC]=0.0
+else:
+    stepsize_all[nBias:nBC]=stepsize_all[nBias:nBC]/200.
+    stepsize_all[nBias+1:3]=stepsize_all[nBias+1:3]*70.
+
+stepsize_pdf_p1_all[nBias:nBC]=stepsize_pdf_p1_all[nBias:nBC]/10.
+stepsize_pdf_p2_all[nBias:nBC]=stepsize_pdf_p2_all[nBias:nBC]/10.
+
+pdf_param2[nBias:nBC,:]=0.05
+pdf_p2_hparam1[nBias:nBC]=0.01
+pdf_p2_hparam2[nBias:nBC]=0.1
+
+x_pdf[nBias:nBC]=2 # GAUSSIAN PROFILE
+
+## SET OTHER PARAMETERS (RELATED TO SUB-DOMAIN?)
 
 stepsize_all[-1]=stepsize_all[-1]/2.
 stepsize_pdf_p1_all[-1]=stepsize_pdf_p1_all[-1]
@@ -406,20 +456,6 @@ stepsize_pdf_p2_all[-1]=stepsize_pdf_p2_all[-1]
 pdf_param1[:,:]=pdf_param10
 pdf_param2[:,:]=pdf_param20
 
-pdf_p1_hparam1=np.zeros((nIC1))+pdf_p1_hparam10
-pdf_p1_hparam2=np.zeros((nIC1))+pdf_p1_hparam20
-
-pdf_p2_hparam1=np.zeros((nIC1))+pdf_p2_hparam10
-pdf_p2_hparam2=np.zeros((nIC1))+pdf_p2_hparam20
-
-x_pdf = np.zeros((nIC1), dtype=np.int)+x_pdf0
-x_pdf[:nBC]=2
-pdf_param1_pdf=np.zeros((nIC1), dtype=np.int)+pdf_param1_pdf0
-pdf_param2_pdf=np.zeros((nIC1), dtype=np.int)+pdf_param2_pdf0
-
-pdf_param2[:nBC,:]=0.05
-pdf_p2_hparam1[:nBC]=0.01
-pdf_p2_hparam2[:nBC]=0.1
 pdf_p2_hparam1[-1]=0.2
 pdf_p2_hparam2[-1]=2.
 pdf_param2[nIC:,:]=1.
@@ -435,7 +471,8 @@ post_mcmc=run_tdmcmc.run_tdmcmc(sites, meas_period, av_period, species, start_da
     output_dir,fp_dir=fp_dir, flux_dir = flux_dir, data_dir=data_dir, basis_dir=basis_dir, bc_basis_dir=bc_basis_dir, bc_dir = bc_dir,
     filters=filters,bl_split=bl_split, bl_levels=levels,
     tau_ap=tau_ap, tau_hparams=tau_hparams, stepsize_tau=stepsize_tau, tau_pdf=tau_pdf,
-    max_level=max_level, site_modifier=site_modifier,prior_uncertainty=prior_uncertainty)
+    max_level=max_level, site_modifier=site_modifier,prior_uncertainty=prior_uncertainty,
+    include_bias=include_bias)
 
 if unique_copy:
     shutil.copy(config_file,output_dir)
