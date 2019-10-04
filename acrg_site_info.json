@@ -425,13 +425,14 @@
     }
   },
   "CVO": {
-    "WMO": {
+    "UEXETER": {
       "height": [
         "30m"
       ],
-      "height_station_masl": 10.0,
-      "latitude": 16.8636,
-      "long_name": "Cape Verde, Africa",
+      "height_name": ["30m"], 
+      "height_station_masl": 10.0, 
+      "latitude": 16.8636, 
+      "long_name": "Cape Verde, Africa", 
       "longitude": -24.8672
     }
   },
@@ -1541,6 +1542,18 @@
     }
   },
   "WAO": {
+    "UEA": {
+      "height": [
+        "21m"
+      ],
+      "height_name": [
+        "20magl"
+      ],
+      "height_station_masl": 10.0,
+      "latitude": 52.95042,
+      "long_name": "Weybourne Observatory, UK",
+      "longitude": 1.12194
+    },
     "UCAM": {
       "height": [
         "21m"

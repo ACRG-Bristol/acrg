@@ -945,3 +945,50 @@ def uex(species):
 #    print("Writing " + nc_filename)
 #    
 #    ds.to_netcdf(nc_filename)
+
+def uea_radon():
+    
+    global_attributes = {"contact": "Grant Foster, UEA",
+                         }
+    
+    df = pd.read_csv(data_path / "obs_raw/UEA/WAO_Radon_upto22_04_2019.csv",
+                     index_col = "Date", 
+                     na_values = -9999, skipinitialspace = True,
+                     parse_dates = True, dayfirst = True)
+    
+    # remove NaN
+    df = df[np.isfinite(df["Radon (mBq m-3)"])]
+
+    # Sort
+    df.sort_index(inplace = True)
+    
+    # Drop duplicates and rename index
+    df.index.name = "index"
+    df = df.reset_index().drop_duplicates(subset='index').set_index('index')              
+    df.index.name = "time"
+
+    df.rename(columns = {"Radon (mBq m-3)": "Rn",
+                         "SD ": "Rn repeatability"}, inplace = True)
+    
+    # Convert to dataset
+    ds = xr.Dataset.from_dataframe(df)
+    
+    
+    # Add attributes
+    ds = attributes(ds,
+                    "Rn",
+                    "WAO",
+                    global_attributes = global_attributes,
+                    units = "mBq m-3")
+
+    # Write file
+    nc_filename = output_filename(obs_directory,
+                                  "UEA",
+                                  "ANSTO",
+                                  "WAO",
+                                  ds.time.to_pandas().index.to_pydatetime()[0],
+                                  ds.species)
+
+    print("Writing " + nc_filename)
+    ds.to_netcdf(nc_filename)
+    
