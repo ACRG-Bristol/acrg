@@ -121,6 +121,9 @@ network = param['network']
 fp_basis_case = param['fp_basis_case']
 bc_basis_case = param['bc_basis_case']
 
+inlet = param["inlet"]
+instrument = param["instrument"]
+
 if verbose:
     print('Measurement details: sites - {0}, species - {1}, domain - {2}, network - {3}'.format(sites,species,domain,network))
     print('Date range: {0} - {1}'.format(start_date,end_date))
@@ -469,6 +472,7 @@ post_mcmc=run_tdmcmc.run_tdmcmc(sites, meas_period, av_period, species, start_da
     pdf_param1, pdf_param2, pdf_p1_hparam1, pdf_p1_hparam2, pdf_p2_hparam1,    
     pdf_p2_hparam2, x_pdf, pdf_param1_pdf, pdf_param2_pdf, inv_type,     
     output_dir,fp_dir=fp_dir, flux_dir = flux_dir, data_dir=data_dir, basis_dir=basis_dir, bc_basis_dir=bc_basis_dir, bc_dir = bc_dir,
+    inlet=inlet,instrument=instrument,
     filters=filters,bl_split=bl_split, bl_levels=levels,
     tau_ap=tau_ap, tau_hparams=tau_hparams, stepsize_tau=stepsize_tau, tau_pdf=tau_pdf,
     max_level=max_level, site_modifier=site_modifier,prior_uncertainty=prior_uncertainty,
