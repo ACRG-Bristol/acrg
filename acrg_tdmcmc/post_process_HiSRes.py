@@ -94,7 +94,7 @@ def plotMultiResMesh(_data_low, lat_low, lon_low, _data_high, lat_high, lon_high
         #ax.pcolormesh(lons_high, lats_high, data_high.T*0, vmin=0, vmax=100, cmap="Greys", **kwargs)
         cs = ax.pcolormesh(lons_high, lats_high, data_high.T, vmin=vmin, vmax=vmax, cmap=cmap, **kwargs)
     if cbar:
-        cb = plt.colorbar(cs, ax=cax)
+        cb = plt.colorbar(cs, ax=cax, shrink=0.8)
         cb.set_label(cbar)
     return ax
     
