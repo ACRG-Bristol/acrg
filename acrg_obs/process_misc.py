@@ -1029,13 +1029,18 @@ def bas_flk(species="CH4"):
     std_col="SD"
     num_col="ND_rounded" 
     
-    df = pd.read_csv(fname,index_col=0,parse_dates=True)
-    df[data_col] *= 1e3 ## IS THIS CORRECT? - ADDED BECAUSE VALUES SEEMED 1000x TOO SMALL (e.g. 1.7 rather than 1700)
+    df = pd.read_csv(fname,index_col=0,parse_dates=True,dayfirst=True)
+    
+    df = df[np.isfinite(df[data_col])]
+    df = df[np.isfinite(df[std_col])]
+    #df[data_col] *= 1e3 ## IS THIS CORRECT? - ADDED BECAUSE VALUES SEEMED 1000x TOO SMALL (e.g. 1.7 rather than 1700)
+    df[std_col] *= 1e3 ## IS THIS CORRECT? - ADDED BECAUSE VALUES SEEMED 1000x TOO SMALL (e.g. 0.000118 rather than 1.18)
+    
     df.rename({data_col:species.upper(),
-                    std_col:species.upper()+"_variability",
-                    num_col:species.upper()+"_number_of_observations"},axis="columns",inplace=True)
+                    std_col:species.upper()+" repeatability",
+                    num_col:species.upper()+" number_of_observations"},axis="columns",inplace=True)
     df.index.rename("time",inplace=True)
-    df.dropna(axis=0,inplace=True)
+    #df.dropna(axis=0,inplace=True)
     
     ds = xr.Dataset.from_dataframe(df.sort_index())
 
