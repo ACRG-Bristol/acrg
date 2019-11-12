@@ -75,11 +75,18 @@ def regrid_betweenGrids(data, input_grid, output_grid):
                          'lat_b': (['x_b', 'y_b'], LAT_b),
                          'lon_b': (['x_b', 'y_b'], LON_b)})
     
-            where lat and lon give cell centre locations, and lat_b and lon_b give the cell bounds (corners) 
+            where lat and lon give cell centre locations, and lat_b and lon_b give the cell bounds (corners)
+            
+            With the 'masking' branch of xESMF you can include a mask in the input_grid to ignore nan values
     returns
         regridded numpy array
     """
-    regridder = xesmf.Regridder(input_grid, output_grid, 'conservative')
+    if 'mask' in input_grid:
+        # !!! Requires the 'masking' branch of xESMF to be manually installed !!!
+        method = 'conservative_normed'
+    else:
+        method = 'conservative'
+    regridder = xesmf.Regridder(input_grid, output_grid, method)
     regridded = regridder( data )
     
     return regridded
