@@ -101,9 +101,9 @@
         "38magl",
         "24magl",
         "4magl"
-      ], 
-      "height_station_masl": 85.0, 
-      "latitude": -2.1441, 
+      ],
+      "height_station_masl": 85.0,
+      "latitude": -2.1441,
       "longitude": -58.9999
     }
   },
@@ -370,7 +370,7 @@
       ],
       "height_station_masl": 41.0,
       "latitude": 43.167,
-      "long_name": "Cape Oshi-Ishi, Japan",
+      "long_name": "Cape Ochi-Ishi, Japan",
       "longitude": 145.5
     }
   },
@@ -429,10 +429,10 @@
       "height": [
         "30m"
       ],
-      "height_name": ["30m"], 
-      "height_station_masl": 10.0, 
-      "latitude": 16.8636, 
-      "long_name": "Cape Verde, Africa", 
+      "height_name": ["30m"],
+      "height_station_masl": 10.0,
+      "latitude": 16.8636,
+      "long_name": "Cape Verde, Africa",
       "longitude": -24.8672
     }
   },
