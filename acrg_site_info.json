@@ -528,6 +528,20 @@
       "longitude": -104.986864
     }
   },
+  "FLK": {
+    "BAS": {
+      "height": [
+        "10m"
+      ],
+      "height_name": [
+        "10magl"
+      ],
+      "height_station_masl": 147.0,
+      "latitude": -51.707,
+      "long_name": "Sapper Hill, Falkland Islands, Malvinas",
+      "longitude": -57.870
+    }
+  },
   "FMS": {
     "EC": {
       "height": [
