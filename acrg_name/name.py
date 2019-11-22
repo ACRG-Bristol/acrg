@@ -13,7 +13,7 @@ from past.utils import old_div
 import netCDF4 as nc
 import numpy as np
 import matplotlib as mpl
-mpl.use('agg')
+#mpl.use('agg')
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 import datetime as dt

@@ -1621,7 +1621,7 @@ def name_pressure_match(ds,pressure_domain,columns=["latitude","longitude","time
     lon = ds[columns[1]].values
     time = ds[columns[2]].values
     
-    # Can't applu a list tolerance with current version of xarray. May be able to add with newer versions.
+    # Can't apply a list tolerance with current version of xarray. May be able to add with newer versions.
     #lat_tolerance = 5.0
     #lon_tolerance = 5.0
     #time_tolerance = np.timedelta64(max_days,'D')
@@ -2751,6 +2751,7 @@ def gosat_process_file(filename,site,species="ch4",lat_bounds=[],lon_bounds=[],d
         if verbose:
             print('Applying filter based on bad pressure flag')
         gosat = gosat_pressure_filter(gosat) # Removes points with any pressure values of -9999.99
+
     if mode:
         if mode == 'land' or mode == 'glint':
             if verbose:
@@ -2758,14 +2759,17 @@ def gosat_process_file(filename,site,species="ch4",lat_bounds=[],lon_bounds=[],d
             gosat = gosat_mode_filter(gosat,mode=mode)
         else:
             print('WARNING: Did not recognise input for mode filtering: {0}. Should be one of "land" or "glint". No mode filtering applied.'.format(mode))
+    
     if name_sp_filt:
-        if not name_filters:
-            raise Exception("If name_sp_filt=True, name_filters must be specified.")
-        if verbose:
-            print('Applying filters based on NAME surface pressure.')
-        gosat = name_pressure_filter(gosat,filters=name_filters,pressure_domain=pressure_domain,
-                                     cutoff=cutoff,layer_range=layer_range,pressure_base_dir=pressure_base_dir,
-                                     max_days=pressure_max_days,day_template=pressure_day_template)
+        if len(gosat[axis].values) > 0:
+            if not name_filters:
+                raise Exception("If name_sp_filt=True, name_filters must be specified.")
+            if verbose:
+                print('Applying filters based on NAME surface pressure.')
+            
+            gosat = name_pressure_filter(gosat,filters=name_filters,pressure_domain=pressure_domain,
+                                         cutoff=cutoff,layer_range=layer_range,pressure_base_dir=pressure_base_dir,
+                                         max_days=pressure_max_days,day_template=pressure_day_template)
         
     columns=["latitude","longitude"]
     

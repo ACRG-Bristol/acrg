@@ -27,7 +27,7 @@ if data_path is None:
             export DATA_PATH=/path/to/data/directory/ and restart python terminal")
 
 # Set default obs folder
-obs_directory = os.path.join(data_path, "obs_2018/")
+obs_directory = os.path.join(data_path, "obs/")
 
 # Output unit strings (upper case for matching)
 unit_species = {"CO2": "1e-6",
@@ -48,7 +48,8 @@ unit_species_long = {"DCH4C13": "permil",
                      "DCO2C13": "permil",
                      "DCO2C14": "permil",
                      "DO2N2" : "per meg",
-                     "APO" : "per meg"}
+                     "APO" : "per meg",
+                     "RN": "mBq m-3"}
 
 unit_interpret = {"ppm": "1e-6",
                   "ppb": "1e-9",
@@ -106,7 +107,7 @@ def site_info_attributes(site, network):
                        "height_station_masl": "station_height_masl"}
 
     if network is None:
-        net = site_params[site].keys()[0]
+        net = list(site_params[site].keys())[0]
     else:
         net = network
 
@@ -233,6 +234,8 @@ def attributes(ds, species, site,
     # Long name
     if (species.upper()[0] == "D" and species.upper() != "DESFLURANE") or species.upper() == "APO":
         sp_long = species_translator[species.upper()][1]
+    elif species.upper() == "RN":
+        sp_long = "radioactivity_concentration_of_222Rn_in_air"
     elif species.upper() in list(species_translator.keys()):
         sp_long = "mole_fraction_of_" + species_translator[species.upper()][1] + "_in_air"
     else:

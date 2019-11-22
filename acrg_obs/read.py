@@ -511,10 +511,12 @@ def get_single_site(site, species_in,
             if is_number(ds[ncvarname].units):
                 units = float(ds[ncvarname].units)
             else:
-                errorMessage = '''Units must be numeric. 
+                errorMessage = '''Units are not numeric. 
                                   Check your data file.
                                '''
-                raise ValueError(errorMessage)
+                units = ds[ncvarname].units
+                print("WARNING: %s" % errorMessage)
+#                raise ValueError(errorMessage)
             
             #Get repeatability
             if ncvarname + " repeatability" in ds.variables:

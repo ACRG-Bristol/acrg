@@ -563,7 +563,7 @@ def atto(species="CH4",inlet=1,version="v1"):
             available with new versions in future.
     
     TODO: There is a BUG that when splitting between the different instruments there is an 
-    overlap between the end date of the first file (2013-06-01) and the start date of the secof
+    overlap between the end date of the first file (2013-06-01) and the start date of the second
     file. Xarray selection here doesn't seem to be doing what we expect. May cause issues when
     using the data over this period.
     '''
@@ -945,3 +945,126 @@ def uex(species):
 #    print("Writing " + nc_filename)
 #    
 #    ds.to_netcdf(nc_filename)
+
+def uea_radon():
+    
+    global_attributes = {"contact": "Grant Foster, UEA",
+                         }
+    
+    df = pd.read_csv(data_path / "obs_raw/UEA/WAO_Radon_upto22_04_2019.csv",
+                     index_col = "Date", 
+                     na_values = -9999, skipinitialspace = True,
+                     parse_dates = True, dayfirst = True)
+    
+    # remove NaN
+    df = df[np.isfinite(df["Radon (mBq m-3)"])]
+
+    # Sort
+    df.sort_index(inplace = True)
+    
+    # Drop duplicates and rename index
+    df.index.name = "index"
+    df = df.reset_index().drop_duplicates(subset='index').set_index('index')              
+    df.index.name = "time"
+
+    df.rename(columns = {"Radon (mBq m-3)": "Rn",
+                         "SD ": "Rn repeatability"}, inplace = True)
+    
+    # Convert to dataset
+    ds = xr.Dataset.from_dataframe(df)
+    
+    
+    # Add attributes
+    ds = attributes(ds,
+                    "Rn",
+                    "WAO",
+                    global_attributes = global_attributes,
+                    units = "mBq m-3")
+
+    # Write file
+    nc_filename = output_filename(obs_directory,
+                                  "UEA",
+                                  "ANSTO",
+                                  "WAO",
+                                  ds.time.to_pandas().index.to_pydatetime()[0],
+                                  ds.species)
+
+    print("Writing " + nc_filename)
+    ds.to_netcdf(nc_filename)
+
+
+def bas_flk(species="CH4"):
+    '''
+    Process BAS Falkland Island data (may be a temporary raw file while CEDA archive is not allowing
+    data to be downloaded).
+    '''
+    
+    # From CEDA Archive page:
+    #  Data lineage:	
+    #    Data were collected by Royal Holloway and BAS and are calibrated to the NOAA scale. 
+    #    Then deposited at the Centre for Environmental Data Analysis (CEDA) for archiving.
+    
+    params = {
+        "site" : "FLK",
+        "network":"BAS",
+        "scale": {"CH4": "NOAA"},
+        "instrument": {"CH4": "CRDS"},
+        "units": {"CH4":"ppb"},
+        "sampling_period":1.5,
+        "averaging_period":1*3600.,
+        "directory" : "/data/shared/obs_raw/BAS/",
+        "directory_output" : "/data/shared/obs",
+        "global_attributes" : OrderedDict([
+                ("data_owner","Euan Nisbet"),
+                ("data_owner_email", "E.Nisbet@uea.ac.uk"),
+                ("data_creator","James France"),
+                ("data_creator_email","jamfra@bas.ac.uk")])
+               }
+
+    input_fname = "CH4_FLK_2010-18_hourly_FINAL.csv"
+    fname = join(params["directory"],input_fname)
+    
+    #time_col="dateW"
+    data_col="DATA"
+    std_col="SD"
+    num_col="ND_rounded" 
+    
+    df = pd.read_csv(fname,index_col=0,parse_dates=True,dayfirst=True)
+    
+    df = df[np.isfinite(df[data_col])]
+    df = df[np.isfinite(df[std_col])]
+    #df[data_col] *= 1e3 ## IS THIS CORRECT? - ADDED BECAUSE VALUES SEEMED 1000x TOO SMALL (e.g. 1.7 rather than 1700)
+    df[std_col] *= 1e3 ## IS THIS CORRECT? - ADDED BECAUSE VALUES SEEMED 1000x TOO SMALL (e.g. 0.000118 rather than 1.18)
+    
+    df.rename({data_col:species.upper(),
+                    std_col:species.upper()+" repeatability",
+                    num_col:species.upper()+" number_of_observations"},axis="columns",inplace=True)
+    df.index.rename("time",inplace=True)
+    #df.dropna(axis=0,inplace=True)
+    
+    ds = xr.Dataset.from_dataframe(df.sort_index())
+
+    ## Add attributes including global attributes
+    global_attributes = params["global_attributes"]
+    global_attributes["averaging"] = "{} seconds".format(params["averaging_period"])
+    
+    ds = attributes(ds,
+                    species,
+                    params["site"],
+                    global_attributes = global_attributes,
+                    scale = params["scale"][species],
+                    sampling_period = params["sampling_period"],
+                    units = params["units"][species])
+
+    ## Define filename and write to netcdf
+    nc_filename = output_filename(params["directory_output"],
+                                      params["network"],
+                                      params["instrument"][species],
+                                      params["site"].upper(),
+                                      ds.time.to_pandas().index.to_pydatetime()[0],
+                                      ds.species,
+                                      version="v1")
+
+    print(" ... writing " + nc_filename)
+        
+    ds.to_netcdf(nc_filename)
