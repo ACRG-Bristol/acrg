@@ -224,10 +224,10 @@
   "BTT": {
     "GAUGE": {
       "height": [
-        "185m"
+        "192m"
       ],
       "height_name": [
-        "185magl"
+        "192magl"
       ],
       "latitude": 51.5215,
       "long_name": "BT Tower, UK",
@@ -1770,6 +1770,20 @@
       ],
       "long_name": "TROPOMI, UK",
       "platform": "satellite"
+    }
+  },
+  "NPL": {
+    "NPL": {
+      "height": [
+        "17m"
+      ], 
+      "height_name": [
+        "17magl"
+      ], 
+      "height_station_masl": 17.0, 
+      "latitude": 51.424149, 
+      "long_name": "NPL, UK", 
+      "longitude": -0.343872
     }
   }
 }
