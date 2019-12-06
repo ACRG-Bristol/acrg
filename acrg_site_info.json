@@ -101,9 +101,9 @@
         "38magl",
         "24magl",
         "4magl"
-      ], 
-      "height_station_masl": 85.0, 
-      "latitude": -2.1441, 
+      ],
+      "height_station_masl": 85.0,
+      "latitude": -2.1441,
       "longitude": -58.9999
     }
   },
@@ -449,7 +449,7 @@
       ],
       "height_station_masl": 41.0,
       "latitude": 43.167,
-      "long_name": "Cape Oshi-Ishi, Japan",
+      "long_name": "Cape Ochiishi, Japan",
       "longitude": 145.5
     }
   },
@@ -508,10 +508,10 @@
       "height": [
         "30m"
       ],
-      "height_name": ["30m"], 
-      "height_station_masl": 10.0, 
-      "latitude": 16.8636, 
-      "long_name": "Cape Verde, Africa", 
+      "height_name": ["30m"],
+      "height_station_masl": 10.0,
+      "latitude": 16.8636,
+      "long_name": "Cape Verde, Africa",
       "longitude": -24.8672
     }
   },
@@ -605,6 +605,20 @@
       "latitude": 54.353743,
       "long_name": "East Trout Lake, Saskatchewan, Canada",
       "longitude": -104.986864
+    }
+  },
+  "FLK": {
+    "BAS": {
+      "height": [
+        "10m"
+      ],
+      "height_name": [
+        "10magl"
+      ],
+      "height_station_masl": 147.0,
+      "latitude": -51.707,
+      "long_name": "Sapper Hill, Falkland Islands, Malvinas",
+      "longitude": -57.870
     }
   },
   "FMS": {
@@ -1721,6 +1735,18 @@
     }
   },
   "WAO": {
+    "UEA": {
+      "height": [
+        "21m"
+      ],
+      "height_name": [
+        "20magl"
+      ],
+      "height_station_masl": 10.0,
+      "latitude": 52.95042,
+      "long_name": "Weybourne Observatory, UK",
+      "longitude": 1.12194
+    },
     "UCAM": {
       "height": [
         "21m"

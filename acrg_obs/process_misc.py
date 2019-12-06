@@ -563,7 +563,7 @@ def atto(species="CH4",inlet=1,version="v1"):
             available with new versions in future.
     
     TODO: There is a BUG that when splitting between the different instruments there is an 
-    overlap between the end date of the first file (2013-06-01) and the start date of the secof
+    overlap between the end date of the first file (2013-06-01) and the start date of the second
     file. Xarray selection here doesn't seem to be doing what we expect. May cause issues when
     using the data over this period.
     '''
@@ -945,3 +945,199 @@ def uex(species):
 #    print("Writing " + nc_filename)
 #    
 #    ds.to_netcdf(nc_filename)
+
+def uea_radon():
+    
+    global_attributes = {"contact": "Grant Foster, UEA",
+                         }
+    
+    df = pd.read_csv(data_path / "obs_raw/UEA/WAO_Radon_upto22_04_2019.csv",
+                     index_col = "Date", 
+                     na_values = -9999, skipinitialspace = True,
+                     parse_dates = True, dayfirst = True)
+    
+    # remove NaN
+    df = df[np.isfinite(df["Radon (mBq m-3)"])]
+
+    # Sort
+    df.sort_index(inplace = True)
+    
+    # Drop duplicates and rename index
+    df.index.name = "index"
+    df = df.reset_index().drop_duplicates(subset='index').set_index('index')              
+    df.index.name = "time"
+
+    df.rename(columns = {"Radon (mBq m-3)": "Rn",
+                         "SD ": "Rn repeatability"}, inplace = True)
+    
+    # Convert to dataset
+    ds = xr.Dataset.from_dataframe(df)
+    
+    
+    # Add attributes
+    ds = attributes(ds,
+                    "Rn",
+                    "WAO",
+                    global_attributes = global_attributes,
+                    units = "mBq m-3")
+
+    # Write file
+    nc_filename = output_filename(obs_directory,
+                                  "UEA",
+                                  "ANSTO",
+                                  "WAO",
+                                  ds.time.to_pandas().index.to_pydatetime()[0],
+                                  ds.species)
+
+    print("Writing " + nc_filename)
+    ds.to_netcdf(nc_filename)
+
+
+def bas_flk(species="CH4"):
+    '''
+    Process BAS Falkland Island data (may be a temporary raw file while CEDA archive is not allowing
+    data to be downloaded).
+    '''
+    
+    # From CEDA Archive page:
+    #  Data lineage:	
+    #    Data were collected by Royal Holloway and BAS and are calibrated to the NOAA scale. 
+    #    Then deposited at the Centre for Environmental Data Analysis (CEDA) for archiving.
+    
+    params = {
+        "site" : "FLK",
+        "network":"BAS",
+        "scale": {"CH4": "NOAA"},
+        "instrument": {"CH4": "CRDS"},
+        "units": {"CH4":"ppb"},
+        "sampling_period":1.5,
+        "averaging_period":1*3600.,
+        "directory" : "/data/shared/obs_raw/BAS/",
+        "directory_output" : "/data/shared/obs",
+        "global_attributes" : OrderedDict([
+                ("data_owner","Euan Nisbet"),
+                ("data_owner_email", "E.Nisbet@uea.ac.uk"),
+                ("data_creator","James France"),
+                ("data_creator_email","jamfra@bas.ac.uk")])
+               }
+
+    input_fname = "CH4_FLK_2010-18_hourly_FINAL.csv"
+    fname = join(params["directory"],input_fname)
+    
+    #time_col="dateW"
+    data_col="DATA"
+    std_col="SD"
+    num_col="ND_rounded" 
+    
+    df = pd.read_csv(fname,index_col=0,parse_dates=True,dayfirst=True)
+    
+    df = df[np.isfinite(df[data_col])]
+    df = df[np.isfinite(df[std_col])]
+    #df[data_col] *= 1e3 ## IS THIS CORRECT? - ADDED BECAUSE VALUES SEEMED 1000x TOO SMALL (e.g. 1.7 rather than 1700)
+    df[std_col] *= 1e3 ## IS THIS CORRECT? - ADDED BECAUSE VALUES SEEMED 1000x TOO SMALL (e.g. 0.000118 rather than 1.18)
+    
+    df.rename({data_col:species.upper(),
+                    std_col:species.upper()+" repeatability",
+                    num_col:species.upper()+" number_of_observations"},axis="columns",inplace=True)
+    df.index.rename("time",inplace=True)
+    #df.dropna(axis=0,inplace=True)
+    
+    ds = xr.Dataset.from_dataframe(df.sort_index())
+
+    ## Add attributes including global attributes
+    global_attributes = params["global_attributes"]
+    global_attributes["averaging"] = "{} seconds".format(params["averaging_period"])
+    
+    ds = attributes(ds,
+                    species,
+                    params["site"],
+                    global_attributes = global_attributes,
+                    scale = params["scale"][species],
+                    sampling_period = params["sampling_period"],
+                    units = params["units"][species])
+
+    ## Define filename and write to netcdf
+    nc_filename = output_filename(params["directory_output"],
+                                      params["network"],
+                                      params["instrument"][species],
+                                      params["site"].upper(),
+                                      ds.time.to_pandas().index.to_pydatetime()[0],
+                                      ds.species,
+                                      version="v1")
+
+    print(" ... writing " + nc_filename)
+        
+    ds.to_netcdf(nc_filename)
+
+def BTT():
+    '''
+    Processing measurements taking from the BT Tower in London
+    '''
+
+    unit_species = {"CO2": "ppm",
+                "CH4": "ppb",
+                "N2O": "1e-9",
+                "CO": "ppm"}
+
+    site="BTT"
+    speciesList = ["CH4", "CO2"]
+
+    #mole fraction labels
+    species_label = {"CO2": "co2.cal",
+                    "CH4": "ch4.cal.ppb"}
+
+    #standard deviation labels
+    species_sd = {"CO2": "co2.sd.ppm",
+                    "CH4": "ch4.sd.ppb"}
+    params = {
+            "directory" : "/data/shared/obs_raw/BTT/",
+            "directory_output" : "/data/shared/obs/",
+            "scale": {
+                "CH4": "WMO-CH4-X2004",
+                "CO2": "WMO-CO2-X2007"},
+            "instrument": "Picarro 2311-f",
+            "inlet": "192m",
+            "global_attributes": {
+                "data_owner": "Carole Helfter",
+                "data_owner_email": "caro2@ceh.ac.uk"
+                }
+            }
+
+    filename = "/data/shared/obs_raw/BTT/BT_TOWER_CO2_CH4_30-MIN_CALIBRATED_2019_20191121_0907.csv"
+    
+    #convert time into pandas and remove null values. 
+    #Rounded to averaging period of 30 minutes due to loss of accuracy from DOY format
+    dataRaw = pd.read_csv(filename)
+    dataRaw["time"] = pd.to_datetime("2019-01-01 00:00") + pd.to_timedelta(dataRaw["DOY"]-1, unit="D")
+    dataRaw["time"]=dataRaw["time"].dt.round('30min')
+    dataRaw = dataRaw[~pd.isnull(dataRaw.time)]
+
+    dataRaw.rename(columns = {v: k for k, v in species_label.items()}, inplace=True)
+    dataRaw.set_index("time", inplace=True)
+    dataRaw.index.name = "time"
+         
+    dataProcessed = {}
+    for species in speciesList:
+        #get mf and variability     
+        dataProcessed[species] = xr.Dataset.from_dataframe(dataRaw.loc[:, [species]].sort_index())
+        dataProcessed[species]["{} variability".format(species)] = dataRaw[species_sd[species]]
+        
+        #replace -9999.99 with nan
+        dataProcessed[species][species][dataProcessed[species][species] < 0] = np.nan
+        dataProcessed[species]["{} variability".format(species)][dataProcessed[species]["{} variability".format(species)] < 0] = np.nan
+        
+        #add attributes
+        dataProcessed[species] = attributes(dataProcessed[species],
+                     species, site, global_attributes=params["global_attributes"],
+                     units=unit_species[species], scale=params["scale"][species],
+                     sampling_period=None)
+        nc_filename = output_filename(params["directory_output"],
+                                          "GAUGE",
+                                          "CRDS",
+                                          site.upper(),
+                                          pd.to_datetime(dataProcessed[species].time.values[0]),
+                                          dataProcessed[species].species,
+                                          params["inlet"])
+        print(nc_filename)
+        print("Writing " + nc_filename)
+        dataProcessed[species].to_netcdf(nc_filename)

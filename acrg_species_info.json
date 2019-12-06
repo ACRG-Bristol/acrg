@@ -412,6 +412,13 @@
         "print_string": "PCE", 
         "units": "ppt"
     }, 
+    "Rn": {"alt": ["radon", "222Rn"],
+        "group": "radon", 
+        "long_name": "Radon-222", 
+        "mol_mass": "222.01758", 
+        "print_string": "$^{222}$Rn", 
+        "units": "mBq m$^{-3}$"
+    }, 
     "SF6": {"alt": [],
         "group": "PFCs", 
         "long_name": "Sulfur hexafluoride", 
