@@ -1751,7 +1751,8 @@ def process(domain, site, height, year, month,
         if file_name.startswith(error_files) and \
         file_name.endswith('Error.txt') and \
         os.stat(input_folder+file_name).st_size != 0:
-            error_days.append(file_name[-11:-9]+'/'+str(month)+'/'+str(year))
+
+            error_days.append(re.search("[0-9]{8}(\S+)", file_name).group(0))
             error_days.sort()
             num_days = len(error_days)
         
