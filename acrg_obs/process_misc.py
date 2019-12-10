@@ -1154,7 +1154,7 @@ def TMB(species="CH4"):
                     "CH4": "Methane",
                     "CO": "CO"}
     params = {
-            "directory" : "/data/shared/obs_raw/CRANFIELD/",
+            "directory" : "/data/shared/obs_raw/TMB/",
             "directory_output" : "/data/shared/obs/",
             "scale": {
                 "CH4": "WMO-CH4-X2004",
