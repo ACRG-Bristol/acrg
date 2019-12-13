@@ -1066,6 +1066,9 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                 if HiTRes:
                     site_ds.update({'fp_HiTRes' : (site_ds.fp_HiTRes.dims, 
                                                    old_div(site_ds.fp_HiTRes, data[".units"]))})
+                if 'fp_low' in site_ds.keys():
+                    site_ds.update({'fp_low' : (site_ds.fp_low.dims, old_div(site_ds.fp_low, data[".units"]))})
+                    site_ds.update({'fp_high' : (site_ds.fp_high.dims, old_div(site_ds.fp_high, data[".units"]))})
         
             # Resample, if required
             if average[site] is not None:
