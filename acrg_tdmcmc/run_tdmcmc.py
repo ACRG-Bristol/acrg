@@ -578,6 +578,11 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
         nmonths = pd_end.to_period('M') - pd_start.to_period('M')   
     else:
         nmonths = pd_end.to_period('M') - pd_start.to_period('M')+1
+    
+    # In pandas version for python 3.* nmonths is a MonthEnd object and so needs to be converted to an integer.
+    if isinstance(nmonths,pandas.tseries.offsets.MonthEnd):
+        nmonths = nmonths.n
+
         
     nBC_basis = len(fp_data_H[sites[0]].region_bc)
     nBC = nBC_basis*nmonths   # No. of bc_basis functions x nmonths

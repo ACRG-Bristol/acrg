@@ -371,7 +371,9 @@ if pd_end.day == 1:
     nmonths = pd_end.to_period('M') - pd_start.to_period('M')   
 else:
     nmonths = pd_end.to_period('M') - pd_start.to_period('M')+1
-    
+
+if isinstance(nmonths,pd.tseries.offsets.MonthEnd):
+    nmonths = nmonths.n
 
 nBC = nBC_basis*nmonths   # No. of bc_basis functions x nmonths
 
