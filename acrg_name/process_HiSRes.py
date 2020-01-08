@@ -236,34 +236,39 @@ def combine_date(output_base, processed_folder, processed_folder_HR, filename):
         os.makedirs(out_directory)
     output_file.to_netcdf("{}/{}".format(out_directory, filename))
     
-def getFlux(ds, output_dir, name,
-            NAEI_directory = "/data/al18242/flux/NAEI_RAW",
-            NAEI_file = "totalch416.asc",
-            species="ch4"):
+def NAEIinEDGAR(species="ch4",
+                NAEI_directory = "/data/al18242/flux/NAEI_RAW",
+                sector="total",
+                NAEI_year = "2017",
+                EDGAR_year = "2015",
+                output_directory = "/data/al18242/flux_hr",
+                template_file = "/data/al18242/fp_hr/EUROPE/TMB-HR_UKV_EUROPE_201805.nc"):
     """
-    get Flux using edgar and NAEI for footprint file given
-    Currently only good for static annual emissions
+    Create an emissions file with NAEI values embedded within EDGAR emissions
     """
-    year = pd.to_datetime(ds.time.values[0]).year
     
-    naei_methane = loadAscii("{}/{}".format(NAEI_directory, NAEI_file))
+    naei_raw = loadAscii("{}/{}{}{}.asc".format(NAEI_directory, sector, species, NAEI_year[-2:]))
+    
     if species.lower() == "ch4":
-        template = open_ds("/data/shared/Gridded_fluxes/CH4/EDGAR_v4.3.2/v432_CH4_TOTALS_nc/v432_CH4_2012.0.1x0.1.nc")
+        #edgar_file = open_ds("/data/shared/Gridded_fluxes/CH4/EDGAR_v4.3.2/v432_CH4_TOTALS_nc/v432_CH4_2012.0.1x0.1.nc")
+        edgar_file = open_ds("/data/shared/Gridded_fluxes/CH4/EDGAR_v5.0/yearly/v50_CH4_2015.0.1x0.1.nc")
     elif species.lower() == "co2":
-        template = open_ds("/data/shared/Gridded_fluxes/CO2/EDGARv4.2/v42_FT2010_CO2_excl_short-cycle_org_C_2010-1990_TOT_nc/v42_FT2010_CO2_excl_short-cycle_org_C_2010_TOT.0.1x0.1.nc")
+        edgar_file = open_ds("/data/shared/Gridded_fluxes/CO2/EDGARv4.2/v42_FT2010_CO2_excl_short-cycle_org_C_2010-1990_TOT_nc/v42_FT2010_CO2_excl_short-cycle_org_C_2010_TOT.0.1x0.1.nc")
     else:
         print("Invalid species")
         return 0;
+    
+    hr_template = open_ds(template_file)
     
     ################################################
     #Create the input grid
     ################################################
     
     #add 500m to make NAEI cell centered
-    XX, YY = np.meshgrid(naei_methane.lon.values+500,naei_methane.lat.values+500)
+    XX, YY = np.meshgrid(naei_raw.lon.values+500,naei_raw.lat.values+500)
     XX, YY = pyproj.transform(OS_proj,ll_proj, XX, YY)
     #create boundary mesh
-    XX_b, YY_b = getGridCC(naei_methane.lon.values+500,naei_methane.lat.values+500)
+    XX_b, YY_b = getGridCC(naei_raw.lon.values+500,naei_raw.lat.values+500)
     XX_b, YY_b = pyproj.transform(OS_proj,ll_proj, XX_b, YY_b)
     
     input_grid = xr.Dataset({'lon': (['x', 'y'], XX),
@@ -274,34 +279,33 @@ def getFlux(ds, output_dir, name,
     ################################################
     #Create the EDGAR grid
     ################################################
-    XX, YY = np.meshgrid(template.lon.values, template.lat.values)
-    XX_b, YY_b = getGridCC(template.lon.values, template.lat.values)
+    XX, YY = np.meshgrid(edgar_file.lon.values, edgar_file.lat.values)
+    XX_b, YY_b = getGridCC(edgar_file.lon.values, edgar_file.lat.values)
     output_grid = xr.Dataset({'lon': (['x', 'y'], XX),
                              'lat': (['x', 'y'], YY),
                              'lon_b': (['x_b', 'y_b'], XX_b),
                              'lat_b': (['x_b', 'y_b'], YY_b)})
     
     regridder = xesmf.Regridder(input_grid, output_grid, 'conservative')
-    naei_methane_regridded = regridder( np.nan_to_num(naei_methane.data,copy=True))
+    naei_raw_regridded = regridder( np.nan_to_num(naei_raw.data,copy=True))
     
     ################################################
     #Convert units and combine grids to EDGAR
     ################################################
-    combined = naei_methane_regridded * 1e-3 / (3600*24*365)
-    edgar_indicies = np.where(naei_methane_regridded  == 0)
+    combined = naei_raw_regridded * 1e-3 / (3600*24*365)
+    edgar_indicies = np.where(naei_raw_regridded  == 0)
     if species.lower() == "ch4":
-        combined[edgar_indicies] = template.emi_ch4.values[edgar_indicies]
+        combined[edgar_indicies] = edgar_file.emi_ch4.values[edgar_indicies]
         mw = 16.
     elif species.lower() == "co2":
-        combined[edgar_indicies] = template.emi_co2.values[edgar_indicies]
+        combined[edgar_indicies] = edgar_file.emi_co2.values[edgar_indicies]
         mw = 12.
     
     ################################################
     #Create the output grid and convert data too this grid
     ################################################
-    template2 = open_ds("/data/al18242/fp_hr/EUROPE/TMB-HR_UKV_EUROPE_201805.nc")
-    XX, YY = np.meshgrid(template2.lon.values, template2.lat.values)
-    XX_b, YY_b = getGridCC(template2.lon.values, template2.lat.values)
+    XX, YY = np.meshgrid(hr_template.lon.values, hr_template.lat.values)
+    XX_b, YY_b = getGridCC(hr_template.lon.values, hr_template.lat.values)
     output_grid2 = xr.Dataset({'lon': (['x', 'y'], XX),
                              'lat': (['x', 'y'], YY),
                              'lon_b': (['x_b', 'y_b'], XX_b),
@@ -313,14 +317,14 @@ def getFlux(ds, output_dir, name,
     ################################################
     #Create the hi-res grid and convert data too this grid
     ################################################
-    XX, YY = np.meshgrid(ds.lon_high.values, ds.lat_high.values)
-    XX_b, YY_b = getGridCC(ds.lon_high.values, ds.lat_high.values)
+    XX, YY = np.meshgrid(hr_template.lon_high.values, hr_template.lat_high.values)
+    XX_b, YY_b = getGridCC(hr_template.lon_high.values, hr_template.lat_high.values)
     output_grid_hr = xr.Dataset({'lon': (['x', 'y'], XX),
                              'lat': (['x', 'y'], YY),
                              'lon_b': (['x_b', 'y_b'], XX_b),
                              'lat_b': (['x_b', 'y_b'], YY_b)})
     regridder = xesmf.Regridder(input_grid, output_grid_hr, 'conservative')
-    naei_edgar_out_hr = regridder( np.nan_to_num(naei_methane.data,copy=True))
+    naei_edgar_out_hr = regridder( np.nan_to_num(naei_raw.data,copy=True))
     naei_edgar_out_hr = np.expand_dims(naei_edgar_out_hr,2) * 1e-3 / (3600*24*365) / (1000 * mw) *1e6
     
     ################################################
@@ -328,7 +332,8 @@ def getFlux(ds, output_dir, name,
     ################################################
     
     lowsize, highsize, lons_low, lats_low, lons_high, lats_high, indicies_to_remove, lons_out, lats_out = \
-        getOverlapParameters(ds.lat.values, ds.lon.values, ds.lat_high.values, ds.lon_high.values)
+        getOverlapParameters(hr_template.lat.values, hr_template.lon.values,
+                             hr_template.lat_high.values, hr_template.lon_high.values)
         
     combined = naei_edgar_out[:,:,0]
     combined = combined.reshape(lowsize, order="F")
@@ -347,10 +352,128 @@ def getFlux(ds, output_dir, name,
             "lon":np.unique(lons_low),
             "lat_high":np.unique(lats_high),
             "lon_high":np.unique(lons_high),
-            "time":[np.datetime64(str( pd.to_datetime(ds.time.values[0]).year), 'Y')]
+            "time":[np.datetime64(NAEI_year, 'Y')]
             }
     output = xr.Dataset(data_vars=data_vars, coords=coords)
-    output.to_netcdf("{}/{}_{}.nc".format(output_dir, name,year))
+    #output.attrs["Notes"] = "2017 NAEI, with 2012 EDGAR"
+    output.to_netcdf("{}/EUROPE/{}_EDGAR{}-NAEI_{}.nc".format(output_directory, species, EDGAR_year, NAEI_year))
+
+#def getFlux(ds, output_dir, name,
+#            NAEI_directory = "/data/al18242/flux/NAEI_RAW",
+#            NAEI_file = "totalch417.asc",
+#            species="ch4"):
+#    """
+#    get Flux using edgar and NAEI for footprint file given
+#    Currently only good for static annual emissions
+#    """
+#    year = pd.to_datetime(ds.time.values[0]).year
+#    
+#    naei_methane = loadAscii("{}/{}".format(NAEI_directory, NAEI_file))
+#    if species.lower() == "ch4":
+#        template = open_ds("/data/shared/Gridded_fluxes/CH4/EDGAR_v4.3.2/v432_CH4_TOTALS_nc/v432_CH4_2012.0.1x0.1.nc")
+#    elif species.lower() == "co2":
+#        template = open_ds("/data/shared/Gridded_fluxes/CO2/EDGARv4.2/v42_FT2010_CO2_excl_short-cycle_org_C_2010-1990_TOT_nc/v42_FT2010_CO2_excl_short-cycle_org_C_2010_TOT.0.1x0.1.nc")
+#    else:
+#        print("Invalid species")
+#        return 0;
+#    
+#    ################################################
+#    #Create the input grid
+#    ################################################
+#    
+#    #add 500m to make NAEI cell centered
+#    XX, YY = np.meshgrid(naei_methane.lon.values+500,naei_methane.lat.values+500)
+#    XX, YY = pyproj.transform(OS_proj,ll_proj, XX, YY)
+#    #create boundary mesh
+#    XX_b, YY_b = getGridCC(naei_methane.lon.values+500,naei_methane.lat.values+500)
+#    XX_b, YY_b = pyproj.transform(OS_proj,ll_proj, XX_b, YY_b)
+#    
+#    input_grid = xr.Dataset({'lon': (['x', 'y'], XX),
+#                             'lat': (['x', 'y'], YY),
+#                             'lon_b': (['x_b', 'y_b'], XX_b),
+#                             'lat_b': (['x_b', 'y_b'], YY_b)})
+#    
+#    ################################################
+#    #Create the EDGAR grid
+#    ################################################
+#    XX, YY = np.meshgrid(template.lon.values, template.lat.values)
+#    XX_b, YY_b = getGridCC(template.lon.values, template.lat.values)
+#    output_grid = xr.Dataset({'lon': (['x', 'y'], XX),
+#                             'lat': (['x', 'y'], YY),
+#                             'lon_b': (['x_b', 'y_b'], XX_b),
+#                             'lat_b': (['x_b', 'y_b'], YY_b)})
+#    
+#    regridder = xesmf.Regridder(input_grid, output_grid, 'conservative')
+#    naei_methane_regridded = regridder( np.nan_to_num(naei_methane.data,copy=True))
+#    
+#    ################################################
+#    #Convert units and combine grids to EDGAR
+#    ################################################
+#    combined = naei_methane_regridded * 1e-3 / (3600*24*365)
+#    edgar_indicies = np.where(naei_methane_regridded  == 0)
+#    if species.lower() == "ch4":
+#        combined[edgar_indicies] = template.emi_ch4.values[edgar_indicies]
+#        mw = 16.
+#    elif species.lower() == "co2":
+#        combined[edgar_indicies] = template.emi_co2.values[edgar_indicies]
+#        mw = 12.
+#    
+#    ################################################
+#    #Create the output grid and convert data too this grid
+#    ################################################
+#    template2 = open_ds("/data/al18242/fp_hr/EUROPE/TMB-HR_UKV_EUROPE_201805.nc")
+#    XX, YY = np.meshgrid(template2.lon.values, template2.lat.values)
+#    XX_b, YY_b = getGridCC(template2.lon.values, template2.lat.values)
+#    output_grid2 = xr.Dataset({'lon': (['x', 'y'], XX),
+#                             'lat': (['x', 'y'], YY),
+#                             'lon_b': (['x_b', 'y_b'], XX_b),
+#                             'lat_b': (['x_b', 'y_b'], YY_b)})
+#    regridder = xesmf.Regridder(output_grid, output_grid2, 'conservative')
+#    naei_edgar_out = regridder( np.nan_to_num(combined,copy=True))
+#    naei_edgar_out = np.expand_dims(naei_edgar_out,2) / (1000 * mw) *1e6
+#    
+#    ################################################
+#    #Create the hi-res grid and convert data too this grid
+#    ################################################
+#    XX, YY = np.meshgrid(ds.lon_high.values, ds.lat_high.values)
+#    XX_b, YY_b = getGridCC(ds.lon_high.values, ds.lat_high.values)
+#    output_grid_hr = xr.Dataset({'lon': (['x', 'y'], XX),
+#                             'lat': (['x', 'y'], YY),
+#                             'lon_b': (['x_b', 'y_b'], XX_b),
+#                             'lat_b': (['x_b', 'y_b'], YY_b)})
+#    regridder = xesmf.Regridder(input_grid, output_grid_hr, 'conservative')
+#    naei_edgar_out_hr = regridder( np.nan_to_num(naei_methane.data,copy=True))
+#    naei_edgar_out_hr = np.expand_dims(naei_edgar_out_hr,2) * 1e-3 / (3600*24*365) / (1000 * mw) *1e6
+#    
+#    ################################################
+#    #1D array book-keeping
+#    ################################################
+#    
+#    lowsize, highsize, lons_low, lats_low, lons_high, lats_high, indicies_to_remove, lons_out, lats_out = \
+#        getOverlapParameters(ds.lat.values, ds.lon.values, ds.lat_high.values, ds.lon_high.values)
+#        
+#    combined = naei_edgar_out[:,:,0]
+#    combined = combined.reshape(lowsize, order="F")
+#    combined = np.delete(combined, indicies_to_remove)
+#    combined = np.append(combined, naei_edgar_out_hr.reshape(highsize, order="F"))
+#    
+#    data_vars = {
+#            "low_res":(["lat", "lon", "time"], naei_edgar_out),
+#            "high_res":(["lat_high", "lon_high", "time"], naei_edgar_out_hr),
+#            "flux":(["index", "time"], np.expand_dims(combined,axis=1)),
+#            "index_lat":(["index"], lats_out),
+#            "index_lon":(["index"], lons_out)
+#            }
+#    coords = {
+#            "lat":np.unique(lats_low),
+#            "lon":np.unique(lons_low),
+#            "lat_high":np.unique(lats_high),
+#            "lon_high":np.unique(lons_high),
+#            "time":[np.datetime64(str( pd.to_datetime(ds.time.values[0]).year), 'Y')]
+#            }
+#    output = xr.Dataset(data_vars=data_vars, coords=coords)
+#    output.attrs["Notes"] = "2017 NAEI, with 2012 EDGAR V4.3.2"
+#    output.to_netcdf("{}/{}_{}.nc".format(output_dir, name,year))
     
 #    import acrg_name.flux as flux
 #    from datetime import datetime
