@@ -876,7 +876,17 @@ def get_obs(sites, species,
                                    data_directory = data_directory)
         
         if data is None:
-            obs[site] = None
+            if keep_missing:
+                timeindex = pd.date_range(start_date,
+                                          pd.to_datetime(end_date) - pd.to_timedelta("1 ns"),
+                                          freq=average[si])
+                empty_timeseries = pd.DataFrame({"time":timeindex,
+                                                 "mf":np.array([np.nan]*len(timeindex)),
+                                                 "vmf":np.array([np.nan]*len(timeindex))})
+                empty_timeseries.set_index('time', inplace=True)
+                obs[site] = empty_timeseries
+            else:
+                obs[site] = None
             units.append(None)
             scales.append(None)
         else:    
