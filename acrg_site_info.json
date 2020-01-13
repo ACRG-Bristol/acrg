@@ -101,9 +101,9 @@
         "38magl",
         "24magl",
         "4magl"
-      ], 
-      "height_station_masl": 85.0, 
-      "latitude": -2.1441, 
+      ],
+      "height_station_masl": 85.0,
+      "latitude": -2.1441,
       "longitude": -58.9999
     }
   },
@@ -370,7 +370,7 @@
       ],
       "height_station_masl": 41.0,
       "latitude": 43.167,
-      "long_name": "Cape Oshi-Ishi, Japan",
+      "long_name": "Cape Ochiishi, Japan",
       "longitude": 145.5
     }
   },
@@ -429,10 +429,10 @@
       "height": [
         "30m"
       ],
-      "height_name": ["30m"], 
-      "height_station_masl": 10.0, 
-      "latitude": 16.8636, 
-      "long_name": "Cape Verde, Africa", 
+      "height_name": ["30m"],
+      "height_station_masl": 10.0,
+      "latitude": 16.8636,
+      "long_name": "Cape Verde, Africa",
       "longitude": -24.8672
     }
   },
@@ -1523,6 +1523,20 @@
       "latitude": 52.73667,
       "long_name": "Tilney, UK",
       "longitude": 0.32127
+    }
+  },
+  "TMB": {
+    "CRANFIELD": {
+      "height": [
+        "5m"
+      ],
+      "height_name": [
+        "5magl"
+      ],
+      "height_station_masl": 5.0,
+      "latitude": 51.497,
+      "long_name": "Thames Barrier, UK",
+      "longitude": 0.037
     }
   },
   "TPD": {
