@@ -643,6 +643,30 @@
       "platform": "satellite"
     }
   },
+  "GOSAT-BRAZIL-LAND-upp": {
+    "GOSAT/GOSAT-BRAZIL-LAND-upp": {
+      "height": [
+        "column"
+      ],
+      "height_name": [
+        "column"
+      ],
+      "long_name": "GOSAT, Brazil, land points, upper XCO2 bound",
+      "platform": "satellite"
+    }
+  },
+  "GOSAT-BRAZIL-LAND-low": {
+    "GOSAT/GOSAT-BRAZIL-LAND-low": {
+      "height": [
+        "column"
+      ],
+      "height_name": [
+        "column"
+      ],
+      "long_name": "GOSAT, Brazil, land points, lower XCO2 bound",
+      "platform": "satellite"
+    }
+  },
   "GOSAT-EUROPE": {
     "GOSAT/GOSAT-EUROPE": {
       "height": [
@@ -664,6 +688,30 @@
         "column"
       ],
       "long_name": "GOSAT, India",
+      "platform": "satellite"
+    }
+  },
+  "GOSAT-SOUTHAMERICA": {
+    "GOSAT/GOSAT-SOUTHAMERICA": {
+      "height": [
+        "column"
+      ],
+      "height_name": [
+        "column"
+      ],
+      "long_name": "GOSAT, South America",
+      "platform": "satellite"
+    }
+  },
+  "GOSAT-SOUTHAMERICA-LAND": {
+    "GOSAT/GOSAT-SOUTHAMERICA-LAND": {
+      "height": [
+        "column"
+      ],
+      "height_name": [
+        "column"
+      ],
+      "long_name": "GOSAT, South America, land points only",
       "platform": "satellite"
     }
   },
@@ -1661,5 +1709,5 @@
       "long_name": "Zeppelin, Ny Alesund, Norway",
       "longitude": 11.92222
     }
-  }
+  },
 }
