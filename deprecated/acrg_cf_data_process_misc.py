@@ -2009,13 +2009,14 @@ def eurocom_co2(site, height=None):
                        'WAO':'NDIR',
                        'CMN':'GC-FID',
                        'JFJ':'CRDS',
-		       'BIS':'CRDS',
-		       'BIK':'CRDS',
+                       'BIS':'CRDS',
+                       'BIK':'CRDS',
                        'BIR':'CRDS',
                        'IZO':'CRDS',
                        'PRS':'CRDS',
                        'TTA':'CRDS',
-                       'HFD':'CRDS'}
+                       'HFD':'CRDS',
+                       'SVB':'CRDS'}
     
     intake_ht_dict = {'MHD':10,
                        'RGL':90,
@@ -2040,7 +2041,8 @@ def eurocom_co2(site, height=None):
                        'IZO':10,
                        'PRS':10,
                        'TTA':222,
-                       'HFD':100}
+                       'HFD':100,
+                       'SVB':150}
     
     calibration_dict = {'MHD':"695: WMOX2007; 41: Unknown,WMOX2007; 54: Unknown,WMOX2007",
                        'RGL':"WMO CO2 X2007",
@@ -2065,7 +2067,8 @@ def eurocom_co2(site, height=None):
                        'IZO':"WMO CO2 X2007",
                        'PRS':"WMO CO2 X2007",
                        'TTA':"WMO CO2 X2007",
-                       'HFD':"WMO CO2 X2007"}
+                       'HFD':"WMO CO2 X2007",
+                       'SVB':"WMO CO2 X2007"}
 
 
 
@@ -2093,11 +2096,11 @@ def eurocom_co2(site, height=None):
         intake_ht_unit = 'm'
         time = []
         for i in range(ds.shape[0]):
-		if ds[i,5] == 24:
-			mid_night=0
-			time = np.append(time,'%04d' %ds[i,2]+"-"+'%02d' %ds[i,3]+"-"+'%02d' %ds[i,4]+"T"+'%02d' %mid_night+":"+'%02d' %ds[i,6])
-		else:
-                	time = np.append(time,'%04d' %ds[i,2]+"-"+'%02d' %ds[i,3]+"-"+'%02d' %ds[i,4]+"T"+'%02d' %ds[i,5]+":"+'%02d' %ds[i,6])
+            if ds[i,5] == 24:
+                mid_night=0
+                time = np.append(time,'%04d' %ds[i,2]+"-"+'%02d' %ds[i,3]+"-"+'%02d' %ds[i,4]+"T"+'%02d' %mid_night+":"+'%02d' %ds[i,6])
+            else:
+                time = np.append(time,'%04d' %ds[i,2]+"-"+'%02d' %ds[i,3]+"-"+'%02d' %ds[i,4]+"T"+'%02d' %ds[i,5]+":"+'%02d' %ds[i,6])
         time = np.array(time, dtype='datetime64[ns]')
         
         ds2 = xray.Dataset({species.upper(): (['time'],values),
