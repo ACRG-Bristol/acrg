@@ -667,6 +667,30 @@
       "platform": "satellite"
     }
   },
+  "GOSAT-SOUTHAMERICA": {
+    "GOSAT/GOSAT-SOUTHAMERICA": {
+      "height": [
+        "column"
+      ],
+      "height_name": [
+        "column"
+      ],
+      "long_name": "GOSAT, South America",
+      "platform": "satellite"
+    }
+  },
+  "GOSAT-SOUTHAMERICA-LAND": {
+    "GOSAT/GOSAT-SOUTHAMERICA-LAND": {
+      "height": [
+        "column"
+      ],
+      "height_name": [
+        "column"
+      ],
+      "long_name": "GOSAT, South America, land points only",
+      "platform": "satellite"
+    }
+  },
   "GOSAT-UK": {
     "GOSAT/GOSAT-UK": {
       "height": [
