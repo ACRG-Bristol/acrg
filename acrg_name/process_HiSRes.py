@@ -253,7 +253,7 @@ def NAEIinEDGAR(species="ch4",
         #edgar_file = open_ds("/data/shared/Gridded_fluxes/CH4/EDGAR_v4.3.2/v432_CH4_TOTALS_nc/v432_CH4_2012.0.1x0.1.nc")
         edgar_file = open_ds("/data/shared/Gridded_fluxes/CH4/EDGAR_v5.0/yearly/v50_CH4_2015.0.1x0.1.nc")
     elif species.lower() == "co2":
-        edgar_file = open_ds("/data/shared/Gridded_fluxes/CO2/EDGARv4.2/v42_FT2010_CO2_excl_short-cycle_org_C_2010-1990_TOT_nc/v42_FT2010_CO2_excl_short-cycle_org_C_2010_TOT.0.1x0.1.nc")
+        edgar_file = open_ds("/data/shared/Gridded_fluxes/CO2/EDGAR_v5.0/v50_CO2_excl_short-cycle_org_C_2015.0.1x0.1.nc")
     else:
         print("Invalid species")
         return 0;
@@ -356,7 +356,7 @@ def NAEIinEDGAR(species="ch4",
             }
     output = xr.Dataset(data_vars=data_vars, coords=coords)
     #output.attrs["Notes"] = "2017 NAEI, with 2012 EDGAR"
-    output.to_netcdf("{}/EUROPE/{}_EDGAR{}-NAEI_{}.nc".format(output_directory, species, EDGAR_year, NAEI_year))
+    output.to_netcdf("{}/EUROPE/{}_edgar{}-naei_{}.nc".format(output_directory, species, EDGAR_year, NAEI_year))
 
 #def getFlux(ds, output_dir, name,
 #            NAEI_directory = "/data/al18242/flux/NAEI_RAW",

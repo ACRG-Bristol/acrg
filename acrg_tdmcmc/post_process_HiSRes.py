@@ -13,7 +13,7 @@ import pandas as pd
 import geopandas as gpd
 import shapely
 
-def forwardModel(fp, flux, species = "CH4", hr=True):
+def forwardModel(fp, flux, bc = None, species = "CH4", hr=True):
     '''
     Calculate the predicted mf as fp*flux + bg
     
@@ -37,19 +37,20 @@ def forwardModel(fp, flux, species = "CH4", hr=True):
         output_model = np.sum( flux.low_res.values * fp.fp.values, axis=(0,1))
     
     #temp = temp + footprint[site].bc
-    bc=name.boundary_conditions("EUROPE", species,
-                                start=fp.time.values[0],
-                                end=fp.time.values[-1])
+    if bc is None:
+        bc=name.boundary_conditions("EUROPE", species,
+                                    start=fp.time.values[0],
+                                    end=fp.time.values[-1])*1e9
     bc=bc.reindex_like(fp, 'ffill')
     bg = (fp.particle_locations_n*bc.vmr_n).sum(["height", "lon"]) + \
         (fp.particle_locations_e*bc.vmr_e).sum(["height", "lat"]) + \
         (fp.particle_locations_s*bc.vmr_s).sum(["height", "lon"]) + \
         (fp.particle_locations_w*bc.vmr_w).sum(["height", "lat"])
-    output_model = (output_model*1e-9+bg) * 1e9
-    output_model_low = (output_model_low+bg) * 1e9
-    output_model_high = (output_model_high) * 1e9
+    output_model = (output_model+bg)
+    output_model_low = (output_model_low+bg)
+    output_model_high = (output_model_high)
     
-    return output_model_low, output_model_high, output_model, bg*1e9
+    return output_model_low, output_model_high, output_model, bg
 
 def plotMultiResMesh(_data_low, lat_low, lon_low, _data_high, lat_high, lon_high,
               vmin, vmax, scale_high = False, logPlot=True, cmap="viridis", ax=None, cbar = None, cax = None,

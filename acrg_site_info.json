@@ -1785,5 +1785,71 @@
       "long_name": "NPL, UK", 
       "longitude": -0.343872
     }
+  },
+  "BRS": {
+    "BRS": {
+      "height": [
+        "25m"
+      ], 
+      "height_name": [
+        "25magl"
+      ], 
+      "height_station_masl": 0, 
+      "latitude": 51.456299, 
+      "long_name": "Bristol, UK", 
+      "longitude": -2.600936
+    }
+  },
+  "LGHG_UW": {
+    "LGHG": {
+      "height": [
+        "38m"
+      ], 
+      "height_name": [
+        "38magl"
+      ], 
+      "latitude": 51.5774, 
+      "long_name": "London, UK", 
+      "longitude": -0.3244
+    }
+  },
+  "LGHG_SJ": {
+    "LGHG": {
+      "height": [
+        "20m"
+      ], 
+      "height_name": [
+        "20magl"
+      ], 
+      "latitude": 51.5802, 
+      "long_name": "London, UK", 
+      "longitude": -0.1899
+    }
+  },
+  "LGHG_HFT": {
+    "LGHG": {
+      "height": [
+        "42m"
+      ], 
+      "height_name": [
+        "42magl"
+      ], 
+      "latitude": 51.6080, 
+      "long_name": "London, UK", 
+      "longitude": 0.1745
+    }
+  },
+  "LGHG_SM": {
+    "LGHG": {
+      "height": [
+        "35m"
+      ], 
+      "height_name": [
+        "35magl"
+      ], 
+      "latitude": 51.5044, 
+      "long_name": "London, UK", 
+      "longitude": -0.3056
+    }
   }
 }

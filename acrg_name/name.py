@@ -890,6 +890,9 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
     else:
         average = {x:None for x in sites}
 
+    if type(fp_directory) is not list:
+        fp_directory = [fp_directory] * len(sites)
+
     # If not given, check if species is defined in data dictionary:
 #    if species is None:
     if ".species" in list(data.keys()):
@@ -952,13 +955,16 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
             if type(height) is not dict:
                 print("Height input needs to be a dictionary with {sitename:height}")
                 return None 
-            height_site = height[site] 
+            if site in height.keys():
+              height_site = height[site]
+            else:
+              height_site = site_info[site][network_site]["height_name"][0]
         else:
             height_site = site_info[site][network_site]["height_name"][0]
         
         # Get footprints
 
-        site_fp = footprints(site_modifier_fp, fp_directory = fp_directory, 
+        site_fp = footprints(site_modifier_fp, fp_directory = fp_directory[i], 
                              flux_directory = flux_directory, 
                              bc_directory = bc_directory,
                              start = start, end = end,

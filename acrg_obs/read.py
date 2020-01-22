@@ -529,6 +529,10 @@ def get_single_site(site, species_in,
                 file_vmf=ds[ncvarname + " variability"]
                 if len(file_vmf) > 0:
                     df["vmf"] = file_vmf[:]
+            if ncvarname + "_variability" in ds.variables:
+                file_vmf=ds[ncvarname + "_variability"]
+                if len(file_vmf) > 0:
+                    df["vmf"] = file_vmf[:]
             
             # If ship read lat and lon data
             # Check if site info has a keyword called platform
@@ -831,6 +835,8 @@ def get_obs(sites, species,
 
     if (data_directory is None):
         data_directory = obs_directory
+    if type(data_directory) is not list:
+        data_directory = [data_directory]*len(sites)
 
     inlet = check_list_and_length(inlet, sites, "inlet")
     average = check_list_and_length(average, sites, "average")
@@ -863,7 +869,7 @@ def get_obs(sites, species,
             data = get_satellite(site, species, network = network[si],
                        start_date = start_date, end_date = end_date,
                        max_level = max_level,
-                       data_directory = data_directory)
+                       data_directory = data_directory[si])
         else:
             data = get_single_site(site, species, inlet = inlet[si],
                                    start_date = start_date, end_date = end_date,
@@ -873,7 +879,7 @@ def get_obs(sites, species,
                                    version = version[si],
                                    keep_missing = keep_missing,
                                    status_flag_unflagged = status_flag_unflagged[si],
-                                   data_directory = data_directory)
+                                   data_directory = data_directory[si])
         
         if data is None:
             if keep_missing:
@@ -885,9 +891,10 @@ def get_obs(sites, species,
                                                  "vmf":np.array([np.nan]*len(timeindex))})
                 empty_timeseries.set_index('time', inplace=True)
                 obs[site] = empty_timeseries
+                units.append(1e-9)
             else:
                 obs[site] = None
-            units.append(None)
+                units.append(None)
             scales.append(None)
         else:    
             # reset mutli index into the expected standard index
