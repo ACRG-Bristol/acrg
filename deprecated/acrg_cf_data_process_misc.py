@@ -21,17 +21,22 @@ import glob
 import xarray as xray
 import json
 from os import getenv
-from acrg_GCWerks.cf_data_process import attributes, output_filename
+#from acrg_GCWerks.cf_data_process import attributes, output_filename
 import calendar
 import re
 import dateutil
 from acrg_time import convert
 import pytz
-
+import getpass
 
 # Site info file
 acrg_path = getenv("ACRG_PATH")
 data_path = getenv("DATA_PATH")
+info_file = join("/home/mi19881/GCWerks/",
+                 "cf_data_process_parameters.json")
+with open(info_file) as sf:
+    params = json.load(sf)
+
 site_info_file = join(acrg_path, "acrg_site_info.json")
 with open(site_info_file) as sf:
     site_params = json.load(sf)
@@ -58,6 +63,314 @@ species_long = {"CO2": "carbon_dioxide",
                 "CH4": "methane",
                 "N2O": "nitrous_oxide",
                 "CO": "carbon_monoxide"}
+
+
+# If units are non-standard, this attribute can be used
+unit_species_long = {"DCH4C13": "permil",
+                     "DCH4D": "permil",
+                     "DCO2C13": "permil",
+                     "DCO2C14": "permil",
+                     "DO2N2" : "per meg",
+                     "APO" : "per meg",
+                     "RN": "mBq m-3"}
+
+species_translator = {"CO2": ["co2", "carbon_dioxide"],
+                      "CH4": ["ch4", "methane"],
+                      "ETHANE": ["c2h6", "ethane"],
+                      "PROPANE": ["c3h8", "propane"],
+                      "C-PROPANE": ["cc3h8", "cpropane"],
+                      "BENZENE": ["c6h6", "benzene"],
+                      "TOLUENE": ["c6h5ch3", "methylbenzene"],
+                      "ETHENE": ["c2f4", "ethene"],
+                      "ETHYNE": ["c2f2", "ethyne"],
+                      "N2O": ["n2o", "nitrous_oxide"],
+                      "CO": ["co", "carbon_monoxide"],
+                      "H-1211": ["halon1211", "halon1211"],
+                      "H-1301": ["halon1301", "halon1301"],
+                      "H-2402": ["halon2402", "halon2402"],
+                      "PCE": ["c2cl4", "tetrachloroethylene"],
+                      "TCE": ["c2hcl3", "trichloroethylene"],
+                      "PFC-116": ["c2f6", "hexafluoroethane"],
+                      "PFC-218": ["c3f8", "octafluoropropane"],
+                      "PFC-318": ["c4f8", "cyclooctafluorobutane"],
+                      "F-113": ["cfc113", "cfc113"],
+                      "CH3CCl3": ["ch3ccl3", "ch3ccl3"]
+                      }
+
+# Translate header strings
+crds_header_string_interpret = {"C": "",
+                                "stdev": "_variability",
+                                "N": "_number_of_observations"}
+
+
+def parser_YYMMDD(yymmdd):
+    return dt.strptime(yymmdd, '%y%m%d')
+
+
+def get_directories(default_input_directory,
+                    default_output_directory,
+                    user_specified_input_directory = None,
+                    user_specified_output_directory = None):
+
+    # If an output directory directory is set, use that, otherwise from json file
+    if user_specified_output_directory:
+        output_folder = user_specified_output_directory
+    else:
+        output_folder = default_output_directory
+
+    # If an input directory directory is set, use that, otherwise from json file
+    if user_specified_input_directory:
+        if user_specified_output_directory is None:
+            print("EXITING: You must also specify an output folder if you specify an input")
+            return None
+        data_folder = user_specified_input_directory
+    else:
+        data_folder = default_input_directory
+
+    return data_folder, output_folder
+
+
+
+
+def site_info_attributes(site):
+
+    attributes = {}
+    attributes_list = {"longitude": "station_longitude",
+                       "latitude": "station_latitude",
+                       "long_name": "station_long_name",
+                       "height_station_masl": "station_height_masl"}
+
+    if site in site_params.keys():
+        for at in attributes_list.keys():
+            if at in site_params[site].keys():
+                attributes[attributes_list[at]] = site_params[site][at]
+        return attributes
+    else:
+        return None
+
+def attributes(ds, species, site,
+               network = None,
+               global_attributes = None,
+               units = None,
+               scale = None,
+               sampling_period = None,
+               date_range = None,
+               global_attributes_default = {"Conditions of use": "Ensure that you contact the data owner at the outset of your project.",
+                                            "Source": "In situ measurements of air",
+                                            "Conventions": "CF-1.6"}):
+    """
+    Format attributes for netCDF file
+    Attributes of xarray DataSet are modified, and variable names are changed
+
+    If the species is a standard mole fraction then either:
+        - species name will used in lower case in the file and variable names
+            but with any hyphens taken out
+        - name will be changed according to the species_translator dictionary
+
+    If the species is isotopic data or a non-standard variable (e.g. APO):
+        - Isotopes species names should begin with a "D"
+            (Annoyingly, the code currently picks up "Desflurane" too. I've
+             fixed this for now, but if we get a lot of other "D" species, we
+             should make this better)
+        - I suggest naming for isotopologues should be d<species><isotope>, e.g.
+            dCH4C13, or dCO2C14
+        - Any non-standard variables should be listed in the species_translator
+            dictionary
+
+    Args:
+        ds (xarray dataset): Should contain variables such as "ch4", "ch4 repeatability".
+            Must have a "time" dimension.
+        species (string): Species name. e.g. "CH4", "HFC-134a", "dCH4C13"
+        site (string): Three-letter site code
+
+        global_attribuates (dict, optional): Dictionary containing any info you want to
+            add to the file header (e.g. {"Contact": "Matt Rigby"})
+        units (string, optional): This routine will try to guess the units
+            unless this is specified. Options are in units_interpret
+        scale (string, optional): Calibration scale for file header.
+        sampling_period (int, optional): Number of seconds for which air
+            sample is taken. Only for time variable attribute
+        date_range (list of two strings, optional): Start and end date for output
+            If you only want an end date, just put a very early start date
+            (e.g. ["1900-01-01", "2010-01-01"])
+    """
+
+    # Rename all columns to lower case! Could this cause problems?
+    rename_dict = {}
+    for key in ds.variables:
+        rename_dict[key] = key.lower()
+    ds = ds.rename(rename_dict)
+
+    # Rename species, if required
+    rename_dict = {}
+    for key in ds.variables:
+        if species.lower() in key:
+            if species.upper() in list(species_translator.keys()):
+                # Rename based on species_translator, if available
+                species_out = species_translator[species.upper()][0]
+            else:
+                # Rename species to be lower case and without hyphens
+                species_out = species.lower().replace("-", "")
+
+            rename_dict[key] = key.replace(species.lower(), species_out)
+    ds = ds.rename(rename_dict)
+
+    # Check if these was a variable with the species name in it
+    try:
+      species_out
+    except NameError:
+      print("ERROR: Can't find species %s in column names %s" %(species, list(ds.keys())))
+
+    # Global attributes
+    #############################################
+
+    if global_attributes is None:
+        global_attributes = {}
+        for key in global_attributes_default:
+            global_attributes[key] = global_attributes_default[key]
+    else:
+        for key in global_attributes_default:
+            global_attributes[key] = global_attributes_default[key]
+
+    # Add some defaults
+    global_attributes["File created"] = str(dt.now())
+
+    # Add user
+    global_attributes["Processed by"] = "%s@bristol.ac.uk" % getpass.getuser()
+
+
+    for key, values in global_attributes.items():
+        ds.attrs[key] = values
+
+    # Add some site attributes
+    global_attributes_site = site_info_attributes(site.upper())
+    if global_attributes_site is not None:
+        for key, values in global_attributes_site.items():
+            ds.attrs[key] = values
+
+    # Add calibration scale
+    if scale:
+        ds.attrs["Calibration_scale"] = scale
+    else:
+        ds.attrs["Calibration_scale"] = "unknown"
+
+    # Add species name
+    ds.attrs["species"] = species_out
+
+    # Species-specific attributes
+    #############################################
+
+    # Long name
+    if (species.upper()[0] == "D" and species.upper() != "DESFLURANE") or species.upper() == "APO":
+        sp_long = species_translator[species.upper()][1]
+    elif species.upper() == "RN":
+        sp_long = "radioactivity_concentration_of_222Rn_in_air"
+    elif species.upper() in list(species_translator.keys()):
+        sp_long = "mole_fraction_of_" + species_translator[species.upper()][1] + "_in_air"
+    else:
+        sp_long = "mole_fraction_of_" + species_out + "_in_air"
+
+    ancillary_variables = ""
+
+    for key in ds.variables:
+
+        if species_out in key:
+
+            # Standard name attribute
+            #ds[key].attrs["standard_name"]=key.replace(species_out, sp_long)
+            ds[key].attrs["long_name"]=key.replace(species_out, sp_long)
+
+            # If units are required for variable, add attribute
+            if (key == species_out) or \
+                ("variability" in key) or \
+                ("repeatability" in key):
+                if units is None:
+                    ds[key].attrs["units"] = unit_species[species.upper()]
+                else:
+                    if units in list(unit_interpret.keys()):
+                        ds[key].attrs["units"] = unit_interpret[units]
+                    else:
+                        ds[key].attrs["units"] = unit_interpret["else"]
+
+                # if units are non-standard, add explanation
+                if species.upper() in list(unit_species_long.keys()):
+                    ds[key].attrs["units_description"] = unit_species_long[species.upper()]
+
+            # Add to list of ancilliary variables
+            if key != species_out:
+                ancillary_variables += key + ", "
+
+    # Write ancilliary variable list
+    ds[species_out].attrs["ancilliary_variables"] = ancillary_variables.strip()
+
+    # Add quality flag attributes
+    ##################################
+
+    flag_key = [key for key in ds.variables if " status_flag" in key]
+    if len(flag_key) > 0:
+        flag_key = flag_key[0]
+        ds[flag_key] = ds[flag_key].astype(int)
+        ds[flag_key].attrs = {"flag_meaning":
+                              "0 = unflagged, 1 = flagged",
+                              "long_name":
+                              ds[species_out].attrs["long_name"] + " status_flag"}
+
+    # Add integration flag attributes
+    ##################################
+
+    flag_key = [key for key in ds.variables if " integration_flag" in key]
+    if len(flag_key) > 0:
+        flag_key = flag_key[0]
+        ds[flag_key] = ds[flag_key].astype(int)
+        ds[flag_key].attrs = {"flag_meaning":
+                              "0 = area, 1 = height",
+                              "standard_name":
+                              ds[species_out].attrs["long_name"] + " integration_flag",
+                              "comment":
+                              "GC peak integration method (by height or by area). " +
+                              "Does not indicate data quality"}
+
+    # Set time encoding
+    #########################################
+
+    # Check if there are duplicate time stamps
+    if len(set(ds.time.values)) < len(ds.time.values):
+        print("WARNING. Dupliate time stamps")
+
+    first_year = str(ds.time.to_pandas().index.to_pydatetime()[0].year)
+
+    ds.time.encoding = {"units": "seconds since " + \
+                        first_year + "-01-01 00:00:00"}
+    ds.time.attrs["label"] = "left"
+    ds.time.attrs["comment"] = "Time stamp corresponds to beginning of sampling period. " + \
+                               "Time since midnight UTC of reference date. " + \
+                               "Note that sampling periods are approximate."
+    if sampling_period:
+        ds.time.attrs["sampling_period_seconds"] = sampling_period
+
+    # If a date range is specified, slice dataset
+    if date_range != None:
+        ds = ds.loc[dict(time = slice(*date_range))]
+
+    return ds
+
+def output_filename(output_directory,
+                    network,
+                    instrument,
+                    site,
+                    year,
+                    species,
+                    inlet):
+
+    return join(output_directory,
+                network + "/" + \
+                network + "-" + \
+                instrument + "_" + \
+                site + "_" + \
+                year + "0101_" + \
+                species + "-" + \
+                inlet + ".nc")
+
 
 # UCAM
 ########################################################
@@ -1344,7 +1657,7 @@ def uhei_13ch4():
     sites = {"ALT": "/data/shared/obs_raw/UHei/d13Cdata_Alert.txt",
              "IZA": "/data/shared/obs_raw/UHei/d13Cdata_Izana.txt"}
 
-    for site, fname in sites.items():
+    for site, fname in list(sites.items()):
         with open(fname, "r") as f:
             lines = f.readlines()
 
@@ -1752,7 +2065,166 @@ def obspack_co2(site, height, obspack_name):
         print("Writing " + nc_filename)
         
         ds2.to_netcdf(nc_filename)
+ 
+def eurocom_co2(site, height=None):
+    
+    """
+    Reading in obs data provided for EUROCOM Drought extension
+    """
+
+    height = str(height)
+    site = str(site)
+    if height == 'None':
+        fname = glob.glob("/data/mi19881/EUROCOM/OBS_2019/"+site+"_air.hdf.all.COMBI_Drought2018_20190522.co2" )
+        filename = site+"_air.hdf.all.COMBI_Drought2018_20190522.co2" 
+    else:
+        fname = glob.glob("/data/mi19881/EUROCOM/OBS_2019/"+site+"_"+height+"m_air.hdf.all.COMBI_Drought2018_20190522.co2" )
+        filename = site+"_"+height+"m_air.hdf.all.COMBI_Drought2018_20190522.co2"
+    instrument_dict = {'MHD':'CRDS',
+                       'RGL':'CRDS',
+                       'TAC':'CRDS',
+                       'CBW':'NDIR',
+                       'HUN':'NDIR',
+                       'HEI':'GC-FID',
+                       'KAS':'GC-FID',
+                       'LUT':'GC-FID',
+                       'PAL':'NDIR',
+                       'SMR':'CRDS',
+                       'SSL':'NDIR',
+                       'LMP':'NDIR',
+                       'OPE':'CRDS',
+                       'TRN':'GC-FID',
+                       'WAO':'NDIR',
+                       'CMN':'GC-FID',
+                       'JFJ':'CRDS',
+                       'BIS':'CRDS',
+                       'BIK':'CRDS',
+                       'BIR':'CRDS',
+                       'IZO':'CRDS',
+                       'PRS':'CRDS',
+                       'TTA':'CRDS',
+                       'HFD':'CRDS',
+                       'SVB':'CRDS'}
+    
+    intake_ht_dict = {'MHD':10,
+                       'RGL':90,
+                       'TAC':185,
+                       'CBW':207,
+                       'HUN':115,
+                       'HEI':30,
+                       'KAS':5,
+                       'LUT':60,
+                       'PAL':12,
+                       'SMR':125,
+                       'SSL':12,
+                       'LMP':10,
+                       'OPE':120,
+                       'TRN':180,
+                       'WAO':10,
+                       'CMN':12,
+                       'JFJ':10,
+                       'BIS':47,
+                       'BIK':300,
+                       'BIR':10,
+                       'IZO':10,
+                       'PRS':10,
+                       'TTA':222,
+                       'HFD':100,
+                       'SVB':150}
+    
+    calibration_dict = {'MHD':"695: WMOX2007; 41: Unknown,WMOX2007; 54: Unknown,WMOX2007",
+                       'RGL':"WMO CO2 X2007",
+                       'TAC':"WMO CO2 X2007",
+                       'CBW':"WMO CO2 X2007",
+                       'HUN':"WMO CO2 X2007",
+                       'HEI':"WMO CO2 X2007",
+                       'KAS':"WMO CO2 X2007",
+                       'LUT':"WMO CO2 X2007",
+                       'PAL':"WMO CO2 X2007",
+                       'SMR':"311: WMOX2007",
+                       'SSL':"WMO CO2 X2007",
+                       'LMP':"WMO CO2 X2007",
+                       'OPE':"728: WMOX2007; 187: WMOX2007; 75: Unknown,WMOX2007; 91: WMOX2007; 379: WMOX2007",
+                       'TRN':"472: WMOX2007; 108: WMOX2007",
+                       'WAO':"WMO CO2 X2007",
+                       'CMN':"WMO CO2 X1993, WMO CO2 X2007",
+                       'JFJ':"WMO CO2 X2007",
+                       'BIS':"WMO CO2 X2007",
+                       'BIK':"WMO CO2 X2007",
+                       'BIR':"WMO CO2 X2007",
+                       'IZO':"WMO CO2 X2007",
+                       'PRS':"WMO CO2 X2007",
+                       'TTA':"WMO CO2 X2007",
+                       'HFD':"WMO CO2 X2007",
+                       'SVB':"WMO CO2 X2007"}
+
+
+
+    if len(fname) == 0:
+        print("Can't find file for obspack %s, site %s and height %s" %( site, height))
+    elif len(fname) > 1:
+        print("Ambiguous filename for obspack %s, site %s and height %s" %(site, height))
+    elif len(fname) == 1:
+        exclude = [i for i, line in enumerate(open(fname[0])) if line.startswith('#')]
+        ds = pd.read_csv(fname[0], sep=';',skiprows=exclude[0:])
+        ds = np.array(ds)
+        species = "co2"
+        values = ds[:,8]   
+        values[values < 0.0] = 'NaN'
+        unc_values = ds[:,9]
+        unc_values[unc_values < 0.0] = 'NaN'
+        for i in range(len(unc_values)):
+            if unc_values[i] == 'NaN' and values[i] != 'NaN':
+                unc_values[i] = values[i]*0.01
+        values[values == 'NaN'] = np.NaN
+        unc_values[unc_values == 'NaN'] = np.NaN
+        print(values[0], unc_values[0]) 
+        dataset_calibration_scale = calibration_dict[site.upper()]
+        intake_ht = intake_ht_dict[site.upper()]
+        intake_ht_unit = 'm'
+        time = []
+        for i in range(ds.shape[0]):
+            if ds[i,5] == 24:
+                mid_night=0
+                time = np.append(time,'%04d' %ds[i,2]+"-"+'%02d' %ds[i,3]+"-"+'%02d' %ds[i,4]+"T"+'%02d' %mid_night+":"+'%02d' %ds[i,6])
+            else:
+                time = np.append(time,'%04d' %ds[i,2]+"-"+'%02d' %ds[i,3]+"-"+'%02d' %ds[i,4]+"T"+'%02d' %ds[i,5]+":"+'%02d' %ds[i,6])
+        time = np.array(time, dtype='datetime64[ns]')
         
+        ds2 = xray.Dataset({species.upper(): (['time'],values),
+                            species.upper() + " repeatability": (['time'],unc_values)},
+#                            species.upper() + "_status_flag": (['time'],ds.obs_flag.values)},
+                            coords = {'time': time})
+        ds2 = ds2.dropna("time")
+
+    
+        global_attributes = {'origin': "Obspack_Drought_Rona_Thompson",
+                             'original_filename': filename,
+                             'citation': "See Obspack info for site",
+                             'inlet_height_%s' %intake_ht_unit : intake_ht,
+                             'main_provider_name' : "See Obspack",
+                             'main_provider_affiliation': "See Obspack",
+                             'main_provider_email': "See Obspack",
+                             'fair_usage': "Contact dataprovide with Obspack details before use"}
+     
+        ds2 = attributes(ds2,
+                        species.upper(),
+                        site.upper(),
+                        global_attributes = global_attributes,
+                        units = 'ppm',
+                        scale = dataset_calibration_scale,
+                        sampling_period = None)
+    
+        # Write file
+        directory_output = "/data/mi19881/" 
+        instrument = instrument_dict[site.upper()]
+        intake = str(intake_ht)+intake_ht_unit
+        nc_filename = directory_output + "EUROCOM/OBS_2019/EUROCOM-" + instrument + "_" + site.upper()+"_"+str('%04d' %pd.to_datetime(time[0]).year)+str('%02d' %pd.to_datetime(time[0]).month)+str('%02d' %pd.to_datetime(time[0]).day)+"_"+species+"-"+intake+".nc"
+    
+        print("Writing " + nc_filename)
+        
+        ds2.to_netcdf(nc_filename)
+         
 def mpi(species):
     ''' 
     Max Planck observations

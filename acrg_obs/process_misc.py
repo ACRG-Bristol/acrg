@@ -1029,13 +1029,18 @@ def bas_flk(species="CH4"):
     std_col="SD"
     num_col="ND_rounded" 
     
-    df = pd.read_csv(fname,index_col=0,parse_dates=True)
-    df[data_col] *= 1e3 ## IS THIS CORRECT? - ADDED BECAUSE VALUES SEEMED 1000x TOO SMALL (e.g. 1.7 rather than 1700)
+    df = pd.read_csv(fname,index_col=0,parse_dates=True,dayfirst=True)
+    
+    df = df[np.isfinite(df[data_col])]
+    df = df[np.isfinite(df[std_col])]
+    #df[data_col] *= 1e3 ## IS THIS CORRECT? - ADDED BECAUSE VALUES SEEMED 1000x TOO SMALL (e.g. 1.7 rather than 1700)
+    df[std_col] *= 1e3 ## IS THIS CORRECT? - ADDED BECAUSE VALUES SEEMED 1000x TOO SMALL (e.g. 0.000118 rather than 1.18)
+    
     df.rename({data_col:species.upper(),
-                    std_col:species.upper()+"_variability",
-                    num_col:species.upper()+"_number_of_observations"},axis="columns",inplace=True)
+                    std_col:species.upper()+" repeatability",
+                    num_col:species.upper()+" number_of_observations"},axis="columns",inplace=True)
     df.index.rename("time",inplace=True)
-    df.dropna(axis=0,inplace=True)
+    #df.dropna(axis=0,inplace=True)
     
     ds = xr.Dataset.from_dataframe(df.sort_index())
 
@@ -1063,3 +1068,145 @@ def bas_flk(species="CH4"):
     print(" ... writing " + nc_filename)
         
     ds.to_netcdf(nc_filename)
+
+def BTT():
+    '''
+    Processing measurements taking from the BT Tower in London
+    '''
+
+    unit_species = {"CO2": "ppm",
+                "CH4": "ppb",
+                "N2O": "1e-9",
+                "CO": "ppm"}
+
+    site="BTT"
+    speciesList = ["CH4", "CO2"]
+
+    #mole fraction labels
+    species_label = {"CO2": "co2.cal",
+                    "CH4": "ch4.cal.ppb"}
+
+    #standard deviation labels
+    species_sd = {"CO2": "co2.sd.ppm",
+                    "CH4": "ch4.sd.ppb"}
+    params = {
+            "directory" : "/data/shared/obs_raw/BTT/",
+            "directory_output" : "/data/shared/obs/",
+            "scale": {
+                "CH4": "WMO-CH4-X2004",
+                "CO2": "WMO-CO2-X2007"},
+            "instrument": "Picarro 2311-f",
+            "inlet": "192m",
+            "global_attributes": {
+                "data_owner": "Carole Helfter",
+                "data_owner_email": "caro2@ceh.ac.uk"
+                }
+            }
+
+    filename = "/data/shared/obs_raw/BTT/BT_TOWER_CO2_CH4_30-MIN_CALIBRATED_2019_20191121_0907.csv"
+    
+    #convert time into pandas and remove null values. 
+    #Rounded to averaging period of 30 minutes due to loss of accuracy from DOY format
+    dataRaw = pd.read_csv(filename)
+    dataRaw["time"] = pd.to_datetime("2019-01-01 00:00") + pd.to_timedelta(dataRaw["DOY"]-1, unit="D")
+    dataRaw["time"]=dataRaw["time"].dt.round('30min')
+    dataRaw = dataRaw[~pd.isnull(dataRaw.time)]
+
+    dataRaw.rename(columns = {v: k for k, v in species_label.items()}, inplace=True)
+    dataRaw.set_index("time", inplace=True)
+    dataRaw.index.name = "time"
+         
+    dataProcessed = {}
+    for species in speciesList:
+        #get mf and variability     
+        dataProcessed[species] = xr.Dataset.from_dataframe(dataRaw.loc[:, [species]].sort_index())
+        dataProcessed[species]["{} variability".format(species)] = dataRaw[species_sd[species]]
+        
+        #replace -9999.99 with nan
+        dataProcessed[species][species][dataProcessed[species][species] < 0] = np.nan
+        dataProcessed[species]["{} variability".format(species)][dataProcessed[species]["{} variability".format(species)] < 0] = np.nan
+        
+        #add attributes
+        dataProcessed[species] = attributes(dataProcessed[species],
+                     species, site, global_attributes=params["global_attributes"],
+                     units=unit_species[species], scale=params["scale"][species],
+                     sampling_period=None)
+        nc_filename = output_filename(params["directory_output"],
+                                          "GAUGE",
+                                          "CRDS",
+                                          site.upper(),
+                                          pd.to_datetime(dataProcessed[species].time.values[0]),
+                                          dataProcessed[species].species,
+                                          params["inlet"])
+        print(nc_filename)
+        print("Writing " + nc_filename)
+        dataProcessed[species].to_netcdf(nc_filename)
+        
+def TMB(species="CH4"):
+    #parameters setup
+    unit_species = {"CO2": "ppm",
+                "CH4": "ppb",
+                "CO": "ppm"}
+    
+    site="TMB"
+    speciesList = ["CH4", "CO2", "CO"]
+    species_label = {"CO2": "CO2",
+                    "CH4": "Methane",
+                    "CO": "CO"}
+    params = {
+            "directory" : "/data/shared/obs_raw/TMB/",
+            "directory_output" : "/data/shared/obs/",
+            "scale": {
+                "CH4": "WMO-CH4-X2004",
+                "CO2": "WMO-CO2-X2007",
+                "CO" : "WMO-CO-X2014"},
+            "instrument": "Picarro G2401",
+            "inlet": "5m",
+            "global_attributes": {
+                "data_owner": "Valerio Ferracci",
+                "data_owner_email": "V.Ferracci@cranfield.ac.uk",
+                "Notes": "~5m above high tide water level, in tidal region of the Thames"
+                }
+            }
+
+    #find files
+    search_str = join(params["directory"],"*calibrated_data.csv")
+    fnames = glob.glob(search_str)
+    fnames.sort()
+
+    for filename in fnames:
+        dataRaw = pd.read_csv(filename,
+                       parse_dates = [0],
+                       index_col = 0)
+        
+        #rename columns        
+        rename_dict = {}
+        rename_dict[species_label[species]] = species
+        dataRaw.rename(columns = rename_dict, inplace=True)
+        dataRaw.index.name = "time"
+            
+        dataProcessed = xr.Dataset.from_dataframe(dataRaw.loc[:, [species]].sort_index())
+        
+        #convert methane to ppb
+        if species == "CH4":
+            dataProcessed[species] *= 1000
+        
+        #no averaging applied to raw obs, set variability to 0 to allow get_obs to calculate when averaging    
+        dataProcessed["{} variability".format(species)] = dataProcessed[species] * 0.
+        
+    
+        dataProcessed = attributes(dataProcessed,
+                     species, site, global_attributes=params["global_attributes"],
+                     units=unit_species[species], scale=params["scale"][species],
+                     sampling_period=None)
+        nc_filename = output_filename(params["directory_output"],
+                                          "CRANFIELD",
+                                          "CRDS",
+                                          site.upper(),
+                                          dataProcessed.time.to_pandas().index.to_pydatetime()[0],
+                                          dataProcessed.species,
+                                          None)
+        print(nc_filename)
+        print("Writing " + nc_filename)
+            
+        dataProcessed.to_netcdf(nc_filename)
