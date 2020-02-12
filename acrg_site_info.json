@@ -426,9 +426,7 @@
       "latitude": 45.478,
       "long_name": "Cape Mears, Oregon",
       "longitude": -123.969
-    }
-  },
-  "CMO": {
+    },
     "EUROCOM": {
       "height": [
         "10m"
@@ -1680,6 +1678,32 @@
       "latitude": 51.497,
       "long_name": "Thames Barrier, UK",
       "longitude": 0.037
+    }
+  },
+  "TOB": {
+    "AGAGE": {
+      "height": [
+        "12m"
+      ],
+      "height_name": [
+        "12magl"
+      ],
+      "height_station_masl": 825.0,
+      "latitude": 50.221884,
+      "long_name": "Taunus, Germany",
+      "longitude": 8.446397
+    },
+    "FLASK": {
+      "height": [
+        "8m"
+      ],
+      "height_name": [
+        "8magl"
+      ],
+      "height_station_masl": 825.0,
+      "latitude": 50.221884,
+      "long_name": "Taunus, Germany",
+      "longitude": 8.446397
     }
   },
   "TPD": {
