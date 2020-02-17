@@ -234,6 +234,14 @@
       "longitude": -0.1389
     }
   },
+  "BWD": {
+    "NOAA": {
+      "height_station_masl": 16.8,
+      "latitude": 38.9343,
+      "long_name": "Brentwood, Maryland, United States",
+      "longitude": -76.9556
+    }
+  },
   "CARIBIC": {
     "MPI": {
       "height": [
@@ -413,10 +421,21 @@
       "long_name": "Cape Rama, India"
     }
   },
-  "CRZ": {
+  "CRV": {
     "NOAA": {
       "height": [
         "10m"
+      ],
+      "height_station_masl": 611.43,
+      "latitude": 64.9863,
+      "long_name": "Carbon in Arctic Reservoirs Vulnerability Experiment (CARVE), United States",
+      "longitude": -147.598
+    }
+  },
+  "CRZ": {
+    "NOAA": {
+      "height": [
+        "Variable"
       ],
       "height_station_masl": 197.0,
       "latitude": -46.434,
@@ -815,6 +834,20 @@
       "longitude": -133.534232
     }
   },
+  "INX": {
+    "NOAA": {
+      "height": [
+        "10m"
+      ],
+      "height_name": [
+        "10magl"
+      ],
+      "height_station_masl": "Variable",
+      "latitude": 39.5805,
+      "long_name": "INFLUX (Indianapolis Flux Experiment), United States",
+      "longitude": -86.4207
+    }
+  },
   "IZA": {
     "UHei": {
       "height": [
@@ -902,6 +935,20 @@
       "latitude": 45.9451,
       "long_name": "Park Falls, Wisconsin, United States",
       "longitude": -90.2732
+    }
+  },
+  "LEW": {
+    "NOAA": {
+      "height": [
+        "5m"
+      ],
+      "height_name": [
+        "5magl"
+      ],
+      "height_station_masl": 161.0,
+      "latitude": 40.9447,
+      "long_name": "Lewisburg, Pennsylvania, United States",
+      "longitude": -76.8789
     }
   },
   "LLB": {
@@ -1044,6 +1091,20 @@
       "platform": "aircraft"
     }
   },
+  "MSH": {
+    "NOAA": {
+      "height": [
+        "?5m"
+      ],
+      "height_name": [
+        "?5magl"
+      ],
+      "height_station_masl": 32.3,
+      "latitude": 41.6568,
+      "long_name": "Mashpee, Massachusetts, United States",
+      "longitude": -70.4973
+    }
+  },
   "MUG": {
     "AGAGE": {
       "height": [
@@ -1072,6 +1133,20 @@
       "longitude": -118.0586
     }
   },
+  "NEB": {
+    "NOAA": {
+      "height": [
+        "?5m"
+      ],
+      "height_name": [
+        "?5magl"
+      ],
+      "height_station_masl": 44.0,
+      "latitude": 39.3154,
+      "long_name": "NE Baltimore, Maryland, United States",
+      "longitude": -76.583
+    }
+  },
   "NDAO" : {
     "MPI": {
         "long_name" : "Namib Desert Atmospheric Observatory",
@@ -1091,6 +1166,20 @@
       "latitude": -70.65,
       "long_name": "Neumayer, Antarctica",
       "longitude": -8.25
+    }
+  },
+  "NWB": {
+    "NOAA": {
+      "height": [
+        "?5m"
+      ],
+      "height_name": [
+        "?5magl"
+      ],
+      "height_station_masl": 135.0,
+      "latitude": 39.3445,
+      "long_name": "NW Baltimore, United States ",
+      "longitude": -76.6851
     }
   },
   "NWR": {
@@ -1200,6 +1289,20 @@
       "latitude": 13.17,
       "long_name": "Ragged Point, Barbados",
       "longitude": -59.43
+    }
+  },
+  "RWA": {
+    "AGAGE": {
+      "height": [
+        "10m"
+      ],
+      "height_name": [
+        "10magl"
+      ],
+      "height_station_masl": 2600.0,
+      "latitude": -1.60,
+      "long_name": "Mt Mugogo",
+      "longitude": 29.60
     }
   },
   "SCT": {
@@ -1462,6 +1565,34 @@
       "longitude": 0.32127
     }
   },
+  "TMD": {
+    "NOAA": {
+      "height": [
+        "?5m"
+      ],
+      "height_name": [
+        "?5magl"
+      ],
+      "height_station_masl": 561.0,
+      "latitude": 39.5768,
+      "long_name": "Thurmont, Maryland, United States",
+      "longitude": -77.4881
+    }
+  },
+  "TOB": {
+    "UCAM": {
+      "height": [
+        "10m"
+      ],
+      "height_name": [
+        "10magl"
+      ],
+      "height_station_masl": 835.0,
+      "latitude": 50.2225,
+      "long_name": "Taunas Observatory, Germany",
+      "longitude": 8.4473
+    }
+  },
   "TPD": {
     "EC": {
       "height": [
@@ -1580,6 +1711,20 @@
       "latitude": 38.265,
       "long_name": "Walnut Grove, California, United States",
       "longitude": -121.4911
+    }
+  },
+  "WIS": {
+    "NOAA": {
+      "height": [
+        "5m"
+      ],
+      "height_name": [
+        "5magl"
+      ],
+      "height_station_masl": 151.0,
+      "latitude": 29.9646,
+      "long_name": "Weizmann Institute of Science at Arva Institute, Israel",
+      "longitude": 35.0605
     }
   },
   "WKT": {
