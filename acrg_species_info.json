@@ -412,6 +412,13 @@
         "print_string": "PCE", 
         "units": "ppt"
     }, 
+    "RN": {"alt": [],
+        "group": "Noble", 
+        "long_name": "Radon", 
+        "mol_mass": "222.01758", 
+        "print_string": "Rn", 
+        "units": "ppt"
+    }, 
     "SF6": {"alt": [],
         "group": "PFCs", 
         "long_name": "Sulfur hexafluoride", 
