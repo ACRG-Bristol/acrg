@@ -347,8 +347,10 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     pdf_param1,pdf_param2,pdf_p1_hparam1,pdf_p1_hparam2,pdf_p2_hparam1,
     pdf_p2_hparam2,x_pdf ,pdf_param1_pdf,pdf_param2_pdf,inv_type,
     output_dir,fp_dir=None, flux_dir = None, data_dir=None, basis_dir=None, bc_basis_dir=None, bc_dir = None,
+    inlet=None,instrument=None,
     tau_ap=None, tau_hparams=None, stepsize_tau=None, tau_pdf=None,
-    bl_split=False, bl_levels=None, filters=None, max_level=None, site_modifier={}, prior_uncertainty=False):
+    bl_split=False, bl_levels=None, filters=None, max_level=None, site_modifier={}, prior_uncertainty=False,
+    include_bias=True):
     #%%
     
     if para_temp is True:
@@ -363,8 +365,8 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
               "corr":False,
               "evencorr":True}
     data = acrg_obs.get_obs(sites, species, start_date = start_date, end_date = end_date, average = meas_period, 
-                          keep_missing=corr_type[inv_type],max_level=max_level, data_directory = data_dir)
-    
+                          keep_missing=corr_type[inv_type],max_level=max_level,inlet=inlet,instrument=instrument,
+                          data_directory = data_dir)
     
     fp_all = name.footprints_data_merge(data, domain=domain, calc_bc=True, fp_directory = fp_dir, flux_directory = flux_dir, bc_directory = bc_dir,
                                         site_modifier=site_modifier)
@@ -417,10 +419,13 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     ###########################################################
     # CHECK IF A BIAS VALUE NEEDS TO BE INCLUDED
     
-    for site in sites:
-        if "GOSAT" in site and len(sites) > 1: # Will need to update to base on platform rather than searching for "GOSAT"
-            nBias = 1 
-            break
+    if include_bias:
+        for site in sites:
+            if "GOSAT" in site and len(sites) > 1: # Will need to update to base on platform rather than searching for "GOSAT"
+                nBias = 1 
+                break
+        else:
+            nBias = 0
     else:
         nBias = 0
     
@@ -573,6 +578,11 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
         nmonths = pd_end.to_period('M') - pd_start.to_period('M')   
     else:
         nmonths = pd_end.to_period('M') - pd_start.to_period('M')+1
+    
+    # In pandas version for python 3.* nmonths is a MonthEnd object and so needs to be converted to an integer.
+    if isinstance(nmonths,pandas.tseries.offsets.MonthEnd):
+        nmonths = nmonths.n
+
         
     nBC_basis = len(fp_data_H[sites[0]].region_bc)
     nBC = nBC_basis*nmonths   # No. of bc_basis functions x nmonths
