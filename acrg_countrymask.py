@@ -300,7 +300,38 @@ def region_mapping(upper=True):
 
     return region_dict
 
-def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=True,write=True,
+def mask_index_reset(mask,regions=None):
+    '''
+    Reset index within mask from numbers derived from region_mask module to incrementally increasing values.
+    
+    Args:
+	    mask (xarray.DataArray) :
+	    	DataArray containing grid (nlat x nlon)
+	    regions (list/None, optional):
+	    	List of region numbers. If not specified, this will be extracted from mask.
+	    	Default = None.
+    
+    Returns:
+	    xarray.DataArray:
+	    	Mask with values renumbered from 0-nregions
+    '''
+    
+    if regions is None:
+        regions = np.unique(mask)
+    
+    ## Normalise numbers in mask- have to add arbitrary number to avoid clashes when numbers are being reassigned
+    add_num = 100000
+    mask.values = mask.values+add_num
+    for i,region_num in enumerate(regions):
+        mask_num = region_num+add_num
+        mask.values[np.where(mask == mask_num)] = i
+    
+    return mask
+
+    
+    
+def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=True,use_domain_extent=False,
+                        write=True,
                         output_dir=country_directory):
     '''
     Creates a country mask for the latitude and longitude range. Derives country data from
@@ -330,6 +361,11 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
         ocean_label (bool, optional) :
             Add additional explicit ocean label as well as countries within domain.
             Default = True.
+        use_domain_extent (bool, optional) :
+            If lat and lon values are specified, still create region covering the domain area but
+            mask out any values outside the lat, lon bounds (treat lat,lon as a sub-domain).
+            Note: Only the lat and lon outer values will be used as the latitude and longnitude values
+            in the grid must match the domain values.
         write (bool, optional) :
             Write produced dataset to file of the form "country_"DOMAIN".nc".
             Default = True.
@@ -351,11 +387,26 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
         lat,lon,height = domain_volume(domain)
     elif lat is None or lon is None:
         raise Exception("Latitude and Longitude arrays must both be specified. Otherwise domain can be used to find these values.")
+    elif use_domain_extent:
+        sub_lat = lat[:]
+        sub_lon = lon[:]
+        lat,lon,height = domain_volume(domain)
     
     if database == "Natural_Earth" and scale == "1:50m":
         mask = regionmask.defined_regions.natural_earth.countries_50.mask(lon,lat,xarray=True)
     elif database == "Natural_Earth" and scale == "1:110m":
         mask = regionmask.defined_regions.natural_earth.countries_110.mask(lon,lat,xarray=True)
+    
+    if use_domain_extent:
+        lat_outer = np.where((mask["lat"].values < sub_lat[0]) | (mask["lat"].values >= sub_lat[-1]))[0]
+        lon_outer = np.where((mask["lon"].values < sub_lon[0]) | (mask["lon"].values >= sub_lon[-1]))[0]
+        
+        mask.values[lat_outer,:] = np.nan
+        mask.values[:,lon_outer] = np.nan
+        
+        if ocean_label:
+            print("Cannot create ocean label when using domain extent with a sub-domain")
+            ocean_label = False
     
     ## Find region numbers and associate with countries    
     mask_flat = mask.values.flatten()
@@ -399,12 +450,7 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
     mask.values[np.where(mask == temp_num)] = 0
     
     if reset_index:
-        ## Normalise numbers in mask- have to add arbitrary number to avoid clashes when numbers are being reassigned
-        add_num = 100000
-        mask.values = mask.values+add_num
-        for i,region_num in enumerate(regions):
-            mask_num = region_num+add_num
-            mask.values[np.where(mask == mask_num)] = i
+        mask = mask_index_reset(mask,regions=regions)
    
     ## Turn mask output into a dataset and add additional parameters and attributes
     

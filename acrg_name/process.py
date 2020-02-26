@@ -905,6 +905,7 @@ def footprint_array(fields_file,
     
     header, column_headings, data_arrays = read_file(fields_file)
 
+<<<<<<< HEAD
     
 
     # Define grid, including output heights    
@@ -919,6 +920,22 @@ def footprint_array(fields_file,
     if type(met) is not list:
         met = [met]
 
+=======
+
+    # Define grid, including output heights    
+    lons, lats, levs, time, timeStep = define_grid(header, column_headings,
+                                                   satellite = satellite,
+                                                   upper_level = upper_level)
+
+    if met is None:
+        met = met_empty()
+        met = met.reindex(index=time, method="ffill")
+
+    if type(met) is not list:
+        met = [met]    
+    
+    
+>>>>>>> dd78bf091bbd9a202edbdc7c23e8ae6bd1217e0a
     if satellite and obs_file:
         time = extract_time_obs(obs_file)
     
@@ -992,9 +1009,11 @@ def footprint_array(fields_file,
             metr = met[i] # Same number of met_dataframes in list as time points
         else:
             # Re-index met dataframe to each time point
-#            metr = met[0].reindex(index = np.array([t]))
+            met[0] = met[0].tz_localize(None)
             metr = met[0][~met[0].index.duplicated(keep='first')].reindex(index = np.array([t]))
             if np.isnan(metr.values).any():
+                
+                print(t)
                 raise ValueError("No met data for given date %s" % t)
             
         for key in list(metr.keys()):
@@ -1123,8 +1142,13 @@ def footprint_concatenate(fields_prefix,
 
     # If no meteorology, get null values
     # THIS IS NOT RECOMMENDED. ERRORS of ~ ±10%.
+<<<<<<< HEAD
     #if met is None:
     #    met = met_empty()
+=======
+#    if met is None:
+#        met = met_empty()
+>>>>>>> dd78bf091bbd9a202edbdc7c23e8ae6bd1217e0a
 
     # Find footprint files and MATCHING particle location files
     # These files are identified by their date string. Make sure this is right!
@@ -1756,13 +1780,16 @@ def process(domain, site, height, year, month,
     error_files = 'BackRun_' + domain + '_' + site + '_' + height + '_' + str(year) + str(month).zfill(2)
     error_days = []
     
-    for file_name in os.listdir(input_folder):
-        if file_name.startswith(error_files) and \
-        file_name.endswith('Error.txt') and \
-        os.stat(input_folder+file_name).st_size != 0:
-            error_days.append(file_name[-11:-9]+'/'+month+'/'+year)
-            error_days.sort()
-            num_days = len(error_days)
+    if os.path.isdir(input_folder):
+        for file_name in os.listdir(input_folder):
+            if file_name.startswith(error_files) and \
+            file_name.endswith('Error.txt') and \
+            os.stat(input_folder+file_name).st_size != 0:
+                #error_days.append(file_name[-11:-9]+'/'+month+'/'+year)
+    
+                error_days.append(re.search("[0-9]{8}(\S+)", file_name).group(0))
+                error_days.sort()
+                num_days = len(error_days)
         
     if len(error_days) > 0:
         raise Exception('This month cannot be processed as there are '+str(num_days)+' days with with errors: '+str(error_days))

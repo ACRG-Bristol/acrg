@@ -12,4 +12,5 @@ tests/files/NAME/bc/EUROPE/ch4_EUROPE_20140*.nc
 *.ipynb_checkpoints*
 *~
 .cache
+.DS_Store
 acrg_config/paths.y*ml
