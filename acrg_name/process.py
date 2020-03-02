@@ -51,12 +51,13 @@ import xarray as xray
 import shutil
 from scipy.interpolate import interp1d
 import copy
-import dirsync 
+#import dirsync 
 import matplotlib.pyplot as plt
 import getpass
 import traceback
 import sys
 import scipy
+import pdb
 
 
 #Default NAME output file version
@@ -942,16 +943,37 @@ def footprint_array(fields_file,
     
     header, column_headings, data_arrays = read_file(fields_file)
 
-    if met is None:
-        met = met_empty()
-
-    if type(met) is not list:
-        met = [met]
+<<<<<<< HEAD
+    
 
     # Define grid, including output heights    
     lons, lats, levs, time, timeStep = define_grid(header, column_headings,
                                                    satellite = satellite,
                                                    upper_level = upper_level)
+
+    if met is None:
+        met = met_empty()
+        met = met.reindex(index=pd.to_datetime(time), method = "ffill")
+
+    if type(met) is not list:
+        met = [met]
+
+=======
+
+    # Define grid, including output heights    
+    lons, lats, levs, time, timeStep = define_grid(header, column_headings,
+                                                   satellite = satellite,
+                                                   upper_level = upper_level)
+
+    if met is None:
+        met = met_empty()
+        met = met.reindex(index=time, method="ffill")
+
+    if type(met) is not list:
+        met = [met]    
+    
+    
+>>>>>>> dd78bf091bbd9a202edbdc7c23e8ae6bd1217e0a
     if satellite and obs_file:
         time = extract_time_obs(obs_file)
     
@@ -1013,7 +1035,7 @@ def footprint_array(fields_file,
     met_ds = xray.Dataset(met_dict,
                           coords = {"time": (["time"], time),
                                    "lev": (["lev"], levs)})
-    
+
     for i,t in enumerate(time):
         
         if len(met[0].index) == 1:
@@ -1025,9 +1047,11 @@ def footprint_array(fields_file,
             metr = met[i] # Same number of met_dataframes in list as time points
         else:
             # Re-index met dataframe to each time point
-#            metr = met[0].reindex(index = np.array([t]))
+            met[0] = met[0].tz_localize(None)
             metr = met[0][~met[0].index.duplicated(keep='first')].reindex(index = np.array([t]))
             if np.isnan(metr.values).any():
+                
+                print(t)
                 raise ValueError("No met data for given date %s" % t)
             
         for key in list(metr.keys()):
@@ -1086,6 +1110,8 @@ def footprint_array(fields_file,
                 (3600.*timeStep*1.)/molm3
         elif units == "ppm s" or units_no_space == "ppms":
             fp.fp[slice_dict] = data_arrays[column]*area*1e-6*1./(3600.*timeStep*1.)
+        elif units == "Bq s / m^3" or units_no_space == "Bqs/m^3" or units_no_space == "Bqs/m3" or units == "Bqs/m3":
+            fp.fp[slice_dict] = data_arrays[column]*area/(3600.*timeStep*1.)           
         else:
             status_log("DO NOT RECOGNISE UNITS OF {} FROM NAME INPUT (expect 'g s / m^3' or 'ppm s')".format(units),
                        error_or_warning="error")
@@ -1154,8 +1180,13 @@ def footprint_concatenate(fields_prefix,
 
     # If no meteorology, get null values
     # THIS IS NOT RECOMMENDED. ERRORS of ~ ±10%.
-    if met is None:
-        met = met_empty()
+<<<<<<< HEAD
+    #if met is None:
+    #    met = met_empty()
+=======
+#    if met is None:
+#        met = met_empty()
+>>>>>>> dd78bf091bbd9a202edbdc7c23e8ae6bd1217e0a
 
     # Find footprint files and MATCHING particle location files
     # These files are identified by their date string. Make sure this is right!
@@ -1223,7 +1254,7 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
             PBLH=None, varname="fp",
             release_lon = None, release_lat = None,
             particle_locations=None, particle_heights=None,
-            global_attributes = {}, lapse_rate=None, lapse_error=None):
+            global_attributes = {}, lapse_rate=None, lapse_error=None, units = None):
     '''Writes netCDF with footprints, particle locations, meteorology and release locations.
     
     Args:
@@ -1325,7 +1356,10 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
     nclev[:]=np.array(levs)
     
     ncfp[:, :, :]=fp
-    ncfp.units='(mol/mol)/(mol/m2/s)'
+    if units == None:
+        ncfp.units='(mol/mol)/(mol/m2/s)'
+    else:
+        ncfp.units = units
 
     if temperature is not None:
         nctemp=ncF.createVariable('temperature', 'f', ('time',), zlib = True,
@@ -1673,7 +1707,8 @@ def process(domain, site, height, year, month,
             force_update = False,
             perturbed_folder = None,
             vertical_profile=False,
-            transport_model="NAME"):
+            transport_model="NAME",
+            units = None):
     
     '''Process a single month of footprints for a given domain, site, height,
     year, month. 
@@ -1783,15 +1818,16 @@ def process(domain, site, height, year, month,
     error_files = 'BackRun_' + domain + '_' + site + '_' + height + '_' + str(year) + str(month).zfill(2)
     error_days = []
     
-    for file_name in os.listdir(input_folder):
-        if file_name.startswith(error_files) and \
-        file_name.endswith('Error.txt') and \
-        os.stat(input_folder+file_name).st_size != 0:
-            #error_days.append(file_name[-11:-9]+'/'+month+'/'+year)
-
-            error_days.append(re.search("[0-9]{8}(\S+)", file_name).group(0))
-            error_days.sort()
-            num_days = len(error_days)
+    if os.path.isdir(input_folder):
+        for file_name in os.listdir(input_folder):
+            if file_name.startswith(error_files) and \
+            file_name.endswith('Error.txt') and \
+            os.stat(input_folder+file_name).st_size != 0:
+                #error_days.append(file_name[-11:-9]+'/'+month+'/'+year)
+    
+                error_days.append(re.search("[0-9]{8}(\S+)", file_name).group(0))
+                error_days.sort()
+                num_days = len(error_days)
         
     if len(error_days) > 0:
         raise Exception('This month cannot be processed as there are '+str(num_days)+' days with with errors: '+str(error_days))
@@ -2074,7 +2110,7 @@ def process(domain, site, height, year, month,
                          particle_heights = height_out,
                          global_attributes = fp.attrs,
                          lapse_rate = lapse_in,
-                         lapse_error = lapse_error_in)
+                         lapse_error = lapse_error_in, units = units)
 
     else:
         status_log("FAILED. Couldn't seem to find any files, or some files are missing for %s" %
