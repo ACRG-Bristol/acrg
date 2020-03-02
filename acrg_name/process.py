@@ -461,6 +461,9 @@ def read_met(fnames, met_def_dict=None,vertical_profile=False,satellite=False):
     Note:
         A dictionary of output column names and met file header search strings
         is given in the met_default dictionary at the top of process.py.
+        Vertical profile assumes a file structure that consists of a time column 
+        14 temperture (C) columns, followed by 14 pressure (Pa), and 14 potential 
+        temperature (K)
     '''
 
 
@@ -547,18 +550,51 @@ def read_met(fnames, met_def_dict=None,vertical_profile=False,satellite=False):
         
         #Construct dictionary
         met_dict = {}
-        for key in list(met_default2.keys()):
-            if column_indices[key] != -1 and key != "time":
-                met_dict[key] = m2[:, column_indices[key]].astype(float)
-        met_dict["release_lon"] = X
-        met_dict["release_lat"] = Y
+        if vertical_profile == True:
+            vp_met_cols = {"time": 0,"temp20": 1,
+               "temp40": 2,"temp60": 3,
+               "temp80": 4,"temp100": 5,
+               "temp120": 6,"temp140": 7,
+               "temp160": 8,"temp180": 9,
+               "temp200": 10,"temp220": 11,
+               "temp240": 12,"temp260": 13,
+               "temp280":14,"temp300": 15,
+               "press20":16,"press40": 17,
+               "press60":18,"press80": 19,
+               "press100": 20,"press120": 21,
+               "press140": 22,"press160": 23,
+               "press180": 24,"press200": 25,
+               "press220": 26,"press240": 27,
+               "press260": 28,"press280": 29,
+               "press300": 30,
+               "theta20": 31,"theta40": 32,
+               "theta60": 33,"theta80": 34,
+               "theta100": 35,"theta120": 36,
+               "theta140": 37,"theta160": 38,
+               "theta180": 39,"theta200": 40,
+               "theta220": 41,"theta240": 42,
+               "theta260": 43,"theta280": 44,
+               "theta300": 45}
+ 
+            for key in list(met_default2.keys()):
+                if key != "time":
+                    met_dict[key] = m2[:, vp_met_cols[key]].astype(float)
+            met_dict["release_lon"] = X
+            met_dict["release_lat"] = Y
+            
+        else:
+            for key in list(met_default2.keys()):
+                if column_indices[key] != -1 and key != "time":
+                    met_dict[key] = m2[:, column_indices[key]].astype(float)
+            met_dict["release_lon"] = X
+            met_dict["release_lat"] = Y
 
         #Construct dataframe
         # calling to_datetime on a series is MUCH faster than the previous list comprehension
         times = pd.Series([d.strip() for d in m2[:,column_indices["time"]]])
         output_df_file = pd.DataFrame(met_dict,
                         index=pd.to_datetime(times, format='%d/%m/%Y %H:%M %Z'))
-
+        
         output_df.append(output_df_file)
     
         ## UNCOMMENT BEFORE COMMITTING
@@ -566,6 +602,8 @@ def read_met(fnames, met_def_dict=None,vertical_profile=False,satellite=False):
     
     # Concatenate list of data frames
     output_df = pd.concat(output_df)
+    if vertical_profile == True:
+        output_df = output_df.sort_values(by='time')
     
     if satellite:
         try:
@@ -578,13 +616,13 @@ def read_met(fnames, met_def_dict=None,vertical_profile=False,satellite=False):
             label = [match.split('_')[-1] for match in file_match]
             output_df["label"] = label
     
-    # Check for missing values
-    if vertical_profile == True:
-        output_df = output_df[output_df["press20"] > 0.]
-    else:
-        output_df = output_df[output_df["press"] > 0.]
-    output_df = output_df.drop_duplicates()
-    
+#    # Check for missing values
+#    if vertical_profile == True:       
+#        output_df = output_df[output_df["press20"] > 0.]
+#    else:
+#        output_df = output_df[output_df["press"] > 0.]
+#    output_df = output_df.drop_duplicates()
+#    
     if satellite:
         # Sort by label axis which includes point number and level
         output_df = output_df.sort_values(by=["label"])
@@ -2045,6 +2083,305 @@ def process(domain, site, height, year, month,
 
     return fp
     
+def process_site_quick(domain, site, height, year, month,
+            base_dir = "/dagage2/agage/metoffice/NAME_output/",
+            fields_folder = "Fields_files",
+            particles_folder = "Particle_files",
+            met_folder = "Met",
+            force_met_empty = False,
+            processed_folder = "Processed_Fields_files",
+            use_surface_conditions = True,
+            satellite = False,
+            obs_folder = "Observations",
+            upper_level = None,
+            max_level = None,
+            force_update = False,
+            perturbed_folder = None,
+            vertical_profile=False,
+            transport_model="NAME"):
+    
+    '''Process a single month of footprints for a given domain, site, height,
+    year, month. 
+    
+    If you want to process all files for a given domain + site
+    use process_all.
+    
+    This routine finds all fields files and particle location files which match
+    the timestamp in the file name. The date strings are stored in the datestr
+    variable, and these strings must match exactly for the fields and the particle
+    locations.
+    
+    At the moment, the entire Met folder is read each time.
+    
+    Args:
+        domain (str):
+            Domain of interest
+        site (str):
+            Observation site
+        height (str):
+            Height of observation, e.g. "10magl"
+        year (int):
+            The year
+        month (int):
+            The month, can be e.g. 5 or 05
+        base_dir (str, optional):
+            Base directory containing NAME output
+            Default="/dagage2/agage/metoffice/NAME_output/",
+        fields_folder (str, optional):
+            Folder containing fields data
+            Default="Fields_files",
+        particles_folder (str, optional):
+            Folder containing particles data.
+            Default = "Particle_files",
+        met_folder (str or list, optional):
+            Folder(s) containing met data
+            Default = "Met"
+        force_met_empty (bool, optional):
+             Force the met data to be empty?
+             Default = False.
+        processed_folder (str, optional):
+             Folder for processed field files.
+             Default = "Processed_Fields_files"
+        use_surface_conditions (bool, optional) :
+            Use default expected surface conditions for meteorological values
+            if converting from gs/m3 to mol/mol / mol/m2/s units.
+            This involves fixing the P/T ratio to 345 based on typical surface conditions 
+            in Europe and not using the meteorlogical data extracted from NAME release
+            points.
+            Default = True.
+        satellite (bool, optional):
+            NAME run was performed over satellite data.
+            This means satellite_vertical_profile function will be used to combined data
+            from multiple levels for each point as defined by upper_level parameter.
+            Default = False.
+        obs_folder (str, optional) :
+            Folder for netCDF format observations. Won't be contained in the original
+            NAME results folder and will need to be copied into the subfolder defined
+            by this parameter.
+            Default = "Observations"
+        upper_level (int/None):
+            Only needed when satellite=True. Highest level number from within the 
+            NAME run for the satellite data.
+            Default = None.
+        max_level (int, optional):
+            Only needed when satellite=True. The max level to
+            process the footprints.
+            Any levels above are replaced by the prior profile.
+            This can be <= upper_level.
+            If max_level is not specified, this will match upper_level.
+            Default = None.
+        force_update (bool, optional):
+            By default, any existing netCDF files are NOT overwritten.
+            To explicitly over-write a file, set force_update = True
+        perturbed_folder (str, optional)
+            Process a subfolder which has all of the required folders
+            (Fields_files, etc). This is for perturbed parameter ensembles for 
+            a particular site. E.g. for 
+            EUROPE_BSD_110magl/Perturbed/PARAMETERNAME_VALUE
+            you'd set: perturbed_folder = "Perturbed/PARAMETERNAME_VALUE".
+            Default = None.
+        vertical_profile (bool, optional):
+            If set to True will look for vertical potential temperature met file
+            and incorporate into footprint file. 
+            This is a separate file from the normal met file, and is not mandatory.
+            Default=False.
+        transport_model (str, optional): 
+            Defaults to "NAME". If "STILT", reads footprints in the
+            ncdf format created by the STILT model. Other values are invalid. 
+            Notset up to read satellite column footprints from STILT format.
+            Default="NAME".
+        
+    Returns:
+        None.
+        This routine outputs a copy of the xarray dataset that is written to file.
+    
+    '''
+ 
+    global directory_status_log
+        
+    subfolder = base_dir + domain + "_" + site + "_" + height + "/"
+    
+    directory_status_log = subfolder
+
+    if use_surface_conditions:
+        status_log("Setting use_surface_conditions to True means that a representative Pressure/Temperature "
+                   +"ratio will be used instead of meteorological data from the NAME output. "
+                   +"This is only applied when converting units from gs/m3",
+                   error_or_warning="warning")
+
+
+    datestrs = [str(year) + str(month).zfill(2)]
+
+    # Output filename
+    full_out_path = os.path.join(subfolder,processed_folder)
+    outfile = os.path.join(full_out_path, site + "-" + height + \
+                "_" + domain + "_" + str(year) + str(month).zfill(2) + ".nc")
+ 
+    if not os.path.isdir(full_out_path):
+        os.makedirs(full_out_path)
+        
+    timeStep = None            
+    fp = []
+     
+    for datestr in datestrs:
+
+        status_log("Looking for files with date string: " + datestr + " in " + \
+                   subfolder)
+
+        # Get Met files
+        if force_met_empty is not True:
+            if type(met_folder) == list:
+                met_files = []
+                for metf in met_folder:
+                    met_search_str = subfolder + metf + "/*.txt*"
+                    met_files = met_files + sorted(glob.glob(met_search_str))
+            else:
+                met_search_str = subfolder + met_folder + "/*.txt*"
+                met_files = sorted(glob.glob(met_search_str))
+                
+           
+            if len(met_files) == 0:
+                status_log("Can't file MET files: " + met_search_str,
+                           error_or_warning="error")
+                return None
+            else:
+                #if satellite:
+                #    met = []
+                #    for met_file in met_files:
+                #        met.append(read_met(met_file))
+                #else:
+                met = read_met(met_files,satellite=satellite)
+        else:
+            met = None
+        
+        fields_prefix = subfolder + fields_folder + "/"
+        if particles_folder is not None:
+            particles_prefix = subfolder + particles_folder + "/"
+        else:
+            particles_prefix = None
+        fp_file = footprint_concatenate(fields_prefix,
+                                            datestr = datestr, met = met,
+                                            particle_prefix = particles_prefix,
+                                            satellite = satellite,
+                                            time_step = timeStep,
+                                            upper_level = upper_level,
+                                            use_surface_conditions=use_surface_conditions)
+            
+        # Do satellite process
+        if satellite:
+            #satellite_obs_file = glob.glob(subfolder + "Observations/*" + \
+            #                               datestr + "*.nc")
+            # Modified: 06/03/2018 - problems when # files > 100, point 10 was matching multiple
+            #satellite_obs_file = glob.glob(subfolder + "Observations/*" + \
+            #                               datestr + "_" + "*.nc")
+            obs_path = os.path.join(subfolder,obs_folder)
+            search_str = "*{label}_*.nc".format(label=datestr)
+            search_str = os.path.join(obs_path,search_str)
+            satellite_obs_file = glob.glob(search_str)
+            
+            if len(satellite_obs_file) != 1:
+                status_log("There must be exactly one matching satellite " + 
+                           "file in the {}/ folder".format(obs_folder),
+                           error_or_warning="error")
+                status_log("Files: " + ','.join(satellite_obs_file),
+                           error_or_warning="error")
+                return None
+
+            fp_file = satellite_vertical_profile(fp_file,
+                                                 satellite_obs_file[0], max_level = max_level)  
+            
+            if fp_file is None:
+                return
+                 
+        if fp_file is not None:
+            fp.append(fp_file)
+            
+    if len(fp) > 0:
+        
+        # Concatentate
+        fp = xray.concat(fp, "time")
+
+        # ONLY OUTPUT FIRST LEVEL FOR NOW
+        if len(fp.lev) > 1:
+            fp = fp[dict(lev = [0])]
+            status_log("ONLY OUTPUTTING FIRST LEVEL!", error_or_warning = "warning")
+        fp = fp.squeeze(dim = "lev")
+        
+        
+        # REMOVE ANY ZERO FOOTPRINTS        
+        fp_nonzero = (fp.fp.sum(["lon", "lat"])).values.squeeze() > 0.
+        pl_nonzero = (fp.pl_n.sum(["lon", "height"]) + \
+                      fp.pl_e.sum(["lat", "height"]) + \
+                      fp.pl_s.sum(["lon", "height"]) + \
+                      fp.pl_w.sum(["lat", "height"])).values.squeeze() > 0.
+        indices_nonzero = np.where(fp_nonzero + pl_nonzero)[0]
+        fp = fp[dict(time = indices_nonzero)]
+        
+        # Get vertical profile met file
+        if vertical_profile is True:
+            vp_search_str = subfolder + "vertical_profile" + "/*.txt*"     
+            vp_files = sorted(glob.glob(vp_search_str))
+        
+            if len(vp_files) == 0:
+                status_log("Can't file Vertical Profile files: " + vp_search_str,
+                           error_or_warning="error")
+                return None
+            else:
+                    vp_met = process_vertical_profile(vp_files[0])
+                    
+                    # Merge vetical profile met into footprint file with same time index
+                    vp_reindex = vp_met.reindex_like(fp,"nearest", tolerance =None)
+                    lapse_in = vp_reindex.theta_slope.values
+                    lapse_error_in=vp_reindex.slope_error.values
+                                      
+        else:
+            lapse_in=None
+            lapse_error_in=None
+        
+        #Write netCDF file
+        #######################################
+        
+        # Define particle locations dictionary (annoying)
+        if "pl_n" in list(fp.keys()):
+            pl = {"N": fp.pl_n.transpose("height", "lon", "time").values.squeeze(),
+                  "E": fp.pl_e.transpose("height", "lat", "time").values.squeeze(),
+                  "S": fp.pl_s.transpose("height", "lon", "time").values.squeeze(),
+                  "W": fp.pl_w.transpose("height", "lat", "time").values.squeeze()}
+            height_out = fp.height.values.squeeze()
+        else:
+            pl = None
+            height_out = None
+
+        status_log("Writing file: " + outfile, print_to_screen=False)
+        
+        # Write outputs
+        #try:
+        write_netcdf(fp.fp.transpose("lat", "lon", "time").values.squeeze(),
+                         fp.lon.values.squeeze(),
+                         fp.lat.values.squeeze(),
+                         fp.lev.values,
+                         fp.time.to_pandas().index.to_pydatetime(),
+                         outfile,
+                         temperature=fp["temp"].values.squeeze(),
+                         pressure=fp["press"].values.squeeze(),
+                         wind_speed=fp["wind"].values.squeeze(),
+                         wind_direction=fp["wind_direction"].values.squeeze(),
+                         PBLH=fp["PBLH"].values.squeeze(),
+                         release_lon=fp["release_lon"].values.squeeze(),
+                         release_lat=fp["release_lat"].values.squeeze(),
+                         particle_locations = pl,
+                         particle_heights = height_out,
+                         global_attributes = fp.attrs,
+                         lapse_rate = lapse_in,
+                         lapse_error = lapse_error_in)
+
+    else:
+        status_log("FAILED. Couldn't seem to find any files, or some files are missing for %s" %
+                   datestr,
+                   error_or_warning="error")
+
+    return fp
+ 
 
 def process_all(domain, site,
                 heights = None,
@@ -2350,6 +2687,8 @@ def process_vertical_profile(vp_fname):
                "theta220": "THETA-Z = 220.0000 m agl","theta240": "THETA-Z = 240.0000 m agl",
                "theta260": "THETA-Z = 260.0000 m agl","theta280": "THETA-Z = 280.0000 m agl",
                "theta300": "THETA-Z = 300.0000 m agl"}
+    
+
 
     vp_met_df=read_met(vp_fname, met_def_dict=vp_met_dict, vertical_profile=True)
     lapse_ds=xray.Dataset.from_dataframe(vp_met_df)
