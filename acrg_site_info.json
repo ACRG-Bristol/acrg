@@ -1786,6 +1786,20 @@
       "longitude": -0.343872
     }
   },
+  "EM27": {
+    "EM27": {
+      "height": [
+        "column"
+      ], 
+      "height_name": [
+        "column"
+      ], 
+      "height_station_masl": 17.0, 
+      "latitude": 51.424149, 
+      "long_name": "NPL, UK", 
+      "longitude": -0.343872
+    }
+  },
   "BRS": {
     "BRS": {
       "height": [

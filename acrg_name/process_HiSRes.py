@@ -65,9 +65,12 @@ def getGridLL(x, y):
 
 def process_all(domain, site, height,
                 force_met_empty = False,
+                satellite = False,
+                upper_level = None,
                 processed_folder = "Processed_Fields_files",
                 processed_folder_HR = "Processed_Fields_files_HR",
-                base_dir = "/data/al18242/name_out/"):
+                base_dir = "/data/al18242/name_out/",
+                **kwargs):
     """
     Process high resolution footprints, by seperately processing the low and high resolution outputs
     These are then combined together into a single dataset ready for further use
@@ -77,15 +80,19 @@ def process_all(domain, site, height,
     name.process.process_all(domain, site, 
                          height,
                          force_met_empty = force_met_empty,
+                         satellite = satellite,
+                         upper_level = upper_level,
                          processed_folder = processed_folder,
-                         base_dir=base_dir)
+                         base_dir=base_dir, **kwargs)
     #process high resolution:
     name.process.process_all(domain, site, 
                              height,
                              force_met_empty = force_met_empty,
+                             satellite = satellite,
+                             upper_level = upper_level,
                              fields_folder = "Fields_files_HR",
                              processed_folder = processed_folder_HR,
-                             base_dir=base_dir)
+                             base_dir=base_dir, **kwargs)
     
     #open processed datasets to be combined
     output_base = "{}{}_{}_{}/".format(base_dir,domain,site,height)
@@ -95,6 +102,7 @@ def process_all(domain, site, height,
         
 def process(domain, site, height, year, month,
             force_met_empty = False,
+            satellite = False,
             processed_folder = "Processed_Fields_files",
             processed_folder_HR = "Processed_Fields_files_HR",
             base_dir = "/data/al18242/name_out/"):
@@ -106,11 +114,13 @@ def process(domain, site, height, year, month,
     #process low resolution:
     name.process.process(domain, site, height, year, month,
                          force_met_empty = force_met_empty,
+                         satellite = satellite,
                          processed_folder = processed_folder,
                          base_dir=base_dir)
     #process high resolution:
     name.process.process(domain, site, height, year, month,
                              force_met_empty = force_met_empty,
+                             satellite = satellite,
                              fields_folder = "Fields_files_HR",
                              processed_folder = processed_folder_HR,
                              base_dir=base_dir)
