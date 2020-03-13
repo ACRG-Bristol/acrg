@@ -2103,6 +2103,7 @@ def process_all(domain, site, network,
                 satellite = False,
                 perturbed_folder = None,
                 max_level = None,
+                upper_level = None,
                 force_met_empty=False,
                 vertical_profile=False,
                 transport_model="NAME"):
@@ -2155,6 +2156,9 @@ def process_all(domain, site, network,
             Specified only for satellite data and indicates the max level to
             process the foorprints. 
             Levels above are replaced by the prior profile.
+            Default = None.
+        upper_level (int, optional):
+            Only needed when satellite=True. Highest level number from within the NAME run for the satellite data.
             Default = None.
         force_met_empty (bool, optional):
              Force the met data to be empty?
@@ -2226,7 +2230,7 @@ def process_all(domain, site, network,
             out = process(domain, site, height, year, month,
                     base_dir = base_dir, met_folder = met_folder, force_update = force_update,
                     satellite = satellite, perturbed_folder = perturbed_folder,
-                    max_level = max_level, use_surface_conditions=use_surface_conditions,
+                    max_level = max_level, upper_level=upper_level, use_surface_conditions=use_surface_conditions,
                     force_met_empty = force_met_empty,
                     vertical_profile=vertical_profile,
                     transport_model=transport_model)
