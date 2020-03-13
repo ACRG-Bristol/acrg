@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 import datetime as dt
 import os
+import sys
 import glob
 from matplotlib import ticker
 import pandas as pd
@@ -755,7 +756,7 @@ def timeseries_HiTRes(fp_HiTRes_ds, flux_dict, output_TS = True, output_fpXflux 
     
     for ti, time in enumerate(fp_HiTRes.time):
         fp = fp_HiTRes.sel(time=time).fp_HiTRes.to_dataset()
-        time_back = [fp.time.values - np.timedelta64(i,'h') for i in fp.H_back.values]
+        time_back = [fp.time.values - np.timedelta64(int(i),'h') for i in fp.H_back.values]
         fp = fp.update({'H_back':time_back})
         fp = fp.drop('time')
         fp = fp.rename({'H_back':'time'})
@@ -772,8 +773,6 @@ def timeseries_HiTRes(fp_HiTRes_ds, flux_dict, output_TS = True, output_fpXflux 
         #Use end of hours back as closest point for finding the emissions file
         print("flux_resid",flux_resid)
         print("new_ds.time[0]",new_ds.time[0])
-        import pdb
-        pdb.set_trace()
         emend = flux_resid.sel(time = new_ds.time[0], method = 'ffill')
         em.flux[:,:,0] = emend.flux
         fpXflux[:,:,ti] = (new_ds.fp_HiTRes*em.flux).sum(["time"])
@@ -1243,9 +1242,15 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                     H[i,:] = np.sum(H_all_v*base_v[:,i,np.newaxis], axis = 0)
                 
                 if source == all:
-                    region_name = site_bf.region
+                    if (sys.version_info < (3,0)):
+                        region_name = site_bf.region
+                    else:
+                        region_name = site_bf.region.decode('ascii')
                 else:
-                    region_name = [source+'-'+reg for reg in site_bf.region.values]
+                    if (sys.version_info < (3,0)):
+                        region_name = [source+'-'+reg for reg in site_bf.region.values]
+                    else:
+                        region_name = [source+'-'+reg.decode('ascii') for reg in site_bf.region.values]
 
                 sensitivity = xr.DataArray(H, 
                                              coords=[('region', region_name), 

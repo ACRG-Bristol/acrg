@@ -1141,3 +1141,72 @@ def BTT():
         print(nc_filename)
         print("Writing " + nc_filename)
         dataProcessed[species].to_netcdf(nc_filename)
+        
+def TMB(species="CH4"):
+    #parameters setup
+    unit_species = {"CO2": "ppm",
+                "CH4": "ppb",
+                "CO": "ppm"}
+    
+    site="TMB"
+    speciesList = ["CH4", "CO2", "CO"]
+    species_label = {"CO2": "CO2",
+                    "CH4": "Methane",
+                    "CO": "CO"}
+    params = {
+            "directory" : "/data/shared/obs_raw/TMB/",
+            "directory_output" : "/data/shared/obs/",
+            "scale": {
+                "CH4": "WMO-CH4-X2004",
+                "CO2": "WMO-CO2-X2007",
+                "CO" : "WMO-CO-X2014"},
+            "instrument": "Picarro G2401",
+            "inlet": "5m",
+            "global_attributes": {
+                "data_owner": "Valerio Ferracci",
+                "data_owner_email": "V.Ferracci@cranfield.ac.uk",
+                "Notes": "~5m above high tide water level, in tidal region of the Thames"
+                }
+            }
+
+    #find files
+    search_str = join(params["directory"],"*calibrated_data.csv")
+    fnames = glob.glob(search_str)
+    fnames.sort()
+
+    for filename in fnames:
+        dataRaw = pd.read_csv(filename,
+                       parse_dates = [0],
+                       index_col = 0)
+        
+        #rename columns        
+        rename_dict = {}
+        rename_dict[species_label[species]] = species
+        dataRaw.rename(columns = rename_dict, inplace=True)
+        dataRaw.index.name = "time"
+            
+        dataProcessed = xr.Dataset.from_dataframe(dataRaw.loc[:, [species]].sort_index())
+        
+        #convert methane to ppb
+        if species == "CH4":
+            dataProcessed[species] *= 1000
+        
+        #no averaging applied to raw obs, set variability to 0 to allow get_obs to calculate when averaging    
+        dataProcessed["{} variability".format(species)] = dataProcessed[species] * 0.
+        
+    
+        dataProcessed = attributes(dataProcessed,
+                     species, site, global_attributes=params["global_attributes"],
+                     units=unit_species[species], scale=params["scale"][species],
+                     sampling_period=None)
+        nc_filename = output_filename(params["directory_output"],
+                                          "CRANFIELD",
+                                          "CRDS",
+                                          site.upper(),
+                                          dataProcessed.time.to_pandas().index.to_pydatetime()[0],
+                                          dataProcessed.species,
+                                          None)
+        print(nc_filename)
+        print("Writing " + nc_filename)
+            
+        dataProcessed.to_netcdf(nc_filename)
