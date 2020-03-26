@@ -107,16 +107,16 @@ def synonyms(search_string, info, alternative_label = "alt"):
         [k for k in keys if k.upper() == search_string.upper()]
 
     #If not found, search synonyms
-    if len(out_strings) is 0:
+    if len(out_strings) == 0:
         for k in keys:
             matched_strings = \
                 [s for s in info[k][alternative_label] \
                     if s.upper() == search_string.upper()]
-            if len(matched_strings) is not 0:
+            if len(matched_strings) != 0:
                 out_strings = [k]
                 break
 
-    if len(out_strings) is 1:
+    if len(out_strings) == 1:
         out_string = out_strings[0]
     else:
         out_string = None
@@ -148,7 +148,7 @@ def listsearch(possible_strings, correct_string,
             break
         matched_strings=[s for s in further_info[k][further_info_alternative_label] \
                 if s.upper() == correct_string.upper()]
-        if len(matched_strings) is not 0:
+        if len(matched_strings) != 0:
             correct_key = k
             break
         
@@ -163,7 +163,7 @@ def listsearch(possible_strings, correct_string,
         else:
             matched_strings=[s for s in further_info[correct_key][further_info_alternative_label] \
                 if s.upper() == v.upper()]
-            if len(matched_strings) is not 0:
+            if len(matched_strings) != 0:
                 out_string = v
                 break
             else:

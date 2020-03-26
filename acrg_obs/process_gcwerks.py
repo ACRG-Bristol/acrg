@@ -8,6 +8,7 @@ from __future__ import print_function
 
 from builtins import zip
 from builtins import range
+import datetime
 import numpy as np
 import pandas as pd
 from os.path import join, split
@@ -611,30 +612,34 @@ def crds_data_read(data_file):
         else:
             header.append(df_header[i][1].upper())
 
+    # Function to parse the datetime format found in the datafile
+    def parse_date(date):
+        try:
+            return datetime.datetime.strptime(date, '%y%m%d %H%M%S')
+        except ValueError:
+            return pd.NaT
+
     # Read data
     df = pd.read_csv(data_file,
                      skiprows=4,
                      header = None,
                      sep=r"\s+",
                      names = header,
-                     dtype = {"DATE": str, "TIME": str})
+                     index_col=["0_1"],
+                     parse_dates=[[0,1]],
+                     date_parser=parse_date)
 
-    # Interpret time
-    time = [dt(2000 + int(date[0:2]),
-                      int(date[2:4]),
-                      int(date[4:]),
-                      int(time[0:2]),
-                      int(time[2:4]),
-                      int(time[4:])) \
-            for date, time in zip(df["DATE"].values, df["TIME"].values)]
-    df.index = time
+    # Check if the index is sorted and if not sort it
+    if not df.index.is_monotonic_increasing:
+        df.sort_index()
 
-    # Remove duplicate indices
-    df = df.reset_index().drop_duplicates(subset='index').set_index('index')
-
-    # Convert to Dataset
     df.index.name = "time"
-    ds = xray.Dataset.from_dataframe(df.sort_index())
+
+    # Remove duplicates
+    df = df.reset_index().drop_duplicates(subset='time').set_index('time')
+
+    # Convert to a Dataset
+    ds = df.to_xarray()
 
     return ds, species
 
