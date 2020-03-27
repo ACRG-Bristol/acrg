@@ -589,7 +589,13 @@ def gc(site, instrument, network,
 
 
 def crds_data_read(data_file):
+    """ Read CRDS data
 
+        Args:
+            data_file (str): Path to data file
+        Returns:
+            tuple: Tuple of xarray.Dataset and list of species
+    """
     print("Reading " + data_file)
 
     # Read file header
@@ -652,8 +658,14 @@ def crds(site, network,
     """
     Process CRDS data
 
-    site : Three letter site code
-    network : Network string only for output
+    Args:
+        site (str): Three letter site code
+        network (str): Network string only for output
+        input_directory (str, default=None): Directory holding input files
+        output_directory (str, default=None): Directory for output files
+        date_range (list, default=None): Start and end date for output. If you only want an end date, 
+                                        just put a very early start date (e.g. ["1900-01-01", "2010-01-01"])
+        version (str, default=None): Version string for output filename
     """
     params_crds = params["CRDS"]
 
