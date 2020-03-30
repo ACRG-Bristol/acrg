@@ -43,6 +43,10 @@ import getpass
 
 acrg_path = os.getenv("ACRG_PATH")
 
+# Get acrg_site_info file
+with open(os.path.join(acrg_path, "acrg_site_info.json")) as f:
+    site_info=json.load(f,object_pairs_hook=OrderedDict)
+
 def append_netcdf(flux_mean, flux_percentile, flux_it, country_mean, country_percentile,
                   k_mean, k_percentile,
                  lon, lat, time, country, percentile, nIt, experiment, outfile):
@@ -63,7 +67,7 @@ def append_netcdf(flux_mean, flux_percentile, flux_it, country_mean, country_per
     regionspc_name = "_".join(['regions_percentile', experiment])
     #countryit_name = "_".join(['country_it', experiment])
     
-    print("outfile",outfile)
+    print(f"Output filename: {outfile}")
     ncF=Dataset(outfile, 'a')
     
     ncfluxm=ncF.createVariable(fm_name, 'f', ('lat', 'lon', 'time'))    
@@ -256,21 +260,25 @@ def mol2g(value,species):
     molmass = molar_mass(species)
     return value*molmass
 
-def check_platform(site):
+def check_platform(site,network=None):
     '''
     This function extracts platform (if specified) for the site from acrg_site_info.json file.
+    network can be specified if site is associated with more than one. If not specified, the first
+    network will be used by default.
     Returns:
         str : Platform type (e.g. "site", "satellite", "aircraft")
     '''
     site_info_file = os.path.join(acrg_path,"acrg_site_info.json")
     with open(site_info_file) as f:
-        site_info=json.load(f)
-    if "platform" in site_info[site].keys():
-        return site_info[site]["platform"]
+        site_info=json.load(f,object_pairs_hook=OrderedDict)
+    if network is None:
+        network = list(site_info[site].keys())[0]
+    if "platform" in site_info[site][network].keys():
+        return site_info[site][network]["platform"]
     else:
         return None
 
-def define_stations(ds,sites=None):
+def define_stations(ds,sites=None,use_site_info=False):
     '''
     The define_stations function defines the latitude and longitude values for each site within
     a dataset.
@@ -290,26 +298,39 @@ def define_stations(ds,sites=None):
             List of sites to look for within dataset.
             If not specified, the sites will be extracted from the input dataset assuming a 
             data variable "sites" is included within the dataset.
+        use_site_info (bool, optional) :
+            Use positions from acrg_site_info.json file rather than extract them from the tdmcmc dataset.
+            Default = False.
     
     Returns:
         dict :
             Dictionary containing "site"_lat, "site"_lon values for each site.
     '''
-    if sites is None:
-        sites = list(ds.sites.values)
-#        sites = [site.astype("unicode") for site in sites]
 
+    if sites is None:
+        sites = list(ds.sites.values.astype(str))
+#        sites = [site.astype("unicode") for site in sites]
         for site in sites:
             if check_platform(site) == "aircraft" or check_platform(site) == "satellite":
                 sites.remove(site)
-    
+                
     stations={}
-    for si, site in enumerate(sites):
-        #if site in ds.y_site:
-        stations[site+'_lon']=ds.release_lons[si].values
-        stations[site+'_lat']=ds.release_lats[si].values
-        if site not in ds.y_site:
-            print("WARNING: Reference to site not found within dataset")
+    
+    if use_site_info:
+        for site in sites:
+            network = list(site_info[site].keys())[0]
+            stations[site+'_lon'] = [site_info[site][network]["latitude"]]
+            stations[site+'_lat'] = [site_info[site][network]["longitude"]]
+    else:
+        for site in sites:
+            wh = np.where(ds.sites.values.astype(str) == site)[0]
+            if len(wh) > 0:
+                si = wh[0]
+                #if site in ds.y_site:
+                stations[site+'_lon']=ds.release_lons[si].values
+                stations[site+'_lat']=ds.release_lats[si].values
+            elif len(wh) == 0:
+                print("WARNING: Reference to site not found within dataset")
 
     if sites:
         stations['sites']=sites
@@ -345,7 +366,7 @@ def subplot_fmt(num,row_dims=[3,2,4],fill=False):
     '''
     for r in row_dims:
         if not num%r:
-            subplot = [r,num/r]
+            subplot = [r,num//r]
             break
     else:
         if fill or num == 1:
@@ -353,12 +374,12 @@ def subplot_fmt(num,row_dims=[3,2,4],fill=False):
         else:
             for r in row_dims:
                 if not (num+1)%r:
-                    subplot = [r,(num+1)/r]
+                    subplot = [r,(num+1)//r]
                     break
     
     return subplot
 
-def set_clevels(data,num_tick=20.,tick=None,centre_zero=False,rescale=False,robust=False):
+def set_clevels(data,num_tick=20.,tick=None,centre_zero=False,above_zero=False,rescale=False,robust=False):
     '''
     The set_clevels function defines a set of contour levels for plotting based on the inputs 
     values.
@@ -393,16 +414,22 @@ def set_clevels(data,num_tick=20.,tick=None,centre_zero=False,rescale=False,robu
             Also returns scaling factor if rescale=True.
     '''
     if robust:
-        q_min = np.percentile(data,2)
-        q_max = np.percentile(data,98)
+        if above_zero:
+            q_min = np.percentile(data[data>0],2)
+            q_max = np.percentile(data,98)            
+        else:
+            q_min = np.percentile(data,2)
+            q_max = np.percentile(data,98)
     else:
-        q_min = np.min(data)
-        q_max = np.max(data)
+        if above_zero:
+            q_min = np.min(data[data>0])
+            q_max = np.max(data)            
+        else:
+            q_min = np.min(data)
+            q_max = np.max(data)
     
     scale = 1
 
-    print("q_max",q_max)
-    print("q_min",q_min)
     if rescale:
         # Allow q to be rescaled according to the most appropriate unit
         while abs(q_max) <= 1e-3:
@@ -768,17 +795,15 @@ def plot_map(data, lon, lat, clevels=None, divergeCentre = None, cmap=plt.cm.RdB
         cb = plt.colorbar(cs, ax=ax, orientation='horizontal', pad=0.05, extend=extend)
                 
     if label is not None:        
-        cb.set_label(label,fontsize=14) 
+        cb.set_label(label)#,fontsize=14) 
     if title is not None:
         #ax.set_title(title, fontsize=16) 
-        fig.suptitle(title, fontsize=16)
+        fig.suptitle(title)#, fontsize=16)
         
     if stations is not None:
-       
         for si,site in enumerate(stations['sites']):
             ilon=stations[site+'_lon']
             ilat=stations[site+'_lat']
-            
             ax.plot(ilon, ilat, color = 'black', marker = 'o', markersize=8,  transform=ccrs.PlateCarree())
                
     tick_locator = ticker.MaxNLocator(nbins=5)
@@ -791,8 +816,8 @@ def plot_map(data, lon, lat, clevels=None, divergeCentre = None, cmap=plt.cm.RdB
         #plt.close(fig=fig)
     elif show:
         fig.show()
-    else:
-        return fig,ax
+    
+    return fig,ax
 
 def plot_map_mult(data_all, lon, lat, grid=True, subplot="auto", clevels=None, divergeCentre=None, 
                  centre_zero=False,cmap=plt.cm.RdBu_r, borders=True, labels=None,
@@ -875,7 +900,6 @@ def plot_map_mult(data_all, lon, lat, grid=True, subplot="auto", clevels=None, d
         elif len(stations) != nrun:
             print("Unable to apply station positions to sub-plots. Number of station dictionaries ({}}) does not match the number of plots ({}).".format(len(stations),nrun))
             labels = [None]*nrun
-    
     if not grid and nrun > 1:
         if out_filename:
             base,ext = os.path.splitext(out_filename)
@@ -912,6 +936,7 @@ def plot_map_mult(data_all, lon, lat, grid=True, subplot="auto", clevels=None, d
 
 def plot_scale_map(ds_list, grid=True, clevels=None, divergeCentre=None, centre_zero=True,
                    cmap=plt.cm.RdBu_r, borders=True, labels=None, plot_stations=True,
+                   use_site_info=False,
                    smooth=False, out_filename=None, fignum=None, title=None, extend="both",
                    figsize=None):
     '''
@@ -933,6 +958,10 @@ def plot_scale_map(ds_list, grid=True, clevels=None, divergeCentre=None, centre_
             If list is specified, it must match number of datasets in ds_list.
         plot_stations (bool, optional) :
             Plot site positions on the output map. Will not plot aircraft or satellite positions.
+        use_site_info (bool, optional) :
+            If plotting site positions, use positions from acrg_site_info.json file rather
+            than extract them from the tdmcmc dataset.
+            Default = False.
         
         See plot_map() function for definition of remaining inputs.
     
@@ -946,7 +975,7 @@ def plot_scale_map(ds_list, grid=True, clevels=None, divergeCentre=None, centre_
     '''
 
     if plot_stations:
-        stations = [define_stations(ds) for ds in ds_list]
+        stations = [define_stations(ds,use_site_info=use_site_info) for ds in ds_list]
     else:
         stations = None
     x_post_mean_list = [x_post_mean(ds) for ds in ds_list]
@@ -960,6 +989,7 @@ def plot_scale_map(ds_list, grid=True, clevels=None, divergeCentre=None, centre_
 
 def plot_abs_map(ds_list, species, grid=True, clevels=None, divergeCentre=None, 
                    cmap=plt.cm.RdBu_r, borders=True, labels=None, plot_stations=True,
+                   use_site_info=False,
                    smooth=False, out_filename=None, fignum=None, title=None, extend="both",
                    figsize=None):
     '''
@@ -984,7 +1014,10 @@ def plot_abs_map(ds_list, species, grid=True, clevels=None, divergeCentre=None,
             If list is specified, it must match number of datasets in ds_list.
         plot_stations (bool, optional) :
             Plot site positions on the output map. Will not plot aircraft or satellite positions.
-
+        use_site_info (bool, optional) :
+            If plotting site positions, use positions from acrg_site_info.json file rather
+            than extract them from the tdmcmc dataset.
+            Default = False.
         
         See plot_map() function for definition of remaining inputs.
     
@@ -998,7 +1031,7 @@ def plot_abs_map(ds_list, species, grid=True, clevels=None, divergeCentre=None,
     '''
 
     if plot_stations:
-        stations = [define_stations(ds) for ds in ds_list]
+        stations = [define_stations(ds,use_site_info=use_site_info) for ds in ds_list]
     else:
         stations = None
     q_abs_list = [mol2g(flux_mean(ds),species) for ds in ds_list]
@@ -1011,6 +1044,7 @@ def plot_abs_map(ds_list, species, grid=True, clevels=None, divergeCentre=None,
 
 def plot_diff_map(ds_list, species, grid=True, clevels=None, divergeCentre=None, 
                    centre_zero=True,cmap=plt.cm.RdBu_r, borders=True, labels=None, plot_stations=True,
+                   use_site_info=False,
                    smooth=False, out_filename=None, fignum=None, title=None, extend="both",
                    figsize=None):
     '''
@@ -1036,6 +1070,10 @@ def plot_diff_map(ds_list, species, grid=True, clevels=None, divergeCentre=None,
             If list is specified, it must match number of datasets in ds_list.
         plot_stations (bool, optional) :
             Plot site positions on the output map. Will not plot aircraft or satellite positions.
+        use_site_info (bool, optional) :
+            If plotting site positions, use positions from acrg_site_info.json file rather
+            than extract them from the tdmcmc dataset.
+            Default = False.
         
         See plot_map() function for definition of remaining inputs.
     
@@ -1049,7 +1087,7 @@ def plot_diff_map(ds_list, species, grid=True, clevels=None, divergeCentre=None,
     '''
 
     if plot_stations:
-        stations = [define_stations(ds) for ds in ds_list]
+        stations = [define_stations(ds,use_site_info=use_site_info) for ds in ds_list]
     else:
         stations = None
     
@@ -1669,9 +1707,9 @@ def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True
         figsize (tuple) : Specify size of figure as a two-item tuple.
         plot_prior (bool) : Plot mole fraction prior.
         plot_bc_prior (bool) : Plot inner boundary conditions prior.
-        lower_percentile (float) : Lower percetile of predicted time series 
+        lower_percentile (float) : Lower percentile of predicted time series 
                                    uncertainty (default = 16)
-        upper_percentile (float) : Upper percetile of predicted time series 
+        upper_percentile (float) : Upper percentile of predicted time series 
                                    uncertainty (default = 84)
         
     
@@ -1713,12 +1751,25 @@ def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True
         if nsites > 1:
             for si,site in enumerate(sites):
                 wh_site = np.where(y_site == site)
-                ax[si].fill_between(y_time[wh_site[0]], upper[wh_site[0]],lower[wh_site[0]], alpha=0.6, 
+
+                y_time_site = y_time[wh_site[0]]
+                y_bg_site = y_bg_mean[wh_site[0]]
+                y_post_site = y_post_mean[wh_site[0]]
+                upper_site = upper[wh_site[0]]
+                lower_site = lower[wh_site[0]]
+                
+#                ax[si].fill_between(y_time[wh_site[0]], upper[wh_site[0]],lower[wh_site[0]], alpha=0.6, 
+#                            facecolor='lightskyblue', edgecolor='lightskyblue')
+                ax[si].fill_between(y_time_site, upper_site,lower_site, alpha=0.6, 
                             facecolor='lightskyblue', edgecolor='lightskyblue')
                 ax[si].plot(y_time[wh_site[0]],y_obs[wh_site[0]], 'ro', markersize=4, label='Observations')
-                ax[si].plot(y_time[wh_site[0]],y_post_mean[wh_site[0]], color='blue', label='Modelled observations')
-                ax[si].plot(y_time[wh_site[0]],y_bg_mean[wh_site[0]],color='black', 
-                         label='Modelled baseline')
+                
+                #ax[si].plot(y_time[wh_site[0]],y_post_mean[wh_site[0]], color='blue', label='Modelled observations')
+                #ax[si].plot(y_time[wh_site[0]],y_bg_mean[wh_site[0]],color='black', 
+                #         label='Modelled baseline')
+                ax[si].plot(y_time_site,y_post_site, color='blue', label='Modelled observations')
+                ax[si].plot(y_time_site,y_bg_site,color='black', label='Modelled baseline')
+                
                 if plot_prior:
                     ax[si].plot(y_time[wh_site[0]],y_prior[wh_site[0]], color='green', label='Prior')
                 
