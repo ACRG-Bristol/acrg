@@ -809,7 +809,21 @@
       "latitude": 50.97675,
       "long_name": "Heathfield, UK",
       "longitude": 0.23048
-    }
+    },
+       "DECC": {
+      "height": [
+        "100m",
+        "50m"
+      ],
+      "height_name": [
+        "100magl",
+        "50magl"
+      ],
+      "height_station_masl": 150.0,
+      "latitude": 50.97675,
+      "long_name": "Heathfield, UK",
+      "longitude": 0.23048
+   }
   },
   "HFM": {
     "NOAA": {
