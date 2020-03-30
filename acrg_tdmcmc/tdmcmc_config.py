@@ -233,9 +233,9 @@ def optional_parameters(section_group=None):
             Optional parameters for MCMC code
     '''
     meas_params = ["network","start_date","end_date","species","emissions_name","site_modifier",
-                   "inlet","instrument"]
+                   "inlet","instrument","data_dir"]
     mcmc_params = ["unique_copy","max_level","lpdm",
-                   "data_dir","fp_dir","flux_dir","bc_dir","basis_dir","bc_basis_dir",
+                   "fp_dir","flux_dir","bc_dir","basis_dir","bc_basis_dir",
                    "prior_uncertainty","include_bias","fix_bc"]
     tdmcmc_params = []
     
