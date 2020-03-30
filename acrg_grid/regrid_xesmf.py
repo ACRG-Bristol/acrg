@@ -61,7 +61,7 @@ def regrid_uniform_cc(data, input_lat, input_lon, output_lat, output_lon):
     regridded = regridder( data )
     return regridded
 
-def regrid_betweenGrids(data, input_grid, output_grid):
+def regrid_betweenGrids(data, input_grid, output_grid, method="conservative"):
     """
     Regrid data from predefined input_grid and output_grid
     
@@ -76,16 +76,21 @@ def regrid_betweenGrids(data, input_grid, output_grid):
                          'lon_b': (['x_b', 'y_b'], LON_b)})
     
             where lat and lon give cell centre locations, and lat_b and lon_b give the cell bounds (corners)
+        
+        method - string describing method to use.
+            Should be one of "conservative" or "conservative_normed".
+            Note that to use the conservative_normed method you need to have installed the "masking" development
+            branch of the xesmf package (contact Daniel for more details).
             
             With the 'masking' branch of xESMF you can include a mask in the input_grid to ignore nan values
     returns
         regridded numpy array
     """
-    if 'mask' in input_grid:
-        # !!! Requires the 'masking' branch of xESMF to be manually installed !!!
-        method = 'conservative_normed'
-    else:
-        method = 'conservative'
+    #if 'mask' in input_grid:
+    #    # !!! Requires the 'masking' branch of xESMF to be manually installed !!!
+    #    method = 'conservative_normed'
+    #else:
+    #method = 'conservative'
     regridder = xesmf.Regridder(input_grid, output_grid, method)
     regridded = regridder( data )
     
