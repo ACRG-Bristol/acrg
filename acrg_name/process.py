@@ -1036,7 +1036,8 @@ def footprint_array(fields_file,
 #            metr = met[0].reindex(index = np.array([t]))
             #metr = met[0][~met[0].index.duplicated(keep='first')].reindex(index = np.array([t]))
             met[0] = met[0].tz_localize(None)
-            metr = met[0][~met[0].index.duplicated(keep='first')].loc[t, :]
+            metr = met[0][~met[0].index.duplicated(keep='first')].reindex(index = np.array([t]))
+            #metr = met[0][~met[0].index.duplicated(keep='first')].loc[t, :]
 
             if np.isnan(metr.values).any():
                 
@@ -1045,7 +1046,7 @@ def footprint_array(fields_file,
             
         for key in list(metr.keys()):
             if key != "time":
-                met_ds[key][{'time':[i]}] = metr[key].reshape((1,len(levs)))
+                met_ds[key][{'time':[i]}] = metr[key].values.reshape((1,len(levs)))
         
     if "label" in met_ds.data_vars:
         met_ds = met_ds.drop("label")
@@ -2060,11 +2061,11 @@ def process(domain, site, height, year, month,
         
         # Define particle locations dictionary (annoying)
         if "pl_n" in list(fp.keys()):
-            pl = {"N": fp.pl_n.transpose("height", "lon", "time").values.squeeze(),
-                  "E": fp.pl_e.transpose("height", "lat", "time").values.squeeze(),
-                  "S": fp.pl_s.transpose("height", "lon", "time").values.squeeze(),
-                  "W": fp.pl_w.transpose("height", "lat", "time").values.squeeze()}
-            height_out = fp.height.values.squeeze()
+            pl = {"N": fp.pl_n.transpose("height", "lon", "time").values,
+                  "E": fp.pl_e.transpose("height", "lat", "time").values,
+                  "S": fp.pl_s.transpose("height", "lon", "time").values,
+                  "W": fp.pl_w.transpose("height", "lat", "time").values}
+            height_out = fp.height.values
         else:
             pl = None
             height_out = None
@@ -2073,19 +2074,19 @@ def process(domain, site, height, year, month,
         
         # Write outputs
         #try:
-        write_netcdf(fp.fp.transpose("lat", "lon", "time").values.squeeze(),
+        write_netcdf(fp.fp.transpose("lat", "lon", "time").values,
                          fp.lon.values.squeeze(),
                          fp.lat.values.squeeze(),
                          fp.lev.values,
                          fp.time.to_pandas().index.to_pydatetime(),
                          outfile,
-                         temperature=fp["temp"].values.squeeze(),
-                         pressure=fp["press"].values.squeeze(),
-                         wind_speed=fp["wind"].values.squeeze(),
-                         wind_direction=fp["wind_direction"].values.squeeze(),
-                         PBLH=fp["PBLH"].values.squeeze(),
-                         release_lon=fp["release_lon"].values.squeeze(),
-                         release_lat=fp["release_lat"].values.squeeze(),
+                         temperature=fp["temp"].values,
+                         pressure=fp["press"].values,
+                         wind_speed=fp["wind"].values,
+                         wind_direction=fp["wind_direction"].values,
+                         PBLH=fp["PBLH"].values,
+                         release_lon=fp["release_lon"].values,
+                         release_lat=fp["release_lat"].values,
                          particle_locations = pl,
                          particle_heights = height_out,
                          global_attributes = fp.attrs,
@@ -2202,7 +2203,7 @@ def process_all(domain, site, network,
         heights = site_info[site][network]["height_name"]
     elif type(heights) is not list:
         heights = [heights]
-    
+
     for height in heights:
         
         subfolder = base_dir + domain + "_" + site + "_" + height + "/"

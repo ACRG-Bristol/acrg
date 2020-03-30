@@ -1910,7 +1910,8 @@ def midpoint_bounds(pressure_levels,delta_pressure=None,pressure_NAME=None,set_a
             
             dpressure[:,-1] = delta_pressure[:,-1] # Set last dpressure as matching previous
             bound_below_min = np.where(pressure_levels[:,-1] - dpressure[:,-1]/2. < min_pressure)[0]
-            dpressure[bound_below_min,-1] = pressure_levels[:,-1] + delta_pressure[:,-1]/2. - min_pressure # If pressure would be < min pressure (e.g. 0), set dpressure as distance from min_pressure
+            if len(bound_below_min)>0:
+                dpressure[bound_below_min,-1] = pressure_levels[:,-1] + delta_pressure[:,-1]/2. - min_pressure # If pressure would be < min pressure (e.g. 0), set dpressure as distance from min_pressure
             
             new_pressure_levels[:,1:] = (pressure_levels[:,1:] + delta_pressure/2.) - dpressure[:,1:]/2.
     else:
@@ -2194,9 +2195,9 @@ def gosat_split_output(ds,index,mapping=None,data_vars=[],split_dim="time",ident
         
         # Format the identifier data variable (e.g. exposure_id) to contain an extra "id" dimension to allow for multiple values
         if name == ident:
-            identifiers = [value.split(ident_sep) for value in data_var.values] # Split identifier value by the ident_sep value (e.g. ',')
+            identifiers = [str(value).split(ident_sep) for value in data_var.values] # Split identifier value by the ident_sep value (e.g. ',')
             #identifiers = np.array(list(itertools.zip_longest(*identifiers,fillvalue=np.nan))).T # Create array with consistent dimensions for "id" and fill in any gaps with np.nan values
-            identifiers = np.array(list(itertools.izip_longest(*identifiers,fillvalue=np.nan))).T # Create array with consistent dimensions for "id" and fill in any gaps with np.nan values
+            identifiers = np.array(list(itertools.zip_longest(*identifiers,fillvalue=np.nan))).T # Create array with consistent dimensions for "id" and fill in any gaps with np.nan values
            
             id_dim_name = "id" # Define new dimension name
             split_dim_dim,id_dim_dim = identifiers.shape # Define dimensionality of new dimension and dimension we're splitting on
@@ -2570,7 +2571,7 @@ def gosat_process_file(filename,site,species="ch4",lat_bounds=[],lon_bounds=[],d
                        coord_bin=None,quality_filt=True,bad_pressure_filt=True,
                        name_sp_filt=False,name_filters=[],cutoff=5.,layer_range=[50.,500.],                       
                        mode=None,use_name_pressure=False,pressure_base_dir=name_pressure_directory,
-                       pressure_domain=None,pressure_max_days=31.,pressure_day_template=True,
+                       pressure_domain=None,pressure_max_days=31,pressure_day_template=True,
                        write_nc=False,output_directory=obs_directory,
                        write_name=False,name_directory=name_csv_directory,
                        file_per_day=False,max_name_level=17,max_name_points=None,overwrite=False,

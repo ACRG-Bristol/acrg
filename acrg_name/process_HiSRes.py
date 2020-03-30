@@ -105,7 +105,8 @@ def process(domain, site, height, year, month,
             satellite = False,
             processed_folder = "Processed_Fields_files",
             processed_folder_HR = "Processed_Fields_files_HR",
-            base_dir = "/data/al18242/name_out/"):
+            base_dir = "/data/al18242/name_out/",
+            **kwargs):
     """
     Process high resolution footprints, by seperately processing the low and high resolution outputs
     These are then combined together into a single dataset ready for further use
@@ -116,14 +117,16 @@ def process(domain, site, height, year, month,
                          force_met_empty = force_met_empty,
                          satellite = satellite,
                          processed_folder = processed_folder,
-                         base_dir=base_dir)
+                         base_dir=base_dir,
+                         **kwargs)
     #process high resolution:
     name.process.process(domain, site, height, year, month,
                              force_met_empty = force_met_empty,
                              satellite = satellite,
                              fields_folder = "Fields_files_HR",
                              processed_folder = processed_folder_HR,
-                             base_dir=base_dir)
+                             base_dir=base_dir,
+                             **kwargs)
     
     #open processed datasets to be combined
     output_base = "{}{}_{}_{}/".format(base_dir,domain,site,height)
