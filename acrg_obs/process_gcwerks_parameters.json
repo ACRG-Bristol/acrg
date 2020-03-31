@@ -25,9 +25,9 @@
             }
         },
         "directory" : {
-            "GCMD":   "/dagage2/agage/summary/data/",
-            "GCMS":   "/dagage2/agage/summary/data-gcms/",
-            "medusa": "/dagage2/agage/summary/data-gcms/"
+            "GCMD":   "/work/chxmr/shared/obs_raw/AGAGE_GCWerks/data/",
+            "GCMS":   "/work/chxmr/shared/obs_raw/AGAGE_GCWerks/data-gcms/",
+            "medusa": "/work/chxmr/shared/obs_raw/AGAGE_GCWerks/data-gcms/"
         },
         "sampling_period": {
             "GCMD": 75,
@@ -39,7 +39,7 @@
             "GCMS": "Gas chromatograph-mass spectrometer measurements. Output from GCWerks.",
             "medusa": "Medusa measurements. Output from GCWerks. See Miller et al. (2008)."
         },
-        "directory_output" : "/data/shared/obs",
+        "directory_output" : "/work/chxmr/shared/obs",
         "BSD" : {
             "gcwerks_site_name": "bilsdale",
             "inlets": ["108m", "42m", "248m"],

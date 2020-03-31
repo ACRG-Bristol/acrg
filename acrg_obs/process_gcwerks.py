@@ -930,8 +930,46 @@ def data_freeze(version,
     gc("MHD", "medusa", "AGAGE", input_directory = input_directory, output_directory = output_directory, version = version, date_range = date_range)
 
 
+    
+def array_job(array_index):
+    '''
+    Run processing scripts through an array job:
+    
+    qsub -J 1-X -k oe process_gcwerks_array.sh
+    
+    
+    Check its status using qstat -t
+    '''
+    
+    
+    def wrapper(func, args):
+        func(*args)
+    
+    instrument = [ #AGAGE Medusa
+        [gc, ("MHD", "medusa", "AGAGE")],
+        [gc, ("CGO", "medusa", "AGAGE")],
+        [gc, ("GSN", "medusa", "AGAGE")],
+        [gc, ("SDZ", "medusa", "AGAGE")],
+        [gc, ("THD", "medusa", "AGAGE")],
+        [gc, ("RPB", "medusa", "AGAGE")],
+        [gc, ("SMO", "medusa", "AGAGE")],
+        [gc, ("SIO", "medusa", "AGAGE")],
+        [gc, ("JFJ", "medusa", "AGAGE")],
+        [gc, ("CMN", "medusa", "AGAGE")],
+        [gc, ("ZEP", "medusa", "AGAGE")],
+        # AGAGE GC data
+        [gc, ("RPB", "GCMD", "AGAGE")],
+        [gc, ("CGO", "GCMD", "AGAGE")],
+        [gc, ("MHD", "GCMD", "AGAGE")],
+        [gc, ("SMO", "GCMD", "AGAGE")],
+        [gc, ("THD", "GCMD", "AGAGE")]]
 
-
+    if array_index >= len(instrument):
+        return
+    
+    wrapper(instrument[array_index-1][0], instrument[array_index-1][1])
+    
+    
 if __name__ == "__main__":
 
     # AGAGE Medusa
