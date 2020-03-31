@@ -1787,10 +1787,9 @@ def process(domain, site, height, year, month,
 
     # Check that there are no errors from the NAME run
     input_folder = subfolder + 'Input_files/'
-    error_files = 'BackRun_' + domain + '_' + site + '_' + height + '_' + str(year) + str(month).zfill(2)
-    error_days = []
-    
     if os.path.isdir(input_folder):
+        error_files = 'BackRun_' + domain + '_' + site + '_' + height + '_' + str(year) + str(month).zfill(2)
+        error_days = []
         for file_name in os.listdir(input_folder):
             if file_name.startswith(error_files) and \
             file_name.endswith('Error.txt') and \
@@ -1800,9 +1799,9 @@ def process(domain, site, height, year, month,
                 error_days.append(re.search("[0-9]{8}(\S+)", file_name).group(0))
                 error_days.sort()
                 num_days = len(error_days)
-        
-    if len(error_days) > 0:
-        raise Exception('This month cannot be processed as there are '+str(num_days)+' days with with errors: '+str(error_days))
+
+        if len(error_days) > 0:
+            raise Exception('This month cannot be processed as there are '+str(num_days)+' days with with errors: '+str(error_days))
         
    # Check for existance of subfolder
     if not os.path.isdir(subfolder):
