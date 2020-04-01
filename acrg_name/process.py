@@ -231,7 +231,7 @@ def load_NAME(file_lines, namever):
     if 'cell_measure' in column_headings:
         #Extract the time integration period
         dt_fp = int(column_headings['cell_measure'][4][0:3])
-        #This should only apply to HiTRes footprints which currently do not have the correct start and end release times in the header
+        #This should only apply to NAME version 2 HiTRes footprints which currently do not have the correct start and end release times in the header
         if dt_fp < 24:
             end_release_date = headers['End of release'][-10:]
             end_release_tz = headers['End of release'][4:7]
