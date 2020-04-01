@@ -147,17 +147,13 @@ def read_netcdfs(files, dim = "time"):
             All files open as one concatenated xarray.Dataset object    
     """
     
-    #def process_one_path(path):
-    #    with xr.open_dataset(path) as ds:
-    #        ds.load()
-    #    return ds
-    
-    #print("Reading and concatenating files: ")
-    #for fname in files:
-    #    print(fname)
+    print("Reading and concatenating files: ")
+    for fname in files:
+        print(fname)
     
     datasets = [open_ds(p) for p in sorted(files)]
     combined = xr.concat(datasets, dim)
+    #combined = xr.open_mfdataset(sorted(files), parallel=True, combine='nested', concat_dim="time", coords="all")
     return combined   
 
 def interp_time(bc_ds,vmr_var_names, new_times):
@@ -801,7 +797,58 @@ def timeseries_boundary_conditions(ds):
            (ds.particle_locations_e*ds.vmr_e).sum(["height", "lat"]) + \
            (ds.particle_locations_s*ds.vmr_s).sum(["height", "lon"]) + \
            (ds.particle_locations_w*ds.vmr_w).sum(["height", "lat"])
-
+           
+def align_datasets(ds1, ds2, platform=None, resample_to_data=False):
+    """
+    Slice and resample two datasets to align along time
+    
+    Args:
+        ds1, ds2 (xarray.Dataset) :
+            Datasets with time dimension. It is assumed that ds1 is obs data and ds2 is footprint data
+    
+    Returns:
+        2 xarray.dataset with aligned time dimensions
+    """
+    #lw13938: 12/04/2018 - This should slice the date to the smallest time frame
+    # spanned by both the footprint and obs, then resamples the data 
+    #using the mean to the one with coarsest median resolution 
+    #starting from the sliced start date. 
+    ds1_timeperiod = np.nanmedian((ds1.time.data[1:] - ds1.time.data[0:-1]).astype('int64')) 
+    ds2_timeperiod = np.nanmedian((ds2.time.data[1:] - ds2.time.data[0:-1]).astype('int64')) 
+    ds1_st = ds1.time[0]
+    ds1_et = ds1.time[-1]
+    ds2_st = ds2.time[0]
+    ds2_et = ds2.time[-1]
+    if int(ds1_st.data) > int(ds2_st.data):
+        start_date = ds1_st
+    else:  
+        start_date = ds2_st
+    if int(ds1_et.data) < int(ds2_et.data):
+        end_date = ds1_et
+    else:
+        end_date = ds2_et
+    
+    # rt17603: 24/07/2018 - Rounding to the nearest second(+/-1). Needed for sub-second dates otherwise sel was giving a KeyError
+    start_s = str(np.round(start_date.data.astype(np.int64)-5e8,-9).astype('datetime64[ns]')) # subtract half a second to ensure lower range covered
+    end_s = str(np.round(end_date.data.astype(np.int64)+5e8,-9).astype('datetime64[ns]')) # add half a second to ensure upper range covered
+    
+    ds1 = ds1.sel(time=slice(start_s,end_s))
+    ds2 = ds2.sel(time=slice(start_s,end_s))
+    
+    #ds1 = ds1.sel(time=slice(str(start_date.data),str(end_date.data)))
+    #ds2 = ds2.sel(time=slice(str(start_date.data),str(end_date.data)))
+    
+    #only non satellite datasets with different periods need to be resampled
+    if platform != "satellite" and not np.isclose(ds1_timeperiod, ds2_timeperiod):
+        base = start_date.dt.hour.data + start_date.dt.minute.data/60. + start_date.dt.second.data/3600.
+        if (ds1_timeperiod >= ds2_timeperiod) or (resample_to_data == True):
+            resample_period = str(round(ds2_timeperiod/3600e9,5))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
+            ds2 = ds2.resample(indexer={'time':resample_period}, base=base).mean()
+        elif ds1_timeperiod < ds2_timeperiod or (resample_to_data == False):
+            resample_period = str(round(ds2_timeperiod/3600e9,5))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
+            ds1 = ds1.resample(indexer={'time':resample_period}, base=base).mean()
+    
+    return ds1, ds2
     
 def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                           calc_timeseries = True, calc_bc = True, HiTRes = False,
@@ -993,46 +1040,12 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
             else:
                 tolerance = None
             
-            # rt17603: 06/04/2018 - Added sort as some footprints weren't sorted by time for satellite data.
-            site_fp = site_fp.sortby("time")
+            #gets number of unsorted times in time dimensions, sorting is expensive this is cheap
+            if np.sum(np.diff(site_fp.time.values.astype(float))<0) > 0:
+                # rt17603: 06/04/2018 - Added sort as some footprints weren't sorted by time for satellite data.
+                site_fp = site_fp.sortby("time")
             
-            #lw13938: 12/04/2018 - This should slice the date to the smallest time frame
-            # spanned by both the footprint and obs, then resamples the data 
-            #using the mean to the one with coarsest median resolution 
-            #starting from the sliced start date. 
-            ds_timeperiod = np.nanmedian((site_ds.time.data[1:] - site_ds.time.data[0:-1]).astype('int64')) 
-            fp_timeperiod = np.nanmedian((site_fp.time.data[1:] - site_fp.time.data[0:-1]).astype('int64')) 
-            ds_st = site_ds.time[0]
-            ds_et = site_ds.time[-1]
-            fp_st = site_fp.time[0]
-            fp_et = site_fp.time[-1]
-            if int(ds_st.data) > int(fp_st.data):
-                start_date = ds_st
-            else:  
-                start_date = fp_st
-            if int(ds_et.data) < int(fp_et.data):
-                end_date = ds_et
-            else:
-                end_date = fp_et
-            
-            # rt17603: 24/07/2018 - Rounding to the nearest second(+/-1). Needed for sub-second dates otherwise sel was giving a KeyError
-            start_s = str(np.round(start_date.data.astype(np.int64)-5e8,-9).astype('datetime64[ns]')) # subtract half a second to ensure lower range covered
-            end_s = str(np.round(end_date.data.astype(np.int64)+5e8,-9).astype('datetime64[ns]')) # add half a second to ensure upper range covered
-            
-            site_ds = site_ds.sel(time=slice(start_s,end_s))
-            site_fp = site_fp.sel(time=slice(start_s,end_s))
-            
-            #site_ds = site_ds.sel(time=slice(str(start_date.data),str(end_date.data)))
-            #site_fp = site_fp.sel(time=slice(str(start_date.data),str(end_date.data)))
-            
-            if platform != "satellite":
-                base = start_date.dt.hour.data + start_date.dt.minute.data/60. + start_date.dt.second.data/3600.
-                if (ds_timeperiod >= fp_timeperiod) or (resample_to_data == True):
-                    resample_period = str(round(fp_timeperiod/3600e9,5))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
-                    site_fp = site_fp.resample(indexer={'time':resample_period}, base=base).mean()
-                elif ds_timeperiod < fp_timeperiod or (resample_to_data == False):
-                    resample_period = str(round(fp_timeperiod/3600e9,5))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
-                    site_ds = site_ds.resample(indexer={'time':resample_period}, base=base).mean()
+            site_ds, site_fp = align_datasets(site_ds, site_fp, platform=platform, resample_to_data=resample_to_data)
                        
             site_ds = combine_datasets(site_ds, site_fp,
                                        method = "ffill",
@@ -1043,10 +1056,6 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
             for d in expected_dim_order[:]:
                 if d not in list(site_ds.dims.keys()):
                     expected_dim_order.remove(d)
-            #if 'H_back' in list(site_ds.dims.keys()):
-            #    site_ds = site_ds.transpose('height','lat','lon','lev','time', 'H_back')
-            #else:
-            #    site_ds = site_ds.transpose('height','lat','lon','lev','time')
             site_ds = site_ds.transpose(*expected_dim_order)
                 
             # If units are specified, multiply by scaling factor
