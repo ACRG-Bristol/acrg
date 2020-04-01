@@ -483,7 +483,8 @@ def getbloomwetlandsCH4(year, lon_out, lat_out, timeframe="monthly"):
     ddt = np.empty_like(d)
     for i in range(len(ddt)):
        ddt[i] = datetime.datetime.strptime(str(d[i]), '%Y%m%d')
-    ds.date.values = pd.to_datetime(ddt)
+    #ds.date.values = pd.to_datetime(ddt) # Unable to assign back to values in this way in later xarray versions
+    ds = ds.assign_coords(date=pd.to_datetime(ddt))
     ds = ds.sel(date=str(year))
     
     #if monthly == True:
@@ -690,7 +691,8 @@ def getNAEI(year, lon_out, lat_out, species, naei_sector):
         return None
         
     #Read emissions as tonnes/km^2/yr and naei lat and lons
-    df = pd.DataFrame.from_csv(fn)   
+    #df = pd.DataFrame.from_csv(fn) # This syntax is deprecated 
+    df = pd.read_csv(fn)  
     lat = np.asarray(df.Latitude)
     lon = np.asarray(df.Longitude)    
     emissions = np.asarray(df[naei_sector])
