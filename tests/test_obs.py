@@ -241,7 +241,8 @@ def test_obs_process_crds():
     
     # As an example, get CF4 data
     ch4_file = os.path.join(gc_files_directory,
-                            "BSD/DECC-CRDS_BSD_20140130_ch4-248m-TEST.nc")
+                            #"BSD/DECC-CRDS_BSD_20140130_ch4-248m-TEST.nc")
+                            "BSD/DECC-CRDS_BSD_20140130_ch4-TEST.nc")
     # Check if file exists
     assert os.path.exists(ch4_file)
     

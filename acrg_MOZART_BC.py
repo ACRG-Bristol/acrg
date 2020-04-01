@@ -59,7 +59,8 @@ def MOZART_filenames(species, start = "2010-01-01", end = "2016-01-01", runname 
     
     baseDirectory = mzt_dir
     
-    months = pd.DatetimeIndex(start = start, end = end, freq = "M").to_pydatetime()
+    #months = pd.DatetimeIndex(start = start, end = end, freq = "M").to_pydatetime()
+    months = pd.date_range(start = start, end = end, freq = "M").to_pydatetime()
     yearmonth = [str(d.year) + '-' + str(d.month).zfill(2) for d in months]
 
     files = []
@@ -272,7 +273,8 @@ def MOZART_BC_nc(start = '2012-01-01', end = "2014-09-01", species = 'CH4', file
     frequency because this is the frequency of the mozart files we have so far.
     
     """
-    start_dates = pd.DatetimeIndex(start=start, end = end, freq=freq, closed='left')
+    #start_dates = pd.DatetimeIndex(start=start, end = end, freq=freq, closed='left')
+    start_dates = pd.date_range(start = start, end = end, freq = freq, closed="left")
 
     for i in start_dates:
         MZ = MOZART_vmr(species, start = i, end = i, freq=freq, filename = filename)

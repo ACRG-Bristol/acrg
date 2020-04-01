@@ -6,9 +6,11 @@ Created on Wed Apr 18 15:52:02 2018
 Simple tests (for now) for the process script after being updated to process satellite
 data grouped by day (as well as by point).
 
-At the moment, this includes some tests which compare the current output to the output
-from the previous process script which is contained with the deprecated/ folder.
-The previous process script can be used as a benchmark as this output has been compared
+NOTE:
+Tests which compare the current output to the output from the previous process script which is contained 
+with the deprecated/ folder have now been skipped as they do not adhere to the new unit checking 
+and conversion (g/m2/s or ppm s output).
+The previous process script was originally used as a benchmark as this output has been compared
 with the output produced by Alistair.
 
 The comparison tests compare:
@@ -17,11 +19,8 @@ The comparison tests compare:
 
 To run all tests:
     $ pytest test_process.py
-To run these tests which compare between previous and current process script:
-    $ pytest test_process.py -m "compare"
-Alternativey to run without these tests (i.e. to not rely on deprecated folder contents):
-    $ pytest test_process.py -m "not compare"
-
+To only run tests which check against a benchmark file:
+    $ pytest test_process.py -m "bench"
 
 @author: rt17603
 """
@@ -301,26 +300,7 @@ def test_read_field_file_satellite_byday(get_fields_files_satellite_byday):
 #    print "Over 17 elements of point {0}".format(point),np.mean(data_arrays_point)
 
 
-
-#@pytest.mark.parametrize("read_fields_file,param,satellite", [
-#        (read_fields_file_satellite_byday,satellite_param,True),
-#        (read_fields_file_satellite_bypoint,satellite_param,True),
-#        (read_fields_file_site,site_param,False),
-#    ])
-#def test_define_grid(read_fields_file,param,satellite):
-#    '''
-#    Test that grid can be defined correctly when extracted from a NAME run over satellite data with separate 
-#    points.
-#    '''
-#    header,column_headings,data_arrays = read_fields_file
-#    if satellite:
-#        upper_level = param["upper_level"]
-#    else:
-#        upper_level = None
-#    out = process.define_grid(header,column_headings,satellite=satellite,upper_level=upper_level)
-#    print out
-#    assert out
-#    ### TODO: ADD MORE STRINGENT TEST    
+    ### TODO: ADD MORE STRINGENT TEST    
 
 def test_define_grid_satellite_byday(read_fields_file_satellite_byday,satellite_param):
     '''
@@ -562,7 +542,7 @@ def define_grid_org_satellite_bypoint(read_fields_file_satellite_bypoint):
     
     return lons, lats, levs, time, timeStep
 
-@pytest.mark.compare
+@pytest.mark.skip(reason="No longer able to compare after update to use mole fraction output")
 def test_particle_locations_satellite_bypoint_against_org(define_grid_satellite_bypoint,
                                                          define_grid_org_satellite_bypoint,
                                                          get_particle_files_satellite_bypoint,
@@ -714,7 +694,7 @@ def test_read_met_site(get_met_files_site):
     
     #TODO: Find a suitable test to add here
 
-@pytest.mark.compare
+@pytest.mark.skip(reason="No longer able to compare after update to use mole fraction output")
 def test_read_met_satellitebypoint_against_org(get_met_files_satellite_bypoint,satellite_param):
     '''
     Test values within output from original process script: process_org.read_met() function is identical to
@@ -956,7 +936,7 @@ def test_footprint_array_site(get_fields_files_site,
     
     out = process.footprint_array(fields_file_1,particle_file_1,met,satellite=False)
 
-@pytest.mark.compare
+@pytest.mark.skip(reason="No longer able to compare after update to use mole fraction output")
 def test_footprint_array_satellite_bypoint_against_org(get_fields_files_satellite_bypoint,
                                            get_particle_files_satellite_bypoint,
                                            read_met_satellite_bypoint,
@@ -1127,7 +1107,7 @@ def test_footprint_concatenate_site(fc_param_site):
 
     out = process.footprint_concatenate(**param)
     
-@pytest.mark.compare
+@pytest.mark.skip(reason="No longer able to compare after update to use mole fraction output")
 def test_footprint_concatenate_satellite_bypoint_against_org(fc_param_satellite_bypoint,
                                                              fc_param_org_satellite_bypoint):
     '''
@@ -1239,7 +1219,7 @@ def footprint_concatenate_org_satellite_bypoint(fc_param_org_satellite_bypoint):
     
     return fp_all
 
-@pytest.mark.compare
+@pytest.mark.skip(reason="No longer able to compare after update to use mole fraction output")
 def test_satellite_vertical_profile_bypoint_against_org(footprint_concatenate_satellite_bypoint,
                                                         footprint_concatenate_org_satellite_bypoint,
                                                         get_obs_files_satellite_bypoint,satellite_param):
@@ -1449,7 +1429,7 @@ def test_process_satellite_mf_byday(process_satellite_byday_mf_param,
     
     out = process.process(**process_satellite_byday_mf_param)
 
-@pytest.mark.compare
+@pytest.mark.skip(reason="No longer able to compare after update to use mole fraction output")
 def test_process_site_against_org(process_site_param,subfolder_site,folder_names,site_param):
     '''
     Test output of original process function: process_org.process against new process script for 
@@ -1458,6 +1438,8 @@ def test_process_site_against_org(process_site_param,subfolder_site,folder_names
     
     processed_folder = folder_names["processed_folder"]
     remove_processed_file(subfolder_site,processed_folder,site_param)
+    process_site_param_org = process_site_param.copy()
+    process_site_param["use_surface_conditions"] = False
     
     out = process.process(**process_site_param)
     
@@ -1468,15 +1450,17 @@ def test_process_site_against_org(process_site_param,subfolder_site,folder_names
     
     remove_processed_file(subfolder_site,processed_folder_org,site_param)
     
-    process_site_param["processed_folder"] = processed_folder_org
-    out_org = process_org.process(**process_site_param)
+    process_site_param_org["processed_folder"] = processed_folder_org
+    out_org = process_org.process(**process_site_param_org)
+    
+    print("out_org",out_org)
     
     data_vars = out.data_vars
     
     for dv in data_vars:
         assert np.array_equal(out[dv].values,out_org[dv].values)
 
-@pytest.mark.compare
+@pytest.mark.skip(reason="No longer able to compare after update to use mole fraction output")
 def test_process_satellite_bypoint_against_org(process_satellite_bypoint_param,
                                                process_satellite_org_bypoint_param,
                                                subfolder_satellite_bypoint,folder_names,satellite_param): 
@@ -1510,7 +1494,7 @@ def test_process_satellite_byday_mf_against_bench(process_satellite_byday_mf_par
                                                   folder_names,satellite_param): 
     '''
     Test mol fraction output against benchmarked file (created 2019-05-20). This marks
-    a code update to use check the units within the fields file and then the correct unit 
+    a code update to check the units within the fields file and then use the correct unit 
     conversion. NAME output should now primarily be in ppm s units rather than gs/m3 but 
     this should ensure backwards compatibility with previous runs.
     '''

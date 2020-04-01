@@ -288,7 +288,8 @@ def test_no_quality_filter(gosat_dataset):
     '''
     qf_name = "xch4_quality_flag"
     ds_no_qf = gosat_dataset.copy(deep=True)
-    ds_no_qf = ds_no_qf.drop(qf_name)
+    #ds_no_qf = ds_no_qf.drop(qf_name)
+    ds_no_qf = ds_no_qf.drop_vars(qf_name)
         
     with pytest.raises(KeyError) as e_info:
         gosat.gosat_quality_filter(ds_no_qf)
@@ -967,8 +968,8 @@ def test_pressure_match_offset_day(gosat_brazil_day_offset_dataset,ds_dimensions
     pressure_domain="SOUTHAMERICA"
 
     gosat_brazil_day_offset_dataset_dummy = gosat_brazil_day_offset_dataset.copy(deep=True)
-    gosat_brazil_day_offset_dataset_dummy["time"] += np.timedelta64(1,'D')
-    
+    t_offset = gosat_brazil_day_offset_dataset_dummy["time"]+np.timedelta64(1,'D')
+    gosat_brazil_day_offset_dataset_dummy = gosat_brazil_day_offset_dataset_dummy.assign_coords(**{"time":t_offset})
     day_template=True
     max_days=31
     
