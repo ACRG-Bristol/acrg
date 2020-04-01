@@ -227,7 +227,22 @@ def load_NAME(file_lines, namever):
         # populate the data arrays (i.e. all columns but the leading 4) 
         for i, data_array in enumerate(data_arrays):
             data_array[y, x] = float(vals[int(i) + 4])
-
+    
+    if 'cell_measure' in column_headings:
+        #Extract the time integration period
+        dt_fp = int(column_headings['cell_measure'][4][0:3])
+        #This should only apply to NAME version 2 HiTRes footprints which currently do not have the correct start and end release times in the header
+        if dt_fp < 24:
+            end_release_date = headers['End of release'][-10:]
+            end_release_tz = headers['End of release'][4:7]
+            end_release_time = column_headings['species'][4][-2:]
+            end_release = dt.datetime.strptime(end_release_time + "00" + end_release_tz + " " + end_release_date, '%H%M%Z %d/%m/%Y')
+            start_release = end_release + dt.timedelta(hours = dt_fp)
+            endreleaseline = end_release.strftime('%H%M%Z') + end_release_tz + " " + end_release.strftime('%d/%m/%Y')
+            startreleaseline = start_release.strftime('%H%M%Z') + end_release_tz + " " + start_release.strftime('%d/%m/%Y')
+            headers['End of release'] = endreleaseline
+            headers['Start of release'] = startreleaseline
+    
     return headers, column_headings, data_arrays
     
 
