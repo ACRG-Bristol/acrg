@@ -21,6 +21,7 @@ dependencies:
   - pytest=5.4.1
   - ipython=7.13.0
   - spyder=4.1.1
+  - pip=20.0.2
   - pip:
     - dirsync==2.2.4
     - iso3166==1.0.1
