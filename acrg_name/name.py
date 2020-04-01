@@ -798,13 +798,19 @@ def timeseries_boundary_conditions(ds):
            (ds.particle_locations_s*ds.vmr_s).sum(["height", "lon"]) + \
            (ds.particle_locations_w*ds.vmr_w).sum(["height", "lat"])
            
-def align_datasets(ds1, ds2, platform=None, resample_to_data=False):
+def align_datasets(ds1, ds2, platform=None, resample_to_ds1=False):
     """
     Slice and resample two datasets to align along time
     
     Args:
         ds1, ds2 (xarray.Dataset) :
             Datasets with time dimension. It is assumed that ds1 is obs data and ds2 is footprint data
+            
+        platform (str) :
+            obs platform used to decide whether to resample
+            
+        resample_to_ds1 (boolean) :
+            Override resampling to coarser resolution and resample to ds1 regardless
     
     Returns:
         2 xarray.dataset with aligned time dimensions
@@ -841,10 +847,10 @@ def align_datasets(ds1, ds2, platform=None, resample_to_data=False):
     #only non satellite datasets with different periods need to be resampled
     if platform != "satellite" and not np.isclose(ds1_timeperiod, ds2_timeperiod):
         base = start_date.dt.hour.data + start_date.dt.minute.data/60. + start_date.dt.second.data/3600.
-        if (ds1_timeperiod >= ds2_timeperiod) or (resample_to_data == True):
-            resample_period = str(round(ds2_timeperiod/3600e9,5))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
+        if (ds1_timeperiod >= ds2_timeperiod) or (resample_to_ds1 == True):
+            resample_period = str(round(ds1_timeperiod/3600e9,5))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
             ds2 = ds2.resample(indexer={'time':resample_period}, base=base).mean()
-        elif ds1_timeperiod < ds2_timeperiod or (resample_to_data == False):
+        elif ds1_timeperiod < ds2_timeperiod or (resample_to_ds1 == False):
             resample_period = str(round(ds2_timeperiod/3600e9,5))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
             ds1 = ds1.resample(indexer={'time':resample_period}, base=base).mean()
     
@@ -1045,7 +1051,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                 # rt17603: 06/04/2018 - Added sort as some footprints weren't sorted by time for satellite data.
                 site_fp = site_fp.sortby("time")
             
-            site_ds, site_fp = align_datasets(site_ds, site_fp, platform=platform, resample_to_data=resample_to_data)
+            site_ds, site_fp = align_datasets(site_ds, site_fp, platform=platform, resample_to_ds1=resample_to_data)
                        
             site_ds = combine_datasets(site_ds, site_fp,
                                        method = "ffill",

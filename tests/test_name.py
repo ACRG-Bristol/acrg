@@ -296,20 +296,55 @@ def test_bc_basis(bc_basis_param):
 #%%
 #----------------------------
 
-# TODO:
-#    Decide if to include tests for combine_datasets() function
+@pytest.fixture()
+def dsa():
+    times = pd.date_range("2018-01-01", "2018-02-01", freq='4H')
+    vals = np.ones_like(times, dtype='float')
+    dsa = xray.Dataset({'vals_a': (['time'], vals)},
+                          coords={'time':times})
+    return dsa
 
-#def combine_datasets(dsa, dsb, method = "nearest", tolerance = None):
-#    """
-#    Merge two datasets. Assumes that you want to 
-#    re-index to the FIRST dataset.
-#    
-#    Example:
-#    
-#    ds = combine_datasets(dsa, dsb)
-#
-#    ds will have the index of dsa    
-#    """
+@pytest.fixture()
+def dsb():
+    times = pd.date_range("2018-01-07", "2018-02-07", freq='2H')
+    vals = np.ones_like(times, dtype='float')
+    dsb = xray.Dataset({'vals_b': (['time'], vals)},
+                          coords={'time':times})
+    return dsb
+
+def test_combine_datasets(dsa, dsb, method = "nearest", tolerance = None):
+    """
+    Merge two datasets.   
+    """
+    ds_out = name.combine_datasets(dsa, dsb)
+    
+    errors = []
+    if not np.sum(ds_out.time != dsa.time) == 0:
+        errors.append("Output index does not match dsa index")
+    if not ('vals_a' in ds_out.keys()) and ('vals_b' in ds_out.keys()):
+        errors.append("Variables missing from combined dataset")
+    
+    assert not errors, "errors occured:\n{}".format("\n".join(errors))
+    
+def test_align_datasets(dsa, dsb):
+    dsa_out, dsb_out = name.align_datasets(dsa, dsb)
+    
+    dsa_period = dsa.time[1] - dsa.time[0]
+    dsa_out_period = dsa_out.time[1] - dsa_out.time[0]
+    dsb_period = dsb.time[1] - dsb.time[0]
+    dsb_out_period = dsb_out.time[1] - dsb_out.time[0]
+    errors = []
+    if not (dsa_out.time[0] == dsb_out.time[0]):
+        errors.append("Start time don't match")
+    if not (dsa_out.time[-1] == dsb_out.time[-1]):
+        errors.append("End time don't match")
+    if not dsa_out_period == dsb_out_period:
+        errors.append("Time periods don't match in outputs")
+    if not dsa_out_period == max(dsa_period, dsb_period):
+        errors.append("Output time period is not the courser period")
+        
+    assert not errors, "errors occured:\n{}".format("\n".join(errors))
+    
 
 #%%
 # ----------------------------
