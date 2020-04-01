@@ -137,7 +137,7 @@ def process_HiTRes(domain, site, height, year, month, user_max_hour_back,
     user_max_hour_back = int(user_max_hour_back)
 
     for fi, f in enumerate(fnames):
-        update_release_time(f)
+        #update_release_time(f)
 
         filename = os.path.split(f)[1]
         splitfile = filename.split('_')
