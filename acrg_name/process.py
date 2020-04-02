@@ -1811,7 +1811,7 @@ def process(domain, site, height, year, month,
             os.stat(input_folder+file_name).st_size != 0:
                 #error_days.append(file_name[-11:-9]+'/'+month+'/'+year)
     
-                error_days.append(re.search("[0-9]{8}(\S+)", file_name).group(0))
+                error_days.append(re.search(r"[0-9]{8}(\S+)", file_name).group(0))
                 error_days.sort()
                 num_days = len(error_days)
 
@@ -1829,7 +1829,7 @@ def process(domain, site, height, year, month,
             subfolder += perturbed_folder + "/"
     
     # Check that the specified transport model is valid.
-    if transport_model is "STILT":
+    if transport_model == "STILT":
         if satellite:
             status_log("stiltfoot_array is not set up for satellite data!" +\
                        " Levels will be wrong!", error_or_warning="error")
@@ -1837,7 +1837,7 @@ def process(domain, site, height, year, month,
             status_log("STILT neither provides nor requires met information" +\
                        " to interpret footprints. Met will probably be set" +\
                        " to default values. Don't rely on these values!")
-    elif transport_model is not "NAME":
+    elif transport_model != "NAME":
         status_log(transport_model + " is not a valid transport model!" +\
                    " Unable to read footprint information!", 
                    error_or_warning="error")
@@ -1890,7 +1890,7 @@ def process(domain, site, height, year, month,
                        error_or_warning="error")
             return None
     else:
-        if transport_model is "STILT":
+        if transport_model == "STILT":
             datestrs = ["stilt" + str(year) + "x" + str(month).zfill(2) + "x"]
         else:
             datestrs = [str(year) + str(month).zfill(2)]
@@ -1918,7 +1918,7 @@ def process(domain, site, height, year, month,
                 if maxday >= max(days):
                     return None
             else:
-                if transport_model is "STILT":
+                if transport_model == "STILT":
                     stilt_files = glob.glob(subfolder + fields_folder + "/stilt" + \
                                             str(year) + "x" + str(month).zfill(2) + "*.nc")
                     days = [int(os.path.split(stilt_file)[1].split("x")[2]) \
@@ -1972,7 +1972,7 @@ def process(domain, site, height, year, month,
             met = None
         
             # Get footprints
-        if transport_model is "STILT":
+        if transport_model == "STILT":
             fp_file = stiltfoot_array(subfolder + fields_folder + "/" + datestr, 
                                       met=met, satellite=satellite,
                                       time_step=timeStep)
@@ -2223,7 +2223,7 @@ def process_all(domain, site, network,
             years = []
             months = []
             
-            if transport_model is "STILT":
+            if transport_model == "STILT":
                 fields_files = sorted(glob.glob(subfolder + "/Fields_files/stilt*.nc"))
                 for fields_file in fields_files:
                     f = split(fields_file)[1]

@@ -109,7 +109,8 @@ def filenames(site, domain, start, end, height, fp_directory, network=None):
         height = site_info[site][network]["height_name"][0]
     
     # Convert into time format
-    months = pd.DatetimeIndex(start = start, end = end, freq = "M").to_pydatetime()
+    #months = pd.DatetimeIndex(start = start, end = end, freq = "M").to_pydatetime() # Deprecated
+    months = pd.date_range(start = start, end = end, freq = "M").to_pydatetime()
     yearmonth = [str(d.year) + str(d.month).zfill(2) for d in months]
 
     files = []
