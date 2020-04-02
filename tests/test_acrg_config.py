@@ -101,6 +101,13 @@ def test_extract_all(tdmcmc_config):
     x = extract_params(tdmcmc_config)
     assert x
 
+def test_extract_expected_param(tdmcmc_config):
+    ''' Test parameters can be extracted when expected parameters are specified '''
+    expected_param = ["sites","meas_period","fp_basis_case"]
+    x = extract_params(tdmcmc_config,expected_param=expected_param,param_type=None)
+    for ep in expected_param:
+        assert ep in x
+
 @pytest.mark.basic
 def test_extract_section_1(tdmcmc_config):
     ''' Test a simple form section can be specified. Compare to expected result. '''
@@ -169,6 +176,15 @@ def test_ignore_sections_mult(tdmcmc_config):
     for ne in not_expected:
         assert ne not in x       
 
+def test_ignore_sections_expected(tdmcmc_config):
+    ''' Test section can be specified to ignore when expected parameters are specified. '''
+    expected_param = ["bc_basis_case","nIt","burn_in"]
+    x = extract_params(tdmcmc_config,expected_param=expected_param,ignore_sections=['MEASUREMENTS'],param_type=None)
+    
+    not_expected = ["sites","species","start_date","end_date","domain","network","emissions_name"]
+    for ne in not_expected:
+        assert ne not in x
+
 @pytest.mark.basic
 def test_ignore_section_groups_1(tdmcmc_config):
     ''' Test section group can be specified to ignore. '''
@@ -205,6 +221,24 @@ def test_extract_names_section_group(tdmcmc_config):
     x = extract_params(tdmcmc_config,section_group=str('MCMC'),names=names,param_type=None)
     assert list(x.keys()) == names
 
+def test_extract_expected_param_section(tdmcmc_config):
+    ''' Test all parameters are extracted in a section even when expected parameters are specified '''
+    expected_param = ["sites","species","domain"]
+    section = "MEASUREMENTS"
+    x_section = extract_params(tdmcmc_config,section=section,param_type=None)
+    x_section_ep = extract_params(tdmcmc_config,expected_param=expected_param,section=section,param_type=None)
+    for x in x_section.keys():
+        assert x in x_section_ep
+
+def test_extract_expected_param_section_group(tdmcmc_config):
+    ''' Test all parameters are extracted in a section group even when expected parameters are specified '''
+    expected_param = ["fp_basis_case","nIt","meas_period"]
+    section_group = "MCMC"
+    x_section = extract_params(tdmcmc_config,section_group=section_group,param_type=None)
+    x_section_ep = extract_params(tdmcmc_config,expected_param=expected_param,section_group=section_group,param_type=None)
+    for x in x_section.keys():
+        assert x in x_section_ep
+
 def test_extract_names_WrongSectionForName(tdmcmc_config):
     ''' Test an empty object is returned if parameter names cannot be found within the input section.'''
     x = extract_params(tdmcmc_config,section=str('MEASUREMENTS'),names=['meas_period','nIt'],param_type=None)
@@ -237,6 +271,56 @@ def test_extract_IncorrectSectionGroup_Ignore(tdmcmc_config):
     ''' Test an error is raised when no sections are found for the specified section group. '''
     with pytest.raises(KeyError) as e_info:
         extract_params(tdmcmc_config,ignore_section_groups=["TDMCMC",'FLIBBLE'],param_type=None)
+    #assert not x
+
+def test_extract_MissingExpected(tdmcmc_config):
+    ''' Test an error is raised when expected parameters are not present '''
+    with pytest.raises(KeyError) as e_info:
+        expected_param=["flibble"]
+        extract_params(tdmcmc_config,expected_param=expected_param,param_type=None)
+    #assert not x
+
+def test_extract_MissingExpected_Section(tdmcmc_config):
+    ''' Test an error is raised when expected parameters are not present in specified section '''
+    with pytest.raises(KeyError) as e_info:
+        expected_param=["flibble"]
+        extract_params(tdmcmc_config,expected_param=expected_param,section="MEASUREMENTS",param_type=None)
+    #assert not x
+
+def test_extract_MissingExpected_SectionGroup(tdmcmc_config):
+    ''' Test an error is raised when expected parameters are not present in specified section group '''
+    with pytest.raises(KeyError) as e_info:
+        expected_param=["flibble"]
+        extract_params(tdmcmc_config,expected_param=expected_param,section_group="MCMC",param_type=None)
+    #assert not x
+
+def test_extract_MissingExpected_Names(tdmcmc_config):
+    ''' Test an error is raised when expected parameters are not present in specified section '''
+    with pytest.raises(KeyError) as e_info:
+        expected_param=["flibble"]
+        extract_params(tdmcmc_config,names=["sites","species"],
+                       expected_param=expected_param,param_type=None)
+    #assert not x
+
+def test_extract_MissingExpected_Section_Names(tdmcmc_config):
+    ''' Test an error is raised when expected parameters are not present in specified section '''
+    with pytest.raises(KeyError) as e_info:
+        expected_param=["flibble"]
+        extract_params(tdmcmc_config,names=["sites","species"],
+                       expected_param=expected_param,section="MEASUREMENTS",param_type=None)
+    #assert not x
+
+def test_extract_MissingExpected_IgnoreSection(tdmcmc_config):
+    ''' Test an error is raised if expected parameter is within section to be ignored. '''
+    with pytest.raises(KeyError) as e_info:
+        expected_param = ["sites","nIt","burn_in"]
+        extract_params(tdmcmc_config,expected_param=expected_param,ignore_sections=['MEASUREMENTS'],param_type=None)
+
+def test_extract_MissingExpected_IgnoreSectionGroup(tdmcmc_config):
+    ''' Test an error is raised when expected parameters is within section group to be ignored. '''
+    with pytest.raises(KeyError) as e_info:
+        expected_param=["sites","nIt","burn_in"]
+        extract_params(tdmcmc_config,expected_param=expected_param,section_group="MCMC",param_type=None)
     #assert not x
 
 
@@ -344,48 +428,71 @@ def test_extract_ignore_section_group_mult_param_type(tdmcmc_config,mcmc_param_t
     for ne in not_expected:
         assert ne not in x       
         
+#@pytest.mark.basic
+#def test_extract_param_optional(tdmcmc_config_option,mcmc_param_type):
+#    ''' Test optional parameters can be specified for the whole config file '''
+#    x = extract_params(tdmcmc_config_option,optional_param=['network','unique_copy','emissions_name'],param_type=mcmc_param_type)
+#    assert x
+
+#def test_extract_param_section_optional(tdmcmc_config_option,mcmc_param_type):
+#    ''' Test optional parameters can be specified for one section '''    
+#    x = extract_params(tdmcmc_config_option,section_group=str('MEASUREMENTS'),optional_param=['network','emissions_name'],param_type=mcmc_param_type)
+#    assert x
+
 @pytest.mark.basic
 def test_extract_param_optional(tdmcmc_config_option,mcmc_param_type):
-    ''' Test optional parameters can be specified for the whole config file '''
-    x = extract_params(tdmcmc_config_option,optional_param=['network','unique_copy','emissions_name'],param_type=mcmc_param_type)
+    ''' Test implicitly optional parameters can be removed from the config file '''
+    x = extract_params(tdmcmc_config_option,param_type=mcmc_param_type)
     assert x
 
-def test_extract_param_section_optional(tdmcmc_config_option,mcmc_param_type):
-    ''' Test optional parameters can be specified for one section '''    
-    x = extract_params(tdmcmc_config_option,section_group=str('MEASUREMENTS'),optional_param=['network','emissions_name'],param_type=mcmc_param_type)
-    assert x
+#def test_extract_WrongSectionForName_param_type(tdmcmc_config,mcmc_param_type):
+#    ''' Test an error is raised if parameter names cannot be found within the input section when param type dictionary is specified. '''
+#    with pytest.raises(KeyError) as e_info:
+#        extract_params(tdmcmc_config,section=str('MEASUREMENTS'),names=['meas_period','nIt'],param_type=mcmc_param_type)
 
-def test_extract_WrongSectionForName_param_type(tdmcmc_config,mcmc_param_type):
-    ''' Test an error is raised if parameter names cannot be found within the input section when param type dictionary is specified. '''
-    with pytest.raises(KeyError) as e_info:
-        extract_params(tdmcmc_config,section=str('MEASUREMENTS'),names=['meas_period','nIt'],param_type=mcmc_param_type)
+#def test_extract_WrongSectionGroupForName_param_type(tdmcmc_config,mcmc_param_type):
+#    ''' Test an error is raised if parameter names cannot be found within a section covered by the the input section group
+#    when param type dictionary is specified. '''
+#    with pytest.raises(KeyError) as e_info:
+#        extract_params(tdmcmc_config,section_group=str('MCMC'),names=['sites','species','domain'],param_type=mcmc_param_type)
 
-def test_extract_WrongSectionGroupForName_param_type(tdmcmc_config,mcmc_param_type):
-    ''' Test an error is raised if parameter names cannot be found within a section covered by the the input section group
-    when param type dictionary is specified. '''
-    with pytest.raises(KeyError) as e_info:
-        extract_params(tdmcmc_config,section_group=str('MCMC'),names=['sites','species','domain'],param_type=mcmc_param_type)
+#def test_extract_NameNotInFile(tdmcmc_config,mcmc_param_type):
+#    ''' Test an error is raised when the input parameter names cannot be found within the file. '''
+#    with pytest.raises(KeyError) as e_info:
+#        extract_params(tdmcmc_config,names=['FLIBBLE'],param_type=mcmc_param_type)
 
-def test_extract_NameNotInFile(tdmcmc_config,mcmc_param_type):
-    ''' Test an error is raised when the input parameter names cannot be found within the file. '''
-    with pytest.raises(KeyError) as e_info:
-        extract_params(tdmcmc_config,names=['FLIBBLE'],param_type=mcmc_param_type)
+#def test_extract_param_keep_empty(tdmcmc_config_option,mcmc_param_type):
+#    ''' Test functionality of exclude_not_found=False option. 
+#    Check empty values are included for optional parameters when not found in configuration file '''
+#    optional_param = ['network','unique_copy','emissions_name']
+#    x = extract_params(tdmcmc_config_option,optional_param=optional_param,exclude_not_found=False,param_type=mcmc_param_type)
+#    assert optional_param[0] in list(x.keys())
+#    assert optional_param[1] in list(x.keys())
+
+#def test_extract_param_remove_empty(tdmcmc_config_option,mcmc_param_type):
+#    ''' Test functionality of exclude_not_found=True option.
+#    Check optional parameters are not included in output when not found in configuration file '''
+#    optional_param = ['network','unique_copy','emissions_name']
+#    x = extract_params(tdmcmc_config_option,optional_param=optional_param,exclude_not_found=True,param_type=mcmc_param_type)
+#    assert optional_param[0] not in list(x.keys())
+#    assert optional_param[1] not in list(x.keys())
 
 def test_extract_param_keep_empty(tdmcmc_config_option,mcmc_param_type):
     ''' Test functionality of exclude_not_found=False option. 
-    Check empty values are included for optional parameters when not found in configuration file '''
-    optional_param = ['network','unique_copy','emissions_name']
-    x = extract_params(tdmcmc_config_option,optional_param=optional_param,exclude_not_found=False,param_type=mcmc_param_type)
-    assert optional_param[0] in list(x.keys())
-    assert optional_param[1] in list(x.keys())
+     Check empty values are included for parameters when not found in configuration file '''
+    missing_param = ['unique_copy','network','emissions_name']
+    x = extract_params(tdmcmc_config_option,exclude_not_found=False,param_type=mcmc_param_type)
+    for mp in missing_param:
+        assert mp in x
+        assert x[mp] is None
 
 def test_extract_param_remove_empty(tdmcmc_config_option,mcmc_param_type):
     ''' Test functionality of exclude_not_found=True option.
-    Check optional parameters are not included in output when not found in configuration file '''
-    optional_param = ['network','unique_copy','emissions_name']
-    x = extract_params(tdmcmc_config_option,optional_param=optional_param,exclude_not_found=True,param_type=mcmc_param_type)
-    assert optional_param[0] not in list(x.keys())
-    assert optional_param[1] not in list(x.keys())
+    Check parameters are not included in output when not found in configuration file '''
+    missing_param = ['unique_copy','network','emissions_name']
+    x = extract_params(tdmcmc_config_option,exclude_not_found=True,param_type=mcmc_param_type)
+    for mp in missing_param:
+        assert mp not in x
 
 @pytest.mark.basic
 def test_all_params(tdmcmc_config_option):
@@ -434,6 +541,20 @@ def test_extra_param_all(tdmcmc_config_extra,mcmc_param_type):
     for name,t in zip(param_names,param_types):
         assert isinstance(x[name],t)
 
+def test_extra_param_expected(tdmcmc_config_extra,mcmc_param_type):
+    ''' 
+    Test parameters which are within the input file but not in the configuration file will still
+    be extracted even when expected_param is specified.
+    '''
+    param_names = ["extra_param1","extra_param2"]
+    param_types = [int,dict]
+
+    expected_param = ["sites","species","meas_period","output_dir"]
+
+    x = extract_params(tdmcmc_config_extra,expected_param=expected_param,param_type=mcmc_param_type)
+    for name,t in zip(param_names,param_types):
+        assert isinstance(x[name],t)
+
 def test_extra_param_section(tdmcmc_config_extra,mcmc_param_type):
     '''
     Test parameters which are within the input file but not in the configuration file will still
@@ -455,7 +576,7 @@ def test_extra_param_section_group(tdmcmc_config_extra,mcmc_param_type):
     section_group = str("MCMC")
     x = extract_params(tdmcmc_config_extra,param_type=mcmc_param_type,section_group=section_group)
     assert isinstance(x[param_name],param_type)
-    
+
 def test_extra_mcmc(tdmcmc_config_extra):
     ''' Test all_mcmc_param function can also extract extra parameters. '''
     param_names = ["extra_param1","extra_param2"]
@@ -466,53 +587,56 @@ def test_extra_mcmc(tdmcmc_config_extra):
         assert isinstance(x[name],t)
 
 
-def config_missing_section_param(param_type,section=None,section_group=None):
-    '''
-    Find optional parameter names and remaining expected names for optional section otr
-    optional_section_group.
-    '''
-    if section:
-        keys = configread.find_param_key(param_type,section=section)[0]
-    elif section_group:
-        keys = configread.find_param_key(param_type,section_group=section_group)[0]
-        
-    optional_param = []
-    for key in keys:
-        optional_param.extend(param_type[key])
 
-    names = configread.all_parameters_in_param_type(param_type)    
-    for op in optional_param:
-        names.remove(op)
-    
-    return optional_param,names
+#def config_missing_section_param(param_type,section=None,section_group=None):
+#    '''
+#    Find optional parameter names and remaining expected names for optional section or
+#    optional_section_group.
+#    '''
+#    if section:
+#        keys = configread.find_param_key(param_type,section=section)[0]
+#    elif section_group:
+#        keys = configread.find_param_key(param_type,section_group=section_group)[0]
+#        
+#    optional_param = []
+#    for key in keys:
+#        optional_param.extend(param_type[key])
+#
+#    names = configread.all_parameters_in_param_type(param_type)    
+#    for op in optional_param:
+#        names.remove(op)
+#    
+#    return optional_param,names
 
-def test_missing_section(tdmcmc_config_missing_section,mcmc_param_type):
-    '''
-    Test optional section can be specified. Also checking all optional parameters
-    are not included in output (matching set up o config file)
-    '''
-    optional_section = str("MCMC.MEASUREMENTS")
-    
-    x = extract_params(tdmcmc_config_missing_section,param_type=mcmc_param_type,
-                       optional_section=optional_section,exclude_not_found=True)
-    
-    optional_param,expected_names=config_missing_section_param(mcmc_param_type,section=optional_section)
-    
-    for op in optional_param:
-        assert op not in x
-    
-    for name in expected_names:
-        assert name in x
-    
-def test_missing_section_group(tdmcmc_config_missing_section,mcmc_param_type):
-    ''' Test optional section group can be specified '''
-    optional_section_group = str("MCMC")
-
-    x = extract_params(tdmcmc_config_missing_section,param_type=mcmc_param_type,
-                       optional_section_group=optional_section_group,exclude_not_found=True)
-    
-    optional_param,expected_names=config_missing_section_param(mcmc_param_type,section_group=optional_section_group)
-    
-    for name in expected_names:
-        assert name in x
+## OPTIONAL_SECTION PARAMETER INPUT REMOVED
+#def test_missing_section(tdmcmc_config_missing_section,mcmc_param_type):
+#    '''
+#    Test optional section can be specified. Also checking all optional parameters
+#    are not included in output (matching set up o config file)
+#    '''
+#    optional_section = str("MCMC.MEASUREMENTS")
+#    
+#    x = extract_params(tdmcmc_config_missing_section,param_type=mcmc_param_type,
+#                       optional_section=optional_section,exclude_not_found=True)
+#    
+#    optional_param,expected_names=config_missing_section_param(mcmc_param_type,section=optional_section)
+#    
+#    for op in optional_param:
+#        assert op not in x
+#    
+#    for name in expected_names:
+#        assert name in x
+   
+  ## OPTIONAL_SECTION_GROUP INPUT PARAMETER REMOVED  
+#def test_missing_section_group(tdmcmc_config_missing_section,mcmc_param_type):
+#    ''' Test optional section group can be specified '''
+#    optional_section_group = str("MCMC")
+#
+#    x = extract_params(tdmcmc_config_missing_section,param_type=mcmc_param_type,
+#                       optional_section_group=optional_section_group,exclude_not_found=True)
+#    
+#    optional_param,expected_names=config_missing_section_param(mcmc_param_type,section_group=optional_section_group)
+#    
+#    for name in expected_names:
+#        assert name in x
 

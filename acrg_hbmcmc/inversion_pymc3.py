@@ -317,7 +317,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         aprioriflux = np.zeros_like(area)
         if emds.flux.values.shape[2] > 1:
             print("Assuming the inversion is over a year or less and emissions file is monthly")
-            allmonths = pd.date_range(start_date, end_date).month[:-1]
+            allmonths = pd.date_range(start_date, end_date).month[:-1].values
             allmonths -= np.min(allmonths)
             for mi in allmonths:
                 aprioriflux += emds.flux.values[:,:,mi]*np.sum(allmonths == mi)/len(allmonths)

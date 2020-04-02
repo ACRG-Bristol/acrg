@@ -15,6 +15,8 @@ method of inference sits in one file and the other functionality sits elsewhere.
 
 If not using on an HPC (i.e. on Snowy), in the terminal you should do:
 export OPENBLAS_NUM_THREADS=XX
+and/or
+export OMP_NUM_THREADS=XX
 where XX is the number of chains you are running. If running in Spyer do this
 before launching Spyder, else you will use every available thread. Apart from
 being annoying it will also slow down your run due to unnecessary forking.
@@ -224,7 +226,8 @@ if __name__ == "__main__":
     if socket.gethostname() == 'snowy.chm.bris.ac.uk':
         print("==============================================================")
         print("Before running this I strongly recommend first doing:")
-        print("export OPENBLAS_NUM_THREADS=XX")
+        print("export OPENBLAS_NUM_THREADS=XX and/or")
+        print("export OMP_NUM_THREADS=XX")
         print("where XX is the number of chains you are running.")
         print("If running with Spyder, do this before launching Spyder.") 
         print("Otherwise it will use every available thread!")
