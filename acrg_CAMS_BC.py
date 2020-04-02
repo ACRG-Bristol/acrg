@@ -196,9 +196,12 @@ def write_CAMS_BC_tonetcdf(vmr_n, vmr_e, vmr_s, vmr_w, st_date, species, domain,
         vmr_e (array): Molar ratio at eastern boundary
         vmr_s (array): Molar ratio at western boundary
         vmr_w (array): Molar ratio at southern boundary
-        st_date (string): Start date of form "YYYY-MM-dd"
-        species (string): The species 
-        domain (string): The domain which you want the boundary conditions for.
+        st_date (str): Start date of form "YYYY-MM-dd"
+        species (str): The species 
+        domain (str): The domain which you want the boundary conditions for.
+        outdir (str): Base level directory for writing output file (will be appended by /LPDM/bc/"DOMAIN").
+        gridsize (int/float): Resolution of CAMS output in degrees.
+            Possible are: 0.125, 0.25, 0.4, 0.5, 0.75, 1, 1.125, 1.5, 2, 2.5, 3
     
     Returns
         netcdf file: Boundary conditions at domain boundaries
@@ -232,6 +235,9 @@ def makeCAMS_BC(domain, species, st_date, end_date, gridsize, outdir=None):
             For 1 month use last day of month (see example). 
         gridsize (int/float): Resolution of CAMS output in degrees.
             Possible are: 0.125, 0.25, 0.4, 0.5, 0.75, 1, 1.125, 1.5, 2, 2.5, 3
+        outdir (str/None, optional): 
+            Base level directory for writing output file (will be appended by /LPDM/bc/"DOMAIN").
+            Default = None which uses data_path by default.
         
     Returns
         netcdf file: Boundary conditions at domain boundaries

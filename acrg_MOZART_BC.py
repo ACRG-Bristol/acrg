@@ -55,6 +55,29 @@ mzt_dir = join(data_path, 'MOZART/model/mzt_output/')
 def MOZART_filenames(species, start = "2010-01-01", end = "2016-01-01", runname ='NewEDGAR'):
     """
     Gets a list of files given a species, start date and end date.
+    
+    Searches for path and filename of the format:
+        MOZART_DIRECTORY/SPECIES/*runname*year-month*.nc
+    
+    year and month are extracted from list of dates created from start, end values with frequency of a month.
+
+    Args:    
+        species (str) :
+            Species name.
+            One of "CH4","CO2","HFC-125","HFC-134A","HFC-143A","HFC-152A","HFC-227EA","HFC-23","HFC-32","N2O"
+        start (str) :
+            Start date. Format "YYYY-MM-DD".
+        end (str) :
+            End date. Same format as start.
+        runname (str) :
+            Name of MOZART run. Valid options are dependent on the species.
+            "CH4": "NewEDGAR"
+            "CO2","N2O": "NewEDGAR", "Scaled" 
+            No runname for other gases, just specify an empty string ''.
+    
+    Returns:
+        list :
+            List of extracted filenames
     """
     
     baseDirectory = mzt_dir
@@ -83,6 +106,17 @@ def convert_lon(DS, data_var):
     Converts variables with a longitude dimension to the -180-180 convention
     rather than the 0-360 convention.
     WARNING: variable must have dimensions ('height','lat','lon','time') in that order.
+    
+    Args:
+        DS (xarray.Dataset) :
+            Dataset containing data_var
+        data_var (str) :
+            Name of data variable within dataset with dimensions ('height','lat','lon','time')
+    
+    Returns:
+        None
+        
+        Updates DS in place with new co-ordinate system
     """
     DS.coords['lon'] = DS.coords['lon'] - 180
     L = old_div(len(DS.coords['lon']),2)
@@ -101,12 +135,25 @@ def convert_lon(DS, data_var):
 def interp_heights(DS,vmr_var_name, interp_height):
     """
     Created to convert MOZART heights to NAME heights at boundaries.
-    Interpolates the heights of the VMR variable 'vmr_var_name' in the xray dataset
-    'DS' to the heights specified in 'interp_heights'. The variable must have dimensions
-    (height, lat_or_lon, time) in that order. The dataset DS must also contain a variable
-    of altitudes for each value of the VMR variable.
-    Returns a new dataset with the VMRs recalculated at interpolated heights, a 'height'
-    dimension replaced with the interpolated values and the 'Alt' variable removed.
+    Interpolates the heights of the VMR variable 'vmr_var_name' in the xarray dataset
+    'DS' to the heights specified in 'interp_heights'.
+    
+    Args:
+        DS (xarray.Dataset) :
+            Dataset containing (at least) data variables:
+                vmr_var_name (see vmr_var_name definition)
+                "Alt" (for altitudes) (height, lat_or_lon, time)?
+            Must be an altitude variable present for each value of the VMR variable.
+        vmr_var_name (str) :
+            Name of data variable for vmr (volume mixing ratio) quanity. Must have dimensions of:
+                (height, lat_or_lon, time) in that order.
+        interp_height (numpy.array?) :
+            Array of heights to interpolate to.
+    
+    Returns:
+        xarray.Dataset:
+            New dataset with the VMRs recalculated at interpolated heights, a 'height' dimension 
+            replaced with the interpolated values and the 'Alt' variable removed.
     """
     vmr = np.zeros((len(interp_height),len(DS[vmr_var_name][0,:,0]),len(DS.coords['time'])))
     for j in range(len(DS['Alt'][0,0,:])):
@@ -127,7 +174,11 @@ def interp_lonlat(DS,vmr_var_name, lat_or_lon):
     Make sure that the heights have already been interpolated using 'interp_heights'.
     Interpolates the heights of the VMR variable 'vmr_var_name' in the xray dataset
     'DS' to the longitude or latitude specified in 'lon_or_lat'. The variable must
-    have dimensions (height, lat_or_lon, time) in that order.    
+    have dimensions (height, lat_or_lon, time) in that order.
+    
+    Returns:
+        xarray.Dataset:
+            Updated dataset with interpolated latitudes and longitudes
     """
     
     vmr = np.zeros((len(DS.coords['height']),len(lat_or_lon),len(DS.coords['time'])))
