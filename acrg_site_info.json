@@ -179,6 +179,17 @@
       "longitude": 8.25
     }
   },
+  "BIS": {
+    "EUROCOM": {
+      "height": [
+        "47m"
+      ],
+      "height_station_masl": 73.0,
+      "latitude": 44.38,
+      "long_name": "Biscarosse",
+      "longitude": -1.23
+    }
+  },
   "BMW": {
     "NOAA": {
       "height": [
@@ -739,6 +750,30 @@
       "platform": "satellite"
     }
   },
+  "GOSAT-BRAZIL-LAND-upp": {
+    "GOSAT/GOSAT-BRAZIL-LAND-upp": {
+      "height": [
+        "column"
+      ],
+      "height_name": [
+        "column"
+      ],
+      "long_name": "GOSAT, Brazil, land points, upper XCO2 bound",
+      "platform": "satellite"
+    }
+  },
+  "GOSAT-BRAZIL-LAND-low": {
+    "GOSAT/GOSAT-BRAZIL-LAND-low": {
+      "height": [
+        "column"
+      ],
+      "height_name": [
+        "column"
+      ],
+      "long_name": "GOSAT, Brazil, land points, lower XCO2 bound",
+      "platform": "satellite"
+    }
+  },
   "GOSAT-EUROPE": {
     "GOSAT/GOSAT-EUROPE": {
       "height": [
@@ -882,6 +917,20 @@
       "long_name": "Heathfield, UK",
       "longitude": 0.23048
     },
+   "DECC": {
+      "height": [
+        "100m",
+        "50m"
+      ],
+      "height_name": [
+        "100magl",
+        "50magl"
+      ],
+      "height_station_masl": 150.0,
+      "latitude": 50.97675,
+      "long_name": "Heathfield, UK",
+      "longitude": 0.23048
+   },
     "EUROCOM": {
       "height": [
         "100m",
@@ -895,7 +944,7 @@
       "latitude": 50.97675,
       "long_name": "Heathfield, UK",
       "longitude": 0.23048
-    }
+   }
   },
   "HFM": {
     "NOAA": {

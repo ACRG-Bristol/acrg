@@ -15,6 +15,7 @@ import acrg_name.process as proc
 import datetime as dt
 from dateutil import parser
 import gzip
+import sys
 import os
 import os.path
 import glob
@@ -32,7 +33,7 @@ if data_path is None:
     print("Default Data directory is assumed to be /data/shared/. Set path in .bashrc as \
             export DATA_PATH=/path/to/data/directory/ and restart python terminal")
 
-normal_fp_dir = join(data_path, 'LPDM/fp_NAME/')
+normal_fp_dir = join(data_path, 'NAME/fp/')
 
 
 def update_release_time(fname):
@@ -77,7 +78,11 @@ def update_release_time(fname):
                     
         outfilename = fname
         output = gzip.open(outfilename, 'wb')
-        output.write(filetext)
+        if (sys.version_info < (3,0)):
+            output.write(filetext)
+        else:
+            filetext_b = str.encode(filetext)
+            output.write(filetext_b)
         output.close()
 
 
@@ -132,7 +137,7 @@ def process_HiTRes(domain, site, height, year, month, user_max_hour_back,
     user_max_hour_back = int(user_max_hour_back)
 
     for fi, f in enumerate(fnames):
-        update_release_time(f)
+        #update_release_time(f)
 
         filename = os.path.split(f)[1]
         splitfile = filename.split('_')
@@ -195,7 +200,7 @@ def process_HiTRes(domain, site, height, year, month, user_max_hour_back,
         print("Time resolution of total footprints (%d hourly) is higher than\
         time resolution in 'time' dimension of HiTRes footprints (%d hourly).\
         Averaging total footprints to match time resolution of HiTRes footprints." %(tot_fp_time_period, HiTRes_fp_time_period))
-        totfp = totfp.resample('%dH' %HiTRes_fp_time_period,'time', how='mean')
+        totfp = totfp.resample(time='%dH' %HiTRes_fp_time_period).mean()
         totfp = totfp.transpose('lat','lon','time')
     
     elif HiTRes_fp_time_period < tot_fp_time_period:

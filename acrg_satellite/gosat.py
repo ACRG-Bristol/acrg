@@ -210,6 +210,9 @@ def gosat_quality_filter(ds):
     flag = 0
     #dim_apply = "time"
 
+    #import pdb
+    #pdb.set_trace()
+
     # Filter based on filter_name and flag
     try:
         # Note: adds dimension associated with where condition if not already
@@ -2054,6 +2057,7 @@ def ds_check_internal_unique(ds,axis="time"):
             for i in indices[1:]:
                 # Add very small random value to repeat of a time value to avoid two times being exactly the same
                 axis_copy[i] += np.timedelta64(random.randrange(-1000,1000,1),'us')
+                #axis_copy[i] += np.timedelta64(1,'s')
         ds[axis].values = axis_copy
         
         # Add attribute describing modification made to original data
@@ -2195,8 +2199,8 @@ def gosat_split_output(ds,index,mapping=None,data_vars=[],split_dim="time",ident
         # Format the identifier data variable (e.g. exposure_id) to contain an extra "id" dimension to allow for multiple values
         if name == ident:
             identifiers = [value.split(ident_sep) for value in data_var.values] # Split identifier value by the ident_sep value (e.g. ',')
-            #identifiers = np.array(list(itertools.zip_longest(*identifiers,fillvalue=np.nan))).T # Create array with consistent dimensions for "id" and fill in any gaps with np.nan values
-            identifiers = np.array(list(itertools.izip_longest(*identifiers,fillvalue=np.nan))).T # Create array with consistent dimensions for "id" and fill in any gaps with np.nan values
+            identifiers = np.array(list(itertools.zip_longest(*identifiers,fillvalue=np.nan))).T # Create array with consistent dimensions for "id" and fill in any gaps with np.nan values
+            #identifiers = np.array(list(itertools.izip_longest(*identifiers,fillvalue=np.nan))).T # Create array with consistent dimensions for "id" and fill in any gaps with np.nan values
            
             id_dim_name = "id" # Define new dimension name
             split_dim_dim,id_dim_dim = identifiers.shape # Define dimensionality of new dimension and dimension we're splitting on
@@ -2741,7 +2745,7 @@ def gosat_process_file(filename,site,species="ch4",lat_bounds=[],lon_bounds=[],d
     
     gosat = gosat_add_coords(gosat)
     gosat = gosat.sortby(axis)
-    gosat = ds_check_internal_unique(gosat,axis) # Check time values are unique and slightly modify if necessary
+    #gosat = ds_check_internal_unique(gosat,axis) # Check time values are unique and slightly modify if necessary
     
     if quality_filt:
         if verbose:
