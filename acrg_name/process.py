@@ -227,7 +227,22 @@ def load_NAME(file_lines, namever):
         # populate the data arrays (i.e. all columns but the leading 4) 
         for i, data_array in enumerate(data_arrays):
             data_array[y, x] = float(vals[int(i) + 4])
-
+    
+    if 'cell_measure' in column_headings:
+        #Extract the time integration period
+        dt_fp = int(column_headings['cell_measure'][4][0:3])
+        #This should only apply to NAME version 2 HiTRes footprints which currently do not have the correct start and end release times in the header
+        if dt_fp < 24:
+            end_release_date = headers['End of release'][-10:]
+            end_release_tz = headers['End of release'][4:7]
+            end_release_time = column_headings['species'][4][-2:]
+            end_release = dt.datetime.strptime(end_release_time + "00" + end_release_tz + " " + end_release_date, '%H%M%Z %d/%m/%Y')
+            start_release = end_release + dt.timedelta(hours = dt_fp)
+            endreleaseline = end_release.strftime('%H%M%Z') + end_release_tz + " " + end_release.strftime('%d/%m/%Y')
+            startreleaseline = start_release.strftime('%H%M%Z') + end_release_tz + " " + start_release.strftime('%d/%m/%Y')
+            headers['End of release'] = endreleaseline
+            headers['Start of release'] = startreleaseline
+    
     return headers, column_headings, data_arrays
     
 
@@ -1787,10 +1802,9 @@ def process(domain, site, height, year, month,
 
     # Check that there are no errors from the NAME run
     input_folder = subfolder + 'Input_files/'
-    error_files = 'BackRun_' + domain + '_' + site + '_' + height + '_' + str(year) + str(month).zfill(2)
-    error_days = []
-    
     if os.path.isdir(input_folder):
+        error_files = 'BackRun_' + domain + '_' + site + '_' + height + '_' + str(year) + str(month).zfill(2)
+        error_days = []
         for file_name in os.listdir(input_folder):
             if file_name.startswith(error_files) and \
             file_name.endswith('Error.txt') and \
@@ -1800,9 +1814,9 @@ def process(domain, site, height, year, month,
                 error_days.append(re.search("[0-9]{8}(\S+)", file_name).group(0))
                 error_days.sort()
                 num_days = len(error_days)
-        
-    if len(error_days) > 0:
-        raise Exception('This month cannot be processed as there are '+str(num_days)+' days with with errors: '+str(error_days))
+
+        if len(error_days) > 0:
+            raise Exception('This month cannot be processed as there are '+str(num_days)+' days with with errors: '+str(error_days))
         
    # Check for existance of subfolder
     if not os.path.isdir(subfolder):
