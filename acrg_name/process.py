@@ -58,6 +58,7 @@ import traceback
 import sys
 import scipy
 import pdb
+from multiprocessing import Pool
 
 
 #Default NAME output file version
@@ -2249,6 +2250,44 @@ def process_all(domain, site, network,
                     vertical_profile=vertical_profile,
                     transport_model=transport_model)
 
+def process_parallel(domain, site, height, years, months, kwargs={}, nprocess=4):
+    """
+    This script processes multiple months in parallel (but loops through years
+    in serial). It basically just calls process.process in parallel.
+    
+    Args:
+        domain (str):
+            Domain of interest
+        site (str):
+            Observation site
+        height (str):
+            Height of observation, e.g. "10magl"
+        years (list):
+            List of years you want to process 
+        month (int):
+            List of months to process (e.g. np.arange(12)+1)
+        kwargs (dict):
+            Dictionary of optional arguments that you would pass to process, e.g.
+            kwargs = {"met_folder":"Met_daily", "fields_folder" : "MixR_files"}
+        nprocess (int):
+            Number of threads (and number of months to run in parallel).
+            Default = 4
+            
+    Returns:
+        None
+    """
+    nprocess = int(process)
+    for year in years:
+        pool = Pool(processes = nprocess)
+        try:
+            [pool.apply_async(process.process, args=(domain, site, height, year, month), kwds=kwargs) \
+             for month in months]
+        except:
+            pool.close()
+            pool.join()
+            raise
+        pool.close()
+        pool.join()
 
 def copy_processed(domain):
     '''
