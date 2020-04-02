@@ -196,7 +196,7 @@ def nies(fname, species, site, units = "ppt"):
                          }
     
     
-    repeatability = {"CFC-11": 0.008}
+    repeatability = {"CHCl3":0.01 ,"CFC-11": 0.008}
     
     if fname.split(".")[1] == "xlsx":
         df = pd.read_excel(fname, parse_dates = [0], index_col = [0])
