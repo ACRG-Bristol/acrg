@@ -2328,10 +2328,11 @@ class get_country(object):
                          "/" + "country-ukmo_"
                          + domain + ".nc")
         
-        f = nc.Dataset(filename[0], 'r')
+#        f = nc.Dataset(filename[0], 'r')
+        f = xr.open_dataset(filename[0])
     
-        lon = f.variables['lon'][:]
-        lat = f.variables['lat'][:]
+        lon = f.variables['lon'][:].values
+        lat = f.variables['lat'][:].values
     
         #Get country indices and names
         if "country" in f.variables:
@@ -2345,7 +2346,7 @@ class get_country(object):
             name=np.asarray(name_temp)
         
         else:
-            name_temp = f.variables['name'][:]
+            name_temp = f.variables['name'].values
             f.close()
 
             # rt17603 (11/03/2019): Added to change any masked arrays back into arrays
@@ -2353,7 +2354,10 @@ class get_country(object):
    
             name=[]
             for ii in range(len(name_temp)):
-                name.append(''.join(name_temp[ii]))
+                if type(name_temp[ii]) is not str:
+                    name.append(''.join(name_temp[ii].decode("utf-8")))
+                else:
+                    name.append(''.join(name_temp[ii]))
             name=np.asarray(name)
     
     
