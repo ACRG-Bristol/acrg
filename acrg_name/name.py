@@ -658,7 +658,11 @@ def indexesMatch(dsa, dsb):
     
     #test if each comon index is the same
     for index in commonIndicies:
-        if not dsa.indexes[index].equals(dsb.indexes[index]):
+        #first check lengths are the same to avoid error in second check
+        if not len(dsa.indexes[index])==len(dsb.indexes[index]):
+            return False
+        #check number of values that are not close (testing for equality with floating point sucks)
+        if not np.sum(~np.isclose(dsa.indexes[index].values.astype(float),dsb.indexes[index].values.astype(float) ))==0:
             return False
         
     return True
@@ -1134,8 +1138,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
         fp_and_data['.flux'] = flux_dict
             
         
-    if load_bc:
-            
+    if load_bc:       
         bc = boundary_conditions(domain, species, start=flux_bc_start, end=flux_bc_end, bc_directory=bc_directory)
 
         if  ".units" in attributes:
@@ -1143,45 +1146,68 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
         else:
             fp_and_data['.bc'] = bc
             
-        
-                                           
     # Calculate model time series, if required
     if calc_timeseries:
-        if load_flux == False:
-            print("Can't get modelled mole fraction timeseries because load_flux is set to False.")
-        else:
-            sites = [key for key in list(fp_and_data.keys()) if key[0] != '.']
-            sources = list(fp_and_data['.flux'].keys())
-            for site in sites:                    
-                for source in sources:
-                    if type(fp_and_data['.flux'][source]) == dict:
-                        fp_and_data[site]['mf_mod_'+source] = xr.DataArray(timeseries_HiTRes(fp_and_data[site],fp_and_data['.flux'][source], output_fpXflux=False), coords = {'time': fp_and_data[site].time})
-                    else:
-                        flux_reindex = fp_and_data['.flux'][source].reindex_like(fp_and_data[site], 'ffill')
-                        if source == 'all':
-                            fp_and_data[site]['mf_mod'] = xr.DataArray((fp_and_data[site].fp*flux_reindex.flux).sum(["lat", "lon"]), coords = {'time':fp_and_data[site].time})
-                        else:
-                            fp_and_data[site]['mf_mod_'+source] = xr.DataArray((fp_and_data[site].fp*flux_reindex.flux).sum(["lat", "lon"]), coords = {'time':fp_and_data[site].time})
+        fp_and_data=add_timeseries(fp_and_data, load_flux)
         
     # Calculate boundary conditions, if required         
     if calc_bc:
-        if load_bc == False:
-            print("Can't get modelled baseline timeseries because load_bc is set to False.")
-        else:
-            sites = [key for key in list(fp_and_data.keys()) if key[0] != '.']
-            for site in sites:
-                bc_reindex = fp_and_data['.bc'].reindex_like(fp_and_data[site], 'ffill')
-                fp_and_data[site]['bc'] = (fp_and_data[site].particle_locations_n*bc_reindex.vmr_n).sum(["height", "lon"]) + \
-                                            (fp_and_data[site].particle_locations_e*bc_reindex.vmr_e).sum(["height", "lat"]) + \
-                                            (fp_and_data[site].particle_locations_s*bc_reindex.vmr_s).sum(["height", "lon"]) + \
-                                            (fp_and_data[site].particle_locations_w*bc_reindex.vmr_w).sum(["height", "lat"])
+        fp_and_data = add_bc(fp_and_data, load_bc)
         
     for a in attributes:
         fp_and_data[a] = data[a]
   
     return fp_and_data
 
-
+def add_timeseries(fp_and_data, load_flux):
+    """
+    Add timeseries mole fraction values in footprint_data_merge
+    
+    Args:
+        fp_and_data [dict]:
+            output created during footprint_data_merge
+        load_flux [boolean]:
+            whether the flux was loaded
+    """
+    if load_flux == False:
+        print("Can't get modelled mole fraction timeseries because load_flux is set to False.")
+    else:
+        sites = [key for key in list(fp_and_data.keys()) if key[0] != '.']
+        sources = list(fp_and_data['.flux'].keys())
+        for site in sites:                    
+            for source in sources:
+                if type(fp_and_data['.flux'][source]) == dict:
+                    fp_and_data[site]['mf_mod_'+source] = xr.DataArray(timeseries_HiTRes(fp_and_data[site],fp_and_data['.flux'][source], output_fpXflux=False), coords = {'time': fp_and_data[site].time})
+                else:
+                    flux_reindex = fp_and_data['.flux'][source].reindex_like(fp_and_data[site], 'ffill')
+                    if source == 'all':
+                        fp_and_data[site]['mf_mod'] = xr.DataArray((fp_and_data[site].fp*flux_reindex.flux).sum(["lat", "lon"]), coords = {'time':fp_and_data[site].time})
+                    else:
+                        fp_and_data[site]['mf_mod_'+source] = xr.DataArray((fp_and_data[site].fp*flux_reindex.flux).sum(["lat", "lon"]), coords = {'time':fp_and_data[site].time})
+    return fp_and_data
+                        
+def add_bc(fp_and_data, load_bc):
+    """
+    Add boundary condition mole fraction values in footprint_data_merge
+    
+    Args:
+        fp_and_data [dict]:
+            output created during footprint_data_merge
+        load_bc [boolean]:
+            whether the boundary conditon was loaded
+    """
+    if load_bc == False:
+        print("Can't get modelled baseline timeseries because load_bc is set to False.")
+    else:
+        sites = [key for key in list(fp_and_data.keys()) if key[0] != '.']
+        for site in sites:
+            bc_reindex = fp_and_data['.bc'].reindex_like(fp_and_data[site], 'ffill')
+            fp_and_data[site]['bc'] = (fp_and_data[site].particle_locations_n*bc_reindex.vmr_n).sum(["height", "lon"]) + \
+                                        (fp_and_data[site].particle_locations_e*bc_reindex.vmr_e).sum(["height", "lat"]) + \
+                                        (fp_and_data[site].particle_locations_s*bc_reindex.vmr_s).sum(["height", "lon"]) + \
+                                        (fp_and_data[site].particle_locations_w*bc_reindex.vmr_w).sum(["height", "lat"])
+    return fp_and_data
+    
 def fp_sensitivity(fp_and_data, domain, basis_case,
                    basis_directory = None):
     """
