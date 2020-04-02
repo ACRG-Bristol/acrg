@@ -345,6 +345,15 @@ def test_align_datasets(dsa, dsb):
         
     assert not errors, "errors occured:\n{}".format("\n".join(errors))
     
+def test_indexesMatch(dsa, dsb):
+    dsa2 = dsa.copy() * 2.
+    
+    errors = []
+    if not name.indexesMatch(dsa, dsa2) == True:
+        errors.append("Same indexes not seen as the same")
+    if not name.indexesMatch(dsa, dsb) == False:
+        errors.append("Different indexes not seen as different")
+    assert not errors, "errors occured:\n{}".format("\n".join(errors))
 
 #%%
 # ----------------------------

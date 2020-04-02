@@ -639,6 +639,30 @@ def basis_boundary_conditions(domain, basis_case, bc_basis_directory = None):
 
     return basis_ds
 
+def indexesMatch(dsa, dsb):
+    """
+    Check if two datasets need to be reindexed_like for combine_datasets
+    
+    Args:
+        dsa (xarray.Dataset) : 
+            First dataset to check
+        dsb (xarray.Dataset) : 
+            Second dataset to check
+            
+    Returns:
+        boolean:
+            True if indexes match, False if datasets must be reindexed
+    """
+    
+    commonIndicies  = [key for key in dsa.indexes.keys() if key in dsb.indexes.keys()]
+    
+    #test if each comon index is the same
+    for index in commonIndicies:
+        if not dsa.indexes[index].equals(dsb.indexes[index]):
+            return False
+        
+    return True
+        
 
 def combine_datasets(dsa, dsb, method = "ffill", tolerance = None):
     """
@@ -667,7 +691,12 @@ def combine_datasets(dsa, dsb, method = "ffill", tolerance = None):
     """
     # merge the two datasets within a tolerance and remove times that are NaN (i.e. when FPs don't exist)
     
-    ds_temp = dsa.merge(dsb.reindex_like(dsa, method, tolerance = tolerance))
+    if not indexesMatch(dsa, dsb):
+        dsb_temp = dsb.reindex_like(dsa, method, tolerance = tolerance)
+    else:
+        dsb_temp = dsb
+    
+    ds_temp = dsa.merge(dsb_temp)
     if 'fp' in list(ds_temp.keys()):
         flag = np.where(np.isfinite(ds_temp.fp.mean(dim=["lat","lon"]).values))
         ds_temp = ds_temp[dict(time = flag[0])]
