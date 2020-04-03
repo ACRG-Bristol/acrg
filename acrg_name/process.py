@@ -443,7 +443,7 @@ def met_empty():
     '''
     
     met = pd.DataFrame({key: 0. for key in list(met_default.keys()) if key != "time"},
-                          index = [dt.datetime(1900, 1, 1), dt.datetime(2020, 1, 1)])
+                          index = [dt.datetime(1900, 1, 1), dt.datetime(2100, 1, 1)])
     met.index.name = "time"
     met["press"] = [100000., 100000.] #Pa
     met["temp"] = [10., 10.]    #C
@@ -962,6 +962,7 @@ def footprint_array(fields_file,
 
     if met is None:
         met = met_empty()
+        force_met_empty = True
 
     if type(met) is not list:
         met = [met]
@@ -1045,7 +1046,10 @@ def footprint_array(fields_file,
         else:
             # Re-index met dataframe to each time point
             met[0] = met[0].tz_localize(None)
-            metr = met[0][~met[0].index.duplicated(keep='first')].reindex(index = np.array([t]))
+            if force_met_empty == False:
+                metr = met[0][~met[0].index.duplicated(keep='first')].reindex(index = np.array([t]))
+            if force_met_empty == True:
+                metr = met[0].tail(1)
             if np.isnan(metr.values).any():
                 
                 print(t)
@@ -2107,7 +2111,7 @@ def process(domain, site, height, year, month,
     return fp
     
 
-def process_all(domain, site, network,
+def process_all(domain, site, network="DECC",
                 heights = None,
                 years_in = None,
                 months_in = None,
@@ -2132,6 +2136,9 @@ def process_all(domain, site, network,
             Domain of interest
         site (str):
             Observation site
+        network (str):
+            Network that the site belongs to. This is required in order to use the json file to look up heights.
+            Uses heights input if provided. Default="DECC"
         heights (list, optional):
             If you only want to process a subset of heights, OR IF THE HEIGHT
             INFORMATION IS NOT CONTAINED IN acrg_site_info.json, specify a list of
