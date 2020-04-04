@@ -963,6 +963,8 @@ def footprint_array(fields_file,
     if met is None:
         met = met_empty()
         force_met_empty = True
+    else:
+        force_met_empty = False
 
     if type(met) is not list:
         met = [met]
