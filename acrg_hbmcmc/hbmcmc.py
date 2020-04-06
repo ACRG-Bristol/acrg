@@ -182,8 +182,12 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     Hx = np.zeros(0)
     Y = np.zeros(0)
     siteindicator = np.zeros(0)
-    for si, site in enumerate(sites):    
-        error = np.concatenate((error, fp_data[site].dmf.values))
+    for si, site in enumerate(sites):
+        if 'vmf' in fp_data[site]:           
+            error = np.concatenate((error, fp_data[site].vmf.values))
+        if 'dmf' in fp_data[site]:
+            error = np.concatenate((error, fp_data[site].dmf.values))
+            
         Y = np.concatenate((Y,fp_data[site].mf.values)) 
         siteindicator = np.concatenate((siteindicator, np.ones_like(fp_data[site].mf.values)*si))
         if si == 0:
@@ -235,13 +239,13 @@ if __name__ == "__main__":
     # Run it through to see if it works.
     outputname = "TEST"
     outputpath = "~/Documents/Python/fixed_MCMC/"
-    sites = ["MHD"]
+    sites = ["TAC",'BSD']
     species = "ch4"
     domain = "EUROPE"
-    meas_period = ["12H"]
+    meas_period = ["12H",'12H']
     bc_basis_case = "NESW"
     start_date = "2016-01-01"
-    end_date = "2016-03-01"
+    end_date = "2016-02-01"
     fixedbasisMCMC(species, sites, domain, meas_period, start_date, 
                    end_date, outputpath, outputname, nit=5000, burn=1000, 
                    tune=1000)
