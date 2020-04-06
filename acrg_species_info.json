@@ -97,6 +97,13 @@
         "print_string": "CFC-11", 
         "units": "ppt"
     }, 
+    "CFC-112": {"alt": ["CFC112"],
+        "group": "CFCs", 
+        "long_name": "CFC-112", 
+        "mol_mass": "203.83", 
+        "print_string": "CFC-112", 
+        "units": "ppt"
+    }, 
     "CFC-113": {"alt": ["CFC113"],
         "group": "CFCs", 
         "long_name": "CFC-113", 
@@ -382,6 +389,13 @@
         "long_name": "HFC-365mfc", 
         "mol_mass": "148.0749", 
         "print_string": "HFC-365mfc", 
+        "units": "ppt"
+    }, 
+    "HFC-4310mee": {"alt": ["HFC4310MEE", "C5H2F10"],
+        "group": "HFCs", 
+        "long_name": "HFC-4310MEE", 
+        "mol_mass": "252.05", 
+        "print_string": "HFC-4310MEE", 
         "units": "ppt"
     }, 
     "Isoflurane": {"alt": [],

@@ -16,18 +16,24 @@ from datetime import datetime as dt
 import json
 import time
 import getpass
+from acrg_config.paths import paths
 
-#acrg_path = os.path.dirname(os.path.realpath(__file__))
-acrg_path = os.getenv("ACRG_PATH")
-data_path = os.getenv("DATA_PATH")
+acrg_path = paths.acrg
+obs_directory = paths.obs
 
-if data_path is None:
-    data_path = "/data/shared/"
-    print("Default Data directory is assumed to be /data/shared/. Set path in .bashrc as \
-            export DATA_PATH=/path/to/data/directory/ and restart python terminal")
+# #acrg_path = os.path.dirname(os.path.realpath(__file__))
+# acrg_path = os.getenv("ACRG_PATH")
+# data_path = os.getenv("DATA_PATH")
 
-# Set default obs folder
-obs_directory = os.path.join(data_path, "obs/")
+
+
+# if data_path is None:
+#     data_path = "/data/shared/"
+#     print("Default Data directory is assumed to be /data/shared/. Set path in .bashrc as \
+#             export DATA_PATH=/path/to/data/directory/ and restart python terminal")
+
+# # Set default obs folder
+# obs_directory = os.path.join(data_path, "obs/")
 
 # Output unit strings (upper case for matching)
 unit_species = {"CO2": "1e-6",

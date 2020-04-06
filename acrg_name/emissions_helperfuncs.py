@@ -483,7 +483,8 @@ def getbloomwetlandsCH4(year, lon_out, lat_out, timeframe="monthly"):
     ddt = np.empty_like(d)
     for i in range(len(ddt)):
        ddt[i] = datetime.datetime.strptime(str(d[i]), '%Y%m%d')
-    ds.date.values = pd.to_datetime(ddt)
+    #ds.date.values = pd.to_datetime(ddt) # Unable to assign back to values in this way in later xarray versions
+    ds = ds.assign_coords(date=pd.to_datetime(ddt))
     ds = ds.sel(date=str(year))
     
     #if monthly == True:
@@ -690,7 +691,8 @@ def getNAEI(year, lon_out, lat_out, species, naei_sector):
         return None
         
     #Read emissions as tonnes/km^2/yr and naei lat and lons
-    df = pd.DataFrame.from_csv(fn)   
+    #df = pd.DataFrame.from_csv(fn) # This syntax is deprecated 
+    df = pd.read_csv(fn)  
     lat = np.asarray(df.Latitude)
     lon = np.asarray(df.Longitude)    
     emissions = np.asarray(df[naei_sector])
@@ -879,6 +881,7 @@ def getedgarannualsectors(year, lon_out, lat_out, edgar_sectors, species='CH4'):
     narr = np.zeros((nlat, nlon))    
     narr, reg = regrid2d(tot, lat_in, lon_in,
                              lat_out, lon_out)
+    
     return(narr)   
 
 def getedgarmonthlysectors(lon_out, lat_out, edgar_sectors, months=[1,2,3,4,5,6,7,8,9,10,11,12],
@@ -1360,7 +1363,7 @@ def getJULESwetlands(year,lon_out,lat_out,species="CH4",extent_db="SWAMPS",scale
     return narr
 
 
-def scale_emissions(emissions_t,species,lat,lon,total_emission):
+def scale_emissions(emissions_t,species,lat,lon,total_emission,return_scaling=False):
     '''
     The scale_emissions function scales emissions values for one time grid to a 
     total_emission value.
@@ -1378,6 +1381,9 @@ def scale_emissions(emissions_t,species,lat,lon,total_emission):
         total_emission (float) :
             Total emissions of the output array. 
             Value should be specified in g/yr e.g. 185Tg/yr should be 185e12.
+        return_scaliing (bool, optional) :
+            Return the scaling factor associated with updating the emissions field.
+            Default = False
     
     Returns:
         numpy.array :
@@ -1392,15 +1398,18 @@ def scale_emissions(emissions_t,species,lat,lon,total_emission):
     areas = areagrid(lat,lon)
     
     current_emission = np.sum(emissions_t*areas)*total_time*molmass
-    scaling = old_div(total_emission,current_emission)
+    scaling = total_emission/current_emission
     print("Current emissions total: {} g/yr (scaling needed to {} g/yr: {})".format(current_emission,total_emission,scaling))
     
     emissions_new = np.copy(emissions_t)*scaling
     #print "New total emissions: {} g/yr".format(np.sum(emissions_new*areas)*total_time*molmass)
     
-    return emissions_new
+    if return_scaling:
+        return emissions_new,scaling
+    else:
+        return emissions_new
 
-def scale_emissions_all(emissions,species,lat,lon,total_emission):
+def scale_emissions_all(emissions,species,lat,lon,total_emission,return_scaling=False):
     '''
     The scale_emissions_all function scales emissions values within all time grids to the same 
     total_emission value.
@@ -1417,6 +1426,9 @@ def scale_emissions_all(emissions,species,lat,lon,total_emission):
         total_emission (float) :
             Total emissions of the output array. 
             Value should be specified in g/yr e.g. 185Tg/yr should be 185e12.
+        return_scaliing (bool, optional) :
+            Return the scaling factor associated with updating the emissions field.
+            Default = False
     
     Returns:
         numpy.array :
@@ -1427,12 +1439,19 @@ def scale_emissions_all(emissions,species,lat,lon,total_emission):
     
     emissions_new = np.copy(emissions)
     
+    scaling = np.zeros(nt)
     for i in range(nt):
         emissions_i = emissions_new[:,:,i]
-        #scale_emissions(emissions_i,species,lat,lon,total_emission)        
-        emissions_new[:,:,i] = scale_emissions(emissions_i,species,lat,lon,total_emission)
+        #scale_emissions(emissions_i,species,lat,lon,total_emission)
+        if return_scaling:
+            emissions_new[:,:,i],scaling[i] = scale_emissions(emissions_i,species,lat,lon,total_emission,return_scaling)
+        else:
+            emissions_new[:,:,i] = scale_emissions(emissions_i,species,lat,lon,total_emission,return_scaling)
     
-    return emissions_new
+    if return_scaling:
+        return emissions_new,scaling
+    else:
+        return emissions_new
 
 def plot_emissions(emissions_t,lat,lon,fignum=None,cmap="inferno_r",show=True):
     '''

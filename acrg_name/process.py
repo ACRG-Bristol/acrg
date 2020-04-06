@@ -51,12 +51,14 @@ import xarray as xray
 import shutil
 from scipy.interpolate import interp1d
 import copy
-import dirsync 
+#import dirsync 
 import matplotlib.pyplot as plt
 import getpass
 import traceback
 import sys
 import scipy
+import pdb
+from multiprocessing import Pool
 
 
 #Default NAME output file version
@@ -226,7 +228,22 @@ def load_NAME(file_lines, namever):
         # populate the data arrays (i.e. all columns but the leading 4) 
         for i, data_array in enumerate(data_arrays):
             data_array[y, x] = float(vals[int(i) + 4])
-
+    
+    if 'cell_measure' in column_headings:
+        #Extract the time integration period
+        dt_fp = int(column_headings['cell_measure'][4][0:3])
+        #This should only apply to NAME version 2 HiTRes footprints which currently do not have the correct start and end release times in the header
+        if dt_fp < 24:
+            end_release_date = headers['End of release'][-10:]
+            end_release_tz = headers['End of release'][4:7]
+            end_release_time = column_headings['species'][4][-2:]
+            end_release = dt.datetime.strptime(end_release_time + "00" + end_release_tz + " " + end_release_date, '%H%M%Z %d/%m/%Y')
+            start_release = end_release + dt.timedelta(hours = dt_fp)
+            endreleaseline = end_release.strftime('%H%M%Z') + end_release_tz + " " + end_release.strftime('%d/%m/%Y')
+            startreleaseline = start_release.strftime('%H%M%Z') + end_release_tz + " " + start_release.strftime('%d/%m/%Y')
+            headers['End of release'] = endreleaseline
+            headers['Start of release'] = startreleaseline
+    
     return headers, column_headings, data_arrays
     
 
@@ -426,7 +443,7 @@ def met_empty():
     '''
     
     met = pd.DataFrame({key: 0. for key in list(met_default.keys()) if key != "time"},
-                          index = [dt.datetime(1900, 1, 1), dt.datetime(2020, 1, 1)])
+                          index = [dt.datetime(1900, 1, 1), dt.datetime(2100, 1, 1)])
     met.index.name = "time"
     met["press"] = [100000., 100000.] #Pa
     met["temp"] = [10., 10.]    #C
@@ -461,6 +478,9 @@ def read_met(fnames, met_def_dict=None,vertical_profile=False,satellite=False):
     Note:
         A dictionary of output column names and met file header search strings
         is given in the met_default dictionary at the top of process.py.
+        Vertical profile assumes a file structure that consists of a time column 
+        14 temperture (C) columns, followed by 14 pressure (Pa), and 14 potential 
+        temperature (K)
     '''
 
 
@@ -547,18 +567,51 @@ def read_met(fnames, met_def_dict=None,vertical_profile=False,satellite=False):
         
         #Construct dictionary
         met_dict = {}
-        for key in list(met_default2.keys()):
-            if column_indices[key] != -1 and key != "time":
-                met_dict[key] = m2[:, column_indices[key]].astype(float)
-        met_dict["release_lon"] = X
-        met_dict["release_lat"] = Y
+        if vertical_profile == True:
+            vp_met_cols = {"time": 0,"temp20": 1,
+               "temp40": 2,"temp60": 3,
+               "temp80": 4,"temp100": 5,
+               "temp120": 6,"temp140": 7,
+               "temp160": 8,"temp180": 9,
+               "temp200": 10,"temp220": 11,
+               "temp240": 12,"temp260": 13,
+               "temp280":14,"temp300": 15,
+               "press20":16,"press40": 17,
+               "press60":18,"press80": 19,
+               "press100": 20,"press120": 21,
+               "press140": 22,"press160": 23,
+               "press180": 24,"press200": 25,
+               "press220": 26,"press240": 27,
+               "press260": 28,"press280": 29,
+               "press300": 30,
+               "theta20": 31,"theta40": 32,
+               "theta60": 33,"theta80": 34,
+               "theta100": 35,"theta120": 36,
+               "theta140": 37,"theta160": 38,
+               "theta180": 39,"theta200": 40,
+               "theta220": 41,"theta240": 42,
+               "theta260": 43,"theta280": 44,
+               "theta300": 45}
+ 
+            for key in list(met_default2.keys()):
+                if key != "time":
+                    met_dict[key] = m2[:, vp_met_cols[key]].astype(float)
+            met_dict["release_lon"] = X
+            met_dict["release_lat"] = Y
+            
+        else:
+            for key in list(met_default2.keys()):
+                if column_indices[key] != -1 and key != "time":
+                    met_dict[key] = m2[:, column_indices[key]].astype(float)
+            met_dict["release_lon"] = X
+            met_dict["release_lat"] = Y
 
         #Construct dataframe
         # calling to_datetime on a series is MUCH faster than the previous list comprehension
         times = pd.Series([d.strip() for d in m2[:,column_indices["time"]]])
         output_df_file = pd.DataFrame(met_dict,
                         index=pd.to_datetime(times, format='%d/%m/%Y %H:%M %Z'))
-
+        
         output_df.append(output_df_file)
     
         ## UNCOMMENT BEFORE COMMITTING
@@ -566,6 +619,9 @@ def read_met(fnames, met_def_dict=None,vertical_profile=False,satellite=False):
     
     # Concatenate list of data frames
     output_df = pd.concat(output_df)
+    if vertical_profile == True:
+        output_df = output_df.sort_index()
+
     
     if satellite:
         try:
@@ -578,13 +634,13 @@ def read_met(fnames, met_def_dict=None,vertical_profile=False,satellite=False):
             label = [match.split('_')[-1] for match in file_match]
             output_df["label"] = label
     
-    # Check for missing values
-    if vertical_profile == True:
-        output_df = output_df[output_df["press20"] > 0.]
-    else:
-        output_df = output_df[output_df["press"] > 0.]
-    output_df = output_df.drop_duplicates()
-    
+#    # Check for missing values
+#    if vertical_profile == True:       
+#        output_df = output_df[output_df["press20"] > 0.]
+#    else:
+#        output_df = output_df[output_df["press"] > 0.]
+#    output_df = output_df.drop_duplicates()
+#    
     if satellite:
         # Sort by label axis which includes point number and level
         output_df = output_df.sort_values(by=["label"])
@@ -906,6 +962,9 @@ def footprint_array(fields_file,
 
     if met is None:
         met = met_empty()
+        force_met_empty = True
+    else:
+        force_met_empty = False
 
     if type(met) is not list:
         met = [met]
@@ -914,6 +973,7 @@ def footprint_array(fields_file,
     lons, lats, levs, time, timeStep = define_grid(header, column_headings,
                                                    satellite = satellite,
                                                    upper_level = upper_level)
+
     if satellite and obs_file:
         time = extract_time_obs(obs_file)
     
@@ -975,7 +1035,7 @@ def footprint_array(fields_file,
     met_ds = xray.Dataset(met_dict,
                           coords = {"time": (["time"], time),
                                    "lev": (["lev"], levs)})
-    
+
     for i,t in enumerate(time):
         
         if len(met[0].index) == 1:
@@ -987,9 +1047,14 @@ def footprint_array(fields_file,
             metr = met[i] # Same number of met_dataframes in list as time points
         else:
             # Re-index met dataframe to each time point
-#            metr = met[0].reindex(index = np.array([t]))
-            metr = met[0][~met[0].index.duplicated(keep='first')].reindex(index = np.array([t]))
+            met[0] = met[0].tz_localize(None)
+            if force_met_empty == False:
+                metr = met[0][~met[0].index.duplicated(keep='first')].reindex(index = np.array([t]))
+            if force_met_empty == True:
+                metr = met[0].tail(1)
             if np.isnan(metr.values).any():
+                
+                print(t)
                 raise ValueError("No met data for given date %s" % t)
             
         for key in list(metr.keys()):
@@ -1048,6 +1113,8 @@ def footprint_array(fields_file,
                 (3600.*timeStep*1.)/molm3
         elif units == "ppm s" or units_no_space == "ppms":
             fp.fp[slice_dict] = data_arrays[column]*area*1e-6*1./(3600.*timeStep*1.)
+        elif units == "Bq s / m^3" or units_no_space == "Bqs/m^3" or units_no_space == "Bqs/m3" or units == "Bqs/m3":
+            fp.fp[slice_dict] = data_arrays[column]*area/(3600.*timeStep*1.)           
         else:
             status_log("DO NOT RECOGNISE UNITS OF {} FROM NAME INPUT (expect 'g s / m^3' or 'ppm s')".format(units),
                        error_or_warning="error")
@@ -1114,10 +1181,6 @@ def footprint_concatenate(fields_prefix,
     '''
     
 
-    # If no meteorology, get null values
-    # THIS IS NOT RECOMMENDED. ERRORS of ~ ±10%.
-    if met is None:
-        met = met_empty()
 
     # Find footprint files and MATCHING particle location files
     # These files are identified by their date string. Make sure this is right!
@@ -1185,7 +1248,7 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
             PBLH=None, varname="fp",
             release_lon = None, release_lat = None,
             particle_locations=None, particle_heights=None,
-            global_attributes = {}, lapse_rate=None, lapse_error=None):
+            global_attributes = {}, lapse_rate=None, lapse_error=None, units = None):
     '''Writes netCDF with footprints, particle locations, meteorology and release locations.
     
     Args:
@@ -1287,7 +1350,10 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
     nclev[:]=np.array(levs)
     
     ncfp[:, :, :]=fp
-    ncfp.units='(mol/mol)/(mol/m2/s)'
+    if units == None:
+        ncfp.units='(mol/mol)/(mol/m2/s)'
+    else:
+        ncfp.units = units
 
     if temperature is not None:
         nctemp=ncF.createVariable('temperature', 'f', ('time',), zlib = True,
@@ -1620,7 +1686,7 @@ def process_basic(fields_folder, outfile):
                  fp.time.to_pandas().index.to_pydatetime(), 
                  outfile)
 
-def process(domain, site, height, year, month,
+def process(domain, site, height, year, month, 
             base_dir = "/dagage2/agage/metoffice/NAME_output/",
             fields_folder = "Fields_files",
             particles_folder = "Particle_files",
@@ -1635,7 +1701,8 @@ def process(domain, site, height, year, month,
             force_update = False,
             perturbed_folder = None,
             vertical_profile=False,
-            transport_model="NAME"):
+            transport_model="NAME",
+            units = None):
     
     '''Process a single month of footprints for a given domain, site, height,
     year, month. 
@@ -1742,21 +1809,21 @@ def process(domain, site, height, year, month,
 
     # Check that there are no errors from the NAME run
     input_folder = subfolder + 'Input_files/'
-    error_files = 'BackRun_' + domain + '_' + site + '_' + height + '_' + str(year) + str(month).zfill(2)
-    error_days = []
+    if os.path.isdir(input_folder):
+        error_files = 'BackRun_' + domain + '_' + site + '_' + height + '_' + str(year) + str(month).zfill(2)
+        error_days = []
+        for file_name in os.listdir(input_folder):
+            if file_name.startswith(error_files) and \
+            file_name.endswith('Error.txt') and \
+            os.stat(input_folder+file_name).st_size != 0:
+                #error_days.append(file_name[-11:-9]+'/'+month+'/'+year)
     
-    for file_name in os.listdir(input_folder):
-        if file_name.startswith(error_files) and \
-        file_name.endswith('Error.txt') and \
-        os.stat(input_folder+file_name).st_size != 0:
-            #error_days.append(file_name[-11:-9]+'/'+month+'/'+year)
+                error_days.append(re.search(r"[0-9]{8}(\S+)", file_name).group(0))
+                error_days.sort()
+                num_days = len(error_days)
 
-            error_days.append(re.search("[0-9]{8}(\S+)", file_name).group(0))
-            error_days.sort()
-            num_days = len(error_days)
-        
-    if len(error_days) > 0:
-        raise Exception('This month cannot be processed as there are '+str(num_days)+' days with with errors: '+str(error_days))
+        if len(error_days) > 0:
+            raise Exception('This month cannot be processed as there are '+str(num_days)+' days with with errors: '+str(error_days))
         
    # Check for existance of subfolder
     if not os.path.isdir(subfolder):
@@ -1769,7 +1836,7 @@ def process(domain, site, height, year, month,
             subfolder += perturbed_folder + "/"
     
     # Check that the specified transport model is valid.
-    if transport_model is "STILT":
+    if transport_model == "STILT":
         if satellite:
             status_log("stiltfoot_array is not set up for satellite data!" +\
                        " Levels will be wrong!", error_or_warning="error")
@@ -1777,7 +1844,7 @@ def process(domain, site, height, year, month,
             status_log("STILT neither provides nor requires met information" +\
                        " to interpret footprints. Met will probably be set" +\
                        " to default values. Don't rely on these values!")
-    elif transport_model is not "NAME":
+    elif transport_model != "NAME":
         status_log(transport_model + " is not a valid transport model!" +\
                    " Unable to read footprint information!", 
                    error_or_warning="error")
@@ -1830,7 +1897,7 @@ def process(domain, site, height, year, month,
                        error_or_warning="error")
             return None
     else:
-        if transport_model is "STILT":
+        if transport_model == "STILT":
             datestrs = ["stilt" + str(year) + "x" + str(month).zfill(2) + "x"]
         else:
             datestrs = [str(year) + str(month).zfill(2)]
@@ -1858,7 +1925,7 @@ def process(domain, site, height, year, month,
                 if maxday >= max(days):
                     return None
             else:
-                if transport_model is "STILT":
+                if transport_model == "STILT":
                     stilt_files = glob.glob(subfolder + fields_folder + "/stilt" + \
                                             str(year) + "x" + str(month).zfill(2) + "*.nc")
                     days = [int(os.path.split(stilt_file)[1].split("x")[2]) \
@@ -1912,7 +1979,7 @@ def process(domain, site, height, year, month,
             met = None
         
             # Get footprints
-        if transport_model is "STILT":
+        if transport_model == "STILT":
             fp_file = stiltfoot_array(subfolder + fields_folder + "/" + datestr, 
                                       met=met, satellite=satellite,
                                       time_step=timeStep)
@@ -2036,7 +2103,7 @@ def process(domain, site, height, year, month,
                          particle_heights = height_out,
                          global_attributes = fp.attrs,
                          lapse_rate = lapse_in,
-                         lapse_error = lapse_error_in)
+                         lapse_error = lapse_error_in, units = units)
 
     else:
         status_log("FAILED. Couldn't seem to find any files, or some files are missing for %s" %
@@ -2046,7 +2113,7 @@ def process(domain, site, height, year, month,
     return fp
     
 
-def process_all(domain, site,
+def process_all(domain, site, network="DECC",
                 heights = None,
                 years_in = None,
                 months_in = None,
@@ -2057,6 +2124,7 @@ def process_all(domain, site,
                 satellite = False,
                 perturbed_folder = None,
                 max_level = None,
+                upper_level = None,
                 force_met_empty=False,
                 vertical_profile=False,
                 transport_model="NAME"):
@@ -2070,6 +2138,9 @@ def process_all(domain, site,
             Domain of interest
         site (str):
             Observation site
+        network (str):
+            Network that the site belongs to. This is required in order to use the json file to look up heights.
+            Uses heights input if provided. Default="DECC"
         heights (list, optional):
             If you only want to process a subset of heights, OR IF THE HEIGHT
             INFORMATION IS NOT CONTAINED IN acrg_site_info.json, specify a list of
@@ -2110,6 +2181,9 @@ def process_all(domain, site,
             process the foorprints. 
             Levels above are replaced by the prior profile.
             Default = None.
+        upper_level (int, optional):
+            Only needed when satellite=True. Highest level number from within the NAME run for the satellite data.
+            Default = None.
         force_met_empty (bool, optional):
              Force the met data to be empty?
              Default = False.
@@ -2139,7 +2213,7 @@ def process_all(domain, site,
         
     # If no height specified, run all heights
     if heights is None:
-        heights = site_info[site]["height_name"]
+        heights = site_info[site][network]["height_name"]
     elif type(heights) is not list:
         heights = [heights]
     
@@ -2159,7 +2233,7 @@ def process_all(domain, site,
             years = []
             months = []
             
-            if transport_model is "STILT":
+            if transport_model == "STILT":
                 fields_files = sorted(glob.glob(subfolder + "/Fields_files/stilt*.nc"))
                 for fields_file in fields_files:
                     f = split(fields_file)[1]
@@ -2180,11 +2254,49 @@ def process_all(domain, site,
             out = process(domain, site, height, year, month,
                     base_dir = base_dir, met_folder = met_folder, force_update = force_update,
                     satellite = satellite, perturbed_folder = perturbed_folder,
-                    max_level = max_level, use_surface_conditions=use_surface_conditions,
+                    max_level = max_level, upper_level=upper_level, use_surface_conditions=use_surface_conditions,
                     force_met_empty = force_met_empty,
                     vertical_profile=vertical_profile,
                     transport_model=transport_model)
 
+def process_parallel(domain, site, height, years, months, kwargs={}, nprocess=4):
+    """
+    This script processes multiple months in parallel (but loops through years
+    in serial). It basically just calls process.process in parallel.
+    
+    Args:
+        domain (str):
+            Domain of interest
+        site (str):
+            Observation site
+        height (str):
+            Height of observation, e.g. "10magl"
+        years (list):
+            List of years you want to process 
+        month (int):
+            List of months to process (e.g. np.arange(12)+1)
+        kwargs (dict):
+            Dictionary of optional arguments that you would pass to process, e.g.
+            kwargs = {"met_folder":"Met_daily", "fields_folder" : "MixR_files"}
+        nprocess (int):
+            Number of threads (and number of months to run in parallel).
+            Default = 4
+            
+    Returns:
+        None
+    """
+    nprocess = int(process)
+    for year in years:
+        pool = Pool(processes = nprocess)
+        try:
+            [pool.apply_async(process.process, args=(domain, site, height, year, month), kwds=kwargs) \
+             for month in months]
+        except:
+            pool.close()
+            pool.join()
+            raise
+        pool.close()
+        pool.join()
 
 def copy_processed(domain):
     '''
@@ -2350,6 +2462,8 @@ def process_vertical_profile(vp_fname):
                "theta220": "THETA-Z = 220.0000 m agl","theta240": "THETA-Z = 240.0000 m agl",
                "theta260": "THETA-Z = 260.0000 m agl","theta280": "THETA-Z = 280.0000 m agl",
                "theta300": "THETA-Z = 300.0000 m agl"}
+    
+
 
     vp_met_df=read_met(vp_fname, met_def_dict=vp_met_dict, vertical_profile=True)
     lapse_ds=xray.Dataset.from_dataframe(vp_met_df)

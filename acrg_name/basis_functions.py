@@ -356,9 +356,9 @@ def basis_bc_all_gradients(domain, time, species, units='ppb', basis_case='horiz
              
     bc_ds = bc_ds.sel(time = time)
 
-    if units is 'ppb':
+    if units == 'ppb':
         bc_ds = bc_ds*1e9
-    elif units is 'ppm':
+    elif units == 'ppm':
         bc_ds = bc_ds*1e6
         
     vmr_n = bc_ds["vmr_n"].values
@@ -672,9 +672,9 @@ def basis_bc_pca(domain, time, species, units='ppb', basis_case='pca', numregion
     bc_ds =  name.boundary_conditions(domain, species)
     bc_ds = bc_ds.sel(time = time)
     
-    if units is 'ppb':
+    if units == 'ppb':
         bc_ds = bc_ds*1e9
-    elif units is 'ppm':
+    elif units == 'ppm':
         bc_ds = bc_ds*1e6
         
     vmr_n = bc_ds["vmr_n"].values
