@@ -456,6 +456,17 @@
       "longitude": -123.969
     }
   },
+  "CMO": {
+    "EUROCOM": {
+      "height": [
+        "10m"
+      ],
+      "height_station_masl": 30.0,
+      "latitude": 45.478,
+      "long_name": "Cape Mears, Oregon",
+      "longitude": -123.969
+    }
+  },
   "COI": {
     "NIES": {
       "height": [
@@ -944,7 +955,7 @@
       "latitude": 50.97675,
       "long_name": "Heathfield, UK",
       "longitude": 0.23048
-   }
+    }
   },
   "HFM": {
     "NOAA": {

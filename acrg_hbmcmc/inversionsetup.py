@@ -69,7 +69,12 @@ def addaveragingerror(fp_all, sites, species, start_date, end_date, meas_period,
                 [np.nan for col in dataerr[site].columns]
         # Now sort to get everything in the right order
         dataerr[site] = dataerr[site].sort_index()
-        fp_all[site].dmf.values = fp_all[site].dmf.values + dataerr[site].mf.resample(meas_period[si]).std(ddof=0).dropna().values
+        if 'vmf' in fp_all[site]:
+            fp_all[site].vmf.values = fp_all[site].vmf.values + dataerr[site].mf.resample(meas_period[si]).std(ddof=0).dropna().values
+        elif 'dmf' in fp_all[site]:
+            fp_all[site].dmf.values = fp_all[site].dmf.values + dataerr[site].mf.resample(meas_period[si]).std(ddof=0).dropna().values
+        else:
+            print('No mole fraction error information available in {}.'.format('fp_all'+str([site])))
     return fp_all
 
 def monthly_bcs(start_date, end_date, site, fp_data):
