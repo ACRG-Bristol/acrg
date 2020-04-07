@@ -41,7 +41,8 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                    sigprior={"pdf":"uniform", "lower":0.5, "upper":3},
                    nit=2.5e5, burn=50000, tune=1.25e5, nchain=2,
                    emissions_name=None,  height=None, instrument=None, 
-                   fp_basis_case=None, bc_basis_case="NESW",  
+                   fp_basis_case=None, bc_basis_case="NESW", 
+                   obs_directory = None,
                    quadtree_basis=True,nbasis=100, 
                    averagingerror=True, bc_monthly=True):
     """
@@ -105,6 +106,9 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             Name of basis case type for boundary conditions (NOTE, I don't 
             think that currently you can do anything apart from scaling NSEW 
             boundary conditions if you want to scale these monthly.)
+        obs_directory (str, optional):
+            Directory containing the obs data (with site codes as subdirectories)
+            if not default.
         quadtree_basis (bool, optional):
             Creates a basis function file for emissions on the fly using a 
             quadtree algorithm based on the a priori contribution to the mole
@@ -128,7 +132,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
         Add a wishlist...
     """    
     data = getobs.get_obs(sites, species, start_date = start_date, end_date = end_date, 
-                         average = meas_period, 
+                         average = meas_period, data_directory=obs_directory,
                           keep_missing=False,inlet=height, instrument=instrument)
     fp_all = name.footprints_data_merge(data, domain=domain, calc_bc=True, 
                                         height=height, 
@@ -146,7 +150,8 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     #Add measurement variability in averaging period to measurement error
     if averagingerror:
         fp_all = setup.addaveragingerror(fp_all, sites, species, start_date, end_date,
-                                   meas_period, inlet=height, instrument=instrument)
+                                   meas_period, inlet=height, instrument=instrument,
+                                   obs_directory=obs_directory)
     
     #Create basis function using quadtree algorithm if needed
     if quadtree_basis:

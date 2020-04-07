@@ -25,7 +25,7 @@ def opends(fn):
         return ds
 
 def addaveragingerror(fp_all, sites, species, start_date, end_date, meas_period,  
-                      inlet=None, instrument=None):
+                      inlet=None, instrument=None, obs_directory=None):
     """
     Adds the variablility within the averaging period to the mole fraction error.
     
@@ -46,6 +46,9 @@ def addaveragingerror(fp_all, sites, species, start_date, end_date, meas_period,
             Specific inlet height for the site (must match number of sites).
         instrument (str/list, optional):
             Specific instrument for the site (must match number of sites).
+        obs_directory (str, optional):
+            Directory containing the obs data (with site codes as subdirectories)
+            if not default.    
             
     Returns:
         fp_all (dict):
@@ -54,7 +57,8 @@ def addaveragingerror(fp_all, sites, species, start_date, end_date, meas_period,
     """
     #Add variability in measurement averaging period to repeatability 
     dataerr = getobs.get_obs(sites, species, start_date = start_date, end_date = end_date,  
-                          keep_missing=False,inlet=inlet, instrument=instrument)
+                          keep_missing=False,inlet=inlet, instrument=instrument,
+                          data_directory=obs_directory)
     for si, site in enumerate(sites):
         if min(dataerr[site].index) > pd.to_datetime(start_date):
             dataerr[site].loc[pd.to_datetime(start_date)] = \
