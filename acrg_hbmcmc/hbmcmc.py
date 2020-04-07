@@ -40,7 +40,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                    bcprior={"pdf":"lognormal", "mu":0.004, "sd":0.02},
                    sigprior={"pdf":"uniform", "lower":0.5, "upper":3},
                    nit=2.5e5, burn=50000, tune=1.25e5, nchain=2,
-                   emissions_name=None,  height=None, instrument=None, 
+                   emissions_name=None, inlet=None, fpheight=None, instrument=None, 
                    fp_basis_case=None, bc_basis_case="NESW", 
                    obs_directory = None,
                    quadtree_basis=True,nbasis=100, 
@@ -96,8 +96,11 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             with {source_name: emissions_file_identifier} (e.g. {'anth':'co2-ff-mth'}). This way
             multiple sources can be read in simultaneously if they are added as separate entries to
             the emissions_name dictionary.
-        height (str/list, optional):
-            Specific inlet height for the site (must match number of sites).
+        inlet (str/list, optional):
+            Specific inlet height for the site (must match number of sites)
+        fpheight (dict, optional):
+            Specific release height for the sites' footprints. 
+            E.g. fpheight={"TAC":"185m"}(must match number of sites).
         instrument (str/list, optional):
             Specific instrument for the site (must match number of sites).
         fp_basis_case (str, optional):
@@ -133,9 +136,9 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     """    
     data = getobs.get_obs(sites, species, start_date = start_date, end_date = end_date, 
                          average = meas_period, data_directory=obs_directory,
-                          keep_missing=False,inlet=height, instrument=instrument)
+                          keep_missing=False,inlet=inlet, instrument=instrument)
     fp_all = name.footprints_data_merge(data, domain=domain, calc_bc=True, 
-                                        height=height, 
+                                        height=fpheight, 
                                         emissions_name=emissions_name)
     
     if len(data[sites[0]].mf) == 0:
@@ -150,7 +153,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     #Add measurement variability in averaging period to measurement error
     if averagingerror:
         fp_all = setup.addaveragingerror(fp_all, sites, species, start_date, end_date,
-                                   meas_period, inlet=height, instrument=instrument,
+                                   meas_period, inlet=inlet, instrument=instrument,
                                    obs_directory=obs_directory)
     
     #Create basis function using quadtree algorithm if needed
