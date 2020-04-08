@@ -135,9 +135,9 @@ def inferpymc3(Hx, Hbc, Y, error,
         sigouts = trace.get_values(sig, burn=burn)[0:int((nit)-burn)]
         
         #Check for convergence
-        gelrub = pm.gelman_rubin(trace)['x'].max()
+        gelrub = pm.rhat(trace)['x'].max()
         if gelrub > 1.05:
-            print('Failed Gelman-Rubin at 1.05 (%s)' % (round(gelrub,2)))
+            print('Failed Gelman-Rubin at 1.05')
             convergence = "Failed"
         else:
             convergence = "Passed"
