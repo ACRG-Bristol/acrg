@@ -128,7 +128,7 @@ def inferpymc3(Hx, Hbc, Y, error,
         step2 = pm.Slice(vars=[sig])
         
         trace = pm.sample(nit, tune=int(tune), chains=nchain,
-                           step=[step1,step2]) #, progressbar=False)#step=pm.Metropolis())#  #target_accept=0.8,
+                           step=[step1,step2], progressbar=False, cores=nchain)#step=pm.Metropolis())#  #target_accept=0.8,
         
         outs = trace.get_values(x, burn=burn)[0:int((nit)-burn)]
         bcouts = trace.get_values(xbc, burn=burn)[0:int((nit)-burn)]
