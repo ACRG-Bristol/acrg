@@ -109,7 +109,8 @@ def filenames(site, domain, start, end, height, fp_directory, network=None):
         height = site_info[site][network]["height_name"][0]
     
     # Convert into time format
-    months = pd.DatetimeIndex(start = start, end = end, freq = "M").to_pydatetime()
+    #months = pd.DatetimeIndex(start = start, end = end, freq = "M").to_pydatetime() # Deprecated
+    months = pd.date_range(start = start, end = end, freq = "M").to_pydatetime()
     yearmonth = [str(d.year) + str(d.month).zfill(2) for d in months]
 
     files = []
@@ -147,17 +148,13 @@ def read_netcdfs(files, dim = "time"):
             All files open as one concatenated xarray.Dataset object    
     """
     
-    #def process_one_path(path):
-    #    with xr.open_dataset(path) as ds:
-    #        ds.load()
-    #    return ds
-    
-    #print("Reading and concatenating files: ")
-    #for fname in files:
-    #    print(fname)
+    print("Reading and concatenating files: ")
+    for fname in files:
+        print(fname)
     
     datasets = [open_ds(p) for p in sorted(files)]
     combined = xr.concat(datasets, dim)
+    #combined = xr.open_mfdataset(sorted(files), parallel=True, combine='nested', concat_dim="time", coords="all")
     return combined   
 
 def interp_time(bc_ds,vmr_var_names, new_times):
@@ -643,6 +640,34 @@ def basis_boundary_conditions(domain, basis_case, bc_basis_directory = None):
 
     return basis_ds
 
+def indexesMatch(dsa, dsb):
+    """
+    Check if two datasets need to be reindexed_like for combine_datasets
+    
+    Args:
+        dsa (xarray.Dataset) : 
+            First dataset to check
+        dsb (xarray.Dataset) : 
+            Second dataset to check
+            
+    Returns:
+        boolean:
+            True if indexes match, False if datasets must be reindexed
+    """
+    
+    commonIndicies  = [key for key in dsa.indexes.keys() if key in dsb.indexes.keys()]
+    
+    #test if each comon index is the same
+    for index in commonIndicies:
+        #first check lengths are the same to avoid error in second check
+        if not len(dsa.indexes[index])==len(dsb.indexes[index]):
+            return False
+        #check number of values that are not close (testing for equality with floating point sucks)
+        if not np.sum(~np.isclose(dsa.indexes[index].values.astype(float),dsb.indexes[index].values.astype(float) ))==0:
+            return False
+        
+    return True
+        
 
 def combine_datasets(dsa, dsb, method = "ffill", tolerance = None):
     """
@@ -671,7 +696,12 @@ def combine_datasets(dsa, dsb, method = "ffill", tolerance = None):
     """
     # merge the two datasets within a tolerance and remove times that are NaN (i.e. when FPs don't exist)
     
-    ds_temp = dsa.merge(dsb.reindex_like(dsa, method, tolerance = tolerance))
+    if not indexesMatch(dsa, dsb):
+        dsb_temp = dsb.reindex_like(dsa, method, tolerance = tolerance)
+    else:
+        dsb_temp = dsb
+    
+    ds_temp = dsa.merge(dsb_temp)
     if 'fp' in list(ds_temp.keys()):
         flag = np.where(np.isfinite(ds_temp.fp.mean(dim=["lat","lon"]).values))
         ds_temp = ds_temp[dict(time = flag[0])]
@@ -801,7 +831,64 @@ def timeseries_boundary_conditions(ds):
            (ds.particle_locations_e*ds.vmr_e).sum(["height", "lat"]) + \
            (ds.particle_locations_s*ds.vmr_s).sum(["height", "lon"]) + \
            (ds.particle_locations_w*ds.vmr_w).sum(["height", "lat"])
-
+           
+def align_datasets(ds1, ds2, platform=None, resample_to_ds1=False):
+    """
+    Slice and resample two datasets to align along time
+    
+    Args:
+        ds1, ds2 (xarray.Dataset) :
+            Datasets with time dimension. It is assumed that ds1 is obs data and ds2 is footprint data
+            
+        platform (str) :
+            obs platform used to decide whether to resample
+            
+        resample_to_ds1 (boolean) :
+            Override resampling to coarser resolution and resample to ds1 regardless
+    
+    Returns:
+        2 xarray.dataset with aligned time dimensions
+    """
+    #lw13938: 12/04/2018 - This should slice the date to the smallest time frame
+    # spanned by both the footprint and obs, then resamples the data 
+    #using the mean to the one with coarsest median resolution 
+    #starting from the sliced start date. 
+    ds1_timeperiod = np.nanmedian((ds1.time.data[1:] - ds1.time.data[0:-1]).astype('int64')) 
+    ds2_timeperiod = np.nanmedian((ds2.time.data[1:] - ds2.time.data[0:-1]).astype('int64')) 
+    ds1_st = ds1.time[0]
+    ds1_et = ds1.time[-1]
+    ds2_st = ds2.time[0]
+    ds2_et = ds2.time[-1]
+    if int(ds1_st.data) > int(ds2_st.data):
+        start_date = ds1_st
+    else:  
+        start_date = ds2_st
+    if int(ds1_et.data) < int(ds2_et.data):
+        end_date = ds1_et
+    else:
+        end_date = ds2_et
+    
+    # rt17603: 24/07/2018 - Rounding to the nearest second(+/-1). Needed for sub-second dates otherwise sel was giving a KeyError
+    start_s = str(np.round(start_date.data.astype(np.int64)-5e8,-9).astype('datetime64[ns]')) # subtract half a second to ensure lower range covered
+    end_s = str(np.round(end_date.data.astype(np.int64)+5e8,-9).astype('datetime64[ns]')) # add half a second to ensure upper range covered
+    
+    ds1 = ds1.sel(time=slice(start_s,end_s))
+    ds2 = ds2.sel(time=slice(start_s,end_s))
+    
+    #ds1 = ds1.sel(time=slice(str(start_date.data),str(end_date.data)))
+    #ds2 = ds2.sel(time=slice(str(start_date.data),str(end_date.data)))
+    
+    #only non satellite datasets with different periods need to be resampled
+    if platform != "satellite" and not np.isclose(ds1_timeperiod, ds2_timeperiod):
+        base = start_date.dt.hour.data + start_date.dt.minute.data/60. + start_date.dt.second.data/3600.
+        if (ds1_timeperiod >= ds2_timeperiod) or (resample_to_ds1 == True):
+            resample_period = str(round(ds1_timeperiod/3600e9,5))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
+            ds2 = ds2.resample(indexer={'time':resample_period}, base=base).mean()
+        elif ds1_timeperiod < ds2_timeperiod or (resample_to_ds1 == False):
+            resample_period = str(round(ds2_timeperiod/3600e9,5))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
+            ds1 = ds1.resample(indexer={'time':resample_period}, base=base).mean()
+    
+    return ds1, ds2
     
 def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                           calc_timeseries = True, calc_bc = True, HiTRes = False,
@@ -993,46 +1080,12 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
             else:
                 tolerance = None
             
-            # rt17603: 06/04/2018 - Added sort as some footprints weren't sorted by time for satellite data.
-            site_fp = site_fp.sortby("time")
+            #gets number of unsorted times in time dimensions, sorting is expensive this is cheap
+            if np.sum(np.diff(site_fp.time.values.astype(float))<0) > 0:
+                # rt17603: 06/04/2018 - Added sort as some footprints weren't sorted by time for satellite data.
+                site_fp = site_fp.sortby("time")
             
-            #lw13938: 12/04/2018 - This should slice the date to the smallest time frame
-            # spanned by both the footprint and obs, then resamples the data 
-            #using the mean to the one with coarsest median resolution 
-            #starting from the sliced start date. 
-            ds_timeperiod = np.nanmedian((site_ds.time.data[1:] - site_ds.time.data[0:-1]).astype('int64')) 
-            fp_timeperiod = np.nanmedian((site_fp.time.data[1:] - site_fp.time.data[0:-1]).astype('int64')) 
-            ds_st = site_ds.time[0]
-            ds_et = site_ds.time[-1]
-            fp_st = site_fp.time[0]
-            fp_et = site_fp.time[-1]
-            if int(ds_st.data) > int(fp_st.data):
-                start_date = ds_st
-            else:  
-                start_date = fp_st
-            if int(ds_et.data) < int(fp_et.data):
-                end_date = ds_et
-            else:
-                end_date = fp_et
-            
-            # rt17603: 24/07/2018 - Rounding to the nearest second(+/-1). Needed for sub-second dates otherwise sel was giving a KeyError
-            start_s = str(np.round(start_date.data.astype(np.int64)-5e8,-9).astype('datetime64[ns]')) # subtract half a second to ensure lower range covered
-            end_s = str(np.round(end_date.data.astype(np.int64)+5e8,-9).astype('datetime64[ns]')) # add half a second to ensure upper range covered
-            
-            site_ds = site_ds.sel(time=slice(start_s,end_s))
-            site_fp = site_fp.sel(time=slice(start_s,end_s))
-            
-            #site_ds = site_ds.sel(time=slice(str(start_date.data),str(end_date.data)))
-            #site_fp = site_fp.sel(time=slice(str(start_date.data),str(end_date.data)))
-            
-            if platform != "satellite":
-                base = start_date.dt.hour.data + start_date.dt.minute.data/60. + start_date.dt.second.data/3600.
-                if (ds_timeperiod >= fp_timeperiod) or (resample_to_data == True):
-                    resample_period = str(round(fp_timeperiod/3600e9,5))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
-                    site_fp = site_fp.resample(indexer={'time':resample_period}, base=base).mean()
-                elif ds_timeperiod < fp_timeperiod or (resample_to_data == False):
-                    resample_period = str(round(fp_timeperiod/3600e9,5))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
-                    site_ds = site_ds.resample(indexer={'time':resample_period}, base=base).mean()
+            site_ds, site_fp = align_datasets(site_ds, site_fp, platform=platform, resample_to_ds1=resample_to_data)
                        
             site_ds = combine_datasets(site_ds, site_fp,
                                        method = "ffill",
@@ -1043,10 +1096,6 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
             for d in expected_dim_order[:]:
                 if d not in list(site_ds.dims.keys()):
                     expected_dim_order.remove(d)
-            #if 'H_back' in list(site_ds.dims.keys()):
-            #    site_ds = site_ds.transpose('height','lat','lon','lev','time', 'H_back')
-            #else:
-            #    site_ds = site_ds.transpose('height','lat','lon','lev','time')
             site_ds = site_ds.transpose(*expected_dim_order)
                 
             # If units are specified, multiply by scaling factor
@@ -1090,8 +1139,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
         fp_and_data['.flux'] = flux_dict
             
         
-    if load_bc:
-            
+    if load_bc:       
         bc = boundary_conditions(domain, species, start=flux_bc_start, end=flux_bc_end, bc_directory=bc_directory)
 
         if  ".units" in attributes:
@@ -1099,45 +1147,68 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
         else:
             fp_and_data['.bc'] = bc
             
-        
-                                           
     # Calculate model time series, if required
     if calc_timeseries:
-        if load_flux == False:
-            print("Can't get modelled mole fraction timeseries because load_flux is set to False.")
-        else:
-            sites = [key for key in list(fp_and_data.keys()) if key[0] != '.']
-            sources = list(fp_and_data['.flux'].keys())
-            for site in sites:                    
-                for source in sources:
-                    if type(fp_and_data['.flux'][source]) == dict:
-                        fp_and_data[site]['mf_mod_'+source] = xr.DataArray(timeseries_HiTRes(fp_and_data[site],fp_and_data['.flux'][source], output_fpXflux=False), coords = {'time': fp_and_data[site].time})
-                    else:
-                        flux_reindex = fp_and_data['.flux'][source].reindex_like(fp_and_data[site], 'ffill')
-                        if source == 'all':
-                            fp_and_data[site]['mf_mod'] = xr.DataArray((fp_and_data[site].fp*flux_reindex.flux).sum(["lat", "lon"]), coords = {'time':fp_and_data[site].time})
-                        else:
-                            fp_and_data[site]['mf_mod_'+source] = xr.DataArray((fp_and_data[site].fp*flux_reindex.flux).sum(["lat", "lon"]), coords = {'time':fp_and_data[site].time})
+        fp_and_data=add_timeseries(fp_and_data, load_flux)
         
     # Calculate boundary conditions, if required         
     if calc_bc:
-        if load_bc == False:
-            print("Can't get modelled baseline timeseries because load_bc is set to False.")
-        else:
-            sites = [key for key in list(fp_and_data.keys()) if key[0] != '.']
-            for site in sites:
-                bc_reindex = fp_and_data['.bc'].reindex_like(fp_and_data[site], 'ffill')
-                fp_and_data[site]['bc'] = (fp_and_data[site].particle_locations_n*bc_reindex.vmr_n).sum(["height", "lon"]) + \
-                                            (fp_and_data[site].particle_locations_e*bc_reindex.vmr_e).sum(["height", "lat"]) + \
-                                            (fp_and_data[site].particle_locations_s*bc_reindex.vmr_s).sum(["height", "lon"]) + \
-                                            (fp_and_data[site].particle_locations_w*bc_reindex.vmr_w).sum(["height", "lat"])
+        fp_and_data = add_bc(fp_and_data, load_bc)
         
     for a in attributes:
         fp_and_data[a] = data[a]
   
     return fp_and_data
 
-
+def add_timeseries(fp_and_data, load_flux):
+    """
+    Add timeseries mole fraction values in footprint_data_merge
+    
+    Args:
+        fp_and_data [dict]:
+            output created during footprint_data_merge
+        load_flux [boolean]:
+            whether the flux was loaded
+    """
+    if load_flux == False:
+        print("Can't get modelled mole fraction timeseries because load_flux is set to False.")
+    else:
+        sites = [key for key in list(fp_and_data.keys()) if key[0] != '.']
+        sources = list(fp_and_data['.flux'].keys())
+        for site in sites:                    
+            for source in sources:
+                if type(fp_and_data['.flux'][source]) == dict:
+                    fp_and_data[site]['mf_mod_'+source] = xr.DataArray(timeseries_HiTRes(fp_and_data[site],fp_and_data['.flux'][source], output_fpXflux=False), coords = {'time': fp_and_data[site].time})
+                else:
+                    flux_reindex = fp_and_data['.flux'][source].reindex_like(fp_and_data[site], 'ffill')
+                    if source == 'all':
+                        fp_and_data[site]['mf_mod'] = xr.DataArray((fp_and_data[site].fp*flux_reindex.flux).sum(["lat", "lon"]), coords = {'time':fp_and_data[site].time})
+                    else:
+                        fp_and_data[site]['mf_mod_'+source] = xr.DataArray((fp_and_data[site].fp*flux_reindex.flux).sum(["lat", "lon"]), coords = {'time':fp_and_data[site].time})
+    return fp_and_data
+                        
+def add_bc(fp_and_data, load_bc):
+    """
+    Add boundary condition mole fraction values in footprint_data_merge
+    
+    Args:
+        fp_and_data [dict]:
+            output created during footprint_data_merge
+        load_bc [boolean]:
+            whether the boundary conditon was loaded
+    """
+    if load_bc == False:
+        print("Can't get modelled baseline timeseries because load_bc is set to False.")
+    else:
+        sites = [key for key in list(fp_and_data.keys()) if key[0] != '.']
+        for site in sites:
+            bc_reindex = fp_and_data['.bc'].reindex_like(fp_and_data[site], 'ffill')
+            fp_and_data[site]['bc'] = (fp_and_data[site].particle_locations_n*bc_reindex.vmr_n).sum(["height", "lon"]) + \
+                                        (fp_and_data[site].particle_locations_e*bc_reindex.vmr_e).sum(["height", "lat"]) + \
+                                        (fp_and_data[site].particle_locations_s*bc_reindex.vmr_s).sum(["height", "lon"]) + \
+                                        (fp_and_data[site].particle_locations_w*bc_reindex.vmr_w).sum(["height", "lat"])
+    return fp_and_data
+    
 def fp_sensitivity(fp_and_data, domain, basis_case,
                    basis_directory = None):
     """
@@ -2284,10 +2355,11 @@ class get_country(object):
                          "/" + "country-ukmo_"
                          + domain + ".nc")
         
-        f = nc.Dataset(filename[0], 'r')
+#        f = nc.Dataset(filename[0], 'r')
+        f = xr.open_dataset(filename[0])
     
-        lon = f.variables['lon'][:]
-        lat = f.variables['lat'][:]
+        lon = f.variables['lon'][:].values
+        lat = f.variables['lat'][:].values
     
         #Get country indices and names
         if "country" in f.variables:
@@ -2301,7 +2373,7 @@ class get_country(object):
             name=np.asarray(name_temp)
         
         else:
-            name_temp = f.variables['name'][:]
+            name_temp = f.variables['name'].values
             f.close()
 
             # rt17603 (11/03/2019): Added to change any masked arrays back into arrays
@@ -2309,7 +2381,10 @@ class get_country(object):
    
             name=[]
             for ii in range(len(name_temp)):
-                name.append(''.join(name_temp[ii]))
+                if type(name_temp[ii]) is not str:
+                    name.append(''.join(name_temp[ii].decode("utf-8")))
+                else:
+                    name.append(''.join(name_temp[ii]))
             name=np.asarray(name)
     
     

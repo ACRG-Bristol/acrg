@@ -173,13 +173,16 @@ def gosat_param(config_file):
     
     param_dict = gosat_param_dict()
     
-    all_params = config.all_parameters_in_param_type(param_dict)
+    #all_params = config.all_parameters_in_param_type(param_dict)
     essential_param = gosat_essential_param()
-    optional_param = all_params[:]
-    for p in essential_param:
-        optional_param.remove(p)
+    #optional_param = all_params[:]
+    #for p in essential_param:
+    #    optional_param.remove(p)
     
-    param = config.all_param(config_file,optional_param=optional_param,param_type=param_dict,
+    param = config.all_param(config_file,
+                             #optional_param=optional_param,
+                             expected_param=essential_param,
+                             param_type=param_dict,
                              exclude_not_found=True)
     gosat_check(param)
     

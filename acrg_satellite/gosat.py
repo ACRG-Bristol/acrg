@@ -1650,10 +1650,8 @@ def name_pressure_match(ds,pressure_domain,columns=["latitude","longitude","time
             # Assumes offset is +1 day because we expect NAME run for e.g. 2012-01-01 to end with datetime 2012-02-01 00:00:00.
             max_offset_days = np.timedelta64((t - end_datetime),'D') + np.timedelta64(1,"D")
             pressure_NAME_offset = pressure_NAME.copy(deep=True)
-            # Have to add extra line to explicitly copy the time coordinates because of an xarray bug - https://github.com/pydata/xarray/issues/1463
-            pressure_NAME_offset.coords[columns[2]].data = np.copy(pressure_NAME_offset.coords[columns[2]].data)
-            pressure_NAME_offset[columns[2]].values += max_offset_days # Create copy of dataset with date offset to date we're looking for.
-
+            t_offset = pressure_NAME_offset[columns[2]]+max_offset_days 
+            pressure_NAME_offset = pressure_NAME_offset.assign_coords(**{columns[2]:t_offset}) # Create copy of dataset with date offset to date we're looking for.
             #day_tolerance = tolerance[:1] + [np.timedelta64(1,'D')]
             match = pressure_NAME_offset.sel(method="nearest",**{columns[0]:la,columns[1]:lo,columns[2]:t})
         matched_pressure_NAME[i] = match[p_column].values
@@ -2058,7 +2056,8 @@ def ds_check_internal_unique(ds,axis="time"):
                 # Add very small random value to repeat of a time value to avoid two times being exactly the same
                 axis_copy[i] += np.timedelta64(random.randrange(-1000,1000,1),'us')
                 #axis_copy[i] += np.timedelta64(1,'s')
-        ds[axis].values = axis_copy
+        #ds[axis].values = axis_copy
+        ds = ds.assign_coords(**{axis:axis_copy})
         
         # Add attribute describing modification made to original data
         mod_attr = "repeat_time_modified"
