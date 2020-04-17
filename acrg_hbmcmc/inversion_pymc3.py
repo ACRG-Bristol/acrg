@@ -330,8 +330,8 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                 cntrytottrace += np.sum(area[bothinds].ravel()*aprioriflux[bothinds].ravel()* \
                                3600*24*365*molarmass)*outs[:,bf]/1e9
             cntrymean[ci] = np.mean(cntrytottrace)
-            cntry68[ci, :] = pm.stats.hpd(cntrytottrace, 0.32)
-            cntry95[ci, :] = pm.stats.hpd(cntrytottrace, 0.05)
+            cntry68[ci, :] = pm.stats.hpd(cntrytottrace, 0.68)
+            cntry95[ci, :] = pm.stats.hpd(cntrytottrace, 0.95)
             cntrysd[ci] = np.std(cntrytottrace)
         
     
