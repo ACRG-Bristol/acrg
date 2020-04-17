@@ -1,4 +1,5 @@
-
+# Script to rsync summary files from DAGAGE2 to BP1
+# Run this before process_gcwerks, to get the most up-to-date data
 
 rsync -avh dagage2.chm.bris.ac.uk:/agage/summary/data/* /work/chxmr/shared/obs_raw/AGAGE_GCWerks/data/
 rsync -avh dagage2.chm.bris.ac.uk:/agage/summary/data-gcms/* /work/chxmr/shared/obs_raw/AGAGE_GCWerks/data-gcms/

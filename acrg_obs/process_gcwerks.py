@@ -935,10 +935,11 @@ def array_job(array_index):
     '''
     Run processing scripts through an array job:
     
-    qsub -J 1-X -k oe process_gcwerks_array.sh
+    qsub -J 1-40 -k oe -j oe -Wsandbox=PRIVATE process_gcwerks_array.sh
     
+    Note that will need to increase the max index to more than 40 if we add more stations/instruments
     
-    Check its status using qstat -t
+    Check job status using qstat -t <JOBID>[] (note the square brackets)
     '''
     
     
@@ -962,13 +963,46 @@ def array_job(array_index):
         [gc, ("CGO", "GCMD", "AGAGE")],
         [gc, ("MHD", "GCMD", "AGAGE")],
         [gc, ("SMO", "GCMD", "AGAGE")],
-        [gc, ("THD", "GCMD", "AGAGE")]]
-
+        [gc, ("THD", "GCMD", "AGAGE")],
+        # AGAGE GCMS data
+        [gc, ("CGO", "GCMS", "AGAGE")],
+        [gc, ("MHD", "GCMS", "AGAGE")],
+        [gc, ("RPB", "GCMS", "AGAGE")],
+        [gc, ("SMO", "GCMS", "AGAGE")],
+        [gc, ("THD", "GCMS", "AGAGE")],
+        [gc, ("JFJ", "GCMS", "AGAGE")],
+        [gc, ("CMN", "GCMS", "AGAGE")],
+        [gc, ("ZEP", "GCMS", "AGAGE")],
+        # AGAGE CRDS data
+        [crds, ("RPB", "AGAGE")],
+        # GAUGE CRDS data
+        [crds, ("HFD", "DECC")],
+        [crds, ("BSD", "DECC")],
+        # GAUGE GC data
+        [gc, ("BSD", "GCMD", "DECC")],
+        [gc, ("HFD", "GCMD", "DECC")],
+        # DECC CRDS data
+        [crds, ("TTA", "DECC")],
+        [crds, ("RGL", "DECC")],
+        [crds, ("TAC", "DECC")],
+        # DECC GC data
+        [gc, ("TAC", "GCMD", "DECC")],
+        [gc, ("RGL", "GCMD", "DECC")],
+        # DECC Medusa
+        [gc, ("TAC", "medusa", "DECC")],
+        # ICOS
+        [icos("TTA", network = "DECC")],
+        [icos("MHD", network = "ICOS")]]
+    
+    # Return if index is too large for the above list
     if array_index >= len(instrument):
         return
     
+    # Run the relevant script for each station and instrument
     wrapper(instrument[array_index-1][0], instrument[array_index-1][1])
-    
+
+    # Cleanup for particular station (cleans up everything, not just most recently processed instrument)
+    cleanup(instrument[array_index-1][1][0])
     
 if __name__ == "__main__":
 
@@ -1025,6 +1059,10 @@ if __name__ == "__main__":
     # DECC Medusa
     gc("TAC", "medusa", "DECC")
 
+    # ICOS
+    icos("TTA", network = "DECC")
+    icos("MHD", network = "ICOS")
+
     cleanup("CGO")
     cleanup("MHD")
     cleanup("RPB")
@@ -1041,19 +1079,3 @@ if __name__ == "__main__":
     cleanup("HFD")
     cleanup("BSD")
     cleanup("TTA")
-
-    # ICOS
-    icos("TTA", network = "DECC")
-    icos("MHD", network = "ICOS")
-
-
-#    # Copy files
-#    networks = ["AGAGE", "GAUGE", "DECC", "ICOS"]
-#    src_dir = "/dagage2/agage/metoffice/processed_observations_2018"
-#    dest_dir = "/data/shared/obs_2018"
-#
-#    for network in networks:
-#        files = glob.glob(join(src_dir, network, "*.nc"))
-#        for f in files:
-#            print("Copying %s..." % (split(f)[-1]))
-#            shutil.copy(f, join(dest_dir, network))
