@@ -145,6 +145,13 @@
         "mol_mass": "104.46", 
         "print_string": "CFC-13", 
         "units": "ppt"
+    },
+    "CHBr3": {"alt": [],
+        "group": "Halogenated methanes", 
+        "long_name": "Bromoform", 
+        "mol_mass": "252.73", 
+        "print_string": "CHBr$_3$", 
+        "units": "ppt"
     }, 
     "CH2Cl2": {"alt": [],
         "group": "Halogenated methanes", 
