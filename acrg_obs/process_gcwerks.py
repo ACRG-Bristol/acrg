@@ -106,11 +106,6 @@ species_translator = {"CO2": ["co2", "carbon_dioxide"],
                       "APO": ["apo", "atmospheric_potential_oxygen"]
                       }
 
-# Translate header strings
-crds_header_string_interpret = {"C": "",
-                                "stdev": " variability",
-                                "N": " number_of_observations"}
-
 def parser_YYMMDD(yymmdd):
     return dt.strptime(yymmdd, '%y%m%d')
 
@@ -601,6 +596,12 @@ def crds_data_read(data_file):
         Returns:
             tuple: Tuple of xarray.Dataset and list of species
     """
+
+    # Translate header strings
+    crds_header_string_interpret = {"C": "",
+                                    "stdev": " variability",
+                                    "N": " number_of_observations"}
+    
     print("Reading " + data_file)
 
     # Read file header
@@ -637,11 +638,11 @@ def crds_data_read(data_file):
                      sep=r"\s+",
                      names = header,
                      index_col=["DATE_TIME"],
-                     parse_dates=[[0,1]],
+                     parse_dates=[["DATE", "TIME"]],
                      date_parser=parse_date)
 
     # Check if the index is sorted and if not sort it
-    if not df.index.is_monotonic_incrasing():
+    if not df.index.is_monotonic_increasing:
         df.sort_index()
 
     df.index.name = "time"
@@ -685,6 +686,7 @@ def crds(site, network,
     # Search for species and inlets from file names
     data_file_search = join(data_folder, site.lower() + ".*.1minute.*.dat")
     data_files = glob.glob(data_file_search)
+    instruments = [f.split(".")[1] for f in data_files]
     inlets = [f.split(".")[-2] for f in data_files]
 
     for i, inlet in enumerate(inlets):
@@ -723,7 +725,7 @@ def crds(site, network,
                 # Write file
                 nc_filename = output_filename(output_folder,
                                               network,
-                                              "CRDS",
+                                              instruments[i],
                                               site.upper(),
                                               ds_sp.time.to_pandas().index.to_pydatetime()[0],
                                               ds_sp.species,
@@ -1012,9 +1014,11 @@ def array_job(array_index):
         [gc, ("RGL", "GCMD", "DECC")],
         # DECC Medusa
         [gc, ("TAC", "medusa", "DECC")],
+        # Bristol CRDS
+#        [crds, ("BRI", "DECC")],
         # ICOS
-        [icos("TTA", network = "DECC")],
-        [icos("MHD", network = "ICOS")]]
+        [icos, ("TTA", "DECC")],
+        [icos, ("MHD", "ICOS")]]
     
     # Return if index is too large for the above list
     if array_index >= len(instrument):
