@@ -8,6 +8,7 @@ from __future__ import print_function
 
 from builtins import zip
 from builtins import range
+import datetime
 import numpy as np
 import pandas as pd
 from os.path import join, split
@@ -283,9 +284,15 @@ def icos(site, network = "ICOS",
 ###############################################################
 
 def gc_data_read(dotC_file, scale = {}, units = {}):
+    """ Read GC data
 
-    species = []
-
+        Args:
+            dotC_file (str): Filepath for .C data file
+            scale (dict): Dictionary to hold scales for each species
+            units (dict): Dictionary to hold units for each species
+        Returns:
+            tuple: Tuple of pandas.Dataframe, species list, units dict, species dict
+    """
     # Read header
     header = pd.read_csv(dotC_file,
                          skiprows=2,
@@ -293,56 +300,55 @@ def gc_data_read(dotC_file, scale = {}, units = {}):
                          header = None,
                          sep=r"\s+")
 
-    # Read data
-    df = pd.read_csv(dotC_file,
-                     skiprows=4,
-                     sep=r"\s+")
+     # Create a function to parse the datetime in the data file
+    def parser(date): 
+        return datetime.datetime.strptime(date, '%Y %m %d %H %M')
+    # Read the data in and automatically create a datetime column from the 5 columns
+    # Not dropping the yyyy', 'mm', 'dd', 'hh', 'mi' columns here
+    df = pd.read_csv(dotC_file, 
+                    skiprows=4, 
+                    sep=r"\s+", 
+                    index_col=["yyyy_mm_dd_hh_mi"],
+                    parse_dates=[[1, 2, 3, 4, 5]],
+                    date_parser=parser, 
+                    keep_date_col=True)
 
-    # Time index
-
-    time = []
-    time_analysis = []
-    for i in range(len(df)):
-        # sampling time
-        time.append(dt(df.yyyy[i], df.mm[i], df.dd[i], df.hh[i], df.mi[i]))
-        # Read analysis time
-        if "ryyy" in list(df.keys()):
-            time_analysis.append(dt(df.ryyy[i], df.rm[i], df.rd[i], df.rh[i], df.ri[i]))
-
-    df.index = time
-#    df["analysis_time"] = time_analysis
-
+    df.index.name = "time"
     # Drop duplicates
-    df = df.reset_index().drop_duplicates(subset='index').set_index('index')
+    df = df.reset_index().drop_duplicates(subset='time').set_index('time')
 
-    # Rename flag column with species name
-    for i, key in enumerate(df.keys()):
-        if key[0:4] == "Flag":
-            quality_flag = []
-            area_height_flag = []
-            for flags in df[key].values:
+    units = {}
+    scale = {}
+    species = []
 
-                # Quality flag
-                if flags[0] == "-":
-                    quality_flag.append(0)
-                else:
-                    quality_flag.append(1)
+    columns_renamed = {}
+    for column in df.columns:
+        if "Flag" in column:
+            # Location of this column in a range (0, n_columns-1)
+            col_loc = df.columns.get_loc(column)
+            # Get name of column before this one for the gas name
+            gas_name = df.columns[col_loc - 1]
+            # Add it to the dictionary for renaming later
+            columns_renamed[column] = gas_name + "_flag"
+            # Create 2 new columns based on the flag columns
+            df[gas_name + " status_flag"] = (df[column].str[0] != "-").astype(int)
+            df[gas_name + " integration_flag"] = (df[column].str[1] != "-").astype(int)
 
-                # Area/height
-                if flags[1] == "-":
-                    area_height_flag.append(0)  # Area
-                else:
-                    area_height_flag.append(1)  # Height
+            col_shift = -1
+            units[gas_name] = header.iloc[1, col_loc + col_shift]
+            scale[gas_name] = header.iloc[0, col_loc + col_shift]
 
-            df = df.rename(columns = {key: list(df.keys())[i-1] + "_flag"})
-            df[list(df.keys())[i-1] + " status_flag"] = quality_flag
-            df[list(df.keys())[i-1] + " integration_flag"] = area_height_flag
-            scale[list(df.keys())[i-1]] = header[i-1][0]
-            units[list(df.keys())[i-1]] = header[i-1][1]
-            species.append(list(df.keys())[i-1])
+            # Ensure the units and scale have been read in correctly
+            # Have this in case the column shift between the header and data changes
+            if units[gas_name] == "--" or scale[gas_name] == "--":
+                raise ValueError("Error reading units and scale, ensure columns are correct between header and dataframe")
+
+            species.append(gas_name)
+
+    # Rename columns to include the gas this flag represents
+    df = df.rename(columns=columns_renamed, inplace=False)
 
     return df, species, units, scale
-
 
 def gc_precisions_read(precisions_file):
 
@@ -449,7 +455,7 @@ def gc(site, instrument, network,
     #   the CENTRE of the sampling period
     dfs["new_time"] = dfs.index - \
             pd.Timedelta(seconds = params["GC"]["sampling_period"][instrument]/2.)
-    dfs.set_index("new_time", inplace = True, drop = True)
+    dfs = dfs.set_index("new_time", inplace=False, drop=True)
 
     # Label time index
     dfs.index.name = "time"
@@ -588,7 +594,13 @@ def gc(site, instrument, network,
 
 
 def crds_data_read(data_file):
+    """ Read CRDS data
 
+        Args:
+            data_file (str): Path to data file
+        Returns:
+            tuple: Tuple of xarray.Dataset and list of species
+    """
     print("Reading " + data_file)
 
     # Read file header
@@ -611,30 +623,34 @@ def crds_data_read(data_file):
         else:
             header.append(df_header[i][1].upper())
 
+    # Function to parse the datetime format found in the datafile
+    def parse_date(date):
+        try:
+            return datetime.datetime.strptime(date, '%y%m%d %H%M%S')
+        except ValueError:
+            return pd.NaT
+
     # Read data
     df = pd.read_csv(data_file,
                      skiprows=4,
                      header = None,
                      sep=r"\s+",
                      names = header,
-                     dtype = {"DATE": str, "TIME": str})
+                     index_col=["DATE_TIME"],
+                     parse_dates=[[0,1]],
+                     date_parser=parse_date)
 
-    # Interpret time
-    time = [dt(2000 + int(date[0:2]),
-                      int(date[2:4]),
-                      int(date[4:]),
-                      int(time[0:2]),
-                      int(time[2:4]),
-                      int(time[4:])) \
-            for date, time in zip(df["DATE"].values, df["TIME"].values)]
-    df.index = time
+    # Check if the index is sorted and if not sort it
+    if not df.index.is_monotonic_incrasing():
+        df.sort_index()
 
-    # Remove duplicate indices
-    df = df.reset_index().drop_duplicates(subset='index').set_index('index')
-
-    # Convert to Dataset
     df.index.name = "time"
-    ds = xray.Dataset.from_dataframe(df.sort_index())
+
+    # Remove duplicates
+    df = df.reset_index().drop_duplicates(subset='time').set_index('time')
+
+    # Convert to a Dataset
+    ds = df.to_xarray()
 
     return ds, species
 
@@ -647,8 +663,14 @@ def crds(site, network,
     """
     Process CRDS data
 
-    site : Three letter site code
-    network : Network string only for output
+    Args:
+        site (str): Three letter site code
+        network (str): Network string only for output
+        input_directory (str, default=None): Directory holding input files
+        output_directory (str, default=None): Directory for output files
+        date_range (list, default=None): Start and end date for output. If you only want an end date, 
+                                        just put a very early start date (e.g. ["1900-01-01", "2010-01-01"])
+        version (str, default=None): Version string for output filename
     """
     params_crds = params["CRDS"]
 

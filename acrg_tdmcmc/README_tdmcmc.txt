@@ -34,21 +34,8 @@ tdmcmc_uncorr.so, tdmcmc_uncorr_pt.so, tdmcmc_evencorr.so, tdmcmc_evencorr_pt.so
 
 But you don't have to stick with these defaults.
 
-***************** Compiling uncorrelated version with f2py ****************************************
-
-The file tdmcmc_uncorr.so is created with:
-
-f2py -c -m tdmcmc_uncorr acrg_hbtdmcmc_uncorr.f90
-
-This compiles with gfortran, for a single processor. 
-
-For parallel tempering, to compile for multiple processors using OMP do:
-
-f2py -c -m tdmcmc_uncorr_pt --f90flags='-fopenmp' -lgomp acrg_hbtdmcmc_uncorr.f90
-
-To compile using intel compiler use: 
-
-f2py -c -m tdmcmc_uncorr --fcompiler=intelem acrg_hbtdmcmc_uncorr.f90
+Known issues
+^^^^^^^^^^^^
 
 If you get a segmentation fault for an OMP run, then you will need to set the memory allocation using:
 
@@ -61,23 +48,58 @@ export GOMP_STACKSIZE=512m
 
 This appears to be foolproof, but not sure which of these commands is key. Stick them in your .bashrc so you don't have to type them every time.
 
+***************** Compiling uncorrelated version with f2py ****************************************
+
+gfortran
+^^^^^^^^
+
+One way to compile for is to use `gfortran`. The file tdmcmc_uncorr.so is created with::
+
+ $ f2py -c -m tdmcmc_uncorr acrg_hbtdmcmc_uncorr.f90
+
+For parallel tempering, to use the gfortran compiler for multiple processors using OMP do::
+
+ $ f2py -c -m tdmcmc_uncorr_pt --f90flags='-fopenmp' -lgomp acrg_hbtdmcmc_uncorr.f90
+
+intelem
+^^^^^^^
+
+However, if possible, it is better to compile with the `intel` compiler as this should increase the speed of the run.
+
+The file tdmcmc_uncorr.so is created with::
+
+ $ f2py -c -m tdmcmc_uncorr --fcompiler=intelem acrg_hbtdmcmc_uncorr.f90
+
+For parellel tempering (for python 3.*) run the following::
+
+ $ f2py -c -m tdmcmc_uncorr_pt --f90flags='-qopenmp' -liomp5 --fcompiler=intelem acrg_hbtdmcmc_uncorr.f90
 
 
 ***************** Compiling evencorr hierarchical version with f2py ****************************************
 
-Exactly the same as before, just change the file names. So:
+See the previous section, just include different input and output filenames e.g. to compile for single thread using the intel compiler::
 
-f2py -c -m tdmcmc_evencorr acrg_hbtdmcmc_evencorr.f90
+ $ f2py -c -m tdmcmc_evencorr --fcompiler=intelem acrg_hbtdmcmc_evencorr.f90
 
 ***************** Compiling correlated hierarchical version with f2py ****************************************
 
-f2py -L/usr/lib64 -llapack -c -m tdmcmc_corr_s acrg_hbtdmcmc_corr.f90
 
-f2py -L/usr/lib64 -llapack -c -m tdmcmc_corr_pt --f90flags='-fopenmp' -lgomp acrg_hbtdmcmc_corr.f90
+$ f2py -L/usr/lib64 -llapack -c -m tdmcmc_corr_s acrg_hbtdmcmc_corr.f90
+
+$ f2py -L/usr/lib64 -llapack -c -m tdmcmc_corr_pt --f90flags='-fopenmp' -lgomp acrg_hbtdmcmc_corr.f90
 
 ***************** Compiling correlated hierarchical version with ifort ****************************************
 
-f2py -L/opt/intel/mkl/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -c -m tdmcmc_corr_pt --fcompiler=intelem --f90flags='-fast -openmp' -liomp5 acrg_hbtdmcmc_corr.f90
+Compilation in python 3.* ::
+
+ $ f2py -L/opt/intel/mkl/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -c -m tdmcmc_corr_pt --fcompiler=intelem --f90flags='-fast -qopenmp' -liomp5 acrg_hbtdmcmc_corr.f90
+
+This was the previous compilation in python 2.7::
+
+ $ f2py -L/opt/intel/mkl/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -c -m tdmcmc_corr_pt --fcompiler=intelem --f90flags='-fast -openmp' -liomp5 acrg_hbtdmcmc_corr.f90
+
+Note: that the only difference is a change in f90 flags from using openmp to qopenmp. This is needed if the latest version of intel is installed.
+
 
 To get this to work on air you'll need to copy the following into a terminal, or put in your bashrc:
 

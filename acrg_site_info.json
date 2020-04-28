@@ -456,6 +456,17 @@
       "longitude": -123.969
     }
   },
+  "CMO": {
+    "EUROCOM": {
+      "height": [
+        "10m"
+      ],
+      "height_station_masl": 30.0,
+      "latitude": 45.478,
+      "long_name": "Cape Mears, Oregon",
+      "longitude": -123.969
+    }
+  },
   "COI": {
     "NIES": {
       "height": [
@@ -750,6 +761,30 @@
       "platform": "satellite"
     }
   },
+  "GOSAT-BRAZIL-LAND-upp": {
+    "GOSAT/GOSAT-BRAZIL-LAND-upp": {
+      "height": [
+        "column"
+      ],
+      "height_name": [
+        "column"
+      ],
+      "long_name": "GOSAT, Brazil, land points, upper XCO2 bound",
+      "platform": "satellite"
+    }
+  },
+  "GOSAT-BRAZIL-LAND-low": {
+    "GOSAT/GOSAT-BRAZIL-LAND-low": {
+      "height": [
+        "column"
+      ],
+      "height_name": [
+        "column"
+      ],
+      "long_name": "GOSAT, Brazil, land points, lower XCO2 bound",
+      "platform": "satellite"
+    }
+  },
   "GOSAT-EUROPE": {
     "GOSAT/GOSAT-EUROPE": {
       "height": [
@@ -893,6 +928,20 @@
       "long_name": "Heathfield, UK",
       "longitude": 0.23048
     },
+   "DECC": {
+      "height": [
+        "100m",
+        "50m"
+      ],
+      "height_name": [
+        "100magl",
+        "50magl"
+      ],
+      "height_station_masl": 150.0,
+      "latitude": 50.97675,
+      "long_name": "Heathfield, UK",
+      "longitude": 0.23048
+   },
     "EUROCOM": {
       "height": [
         "100m",

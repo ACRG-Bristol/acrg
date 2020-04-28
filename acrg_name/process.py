@@ -58,6 +58,7 @@ import traceback
 import sys
 import scipy
 import pdb
+from multiprocessing import Pool
 
 
 #Default NAME output file version
@@ -227,7 +228,22 @@ def load_NAME(file_lines, namever):
         # populate the data arrays (i.e. all columns but the leading 4) 
         for i, data_array in enumerate(data_arrays):
             data_array[y, x] = float(vals[int(i) + 4])
-
+    
+    if 'cell_measure' in column_headings:
+        #Extract the time integration period
+        dt_fp = int(column_headings['cell_measure'][4][0:3])
+        #This should only apply to NAME version 2 HiTRes footprints which currently do not have the correct start and end release times in the header
+        if dt_fp < 24:
+            end_release_date = headers['End of release'][-10:]
+            end_release_tz = headers['End of release'][4:7]
+            end_release_time = column_headings['species'][4][-2:]
+            end_release = dt.datetime.strptime(end_release_time + "00" + end_release_tz + " " + end_release_date, '%H%M%Z %d/%m/%Y')
+            start_release = end_release + dt.timedelta(hours = dt_fp)
+            endreleaseline = end_release.strftime('%H%M%Z') + end_release_tz + " " + end_release.strftime('%d/%m/%Y')
+            startreleaseline = start_release.strftime('%H%M%Z') + end_release_tz + " " + start_release.strftime('%d/%m/%Y')
+            headers['End of release'] = endreleaseline
+            headers['Start of release'] = startreleaseline
+    
     return headers, column_headings, data_arrays
     
 
@@ -427,7 +443,7 @@ def met_empty():
     '''
     
     met = pd.DataFrame({key: 0. for key in list(met_default.keys()) if key != "time"},
-                          index = [dt.datetime(1900, 1, 1), dt.datetime(2020, 1, 1)])
+                          index = [dt.datetime(1900, 1, 1), dt.datetime(2100, 1, 1)])
     met.index.name = "time"
     met["press"] = [100000., 100000.] #Pa
     met["temp"] = [10., 10.]    #C
@@ -951,6 +967,9 @@ def footprint_array(fields_file,
 
     if met is None:
         met = met_empty()
+        force_met_empty = True
+    else:
+        force_met_empty = False
 
     if type(met) is not list:
         met = [met]
@@ -1036,9 +1055,10 @@ def footprint_array(fields_file,
 #            metr = met[0].reindex(index = np.array([t]))
             #metr = met[0][~met[0].index.duplicated(keep='first')].reindex(index = np.array([t]))
             met[0] = met[0].tz_localize(None)
-            metr = met[0][~met[0].index.duplicated(keep='first')].reindex(index = np.array([t]))
-            #metr = met[0][~met[0].index.duplicated(keep='first')].loc[t, :]
-
+            if force_met_empty == False:
+                metr = met[0][~met[0].index.duplicated(keep='first')].reindex(index = np.array([t]))
+            if force_met_empty == True:
+                metr = met[0].tail(1)
             if np.isnan(metr.values).any():
                 
                 print(t)
@@ -1796,22 +1816,21 @@ def process(domain, site, height, year, month,
 
     # Check that there are no errors from the NAME run
     input_folder = subfolder + 'Input_files/'
-    error_files = 'BackRun_' + domain + '_' + site + '_' + height + '_' + str(year) + str(month).zfill(2)
-    error_days = []
-    
     if os.path.isdir(input_folder):
+        error_files = 'BackRun_' + domain + '_' + site + '_' + height + '_' + str(year) + str(month).zfill(2)
+        error_days = []
         for file_name in os.listdir(input_folder):
             if file_name.startswith(error_files) and \
             file_name.endswith('Error.txt') and \
             os.stat(input_folder+file_name).st_size != 0:
                 #error_days.append(file_name[-11:-9]+'/'+month+'/'+year)
     
-                error_days.append(re.search("[0-9]{8}(\S+)", file_name).group(0))
+                error_days.append(re.search(r"[0-9]{8}(\S+)", file_name).group(0))
                 error_days.sort()
                 num_days = len(error_days)
-        
-    if len(error_days) > 0:
-        raise Exception('This month cannot be processed as there are '+str(num_days)+' days with with errors: '+str(error_days))
+
+        if len(error_days) > 0:
+            raise Exception('This month cannot be processed as there are '+str(num_days)+' days with with errors: '+str(error_days))
         
    # Check for existance of subfolder
     if not os.path.isdir(subfolder):
@@ -1824,7 +1843,7 @@ def process(domain, site, height, year, month,
             subfolder += perturbed_folder + "/"
     
     # Check that the specified transport model is valid.
-    if transport_model is "STILT":
+    if transport_model == "STILT":
         if satellite:
             status_log("stiltfoot_array is not set up for satellite data!" +\
                        " Levels will be wrong!", error_or_warning="error")
@@ -1832,7 +1851,7 @@ def process(domain, site, height, year, month,
             status_log("STILT neither provides nor requires met information" +\
                        " to interpret footprints. Met will probably be set" +\
                        " to default values. Don't rely on these values!")
-    elif transport_model is not "NAME":
+    elif transport_model != "NAME":
         status_log(transport_model + " is not a valid transport model!" +\
                    " Unable to read footprint information!", 
                    error_or_warning="error")
@@ -1885,7 +1904,7 @@ def process(domain, site, height, year, month,
                        error_or_warning="error")
             return None
     else:
-        if transport_model is "STILT":
+        if transport_model == "STILT":
             datestrs = ["stilt" + str(year) + "x" + str(month).zfill(2) + "x"]
         else:
             datestrs = [str(year) + str(month).zfill(2)]
@@ -1913,7 +1932,7 @@ def process(domain, site, height, year, month,
                 if maxday >= max(days):
                     return None
             else:
-                if transport_model is "STILT":
+                if transport_model == "STILT":
                     stilt_files = glob.glob(subfolder + fields_folder + "/stilt" + \
                                             str(year) + "x" + str(month).zfill(2) + "*.nc")
                     days = [int(os.path.split(stilt_file)[1].split("x")[2]) \
@@ -1967,7 +1986,7 @@ def process(domain, site, height, year, month,
             met = None
         
             # Get footprints
-        if transport_model is "STILT":
+        if transport_model == "STILT":
             fp_file = stiltfoot_array(subfolder + fields_folder + "/" + datestr, 
                                       met=met, satellite=satellite,
                                       time_step=timeStep)
@@ -2101,7 +2120,7 @@ def process(domain, site, height, year, month,
     return fp
     
 
-def process_all(domain, site, network,
+def process_all(domain, site, network="DECC",
                 heights = None,
                 years_in = None,
                 months_in = None,
@@ -2128,6 +2147,9 @@ def process_all(domain, site, network,
             Domain of interest
         site (str):
             Observation site
+        network (str):
+            Network that the site belongs to. This is required in order to use the json file to look up heights.
+            Uses heights input if provided. Default="DECC"
         heights (list, optional):
             If you only want to process a subset of heights, OR IF THE HEIGHT
             INFORMATION IS NOT CONTAINED IN acrg_site_info.json, specify a list of
@@ -2220,7 +2242,7 @@ def process_all(domain, site, network,
             years = []
             months = []
             
-            if transport_model is "STILT":
+            if transport_model == "STILT":
                 fields_files = sorted(glob.glob(subfolder + "/Fields_files/stilt*.nc"))
                 for fields_file in fields_files:
                     f = split(fields_file)[1]
@@ -2248,6 +2270,44 @@ def process_all(domain, site, network,
                     processed_folder = processed_folder,
                     transport_model=transport_model)
 
+def process_parallel(domain, site, height, years, months, kwargs={}, nprocess=4):
+    """
+    This script processes multiple months in parallel (but loops through years
+    in serial). It basically just calls process.process in parallel.
+    
+    Args:
+        domain (str):
+            Domain of interest
+        site (str):
+            Observation site
+        height (str):
+            Height of observation, e.g. "10magl"
+        years (list):
+            List of years you want to process 
+        month (int):
+            List of months to process (e.g. np.arange(12)+1)
+        kwargs (dict):
+            Dictionary of optional arguments that you would pass to process, e.g.
+            kwargs = {"met_folder":"Met_daily", "fields_folder" : "MixR_files"}
+        nprocess (int):
+            Number of threads (and number of months to run in parallel).
+            Default = 4
+            
+    Returns:
+        None
+    """
+    nprocess = int(process)
+    for year in years:
+        pool = Pool(processes = nprocess)
+        try:
+            [pool.apply_async(process.process, args=(domain, site, height, year, month), kwds=kwargs) \
+             for month in months]
+        except:
+            pool.close()
+            pool.join()
+            raise
+        pool.close()
+        pool.join()
 
 def copy_processed(domain):
     '''

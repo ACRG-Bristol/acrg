@@ -23,7 +23,9 @@ Created on Fri Nov 21 10:48:30 2014
 @author: chxmr
 """
 from __future__ import division
-#from builtins import str
+import sys
+if sys.version_info[0] == 2:
+    from builtins import str
 
 from past.utils import old_div
 import datetime as dt
@@ -54,14 +56,14 @@ def return_iter(var, notIter):
 def reftime(time_reference):
     
     time_reference, notIter = check_iter(time_reference)
-    
+    time_reference = return_iter(time_reference, notIter)
     #If reference time is a string, assume it's in CF convention 
     # and convert to datetime
     #if type(time_reference[0]) is str or type(time_reference[0]) is str:
-    if isinstance(time_reference[0],str):
-        time_ref=dateutil.parser.parse(time_reference[0])
+    if isinstance(time_reference,str):
+        time_ref=dateutil.parser.parse(time_reference)
     else:
-        time_ref=time_reference[0]
+        time_ref=time_reference
     
     return time_ref
 

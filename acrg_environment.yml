@@ -3,21 +3,28 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - numpy
-  - iris
-  - ipython
-  - scipy
-  - future
-  - xarray
-  - yaml
-  - scipy
-  - matplotlib
-  - cartopy
-  - numba
-  - pandas
-  - h5py
-  - python-dateutil
-  - netCDF4
-  - xESMF
-  - geopandas
-
+  - python=3
+  - numpy=1.18.1
+  - scipy=1.4.1
+  - pandas=1.0.3
+  - h5py=2.10.0
+  - netcdf4=1.5.3
+  - xarray=0.15.1
+  - matplotlib=3.2.1
+  - cartopy=0.17.0
+  - geopandas=0.7.0
+  - regionmask=0.5.0
+  - iris=2.4.0
+  - future=0.18.2
+  - yaml=0.2.2
+  - numba=0.48.0
+  - python-dateutil=2.8.1
+  - pytest=5.4.1
+  - ipython=7.13.0
+  - spyder=4.1.1
+  - geopandas=0.5.1
+  - xesmf=0.2.0
+  - pip=20.0.2
+  - pip:
+    - dirsync==2.2.4
+    - iso3166==1.0.1

@@ -98,10 +98,10 @@ def write(lat, lon, time, flux, species, domain,
         name_climatology = "-climatology"
     else:
         name_climatology = ""
-        
+
     if source == None:
-        file_source = species
-        source_name = species + name_climatology+ '-total'
+        file_source = species + name_climatology+ '-total'
+        source_name = file_source
     else:
         file_source = species + name_climatology + '-' + source
         source_name = file_source

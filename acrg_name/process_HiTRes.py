@@ -89,7 +89,7 @@ def update_release_time(fname):
 def process_HiTRes(domain, site, height, year, month, user_max_hour_back,
                    base_dir = "/dagage2/agage/metoffice/NAME_output/",
                    HiTRes_fields_folder = "24HrBk_Fields_files",
-                   met_folder = "Met", normal_fp_dir = normal_fp_dir):
+                   met_folder = "Met", force_met_empty = True, normal_fp_dir = normal_fp_dir):
     
     """
     domain: string - 'EUROPE'
@@ -101,6 +101,9 @@ def process_HiTRes(domain, site, height, year, month, user_max_hour_back,
     base_dir: string, directory where [domain]_[site]_[height]magl folder is containing HiTRes footprints
     HiTRes_fields_folder: string, name of HiTRes fields folder - '24HrBk_Fields_files'
     met_folder: string, name of met folder - 'Met'
+    force_met_empty: Boolean. Default is True. At this stage met data is not needed for HiTRes footprint processing.
+    Met data available in the month integrated footprint files.
+    normal_fp_dir: string - where the month integrated footprints are located
     
     """
 
@@ -113,17 +116,17 @@ def process_HiTRes(domain, site, height, year, month, user_max_hour_back,
     if len(fnames) == 0:
         print("Can't find high time resolution footprint files " + HiTRes_search_string)
         return None
-
-    met_search_str = subfolder + met_folder + "/*.txt*"
-      
-    met_files = sorted(glob.glob(met_search_str))
-        
-    if len(met_files) == 0:
-        print("Can't find MET files: " + met_search_str)
-        return None
     
-    else:
-        met = proc.read_met(met_files)
+    if force_met_empty == False:
+        met_search_str = subfolder + met_folder + "/*.txt*"
+        met_files = sorted(glob.glob(met_search_str))
+        if len(met_files) == 0:
+            print("Can't find MET files: " + met_search_str)
+            return None
+        else:
+            met = proc.read_met(met_files)
+    if force_met_empty == True:
+        met = None
     
     print("Getting normal integrated footprints from: %s" %(normal_fp_dir))
     
@@ -137,7 +140,7 @@ def process_HiTRes(domain, site, height, year, month, user_max_hour_back,
     user_max_hour_back = int(user_max_hour_back)
 
     for fi, f in enumerate(fnames):
-        update_release_time(f)
+        #update_release_time(f)
 
         filename = os.path.split(f)[1]
         splitfile = filename.split('_')
@@ -241,7 +244,7 @@ def process_HiTRes(domain, site, height, year, month, user_max_hour_back,
 def process_HiTRes_all(domain, site_height_dict, start_date, end_date, user_max_hour_back,
                        base_dir = "/dagage2/agage/metoffice/NAME_output/",
                        HiTRes_fields_folder = "24HrBk_Fields_files",
-                       met_folder = "Met", normal_fp_dir = None):
+                       met_folder = "Met", force_met_empty = True, normal_fp_dir = None):
     
     dates = pd.date_range(start=start_date, end = end_date, freq = 'MS')
 
@@ -250,5 +253,5 @@ def process_HiTRes_all(domain, site_height_dict, start_date, end_date, user_max_
             print("Getting HiTRes footprints for %02d %04d at %s" %(d.year, d.month, i))
             process_HiTRes(domain, i, site_height_dict[i], "%04d" %d.year, "%02d" %d.month, user_max_hour_back,
                            base_dir = base_dir, HiTRes_fields_folder = HiTRes_fields_folder,
-                           met_folder = met_folder, normal_fp_dir=normal_fp_dir)
+                           met_folder = met_folder, force_met_empty = force_met_empty, normal_fp_dir=normal_fp_dir)
             

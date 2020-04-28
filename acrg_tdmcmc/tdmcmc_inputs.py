@@ -340,7 +340,7 @@ f_list=glob.glob(basis_dir
 
 if len(f_list) > 0:
     ds = process.open_ds(f_list[0]) 
-    if fp_basis_case in('sub-transd'):
+    if 'sub-transd' in fp_basis_case:
         nfixed = len(np.unique(ds.basis))-1
     else:
         nfixed = len(np.unique(ds.basis))
