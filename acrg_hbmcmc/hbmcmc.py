@@ -230,31 +230,4 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                                basis_directory, fp_basis_case)
 
         print("All done")
-        
-if __name__ == "__main__":
-    # Pymc3 will use all available threads. Therefore if using Snowy
-    # (or non HPC) limit the threads to nchain. This will actually probably
-    # speed up run time due to unneccessary forking.
-    if socket.gethostname() == 'snowy.chm.bris.ac.uk':
-        print("==============================================================")
-        print("Before running this I strongly recommend first doing:")
-        print("export OPENBLAS_NUM_THREADS=XX and/or")
-        print("export OMP_NUM_THREADS=XX")
-        print("where XX is the number of chains you are running.")
-        print("If running with Spyder, do this before launching Spyder.") 
-        print("Otherwise it will use every available thread!")
-        print("==============================================================")
-    # Run it through to see if it works.
-    outputname = "TEST"
-    outputpath = "~/Documents/Python/fixed_MCMC/"
-    sites = ["TAC",'BSD']
-    species = "ch4"
-    domain = "EUROPE"
-    meas_period = ["12H",'12H']
-    bc_basis_case = "NESW"
-    start_date = "2016-01-01"
-    end_date = "2016-02-01"
-    fixedbasisMCMC(species, sites, domain, meas_period, start_date, 
-                   end_date, outputpath, outputname, nit=5000, burn=1000, 
-                   tune=1000)
     
