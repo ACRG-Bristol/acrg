@@ -1334,7 +1334,7 @@ def country_emissions(ds_mcmc, countries, species, domain, x_post_vit=None, q_ap
 
 def country_emissions_mult(ds_list, countries, species, domain, x_post_vit=None, q_ap_abs_v=None, 
                       percentiles=[5,16,50,84,95], units=None, ocean=True, 
-                      uk_split=False, fixed_map=False):
+                      uk_split=False, fixed_map=False, country_dir=None):
     '''
     Calculate country emissions across multiple datasets. Combine mean and percentiles into 
     arrays for all time points.
