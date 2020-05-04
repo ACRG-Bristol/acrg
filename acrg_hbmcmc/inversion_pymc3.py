@@ -152,7 +152,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                                emissions_name, domain, species, sites,
                                site_lat, site_lon,
                                start_date, end_date, outputname, outputpath,
-                               basis_directory, fp_basis_case):
+                               basis_directory, fp_basis_case, units=None):
         """
         Takes the output from inferpymc3 function, along with some other input
         information, and places it all in a netcdf output. This function also 
@@ -278,7 +278,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         Yapriori = np.sum(Hx.T, axis=1) + np.sum(Hbc.T, axis=1)
         sitenum = np.arange(len(sites))
 
-        #Calculate mean posterior scale map and flux field'
+        #Calculate mean posterior scale map and flux field
         if basis_directory is not None:
             bfds = opends(basis_directory+domain+"/"+fp_basis_case+"_"+domain+"_"+start_date[:4]+".nc")
         else:
@@ -310,6 +310,18 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         cntry95 = np.zeros((len(cntrynames), len(nui)))
         cntrysd = np.zeros(len(cntrynames))
         molarmass = molar_mass(species)
+        
+        if units == 'Tg/yr':
+            unit_factor=1.e12
+        elif units == 'Gg/yr': 
+            unit_factor=1.e9
+        elif units == 'Pg/yr': 
+            unit_factor=1.e15
+        elif units == 'Mg/yr': 
+            unit_factor=1.e6
+        else:
+            print('Undefined units: outputting in g/yr - let this be a lesson to define your units')
+            unit_factor=1.
         # Not sure how it's best to do this if multiple months in emissions 
         # file. Now it scales a weighted average of a priori emissions
         # If a priori emissions have frequency of more than monthly then this
@@ -328,7 +340,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
             for bf in range(int(np.max(bfarray))):
                 bothinds = np.logical_and(cntrygrid == ci, bfarray==bf)
                 cntrytottrace += np.sum(area[bothinds].ravel()*aprioriflux[bothinds].ravel()* \
-                               3600*24*365*molarmass)*outs[:,bf]/1e9
+                               3600*24*365*molarmass)*outs[:,bf]/unit_factor
             cntrymean[ci] = np.mean(cntrytottrace)
             cntry68[ci, :] = pm.stats.hpd(cntrytottrace, 0.68)
             cntry95[ci, :] = pm.stats.hpd(cntrytottrace, 0.95)
