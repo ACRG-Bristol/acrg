@@ -273,8 +273,8 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         YmodBC = np.mean(np.dot(Hbc.T,bcouts.T), axis=1)
         YaprioriBC = np.sum(Hbc, axis=0)
         Ymod = np.mean(Ytrace, axis=1)
-        Ymod95 = pm.stats.hpd(Ytrace.T, 0.05)
-        Ymod68 = pm.stats.hpd(Ytrace.T, 0.32)
+        Ymod95 = pm.stats.hpd(Ytrace.T, 0.95)
+        Ymod68 = pm.stats.hpd(Ytrace.T, 0.68)
         Yapriori = np.sum(Hx.T, axis=1) + np.sum(Hbc.T, axis=1)
         sitenum = np.arange(len(sites))
 
