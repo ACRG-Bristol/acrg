@@ -52,6 +52,17 @@
       "longitude": -68.6821
     }
   },
+  "AND": {
+    "NOAA": {
+      "height": [
+        "47m"
+      ],
+      "height_station_masl": 47.0,
+      "latitude": 36.539,
+      "long_name": "Anmyeon-do, South Korea",
+      "longitude": 126.329
+    }
+  },
   "ARH": {
     "NIWA": {
       "height": [
