@@ -99,6 +99,8 @@ def inferpymc3(Hx, Hbc, Y, error,
             x = pm.Lognormal('x', mu=xprior["mu"], sd=xprior["sd"], shape=nx)
         elif xprior["pdf"].lower() == "halfflat":
             x = pm.HalfFlat('x', shape=nx)
+        elif xprior["pdf"].lower() == "normal":
+            x = pm.Normal('x', mu=xprior["mu"], sd=xprior["sd"], shape=nx)
         else:
             print("Haven't coded in %s yet for emissions" % xprior["pdf"])
 
@@ -108,6 +110,8 @@ def inferpymc3(Hx, Hbc, Y, error,
             xbc = pm.Lognormal('xbc', mu=bcprior["mu"], sd=bcprior["sd"], shape=nbc)
         elif bcprior["pdf"].lower() == "halfflat":
             xbc = pm.HalfFlat('xbc', shape=nbc)
+        elif bcprior["pdf"].lower() == "normal":
+            xbc = pm.Normal('xbc', mu=bcprior["mu"], sd=bcprior["sd"], shape=nbc)
         else:
             print("Haven't coded in %s yet for boundary conditions" % bcprior["pdf"])  
         
