@@ -242,9 +242,9 @@ def eval_check(string,error=True):
         except (NameError,SyntaxError):
             if error:
                 print("WARNING: Could not evaluate input '{0}' to any type.".format(string))
-            return None
+            return None,False
     
-    return out
+    return out,True
 
 
 def list_check(string,force_convert=True,error=True):
@@ -343,8 +343,8 @@ def convert(string,value_type=None):
 #    elif value_type is int:
 #        out = int_check(string)
     else:
-        out = eval_check(string,error=False)
-        if out is None:
+        out,check = eval_check(string,error=False)
+        if out is None and check is False:
             out = str_check(out,error=False)
     
     return out       
