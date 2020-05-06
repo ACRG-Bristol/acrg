@@ -705,9 +705,13 @@ def combine_datasets(dsa, dsb, method = "ffill", tolerance = None):
         dsb_temp = dsb
     
     ds_temp = dsa.merge(dsb_temp)
-    if 'fp' in list(ds_temp.keys()) and not ("index" in ds_temp.fp.dims):
-        flag = np.where(np.isfinite(ds_temp.fp.mean(dim=["lat","lon"]).values))
-        ds_temp = ds_temp[dict(time = flag[0])]
+    if 'fp' in list(ds_temp.keys()):
+        if ("index" in ds_temp.fp.dims):
+            flag = np.where(np.isfinite(ds_temp.fp.mean(dim=["index"]).values))
+            #ds_temp = ds_temp[dict(time = flag[0])]
+        else:
+            flag = np.where(np.isfinite(ds_temp.fp.mean(dim=["lat","lon"]).values))
+            ds_temp = ds_temp[dict(time = flag[0])]
     return ds_temp
 
 def timeseries(ds):
@@ -1098,7 +1102,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
             site_ds, site_fp = align_datasets(site_ds, site_fp, platform=platform, resample_to_ds1=resample_to_data)
                        
             site_ds = combine_datasets(site_ds, site_fp,
-                                       method = "ffill",
+                                       method = None,
                                        tolerance = tolerance)
 
             #transpose to keep time in the last dimension position in case it has been moved in resample
@@ -1196,9 +1200,9 @@ def add_timeseries(fp_and_data, load_flux):
                     flux_reindex = fp_and_data['.flux'][source].reindex_like(fp_and_data[site], 'ffill')
                     if source == 'all':
                         if 'index' in fp_and_data[site].fp.dims:
-                                fp_and_data[site]['mf_mod'] = xr.DataArray((fp_and_data[site].fp*flux_reindex.flux).sum(["index"]), coords = {'time':fp_and_data[site].time})
-                            else:
-                                fp_and_data[site]['mf_mod'] = xr.DataArray((fp_and_data[site].fp*flux_reindex.flux).sum(["lat", "lon"]), coords = {'time':fp_and_data[site].time})
+                            fp_and_data[site]['mf_mod'] = xr.DataArray((fp_and_data[site].fp*flux_reindex.flux).sum(["index"]), coords = {'time':fp_and_data[site].time})
+                        else:
+                            fp_and_data[site]['mf_mod'] = xr.DataArray((fp_and_data[site].fp*flux_reindex.flux).sum(["lat", "lon"]), coords = {'time':fp_and_data[site].time})
                     else:
                         fp_and_data[site]['mf_mod_'+source] = xr.DataArray((fp_and_data[site].fp*flux_reindex.flux).sum(["lat", "lon"]), coords = {'time':fp_and_data[site].time})
     return fp_and_data
