@@ -5,23 +5,16 @@ acrg_hbmcmc.hbmcmc.fixedbasisMCMC() function.
 
 import os
 import argparse
-#import acrg_hbmcmc.hbmcmc as mcmc
+import acrg_hbmcmc.hbmcmc as mcmc
 import acrg_config.config as config
 from acrg_config.paths import paths
 
-def fixed_basis_expected_param(section_group=None):
+def fixed_basis_expected_param():
     '''
     Define required parameters for acrg_hbmcmc.hcmcmc.fixedbasisMCMC() function.
     
     Expected parameters currently include:
         species, sites, meas_period, start_date, end_date, domain, outputpath, outputname
-    
-    Args:
-        section_group (str/None, optional) :
-            Select expected parameters for a particular section group. At the moment this includes:
-                "INPUT"
-                "MCMC"
-            None - returns expected parameters for all groups
     
     Returns:
         list : required parameter names
@@ -29,12 +22,9 @@ def fixed_basis_expected_param(section_group=None):
     sg_expected_param = {"INPUT":["species","sites","meas_period","start_date","end_date","domain"],
                           "MCMC":["outputpath","outputname"]}
 	
-    if section_group is None:
-        section_group = list(sg_expected_param.keys())
-
     expected_param = []
-    for sg in section_group:
-        expected_param.extend(sg_expected_param[sg])
+    for values in sg_expected_param.values():
+        expected_param.extend(values)
 
     return expected_param
 
@@ -47,6 +37,8 @@ def extract_mcmc_type(config_file,default="fixed_basis"):
     Args:
         config_file (str) :
             Configuration file name. Should be an .ini file.
+        default (str) :
+            ***
     
     Returns:
         str :
@@ -73,11 +65,11 @@ def define_mcmc_function(mcmc_type):
     Returns:
         Function
     '''
-    function_dict = {"fixed_basis":"placeholder function name"}#mcmc.fixedbasisMCMC}
+    function_dict = {"fixed_basis":mcmc.fixedbasisMCMC}
     
     return function_dict[mcmc_type]
 
-def hbmcmc_extract_param(config_file,mcmc_type="fixed_basis",print_param=True):
+def hbmcmc_extract_param(config_file,mcmc_type="fixed_basis",print_param=True,**command_line):
     '''
     Extract parameters from input configuration file and associated MCMC function. 
     Checks the mcmc_type to extract the required parameters.
@@ -91,6 +83,9 @@ def hbmcmc_extract_param(config_file,mcmc_type="fixed_basis",print_param=True):
         print_param (bool, optional) :
             Print out extracted parameter names.
             Default = True
+        command_line :
+            Any additional command line arguments to be added to the param dictionary or to superceed 
+            values contained within the config file.
     
     Returns:
         function,collections.OrderedDict :
@@ -102,6 +97,13 @@ def hbmcmc_extract_param(config_file,mcmc_type="fixed_basis",print_param=True):
 
     mcmc_type_section = "MCMC.TYPE"    
     param = config.extract_params(config_file,expected_param=expected_param,ignore_sections=[mcmc_type_section])
+
+    for key,value in command_line.items():
+        if value is not None:
+            param[key] = value
+
+    #date_param = ["start_date","end_date"]
+    #expected_param.extend(date_param)
 
     for ep in expected_param:
         if not param[ep]:
@@ -118,19 +120,23 @@ def hbmcmc_extract_param(config_file,mcmc_type="fixed_basis",print_param=True):
 if __name__=="__main__":
 
     acrg_path = paths.acrg
-    config_file = os.path.join(acrg_path,"acrg_hbmcmc/hbmcmc_input.ini")    
+    config_file = os.path.join(acrg_path,"acrg_hbmcmc/hbmcmc_input.ini")
 
     parser = argparse.ArgumentParser(description="Running hbmcmc script")
-    parser.add_argument("-c","--config",help="Configuration filename",default=config_file)
+    parser.add_argument("start", help="Start date string of the format YYYY-MM-DD",nargs="?")                  
+    parser.add_argument("end", help="End date sting of the format YYYY-MM-DD",nargs="?")
+    parser.add_argument("-c","--config",help="Name (including path) of configuration file",default=config_file)
 
     args = parser.parse_args()
     config_file = args.config or args.config_file
+    start_date = args.start
+    end_date = args.end
 
     mcmc_type = extract_mcmc_type(config_file)
     mcmc_function = define_mcmc_function(mcmc_type)
     print(f"Using MCMC type: {mcmc_type} - function {mcmc_function}(...)")
     
-    param = hbmcmc_extract_param(config_file,mcmc_type)
+    param = hbmcmc_extract_param(config_file,mcmc_type,start_date=start_date,end_date=end_date)
 
     #mcmc.fixedbasisMCMC(**param)
     mcmc_function(**param)
