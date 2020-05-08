@@ -42,9 +42,9 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                    nit=2.5e5, burn=50000, tune=1.25e5, nchain=2,
                    emissions_name=None, inlet=None, fpheight=None, instrument=None, 
                    fp_basis_case=None, bc_basis_case="NESW", 
-                   obs_directory = None,
+                   obs_directory = None, country_directory = None,
                    quadtree_basis=True,nbasis=100, 
-                   averagingerror=True, bc_monthly=True):
+                   averagingerror=True, bc_monthly=True, country_unit_prefix=None):
     """
     Script to run hierarchical Bayesian MCMC for inference of emissions using
     pymc3 to solve the inverse problem.
@@ -112,6 +112,8 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
         obs_directory (str, optional):
             Directory containing the obs data (with site codes as subdirectories)
             if not default.
+        country_directory (str, optional):
+            Directory containing the country definition file
         quadtree_basis (bool, optional):
             Creates a basis function file for emissions on the fly using a 
             quadtree algorithm based on the a priori contribution to the mole
@@ -127,6 +129,10 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             Set to true for the boundary conditions to be scaled each month.
             If set to False, the each boundary has one scaling factor over the
             whole inversion period.
+        country_unit_prefix ('str', optional)
+            A prefix for scaling the country emissions. Current options are: 'T' will scale to Tg, 'G' to Gg, 'M' to Mg, 'P' to Pg.
+            To add additional options add to acrg_convert.prefix
+            Default is none and no scaling will be applied (output in g).
             
     Returns:
         Saves an output from the inversion code using inferpymc3_postprocessouts.
@@ -227,7 +233,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                                emissions_name, domain, species, sites,
                                site_lat, site_lon,
                                start_date, end_date, outputname, outputpath,
-                               basis_directory, fp_basis_case)
+                               basis_directory, country_directory, fp_basis_case, country_unit_prefix)
 
         print("All done")
     

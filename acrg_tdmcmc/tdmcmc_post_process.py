@@ -1212,11 +1212,11 @@ def country_emissions(ds_mcmc, countries, species, domain, x_post_vit=None, q_ap
     
     # GET COUNTRY DATA
     if uk_split == True:
-        c_object=name.get_country(domain, ocean=True, ukmo=True, uk_split=uk_split)
+        c_object=name.get_country(domain, ocean=True, ukmo=True, uk_split=uk_split, country_dir = country_dir)
     elif ocean == True:
-        c_object=name.get_country(domain, ocean=True, ukmo=True, uk_split=False)
+        c_object=name.get_country(domain, ocean=True, ukmo=True, uk_split=False, country_dir = country_dir)
     else:
-        c_object=name.get_country(domain, ocean=False)
+        c_object=name.get_country(domain, ocean=False, country_dir = country_dir)
     cds = xray.Dataset({'country': (['lat','lon'], c_object.country), 
                         'name' : (['ncountries'],c_object.name) },
                                         coords = {'lat': (c_object.lat),

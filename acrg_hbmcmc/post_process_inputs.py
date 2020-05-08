@@ -30,6 +30,8 @@ if __name__=="__main__":
     species="chbr3"
     domain="CARIBBEAN"
     runname='test'
+    # The following pertaining to domain_name will have to be edited once country_emissions
+    # is re-coded in hbmcmc_post_process.py (ag12733 8/5/20)
     # Name that specifies the naming of the country file. This allows one to specify
     # a region that is smaller than sub-transd to compute totals over different areas
     # Example: domain_name = 'THD_coastal' corresponds to a country file called
@@ -37,7 +39,7 @@ if __name__=="__main__":
     # country_THD_coastal can define a region smaller than sub-transd but MUST 
     # be on the same lat/lon grid!
     domain_name = domain     
-    # country_dir allows you to specify a different directory where a custom
+    # country_dir is optional and allows you to specify a different directory where a custom
     #country file can live. Default of None points to the /data/shared/LPDM/countries/
     #Example: country_dir = '/data/ag12733/countries/'
     country_dir = None
@@ -78,7 +80,8 @@ if __name__=="__main__":
     d_out_filename = None  # None means plot will not be written to file
     
     # plot_y_timeseries
-    combine_timeseries = True # Plot y timeseries on one axis for multiple input files.
+    # combine timeseries will currently fail as needs to be re-written (ag12733 8/5/20)
+    combine_timeseries = False # Plot y timeseries on one axis for multiple input files.
     y_out_filename = None
     
     
@@ -132,6 +135,7 @@ if __name__=="__main__":
      
     ## Plot y timeseries
     if plot_y_timeseries == True:
+        # combine_timeseries will currently fail as needs to be re-written for new outputs (ag12733 1/5/20)
         if combine_timeseries and len(ds_list) > 1:
             ds_combined = process.combine_timeseries(*ds_list)
             process.plot_timeseries(ds_combined, fig_text=None, 

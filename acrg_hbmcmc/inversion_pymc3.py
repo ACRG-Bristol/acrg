@@ -11,10 +11,10 @@ import pymc3 as pm
 import pandas as pd
 import xarray as xr
 from acrg_grid import areagrid
-from acrg_tdmcmc.tdmcmc_post_process import molar_mass
 import getpass
 from acrg_hbmcmc.inversionsetup import opends
 import os
+import acrg_convert as convert
 
 data_path = os.getenv("DATA_PATH")
 
@@ -156,7 +156,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                                emissions_name, domain, species, sites,
                                site_lat, site_lon,
                                start_date, end_date, outputname, outputpath,
-                               basis_directory, fp_basis_case, units=None):
+                               basis_directory, country_directory, fp_basis_case, country_unit_prefix):
         """
         Takes the output from inferpymc3 function, along with some other input
         information, and places it all in a netcdf output. This function also 
@@ -248,8 +248,15 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                 Path to where output should be saved.
             basis_directory (str):
                 Directory containing basis function file
+            country_directory (str):
+                Directory containing country definition file
             fp_basis_case (str, optional):
                 Name of basis function to use for emissions.
+            country_unit_prefix ('str', optional)
+                A prefix for scaling the country emissions. Current options are: 'T' will scale to Tg, 'G' to Gg, 'M' to Mg, 'P' to Pg.
+                To add additional options add to acrg_convert.prefix
+                Default is none and no scaling will be applied (output in g).
+                
                 
         Returns:
             netdf file containing results from inversion
@@ -302,7 +309,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
 
         #Calculate country totals   
         area = areagrid(lat, lon)
-        c_object = name.get_country(domain)
+        c_object = name.get_country(domain, country_dir=country_directory)
         cntryds = xr.Dataset({'country': (['lat','lon'], c_object.country), 
                         'name' : (['ncountries'],c_object.name) },
                                         coords = {'lat': (c_object.lat),
@@ -313,19 +320,13 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         cntry68 = np.zeros((len(cntrynames), len(nui)))
         cntry95 = np.zeros((len(cntrynames), len(nui)))
         cntrysd = np.zeros(len(cntrynames))
-        molarmass = molar_mass(species)
-        
-        if units == 'Tg/yr':
-            unit_factor=1.e12
-        elif units == 'Gg/yr': 
-            unit_factor=1.e9
-        elif units == 'Pg/yr': 
-            unit_factor=1.e15
-        elif units == 'Mg/yr': 
-            unit_factor=1.e6
-        else:
-            print('Undefined units: outputting in g/yr - let this be a lesson to define your units')
-            unit_factor=1.
+        molarmass = convert.molar_mass(species)
+
+        unit_factor = convert.prefix(country_unit_prefix)
+        if country_unit_prefix is None:
+           country_unit_prefix=''
+        country_units = country_unit_prefix + 'g'
+
         # Not sure how it's best to do this if multiple months in emissions 
         # file. Now it scales a weighted average of a priori emissions
         # If a priori emissions have frequency of more than monthly then this
@@ -348,7 +349,6 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
             cntrymean[ci] = np.mean(cntrytottrace)
             cntry68[ci, :] = pm.stats.hpd(cntrytottrace, 0.68)
             cntry95[ci, :] = pm.stats.hpd(cntrytottrace, 0.95)
-            cntrysd[ci] = np.std(cntrytottrace)
         
     
         #Make output netcdf file
@@ -374,8 +374,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                             'basis_functions':(['lat','lon'],bfarray),
                             'countrytotals':(['countrynames'], cntrymean),
                             'country68':(['countrynames', 'nUI'],cntry68),
-                            'country95':(['countrynames', 'nUI'],cntry95),
-                            'countrysd':(['countrynames'],cntrysd)},
+                            'country95':(['countrynames', 'nUI'],cntry95)},
                         coords={'stepnum' : (['steps'], steps), 
                                    'paramnum' : (['nlatent'], nparam),
                                    'numBC' : (['nBC'], nBC),
@@ -394,9 +393,9 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         outds.YmodBC.attrs["units"] = str(data[".units"])+" "+"mol/mol"
         outds.YaprioriBC.attrs["units"] = str(data[".units"])+" "+"mol/mol"
         outds.Yerror.attrs["units"] = str(data[".units"])+" "+"mol/mol"
-        outds.countrytotals.attrs["units"] = "Gg/yr"
-        outds.country68.attrs["units"] = "Gg/yr"
-        outds.country95.attrs["units"] = "Gg/yr"
+        outds.countrytotals.attrs["units"] = country_units
+        outds.country68.attrs["units"] = country_units
+        outds.country95.attrs["units"] = country_units
         outds.attrs['Start date'] = start_date
         outds.attrs['End date'] = end_date
         outds.attrs['Latent sampler'] = str(step1)[20:33]
