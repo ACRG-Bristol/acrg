@@ -79,8 +79,8 @@ def define_stations(ds,sites=None,use_site_info=False):
         ds (xarray.Dataset) :
             Output from run_tdmcmc() function (tdmcmc_inputs.py script).
             Expects dataset to contain:
-                site_lon - Longitude values for each site. Dimension = len(sites)
-                site_lat - Latitude values for each site. Dimension = len(sites)
+                sitelons - Longitude values for each site. Dimension = len(sites)
+                sitelats - Latitude values for each site. Dimension = len(sites)
                 y_site       - Site identifier for each measurement. Dimension = nmeasure
         sites (list/None, optional) :
             List of sites to look for within dataset.
@@ -92,7 +92,7 @@ def define_stations(ds,sites=None,use_site_info=False):
     
     Returns:
         dict :
-            Dictionary containing "site"_lat, "site"_lon values for each site.
+            Dictionary containing sitelats, sitelons for each site.
     '''
 
     if sites is None:
@@ -106,16 +106,16 @@ def define_stations(ds,sites=None,use_site_info=False):
     if use_site_info:
         for site in sites:
             network = list(site_info[site].keys())[0]
-            stations[site+'_lon'] = [site_info[site][network]["latitude"]]
-            stations[site+'_lat'] = [site_info[site][network]["longitude"]]
+            stations[site+'lons'] = [site_info[site][network]["latitude"]]
+            stations[site+'lats'] = [site_info[site][network]["longitude"]]
     else:
         for site in sites:
             wh = np.where(ds.sitenames.values.astype(str) == site)[0]
             if len(wh) > 0:
                 si = wh[0]
                 #if site in ds.y_site:
-                stations[site+'_lon']=ds.site_lon[si].values
-                stations[site+'_lat']=ds.site_lat[si].values
+                stations[site+'lons']=ds.sitelons[si].values
+                stations[site+'lats']=ds.sitelats[si].values
             elif len(wh) == 0:
                 print("WARNING: Reference to site not found within dataset")
 
@@ -381,8 +381,8 @@ def plot_map(data, lon, lat, clevels=None, divergeCentre = None, cmap=plt.cm.RdB
         
     if stations is not None:
         for si,site in enumerate(stations['sites']):
-            ilon=stations[site+'_lon']
-            ilat=stations[site+'_lat']
+            ilon=stations[site+'lons']
+            ilat=stations[site+'lats']
             ax.plot(ilon, ilat, color = 'black', marker = 'o', markersize=8,  transform=ccrs.PlateCarree())
                
     tick_locator = ticker.MaxNLocator(nbins=5)
@@ -513,8 +513,8 @@ def plot_map_mult(data_all, lon, lat, grid=True, subplot="auto", clevels=None, d
                  cmap=cmap, borders=borders, label=labels[i], smooth=smooth, stations=stations[i],
                  title=title, extend=extend, out_filename=out_filename, show=True, ax=ax, fig=fig)
 
-def plot_scale_map(ds_list, grid=True, clevels=None, divergeCentre=None, centre_zero=True,
-                   cmap=plt.cm.RdBu_r, borders=True, labels=None, plot_stations=True,
+def plot_scale_map(ds_list, grid=True, clevels=None, divergeCentre=None, centre_zero=False,
+                   cmap=plt.cm.YlGnBu, borders=True, labels=None, plot_stations=True,
                    use_site_info=False,
                    smooth=False, out_filename=None, fignum=None, title=None, extend="both",
                    figsize=None):
@@ -557,17 +557,17 @@ def plot_scale_map(ds_list, grid=True, clevels=None, divergeCentre=None, centre_
         stations = [define_stations(ds,use_site_info=use_site_info) for ds in ds_list]
     else:
         stations = None
-    x_post_mean_list = [ds.meanscaling for ds in ds_list]
+    x_post_mean_list = [ds.scalingmean for ds in ds_list]
     
     plot_map_mult(x_post_mean_list, lon=ds_list[0]["lon"], lat=ds_list[0]["lat"], grid=grid,
                   clevels=clevels, divergeCentre=divergeCentre, centre_zero=centre_zero, 
-                  cmap=plt.cm.RdBu_r, labels=labels, smooth=smooth, out_filename=out_filename, 
+                  cmap=cmap, labels=labels, smooth=smooth, out_filename=out_filename, 
                   stations=stations, fignum=fignum, 
                   title=title, extend=extend, figsize=figsize)
     return x_post_mean_list
 
 def plot_abs_map(ds_list, species, grid=True, clevels=None, divergeCentre=None, 
-                   cmap=plt.cm.RdBu_r, borders=True, labels=None, plot_stations=True,
+                   cmap=plt.cm.YlGnBu, borders=True, labels=None, plot_stations=True,
                    use_site_info=False,
                    smooth=False, out_filename=None, fignum=None, title=None, extend="both",
                    figsize=None):
@@ -613,7 +613,7 @@ def plot_abs_map(ds_list, species, grid=True, clevels=None, divergeCentre=None,
         stations = [define_stations(ds,use_site_info=use_site_info) for ds in ds_list]
     else:
         stations = None
-    q_abs_list = [convert.mol2g(ds.meanflux,species) for ds in ds_list]
+    q_abs_list = [convert.mol2g(ds.fluxmean,species) for ds in ds_list]
     
     plot_map_mult(q_abs_list, lon=ds_list[0]["lon"], lat=ds_list[0]["lat"], grid=grid,
                   clevels=clevels, divergeCentre=divergeCentre, cmap=cmap, labels=labels, 
@@ -670,58 +670,58 @@ def plot_diff_map(ds_list, species, grid=True, clevels=None, divergeCentre=None,
     else:
         stations = None
     
-    q_diff_list = [convert.mol2g((ds.meanflux - ds.aprioriflux),species) for ds in ds_list]
+    q_diff_list = [convert.mol2g((ds.fluxmean - ds.fluxapriori),species) for ds in ds_list]
     
     plot_map_mult(q_diff_list, lon=ds_list[0]["lon"], lat=ds_list[0]["lat"], grid=grid,
                   clevels=clevels, divergeCentre=divergeCentre, centre_zero=centre_zero,
-                  cmap=plt.cm.RdBu_r, labels=labels, smooth=smooth, out_filename=out_filename, stations=stations, fignum=fignum, 
+                  cmap=cmap, labels=labels, smooth=smooth, out_filename=out_filename, stations=stations, fignum=fignum, 
                   title=title, extend=extend, figsize=figsize)
     return q_diff_list
 
 def country_emissions(ds, domain, country_directory=None):
 
-        c_object = name.get_country(domain, country_dir=country_directory)
-        cntryds = xr.Dataset({'country': (['lat','lon'], c_object.country), 
-                        'name' : (['ncountries'],c_object.name) },
-                                        coords = {'lat': (c_object.lat),
-                                        'lon': (c_object.lon)})
-        # this allows the mcmc output to be sliced to match the size of a smaller country file 
-        # (i.e. does not have to be the same size as the domain, but has to have the grid cells line up)
-        lonmin_cds = np.min(cntryds.lon.values.astype('float32'))
-        lonmax_cds = np.max(cntryds.lon.values.astype('float32'))
-        latmin_cds = np.min(cntryds.lat.values.astype('float32'))
-        latmax_cds = np.max(cntrydslat.values.astype('float32'))
-        ds = ds.sel(lon=slice(lonmin_cds,lonmax_cds),lat=slice(latmin_cds,latmax_cds))
-        
-        lon=ds["lon"]
-        lat=ds["lat"]
-        aprioriflux=ds["aprioriflux"]
-        outs=ds["outs"]
-        bfarray = ds["basis_functions"]
+    c_object = name.get_country(domain, country_dir=country_directory)
+    cntryds = xr.Dataset({'country': (['lat','lon'], c_object.country), 
+                    'name' : (['ncountries'],c_object.name) },
+                                    coords = {'lat': (c_object.lat),
+                                    'lon': (c_object.lon)})
+    # this allows the mcmc output to be sliced to match the size of a smaller country file 
+    # (i.e. does not have to be the same size as the domain, but has to have the grid cells line up)
+    lonmin_cds = np.min(cntryds.lon.values.astype('float32'))
+    lonmax_cds = np.max(cntryds.lon.values.astype('float32'))
+    latmin_cds = np.min(cntryds.lat.values.astype('float32'))
+    latmax_cds = np.max(cntrydslat.values.astype('float32'))
+    ds = ds.sel(lon=slice(lonmin_cds,lonmax_cds),lat=slice(latmin_cds,latmax_cds))
 
-        area = areagrid(lat, lon)
-        cntrynames = cntryds.name.values
-        cntrygrid = cntryds.country.values
-        cntrymean = np.zeros((len(cntrynames)))
-        cntry68 = np.zeros((len(cntrynames), len(nui)))
-        cntry95 = np.zeros((len(cntrynames), len(nui)))
-        cntrysd = np.zeros(len(cntrynames))
-        molarmass = convert.molar_mass(species)
+    lon=ds["lon"]
+    lat=ds["lat"]
+    aprioriflux=ds["fluxapriori"]
+    outs=ds["outs"]
+    bfarray = ds["basisfunctions"]
 
-        unit_factor = convert.prefix(country_unit_prefix)
-        if country_unit_prefix is None:
-           country_unit_prefix=''
-        country_units = country_unit_prefix + 'g'
+    area = areagrid(lat, lon)
+    cntrynames = cntryds.name.values
+    cntrygrid = cntryds.country.values
+    cntrymean = np.zeros((len(cntrynames)))
+    cntry68 = np.zeros((len(cntrynames), len(nui)))
+    cntry95 = np.zeros((len(cntrynames), len(nui)))
+    cntrysd = np.zeros(len(cntrynames))
+    molarmass = convert.molar_mass(species)
 
-        for ci, cntry in enumerate(cntrynames):
-            cntrytottrace = np.zeros(len(steps))
-            for bf in range(int(np.max(bfarray))):
-                bothinds = np.logical_and(cntrygrid == ci, bfarray==bf)
-                cntrytottrace += np.sum(area[bothinds].ravel()*aprioriflux[bothinds].ravel()* \
-                               3600*24*365*molarmass)*outs[:,bf]/unit_factor
-            cntrymean[ci] = np.mean(cntrytottrace)
-            cntry68[ci, :] = pm.stats.hpd(cntrytottrace, 0.68)
-            cntry95[ci, :] = pm.stats.hpd(cntrytottrace, 0.95)
+    unit_factor = convert.prefix(country_unit_prefix)
+    if country_unit_prefix is None:
+       country_unit_prefix=''
+    country_units = country_unit_prefix + 'g'
+
+    for ci, cntry in enumerate(cntrynames):
+        cntrytottrace = np.zeros(len(steps))
+        for bf in range(int(np.max(bfarray))):
+            bothinds = np.logical_and(cntrygrid == ci, bfarray==bf)
+            cntrytottrace += np.sum(area[bothinds].ravel()*aprioriflux[bothinds].ravel()* \
+                           3600*24*365*molarmass)*outs[:,bf]/unit_factor
+        cntrymean[ci] = np.mean(cntrytottrace)
+        cntry68[ci, :] = pm.stats.hpd(cntrytottrace, 0.68)
+        cntry95[ci, :] = pm.stats.hpd(cntrytottrace, 0.95)
 
     return cntrymean, cntry68, cntry95
     
@@ -904,9 +904,9 @@ def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True
     """
     
 
-    y_bg_mean = ds["YmodBC"].values
+    y_bg_mean = ds["YmodmeanBC"].values
 
-    y_post_mean = ds["Ymod"].values
+    y_post_mean = ds["Ymodmean"].values
     
     if plot_prior:
         y_prior = ds["Yapriori"].values
@@ -918,7 +918,7 @@ def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True
     
     y_time = ds.Ytime.values
     y_site = ds.siteindicator.values
-    y_obs = ds.Y.values
+    y_obs = ds.Yobs.values
     upper = ds.Ymod95.values[:,1]
     lower = ds.Ymod95.values[:,0]
     

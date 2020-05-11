@@ -50,9 +50,9 @@ if __name__=="__main__":
     
     calc_country=False # At the moment calc_country must be True to write or append to nc file.
 
-    plot_scale_map=False
-    plot_abs_map=False
-    plot_diff_map=False
+    plot_scale_map=True
+    plot_abs_map=True
+    plot_diff_map=True
     plot_y_timeseries=True
     
     #### PARAMETERS FOR EACH POST-PROCESSING OPTION ####
@@ -61,7 +61,7 @@ if __name__=="__main__":
     # plot_scale_map
     grid_scale_map = True
     s_clevels = None # Set to None to set to defaults.
-    s_cmap = plt.cm.RdBu_r
+    s_cmap = plt.cm.YlGnBu
     s_smooth = True
     s_out_filename = None  # None means plot will not be written to file
 
@@ -75,7 +75,7 @@ if __name__=="__main__":
     # plot_diff_map
     grid_diff_map = True
     d_clevels = None # Set to None to set to defaults.
-    d_cmap = plt.cm.YlGnBu
+    d_cmap = plt.cm.RdBu_r
     d_smooth = False
     d_out_filename = None  # None means plot will not be written to file
     

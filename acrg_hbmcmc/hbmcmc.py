@@ -30,6 +30,7 @@ import socket
 import acrg_hbmcmc.inversionsetup as setup 
 import acrg_hbmcmc.inversion_pymc3 as mcmc
 import acrg_hbmcmc.quadtreebasis as quadtree
+import shutil
 
 acrg_path = os.getenv("ACRG_PATH")
 data_path = os.getenv("DATA_PATH")
@@ -168,11 +169,11 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             print("Basis case %s supplied but quadtree_basis set to True" % fp_basis_case)
             print("Assuming you want to use %s " % fp_basis_case)
         else:
-            quadtree.quadtreebasisfunction(emissions_name, fp_all, sites, 
+            tempdir = quadtree.quadtreebasisfunction(emissions_name, fp_all, sites, 
                           start_date, domain, species, outputname,
                           nbasis=nbasis)
             fp_basis_case= "quadtree"+species+"-"+outputname
-            basis_directory = os.getcwd()+"/Temp/"
+            basis_directory = tempdir
     else:
         basis_directory = None
             
@@ -234,6 +235,9 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                                site_lat, site_lon,
                                start_date, end_date, outputname, outputpath,
                                basis_directory, country_directory, fp_basis_case, country_unit_prefix)
-
+        
+        # remove the temporary basis function directory
+        shutil.rmtree(tempdir)
+        
         print("All done")
     
