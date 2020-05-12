@@ -4,7 +4,9 @@ acrg_hbmcmc.hbmcmc.fixedbasisMCMC() function.
 '''
 
 import os
+import sys
 import argparse
+from shutil import copyfile
 import acrg_hbmcmc.hbmcmc as mcmc
 import acrg_config.config as config
 from acrg_config.paths import paths
@@ -120,21 +122,42 @@ def hbmcmc_extract_param(config_file,mcmc_type="fixed_basis",print_param=True,**
 if __name__=="__main__":
 
     acrg_path = paths.acrg
-    config_file = os.path.join(acrg_path,"acrg_hbmcmc/hbmcmc_input.ini")
+    default_config_file = os.path.join(acrg_path,"acrg_hbmcmc/hbmcmc_input.ini")
+    config_file = default_config_file
 
-    parser = argparse.ArgumentParser(description="Running hbmcmc script")
+    parser = argparse.ArgumentParser(description="Running Hierarchical Bayesian MCMC script")
     parser.add_argument("start", help="Start date string of the format YYYY-MM-DD",nargs="?")                  
     parser.add_argument("end", help="End date sting of the format YYYY-MM-DD",nargs="?")
     parser.add_argument("-c","--config",help="Name (including path) of configuration file",default=config_file)
+    parser.add_argument("-r","--generate",action='store_true',help="Generate template config file and exit (does not run MCMC simulation)")
 
     args = parser.parse_args()
+    
     config_file = args.config or args.config_file
     start_date = args.start
     end_date = args.end
 
+    if args.generate == True:
+        template_file = os.path.join(acrg_path,"acrg_hbmcmc/config/hbmcmc_input_template.ini")
+        if os.path.exists(config_file):
+            write = input(f"Config file {config_file} already exists.\nOverwrite? (y/n): ")
+            if write.lower() == "y" or write.lower() == "yes":        
+                copyfile(template_file,config_file)
+            else:
+                sys.exit(f"Previous configuration file has not been overwritten.")
+        else:
+            copyfile(template_file,config_file)
+        sys.exit(f"New configuration file has been generated: {config_file}")
+
+    if not os.path.exists(config_file):
+        if config_file == default_config_file:
+            sys.exit("No configuration file detected.\nTo generate a template configuration file run again with -r flag:\n  $ python run_tdmcmc.py -r")
+        else:
+            sys.exit(f"Configuration file cannot be found.\nPlease check path and filename are correct: {config_file}")
+
     mcmc_type = extract_mcmc_type(config_file)
     mcmc_function = define_mcmc_function(mcmc_type)
-    print(f"Using MCMC type: {mcmc_type} - function {mcmc_function}(...)")
+    print(f"Using MCMC type: {mcmc_type} - function {mcmc_function.__name__}(...)")
     
     param = hbmcmc_extract_param(config_file,mcmc_type,start_date=start_date,end_date=end_date)
 
