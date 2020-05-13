@@ -1,6 +1,26 @@
 '''
-Wrapper script to read in parameters from a configuration file and run the
-acrg_hbmcmc.hbmcmc.fixedbasisMCMC() function.
+Wrapper script to read in parameters from a configuration file and run underlying MCMC script.
+
+Run as:
+    $ python run_hbmcmc.py [start end -c config.ini]
+e.g.
+    $ python run_hbmcmc.py
+    $ python run_hbmcmc.py 2012-01-01 2013-01-01 -c hbmcmc_ch4_run.ini
+
+start - Start of date range to use for MCMC inversion (YYYY-MM-DD)
+end - End of date range to use for MCMC inversion (YYYY-MM-DD) (must be after start)
+-c  - configuration file. See config/ folder for templates and examples of this input file.
+
+If start and end are specified these will be superceed the values within the configuration file, if present.
+If no optional inputs are are specified, this script will look for configuration file within the 
+acrg_hbmcmc/ directory called `hbmcmc_input.ini`. 
+
+To generate a config file from the template run this script as:
+    $ python run_hbmcmc.py -r
+
+The MCMC run *will not be executed*. This will create a configuration file called `hbmcmc_input.ini` 
+within your acrg_hbmcmc/ directory and exit. This file will need to be edited to add parameters for your
+MCMC run.
 '''
 
 import os
@@ -22,7 +42,7 @@ def fixed_basis_expected_param():
     Returns:
         list : required parameter names
     '''
-    sg_expected_param = {"INPUT":["species","sites","meas_period","start_date","end_date","domain"],
+    sg_expected_param = {"INPUT":["species","sites","meas_period","domain"],#"start_date","end_date"
                           "MCMC":["outputpath","outputname"]}
 	
     expected_param = []
@@ -105,8 +125,8 @@ def hbmcmc_extract_param(config_file,mcmc_type="fixed_basis",print_param=True,**
         if value is not None:
             param[key] = value
 
-    #date_param = ["start_date","end_date"]
-    #expected_param.extend(date_param)
+    date_param = ["start_date","end_date"]
+    expected_param.extend(date_param)
 
     for ep in expected_param:
         if not param[ep]:
