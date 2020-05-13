@@ -70,7 +70,8 @@ def extract_mcmc_type(config_file,default="fixed_basis"):
     mcmc_type_section = "MCMC.TYPE"
     mcmc_type_keyword = "mcmc_type"
     param_mcmc_type = config.extract_params(config_file,section=mcmc_type_section)
-    if mcmc_type_keyword in param_mcmc_type:
+    
+    if param_mcmc_type is not None and mcmc_type_keyword in param_mcmc_type:
         mcmc_type = param_mcmc_type[mcmc_type_keyword]
     else:
         mcmc_type = default
