@@ -115,3 +115,45 @@ def monthly_bcs(start_date, end_date, site, fp_data):
             Hmbc[cnt,mnthloc] = fp_data[site].H_bc.values[cord,mnthloc] 
             cnt += 1
     return Hmbc
+
+def create_bc_sensitivity(start_date, end_date, site, fp_data, freq):
+    """
+    Creates a sensitivity matrix (H-matrix) for the boundary conditions, which
+    will map boundary condition scalings to the observations. This is 
+    for a single site. The frequency that the boundary condition sensitivity
+    is specifiec over must be specified in days. Currently only works 
+    for a boundary condition from each cardinal direction.
+    
+    Args:
+        start_date (str):
+            Start time of inversion "YYYY-mm-dd"
+        end_date (str):
+            End time of inversion "YYYY-mm-dd"
+        site (str):
+            Site that you're creating it for
+        fp_data (dict):
+            Output from acrg_name.bc_sensitivity
+        freq (str):
+            Length-scale over which boundary condition sensitivities are
+            specified over. Specified as in pandas, e.g. "30D".
+            
+    Returns:
+        Hmbc (array):
+            Sensitivity matrix by for observations to boundary conditions
+            
+    """
+    dys = int("".join([s for s in freq if s.isdigit()]))
+    alldates = pd.date_range(pd.to_datetime(start_date), pd.to_datetime(end_date)+ pd.DateOffset(days=dys), freq=freq)
+    ndates = np.sum(alldates < pd.to_datetime(end_date))
+    curdates = pd.to_datetime(fp_data[site].time.values).to_period(freq)
+    Hmbc = np.zeros((4*ndates, len(fp_data[site].time.values)))
+    cnt=0
+    for cord in range(4):
+        for m in range(0,ndates):
+            dateloc = np.where(np.logical_and(curdates >= alldates[m],curdates < alldates[m+1]))[0]
+            if len(dateloc) == 0:
+                cnt += 1
+                continue
+            Hmbc[cnt,dateloc] = fp_data[site].H_bc.values[cord,dateloc] 
+            cnt += 1
+    return Hmbc

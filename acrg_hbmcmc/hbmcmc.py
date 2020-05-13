@@ -45,7 +45,8 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                    fp_basis_case=None, bc_basis_case="NESW", 
                    obs_directory = None, country_directory = None,
                    quadtree_basis=True,nbasis=100, 
-                   averagingerror=True, bc_monthly=True, country_unit_prefix=None):
+                   averagingerror=True, bc_freq=None, country_unit_prefix=None):
+
     """
     Script to run hierarchical Bayesian MCMC for inference of emissions using
     pymc3 to solve the inverse problem.
@@ -126,14 +127,17 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
         averagingerror (bool, optional):
             Adds the variability in the averaging period to the measurement 
             error if set to True.
-        bc_monthly (bool, optional):
-            Set to true for the boundary conditions to be scaled each month.
-            If set to False, the each boundary has one scaling factor over the
-            whole inversion period.
+        bc_freq (str, optional):
+            The perdiod over which the baseline is estimates. Set to "monthly"
+            to estimate per calendar month; set to a number of days,
+            as e.g. "30D" for 30 days; or set to None to estimate to have one
+            scaling for the whole inversion period.
         country_unit_prefix ('str', optional)
-            A prefix for scaling the country emissions. Current options are: 'T' will scale to Tg, 'G' to Gg, 'M' to Mg, 'P' to Pg.
+            A prefix for scaling the country emissions. Current options are: 
+            'T' will scale to Tg, 'G' to Gg, 'M' to Mg, 'P' to Pg.
             To add additional options add to acrg_convert.prefix
             Default is none and no scaling will be applied (output in g).
+
             
     Returns:
         Saves an output from the inversion code using inferpymc3_postprocessouts.
@@ -210,10 +214,12 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
         else:
             Ytime = np.concatenate((Ytime,fp_data[site].time.values ))
         
-        if bc_monthly:
+        if bc_freq == "monthly":
             Hmbc = setup.monthly_bcs(start_date, end_date, site, fp_data)
+        elif bc_freq == None:
+            Hmbc = fp_data[site].H_bc.values
         else:
-            Hmbc = fp_data[site].H_bc.values 
+            Hmbc = setup.create_bc_sensitivity(start_date, end_date, site, fp_data, bc_freq)
             
         if si == 0:
             Hbc = np.copy(Hmbc) #fp_data[site].H_bc.values 
