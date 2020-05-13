@@ -11,10 +11,10 @@ import pymc3 as pm
 import pandas as pd
 import xarray as xr
 from acrg_grid import areagrid
-from acrg_tdmcmc.tdmcmc_post_process import molar_mass
 import getpass
 from acrg_hbmcmc.inversionsetup import opends
 import os
+import acrg_convert as convert
 
 data_path = os.getenv("DATA_PATH")
 
@@ -99,6 +99,8 @@ def inferpymc3(Hx, Hbc, Y, error,
             x = pm.Lognormal('x', mu=xprior["mu"], sd=xprior["sd"], shape=nx)
         elif xprior["pdf"].lower() == "halfflat":
             x = pm.HalfFlat('x', shape=nx)
+        elif xprior["pdf"].lower() == "normal":
+            x = pm.Normal('x', mu=xprior["mu"], sd=xprior["sd"], shape=nx)
         else:
             print("Haven't coded in %s yet for emissions" % xprior["pdf"])
 
@@ -108,6 +110,8 @@ def inferpymc3(Hx, Hbc, Y, error,
             xbc = pm.Lognormal('xbc', mu=bcprior["mu"], sd=bcprior["sd"], shape=nbc)
         elif bcprior["pdf"].lower() == "halfflat":
             xbc = pm.HalfFlat('xbc', shape=nbc)
+        elif bcprior["pdf"].lower() == "normal":
+            xbc = pm.Normal('xbc', mu=bcprior["mu"], sd=bcprior["sd"], shape=nbc)
         else:
             print("Haven't coded in %s yet for boundary conditions" % bcprior["pdf"])  
         
@@ -152,7 +156,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                                emissions_name, domain, species, sites,
                                site_lat, site_lon,
                                start_date, end_date, outputname, outputpath,
-                               basis_directory, fp_basis_case, units=None):
+                               basis_directory, country_directory, fp_basis_case, country_unit_prefix):
         """
         Takes the output from inferpymc3 function, along with some other input
         information, and places it all in a netcdf output. This function also 
@@ -244,8 +248,15 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                 Path to where output should be saved.
             basis_directory (str):
                 Directory containing basis function file
+            country_directory (str):
+                Directory containing country definition file
             fp_basis_case (str, optional):
                 Name of basis function to use for emissions.
+            country_unit_prefix ('str', optional)
+                A prefix for scaling the country emissions. Current options are: 'T' will scale to Tg, 'G' to Gg, 'M' to Mg, 'P' to Pg.
+                To add additional options add to acrg_convert.prefix
+                Default is none and no scaling will be applied (output in g).
+                
                 
         Returns:
             netdf file containing results from inversion
@@ -270,7 +281,10 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         nparam = np.arange(nx)
         nBC = np.arange(nbc)
         Ytrace = np.dot(Hx.T,outs.T) + np.dot(Hbc.T,bcouts.T)
-        YmodBC = np.mean(np.dot(Hbc.T,bcouts.T), axis=1)
+        YBCtrace = np.dot(Hbc.T,bcouts.T)
+        YmodBC = np.mean(YBCtrace, axis=1)
+        Ymod95BC = pm.stats.hpd(YBCtrace.T, 0.95)
+        Ymod68BC = pm.stats.hpd(YBCtrace.T, 0.68)
         YaprioriBC = np.sum(Hbc, axis=0)
         Ymod = np.mean(Ytrace, axis=1)
         Ymod95 = pm.stats.hpd(Ytrace.T, 0.95)
@@ -298,7 +312,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
 
         #Calculate country totals   
         area = areagrid(lat, lon)
-        c_object = name.get_country(domain)
+        c_object = name.get_country(domain, country_dir=country_directory)
         cntryds = xr.Dataset({'country': (['lat','lon'], c_object.country), 
                         'name' : (['ncountries'],c_object.name) },
                                         coords = {'lat': (c_object.lat),
@@ -309,19 +323,13 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         cntry68 = np.zeros((len(cntrynames), len(nui)))
         cntry95 = np.zeros((len(cntrynames), len(nui)))
         cntrysd = np.zeros(len(cntrynames))
-        molarmass = molar_mass(species)
-        
-        if units == 'Tg/yr':
-            unit_factor=1.e12
-        elif units == 'Gg/yr': 
-            unit_factor=1.e9
-        elif units == 'Pg/yr': 
-            unit_factor=1.e15
-        elif units == 'Mg/yr': 
-            unit_factor=1.e6
-        else:
-            print('Undefined units: outputting in g/yr - let this be a lesson to define your units')
-            unit_factor=1.
+        molarmass = convert.molar_mass(species)
+
+        unit_factor = convert.prefix(country_unit_prefix)
+        if country_unit_prefix is None:
+           country_unit_prefix=''
+        country_units = country_unit_prefix + 'g'
+
         # Not sure how it's best to do this if multiple months in emissions 
         # file. Now it scales a weighted average of a priori emissions
         # If a priori emissions have frequency of more than monthly then this
@@ -344,36 +352,36 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
             cntrymean[ci] = np.mean(cntrytottrace)
             cntry68[ci, :] = pm.stats.hpd(cntrytottrace, 0.68)
             cntry95[ci, :] = pm.stats.hpd(cntrytottrace, 0.95)
-            cntrysd[ci] = np.std(cntrytottrace)
         
     
         #Make output netcdf file
-        outds = xr.Dataset({'Y':(['nmeasure'], Y),
+        outds = xr.Dataset({'Yobs':(['nmeasure'], Y),
+                            'Yerror' :(['nmeasure'], error),                          
                             'Ytime':(['nmeasure'],Ytime),
                             'Yapriori':(['nmeasure'],Yapriori),
-                            'Ymod':(['nmeasure'], Ymod), 
+                            'Ymodmean':(['nmeasure'], Ymod), 
                             'Ymod95':(['nmeasure','nUI'], Ymod95),
                             'Ymod68':(['nmeasure','nUI'], Ymod68),
-                            'YmodBC':(['nmeasure'], YmodBC),
-                            'YaprioriBC':(['nmeasure'],YaprioriBC),
+                            'YaprioriBC':(['nmeasure'],YaprioriBC),                            
+                            'YmodmeanBC':(['nmeasure'], YmodBC),
+                            'Ymod95BC':(['nmeasure','nUI'], Ymod95BC),
+                            'Ymod68BC':(['nmeasure','nUI'], Ymod68BC),                        
                             'xtrace':(['steps','nparam'], outs),
                             'bctrace':(['steps','nBC'],bcouts),
                             'sigtrace':(['steps'], sigouts),
-                            'Yerror' :(['nmeasure'], error),
                             'siteindicator':(['nmeasure'],siteindicator),
                             'sitenames':(['nsite'],sites),
-                            'site_lon':(['nsite'],site_lon),
-                            'site_lat':(['nsite'],site_lat),
-                            'aprioriflux':(['lat','lon'], aprioriflux), #NOTE this is the mean a priori flux over the inversion period 
-                            'meanscaling':(['lat','lon'],scalemap),
-                            'meanflux':(['lat','lon'], flux),
-                            'basis_functions':(['lat','lon'],bfarray),
-                            'countrytotals':(['countrynames'], cntrymean),
+                            'sitelons':(['nsite'],site_lon),
+                            'sitelats':(['nsite'],site_lat),
+                            'fluxapriori':(['lat','lon'], aprioriflux), #NOTE this is the mean a priori flux over the inversion period
+                            'fluxmean':(['lat','lon'], flux),                            
+                            'scalingmean':(['lat','lon'],scalemap),
+                            'basisfunctions':(['lat','lon'],bfarray),
+                            'countrymean':(['countrynames'], cntrymean),
                             'country68':(['countrynames', 'nUI'],cntry68),
                             'country95':(['countrynames', 'nUI'],cntry95),
-                            'countrysd':(['countrynames'],cntrysd),
-                            'x_sensitivity':(['nmeasure','nparam'], Hx.T),
-                            'bc_sensitivity':(['nmeasure', 'nBC'],Hbc.T)},
+                            'xsensitivity':(['nmeasure','nparam'], Hx.T),
+                            'bcsensitivity':(['nmeasure', 'nBC'],Hbc.T)},
                         coords={'stepnum' : (['steps'], steps), 
                                    'paramnum' : (['nlatent'], nparam),
                                    'numBC' : (['nBC'], nBC),
@@ -383,18 +391,54 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                                    'lat':(['lat'],lat),
                                    'lon':(['lon'],lon),
                                    'countrynames':(['countrynames'],cntrynames)})
-        outds.meanflux.attrs["units"] = "mol/m2/s"
-        outds.Y.attrs["units"] = str(data[".units"])+" "+"mol/mol"
+        
+        outds.fluxmean.attrs["units"] = "mol/m2/s"
+        outds.fluxapriori.attrs["units"] = "mol/m2/s"
+        outds.Yobs.attrs["units"] = str(data[".units"])+" "+"mol/mol"
         outds.Yapriori.attrs["units"] = str(data[".units"])+" "+"mol/mol"
-        outds.Ymod.attrs["units"] = str(data[".units"])+" "+"mol/mol"
+        outds.Ymodmean.attrs["units"] = str(data[".units"])+" "+"mol/mol"
         outds.Ymod95.attrs["units"] = str(data[".units"])+" "+"mol/mol"
         outds.Ymod68.attrs["units"] = str(data[".units"])+" "+"mol/mol"
-        outds.YmodBC.attrs["units"] = str(data[".units"])+" "+"mol/mol"
+        outds.YmodmeanBC.attrs["units"] = str(data[".units"])+" "+"mol/mol"
+        outds.Ymod95BC.attrs["units"] = str(data[".units"])+" "+"mol/mol"
+        outds.Ymod68BC.attrs["units"] = str(data[".units"])+" "+"mol/mol"
         outds.YaprioriBC.attrs["units"] = str(data[".units"])+" "+"mol/mol"
         outds.Yerror.attrs["units"] = str(data[".units"])+" "+"mol/mol"
-        outds.countrytotals.attrs["units"] = "Gg/yr"
-        outds.country68.attrs["units"] = "Gg/yr"
-        outds.country95.attrs["units"] = "Gg/yr"
+        outds.countrymean.attrs["units"] = country_units
+        outds.country68.attrs["units"] = country_units
+        outds.country95.attrs["units"] = country_units
+        outds.xsensitivity.attrs["units"] = str(data[".units"])+" "+"mol/mol"
+        outds.bcsensitivity.attrs["units"] = str(data[".units"])+" "+"mol/mol"
+        outds.sigtrace.attrs["units"] = str(data[".units"])+" "+"mol/mol"
+        
+        outds.Yobs.attrs["longname"] = "observations"
+        outds.Yerror.attrs["longname"] = "measurement error"
+        outds.Ytime.attrs["longname"] = "time of measurements"
+        outds.Yapriori.attrs["longname"] = "a priori simulated measurements"
+        outds.Ymodmean.attrs["longname"] = "mean of posterior simulated measurements"
+        outds.Ymod68.attrs["longname"] = " 0.68 Bayesian credible interval of posterior simulated measurements"
+        outds.Ymod95.attrs["longname"] = " 0.95 Bayesian credible interval of posterior simulated measurements"
+        outds.YaprioriBC.attrs["longname"] = "a priori simulated boundary conditions"
+        outds.YmodmeanBC.attrs["longname"] = "mean of posterior simulated boundary conditions"
+        outds.Ymod68BC.attrs["longname"] = " 0.68 Bayesian credible interval of posterior simulated boundary conditions"
+        outds.Ymod95BC.attrs["longname"] = " 0.95 Bayesian credible interval of posterior simulated boundary conditions"
+        outds.xtrace.attrs["longname"] = "trace of unitless scaling factors for emissions parameters"
+        outds.bctrace.attrs["longname"] = "trace of unitless scaling factors for boundary condition parameters"
+        outds.sigtrace.attrs["longname"] = "trace of model error parameters"
+        outds.siteindicator.attrs["longname"] = "index of site of measurement corresponding to sitenames"
+        outds.sitenames.attrs["longname"] = "site names"
+        outds.sitelons.attrs["longname"] = "site longitudes corresponding to site names"
+        outds.sitelats.attrs["longname"] = "site latitudes corresponding to site names"
+        outds.fluxapriori.attrs["longname"] = "mean a priori flux over period"
+        outds.fluxmean.attrs["longname"] = "mean posterior flux over period"
+        outds.scalingmean.attrs["longname"] = "mean scaling factor field over period"
+        outds.basisfunctions.attrs["longname"] = "basis function field"
+        outds.countrymean.attrs["longname"] = "mean of ocean and country totals"
+        outds.country68.attrs["longname"] = "0.68 Bayesian credible interval of ocean and country totals"
+        outds.country95.attrs["longname"] = "0.95 Bayesian credible interval of ocean and country totals"        
+        outds.xsensitivity.attrs["longname"] = "emissions sensitivity timeseries"   
+        outds.bcsensitivity.attrs["longname"] = "boundary conditions sensitivity timeseries"  
+        
         outds.attrs['Start date'] = start_date
         outds.attrs['End date'] = end_date
         outds.attrs['Latent sampler'] = str(step1)[20:33]

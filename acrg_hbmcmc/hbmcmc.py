@@ -30,6 +30,7 @@ import socket
 import acrg_hbmcmc.inversionsetup as setup 
 import acrg_hbmcmc.inversion_pymc3 as mcmc
 import acrg_hbmcmc.quadtreebasis as quadtree
+import shutil
 
 acrg_path = os.getenv("ACRG_PATH")
 data_path = os.getenv("DATA_PATH")
@@ -42,9 +43,10 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                    nit=2.5e5, burn=50000, tune=1.25e5, nchain=2,
                    emissions_name=None, inlet=None, fpheight=None, instrument=None, 
                    fp_basis_case=None, bc_basis_case="NESW", 
-                   obs_directory = None,
+                   obs_directory = None, country_directory = None,
                    quadtree_basis=True,nbasis=100, 
-                   averagingerror=True, bc_freq=None):
+                   averagingerror=True, bc_freq=None, country_unit_prefix=None):
+
     """
     Script to run hierarchical Bayesian MCMC for inference of emissions using
     pymc3 to solve the inverse problem.
@@ -112,6 +114,8 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
         obs_directory (str, optional):
             Directory containing the obs data (with site codes as subdirectories)
             if not default.
+        country_directory (str, optional):
+            Directory containing the country definition file
         quadtree_basis (bool, optional):
             Creates a basis function file for emissions on the fly using a 
             quadtree algorithm based on the a priori contribution to the mole
@@ -127,7 +131,13 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             The perdiod over which the baseline is estimates. Set to "monthly"
             to estimate per calendar month; set to a number of days,
             as e.g. "30D" for 30 days; or set to None to estimate to have one
-            scaling for the whole inversion period
+            scaling for the whole inversion period.
+        country_unit_prefix ('str', optional)
+            A prefix for scaling the country emissions. Current options are: 
+            'T' will scale to Tg, 'G' to Gg, 'M' to Mg, 'P' to Pg.
+            To add additional options add to acrg_convert.prefix
+            Default is none and no scaling will be applied (output in g).
+
             
     Returns:
         Saves an output from the inversion code using inferpymc3_postprocessouts.
@@ -163,11 +173,11 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             print("Basis case %s supplied but quadtree_basis set to True" % fp_basis_case)
             print("Assuming you want to use %s " % fp_basis_case)
         else:
-            quadtree.quadtreebasisfunction(emissions_name, fp_all, sites, 
+            tempdir = quadtree.quadtreebasisfunction(emissions_name, fp_all, sites, 
                           start_date, domain, species, outputname,
                           nbasis=nbasis)
             fp_basis_case= "quadtree"+species+"-"+outputname
-            basis_directory = os.getcwd()+"/Temp/"
+            basis_directory = tempdir
     else:
         basis_directory = None
             
@@ -230,7 +240,10 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                                emissions_name, domain, species, sites,
                                site_lat, site_lon,
                                start_date, end_date, outputname, outputpath,
-                               basis_directory, fp_basis_case)
-
+                               basis_directory, country_directory, fp_basis_case, country_unit_prefix)
+        
+        # remove the temporary basis function directory
+        shutil.rmtree(tempdir)
+        
         print("All done")
     
