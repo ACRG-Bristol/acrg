@@ -249,29 +249,50 @@ def test_extract_names_WrongSectionGroupForName(tdmcmc_config):
     x = extract_params(tdmcmc_config,section_group=str('MCMC'),names=['sites','species','domain'],param_type=None)
     assert not x
 
+#def test_extract_IncorrectSection(tdmcmc_config):
+#    ''' Test an error is raised if the specified section cannot be found '''
+#    with pytest.raises(KeyError) as e_info:
+#        extract_params(tdmcmc_config,section=str('FLIBBLE'),param_type=None)
+#    #assert not x
+
 def test_extract_IncorrectSection(tdmcmc_config):
-    ''' Test an error is raised if the specified section cannot be found '''
-    with pytest.raises(KeyError) as e_info:
-        extract_params(tdmcmc_config,section=str('FLIBBLE'),param_type=None)
-    #assert not x
+    ''' Test None is returned if the specified section cannot be found '''
+    x = extract_params(tdmcmc_config,section=str('FLIBBLE'),param_type=None)
+    assert x is None
+
+
+# def test_extract_IncorrectSectionGroup(tdmcmc_config):
+#     ''' Test an error is raised when no sections are found for the specified section group. '''
+#     with pytest.raises(KeyError) as e_info:
+#         extract_params(tdmcmc_config,section_group=str('FLIBBLE'),param_type=None)
+#     #assert not x
 
 def test_extract_IncorrectSectionGroup(tdmcmc_config):
-    ''' Test an error is raised when no sections are found for the specified section group. '''
-    with pytest.raises(KeyError) as e_info:
-        extract_params(tdmcmc_config,section_group=str('FLIBBLE'),param_type=None)
-    #assert not x
+    ''' Test None is returned if no sections are found for the specified section group. '''
+    x = extract_params(tdmcmc_config,section_group=str('FLIBBLE'),param_type=None)
+    assert x is None
+
+# def test_extract_IncorrectSection_Ignore(tdmcmc_config):
+#     ''' Test an error is raised if one of the specified sections cannot be found '''
+#     with pytest.raises(KeyError) as e_info:
+#         extract_params(tdmcmc_config,ignore_sections=['MEASUREMENTS','FLIBBLE'],param_type=None)
+#     #assert not x
 
 def test_extract_IncorrectSection_Ignore(tdmcmc_config):
-    ''' Test an error is raised if one of the specified sections cannot be found '''
-    with pytest.raises(KeyError) as e_info:
-        extract_params(tdmcmc_config,ignore_sections=['MEASUREMENTS','FLIBBLE'],param_type=None)
-    #assert not x
+    ''' Test function can still run if one of the specified sections to ignore cannot be found '''
+    x = extract_params(tdmcmc_config,ignore_sections=['MEASUREMENTS','FLIBBLE'],param_type=None)
+    assert x
+
+# def test_extract_IncorrectSectionGroup_Ignore(tdmcmc_config):
+#     ''' Test an error is raised when no sections are found for the specified section group. '''
+#     with pytest.raises(KeyError) as e_info:
+#         extract_params(tdmcmc_config,ignore_section_groups=["TDMCMC",'FLIBBLE'],param_type=None)
+#     #assert not x
 
 def test_extract_IncorrectSectionGroup_Ignore(tdmcmc_config):
-    ''' Test an error is raised when no sections are found for the specified section group. '''
-    with pytest.raises(KeyError) as e_info:
-        extract_params(tdmcmc_config,ignore_section_groups=["TDMCMC",'FLIBBLE'],param_type=None)
-    #assert not x
+    ''' Test function can still run if one of the section groups to ignore cannot be found. '''
+    x = extract_params(tdmcmc_config,ignore_section_groups=["TDMCMC",'FLIBBLE'],param_type=None)
+    assert x
 
 def test_extract_MissingExpected(tdmcmc_config):
     ''' Test an error is raised when expected parameters are not present '''

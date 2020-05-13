@@ -267,7 +267,7 @@ def list_check(string,force_convert=True,error=True):
             None    
     '''
     
-    out = eval_check(string) # Try evaluating input
+    out,check = eval_check(string) # Try evaluating input
     
     if not isinstance(out, (list, str)): # If not already a list
         try:
@@ -584,7 +584,9 @@ def extract_params(config_file,expected_param=[],section=None,section_group=None
             if s in all_sections:
                 select_sections.append(s)
             else:
-                raise KeyError('Specified section {0} could not be found in configuration file: {1}'.format(s,config_file))
+                #raise KeyError('Specified section {0} could not be found in configuration file: {1}'.format(s,config_file))
+                print('Specified section {0} could not be found in configuration file: {1}'.format(s,config_file))
+                return None
     elif section_group:
         if isinstance(section_group,str):
             section_group = [section_group]
@@ -593,20 +595,24 @@ def extract_params(config_file,expected_param=[],section=None,section_group=None
             s_sections = [s for s in all_sections if s.split('.')[0].lower() == sg.lower()] # Find all sections covered by section_group (section_group.name)
             select_sections.extend(s_sections)
         if not select_sections:
-            raise KeyError('No sections could be found for specified section_group {0} in configuration file: {1}'.format(section_group,config_file))
+            #raise KeyError('No sections could be found for specified section_group {0} in configuration file: {1}'.format(section_group,config_file))
+            print('No sections could be found for specified section_group {0} in configuration file: {1}'.format(section_group,config_file))
+            return None
     elif ignore_sections:
         select_sections = all_sections
         for es in ignore_sections:
             if es in select_sections:
                 select_sections.remove(es)
             else:
-                raise KeyError('Specified section {0} could not be found in configuration file: {1}'.format(es,config_file))
+                #raise KeyError('Specified section {0} could not be found in configuration file: {1}'.format(es,config_file))
+                print('Specified section {0} could not be found in configuration file: {1}'.format(es,config_file))
     elif ignore_section_groups:
         select_sections = all_sections
         for esg in ignore_section_groups:
             ignore_s = [s for s in all_sections if s.split('.')[0].lower() == esg.lower()]
             if not ignore_s:
-                raise KeyError('No sections could be found for specified section_group {0} in configuration file: {1}'.format(esg,config_file))
+                #raise KeyError('No sections could be found for specified section_group {0} in configuration file: {1}'.format(esg,config_file))
+                print('No sections could be found for specified section_group {0} in configuration file: {1}'.format(esg,config_file))
             for es in ignore_s:
                 if es in select_sections:
                     select_sections.remove(es)
