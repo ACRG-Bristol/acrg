@@ -10,6 +10,7 @@ from shutil import copyfile
 import acrg_hbmcmc.hbmcmc as mcmc
 import acrg_config.config as config
 from acrg_config.paths import paths
+import acrg_hbmcmc.hbmcmc_output as output
 
 def fixed_basis_expected_param():
     '''
@@ -160,6 +161,8 @@ if __name__=="__main__":
     print(f"Using MCMC type: {mcmc_type} - function {mcmc_function.__name__}(...)")
     
     param = hbmcmc_extract_param(config_file,mcmc_type,start_date=start_date,end_date=end_date)
+
+    output.copy_config_file(config_file,param=param,start_date=start_date,end_date=end_date)
 
     #mcmc.fixedbasisMCMC(**param)
     mcmc_function(**param)
