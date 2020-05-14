@@ -42,12 +42,16 @@ def fixed_basis_expected_param():
     Returns:
         list : required parameter names
     '''
-    sg_expected_param = {"INPUT":["species","sites","meas_period","domain"],#"start_date","end_date"
-                          "MCMC":["outputpath","outputname"]}
-	
-    expected_param = []
-    for values in sg_expected_param.values():
-        expected_param.extend(values)
+    
+    #sg_expected_param = {"INPUT":["species","sites","meas_period","domain","start_date","end_date"],
+    #                      "MCMC":["outputpath","outputname"]}
+	#
+    #expected_param = []
+    #for values in sg_expected_param.values():
+    #    expected_param.extend(values)
+
+    expected_param = ["species","sites","meas_period","domain","start_date","end_date",
+                      "outputpath","outputname"]
 
     return expected_param
 
@@ -89,7 +93,7 @@ def define_mcmc_function(mcmc_type):
     Returns:
         Function
     '''
-    function_dict = {"fixed_basis":mcmc.fixedbasisMCMC}
+    function_dict = {"fixed_basis":None}#mcmc.fixedbasisMCMC}
     
     return function_dict[mcmc_type]
 
@@ -119,22 +123,26 @@ def hbmcmc_extract_param(config_file,mcmc_type="fixed_basis",print_param=True,**
     if mcmc_type == "fixed_basis":
         expected_param = fixed_basis_expected_param()
 
+    # If an expected parameter has been passed from the command line, this does not need to be within the config file
+    for key,value in command_line.items():
+        if key in expected_param and value is not None:
+            expected_param.remove(key)
+
     mcmc_type_section = "MCMC.TYPE"    
     param = config.extract_params(config_file,expected_param=expected_param,ignore_sections=[mcmc_type_section])
 
+    # Command line values added to param (or superceed inputs from the config file)
     for key,value in command_line.items():
         if value is not None:
             param[key] = value
-
-    date_param = ["start_date","end_date"]
-    expected_param.extend(date_param)
-
+    
+    # If configuration file does not include values for the required parameters - produce an error
     for ep in expected_param:
         if not param[ep]:
-            raise Exception(f"Expected parameter {param[ep]} has not been defined")
+            raise Exception(f"Required parameter '{ep}' has not been defined")
 
     if print_param:
-        print("Input parameters: ")
+        print("\nInput parameters: ")
         for key,value in param.items():
             print(f"{key} = {value}")
 
@@ -185,6 +193,6 @@ if __name__=="__main__":
 
     output.copy_config_file(config_file,param=param,start_date=start_date,end_date=end_date)
 
-    #mcmc.fixedbasisMCMC(**param)
+    mcmc.fixedbasisMCMC(**param)
     mcmc_function(**param)
 
