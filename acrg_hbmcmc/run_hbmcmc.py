@@ -93,7 +93,7 @@ def define_mcmc_function(mcmc_type):
     Returns:
         Function
     '''
-    function_dict = {"fixed_basis":None}#mcmc.fixedbasisMCMC}
+    function_dict = {"fixed_basis":mcmc.fixedbasisMCMC}
     
     return function_dict[mcmc_type]
 
