@@ -13,6 +13,7 @@ import xarray as xr
 from acrg_grid import areagrid
 import getpass
 from acrg_hbmcmc.inversionsetup import opends
+from acrg_hbmcmc.hbmcmc_output import define_output_filename
 import os
 import acrg_convert as convert
 
@@ -472,7 +473,10 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         outds.attrs['Creator'] = getpass.getuser()
         outds.attrs['Date created'] = str(pd.Timestamp('today'))
         outds.attrs['Convergence'] = convergence
+        
         comp = dict(zlib=True, complevel=5)
         encoding = {var: comp for var in outds.data_vars}
-        outds.to_netcdf(outputpath+"/"+species.upper()+'_'+domain+'_'+outputname+'_'+start_date+'.nc', encoding=encoding, mode="w")
+        output_filename = define_output_filename(outputpath,species,domain,outputname,start_date,ext=".nc")
+        #outds.to_netcdf(outputpath+"/"+species.upper()+'_'+domain+'_'+outputname+'_'+start_date+'.nc', encoding=encoding, mode="w")
+        outds.to_netcdf(output_filename, encoding=encoding, mode="w")
 
