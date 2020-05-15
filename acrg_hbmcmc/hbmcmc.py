@@ -30,6 +30,7 @@ import socket
 import acrg_hbmcmc.inversionsetup as setup 
 import acrg_hbmcmc.inversion_pymc3 as mcmc
 import acrg_hbmcmc.quadtreebasis as quadtree
+import shutil
 
 acrg_path = os.getenv("ACRG_PATH")
 data_path = os.getenv("DATA_PATH")
@@ -42,9 +43,11 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                    nit=2.5e5, burn=50000, tune=1.25e5, nchain=2,
                    emissions_name=None, inlet=None, fpheight=None, instrument=None, 
                    fp_basis_case=None, bc_basis_case="NESW", 
-                   obs_directory = None,
+                   obs_directory = None, country_directory = None,
                    quadtree_basis=True,nbasis=100, 
-                   averagingerror=True, bc_monthly=True):
+                   averagingerror=True, bc_freq=None, country_unit_prefix=None,
+                   verbose = False):
+
     """
     Script to run hierarchical Bayesian MCMC for inference of emissions using
     pymc3 to solve the inverse problem.
@@ -112,6 +115,8 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
         obs_directory (str, optional):
             Directory containing the obs data (with site codes as subdirectories)
             if not default.
+        country_directory (str, optional):
+            Directory containing the country definition file
         quadtree_basis (bool, optional):
             Creates a basis function file for emissions on the fly using a 
             quadtree algorithm based on the a priori contribution to the mole
@@ -123,10 +128,17 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
         averagingerror (bool, optional):
             Adds the variability in the averaging period to the measurement 
             error if set to True.
-        bc_monthly (bool, optional):
-            Set to true for the boundary conditions to be scaled each month.
-            If set to False, the each boundary has one scaling factor over the
-            whole inversion period.
+        bc_freq (str, optional):
+            The perdiod over which the baseline is estimates. Set to "monthly"
+            to estimate per calendar month; set to a number of days,
+            as e.g. "30D" for 30 days; or set to None to estimate to have one
+            scaling for the whole inversion period.
+        country_unit_prefix ('str', optional)
+            A prefix for scaling the country emissions. Current options are: 
+            'T' will scale to Tg, 'G' to Gg, 'M' to Mg, 'P' to Pg.
+            To add additional options add to acrg_convert.prefix
+            Default is none and no scaling will be applied (output in g).
+
             
     Returns:
         Saves an output from the inversion code using inferpymc3_postprocessouts.
@@ -162,11 +174,11 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             print("Basis case %s supplied but quadtree_basis set to True" % fp_basis_case)
             print("Assuming you want to use %s " % fp_basis_case)
         else:
-            quadtree.quadtreebasisfunction(emissions_name, fp_all, sites, 
+            tempdir = quadtree.quadtreebasisfunction(emissions_name, fp_all, sites, 
                           start_date, domain, species, outputname,
                           nbasis=nbasis)
             fp_basis_case= "quadtree"+species+"-"+outputname
-            basis_directory = os.getcwd()+"/Temp/"
+            basis_directory = tempdir
     else:
         basis_directory = None
             
@@ -203,10 +215,12 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
         else:
             Ytime = np.concatenate((Ytime,fp_data[site].time.values ))
         
-        if bc_monthly:
+        if bc_freq == "monthly":
             Hmbc = setup.monthly_bcs(start_date, end_date, site, fp_data)
+        elif bc_freq == None:
+            Hmbc = fp_data[site].H_bc.values
         else:
-            Hmbc = fp_data[site].H_bc.values 
+            Hmbc = setup.create_bc_sensitivity(start_date, end_date, site, fp_data, bc_freq)
             
         if si == 0:
             Hbc = np.copy(Hmbc) #fp_data[site].H_bc.values 
@@ -217,7 +231,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
 
         #Run Pymc3 inversion
         xouts, bcouts, sigouts, convergence, step1, step2 = mcmc.inferpymc3(Hx, Hbc, Y, error, 
-               xprior,bcprior, sigprior,nit, burn, tune, nchain)
+               xprior,bcprior, sigprior,nit, burn, tune, nchain, verbose=verbose)
         #Process and save inversion output
         mcmc.inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence, 
                                Hx, Hbc, Y, error, 
@@ -227,34 +241,10 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                                emissions_name, domain, species, sites,
                                site_lat, site_lon,
                                start_date, end_date, outputname, outputpath,
-                               basis_directory, fp_basis_case)
-
-        print("All done")
+                               basis_directory, country_directory, fp_basis_case, country_unit_prefix)
         
-if __name__ == "__main__":
-    # Pymc3 will use all available threads. Therefore if using Snowy
-    # (or non HPC) limit the threads to nchain. This will actually probably
-    # speed up run time due to unneccessary forking.
-    if socket.gethostname() == 'snowy.chm.bris.ac.uk':
-        print("==============================================================")
-        print("Before running this I strongly recommend first doing:")
-        print("export OPENBLAS_NUM_THREADS=XX and/or")
-        print("export OMP_NUM_THREADS=XX")
-        print("where XX is the number of chains you are running.")
-        print("If running with Spyder, do this before launching Spyder.") 
-        print("Otherwise it will use every available thread!")
-        print("==============================================================")
-    # Run it through to see if it works.
-    outputname = "TEST"
-    outputpath = "~/Documents/Python/fixed_MCMC/"
-    sites = ["TAC",'BSD']
-    species = "ch4"
-    domain = "EUROPE"
-    meas_period = ["12H",'12H']
-    bc_basis_case = "NESW"
-    start_date = "2016-01-01"
-    end_date = "2016-02-01"
-    fixedbasisMCMC(species, sites, domain, meas_period, start_date, 
-                   end_date, outputpath, outputname, nit=5000, burn=1000, 
-                   tune=1000)
+        # remove the temporary basis function directory
+        shutil.rmtree(tempdir)
+        
+        print("All done")
     
