@@ -18,11 +18,61 @@ import acrg_convert as convert
 
 data_path = os.getenv("DATA_PATH")
 
+def parsePrior(name, prior_params, shape = ()):
+    """
+    Parses all continuous distributions for pymc 3.8: https://docs.pymc.io/api/distributions/continuous.html
+    This format requires updating when the pymc distributions update, but is safest for code execution
+    
+    Args:
+        name (str):
+            name of variable in the pymc model
+        prior_params (dict):
+            dict of parameters for the distribution, including 'pdf' for the distribution to use
+        shape (array):
+            shape of distribution to be created. Default shape = () is the same as used by pymc3
+        
+    """
+    functionDict = {"uniform":pm.Uniform,
+                    "flat":pm.Flat,
+                    "halfflat":pm.HalfFlat,
+                    "normal":pm.Normal,
+                    "truncatednormal":pm.TruncatedNormal,
+                    "halfnormal":pm.HalfNormal,
+                    "skewnormal":pm.SkewNormal,
+                    "beta":pm.Beta,
+                    "kumaraswamy":pm.Kumaraswamy,
+                    "exponential":pm.Exponential,
+                    "laplace":pm.Laplace,
+                    "studentt":pm.StudentT,
+                    "halfstudentt":pm.HalfStudentT,
+                    "cauchy":pm.Cauchy,
+                    "halfcauchy":pm.HalfCauchy,
+                    "gamma":pm.Gamma,
+                    "inversegamma":pm.InverseGamma,
+                    "weibull":pm.Weibull,
+                    "lognormal":pm.Lognormal,
+                    "chisquared":pm.ChiSquared,
+                    "wald":pm.Wald,
+                    "pareto":pm.Pareto,
+                    "exgaussian":pm.ExGaussian,
+                    "vonmises":pm.VonMises,
+                    "triangular":pm.Triangular,
+                    "gumbel":pm.Gumbel,
+                    "rice":pm.Rice,
+                    "logistic":pm.Logistic,
+                    "logitnormal":pm.LogitNormal,
+                    "interpolated":pm.Interpolated}
+    
+    pdf = prior_params["pdf"]
+    #Get a dictionary of the pdf arguments
+    params = {x: prior_params[x] for x in prior_params if x != "pdf"}
+    return functionDict[pdf.lower()](name, shape=shape, **params)
+
 def inferpymc3(Hx, Hbc, Y, error, 
                xprior={"pdf":"lognormal", "mu":1, "sd":1},
                bcprior={"pdf":"lognormal", "mu":0.004, "sd":0.02},
                sigprior={"pdf":"uniform", "lower":0.5, "upper":3},
-                nit=2.5e5, burn=50000, tune=1.25e5, nchain=2):       
+                nit=2.5e5, burn=50000, tune=1.25e5, nchain=2, verbose=False):       
     """
     Uses pym3 module for Bayesian inference for emissions field, boundary 
     conditions and (currently) a single model error value.
@@ -54,6 +104,8 @@ def inferpymc3(Hx, Hbc, Y, error,
             Same as above but for boundary conditions.
         sigprior (dict):
             Same as above but for model error.
+        verbose:
+            When True, prints progress bar
 
             
     Returns:
@@ -77,10 +129,8 @@ def inferpymc3(Hx, Hbc, Y, error,
             easily be changed.
      
     TO DO:
-       - Allow any type of sampler to sample variables
        - Allow non-iid variables
        - Allow more than one model-error
-       - Neaten up the way the priors are assigned.
     """
     burn = int(burn)         
     
@@ -93,36 +143,9 @@ def inferpymc3(Hx, Hbc, Y, error,
     nit = int(nit)  
 
     with pm.Model() as model:
-        if xprior["pdf"].lower() == "uniform":
-            x = pm.Uniform('x',lower=xprior["lower"],upper=xprior["upper"], shape=nx)
-        elif xprior["pdf"].lower() == "lognormal":
-            x = pm.Lognormal('x', mu=xprior["mu"], sd=xprior["sd"], shape=nx)
-        elif xprior["pdf"].lower() == "halfflat":
-            x = pm.HalfFlat('x', shape=nx)
-        elif xprior["pdf"].lower() == "normal":
-            x = pm.Normal('x', mu=xprior["mu"], sd=xprior["sd"], shape=nx)
-        else:
-            print("Haven't coded in %s yet for emissions" % xprior["pdf"])
-
-        if bcprior["pdf"].lower() == "uniform":
-            xbc = pm.Uniform('xbc',lower=bcprior["lower"],upper=bcprior["upper"], shape=nbc)
-        elif bcprior["pdf"].lower() == "lognormal":
-            xbc = pm.Lognormal('xbc', mu=bcprior["mu"], sd=bcprior["sd"], shape=nbc)
-        elif bcprior["pdf"].lower() == "halfflat":
-            xbc = pm.HalfFlat('xbc', shape=nbc)
-        elif bcprior["pdf"].lower() == "normal":
-            xbc = pm.Normal('xbc', mu=bcprior["mu"], sd=bcprior["sd"], shape=nbc)
-        else:
-            print("Haven't coded in %s yet for boundary conditions" % bcprior["pdf"])  
-        
-        if sigprior["pdf"].lower() == "uniform":
-            sig = pm.Uniform('sig',lower=sigprior["lower"],upper=sigprior["upper"])
-        elif bcprior["pdf"].lower() == "lognormal":
-            sig = pm.Lognormal('sig', mu=sigprior["mu"], sd=sigprior["sd"])
-        elif sigprior["pdf"].lower() == "halfflat":
-            sig = pm.HalfFlat('sig')
-        else:
-            print("Haven't coded in %s yet for model error" % sigprior["pdf"])  
+        x = parsePrior("x", xprior, shape=nx)
+        xbc = parsePrior("xbc", xprior, shape=nbc)
+        sig = parsePrior("sig", xprior)
         
         mu = pm.math.dot(hx,x) + pm.math.dot(hbc,xbc)        
         epsilon = pm.math.sqrt(error**2 + sig**2)
@@ -132,7 +155,7 @@ def inferpymc3(Hx, Hbc, Y, error,
         step2 = pm.Slice(vars=[sig])
         
         trace = pm.sample(nit, tune=int(tune), chains=nchain,
-                           step=[step1,step2], progressbar=False, cores=nchain)#step=pm.Metropolis())#  #target_accept=0.8,
+                           step=[step1,step2], progressbar=verbose, cores=nchain)#step=pm.Metropolis())#  #target_accept=0.8,
         
         outs = trace.get_values(x, burn=burn)[0:int((nit)-burn)]
         bcouts = trace.get_values(xbc, burn=burn)[0:int((nit)-burn)]
