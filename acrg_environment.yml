@@ -22,9 +22,10 @@ dependencies:
   - pytest=5.4.1
   - ipython=7.13.0
   - spyder=4.1.1
-  - geopandas=0.5.1
-  - xesmf=0.2.0
+  - pymc3=3.8
+  - esmpy=8.0
   - pip=20.0.2
   - pip:
     - dirsync==2.2.4
     - iso3166==1.0.1
+    - "--editable=git+https://github.com/JiaweiZhuang/xESMF.git@3588a78c00cc3f9f0a9d313509c49fd7e3510db1#egg=xesmf"
