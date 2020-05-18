@@ -145,8 +145,8 @@ def inferpymc3(Hx, Hbc, Y, error,
 
     with pm.Model() as model:
         x = parsePrior("x", xprior, shape=nx)
-        xbc = parsePrior("xbc", xprior, shape=nbc)
-        sig = parsePrior("sig", xprior)
+        xbc = parsePrior("xbc", bcprior, shape=nbc)
+        sig = parsePrior("sig", sigprior)
         
         mu = pm.math.dot(hx,x) + pm.math.dot(hbc,xbc)        
         epsilon = pm.math.sqrt(error**2 + sig**2)
