@@ -10,9 +10,6 @@ to dynamically create a basis function grid based on the a priori sensitivity,
 and some other functionality for setting up the inputs to this (or any) inverse
 method.
 
-It will probably be best to tease this script apart in future, so that the 
-method of inference sits in one file and the other functionality sits elsewhere.
-
 If not using on an HPC (i.e. on Snowy), in the terminal you should do:
 export OPENBLAS_NUM_THREADS=XX
 and/or
