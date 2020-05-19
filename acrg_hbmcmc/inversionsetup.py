@@ -70,9 +70,9 @@ def addaveragingerror(fp_all, sites, species, start_date, end_date, meas_period,
         # Now sort to get everything in the right order
         dataerr[site] = dataerr[site].sort_index()
         if 'vmf' in fp_all[site]:
-            fp_all[site].vmf.values = fp_all[site].vmf.values + dataerr[site].mf.resample(meas_period[si]).std(ddof=0).dropna().values
+            fp_all[site].vmf.values = np.sqrt(fp_all[site].vmf.values**2 + dataerr[site].mf.resample(meas_period[si]).std(ddof=0).dropna().values**2)
         elif 'dmf' in fp_all[site]:
-            fp_all[site].dmf.values = fp_all[site].dmf.values + dataerr[site].mf.resample(meas_period[si]).std(ddof=0).dropna().values
+            fp_all[site].dmf.values = np.sqrt(fp_all[site].dmf.values**2 + dataerr[site].mf.resample(meas_period[si]).std(ddof=0).dropna().values**2)
         else:
             print('No mole fraction error information available in {}.'.format('fp_all'+str([site])))
     return fp_all
