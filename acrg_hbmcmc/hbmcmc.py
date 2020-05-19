@@ -42,7 +42,8 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                    fp_basis_case=None, bc_basis_case="NESW", 
                    obs_directory = None, country_directory = None,
                    quadtree_basis=True,nbasis=100, 
-                   averagingerror=True, bc_freq=None, country_unit_prefix=None):
+                   averagingerror=True, bc_freq=None, country_unit_prefix=None,
+                   verbose = False):
 
     """
     Script to run hierarchical Bayesian MCMC for inference of emissions using
@@ -227,7 +228,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
 
         #Run Pymc3 inversion
         xouts, bcouts, sigouts, convergence, step1, step2 = mcmc.inferpymc3(Hx, Hbc, Y, error, 
-               xprior,bcprior, sigprior,nit, burn, tune, nchain)
+               xprior,bcprior, sigprior,nit, burn, tune, nchain, verbose=verbose)
         #Process and save inversion output
         mcmc.inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence, 
                                Hx, Hbc, Y, error, 
