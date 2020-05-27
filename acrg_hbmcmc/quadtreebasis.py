@@ -12,6 +12,7 @@ import os
 import getpass
 import pandas as pd
 import uuid
+import acrg_name.process_HiSRes as pHR
 
 class quadTreeNode:    
     
@@ -162,6 +163,124 @@ def quadtreebasisfunction(emissions_name, fp_all, sites,
     newds.lon.attrs['long_name'] = 'longitude' 
     newds.lat.attrs['units'] = 'degrees_north'
     newds.lon.attrs['units'] = 'degrees_east'     
+    newds.attrs['creator'] = getpass.getuser()
+    newds.attrs['date created'] = str(pd.Timestamp.today())
+    cwd = os.getcwd()
+    tempdir = cwd + "/Temp" + str(uuid.uuid4()) + "/"
+    os.mkdir(tempdir)    
+    os.mkdir(tempdir + domain)  
+#     if not os.path.isdir(cwd+"/Temp"):
+#         os.mkdir(cwd+"/Temp")
+#     if not os.path.isdir(cwd+"/Temp/"+domain):
+#         os.mkdir(cwd+"/Temp/"+domain)
+    newds.to_netcdf(tempdir+domain+"/quadtree"+species+"-"+outputname+"_"+domain+"_"+start_date.split("-")[0]+'.nc', mode='w')
+    
+    return tempdir
+
+def quadtreebasisfunction_multiResolution(emissions_name, fp_all, sites, 
+                          start_date, domain, species, outputname,
+                          nbasis=100):
+    """
+    A variant on quadtreebasifunction designed to handle with the high resoultion
+    in space inversions. Deals with low and high resolution grids seperately,
+    before combining into a single basis function.
+    
+    Original comment:
+    Creates a basis function with nbasis grid cells using a quadtree algorithm.
+    The domain is split with smaller grid cells for regions which contribute
+    more to the a priori (above basline) mole fraction. This is based on the
+    average footprint over the inversion period and the a priori emissions field.
+    Output is a netcdf file saved to /Temp/<domain> in the current directory.
+    The number of basis functions is optimised using dual annealing. Probably
+    not the best or fastest method as there should only be one minima, but doesn't
+    require the Jacobian or Hessian for optimisation.
+    
+    Args:
+        emissions_name (dict): 
+            Allows emissions files with filenames that are longer than just the species name
+            to be read in (e.g. co2-ff-mth_EUROPE_2014.nc). This should be a dictionary
+            with {source_name: emissions_file_identifier} (e.g. {'anth':'co2-ff-mth'}). This way
+            multiple sources can be read in simultaneously if they are added as separate entries to
+            the emissions_name dictionary.
+        fp_and_data (dict): 
+            Output from footprints_data_merge() function. Dictionary of datasets.
+        sites (list): 
+            List of site names (This could probably be found elsewhere)
+        start_date (str): 
+            String of start date of inversion
+        domain (str): 
+            The inversion domain
+        species (str): 
+            Species of interest
+        outputname (str): 
+            Identifier or run name
+        nbasis (int): 
+            Number of basis functions that you want. This will optimise to 
+            closest value that fits with quadtree splitting algorithm
+    
+    Returns:
+        Name of temporary directory basis function is stored in
+    """
+    if emissions_name == None:
+        meanflux_low = np.squeeze(fp_all['.flux']['all'].low_res.values)
+        meanflux_high = np.squeeze(fp_all['.flux']['all'].high_res.values)
+    else:
+        meanflux_low = np.squeeze(fp_all[".flux"][list(emissions_name.keys())[0]].low_res.values)
+        meanflux_high = np.squeeze(fp_all[".flux"][list(emissions_name.keys())[0]].high_res.values)
+    
+    #calculate mean footprint over sites for low and high resolution
+    meanfp_low = np.zeros((fp_all[sites[0]].fp_low.shape[0],fp_all[sites[0]].fp_low.shape[1]))
+    meanfp_high = np.zeros((fp_all[sites[0]].fp_high.shape[0],fp_all[sites[0]].fp_high.shape[1]))
+    div=0
+    for site in sites:
+        meanfp_low += np.sum(fp_all[site].fp_low.values,axis=2)
+        meanfp_high += np.sum(fp_all[site].fp_high.values,axis=2)
+        div += fp_all[site].fp_low.shape[2]
+    meanfp_low /= div
+    meanfp_high /= div
+    #ensure time is squeezed out of meanflux
+    if meanflux_low.shape != meanfp_low.shape:
+        meanflux_low = np.mean(meanflux_low, axis=2)
+    if meanflux_high.shape != meanfp_high.shape:
+        meanflux_high = np.mean(meanflux_high, axis=2)
+        
+    fps_low = meanfp_low*meanflux_low
+    fps_high = meanfp_high*meanflux_high
+    
+    #optimise number of basis functions
+    def qtoptim(x):
+        basisQuad_low, boxes = quadTreeGrid(fps_low, x)
+        basisQuad_high, boxes = quadTreeGrid(fps_high, x)
+        return (nbasis - (np.max(basisQuad_low) + np.max(basisQuad_high)+2))**2
+    
+    print("Running quad tree optimization")
+    optim = scipy.optimize.dual_annealing(qtoptim, np.expand_dims([0,100], axis=0))
+    print("Quad tree optimization complete")
+    
+    #creating the basis function to use
+    basisQuad_low, boxes = quadTreeGrid(fps_low, optim.x[0])
+    basisQuad_high, boxes = quadTreeGrid(fps_high, optim.x[0])
+    
+    #rejig the indicies to combine the two grids
+    lowsize, highsize, lons_low, lats_low, lons_high, lats_high, indicies_to_remove, lons_out, lats_out = \
+            pHR.getOverlapParameters(fp_all[sites[0]].lat.values, fp_all[sites[0]].lon.values,
+                                 fp_all[sites[0]].lat_high.values, fp_all[sites[0]].lon_high.values)
+    
+    #make hr quads sequentially numbered higher than the low grid, then flatten and combine removing the overlap
+    basisLength = np.amax(basisQuad_low)+1
+    basisQuad_high += basisLength
+    combined = basisQuad_low.reshape(lowsize, order="F")
+    combined = np.delete(combined, indicies_to_remove)
+    basisQuad_combined = np.append(combined, basisQuad_high.reshape(highsize, order="F"))
+    
+    index = fp_all[sites[0]].index.values   
+    
+    base = np.expand_dims(basisQuad_combined+1,axis=1)
+    
+    time = [pd.to_datetime(start_date)]
+    newds = xr.Dataset({'basis' : ([ 'index', 'time'], base)}, 
+                        coords={'time':(['time'], time), 
+                    'index' : (['index'],  index)})        
     newds.attrs['creator'] = getpass.getuser()
     newds.attrs['date created'] = str(pd.Timestamp.today())
     cwd = os.getcwd()

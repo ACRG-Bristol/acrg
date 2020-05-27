@@ -40,7 +40,9 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                    nit=2.5e5, burn=50000, tune=1.25e5, nchain=2,
                    emissions_name=None, inlet=None, fpheight=None, instrument=None, 
                    fp_basis_case=None, bc_basis_case="NESW", 
-                   obs_directory = None, country_directory = None,
+                   obs_directory = None, fp_directory = None,
+                   bc_directory = None, flux_directory = None,
+                   country_directory = None,
                    quadtree_basis=True,nbasis=100, 
                    averagingerror=True, bc_freq=None, country_unit_prefix=None,
                    verbose = False):
@@ -148,7 +150,9 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                           keep_missing=False,inlet=inlet, instrument=instrument)
     fp_all = name.footprints_data_merge(data, domain=domain, calc_bc=True, 
                                         height=fpheight, 
-                                        emissions_name=emissions_name)
+                                        emissions_name=emissions_name,
+                                        fp_directory=fp_directory, bc_directory=bc_directory,
+                                        flux_directory=flux_directory)
     
     if len(data[sites[0]].mf) == 0:
         print("No observations for %s to %s" % (start_date, end_date))
@@ -171,9 +175,14 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             print("Basis case %s supplied but quadtree_basis set to True" % fp_basis_case)
             print("Assuming you want to use %s " % fp_basis_case)
         else:
-            tempdir = quadtree.quadtreebasisfunction(emissions_name, fp_all, sites, 
-                          start_date, domain, species, outputname,
-                          nbasis=nbasis)
+            if 'index' in fp_all[sites[0]].dims.keys():
+                tempdir = quadtree.quadtreebasisfunction_multiResolution(emissions_name, fp_all, sites, 
+                              start_date, domain, species, outputname,
+                              nbasis=nbasis)
+            else:
+                tempdir = quadtree.quadtreebasisfunction(emissions_name, fp_all, sites, 
+                              start_date, domain, species, outputname,
+                              nbasis=nbasis)
             fp_basis_case= "quadtree"+species+"-"+outputname
             basis_directory = tempdir
     else:
