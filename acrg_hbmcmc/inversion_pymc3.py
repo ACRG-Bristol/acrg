@@ -175,10 +175,8 @@ def inferpymc3(Hx, Hbc, Y, error,
 def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence, 
                                Hx, Hbc, Y, error, 
                                step1, step2, 
-                               xprior, bcprior, sigprior,
-                               lat, lon, Ytime, siteindicator, data,
+                               xprior, bcprior, sigprior, Ytime, siteindicator, data, fp_data,
                                emissions_name, domain, species, sites,
-                               site_lat, site_lon,
                                start_date, end_date, outputname, outputpath,
                                basis_directory, country_directory, fp_basis_case, country_unit_prefix):
         """
@@ -231,21 +229,15 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                 Same as above but for boundary conditions.
             sigprior (dict):
                 Same as above but for model error.
-            lat (array):
-                Vector of latitudes at LPDM resolution for the inversion domain.
-            lon (array):
-                Vector of longitudes at LPDM resolution for the inversion domain.
             Ytime (pandas datetime array):
                 Time stamp of measurements as used by the inversion.
             siteindicator (array):
                 Numerical indicator of which site the measurements belong to,
                 same length at Y.
-            site_lon (array):
-                Longitude of measurement sites
-            site_lat (array):
-                Latitude of measurement sites
             data (data array):
                 Measurement data from get_obs function.
+            fp_data (dict):
+                Output from footprints_data_merge + sensitivies
             emissions_name (dict): 
                 Allows emissions files with filenames that are longer than just the species name
                 to be read in (e.g. co2-ff-mth_EUROPE_2014.nc). This should be a dictionary
@@ -294,6 +286,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         """
         print("Post-processing output")
         
+        
         #Get parameters for output file 
         nit = outs.shape[0]
         nx = Hx.shape[0]
@@ -315,6 +308,14 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         Ymod68 = pm.stats.hpd(Ytrace.T, 0.68)
         Yapriori = np.sum(Hx.T, axis=1) + np.sum(Hbc.T, axis=1)
         sitenum = np.arange(len(sites))
+        
+        lon = fp_data[sites[0]].lon.values
+        lat = fp_data[sites[0]].lat.values
+        site_lat = np.zeros(len(sites))
+        site_lon = np.zeros(len(sites))
+        for si, site in enumerate(sites):
+            site_lat[si] = fp_data[site].release_lat.values[0]
+            site_lon[si] = fp_data[site].release_lon.values[0]
 
         #Calculate mean posterior scale map and flux field
         if basis_directory is not None:
