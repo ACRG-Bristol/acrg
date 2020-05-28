@@ -140,6 +140,8 @@ def quadtreebasisfunction(emissions_name, fp_all, sites,
     for site in sites:
         meanfp += np.sum(fp_all[site].fp.values,axis=2)
         div += fp_all[site].fp.shape[2]
+    meanfp /= div
+    
     if meanflux.shape != meanfp.shape:
         meanflux = np.mean(meanflux, axis=2)
     fps = meanfp*meanflux
