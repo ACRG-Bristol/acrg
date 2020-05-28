@@ -322,19 +322,8 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         else:
             bfds = opends(data_path+"/LPDM/basis_functions/"+fp_basis_case+"_"+domain+"_"+start_date[:4]+".nc")
         scalemap = np.zeros_like(np.squeeze(bfds.basis.values))
-
-        for npm in nparam:
-            scalemap[bfds.basis.values[:,:,0] == (npm+1)] = np.mean(outs[:,npm])
-        if emissions_name == None:
-            emds = name.name.flux(domain, species, start = start_date, end = end_date)
-        else:
-            emds = name.name.flux(domain, list(emissions_name.values())[0], start = start_date, end = end_date)
-        flux = scalemap*emds.flux.values[:,:,0]
         
-        #Basis functions to save
-        bfarray = np.squeeze(bfds.basis.values)-1
-
-        #Calculate country totals   
+        #common setup for country totals calculation
         area = areagrid(lat, lon)
         c_object = name.get_country(domain, country_dir=country_directory)
         cntryds = xr.Dataset({'country': (['lat','lon'], c_object.country), 
@@ -353,29 +342,46 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         if country_unit_prefix is None:
            country_unit_prefix=''
         country_units = country_unit_prefix + 'g'
-
-        # Not sure how it's best to do this if multiple months in emissions 
-        # file. Now it scales a weighted average of a priori emissions
-        # If a priori emissions have frequency of more than monthly then this
-        # needs chaning.
-        aprioriflux = np.zeros_like(area)
-        if emds.flux.values.shape[2] > 1:
-            print("Assuming the inversion is over a year or less and emissions file is monthly")
-            allmonths = pd.date_range(start_date, end_date).month[:-1].values
-            allmonths -= np.min(allmonths)
-            for mi in allmonths:
-                aprioriflux += emds.flux.values[:,:,mi]*np.sum(allmonths == mi)/len(allmonths)
+            
+        #emission and flux calculations dependant on lat/lon vs index dimensions
+        if "index" in bfds.dims.keys():
+            
         else:
-            aprioriflux = np.squeeze(emds.flux.values)
-        for ci, cntry in enumerate(cntrynames):
-            cntrytottrace = np.zeros(len(steps))
-            for bf in range(int(np.max(bfarray))):
-                bothinds = np.logical_and(cntrygrid == ci, bfarray==bf)
-                cntrytottrace += np.sum(area[bothinds].ravel()*aprioriflux[bothinds].ravel()* \
-                               3600*24*365*molarmass)*outs[:,bf]/unit_factor
-            cntrymean[ci] = np.mean(cntrytottrace)
-            cntry68[ci, :] = pm.stats.hpd(cntrytottrace, 0.68)
-            cntry95[ci, :] = pm.stats.hpd(cntrytottrace, 0.95)
+            for npm in nparam:
+                scalemap[bfds.basis.values[:,:,0] == (npm+1)] = np.mean(outs[:,npm])
+            if emissions_name == None:
+                emds = name.name.flux(domain, species, start = start_date, end = end_date)
+            else:
+                emds = name.name.flux(domain, list(emissions_name.values())[0], start = start_date, end = end_date)
+            flux = scalemap*emds.flux.values[:,:,0]
+            
+            #Basis functions to save
+            bfarray = np.squeeze(bfds.basis.values)-1
+    
+            #Calculate country totals           
+    
+            # Not sure how it's best to do this if multiple months in emissions 
+            # file. Now it scales a weighted average of a priori emissions
+            # If a priori emissions have frequency of more than monthly then this
+            # needs chaning.
+            aprioriflux = np.zeros_like(area)
+            if emds.flux.values.shape[2] > 1:
+                print("Assuming the inversion is over a year or less and emissions file is monthly")
+                allmonths = pd.date_range(start_date, end_date).month[:-1].values
+                allmonths -= np.min(allmonths)
+                for mi in allmonths:
+                    aprioriflux += emds.flux.values[:,:,mi]*np.sum(allmonths == mi)/len(allmonths)
+            else:
+                aprioriflux = np.squeeze(emds.flux.values)
+            for ci, cntry in enumerate(cntrynames):
+                cntrytottrace = np.zeros(len(steps))
+                for bf in range(int(np.max(bfarray))):
+                    bothinds = np.logical_and(cntrygrid == ci, bfarray==bf)
+                    cntrytottrace += np.sum(area[bothinds].ravel()*aprioriflux[bothinds].ravel()* \
+                                   3600*24*365*molarmass)*outs[:,bf]/unit_factor
+                cntrymean[ci] = np.mean(cntrytottrace)
+                cntry68[ci, :] = pm.stats.hpd(cntrytottrace, 0.68)
+                cntry95[ci, :] = pm.stats.hpd(cntrytottrace, 0.95)
         
     
         #Make output netcdf file

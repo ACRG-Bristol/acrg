@@ -235,19 +235,30 @@ def quadtreebasisfunction_multiResolution(emissions_name, fp_all, sites,
     meanfp_high = np.zeros((fp_all[sites[0]].fp_high.shape[0],fp_all[sites[0]].fp_high.shape[1]))
     div=0
     for site in sites:
-        meanfp_low += np.sum(fp_all[site].fp_low.values,axis=2)
-        meanfp_high += np.sum(fp_all[site].fp_high.values,axis=2)
+        meanfp_low += np.sum(fp_all[site].fp_low,axis=2)
+        meanfp_high += np.sum(fp_all[site].fp_high,axis=2)
         div += fp_all[site].fp_low.shape[2]
     meanfp_low /= div
     meanfp_high /= div
+    
     #ensure time is squeezed out of meanflux
     if meanflux_low.shape != meanfp_low.shape:
         meanflux_low = np.mean(meanflux_low, axis=2)
     if meanflux_high.shape != meanfp_high.shape:
         meanflux_high = np.mean(meanflux_high, axis=2)
         
+    #get parameters needed to combine grids
+    lowsize, highsize, lons_low, lats_low, lons_high, lats_high, indicies_to_remove, lons_out, lats_out = \
+            pHR.getOverlapParameters(fp_all[sites[0]].lat.values, fp_all[sites[0]].lon.values,
+                                 fp_all[sites[0]].lat_high.values, fp_all[sites[0]].lon_high.values)
+            
     fps_low = meanfp_low*meanflux_low
     fps_high = meanfp_high*meanflux_high
+    #set overlap values to 0, as they should not contribute to the quad tree calculation
+    fps_low.loc[dict(lat = np.unique(lats_low[indicies_to_remove]),
+                                    lon= np.unique(lons_low[indicies_to_remove]))] = 0.
+    fps_low = fps_low.values
+    fps_high = fps_high.values
     
     #optimise number of basis functions
     def qtoptim(x):
@@ -263,10 +274,6 @@ def quadtreebasisfunction_multiResolution(emissions_name, fp_all, sites,
     basisQuad_low, boxes = quadTreeGrid(fps_low, optim.x[0])
     basisQuad_high, boxes = quadTreeGrid(fps_high, optim.x[0])
     
-    #rejig the indicies to combine the two grids
-    lowsize, highsize, lons_low, lats_low, lons_high, lats_high, indicies_to_remove, lons_out, lats_out = \
-            pHR.getOverlapParameters(fp_all[sites[0]].lat.values, fp_all[sites[0]].lon.values,
-                                 fp_all[sites[0]].lat_high.values, fp_all[sites[0]].lon_high.values)
     
     #make hr quads sequentially numbered higher than the low grid, then flatten and combine removing the overlap
     basisLength = np.amax(basisQuad_low)+1
