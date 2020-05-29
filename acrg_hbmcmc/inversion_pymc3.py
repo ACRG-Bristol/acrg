@@ -375,9 +375,10 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                 cntrytottrace += np.sum(area[bothinds].ravel()*aprioriflux[bothinds].ravel()* \
                                3600*24*365*molarmass)*outs[:,bf]/unit_factor
             cntrymean[ci] = np.mean(cntrytottrace)
+            cntrysd[ci] = np.std(cntrytottrace)
             cntry68[ci, :] = pm.stats.hpd(cntrytottrace, 0.68)
             cntry95[ci, :] = pm.stats.hpd(cntrytottrace, 0.95)
-        
+            
     
         #Make output netcdf file
         outds = xr.Dataset({'Yobs':(['nmeasure'], Y),
@@ -403,6 +404,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                             'scalingmean':(['lat','lon'],scalemap),
                             'basisfunctions':(['lat','lon'],bfarray),
                             'countrymean':(['countrynames'], cntrymean),
+                            'countrysd':(['countrynames'], cntrysd),
                             'country68':(['countrynames', 'nUI'],cntry68),
                             'country95':(['countrynames', 'nUI'],cntry95),
                             'xsensitivity':(['nmeasure','nparam'], Hx.T),
