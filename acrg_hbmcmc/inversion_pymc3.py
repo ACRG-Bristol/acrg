@@ -16,6 +16,8 @@ from acrg_hbmcmc.inversionsetup import opends
 from acrg_hbmcmc.hbmcmc_output import define_output_filename
 import os
 import acrg_convert as convert
+import acrg_name.process_HiSRes as pHR
+import acrg_tdmcmc.post_process_HiSRes as ppHR
 
 data_path = os.getenv("DATA_PATH")
 
@@ -283,6 +285,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
             - Currently it can only work out the country total emissions if
               the a priori emissions are constant over the inversion period
               or else monthly (and inversion is for less than one calendar year).
+            - add in hr grid to country totals
         """
         print("Post-processing output")
         
@@ -346,6 +349,51 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
             
         #emission and flux calculations dependant on lat/lon vs index dimensions
         if "index" in bfds.dims.keys():
+            '''
+            'index' used to add high spatial resolution features:
+                - hr coordinates
+                - two grids for two resolutions [fluxes, scalemaps]
+            '''
+            
+            #setup new variables needed
+            lon_hr = fp_data[sites[0]].lon_high.values
+            lat_hr = fp_data[sites[0]].lat_high.values
+            area_hr = areagrid(fp_data[sites[0]].lat_high.values,fp_data[sites[0]].lon_high.values) 
+            lowsize, highsize, lons_low, lats_low, lons_high, lats_high, indicies_to_remove, lons_out, lats_out = \
+                pHR.getOverlapParameters(fp_data[sites[0]].fp_low.lat.values, fp_data[sites[0]].fp_low.lon.values,
+                                 fp_data[sites[0]].fp_high.lat_high.values, fp_data[sites[0]].fp_high.lon_high.values)
+            
+            #unfaltten and convert flux and scaling map to dataarrays
+            scalemap_hr_trace, scalemap_trace = ppHR.unflattenArray(np.squeeze(outs.T[(bfds.basis.values.astype(int)-1),:]), fp_data[".flux"]["all"])
+            
+            scalemap = xr.DataArray( np.mean(scalemap_trace,axis=2), coords=[lat, lon], dims = ["lat", "lon"])
+            scalemap_hr = xr.DataArray(np.mean(scalemap_hr_trace,axis=2), coords=[lat_hr, lon_hr], dims = ["lat_high", "lon_high"])
+            
+            #unscaled sections of low resolution set to 1
+            scalemap.loc[dict(lat = np.unique(lats_low[indicies_to_remove]),
+                                    lon= np.unique(lons_low[indicies_to_remove]))] = 1.
+            
+            flux = scalemap * np.mean(fp_data[".flux"]["all"].low_res.values,axis=2)
+            flux_hr = scalemap_hr * np.mean(fp_data[".flux"]["all"].high_res.values,axis=2)
+            
+            #unused sections of low res flux set to 0
+            flux.loc[dict(lat = np.unique(lats_low[indicies_to_remove]),
+                                    lon= np.unique(lons_low[indicies_to_remove]))] = 0.
+                
+            #! TODO: expand to non singular fluxes
+            aprioriflux = fp_data[".flux"]["all"].low_res.values[:,:,0]
+            aprioriflux_hr = fp_data[".flux"]["all"].high_res.values[:,:,0]
+            
+            #! TODO: add hr grid into calculations here
+            for ci, cntry in enumerate(cntrynames):
+                cntrytottrace = np.sum( scalemap_trace * np.expand_dims(area * (cntrygrid == ci),axis=2) * 3600*24*365*molarmass/unit_factor, axis=(0,1))
+                cntrymean[ci] = np.mean(cntrytottrace)
+                cntry68[ci, :] = pm.stats.hpd(cntrytottrace, 0.68)
+                cntry95[ci, :] = pm.stats.hpd(cntrytottrace, 0.95)
+            
+            bfarray_hr, bfarray = ppHR.unflattenArray( np.squeeze(bfds.basis.values-1), fp_data[".flux"]["all"])
+            bfarray = np.squeeze(bfarray)
+            bfarray_hr = np.squeeze(bfarray_hr)
             
         else:
             for npm in nparam:
@@ -422,6 +470,11 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                                    'lat':(['lat'],lat),
                                    'lon':(['lon'],lon),
                                    'countrynames':(['countrynames'],cntrynames)})
+        
+        if "index" in bfds.dims.keys():
+            outds["fluxmean_hr"] = (['lat_hr','lon_hr'], flux_hr)   
+            outds["scalingmean_hr"] = (['lat_hr','lon_hr'], scalemap_hr)   
+            outds["basisfunctions_hr"] = (['lat_hr','lon_hr'], bfarray_hr) 
         
         outds.fluxmean.attrs["units"] = "mol/m2/s"
         outds.fluxapriori.attrs["units"] = "mol/m2/s"
