@@ -1539,16 +1539,16 @@
   "RHL": {
     "RHUL": {
       "height": [
-        "20m",
+        "20m"
       ],
       "height_name": [
-        "20magl",
+        "20magl"
       ],
       "height_station_masl": 70.0,
       "latitude": 51.426209,
       "long_name": "Royal Holloway, University of London, UK",
       "longitude": -0.561312
-    },
+    }
   },
   "RPB": {
     "AGAGE": {

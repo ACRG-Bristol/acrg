@@ -523,10 +523,18 @@ def get_single_site(site, species_in,
                 file_dmf=ds[ncvarname + " repeatability"].values
                 if len(file_dmf) > 0:
                     df["dmf"] = file_dmf[:]
+            if ncvarname + "_repeatability" in ds.variables:
+                file_dmf=ds[ncvarname + "_repeatability"].values
+                if len(file_dmf) > 0:
+                    df["dmf"] = file_dmf[:]
     
             #Get variability
             if ncvarname + " variability" in ds.variables:
                 file_vmf=ds[ncvarname + " variability"]
+                if len(file_vmf) > 0:
+                    df["vmf"] = file_vmf[:]
+            if ncvarname + "_variability" in ds.variables:
+                file_vmf=ds[ncvarname + "_variability"]
                 if len(file_vmf) > 0:
                     df["vmf"] = file_vmf[:]
             
