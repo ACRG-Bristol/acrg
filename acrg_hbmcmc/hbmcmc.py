@@ -222,20 +222,20 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             Hbc = np.hstack((Hbc, Hmbc))
             Hx = np.hstack((Hx, fp_data[site].H.values))
 
-        #Run Pymc3 inversion
-        xouts, bcouts, sigouts, convergence, step1, step2 = mcmc.inferpymc3(Hx, Hbc, Y, error, 
-               xprior,bcprior, sigprior,nit, burn, tune, nchain, verbose=verbose)
-        #Process and save inversion output
-        mcmc.inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence, 
-                               Hx, Hbc, Y, error, 
-                               step1, step2, 
-                               xprior, bcprior, sigprior,Ytime, siteindicator, data, fp_data,
-                               emissions_name, domain, species, sites,
-                               start_date, end_date, outputname, outputpath,
-                               basis_directory, country_directory, fp_basis_case, country_unit_prefix)
-        
-        # remove the temporary basis function directory
-        shutil.rmtree(tempdir)
-        
-        print("All done")
+    #Run Pymc3 inversion
+    xouts, bcouts, sigouts, convergence, step1, step2 = mcmc.inferpymc3(Hx, Hbc, Y, error, 
+           xprior,bcprior, sigprior,nit, burn, tune, nchain, verbose=verbose)
+    #Process and save inversion output
+    mcmc.inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence, 
+                           Hx, Hbc, Y, error, 
+                           step1, step2, 
+                           xprior, bcprior, sigprior,Ytime, siteindicator, data, fp_data,
+                           emissions_name, domain, species, sites,
+                           start_date, end_date, outputname, outputpath,
+                           basis_directory, country_directory, fp_basis_case, country_unit_prefix)
+    
+    # remove the temporary basis function directory
+    shutil.rmtree(tempdir)
+    
+    print("All done")
     
