@@ -71,7 +71,7 @@ def parsePrior(name, prior_params, shape = ()):
     params = {x: prior_params[x] for x in prior_params if x != "pdf"}
     return functionDict[pdf.lower()](name, shape=shape, **params)
 
-def inferpymc3(Hx, Hbc, Y, error, 
+def inferpymc3(Hx, Hbc, Y, error, siteindicator,
                xprior={"pdf":"lognormal", "mu":1, "sd":1},
                bcprior={"pdf":"lognormal", "mu":0.004, "sd":0.02},
                sigprior={"pdf":"uniform", "lower":0.5, "upper":3},
@@ -93,6 +93,8 @@ def inferpymc3(Hx, Hbc, Y, error,
             Measurement vector containing all measurements
         error (arrray):
             Measurement error vector, containg a value for each element of Y.
+        siteindicator (array):
+            Array of indexing integers that relate each measurement to a site
         xprior (dict):
             Dictionary containing information about the prior PDF for emissions.
             The entry "pdf" is the name of the analytical PDF used, see
@@ -144,14 +146,18 @@ def inferpymc3(Hx, Hbc, Y, error,
     ny = len(Y)
     
     nit = int(nit)  
+    
+    #convert siteindicator into a site indexer
+    sites = siteindicator.astype(int)
+    nsites = np.amax(sites)+1
 
     with pm.Model() as model:
         x = parsePrior("x", xprior, shape=nx)
         xbc = parsePrior("xbc", bcprior, shape=nbc)
-        sig = parsePrior("sig", sigprior)
+        sig = parsePrior("sig", sigprior, shape=nsites)
         
         mu = pm.math.dot(hx,x) + pm.math.dot(hbc,xbc)        
-        epsilon = pm.math.sqrt(error**2 + sig**2)
+        epsilon = pm.math.sqrt(error**2 + sig[sites]**2)
         y = pm.Normal('y', mu = mu, sd=epsilon, observed=Y, shape = ny)
         
         step1 = pm.NUTS(vars=[x,xbc])
@@ -388,6 +394,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
             for ci, cntry in enumerate(cntrynames):
                 cntrytottrace = np.sum( scalemap_trace * np.expand_dims(area * (cntrygrid == ci),axis=2) * 3600*24*365*molarmass/unit_factor, axis=(0,1))
                 cntrymean[ci] = np.mean(cntrytottrace)
+                cntrysd[ci] = np.std(cntrytottrace)
                 cntry68[ci, :] = pm.stats.hpd(cntrytottrace, 0.68)
                 cntry95[ci, :] = pm.stats.hpd(cntrytottrace, 0.95)
             
@@ -429,9 +436,9 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                     cntrytottrace += np.sum(area[bothinds].ravel()*aprioriflux[bothinds].ravel()* \
                                    3600*24*365*molarmass)*outs[:,bf]/unit_factor
                 cntrymean[ci] = np.mean(cntrytottrace)
+                cntrysd[ci] = np.std(cntrytottrace)
                 cntry68[ci, :] = pm.stats.hpd(cntrytottrace, 0.68)
                 cntry95[ci, :] = pm.stats.hpd(cntrytottrace, 0.95)
-        
     
         #Make output netcdf file
         outds = xr.Dataset({'Yobs':(['nmeasure'], Y),
@@ -447,7 +454,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                             'Ymod68BC':(['nmeasure','nUI'], Ymod68BC),                        
                             'xtrace':(['steps','nparam'], outs),
                             'bctrace':(['steps','nBC'],bcouts),
-                            'sigtrace':(['steps'], sigouts),
+                            'sigtrace':(['steps', 'nsite'], sigouts),
                             'siteindicator':(['nmeasure'],siteindicator),
                             'sitenames':(['nsite'],sites),
                             'sitelons':(['nsite'],site_lon),
@@ -457,6 +464,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                             'scalingmean':(['lat','lon'],scalemap),
                             'basisfunctions':(['lat','lon'],bfarray),
                             'countrymean':(['countrynames'], cntrymean),
+                            'countrysd':(['countrynames'], cntrysd),
                             'country68':(['countrynames', 'nUI'],cntry68),
                             'country95':(['countrynames', 'nUI'],cntry95),
                             'xsensitivity':(['nmeasure','nparam'], Hx.T),
