@@ -180,7 +180,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                                emissions_name, domain, species, sites,
                                site_lat, site_lon,
                                start_date, end_date, outputname, outputpath,
-                               basis_directory, country_directory, fp_basis_case, country_unit_prefix):
+                               basis_directory, country_file, fp_basis_case, country_unit_prefix):
         """
         Takes the output from inferpymc3 function, along with some other input
         information, and places it all in a netcdf output. This function also 
@@ -272,8 +272,8 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                 Path to where output should be saved.
             basis_directory (str):
                 Directory containing basis function file
-            country_directory (str):
-                Directory containing country definition file
+            country_file (str):
+                Path of country definition file
             fp_basis_case (str, optional):
                 Name of basis function to use for emissions.
             country_unit_prefix ('str', optional)
@@ -336,7 +336,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
 
         #Calculate country totals   
         area = areagrid(lat, lon)
-        c_object = name.get_country(domain, country_dir=country_directory)
+        c_object = name.get_country(domain, country_file=country_file)
         cntryds = xr.Dataset({'country': (['lat','lon'], c_object.country), 
                         'name' : (['ncountries'],c_object.name) },
                                         coords = {'lat': (c_object.lat),

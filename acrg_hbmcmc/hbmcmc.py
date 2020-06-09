@@ -40,7 +40,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                    nit=2.5e5, burn=50000, tune=1.25e5, nchain=2,
                    emissions_name=None, inlet=None, fpheight=None, instrument=None, 
                    fp_basis_case=None, bc_basis_case="NESW", 
-                   obs_directory = None, country_directory = None,
+                   obs_directory = None, country_file = None,
                    quadtree_basis=True,nbasis=100, 
                    averagingerror=True, bc_freq=None, country_unit_prefix=None,
                    verbose = False):
@@ -112,8 +112,8 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
         obs_directory (str, optional):
             Directory containing the obs data (with site codes as subdirectories)
             if not default.
-        country_directory (str, optional):
-            Directory containing the country definition file
+        country_file (str, optional):
+            Path to the country definition file
         quadtree_basis (bool, optional):
             Creates a basis function file for emissions on the fly using a 
             quadtree algorithm based on the a priori contribution to the mole
@@ -238,7 +238,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                                emissions_name, domain, species, sites,
                                site_lat, site_lon,
                                start_date, end_date, outputname, outputpath,
-                               basis_directory, country_directory, fp_basis_case, country_unit_prefix)
+                               basis_directory, country_file, fp_basis_case, country_unit_prefix)
         
         # remove the temporary basis function directory
         shutil.rmtree(tempdir)
