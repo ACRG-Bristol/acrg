@@ -41,6 +41,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                    emissions_name=None, inlet=None, fpheight=None, instrument=None, 
                    fp_basis_case=None, bc_basis_case="NESW", 
                    obs_directory = None, country_file = None,
+                   fp_directory = None, bc_directory = None, flux_directory = None,
                    quadtree_basis=True,nbasis=100, 
                    averagingerror=True, bc_freq=None, country_unit_prefix=None,
                    verbose = False):
@@ -148,6 +149,9 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                           keep_missing=False,inlet=inlet, instrument=instrument)
     fp_all = name.footprints_data_merge(data, domain=domain, calc_bc=True, 
                                         height=fpheight, 
+                                        fp_directory = fp_directory,
+                                        bc_directory = bc_directory,
+                                        flux_directory = flux_directory,
                                         emissions_name=emissions_name)
     
     if len(data[sites[0]].mf) == 0:
@@ -185,14 +189,6 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     for si, site in enumerate(sites):     
         fp_data[site].attrs['Domain']=domain
     
-    lon = fp_all[sites[0]].lon.values
-    lat = fp_all[sites[0]].lat.values
-    site_lat = np.zeros(len(sites))
-    site_lon = np.zeros(len(sites))
-    for si, site in enumerate(sites):
-        site_lat[si] = fp_data[site].release_lat.values[0]
-        site_lon[si] = fp_data[site].release_lon.values[0]
-    
     #Get inputs ready
     error = np.zeros(0)
     Hbc = np.zeros(0)
@@ -226,22 +222,21 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             Hbc = np.hstack((Hbc, Hmbc))
             Hx = np.hstack((Hx, fp_data[site].H.values))
 
-        #Run Pymc3 inversion
-        xouts, bcouts, sigouts, convergence, step1, step2 = mcmc.inferpymc3(Hx, Hbc, Y, error, 
-               xprior,bcprior, sigprior,nit, burn, tune, nchain, verbose=verbose)
-        #Process and save inversion output
-        mcmc.inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence, 
-                               Hx, Hbc, Y, error, 
-                               step1, step2, 
-                               xprior, bcprior, sigprior,
-                               lat, lon, Ytime, siteindicator, data,
-                               emissions_name, domain, species, sites,
-                               site_lat, site_lon,
-                               start_date, end_date, outputname, outputpath,
-                               basis_directory, country_file, fp_basis_case, country_unit_prefix)
-        
-        # remove the temporary basis function directory
-        shutil.rmtree(tempdir)
-        
-        print("All done")
+    #Run Pymc3 inversion
+    xouts, bcouts, sigouts, convergence, step1, step2 = mcmc.inferpymc3(Hx, Hbc, Y, error, siteindicator,
+           xprior,bcprior, sigprior,nit, burn, tune, nchain, verbose=verbose)
+    #Process and save inversion output
+    mcmc.inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence, 
+                           Hx, Hbc, Y, error, 
+                           step1, step2, 
+                           xprior, bcprior, sigprior,Ytime, siteindicator, data, fp_data,
+                           emissions_name, domain, species, sites,
+                           start_date, end_date, outputname, outputpath,
+                           basis_directory, country_file, fp_basis_case, country_unit_prefix)
+    
+    # remove the temporary basis function directory
+    shutil.rmtree(tempdir)
+    
+    print("All done")
+
     
