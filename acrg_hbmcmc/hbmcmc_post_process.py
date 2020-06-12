@@ -42,6 +42,8 @@ import datetime as dt
 import getpass
 import acrg_convert as convert
 import pymc3 as pm
+import matplotlib.dates as mdates
+import pandas as pd
 
 acrg_path = os.getenv("ACRG_PATH")
 
@@ -711,6 +713,7 @@ def country_emissions(ds, species, domain, country_file=None, country_unit_prefi
     cntry68 = np.zeros((len(cntrynames), len(nui)))
     cntry95 = np.zeros((len(cntrynames), len(nui)))
     cntrysd = np.zeros(len(cntrynames))
+    cntryprior = np.zeros(len(cntrynames))
     molarmass = convert.molar_mass(species)
 
     unit_factor = convert.prefix(country_unit_prefix)
@@ -720,15 +723,19 @@ def country_emissions(ds, species, domain, country_file=None, country_unit_prefi
 
     for ci, cntry in enumerate(cntrynames):
         cntrytottrace = np.zeros(len(steps))
+        cntrytotprior = 0
         for bf in range(int(np.max(bfarray))):
             bothinds = np.logical_and(cntrygrid == ci, bfarray==bf)
             cntrytottrace += np.sum(area[bothinds].ravel()*aprioriflux.values[bothinds].ravel()* \
                            3600*24*365*molarmass)*outs[:,bf]/unit_factor
+            cntrytotprior += np.sum(area[bothinds].ravel()*aprioriflux.values[bothinds].ravel()* \
+                   3600*24*365*molarmass)/unit_factor
         cntrymean[ci] = np.mean(cntrytottrace)
         cntry68[ci, :] = pm.stats.hpd(cntrytottrace, 0.68)
         cntry95[ci, :] = pm.stats.hpd(cntrytottrace, 0.95)
+        cntryprior[ci] = cntrytotprior
 
-    return cntrymean, cntry68, cntry95
+    return cntrymean, cntry68, cntry95, cntryprior
     
 def country_emissions_mult(ds_list, species, domain, country_file=None, country_unit_prefix=None, countries = None):
     '''
@@ -740,19 +747,47 @@ def country_emissions_mult(ds_list, species, domain, country_file=None, country_
         cntry_95_list: list of 95 CI country totals
     '''
 
-    cntry_mean_list = []
-    cntry_68_list = []
-    cntry_95_list = []
-
+    cntrymean_arr = np.zeros((len(ds_list), len(countries)))
+    cntry68_arr = np.zeros((len(ds_list),len(countries),2))
+    cntry95_arr = np.zeros((len(ds_list),len(countries),2))
+    cntryprior_arr = np.zeros((len(ds_list),len(countries)))
+    
     for i,ds in enumerate(ds_list):
-        cntrymean, cntry68, cntry95 = country_emissions(ds, species, domain, \
-                                                        country_file=country_file, country_unit_prefix=None, countries = countries)
-        
-        cntry_mean_list.append(cntrymean)
-        cntry_68_list.append(cntry68)
-        cntry_95_list.append(cntry95)
+        cntrymean, cntry68, cntry95, cntryprior = country_emissions(ds, species, domain, \
+                                                        country_file=country_file, country_unit_prefix=country_unit_prefix, countries = countries)
 
-    return cntry_mean_list, cntry_68_list, cntry_95_list
+        cntrymean_arr[i,:] = cntrymean
+        cntry68_arr[i,:,:] = cntry68
+        cntry95_arr[i,:,:] = cntry95
+        cntryprior_arr[i,:] = cntryprior
+        
+    return cntrymean_arr, cntry68_arr, cntry95_arr, cntryprior_arr
+
+def plot_country_timeseries(country_mean, country_CI, country_prior, d0, prior_label='Prior', posterior_label='Posterior', y_label='emissions', country_label = None, units = None, figsize=(7,3)):
+    
+    """
+    Plot  timeseries of country emissions
+    """
+    fig,ax=plt.subplots(figsize=figsize)
+    
+    d0 = pd.to_datetime(d0)
+    
+    ax.plot(d0,country_prior, label=prior_label, color=(0,0.42,0.64))
+    ax.plot(d0,country_mean, label=posterior_label, color = (0.78,0.32,0))
+ 
+    ax.fill_between(d0, country_CI[:,0],country_CI[:,1], 
+        facecolor=(0.78,0.32,0), edgecolor=(1,1,1), alpha=0.3) 
+
+      
+    ax.set_ylabel((country_label + " " + y_label + ", " + units + " yr$^{-1}$"), fontsize=10, fontweight = 'bold')
+    ax.set_xlabel('Date', fontsize=10, fontweight = 'bold')
+    legend=ax.legend(loc='upper left', labelspacing=0.1, fontsize=10)
+    ax.xaxis.set_tick_params(labelsize=10)
+    ax.yaxis.set_tick_params(labelsize=10)
+    ax.xaxis.set_major_locator(mdates.YearLocator())
+    ax.xaxis.set_minor_locator(mdates.MonthLocator(interval=2))
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
+
 
 # def combine_timeseries(*ds_mult):
 #     '''

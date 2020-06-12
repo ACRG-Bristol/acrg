@@ -40,6 +40,7 @@ if __name__=="__main__":
     plot_abs_map=True
     plot_diff_map=True
     plot_y_timeseries=True
+    plot_countryemissions=True
     
     #### PARAMETERS FOR EACH POST-PROCESSING OPTION ####
     # Only used if relevant value above is set to True
@@ -74,7 +75,10 @@ if __name__=="__main__":
     # combine timeseries will currently fail as needs to be re-written (ag12733 8/5/20)
     combine_timeseries = False # Plot y timeseries on one axis for multiple input files.
     y_out_filename = None
-    
+
+    # plot_countryemissions
+    countries_to_plot = [] # list of countries
+    CI_to_plot = 95 # 95 or 68 CI
     
     #### IMPLEMENT PROCESSING OPTIONS ####
     print('Beginning post processing')
@@ -87,12 +91,6 @@ if __name__=="__main__":
     # Extract datasets from file
     ds_list,filenames = process.extract_hbmcmc_files(output_directory,species, domain, runname,dates,return_filenames=True)
     dates = process.check_missing_dates(filenames,dates)
-
-    ## Calculate country or area totals 
-    if calc_country == True:
-        cntrymean_list, cntry68_list, cntry95_list \
-         = process.country_emissions_mult(ds_list, species, domain, \
-                                          country_file=country_file, country_unit_prefix='g', countries = countries)
     
     ## Plot scaling map
     if plot_scale_map == True:
@@ -130,3 +128,42 @@ if __name__=="__main__":
                 process.plot_timeseries(ds, fig_text=None, 
                                                           ylim=None, out_filename=y_out_filename_n)
  
+
+    ## Calculate country or area totals defined in country_file or the standard country defintion
+    if calc_country == True:
+        cntrymean_arr, cntry68_arr, cntry95_arr, cntryprior_arr \
+         = process.country_emissions_mult(ds_list, species, domain, \
+                                          country_file=country_file, country_unit_prefix=country_unit_prefix, countries = countries)
+        
+        units = country_unit_prefix + 'g'
+    else:
+        countries = list(ds["countrynames"].values)
+        
+        cntrymean_arr = np.zeros((len(ds_list), len(countries)))
+        cntry68_arr = np.zeros((len(ds_list),len(countries),2))
+        cntry95_arr = np.zeros((len(ds_list),len(countries),2))
+        cntryprior_arr = np.zeros((len(ds_list),len(countries)))
+
+        for i,ds in enumerate(ds_list):
+            cntrymean = ds["countrymean"]
+            cntry68 = ds["country68"]
+            cntry95 = ds["country95"]
+            cntryprior = ds["countryprior"]
+            units = ds.countrymean.attrs['units']
+
+            cntrymean_arr[i,:] = cntrymean
+            cntry68_arr[i,:,:] = cntry68
+            cntry95_arr[i,:,:] = cntry95
+            cntryprior_arr[i,:] = cntryprior
+        
+    if plot_countryemissions == True and len(dates)>1:
+        for ii,cntry in enumerate(countries_to_plot):
+            cntry_ind = countries.index(cntry)
+            if CI_to_plot==95:
+                cntryCI_arr = cntry95_arr
+            else:
+                cntryCI_arr = cntry68_arr
+            process.plot_country_timeseries(cntrymean_arr[:,cntry_ind], cntryCI_arr[:,cntry_ind,:],
+                                            cntryprior_arr[:,cntry_ind], dates, country_label = cntry, units = units, figsize = (7,3))
+
+

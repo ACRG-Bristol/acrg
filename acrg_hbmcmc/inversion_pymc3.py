@@ -354,6 +354,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         cntry68 = np.zeros((len(cntrynames), len(nui)))
         cntry95 = np.zeros((len(cntrynames), len(nui)))
         cntrysd = np.zeros(len(cntrynames))
+        cntryprior = np.zeros(len(cntrynames))
         molarmass = convert.molar_mass(species)
 
         unit_factor = convert.prefix(country_unit_prefix)
@@ -376,14 +377,18 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
             aprioriflux = np.squeeze(emds.flux.values)
         for ci, cntry in enumerate(cntrynames):
             cntrytottrace = np.zeros(len(steps))
+            cntrytotprior = 0
             for bf in range(int(np.max(bfarray))):
                 bothinds = np.logical_and(cntrygrid == ci, bfarray==bf)
                 cntrytottrace += np.sum(area[bothinds].ravel()*aprioriflux[bothinds].ravel()* \
                                3600*24*365*molarmass)*outs[:,bf]/unit_factor
+                cntrytotprior += np.sum(area[bothinds].ravel()*aprioriflux[bothinds].ravel()* \
+                               3600*24*365*molarmass)/unit_factor
             cntrymean[ci] = np.mean(cntrytottrace)
             cntrysd[ci] = np.std(cntrytottrace)
             cntry68[ci, :] = pm.stats.hpd(cntrytottrace, 0.68)
             cntry95[ci, :] = pm.stats.hpd(cntrytottrace, 0.95)
+            cntryprior[ci] = cntrytotprior
             
     
         #Make output netcdf file
@@ -413,6 +418,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                             'countrysd':(['countrynames'], cntrysd),
                             'country68':(['countrynames', 'nUI'],cntry68),
                             'country95':(['countrynames', 'nUI'],cntry95),
+                            'countryprior':(['countrynames'],cntryprior),
                             'xsensitivity':(['nmeasure','nparam'], Hx.T),
                             'bcsensitivity':(['nmeasure', 'nBC'],Hbc.T)},
                         coords={'stepnum' : (['steps'], steps), 
@@ -440,6 +446,8 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         outds.countrymean.attrs["units"] = country_units
         outds.country68.attrs["units"] = country_units
         outds.country95.attrs["units"] = country_units
+        outds.countrysd.attrs["units"] = country_units
+        outds.countryprior.attrs["units"] = country_units
         outds.xsensitivity.attrs["units"] = str(data[".units"])+" "+"mol/mol"
         outds.bcsensitivity.attrs["units"] = str(data[".units"])+" "+"mol/mol"
         outds.sigtrace.attrs["units"] = str(data[".units"])+" "+"mol/mol"
@@ -469,6 +477,8 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         outds.countrymean.attrs["longname"] = "mean of ocean and country totals"
         outds.country68.attrs["longname"] = "0.68 Bayesian credible interval of ocean and country totals"
         outds.country95.attrs["longname"] = "0.95 Bayesian credible interval of ocean and country totals"        
+        outds.countrysd.attrs["longname"] = "standard deviation of ocean and country totals" 
+        outds.countryprior.attrs["longname"] = "prior mean of ocean and country totals"
         outds.xsensitivity.attrs["longname"] = "emissions sensitivity timeseries"   
         outds.bcsensitivity.attrs["longname"] = "boundary conditions sensitivity timeseries"  
         
