@@ -52,6 +52,17 @@
       "longitude": -68.6821
     }
   },
+  "AND": {
+    "NOAA": {
+      "height": [
+        "47m"
+      ],
+      "height_station_masl": 47.0,
+      "latitude": 36.539,
+      "long_name": "Anmyeon-do, South Korea",
+      "longitude": 126.329
+    }
+  },
   "ARH": {
     "NIWA": {
       "height": [
@@ -1523,6 +1534,20 @@
       "latitude": 51.997435,
       "long_name": "Ridge Hill, UK",
       "longitude": -2.5399
+    }
+  },
+  "RHL": {
+    "RHUL": {
+      "height": [
+        "20m"
+      ],
+      "height_name": [
+        "20magl"
+      ],
+      "height_station_masl": 70.0,
+      "latitude": 51.426209,
+      "long_name": "Royal Holloway, University of London, UK",
+      "longitude": -0.561312
     }
   },
   "RPB": {

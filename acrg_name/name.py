@@ -2328,35 +2328,41 @@ def animate(fp_data, output_directory, plot_function = "plot", file_label = 'fp'
 
 
 class get_country(object):
-  def __init__(self, domain, ocean=False, ukmo=False, uk_split=False, country_dir = None):
-      
-        if country_dir is None:
-            countryDirectory=data_path +'LPDM/countries/' 
-        else:
-            countryDirectory = country_dir
-            
-        if ocean is False:
-            filename=glob.glob(countryDirectory + 
-                 "/" + "country_" 
-                 + domain + ".nc")
-             
-        else:
-            if uk_split is True:
-                filename=glob.glob(countryDirectory + 
-                     "/" + "country-ukmo-split_"
-                     + domain + ".nc")
-            else:
-                if ukmo is False:
-                    filename=glob.glob(countryDirectory + 
-                         "/" + "country_ocean_"
-                         + domain + ".nc")
-                else:
-                    filename=glob.glob(countryDirectory + 
-                         "/" + "country-ukmo_"
-                         + domain + ".nc")
+  def __init__(self, domain, country_file=None):
         
-#        f = nc.Dataset(filename[0], 'r')
-        f = xr.open_dataset(filename[0])
+        if country_file is None:
+            filename=glob.glob(data_path +'LPDM/countries/' + "/" + "country_" + domain + ".nc")
+            f = xr.open_dataset(filename[0])
+        else:
+            filename = country_file
+            f = xr.open_dataset(filename)
+            
+#         if country_dir is None:
+#             countryDirectory=data_path +'LPDM/countries/' 
+#         else:
+#             countryDirectory = country_dir
+            
+#         if ocean is False:
+#             filename=glob.glob(countryDirectory + 
+#                  "/" + "country_" 
+#                  + domain + ".nc")
+             
+#         else:
+#             if uk_split is True:
+#                 filename=glob.glob(countryDirectory + 
+#                      "/" + "country-ukmo-split_"
+#                      + domain + ".nc")
+#             else:
+#                 if ukmo is False:
+#                     filename=glob.glob(countryDirectory + 
+#                          "/" + "country_ocean_"
+#                          + domain + ".nc")
+#                 else:
+#                     filename=glob.glob(countryDirectory + 
+#                          "/" + "country-ukmo_"
+#                          + domain + ".nc")
+        
+#         f = xr.open_dataset(filename[0])
     
         lon = f.variables['lon'][:].values
         lat = f.variables['lat'][:].values
@@ -2367,25 +2373,25 @@ class get_country(object):
         elif "region" in f.variables:
             country = f.variables['region'][:, :]
         
-        if (ukmo is True) or (uk_split is True):
-            name_temp = f.variables['name'][:]  
-            f.close()
-            name=np.asarray(name_temp)
+#         if (ukmo is True) or (uk_split is True):
+#             name_temp = f.variables['name'][:]  
+#             f.close()
+#             name=np.asarray(name_temp)
         
-        else:
-            name_temp = f.variables['name'].values
-            f.close()
+#         else:
+        name_temp = f.variables['name'].values
+        f.close()
 
-            # rt17603 (11/03/2019): Added to change any masked arrays back into arrays
-            name_temp = np.ma.filled(name_temp,fill_value=None)
-   
-            name=[]
-            for ii in range(len(name_temp)):
-                if type(name_temp[ii]) is not str:
-                    name.append(''.join(name_temp[ii].decode("utf-8")))
-                else:
-                    name.append(''.join(name_temp[ii]))
-            name=np.asarray(name)
+        # rt17603 (11/03/2019): Added to change any masked arrays back into arrays
+        name_temp = np.ma.filled(name_temp,fill_value=None)
+
+        name=[]
+        for ii in range(len(name_temp)):
+            if type(name_temp[ii]) is not str:
+                name.append(''.join(name_temp[ii].decode("utf-8")))
+            else:
+                name.append(''.join(name_temp[ii]))
+        name=np.asarray(name)
     
     
         self.lon = lon

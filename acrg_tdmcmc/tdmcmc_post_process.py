@@ -1212,11 +1212,11 @@ def country_emissions(ds_mcmc, countries, species, domain, x_post_vit=None, q_ap
     
     # GET COUNTRY DATA
     if uk_split == True:
-        c_object=name.get_country(domain, ocean=True, ukmo=True, uk_split=uk_split)
+        c_object=name.get_country(domain, ocean=True, ukmo=True, uk_split=uk_split, country_dir = country_dir)
     elif ocean == True:
-        c_object=name.get_country(domain, ocean=True, ukmo=True, uk_split=False)
+        c_object=name.get_country(domain, ocean=True, ukmo=True, uk_split=False, country_dir = country_dir)
     else:
-        c_object=name.get_country(domain, ocean=False)
+        c_object=name.get_country(domain, ocean=False, country_dir = country_dir)
     cds = xray.Dataset({'country': (['lat','lon'], c_object.country), 
                         'name' : (['ncountries'],c_object.name) },
                                         coords = {'lat': (c_object.lat),
@@ -1334,7 +1334,7 @@ def country_emissions(ds_mcmc, countries, species, domain, x_post_vit=None, q_ap
 
 def country_emissions_mult(ds_list, countries, species, domain, x_post_vit=None, q_ap_abs_v=None, 
                       percentiles=[5,16,50,84,95], units=None, ocean=True, 
-                      uk_split=False, fixed_map=False):
+                      uk_split=False, fixed_map=False, country_dir=None):
     '''
     Calculate country emissions across multiple datasets. Combine mean and percentiles into 
     arrays for all time points.

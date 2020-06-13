@@ -11,6 +11,7 @@ import xarray as xr
 import os 
 import getpass
 import pandas as pd
+import uuid
 
 class quadTreeNode:    
     
@@ -138,6 +139,8 @@ def quadtreebasisfunction(emissions_name, fp_all, sites,
     for site in sites:
         meanfp += np.sum(fp_all[site].fp.values,axis=2)
         div += fp_all[site].fp.shape[2]
+    meanfp /= div
+    
     if meanflux.shape != meanfp.shape:
         meanflux = np.mean(meanflux, axis=2)
     fps = meanfp*meanflux
@@ -164,8 +167,13 @@ def quadtreebasisfunction(emissions_name, fp_all, sites,
     newds.attrs['creator'] = getpass.getuser()
     newds.attrs['date created'] = str(pd.Timestamp.today())
     cwd = os.getcwd()
-    if not os.path.isdir(cwd+"/Temp"):
-        os.mkdir(cwd+"/Temp")
-    if not os.path.isdir(cwd+"/Temp/"+domain):
-        os.mkdir(cwd+"/Temp/"+domain)
-    newds.to_netcdf(cwd+"/Temp/"+domain+"/quadtree"+species+"-"+outputname+"_"+domain+"_"+start_date.split("-")[0]+'.nc', mode='w')
+    tempdir = cwd + "/Temp" + str(uuid.uuid4()) + "/"
+    os.mkdir(tempdir)    
+    os.mkdir(tempdir + domain)  
+#     if not os.path.isdir(cwd+"/Temp"):
+#         os.mkdir(cwd+"/Temp")
+#     if not os.path.isdir(cwd+"/Temp/"+domain):
+#         os.mkdir(cwd+"/Temp/"+domain)
+    newds.to_netcdf(tempdir+domain+"/quadtree"+species+"-"+outputname+"_"+domain+"_"+start_date.split("-")[0]+'.nc', mode='w')
+    
+    return tempdir
