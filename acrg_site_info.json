@@ -1735,14 +1735,14 @@
   "TAC": {
     "DECC": {
       "height": [
-        "100m",
+        "185m",
         "54m",
-        "185m"
+        "100m"
       ],
       "height_name": [
-        "100magl",
+        "185magl",
         "50magl",
-        "185magl"
+        "100magl"
       ],
       "height_station_masl": 50.0,
       "latitude": 52.51775,
