@@ -43,7 +43,8 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                    obs_directory = None, country_file = None,
                    fp_directory = None, bc_directory = None, flux_directory = None,
                    quadtree_basis=True,nbasis=100, 
-                   averagingerror=True, bc_freq=None, country_unit_prefix=None,
+                   averagingerror=True, bc_freq=None, sigma_freq=None,
+                   country_unit_prefix=None,
                    verbose = False):
 
     """
@@ -131,6 +132,8 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             to estimate per calendar month; set to a number of days,
             as e.g. "30D" for 30 days; or set to None to estimate to have one
             scaling for the whole inversion period.
+        sigma_freq (str, optional):
+            as bc_freq, but for model sigma
         country_unit_prefix ('str', optional)
             A prefix for scaling the country emissions. Current options are: 
             'T' will scale to Tg, 'G' to Gg, 'M' to Mg, 'P' to Pg.
@@ -221,15 +224,17 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
         else:
             Hbc = np.hstack((Hbc, Hmbc))
             Hx = np.hstack((Hx, fp_data[site].H.values))
+    
+    sigma_freq_index = setup.sigma_freq_indicies(Ytime, sigma_freq)
 
     #Run Pymc3 inversion
-    xouts, bcouts, sigouts, convergence, step1, step2 = mcmc.inferpymc3(Hx, Hbc, Y, error, siteindicator,
+    xouts, bcouts, sigouts, convergence, step1, step2 = mcmc.inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
            xprior,bcprior, sigprior,nit, burn, tune, nchain, verbose=verbose)
     #Process and save inversion output
     mcmc.inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence, 
                            Hx, Hbc, Y, error, 
                            step1, step2, 
-                           xprior, bcprior, sigprior,Ytime, siteindicator, data, fp_data,
+                           xprior, bcprior, sigprior,Ytime, siteindicator, sigma_freq_index, data, fp_data,
                            emissions_name, domain, species, sites,
                            start_date, end_date, outputname, outputpath,
                            basis_directory, country_file, fp_basis_case, country_unit_prefix)

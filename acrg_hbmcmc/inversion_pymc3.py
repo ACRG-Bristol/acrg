@@ -69,7 +69,7 @@ def parsePrior(name, prior_params, shape = ()):
     params = {x: prior_params[x] for x in prior_params if x != "pdf"}
     return functionDict[pdf.lower()](name, shape=shape, **params)
 
-def inferpymc3(Hx, Hbc, Y, error, siteindicator,
+def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
                xprior={"pdf":"lognormal", "mu":1, "sd":1},
                bcprior={"pdf":"lognormal", "mu":0.004, "sd":0.02},
                sigprior={"pdf":"uniform", "lower":0.5, "upper":3},
@@ -93,6 +93,8 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator,
             Measurement error vector, containg a value for each element of Y.
         siteindicator (array):
             Array of indexing integers that relate each measurement to a site
+        sigma_freq_index (array):
+            Array of integer indexes that converts time into periods
         xprior (dict):
             Dictionary containing information about the prior PDF for emissions.
             The entry "pdf" is the name of the analytical PDF used, see
@@ -148,14 +150,15 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator,
     #convert siteindicator into a site indexer
     sites = siteindicator.astype(int)
     nsites = np.amax(sites)+1
+    nsigmas = np.amax(sigma_freq_index)+1
 
     with pm.Model() as model:
         x = parsePrior("x", xprior, shape=nx)
         xbc = parsePrior("xbc", bcprior, shape=nbc)
-        sig = parsePrior("sig", sigprior, shape=nsites)
+        sig = parsePrior("sig", sigprior, shape=(nsites, nsigmas))
         
         mu = pm.math.dot(hx,x) + pm.math.dot(hbc,xbc)        
-        epsilon = pm.math.sqrt(error**2 + sig[sites]**2)
+        epsilon = pm.math.sqrt(error**2 + sig[sites, sigma_freq_index]**2)
         y = pm.Normal('y', mu = mu, sd=epsilon, observed=Y, shape = ny)
         
         step1 = pm.NUTS(vars=[x,xbc])
@@ -181,7 +184,7 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator,
 def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence, 
                                Hx, Hbc, Y, error, 
                                step1, step2, 
-                               xprior, bcprior, sigprior, Ytime, siteindicator, data, fp_data,
+                               xprior, bcprior, sigprior, Ytime, siteindicator, sigma_freq_index, data, fp_data,
                                emissions_name, domain, species, sites,
                                start_date, end_date, outputname, outputpath,
                                basis_directory, country_file, fp_basis_case, country_unit_prefix):
@@ -240,6 +243,8 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
             siteindicator (array):
                 Numerical indicator of which site the measurements belong to,
                 same length at Y.
+            sigma_freq_index (array):
+                Array of integer indexes that converts time into periods
             data (data array):
                 Measurement data from get_obs function.
             fp_data (dict):
@@ -405,8 +410,9 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                             'Ymod68BC':(['nmeasure','nUI'], Ymod68BC),                        
                             'xtrace':(['steps','nparam'], outs),
                             'bctrace':(['steps','nBC'],bcouts),
-                            'sigtrace':(['steps', 'nsite'], sigouts),
+                            'sigtrace':(['steps', 'nsite', 'nsigma'], sigouts),
                             'siteindicator':(['nmeasure'],siteindicator),
+                            'sigma_freq_index':(['nmeasure'],sigma_freq_index),
                             'sitenames':(['nsite'],sites),
                             'sitelons':(['nsite'],site_lon),
                             'sitelats':(['nsite'],site_lat),
@@ -427,6 +433,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                                    'measurenum' : (['nmeasure'], nmeasure), 
                                    'UInum' : (['nUI'], nui),
                                    'nsites': (['nsite'], sitenum),
+                                   'nsigma': (['nsigma'], np.unique(sigma_freq_index)),
                                    'lat':(['lat'],lat),
                                    'lon':(['lon'],lon),
                                    'countrynames':(['countrynames'],cntrynames)})

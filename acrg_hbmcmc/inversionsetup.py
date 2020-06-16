@@ -157,3 +157,49 @@ def create_bc_sensitivity(start_date, end_date, site, fp_data, freq):
             Hmbc[cnt,dateloc] = fp_data[site].H_bc.values[cord,dateloc] 
             cnt += 1
     return Hmbc
+
+def sigma_freq_indicies(Ytime, sigma_freq):
+    """
+    Create an index that splits times into given periods
+    
+    Args:
+        Ytime (array of datetime64):
+            concatanted array of time values for observations
+        sigma_freq (str):
+            either "monthly", a pandas format string ("30D"), or None
+            this is the period of time to divide the time array into
+            
+    Returns:
+        output (array):
+            index array that defines periods against time
+    """
+    
+    dt = pd.to_datetime(Ytime)
+    output = np.zeros(shape = len(Ytime)).astype(int)
+    if sigma_freq.lower() == "monthly":
+        months = dt.month
+        years = dt.year
+        months_u = np.unique(months)
+        years_u = np.unique(years)
+        
+        #incrementally set sigma indicies for each month in each year
+        count=0      
+        for y in years_u:
+            for m in months_u:
+                indicies = (years == y) & (months == m)
+                output[indicies] = count
+                count += 1
+    elif sigma_freq == None:
+        #output already all 0's as expected for this setting
+        pass
+    else:
+        #divide the time between t0 and ti by sigma_freq, then floor to calculate number of integer intervals
+        #the calculation is performed in seconds as division by pd time_delta is not allowed
+        time_delta = pd.to_timedelta(sigma_freq)
+        fractional_freq_time = (dt - np.amin(dt)).total_seconds() / time_delta.total_seconds()
+        output[:] =np.floor(fractional_freq_time.values).astype(int)
+                
+    return output
+        
+    
+    
