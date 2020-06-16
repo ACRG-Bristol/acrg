@@ -374,7 +374,8 @@ def file_list(site, species, network,
         return data_directory, sorted(fnames)
 
 
-
+    
+    
 def get_single_site(site, species_in,
                     network = None,
                     start_date = None, end_date = None,
@@ -385,7 +386,101 @@ def get_single_site(site, species_in,
                     version = None,
                     data_directory = None):
     '''
-    Get measurements from one site
+    Wrapper function for get_single_instrument. See documentation for get_single_instrument for definitions
+    
+    If a "defaults" entry is defined for a particular site (in acrg_site_info.json), 
+    this function will retrieve and combine data from multiple instruments
+    
+    See BSD for example. Structure of the defaults entry is like this (comes under SITE:NETWORK):
+    
+    "defaults": [
+        {
+            "gases": ["CO", "N2O"],
+            "periods": [["1900-01-01", "2019-03-06"],
+                       ["2019-03-06", "2100-01-01"]],
+            "instrument": ["GCECD", "picarro5310"],
+            "inlet": ["108m", "108m"]
+        }
+      ],
+
+    If you want to define defaults for different sets of gases, 
+    just add another entry (i.e. "1" after the above... 
+    should be a list, but for some reason wasn't working for me!)
+    Make sure there are as many "periods" as instruments and inlets. 
+    You can have as many gases as you like (at least 1)
+    '''
+    
+    
+    defaults_specified = False
+
+    if network == None:
+        network_default = list(site_info[site].keys())[0]
+    else:
+        network_default = network
+
+    # Is there a "defaults" key in the site_info file?
+    if "defaults" in site_info[site][network_default].keys():
+        #defaults_dict = site_info[site][network_default]["defaults"].copy()
+        
+        # Is the species in any of the cases mentioned in the defaults?
+        for defaults_dict in site_info[site][network_default]["defaults"]:
+            if species_in in defaults_dict["gases"]:
+                defaults_specified = True
+                # Build up list of data frames for each time period
+                data_frames = []
+                calibration_scale = []
+                
+                print("... combining data files:")
+                for pi, period in enumerate(defaults_dict["periods"]):
+                    
+                    print("... for period %s : %s:" % (period[0], period[1]))
+                    # Get single instrument, but don't do any averaging
+                    data_frames.append(get_single_instrument(site, species_in,
+                                                            network = network_default,
+                                                            start_date = period[0], end_date = period[1],
+                                                            inlet = defaults_dict["inlet"][pi],
+                                                            instrument = defaults_dict["instrument"][pi],
+                                                            version = version,
+                                                            keep_missing = keep_missing,
+                                                            status_flag_unflagged = status_flag_unflagged,
+                                                            data_directory = data_directory))
+                    if isinstance(data_frames[-1], pd.DataFrame):
+                        calibration_scale.append(data_frames[-1].mf.scale)
+
+        if defaults_specified:
+            data_frame = merge_and_resample(data_frames,
+                                            average = average,
+                                            keep_missing = keep_missing,
+                                            calibration_scale = calibration_scale)
+
+    if defaults_specified == False:
+        data_frame = get_single_instrument(site, species_in,
+                                     network = network,
+                                     start_date = start_date, end_date = end_date,
+                                     inlet = inlet, average = average,
+                                     keep_missing = keep_missing,
+                                     instrument = instrument,
+                                     status_flag_unflagged = status_flag_unflagged,
+                                     version = version,
+                                     data_directory = data_directory)
+    
+    #TODO: Add a warning in get_single_instrument when multiple instruments are found and averaged, without defaults being set
+    
+    return(data_frame)
+        
+
+
+def get_single_instrument(site, species_in,
+                    network = None,
+                    start_date = None, end_date = None,
+                    inlet = None, average = None,
+                    keep_missing = False,
+                    instrument = None,
+                    status_flag_unflagged = [0],
+                    version = None,
+                    data_directory = None):
+    '''
+    Get measurements from one site, one instrument
     
     Args:    
         site_in (str) :
@@ -581,62 +676,77 @@ def get_single_site(site, species_in,
             print(warningMessage)
             return None
             
-        # Check if all calibration scales are the same
-        if not all([c == cal[0] for c in cal]):
-            errorMessage = '''Can't merge the following files,
-                              as calibration scales 
-                              are different: ''' % ",".join(files)
-            raise ValueError(errorMessage)
-
-        # Merge files        
-        data_frame = pd.concat(data_frames).sort_index()
-        data_frame.index.name = 'time'
-
-        
-        # If averaging is set, resample
-        if average is not None:
-            how = {}
-            for key in data_frame.columns:
-                if key == "dmf":
-                    how[key] = quadratic_sum
-                elif key == "vmf":
-                    # Calculate std of 1 min mf obs in av period as new vmf 
-                    how[key] = "std"
-                    data_frame["vmf"] = data_frame["mf"]
-                else:
-                    how[key] = "mean"
-            
-            if keep_missing == True:
-                # Pad with an empty entry at the start date
-                if min(data_frame.index) > pd.to_datetime(start_date):
-                    data_frame.loc[pd.to_datetime(start_date)] = \
-                        [np.nan for col in data_frame.columns]           
-                # Pad with an empty entry at the end date
-                if max(data_frame.index) < pd.to_datetime(end_date):
-                    data_frame.loc[pd.to_datetime(end_date)] = \
-                        [np.nan for col in data_frame.columns]
-                # Now sort to get everything in the right order
-                data_frame = data_frame.sort_index()
-            
-            # Resample
-            data_frame = data_frame.resample(average).agg(how)
-            if keep_missing == True:
-                data_frame=data_frame.drop(data_frame.index[-1])
-             
-        # Drop NaNs
-        if keep_missing == False:  
-            data_frame = data_frame.dropna()
+        data_frame = merge_and_resample(data_frames,
+                                        average = average,
+                                        keep_missing = keep_missing,
+                                        calibration_scale = cal)
         
         data_frame.mf.units = units
-        data_frame.mf.scale = cal[0]
 
-        return data_frame
+        return(data_frame)
 
     else:
 
-        return None
+        return(None)
 
 
+def merge_and_resample(data_frames,
+                       average = None,
+                       keep_missing = False,
+                       calibration_scale = [None]):
+    
+    # Check if all calibration scales are the same
+    if not all([c == calibration_scale[0] for c in calibration_scale]):
+        errorMessage = f'''Can't merge the above files,
+                          as calibration scales 
+                          are different: {calibration_scale}'''
+        raise ValueError(errorMessage)
+
+    
+    # Merge files        
+    data_frame = pd.concat(data_frames).sort_index()
+    data_frame.index.name = 'time'
+
+
+    # If averaging is set, resample
+    if average != None:
+        how = {}
+        for key in data_frame.columns:
+            if key == "dmf":
+                how[key] = quadratic_sum
+            elif key == "vmf":
+                # Calculate std of 1 min mf obs in av period as new vmf 
+                how[key] = "std"
+                data_frame["vmf"] = data_frame["mf"]
+            else:
+                how[key] = "mean"
+
+        if keep_missing == True:
+            # Pad with an empty entry at the start date
+            if min(data_frame.index) > pd.to_datetime(start_date):
+                data_frame.loc[pd.to_datetime(start_date)] = \
+                    [np.nan for col in data_frame.columns]           
+            # Pad with an empty entry at the end date
+            if max(data_frame.index) < pd.to_datetime(end_date):
+                data_frame.loc[pd.to_datetime(end_date)] = \
+                    [np.nan for col in data_frame.columns]
+            # Now sort to get everything in the right order
+            data_frame = data_frame.sort_index()
+
+        # Resample
+        data_frame = data_frame.resample(average).agg(how)
+        if keep_missing == True:
+            data_frame=data_frame.drop(data_frame.index[-1])
+
+    # Drop NaNs
+    if keep_missing == False:  
+        data_frame = data_frame.dropna()        
+    
+    data_frame.mf.scale = calibration_scale[0]
+    
+    return(data_frame)
+
+    
 def get_gosat(site, species, max_level,
               start_date = None, end_date = None,
               data_directory = None):

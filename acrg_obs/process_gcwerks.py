@@ -582,6 +582,9 @@ def gc(site, instrument, network,
                                                   inlet = [None, inlet_label][len(inlets) > 1],
                                                   version = version)
 
+                    # compress
+                    ds_sp = set_encoding(ds_sp)
+                    
                     print("Writing... " + nc_filename)
                     ds_sp.to_netcdf(nc_filename)
                     print("... written.")
@@ -599,8 +602,8 @@ def crds_data_read(data_file):
 
     # Translate header strings
     crds_header_string_interpret = {"C": "",
-                                    "stdev": " variability",
-                                    "N": " number_of_observations"}
+                                    "stdev": "_variability",
+                                    "N": "_number_of_observations"}
     
     print("Reading " + data_file)
 
@@ -699,8 +702,8 @@ def crds(site, network,
 
             # Species-specific dataset
             ds_sp = ds[[sp,
-                        sp + " variability",
-                        sp + " number_of_observations"]]
+                        sp + "_variability",
+                        sp + "_number_of_observations"]]
             ds_sp = ds_sp.dropna("time")
 
             global_attributes = params_crds[site]["global_attributes"]
@@ -731,11 +734,33 @@ def crds(site, network,
                                               ds_sp.species,
                                               inlet = [None, inlet][len(inlets) > 1],
                                               version = version)
-
+                
+                # compress data
+                ds_sp = set_encoding(ds_sp)
+                
                 print("Writing " + nc_filename)
                 ds_sp.to_netcdf(nc_filename)
                 print("... written.")
 
+def set_encoding(ds):
+    '''
+    Specify encoding to prevent files getting too big
+    
+    This function makes sure that number_of_observations is an integer
+    non-time variables are float32, and applies compression.
+    '''
+    
+    for var in ds:
+        if "number_of_observations" in var:
+            ds[var].values = ds[var].values.astype(int)
+            ds[var].encoding["dtype"]="int16"
+        else:
+            if var != "time":
+                ds[var].encoding["dtype"] = "float32"
+#            ds[var].encoding["zlib"] = True
+        ds[var].encoding["zlib"]=True
+
+    return(ds)
 
 def ale_gage(site, network):
     """
@@ -1010,6 +1035,7 @@ def array_job(array_index):
         [crds, ("RGL", "DECC")],
         [crds, ("TAC", "DECC")],
         # DECC GC data
+        [gc, ("BSD", "GCMD", "DECC")],
         [gc, ("TAC", "GCMD", "DECC")],
         [gc, ("RGL", "GCMD", "DECC")],
         # DECC Medusa

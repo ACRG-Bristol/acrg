@@ -250,14 +250,23 @@
   "BSD": {
     "DECC": {
       "height": [
+        "248m",
         "108m",
-        "42m",
-        "248m"
+        "42m"
       ],
       "height_name": [
+        "250magl",
         "110magl",
-        "50magl",
-        "250magl"
+        "50magl"
+      ],
+      "defaults": [
+        {
+        "gases": ["CO", "N2O"],
+        "periods": [["1900-01-01", "2019-03-06"],
+                   ["2019-03-06", "2100-01-01"]],
+        "instrument": ["GCECD", "picarro5310"],
+        "inlet": ["108m", "108m"]
+        }
       ],
       "height_station_masl": 380.0,
       "latitude": 54.35858,

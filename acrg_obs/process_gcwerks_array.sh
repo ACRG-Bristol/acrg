@@ -3,6 +3,8 @@
 #PBS -l walltime=00:05:00
 #PBS -N process_gcwerks
 
+# RUN THIS SCRIPT USING: qsub -J 1-40 -k oe -j oe -Wsandbox=PRIVATE process_gcwerks_array.sh
+
 /bin/bash
 source ~/.bashrc
 
