@@ -145,12 +145,12 @@ def create_bc_sensitivity(start_date, end_date, site, fp_data, freq):
     dys = int("".join([s for s in freq if s.isdigit()]))
     alldates = pd.date_range(pd.to_datetime(start_date), pd.to_datetime(end_date)+ pd.DateOffset(days=dys), freq=freq)
     ndates = np.sum(alldates < pd.to_datetime(end_date))
-    curdates = pd.to_datetime(fp_data[site].time.values).to_period(freq)
+    curdates = fp_data[site].time.values
     Hmbc = np.zeros((4*ndates, len(fp_data[site].time.values)))
     cnt=0
     for cord in range(4):
         for m in range(0,ndates):
-            dateloc = np.where(np.logical_and(curdates >= alldates[m],curdates < alldates[m+1]))[0]
+            dateloc = np.where(np.logical_and(curdates >= alldates[m].to_datetime64(),curdates < alldates[m+1].to_datetime64()))[0]
             if len(dateloc) == 0:
                 cnt += 1
                 continue
