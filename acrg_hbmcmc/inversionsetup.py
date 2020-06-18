@@ -176,7 +176,10 @@ def sigma_freq_indicies(Ytime, sigma_freq):
     
     dt = pd.to_datetime(Ytime)
     output = np.zeros(shape = len(Ytime)).astype(int)
-    if sigma_freq.lower() == "monthly":
+    if sigma_freq == None:
+        #output already all 0's as expected for this setting
+        pass
+    elif sigma_freq.lower() == "monthly":
         months = dt.month
         years = dt.year
         months_u = np.unique(months)
@@ -189,9 +192,6 @@ def sigma_freq_indicies(Ytime, sigma_freq):
                 indicies = (years == y) & (months == m)
                 output[indicies] = count
                 count += 1
-    elif sigma_freq == None:
-        #output already all 0's as expected for this setting
-        pass
     else:
         #divide the time between t0 and ti by sigma_freq, then floor to calculate number of integer intervals
         #the calculation is performed in seconds as division by pd time_delta is not allowed
