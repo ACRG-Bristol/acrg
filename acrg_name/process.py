@@ -1003,7 +1003,7 @@ def footprint_array(fields_file,
         lifetime_hrs = acrg_time.convert.convert_to_hours(lifetime)
     
     # note the code will fail early if a species is not defined or if it is long-lived   
-    if 'HrFields' in fields_file:
+    if 'MixR_hourly' in fields_file:
         fields_ds = Dataset(fields_file, "r", format="NETCDF4")
         lons = np.array(fields_ds.variables["Longitude"][:])
         lats = np.array(fields_ds.variables["Latitude"][:])
@@ -2256,151 +2256,6 @@ def process(domain, site, height, year, month,
     return fp
     
 
-def process_all(domain, site, network="DECC",
-                heights = None,
-                years_in = None,
-                months_in = None,
-                base_dir = "/dagage2/agage/metoffice/NAME_output/",
-                met_folder = ["Met", "Met_daily"],
-                force_update = False,
-                use_surface_conditions = True,
-                satellite = False,
-                perturbed_folder = None,
-                max_level = None,
-                upper_level = None,
-                force_met_empty=False,
-                vertical_profile=False,
-                transport_model="NAME"):
-    '''For a given domain and site, process all available fields files (including
-    multiple heights).
-    If you want to specify a subset of years/months to process, use the years_in
-    or months_in kewords.
-    
-    Args:
-        domain (str):
-            Domain of interest
-        site (str):
-            Observation site
-        network (str):
-            Network that the site belongs to. This is required in order to use the json file to look up heights.
-            Uses heights input if provided. Default="DECC"
-        heights (list, optional):
-            If you only want to process a subset of heights, OR IF THE HEIGHT
-            INFORMATION IS NOT CONTAINED IN acrg_site_info.json, specify a list of
-            height strings here.
-            Default=None.
-        years_in (array, optional):
-            If you only want to process a subset of years, specify here.
-            Default=None.
-        months_in (int, optional):
-            As years_in.
-        base_dir (str, optional):
-            Base directory containing NAME output
-            Default="/dagage2/agage/metoffice/NAME_output/",
-        force_update (bool, optional):
-            By default, any existing netCDF files are NOT overwritten.
-            To explicitly over-write a file, set force_update = True.
-        use_surface_conditions (bool, optional) :
-            Use default expected surface conditions for meteorological values
-            if converting from gs/m3 to mol/mol / mol/m2/s units.
-            This involves fixing the P/T ratio to 345 based on typical surface conditions 
-            in Europe and not using the meteorlogical data extracted from NAME release
-            points.
-            Default = True.
-        satellite (bool, optional):
-            Read a "column" of footprints? There are very particular rules
-            about how the met, footprints and particle location files are stored
-            and named. See extra instructions in satellite_vertical_profile. 
-            Default = False.
-        perturbed_folder (str, optional)
-            Process a subfolder which has all of the required folders
-            (Fields_files, etc). This is for perturbed parameter ensembles for 
-            a particular site. E.g. for 
-            EUROPE_BSD_110magl/Perturbed/PARAMETERNAME_VALUE
-            you'd set: perturbed_folder = "Perturbed/PARAMETERNAME_VALUE".
-            Default = None.
-        max_level (int, optional):
-            Specified only for satellite data and indicates the max level to
-            process the foorprints. 
-            Levels above are replaced by the prior profile.
-            Default = None.
-        upper_level (int, optional):
-            Only needed when satellite=True. Highest level number from within the NAME run for the satellite data.
-            Default = None.
-        force_met_empty (bool, optional):
-             Force the met data to be empty?
-             Default = False.
-        vertical_profile (bool, optional):
-            If set to True will look for vertical potential temperature met file
-            and incorporate into footprint file. 
-            This is a separate file from the normal met file, and is not mandatory.
-            Default=False.
-        transport_model (str, optional): 
-            Defaults to "NAME". If "STILT", reads footprints in the
-            ncdf format created by the STILT model. Other values are invalid. 
-            Notset up to read satellite column footprints from STILT format.
-            Default="NAME".
-        met_folder (str or list, optional):
-            Folder(s) containing met data
-            Default = ["Met", "Met_daily"]
-        
-    Returns:
-        None.
-        This routine outputs a copy of the xarray dataset that is written to file.
-
-    '''
-
-    acrg_path = os.getenv("ACRG_PATH")
-    with open(os.path.join(acrg_path, "acrg_site_info.json")) as f:
-        site_info=json.load(f)
-        
-    # If no height specified, run all heights
-    if heights is None:
-        heights = site_info[site][network]["height_name"]
-    elif type(heights) is not list:
-        heights = [heights]
-    
-    for height in heights:
-        
-        subfolder = base_dir + domain + "_" + site + "_" + height + "/"
-        if perturbed_folder is not None:
-            if perturbed_folder[-1] == "/":
-                subfolder += perturbed_folder
-            else:
-                subfolder += perturbed_folder + "/"
-        
-        if years_in is None:
-            #Find all years and months available
-            #Assumes fields files are processes with _YYYYMMDD.txt.gz at the end (NAME)
-            #or ncdf files starting stiltYYYYxMMx (STILT)
-            years = []
-            months = []
-            
-            if transport_model == "STILT":
-                fields_files = sorted(glob.glob(subfolder + "/Fields_files/stilt*.nc"))
-                for fields_file in fields_files:
-                    f = split(fields_file)[1]
-                    years.append(int(f[5:9]))
-                    months.append(int(f[10:12]))
-            else:
-                fields_files = sorted(glob.glob(subfolder + "/Fields_files/*.txt*"))
-                for fields_file in fields_files:
-                    f = split(fields_file)[1].split("_")[-1].split('.')[0]
-                    years.append(int(f[0:4]))
-                    months.append(int(f[4:6]))
-        else:
-            years = copy.copy(years_in)
-            months = copy.copy(months_in)
-
-        for year, month in set(zip(years, months)):
-            #try:
-            out = process(domain, site, height, year, month,
-                    base_dir = base_dir, met_folder = met_folder, force_update = force_update,
-                    satellite = satellite, perturbed_folder = perturbed_folder,
-                    max_level = max_level, upper_level=upper_level, use_surface_conditions=use_surface_conditions,
-                    force_met_empty = force_met_empty,
-                    vertical_profile=vertical_profile,
-                    transport_model=transport_model)
 
 def process_parallel(domain, site, height, years, months, kwargs={}, nprocess=4):
     """
@@ -2526,16 +2381,16 @@ def test_processed_met(domain, site, height,
     
     return ds
 
-# Process a list of AGAGE/DECC/GAUGE files if called as main
-if __name__ == "__main__":
+# # Process a list of AGAGE/DECC/GAUGE files if called as main
+# if __name__ == "__main__":
 
-    domain = "EUROPE"
+#     domain = "EUROPE"
     
-    sites = ["BSD", "TTA", "RGL", "MHD", "HFD", "TAC",
-             "GAUGE-FERRY", "GAUGE-FAAM",
-             "EHL", "TIL", "GLA", "WAO", "HAD"]
-    for site in sites:
-        process_all(domain, site, force_update = True)
+#     sites = ["BSD", "TTA", "RGL", "MHD", "HFD", "TAC",
+#              "GAUGE-FERRY", "GAUGE-FAAM",
+#              "EHL", "TIL", "GLA", "WAO", "HAD"]
+#     for site in sites:
+#         process_all(domain, site, force_update = True)
         
 def process_vertical_profile(vp_fname):
     """
@@ -2553,33 +2408,7 @@ def process_vertical_profile(vp_fname):
         xarray dataset containing:
          - theta_slope - the potential temperature gradient at each time point
          - slope_error - the error in this calculated gradient
-    """
-    
-#    vp_met_dict = {"time": "             T","temp20": "TEMP-Z = 20.00000 m agl",
-#               "temp40": "TEMP-Z = 40.00000 m agl","temp60": "TEMP-Z = 60.00000 m agl",
-#               "temp80": "TEMP-Z = 80.00000 m agl","temp100": "TEMP-Z = 100.0000 m agl",
-#               "temp120": "TEMP-Z = 120.0000 m agl","temp140": "TEMP-Z = 140.0000 m agl",
-#               "temp160": "TEMP-Z = 160.0000 m agl","temp180": "TEMP-Z = 180.0000 m agl",
-#               "temp200": "TEMP-Z = 200.0000 m agl","temp220": "TEMP-Z = 220.0000 m agl",
-#               "temp240": "TEMP-Z = 240.0000 m agl","temp260": "TEMP-Z = 260.0000 m agl",
-#               "temp280": "TEMP-Z = 280.0000 m agl","temp300": "TEMP-Z = 300.0000 m agl",
-#               "press20": "PRES-Z = 20.00000 m agl","press40": "PRES-Z = 40.00000 m agl",
-#               "press60": "PRES-Z = 60.00000 m agl","press80": "PRES-Z = 80.00000 m agl",
-#               "press100": "PRES-Z = 100.0000 m agl","press120": "PRES-Z = 120.0000 m agl",
-#               "press140": "PRES-Z = 140.0000 m agl","press160": "PRES-Z = 160.0000 m agl",
-#               "press180": "PRES-Z = 180.0000 m agl","press200": "PRES-Z = 200.0000 m agl",
-#               "press220": "PRES-Z = 220.0000 m agl","press240": "PRES-Z = 240.0000 m agl",
-#               "press260": "PRES-Z = 260.0000 m agl","press280": "PRES-Z = 280.0000 m agl",
-#               "press300": "PRES-Z = 300.0000 m agl",
-#               "theta20": "THETA-Z = 20.00000 m agl","theta40": "THETA-Z = 40.00000 m agl",
-#               "theta60": "THETA-Z = 60.00000 m agl","theta80": "THETA-Z = 80.00000 m agl",
-#               "theta100": "THETA-Z = 100.0000 m agl","theta120": "THETA-Z = 120.0000 m agl",
-#               "theta140": "THETA-Z = 140.0000 m agl","theta160": "THETA-Z = 160.0000 m agl",
-#               "theta180": "THETA-Z = 180.0000 m agl","theta200": "THETA-Z = 200.0000 m agl",
-#               "theta220": "THETA-Z = 220.0000 m agl","theta240": "THETA-Z = 240.0000 m agl",
-#               "theta260": "THETA-Z = 260.0000 m agl","theta280": "THETA-Z = 280.0000 m agl",
-#               "theta300": "THETA-Z = 300.0000 m agl"}
-    #vp_fname = "/dagage2/agage/metoffice/vertical_profiles/UKV/GLATTON_Vertical_Profile.txt.gz"  
+    """ 
     
     vp_met_dict = {"time": "T","temp20": "TEMP-Z = 20.00000 m agl",
                "temp40": "TEMP-Z = 40.00000 m agl","temp60": "TEMP-Z = 60.00000 m agl",
