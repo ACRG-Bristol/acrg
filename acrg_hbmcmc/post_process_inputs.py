@@ -26,37 +26,29 @@ if __name__=="__main__":
 
     #### GENERAL INPUTS ####
 
-    dates=["2014-01-01"] # Can be a list of one date or many dates
-    species="chbr3"
-    domain="CARIBBEAN"
-    runname='test'
-    # The following pertaining to domain_name will have to be edited once country_emissions
-    # is re-coded in hbmcmc_post_process.py (ag12733 8/5/20)
-    # Name that specifies the naming of the country file. This allows one to specify
-    # a region that is smaller than sub-transd to compute totals over different areas
-    # Example: domain_name = 'THD_coastal' corresponds to a country file called
-    # country_THD_coastal.nc
-    # country_THD_coastal can define a region smaller than sub-transd but MUST 
-    # be on the same lat/lon grid!
-    domain_name = domain     
-    # country_dir is optional and allows you to specify a different directory where a custom
-    #country file can live. Default of None points to the /data/shared/LPDM/countries/
-    #Example: country_dir = '/data/ag12733/countries/'
-    country_dir = None
+    dates=[] # Can be a list of one date or many dates
+    species="species"
+    domain="domain"
+    runname='runname'
     
-    output_directory = "/work/ag12733/Python_outputs/Barbados_CHBr3/" # ** UPDATE OUTPUT DIRECTORY **
+    output_directory = "path_to_output" # ** UPDATE OUTPUT DIRECTORY **
     
     #### POST-PROCESSING OPTIONS ####
     
-    calc_country=False # At the moment calc_country must be True to write or append to nc file.
-
+    calc_country=False
     plot_scale_map=True
     plot_abs_map=True
     plot_diff_map=True
     plot_y_timeseries=True
+    plot_countryemissions=True
     
     #### PARAMETERS FOR EACH POST-PROCESSING OPTION ####
     # Only used if relevant value above is set to True
+    
+    # calc_country
+    country_file = "path_to_country_file"
+    country_unit_prefix = None # Specify prefix, e.g., 'T' for teragram, default of None is 'g'
+    countries = None # If not None, specify as list e.g., ['country1', 'country2'], default is all listed in country_file
     
     # plot_scale_map
     grid_scale_map = True
@@ -83,7 +75,10 @@ if __name__=="__main__":
     # combine timeseries will currently fail as needs to be re-written (ag12733 8/5/20)
     combine_timeseries = False # Plot y timeseries on one axis for multiple input files.
     y_out_filename = None
-    
+
+    # plot_countryemissions
+    countries_to_plot = [] # list of countries
+    CI_to_plot = 95 # 95 or 68 CI
     
     #### IMPLEMENT PROCESSING OPTIONS ####
     print('Beginning post processing')
@@ -96,23 +91,6 @@ if __name__=="__main__":
     # Extract datasets from file
     ds_list,filenames = process.extract_hbmcmc_files(output_directory,species, domain, runname,dates,return_filenames=True)
     dates = process.check_missing_dates(filenames,dates)
-
-#     NEEDS TO BE REWRITTEN FOR HBMCMC OUTPUT (ag12733 1/5/20)
-#     ## Calculate country totals
-#     if calc_country == True:
-#         country_it,country_mean,country_percentile,country_prior,country_index \
-#          = process.country_emissions_mult(ds_list, countries, species, domain_name, percentiles,
-#                                 units=units, ocean=ocean, uk_split=uk_split, country_dir=country_dir)
-#         country_data = {}
-#         country_data["country_mean"] = country_mean
-#         country_data["country_percentile"] = country_percentile
-#         country_data["country_prior"] = country_prior
-#         country_data["country_index"] = country_index
-#         country_data["country"] = countries
-#         # Setting a priori country values as zero for now
-#         country_data["country_ap_percentile"] = np.zeros((len(countries),len(ds_list),len(percentiles)))
-#     else:
-#         country_data = None
     
     ## Plot scaling map
     if plot_scale_map == True:
@@ -150,3 +128,42 @@ if __name__=="__main__":
                 process.plot_timeseries(ds, fig_text=None, 
                                                           ylim=None, out_filename=y_out_filename_n)
  
+
+    ## Calculate country or area totals defined in country_file or the standard country defintion
+    if calc_country == True:
+        cntrymean_arr, cntry68_arr, cntry95_arr, cntryprior_arr \
+         = process.country_emissions_mult(ds_list, species, domain, \
+                                          country_file=country_file, country_unit_prefix=country_unit_prefix, countries = countries)
+        
+        units = country_unit_prefix + 'g'
+    else:
+        countries = list(ds["countrynames"].values)
+        
+        cntrymean_arr = np.zeros((len(ds_list), len(countries)))
+        cntry68_arr = np.zeros((len(ds_list),len(countries),2))
+        cntry95_arr = np.zeros((len(ds_list),len(countries),2))
+        cntryprior_arr = np.zeros((len(ds_list),len(countries)))
+
+        for i,ds in enumerate(ds_list):
+            cntrymean = ds["countrymean"]
+            cntry68 = ds["country68"]
+            cntry95 = ds["country95"]
+            cntryprior = ds["countryprior"]
+            units = ds.countrymean.attrs['units']
+
+            cntrymean_arr[i,:] = cntrymean
+            cntry68_arr[i,:,:] = cntry68
+            cntry95_arr[i,:,:] = cntry95
+            cntryprior_arr[i,:] = cntryprior
+        
+    if plot_countryemissions == True and len(dates)>1:
+        for ii,cntry in enumerate(countries_to_plot):
+            cntry_ind = countries.index(cntry)
+            if CI_to_plot==95:
+                cntryCI_arr = cntry95_arr
+            else:
+                cntryCI_arr = cntry68_arr
+            process.plot_country_timeseries(cntrymean_arr[:,cntry_ind], cntryCI_arr[:,cntry_ind,:],
+                                            cntryprior_arr[:,cntry_ind], dates, country_label = cntry, units = units, figsize = (7,3))
+
+

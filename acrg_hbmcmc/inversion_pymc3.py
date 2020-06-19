@@ -71,7 +71,7 @@ def parsePrior(name, prior_params, shape = ()):
     params = {x: prior_params[x] for x in prior_params if x != "pdf"}
     return functionDict[pdf.lower()](name, shape=shape, **params)
 
-def inferpymc3(Hx, Hbc, Y, error, siteindicator,
+def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
                xprior={"pdf":"lognormal", "mu":1, "sd":1},
                bcprior={"pdf":"lognormal", "mu":0.004, "sd":0.02},
                sigprior={"pdf":"uniform", "lower":0.5, "upper":3},
@@ -95,6 +95,8 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator,
             Measurement error vector, containg a value for each element of Y.
         siteindicator (array):
             Array of indexing integers that relate each measurement to a site
+        sigma_freq_index (array):
+            Array of integer indexes that converts time into periods
         xprior (dict):
             Dictionary containing information about the prior PDF for emissions.
             The entry "pdf" is the name of the analytical PDF used, see
@@ -150,14 +152,15 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator,
     #convert siteindicator into a site indexer
     sites = siteindicator.astype(int)
     nsites = np.amax(sites)+1
+    nsigmas = np.amax(sigma_freq_index)+1
 
     with pm.Model() as model:
         x = parsePrior("x", xprior, shape=nx)
         xbc = parsePrior("xbc", bcprior, shape=nbc)
-        sig = parsePrior("sig", sigprior, shape=nsites)
+        sig = parsePrior("sig", sigprior, shape=(nsites, nsigmas))
         
         mu = pm.math.dot(hx,x) + pm.math.dot(hbc,xbc)        
-        epsilon = pm.math.sqrt(error**2 + sig[sites]**2)
+        epsilon = pm.math.sqrt(error**2 + sig[sites, sigma_freq_index]**2)
         y = pm.Normal('y', mu = mu, sd=epsilon, observed=Y, shape = ny)
         
         step1 = pm.NUTS(vars=[x,xbc])
@@ -183,10 +186,10 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator,
 def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence, 
                                Hx, Hbc, Y, error, 
                                step1, step2, 
-                               xprior, bcprior, sigprior, Ytime, siteindicator, data, fp_data,
+                               xprior, bcprior, sigprior, Ytime, siteindicator, sigma_freq_index, data, fp_data,
                                emissions_name, domain, species, sites,
                                start_date, end_date, outputname, outputpath,
-                               basis_directory, country_directory, fp_basis_case, country_unit_prefix):
+                               basis_directory, country_file, fp_basis_case, country_unit_prefix):
         """
         Takes the output from inferpymc3 function, along with some other input
         information, and places it all in a netcdf output. This function also 
@@ -242,6 +245,8 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
             siteindicator (array):
                 Numerical indicator of which site the measurements belong to,
                 same length at Y.
+            sigma_freq_index (array):
+                Array of integer indexes that converts time into periods
             data (data array):
                 Measurement data from get_obs function.
             fp_data (dict):
@@ -272,8 +277,8 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                 Path to where output should be saved.
             basis_directory (str):
                 Directory containing basis function file
-            country_directory (str):
-                Directory containing country definition file
+            country_file (str):
+                Path of country definition file
             fp_basis_case (str, optional):
                 Name of basis function to use for emissions.
             country_unit_prefix ('str', optional)
@@ -335,7 +340,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         
         #common setup for country totals calculation
         area = areagrid(lat, lon)
-        c_object = name.get_country(domain, country_dir=country_directory)
+        c_object = name.get_country(domain, country_file=country_file)
         cntryds = xr.Dataset({'country': (['lat','lon'], c_object.country), 
                         'name' : (['ncountries'],c_object.name) },
                                         coords = {'lat': (c_object.lat),
@@ -346,6 +351,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         cntry68 = np.zeros((len(cntrynames), len(nui)))
         cntry95 = np.zeros((len(cntrynames), len(nui)))
         cntrysd = np.zeros(len(cntrynames))
+        cntryprior = np.zeros(len(cntrynames))
         molarmass = convert.molar_mass(species)
 
         unit_factor = convert.prefix(country_unit_prefix)
@@ -397,6 +403,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                 cntrysd[ci] = np.std(cntrytottrace)
                 cntry68[ci, :] = pm.stats.hpd(cntrytottrace, 0.68)
                 cntry95[ci, :] = pm.stats.hpd(cntrytottrace, 0.95)
+                cntryprior[ci] = np.sum( area * (cntrygrid == ci) * 3600*24*365*molarmass/unit_factor, axis=(0,1))
             
             bfarray_hr, bfarray = ppHR.unflattenArray( np.squeeze(bfds.basis.values-1), fp_data[".flux"]["all"])
             bfarray = np.squeeze(bfarray)
@@ -431,14 +438,18 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                 aprioriflux = np.squeeze(emds.flux.values)
             for ci, cntry in enumerate(cntrynames):
                 cntrytottrace = np.zeros(len(steps))
+                cntrytotprior = 0
                 for bf in range(int(np.max(bfarray))):
                     bothinds = np.logical_and(cntrygrid == ci, bfarray==bf)
                     cntrytottrace += np.sum(area[bothinds].ravel()*aprioriflux[bothinds].ravel()* \
                                    3600*24*365*molarmass)*outs[:,bf]/unit_factor
+                    cntrytotprior += np.sum(area[bothinds].ravel()*aprioriflux[bothinds].ravel()* \
+                               3600*24*365*molarmass)/unit_factor
                 cntrymean[ci] = np.mean(cntrytottrace)
                 cntrysd[ci] = np.std(cntrytottrace)
                 cntry68[ci, :] = pm.stats.hpd(cntrytottrace, 0.68)
                 cntry95[ci, :] = pm.stats.hpd(cntrytottrace, 0.95)
+                cntryprior[ci] = cntrytotprior
     
         #Make output netcdf file
         outds = xr.Dataset({'Yobs':(['nmeasure'], Y),
@@ -454,8 +465,9 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                             'Ymod68BC':(['nmeasure','nUI'], Ymod68BC),                        
                             'xtrace':(['steps','nparam'], outs),
                             'bctrace':(['steps','nBC'],bcouts),
-                            'sigtrace':(['steps', 'nsite'], sigouts),
+                            'sigtrace':(['steps', 'nsite', 'nsigma'], sigouts),
                             'siteindicator':(['nmeasure'],siteindicator),
+                            'sigma_freq_index':(['nmeasure'],sigma_freq_index),
                             'sitenames':(['nsite'],sites),
                             'sitelons':(['nsite'],site_lon),
                             'sitelats':(['nsite'],site_lat),
@@ -467,6 +479,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                             'countrysd':(['countrynames'], cntrysd),
                             'country68':(['countrynames', 'nUI'],cntry68),
                             'country95':(['countrynames', 'nUI'],cntry95),
+                            'countryprior':(['countrynames'],cntryprior),
                             'xsensitivity':(['nmeasure','nparam'], Hx.T),
                             'bcsensitivity':(['nmeasure', 'nBC'],Hbc.T)},
                         coords={'stepnum' : (['steps'], steps), 
@@ -475,6 +488,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                                    'measurenum' : (['nmeasure'], nmeasure), 
                                    'UInum' : (['nUI'], nui),
                                    'nsites': (['nsite'], sitenum),
+                                   'nsigma': (['nsigma'], np.unique(sigma_freq_index)),
                                    'lat':(['lat'],lat),
                                    'lon':(['lon'],lon),
                                    'countrynames':(['countrynames'],cntrynames)})
@@ -499,6 +513,8 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         outds.countrymean.attrs["units"] = country_units
         outds.country68.attrs["units"] = country_units
         outds.country95.attrs["units"] = country_units
+        outds.countrysd.attrs["units"] = country_units
+        outds.countryprior.attrs["units"] = country_units
         outds.xsensitivity.attrs["units"] = str(data[".units"])+" "+"mol/mol"
         outds.bcsensitivity.attrs["units"] = str(data[".units"])+" "+"mol/mol"
         outds.sigtrace.attrs["units"] = str(data[".units"])+" "+"mol/mol"
@@ -528,6 +544,8 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         outds.countrymean.attrs["longname"] = "mean of ocean and country totals"
         outds.country68.attrs["longname"] = "0.68 Bayesian credible interval of ocean and country totals"
         outds.country95.attrs["longname"] = "0.95 Bayesian credible interval of ocean and country totals"        
+        outds.countrysd.attrs["longname"] = "standard deviation of ocean and country totals" 
+        outds.countryprior.attrs["longname"] = "prior mean of ocean and country totals"
         outds.xsensitivity.attrs["longname"] = "emissions sensitivity timeseries"   
         outds.bcsensitivity.attrs["longname"] = "boundary conditions sensitivity timeseries"  
         

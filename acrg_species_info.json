@@ -151,7 +151,8 @@
         "long_name": "Bromoform", 
         "mol_mass": "252.73", 
         "print_string": "CHBr$_3$", 
-        "units": "ppt"
+        "units": "ppt",
+        "lifetime": "17D"
     }, 
     "CH2Cl2": {"alt": [],
         "group": "Halogenated methanes", 
