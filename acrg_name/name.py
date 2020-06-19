@@ -138,7 +138,8 @@ def filenames(site, domain, start, end, height, fp_directory, network=None, spec
         if len(f) == 0:
                         
             if lifetime_hrs is None:
-                print("No lifetime defined in species_info.json. WARNING: 30-day integrated footprint used.")
+                print("No lifetime defined in species_info.json. WARNING: 30-day integrated footprint used without chemical loss.")
+                f=glob.glob(baseDirectory + domain + "/" + site + "*" + "-" + height  + "*" + domain + "*" + ym + "*.nc")
             elif lifetime_hrs <= 1440:
                 print("This is a short-lived species. Footprints must be species specific. Re-process in process.py with lifetime")
                 return
