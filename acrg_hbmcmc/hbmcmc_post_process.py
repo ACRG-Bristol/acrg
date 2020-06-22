@@ -41,6 +41,9 @@ from collections import OrderedDict
 import datetime as dt
 import getpass
 import acrg_convert as convert
+import pymc3 as pm
+import matplotlib.dates as mdates
+import pandas as pd
 
 acrg_path = os.getenv("ACRG_PATH")
 
@@ -341,7 +344,6 @@ def plot_map(data, lon, lat, clevels=None, divergeCentre = None, cmap=plt.cm.RdB
         fig = plt.figure(fignum,figsize=figsize)
         ax = fig.add_subplot(1,1,1,projection=ccrs.PlateCarree(central_longitude=np.median(lon)))
     
-    #ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=np.median(lon)))
     ax.set_extent([lon[0], lon[-1], lat[0], lat[-1]], crs=ccrs.PlateCarree())
     ax.coastlines()
     if borders:
@@ -352,8 +354,7 @@ def plot_map(data, lon, lat, clevels=None, divergeCentre = None, cmap=plt.cm.RdB
         #clevels = np.arange(-2., 2.1, 0.1)
         print("Warning: using default contour levels which uses 2nd-98th percentile. Include clevels keyword to change.")
         clevels = set_clevels(data,robust=True)
-    #else:
-    #    clevels = np.arange(clevels[0], clevels[1], clevels[2])
+
         
     if smooth == True:
         if divergeCentre is None:
@@ -678,10 +679,10 @@ def plot_diff_map(ds_list, species, grid=True, clevels=None, divergeCentre=None,
                   title=title, extend=extend, figsize=figsize)
     return q_diff_list
 
-def country_emissions(ds, domain, country_directory=None):
+def country_emissions(ds, species, domain, country_file=None, country_unit_prefix=None, countries = None):
 
-    c_object = name.get_country(domain, country_dir=country_directory)
-    cntryds = xr.Dataset({'country': (['lat','lon'], c_object.country), 
+    c_object = name.get_country(domain, country_file=country_file)
+    cntryds = xray.Dataset({'country': (['lat','lon'], c_object.country), 
                     'name' : (['ncountries'],c_object.name) },
                                     coords = {'lat': (c_object.lat),
                                     'lon': (c_object.lon)})
@@ -690,22 +691,29 @@ def country_emissions(ds, domain, country_directory=None):
     lonmin_cds = np.min(cntryds.lon.values.astype('float32'))
     lonmax_cds = np.max(cntryds.lon.values.astype('float32'))
     latmin_cds = np.min(cntryds.lat.values.astype('float32'))
-    latmax_cds = np.max(cntrydslat.values.astype('float32'))
+    latmax_cds = np.max(cntryds.lat.values.astype('float32'))
     ds = ds.sel(lon=slice(lonmin_cds,lonmax_cds),lat=slice(latmin_cds,latmax_cds))
 
-    lon=ds["lon"]
-    lat=ds["lat"]
+    lon=ds["lon"].values
+    lat=ds["lat"].values
     aprioriflux=ds["fluxapriori"]
-    outs=ds["outs"]
+    outs=ds["xtrace"]
     bfarray = ds["basisfunctions"]
-
+    nui = ds["UInum"]
+    steps = ds["stepnum"]
+    
     area = areagrid(lat, lon)
-    cntrynames = cntryds.name.values
+    
+    if countries is None:
+        cntrynames = cntryds.name.values
+    else:
+        cntrynames = countries
     cntrygrid = cntryds.country.values
     cntrymean = np.zeros((len(cntrynames)))
     cntry68 = np.zeros((len(cntrynames), len(nui)))
     cntry95 = np.zeros((len(cntrynames), len(nui)))
     cntrysd = np.zeros(len(cntrynames))
+    cntryprior = np.zeros(len(cntrynames))
     molarmass = convert.molar_mass(species)
 
     unit_factor = convert.prefix(country_unit_prefix)
@@ -715,61 +723,71 @@ def country_emissions(ds, domain, country_directory=None):
 
     for ci, cntry in enumerate(cntrynames):
         cntrytottrace = np.zeros(len(steps))
+        cntrytotprior = 0
         for bf in range(int(np.max(bfarray))):
             bothinds = np.logical_and(cntrygrid == ci, bfarray==bf)
-            cntrytottrace += np.sum(area[bothinds].ravel()*aprioriflux[bothinds].ravel()* \
+            cntrytottrace += np.sum(area[bothinds].ravel()*aprioriflux.values[bothinds].ravel()* \
                            3600*24*365*molarmass)*outs[:,bf]/unit_factor
+            cntrytotprior += np.sum(area[bothinds].ravel()*aprioriflux.values[bothinds].ravel()* \
+                   3600*24*365*molarmass)/unit_factor
         cntrymean[ci] = np.mean(cntrytottrace)
         cntry68[ci, :] = pm.stats.hpd(cntrytottrace, 0.68)
         cntry95[ci, :] = pm.stats.hpd(cntrytottrace, 0.95)
+        cntryprior[ci] = cntrytotprior
 
-    return cntrymean, cntry68, cntry95
+    return cntrymean, cntry68, cntry95, cntryprior
     
-def country_emissions_mult(ds_list, domain, country_directory=None):
+def country_emissions_mult(ds_list, species, domain, country_file=None, country_unit_prefix=None, countries = None):
     '''
-    Calculate country emissions across multiple datasets. Combine mean and percentiles into 
-    arrays for all time points.
+    Calculate country emissions across multiple datasets.
     See process.country_emissions() function for details of inputs
     Returns:
-        (5 x numpy.array) :
-            Country totals for each iteration in units specified (ncountries x nIt),
-            Mean of country totals for each dataset in units specified (ncountries x ntime), 
-            Percentiles for each country for each dataset in units specified (ncountries x npercentiles x ntime),
-            Prior for each country in units specified (ncountries),
-            Country index map (nlat x nlon)
+        cntry_mean_list: list of mean country totals
+        cntry_68_list: list of 68 CI country totals
+        cntry_95_list: list of 95 CI country totals
     '''
-#     ncountries=len(countries)
-#     ntime = len(ds_list)
-#     npercentile=len(percentiles)
+
+    cntrymean_arr = np.zeros((len(ds_list), len(countries)))
+    cntry68_arr = np.zeros((len(ds_list),len(countries),2))
+    cntry95_arr = np.zeros((len(ds_list),len(countries),2))
+    cntryprior_arr = np.zeros((len(ds_list),len(countries)))
     
-#     # Constructed from all datasets
-#     country_mean = np.zeros((ncountries,ntime)) 
-#     country_percentile = np.zeros((ncountries,ntime,npercentile))
-#     country_prior = np.zeros((ncountries,ntime))
-
-    cntry_mean_list = []
-    cntry_68_list = []
-    cntry_95_list = []
-
     for i,ds in enumerate(ds_list):
-        cntrymean, cntry68, cntry95 = country_emissions(ds, domain, country_directory = country_directory)
-        
-        cntry_mean_list.append(cntrymean)
-        cntry_68_list.append(cntry68)
-        cntry_95_list.append(cntry95)
-        
-        
-#         country_mean[:,i] = country_out[1]
-#         country_percentile[:,i,:] = country_out[2]
-#         country_prior[:,i] = country_out[3] 
-        
-#         if i == 0:
-#             # Should be the same for all datasets
-#             country_it = country_out[0]
-#             #country_prior = country_out[3]
-#             country_index = country_out[4]
+        cntrymean, cntry68, cntry95, cntryprior = country_emissions(ds, species, domain, \
+                                                        country_file=country_file, country_unit_prefix=country_unit_prefix, countries = countries)
 
-    return cntry_mean_list, cntry_68_list, cntry_95_list
+        cntrymean_arr[i,:] = cntrymean
+        cntry68_arr[i,:,:] = cntry68
+        cntry95_arr[i,:,:] = cntry95
+        cntryprior_arr[i,:] = cntryprior
+        
+    return cntrymean_arr, cntry68_arr, cntry95_arr, cntryprior_arr
+
+def plot_country_timeseries(country_mean, country_CI, country_prior, d0, prior_label='Prior', posterior_label='Posterior', y_label='emissions', country_label = None, units = None, figsize=(7,3)):
+    
+    """
+    Plot  timeseries of country emissions
+    """
+    fig,ax=plt.subplots(figsize=figsize)
+    
+    d0 = pd.to_datetime(d0)
+    
+    ax.plot(d0,country_prior, label=prior_label, color=(0,0.42,0.64))
+    ax.plot(d0,country_mean, label=posterior_label, color = (0.78,0.32,0))
+ 
+    ax.fill_between(d0, country_CI[:,0],country_CI[:,1], 
+        facecolor=(0.78,0.32,0), edgecolor=(1,1,1), alpha=0.3) 
+
+      
+    ax.set_ylabel((country_label + " " + y_label + ", " + units + " yr$^{-1}$"), fontsize=10, fontweight = 'bold')
+    ax.set_xlabel('Date', fontsize=10, fontweight = 'bold')
+    legend=ax.legend(loc='upper left', labelspacing=0.1, fontsize=10)
+    ax.xaxis.set_tick_params(labelsize=10)
+    ax.yaxis.set_tick_params(labelsize=10)
+    ax.xaxis.set_major_locator(mdates.YearLocator())
+    ax.xaxis.set_minor_locator(mdates.MonthLocator(interval=2))
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
+
 
 # def combine_timeseries(*ds_mult):
 #     '''

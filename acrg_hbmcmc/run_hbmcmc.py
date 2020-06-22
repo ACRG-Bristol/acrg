@@ -193,6 +193,5 @@ if __name__=="__main__":
 
     output.copy_config_file(config_file,param=param,start_date=start_date,end_date=end_date)
 
-    mcmc.fixedbasisMCMC(**param)
     mcmc_function(**param)
 
