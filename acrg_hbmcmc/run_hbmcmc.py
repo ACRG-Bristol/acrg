@@ -9,18 +9,18 @@ e.g.
 
 start - Start of date range to use for MCMC inversion (YYYY-MM-DD)
 end - End of date range to use for MCMC inversion (YYYY-MM-DD) (must be after start)
--c  - configuration file. See config/ folder for templates and examples of this input file.
+-c / --config - configuration file. See config/ folder for templates and examples of this input file.
 
-If start and end are specified these will be superceed the values within the configuration file, if present.
-If no optional inputs are are specified, this script will look for configuration file within the 
+If start and end are specified these will superceed the values within the configuration file, if present.
+If -c option is not specified, this script will look for configuration file within the 
 acrg_hbmcmc/ directory called `hbmcmc_input.ini`. 
 
 To generate a config file from the template run this script as:
-    $ python run_hbmcmc.py -r
+    $ python run_hbmcmc.py -r  [-c config.ini]
 
-The MCMC run *will not be executed*. This will create a configuration file called `hbmcmc_input.ini` 
-within your acrg_hbmcmc/ directory and exit. This file will need to be edited to add parameters for your
-MCMC run.
+The MCMC run *will not be executed*. This will be named for your -c input or, if not specified, this will 
+create a configuration file called `hbmcmc_input.ini` within your acrg_hbmcmc/ directory and exit. 
+This file will need to be edited to add parameters for your MCMC run.
 '''
 
 import os
