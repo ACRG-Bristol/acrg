@@ -173,7 +173,11 @@ def getGFED(year, lon_out, lat_out, timeframe='monthly', months = [1,2,3,4,5,6,7
         year = min(possyears)
     
     #Get emissions
-    string = directory+'/GFED4.1s_'+str(year)+'.hdf5'
+    if year < 2017:
+        string = directory+'/GFED4.1s_'+str(year)+'.hdf5'
+    else:
+        string = directory+'/GFED4.1s_'+str(year)+'_beta.hdf5'
+    #string = directory+'/GFED4.1s_'+str(year)+'.hdf5'
     f = h5py.File(string, 'r')   
     lat = np.flipud(np.unique(np.array(f['lat']) - 0.125))
     lon = np.unique(np.array(f['lon']) + 0.125)
