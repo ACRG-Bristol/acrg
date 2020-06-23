@@ -875,7 +875,7 @@ def particle_locations(particle_file, time, lats, lons, levs, heights, id_is_lev
 
         #Calculate total particles and normalise
         hist_sum = hist[slice_dict].sum()
-        particles = int(sum([hist_sum[key].values for key in list(hist_sum.keys())]))
+        particles = int(sum([hist_sum[key].values for key in ["pl_n", "pl_e", "pl_s", "pl_w"]]))
         particles_record.append(str(particles))
 
         if particles > 0.:
@@ -993,7 +993,7 @@ def footprint_array(fields_file,
         return None
 
     status_log("Reading... " + os.path.split(fields_file)[1])
-    
+
     if species is not None:
         with open(os.path.join(acrg_path,"acrg_species_info.json")) as f:
             species_info=json.load(f)
@@ -1001,7 +1001,10 @@ def footprint_array(fields_file,
         species = obs.read.synonyms(species, species_info)
         lifetime = species_info[species]["lifetime"]
         lifetime_hrs = acrg_time.convert.convert_to_hours(lifetime)
-    
+        lifetime_attr = str(lifetime_hrs)
+    else:
+        lifetime_attr = "No loss applied"
+
     # note the code will fail early if a species is not defined or if it is long-lived   
     if 'MixR_hourly' in fields_file:
         fields_ds = Dataset(fields_file, "r", format="NETCDF4")
@@ -1102,7 +1105,9 @@ def footprint_array(fields_file,
                         coords={"lat": lats, "lon":lons, "lev": levs, 
                                 "time":time})
 
-    fp.fp.attrs = {"units": "(mol/mol)/(mol/m2/s)"}
+    fp.fp.attrs = {"units": "(mol/mol)/(mol/m2/s)", "loss_lifetime_hrs": lifetime_attr}
+
+    # anita I don't think these attributes below are read in - they are re-written in write_netcdfs
     fp.lon.attrs = {"units": "degrees_east"}
     fp.lat.attrs = {"units": "degrees_north"}
     fp.time.attrs = {"long_name": "start of time period"}
@@ -1270,8 +1275,6 @@ def footprint_concatenate(fields_prefix,
         fp_dataset = footprint_concatenate("/dagage2/agage/metoffice/NAME_output/MY_FOOTPRINTS_FOLDER/Fields_Files/filename_prefix")
     '''
     
-
-
     # Find footprint files and MATCHING particle location files
     # These files are identified by their date string. Make sure this is right!
     if satellite:
@@ -1320,7 +1323,7 @@ def footprint_concatenate(fields_prefix,
     fp = []
     if len(fields_files) > 0:
         for fields_file, particle_file in zip(fields_files, particle_files):
-
+            
             fp.append(footprint_array(fields_file,
                       particle_file = particle_file,
                       met = met,
@@ -1329,7 +1332,7 @@ def footprint_concatenate(fields_prefix,
                       upper_level = upper_level,
                       use_surface_conditions = use_surface_conditions,
                                      species = species))   
-    
+            
     # Concatenate
     if len(fp) > 0:
         fp = xray.concat(fp, "time")
@@ -1339,7 +1342,7 @@ def footprint_concatenate(fields_prefix,
     return fp
 
 
-def write_netcdf(fp, lons, lats, levs, time, outfile,
+def write_netcdf(fp, outfile,
             temperature=None, pressure=None,
             wind_speed=None, wind_direction=None,
             PBLH=None, varname="fp",
@@ -1406,7 +1409,15 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
         netCDF4 is required, as we make use of compression.    
     '''
     
-    time_seconds, time_reference = time2sec(time)
+    fp_attr_loss = fp.fp.attrs["loss_lifetime_hrs"]
+    
+    lons = fp.lon.values.squeeze()
+    lats = fp.lat.values.squeeze()
+    levs = fp.lev.values
+    time = fp.time.to_pandas().index.to_pydatetime()
+    fp = fp.fp.transpose("lat", "lon", "time").values.squeeze()
+    
+    time_seconds, time_reference = time2sec(time)   
     
     #Write NetCDF file
     ncF=Dataset(outfile, 'w')
@@ -1451,6 +1462,8 @@ def write_netcdf(fp, lons, lats, levs, time, outfile,
         ncfp.units='(mol/mol)/(mol/m2/s)'
     else:
         ncfp.units = units
+        
+    ncfp.loss_lifetime_hrs = fp_attr_loss
 
     if temperature is not None:
         nctemp=ncF.createVariable('temperature', 'f', ('time',), zlib = True,
@@ -1787,15 +1800,11 @@ def process_basic(fields_folder, outfile):
     """
     
     fp = footprint_concatenate(fields_folder)
-    write_netcdf(fp.fp.values.squeeze(),
-                 fp.lon.values.squeeze(), 
-                 fp.lat.values.squeeze(), 
-                 fp.lev.values.squeeze(), 
-                 fp.time.to_pandas().index.to_pydatetime(), 
-                 outfile)
+    write_netcdf(fp, outfile)
 
 def process(domain, site, height, year, month, 
             base_dir = "/work/chxmr/shared/NAME_output/",
+            process_dir = "/work/chxmr/shared/LPDM/fp_NAME/",
             fields_folder = "MixR_files",
             particles_folder = "Particle_files",
             met_folder = ["Met_daily", "Met"],
@@ -1839,7 +1848,10 @@ def process(domain, site, height, year, month,
             The month, can be e.g. 5 or 05
         base_dir (str, optional):
             Base directory containing NAME output
-            Default="/dagage2/agage/metoffice/NAME_output/",
+            Default (i.e. on BP1) ="/work/chxmr/shared/NAME_output/",
+        process_dir (str, optional):
+            Base directory for where processed netcdf files go
+            Default (i.e. on BP1)="/work/chxmr/shared/LPDM/fp_NAME/",        
         fields_folder (str, optional):
             Folder containing fields data
             Default="Fields_files",
@@ -1855,6 +1867,7 @@ def process(domain, site, height, year, month,
         processed_folder (str, optional):
              Folder for processed field files.
              Default = "Processed_Fields_files"
+             Antiquated - should be deleted
         use_surface_conditions (bool, optional) :
             Use default expected surface conditions for meteorological values
             if converting from gs/m3 to mol/mol / mol/m2/s units.
@@ -2042,7 +2055,8 @@ def process(domain, site, height, year, month,
             datestrs = [str(year) + str(month).zfill(2)]
 
     # Output filename
-    full_out_path = os.path.join(subfolder,processed_folder)
+    full_out_path = os.path.join(process_dir, domain)
+#     full_out_path = os.path.join(subfolder,processed_folder)
     if species is None:
         outfile = os.path.join(full_out_path, site + "-" + height + \
                 "_" + domain + "_" + str(year) + str(month).zfill(2) + ".nc")
@@ -2139,7 +2153,7 @@ def process(domain, site, height, year, month,
                                             upper_level = upper_level,
                                             use_surface_conditions=use_surface_conditions,
                                             species = species)
-            
+           
         # Do satellite process
         if satellite:
             obs_path = os.path.join(subfolder,obs_folder)
@@ -2228,11 +2242,7 @@ def process(domain, site, height, year, month,
         status_log("Writing file: " + outfile, print_to_screen=False)
         
         # Write outputs
-        write_netcdf(fp.fp.transpose("lat", "lon", "time").values.squeeze(),
-                         fp.lon.values.squeeze(),
-                         fp.lat.values.squeeze(),
-                         fp.lev.values,
-                         fp.time.to_pandas().index.to_pydatetime(),
+        write_netcdf(fp,
                          outfile,
                          temperature=fp["temp"].values.squeeze(),
                          pressure=fp["press"].values.squeeze(),
