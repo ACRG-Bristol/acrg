@@ -1831,7 +1831,7 @@ def process(domain, site, height, year, month,
     This routine finds all fields files and particle location files which match
     the timestamp in the file name. The date strings are stored in the datestr
     variable, and these strings must match exactly for the fields and the particle
-    locations.
+    locations. Hourly netcdf output must be .nc and not .nc.gz!
     
     At the moment, the entire Met folder is read each time.
     
