@@ -119,3 +119,77 @@ def test_toyProblem():
     
     assert ( np.abs(np.mean(sigouts[:,0,1]) - sigma2_true ) < 0.1 ), "Discrepency in {}: {}".format("sig2 mean", np.abs(np.mean(sigouts[:,0,1]) - sigma2_true ))
     
+    
+def test_toyProblem_withDrift():
+    '''
+    Toy test to check model setup is working
+    '''
+    #truth values
+    x_true = np.array([1.4])
+    bc_true = 0.95
+    sigma1_true = 1.0
+    c0_true = np.array([0.0, 7.0])
+    c1_true = np.array([0.0, 6.5])
+    c2_true = np.array([0.0, 3.0])
+    
+    #admin
+    n = 200
+    indicators = np.zeros(n).astype(int)
+    indicators[(n//2):] = 1
+
+    indicators_sigma = np.zeros(n).astype(int)
+    
+    drift_index = indicators.astype(int) 
+    
+    #setup time for two instruments matching
+    time = np.zeros_like(drift_index, dtype=float)
+    #time = np.arange(n) / n
+    time[:(n//2)] = np.arange(n//2) / (n//2)
+    time[(n//2):] = np.arange(n//2) / (n//2)
+    
+    #setup fake values, first half and second half obs should match
+    Hxs = []
+    for i in range(len(x_true)):
+        Hx_ = (1+ (indicators+1)*0.5*np.sin( np.arange(n)*2*5*2*np.pi/n ))*5.
+        Hxs.append(Hx_)
+    Hx = np.stack(Hxs, axis=0)
+    
+    Hbc = np.ones((1,n))*1800.
+    Y = np.dot(x_true, Hx) + Hbc * bc_true + c0_true[drift_index] + time*c1_true[drift_index] + (time**2)*c2_true[drift_index]
+    
+    Y +=  np.random.normal(0.0, sigma1_true, n)
+    #Y[0, :(n//2)] += np.random.normal(0.0, sigma1_true, n//2)
+    #Y[0, (n//2):] += np.random.normal(0.0, sigma2_true, n//2)
+    error = np.ones(n)*1.
+    
+    xprior = {"pdf":"lognormal",
+              "mu":0.0,
+              "sd":0.4}
+    bcprior = {"pdf":"normal",
+              "mu":1.0,
+              "sd":0.1}
+    sigprior = {"pdf":"halfnormal",
+              "sigma":1.0}
+                 
+    xouts, bcouts, sigouts, c0outs, c1outs, c2outs, convergence, step1, step2 = mcmc.inferpymc3_withDrift(Hx, Hbc, Y, error, indicators, indicators_sigma, drift_index, time,
+               xprior,bcprior, sigprior,
+               # drift_c0_prior=drift_c0_prior, drift_c2_prior=drift_c2_prior,
+               nit=1e3, burn=5e2, tune=1e3, nchain=2, verbose=True)
+    
+    Ymod = np.dot(np.mean(xouts), Hx) + Hbc * np.mean(bcouts) 
+    for i in range(np.amax(drift_index)):
+        Ymod += (drift_index == (i+1)) * (np.mean(c0outs,axis=0)[i] + time*np.mean(c1outs,axis=0)[i] )
+    
+    #test outputs match inputs
+    #threshold chosen to be large enough to use a low nit for quicker testing
+    assert ( np.abs(np.mean(xouts) - x_true ) < 0.1 ), "Discrepency in {}: {}".format("x mean", np.abs(np.mean(xouts) - x_true ))
+    
+    assert ( np.abs(np.mean(bcouts) - bc_true ) < 0.005 ), "Discrepency in {}: {}".format("bc mean", np.abs(np.mean(bcouts) - bc_true ))
+    
+    assert ( np.abs(np.mean(sigouts[:,0,0]) - sigma1_true ) < 1.0 ), "Discrepency in {}: {}".format("sig1 mean", np.abs(np.mean(sigouts[:,0,0]) - sigma1_true ))
+    
+    assert ( np.abs(np.mean(c0outs[:,0]) - c0_true[1] ) < 0.5 ), "Discrepency in {}: {}".format("c0 mean", np.abs(np.mean(c0outs[:,0]) - c0_true[1] ))
+    
+    true_drift = c0_true[1] + time*c1_true[1] + time*time*c2_true[1]
+    model_drift = np.mean(c0outs) + time*np.mean(c1outs) +time*time*np.mean(c2outs)
+    assert ( np.abs(np.mean(model_drift-true_drift ) ) < 0.3 ), "Discrepency in {}: {}".format("mean drift", np.abs(np.mean(model_drift-true_drift ) ))

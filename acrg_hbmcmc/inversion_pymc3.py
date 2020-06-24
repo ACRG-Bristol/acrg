@@ -18,6 +18,7 @@ import os
 import acrg_convert as convert
 import acrg_name.process_HiSRes as pHR
 import acrg_tdmcmc.post_process_HiSRes as ppHR
+import theano.tensor as tt
 
 data_path = os.getenv("DATA_PATH")
 
@@ -182,6 +183,141 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
             convergence = "Passed"
         
         return outs, bcouts, sigouts, convergence, step1, step2
+    
+def inferpymc3_withDrift(Hx, Hbc, Y, error, siteindicator, sigma_freq_index, drift_index, time,
+               xprior={"pdf":"lognormal", "mu":1, "sd":1},
+               bcprior={"pdf":"lognormal", "mu":0.004, "sd":0.02},
+               sigprior={"pdf":"uniform", "lower":0.5, "upper":3},
+               drift_c0_prior={"pdf":"normal", "mu":0, "sd":5},
+               drift_c1_prior={"pdf":"normal", "mu":0, "sd":5},
+               drift_c2_prior={"pdf":"normal", "mu":0, "sd":5},
+                nit=2.5e5, burn=50000, tune=1.25e5, nchain=2, verbose=False):       
+    """
+    Uses pym3 module for Bayesian inference for emissions field, boundary 
+    conditions, model error and instrument drift
+    This uses a Normal likelihood but the (hyper)prior PDFs can selected by user.
+    
+    Args:
+        Hx (array):
+            Transpose of the sensitivity matrix to map emissions to measurement.
+            This is the same as what is given from fp_data[site].H.values, where
+            fp_data is the output from e.g. footprint_data_merge, but where it
+            has been stacked for all sites.
+        Hbc (array):
+            Same as above but for boundary conditions
+        Y (array):
+            Measurement vector containing all measurements
+        error (arrray):
+            Measurement error vector, containg a value for each element of Y.
+        siteindicator (array):
+            Array of indexing integers that relate each measurement to a site
+        sigma_freq_index (array):
+            Array of integer indexes that converts time into periods
+        drift_index (array):
+            Array of integer indexes that assigns drifts to instruments
+        time (array):
+            Array of time values associated with the observations
+        xprior (dict):
+            Dictionary containing information about the prior PDF for emissions.
+            The entry "pdf" is the name of the analytical PDF used, see
+            https://docs.pymc.io/api/distributions/continuous.html for PDFs
+            built into pymc3, although they may have to be coded into the script.
+            The other entries in the dictionary should correspond to the shape
+            parameters describing that PDF as the online documentation,
+            e.g. N(1,1**2) would be: xprior={pdf:"normal", "mu":1, "sd":1}.
+            Note that the standard deviation should be used rather than the 
+            precision. Currently all variables are considered iid.
+        bcprior (dict):
+            Same as above but for boundary conditions.
+        sigprior (dict):
+            Same as above but for model error.
+        drift_c[0-2]_prior (dict):
+            Same as above, for the the drift in the form of c0 + t*c1 + t^2*c2
+        verbose:
+            When True, prints progress bar
+
+            
+    Returns:
+        outs (array):
+            MCMC chain for emissions scaling factors for each basis function.
+        bcouts (array):
+            MCMC chain for boundary condition scaling factors.
+        sigouts (array):
+            MCMC chain for model error.
+        c[0-2]outs (array):
+            MCMC chain for drift coefficients
+        convergence (str):
+            Passed/Failed convergence test as to whether mutliple chains
+            have a Gelman-Rubin diagnostic value <1.05
+        step1 (str):
+            Type of MCMC sampler for emissions and boundary condition updates.
+            Currently it's hardwired to NUTS (probably wouldn't change this
+            unless you're doing something obscure).
+        step2 (str):
+            Type of MCMC sampler for model error updates.
+            Currently it's hardwired to a slice sampler. This parameter is low
+            diensional and quite simple with a slice sampler, although could 
+            easily be changed.
+     
+    TO DO:
+       - Allow non-iid variables
+       - Allow more than one model-error
+    """
+    burn = int(burn)         
+    
+    hx = Hx.T 
+    hbc = Hbc.T
+    nx = hx.shape[1]
+    nbc = hbc.shape[1]
+    ny = len(Y)
+    
+    nit = int(nit)  
+    
+    #convert siteindicator into a site indexer
+    sites = siteindicator.astype(int)
+    nsites = np.amax(sites)+1
+    nsigmas = np.amax(sigma_freq_index)+1
+    drift_index = drift_index.astype(int)
+    ndrifts = np.amax(drift_index) #0 means no drift applied
+
+    with pm.Model() as model:
+        x = parsePrior("x", xprior, shape=nx)
+        xbc = parsePrior("xbc", bcprior, shape=nbc)
+        sig = parsePrior("sig", sigprior, shape=(nsites, nsigmas))
+        c0 = parsePrior("c0", drift_c0_prior, shape=ndrifts)
+        c1 = parsePrior("c1", drift_c1_prior, shape=ndrifts)
+        c2 = parsePrior("c2", drift_c2_prior, shape=ndrifts)
+        
+        mu = pm.math.dot(hx,x) + pm.math.dot(hbc,xbc) 
+        
+        for di in range(ndrifts):
+            mu += (drift_index == (di+1)) * ( c0[di] + time*c1[di] + (time**2)*c2[di] )
+        
+        epsilon = pm.math.sqrt(error**2 + sig[sites, sigma_freq_index]**2)
+        y = pm.Normal('y', mu = mu, sd=epsilon, observed=Y, shape = ny)
+        
+        step1 = pm.NUTS(vars=[x,xbc, c0, c1, c2])
+        step2 = pm.Slice(vars=[sig])
+        
+        trace = pm.sample(nit, tune=int(tune), chains=nchain,
+                           step=[step1,step2], progressbar=verbose, cores=nchain)#step=pm.Metropolis())#  #target_accept=0.8,
+        
+        outs = trace.get_values(x, burn=burn)[0:int((nit)-burn)]
+        bcouts = trace.get_values(xbc, burn=burn)[0:int((nit)-burn)]
+        sigouts = trace.get_values(sig, burn=burn)[0:int((nit)-burn)]
+        c0outs = trace.get_values(c0, burn=burn)[0:int((nit)-burn)]
+        c1outs = trace.get_values(c1, burn=burn)[0:int((nit)-burn)]
+        c2outs = trace.get_values(c2, burn=burn)[0:int((nit)-burn)]
+        
+        #Check for convergence
+        gelrub = pm.rhat(trace)['x'].max()
+        if gelrub > 1.05:
+            print('Failed Gelman-Rubin at 1.05')
+            convergence = "Failed"
+        else:
+            convergence = "Passed"
+        
+        return outs, bcouts, sigouts, c0outs, c1outs, c2outs, convergence, step1, step2
 
 def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence, 
                                Hx, Hbc, Y, error, 
@@ -288,7 +424,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                 
                 
         Returns:
-            netdf file containing results from inversion
+            filename of output netcdf
             
         TO DO:
             - Look at compressability options for netcdf output
@@ -565,4 +701,5 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         output_filename = define_output_filename(outputpath,species,domain,outputname,start_date,ext=".nc")
         #outds.to_netcdf(outputpath+"/"+species.upper()+'_'+domain+'_'+outputname+'_'+start_date+'.nc', encoding=encoding, mode="w")
         outds.to_netcdf(output_filename, encoding=encoding, mode="w")
+        return output_filename
 

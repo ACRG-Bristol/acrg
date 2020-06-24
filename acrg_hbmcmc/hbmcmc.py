@@ -236,7 +236,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     xouts, bcouts, sigouts, convergence, step1, step2 = mcmc.inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
            xprior,bcprior, sigprior,nit, burn, tune, nchain, verbose=verbose)
     #Process and save inversion output
-    mcmc.inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence, 
+    output_file = mcmc.inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence, 
                            Hx, Hbc, Y, error, 
                            step1, step2, 
                            xprior, bcprior, sigprior,Ytime, siteindicator, sigma_freq_index, data, fp_data,
