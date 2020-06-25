@@ -1559,9 +1559,10 @@
         "10magl"
       ],
       "height_station_masl": 32.0,
-      "latitude": 13.17,
+      "latitude": 13.165120,
       "long_name": "Ragged Point, Barbados",
-      "longitude": -59.43
+      "longitude": -59.432080,
+      "w3w": "///munched.brimmed.elect"
     }
   },
   "RWA": {
