@@ -1307,10 +1307,10 @@ def bc_sensitivity(fp_and_data, domain, basis_case, bc_basis_directory = None):
             loss_s = np.exp(-1*fp_and_data[site].mean_age_particles_s/lifetime_hrs).rename('loss_s')
             loss_w = np.exp(-1*fp_and_data[site].mean_age_particles_w/lifetime_hrs).rename('loss_w')
         else:
-            loss_n = fp_and_data[site].mean_age_particles_n.rename('loss_n')
-            loss_e = fp_and_data[site].mean_age_particles_e.rename('loss_e')
-            loss_s = fp_and_data[site].mean_age_particles_s.rename('loss_s')
-            loss_w = fp_and_data[site].mean_age_particles_w.rename('loss_w')
+            loss_n = fp_and_data[site].particles_n.rename('loss_n')
+            loss_e = fp_and_data[site].particles_e.rename('loss_e')
+            loss_s = fp_and_data[site].particles_s.rename('loss_s')
+            loss_w = fp_and_data[site].particles_w.rename('loss_w')
             loss_n[:]=1
             loss_e[:]=1
             loss_s[:]=1
