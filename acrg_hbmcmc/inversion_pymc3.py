@@ -179,10 +179,12 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
         else:
             convergence = "Passed"
         
-        return outs, bcouts, sigouts, convergence, step1, step2
+        Ytrace = np.dot(Hx.T,outs.T) + np.dot(Hbc.T,bcouts.T)
+        
+        return outs, bcouts, sigouts, Ytrace, convergence, step1, step2
 
 def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence, 
-                               Hx, Hbc, Y, error, 
+                               Hx, Hbc, Y, error, Ytrace,
                                step1, step2, 
                                xprior, bcprior, sigprior, Ytime, siteindicator, sigma_freq_index, data, fp_data,
                                emissions_name, domain, species, sites,
@@ -220,6 +222,8 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                 Measurement vector containing all measurements
             error (arrray):
                 Measurement error vector, containg a value for each element of Y.
+            Ytrace (array):
+                Trace of modelled y values calculated from mcmc outputs and H matrices
             step1 (str):
                 Type of MCMC sampler for emissions and boundary condition updates.
             step2 (str):
@@ -308,7 +312,6 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         nmeasure = np.arange(ny)
         nparam = np.arange(nx)
         nBC = np.arange(nbc)
-        Ytrace = np.dot(Hx.T,outs.T) + np.dot(Hbc.T,bcouts.T)
         YBCtrace = np.dot(Hbc.T,bcouts.T)
         YmodBC = np.mean(YBCtrace, axis=1)
         Ymod95BC = pm.stats.hpd(YBCtrace.T, 0.95)

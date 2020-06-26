@@ -228,11 +228,11 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     sigma_freq_index = setup.sigma_freq_indicies(Ytime, sigma_freq)
 
     #Run Pymc3 inversion
-    xouts, bcouts, sigouts, convergence, step1, step2 = mcmc.inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
+    xouts, bcouts, sigouts, Ytrace, convergence, step1, step2 = mcmc.inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
            xprior,bcprior, sigprior,nit, burn, tune, nchain, verbose=verbose)
     #Process and save inversion output
     mcmc.inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence, 
-                           Hx, Hbc, Y, error, 
+                           Hx, Hbc, Y, error, Ytrace,
                            step1, step2, 
                            xprior, bcprior, sigprior,Ytime, siteindicator, sigma_freq_index, data, fp_data,
                            emissions_name, domain, species, sites,
