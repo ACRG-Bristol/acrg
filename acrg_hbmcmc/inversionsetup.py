@@ -201,5 +201,19 @@ def sigma_freq_indicies(Ytime, sigma_freq):
                 
     return output
         
+def monthly_time(Ytime):
+    """
+    convert a time array to a fractional monthly time (currently at hourly resolution)
     
+    Args:
+        Ytime (array of datetime64):
+            concatanted array of time values for observations
+            
+    Returns:
+        output (array):
+            index array that contains fractional monthly time
+    """
+    dt = pd.to_datetime(Ytime)
+    monthly_time = np.array( ((dt.day-1) * 24 + dt.hour) / (24*30) )
+    return monthly_time
     

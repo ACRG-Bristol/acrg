@@ -45,7 +45,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                    quadtree_basis=True,nbasis=100, 
                    averagingerror=True, bc_freq=None, sigma_freq=None,
                    country_unit_prefix=None,
-                   verbose = False):
+                   verbose = False, method="base", **kwargs):
 
     """
     Script to run hierarchical Bayesian MCMC for inference of emissions using
@@ -139,6 +139,10 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             'T' will scale to Tg, 'G' to Gg, 'M' to Mg, 'P' to Pg.
             To add additional options add to acrg_convert.prefix
             Default is none and no scaling will be applied (output in g).
+        method (str):
+            Inversion method to use. default: "base"
+        **kwargs:
+            key word arguments to pass to inverse methods
 
             
     Returns:
@@ -146,7 +150,13 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
         
     TO DO:
         Add a wishlist...
-    """    
+    """
+    
+    #check method before doing any work
+    availableMethods = ["base", "drift"]
+    if not method.lower() in availableMethods:
+        print("Method {} not available. Valid methods: {}".format(method, availableMethods))
+        
     data = getobs.get_obs(sites, species, start_date = start_date, end_date = end_date, 
                          average = meas_period, data_directory=obs_directory,
                           keep_missing=False,inlet=inlet, instrument=instrument)
@@ -233,8 +243,16 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     sigma_freq_index = setup.sigma_freq_indicies(Ytime, sigma_freq)
 
     #Run Pymc3 inversion
-    xouts, bcouts, sigouts, convergence, step1, step2 = mcmc.inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
-           xprior,bcprior, sigprior,nit, burn, tune, nchain, verbose=verbose)
+    if method.lower() == "base":
+        xouts, bcouts, sigouts, convergence, step1, step2 = mcmc.inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
+               xprior,bcprior, sigprior,nit, burn, tune, nchain, verbose=verbose)
+    elif method.lower() == "drift":
+        drift_index = kwargs.pop("drift_index")[siteindicator]
+        time = setup.monthly_time(Ytime)
+        xouts, bcouts, sigouts, c0outs, c1outs, c2outs, convergence, step1, step2 = mcmc.inferpymc3_withDrift(Hx, Hbc, Y, error,
+               siteindicator, sigma_freq_index, drift_index, time,
+               xprior,bcprior, sigprior,nit, burn, tune, nchain, verbose=verbose, **kwargs)
+        
     #Process and save inversion output
     output_file = mcmc.inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence, 
                            Hx, Hbc, Y, error, 
