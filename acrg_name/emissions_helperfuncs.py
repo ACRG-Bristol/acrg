@@ -172,7 +172,12 @@ def getGFED(year, lon_out, lat_out, timeframe='monthly', months = [1,2,3,4,5,6,7
         year = min(possyears)
     
     #Get emissions
-    string = directory+'/GFED4.1s_'+str(year)+'.hdf5'
+    if year < 2017:
+        string = directory+'/GFED4.1s_'+str(year)+'.hdf5'
+    else:
+        print("WARNING: GFED data for 2017+ is in beta.")
+        string = directory+'/GFED4.1s_'+str(year)+'_beta.hdf5'
+    #string = directory+'/GFED4.1s_'+str(year)+'.hdf5'
     f = h5py.File(string, 'r')   
     lat = np.flipud(np.unique(np.array(f['lat']) - 0.125))
     lon = np.unique(np.array(f['lon']) + 0.125)
@@ -1547,22 +1552,26 @@ def _define_time(year,timeframe=None,periods=None,months=[]):
     
     if periods:
         start = "{}-01-01".format(year)
-        datetimeindex = pd.DatetimeIndex(start=start,periods=periods,freq=freq_dict[timeframe],closed="left")
+        #datetimeindex = pd.DatetimeIndex(start=start,periods=periods,freq=freq_dict[timeframe],closed="left")
+        datetimeindex = pd.date_range(start=start,periods=periods,freq=freq_dict[timeframe],closed="left")
     elif months and timeframe:
         start_datetime = ["{}-{:02}-01".format(year,int(month)) for month in months]
         end_datetime = ["{}-{:02}-01".format(year,int(month)+1) if month != 12 else "{}-{:02}-01".format(year+1,1) for month in months]
         for i,start,end in zip(list(range(len(start_datetime))),start_datetime,end_datetime):
             if i == 0:   
-                datetimeindex = pd.DatetimeIndex(start=start,end=end,freq=freq_dict[timeframe],closed="left")
+                #datetimeindex = pd.DatetimeIndex(start=start,end=end,freq=freq_dict[timeframe],closed="left")
+                datetimeindex = pd.date_range(start=start,end=end,freq=freq_dict[timeframe],closed="left")
             else:
-                datetimeindex = datetimeindex.append(pd.DatetimeIndex(start=start,end=end,freq=freq_dict[timeframe],closed="left"))
+                #datetimeindex = datetimeindex.append(pd.DatetimeIndex(start=start,end=end,freq=freq_dict[timeframe],closed="left"))
+                datetimeindex = datetimeindex.append(pd.date_range(start=start,end=end,freq=freq_dict[timeframe],closed="left"))
     elif months:
         datetime = ["{}-{:02}-01".format(year,int(month)) for month in months]
         datetimeindex = pd.to_datetime(datetime,format="%Y-%m-%d")
     else:
         start = "{}-01-01".format(year)
         end = "{}-01-01".format(year+1)
-        datetimeindex = pd.DatetimeIndex(start=start,end=end,freq=freq_dict[timeframe],closed="left")
+        #datetimeindex = pd.DatetimeIndex(start=start,end=end,freq=freq_dict[timeframe],closed="left")
+        datetimeindex = pd.date_range(start=start,end=end,freq=freq_dict[timeframe],closed="left")
     
     time = np.array(datetimeindex)
     #time = time.astype("datetime64[ns]")

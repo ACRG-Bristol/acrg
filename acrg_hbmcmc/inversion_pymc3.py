@@ -76,7 +76,7 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
                xprior={"pdf":"lognormal", "mu":1, "sd":1},
                bcprior={"pdf":"lognormal", "mu":0.004, "sd":0.02},
                sigprior={"pdf":"uniform", "lower":0.5, "upper":3},
-                nit=2.5e5, burn=50000, tune=1.25e5, nchain=2, verbose=False):       
+                nit=2.5e5, burn=50000, tune=1.25e5, nchain=2, sigma_per_site = True, verbose=False):       
     """
     Uses pym3 module for Bayesian inference for emissions field, boundary 
     conditions and (currently) a single model error value.
@@ -112,6 +112,9 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
             Same as above but for boundary conditions.
         sigprior (dict):
             Same as above but for model error.
+        sigma_per_site (bool):
+            Whether a model sigma value will be calculated for each site independantly (True) or all sites together (False).
+            Default: True
         verbose:
             When True, prints progress bar
 
@@ -151,8 +154,12 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
     nit = int(nit)  
     
     #convert siteindicator into a site indexer
-    sites = siteindicator.astype(int)
-    nsites = np.amax(sites)+1
+    if sigma_per_site:
+        sites = siteindicator.astype(int)
+        nsites = np.amax(sites)+1
+    else:
+        sites = np.zeros_like(siteindicator).astype(int)
+        nsites = 1
     nsigmas = np.amax(sigma_freq_index)+1
 
     with pm.Model() as model:
@@ -320,7 +327,7 @@ def inferpymc3_withDrift(Hx, Hbc, Y, error, siteindicator, sigma_freq_index, dri
         return outs, bcouts, sigouts, c0outs, c1outs, c2outs, convergence, step1, step2
 
 def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence, 
-                               Hx, Hbc, Y, error, 
+                               Hx, Hbc, Y, error, Ytrace,
                                step1, step2, 
                                xprior, bcprior, sigprior, Ytime, siteindicator, sigma_freq_index, data, fp_data,
                                emissions_name, domain, species, sites,
@@ -358,6 +365,8 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                 Measurement vector containing all measurements
             error (arrray):
                 Measurement error vector, containg a value for each element of Y.
+            Ytrace (array):
+                Trace of modelled y values calculated from mcmc outputs and H matrices
             step1 (str):
                 Type of MCMC sampler for emissions and boundary condition updates.
             step2 (str):
@@ -447,7 +456,6 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         nmeasure = np.arange(ny)
         nparam = np.arange(nx)
         nBC = np.arange(nbc)
-        Ytrace = np.dot(Hx.T,outs.T) + np.dot(Hbc.T,bcouts.T)
         YBCtrace = np.dot(Hbc.T,bcouts.T)
         YmodBC = np.mean(YBCtrace, axis=1)
         Ymod95BC = pm.stats.hpd(YBCtrace.T, 0.95)
@@ -601,7 +609,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                             'Ymod68BC':(['nmeasure','nUI'], Ymod68BC),                        
                             'xtrace':(['steps','nparam'], outs),
                             'bctrace':(['steps','nBC'],bcouts),
-                            'sigtrace':(['steps', 'nsite', 'nsigma'], sigouts),
+                            'sigtrace':(['steps', 'nsigma_site', 'nsigma_time'], sigouts),
                             'siteindicator':(['nmeasure'],siteindicator),
                             'sigma_freq_index':(['nmeasure'],sigma_freq_index),
                             'sitenames':(['nsite'],sites),
@@ -624,7 +632,8 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                                    'measurenum' : (['nmeasure'], nmeasure), 
                                    'UInum' : (['nUI'], nui),
                                    'nsites': (['nsite'], sitenum),
-                                   'nsigma': (['nsigma'], np.unique(sigma_freq_index)),
+                                   'nsigma_time': (['nsigma_time'], np.unique(sigma_freq_index)),
+                                   'nsigma_site': (['nsigma_site'], np.arange(sigouts.shape[1]).astype(int)),
                                    'lat':(['lat'],lat),
                                    'lon':(['lon'],lon),
                                    'countrynames':(['countrynames'],cntrynames)})

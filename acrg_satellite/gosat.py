@@ -1549,7 +1549,7 @@ def name_pressure(directory,start_date=None,end_date=None,name="surface_pressure
     '''
     
     #search_str = "Pressure_C1_*_{0}d.txt".format(max_days)
-    search_str = "Pressure_C1_*.txt"
+    search_str = "Pressure_C1_*.txt*"
     
     if start_date and end_date:
         print('Setting tolerance of {0} days back when searching for NAME pressure files.'.format(max_days))
@@ -2341,12 +2341,13 @@ def gosat_output(ds,site,species="ch4",file_per_day=False,output_directory=obs_d
     # Define data variables to be written to output
     out_data_vars = ["xch4","xch4_uncertainty","lat","lon","pressure_levels","pressure_weights",
                      "xch4_averaging_kernel","ch4_profile_apriori","exposure_id",
-                     "retr_flag"]
+                     "mode"]
     
     # Map to input dataset (from GOSAT data)
     data_vars = ["latitude" if item=="lat" else item for item in out_data_vars]
     data_vars = ["longitude" if item=="lon" else item for item in data_vars]
     data_vars = ["pressure_weight" if item=="pressure_weights" else item for item in data_vars]
+    data_vars = ["retr_flag" if item=="mode" else item for item in data_vars]
     
     data_var_mapping = OrderedDict([(name,new_name) for name,new_name in zip(data_vars,out_data_vars)])
     

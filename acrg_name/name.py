@@ -139,12 +139,12 @@ def filenames(site, domain, start, end, height, fp_directory, network=None, spec
                         
             if lifetime_hrs is None:
                 print("No lifetime defined in species_info.json. WARNING: 30-day integrated footprint used without chemical loss.")
-                f=glob.glob(baseDirectory + domain + "/" + site + "*" + "-" + height  + "*" + domain + "*" + ym + "*.nc")
+                f=glob.glob(baseDirectory + domain + "/" + site + "*" + "-" + height  + "_" + domain + "*" + ym + "*.nc")
             elif lifetime_hrs <= 1440:
                 print("This is a short-lived species. Footprints must be species specific. Re-process in process.py with lifetime")
                 return
             else:
-                f=glob.glob(baseDirectory + domain + "/" + site + "*" + "-" + height  + "*" + domain + "*" + ym + "*.nc")
+                f=glob.glob(baseDirectory + domain + "/" + site + "*" + "-" + height  + "_" + domain + "*" + ym + "*.nc")
                 
             
         if len(f) > 0:
@@ -1331,25 +1331,57 @@ def bc_sensitivity(fp_and_data, domain, basis_case, bc_basis_directory = None):
     timenew = basis_func.time[ind]
     basis_func = basis_func.reindex({"time":timenew})
     
+    species = fp_and_data[".species"]
+    with open(os.path.join(acrg_path,"acrg_species_info.json")) as f:
+        species_info=json.load(f)
+    species = obs.read.synonyms(species, species_info)
+            
     for site in sites:
+        # compute any chemical loss to the BCs, use lifetime or else set loss to 1 (no loss)
+        if 'lifetime' in species_info[species].keys():
+            lifetime = species_info[species]["lifetime"]
+            lifetime_hrs = convert.convert_to_hours(lifetime)
+
+            loss_n = np.exp(-1*fp_and_data[site].mean_age_particles_n/lifetime_hrs).rename('loss_n')
+            loss_e = np.exp(-1*fp_and_data[site].mean_age_particles_e/lifetime_hrs).rename('loss_e')
+            loss_s = np.exp(-1*fp_and_data[site].mean_age_particles_s/lifetime_hrs).rename('loss_s')
+            loss_w = np.exp(-1*fp_and_data[site].mean_age_particles_w/lifetime_hrs).rename('loss_w')
+        else:
+            loss_n = fp_and_data[site].particle_locations_n.copy()
+            loss_e = fp_and_data[site].particle_locations_e.copy()
+            loss_s = fp_and_data[site].particle_locations_s.copy()
+            loss_w = fp_and_data[site].particle_locations_w.copy()
+            loss_n[:]=1
+            loss_e[:]=1
+            loss_s[:]=1
+            loss_w[:]=1
 
         DS_particle_loc = xr.Dataset({"particle_locations_n":fp_and_data[site]["particle_locations_n"],
                                 "particle_locations_e":fp_and_data[site]["particle_locations_e"],
                                 "particle_locations_s":fp_and_data[site]["particle_locations_s"],
                                 "particle_locations_w":fp_and_data[site]["particle_locations_w"],
-                                "bc":fp_and_data[site]["bc"]})
-        
+                                "loss_n":loss_n,
+                                "loss_e":loss_e,
+                                "loss_s":loss_s,
+                                "loss_w":loss_w})                                     
+#                                 "bc":fp_and_data[site]["bc"]})
+
         DS_temp = combine_datasets(DS_particle_loc, fp_and_data[".bc"], method='ffill')
                         
         DS = combine_datasets(DS_temp, basis_func, method='ffill')                                    
-
+                               
         DS = DS.transpose('height','lat','lon','region','time')
 
         part_loc = np.hstack([DS.particle_locations_n,
                                 DS.particle_locations_e,
                                 DS.particle_locations_s,
                                 DS.particle_locations_w])
-       
+        
+        loss = np.hstack([DS.loss_n,
+                                DS.loss_e,
+                                DS.loss_s,
+                                DS.loss_w])
+        
         vmr_ed = np.hstack([DS.vmr_n,
                            DS.vmr_e,
                            DS.vmr_s,
@@ -1360,11 +1392,11 @@ def bc_sensitivity(fp_and_data, domain, basis_case, bc_basis_directory = None):
                         DS.bc_basis_s,
                         DS.bc_basis_w])
         
-        H_bc = np.zeros((len(DS.coords['region']),len(DS.bc)))
+        H_bc = np.zeros((len(DS.coords['region']),len(DS["particle_locations_n"]["time"])))
         
         for i in range(len(DS.coords['region'])):
             reg = bf[:,:,i,:]
-            H_bc[i,:] = np.sum((part_loc*vmr_ed*reg), axis=(0,1))
+            H_bc[i,:] = np.sum((part_loc*loss*vmr_ed*reg), axis=(0,1))
         
         sensitivity = xr.Dataset({'H_bc': (['region_bc','time'], H_bc)},
                                     coords = {'region_bc': (DS.coords['region'].values),

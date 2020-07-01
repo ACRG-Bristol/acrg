@@ -43,7 +43,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                    obs_directory = None, country_file = None,
                    fp_directory = None, bc_directory = None, flux_directory = None,
                    quadtree_basis=True,nbasis=100, 
-                   averagingerror=True, bc_freq=None, sigma_freq=None,
+                   averagingerror=True, bc_freq=None, sigma_freq=None, sigma_per_site=True,
                    country_unit_prefix=None,
                    verbose = False, method="base", **kwargs):
 
@@ -134,6 +134,9 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             scaling for the whole inversion period.
         sigma_freq (str, optional):
             as bc_freq, but for model sigma
+        sigma_per_site (bool):
+            Whether a model sigma value will be calculated for each site independantly (True) or all sites together (False).
+            Default: True
         country_unit_prefix ('str', optional)
             A prefix for scaling the country emissions. Current options are: 
             'T' will scale to Tg, 'G' to Gg, 'M' to Mg, 'P' to Pg.
@@ -244,18 +247,18 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
 
     #Run Pymc3 inversion
     if method.lower() == "base":
-        xouts, bcouts, sigouts, convergence, step1, step2 = mcmc.inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
+        xouts, bcouts, sigouts, Ytrace, convergence, step1, step2 = mcmc.inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
                xprior,bcprior, sigprior,nit, burn, tune, nchain, verbose=verbose)
     elif method.lower() == "drift":
         drift_index = kwargs.pop("drift_index")[siteindicator]
         time = setup.monthly_time(Ytime)
-        xouts, bcouts, sigouts, c0outs, c1outs, c2outs, convergence, step1, step2 = mcmc.inferpymc3_withDrift(Hx, Hbc, Y, error,
+        xouts, bcouts, sigouts, c0outs, c1outs, c2outs, Ytrace, convergence, step1, step2 = mcmc.inferpymc3_withDrift(Hx, Hbc, Y, error,
                siteindicator, sigma_freq_index, drift_index, time,
                xprior,bcprior, sigprior,nit, burn, tune, nchain, verbose=verbose, **kwargs)
         
     #Process and save inversion output
     output_file = mcmc.inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence, 
-                           Hx, Hbc, Y, error, 
+                           Hx, Hbc, Y, error, Ytrace,
                            step1, step2, 
                            xprior, bcprior, sigprior,Ytime, siteindicator, sigma_freq_index, data, fp_data,
                            emissions_name, domain, species, sites,
