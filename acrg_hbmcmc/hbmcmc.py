@@ -249,12 +249,20 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     if method.lower() == "base":
         xouts, bcouts, sigouts, Ytrace, convergence, step1, step2 = mcmc.inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
                xprior,bcprior, sigprior,nit, burn, tune, nchain, verbose=verbose)
+        process_kwargs = {}
     elif method.lower() == "drift":
-        drift_index = kwargs.pop("drift_index")[siteindicator]
+        ndrift = kwargs.pop("drift_index")
+        drift_index = ndrift[siteindicator.astype(int)]
         time = setup.monthly_time(Ytime)
         xouts, bcouts, sigouts, c0outs, c1outs, c2outs, Ytrace, convergence, step1, step2 = mcmc.inferpymc3_withDrift(Hx, Hbc, Y, error,
                siteindicator, sigma_freq_index, drift_index, time,
-               xprior,bcprior, sigprior,nit, burn, tune, nchain, verbose=verbose, **kwargs)
+               xprior,bcprior, sigprior,nit=nit, burn=burn, tune=tune, nchain=nchain, verbose=verbose, **kwargs)
+        process_kwargs = {"c0trace": c0outs,
+                          "c1trace": c1outs,
+                          "c2trace": c2outs,
+                          "ndrift": ndrift,
+                          "drift_index": drift_index,
+                          "drift_time": time}
         
     #Process and save inversion output
     output_file = mcmc.inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence, 
@@ -263,7 +271,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                            xprior, bcprior, sigprior,Ytime, siteindicator, sigma_freq_index, data, fp_data,
                            emissions_name, domain, species, sites,
                            start_date, end_date, outputname, outputpath,
-                           basis_directory, country_file, fp_basis_case, country_unit_prefix)
+                           basis_directory, country_file, fp_basis_case, country_unit_prefix, method=method, **process_kwargs)
     
     # remove the temporary basis function directory
     shutil.rmtree(tempdir)

@@ -188,8 +188,10 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
             convergence = "Failed"
         else:
             convergence = "Passed"
+            
+        Ytrace = np.dot(Hx.T,outs.T) + np.dot(Hbc.T,bcouts.T)
         
-        return outs, bcouts, sigouts, convergence, step1, step2
+        return outs, bcouts, sigouts, Ytrace, convergence, step1, step2
     
 def inferpymc3_withDrift(Hx, Hbc, Y, error, siteindicator, sigma_freq_index, drift_index, time,
                xprior={"pdf":"lognormal", "mu":1, "sd":1},
@@ -323,8 +325,12 @@ def inferpymc3_withDrift(Hx, Hbc, Y, error, siteindicator, sigma_freq_index, dri
             convergence = "Failed"
         else:
             convergence = "Passed"
+            
+        Ytrace = np.dot(Hx.T,outs.T) + np.dot(Hbc.T,bcouts.T)
+        for di in range(ndrifts):
+            Ytrace += (drift_index == (di+1))[..., np.newaxis] * ( c0outs[:,di] + time[..., np.newaxis]*c1outs[:,di] + (time[..., np.newaxis]**2)*c2outs[:,di] )
         
-        return outs, bcouts, sigouts, c0outs, c1outs, c2outs, convergence, step1, step2
+        return outs, bcouts, sigouts, c0outs, c1outs, c2outs, Ytrace, convergence, step1, step2
 
 def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence, 
                                Hx, Hbc, Y, error, Ytrace,
@@ -332,7 +338,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                                xprior, bcprior, sigprior, Ytime, siteindicator, sigma_freq_index, data, fp_data,
                                emissions_name, domain, species, sites,
                                start_date, end_date, outputname, outputpath,
-                               basis_directory, country_file, fp_basis_case, country_unit_prefix):
+                               basis_directory, country_file, fp_basis_case, country_unit_prefix, method="base", **kwargs):
         """
         Takes the output from inferpymc3 function, along with some other input
         information, and places it all in a netcdf output. This function also 
@@ -704,6 +710,15 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         outds.attrs['Creator'] = getpass.getuser()
         outds.attrs['Date created'] = str(pd.Timestamp('today'))
         outds.attrs['Convergence'] = convergence
+        
+        #additional outputs for different methods
+        if method == "drift":
+            #outds = outds.assign_coords({'ndrift': (['ndrift'], kwargs["ndrift"][1:])})
+            outds["c0trace"] = (['steps', 'ndrift'], kwargs["c0trace"])
+            outds["c1trace"] = (['steps', 'ndrift'], kwargs["c1trace"])
+            outds["c2trace"] = (['steps', 'ndrift'], kwargs["c2trace"])
+            outds["drift_time"] = (['nmeasure'], kwargs["drift_time"])
+            outds["drift_index"] = (['nmeasure'], kwargs["drift_index"])
         
         comp = dict(zlib=True, complevel=5)
         encoding = {var: comp for var in outds.data_vars}

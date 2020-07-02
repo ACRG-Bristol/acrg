@@ -171,7 +171,7 @@ def test_toyProblem_withDrift():
     sigprior = {"pdf":"halfnormal",
               "sigma":1.0}
                  
-    xouts, bcouts, sigouts, c0outs, c1outs, c2outs, convergence, step1, step2 = mcmc.inferpymc3_withDrift(Hx, Hbc, Y, error, indicators, indicators_sigma, drift_index, time,
+    xouts, bcouts, sigouts, c0outs, c1outs, c2outs, Youts, convergence, step1, step2 = mcmc.inferpymc3_withDrift(Hx, Hbc, Y, error, indicators, indicators_sigma, drift_index, time,
                xprior,bcprior, sigprior,
                # drift_c0_prior=drift_c0_prior, drift_c2_prior=drift_c2_prior,
                nit=1e3, burn=5e2, tune=1e3, nchain=2, verbose=True)

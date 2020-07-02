@@ -2258,7 +2258,7 @@
       "longitude": -2.600936
     }
   },
-  "LGHG_UW": {
+  "LGHG-UW": {
     "LGHG": {
       "height": [
         "38m"
@@ -2271,7 +2271,7 @@
       "longitude": -0.3244
     }
   },
-  "LGHG_SJ": {
+  "LGHG-SJ": {
     "LGHG": {
       "height": [
         "20m"
@@ -2284,7 +2284,7 @@
       "longitude": -0.1899
     }
   },
-  "LGHG_HFT": {
+  "LGHG-HFT": {
     "LGHG": {
       "height": [
         "42m"
@@ -2297,7 +2297,7 @@
       "longitude": 0.1745
     }
   },
-  "LGHG_SM": {
+  "LGHG-SM": {
     "LGHG": {
       "height": [
         "35m"
