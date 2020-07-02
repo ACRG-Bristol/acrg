@@ -312,6 +312,15 @@ def dsb():
                           coords={'time':times})
     return dsb
 
+@pytest.fixture()
+def dsc():
+    times = pd.date_range("2018-01-01", "2018-02-01", freq='4H')
+    vals = np.ones_like(times, dtype='float')
+    dsc = xray.Dataset({'vals_c': (['time'], vals)},
+                          coords={'time':times})
+    dsc.time.values[1] = dsc.time.values[1] + pd.Timedelta("1 second")
+    return dsc
+
 def test_combine_datasets(dsa, dsb, method = "nearest", tolerance = None):
     """
     Merge two datasets.   
@@ -345,13 +354,13 @@ def test_align_datasets(dsa, dsb):
         
     assert not errors, "errors occured:\n{}".format("\n".join(errors))
     
-def test_indexesMatch(dsa, dsb):
+def test_indexesMatch(dsa, dsc):
     dsa2 = dsa.copy() * 2.
     
     errors = []
     if not name.indexesMatch(dsa, dsa2) == True:
         errors.append("Same indexes not seen as the same")
-    if not name.indexesMatch(dsa, dsb) == False:
+    if not name.indexesMatch(dsa, dsc) == False:
         errors.append("Different indexes not seen as different")
     assert not errors, "errors occured:\n{}".format("\n".join(errors))
 

@@ -666,8 +666,14 @@ def indexesMatch(dsa, dsb):
         #first check lengths are the same to avoid error in second check
         if not len(dsa.indexes[index])==len(dsb.indexes[index]):
             return False
-        #check number of values that are not close (testing for equality with floating point sucks)
-        if not np.sum(~np.isclose(dsa.indexes[index].values.astype(float),dsb.indexes[index].values.astype(float) ))==0:
+        
+        #check number of values that are not close (testing for equality with floating point)
+        if index == "time":
+            #for time iverride the default to have ~ second precision
+            rtol = 1e-10
+        else:
+            rtol = 1e-5
+        if not np.sum(~np.isclose(dsa.indexes[index].values.astype(float),dsb.indexes[index].values.astype(float), rtol=rtol ))==0:
             return False
         
     return True
