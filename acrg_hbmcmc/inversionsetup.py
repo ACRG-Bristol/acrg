@@ -145,15 +145,61 @@ def create_bc_sensitivity(start_date, end_date, site, fp_data, freq):
     dys = int("".join([s for s in freq if s.isdigit()]))
     alldates = pd.date_range(pd.to_datetime(start_date), pd.to_datetime(end_date)+ pd.DateOffset(days=dys), freq=freq)
     ndates = np.sum(alldates < pd.to_datetime(end_date))
-    curdates = pd.to_datetime(fp_data[site].time.values).to_period(freq)
+    curdates = fp_data[site].time.values
     Hmbc = np.zeros((4*ndates, len(fp_data[site].time.values)))
     cnt=0
     for cord in range(4):
         for m in range(0,ndates):
-            dateloc = np.where(np.logical_and(curdates >= alldates[m],curdates < alldates[m+1]))[0]
+            dateloc = np.where(np.logical_and(curdates >= alldates[m].to_datetime64(),curdates < alldates[m+1].to_datetime64()))[0]
             if len(dateloc) == 0:
                 cnt += 1
                 continue
             Hmbc[cnt,dateloc] = fp_data[site].H_bc.values[cord,dateloc] 
             cnt += 1
     return Hmbc
+
+def sigma_freq_indicies(Ytime, sigma_freq):
+    """
+    Create an index that splits times into given periods
+    
+    Args:
+        Ytime (array of datetime64):
+            concatanted array of time values for observations
+        sigma_freq (str):
+            either "monthly", a pandas format string ("30D"), or None
+            this is the period of time to divide the time array into
+            
+    Returns:
+        output (array):
+            index array that defines periods against time
+    """
+    
+    dt = pd.to_datetime(Ytime)
+    output = np.zeros(shape = len(Ytime)).astype(int)
+    if sigma_freq == None:
+        #output already all 0's as expected for this setting
+        pass
+    elif sigma_freq.lower() == "monthly":
+        months = dt.month
+        years = dt.year
+        months_u = np.unique(months)
+        years_u = np.unique(years)
+        
+        #incrementally set sigma indicies for each month in each year
+        count=0      
+        for y in years_u:
+            for m in months_u:
+                indicies = (years == y) & (months == m)
+                output[indicies] = count
+                count += 1
+    else:
+        #divide the time between t0 and ti by sigma_freq, then floor to calculate number of integer intervals
+        #the calculation is performed in seconds as division by pd time_delta is not allowed
+        time_delta = pd.to_timedelta(sigma_freq)
+        fractional_freq_time = (dt - np.amin(dt)).total_seconds() / time_delta.total_seconds()
+        output[:] =np.floor(fractional_freq_time.values).astype(int)
+                
+    return output
+        
+    
+    

@@ -169,4 +169,7 @@ def julian2time(dates):
         dates_julian.append(num2date(julian2num(date)))
     
     return return_iter(dates_julian, notIter)
-    
+        
+def convert_to_hours(time):
+    hours_per_unit = {"H": 1, "D": 24, "W": 168, "M": 732, "Y":8760}
+    return int(time[:-1]) * hours_per_unit[time[-1]]
