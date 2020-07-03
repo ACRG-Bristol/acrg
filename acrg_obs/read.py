@@ -85,7 +85,19 @@ def is_number(s):
     except ValueError:
         return False
 
+class MetaDataFrame(pd.DataFrame):
+    '''
+    A Pandas data frame with a persistent scale attribute
+    '''
+    _metadata = ['scale']
+    _metadata = ['units']
+    
+    @property
+    def _constructor(self):
+        return MetaDataFrame
 
+    
+    
 def synonyms(search_string, info, alternative_label = "alt"):
     '''
     Check to see if there are other names that we should be using for
@@ -374,7 +386,50 @@ def file_list(site, species, network,
         return data_directory, sorted(fnames)
 
 
+
+def scale_convert(df, species, to_scale):
+    '''
+    Convert to a new calibration scale, based on conversions in acrg_obs_scale_convert.csv
     
+    Args:
+        df (Pandas Dataframe): Must contain an mf variable (mole fraction), with a .scale attribute
+        species (str): species name
+        to_scale (str): Calibration scale to convert to
+    
+    '''
+    
+    # If scale is already correct, return
+    df_scale = df.scale
+    if df_scale == to_scale:
+        return(df)
+    else:
+        print(f"... converting scale to {to_scale}")
+    
+    scale_converter = pd.read_csv("acrg_obs_scale_convert.csv")
+    scale_converter_scales = scale_converter[scale_converter.isin([species, df_scale, to_scale])][["species", "scale1", "scale2"]].dropna(axis=0, how = "any")
+    
+    if len(scale_converter_scales) == 0:
+        errorMessage = f'''Scales {df_scale} and {to_scale} are not both in any one row in acrg_obs_scale_convert.csv for species {species}'''
+        raise ValueError(errorMessage)
+    elif len(scale_converter_scales) > 1:
+        errorMessage = f'''Duplicate rows in acrg_obs_scale_convert.csv?'''
+        raise ValueError(errorMessage)
+    else:
+        row = scale_converter_scales.index[0]
+    
+    converter = scale_converter.loc[row]
+
+    if to_scale == converter["scale1"]:
+        direction = "2to1"
+    else:
+        direction = "1to2"
+
+    df.mf = eval(converter[direction].replace("X", "df.mf"))
+    df.scale = to_scale
+    
+    return(df)
+    
+
     
 def get_single_site(site, species_in,
                     network = None,
@@ -384,7 +439,8 @@ def get_single_site(site, species_in,
                     instrument = None,
                     status_flag_unflagged = [0],
                     version = None,
-                    data_directory = None):
+                    data_directory = None,
+                    calibration_scale = None):
     '''
     Wrapper function for get_single_instrument. See documentation for get_single_instrument for definitions
     
@@ -420,38 +476,48 @@ def get_single_site(site, species_in,
 
     # Is there a "defaults" key in the site_info file?
     if "defaults" in site_info[site][network_default].keys():
-        #defaults_dict = site_info[site][network_default]["defaults"].copy()
         
         # Is the species in any of the cases mentioned in the defaults?
         for defaults_dict in site_info[site][network_default]["defaults"]:
             if species_in in defaults_dict["gases"]:
+                
                 defaults_specified = True
+                
                 # Build up list of data frames for each time period
                 data_frames = []
-                calibration_scale = []
                 
                 print("... combining data files:")
                 for pi, period in enumerate(defaults_dict["periods"]):
                     
-                    print("... for period %s : %s:" % (period[0], period[1]))
+                    print("... for period %s - %s:" % (period[0], period[1]))
                     # Get single instrument, but don't do any averaging
-                    data_frames.append(get_single_instrument(site, species_in,
-                                                            network = network_default,
-                                                            start_date = period[0], end_date = period[1],
-                                                            inlet = defaults_dict["inlet"][pi],
-                                                            instrument = defaults_dict["instrument"][pi],
-                                                            version = version,
-                                                            keep_missing = keep_missing,
-                                                            status_flag_unflagged = status_flag_unflagged,
-                                                            data_directory = data_directory))
-                    if isinstance(data_frames[-1], pd.DataFrame):
-                        calibration_scale.append(data_frames[-1].mf.scale)
+                    data_frame = get_single_instrument(site, species_in,
+                                                    network = network_default,
+                                                    start_date = period[0], end_date = period[1],
+                                                    inlet = defaults_dict["inlet"][pi],
+                                                    instrument = defaults_dict["instrument"][pi],
+                                                    version = version,
+                                                    keep_missing = keep_missing,
+                                                    status_flag_unflagged = status_flag_unflagged,
+                                                    data_directory = data_directory,
+                                                    calibration_scale = calibration_scale)
+                    
+                    if isinstance(data_frame, MetaDataFrame):
 
+                        # If this is the first file and no cal scale has been set, convert all subsequent dataframes
+                        #  to the same scale
+                        if calibration_scale == None and pi == 0:
+                            calibration_scale = data_frame.scale
+                            print(f"... since no calibration scale is set, setting all subsequent to {calibration_scale}")
+
+                        # Append to list of dataframes
+                        data_frames.append(data_frame)
+
+        
         if defaults_specified:
             data_frame = merge_and_resample(data_frames,
                                             average = average,
-                                            keep_missing = keep_missing,
-                                            calibration_scale = calibration_scale)
+                                            keep_missing = keep_missing)
 
     if defaults_specified == False:
         data_frame = get_single_instrument(site, species_in,
@@ -462,7 +528,8 @@ def get_single_site(site, species_in,
                                      instrument = instrument,
                                      status_flag_unflagged = status_flag_unflagged,
                                      version = version,
-                                     data_directory = data_directory)
+                                     data_directory = data_directory,
+                                     calibration_scale = calibration_scale)
     
     #TODO: Add a warning in get_single_instrument when multiple instruments are found and averaged, without defaults being set
     
@@ -478,7 +545,8 @@ def get_single_instrument(site, species_in,
                     instrument = None,
                     status_flag_unflagged = [0],
                     version = None,
-                    data_directory = None):
+                    data_directory = None,
+                    calibration_scale = None):
     '''
     Get measurements from one site, one instrument
     
@@ -587,7 +655,6 @@ def get_single_instrument(site, species_in,
                 cal.append(ds.attrs["Calibration_scale"])            
             
             # Look for a valid species name
-            #ncvarname = listsearch([*ds.variables],
             ncvarname = listsearch(list(ds.variables.keys()),
                                    species,
                                    species_info)
@@ -600,8 +667,10 @@ def get_single_instrument(site, species_in,
                 return None
 
             # Create single site data frame
-            df = pd.DataFrame({"mf": ds[ncvarname].values},
-                              index = ds.time.values)
+            df = MetaDataFrame({"mf": ds[ncvarname].values},
+                                  index = ds.time.values)
+            df.scale = ds.attrs["Calibration_scale"]
+
 
             if is_number(ds[ncvarname].units):
                 units = float(ds[ncvarname].units)
@@ -611,7 +680,6 @@ def get_single_instrument(site, species_in,
                                '''
                 units = ds[ncvarname].units
                 print("WARNING: %s" % errorMessage)
-#                raise ValueError(errorMessage)
             
             #Get repeatability
             if ncvarname + " repeatability" in ds.variables:
@@ -664,8 +732,14 @@ def get_single_instrument(site, species_in,
                         flag = flag | (df.status_flag == f)
                     df = df[flag]
 
+                        
             # Append to data_frames
             if len(df) > 0:
+                
+                # Convert calibration scales, if needed
+                if calibration_scale != None:
+                    df = scale_convert(df, species, calibration_scale)
+
                 data_frames.append(df)
         
         
@@ -675,13 +749,12 @@ def get_single_instrument(site, species_in,
                                 (e.g. all flagged)''' % ",".join(files)
             print(warningMessage)
             return None
-            
+                
         data_frame = merge_and_resample(data_frames,
                                         average = average,
-                                        keep_missing = keep_missing,
-                                        calibration_scale = cal)
+                                        keep_missing = keep_missing)
         
-        data_frame.mf.units = units
+        data_frame.units = units
 
         return(data_frame)
 
@@ -692,10 +765,10 @@ def get_single_instrument(site, species_in,
 
 def merge_and_resample(data_frames,
                        average = None,
-                       keep_missing = False,
-                       calibration_scale = [None]):
+                       keep_missing = False):
     
     # Check if all calibration scales are the same
+    calibration_scale = [df.scale for df in data_frames]    
     if not all([c == calibration_scale[0] for c in calibration_scale]):
         errorMessage = f'''Can't merge the above files,
                           as calibration scales 
@@ -707,7 +780,7 @@ def merge_and_resample(data_frames,
     data_frame = pd.concat(data_frames).sort_index()
     data_frame.index.name = 'time'
 
-
+    
     # If averaging is set, resample
     if average != None:
         how = {}
@@ -737,12 +810,12 @@ def merge_and_resample(data_frames,
         data_frame = data_frame.resample(average).agg(how)
         if keep_missing == True:
             data_frame=data_frame.drop(data_frame.index[-1])
-
+            
     # Drop NaNs
-    if keep_missing == False:  
-        data_frame = data_frame.dropna()        
-    
-    data_frame.mf.scale = calibration_scale[0]
+    if keep_missing == False: 
+        data_frame = data_frame.dropna(axis="columns", how="all")
+
+    data_frame.scale = calibration_scale[0]
     
     return(data_frame)
 
@@ -825,20 +898,19 @@ def get_gosat(site, species, max_level,
         if coord in data.coords:
             data = data.drop(coord)
 
-    #data = data.drop("lev")
-    #data = data.drop(["xch4", "xch4_uncertainty", "lon", "lat"])
     data = data.to_dataframe()
+    data = MetaDataFrame(data)
     # rt17603: 06/04/2018 Added sort because some data was not being read in time order. 
     # Causing problems in footprints_data_merge() function
     data = data.sort_index()
     
     data.max_level = max_level
     if species.upper() == "CH4":
-        data.mf.units = 1e-9
+        data.units = 1e-9
     if species.upper() == "CO2":
-        data.mf.units = 1e-6
+        data.units = 1e-6
 
-    data.mf.scale = "GOSAT"
+    data.scale = "GOSAT"
 
     return data
     
@@ -852,7 +924,8 @@ def get_obs(sites, species,
             version = None,
             status_flag_unflagged = None,
             max_level = None,
-            data_directory = None):
+            data_directory = None,
+            calibration_scale = None):
     """
     The get_obs function retrieves obervations for a set of sites and species between start and end dates
     Note: max_level only pertains to satellite data
@@ -972,7 +1045,8 @@ def get_obs(sites, species,
                                    version = version[si],
                                    keep_missing = keep_missing,
                                    status_flag_unflagged = status_flag_unflagged[si],
-                                   data_directory = data_directory)
+                                   data_directory = data_directory,
+                                   calibration_scale = calibration_scale)
         
         if data is None:
             obs[site] = None
@@ -984,8 +1058,8 @@ def get_obs(sites, species,
             if "GOSAT" in site.upper():
                 if data is not None:
                     obs[site].max_level = data.max_level
-            units.append(data.mf.units)
-            scales.append(data.mf.scale)
+            units.append(data.units)
+            scales.append(data.scale)
     
     # Raise error if units don't match
     if len(set([u for u in units if u != None])) > 1:

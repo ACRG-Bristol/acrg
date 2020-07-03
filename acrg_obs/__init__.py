@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from .read import get_obs
 from .read import plot
 from .read import get_single_site
+from .read import get_single_instrument
 from . import read
 from . import utils
 from . import process_gcwerks

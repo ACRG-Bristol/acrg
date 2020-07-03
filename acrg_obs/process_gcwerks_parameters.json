@@ -193,6 +193,12 @@
         "directory" : "/work/chxmr/shared/obs_raw/AGAGE_GCWerks/data-picarro/%site/",
         "directory_output" : "/work/chxmr/shared/obs",
         "comment": "Cavity ring-down measurements. Output from GCWerks",
+        "default_scales": {
+            "N2O": "WMO-X2006A",
+            "CH4": "WMO-X2004A",
+            "CO2": "WMO-X2007",
+            "CO": "WMO-X2014A"
+        },
         "BSD" : {
             "gcwerks_site_name": "bilsdale",
             "global_attributes": {

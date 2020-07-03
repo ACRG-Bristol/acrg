@@ -64,13 +64,6 @@ unit_interpret = {"ppm": "1e-6",
                   "ppq": "1e-15",
                   "else": "unknown"}
 
-# Default calibration scales
-# TODO: Remove this? seems dangerous
-scales = {"CO2": "NOAA-2007",
-          "CH4": "NOAA-2004A",
-          "N2O": "SIO-98",
-          "CO": "Unknown"}
-
 
 # For species which need more than just a hyphen removing or changing to lower case
 # First element of list is the output variable name,
@@ -713,7 +706,7 @@ def crds(site, network,
             ds_sp = attributes(ds_sp, sp, site.upper(),
                                network = network,
                                global_attributes = global_attributes,
-                               scale = scales[sp],
+                               scale = params_crds["default_scales"][sp],
                                sampling_period=60,
                                date_range = date_range)
 
