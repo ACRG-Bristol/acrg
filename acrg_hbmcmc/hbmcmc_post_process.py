@@ -686,13 +686,27 @@ def country_emissions(ds, species, domain, country_file=None, country_unit_prefi
                     'name' : (['ncountries'],c_object.name) },
                                     coords = {'lat': (c_object.lat),
                                     'lon': (c_object.lon)})
-    # this allows the mcmc output to be sliced to match the size of a smaller country file 
+    # this allows the mcmc output to be sliced to match the size of a smaller country file
+    # for example, if you want to look at a particular part of the ocean
+    # the country file has to be rectangular (no odd shapes), however the contents inside can have any shape
     # (i.e. does not have to be the same size as the domain, but has to have the grid cells line up)
-    lonmin_cds = np.min(cntryds.lon.values.astype('float32'))
-    lonmax_cds = np.max(cntryds.lon.values.astype('float32'))
-    latmin_cds = np.min(cntryds.lat.values.astype('float32'))
-    latmax_cds = np.max(cntryds.lat.values.astype('float32'))
-    ds = ds.sel(lon=slice(lonmin_cds,lonmax_cds),lat=slice(latmin_cds,latmax_cds))
+
+    lonmin_cds = np.min(cntryds.lon.values)
+    lonmax_cds = np.max(cntryds.lon.values)
+    latmin_cds = np.min(cntryds.lat.values)
+    latmax_cds = np.max(cntryds.lat.values)
+
+    # This step is here because of floating point differences in the two datasets
+    # Convert the lat/lon bounds from the country dataset to the values in the ds
+    lon_ds = ds.lon.values
+    lat_ds = ds.lat.values
+    lonmin_ds = lon_ds[np.where(np.isclose(lon_ds, lonmin_cds, atol = 0.01, rtol=0))[0][0]]
+    lonmax_ds = lon_ds[np.where(np.isclose(lon_ds, lonmax_cds, atol = 0.01, rtol=0))[0][0]]
+    latmin_ds = lat_ds[np.where(np.isclose(lat_ds, latmin_cds, atol = 0.01, rtol=0))[0][0]]
+    latmax_ds = lat_ds[np.where(np.isclose(lat_ds, latmax_cds, atol = 0.01, rtol=0))[0][0]]
+    
+    
+    ds = ds.sel(lon=slice(lonmin_ds,lonmax_ds),lat=slice(latmin_ds,latmax_ds))
 
     lon=ds["lon"].values
     lat=ds["lat"].values
@@ -725,7 +739,7 @@ def country_emissions(ds, species, domain, country_file=None, country_unit_prefi
         cntrytottrace = np.zeros(len(steps))
         cntrytotprior = 0
         for bf in range(int(np.max(bfarray))):
-            bothinds = np.logical_and(cntrygrid == ci, bfarray==bf)
+            bothinds = np.logical_and(cntrygrid == ci, bfarray.values==bf)
             cntrytottrace += np.sum(area[bothinds].ravel()*aprioriflux.values[bothinds].ravel()* \
                            3600*24*365*molarmass)*outs[:,bf]/unit_factor
             cntrytotprior += np.sum(area[bothinds].ravel()*aprioriflux.values[bothinds].ravel()* \
