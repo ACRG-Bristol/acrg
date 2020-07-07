@@ -1,3 +1,4 @@
 # COPY THIS FILE TO acrg_config/paths.yaml
 obs_folder: /data/shared/obs/
 lpdm_folder: /data/shared/LPDM/
+data_folder: /data/shared/
