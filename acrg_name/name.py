@@ -754,9 +754,10 @@ def align_datasets(ds1, ds2, platform=None, resample_to_ds1=False):
     ds1 = ds1.sel(time=slice(start_s,end_s))
     ds2 = ds2.sel(time=slice(start_s,end_s))
     
+    platform_skip_resample = ("satellite","flask")
     
     #only non satellite datasets with different periods need to be resampled
-    if platform != "satellite" and not np.isclose(ds1_timeperiod, ds2_timeperiod):
+    if platform not in platform_skip_resample and not np.isclose(ds1_timeperiod, ds2_timeperiod):
         base = start_date.dt.hour.data + start_date.dt.minute.data/60. + start_date.dt.second.data/3600.
         if (ds1_timeperiod >= ds2_timeperiod) or (resample_to_ds1 == True):
             resample_period = str(round(ds1_timeperiod/3600e9,5))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
