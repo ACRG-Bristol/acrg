@@ -755,7 +755,7 @@ def get_single_instrument(site, species_in,
                                         keep_missing = keep_missing)
         
         data_frame.units = units
-
+        
         return(data_frame)
 
     else:
@@ -1052,7 +1052,7 @@ def get_obs(sites, species,
             obs[site] = None
             units.append(None)
             scales.append(None)
-        else:    
+        else:
             # reset mutli index into the expected standard index
             obs[site] = data.reset_index().set_index("time")
             if "GOSAT" in site.upper():
