@@ -114,11 +114,14 @@ def filenames(site, domain, start, end, height, fp_directory, network=None, spec
     with open(os.path.join(acrg_path,"acrg_species_info.json")) as f:
         species_info=json.load(f)
  
-    species_obs = obs.read.synonyms(species, species_info)
-    
-    if 'lifetime' in species_info[species_obs].keys():
-        lifetime = species_info[species_obs]["lifetime"]
-        lifetime_hrs = convert.convert_to_hours(lifetime)
+    if species:
+        species_obs = obs.read.synonyms(species, species_info)
+        
+        if 'lifetime' in species_info[species_obs].keys():
+            lifetime = species_info[species_obs]["lifetime"]
+            lifetime_hrs = convert.convert_to_hours(lifetime)
+        else:
+            lifetime_hrs = None
     else:
         lifetime_hrs = None
     
@@ -133,19 +136,25 @@ def filenames(site, domain, start, end, height, fp_directory, network=None, spec
     files = []
     for ym in yearmonth:
 
-        f=glob.glob(baseDirectory + domain + "/" + site + "*" + "-" + height + "-" + species + "*" + domain + "*" + ym + "*.nc")
+        if species:
+            f=glob.glob(baseDirectory + domain + "/" + site + "*" + "-" + height + "-" + species + "*" + domain + "*" + ym + "*.nc")
+        else:
+            #manually create empty list if no species specified
+            f = []
         
         if len(f) == 0:
-                        
+            
+            glob_path = baseDirectory + domain + "/" + site + "*" + "-" + height  + "_" + domain + "*" + ym + "*.nc"
+            
             if lifetime_hrs is None:
-                print("No lifetime defined in species_info.json. WARNING: 30-day integrated footprint used without chemical loss.")
-                f=glob.glob(baseDirectory + domain + "/" + site + "*" + "-" + height  + "_" + domain + "*" + ym + "*.nc")
+                print("No lifetime defined in species_info.json or species not defined. WARNING: 30-day integrated footprint used without chemical loss.")
+                f=glob.glob(glob_path)
             elif lifetime_hrs <= 1440:
                 print("This is a short-lived species. Footprints must be species specific. Re-process in process.py with lifetime")
                 return
             else:
-                f=glob.glob(baseDirectory + domain + "/" + site + "*" + "-" + height  + "_" + domain + "*" + ym + "*.nc")
-                
+                print("Treating species as long-lived.")
+                f=glob.glob(glob_path)        
             
         if len(f) > 0:
             files += f
@@ -153,9 +162,7 @@ def filenames(site, domain, start, end, height, fp_directory, network=None, spec
     files.sort()
 
     if len(files) == 0:
-        print("Can't find file: " + baseDirectory + \
-            domain + "/" + \
-            site + "*" + height + "*" + domain + "*" + "*.nc")
+        print("Can't find file: " + glob_path)
     return files
 
 def read_netcdfs(files, dim = "time"):
