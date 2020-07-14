@@ -44,6 +44,7 @@ import json
 import xarray as xr
 from collections import OrderedDict
 import sys
+import sqlite3
 
 if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
     acrg_path = os.getenv("ACRG_PATH")
@@ -353,7 +354,7 @@ def get_single_site(site, species_in,
 
     # Run query and get list of files
     files_to_get = c.execute(query, params)
-
+    
     obs_files = []
 
     # Retrieve files
@@ -413,6 +414,7 @@ def get_single_site(site, species_in,
 
         obs_files.append(ds)
 
+    conn.close()
     return(obs_files)
 
 
