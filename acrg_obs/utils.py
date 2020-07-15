@@ -19,23 +19,11 @@ import getpass
 from acrg_config.paths import paths
 import xarray as xr
 from pandas import Timestamp
+import pandas as pd
+import sqlite3
 
 acrg_path = paths.acrg
 obs_directory = paths.obs
-
-# #acrg_path = os.path.dirname(os.path.realpath(__file__))
-# acrg_path = os.getenv("ACRG_PATH")
-# data_path = os.getenv("DATA_PATH")
-
-
-
-# if data_path is None:
-#     data_path = "/data/shared/"
-#     print("Default Data directory is assumed to be /data/shared/. Set path in .bashrc as \
-#             export DATA_PATH=/path/to/data/directory/ and restart python terminal")
-
-# # Set default obs folder
-# obs_directory = os.path.join(data_path, "obs/")
 
 # Output unit strings (upper case for matching)
 unit_species = {"CO2": "1e-6",
@@ -382,6 +370,86 @@ def output_filename(output_directory,
                                                    suffix))
 
 
+def obs_database():
+    '''
+    Creates an SQLite database in obs folder detailing contents of each file
+    '''
+    # Directories to exclude from database
+    exclude = ["GOSAT", "unknown"]
+
+    network = []
+    instrument = []
+    site_code = []
+    start_date = []
+    end_date = []
+    species = []
+    inlet = []
+    calibration_scale = []
+    filename = []
+
+    print(f"Reading obs files in {paths.obs}")
+    
+    # Find sub-directories in obs folder
+    for d in paths.obs.glob("*"):
+        if d.is_dir():
+            if d.name not in exclude:
+
+                # Find netcdf files
+                files = d.glob("*.nc")
+                for f in files:
+
+                    # TODO: Some files are empty. Figure out why!
+                    if os.stat(f).st_size != 0:
+
+                        #TODO: add try/except to see if files open with xarray 
+
+                        f_parts = f.name.split("_")
+
+                        network.append(f_parts[0].split("-")[0])
+                        instrument.append(f_parts[0].split("-")[1])
+
+                        site_code.append(f_parts[1])
+
+                        extras = f_parts[3].split("-")
+                        species.append(extras[0])
+                        if len(extras) == 3:
+                            inlet.append(extras[1])
+                        else:
+                            inlet.append("%")
+
+                        with xr.open_dataset(f) as ds:
+                            if "Calibration_scale" in ds.attrs.keys():
+                                calibration_scale.append(ds.attrs["Calibration_scale"])
+                            else:
+                                calibration_scale.append(None)
+                            start_date.append(pd.Timestamp(ds["time"].values[0]).to_pydatetime())
+                            end_date.append(pd.Timestamp(ds["time"].values[-1]).to_pydatetime())
+
+                        filename.append(str(f))
+                        
+    file_info = list(zip(filename, network, instrument, site_code, species, inlet, calibration_scale, start_date, end_date))    
+
+    # Write database
+    ######################################
+    
+    print(f"Writing database {paths.obs / 'obs.db'}")
+    
+    conn = sqlite3.connect(paths.obs / "obs.db")
+    c = conn.cursor()
+
+    c.execute('''DROP TABLE IF EXISTS files
+              ''')
+    
+    c.execute('''CREATE TABLE files
+                 (filename text, network text, instrument text, site text, species text, inlet text, scale text, startDate timestamp, endDate timestamp)''')
+
+    c.executemany('INSERT INTO files VALUES (?,?,?,?,?,?,?,?,?)', file_info)
+
+    conn.commit()
+    conn.close()
+
+
+
 def cleanup(site,
             version = None):
     '''
@@ -463,6 +531,7 @@ def cleanup(site,
             zipf.close()
 
 def cleanup_all():
+    
     site_list = [site_dir for site_dir in os.listdir(obs_directory) if os.path.isdir(os.path.join(obs_directory,site_dir))]
     for site in site_list:
         cleanup(site)
