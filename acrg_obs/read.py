@@ -427,6 +427,20 @@ def get_single_site(site, species_in,
 
         obs_files.append(ds)
 
+        
+    if len(obs_files) == 0 and len(df_defaults_for_site) > 0:
+        print(''' Your query didn't return anything. If you're sure the files exits
+                take a look at acrg_obs_defaults.csv. A common issue is that defaults
+                are added for some species at a particular site, but there's no
+                instruction for the remaining species. If that's the case, 
+                add a row to the file, which is empty, except for the site name. 
+                Be careful that this doesn't lead to any ambiguity in the files retrieved.
+                
+                Another common issue is that the species name in the defaults file doesn't match
+                the name in the files database. Make sure the species is the same as in the filename
+                e.g. "cfc11", rather than "CFC-11"
+                ''')
+    
     conn.close()
     
     return(obs_files)
