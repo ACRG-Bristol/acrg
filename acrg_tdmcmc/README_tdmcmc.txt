@@ -12,7 +12,7 @@ run_tdmcmc.py - Python script that reads in all specified inputs and calls fortr
                    - Other than major changes you shouldn't have to touch this on a day-to-day basis
 
 tdmcmc_post_process.py - Python script containing routines for plotting tdmcmmc output and generating country totals
-post_process_template.py - Template file to show how you might call functions contained in tdmcmc_post_process.py
+post_process_inputs.py - Template file to show how you might call functions contained in tdmcmc_post_process.py
 
 
 ***** Templates and inputs should be copied to a local area for you to edit *****************
@@ -48,6 +48,47 @@ export GOMP_STACKSIZE=512m
 
 This appears to be foolproof, but not sure which of these commands is key. Stick them in your .bashrc so you don't have to type them every time.
 
+**************** Module load and setting up environments ******************************************
+
+For most servers (except snowy and air) it is often the case that you will need to load at additional 
+libraries to be able to compile your code.
+
+This normally involves running `module load` command but the exact command depend on the system being used.
+
+In addition, an appropriate acrg environment should be set up using the acrg_environment.yml file 
+contained within the repository.
+
+These are some of the specific modules needed if running on Bristol systems
+
+*Bristol - Blue Crystal 4 (15/07/2020) *
+
+Anaconda:
+ $ module load languages/anaconda3/3.7
+Intel (if using intelem as fcompiler):
+ $ module load intel/2017.01
+
+
+*Bristol - Blue Pebble 1 (15/07/2020) *
+
+Anaconda:
+ $ module load lang/intel-parallel-studio-xe/2019.u3
+Intel (if using intelem as fcompiler):
+ $ module load lang/python/anaconda/3.7-2019.10
+
+
+*Other*
+
+For other systems use whichever modules are available (anaconda using python 3 and intel if using).
+To check all available modules you can often run:
+$ module avail
+
+*ALL - ACRG environment*
+
+To create (if needed) and activate the acrg environment these lines should be run *after* the 
+appropriate modules have been loaded:
+ $ conda env create -f ${ACRG_PATH}/acrg_environment.yml
+ $ source activate acrg
+
 ***************** Compiling uncorrelated version with f2py ****************************************
 
 gfortran
@@ -70,7 +111,7 @@ The file tdmcmc_uncorr.so is created with::
 
  $ f2py -c -m tdmcmc_uncorr --fcompiler=intelem acrg_hbtdmcmc_uncorr.f90
 
-For parellel tempering (for python 3.*) run the following::
+For parallel tempering (for python 3.*) run the following::
 
  $ f2py -c -m tdmcmc_uncorr_pt --f90flags='-qopenmp' -liomp5 --fcompiler=intelem acrg_hbtdmcmc_uncorr.f90
 
@@ -81,6 +122,7 @@ See the previous section, just include different input and output filenames e.g.
 
  $ f2py -c -m tdmcmc_evencorr --fcompiler=intelem acrg_hbtdmcmc_evencorr.f90
 
+
 ***************** Compiling correlated hierarchical version with f2py ****************************************
 
 
@@ -88,13 +130,52 @@ $ f2py -L/usr/lib64 -llapack -c -m tdmcmc_corr_s acrg_hbtdmcmc_corr.f90
 
 $ f2py -L/usr/lib64 -llapack -c -m tdmcmc_corr_pt --f90flags='-fopenmp' -lgomp acrg_hbtdmcmc_corr.f90
 
+
 ***************** Compiling correlated hierarchical version with ifort ****************************************
 
-Compilation in python 3.* ::
+For the compiling the correlated code in this way there are extra intel libraries that need to be linked.
+How to link to these libraries can depend on the system being used.
+
+
+Note: This should be faster than gfortran, my (Mark's) tests have shown run time improvements of 
+~2x to 4x faster.
+
+*Bristol - snowy*
+
+For the Bristol snowy server use this version:
 
  $ f2py -L/opt/intel/mkl/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -c -m tdmcmc_corr_pt --fcompiler=intelem --f90flags='-fast -qopenmp' -liomp5 acrg_hbtdmcmc_corr.f90
 
-This was the previous compilation in python 2.7::
+Make sure you've got the following line in your .bashrc to set up the correct intel environments:
+
+source /opt/intel/bin/compilervars.sh intel64
+
+
+*Bristol - Blue Crystal 4*
+
+ $ f2py -lmkl_avx2 -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -c -m tdmcmc_corr_pt 
+--fcompiler=intelem --f90flags='-fast -qopenmp' -liomp5 acrg_hbtdmcmc_corr.f90
+
+
+*Bristol - Blue Pebble 1*
+
+ $ f2py -lmkl_avx512 -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -c -m tdmcmc_corr_pt 
+ --fcompiler=intelem --f90flags='-fast -qopenmp' -liomp5 acrg_hbtdmcmc_corr.f90
+
+
+*Other*
+
+Note: the main difference between the BC4 and BP1 compilations is the -lmkl_av* flags needed. 
+Either of these flags may work on a new system but adding a -lmkl_def flag instead should be a 
+catch all term if these aren't appropriate (this should use the default):
+
+ $ f2py -lmkl_def -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -c -m tdmcmc_corr_pt 
+ --fcompiler=intelem --f90flags='-fast -qopenmp' -liomp5 acrg_hbtdmcmc_corr.f90
+
+
+** Previous compilations using this method ** 
+
+This was the previous snowy compilation in python 2.7::
 
  $ f2py -L/opt/intel/mkl/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -c -m tdmcmc_corr_pt --fcompiler=intelem --f90flags='-fast -openmp' -liomp5 acrg_hbtdmcmc_corr.f90
 
@@ -107,11 +188,6 @@ export LD_PRELOAD=/opt/intel/mkl/lib/intel64/libmkl_core.so:/opt/intel/mkl/lib/i
 
 For some reason it works on snowy without this. Not sure about non-Bristol servers...
 
-Also make sure you've got the following line in your .bashrc to set up the correct intle environments:
-
-source /opt/intel/bin/compilervars.sh intel64
-
-This should be faster than gfortran, my tests have shown run time improvements of ~2x to 4x faster.
 
 ********************************* Running from python *************************************************
 
