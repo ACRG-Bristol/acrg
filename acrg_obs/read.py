@@ -112,29 +112,29 @@ def synonyms(search_string, info, alternative_label = "alt"):
     return out_string
 
 
-def scale_convert(df, species, to_scale):
+def scale_convert(ds, species, to_scale):
     '''
     Convert to a new calibration scale, based on conversions in acrg_obs_scale_convert.csv
     
     Args:
-        df (Pandas Dataframe): Must contain an mf variable (mole fraction), with a .scale attribute
+        ds (xarray Dataset): Must contain an mf variable (mole fraction), and scale must be in global attributes
         species (str): species name
         to_scale (str): Calibration scale to convert to
     
     '''
     
     # If scale is already correct, return
-    df_scale = df.scale
-    if df_scale == to_scale:
-        return(df)
+    ds_scale = ds.attrs["scale"]
+    if ds_scale == to_scale:
+        return(ds)
     else:
         print(f"... converting scale to {to_scale}")
     
     scale_converter = pd.read_csv("acrg_obs_scale_convert.csv")
-    scale_converter_scales = scale_converter[scale_converter.isin([species, df_scale, to_scale])][["species", "scale1", "scale2"]].dropna(axis=0, how = "any")
+    scale_converter_scales = scale_converter[scale_converter.isin([species.upper(), ds_scale, to_scale])][["species", "scale1", "scale2"]].dropna(axis=0, how = "any")
     
     if len(scale_converter_scales) == 0:
-        errorMessage = f'''Scales {df_scale} and {to_scale} are not both in any one row in acrg_obs_scale_convert.csv for species {species}'''
+        errorMessage = f'''Scales {ds_scale} and {to_scale} are not both in any one row in acrg_obs_scale_convert.csv for species {species}'''
         raise ValueError(errorMessage)
     elif len(scale_converter_scales) > 1:
         errorMessage = f'''Duplicate rows in acrg_obs_scale_convert.csv?'''
@@ -149,20 +149,20 @@ def scale_convert(df, species, to_scale):
     else:
         direction = "1to2"
 
-    df.mf = eval(converter[direction].replace("X", "df.mf"))
-    df.scale = to_scale
+    ds["mf"].values = eval(converter[direction].replace("X", "ds.mf"))
+    ds.attrs["scale"] = to_scale
     
-    return(df)
+    return(ds)
 
 
 def get_single_site(site, species_in,
                     network = None,
                     start_date = "1900-01-01", end_date = "2100-01-01",
                     inlet = None, average = None,
-                    keep_missing = False,
                     instrument = None,
                     status_flag_unflagged = [0],
                     version = None,
+                    keep_missing = None,
                     data_directory = None,
                     calibration_scale = None,
                     verbose = False):
@@ -199,16 +199,17 @@ def get_single_site(site, species_in,
         instrument (str/list, optional):
             Specific instrument for the site (must match number of sites). 
             Default=None.
-                status_flag_unflagged (list, optional) : 
+        status_flag_unflagged (list, optional) : 
             The value to use when filtering by status_flag. 
             Default = [0]
         data_directory (str, optional) :
             directpry can be specified if files are not in the default directory. 
             Must point to a directory which contains subfolders organized by site.
             Default=None.
-            
+        calibration_scale (str, optional) :
+            Convert to this calibration scale (original scale and new scale must both be in acrg_obs_scale_convert.csv)
     Returns:
-        (Pandas dataframe):
+        (list of xarray datasets):
             Timeseries data frame for observations at site of species.
 
     '''
@@ -242,7 +243,7 @@ def get_single_site(site, species_in,
 
     
     
-    # Create database in memory
+    # Read defaults database into memory
     conn = sqlite3.connect(":memory:")
 
     dtypes = {"site": "text",
@@ -288,7 +289,7 @@ def get_single_site(site, species_in,
 
         print("... no defaults set")
         query = '''
-                SELECT files.filename
+                SELECT files.filename, files.inlet, files.instrument
                 FROM obs.files
                 WHERE files.species=? COLLATE NOCASE AND
                       files.site=? COLLATE NOCASE AND
@@ -316,7 +317,7 @@ def get_single_site(site, species_in,
         #  where there's only one inlet in the files database
 
         query = '''
-                SELECT filename, defaultStartDate, defaultEndDate FROM
+                SELECT filename, inlet, instrument, defaultStartDate, defaultEndDate FROM
                 (
                  SELECT files.filename,
                         files.startDate,
@@ -365,7 +366,7 @@ def get_single_site(site, species_in,
     files_to_get = c.execute(query, params)
     
     obs_files = []
-
+    
     # Retrieve files
     for f in files_to_get:
 
@@ -373,20 +374,19 @@ def get_single_site(site, species_in,
         with xr.open_dataset(f[0]) as f_ds:
             ds = f_ds.load()
 
-        # If 3 elements, it means the query returned a start and end date
+        # If 4 elements, it means the query returned a start and end date
         # Otherwise, return whole dataset
-        if len(f) == 3:
-            if pd.Timestamp(start_date) > pd.Timestamp(f[1]):
+        if len(f) == 5:
+            if pd.Timestamp(start_date) > pd.Timestamp(f[3]):
                 slice_start = pd.Timestamp(start_date)
             else:
-                slice_start = pd.Timestamp(f[1])
-            if pd.Timestamp(end_date) < pd.Timestamp(f[2]):
+                slice_start = pd.Timestamp(f[3])
+            if pd.Timestamp(end_date) < pd.Timestamp(f[4]):
                 slice_end = pd.Timestamp(end_date) - pd.Timedelta("1 ns")
             else:
-                slice_end = pd.Timestamp(f[2])
+                slice_end = pd.Timestamp(f[4])
 
         else:
-
             slice_start = pd.Timestamp(start_date)
             slice_end = pd.Timestamp(end_date)
 
@@ -406,7 +406,6 @@ def get_single_site(site, species_in,
 
             
             # For some variables, need a different type of resampling
-            # For all variables, copy attributes
             for var in ds.variables:
                 if "repeatability" in var:
                     ds_resampled[var] = np.sqrt((ds[var]**2).resample(time = average).sum()) / \
@@ -423,10 +422,42 @@ def get_single_site(site, species_in,
                 if "units" in ds[var].attrs:
                     ds_resampled[var].attrs["units"] = ds[var].attrs["units"]
 
-                ds = ds_resampled.copy()
+            ds = ds_resampled.copy()
+        
+        # Rename variables
+        rename = {}
 
+        for var in ds.variables:
+
+            if var.lower() == species_query.lower():
+                rename[var] = "mf"
+            if "repeatability" in var:
+                rename[var] = "mf_repeatability"
+            if "variability" in var:
+                rename[var] = "mf_variability"
+            if "number_of_observations" in var:
+                rename[var] = "mf_number_of_observations"
+
+        ds = ds.rename_vars(rename)
+
+        
+        # Append inlet and filename to attributes
+        ds.attrs["filename"] = f[0]
+        ds.attrs["inlet"] = f[1]
+        ds.attrs["instrument"] = f[2]
+        ds.attrs["species"] = species
+        if "Calibration_scale" in ds.attrs:
+            ds.attrs["scale"] = ds.attrs.pop("Calibration_scale")
+
+        # Convert calibration scale, if needed
+        if calibration_scale != None:
+            ds = scale_convert(ds, species, calibration_scale)
+        
+        # Store dataset
         obs_files.append(ds)
 
+    # close database
+    conn.close()
         
     if len(obs_files) == 0 and len(df_defaults_for_site) > 0:
         print(''' Your query didn't return anything. If you're sure the files exits
@@ -440,8 +471,17 @@ def get_single_site(site, species_in,
                 the name in the files database. Make sure the species is the same as in the filename
                 e.g. "cfc11", rather than "CFC-11"
                 ''')
+    else:
+        # Check if units match
+        units = [f.mf.attrs["units"] for f in obs_files]
+        if len(set(units)) > 1:
+            errorMessage = f'''Units don't match for these files: {[(f.mf.attrs["units"],f.attrs["filename"]) for f in obs_files]}'''
+            raise ValueError(errorMessage)
     
-    conn.close()
+        scales = [f.attrs["scale"] for f in obs_files]
+        if len(set(scales)) > 1: 
+            print(f"WARNING: scales don't match for these files: {[(f.attrs['scale'],f.attrs['filename']) for f in obs_files]}")
+            print("... suggest setting calibration_scale to convert")
     
     return(obs_files)
 
@@ -541,7 +581,7 @@ def get_gosat(site, species, max_level,
     return data
     
 def get_obs(sites, species,
-            start_date = None, end_date = None,
+            start_date = "1900-01-01", end_date = "2100-01-01",
             inlet = None,
             average = None,
             keep_missing=False,
@@ -652,18 +692,16 @@ def get_obs(sites, species,
     
     # Get data
     obs = {}
-    units = []
-    scales = []
     
     for si, site in enumerate(sites):
         print("Getting %s data for %s..." %(species, site))
         if "GOSAT" in site.upper():
-            data = get_gosat(site, species,
-                       start_date = start_date, end_date = end_date,
-                       max_level = max_level,
-                       data_directory = data_directory)
+            obs[site] = get_gosat(site, species,
+                                   start_date = start_date, end_date = end_date,
+                                   max_level = max_level,
+                                   data_directory = data_directory)
         else:
-            data = get_single_site(site, species, inlet = inlet[si],
+            obs[site] = get_single_site(site, species, inlet = inlet[si],
                                    start_date = start_date, end_date = end_date,
                                    average = average[si],
                                    network = network[si],
@@ -673,40 +711,26 @@ def get_obs(sites, species,
                                    status_flag_unflagged = status_flag_unflagged[si],
                                    data_directory = data_directory,
                                    calibration_scale = calibration_scale)
-        
-        if data is None:
-            obs[site] = None
-            units.append(None)
-            scales.append(None)
-        else:
-            # reset mutli index into the expected standard index
-            obs[site] = data.reset_index().set_index("time")
-            if "GOSAT" in site.upper():
-                if data is not None:
-                    obs[site].max_level = data.max_level
-            units.append(data.units)
-            scales.append(data.scale)
+      
     
     # Raise error if units don't match
-    if len(set([u for u in units if u != None])) > 1:
-        print(set(units))
+    return(obs)
+
+    units = [s[0].mf.attrs["units"] for s in obs.items()]
+    if len(set(units)) > 1:
         siteUnits = [':'.join([site, u]) for (site, u) in zip(sites, str(units)) if u is not None]
-        errorMessage = '''Units don't match for these sites: %s''' % ', '.join(siteUnits)        
+        errorMessage = f'''Units don't match for these sites: {siteUnits}'''
         raise ValueError(errorMessage)
 
     # Warning if scales don't match
-    if len(set([s for s in scales if s != None])) > 1:
+    scales = [s[0].attrs["scale"] for s in obs.items()]
+    if len(set(scales)) > 1:
         siteScales = [':'.join([site, scale]) for (site, scale) in zip(sites, scales) if scale is not None]
         warningMessage = '''WARNING: scales don't match for these sites:
                             %s''' % ', '.join(siteScales)
         print(warningMessage)
 
-    # Add some attributes
-    obs[".species"] = species
-    obs[".units"] = units[0]    # since all units are the same
-    obs[".scales"] = {si:s for (si, s) in zip(sites, scales)}
-    
-    return obs
+    return(obs)
     
 def label_species(species):
     '''
