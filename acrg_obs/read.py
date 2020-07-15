@@ -228,6 +228,7 @@ def get_single_site(site, species_in,
         print("... changing species from %s to %s" % (species_in, species))
     
     
+    
     # Open defaults file
     df_defaults = pd.read_csv(paths.acrg / "acrg_obs/acrg_obs_defaults.csv",
                              parse_dates = ["startDate", "endDate"])
@@ -239,6 +240,8 @@ def get_single_site(site, species_in,
 
     df_defaults.replace(np.nan, "%", inplace = True)
 
+    
+    
     # Create database in memory
     conn = sqlite3.connect(":memory:")
 
@@ -247,7 +250,7 @@ def get_single_site(site, species_in,
               "startDate": "timestamp",
               "endDate": "timestamp",
               "instrument": "text",
-              "height": "text"}
+              "inlet": "text"}
 
     # Convert to database
     df_defaults.to_sql("defaults", conn, if_exists="replace", dtype = dtypes)
@@ -257,15 +260,19 @@ def get_single_site(site, species_in,
     # Attach the obs database
     c.execute("ATTACH DATABASE ? as obs", (str(paths.obs / "obs.db"),))
 
+    # Change some variables for query
     start_date_query = pd.Timestamp(start_date).to_pydatetime()
     end_date_query = pd.Timestamp(end_date).to_pydatetime()
-
-    # A couple of initial queries to see whether there are any defaults defined for a particular site
+    species_query = species.replace("-", "").lower()
+    
+    
+    # Run a couple of initial queries to see whether there are any defaults defined for a particular site
     df_defaults_for_site = pd.read_sql_query("SELECT * FROM defaults WHERE site=?",
                                              conn, params = (site,))
     df_defaults_for_site_species = pd.read_sql_query("SELECT * FROM defaults WHERE site=? AND species=?", 
                                                      conn, params = (site, species))
 
+    # Check if defaults need to be over-written
     if (inlet != None or instrument != None or network != None) and len(df_defaults_for_site) >= 1:
         print("... You've set either an inlet, instrument or network, overriding any defaults.")
         print("... Best to set all three of these, if you want to avoid ambiguity.")
@@ -273,8 +280,11 @@ def get_single_site(site, species_in,
     else:
         override_defaults = False
 
+        
+        
+    # Read filenames from database
     if len(df_defaults_for_site) == 0 or override_defaults:
-        # Query the 'files' database table to determine which files to read
+        # Query only the 'files' table table to determine which files to read
 
         print("... no defaults set")
         query = '''
@@ -284,13 +294,12 @@ def get_single_site(site, species_in,
                       files.site=? COLLATE NOCASE AND
                       (files.endDate > date(?) AND files.startDate < date(?))
                 '''
-        params = [species, site, start_date_query, end_date_query]
+        params = [species_query, site, start_date_query, end_date_query]
 
         # If an inlet, network or instrument are specified, append to the query
         if inlet != None:
-            query += " AND files.height=?"
+            query += " AND files.inlet=?"
             params.append(inlet)
-            # TODO CHANGE HEIGHT TO INLET
 
         if network != None:
             query += " AND files.network=?"
@@ -313,11 +322,11 @@ def get_single_site(site, species_in,
                         files.startDate,
                         files.endDate,
                         files.site,
-                        files.height,
+                        files.inlet,
                         files.species,
                         files.instrument,
                         files.network,
-                        defaults.height,
+                        defaults.inlet,
                         defaults.site,
                         defaults.instrument,
                         defaults.network,
@@ -329,7 +338,7 @@ def get_single_site(site, species_in,
                 WHERE files.species = ? COLLATE NOCASE AND
                         files.species LIKE defaults.species COLLATE NOCASE AND
                         files.site = ? COLLATE NOCASE AND
-                        files.height LIKE defaults.height AND
+                        files.inlet LIKE defaults.inlet AND
                         files.instrument LIKE defaults.instrument AND
                         files.network LIKE defaults.network COLLATE NOCASE AND
                         (files.endDate > date(?) AND files.startDate < date(?)) AND
@@ -346,7 +355,7 @@ def get_single_site(site, species_in,
             query = query.replace("files.species LIKE defaults.species",
                                   "files.species = defaults.species")
 
-        params = [species, site,
+        params = [species_query, site,
                   start_date_query, end_date_query, start_date_query, end_date_query]
 
     if verbose:
@@ -381,19 +390,23 @@ def get_single_site(site, species_in,
             slice_start = pd.Timestamp(start_date)
             slice_end = pd.Timestamp(end_date)
 
-        print(f"... slicing from {slice_start} to {slice_end}")
-        ds = ds.loc[dict(time = slice(slice_start, slice_end))]
+        if slice_start.round(freq = "T") != pd.Timestamp("1900-01-01") or  slice_end.round(freq = "T") != pd.Timestamp("2100-01-01"):
+            print(f"... slicing from {slice_start} to {slice_end}")
+            ds = ds.loc[dict(time = slice(slice_start, slice_end))]
 
         # If averaging is set, resample
         if average != None:
 
+            # First, just do a mean resample on all variables
             print(f"... resampling to {average}")
             ds_resampled = ds.resample(time = average, keep_attrs = True
                                        ).mean()
             # keep_attrs doesn't seem to work for some reason, so manually copy
             ds_resampled.attrs = ds.attrs.copy()
 
-
+            
+            # For some variables, need a different type of resampling
+            # For all variables, copy attributes
             for var in ds.variables:
                 if "repeatability" in var:
                     ds_resampled[var] = np.sqrt((ds[var]**2).resample(time = average).sum()) / \
@@ -415,6 +428,7 @@ def get_single_site(site, species_in,
         obs_files.append(ds)
 
     conn.close()
+    
     return(obs_files)
 
 
