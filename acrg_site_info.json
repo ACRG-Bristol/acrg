@@ -44,10 +44,10 @@
   "AMT": {
     "NOAA": {
       "height": [
-        "107m"
+        "110m"
       ],
       "height_name": [
-        "107magl"
+        "110magl"
       ],
       "height_station_masl": 53.0,
       "latitude": 45.0345,
@@ -1177,10 +1177,10 @@
   "KEY": {
     "NOAA": {
       "height": [
-        "5m"
+        "10m"
       ],
       "height_name": [
-        "5magl"
+        "10magl"
       ],
       "height_station_masl": 1.0,
       "latitude": 25.6654,
@@ -1205,10 +1205,10 @@
   "LEF": {
     "NOAA": {
       "height": [
-        "396m"
+        "400m"
       ],
       "height_name": [
-        "396magl"
+        "400magl"
       ],
       "height_station_masl": 472.0,
       "latitude": 45.9451,
@@ -1377,9 +1377,9 @@
         "10magl"
       ],
       "height_station_masl": 3397.0,
-      "latitude": 19.536,
+      "latitude": 19.5362,
       "long_name": "Mauna Loa, Hawaii",
-      "longitude": -155.576
+      "longitude": -155.5763
     }
   },
   "MONSOON-FAAM": {
@@ -1660,10 +1660,10 @@
   "SCT": {
     "NOAA": {
       "height": [
-        "305m"
+        "310m"
       ],
       "height_name": [
-        "305magl"
+        "310magl"
       ],
       "height_station_masl": 115.2,
       "latitude": 33.4057,
@@ -2061,10 +2061,10 @@
   "UTA": {
     "NOAA": {
       "height": [
-        "5m"
+        "10m"
       ],
       "height_name": [
-        "5magl"
+        "10magl"
       ],
       "height_station_masl": 1327.0,
       "latitude": 39.9018,
@@ -2127,10 +2127,10 @@
   "WBI": {
     "NOAA": {
       "height": [
-        "379m"
+        "380m"
       ],
       "height_name": [
-        "379magl"
+        "380magl"
       ],
       "height_station_masl": 241.7,
       "latitude": 41.7248,
@@ -2169,10 +2169,10 @@
   "WKT": {
     "NOAA": {
       "height": [
-        "457m"
+        "460m"
       ],
       "height_name": [
-        "457magl"
+        "460magl"
       ],
       "height_station_masl": 251.0,
       "latitude": 31.3149,
