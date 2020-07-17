@@ -945,8 +945,8 @@ def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True
     if plot_bc_prior:
         y_bc_prior = ds["YaprioriBC"].values
 
-    sites = ds["sitenames"].values
-    nsites=len(sites)
+    sitenames = ds["sitenames"].values
+    nsites=len(sitenames)
     
     y_time = ds.Ytime.values
     y_site = ds.siteindicator.values
@@ -959,7 +959,7 @@ def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True
         fig,ax=plt.subplots(nsites,sharex=True,figsize=figsize)
         
         if nsites > 1:
-            for si,site in enumerate(sites):
+            for si,site in enumerate(sitenames):
                 wh_site = np.where(y_site == np.where(sitenames == site)[0][0])
 
                 y_time_site = y_time[wh_site[0]]
