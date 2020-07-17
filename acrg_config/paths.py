@@ -45,3 +45,5 @@ class paths:
     acrg = _acrg_path
     obs = Path(_data_paths["obs_folder"])
     lpdm = Path(_data_paths["lpdm_folder"])
+    if "data_folder" in _data_paths:
+        data = Path(_data_paths["data_folder"])
