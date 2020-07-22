@@ -37,6 +37,8 @@ import acrg_name.process as process
 import deprecated.process as process_org
 from acrg_name.name import open_ds
 
+
+
 acrg_path = os.getenv("ACRG_PATH")
 
 #%%
@@ -1284,6 +1286,7 @@ def process_satellite_byday_param(satellite_param,folder_names,satellite_byday_d
     '''
     param = process_param(satellite_param,folder_names,satellite=True)
     param["base_dir"] = satellite_byday_directory
+    param["process_dir"] = os.path.join(satellite_byday_directory,"Processed_Fields_files")
     
     return param
 
@@ -1295,6 +1298,7 @@ def process_satellite_bypoint_param(satellite_param,folder_names,satellite_bypoi
     '''    
     param = process_param(satellite_param,folder_names,satellite=True)
     param["base_dir"] = satellite_bypoint_directory
+    param["process_dir"] = os.path.join(satellite_bypoint_directory,"Processed_Fields_files")
     
     return param
 
@@ -1308,6 +1312,7 @@ def process_satellite_org_bypoint_param(satellite_param,folder_names,satellite_b
     param["base_dir"] = satellite_bypoint_directory
     if "upper_level" in list(param.keys()):
         param.pop("upper_level")
+    param["process_dir"] = os.path.join(satellite_bypoint_directory,"Processed_Fields_files")
     
     return param
 
@@ -1319,6 +1324,7 @@ def process_site_param(site_param,folder_names,site_directory):
     '''    
     param = process_param(site_param,folder_names,satellite=False)
     param["base_dir"] = site_directory
+    param["process_dir"] = os.path.join(site_directory,"Processed_Fields_files")
     
     return param
 
@@ -1330,6 +1336,7 @@ def process_satellite_byday_mf_param(satellite_param,folder_names,satellite_byda
     '''
     param = process_param(satellite_param,folder_names,satellite=True)
     param["base_dir"] = satellite_byday_mf_directory
+    param["process_dir"] = os.path.join(satellite_byday_mf_directory,"Processed_Fields_files")
     
     return param
 
