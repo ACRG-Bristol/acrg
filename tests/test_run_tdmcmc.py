@@ -54,7 +54,7 @@ def run_tdmcmc_benchmark_file():
 @pytest.fixture(scope="module")
 def run_tdmcmc_output_file():
     ''' Define generated post_mcmc.nc file '''
-    filename = os.path.join(acrg_path,'tests/files/tdmcmc/output/output_AGAGE_ch4_2014-02-01.nc')
+    filename = os.path.join(acrg_path,'tests/files/output/output_AGAGE_ch4_2014-02-01.nc')
     return filename
 
 
@@ -65,7 +65,10 @@ def test_run_tdmcmc_outputs(tdmcmc_input_file, tdmcmc_param_file, run_tdmcmc_ben
     with xarray.open_dataset(run_tdmcmc_benchmark_file) as temp:
         post_mcmc_benchmark = temp.load()
     
-    subprocess.call(["python",tdmcmc_input_file,"-c{}".format(tdmcmc_param_file)])
+    result = subprocess.call(["python",tdmcmc_input_file,"-c{}".format(tdmcmc_param_file)])
+    
+    #first check run didn't fail:
+    assert result == 0
     
     with xarray.open_dataset(run_tdmcmc_output_file) as temp:
         post_mcmc = temp.load()
