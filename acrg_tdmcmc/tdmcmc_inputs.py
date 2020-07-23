@@ -177,27 +177,27 @@ if group:
         os.mkdir(output_dir)
     
 if data_dir is not None and data_dir.startswith("$ACRG_PATH"):
-    data_dir = data_dir.replace("$ACRG_PATH",str(acrg_path))
+    data_dir = data_dir.replace("$ACRG_PATH",acrg_path)
     print(("data_directory is ", data_dir))
 
 if fp_dir is not None and fp_dir.startswith("$ACRG_PATH"):
-    fp_dir = fp_dir.replace("$ACRG_PATH",str(acrg_path))
+    fp_dir = fp_dir.replace("$ACRG_PATH",acrg_path)
     print(("fp_directory is ", fp_dir))
 
 if flux_dir is not None and flux_dir.startswith("$ACRG_PATH"):
-    flux_dir = flux_dir.replace("$ACRG_PATH",str(acrg_path))
+    flux_dir = flux_dir.replace("$ACRG_PATH",acrg_path)
     print(("flux_directory is ", flux_dir))
 
 if bc_dir is not None and bc_dir.startswith("$ACRG_PATH"):
-    bc_dir = bc_dir.replace("$ACRG_PATH",str(acrg_path))
+    bc_dir = bc_dir.replace("$ACRG_PATH",acrg_path)
     print(("bc_directory is ", bc_dir))    
 
 if basis_dir is not None and basis_dir.startswith("$ACRG_PATH"):
-    basis_dir = basis_dir.replace("$ACRG_PATH",str(acrg_path))
+    basis_dir = basis_dir.replace("$ACRG_PATH",acrg_path)
     print(("basis_directory is ", basis_dir))
 
 if bc_basis_dir is not None and bc_basis_dir.startswith("$ACRG_PATH"):
-    bc_basis_dir = bc_basis_dir.replace("$ACRG_PATH",str(acrg_path))
+    bc_basis_dir = bc_basis_dir.replace("$ACRG_PATH",acrg_path)
     print(("bc_basis_directory is ", bc_basis_dir))
 
 
@@ -339,7 +339,7 @@ tau_pdf = param['tau_pdf']
 # nBIAS - seems to be specific to GOSAT?
 # nIC - a combination of all the above dimesions
 
-f_list=glob.glob(str(data_path) + "/LPDM/basis_functions/" 
+f_list=glob.glob(data_path + "/LPDM/basis_functions/" 
                     + domain + "/" + fp_basis_case + 
                     "_" + domain + "_*.nc") 
 
@@ -352,7 +352,7 @@ if len(f_list) > 0:
 else:
     raise LookupError("No file exists for that fp_basis_case and domain")
 
-f_list2=glob.glob(str(data_path) + "/LPDM/bc_basis_functions/" 
+f_list2=glob.glob(data_path + "/LPDM/bc_basis_functions/" 
                     + domain + "/" + bc_basis_case + 
                     "_" + domain + "_*.nc") 
 if len(f_list2) > 0:                    
