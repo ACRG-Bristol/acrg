@@ -28,7 +28,6 @@ import bisect
 from scipy import interpolate
 import acrg_MOZART as mz
 import os
-import sys
 import pandas as pd
 import glob
 import datetime as dt
@@ -37,15 +36,8 @@ import collections as c
 import pdb
 from os.path import join
 
-
-if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
-    acrg_path = os.getenv("ACRG_PATH")
-    data_path = os.getenv("DATA_PATH")
-else:
-    from acrg_config.paths import paths
-    acrg_path = paths.acrg
-    data_path = paths.data
-
+acrg_path = os.getenv("ACRG_PATH")
+data_path = os.getenv("DATA_PATH")
 
 if acrg_path is None:
     acrg_path = os.getenv("HOME")
@@ -63,13 +55,13 @@ mzt_dir = join(data_path, 'MOZART/model/mzt_output/')
 def MOZART_filenames(species, start = "2010-01-01", end = "2016-01-01", runname ='NewEDGAR'):
     """
     Gets a list of files given a species, start date and end date.
-
+    
     Searches for path and filename of the format:
         MOZART_DIRECTORY/SPECIES/*runname*year-month*.nc
-
+    
     year and month are extracted from list of dates created from start, end values with frequency of a month.
 
-    Args:
+    Args:    
         species (str) :
             Species name.
             One of "CH4","CO2","HFC-125","HFC-134A","HFC-143A","HFC-152A","HFC-227EA","HFC-23","HFC-32","N2O"
@@ -80,16 +72,16 @@ def MOZART_filenames(species, start = "2010-01-01", end = "2016-01-01", runname 
         runname (str) :
             Name of MOZART run. Valid options are dependent on the species.
             "CH4": "NewEDGAR"
-            "CO2","N2O": "NewEDGAR", "Scaled"
+            "CO2","N2O": "NewEDGAR", "Scaled" 
             No runname for other gases, just specify an empty string ''.
-
+    
     Returns:
         list :
             List of extracted filenames
     """
-
+    
     baseDirectory = mzt_dir
-
+    
     #months = pd.DatetimeIndex(start = start, end = end, freq = "M").to_pydatetime()
     months = pd.date_range(start = start, end = end, freq = "M").to_pydatetime()
     yearmonth = [str(d.year) + '-' + str(d.month).zfill(2) for d in months]
@@ -106,7 +98,7 @@ def MOZART_filenames(species, start = "2010-01-01", end = "2016-01-01", runname 
     if len(files) == 0:
         print("Can't find file: " + baseDirectory + \
             species.upper() + "/" + "*" + ym + "*.nc")
-
+    
     return  files
 
 
@@ -115,16 +107,16 @@ def convert_lon(DS, data_var):
     Converts variables with a longitude dimension to the -180-180 convention
     rather than the 0-360 convention.
     WARNING: variable must have dimensions ('height','lat','lon','time') in that order.
-
+    
     Args:
         DS (xarray.Dataset) :
             Dataset containing data_var
         data_var (str) :
             Name of data variable within dataset with dimensions ('height','lat','lon','time')
-
+    
     Returns:
         None
-
+        
         Updates DS in place with new co-ordinate system
     """
     DS.coords['lon'] = DS.coords['lon'] - 180
@@ -133,11 +125,11 @@ def convert_lon(DS, data_var):
     var = np.zeros(np.shape(var0))
     if 'height' in DS[data_var].dims:
         var[:,:,:L,:] = var0[:,:,L:,:]
-        var[:,:,L:,:] = var0[:,:,:L,:]
+        var[:,:,L:,:] = var0[:,:,:L,:]  
         DS.update({data_var: (['height', 'lat', 'lon','time'], var)})
     elif 'height' not in DS[data_var].dims:
         var[:,:L,:] = var0[:,L:,:]
-        var[:,L:,:] = var0[:,:L,:]
+        var[:,L:,:] = var0[:,:L,:] 
         DS.update({data_var: (['lat', 'lon','time'], var)})
 
 
@@ -146,7 +138,7 @@ def interp_heights(DS,vmr_var_name, interp_height):
     Created to convert MOZART heights to NAME heights at boundaries.
     Interpolates the heights of the VMR variable 'vmr_var_name' in the xarray dataset
     'DS' to the heights specified in 'interp_heights'.
-
+    
     Args:
         DS (xarray.Dataset) :
             Dataset containing (at least) data variables:
@@ -158,10 +150,10 @@ def interp_heights(DS,vmr_var_name, interp_height):
                 (height, lat_or_lon, time) in that order.
         interp_height (numpy.array?) :
             Array of heights to interpolate to.
-
+    
     Returns:
         xarray.Dataset:
-            New dataset with the VMRs recalculated at interpolated heights, a 'height' dimension
+            New dataset with the VMRs recalculated at interpolated heights, a 'height' dimension 
             replaced with the interpolated values and the 'Alt' variable removed.
     """
     vmr = np.zeros((len(interp_height),len(DS[vmr_var_name][0,:,0]),len(DS.coords['time'])))
@@ -175,8 +167,8 @@ def interp_heights(DS,vmr_var_name, interp_height):
     DS2.update({vmr_var_name : (DS[vmr_var_name].dims, vmr),
                'height' : (interp_height)})
     return DS2
-
-
+    
+    
 def interp_lonlat(DS,vmr_var_name, lat_or_lon):
     """
     Created to convert MOZART lons/lats to NAME lons/lats at boundaries.
@@ -184,23 +176,23 @@ def interp_lonlat(DS,vmr_var_name, lat_or_lon):
     Interpolates the heights of the VMR variable 'vmr_var_name' in the xray dataset
     'DS' to the longitude or latitude specified in 'lon_or_lat'. The variable must
     have dimensions (height, lat_or_lon, time) in that order.
-
+    
     Returns:
         xarray.Dataset:
             Updated dataset with interpolated latitudes and longitudes
     """
-
+    
     vmr = np.zeros((len(DS.coords['height']),len(lat_or_lon),len(DS.coords['time'])))
     for j in range(len(DS[vmr_var_name][0,0,:])):
         for i in range(len(DS[vmr_var_name][:,0,0])):
-            y = DS[vmr_var_name][i,:,j]
+            y = DS[vmr_var_name][i,:,j]    
             if 'lon' in DS[vmr_var_name].dims:
                 x = DS['lon']
             elif 'lat' in DS[vmr_var_name].dims:
                 x = DS['lat']
             f = interpolate.interp1d(x,y)
             vmr[i,:,j] = f(lat_or_lon)
-
+        
     if 'lon' in DS[vmr_var_name].dims:
         DS.update({vmr_var_name : (DS[vmr_var_name].dims, vmr),
                'lon' : (lat_or_lon)})
@@ -225,22 +217,22 @@ def MOZART_vmr(species, filename=None, start = "2010-01-01", end = "2016-01-01",
             files=[filename]
     else:
         files = MOZART_filenames(species, start, end, runname)
-
+            
     if len(files) == 0:
         print("Can't find files, exiting")
         return None
     else:
         files.sort()
         mzt = []
-
-
+        
+        
         for fi in files:
             f = mz.read(fi)
             Alt = mz.calc_altitude(f.pressure,f.P0)
             conc = np.reshape(f.conc, (len(f.lev),len(f.lat),len(f.lon),len([f.start_date])))
             Alt = np.reshape(Alt,np.shape(conc))
             vmr_var_name = 'vmr'
-
+            
             # change timestamp to occur in the beginning of the month.
 #            if freq is 'M':
 #                timestamp = f.start_date + dt.timedelta(days=14)
@@ -276,15 +268,15 @@ def MOZART_boundaries(MZ, domain):
     """
 
     listoffiles = glob.glob(join(data_path, "LPDM/fp_NAME/" + domain + "/*"))
-
+    
     with xray.open_dataset(listoffiles[0]) as temp:
         fields_ds = temp.load()
-
+    
     fp_lat = fields_ds["lat"].values
     fp_lon = fields_ds["lon"].values
     fp_height = fields_ds["height"].values
     vmr_var_name = 'vmr'
-
+    
     if any(n<0 for n in fp_lon):
         pass
     else:
@@ -299,7 +291,7 @@ def MOZART_boundaries(MZ, domain):
     lat_s = (np.abs(MZ.coords['lat'].values - min(fp_lat))).argmin()-1
     lon_e = (np.abs(MZ.coords['lon'].values - max(fp_lon))).argmin()+1
     lon_w = (np.abs(MZ.coords['lon'].values - min(fp_lon))).argmin()-1
-
+    
 
     north = MZ.sel(lat = MZ.coords['lat'][lat_n],
                    lon = slice(MZ.coords['lon'][lon_w],MZ.coords['lon'][lon_e])).drop(['lat'])
@@ -309,28 +301,28 @@ def MOZART_boundaries(MZ, domain):
                   lat = slice(MZ.coords['lat'][lat_s],MZ.coords['lat'][lat_n])).drop(['lon'])
     west = MZ.sel(lon = MZ.coords['lon'][lon_w],
                   lat = slice(MZ.coords['lat'][lat_s],MZ.coords['lat'][lat_n])).drop(['lon'])
-
+              
     interp_height = fp_height
-    N = interp_lonlat(interp_heights(north, vmr_var_name,interp_height),vmr_var_name,fp_lon).rename({vmr_var_name : vmr_var_name+'_n'})
-    S = interp_lonlat(interp_heights(south, vmr_var_name,interp_height),vmr_var_name,fp_lon).rename({vmr_var_name : vmr_var_name+'_s'})
-    E = interp_lonlat(interp_heights(east, vmr_var_name,interp_height),vmr_var_name,fp_lat).rename({vmr_var_name : vmr_var_name+'_e'})
-    W = interp_lonlat(interp_heights(west, vmr_var_name,interp_height),vmr_var_name,fp_lat).rename({vmr_var_name : vmr_var_name+'_w'})
+    N = interp_lonlat(interp_heights(north, vmr_var_name,interp_height),vmr_var_name,fp_lon).rename({vmr_var_name : vmr_var_name+'_n'})        
+    S = interp_lonlat(interp_heights(south, vmr_var_name,interp_height),vmr_var_name,fp_lon).rename({vmr_var_name : vmr_var_name+'_s'})     
+    E = interp_lonlat(interp_heights(east, vmr_var_name,interp_height),vmr_var_name,fp_lat).rename({vmr_var_name : vmr_var_name+'_e'})     
+    W = interp_lonlat(interp_heights(west, vmr_var_name,interp_height),vmr_var_name,fp_lat).rename({vmr_var_name : vmr_var_name+'_w'}) 
 
     MZT_edges = N.merge(E).merge(S).merge(W)
     MZT_edges.attrs['title'] = "MOZART volume mixing ratios at domain edges"
     MZT_edges.attrs['author'] = getpass.getuser()
     MZT_edges.attrs['date_created'] = np.str(dt.datetime.today())
-
+    
     return MZT_edges
+    
 
-
-def MOZART_BC_nc(start = '2012-01-01', end = "2014-09-01", species = 'CH4', filename = None, domain = 'EUROPE', freq = 'M', runname = 'NewEDGAR', output_dir = data_path):
+def MOZART_BC_nc(start = '2012-01-01', end = "2014-09-01", species = 'CH4', filename = None, domain = 'EUROPE', freq = 'M', runname = 'NewEDGAR', output_dir = data_path):   
     """
     Specify end date as 2 months after the month of the last file
     (because the date specified is actually the first day of the next month and
     the range goes up to but doesn't include the last date). Only monthly
     frequency because this is the frequency of the mozart files we have so far.
-
+    
     """
     #start_dates = pd.DatetimeIndex(start=start, end = end, freq=freq, closed='left')
     start_dates = pd.date_range(start = start, end = end, freq = freq, closed="left")
