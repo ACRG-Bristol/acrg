@@ -9,8 +9,15 @@ from builtins import str
 from acrg_name.flux import write
 import xarray as xr
 import os
+import sys
 
-data_path = os.getenv("DATA_PATH")
+if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
+    data_path = os.getenv("DATA_PATH") 
+else:
+    from acrg_config.paths import paths
+    data_path = paths.data
+
+data_path = str(data_path)
 
 def test_write(tmpdir):
     with xr.open_dataset(data_path+'/LPDM/emissions/EUROPE/n2o-ocean_EUROPE_2009.nc') as load:
