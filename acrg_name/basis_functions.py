@@ -17,6 +17,7 @@ import xarray as xray
 import glob
 import pandas as pd
 import acrg_name as name
+import sys
 import os
 from os.path import join
 import scipy.optimize
