@@ -20,6 +20,7 @@ being annoying it will also slow down your run due to unnecessary forking.
 
 """
 import os
+import sys
 import numpy as np
 import acrg_name as name
 import acrg_obs as getobs
@@ -30,8 +31,13 @@ import acrg_hbmcmc.inversion_pymc3 as mcmc
 import acrg_name.basis_functions as basis
 import shutil
 
-acrg_path = os.getenv("ACRG_PATH")
-data_path = os.getenv("DATA_PATH")
+if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
+    acrg_path = os.getenv("ACRG_PATH")
+    data_path = os.getenv("DATA_PATH") 
+else:
+    from acrg_config.paths import paths
+    acrg_path = paths.acrg
+    acrg_path = paths.data
 
 def fixedbasisMCMC(species, sites, domain, meas_period, start_date, 
                    end_date, outputpath, outputname, 
