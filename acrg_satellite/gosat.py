@@ -2941,8 +2941,8 @@ def gosat_process(site,species="ch4",input_directory=input_directory,start=None,
             Group together all points into create one output file per day rather than one per data point.
             Default = False.
         max_name_level (int, optional) :
-        	Maximum level to use when writing out NAME csv files.
-        	Default = 17
+            	Maximum level to use when writing out NAME csv files.
+            Default = 17
         max_name_points (int/None, optional) :
             Only applicable if file_per_day is True.
             Maximum number of points to write to NAME csv file if writing file per day. 
