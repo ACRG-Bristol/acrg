@@ -24,9 +24,15 @@ import pandas as pd
 
 import os
 from os.path import join
+import sys
 
-acrg_path = os.getenv("ACRG_PATH")
-data_path = os.getenv("DATA_PATH") 
+if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
+    acrg_path = os.getenv("ACRG_PATH")
+    data_path = os.getenv("DATA_PATH") 
+else:
+    from acrg_config.paths import paths
+    acrg_path = paths.acrg
+    data_path = paths.data
 
 if acrg_path is None:
     acrg_path = os.getenv("HOME")
@@ -323,4 +329,3 @@ def test_acrg_basis_bc_pca():
     #assert np.all(bc_basis_e_array == benchmark_bc_basis_e_array)
     #assert np.all(bc_basis_s_array == benchmark_bc_basis_s_array)
     #assert np.all(bc_basis_w_array == benchmark_bc_basis_w_array)
-

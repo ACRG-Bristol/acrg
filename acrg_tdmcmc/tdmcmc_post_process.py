@@ -29,6 +29,7 @@ from acrg_grid import areagrid
 from netCDF4 import Dataset
 from acrg_time.convert import time2sec
 import os
+import sys
 import acrg_obs
 import json
 import matplotlib.mlab as mlab
@@ -41,7 +42,11 @@ from collections import OrderedDict
 import datetime as dt
 import getpass
 
-acrg_path = os.getenv("ACRG_PATH")
+if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
+    acrg_path = os.getenv("ACRG_PATH") 
+else:
+    from acrg_config.paths import paths
+    acrg_path = paths.acrg
 
 # Get acrg_site_info file
 with open(os.path.join(acrg_path, "acrg_site_info.json")) as f:

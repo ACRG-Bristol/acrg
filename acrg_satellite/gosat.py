@@ -89,6 +89,7 @@ from builtins import range
 from past.utils import old_div
 import glob
 import os
+import sys
 import re
 import random
 import math
@@ -102,7 +103,12 @@ import acrg_obs
 from .barometric import pressure_at_height
 from acrg_countrymask import domain_volume
 
-data_path = os.getenv("DATA_PATH")
+if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
+    data_path = os.getenv("DATA_PATH") 
+else:
+    from acrg_config.paths import paths
+    data_path = paths.data
+
 home = os.getenv("HOME")
 input_directory=os.path.join(data_path,"obs_raw/GOSAT/CH4_GOS_OCPR_v7.2/")
 fp_directory = os.path.join(data_path,'LPDM/fp_NAME/')

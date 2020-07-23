@@ -22,6 +22,7 @@ from builtins import zip
 from builtins import str
 import numpy as np
 import os
+import sys
 import pytest
 
 import acrg_config.config as configread
@@ -29,8 +30,13 @@ from acrg_config.config import extract_params,all_param
 import acrg_tdmcmc.tdmcmc_config as config_tdmcmc
 from acrg_tdmcmc.tdmcmc_config import all_mcmc_param
 
-acrg_path = os.getenv("ACRG_PATH")
-data_path = os.getenv("DATA_PATH")
+aif sys.version_info[0] == 2: # If major python version is 2, can't use paths module
+    acrg_path = os.getenv("ACRG_PATH")
+    data_path = os.getenv("DATA_PATH") 
+else:
+    from acrg_config.paths import paths
+    acrg_path = paths.acrg
+    data_path = paths.data
  
 test_config_path = os.path.join(acrg_path,"tests/files/config")
 
@@ -660,4 +666,3 @@ def test_extra_mcmc(tdmcmc_config_extra):
 #    
 #    for name in expected_names:
 #        assert name in x
-

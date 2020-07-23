@@ -3,9 +3,17 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import xarray as xr
+import os
+import sys
+
+if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
+    data_path = os.getenv("DATA_PATH") 
+else:
+    from acrg_config.paths import paths
+    data_path = paths.data
 
 
-folder = '/data/shared/LPDM/Model/NAMEIII_v7_2_particlelocation_satellite/Resources/Topog/'
+folder = os.path.join(data_path,'LPDM/Model/NAMEIII_v7_2_particlelocation_satellite/Resources/Topog/')
 
 # topog function loads UM file in Iris and saves as NetCDF in the same folder you are working in
 
@@ -24,4 +32,3 @@ def global_topog(filename):
     
     ds.to_netcdf(path = '/data/shared/LPDM/topog_NAME/' + new_netcdf)
     
-

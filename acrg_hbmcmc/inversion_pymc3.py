@@ -15,9 +15,15 @@ import getpass
 from acrg_hbmcmc.inversionsetup import opends
 from acrg_hbmcmc.hbmcmc_output import define_output_filename
 import os
+import sys
 import acrg_convert as convert
 
-data_path = os.getenv("DATA_PATH")
+if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
+    data_path = os.getenv("DATA_PATH") 
+else:
+    from acrg_config.paths import paths
+    data_path = paths.data
+
 
 def parsePrior(name, prior_params, shape = ()):
     """
@@ -516,4 +522,3 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         output_filename = define_output_filename(outputpath,species,domain,outputname,start_date,ext=".nc")
         #outds.to_netcdf(outputpath+"/"+species.upper()+'_'+domain+'_'+outputname+'_'+start_date+'.nc', encoding=encoding, mode="w")
         outds.to_netcdf(output_filename, encoding=encoding, mode="w")
-
