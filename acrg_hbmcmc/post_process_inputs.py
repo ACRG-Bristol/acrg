@@ -18,9 +18,15 @@ import numpy as np
 import hbmcmc_post_process as process
 import pandas
 import os
+import sys
 import matplotlib.pyplot as plt
 
-acrg_path=os.getenv('ACRG_PATH')
+if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
+    acrg_path = os.getenv("ACRG_PATH") 
+else:
+    from acrg_config.paths import paths
+    acrg_path = paths.acrg
+
 
 if __name__=="__main__":
 
@@ -165,5 +171,3 @@ if __name__=="__main__":
                 cntryCI_arr = cntry68_arr
             process.plot_country_timeseries(cntrymean_arr[:,cntry_ind], cntryCI_arr[:,cntry_ind,:],
                                             cntryprior_arr[:,cntry_ind], dates, country_label = cntry, units = units, figsize = (7,3))
-
-

@@ -39,8 +39,13 @@ from mpl_toolkits import mplot3d
 from collections import OrderedDict
 import acrg_obs as obs
 
-acrg_path = os.getenv("ACRG_PATH")
-data_path = os.getenv("DATA_PATH")
+if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
+    acrg_path = os.getenv("ACRG_PATH")
+    data_path = os.getenv("DATA_PATH") 
+else:
+    from acrg_config.paths import paths
+    acrg_path = paths.acrg
+    data_path = paths.data
 
 if acrg_path is None:
     acrg_path = os.getenv("HOME")

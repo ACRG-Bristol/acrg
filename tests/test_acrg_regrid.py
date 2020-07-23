@@ -14,14 +14,20 @@ Using a Parametrised test
 
 import numpy as np
 import os
+import sys
 import netCDF4 as nc
 import pytest
 from acrg_grid.regrid import regrid2d
 from acrg_grid.regrid import regrid3d
 from acrg_grid.areagrid import areagrid
 
-acrg_path = os.getenv("ACRG_PATH")
-data_path = os.getenv("DATA_PATH")
+if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
+    acrg_path = os.getenv("ACRG_PATH")
+    data_path = os.getenv("DATA_PATH") 
+else:
+    from acrg_config.paths import paths
+    acrg_path = paths.acrg
+    data_path = paths.data
 
 @pytest.fixture(scope="module")
 def gen_netcdf_file_new():
@@ -141,7 +147,3 @@ def test_acrg_regrid3d_netcdf_conservation():
     assert regridded_data_shape == (len(lat_out), len(lon_out), len(time_array))
     assert old_mean == new_mean
     assert total_domain_emission_old == total_domain_emission_new
-
-
-
-

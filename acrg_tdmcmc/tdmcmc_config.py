@@ -39,12 +39,17 @@ acrg_config.generate_param_dict() function for more details.
 from __future__ import print_function
 
 import os
+import sys
 import acrg_obs
 import numpy as np
 import acrg_config.config as config
 from collections import OrderedDict
 
-acrg_path = os.getenv("ACRG_PATH")
+if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
+    acrg_path = os.getenv("ACRG_PATH") 
+else:
+    from acrg_config.paths import paths
+    acrg_path = paths.acrg
 
 ## Functions below are specifically related to the MCMC code which build on the functions within acrg_config module
 
