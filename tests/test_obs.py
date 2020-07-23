@@ -217,7 +217,7 @@ def test_obs_process_gc():
     assert np.allclose(ds.sel(time = slice("2018-01-01 04:33", "2018-01-01 04:35")).cf4.values,
                        np.array(83.546))
 
-    assert np.allclose(ds.sel(time = slice("2018-01-20", "2018-01-20"))["cf4 repeatability"].values[0:1],
+    assert np.allclose(ds.sel(time = slice("2018-01-20", "2018-01-20"))["cf4_repeatability"].values[0:1],
                        np.array(0.03679))
 
     # clean up
@@ -254,7 +254,7 @@ def test_obs_process_crds():
     # because in GCWerks files, times are at the beginning of the sampling period)
     assert np.allclose(ds.sel(time = slice("2014-01-30 14:00:00", "2014-01-30 14:01:00")).ch4.values,
                        np.array(1953.88))
-    assert np.allclose(ds.sel(time = slice("2014-01-30 14:00:00", "2014-01-30 14:01:00"))["ch4 variability"].values,
+    assert np.allclose(ds.sel(time = slice("2014-01-30 14:00:00", "2014-01-30 14:01:00"))["ch4_variability"].values,
                        np.array(0.398))
 
     # clean up
