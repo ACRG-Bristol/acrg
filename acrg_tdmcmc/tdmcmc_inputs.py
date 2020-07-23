@@ -59,6 +59,9 @@ else:
     acrg_path = paths.acrg
     data_path = paths.data
 
+acrg_path = str(acrg_path)
+data_path = str(data_path)
+
 config_file = 'param.ini'
 config_path = os.path.join(acrg_path,"acrg_tdmcmc")
 config_file = os.path.join(config_path,config_file)
