@@ -260,3 +260,4 @@ class EDGARread(object):
         self.units = units
         self.year = year
         self.date = date
+        
