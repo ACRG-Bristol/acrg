@@ -22,11 +22,19 @@ import collections as c
 import sys
 import pandas as pd
 
+if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
+    data_path = os.getenv("DATA_PATH") 
+else:
+    from acrg_config.paths import paths
+    data_path = paths.data
+
+output_directory = os.path.join(data_path,'LPDM/emissions/')
+
 def write(lat, lon, time, flux, species, domain,
           source, title, prior_info_dict,
           regridder_used = 'acrg_grid.regrid.regrid_3D',
           copy_from_year = None, climatology = False, flux_comments = None,
-          output_directory = '/data/shared/LPDM/emissions/'):
+          output_directory = output_directory):
     '''Write a flux file for emissions
     
     Args:
@@ -64,7 +72,7 @@ def write(lat, lon, time, flux, species, domain,
         flux_comments (str, optional): 
             Extra comments. Default is None.
         output_directory (str, optional): 
-            Output directory. Default is '/data/shared/LPDM/emissions/'.
+            Output directory. Default is 'data_path + LPDM/emissions/'.
     
     Returns:
         None
