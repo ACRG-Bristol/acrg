@@ -57,7 +57,6 @@ def run_tdmcmc_output_file():
     filename = os.path.join(acrg_path,'tests/files/output/output_AGAGE_ch4_2014-02-01.nc')
     return filename
 
-
 @pytest.mark.long
 def test_run_tdmcmc_outputs(tdmcmc_input_file, tdmcmc_param_file, run_tdmcmc_benchmark_file, run_tdmcmc_output_file):
     ''' Checks the netcdf output of run_tdmcmc.py matches a benchmarked output_AGAGE_ch4_2014-02-01_benchmark.nc file '''
@@ -73,7 +72,10 @@ def test_run_tdmcmc_outputs(tdmcmc_input_file, tdmcmc_param_file, run_tdmcmc_ben
     with xarray.open_dataset(run_tdmcmc_output_file) as temp:
         post_mcmc = temp.load()
     
-    assert np.array_equal(post_mcmc["h_v_all"], post_mcmc_benchmark["h_v_all"])
+    #assert np.array_equal(post_mcmc["h_v_all"], post_mcmc_benchmark["h_v_all"])
+    assert np.isclose(post_mcmc["h_v_all"], post_mcmc_benchmark["h_v_all"]) # account for floating point differences
     assert np.array_equal(post_mcmc["y"], post_mcmc_benchmark["y"])
     assert np.array_equal(post_mcmc["sigma_measure"], post_mcmc_benchmark["sigma_measure"])    
-    assert np.array_equal(post_mcmc["R_indices"], post_mcmc_benchmark["R_indices"]) 
+    assert np.array_equal(post_mcmc["R_indices"], post_mcmc_benchmark["R_indices"])
+    
+    os.remove(run_tdmcmc_output_file)
