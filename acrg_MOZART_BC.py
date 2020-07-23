@@ -43,7 +43,7 @@ if sys.version_info[0] == 2: # If major python version is 2, can't use paths mod
 else:
     from acrg_config.paths import paths
     acrg_path = paths.acrg
-    acrg_path = paths.data
+    data_path = paths.data
 
 
 if acrg_path is None:
