@@ -641,7 +641,7 @@ def crds_data_read(data_file):
                      date_parser=parse_date)
 
     # Check if the index is sorted and if not sort it
-    if not df.index.is_monotonic_incrasing():
+    if not df.index.is_monotonic_increasing:
         df.sort_index()
 
     df.index.name = "time"
