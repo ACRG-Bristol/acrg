@@ -30,7 +30,7 @@ from acrg_config.config import extract_params,all_param
 import acrg_tdmcmc.tdmcmc_config as config_tdmcmc
 from acrg_tdmcmc.tdmcmc_config import all_mcmc_param
 
-aif sys.version_info[0] == 2: # If major python version is 2, can't use paths module
+if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
     acrg_path = os.getenv("ACRG_PATH")
     data_path = os.getenv("DATA_PATH") 
 else:

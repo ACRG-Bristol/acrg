@@ -48,8 +48,8 @@ def test_acrg_GCWerks_CRDS_H2OCorr():
     '''
     Test CRDS_H2OCorr.py function is creating the same corrections
     '''
-    basedir = acrg_path+'/tests/files/raw_obs/H2OCorr/'
-    outdir = acrg_path+'/tests/files/raw_obs/H2OCorr/Plots/'
+    basedir = str(acrg_path)+'/tests/files/raw_obs/H2OCorr/'
+    outdir = str(acrg_path)+'/tests/files/raw_obs/H2OCorr/Plots/'
     out1, out2 = H2OCorr.calcread_multi(sites = "BSD", years = "2018", basedir = basedir, outdir = outdir)
     
     assert round(out2['B_0']['a_ch4'][0],6) == -0.013575

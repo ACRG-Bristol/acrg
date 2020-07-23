@@ -59,6 +59,9 @@ else:
     acrg_path = paths.acrg
     data_path = paths.data
 
+acrg_path = str(acrg_path)
+data_path = str(data_path)
+
 config_file = 'param.ini'
 config_path = os.path.join(acrg_path,"acrg_tdmcmc")
 config_file = os.path.join(config_path,config_file)
@@ -161,9 +164,9 @@ unique_copy = param['unique_copy']
 if output_dir == "/path/to/output/directory/":
     raise Exception("Please set output directory (output_dir) parameter within configuration file: {0}".format(config_file))
 elif output_dir.startswith("$ACRG_PATH"):
-    output_dir = output_dir.replace("$ACRG_PATH",acrg_path)
+    output_dir = output_dir.replace("$ACRG_PATH",str(acrg_path))
 elif output_dir.startswith("$DATA_PATH"):
-    output_dir = output_dir.replace("$DATA_PATH",data_path)
+    output_dir = output_dir.replace("$DATA_PATH",str(data_path))
 
 if not os.path.isdir(output_dir):
     raise Exception("Output directory: {} does not exist.".format(output_dir))
