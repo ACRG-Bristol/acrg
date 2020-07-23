@@ -17,10 +17,8 @@ else:
     from acrg_config.paths import paths
     data_path = paths.data
 
-data_path = str(data_path)
-
 def test_write(tmpdir):
-    with xr.open_dataset(data_path+'/LPDM/emissions/EUROPE/n2o-ocean_EUROPE_2009.nc') as load:
+    with xr.open_dataset(str(data_path)+'/LPDM/emissions/EUROPE/n2o-ocean_EUROPE_2009.nc') as load:
         ds = load.load()
     del ds.attrs['author']
     del ds.attrs['date_created']
