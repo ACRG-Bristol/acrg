@@ -1498,7 +1498,7 @@ def test_process_satellite_bypoint_against_org(process_satellite_bypoint_param,
     for dv in data_vars:
         assert np.array_equal(out[dv].values,out_org[dv].values)   
 
-@pytest.mark.bench
+@pytest.mark.skip(reason="Possible comparison error due to new short-lived footprints. Requires updating.")
 def test_process_satellite_byday_mf_against_bench(process_satellite_byday_mf_param,
                                                   subfolder_satellite_byday_mf,
                                                   folder_names,satellite_param): 
