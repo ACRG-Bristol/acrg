@@ -1,125 +1,39 @@
-Shared Python code for the Atmospheric Chemistry Research Group (University of
-Bristol)
+# __ACRG Repository __
+Shared Python code for the Atmospheric Chemistry Research Group (University of Bristol). Dealing with observations, NAME output and inversion code.
 
-***First Installation***
-Click on the link in the automated email sent by Matt and set up your
-bitbucket username and password.
+## __Getting Started__
 
-Then check out the code using your bitbucket username. By doing the below:
+### Prerequisites
 
-From the directory where you want the "acrg" directory to live (e.g. for me on
-my laptop it's /Users/as13988/Documents/Work/Python/), type:
+- python 3
+- anaconda (recommended)
+- fortran compiler (optional)
 
-  git clone https://YOUR_USERNAME@bitbucket.org/mrghg/acrg.git
+The ACRG code is written primarily using python 3. It is recommended to use anaconda, and an environment file is provided to setup a compatible python environment. The TDMCMC section of the repository contains FORTRAN code that must be compiled by the user to be used. 
 
-Or copy your personal/GIT client SSH key to BitBucket and use:
+### Installing
 
-  git clone git@bitbucket.org:/mrghg/acrg.git
+1. Clone the repository
+2. Setup paths:
+ - copy acrg_config/templates/paths_default.yaml to acrg_config/paths.yaml
+ - Overwrite the default folder paths in acrg_config/paths.yaml with your system specific values
 
-When you check out the code bitbucket automatically creates the "acrg"
-directory and fails if there's already an "acrg" directory. So if you want to
-keep your old google based "acrg" directory rename it.
+3. Setup the python environment: 
+ - conda env create -f acrg_environment.yml
+ - conda activate acrg
+ - Note: creating the environment may take several minutes
 
-Add path variables to your USER_ID (e.g. as13988) ~/.bashrc file:
-  export ACRG_PATH="/home/USER_ID/Python/acrg"    # your git repo location
-  export DATA_PATH="/data/shared"    # the shared data location
+4. The ACRG repository is ready to use! Start by running the tests (see below)
 
-***Adding a file to the repo***
-From your directory, first add a file to the SVN library:
+### Running tests
 
-git add YOUR_FILE_NAME
+To ensure the code has been setup properly, and to aid in development and maintenance, the repository comes with a suite of tests to be run. These should be run when you first install the code to ensure it is setup correctly, and frequently during code development work to prevent adding bugs to the code.
 
-Then "commit" all the changes you've made:
+From the /tests/ folder run the terminal command 'pytest'. The complete test suite may take a few minutes to run.
 
-git commit -m "ADD_SOME_DESCRIPTIVE_COMMENTS_HERE_IN_QUOTES"
+## __Credits__
+The code is developed and maintained by the ACRG Modelling team (http://www.bristol.ac.uk/chemistry/research/acrg/)
 
-Note that it won't work if you don't add the -m with some comments.
+## __License__
+The code currently has no license. This should change to enable sharing and further users. 
 
-Then "push" it to the central repository (the "origin master" isn't really
-necessary, but apparently it's a good idea for when we start using branches).
-
-git push origin master
-
-***Update regularly***
-To make sure you're up-to-date with everyone else's changes, regularly type
-(or set a cron job), from inside the folder:
-
-git pull
-
-***Changing someone else's code***
-First, make sure you have the most up-to-date version of the repo (see above).
-Then, edit the code on your machine. Then, when you're done, just commit the
-changes back to the repo:
-
-git add FILENAME
-
-git commit -m "ADD_SOME_DESCRIPTIVE_COMMENTS_HERE_IN_QUOTES"
-
-git push origin master
-
-***Adding an ssh key***
-
-Git will ask you for a password every time you want to connect using https.
-You can get around this by adding your RSA key to your account. Instructions
-are here:
-
-https://confluence.atlassian.com/display/BITBUCKET/Set+up+SSH+for+Git
-
-Start from Step 1.
-
-1. Check contents of ~/.ssh and if you already have id_rsa and id_rsa.pub 
-can skip to step 4:
-
-ls -a ~/.ssh
-
-2. Set up keys:
-
-ssh-keygen
-
-3. Start ssh-agent if it is not already running (check with ps -e | grep [s]sh-agent):
-
-ssh-agent /bin/bash (skip this if it is already running)
-
-ssh-add ~/.ssh/id_rsa
-
-ssh-add -l
-
-4. Copy contents of id_rsa.pub (cat ~/.ssh/id_rsa.pub) to your account on bitbucket.org 
--> Avatar (i.e. person icon) -> Bitbucket Settings -> SSH Keys and Add Key
-
-5. Open <path_to_repo>/.git/config and change the url under [remote "origin"] to:
-
-url=git@bitbucket.org:mrghg/acrg.git
-
-This will change to SSH from HTTPS.  It is important that the username is mrghg (the owner of the repo) 
-not your account.
-
-
-***Conflicts***
-
-Conflicts are inevitable. Git sorts this out for you. If you try to "push"
-changes from your local repository when you're not up-to-date, it'll complain.
-In that case, pull the latest changes from the server. There are now a few
-things that can happen:
-
-1. The "pulled" changes don't conflict with your code (i.e. they are to files
-that are different to the one you've been editing). In that case, you don't
-need to do anything, just push your commit to the repo.
-
-2. The "pulled" changes conflict with your file, but in a different place to
-the bit you've been editing. In this case git tries to "auto-merge" the two
-files together. The message will say "Auto-merging XXX". When this has
-updated, you should see edits that someone else has made to your code, along
-with your edits. You can then "push" your changes to the server.
-
-3. The "pulled" changes conflict with your file in the same bit that you've
-been editing. In this case, git will add the conflict to the code, with a
-bunch of lines showing what your stuff looks like (labeled as "HEAD"), and the
-bits that someone else has been working on. You now need to talk to your
-friend who did the editing, find out what changes should be kept. Then you
-should add, commit and push to the server. You can also use tools to help you
-pick out which changes to keep, but I haven't figured this out yet. It should
-follow from:
-
-
-git mergetool
