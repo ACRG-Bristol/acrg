@@ -4,7 +4,7 @@
 #PBS -N process_gcwerks
 
 # run this qsub line to call this array shell script to process all AGAGE data
-# qsub -J 1-40 -k oe -j oe -Wsandbox=PRIVATE process_gcwerks_array.sh
+# qsub -V -J 1-40 -k oe -j oe -Wsandbox=PRIVATE process_gcwerks_array.sh
 
 /bin/bash
 source ~/.bashrc
