@@ -15,13 +15,13 @@ The ACRG code is written primarily using python 3. It is recommended to use anac
 
 1. Clone the repository
 2. Setup paths:
- - copy acrg_config/templates/paths_default.yaml to acrg_config/paths.yaml
- - Overwrite the default folder paths in acrg_config/paths.yaml with your system specific values
+    - copy acrg_config/templates/paths_default.yaml to acrg_config/paths.yaml
+    - Overwrite the default folder paths in acrg_config/paths.yaml with your system specific values
 
 3. Setup the python environment: 
- - conda env create -f acrg_environment.yml
- - conda activate acrg
- - Note: creating the environment may take several minutes
+    - conda env create -f acrg_environment.yml
+    - conda activate acrg
+    - Note: creating the environment may take several minutes
 
 4. The ACRG repository is ready to use! Start by running the tests (see below)
 
