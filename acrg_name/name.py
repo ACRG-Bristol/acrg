@@ -1259,7 +1259,7 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                     fp_and_data[site] = fp_and_data[site].merge(sub_H)
             
         fp_and_data[site]['H'] = concat_sensitivity                             
-
+        fp_and_data[site]['basis'] = site_bf.basis
                     
     return fp_and_data
 
@@ -2251,7 +2251,7 @@ class get_country(object):
   def __init__(self, domain, country_file=None):
         
         if country_file is None:
-            filename=glob.glob(data_path +'LPDM/countries/' + "/" + "country_" + domain + ".nc")
+            filename=glob.glob(join(data_path,'LPDM/countries/', ("country_" + domain + ".nc")))
             f = xr.open_dataset(filename[0])
         else:
             filename = country_file

@@ -252,8 +252,9 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                            start_date, end_date, outputname, outputpath,
                            basis_directory, country_file, fp_basis_case, country_unit_prefix)
     
-    # remove the temporary basis function directory
-    shutil.rmtree(tempdir)
+    if quadtree_basis is True:
+        # remove the temporary basis function directory
+        shutil.rmtree(tempdir)
     
     print("All done")
 
