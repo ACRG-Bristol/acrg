@@ -1119,7 +1119,7 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                                 by domain. (optional)
     
     Returns:
-        dict (xarray.Dataset) : Same format as fp_and_data with sensitivity matrix added.
+        dict (xarray.Dataset) : Same format as fp_and_data with sensitivity matrix and basis function grid added.
     """    
     
     sites = [key for key in list(fp_and_data.keys()) if key[0] != '.']
