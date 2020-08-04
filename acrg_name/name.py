@@ -1259,7 +1259,7 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                     fp_and_data[site] = fp_and_data[site].merge(sub_H)
             
         fp_and_data[site]['H'] = concat_sensitivity                             
-        fp_and_data[site]['basis'] = site_bf.basis
+        fp_and_data['.basis'] = site_bf.basis[:,:,0]
                     
     return fp_and_data
 

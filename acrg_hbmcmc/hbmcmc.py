@@ -247,7 +247,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                            xprior, bcprior, sigprior,Ytime, siteindicator, sigma_freq_index, data, fp_data,
                            emissions_name, domain, species, sites,
                            start_date, end_date, outputname, outputpath,
-                           basis_directory, country_file, fp_basis_case, country_unit_prefix)
+                           basis_directory, country_file, country_unit_prefix)
 
     if quadtree_basis is True:
         # remove the temporary basis function directory
