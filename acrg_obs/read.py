@@ -268,10 +268,14 @@ def get_single_site(site, species_in,
     
     
     # Run a couple of initial queries to see whether there are any defaults defined for a particular site
-    df_defaults_for_site = pd.read_sql_query("SELECT * FROM defaults WHERE site=?",
+    df_defaults_for_site = pd.read_sql_query("SELECT * FROM defaults WHERE site = ? COLLATE NOCASE",
                                              conn, params = (site,))
-    df_defaults_for_site_species = pd.read_sql_query("SELECT * FROM defaults WHERE site=? AND species=?", 
-                                                     conn, params = (site, species))
+    df_defaults_for_site_species = pd.read_sql_query('''
+                                                     SELECT * FROM defaults 
+                                                     WHERE site = ? COLLATE NOCASE AND 
+                                                     species = ? COLLATE NOCASE
+                                                     ''', 
+                                                     conn, params = (site, species_query))
 
     # Check if defaults need to be over-written
     if (inlet != None or instrument != None or network != None) and len(df_defaults_for_site) >= 1:
@@ -281,8 +285,6 @@ def get_single_site(site, species_in,
     else:
         override_defaults = False
 
-        
-        
     # Read filenames from database
     if len(df_defaults_for_site) == 0 or override_defaults:
         # Query only the 'files' table table to determine which files to read
