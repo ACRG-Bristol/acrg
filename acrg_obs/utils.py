@@ -25,14 +25,11 @@ import sqlite3
 
 if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
     acrg_path = os.getenv("ACRG_PATH")
-    data_path = os.getenv("DATA_PATH")
     obs_directory = os.path.join(data_path, "obs")
 else:
     from acrg_config.paths import paths
     acrg_path = paths.acrg
-    data_path = paths.data
     obs_directory = paths.obs
-
 
 # Output unit strings (upper case for matching)
 unit_species = {"CO2": "1e-6",
