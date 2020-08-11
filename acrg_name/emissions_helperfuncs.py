@@ -29,6 +29,7 @@ import xarray as xray
 import glob 
 import h5py
 import os
+import sys
 from acrg_grid.regrid import regrid2d
 from acrg_grid import areagrid
 import datetime
@@ -42,7 +43,11 @@ import cartopy.crs as ccrs
 from acrg_countrymask import domain_volume
 from acrg_name import flux
 
-data_path = os.getenv("DATA_PATH")
+if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
+    data_path = os.getenv("DATA_PATH") 
+else:
+    from acrg_config.paths import paths
+    data_path = paths.data
 
 output_directory = os.path.join(data_path,"LPDM/emissions/")
 
@@ -98,10 +103,10 @@ def getGFED(year, lon_out, lat_out, timeframe='monthly', months = [1,2,3,4,5,6,7
        sourceindex = [7,5,3,1,11] #
     else:
        sources      = 'SAVA','BORF','TEMF','DEFO','PEAT','AGRI'
-       sourceindex = [7,5,3,1,11,9] #
+       sourceindex = [7,5,3,1,11,9] #/data/
         
     
-    directory    = '/data/shared/Gridded_fluxes/GFED4/fire_emissions_v4_R1_1293/data'
+    directory    = os.path.join(data_path,'Gridded_fluxes/GFED4/fire_emissions_v4_R1_1293/data')
     species = species.upper()
     
     ###
@@ -305,7 +310,7 @@ def getedgarannualtotals(year, lon_out, lat_out, species='CH4'):
     
     species = species.upper() #Make sure species is uppercase
     #Path to EDGAR files
-    edpath = '/data/shared/Gridded_fluxes/'+species+'/EDGAR_v4.3.2/v432_'+species+'_TOTALS_nc/'
+    edpath = os.path.join(data_path,'Gridded_fluxes/'+species+'/EDGAR_v4.3.2/v432_'+species+'_TOTALS_nc/')
     
     #Check to see range of years. If desired year falls outside of this range 
     #then take closest year
@@ -382,7 +387,7 @@ def getothernaturalCH4(lon_out, lat_out):
         
         
     """
-    path = '/data/shared/GAUGE/CH4/'
+    path = os.path.join(data_path,'GAUGE/CH4/')
     otherfn = 'CH4_flux_natural_global_climatology.nc'
     ods = xr.open_dataset(path+otherfn)
     lat = ods.latitude.values
@@ -424,7 +429,7 @@ def getsoilsinkCH4(lon_out, lat_out):
             Dimensions are [lat, lon, time]
             N.B. These are negative as it's a sink.
     """
-    path = '/data/shared/GAUGE/CH4/'
+    path = os.path.join(data_path,'GAUGE/CH4/')
     ssinkfn = 'CH4_flux_soilssink_global_climatology.nc'
     
     ds = xr.open_dataset(path+ssinkfn)
@@ -469,7 +474,7 @@ def getbloomwetlandsCH4(year, lon_out, lat_out, timeframe="monthly"):
     print('There is a newer (much better) Bloom wetlands model!!!')
     print("Use the function getBloom2017() instead")
     
-    path = '/data/shared/GAUGE/CH4/'
+    path = os.path.join(data_path,'GAUGE/CH4/')
     bloomwetlands = 'CH4_flux_wetlands_rice_global_2003_2009.nc'
     
     possyears = np.arange(7) + 2003
@@ -534,7 +539,7 @@ def getBloom2017(year, lon_out, lat_out, modeltype='extended'):
             Array of regridded emissions in mol/m2/s.
             Dimensions are [lat, lon, time]
     """    
-    path = '/data/shared/Gridded_fluxes/CH4/Bloom2017/'
+    path = os.path.join(data_path,'Gridded_fluxes/CH4/Bloom2017/')
     if modeltype == 'extended':
         bloomwetlands = 'WetCHARTs_extended_ensemble_mean.nc4'
         possyears = np.arange(15) + 2001
@@ -797,7 +802,7 @@ def getedgarannualsectors(year, lon_out, lat_out, edgar_sectors, species='CH4'):
     
     species = species.upper() #Make sure species is uppercase
     #Path to EDGAR files
-    edpath = '/data/shared/Gridded_fluxes/'+species+'/EDGAR_v4.3.2/'+species+'_sector_yearly/'
+    edpath = os.path.join(data_path,'Gridded_fluxes/'+species+'/EDGAR_v4.3.2/'+species+'_sector_yearly/')
     
     #Dictionary of codes for sectors
     secdict = {'powerindustry' : '1A1a', 
@@ -955,7 +960,7 @@ def getedgarmonthlysectors(lon_out, lat_out, edgar_sectors, months=[1,2,3,4,5,6,
     """
     species = species.upper() #Make sure species is uppercase
     #Path to EDGAR files
-    edpath = '/data/shared/Gridded_fluxes/'+species+'/EDGAR_v4.3.2/'+species+'_sector_monthly/'
+    edpath = os.path.join(data_path,'Gridded_fluxes/'+species+'/EDGAR_v4.3.2/'+species+'_sector_monthly/')
     
     #Dictionary of codes for sectors
     secdict = {'powerindustry' : '1A1a', 
@@ -1078,7 +1083,7 @@ def getScarpelliFossilFuelsCH4(lon_out, lat_out, scarpelli_sector='all'):
     
     sectors = {'coal' : 'Coal', 'gas' : 'Gas_All', 'oil' : 'Oil_All', 'all' : 'Total_Fuel_Exploitation'}
 
-    path = '/data/shared/Gridded_fluxes/CH4/Scarpelli_FossilFuel_CH4/'
+    path = os.path.join(data_path,'Gridded_fluxes/CH4/Scarpelli_FossilFuel_CH4/')
     fnroot = 'Global_Fuel_Exploitation_Inventory_'
     sourcefn = path+fnroot+sectors[scarpelli_sector]+'.nc'
     

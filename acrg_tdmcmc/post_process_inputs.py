@@ -19,9 +19,14 @@ from . import tdmcmc_post_process as process
 import glob
 import pandas
 import os
+import sys
 import matplotlib.pyplot as plt
 
-acrg_path=os.getenv('ACRG_PATH')
+if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
+    acrg_path = os.getenv("ACRG_PATH") 
+else:
+    from acrg_config.paths import paths
+    acrg_path = paths.acrg
 
 def extract_tdmcmc_files(directory,species,network,dates,return_filenames=False):
     '''

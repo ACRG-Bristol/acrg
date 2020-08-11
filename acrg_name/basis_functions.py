@@ -19,9 +19,18 @@ import pandas as pd
 import acrg_name as name
 import os
 from os.path import join
+import sys
+import scipy.optimize
+import getpass
+import uuid
 
-acrg_path = os.getenv("ACRG_PATH")
-data_path = os.getenv("DATA_PATH")
+if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
+    acrg_path = os.getenv("ACRG_PATH")
+    data_path = os.getenv("DATA_PATH") 
+else:
+    from acrg_config.paths import paths
+    acrg_path = paths.acrg
+    data_path = paths.data
 
 if acrg_path is None:
     acrg_path = os.getenv("HOME")
@@ -38,64 +47,6 @@ fields_file_path = join(data_path, 'LPDM/fp_NAME/')
 basis_dir = join(data_path, 'LPDM/basis_functions/')
 bc_basis_dir = join(data_path,'LPDM/bc_basis_functions/')
 
-
-def basis_blocks(domain, time, blocksize, basis_case=None): 
-    """Creates basis functions in square blocks (e.g., 5x5 grid cells per region)
-    
-    Args:
-        domain (str): 
-            String of domain area
-        time (str): 
-            Timestamp for basis functions
-        blocksize (int): 
-            Number of grid cells to split into (i.e. blocksize x blocksize)
-        basis_case (str, optional): 
-            Labelling for basis case. 
-            Default is e.g. '5x5' for blocksize of 5
-    
-    Returns:
-        None
-        Writes blocked basis functions to netcdf
-        
-    Example:
-        basis_blocks(domain = "SOUTHASIA", time = "2012-01-01", blocksize=25)
-    """
-    if basis_case == None:
-        basis_case = str(blocksize)+"x"+str(blocksize)
-    
-    # load a Fields file to get the domain
-
-    files = glob.glob(fields_file_path + domain + "/*")
-    
-    time = pd.to_datetime(time)
-    
-    with xray.open_dataset(files[0]) as temp:
-        fields_ds = temp.load()
-
-    if len(files) == 0:
-        print("Can't find Fields files: " + domain)
-        return None
-    
-    lat = fields_ds["lat"].values
-    lon = fields_ds["lon"].values
-    
-    basis_grid = np.zeros((len(lat),len(lon)))
-    
-    arr = basis_grid
-    
-    x,y = cut_array2d(arr,(len(lat)//blocksize,len(lon)//blocksize))
-    
-    for ii in range(len(x)):
-        basis_grid[x[ii][0]:x[ii][1],y[ii][0]:y[ii][1]]=ii+1
-    
-    basis_grid = basis_grid.reshape(len(lat),len(lon),1)
-    
-    basis_ds = xray.Dataset({'basis':(['lat','lon','time'], basis_grid)}, \
-            coords = {'lon':(['lon'], lon), \
-                      'lat':(['lat'], lat), \
-                      'time':(['time'],[time])})
-                
-    basis_ds.to_netcdf(basis_dir + domain +"/" + basis_case + "_" + domain + "_" + str(time.year) + ".nc")
 
 def basis_transd(domain, time, basis_case = "sub-transd", sub_lon_min = None,
                  sub_lon_max = None, sub_lat_min = None, sub_lat_max = None): 
@@ -753,16 +704,176 @@ def basis_bc_pca(domain, time, species, units='ppb', basis_case='pca', numregion
     basis_ds.to_netcdf(bc_basis_dir + domain +"/" + species + "_" + basis_case + "_" + domain + "_" + time.strftime('%m')+str(time.year) + ".nc")           
  
  
-def cut_array2d(array, shape):
-    """Needs a description for what it does
+class quadTreeNode:    
+    
+    def __init__(self, xStart, xEnd, yStart, yEnd):
+        self.xStart = xStart
+        self.xEnd = xEnd
+        self.yStart = yStart
+        self.yEnd = yEnd
+        
+        self.child1 = None #top left
+        self.child2 = None #top right
+        self.child3 = None #bottom left
+        self.child4 = None #bottom right
+    
+    def isLeaf(self):
+        if self.child1 or self.child2 or self.child3 or self.child4:
+            return False
+        else:
+            return True
+        
+    def createChildren(self, grid, limit):
+        value = np.sum(grid[self.xStart:self.xEnd, self.yStart:self.yEnd])#.values
+
+        #stop subdividing if finest resolution or bucket level reached
+        if (value < limit or
+            (self.xEnd-self.xStart < 2) or (self.yEnd-self.yStart <2)):
+            return
+
+        dx = (self.xEnd-self.xStart)
+        dy = (self.yEnd-self.yStart)
+
+        #create 4 children for subdivison
+        self.child1 = quadTreeNode(self.xStart, self.xStart + dx//2, self.yStart, self.yStart + dy//2)
+        self.child2 = quadTreeNode(self.xStart + dx//2, self.xStart + dx, self.yStart, self.yStart + dy//2)
+        self.child3 = quadTreeNode(self.xStart, self.xStart + dx//2, self.yStart + dy//2, self.yStart + dy)
+        self.child4 = quadTreeNode(self.xStart + dx//2, self.xStart + dx, self.yStart + dy//2, self.yStart + dy)
+        
+        #apply recursion on all child nodes
+        self.child1.createChildren(grid, limit)
+        self.child2.createChildren(grid, limit)
+        self.child3.createChildren(grid, limit)
+        self.child4.createChildren(grid, limit)
+        
+    def appendLeaves(self, leafList):
+        #recursively append all leaves/end nodes to leafList
+        if (self.isLeaf()):
+            leafList.append(self)
+        else:
+            self.child1.appendLeaves(leafList)
+            self.child2.appendLeaves(leafList)
+            self.child3.appendLeaves(leafList)
+            self.child4.appendLeaves(leafList)
+           
+def quadTreeGrid(grid, limit):
+    '''
+    inputs:
+        grid: 2d numpy array to apply quadtree division to
+        limit: float to use as bucket level for defining maximum subdivision
+    outputs:
+        outputGrid: 2d numpy grid, same shape as grid, whose values indicate the box from boxList each index corresponds to
+        boxList: list of lists, where each sublist describes the corners of a quadtree leaf
+    '''
+    #start with a single node the size of the entire input grid:
+    parentNode = quadTreeNode(0, grid.shape[0], 0, grid.shape[1])
+    parentNode.createChildren(grid, limit)
+
+    leafList = []
+    boxList = []
+    parentNode.appendLeaves(leafList)
+    
+    outputGrid = np.zeros_like(grid)
+
+    for i, leaf in enumerate(leafList):
+        outputGrid[leaf.xStart:leaf.xEnd, leaf.yStart:leaf.yEnd] = i
+        boxList.append([leaf.xStart, leaf.xEnd, leaf.yStart, leaf.yEnd])
+    
+    return outputGrid, boxList
+
+def quadtreebasisfunction(emissions_name, fp_all, sites, 
+                          start_date, domain, species, outputname, outputdir=None,
+                          nbasis=100):
     """
-    arr_shape = np.shape(array)
-    xcut = np.linspace(0,arr_shape[0],shape[0]+1).astype(np.int)
-    ycut = np.linspace(0,arr_shape[1],shape[1]+1).astype(np.int)
-    xextent = [];    yextent = []
-    for i in range(shape[0]):
-        for j in range(shape[1]):
-#            blocks.append(array[xcut[i]:xcut[i+1],ycut[j]:ycut[j+1]])
-            xextent.append([xcut[i],xcut[i+1]])
-            yextent.append([ycut[j],ycut[j+1]])
-    return xextent,yextent
+    Creates a basis function with nbasis grid cells using a quadtree algorithm.
+    The domain is split with smaller grid cells for regions which contribute
+    more to the a priori (above basline) mole fraction. This is based on the
+    average footprint over the inversion period and the a priori emissions field.
+    Output is a netcdf file saved to /Temp/<domain> in the current directory 
+    if no outputdir is specified or to outputdir if specified.
+    The number of basis functions is optimised using dual annealing. Probably
+    not the best or fastest method as there should only be one minima, but doesn't
+    require the Jacobian or Hessian for optimisation.
+    
+    Args:
+        emissions_name (dict): 
+            Allows emissions files with filenames that are longer than just the species name
+            to be read in (e.g. co2-ff-mth_EUROPE_2014.nc). This should be a dictionary
+            with {source_name: emissions_file_identifier} (e.g. {'anth':'co2-ff-mth'}). This way
+            multiple sources can be read in simultaneously if they are added as separate entries to
+            the emissions_name dictionary.
+        fp_all (dict): 
+            Output from footprints_data_merge() function. Dictionary of datasets.
+        sites (list): 
+            List of site names (This could probably be found elsewhere)
+        start_date (str): 
+            String of start date of inversion
+        domain (str): 
+            The inversion domain
+        species (str): 
+            Species of interest
+        outputname (str): 
+            Identifier or run name
+        outputdir (str, optional): 
+            Path to output directory where the basis function file will be saved.
+            Basis function will automatically be saved in outputdir/DOMAIN
+            Default of None makes a temp directory.
+        nbasis (int): 
+            Number of basis functions that you want. This will optimise to 
+            closest value that fits with quadtree splitting algorithm, 
+            i.e. nbasis % 4 = 1.
+    
+    Returns:
+        If outputdir is None, then returns a Temp directory. The new basis function is saved in this Temp directory.
+        If outputdir is not None, then does not return anything but saves the basis function in outputdir.
+    """
+
+    if emissions_name == None:
+        meanflux = np.squeeze(fp_all['.flux']['all'].flux.values)
+    else:
+        meanflux = np.squeeze(fp_all[".flux"][list(emissions_name.keys())[0]].flux.values)
+    meanfp = np.zeros((fp_all[sites[0]].fp.shape[0],fp_all[sites[0]].fp.shape[1]))
+    div=0
+    for site in sites:
+        meanfp += np.sum(fp_all[site].fp.values,axis=2)
+        div += fp_all[site].fp.shape[2]
+    meanfp /= div
+    
+    if meanflux.shape != meanfp.shape:
+        meanflux = np.mean(meanflux, axis=2)
+    fps = meanfp*meanflux
+
+    def qtoptim(x):
+        basisQuad, boxes = quadTreeGrid(fps, x)
+        return (nbasis - np.max(basisQuad)-1)**2
+    optim = scipy.optimize.dual_annealing(qtoptim, np.expand_dims([0,100], axis=0))
+    basisQuad, boxes = quadTreeGrid(fps, optim.x[0])
+    
+    lon = fp_all[sites[0]].lon.values
+    lat = fp_all[sites[0]].lat.values    
+    
+    base = np.expand_dims(basisQuad+1,axis=2)
+    
+    time = [pd.to_datetime(start_date)]
+    newds = xray.Dataset({'basis' : ([ 'lat','lon', 'time'], base)}, 
+                        coords={'time':(['time'], time), 
+                    'lat' : (['lat'],  lat), 'lon' : (['lon'],  lon)})    
+    newds.lat.attrs['long_name'] = 'latitude' 
+    newds.lon.attrs['long_name'] = 'longitude' 
+    newds.lat.attrs['units'] = 'degrees_north'
+    newds.lon.attrs['units'] = 'degrees_east'     
+    newds.attrs['creator'] = getpass.getuser()
+    newds.attrs['date created'] = str(pd.Timestamp.today())
+    
+    if outputdir is None:
+        cwd = os.getcwd()
+        tempdir = cwd + "/Temp" + str(uuid.uuid4()) + "/"
+        os.mkdir(tempdir)    
+        os.mkdir(tempdir + domain)  
+        newds.to_netcdf(tempdir+domain+"/quadtree"+species+"-"+outputname+"_"+domain+"_"+start_date.split("-")[0]+'.nc', mode='w')
+        return tempdir
+    else:
+        basisoutpath = os.path.join(outputdir,domain)
+        if not os.path.exists(basisoutpath):
+            os.makedirs(basisoutpath)
+            newds.to_netcdf(basisoutpath+"/quadtree"+species+"-"+outputname+"_"+domain+"_"+start_date.split("-")[0]+'.nc', mode='w')

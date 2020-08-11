@@ -29,6 +29,7 @@ from builtins import range
 from past.utils import old_div
 import pytest
 import os
+import sys
 import glob
 import numpy as np
 import xarray as xray
@@ -40,12 +41,17 @@ import acrg_obs.read as read
 
 #%%
 
-acrg_path = os.getenv("ACRG_PATH")
+if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
+    acrg_path = os.getenv("ACRG_PATH") 
+else:
+    from acrg_config.paths import paths
+    acrg_path = paths.acrg
+
 
 @pytest.fixture(scope="module")
 def fp_directory():
     ''' Define base directory containing footprint files '''
-    directory = os.path.join(acrg_path,"tests/files/LPDM/fp_NAME/")
+    directory = os.path.join(acrg_path,"tests/files/LPDM/fp_NAME_minimal/")
     return directory
 
 @pytest.fixture(scope="module")
@@ -192,19 +198,11 @@ def test_footprints_from_file(fp_directory,measurement_param):
 def test_footprints_from_site(footprint_param,flux_directory,bc_directory):
     '''
     Test dataset can be created from set of parameters with footprints() function.
-    Also testing flux and bc parameters have been successfully added to footprint dataset.
     '''
 
-    footprint_param["flux_directory"] = flux_directory
-    footprint_param["bc_directory"] = bc_directory
-
-    extra_names = ["vmr_e","vmr_n","vmr_s","vmr_w","flux"]
-
     out = name.footprints(**footprint_param)
-    out_names = out.data_vars
     
-    for ename in extra_names:
-        assert ename in out_names
+    assert out
 
 #%%
 #----------------------------
@@ -366,26 +364,6 @@ def test_indexesMatch(dsa, dsc):
 
 #%%
 # ----------------------------
-
-@pytest.fixture()
-def footprint_flux_ds(footprint_param,flux_directory,bc_directory):
-    ''' Create dataset object containing footprint and flux parameters '''
-
-    footprint_param["flux_directory"] = flux_directory
-    footprint_param["bc_directory"] = bc_directory
-
-    out = name.footprints(**footprint_param)
-
-    return out
-
-@pytest.mark.long
-def test_timeseries(footprint_flux_ds):
-    '''
-    Test timeseries function can produce a suitable output
-    '''
-    out = name.timeseries(footprint_flux_ds)
-    
-    assert out.any()
 
 
 #TODO:
@@ -638,7 +616,7 @@ def fp_data_H_pblh_merge(fp_data_H_merge):
     return fp_data_H_pblh
     
 def add_local_ratio(fp_data_H):
-    
+    #TODO: Why is this here?
     sites = [key for key in list(fp_data_H.keys()) if key[0] != '.']
     
     release_lons=np.zeros((len(sites)))

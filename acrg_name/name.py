@@ -39,8 +39,13 @@ from mpl_toolkits import mplot3d
 from collections import OrderedDict
 import acrg_obs as obs
 
-acrg_path = os.getenv("ACRG_PATH")
-data_path = os.getenv("DATA_PATH")
+if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
+    acrg_path = os.getenv("ACRG_PATH")
+    data_path = os.getenv("DATA_PATH") 
+else:
+    from acrg_config.paths import paths
+    acrg_path = paths.acrg
+    data_path = paths.data
 
 if acrg_path is None:
     acrg_path = os.getenv("HOME")
@@ -114,11 +119,14 @@ def filenames(site, domain, start, end, height, fp_directory, network=None, spec
     with open(os.path.join(acrg_path,"acrg_species_info.json")) as f:
         species_info=json.load(f)
  
-    species_obs = obs.read.synonyms(species, species_info)
-    
-    if 'lifetime' in species_info[species_obs].keys():
-        lifetime = species_info[species_obs]["lifetime"]
-        lifetime_hrs = convert.convert_to_hours(lifetime)
+    if species:
+        species_obs = obs.read.synonyms(species, species_info)
+        
+        if 'lifetime' in species_info[species_obs].keys():
+            lifetime = species_info[species_obs]["lifetime"]
+            lifetime_hrs = convert.convert_to_hours(lifetime)
+        else:
+            lifetime_hrs = None
     else:
         lifetime_hrs = None
     
@@ -133,19 +141,25 @@ def filenames(site, domain, start, end, height, fp_directory, network=None, spec
     files = []
     for ym in yearmonth:
 
-        f=glob.glob(baseDirectory + domain + "/" + site + "*" + "-" + height + "-" + species + "*" + domain + "*" + ym + "*.nc")
+        if species:
+            f=glob.glob(baseDirectory + domain + "/" + site + "*" + "-" + height + "-" + species + "*" + domain + "*" + ym + "*.nc")
+        else:
+            #manually create empty list if no species specified
+            f = []
         
         if len(f) == 0:
-                        
+            
+            glob_path = baseDirectory + domain + "/" + site + "*" + "-" + height  + "_" + domain + "*" + ym + "*.nc"
+            
             if lifetime_hrs is None:
-                print("No lifetime defined in species_info.json. WARNING: 30-day integrated footprint used without chemical loss.")
-                f=glob.glob(baseDirectory + domain + "/" + site + "*" + "-" + height  + "_" + domain + "*" + ym + "*.nc")
+                print("No lifetime defined in species_info.json or species not defined. WARNING: 30-day integrated footprint used without chemical loss.")
+                f=glob.glob(glob_path)
             elif lifetime_hrs <= 1440:
                 print("This is a short-lived species. Footprints must be species specific. Re-process in process.py with lifetime")
                 return
             else:
-                f=glob.glob(baseDirectory + domain + "/" + site + "*" + "-" + height  + "_" + domain + "*" + ym + "*.nc")
-                
+                print("Treating species as long-lived.")
+                f=glob.glob(glob_path)        
             
         if len(f) > 0:
             files += f
@@ -153,9 +167,7 @@ def filenames(site, domain, start, end, height, fp_directory, network=None, spec
     files.sort()
 
     if len(files) == 0:
-        print("Can't find file: " + baseDirectory + \
-            domain + "/" + \
-            site + "*" + height + "*" + domain + "*" + "*.nc")
+        print("Can't find file: " + glob_path)
     return files
 
 def read_netcdfs(files, dim = "time"):
@@ -236,9 +248,8 @@ def interp_time(bc_ds,vmr_var_names, new_times):
 
 
 def footprints(sitecode_or_filename, fp_directory = None, 
-               flux_directory = None, bc_directory = None,
                start = None, end = None, domain = None, height = None, network = None,
-               species = None, emissions_name = None, HiTRes = False):
+               species = None, HiTRes = False):
 
     """
     The footprints function loads a NAME footprint netCDF files into an xarray Dataset.
@@ -253,8 +264,6 @@ def footprints(sitecode_or_filename, fp_directory = None,
                     domain = "EUROPE")
     
     See filenames() function for expected format of files.
-    Note: fp_directory, flux_directory and bc_directory can point to specified directories
-    but if not specified, default directories will be used (set at the top of file).
 
     Args:
         sitecode_or_filename (str) : 
@@ -264,11 +273,6 @@ def footprints(sitecode_or_filename, fp_directory = None,
             of the form :
                 fp_directory = {"integrated":PATH_TO_INTEGRATED_FP,"HiTRes":PATH_TO_HIGHTRES_FP}
             otherwise can be a single string if only integrated FPs are used and non-default.
-        flux_directory (str, optional) : 
-            flux_directory can be specified if files are not in the default directory. 
-            Must point to a directory which contains subfolders organized by domain.
-        bc_directory (str, optional) : 
-            Same sytax as flux_directory
         start (str) : 
             Start date in format "YYYY-MM-DD" for range of files to find.
         end (str) : 
@@ -283,9 +287,6 @@ def footprints(sitecode_or_filename, fp_directory = None,
             This is used to extract site information e.g. height from acrg_site_info.json. 
         species (str) : 
             Species name. All species names are defined acrg_species_info.json.
-        emissions_name (str) : 
-            Allows emissions files such as co2nee_EUROPE_2012.nc to be read in. 
-            In this case EMISSIONS_NAME would be 'co2nee'
         HiTRes (bool, optional) : 
             Whether to include high time resolution footprints.
             Default = False.
@@ -312,11 +313,6 @@ def footprints(sitecode_or_filename, fp_directory = None,
                        to integrated and HiTRes footprints \
                        {integrated:path1, HiTRes:path2}")
                 return None
-                
-                print("As HiTRes is set to True, make sure that the high and low time resolution emissions name\
-                      pairs are input correctly for the emissions sources where HiTRes applies. They should look like:\
-                      emissions_name = {source_name:{'high_res':emissions_file_identifier,\
-                      'low_res':emissions_file_identifier}.")
     
     if '.nc' in sitecode_or_filename:
         if not '/' in sitecode_or_filename:
@@ -326,8 +322,8 @@ def footprints(sitecode_or_filename, fp_directory = None,
     else:
         site=sitecode_or_filename[:]
 
-    # Finds integrated footprints if specified as a dictionary with multiple entries (HiTRes = True) 
-    # or a string with one entry        
+        # Finds integrated footprints if specified as a dictionary with multiple entries (HiTRes = True) 
+        # or a string with one entry        
         if type(fp_directory) is dict:
             files = filenames(site, domain, start, end, height, fp_directory["integrated"], network=network, species=species)
         else:
@@ -760,9 +756,10 @@ def align_datasets(ds1, ds2, platform=None, resample_to_ds1=False):
     ds1 = ds1.sel(time=slice(start_s,end_s))
     ds2 = ds2.sel(time=slice(start_s,end_s))
     
+    platform_skip_resample = ("satellite","flask")
     
     #only non satellite datasets with different periods need to be resampled
-    if platform != "satellite" and not np.isclose(ds1_timeperiod, ds2_timeperiod):
+    if platform not in platform_skip_resample and not np.isclose(ds1_timeperiod, ds2_timeperiod):
         base = start_date.dt.hour.data + start_date.dt.minute.data/60. + start_date.dt.second.data/3600.
         if (ds1_timeperiod >= ds2_timeperiod) or (resample_to_ds1 == True):
             resample_period = str(round(ds1_timeperiod/3600e9,5))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
@@ -919,14 +916,11 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
         # Get footprints
 
         site_fp = footprints(site_modifier_fp, fp_directory = fp_directory, 
-                             flux_directory = flux_directory, 
-                             bc_directory = bc_directory,
                              start = start, end = end,
                              domain = domain,
                              species = species,
                              height = height_site,
                              network = network_site,
-                             emissions_name = None,
                              HiTRes = HiTRes)                         
                
         if site_fp is not None:                        
@@ -1265,7 +1259,7 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                     fp_and_data[site] = fp_and_data[site].merge(sub_H)
             
         fp_and_data[site]['H'] = concat_sensitivity                             
-
+        fp_and_data[site]['basis'] = site_bf.basis
                     
     return fp_and_data
 
@@ -2257,7 +2251,7 @@ class get_country(object):
   def __init__(self, domain, country_file=None):
         
         if country_file is None:
-            filename=glob.glob(data_path +'LPDM/countries/' + "/" + "country_" + domain + ".nc")
+            filename=glob.glob(join(data_path,'LPDM/countries/', ("country_" + domain + ".nc")))
             f = xr.open_dataset(filename[0])
         else:
             filename = country_file

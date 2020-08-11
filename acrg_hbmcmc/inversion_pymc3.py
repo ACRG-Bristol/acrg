@@ -15,9 +15,15 @@ import getpass
 from acrg_hbmcmc.inversionsetup import opends
 from acrg_hbmcmc.hbmcmc_output import define_output_filename
 import os
+import sys
 import acrg_convert as convert
 
-data_path = os.getenv("DATA_PATH")
+if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
+    data_path = os.getenv("DATA_PATH") 
+else:
+    from acrg_config.paths import paths
+    data_path = paths.data
+
 
 def parsePrior(name, prior_params, shape = ()):
     """
@@ -339,14 +345,11 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
             site_lon[si] = fp_data[site].release_lon.values[0]
 
         #Calculate mean posterior scale map and flux field
-        if basis_directory is not None:
-            bfds = opends(basis_directory+domain+"/"+fp_basis_case+"_"+domain+"_"+start_date[:4]+".nc")
-        else:
-            bfds = opends(data_path+"/LPDM/basis_functions/"+fp_basis_case+"_"+domain+"_"+start_date[:4]+".nc")
-        scalemap = np.zeros_like(np.squeeze(bfds.basis.values))
-
+        bfds = fp_data[site]["basis"][:,:,0]
+        scalemap = np.zeros_like(bfds.values)
+        
         for npm in nparam:
-            scalemap[bfds.basis.values[:,:,0] == (npm+1)] = np.mean(outs[:,npm])
+            scalemap[bfds.values == (npm+1)] = np.mean(outs[:,npm])        
         if emissions_name == None:
             emds = name.name.flux(domain, species, start = start_date, end = end_date)
         else:
@@ -354,8 +357,8 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         flux = scalemap*emds.flux.values[:,:,0]
         
         #Basis functions to save
-        bfarray = np.squeeze(bfds.basis.values)-1
-
+        bfarray = bfds.values-1
+    
         #Calculate country totals   
         area = areagrid(lat, lon)
         c_object = name.get_country(domain, country_file=country_file)
@@ -516,4 +519,3 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         output_filename = define_output_filename(outputpath,species,domain,outputname,start_date,ext=".nc")
         #outds.to_netcdf(outputpath+"/"+species.upper()+'_'+domain+'_'+outputname+'_'+start_date+'.nc', encoding=encoding, mode="w")
         outds.to_netcdf(output_filename, encoding=encoding, mode="w")
-

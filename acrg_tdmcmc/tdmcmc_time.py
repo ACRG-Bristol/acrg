@@ -22,6 +22,7 @@ from numba import jit
 import time as run_time
 import xray
 import os
+import cams_reanalysis
 import argparse
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
@@ -30,8 +31,14 @@ from acrg_tdmcmc import tdmcmc_post_process as process
 import scipy
 from acrg_grid import areagrid
 
-acrg_path = os.getenv("ACRG_PATH")
-data_path = os.getenv("DATA_PATH")
+if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
+    acrg_path = os.getenv("ACRG_PATH")
+    data_path = os.getenv("DATA_PATH") 
+else:
+    from acrg_config.paths import paths
+    acrg_path = paths.acrg
+    data_path = paths.data
+
 #%%
 # Commands for argument parsing from a shell script
 

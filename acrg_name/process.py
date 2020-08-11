@@ -1217,6 +1217,7 @@ def footprint_array(fields_file,
         for t in range(len(time)):
             for l in range(len(levs)):
                 slice_dict = dict(time = [t], lev = [l])
+                column = t*len(levs)+l
                 if units_str == 'g s / m^3' or units_str.replace(' ','') == 'gs/m^3':
                     status_log("NOT RECOMMENDED TO CREATE SATELLITE FOOTPRINTS USING CONVERTED g s / m3 UNITS. IF POSSIBILE, NAME FOOTPRINTS SHOULD BE RE-GENERATED IN UNITS OF ppm s.",
                                 error_or_warning="warning")
@@ -1816,7 +1817,7 @@ def process(domain, site, height, year, month,
             upper_level = None,
             max_level = None,
             force_update = False,
-            perturbed_folder = None,
+            perturbed_folder=None,
             vertical_profile=False,
             transport_model="NAME",
             units = None,
@@ -1926,7 +1927,7 @@ def process(domain, site, height, year, month,
         This routine outputs a copy of the xarray dataset that is written to file.
     
     '''
- 
+  
     global directory_status_log
         
     subfolder = base_dir + domain + "_" + site + "_" + height + "/"

@@ -13,6 +13,7 @@ Testing the values in a coarsened array.
 """
 
 import os
+import sys
 import netCDF4 as nc
 import pytest
 from builtins import range
@@ -20,8 +21,13 @@ import numpy as np
 from acrg_grid.coarsen import coarsen
 
 
-acrg_path = os.getenv("ACRG_PATH")
-data_path = os.getenv("DATA_PATH")
+if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
+    acrg_path = os.getenv("ACRG_PATH")
+    data_path = os.getenv("DATA_PATH") 
+else:
+    from acrg_config.paths import paths
+    acrg_path = paths.acrg
+    data_path = paths.data
 
 
 def test_acrg_coarsen_shape():
@@ -55,4 +61,3 @@ def test_acrg_coarsen():
     
     assert coarsened_data_shape == (3, 3)
     assert np.all(coarsened_data == np.array(([3.,5.,7.],[9.,11.,13.],[15.,17.,19.])))
-

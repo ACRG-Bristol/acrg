@@ -12,11 +12,18 @@ from __future__ import print_function
 import pytest
 import acrg_satellite.gosat as gosat
 import os
+import sys
 import xarray as xray
 import numpy as np
 
-acrg_path = os.getenv("ACRG_PATH")
-data_path = os.getenv("DATA_PATH")
+if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
+    acrg_path = os.getenv("ACRG_PATH")
+    data_path = os.getenv("DATA_PATH") 
+else:
+    from acrg_config.paths import paths
+    acrg_path = paths.acrg
+    data_path = paths.data
+
 
 #%%
 ##### Create dummy data for small test case with known result #######

@@ -30,11 +30,17 @@ Run as:
 import acrg_satellite.gosat as gosat
 import acrg_satellite.gosat_config as gosat_config
 import os
+import sys
 import argparse
 
 if __name__=="__main__":
 
-    acrg_path = os.getenv("ACRG_PATH")
+    if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
+        acrg_path = os.getenv("ACRG_PATH") 
+    else:
+        from acrg_config.paths import paths
+        acrg_path = paths.acrg
+
     config_file = os.path.join(acrg_path,"acrg_satellite/gosat_process.ini")
     
     parser = argparse.ArgumentParser(description='Running gosat process script')

@@ -44,8 +44,13 @@ The main function to use for reading in parameters from a config file are:
 
 import acrg_config.config as config
 import os
+import sys
 
-acrg_path = os.getenv("ACRG_PATH")
+if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
+    acrg_path = os.getenv("ACRG_PATH") 
+else:
+    from acrg_config.paths import paths
+    acrg_path = paths.acrg
 
 def gosat_param_dict():
     '''
