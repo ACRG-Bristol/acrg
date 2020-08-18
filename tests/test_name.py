@@ -295,45 +295,54 @@ def test_bc_basis(bc_basis_param):
 #----------------------------
 
 @pytest.fixture()
-def dsa():
-    times = pd.date_range("2018-01-01", "2018-02-01", freq='4H')
-    vals = np.ones_like(times, dtype='float')
-    dsa = xray.Dataset({'vals_a': (['time'], vals)},
+def timeseries_periodic_1hr():
+    #emulate a footprint timeseries
+    times = pd.date_range("2018-01-01 00:00", "2018-02-01 00:00", freq='1H')
+    values = np.ones_like(times, dtype='float')
+    ds = xray.Dataset({'values': (['time'], values)},
                           coords={'time':times})
-    return dsa
+    return ds
 
 @pytest.fixture()
-def dsb():
-    times = pd.date_range("2018-01-07", "2018-02-07", freq='2H')
-    vals = np.ones_like(times, dtype='float')
-    dsb = xray.Dataset({'vals_b': (['time'], vals)},
+def timeseries_periodic_30min():
+    #emulate a faster periodic timeseries than footprints, perhaps for continuous data
+    times = pd.date_range("2018-01-01", "2018-02-01", freq='30min')
+    values = np.ones_like(times, dtype='float')
+    ds = xray.Dataset({'values': (['time'], values)},
                           coords={'time':times})
-    return dsb
+    return ds
 
 @pytest.fixture()
-def dsc():
-    times = pd.date_range("2018-01-01", "2018-02-01", freq='4H')
-    vals = np.ones_like(times, dtype='float')
-    dsc = xray.Dataset({'vals_c': (['time'], vals)},
+def timeseries_random():
+    #a random timeseries, as may be produced by a satellite
+    times = pd.to_datetime(["2018-01-01 12:35", "2018-01-01 12:55", "2018-01-05 09:33", "2018-01-17 16:01"])
+    values = np.ones_like(times, dtype='float')
+    ds = xray.Dataset({'values': (['time'], values)},
                           coords={'time':times})
-    dsc.time.values[1] = dsc.time.values[1] + pd.Timedelta("1 second")
-    return dsc
+    return ds
 
-def test_combine_datasets(dsa, dsb, method = "nearest", tolerance = None):
-    """
-    Merge two datasets.   
-    """
-    ds_out = name.combine_datasets(dsa, dsb)
+@pytest.fixture()
+def timeseries_quasiperiodic_1day():
+    #a timeseries that is approximately periodic, like a manually triggered flask sample
+    times = pd.to_datetime(["2018-01-01 08:55", "2018-01-02 09:16", "2018-01-03 09:33", "2018-01-04 10:01"])
+    values = np.ones_like(times, dtype='float')
+    ds = xray.Dataset({'values': (['time'], values)},
+                          coords={'time':times})
+    return ds
+
+def test_align_skip(timeseries_quasiperiodic_1day, timeseries_periodic_1hr):
+    #test that aligning is skipped for certain platforms
+    for platform in ("satellite", "flask"):
+        ds, fp = name.align_datasets(timeseries_quasiperiodic_1day, timeseries_periodic_1hr, platform=platform)
+        assert ds == timeseries_quasiperiodic_1day
+        assert fp == timeseries_periodic_1hr
+        
+
+def test_align_periodic_datasets(timeseries_periodic_30min, timeseries_periodic_1hr):
+    #test that two periodic timeseries will align correctly
+    dsa = timeseries_periodic_30min
+    dsb = timeseries_periodic_1hr
     
-    errors = []
-    if not np.sum(ds_out.time != dsa.time) == 0:
-        errors.append("Output index does not match dsa index")
-    if not ('vals_a' in ds_out.keys()) and ('vals_b' in ds_out.keys()):
-        errors.append("Variables missing from combined dataset")
-    
-    assert not errors, "errors occured:\n{}".format("\n".join(errors))
-    
-def test_align_datasets(dsa, dsb):
     dsa_out, dsb_out = name.align_datasets(dsa, dsb)
     
     dsa_period = dsa.time[1] - dsa.time[0]
@@ -352,13 +361,60 @@ def test_align_datasets(dsa, dsb):
         
     assert not errors, "errors occured:\n{}".format("\n".join(errors))
     
-def test_indexesMatch(dsa, dsc):
-    dsa2 = dsa.copy() * 2.
-    
+def test_combine_datasets_periodic(timeseries_periodic_30min, timeseries_periodic_1hr):
+    dsa = timeseries_periodic_1hr
+    dsa['a'] = xray.DataArray(np.arange(len(dsa.time)), dims=["time"])
+    dsb = timeseries_periodic_1hr
+    dsb['b'] = xray.DataArray(np.arange(len(dsb.time)), dims=["time"])
+    ds_out = name.combine_datasets(dsa, dsb, method = "ffill")
+
     errors = []
-    if not name.indexesMatch(dsa, dsa2) == True:
+    if not np.sum(ds_out.time != dsa.time) == 0:
+        errors.append("Output index does not match dsa index")
+    if not ('a' in ds_out.keys()) and ('b' in ds_out.keys()):
+        errors.append("Variables missing from combined dataset")
+    
+    assert not errors, "errors occured:\n{}".format("\n".join(errors))
+    
+def test_combine_datasets_random(timeseries_random, timeseries_periodic_1hr):
+    dsa = timeseries_random
+    dsa['a'] = xray.DataArray(np.arange(len(dsa.time)), dims=["time"])
+    dsb = timeseries_periodic_1hr
+    dsb['b'] = xray.DataArray(np.arange(len(dsb.time)), dims=["time"])
+    ds_out = name.combine_datasets(dsa, dsb, method = "ffill")
+
+    errors = []
+    if not np.sum(ds_out.time != dsa.time) == 0:
+        errors.append("Output index does not match dsa index")
+    if not ('a' in ds_out.keys()) and ('b' in ds_out.keys()):
+        errors.append("Variables missing from combined dataset")
+    
+    assert not errors, "errors occured:\n{}".format("\n".join(errors))
+    
+def test_align_and_combine_quasiperiodic(timeseries_quasiperiodic_1day, timeseries_periodic_1hr):
+    #Test for flask style data to be combined with regular hourly footprints
+    dsa = timeseries_quasiperiodic_1day
+    dsa['a'] = xray.DataArray(np.arange(len(dsa.time)), dims=["time"])
+    dsb = timeseries_periodic_1hr
+    dsb['b'] = xray.DataArray(np.arange(len(dsb.time)), dims=["time"])
+    
+    dsa_out, dsb_out = name.align_datasets(dsa, dsb, platform="flask")
+    ds_out = name.combine_datasets(dsa_out, dsb_out, method = "ffill")
+    
+    expected_output_a =  dsa['a'].values
+    expected_output_b = dsb['b'].sel({"time":dsa['a'].time.dt.floor("1H")}).values
+    
+    assert np.all(ds_out.a.values == expected_output_a)
+    assert np.all(ds_out.b.values == expected_output_b)
+    
+def test_indexesMatch(timeseries_periodic_1hr, timeseries_quasiperiodic_1day):
+    #test the index matching function for same and different indexes
+    dsa2 = timeseries_periodic_1hr.copy() * 2.
+
+    errors = []
+    if not name.indexesMatch(timeseries_periodic_1hr, dsa2) == True:
         errors.append("Same indexes not seen as the same")
-    if not name.indexesMatch(dsa, dsc) == False:
+    if not name.indexesMatch(timeseries_periodic_1hr, timeseries_quasiperiodic_1day) == False:
         errors.append("Different indexes not seen as different")
     assert not errors, "errors occured:\n{}".format("\n".join(errors))
 
