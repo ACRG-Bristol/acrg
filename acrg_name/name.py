@@ -38,6 +38,7 @@ import cartopy
 from mpl_toolkits import mplot3d
 from collections import OrderedDict
 import acrg_obs as obs
+import errno
 
 if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
     acrg_path = os.getenv("ACRG_PATH")
@@ -167,7 +168,7 @@ def filenames(site, domain, start, end, height, fp_directory, network=None, spec
     files.sort()
 
     if len(files) == 0:
-        print("Can't find file: " + glob_path)
+        print("Can't find footprints file: {}".format(glob_path))
     return files
 
 def read_netcdfs(files, dim = "time"):
@@ -330,7 +331,8 @@ def footprints(sitecode_or_filename, fp_directory = None,
             files = filenames(site, domain, start, end, height, fp_directory, network=network, species=species)
 
     if len(files) == 0:
-        print("Can't find files, " + sitecode_or_filename)
+        print("\nWarning: Can't find footprint files for {}. "
+              "This site will not be included in the output dictionary.\n".format(sitecode_or_filename))
         return None
 
     else:
@@ -380,20 +382,20 @@ def flux(domain, species, start = None, end = None, flux_directory=None):
     
     if flux_directory is None:
         flux_directory = join(data_path, 'LPDM/emissions/')
-
-    print(("filename",flux_directory + domain + "/" + species.lower() + "_" + "*.nc"))
-    files = sorted(glob.glob(flux_directory + domain + "/" + 
-                   species.lower() + "_" + "*.nc"))
+    
+    filename = os.path.join(flux_directory,domain,species.lower()+"_" +"*.nc")
+    print("\nSearching for flux files: {}".format(filename))
+    
+    files = sorted(glob.glob(filename))
+    
     if len(files) == 0:
-        print("Can't find flux: " + domain + " " + species)
-        return None
+        print("\nError: Can't find flux files for domain '{0}' and species '{1}': ".format(domain,species))
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT),filename)
     
     flux_ds = read_netcdfs(files)
     # Check that time coordinate is present
     if not "time" in list(flux_ds.coords.keys()):
-        print("ERROR: No 'time' coordinate " + \
-              "in flux dataset for " + domain + ", " + species)
-        return None
+        raise KeyError("ERROR: No 'time' coordinate in flux dataset for domain '{0}' species '{1}'".format(domain,species))
 
     # Check for level coordinate. If one level, assume surface and drop
     if "lev" in list(flux_ds.coords.keys()):
@@ -438,8 +440,8 @@ def flux(domain, species, start = None, end = None, flux_directory=None):
             if len(flux_timeslice.time)==0:
                 flux_timeslice = flux_ds.sel(time=start, method = 'ffill')
                 flux_timeslice = flux_timeslice.expand_dims('time',axis=-1)
-                print("Warning: No fluxes available during the time period specified so outputting\
-                          flux from %s" %flux_timeslice.time.values[0])
+                print("\nWarning: No fluxes available during the time period specified so outputting "
+                      "flux from %s" %flux_timeslice.time.values[0])
             else:
                 print("Slicing time to range {} - {}".format(month_start,month_end))
             
@@ -538,32 +540,30 @@ def boundary_conditions(domain, species, start = None, end = None, bc_directory=
     files = sorted(glob.glob(bc_directory + domain + "/" + 
                    species.lower() + "_" + "*.nc"))
     if len(files) == 0:
-        print("Can't find boundary condition files: " + domain + " " + species)
-        return None
+        print("\nError: Can't find boundary condition files for domain '{0}' and species '{1}': ".format(domain,species))
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT),filename)
 
     bc_ds = read_netcdfs(files)
 
-    if start == None:
+    if start == None or end == None:
+        print("To get boundary conditions for a certain time period you must specify an end date.")
         return bc_ds
     else:
-        if end == None:
-            print("To get boundary conditions for a certain time period you must specify an end date.")
-        else:
-            #Change timeslice to be the beginning and end of months in the dates specified.
-            start = pd.to_datetime(start)
-            month_start = dt.datetime(start.year, start.month, 1, 0, 0)
+        #Change timeslice to be the beginning and end of months in the dates specified.
+        start = pd.to_datetime(start)
+        month_start = dt.datetime(start.year, start.month, 1, 0, 0)
         
-            end = pd.to_datetime(end)
-            month_end = dt.datetime(end.year, end.month, 1, 0, 0) - \
-                        dt.timedelta(seconds = 1)
+        end = pd.to_datetime(end)
+        month_end = dt.datetime(end.year, end.month, 1, 0, 0) - \
+                    dt.timedelta(seconds = 1)
             
-            bc_timeslice = bc_ds.sel(time=slice(month_start, month_end))
-            if len(bc_timeslice.time)==0:
-                bc_timeslice = bc_ds.sel(time=start, method = 'ffill')
-                bc_timeslice = bc_timeslice.expand_dims('time',axis=-1)
-                print("No boundary conditions available during the time period specified so outputting\
-                          boundary conditions from %s" %bc_timeslice.time.values[0])
-            return bc_timeslice
+        bc_timeslice = bc_ds.sel(time=slice(month_start, month_end))
+        if len(bc_timeslice.time)==0:
+            bc_timeslice = bc_ds.sel(time=start, method = 'ffill')
+            bc_timeslice = bc_timeslice.expand_dims('time',axis=-1)
+            print("No boundary conditions available during the time period specified so outputting"
+                    "boundary conditions from %s" %bc_timeslice.time.values[0])
+        return bc_timeslice
 
 
 def basis(domain, basis_case, basis_directory = None):
@@ -592,11 +592,14 @@ def basis(domain, basis_case, basis_directory = None):
     if basis_directory is None:
         basis_directory = join(data_path, 'LPDM/basis_functions/')
         
-    files = sorted(glob.glob(basis_directory + domain + "/" +
-                    basis_case + "_" + domain + "*.nc"))
+    file_path = os.path.join(basis_directory,domain,basis_case + "_" + domain + "*.nc")
+        
+    files = sorted(glob.glob(file_path))
+    
     if len(files) == 0:
-        print("Can't find basis functions: " + domain + " " + basis_case)
-        return None
+        print("\nError: Can't find basis function files for domain '{0}' "
+              "and basis_case '{1}': ".format(domain,basis_case))
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT),file_path)
 
     basis_ds = read_netcdfs(files)
 
@@ -629,13 +632,15 @@ def basis_boundary_conditions(domain, basis_case, bc_basis_directory = None):
     if bc_basis_directory is None:
         bc_basis_directory = join(data_path,'LPDM/bc_basis_functions/')
     
-    files = sorted(glob.glob(bc_basis_directory + domain + "/" +
-                    basis_case + '_' + domain + "*.nc"))
+    file_path = os.path.join(bc_basis_directory,domain,basis_case + '_' + domain + "*.nc")
+    
+    files = sorted(glob.glob(file_path))
 
     if len(files) == 0:
-        print("Can't find boundary condition basis functions: " + domain + " " + basis_case)
-        return None
-    
+        print("\nError: Can't find boundary condition basis function files for domain '{0}' "
+              "and basis_case '{1}': ".format(domain,basis_case))
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT),file_path)
+
     basis_ds = read_netcdfs(files)
 
     return basis_ds
