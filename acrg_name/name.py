@@ -1351,19 +1351,63 @@ def filtering(datasets_in, filters, keep_missing=False):
 
     datasets = datasets_in.copy()
 
+    def local_solar_time(dataset):
+        """
+        Returns hour of day as a function of local solar time
+        relative to the Greenwich Meridian. 
+        """
+        sitelon = dataset.release_lon.values[0]
+        if sitelon < 0:
+            sitelon = 360. + sitelon
+        dataset["time"] = dataset.time + pd.Timedelta(minutes=float(sitelon/360.))
+        hours = dataset.time.to_pandas().index.hour
+        return hours
+    
+    def local_ratio(dataset):
+        """
+        Calculates the local ratio in the surrounding grid cells
+        """
+        release_lons = dataset.release_lon[0].values
+        release_lats = dataset.release_lat[0].values
+        dlon = dataset.lon[1].values - dataset.lon[0].values
+        dlat = dataset.lat[1].values-dataset.lat[0].values
+        local_sum=np.zeros((len(dataset.mf)))
+
+        for ti in range(len(dataset.mf)):
+            release_lon=dataset.release_lon[ti].values
+            release_lat=dataset.release_lat[ti].values
+            wh_rlon = np.where(abs(dataset.lon.values-release_lon) < dlon/2.)
+            wh_rlat = np.where(abs(dataset.lat.values-release_lat) < dlat/2.)
+            if np.any(wh_rlon[0]) and np.any(wh_rlat[0]):
+                local_sum[ti] = old_div(np.sum(dataset.fp[
+                        wh_rlat[0][0]-2:wh_rlat[0][0]+3,wh_rlon[0][0]-2:wh_rlon[0][0]+3,ti].values),np.sum(
+                        dataset.fp[:,:,ti].values))  
+            else:
+                local_sum[ti] = 0.0 
+        
+        return local_sum
+    
+    
+    
     # Filter functions
     def daily_median(dataset, keep_missing=False):
         """ Calculate daily median """
-        return dataset.resample(indexer={'time':"1D"}).median()
+        if keep_missing:
+            return dataset.resample(indexer={'time':"1D"}).median()
+        else:
+            return dataset.resample(indexer={'time':"1D"}).median().dropna(dim="time")
         
     def six_hr_mean(dataset, keep_missing=False):
-        """ Calculate daily median """
-        return dataset.resample(indexer={'time':"6H"}).mean()
+        """ Calculate six-hour median """
+        if keep_missing:
+            return dataset.resample(indexer={'time':"6H"}).mean()
+        else:
+            return dataset.resample(indexer={'time':"6H"}).mean().dropna(dim="time")
     
 
     def daytime(dataset, site,keep_missing=False):
         """ Subset during daytime hours (11:00-15:00) """
-        hours = dataset.time.to_pandas().index.hour
+        hours = local_solar_time(dataset)
         ti = [i for i, h in enumerate(hours) if h >= 11 and h <= 15]
         
         if keep_missing:
@@ -1375,7 +1419,7 @@ def filtering(datasets_in, filters, keep_missing=False):
         
     def daytime9to5(dataset, site,keep_missing=False):
         """ Subset during daytime hours (9:00-17:00) """
-        hours = dataset.time.to_pandas().index.hour
+        hours = local_solar_time(dataset)
         ti = [i for i, h in enumerate(hours) if h >= 9 and h <= 17]
         
         if keep_missing:
@@ -1387,7 +1431,7 @@ def filtering(datasets_in, filters, keep_missing=False):
             
     def nighttime(dataset, site,keep_missing=False):
         """ Subset during nighttime hours (23:00 - 03:00) """
-        hours = dataset.time.to_pandas().index.hour
+        hours = local_solar_time(dataset)
         ti = [i for i, h in enumerate(hours) if h >= 23 or h <= 3]
         
         if keep_missing:
@@ -1399,7 +1443,7 @@ def filtering(datasets_in, filters, keep_missing=False):
             
     def noon(dataset, site,keep_missing=False):
         """ Select only 12pm data """
-        hours = dataset.time.to_pandas().index.hour
+        hours = local_solar_time(dataset)
         ti = [i for i, h in enumerate(hours) if h == 12]
         
         if keep_missing:
@@ -1409,28 +1453,6 @@ def filtering(datasets_in, filters, keep_missing=False):
         else:
             return dataset[dict(time = ti)] 
         
-
-    def pblh_gt_threshold(dataset,site, keep_missing=False):
-        """
-        Subset for times when boundary layer height > threshold
-        Threshold needs to be set in dataset as pblh_threshold
-        """
-        threshold = dataset.pblh_threshold.values
-        ti = [i for i, pblh in enumerate(dataset.PBLH) if pblh > threshold]
-        
-        if keep_missing:
-            mf_data_array = dataset.mf            
-            dataset_temp = dataset.drop('mf')
-            
-            dataarray_temp = mf_data_array[dict(time = ti)]   
-            
-            mf_ds = xr.Dataset({'mf': (['time'], dataarray_temp)}, 
-                                  coords = {'time' : (dataarray_temp.coords['time'])})
-            
-            dataset_out = combine_datasets(dataset_temp, mf_ds, method=None)
-            return dataset_out
-        else:
-            return dataset[dict(time = ti)]
             
     def local_lapse(dataset,site, keep_missing=False):
         """
@@ -1465,59 +1487,29 @@ def filtering(datasets_in, filters, keep_missing=False):
                 return dataset[dict(time = ti)]   
         else:
             return None       
-
-    def local_lapse_045(dataset,site, keep_missing=False):
-        """
-        Subset for times when linear combination of lapse rate and local influence
-        is below threshold.
-        
-        Both normalized by 500 m. Thus, for low inlets the local influence is more dominant.
-        For higher inlets the vertical profile of potential temperature (stability) is more dominant. 
-        
-        This combination correlates to variation in mole fraction difference between inlets.
-        """
-        in_height = dataset.inlet
-        lapse_norm = dataset.theta_slope*in_height/500.
-        lr_norm = old_div(dataset.local_ratio*500.,in_height)
-        comb_norm = lr_norm + lapse_norm
-        cutoff=0.45
-        ti = [i for i, lr in enumerate(comb_norm) if lr < cutoff]
-        
-        if len(ti) > 0:
-            if keep_missing:
-                mf_data_array = dataset.mf            
-                dataset_temp = dataset.drop('mf')
-                
-                dataarray_temp = mf_data_array[dict(time = ti)]   
-                
-                mf_ds = xr.Dataset({'mf': (['time'], dataarray_temp)}, 
-                                      coords = {'time' : (dataarray_temp.coords['time'])})
-                
-                dataset_out = combine_datasets(dataset_temp, mf_ds, method=None)
-                return dataset_out
-            else:
-                return dataset[dict(time = ti)]   
-        else:
-            return None                       
+ 
             
     def local_influence(dataset,site, keep_missing=False):
         """
         Subset for times when local influence is below threshold.       
         Local influence expressed as a fraction of the sum of entire footprint domain.
-        """
-        lr = dataset.local_ratio
+        """        
+        if not dataset.filter_by_attrs(standard_name="local_ratio"):
+            lr = local_ratio(dataset)
+        else:
+            lr = dataset.local_ratio
+            
         pc = 0.1
-        
         ti = [i for i, local_ratio in enumerate(lr) if local_ratio <= pc]
         if keep_missing is True: 
             mf_data_array = dataset.mf            
             dataset_temp = dataset.drop('mf')
-            
+
             dataarray_temp = mf_data_array[dict(time = ti)]   
-            
+
             mf_ds = xr.Dataset({'mf': (['time'], dataarray_temp)}, 
                                   coords = {'time' : (dataarray_temp.coords['time'])})
-            
+
             dataset_out = combine_datasets(dataset_temp, mf_ds, method=None)
             return dataset_out
         else:
@@ -1529,11 +1521,9 @@ def filtering(datasets_in, filters, keep_missing=False):
                          "daytime9to5":daytime9to5,
                          "nighttime":nighttime,
                          "noon":noon,
-                         "pblh_gt_threshold": pblh_gt_threshold,
                          "local_influence":local_influence,
                          "six_hr_mean":six_hr_mean,
-                         "local_lapse":local_lapse,
-                         "local_lapse_045":local_lapse_045}
+                         "local_lapse":local_lapse}
 
     # Get list of sites
     sites = [key for key in list(datasets.keys()) if key[0] != '.']
