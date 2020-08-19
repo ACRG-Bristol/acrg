@@ -206,7 +206,8 @@ def load_NAME(file_lines, namever):
     # skip the blank line after the column headers
 #    file_handle.next()
     #MLR
-    file_lines=file_lines[1:]
+    #This cuts off the first line of output so removing
+#    file_lines=file_lines[1:]
     
     # make a list of data arrays to hold the data for each column 
     data_shape = (headers['Y grid size'], headers['X grid size'])

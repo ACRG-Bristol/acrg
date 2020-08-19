@@ -37,6 +37,7 @@ import xarray as xray
 import acrg_name.process as process
 import deprecated.process as process_org
 from acrg_name.name import open_ds
+import datetime
 
 if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
     acrg_path = os.getenv("ACRG_PATH") 
@@ -98,10 +99,10 @@ def site_param():
         "domain" (str),"site" (str),"height" (str),"year" (int),"month" (int),"satellite" (bool)
     '''
     param = {}
-    param["domain"] = "EUROPE"
-    param["site"] = "MHD"
+    param["domain"] = "CARIBBEAN"
+    param["site"] = "RPB"
     param["height"] = "10magl"
-    param["year"] = 2012
+    param["year"] = 2010
     param["month"] = 1
     param["satellite"] = False
    
@@ -160,6 +161,8 @@ def folder_names():
     '''
     param = {}
     param["fields_folder"] = "Fields_files"
+    param["mixr_fields_folder"] = "MixR_files"
+    param["mixr_hourly_folder"] = "MixR_hourly"
     param["particles_folder"] = "Particle_files"
     param["met_folder"] = "Met"
     param["processed_folder"] = "Processed_Fields_files"
@@ -167,7 +170,6 @@ def folder_names():
 
     return param    
 
-#%%
 
 def get_fields_prefix(subfolder,fields_folder):
     '''
@@ -240,6 +242,30 @@ def get_fields_files_site(subfolder_site,folder_names,site_param):
     return fields_files
 
 @pytest.fixture()
+def get_mixr_files_site(subfolder_site,folder_names,site_param):
+    ''' 
+    Get filenames of fields files for satellite run with separate points. 
+    Finds field files based on datestr (see create_datestr), one file per day.
+    '''
+    datestr = create_datestr(site_param)
+    fields_folder = folder_names["mixr_fields_folder"]
+    
+    fields_files = get_fields_files(subfolder_site,fields_folder,datestr)
+    return fields_files
+
+@pytest.fixture()
+def get_mixr_hourly_site(subfolder_site,folder_names,site_param):
+    ''' 
+    Get filenames of fields files for satellite run with separate points. 
+    Finds field files based on datestr (see create_datestr), one file per day.
+    '''
+    datestr = create_datestr(site_param)
+    fields_folder = folder_names["mixr_hourly_folder"]
+    
+    fields_files = get_fields_files(subfolder_site,fields_folder,datestr)
+    return fields_files
+
+@pytest.fixture()
 def get_fields_files_satellite_byday_mf(subfolder_satellite_byday_mf,folder_names,satellite_param):
     '''
     Get filenames of fields files for satellite run with points grouped by day.
@@ -251,6 +277,63 @@ def get_fields_files_satellite_byday_mf(subfolder_satellite_byday_mf,folder_name
     fields_files = get_fields_files(subfolder_satellite_byday_mf,fields_folder,datestr)
     
     return fields_files
+
+@pytest.fixture()
+def mixr_file_information(get_fields_files_satellite_byday):
+    ''' Define values in the test fields file '''
+    
+    header = {'Title': 'Back_General',
+             'Run time': '1128UTC 17/05/2020',
+             'Met data': 'NWP Flow.Regional_flow',
+             'Start of release': '0000UTC 02/01/2010',
+             'End of release': '0000UTC 01/01/2010',
+             'Release rate': 'Multiple Sources',
+             'Release location': 'Multiple Sources',
+             'Release height': 'Multiple Sources',
+             'Forecast duration': '744 hours',
+             'X grid origin': -100.188,
+             'Y grid origin': -26.126,
+             'X grid size': 391,
+             'Y grid size': 340,
+             'X grid resolution': 0.352,
+             'Y grid resolution': 0.234,
+             'Number of fields': 2}
+    
+    column_headings = {'species_category': ['', '', '', '', 'INERT', 'INERT'],
+                         'species': ['', '', '', '', 'INERT_C_00', 'INERT_C_01'],
+                         'cell_measure': ['','','','','744 hr time integrated','744 hr time integrated'],
+                         'quantity': ['', '', '', '', 'Mixing ratio', 'Mixing ratio'],
+                         'unit': ['', '', '', '', 'ppms', 'ppms'],
+                         'z_level': ['','','','','From     0 -    40m agl','From     0 -    40m agl'],
+                         'time': ['X grid','Y grid','Longitude','Latitude',
+                          datetime.datetime(2009, 12, 2, 0, 0),
+                          datetime.datetime(2009, 12, 2, 0, 0)]}
+    
+    data_arrays = []
+    data_arrays.append(np.zeros((340,391)))
+    data_arrays[0][131,0] = 1
+    data_arrays[0][135,1] = 2
+    data_arrays.append(np.zeros((340,391)))
+    data_arrays[1][131,0] = 3
+    data_arrays[1][135,1] = 4
+    
+    return header, column_headings, data_arrays
+
+def test_read_mixr_file(mixr_file_information):
+    ''' Test read_file function '''
+
+    # true values defined based on input file
+#     header_bench,column_headings_bench,data_arrays_bench = mixr_file_information
+    print('huh')
+    fields_file = get_mixr_files_site[0]
+    print('blah')
+    print(fields_file)
+
+    header, column_headings, data_arrays = process.read_file(fields_file)
+    
+    assert np.array_equal(data_arrays, data_arrays_bench)
+    assert header == header_bench
+    assert data_arrays == data_arrays_bench
 
 @pytest.fixture()
 def read_fields_file_satellite_byday(get_fields_files_satellite_byday):
@@ -272,6 +355,14 @@ def read_fields_file_satellite_bypoint(get_fields_files_satellite_bypoint):
 
 @pytest.fixture()
 def read_fields_file_site(get_fields_files_site):
+    ''' Read first site field file using process.read_file() function and create output. '''
+    fields_file = get_fields_files_site[0]
+    header, column_headings, data_arrays = process.read_file(fields_file)
+    
+    return header, column_headings, data_arrays
+
+@pytest.fixture()
+def read_mixr_file_site(get_fields_files_site):
     ''' Read first site field file using process.read_file() function and create output. '''
     fields_file = get_fields_files_site[0]
     header, column_headings, data_arrays = process.read_file(fields_file)
