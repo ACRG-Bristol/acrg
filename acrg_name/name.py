@@ -1367,7 +1367,7 @@ def filtering(datasets_in, filters, keep_missing=False):
         sitelon = dataset.release_lon.values[0]
         if sitelon < 0:
             sitelon = 360. + sitelon
-        dataset["time"] = dataset.time + pd.Timedelta(minutes=float(sitelon/360.))
+        dataset["time"] = dataset.time + pd.Timedelta(minutes=float(24*60*sitelon/360.))
         hours = dataset.time.to_pandas().index.hour
         return hours
     
