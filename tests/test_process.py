@@ -38,6 +38,7 @@ import acrg_name.process as process
 import deprecated.process as process_org
 from acrg_name.name import open_ds
 import datetime
+import pdb
 
 if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
     acrg_path = os.getenv("ACRG_PATH") 
@@ -279,7 +280,7 @@ def get_fields_files_satellite_byday_mf(subfolder_satellite_byday_mf,folder_name
     return fields_files
 
 @pytest.fixture()
-def mixr_file_information(get_fields_files_satellite_byday):
+def mixr_file_information():
     ''' Define values in the test fields file '''
     
     header = {'Title': 'Back_General',
@@ -317,23 +318,32 @@ def mixr_file_information(get_fields_files_satellite_byday):
     data_arrays[1][131,0] = 3
     data_arrays[1][135,1] = 4
     
-    return header, column_headings, data_arrays
+    lons = np.arange(-100.188, -100.188+0.352*391-0.01, 0.352) + 0.352/2
+    lats = np.arange(-26.126 , -26.126 +0.234*340-0.01, 0.234) + 0.234/2
+    
+    levs = ['From     0 -    40m agl']
+    
+    time = [datetime.datetime(2010, 1, 1, 0, 0), datetime.datetime(2010, 1, 1, 12, 0)]
+    
+    timeStep = 12
+    
+    return header, column_headings, data_arrays, lons, lats, levs, time, timeStep
 
-def test_read_mixr_file(mixr_file_information):
+def test_read_mixr_file(mixr_file_information, get_mixr_files_site):
     ''' Test read_file function '''
 
     # true values defined based on input file
-#     header_bench,column_headings_bench,data_arrays_bench = mixr_file_information
-    print('huh')
+    header_bench, column_headings_bench, data_arrays_bench, lons_bench, lats_bench, levs_bench, time_bench, timeStep_bench = mixr_file_information
+
     fields_file = get_mixr_files_site[0]
-    print('blah')
-    print(fields_file)
 
     header, column_headings, data_arrays = process.read_file(fields_file)
     
     assert np.array_equal(data_arrays, data_arrays_bench)
     assert header == header_bench
-    assert data_arrays == data_arrays_bench
+    
+    for ii in range(len(data_arrays_bench)):
+        assert np.array_equal(data_arrays[ii],data_arrays_bench[ii])
 
 @pytest.fixture()
 def read_fields_file_satellite_byday(get_fields_files_satellite_byday):
@@ -421,15 +431,21 @@ def test_define_grid_satellite_bypoint(read_fields_file_satellite_bypoint,satell
     assert out
     ### TODO: ADD MORE STRINGENT TEST
 
-def test_define_grid_site(read_fields_file_site):
+def test_define_grid_site(mixr_file_information):
     '''
     Test that grid can be defined correctly when extracted from a NAME run over site data.
     '''
-    header,column_headings,data_arrays = read_fields_file_site
-    out = process.define_grid(header,column_headings,satellite=False)
+    
+    header_bench, column_headings_bench, data_arrays_bench, lons_bench, lats_bench, levs_bench, time_bench, timeStep_bench = mixr_file_information
+    
+    lons, lats, levs, time, timeStep = process.define_grid(header_bench,column_headings_bench,satellite=False)
 
-    assert out
-    ### TODO: ADD MORE STRINGENT TEST
+    assert np.array_equal(lons,lonsench)
+    assert np.array_equal(lats,lats_bench)
+    assert levs == levs_bench
+    assert time == time_bench
+    assert timeStep == timeStep_bench 
+    
 
 def test_satellite_byday_units(read_fields_file_satellite_byday):
     '''
