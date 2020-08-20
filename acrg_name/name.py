@@ -155,7 +155,7 @@ def filenames(site, domain, start, end, height, fp_directory, network=None, spec
                 f=glob.glob(glob_path)
             elif lifetime_hrs <= 1440:
                 print("This is a short-lived species. Footprints must be species specific. Re-process in process.py with lifetime")
-                return
+                return []
             else:
                 print("Treating species as long-lived.")
                 f=glob.glob(glob_path)        
