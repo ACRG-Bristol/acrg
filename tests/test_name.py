@@ -671,40 +671,6 @@ def fp_data_H_pblh_merge(fp_data_H_merge):
         fp_data_H_pblh = fp_data_H_pblh[site].assign(**{"pblh_threshold":500})
     return fp_data_H_pblh
     
-def add_local_ratio(fp_data_H):
-    #TODO: Why is this here?
-    sites = [key for key in list(fp_data_H.keys()) if key[0] != '.']
-    
-    release_lons=np.zeros((len(sites)))
-    release_lats=np.zeros((len(sites)))
-    for si, site in enumerate(sites):
-        release_lons[si]=fp_data_H[site].release_lon[0].values
-        release_lats[si]=fp_data_H[site].release_lat[0].values
-        dlon=fp_data_H[site].sub_lon[1].values-fp_data_H[site].sub_lon[0].values
-        dlat=fp_data_H[site].sub_lat[1].values-fp_data_H[site].sub_lat[0].values
-        local_sum=np.zeros((len(fp_data_H[site].mf)))
-       
-        for ti in range(len(fp_data_H[site].mf)):
-            release_lon=fp_data_H[site].release_lon[ti].values
-            release_lat=fp_data_H[site].release_lat[ti].values
-            wh_rlon = np.where(abs(fp_data_H[site].sub_lon.values-release_lon) < dlon/2.)
-            wh_rlat = np.where(abs(fp_data_H[site].sub_lat.values-release_lat) < dlat/2.)
-            local_sum[ti] = old_div(np.sum(fp_data_H[site].sub_fp[
-            wh_rlat[0][0]-2:wh_rlat[0][0]+3,wh_rlon[0][0]-2:wh_rlon[0][0]+3,ti].values),np.sum(
-            fp_data_H[site].fp[:,:,ti].values))  
-            
-        local_ds = xray.Dataset({'local_ratio': (['time'], local_sum)},
-                                        coords = {'time' : (fp_data_H[site].coords['time'])})
-    
-        fp_data_H[site] = fp_data_H[site].merge(local_ds)
-    
-    return fp_data_H
-
-@pytest.fixture()
-def fp_data_H_lr_merge(fp_data_H_merge):
-    ''' '''
-    fp_data_H_lr = add_local_ratio(fp_data_H_merge.copy())
-    return fp_data_H_lr
 
 @pytest.fixture()
 def dummy_timeseries_dict_gen():
@@ -805,14 +771,14 @@ def test_filtering_local(dummy_timeseries_dict_gen):
 #    assert out
 
 @pytest.mark.long
-def test_filtering_mult(fp_data_H_lr_merge):
+def test_filtering_mult(dummy_timeseries_dict_gen):
     '''
     Test filtering() function can produce an output using multiple (non-conflicting) filters ("nighttime and 
     "local_influence")
     '''
     filters = ["local_influence","nighttime"]
-    out = name.filtering(fp_data_H_lr_merge,filters)
-    assert out
+    out = name.filtering(dummy_timeseries_dict_gen,filters)
+    assert np.isclose(out["TEST"].mf.values, np.array([0, 1, 2, 3])).all()
 
 #----------------------------
 
