@@ -1495,8 +1495,7 @@ def filtering(datasets_in, filters, keep_missing=False):
                          "nighttime":nighttime,
                          "noon":noon,
                          "local_influence":local_influence,
-                         "six_hr_mean":six_hr_mean,
-                         "local_lapse":local_lapse}
+                         "six_hr_mean":six_hr_mean}
 
     # Get list of sites
     sites = [key for key in list(datasets.keys()) if key[0] != '.']
