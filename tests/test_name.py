@@ -78,6 +78,15 @@ def bc_basis_directory():
     directory = os.path.join(acrg_path,"tests/files/LPDM/bc_basis_functions/")
     return directory
 
+@pytest.fixture()
+def fs_mock(fs, fp_directory, flux_directory, bc_directory, basis_directory, bc_basis_directory):
+    #add the real jsons to the fake file system:
+    fs.add_real_file(os.path.join(acrg_path, "acrg_species_info.json"))
+    fs.add_real_file(os.path.join(acrg_path, "acrg_site_info.json"))
+    #create footprint files
+    fs.create_file(os.path.join(fp_directory, "EUROPE", "MHD-10magl_EUROPE_201402.nc"))
+    fs.create_file(os.path.join(fp_directory, "EUROPE", "MHD-10magl_EUROPE_201405.nc"))
+    fs.create_file(os.path.join(fp_directory, "EUROPE", "TAC-100magl_EUROPE_201402.nc"))
 
 @pytest.fixture(scope="module")
 def measurement_param():
@@ -146,22 +155,28 @@ def filenames_param(measurement_param,fp_directory):
     return input_param
 
 @pytest.mark.basic
-def test_filenames(filenames_param):
+def test_filenames(fs_mock, filenames_param):
     '''
     Test filenames function can find files of appropriate naming structure.
-    Currently expect fp_directory/domain/site + "*" + "-" + height + "*" + domain + "*" + yearmonth + "*.nc"
     '''
     out = name.filenames(**filenames_param)
-    assert out
+    assert out == [os.path.join(filenames_param["fp_directory"],"EUROPE/MHD-10magl_EUROPE_201402.nc")]
 
-def test_filenames_noheight(filenames_param):
+def test_filenames_noheight(fs_mock, filenames_param):
     '''
     Test filenames() function can find height if it is not specified.
-    Currently expect fp_directory/domain/site + "*" + "-" + height + "*" + domain + "*" + yearmonth + "*.nc"
     '''
     filenames_param["height"] = None
     out = name.filenames(**filenames_param)
-    assert out
+    assert out == [os.path.join(filenames_param["fp_directory"],"EUROPE/MHD-10magl_EUROPE_201402.nc")]
+    
+def test_filenames_shortlived_notavailable(fs_mock, filenames_param):
+    '''
+    Test filenames() function refuses 30 day integrated footprints if species is shortlived
+    '''
+    filenames_param["species"] = "CHBr3"
+    out = name.filenames(**filenames_param)
+    assert len(out) == 0
 
 #%%
 #----------------------------
