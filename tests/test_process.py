@@ -45,7 +45,7 @@ else:
     from acrg_config.paths import paths
     acrg_path = paths.acrg
 
-#%%
+#%%  Setting up directory fixtures
 
 @pytest.fixture()
 def satellite_byday_directory():
@@ -170,6 +170,7 @@ def folder_names():
 
     return param    
 
+#%% Testing read_fields() function
 
 def get_fields_prefix(subfolder,fields_folder):
     '''
@@ -451,7 +452,7 @@ def test_satellite_byday_mf_units(read_fields_file_satellite_byday_mf):
     units = units_column[4:][0] # First 4 headings are empty
     assert units.replace(' ','') == "ppms"
  
-#%%    
+#%%  Test particle_locations()
   
 @pytest.fixture()
 def define_grid_satellite_byday(read_fields_file_satellite_byday,satellite_param):
@@ -664,7 +665,7 @@ def test_particle_locations_satellite_bypoint_against_org(define_grid_satellite_
         for pl in pl_data_vars:
             assert np.array_equal(out[pl].values,out_org[pl].values)
 
-#%%
+#%% Test read_met()
 
 def get_met_prefix(subfolder,met_folder):
     '''
@@ -811,7 +812,7 @@ def test_read_met_satellitebypoint_against_org(get_met_files_satellite_bypoint,s
         assert np.all(out.iloc[t] == out_org)
         
 
-#%%
+#%% Test footprint_array()
 
 def read_met_files(met_files,satellite=False):
     '''
@@ -1061,7 +1062,7 @@ def test_footprint_array_satellite_bypoint_against_org(get_fields_files_satellit
         for dv in data_vars:
             assert np.array_equal(out[dv].values,out_org[dv].values)
         
-#%%
+#%% Test footprint_concatenate()
 
 def footprint_concatenate_param(subfolder,read_met,folder_names,parameters,satellite,
                                 get_time_step=None,get_obs_files=None):
@@ -1240,7 +1241,7 @@ def test_footprint_concatenate_satellite_bypoint_against_org(fc_param_satellite_
             assert np.array_equal(out[dv].values,out_org[dv].values)
 
     
-#%%
+#%% Test satellite_vertical_profile()
     
 @pytest.fixture()
 def footprint_concatenate_satellite_bypoint(fc_param_satellite_bypoint):
@@ -1336,7 +1337,7 @@ def test_satellite_vertical_profile_bypoint_against_org(footprint_concatenate_sa
         for dv in data_vars:
             assert np.array_equal(out[dv].values,out_org[dv].values)
 
-#%%
+#%% Test process()
 
 def process_param(input_param,folder_names,satellite):
     '''
