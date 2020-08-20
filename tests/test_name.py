@@ -706,53 +706,82 @@ def fp_data_H_lr_merge(fp_data_H_merge):
     fp_data_H_lr = add_local_ratio(fp_data_H_merge.copy())
     return fp_data_H_lr
 
-def test_filtering_median(fp_data_H_merge):
+@pytest.fixture()
+def dummy_timeseries_dict_gen():
+    ''' '''
+#     time = pd.date_range("2010-01-01", "2010-01-02", freq="1H")
+#     data = np.arange(len(time))
+#     release_lon = np.repeat(10., len(time))
+#     testds = xray.Dataset({"mf" : (["time"], data), "release_lon":(["time"],release_lon)}, coords={"time":(["time"],time)})
+#     dummy_timeseries_dict = {"TEST":testds}
+    
+    time = pd.date_range("2010-01-01", "2010-01-02", freq="1H")
+    data = np.arange(len(time))
+    release_lon = np.repeat(10., len(time))
+    release_lat = np.repeat(10., len(time))
+    lat = np.arange(10)+5
+    lon = np.arange(10)+5
+    fp = np.ones((10,10,len(time)))
+    fp[3:8,3:8,:] = 0.0
+    fp[5,5,10:] = 100.
+    testds = xray.Dataset({"mf" : (["time"], data), 
+                           "release_lon":(["time"],release_lon),
+                           "release_lat":(["time"],release_lat),
+                           "fp":(["lat","lon","time"],fp)}, 
+                          coords={"time":(["time"],time),
+                                  "lat":(["lat"],lat),
+                                  "lon":(["lon"],lon)})
+    dummy_timeseries_dict = {"TEST":testds}
+    
+    return dummy_timeseries_dict
+
+def test_filtering_median(dummy_timeseries_dict_gen):
     '''
     Test filtering() function can produce an output using "daily_median" filter
     '''
     filters = ["daily_median"]
-    out = name.filtering(fp_data_H_merge,filters)
-    assert out
+    out = name.filtering(dummy_timeseries_dict_gen,filters)
+    assert np.isclose(out["TEST"].mf.values, np.array([11.5,24.])).all()
 
-def test_filtering_daytime(fp_data_H_merge):
+def test_filtering_daytime(dummy_timeseries_dict_gen):
     '''
     Test filtering() function can produce an output using "daytime" filter
     '''
     filters = ["daytime"]
-    out = name.filtering(fp_data_H_merge,filters)
-    assert out
+    out = name.filtering(dummy_timeseries_dict_gen,filters)
+    assert np.isclose(out["TEST"].mf.values, np.array([11, 12, 13, 14, 15])).all()
 
-def test_filtering_nighttime(fp_data_H_merge):
+def test_filtering_nighttime(dummy_timeseries_dict_gen):
     '''
     Test filtering() function can produce an output using "nighttime" filter
     '''
     filters = ["nighttime"]
-    out = name.filtering(fp_data_H_merge,filters)
-    assert out
+    out = name.filtering(dummy_timeseries_dict_gen,filters)
+    assert np.isclose(out["TEST"].mf.values, np.array([0, 1, 2, 3, 23, 24])).all()
 
-def test_filtering_noon(fp_data_H_merge):
+def test_filtering_noon(dummy_timeseries_dict_gen):
     '''
     Test filtering() function can produce an output using "pblh_gt_threshold" filter
     '''
     filters = ["noon"]
-    out = name.filtering(fp_data_H_merge,filters)
-    assert out
+    out = name.filtering(dummy_timeseries_dict_gen,filters)
+    assert np.isclose(out["TEST"].mf.values, np.array([12])).all()
 
-def test_filtering_6hrmean(fp_data_H_merge):
+def test_filtering_6hrmean(dummy_timeseries_dict_gen):
     '''
     Test filtering() function can produce an output using "pblh_gt_threshold" filter
     '''
     filters = ["six_hr_mean"]
-    out = name.filtering(fp_data_H_merge,filters)
-    assert out
+    out = name.filtering(dummy_timeseries_dict_gen,filters)
+    assert np.isclose(out["TEST"].mf.values, np.array([2.5, 8.5, 14.5, 20.5, 24.0])).all()
 
-def test_filtering_local(fp_data_H_lr_merge):
+def test_filtering_local(dummy_timeseries_dict_gen):
     '''
     Test filtering() function can produce an output using "local_influence" filter
     '''
     filters = ["local_influence"]
-    out = name.filtering(fp_data_H_lr_merge,filters)
-    assert out
+    out = name.filtering(dummy_timeseries_dict_gen,filters)
+    assert np.isclose(out["TEST"].mf.values, np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])).all()
 
 # TODO: 
 #    Not working yet
