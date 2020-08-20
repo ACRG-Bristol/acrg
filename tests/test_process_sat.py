@@ -29,21 +29,27 @@ else:
 #%% Setting up directory fixtures
 
 @pytest.fixture()
-def sat_byday_directory():
+def sat_byday_dummy_directory():
     ''' Define base directory containing grouped satellite footprint files '''
     directory = os.path.join(acrg_path,"tests/files/LPDM/raw_output/Satellite_ByDay/")
+    return directory
+
+@pytest.fixture()
+def sat_byday_mf_directory():
+    ''' Define base directory containing grouped satellite footprint files '''
+    directory = os.path.join(acrg_path,"tests/files/LPDM/raw_output/Satellite_ByDay_MF/")
+    return directory
+
+@pytest.fixture()
+def sat_byday_conc_directory():
+    ''' Define base directory containing grouped satellite footprint files '''
+    directory = os.path.join(acrg_path,"tests/files/LPDM/raw_output/Satellite_ByDay_Conc/")
     return directory
 
 @pytest.fixture()
 def sat_bypoint_directory():
     ''' Define base directory containing satellite footprint files with separated data points '''
     directory = os.path.join(acrg_path,"tests/files/LPDM/raw_output/Satellite_ByPoint/")
-    return directory
-
-@pytest.fixture()
-def sat_byday_conc_directory():
-    ''' Define base directory containing grouped satellite footprint files '''
-    directory = os.path.join(acrg_path,"tests/files/LPDM/raw_output/Satellite_ByDay_MF/")
     return directory
 
 @pytest.fixture()
@@ -62,17 +68,8 @@ def sat_param():
     param["month"] = 1
     param["satellite"] = True
     param["upper_level"] = 17
-    #param["max_level"] = 17
+    param["max_level"] = 17
     
-    return param
-
-@pytest.fixture()
-def sat_param_dummy(sat_param):
-    '''
-    Define input parameters for dummy satellite data (based on sat_param)
-    '''
-    param = sat_param
-    sat_param["max_level"] = 2
     return param
 
 @pytest.fixture()
@@ -86,21 +83,52 @@ def subfolder_sat(sat_param):
     return subfolder
 
 @pytest.fixture()
-def subfolder_sat_byday(sat_byday_directory,subfolder_sat):
+def sat_param_dummy(sat_param):
+    '''
+    Define input parameters for dummy satellite data (based on sat_param)
+    
+    Want simplified
+     - upper_level
+     - max_level
+    values
+    '''
+    param = sat_param
+    param["upper_level"] = 2
+    param["max_level"] = 2
+    return param
+
+@pytest.fixture()
+def subfolder_sat_dummy(sat_param_dummy):
+    ''' Define subfolder name for satellite data'''
+    domain = sat_param_dummy["domain"]
+    site = sat_param_dummy["site"]
+    height = sat_param_dummy["height"]
+    
+    subfolder = pg.define_subfolder(domain,site,height)
+    return subfolder
+
+@pytest.fixture()
+def subfolder_sat_byday_dummy(sat_byday_dummy_directory,subfolder_sat_dummy):
     ''' Define full subfolder path for satellite data with points grouped by day'''
-    subfolder = os.path.join(sat_byday_directory,subfolder_sat)  
+    subfolder = os.path.join(sat_byday_dummy_directory,subfolder_sat_dummy)  
+    return subfolder
+
+@pytest.fixture()
+def subfolder_sat_byday_mf(sat_byday_mf_directory,subfolder_sat):
+    ''' Define full subfolder path for satellite data (explicit mf data) with points grouped by day'''
+    subfolder = os.path.join(sat_byday_mf_directory,subfolder_sat)  
+    return subfolder
+
+@pytest.fixture()
+def subfolder_sat_byday_conc(sat_byday_conc_directory,subfolder_sat):
+    ''' Define full subfolder path for satellite data (explicit conc data) with points grouped by day'''
+    subfolder = os.path.join(sat_byday_conc_directory,subfolder_sat)  
     return subfolder
 
 @pytest.fixture()
 def subfolder_sat_bypoint(sat_bypoint_directory,subfolder_sat):
     ''' Define full subfolder path for satellite data with separate points'''
     subfolder = os.path.join(sat_bypoint_directory,subfolder_sat)  
-    return subfolder
-
-@pytest.fixture()
-def subfolder_sat_byday_mf(sat_byday_mf_directory,subfolder_sat):
-    ''' Define full subfolder path for satellite data with points grouped by day'''
-    subfolder = os.path.join(sat_byday_mf_directory,subfolder_sat)  
     return subfolder
 
 @pytest.fixture()
@@ -123,7 +151,7 @@ def folder_names():
 #%% Testing read_fields() function
 
 @pytest.fixture()
-def get_fields_files_sat_byday(subfolder_sat_byday,folder_names,sat_param_dummy):
+def get_fields_files_sat_dummy_byday(subfolder_sat_byday_dummy,folder_names,sat_param_dummy):
     '''
     Get filenames of fields files for satellite run with points grouped by day.
     Finds field files based on datestr (see create_datestr), one file per day.
@@ -132,7 +160,20 @@ def get_fields_files_sat_byday(subfolder_sat_byday,folder_names,sat_param_dummy)
     #fields_folder = folder_names["fields_folder"]
     mixr_folder = folder_names["mixr_folder"]
     
-    fields_files = pg.get_fields_files(subfolder_sat_byday,mixr_folder,datestr)
+    fields_files = pg.get_fields_files(subfolder_sat_byday_dummy,mixr_folder,datestr)
+    return fields_files
+
+@pytest.fixture()
+def get_fields_files_sat_mf_byday(subfolder_sat_byday_mf,folder_names,sat_param):
+    '''
+    Get filenames of fields files for satellite run with points grouped by day.
+    Finds field files based on datestr (see create_datestr), one file per day.
+    '''
+    datestr = pg.create_datestr(sat_param)
+    #fields_folder = folder_names["fields_folder"]
+    mixr_folder = folder_names["mixr_folder"]
+    
+    fields_files = pg.get_fields_files(subfolder_sat_byday_mf,mixr_folder,datestr)
     
     return fields_files
 
@@ -164,12 +205,18 @@ def get_fields_files_sat_bypoint(subfolder_sat_bypoint,folder_names,sat_param):
 #    return fields_files
 
 @pytest.fixture()
-def read_fields_file_sat_byday(get_fields_files_sat_byday):
+def read_fields_file_sat_dummy_byday(get_fields_files_sat_dummy_byday):
     ''' Read first satellite by day field file using process.read_file() function and create output. '''
-    fields_file = get_fields_files_sat_byday[0]
+    fields_file = get_fields_files_sat_dummy_byday[0]
     header, column_headings, data_arrays = process.read_file(fields_file)
     
-    #print "header,column_headings",header,column_headings
+    return header, column_headings, data_arrays
+
+@pytest.fixture()
+def read_fields_file_sat_mf_byday(get_fields_files_sat_mf_byday):
+    ''' Read first satellite by day field file using process.read_file() function and create output. '''
+    fields_file = get_fields_files_sat_mf_byday[0]
+    header, column_headings, data_arrays = process.read_file(fields_file)
     
     return header, column_headings, data_arrays
 
@@ -181,23 +228,16 @@ def read_fields_file_sat_bypoint(get_fields_files_sat_bypoint):
     
     return header, column_headings, data_arrays
 
-@pytest.fixture()
-def read_fields_file_sat_byday_mf(get_fields_files_sat_byday_mf):
-    ''' Read first satellite by day field file using process.read_file() function and create output. '''
-    fields_file = get_fields_files_sat_byday_mf[0]
+def test_read_field_file_sat_mf_byday(get_fields_files_sat_mf_byday):
+    '''  Test read_file function can run for satellite data separated by day. '''
+    fields_file = get_fields_files_sat_mf_byday[0]
     header, column_headings, data_arrays = process.read_file(fields_file)
-    
-    return header, column_headings, data_arrays
+
 
 def test_read_field_file_sat_bypoint(get_fields_files_sat_bypoint):
     ''' Test read_file function can run for satellite data separated by point. '''
     point = 10
     fields_file = get_fields_files_sat_bypoint[point-1]
-    header, column_headings, data_arrays = process.read_file(fields_file)
-
-def test_read_field_file_sat_byday(get_fields_files_sat_byday):
-    '''  Test read_file function can run for satellite data separated by day. '''
-    fields_file = get_fields_files_sat_byday[0]
     header, column_headings, data_arrays = process.read_file(fields_file)
 
 #    point = 10
@@ -206,21 +246,17 @@ def test_read_field_file_sat_byday(get_fields_files_sat_byday):
 #    for i,array in enumerate(data_arrays_point):
 #        print i,np.min(array),np.max(array),np.mean(array),np.sum(array)
 #    print "Over 17 elements of point {0}".format(point),np.mean(data_arrays_point)
+ 
 
-
-    ### TODO: ADD MORE STRINGENT TEST    
-
-def test_define_grid_sat_byday(read_fields_file_sat_byday,sat_param):
+def test_define_grid_sat_mf_byday(read_fields_file_sat_mf_byday,sat_param):
     '''
     Test that grid can be defined correctly when extracted from a NAME run over satellite data with points 
     grouped by day.
     '''
-    header,column_headings,data_arrays = read_fields_file_sat_byday
+    header,column_headings,data_arrays = read_fields_file_sat_mf_byday
     out = process.define_grid(header,column_headings,satellite=True,upper_level=sat_param["upper_level"])
     
     assert out
-
-    ### TODO: ADD MORE STRINGENT TEST
 
 def test_define_grid_sat_bypoint(read_fields_file_sat_bypoint,sat_param):
     '''
@@ -231,14 +267,22 @@ def test_define_grid_sat_bypoint(read_fields_file_sat_bypoint,sat_param):
     out = process.define_grid(header,column_headings,satellite=True,upper_level=sat_param["upper_level"])
 
     assert out
-    ### TODO: ADD MORE STRINGENT TEST
 
 #%% Test particle_locations()
 
 @pytest.fixture()
-def define_grid_sat_byday(read_fields_file_sat_byday,sat_param):
+def define_grid_sat_dummy_byday(read_fields_file_sat_dummy_byday,sat_param_dummy):
     ''' Create output from process.define_grid() function for one satellite by day field file '''
-    header,column_headings,data_arrays = read_fields_file_sat_byday
+    header,column_headings,data_arrays = read_fields_file_sat_dummy_byday
+    upper_level=sat_param_dummy["upper_level"]
+    lons, lats, levs, time, timeStep = process.define_grid(header,column_headings,satellite=True,upper_level=upper_level)
+    
+    return lons, lats, levs, time, timeStep
+
+@pytest.fixture()
+def define_grid_sat_mf_byday(read_fields_file_sat_mf_byday,sat_param):
+    ''' Create output from process.define_grid() function for one satellite by day field file '''
+    header,column_headings,data_arrays = read_fields_file_sat_mf_byday
     upper_level=sat_param["upper_level"]
     lons, lats, levs, time, timeStep = process.define_grid(header,column_headings,satellite=True,upper_level=upper_level)
     
@@ -254,15 +298,28 @@ def define_grid_sat_bypoint(read_fields_file_sat_bypoint,sat_param):
     return lons, lats, levs, time, timeStep
 
 @pytest.fixture()
-def get_particle_files_sat_byday(subfolder_sat_byday,folder_names,
-                                       get_fields_files_sat_byday):
+def get_particle_files_sat_dummy_byday(subfolder_sat_byday_dummy,folder_names,
+                                       get_fields_files_sat_dummy_byday):
     ''' 
     Get filenames of particle files for satellite run with points grouped by day.
     Note: filenames found are based on datestr extracted from the input field files.
     '''
     particles_folder = folder_names["particles_folder"]
-    particle_files = pg.get_particle_files(subfolder_sat_byday,particles_folder,
-                                        get_fields_files_sat_byday)
+    particle_files = pg.get_particle_files(subfolder_sat_byday_dummy,particles_folder,
+                                        get_fields_files_sat_dummy_byday)
+    return particle_files
+
+
+@pytest.fixture()
+def get_particle_files_sat_mf_byday(subfolder_sat_byday_mf,folder_names,
+                                       get_fields_files_sat_mf_byday):
+    ''' 
+    Get filenames of particle files for satellite run with points grouped by day.
+    Note: filenames found are based on datestr extracted from the input field files.
+    '''
+    particles_folder = folder_names["particles_folder"]
+    particle_files = pg.get_particle_files(subfolder_sat_byday_mf,particles_folder,
+                                        get_fields_files_sat_mf_byday)
     return particle_files
 
 @pytest.fixture()
@@ -277,14 +334,68 @@ def get_particle_files_sat_bypoint(subfolder_sat_bypoint,folder_names,
                                         get_fields_files_sat_bypoint)
     return particle_files
 
-def test_particle_locations_sat_byday(define_grid_sat_byday,get_particle_files_sat_byday,
-                                            define_heights,sat_param):
+@pytest.fixture()
+def define_heights():
+    ''' Define height range for input into particle_locations function. '''
+    dheights = 1000
+    heights = np.arange(0, 19001, dheights) + dheights/2.
+    return heights
+
+@pytest.fixture()
+def sat_byday_dummy_part():
+    '''
+    Defining dummy values for particle histograms. Should be consistent with
+    the dummy particle location data which we can check against.
+    
+    Data include 4 id values, 2 points with 2 levels for each, 16 particles (2x2x4).
+    Point 001 (id 1, 2): 2 particles at each of the south and west boundary (none at north and east)
+    Point 002 (id 3, 4): 1 particle at each boundary (n, e, s, w)
+    '''
+
+    slice_dict = [{"time":[0],"lev":[0]},
+                  {"time":[0],"lev":[1]},
+                  {"time":[1],"lev":[0]},
+                  {"time":[1],"lev":[1]}]
+
+    part_hist = [{"pl_n":0,"pl_e":0,"pl_s":0.5,"pl_w":0.5},
+                 {"pl_n":0,"pl_e":0,"pl_s":0.5,"pl_w":0.5},
+                 {"pl_n":0.25,"pl_e":0.25,"pl_s":0.25,"pl_w":0.25},
+                 {"pl_n":0.25,"pl_e":0.25,"pl_s":0.25,"pl_w":0.25}]
+
+    return part_hist,slice_dict
+
+def test_particle_locations_sat_dummy_byday(define_grid_sat_dummy_byday,
+                                         get_particle_files_sat_dummy_byday,
+                                         define_heights,sat_param_dummy,
+                                         sat_byday_dummy_part):
+    '''
+    Test particle_locations() function can produce the correct histogram output for
+    a known input when satellite points have been grouped by day.
+    '''
+    lons, lats, levs, time, timeStep = define_grid_sat_dummy_byday
+    particle_file = get_particle_files_sat_dummy_byday[0]
+    heights =  define_heights   
+    upper_level = sat_param_dummy["upper_level"]
+    
+    out = process.particle_locations(particle_file,time,lats,lons,levs,heights,id_is_lev=False,
+                                     satellite=True,upper_level=upper_level)
+    
+    expected_part_hist,slice_dict = sat_byday_dummy_part
+    
+    for id_slice,exp_hist_per_id in zip(slice_dict,expected_part_hist):
+        for pl_key,value in exp_hist_per_id.items():
+            pl_per_id = out[pl_key].isel(id_slice)
+            assert pl_per_id.sum() == value
+
+def test_particle_locations_sat_mf_byday(define_grid_sat_mf_byday,
+                                         get_particle_files_sat_mf_byday,
+                                         define_heights,sat_param):
     '''
     Test particle_locations() function can produce the correct output for satellite data when points have been
     grouped by day.
     '''
-    lons, lats, levs, time, timeStep = define_grid_sat_byday
-    particle_file = get_particle_files_sat_byday[0]
+    lons, lats, levs, time, timeStep = define_grid_sat_mf_byday
+    particle_file = get_particle_files_sat_mf_byday[0]
     heights =  define_heights   
     upper_level = sat_param["upper_level"]
     
@@ -354,13 +465,13 @@ def test_particle_locations_sat_bypoint_against_org(define_grid_sat_bypoint,
 #%% Test read_met()
 
 @pytest.fixture()   
-def get_met_files_sat_byday(subfolder_sat_byday,folder_names,get_fields_files_sat_byday):
+def get_met_files_sat_mf_byday(subfolder_sat_byday_mf,folder_names,get_fields_files_sat_mf_byday):
     '''
     Get filenames of met files for satellite run with points grouped by day.
     Note: filenames found are based on datestr extracted from the input field files.
     '''
     met_folder = folder_names["met_folder"]
-    met_files = pg.get_met_files(subfolder_sat_byday,met_folder,get_fields_files_sat_byday,satellite=True)
+    met_files = pg.get_met_files(subfolder_sat_byday_mf,met_folder,get_fields_files_sat_mf_byday,satellite=True)
     
     return met_files
 
@@ -404,24 +515,12 @@ def sat_byday_dummy_met():
     #01/01/2013 14:58 UTC,               -50.00000,               -10.00000,                      20.00000,                      590.0000,                      95000.00,                      7.500000,                      110.0000,    
     #01/01/2013 15:01 UTC,               -51.00000,               -11.00000,                      25.00000,                      730.0000,                      99863.93,                      7.361012,                      43.85613,
     #01/01/2013 15:01 UTC,               -51.00000,               -11.00000,                      20.00000,                      730.0000,                      94433.27,                      7.119352,                      41.78423,
-    
-def test_read_met_sat_byday(get_met_files_sat_byday):
-    '''
-    Test read_met function can read in one met file when satellite data is grouped by day.
-    '''
-    met_files_1 = get_met_files_sat_byday[0] # Met files for 1 day
-    
-    total_file_num = len(met_files_1)
-    
-    out = process.read_met(met_files_1,satellite=True,vertical_profile=False)
-    
-    assert len(out.index) == total_file_num
 
-def test_read_met_sat_byday_values(get_met_files_sat_byday,sat_byday_dummy_met):
+def test_read_met_sat_dummy_byday(get_met_files_sat_dummy_byday,sat_byday_dummy_met):
     '''
     Test output from read_met function against expected values.
     '''
-    met_files_1 = get_met_files_sat_byday[0] # Met files for 1 day
+    met_files_1 = get_met_files_sat_dummy_byday[0] # Met files for 1 day
     
     out = process.read_met(met_files_1,satellite=True,vertical_profile=False)
     
@@ -430,6 +529,18 @@ def test_read_met_sat_byday_values(get_met_files_sat_byday,sat_byday_dummy_met):
     
     for col in compare_columns:
         assert np.array_equal(out[col],expected[col])
+    
+def test_read_met_sat_mf_byday(get_met_files_sat_mf_byday):
+    '''
+    Test read_met function can read in one met file when satellite data is grouped by day.
+    '''
+    met_files_1 = get_met_files_sat_mf_byday[0] # Met files for 1 day
+    
+    total_file_num = len(met_files_1)
+    
+    out = process.read_met(met_files_1,satellite=True,vertical_profile=False)
+    
+    assert len(out.index) == total_file_num
 
 def test_read_met_sat_bypoint(get_met_files_sat_bypoint,sat_param):
     '''
@@ -465,12 +576,20 @@ def test_read_met_sat_bypoint_against_org(get_met_files_sat_bypoint,sat_param):
 #%% Test footprint_array()
 
 @pytest.fixture()
-def read_met_sat_byday(get_met_files_sat_byday):
+def read_met_sat_dummy_byday(get_met_files_sat_dummy_byday):
     '''
     Read met data for satellite run with points grouped by day.
     Returns: list of dataframes.
     '''
-    return pg.read_met_files(get_met_files_sat_byday,satellite=True)
+    return pg.read_met_files(get_met_files_sat_dummy_byday,satellite=True)
+
+@pytest.fixture()
+def read_met_sat_mf_byday(get_met_files_sat_mf_byday):
+    '''
+    Read met data for satellite run with points grouped by day.
+    Returns: list of dataframes.
+    '''
+    return pg.read_met_files(get_met_files_sat_mf_byday,satellite=True)
 
 @pytest.fixture()
 def read_met_sat_bypoint(get_met_files_sat_bypoint):
@@ -481,13 +600,13 @@ def read_met_sat_bypoint(get_met_files_sat_bypoint):
     return pg.read_met_files(get_met_files_sat_bypoint,satellite=True)
 
 @pytest.fixture()
-def read_met_separate_sat_byday(get_met_files_sat_byday):
+def read_met_separate_sat_byday(get_met_files_sat_mf_byday):
     '''
     Read met data for satellite run with points grouped by day.
     Separates points into individual dataframes.??
     Returns: nested list of dataframes.
     '''
-    return pg.read_met_files_separate(get_met_files_sat_byday,satellite=True)
+    return pg.read_met_files_separate(get_met_files_sat_mf_byday,satellite=True)
 
 @pytest.fixture()
 def read_met_separate_sat_bypoint(get_met_files_sat_bypoint):
@@ -499,7 +618,7 @@ def read_met_separate_sat_bypoint(get_met_files_sat_bypoint):
     '''
     return pg.read_met_files_separate(get_met_files_sat_bypoint,satellite=True)
 
-def test_met_satellite_split_byday(read_met_sat_byday,sat_byday_dummy_met):
+def test_met_satellite_split_dummy_byday(read_met_sat_dummy_byday,sat_byday_dummy_met):
     '''
     Test that output from met_satellite_split() function is as expected for 
     satellite data grouped by day.
@@ -507,7 +626,7 @@ def test_met_satellite_split_byday(read_met_sat_byday,sat_byday_dummy_met):
     '''
     # Expect output of this function to be a 2-item list containing dataframes
     # 1 dataframe per point - should have been grouped according to the level 
-    met = process.met_satellite_split(read_met_sat_byday)
+    met = process.met_satellite_split(read_met_sat_dummy_byday)
     
     # Need to break expected values out into each point for comparison as well
     compare = sat_byday_dummy_met
@@ -563,16 +682,16 @@ def get_obs_files(subfolder,obs_folder,field_files):
     return obs_files
 
 @pytest.fixture()
-def get_obs_files_sat_byday(subfolder_sat_byday,folder_names,
-                                  get_fields_files_sat_byday):
+def get_obs_files_sat_mf_byday(subfolder_sat_byday_mf,folder_names,
+                                  get_fields_files_sat_mf_byday):
     '''
     Get filenames of observation files for satellite run with points grouped by day.
     Note: filenames found are based on datestr extracted from the input field files.
     '''
     obs_folder = folder_names["obs_folder"]
     
-    obs_files = get_obs_files(subfolder_sat_byday,
-                              obs_folder,get_fields_files_sat_byday)
+    obs_files = get_obs_files(subfolder_sat_byday_mf,
+                              obs_folder,get_fields_files_sat_mf_byday)
     
     return obs_files
 
@@ -591,9 +710,9 @@ def get_obs_files_sat_bypoint(subfolder_sat_bypoint,folder_names,
     return obs_files
 
 @pytest.fixture()
-def get_time_step_sat_byday(subfolder_sat_byday):
+def get_time_step_sat_mf_byday(subfolder_sat_mf_byday):
     ''' Extract time step value from within satellite_byday subfolder '''
-    return pg.get_time_step(subfolder_sat_byday)
+    return pg.get_time_step(subfolder_sat_byday_mf)
 
 @pytest.fixture()
 def get_time_step_sat_bypoint(subfolder_sat_bypoint):
@@ -601,11 +720,11 @@ def get_time_step_sat_bypoint(subfolder_sat_bypoint):
     return pg.get_time_step(subfolder_sat_bypoint)
 
 @pytest.fixture()
-def sat_byday_dummy_fields(get_fields_files_sat_byday):
+def sat_byday_dummy_fields(get_fields_files_sat_dummy_byday):
     '''
     '''
 
-    fields_file_1 = get_fields_files_sat_byday[0]
+    fields_file_1 = get_fields_files_sat_dummy_byday[0]
     
     header_rows = 37
     
@@ -634,62 +753,22 @@ def sat_byday_dummy_fields(get_fields_files_sat_byday):
 
     return df,titles1,titles2
 
-    # values = {}
-    
-    # values["release_lon"] = [-50.0,-50.0,-51.0,-51.0]
-    # values["release_lat"] = [-10.0,-10.0,-11.0,-11.0]
-    # values["temp"] = [25.0,20.0,25.0,20.0]
-    # values["PBLH"] = [600.0,590.0,730.0,730.0]
-    # values["press"] = [99000.0,95000.0,99863.93,94433.27]
-    # values["wind"] = [7.0,7.5,7.361012,7.119352]
-    # values["wind_direction"] = [100.0,110.0,43.85613,41.78423]
-    # values["label"] = ["00101","00102","00201","00202"]
-
-    # df = pd.DataFrame(values)
-
-    # return df
-
-    # #                    ,                        ,                        ,               Temperature (C),          Boundary layer depth,                 Pressure (Pa),                    Wind speed,      Wind direction (degrees),    
-    # #01/01/2013 14:58 UTC,               -50.00000,               -10.00000,                      25.00000,                      600.0000,                      99000.00,                      7.00000,                      100.0000,    
-    # #01/01/2013 14:58 UTC,               -50.00000,               -10.00000,                      20.00000,                      590.0000,                      95000.00,                      7.500000,                      110.0000,    
-    # #01/01/2013 15:01 UTC,               -51.00000,               -11.00000,                      25.00000,                      730.0000,                      99863.93,                      7.361012,                      43.85613,
-    # #01/01/2013 15:01 UTC,               -51.00000,               -11.00000,   
-
-def test_footprint_array_sat_byday(get_fields_files_sat_byday,
-                                         get_particle_files_sat_byday,
-                                         read_met_sat_byday,
-                                         get_obs_files_sat_byday,
-                                         get_time_step_sat_byday,
-                                         sat_param_dummy):
-    '''
-    Test footprint_array function can return an output for satellite files when grouped by day.
-    '''
-    fields_file_1 = get_fields_files_sat_byday[0]
-    particle_file_1 = get_particle_files_sat_byday[0]
-    met = read_met_sat_byday[0]
-    #obs_file_1 = get_obs_files_sat_byday[0]
-    time_step = get_time_step_sat_byday
-    upper_level = sat_param["upper_level"]
-    
-    out = process.footprint_array(fields_file_1,particle_file_1,met,satellite=True,upper_level=upper_level)
-    
-
 #TODO: ADD THIS TEST OF VALUES HERE!
-def test_footprint_array_sat_byday_values(get_fields_files_sat_byday,
-                                        get_particle_files_sat_byday,
-                                        read_met_sat_byday,
-                                        get_obs_files_sat_byday,
-                                        get_time_step_sat_byday,
-                                        sat_param_dummy,
-                                        sat_byday_dummy_fields):
+def test_footprint_array_sat_dummy_byday(get_fields_files_sat_dummy_byday,
+                                         get_particle_files_sat_dummy_byday,
+                                         read_met_sat_dummy_byday,
+                                         get_obs_files_sat_dummy_byday,
+                                         get_time_step_sat_dummy_byday,
+                                         sat_param_dummy,
+                                         sat_byday_dummy_fields):
     '''
     
     '''
-    fields_file_1 = get_fields_files_sat_byday[0]
-    particle_file_1 = get_particle_files_sat_byday[0]
-    met = read_met_sat_byday[0]
+    fields_file_1 = get_fields_files_sat_dummy_byday[0]
+    particle_file_1 = get_particle_files_sat_dummy_byday[0]
+    met = read_met_sat_dummy_byday[0]
     #obs_file_1 = get_obs_files_sat_byday[0]
-    time_step = get_time_step_sat_byday
+    time_step = get_time_step_sat_dummy_byday
     upper_level = sat_param_dummy["upper_level"]
     
     out = process.footprint_array(fields_file_1,particle_file_1,met,satellite=True,
@@ -698,6 +777,24 @@ def test_footprint_array_sat_byday_values(get_fields_files_sat_byday,
     expected,axis_cols,field_cols = sat_byday_dummy_fields
     
     pdb.set_trace()
+
+def test_footprint_array_sat_mf_byday(get_fields_files_sat_mf_byday,
+                                         get_particle_files_sat_mf_byday,
+                                         read_met_sat_mf_byday,
+                                         get_obs_files_sat_mf_byday,
+                                         get_time_step_sat_mf_byday,
+                                         sat_param_dummy):
+    '''
+    Test footprint_array function can return an output for satellite files when grouped by day.
+    '''
+    fields_file_1 = get_fields_files_sat_mf_byday[0]
+    particle_file_1 = get_particle_files_sat_mf_byday[0]
+    met = read_met_sat_mf_byday[0]
+    #obs_file_1 = get_obs_files_sat_byday[0]
+    time_step = get_time_step_sat_mf_byday
+    upper_level = sat_param["upper_level"]
+    
+    out = process.footprint_array(fields_file_1,particle_file_1,met,satellite=True,upper_level=upper_level)
 
 def test_footprint_array_sat_bypoint(get_fields_files_sat_bypoint,
                                      get_particle_files_sat_bypoint,
@@ -754,9 +851,9 @@ def test_footprint_array_sat_bypoint_against_org(get_fields_files_sat_bypoint,
 #%% Test footprint_concatenate()
 
 @pytest.fixture()
-def fc_param_sat_byday(subfolder_sat_byday,read_met_sat_byday,
+def fc_param_sat_mf_byday(subfolder_sat_byday_mf,read_met_sat_mf_byday,
                              folder_names,sat_param,
-                             get_time_step_sat_byday):
+                             get_time_step_sat_mf_byday):
                              #get_obs_files_sat_byday):
     '''
     Define parameters for input into footprint_concatenate function for satellite files when grouped by day.
@@ -764,9 +861,9 @@ def fc_param_sat_byday(subfolder_sat_byday,read_met_sat_byday,
     than one value. Need to re-assign "datestr" and "met" keys to singular values in param dictionary before 
     passing to function **
     '''
-    param = pg.footprint_concatenate_param(subfolder_sat_byday,read_met_sat_byday,
+    param = pg.footprint_concatenate_param(subfolder_sat_byday_mf,read_met_sat_mf_byday,
                                         folder_names,sat_param,satellite=True,
-                                        get_time_step=get_time_step_sat_byday)
+                                        get_time_step=get_time_step_sat_mf_byday)
                                         #get_obs_files=get_obs_files_sat_byday)
     
     return param
@@ -805,11 +902,11 @@ def fc_param_org_sat_bypoint(fc_param_sat_bypoint,read_met_separate_sat_bypoint)
     
     return param
   
-def test_footprint_concatenate_sat_byday(fc_param_sat_byday):
+def test_footprint_concatenate_sat_mf_byday(fc_param_sat_mf_byday):
     '''
     Test footprint_concatenate function produces an output when files for satellite data are grouped by day.
     '''
-    param = fc_param_sat_byday
+    param = fc_param_sat_mf_byday
     param["datestr"] = param["datestr"][0]
     
     out = process.footprint_concatenate(**param)
@@ -880,14 +977,14 @@ def footprint_concatenate_sat_bypoint(fc_param_sat_bypoint):
     return fp_all
 
 @pytest.fixture()
-def footprint_concatenate_sat_byday(fc_param_sat_byday):
+def footprint_concatenate_sat_mf_byday(fc_param_sat_mf_byday):
     '''
     Create output from footprint_concatenate function for satellite data grouped by day.
     Returns list of xarray.Dataset objects. One for each footprint, one footprint per day.
     '''
-    param = fc_param_sat_byday.copy()
-    met_points = fc_param_sat_byday["met"][:]
-    date_strings = fc_param_sat_byday["datestr"][:]
+    param = fc_param_sat_mf_byday.copy()
+    met_points = fc_param_sat_mf_byday["met"][:]
+    date_strings = fc_param_sat_mf_byday["datestr"][:]
     
     fp_all = []
     for met,datestr in zip(met_points,date_strings):
@@ -906,14 +1003,14 @@ def test_satellite_vertical_profile_bypoint(footprint_concatenate_sat_bypoint,
     fp = footprint_concatenate_sat_bypoint[0]
     out = process.satellite_vertical_profile(fp,sat_obs_file,max_level=sat_param["max_level"])
 
-def test_satellite_vertical_profile_byday(footprint_concatenate_sat_byday,
-                                          get_obs_files_sat_byday,sat_param):
+def test_satellite_vertical_profile_mf_byday(footprint_concatenate_sat_mf_byday,
+                                          get_obs_files_sat_mf_byday,sat_param):
     '''
     Test satellite_vertical_profile funcion can produce an output when data from a satellite run 
     is grouped by day.
     '''
-    sat_obs_file = get_obs_files_sat_byday[0]
-    fp = footprint_concatenate_sat_byday[0]
+    sat_obs_file = get_obs_files_sat_mf_byday[0]
+    fp = footprint_concatenate_sat_mf_byday[0]
     out = process.satellite_vertical_profile(fp,sat_obs_file,max_level=sat_param["max_level"])
 
 @pytest.fixture()
@@ -959,14 +1056,14 @@ def test_satellite_vertical_profile_bypoint_against_org(footprint_concatenate_sa
 #%% Test process()
 
 @pytest.fixture()
-def process_sat_byday_param(sat_param,folder_names,sat_byday_directory):
+def process_sat_byday_mf_param(sat_param,folder_names,sat_byday_mf_directory):
     '''
     Define input parameters for process.process function for satellite data grouped by day.
     Additional "base_dir" parameter added to point to Satellite_ByDay folder.
     '''
     param = pg.process_param(sat_param,folder_names,satellite=True)
-    param["base_dir"] = sat_byday_directory
-    param["process_dir"] = os.path.join(sat_byday_directory,"Processed_Fields_files")
+    param["base_dir"] = sat_byday_mf_directory
+    param["process_dir"] = os.path.join(sat_byday_mf_directory,"Processed_Fields_files")
     
     return param
 
@@ -996,30 +1093,19 @@ def process_sat_org_bypoint_param(sat_param,folder_names,sat_bypoint_directory):
     
     return param
 
-@pytest.fixture()
-def process_sat_byday_mf_param(sat_param,folder_names,sat_byday_mf_directory):
-    '''
-    Define input parameters for process.process function for satellite data grouped by day.
-    Additional "base_dir" parameter added to point to Satellite_ByDay folder.
-    '''
-    param = pg.process_param(sat_param,folder_names,satellite=True)
-    param["base_dir"] = sat_byday_mf_directory
-    param["process_dir"] = os.path.join(sat_byday_mf_directory,"Processed_Fields_files")
+# @pytest.fixture()
+# def process_sat_byday_mf_param(sat_param,folder_names,sat_byday_mf_directory):
+#     '''
+#     Define input parameters for process.process function for satellite data grouped by day.
+#     Additional "base_dir" parameter added to point to Satellite_ByDay folder.
+#     '''
+#     param = pg.process_param(sat_param,folder_names,satellite=True)
+#     param["base_dir"] = sat_byday_mf_directory
+#     param["process_dir"] = os.path.join(sat_byday_mf_directory,"Processed_Fields_files")
     
-    return param
+#     return param
 
        
-def test_process_sat_byday(process_sat_byday_param,
-                                 subfolder_sat_byday,folder_names,sat_param):
-    '''
-    Test process function produces an output for satellite data grouped by day.
-    '''
-    
-    processed_folder = folder_names["processed_folder"]
-    pg.remove_processed_file(subfolder_sat_byday,processed_folder,sat_param)
-    
-    out = process.process(**process_sat_byday_param)
-
 def test_process_sat_bypoint(process_sat_bypoint_param,
                                    subfolder_sat_bypoint,folder_names,sat_param):
     '''
