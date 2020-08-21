@@ -386,13 +386,42 @@ def get_single_site(site, species_in,
         # If averaging is set, resample
         if average != None:
             
+            if keep_missing == True:
+                
+                # Create a dataset with one element and NaNs to prepend or append
+                ds_single_element = ds[dict(time = 0)]
+                for v in ds_single_element.variables:
+                    if v != "time":
+                        ds_single_element[v].values = np.nan
+                
+                ds_concat = []
+                
+                # Pad with an empty entry at the start date
+                if min(ds.time) > pd.Timestamp(start_date):
+                    ds_single_element_start = ds_single_element.copy()
+                    ds_single_element_start.time.values = pd.Timestamp(start_date)
+                    ds_concat.append(ds_single_element_start)
+
+                ds_concat.append(ds)
+                
+                # Pad with an empty entry at the end date
+                if max(ds.time) < pd.Timestamp(end_date):
+                    ds_single_element_end = ds_single_element.copy()
+                    ds_single_element_end.time.values = pd.Timestamp(end_date) - pd.Timedelta("1ns")
+                    ds_concat.append(ds_single_element_end)
+                
+                ds = xr.concat(ds_concat, dim="time")
+                    
+                # Now sort to get everything in the right order
+                ds = ds.sortby("time")      
+            
             # First, just do a mean resample on all variables
             print(f"... resampling to {average}")
             ds_resampled = ds.resample(time = average, keep_attrs = True
-                                       ).mean()
+                                       ).mean(skipna = False)
             # keep_attrs doesn't seem to work for some reason, so manually copy
             ds_resampled.attrs = ds.attrs.copy()
-
+            
             # For some variables, need a different type of resampling
             for var in ds.variables:
                 if "repeatability" in var:
@@ -402,7 +431,7 @@ def get_single_site(site, species_in,
                 elif "variability" in var:
                     # Calculate std of 1 min mf obs in av period as new vmf 
                     ds_resampled[var] = ds[var].resample(time = average,
-                                                         keep_attrs = True).std()
+                                                         keep_attrs = True).std(skipna=False)
 
                 # Copy over some attributes
                 if "long_name" in ds[var].attrs:
@@ -416,7 +445,6 @@ def get_single_site(site, species_in,
         rename = {}
 
         for var in ds.variables:
-
             if var.lower() == species_query.lower():
                 rename[var] = "mf"
             if "repeatability" in var:
@@ -425,14 +453,18 @@ def get_single_site(site, species_in,
                 rename[var] = "mf_variability"
             if "number_of_observations" in var:
                 rename[var] = "mf_number_of_observations"
+            if "status_flag" in var:
+                rename[var] = "status_flag"
+            if "integration_flag" in var:
+                rename[var] = "integration_flag"
 
         ds = ds.rename_vars(rename)
 
         # Append inlet and filename to attributes
         ds.attrs["filename"] = f[0]
-        if inlet == None:
+        if f[1] == "%":
             first_network = next(iter(site_info[site]))
-            ds.attrs["inlet"] = site_info["MHD"][first_network]["height"][0]
+            ds.attrs["inlet"] = site_info[site][first_network]["height"][0]
         else:
             ds.attrs["inlet"] = f[1]
         ds.attrs["instrument"] = f[2]
