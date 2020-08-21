@@ -215,7 +215,7 @@ def get_time_step(subfolder):
     return timeStep
 
 def footprint_concatenate_param(subfolder,read_met,folder_names,parameters,satellite,
-                                get_time_step=None):
+                                fields="mixr",get_time_step=None):
     '''
     Define parameters for input into footprint_concatenate() function. 
     Args:
@@ -231,6 +231,11 @@ def footprint_concatenate_param(subfolder,read_met,folder_names,parameters,satel
             Dictionary of parameters relevant to run - see satellite_param() or site_param() fixtures
         satellite (bool) :
             If the input data is satellite data
+        fields (str, optional) :
+            What are the input fields:
+                "mixr" or "conc"
+            Will use to determine folder to look for.
+            Default = "mixr"
         get_time_step (float / None, optional) :
             Optional if satellite=True; not needed if satellite=False.
             Time step value - see get_time_step function
@@ -242,13 +247,17 @@ def footprint_concatenate_param(subfolder,read_met,folder_names,parameters,satel
             Need to re-assign "datestr" key to one datestr value to param dictionary before passing to function **
     '''
     param = {}
-    param["fields_prefix"] = get_fields_prefix(subfolder,folder_names["fields_folder"])
     param["particle_prefix"] = get_particle_prefix(subfolder,folder_names["particles_folder"])
     param["met"] = read_met
     param["satellite"] = satellite
     
     datestr = create_datestr(parameters)
-    field_files = get_fields_files(subfolder,folder_names["fields_folder"],datestr)
+    if fields == "mixr":
+        param["fields_prefix"] = get_fields_prefix(subfolder,folder_names["mixr_folder"])
+        field_files = get_fields_files(subfolder,folder_names["mixr_folder"],datestr)
+    elif fields == "conc":
+        param["fields_prefix"] = get_fields_prefix(subfolder,folder_names["fields_folder"])
+        field_files = get_fields_files(subfolder,folder_names["fields_folder"],datestr)
     param["datestr"] = get_field_file_datestr(field_files)
     
     if satellite:
