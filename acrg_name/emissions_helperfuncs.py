@@ -42,6 +42,8 @@ import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 from acrg_countrymask import domain_volume
 from acrg_name import flux
+import pyproj
+import acrg_grid.regrid_xesmf
 
 if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
     data_path = os.getenv("DATA_PATH") 
@@ -51,6 +53,39 @@ else:
 
 output_directory = os.path.join(data_path,"LPDM/emissions/")
 
+def loadAscii(filename):
+    '''
+    Load an ASCII format grid of emissions from file
+
+    Parameters
+    ----------
+    filename : Name of ascii grid to read in
+
+    Returns
+    -------
+    output : xarray Dataset containing the data read from the file
+
+    '''
+    data = np.loadtxt(filename, skiprows = 6)
+    data = np.flip(data, axis=0)
+    header = np.loadtxt(filename,usecols=(1))[:6]
+    
+    #grab 'center' or 'corner' from header information
+    cell_type = np.loadtxt(filename,usecols=(0),dtype=str)[2][3:]
+    
+    data[data == float(header[5])] = np.nan
+    
+    xValues = np.arange(header[0]) * header[4] + header[2]
+    yValues = np.arange(header[1]) * header[4] + header[3]
+    
+    output = xr.Dataset({})
+    output["lat"] = xr.DataArray(yValues,dims="lat")
+    output["lon"] = xr.DataArray(xValues,dims="lon")
+    output["data"] = xr.DataArray(data,dims=["lat", "lon"])
+    output.attrs["celltype"] = cell_type
+    output.attrs["cellsize"] = header[4]
+    
+    return output
 
 def getGFED(year, lon_out, lat_out, timeframe='monthly', months = [1,2,3,4,5,6,7,8,9,10,11,12], species='CH4', incagr=False):
     """
@@ -653,6 +688,45 @@ def getnaeiandedgarCH4(lon_out, lat_out):
                              lat_out, lon_out)
     return(narr)
     
+def get_naei_public(filename, lon_out, lat_out):
+    '''
+    
+
+    Parameters
+    ----------
+    filename : TYPE
+        DESCRIPTION.
+    lon_out : TYPE
+        DESCRIPTION.
+    lat_out : TYPE
+        DESCRIPTION.
+    naei_sector : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    output : TYPE
+        DESCRIPTION.
+
+    '''
+    #OSGB projection for NAEI
+    OS_proj = pyproj.Proj(init='epsg:7405')
+    #lat-lon projection
+    ll_proj = pyproj.Proj(init='epsg:4326')
+    
+    raw_data = loadAscii(filename)
+    
+    #ensure the grid is cell-centered:
+    if raw_data.attrs["celltype"].lower() == "corner":
+        raw_data.lat = raw_data.lat + float(raw_data.attrs["cellsize"])/2
+        raw_data.lon = raw_data.lon + float(raw_data.attrs["cellsize"])/2
+    
+    regridded_data = acrg_grid.regrid_xesmf.regrid_uniform_cc(raw_data.data, raw_data.lat, raw_data.lon, lat_out, lon_out)
+    
+    output = regridded_data
+    
+    return output
+
 def getNAEI(year, lon_out, lat_out, species, naei_sector):
  
     """
