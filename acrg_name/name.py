@@ -916,6 +916,11 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
             else:    
                 site_modifier_fp = site
 
+                
+            if "platform" in site_info[site][network_site]:
+                platform = site_info[site][network_site]["platform"]
+            else:
+                platform = None    
             if height is not None:
 
                 if type(height) is not dict:
@@ -923,10 +928,13 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                     #return None 
                 height_site = height[site] 
             else:
-                #Find height closest to inlet
-                siteheights = [int(sh[:-4]) for sh in site_info[site][network_site]["height_name"]]
-                wh_height = np.where(abs(np.array(siteheights) - int(site_ds.inlet[:-1])) == np.min(abs(np.array(siteheights) - int(site_ds.inlet[:-1]))))
-                height_site = site_info[site][network_site]["height_name"][wh_height[0][0]] #NB often different to inlet
+                if platform == "satellite":
+                    height_site = site_info[site][network_site]["height_name"][0]
+                else:
+                    #Find height closest to inlet
+                    siteheights = [int(sh[:-4]) for sh in site_info[site][network_site]["height_name"]]
+                    wh_height = np.where(abs(np.array(siteheights) - int(site_ds.inlet[:-1])) == np.min(abs(np.array(siteheights) - int(site_ds.inlet[:-1]))))
+                    height_site = site_info[site][network_site]["height_name"][wh_height[0][0]] #NB often different to inlet
 
             # Get footprints
 
@@ -946,11 +954,6 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
             # If satellite data, check that the max_level in the obs and the max level in the processed FPs are the same
             # Set tolerance tin time to merge footprints and data   
             # This needs to be made more general to 'satellite', 'aircraft' or 'ship'                
-
-            if "platform" in site_info[site][network_site]:
-                platform = site_info[site][network_site]["platform"]
-            else:
-                platform = None
 
             if platform == "satellite":
             #if "GOSAT" in site.upper():
@@ -1040,21 +1043,22 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
     
     #Add "." attributes manually to be back-compatible
     fp_and_data[".species"] = species
-    scales = {}
-    for site in sites:
-        scales_list = []
-        for site_ds in data[site]:
-            scales_list += [site_ds.scale]
-            if not all(s==scales_list[0] for s in scales_list):
-                rt = []
-                for i in scales_list:
-                    if isinstance(i,list): rt.extend(flatten(i))
-                else: 
-                    rt.append(i)
-                scales[site] = rt
-            else:
-                scales[site] = scales_list[0]
-    fp_and_data[".scales"] = scales
+    if platform != "satellite":
+        scales = {}
+        for site in sites:
+            scales_list = []
+            for site_ds in data[site]:
+                scales_list += [site_ds.scale]
+                if not all(s==scales_list[0] for s in scales_list):
+                    rt = []
+                    for i in scales_list:
+                        if isinstance(i,list): rt.extend(flatten(i))
+                    else: 
+                        rt.append(i)
+                    scales[site] = rt
+                else:
+                    scales[site] = scales_list[0]
+        fp_and_data[".scales"] = scales
     if units:
         fp_and_data[".units"] = units
   
