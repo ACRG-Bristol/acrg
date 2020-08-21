@@ -38,6 +38,7 @@ import acrg_name.process as process
 import deprecated.process as process_org
 from acrg_name.name import open_ds
 import datetime
+import pandas as pd
 import pdb
 
 if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
@@ -70,6 +71,12 @@ def site_directory():
 def satellite_byday_mf_directory():
     ''' Define base directory containing grouped satellite footprint files '''
     directory = os.path.join(acrg_path,"tests/files/LPDM/raw_output/Satellite_ByDay_MF/")
+    return directory
+
+@pytest.fixture()
+def benchmark_output_directory():
+    ''' Define base directory containing grouped satellite footprint files '''
+    directory = os.path.join(acrg_path,"tests/files/output/")
     return directory
 
 @pytest.fixture()
@@ -165,7 +172,7 @@ def folder_names():
     param["mixr_fields_folder"] = "MixR_files"
     param["mixr_hourly_folder"] = "MixR_hourly"
     param["particles_folder"] = "Particle_files"
-    param["met_folder"] = "Met"
+    param["met_folder"] = "Met_daily"
     param["processed_folder"] = "Processed_Fields_files"
     param["obs_folder"] = "Observations"
 
@@ -337,6 +344,9 @@ def particle_file_benchmark():
     '''Benchmark infromation from the dummy particle file'''
     pl_n = np.zeros((2,1,391,20))
     pl_w = np.zeros((2,1,340,20))
+    mean_age_n = np.zeros((2,1,391,20))
+    mean_age_w = np.zeros((2,1,340,20))
+    
     pl_n[0,0,66,1] = 0.25
     pl_n[0,0,89,0] = 0.25
     pl_n[1,0,87,0] = 0.25
@@ -347,7 +357,39 @@ def particle_file_benchmark():
     pl_w[1,0,197,0] = 0.25
     pl_w[1,0,213,1] = 0.25
     
-    return pl_n, pl_w
+    mean_age_n[0,0,66,1] = 100
+    mean_age_n[0,0,89,0] = 120
+    mean_age_n[1,0,87,0] = 100
+    mean_age_n[1,0,95,1] = 120
+    
+    mean_age_w[0,0,197,1] = 100
+    mean_age_w[0,0,207,0] = 120
+    mean_age_w[1,0,197,0] = 100
+    mean_age_w[1,0,213,1] = 120
+    
+    return pl_n, pl_w, mean_age_n, mean_age_w
+
+@pytest.fixture()
+def met_file_benchmark():
+    '''
+    Defining dummy values for the satellite met data. Should be consistent with
+    the dummy satellite met data which we can check against
+    
+    TODO: May want to read this in in some way rather than just define values
+    '''
+    values = {}
+    
+    values["release_lon"] = [-59.43330,-59.43330]
+    values["release_lat"] = [13.16670,13.16670]
+    values["temp"] = [27.07520,26.98370]
+    values["PBLH"] = [778.9576,782.4219]
+    values["press"] = [101161.4,101163.7]
+    values["wind"] = [5.697351,5.695338]
+    values["wind_direction"] = [72.90572,76.33878]
+
+    df = pd.DataFrame(values)
+
+    return df
     
 def test_read_mixr_file(mixr_file_information, get_mixr_files_site):
     ''' Test read_file function '''
@@ -355,9 +397,9 @@ def test_read_mixr_file(mixr_file_information, get_mixr_files_site):
     # true values defined based on input file
     header_bench, column_headings_bench, data_arrays_bench, namever_bench, lons_bench, lats_bench, levs_bench, time_bench, timeStep_bench = mixr_file_information
 
-    fields_file = get_mixr_files_site[0]
+    fields_file_1 = get_mixr_files_site[0]
 
-    header, column_headings, data_arrays, namever = process.read_file(fields_file)
+    header, column_headings, data_arrays, namever = process.read_file(fields_file_1)
     
     assert np.array_equal(data_arrays, data_arrays_bench)
     assert header == header_bench
@@ -567,7 +609,7 @@ def get_particle_files(subfolder,particles_folder,field_files):
         particle_file_search = glob.glob(particle_file_search_string)
         if particle_file_search:
             particle_files.extend(particle_file_search)
-    
+
     return particle_files
 
 @pytest.fixture()
@@ -596,14 +638,14 @@ def get_particle_files_satellite_bypoint(subfolder_satellite_bypoint,folder_name
 
 @pytest.fixture()
 def get_particle_files_site(subfolder_site,folder_names,
-                                         get_fields_files_site):
+                                         get_mixr_files_site):
     ''' 
     Get filenames of particle files for satellite run separated by point.
     Note: filenames found are based on datestr extracted from the input field files.
     '''
     particles_folder = folder_names["particles_folder"]
     particle_files = get_particle_files(subfolder_site,particles_folder,
-                                        get_fields_files_site)
+                                        get_mixr_files_site)
     return particle_files
 
 @pytest.fixture()
@@ -649,23 +691,26 @@ def test_particle_locations_satellite_bypoint(define_grid_satellite_bypoint,get_
         assert out
         ### TODO: ADD MORE STRINGENT TEST
 
-def test_particle_locations_site(particle_file_benchmark,get_particle_files_site,define_heights):
+def test_particle_locations_site(particle_file_benchmark,mixr_file_information,get_particle_files_site,define_heights):
     '''
     Test particle_locations() function can produce the correct output for a. dummy particle location file.
     '''
+
+    header_bench, column_headings_bench, data_arrays_bench, namever_bench, lons_bench, lats_bench, levs_bench, time_bench, timeStep_bench = mixr_file_information
+
+    particle_file_1 = get_particle_files_site[0]
+    heights =  define_heights
     
-    particle_files = get_particle_files_site
-    heights =  define_heights   
+    pl_n_bench, pl_w_bench, mean_age_n_bench, mean_age_w_bench = particle_file_benchmark
     
-    pl_n_bench, pl_w_bench = particle_file_benchmark
-    
-    for particle_file in particle_files:
-        hist = process.particle_locations(particle_file,time,lats,lons,levs,heights,id_is_lev=False,
-                                     satellite=False)
-        
-        assert np.array_equals(hist["pl_n"].values,pl_n_bench)
-        assert np.array_equals(hist["pl_w"].values,pl_w_bench)
-        
+
+    hist = process.particle_locations(particle_file_1,time_bench,lats_bench,lons_bench,levs_bench, heights,id_is_lev=False,
+                                 satellite=False)
+
+    assert np.array_equal(hist["pl_n"].values,pl_n_bench)
+    assert np.array_equal(hist["pl_w"].values,pl_w_bench)
+    assert np.array_equal(hist["mean_age_n"].values,mean_age_n_bench)
+    assert np.array_equal(hist["mean_age_w"].values,mean_age_w_bench)        
 
 @pytest.fixture()
 def define_grid_org_satellite_bypoint(read_fields_file_satellite_bypoint):
@@ -821,15 +866,19 @@ def test_read_met_satellite_bypoint(get_met_files_satellite_bypoint,satellite_pa
 
     assert len(out.index) == total_file_num
 
-def test_read_met_site(get_met_files_site):
+def test_read_met_site(get_met_files_site, met_file_benchmark, read_met_site):
     '''
     Test read_met function can read in site met data successfully.
     '''
     met_files_1 = get_met_files_site[0]
     
-    out = process.read_met(met_files_1,vertical_profile=False)
+    out = process.read_met(met_files_1,vertical_profile=False, satellite=False)
     
-    #TODO: Find a suitable test to add here
+    expected = met_file_benchmark
+    compare_columns = expected.columns
+    
+    for col in compare_columns:
+        assert np.array_equal(out[col],expected[col])
 
 @pytest.mark.skip(reason="No longer able to compare after update to use mole fraction output")
 def test_read_met_satellitebypoint_against_org(get_met_files_satellite_bypoint,satellite_param):
@@ -922,7 +971,7 @@ def read_met_separate_satellite_bypoint(get_met_files_satellite_bypoint):
 @pytest.fixture()
 def read_met_site(get_met_files_site):
     ''' Read met data for site data. '''
-    return read_met_files(get_met_files_site,satellite=False)
+    return read_met_files(get_met_files_site, satellite=False)
 
 def get_obs_prefix(subfolder,obs_folder):
     '''
@@ -1060,18 +1109,29 @@ def test_footprint_array_satellite_bypoint(get_fields_files_satellite_bypoint,
     
     print(out["wind_direction"])
 
-def test_footprint_array_site(get_fields_files_site,
+def test_footprint_array_site(benchmark_output_directory,get_mixr_files_site,
                               get_particle_files_site,
-                              read_met_site):
+                              get_met_files_site):
     '''
     Test footprint_array function can return an output for site files.
     '''
-    fields_file_1 = get_fields_files_site[0]
-    particle_file_1 = get_particle_files_site[0]
-    met = read_met_site[0]
-
     
-    out = process.footprint_array(fields_file_1,particle_file_1,met,satellite=False)
+    fp_bench_file = os.path.join(benchmark_output_directory,'Test_process_footprint_array.nc')
+    
+    with xray.open_dataset(fp_bench_file) as f: 
+        fp_bench = f.load()
+    
+    fields_file_1 = get_mixr_files_site[0]
+    particle_file_1 = get_particle_files_site[0]
+    
+    met_files_1 = get_met_files_site[0]
+    
+    met = process.read_met(met_files_1,vertical_profile=False, satellite=False)
+    
+    out = process.footprint_array(fields_file_1, particle_file_1, met)
+    
+    for key in fp_bench.keys():
+        assert np.array_equal(fp_bench[key], out[key])
 
 @pytest.mark.skip(reason="No longer able to compare after update to use mole fraction output")
 def test_footprint_array_satellite_bypoint_against_org(get_fields_files_satellite_bypoint,
