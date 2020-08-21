@@ -78,6 +78,15 @@ def bc_basis_directory():
     directory = os.path.join(acrg_path,"tests/files/LPDM/bc_basis_functions/")
     return directory
 
+@pytest.fixture()
+def fs_mock(fs, fp_directory, flux_directory, bc_directory, basis_directory, bc_basis_directory):
+    #add the real jsons to the fake file system:
+    fs.add_real_file(os.path.join(acrg_path, "acrg_species_info.json"))
+    fs.add_real_file(os.path.join(acrg_path, "acrg_site_info.json"))
+    #create footprint files
+    fs.create_file(os.path.join(fp_directory, "EUROPE", "MHD-10magl_EUROPE_201402.nc"))
+    fs.create_file(os.path.join(fp_directory, "EUROPE", "MHD-10magl_EUROPE_201405.nc"))
+    fs.create_file(os.path.join(fp_directory, "EUROPE", "TAC-100magl_EUROPE_201402.nc"))
 
 @pytest.fixture(scope="module")
 def measurement_param():
@@ -161,22 +170,28 @@ def filenames_param(measurement_param,fp_directory):
     return input_param
 
 @pytest.mark.basic
-def test_filenames(filenames_param):
+def test_filenames(fs_mock, filenames_param):
     '''
     Test filenames function can find files of appropriate naming structure.
-    Currently expect fp_directory/domain/site + "*" + "-" + height + "*" + domain + "*" + yearmonth + "*.nc"
     '''
     out = name.filenames(**filenames_param)
-    assert out
+    assert out == [os.path.join(filenames_param["fp_directory"],"EUROPE/MHD-10magl_EUROPE_201402.nc")]
 
-def test_filenames_noheight(filenames_param):
+def test_filenames_noheight(fs_mock, filenames_param):
     '''
     Test filenames() function can find height if it is not specified.
-    Currently expect fp_directory/domain/site + "*" + "-" + height + "*" + domain + "*" + yearmonth + "*.nc"
     '''
     filenames_param["height"] = None
     out = name.filenames(**filenames_param)
-    assert out
+    assert out == [os.path.join(filenames_param["fp_directory"],"EUROPE/MHD-10magl_EUROPE_201402.nc")]
+    
+def test_filenames_shortlived_notavailable(fs_mock, filenames_param):
+    '''
+    Test filenames() function refuses 30 day integrated footprints if species is shortlived
+    '''
+    filenames_param["species"] = "CHBr3"
+    out = name.filenames(**filenames_param)
+    assert len(out) == 0
 
 #%%
 #----------------------------
@@ -731,88 +746,83 @@ def fp_data_H_pblh_merge(fp_data_H_merge):
         fp_data_H_pblh = fp_data_H_pblh[site].assign(**{"pblh_threshold":500})
     return fp_data_H_pblh
     
-def add_local_ratio(fp_data_H):
-    #TODO: Why is this here?
-    sites = [key for key in list(fp_data_H.keys()) if key[0] != '.']
-    
-    release_lons=np.zeros((len(sites)))
-    release_lats=np.zeros((len(sites)))
-    for si, site in enumerate(sites):
-        release_lons[si]=fp_data_H[site].release_lon[0].values
-        release_lats[si]=fp_data_H[site].release_lat[0].values
-        dlon=fp_data_H[site].sub_lon[1].values-fp_data_H[site].sub_lon[0].values
-        dlat=fp_data_H[site].sub_lat[1].values-fp_data_H[site].sub_lat[0].values
-        local_sum=np.zeros((len(fp_data_H[site].mf)))
-       
-        for ti in range(len(fp_data_H[site].mf)):
-            release_lon=fp_data_H[site].release_lon[ti].values
-            release_lat=fp_data_H[site].release_lat[ti].values
-            wh_rlon = np.where(abs(fp_data_H[site].sub_lon.values-release_lon) < dlon/2.)
-            wh_rlat = np.where(abs(fp_data_H[site].sub_lat.values-release_lat) < dlat/2.)
-            local_sum[ti] = old_div(np.sum(fp_data_H[site].sub_fp[
-            wh_rlat[0][0]-2:wh_rlat[0][0]+3,wh_rlon[0][0]-2:wh_rlon[0][0]+3,ti].values),np.sum(
-            fp_data_H[site].fp[:,:,ti].values))  
-            
-        local_ds = xray.Dataset({'local_ratio': (['time'], local_sum)},
-                                        coords = {'time' : (fp_data_H[site].coords['time'])})
-    
-        fp_data_H[site] = fp_data_H[site].merge(local_ds)
-    
-    return fp_data_H
 
 @pytest.fixture()
-def fp_data_H_lr_merge(fp_data_H_merge):
+def dummy_timeseries_dict_gen():
     ''' '''
-    fp_data_H_lr = add_local_ratio(fp_data_H_merge.copy())
-    return fp_data_H_lr
+#     time = pd.date_range("2010-01-01", "2010-01-02", freq="1H")
+#     data = np.arange(len(time))
+#     release_lon = np.repeat(10., len(time))
+#     testds = xray.Dataset({"mf" : (["time"], data), "release_lon":(["time"],release_lon)}, coords={"time":(["time"],time)})
+#     dummy_timeseries_dict = {"TEST":testds}
+    
+    time = pd.date_range("2010-01-01", "2010-01-02", freq="1H")
+    data = np.arange(len(time))
+    release_lon = np.repeat(10., len(time))
+    release_lat = np.repeat(10., len(time))
+    lat = np.arange(10)+5
+    lon = np.arange(10)+5
+    fp = np.ones((10,10,len(time)))
+    fp[3:8,3:8,:] = 0.0
+    fp[5,5,10:] = 100.
+    testds = xray.Dataset({"mf" : (["time"], data), 
+                           "release_lon":(["time"],release_lon),
+                           "release_lat":(["time"],release_lat),
+                           "fp":(["lat","lon","time"],fp)}, 
+                          coords={"time":(["time"],time),
+                                  "lat":(["lat"],lat),
+                                  "lon":(["lon"],lon)})
+    dummy_timeseries_dict = {"TEST":testds}
+    
+    return dummy_timeseries_dict
 
-def test_filtering_median(fp_data_H_merge):
+def test_filtering_median(dummy_timeseries_dict_gen):
     '''
     Test filtering() function can produce an output using "daily_median" filter
     '''
     filters = ["daily_median"]
-    out = name.filtering(fp_data_H_merge,filters)
-    assert out
+    out = name.filtering(dummy_timeseries_dict_gen,filters)
+    assert np.isclose(out["TEST"].mf.values, np.array([11.5,24.])).all()
 
-def test_filtering_daytime(fp_data_H_merge):
+def test_filtering_daytime(dummy_timeseries_dict_gen):
     '''
     Test filtering() function can produce an output using "daytime" filter
     '''
     filters = ["daytime"]
-    out = name.filtering(fp_data_H_merge,filters)
-    assert out
+    out = name.filtering(dummy_timeseries_dict_gen,filters)
+    assert np.isclose(out["TEST"].mf.values, np.array([11, 12, 13, 14, 15])).all()
 
-def test_filtering_nighttime(fp_data_H_merge):
+def test_filtering_nighttime(dummy_timeseries_dict_gen):
     '''
     Test filtering() function can produce an output using "nighttime" filter
     '''
     filters = ["nighttime"]
-    out = name.filtering(fp_data_H_merge,filters)
-    assert out
+    out = name.filtering(dummy_timeseries_dict_gen,filters)
+    assert np.isclose(out["TEST"].mf.values, np.array([0, 1, 2, 3, 23, 24])).all()
 
-def test_filtering_noon(fp_data_H_merge):
+def test_filtering_noon(dummy_timeseries_dict_gen):
     '''
     Test filtering() function can produce an output using "pblh_gt_threshold" filter
     '''
     filters = ["noon"]
-    out = name.filtering(fp_data_H_merge,filters)
-    assert out
+    out = name.filtering(dummy_timeseries_dict_gen,filters)
+    assert np.isclose(out["TEST"].mf.values, np.array([12])).all()
 
-def test_filtering_6hrmean(fp_data_H_merge):
+def test_filtering_6hrmean(dummy_timeseries_dict_gen):
     '''
     Test filtering() function can produce an output using "pblh_gt_threshold" filter
     '''
     filters = ["six_hr_mean"]
-    out = name.filtering(fp_data_H_merge,filters)
-    assert out
+    out = name.filtering(dummy_timeseries_dict_gen,filters)
+    assert np.isclose(out["TEST"].mf.values, np.array([2.5, 8.5, 14.5, 20.5, 24.0])).all()
 
-def test_filtering_local(fp_data_H_lr_merge):
+def test_filtering_local(dummy_timeseries_dict_gen):
     '''
     Test filtering() function can produce an output using "local_influence" filter
     '''
     filters = ["local_influence"]
-    out = name.filtering(fp_data_H_lr_merge,filters)
-    assert out
+    out = name.filtering(dummy_timeseries_dict_gen,filters)
+    assert np.isclose(out["TEST"].mf.values, np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])).all()
 
 # TODO: 
 #    Not working yet
@@ -836,14 +846,14 @@ def test_filtering_local(fp_data_H_lr_merge):
 #    assert out
 
 @pytest.mark.long
-def test_filtering_mult(fp_data_H_lr_merge):
+def test_filtering_mult(dummy_timeseries_dict_gen):
     '''
     Test filtering() function can produce an output using multiple (non-conflicting) filters ("nighttime and 
     "local_influence")
     '''
     filters = ["local_influence","nighttime"]
-    out = name.filtering(fp_data_H_lr_merge,filters)
-    assert out
+    out = name.filtering(dummy_timeseries_dict_gen,filters)
+    assert np.isclose(out["TEST"].mf.values, np.array([0, 1, 2, 3])).all()
 
 #----------------------------
 
