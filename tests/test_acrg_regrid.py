@@ -32,13 +32,13 @@ else:
 @pytest.fixture(scope="module")
 def gen_netcdf_file_new():
     ''' Define directory and file containing footprint netcdf example. '''
-    filename_path = os.path.join(acrg_path,"tests/files/LPDM/emissions/EUROPE/ch4_EUROPE_2013.nc")
+    filename_path = os.path.join(acrg_path,"tests/files/name_tests/emissions/EUROPE/ch4_EUROPE_2013.nc")
     return filename_path
 
 @pytest.fixture(scope="module")
 def gen_netcdf_file_old():
     ''' Define directory and file containing emissions netcdf example. '''
-    filename_path = os.path.join(acrg_path,"tests/files/data/ECMWF_CAMS/BC_CAMS_ch4_80.219.10.83_3x3_2017-12-01.nc")
+    filename_path = os.path.join(acrg_path,"tests/files/ECMWF_CAMS/BC_CAMS_ch4_80.219.10.83_3x3_2017-12-01.nc")
     return filename_path
 
 

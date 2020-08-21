@@ -46,6 +46,7 @@ if data_path is None:
 fields_file_path = join(data_path, 'LPDM/fp_NAME/')
 basis_dir = join(data_path, 'LPDM/basis_functions/')
 bc_basis_dir = join(data_path,'LPDM/bc_basis_functions/')
+bc_dir = join(data_path, 'LPDM/bc/')
 
 
 def basis_transd(domain, time, basis_case = "sub-transd", sub_lon_min = None,
@@ -303,7 +304,7 @@ def basis_bc_all_gradients(domain, time, species, units='ppb', basis_case='horiz
 
     heights = list(range(500,20500,1000))
     
-    bc_ds =  name.boundary_conditions(domain, species)
+    bc_ds =  name.boundary_conditions(domain, species, bc_directory=bc_dir)
              
     bc_ds = bc_ds.sel(time = time)
 
@@ -620,7 +621,7 @@ def basis_bc_pca(domain, time, species, units='ppb', basis_case='pca', numregion
 
     # find principal companents of MOZART vmr
 
-    bc_ds =  name.boundary_conditions(domain, species)
+    bc_ds =  name.boundary_conditions(domain, species, bc_directory=bc_dir)
     bc_ds = bc_ds.sel(time = time)
     
     if units == 'ppb':
