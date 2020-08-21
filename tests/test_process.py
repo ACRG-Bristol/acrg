@@ -76,7 +76,7 @@ def satellite_byday_mf_directory():
 @pytest.fixture()
 def benchmark_output_directory():
     ''' Define base directory containing grouped satellite footprint files '''
-    directory = os.path.join(acrg_path,"tests/files/output/")
+    directory = os.path.join(acrg_path,"tests/files/LPDM/raw_output/benchmarks/")
     return directory
 
 @pytest.fixture()
@@ -866,7 +866,7 @@ def test_read_met_satellite_bypoint(get_met_files_satellite_bypoint,satellite_pa
 
     assert len(out.index) == total_file_num
 
-def test_read_met_site(get_met_files_site, met_file_benchmark, read_met_site):
+def test_read_met_site(get_met_files_site, met_file_benchmark):
     '''
     Test read_met function can read in site met data successfully.
     '''
@@ -1111,7 +1111,7 @@ def test_footprint_array_satellite_bypoint(get_fields_files_satellite_bypoint,
 
 def test_footprint_array_site(benchmark_output_directory,get_mixr_files_site,
                               get_particle_files_site,
-                              get_met_files_site):
+                              read_met_site):
     '''
     Test footprint_array function can return an output for site files.
     '''
@@ -1124,9 +1124,11 @@ def test_footprint_array_site(benchmark_output_directory,get_mixr_files_site,
     fields_file_1 = get_mixr_files_site[0]
     particle_file_1 = get_particle_files_site[0]
     
-    met_files_1 = get_met_files_site[0]
+#     met_files_1 = get_met_files_site[0]
     
-    met = process.read_met(met_files_1,vertical_profile=False, satellite=False)
+#     met = process.read_met(met_files_1,vertical_profile=False, satellite=False)
+
+    met = read_met_site
     
     out = process.footprint_array(fields_file_1, particle_file_1, met)
     
