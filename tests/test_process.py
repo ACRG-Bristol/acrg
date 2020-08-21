@@ -319,6 +319,8 @@ def mixr_file_information():
     data_arrays[1][131,0] = 3
     data_arrays[1][135,1] = 4
     
+    namever = 2
+    
     lons = np.arange(-100.188, -100.188+0.352*391-0.01, 0.352) + 0.352/2
     lats = np.arange(-26.126 , -26.126 +0.234*340-0.01, 0.234) + 0.234/2
     
@@ -328,23 +330,42 @@ def mixr_file_information():
     
     timeStep = 12
     
-    return header, column_headings, data_arrays, lons, lats, levs, time, timeStep
+    return header, column_headings, data_arrays, namever, lons, lats, levs, time, timeStep
 
+@pytest.fixture()
+def particle_file_benchmark():
+    '''Benchmark infromation from the dummy particle file'''
+    pl_n = np.zeros((2,1,391,20))
+    pl_w = np.zeros((2,1,340,20))
+    pl_n[0,0,66,1] = 0.25
+    pl_n[0,0,89,0] = 0.25
+    pl_n[1,0,87,0] = 0.25
+    pl_n[1,0,95,1] = 0.25
+    
+    pl_w[0,0,197,1] = 0.25
+    pl_w[0,0,207,0] = 0.25
+    pl_w[1,0,197,0] = 0.25
+    pl_w[1,0,213,1] = 0.25
+    
+    return pl_n, pl_w
+    
 def test_read_mixr_file(mixr_file_information, get_mixr_files_site):
     ''' Test read_file function '''
 
     # true values defined based on input file
-    header_bench, column_headings_bench, data_arrays_bench, lons_bench, lats_bench, levs_bench, time_bench, timeStep_bench = mixr_file_information
+    header_bench, column_headings_bench, data_arrays_bench, namever_bench, lons_bench, lats_bench, levs_bench, time_bench, timeStep_bench = mixr_file_information
 
     fields_file = get_mixr_files_site[0]
 
-    header, column_headings, data_arrays = process.read_file(fields_file)
+    header, column_headings, data_arrays, namever = process.read_file(fields_file)
     
     assert np.array_equal(data_arrays, data_arrays_bench)
     assert header == header_bench
     
     for ii in range(len(data_arrays_bench)):
         assert np.array_equal(data_arrays[ii],data_arrays_bench[ii])
+        
+    assert namever == namever_bench
 
 @pytest.fixture()
 def read_fields_file_satellite_byday(get_fields_files_satellite_byday):
@@ -437,11 +458,11 @@ def test_define_grid_site(mixr_file_information):
     Test that grid can be defined correctly when extracted from a NAME run over site data.
     '''
     
-    header_bench, column_headings_bench, data_arrays_bench, lons_bench, lats_bench, levs_bench, time_bench, timeStep_bench = mixr_file_information
+    header_bench, column_headings_bench, data_arrays_bench, namever_bench, lons_bench, lats_bench, levs_bench, time_bench, timeStep_bench = mixr_file_information
     
-    lons, lats, levs, time, timeStep = process.define_grid(header_bench,column_headings_bench,satellite=False)
+    lons, lats, levs, time, timeStep = process.define_grid(namever_bench, header_bench,column_headings_bench,satellite=False)
 
-    assert np.array_equal(lons,lonsench)
+    assert np.array_equal(lons,lons_bench)
     assert np.array_equal(lats,lats_bench)
     assert levs == levs_bench
     assert time == time_bench
@@ -628,20 +649,23 @@ def test_particle_locations_satellite_bypoint(define_grid_satellite_bypoint,get_
         assert out
         ### TODO: ADD MORE STRINGENT TEST
 
-def test_particle_locations_site(define_grid_site,get_particle_files_site,define_heights,site_param):
+def test_particle_locations_site(particle_file_benchmark,get_particle_files_site,define_heights):
     '''
-    Test particle_locations() function can produce the correct output for satellite data when points are separate.
+    Test particle_locations() function can produce the correct output for a. dummy particle location file.
     '''
-    lons, lats, levs, time, timeStep = define_grid_site
+    
     particle_files = get_particle_files_site
     heights =  define_heights   
     
-    for particle_file in particle_files:
-        out = process.particle_locations(particle_file,time,lats,lons,levs,heights,id_is_lev=False,
-                                     satellite=False)
+    pl_n_bench, pl_w_bench = particle_file_benchmark
     
-        assert out
-        ### TODO: ADD MORE STRINGENT TEST
+    for particle_file in particle_files:
+        hist = process.particle_locations(particle_file,time,lats,lons,levs,heights,id_is_lev=False,
+                                     satellite=False)
+        
+        assert np.array_equals(hist["pl_n"].values,pl_n_bench)
+        assert np.array_equals(hist["pl_w"].values,pl_w_bench)
+        
 
 @pytest.fixture()
 def define_grid_org_satellite_bypoint(read_fields_file_satellite_bypoint):
