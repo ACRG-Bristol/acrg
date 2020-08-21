@@ -722,7 +722,6 @@ def get_obs(sites, species,
     average = check_list_and_length(average, sites, "average")
     network = check_list_and_length(network, sites, "network")
     instrument = check_list_and_length(instrument, sites, "instrument")
-    version = check_list_and_length(version, sites, "version")
     
     # Get data
     obs = {}
@@ -740,24 +739,20 @@ def get_obs(sites, species,
                                    average = average[si],
                                    network = network[si],
                                    instrument = instrument[si],
-                                   version = version[si],
                                    keep_missing = keep_missing,
                                    status_flag_unflagged = status_flag_unflagged[si],
                                    data_directory = data_directory,
                                    calibration_scale = calibration_scale)
-      
     
     # Raise error if units don't match
-    return(obs)
-
-    units = [s[0].mf.attrs["units"] for s in obs.items()]
+    units = [s[0].mf.attrs["units"] for k, s in obs.items()]
     if len(set(units)) > 1:
         siteUnits = [':'.join([site, u]) for (site, u) in zip(sites, str(units)) if u is not None]
         errorMessage = f'''Units don't match for these sites: {siteUnits}'''
         raise ValueError(errorMessage)
 
     # Warning if scales don't match
-    scales = [s[0].attrs["scale"] for s in obs.items()]
+    scales = [s[0].attrs["scale"] for k, s in obs.items()]
     if len(set(scales)) > 1:
         siteScales = [':'.join([site, scale]) for (site, scale) in zip(sites, scales) if scale is not None]
         warningMessage = '''WARNING: scales don't match for these sites:
