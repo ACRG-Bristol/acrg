@@ -746,8 +746,8 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
         load_bc (bool)       : True includes boundary conditions in output, False does not. Default True.
         calc_timeseries (bool) : True calculates modelled mole fractions for each site using fluxes, False does not. Default True.
         calc_bc (bool)       : True calculates modelled baseline for each site using boundary conditions, False does not. Default True.
-        HiTRes (bool)        : [This keyword has been removed and its functionality commented out] Set to True to include HiTRes footprints in output. Default False.
-        average (dict)       : Averaging period for each dataset (for each site). Should be a dictionary with
+        HiTRes (bool)        : Set to True to include HiTRes footprints in output. Default False.
+        average (dict)       : [This keyword has been removed and its functionality commented out] Averaging period for each dataset (for each site). Should be a dictionary with
                                {site: averaging_period} key:value pairs.
                                Each value should be a string of the form e.g. "2H", "30min" (should match
                                pandas offset aliases format).
