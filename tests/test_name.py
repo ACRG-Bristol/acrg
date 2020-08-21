@@ -106,6 +106,21 @@ def measurement_param_small():
     return param
 
 @pytest.fixture(scope="module")
+def small_domain_param():
+    ''' Define set of parameters to be used with tests on the SMALL-DOMAIN '''
+    
+    param = {}
+    param["sites"] = ["MHD"]
+    param["domain"] = "SMALL-DOMAIN"
+    param["start"] = "2014-02-01"
+    param["end"] = "2014-03-01"
+    param["heights"] = ["10magl"]
+    param["species"] = "ch4"
+    param["basis_case"] = "simple-grid"
+    
+    return param
+
+@pytest.fixture(scope="module")
 def basis_function_param():
     ''' Define set of parameters for basis functions to be used throughout the test suite '''
     param = {}
@@ -580,6 +595,13 @@ def fp_data_merge(data,measurement_param_small,fp_directory,flux_directory,bc_di
                                      flux_directory=flux_directory,bc_directory=bc_directory)
     return out
 
+@pytest.fixture(scope="module")
+def fp_data_merge_small_domain(data,small_domain_param,fp_directory,flux_directory,bc_directory):
+    ''' Create fp_and_data dictionary from footprints_data_merge() function '''
+    out = name.footprints_data_merge(data,domain=small_domain_param["domain"],fp_directory=fp_directory,
+                                     flux_directory=flux_directory,bc_directory=bc_directory)
+    return out
+    
 @pytest.fixture()
 def fp_sensitivity_param(fp_data_merge,measurement_param_small,basis_function_param,basis_directory,flux_directory):
     ''' Define parameters for fp_sensitivity() function '''
@@ -592,12 +614,50 @@ def fp_sensitivity_param(fp_data_merge,measurement_param_small,basis_function_pa
 
     return input_param
 
+@pytest.fixture()
+def fp_sensitivity_small_domain_param(fp_data_merge_small_domain,small_domain_param,basis_directory,flux_directory):
+    ''' Define parameters for fp_sensitivity() function '''
+    
+    input_param = {}
+    input_param["fp_and_data"] = fp_data_merge_small_domain
+    input_param["domain"] = small_domain_param["domain"]
+    input_param["basis_case"] = small_domain_param["basis_case"]
+    input_param["basis_directory"] = basis_directory
+
+    return input_param
+
 def test_fp_sensitivity(fp_sensitivity_param):
     '''
     Test fp_sensitivity() function can create suitable output object from standard parameters.
     '''
     out = name.fp_sensitivity(**fp_sensitivity_param)
+    
     assert out
+    
+def test_fp_sensitivity_H(small_domain_param,fp_sensitivity_small_domain_param):
+    '''
+    Test fp_sensitivity() function can create suitable output object from standard parameters.
+    '''
+    fp_data_H = name.fp_sensitivity(**fp_sensitivity_small_domain_param)
+    lat_shape = fp_data_H['.flux']['all'].flux.values.shape[0]
+    lon_shape = fp_data_H['.flux']['all'].flux.values.shape[1]
+    time_shape = fp_data_H[small_domain_param["sites"][0]].fp.values.shape[2]
+    
+    H_all = fp_data_H[small_domain_param["sites"][0]].fp.values * fp_data_H['.flux']['all'].flux.values
+    H_all_flat = H_all.reshape(lat_shape*lon_shape,time_shape)
+    
+    with xray.open_dataset(glob.glob(os.path.join(fp_sensitivity_small_domain_param["basis_directory"],
+                                                  fp_sensitivity_small_domain_param["domain"],
+                                                  fp_sensitivity_small_domain_param["basis_case"]+'*.nc'))[0]) as basis:
+        
+        basis_flat = np.ravel(np.squeeze(basis.basis.values))
+    
+    H = np.zeros(((int(np.max(basis_flat)),time_shape)))
+    
+    for val in range(int(np.max(basis_flat))):
+        H[val,:] = np.sum(H_all_flat[np.where(basis_flat == val+1)[0],:],axis=0)
+    
+    assert np.all(H == fp_data_H[small_domain_param["sites"][0]].H.values) 
 
 #%%
 #----------------------------
