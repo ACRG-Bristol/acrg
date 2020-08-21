@@ -28,13 +28,9 @@ Calculate Cape Grim monthly means, with baseline filtering:
 Created on Sat Dec 27 17:17:01 2014
 @author: chxmr
 """
-from __future__ import print_function
-from __future__ import division
-
 from builtins import zip
 from builtins import str
 from builtins import range
-from past.utils import old_div
 import numpy as np
 import pandas as pd
 import glob
@@ -45,25 +41,20 @@ import xarray as xr
 from collections import OrderedDict
 import sys
 import sqlite3
+from acrg_config.paths import paths
 
-if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
-    acrg_path = os.getenv("ACRG_PATH")
-    data_path = os.getenv("DATA_PATH")
-    obs_directory = os.path.join(data_path,"obs")    
-else:
-    from acrg_config.paths import paths
-
-    acrg_path = paths.acrg
-    obs_directory = paths.obs
+acrg_path = paths.acrg
+obs_directory = paths.obs
 
 #Get site info and species info from JSON files
 #with open(acrg_path / "acrg_species_info.json") as f:
-with open(os.path.join(acrg_path,"acrg_species_info.json")) as f:
+with open(acrg_path / "acrg_species_info.json") as f:
     species_info=json.load(f)
 
-with open(os.path.join(acrg_path,"acrg_site_info.json")) as f:
+with open(acrg_path / "acrg_site_info.json") as f:
     site_info=json.load(f, object_pairs_hook=OrderedDict)
 
+    
 def is_number(s):
     """
     Is it a number?
@@ -74,6 +65,7 @@ def is_number(s):
     except ValueError:
         return False
 
+    
 def synonyms(search_string, info, alternative_label = "alt"):
     '''
     Check to see if there are other names that we should be using for
@@ -228,8 +220,6 @@ def get_single_site(site, species_in,
     if species != species_in:
         print("... changing species from %s to %s" % (species_in, species))
     
-    
-    
     # Open defaults file
     df_defaults = pd.read_csv(paths.acrg / "acrg_obs/acrg_obs_defaults.csv",
                              parse_dates = ["startDate", "endDate"])
@@ -240,8 +230,6 @@ def get_single_site(site, species_in,
     df_defaults["endDate"] = df_defaults["endDate"].fillna(pd.Timestamp("2100-01-01"))
 
     df_defaults.replace(np.nan, "%", inplace = True)
-
-    
     
     # Read defaults database into memory
     conn = sqlite3.connect(":memory:")
@@ -349,7 +337,6 @@ def get_single_site(site, species_in,
                         )
                 '''
 
-
         # If species explicitly appears in the defaults file, enforce matching to that value
         # This is needed in the case that a species is measured on two instruments, 
         #  but one instrument measures a whole load of stuff and therefore a wildcard is set 
@@ -398,7 +385,7 @@ def get_single_site(site, species_in,
 
         # If averaging is set, resample
         if average != None:
-
+            
             # First, just do a mean resample on all variables
             print(f"... resampling to {average}")
             ds_resampled = ds.resample(time = average, keep_attrs = True
@@ -406,7 +393,6 @@ def get_single_site(site, species_in,
             # keep_attrs doesn't seem to work for some reason, so manually copy
             ds_resampled.attrs = ds.attrs.copy()
 
-            
             # For some variables, need a different type of resampling
             for var in ds.variables:
                 if "repeatability" in var:
@@ -442,10 +428,13 @@ def get_single_site(site, species_in,
 
         ds = ds.rename_vars(rename)
 
-        
         # Append inlet and filename to attributes
         ds.attrs["filename"] = f[0]
-        ds.attrs["inlet"] = f[1]
+        if inlet == None:
+            first_network = next(iter(site_info[site]))
+            ds.attrs["inlet"] = site_info["MHD"][first_network]["height"][0]
+        else:
+            ds.attrs["inlet"] = f[1]
         ds.attrs["instrument"] = f[2]
         ds.attrs["species"] = species
         if "Calibration_scale" in ds.attrs:
@@ -474,6 +463,7 @@ def get_single_site(site, species_in,
                 e.g. "cfc11", rather than "CFC-11"
                 ''')
     else:
+        
         # Check if units match
         units = [f.mf.attrs["units"] for f in obs_files]
         if len(set(units)) > 1:
