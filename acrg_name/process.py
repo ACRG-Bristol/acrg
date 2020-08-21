@@ -1354,8 +1354,9 @@ def footprint_array(fields_file,
         remfpvar = xray.DataArray(remfpval, dims=['time','lev','lat', 'lon','H_back'], coords={'time': fp.time, 'lev': fp.lev, 'lat': fp.lat, 'lon': fp.lon, 'H_back': [user_max_hour_back]})
         remfpds = remfpvar.to_dataset(name = 'fp_HiTRes')
         fp = xray.merge([fp, remfpds])
-        
-
+    
+    fp.attrs["model_units"] = units_str
+    
     return fp
     
     
@@ -2169,7 +2170,7 @@ def process(domain, site, height, year, month,
             status_log("STILT neither provides nor requires met information" +\
                        " to interpret footprints. Met will probably be set" +\
                        " to default values. Don't rely on these values!")
-    elif transport_model != "NAME":
+    elif transport_model != "NAME" and transport_model !="NAMEUKV":
         status_log(transport_model + " is not a valid transport model!" +\
                    " Unable to read footprint information!", 
                    error_or_warning="error")
@@ -2350,6 +2351,26 @@ def process(domain, site, height, year, month,
                  
         if fp_file is not None:
             fp.append(fp_file)
+        
+        #Using the first datestring to select a file to gather information about the model.
+        #This information is added to the attributes of the processed file.
+        #Currently works for NAME or NAMEUKV
+        if datestr == datestrs[0]:
+            if transport_model == "NAME" or transport_model == "NAMEUKV":
+                if fields_folder == "MixR_files" or fields_folder == "MixR_hourly":
+                    name_info_file_str = os.path.join(subfolder,'MixR_files/*'+datestr+'*')
+                    name_info_file = glob.glob(name_info_file_str)[0]
+                    model_info = extract_file_lines(name_info_file)[0]
+                if fields_folder == "Fields_files":
+                    name_info_file_str = os.path.join(subfolder,'Fields_files/*'+datestr+'*')
+                    name_info_file = glob.glob(name_info_file_str)[0]
+                    model_info = extract_file_lines(name_info_file)[0]
+                else:
+                    model_info = "Version unknown"
+            else:
+                model_info = "Version unknown"
+                
+        
             
     if len(fp) > 0:
         
@@ -2380,7 +2401,7 @@ def process(domain, site, height, year, month,
             if len(vp_files) == 0:
                 status_log("Can't file Vertical Profile files: " + vp_search_str,
                            error_or_warning="error")
-                #return None
+                return None
             else:
                     vp_met = process_vertical_profile(vp_files[0])
                     
@@ -2393,6 +2414,14 @@ def process(domain, site, height, year, month,
             lapse_in=None
             lapse_error_in=None
         
+        #Adding Global Attributes to fp file
+            
+        fp.attrs["model"] = transport_model
+        fp.attrs["model_version"] = model_info
+        fp.attrs["domain"] = domain
+        fp.attrs["site"] = site
+        fp.attrs["inlet_height"] = height
+       
         #Write netCDF file
         #######################################
         
