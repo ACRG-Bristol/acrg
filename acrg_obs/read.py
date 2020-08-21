@@ -153,13 +153,16 @@ def get_single_site(site, species_in,
                     inlet = None, average = None,
                     instrument = None,
                     status_flag_unflagged = [0],
-                    version = None,
                     keep_missing = None,
                     data_directory = None,
                     calibration_scale = None,
                     verbose = False):
     '''
-    Get measurements from one site
+    Get measurements from one site as a list of xarray datasets.
+    If there are multiple instruments and inlets at a particular site, 
+    note that the acrg_obs_defaults.csv file may be referenced to determine which instrument and inlet to use for each time period.
+    If an inlet or instrument changes at some point during time period, multiple datasets will be returned,
+    one for each inlet/instrument.
     
     Args:    
         site_in (str) :
@@ -202,8 +205,10 @@ def get_single_site(site, species_in,
             Convert to this calibration scale (original scale and new scale must both be in acrg_obs_scale_convert.csv)
     Returns:
         (list of xarray datasets):
-            Timeseries data frame for observations at site of species.
-
+            Mole fraction time series data as an xarray dataset, returned in a list. 
+            Each list element is for a unique instrument and inlet.
+            If either of these changes at some point during the timeseries, they are added as separate list elements.
+            
     '''
     
     # Check that site is in acrg_site_info.json
@@ -418,7 +423,7 @@ def get_single_site(site, species_in,
             # First, just do a mean resample on all variables
             print(f"... resampling to {average}")
             ds_resampled = ds.resample(time = average, keep_attrs = True
-                                       ).mean(skipna = False)
+                                       ).mean(skipna=False)
             # keep_attrs doesn't seem to work for some reason, so manually copy
             ds_resampled.attrs = ds.attrs.copy()
             
@@ -611,13 +616,14 @@ def get_obs(sites, species,
             keep_missing=False,
             network = None,
             instrument = None,
-            version = None,
             status_flag_unflagged = None,
             max_level = None,
             data_directory = None,
             calibration_scale = None):
     """
-    The get_obs function retrieves obervations for a set of sites and species between start and end dates
+    The get_obs function retrieves obervations for a set of sites and species between start and end dates.
+    This is essentially a wrapper function for get_single_site, to read in multiple sites.    
+    
     Note: max_level only pertains to satellite data
     
     TODO: 
@@ -631,15 +637,18 @@ def get_obs(sites, species,
         - For multiple sites, must be a list matching the number of sites.
     The status_flag_unflagged must also match the number of sites but must always be a list.
  
-    If not explicitly specified, height and network values can be extracted from acrg_site_info.json. If
-    there are multiple values are present, the first one will be used by default 
-    (*** May change with Matt's new acrg_site_info.json format ***)
+    For some sites where species are measured on multiple inlets and/or instruments,
+    the acrg_obs_defaults.csv file may be read to determine which inlet, instrument to be returned for each time period.
     
-    For example if we wanted to read in daily averaged methane data for Mace Head and Tacolneston for 2012 
-    we could include:
+    
+    Examples:
+    If we wanted to read in daily averaged methane data for Mace Head and Tacolneston for 2012:
     
         get_obs(sites=["MHD","TAC"],species="ch4",start_date="2012-01-01",end_date="2013-01-01",height=["10m","100m"],
                 average=["24H","24H"],network=["AGAGE","DECC"])
+    
+    To just go with the defaults at these sites, do:
+        get_obs(sites=["MHD","TAC"],species="ch4",start_date="2012-01-01",end_date="2013-01-01")
     
     Args:
         sites (list) :
@@ -660,7 +669,7 @@ def get_obs(sites, species,
             Each value should be a string of the form e.g. "2H", "30min" (should match pandas offset 
             aliases format). 
         keep_missing (bool, optional) :
-            Whether to keep missing data points or drop them.
+            Whether to keep missing data points or drop them when averaging.
         network (str/list, optional) : 
             Network for the site/instrument (must match number of sites). (optional)
         instrument (str/list, optional):
@@ -672,11 +681,12 @@ def get_obs(sites, species,
         data_directory (str, optional) :
             flux_directory can be specified if files are not in the default directory. 
             Must point to a directory which contains subfolders organized by network.
+        calibration_scale (str, optional) :
+            Convert to this calibration scale (original scale and new scale must both be in acrg_obs_scale_convert.csv)            
     
     Returns:
-        dict(pandas.DataFrame) : 
-            pandas Dataframe for every site, keywords of ".species" and ".units" are also included in
-            the dictionary.    
+        dict(list(xarray.Dataset)) : 
+            Returns a dictionary with site codes as keys. For each site, a list of xarray datasets is returned (see get_single_site)
     """
 
     def check_list_and_length(var, sites, error_message_string):
