@@ -78,6 +78,12 @@ def bc_basis_directory():
     directory = os.path.join(acrg_path,"tests/files/LPDM/bc_basis_functions/")
     return directory
 
+@pytest.fixture(scope="module")
+def output_directory():
+    ''' Define base directory containing output files '''
+    directory = os.path.join(acrg_path,"tests/files/LPDM/benchmark/")
+    return directory
+
 @pytest.fixture()
 def fs_mock(fs, fp_directory, flux_directory, bc_directory, basis_directory, bc_basis_directory):
     #add the real jsons to the fake file system:
@@ -548,6 +554,34 @@ def test_fp_data_merge(data,measurement_param_small,fp_directory,flux_directory,
         assert data_var in ds.data_vars
 
     return out
+
+def test_fp_data_merge_benchmark(data,measurement_param_small,fp_directory,flux_directory,
+                                 bc_directory,output_directory):
+    '''
+    Compare the output of footprints_data_merge function against the benchmarked output.
+    Output from footprints_data_merge is currently saved as a pickle, then reloaded here for
+    comparison. 
+    'tests/files/LPDM/benchmark/' also contains just the site dataset output as 
+    a netcdf file, which could be used for comparison instead.
+    '''
+    
+    domain = measurement_param_small["domain"]
+    species = measurement_param_small["species"]
+    
+    out = name.footprints_data_merge(data,domain=domain,fp_directory=fp_directory,
+                                     flux_directory=flux_directory,bc_directory=bc_directory)
+    
+    print(os.path.join(output_directory,'Benchmark_'+species+'_'+domain+'_fp_and_data_all.pickle'))
+    
+    file_in = open(os.path.join(output_directory,'Benchmark_'+species+'_'+domain+'_fp_and_data_all.pickle'),'rb')
+    benchmark_out = pickle.load(file_in)
+    file_in.close()
+    
+    for key in out.keys():
+        assert out[key] == benchmark_out[key]
+        
+    for key in benchmark_out.keys():
+        assert benchmark_out[key] == out[key]
 
 def test_fp_data_merge_long(data,measurement_param,fp_directory,flux_directory,bc_directory):
     '''
