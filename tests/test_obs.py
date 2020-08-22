@@ -1,5 +1,3 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
 """
 Created on Mon Jan 14 11:31:20 2019
 
@@ -13,8 +11,9 @@ import xarray as xr
 import os
 import shutil
 import glob
+from pathlib import Path
 
-test_dir = os.path.dirname(os.path.abspath(__file__))
+test_dir = Path("__file__").parent
 
 def checkUnits(data):
     '''
