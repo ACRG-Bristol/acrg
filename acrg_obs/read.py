@@ -512,7 +512,7 @@ def get_single_site(site, species_in,
             print(f"WARNING: scales don't match for these files: {[(f.attrs['scale'],f.attrs['filename']) for f in obs_files]}")
             print("... suggest setting calibration_scale to convert")
     
-    return(obs_files)
+    return obs_files
 
 
 def get_gosat(site, species, max_level,
@@ -561,7 +561,7 @@ def get_gosat(site, species, max_level,
                 data.append(fxr.load())
     
     if len(data) == 0:
-        return None
+        return []
     
     data = xr.concat(data, dim = "time")
 
@@ -739,17 +739,29 @@ def get_obs(sites, species,
                                    status_flag_unflagged = status_flag_unflagged[si],
                                    data_directory = data_directory,
                                    calibration_scale = calibration_scale)
-    
+
     # Raise error if units don't match
-    units = [s[0].mf.attrs["units"] for k, s in obs.items()]
-    if len(set(units)) > 1:
+    units = []
+    for s, obs_site in obs.items():
+        if len(obs_site) > 0:
+            units.append(obs_site[0].mf.attrs["units"])
+        else:
+            units.append(None)
+
+    if len(set(filter(None, units))) > 1:
         siteUnits = [': '.join([site, str(u)]) for (site, u) in zip(sites, units) if u is not None]
         errorMessage = f'''Units don't match for these sites: {siteUnits}'''
         raise ValueError(errorMessage)
 
     # Warning if scales don't match
-    scales = [s[0].attrs["scale"] for k, s in obs.items()]
-    if len(set(scales)) > 1:
+    scales = []
+    for s, obs_site in obs.items():
+        if len(obs_site) > 0:
+            scales.append(obs_site[0].attrs["scale"])
+        else:
+            scales.append(None)
+    
+    if len(set(filter(None, scales))) > 1:
         siteScales = [': '.join([site, scale]) for (site, scale) in zip(sites, scales) if scale is not None]
         warningMessage = '''WARNING: scales don't match for these sites:
                             %s''' % ', '.join(siteScales)
