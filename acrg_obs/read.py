@@ -549,16 +549,15 @@ def get_gosat(site, species, max_level,
     if max_level is None:
         raise ValueError("'max_level' ARGUMENT REQUIRED FOR SATELLITE OBS DATA")
             
-    data_directory = os.path.join(data_directory, "GOSAT", site)
-    files = glob.glob(os.path.join(data_directory, '*.nc'))
-    files = [os.path.split(f)[-1] for f in files]
+    data_directory = obs_directory / "GOSAT" / site
+    files = [f.name for f in data_directory.glob("*.nc")]
 
     files_date = [pd.to_datetime(f.split("_")[2][0:8]) for f in files]
 
     data = []
     for (f, d) in zip(files, files_date):
         if d >= pd.to_datetime(start_date) and d < pd.to_datetime(end_date):
-            with xr.open_dataset(os.path.join(data_directory,f)) as fxr:
+            with xr.open_dataset(data_directory / f) as fxr:
                 data.append(fxr.load())
     
     if len(data) == 0:
@@ -593,21 +592,18 @@ def get_gosat(site, species, max_level,
         if coord in data.coords:
             data = data.drop(coord)
 
-    data = data.to_dataframe()
-    data = MetaDataFrame(data)
-    # rt17603: 06/04/2018 Added sort because some data was not being read in time order. 
-    # Causing problems in footprints_data_merge() function
-    data = data.sort_index()
+    data = data.sortby("time")
     
-    data.max_level = max_level
+    data.attrs["max_level"] = max_level
     if species.upper() == "CH4":
-        data.units = 1e-9
+        data.mf.attrs["units"] = '1e-9'
     if species.upper() == "CO2":
-        data.units = 1e-6
+        data.mf.attrs["units"] = '1e-6'
 
-    data.scale = "GOSAT"
+    data.attrs["scale"] = "GOSAT"
 
-    return data
+    # return single element list
+    return [data,]
     
 def get_obs(sites, species,
             start_date = "1900-01-01", end_date = "2100-01-01",
@@ -747,17 +743,17 @@ def get_obs(sites, species,
     # Raise error if units don't match
     units = [s[0].mf.attrs["units"] for k, s in obs.items()]
     if len(set(units)) > 1:
-        siteUnits = [':'.join([site, u]) for (site, u) in zip(sites, str(units)) if u is not None]
+        siteUnits = [': '.join([site, str(u)]) for (site, u) in zip(sites, units) if u is not None]
         errorMessage = f'''Units don't match for these sites: {siteUnits}'''
         raise ValueError(errorMessage)
 
     # Warning if scales don't match
     scales = [s[0].attrs["scale"] for k, s in obs.items()]
     if len(set(scales)) > 1:
-        siteScales = [':'.join([site, scale]) for (site, scale) in zip(sites, scales) if scale is not None]
+        siteScales = [': '.join([site, scale]) for (site, scale) in zip(sites, scales) if scale is not None]
         warningMessage = '''WARNING: scales don't match for these sites:
                             %s''' % ', '.join(siteScales)
         print(warningMessage)
 
-    return(obs)
+    return obs
     
