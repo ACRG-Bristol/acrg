@@ -15,6 +15,9 @@ from pathlib import Path
 
 test_dir = Path("__file__").parent
 
+
+# TODO: Add test on scale conversion
+
     
 def test_get_obs_site():
     '''
