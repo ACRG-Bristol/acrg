@@ -24,7 +24,6 @@ import numpy as np
 import os
 import sys
 import pytest
-import acrg_config.version
 
 import acrg_config.config as configread
 from acrg_config.config import extract_params,all_param
@@ -40,11 +39,6 @@ else:
     data_path = paths.data
  
 test_config_path = os.path.join(acrg_path,"tests/files/config")
-
-def test_version():
-    version = acrg_config.version.code_version()
-    assert type(version) == str
-    assert version != "Unknown"
 
 @pytest.fixture(scope="module")
 def tdmcmc_config():
