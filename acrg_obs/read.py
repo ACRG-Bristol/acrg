@@ -144,7 +144,7 @@ def get_single_site(site, species_in,
                     instrument = None,
                     status_flag_unflagged = [0],
                     keep_missing = None,
-                    data_directory = None,
+                    file_path = None,
                     calibration_scale = None,
                     verbose = False):
     '''
@@ -187,9 +187,8 @@ def get_single_site(site, species_in,
         status_flag_unflagged (list, optional) : 
             The value to use when filtering by status_flag. 
             Default = [0]
-        data_directory (str, optional) :
-            directpry can be specified if files are not in the default directory. 
-            Must point to a directory which contains subfolders organized by site.
+        file_path (pathlib.Path object, optional) :
+            Path to file. If this is used, network, inlet and instrument are ignored. site and species are still required.
             Default=None.
         calibration_scale (str, optional) :
             Convert to this calibration scale (original scale and new scale must both be in acrg_obs_scale_convert.csv)
@@ -214,141 +213,153 @@ def get_single_site(site, species_in,
         return
     if species != species_in:
         print("... changing species from %s to %s" % (species_in, species))
-    
-    # Open defaults file
-    df_defaults = pd.read_csv(paths.acrg / "acrg_obs/acrg_obs_defaults.csv",
-                             parse_dates = ["startDate", "endDate"])
-    df_defaults.dropna(axis = 0, how = "all", inplace = True)
 
-    # Set early start date and late end date, if empty
-    df_defaults["startDate"] = df_defaults["startDate"].fillna(pd.Timestamp("1900-01-01"))
-    df_defaults["endDate"] = df_defaults["endDate"].fillna(pd.Timestamp("2100-01-01"))
-
-    df_defaults.replace(np.nan, "%", inplace = True)
-    
-    # Read defaults database into memory
-    conn = sqlite3.connect(":memory:")
-
-    dtypes = {"site": "text",
-              "species": "text",
-              "startDate": "timestamp",
-              "endDate": "timestamp",
-              "instrument": "text",
-              "inlet": "text"}
-
-    # Convert to database
-    df_defaults.to_sql("defaults", conn, if_exists="replace", dtype = dtypes)
-
-    c = conn.cursor()
-
-    # Attach the obs database
-    c.execute("ATTACH DATABASE ? as obs", (str(paths.obs / "obs.db"),))
-
-    # Change some variables for query
-    start_date_query = pd.Timestamp(start_date).to_pydatetime()
-    end_date_query = pd.Timestamp(end_date).to_pydatetime()
-    species_query = species.replace("-", "").lower()
-    
-    
-    # Run a couple of initial queries to see whether there are any defaults defined for a particular site
-    df_defaults_for_site = pd.read_sql_query("SELECT * FROM defaults WHERE site = ? COLLATE NOCASE",
-                                             conn, params = (site,))
-    df_defaults_for_site_species = pd.read_sql_query('''
-                                                     SELECT * FROM defaults 
-                                                     WHERE site = ? COLLATE NOCASE AND 
-                                                     species = ? COLLATE NOCASE
-                                                     ''', 
-                                                     conn, params = (site, species_query))
-
-    # Check if defaults need to be over-written
-    if (inlet != None or instrument != None or network != None) and len(df_defaults_for_site) >= 1:
-        print("... You've set either an inlet, instrument or network, overriding any defaults.")
-        print("... Best to set all three of these, if you want to avoid ambiguity.")
-        override_defaults = True
-    else:
-        override_defaults = False
-
-    # Read filenames from database
-    if len(df_defaults_for_site) == 0 or override_defaults:
-        # Query only the 'files' table table to determine which files to read
-
-        print("... no defaults set")
-        query = '''
-                SELECT files.filename, files.inlet, files.instrument
-                FROM obs.files
-                WHERE files.species=? COLLATE NOCASE AND
-                      files.site=? COLLATE NOCASE AND
-                      (files.endDate > date(?) AND files.startDate < date(?))
-                '''
-        params = [species_query, site, start_date_query, end_date_query]
-
-        # If an inlet, network or instrument are specified, append to the query
-        if inlet != None:
-            query += " AND files.inlet=?"
-            params.append(inlet)
-
-        if network != None:
-            query += " AND files.network=?"
-            params.append(network)
-
-        if instrument != None:
-            query += " AND files.instrument=?"
-            params.append(instrument)
+        
+    if file_path is not None:
+        
+        files_to_get = [(file_path, "na", "na"),]
+        species_query = species
 
     else:
-        # Create an inner join of the defaults and files table and filter based on defaults
-        # Note that the LIKE statement below allows us to have a wildcard (%) in some columns
-        # The wildcard is set wherever there is a missing value in the defaults table, and
-        #  where there's only one inlet in the files database
+        
+        # Open defaults file
+        df_defaults = pd.read_csv(paths.acrg / "acrg_obs/acrg_obs_defaults.csv",
+                                 parse_dates = ["startDate", "endDate"])
+        df_defaults.dropna(axis = 0, how = "all", inplace = True)
 
-        query = '''
-                SELECT filename, inlet, instrument, defaultStartDate, defaultEndDate FROM
-                (
-                 SELECT files.filename,
-                        files.startDate,
-                        files.endDate,
-                        files.site,
-                        files.inlet,
-                        files.species,
-                        files.instrument,
-                        files.network,
-                        defaults.inlet,
-                        defaults.site,
-                        defaults.instrument,
-                        defaults.network,
-                        defaults.startDate AS defaultStartDate,
-                        defaults.endDate AS defaultEndDate
-                FROM obs.files
-                INNER JOIN defaults
-                ON files.site = defaults.site
-                WHERE files.species = ? COLLATE NOCASE AND
-                        files.species LIKE defaults.species COLLATE NOCASE AND
-                        files.site = ? COLLATE NOCASE AND
-                        files.inlet LIKE defaults.inlet AND
-                        files.instrument LIKE defaults.instrument AND
-                        files.network LIKE defaults.network COLLATE NOCASE AND
-                        (files.endDate > date(?) AND files.startDate < date(?)) AND
-                        (defaults.endDate > date(?) AND defaults.startDate < date(?))
-                        )
-                '''
+        # Set early start date and late end date, if empty
+        df_defaults["startDate"] = df_defaults["startDate"].fillna(pd.Timestamp("1900-01-01"))
+        df_defaults["endDate"] = df_defaults["endDate"].fillna(pd.Timestamp("2100-01-01"))
 
-        # If species explicitly appears in the defaults file, enforce matching to that value
-        # This is needed in the case that a species is measured on two instruments, 
-        #  but one instrument measures a whole load of stuff and therefore a wildcard is set 
-        #  for that instrument (e.g. SF6 on the ECD and Medusa at TAC)
-        if len(df_defaults_for_site_species) > 0:
-            query = query.replace("files.species LIKE defaults.species",
-                                  "files.species = defaults.species")
+        df_defaults.replace(np.nan, "%", inplace = True)
 
-        params = [species_query, site,
-                  start_date_query, end_date_query, start_date_query, end_date_query]
+        # Read defaults database into memory
+        conn = sqlite3.connect(":memory:")
 
-    if verbose:
-        print(query)
+        dtypes = {"site": "text",
+                  "species": "text",
+                  "startDate": "timestamp",
+                  "endDate": "timestamp",
+                  "instrument": "text",
+                  "inlet": "text"}
 
-    # Run query and get list of files
-    files_to_get = c.execute(query, params)
-    
+        # Convert to database
+        df_defaults.to_sql("defaults", conn, if_exists="replace", dtype = dtypes)
+
+        c = conn.cursor()
+
+        # Attach the obs database
+        c.execute("ATTACH DATABASE ? as obs", (str(paths.obs / "obs.db"),))
+
+        # Change some variables for query
+        start_date_query = pd.Timestamp(start_date).to_pydatetime()
+        end_date_query = pd.Timestamp(end_date).to_pydatetime()
+        species_query = species.replace("-", "").lower()
+
+
+        # Run a couple of initial queries to see whether there are any defaults defined for a particular site
+        df_defaults_for_site = pd.read_sql_query("SELECT * FROM defaults WHERE site = ? COLLATE NOCASE",
+                                                 conn, params = (site,))
+        df_defaults_for_site_species = pd.read_sql_query('''
+                                                         SELECT * FROM defaults 
+                                                         WHERE site = ? COLLATE NOCASE AND 
+                                                         species = ? COLLATE NOCASE
+                                                         ''', 
+                                                         conn, params = (site, species_query))
+
+        # Check if defaults need to be over-written
+        if (inlet != None or instrument != None or network != None) and len(df_defaults_for_site) >= 1:
+            print("... You've set either an inlet, instrument or network, overriding any defaults.")
+            print("... Best to set all three of these, if you want to avoid ambiguity.")
+            override_defaults = True
+        else:
+            override_defaults = False
+
+        # Read filenames from database
+        if len(df_defaults_for_site) == 0 or override_defaults:
+            # Query only the 'files' table table to determine which files to read
+
+            print("... no defaults set")
+            query = '''
+                    SELECT files.filename, files.inlet, files.instrument
+                    FROM obs.files
+                    WHERE files.species=? COLLATE NOCASE AND
+                          files.site=? COLLATE NOCASE AND
+                          (files.endDate > date(?) AND files.startDate < date(?))
+                    '''
+            params = [species_query, site, start_date_query, end_date_query]
+
+            # If an inlet, network or instrument are specified, append to the query
+            if inlet != None:
+                query += " AND files.inlet=?"
+                params.append(inlet)
+
+            if network != None:
+                query += " AND files.network=?"
+                params.append(network)
+
+            if instrument != None:
+                query += " AND files.instrument=?"
+                params.append(instrument)
+
+        else:
+            # Create an inner join of the defaults and files table and filter based on defaults
+            # Note that the LIKE statement below allows us to have a wildcard (%) in some columns
+            # The wildcard is set wherever there is a missing value in the defaults table, and
+            #  where there's only one inlet in the files database
+
+            query = '''
+                    SELECT filename, inlet, instrument, defaultStartDate, defaultEndDate FROM
+                    (
+                     SELECT files.filename,
+                            files.startDate,
+                            files.endDate,
+                            files.site,
+                            files.inlet,
+                            files.species,
+                            files.instrument,
+                            files.network,
+                            defaults.inlet,
+                            defaults.site,
+                            defaults.instrument,
+                            defaults.network,
+                            defaults.startDate AS defaultStartDate,
+                            defaults.endDate AS defaultEndDate
+                    FROM obs.files
+                    INNER JOIN defaults
+                    ON files.site = defaults.site
+                    WHERE files.species = ? COLLATE NOCASE AND
+                            files.species LIKE defaults.species COLLATE NOCASE AND
+                            files.site = ? COLLATE NOCASE AND
+                            files.inlet LIKE defaults.inlet AND
+                            files.instrument LIKE defaults.instrument AND
+                            files.network LIKE defaults.network COLLATE NOCASE AND
+                            (files.endDate > date(?) AND files.startDate < date(?)) AND
+                            (defaults.endDate > date(?) AND defaults.startDate < date(?))
+                            )
+                    '''
+
+            # If species explicitly appears in the defaults file, enforce matching to that value
+            # This is needed in the case that a species is measured on two instruments, 
+            #  but one instrument measures a whole load of stuff and therefore a wildcard is set 
+            #  for that instrument (e.g. SF6 on the ECD and Medusa at TAC)
+            if len(df_defaults_for_site_species) > 0:
+                query = query.replace("files.species LIKE defaults.species",
+                                      "files.species = defaults.species")
+
+            params = [species_query, site,
+                      start_date_query, end_date_query, start_date_query, end_date_query]
+
+        if verbose:
+            print(query)
+
+        # Run query and get list of files
+        files_to_get = c.execute(query, params)
+
+        # close database
+        conn.close()
+
+        
     obs_files = []
     
     # Retrieve files
@@ -474,8 +485,6 @@ def get_single_site(site, species_in,
         # Store dataset
         obs_files.append(ds)
 
-    # close database
-    conn.close()
         
     if len(obs_files) == 0 and len(df_defaults_for_site) > 0:
         print(''' Your query didn't return anything. If you're sure the files exits
