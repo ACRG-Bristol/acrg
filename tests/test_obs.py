@@ -17,7 +17,21 @@ test_dir = Path("__file__").parent
 
 
 # TODO: Add test on scale conversion
+def test_scale_convert():
+    '''
+    Check that scale convert function is behaving as expected
+    '''    
+    # Create fake dataset
+    da = xr.DataArray(np.ones(10),
+                      coords = {"time": pd.date_range("2018-01-01", periods = 10, freq = "D")},
+                      dims = ["time"])
+    ds = xr.Dataset({"mf": da})
+    ds.attrs["scale"] = "WMO-X2004A"
 
+    ds = acrg_obs.read.scale_convert(ds, "CH4", "TU1987")
+
+    assert np.allclose(ds["mf"], 0.998)
+    
     
 def test_get_obs_site():
     '''

@@ -43,6 +43,7 @@ import sys
 import sqlite3
 from acrg_config.paths import paths
 from acrg_utils import is_number
+import numexpr as ne
 
 acrg_path = paths.acrg
 obs_directory = paths.obs
@@ -131,7 +132,11 @@ def scale_convert(ds, species, to_scale):
     else:
         direction = "1to2"
 
-    ds["mf"].values = eval(converter[direction].replace("X", "ds.mf"))
+    # scale_convert file has variable X in equations, so let's create it
+    X = 1.
+    scale_factor = ne.evaluate(converter[direction])
+    ds["mf"].values *= scale_factor
+
     ds.attrs["scale"] = to_scale
     
     return(ds)
