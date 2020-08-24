@@ -840,7 +840,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
             combined dataset for each site
     """
     
-    sites = [key for key in list(data.keys())]
+    sites = [key for key in data]
 
     if average is not None:
         if type(average) is not dict:
