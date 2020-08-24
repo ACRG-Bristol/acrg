@@ -3,9 +3,6 @@
 Created on Mon Nov 10 10:45:51 2014
 
 """
-from __future__ import print_function
-from __future__ import division
-
 from builtins import str
 from builtins import range
 from builtins import object
@@ -13,7 +10,6 @@ from past.utils import old_div
 import netCDF4 as nc
 import numpy as np
 import matplotlib as mpl
-#mpl.use('agg')
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 import datetime as dt
@@ -24,7 +20,6 @@ from matplotlib import ticker
 import pandas as pd
 import bisect
 import subprocess
-#from progressbar import ProgressBar
 import json
 from os.path import join
 import xarray as xr
@@ -38,29 +33,17 @@ import cartopy
 from mpl_toolkits import mplot3d
 from collections import OrderedDict
 import acrg_obs as obs
+from acrg_config.paths import paths
+from acrg_utils import is_number
 
-if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
-    acrg_path = os.getenv("ACRG_PATH")
-    data_path = os.getenv("DATA_PATH") 
-else:
-    from acrg_config.paths import paths
-    acrg_path = paths.acrg
-    data_path = paths.data
-
-if acrg_path is None:
-    acrg_path = os.getenv("HOME")
-    print("Default ACRG directory is assumed to be home directory. Set path in .bashrc as \
-            export ACRG_PATH=/path/to/acrg/repository/ and restart python terminal")
-if data_path is None:
-    data_path = "/data/shared/"
-    print("Default Data directory is assumed to be /data/shared/. Set path in .bashrc as \
-            export DATA_PATH=/path/to/data/directory/ and restart python terminal")
-
+acrg_path = paths.acrg
+data_path = paths.data
 
 # Get acrg_site_info file
-with open(join(acrg_path, "acrg_site_info.json")) as f:
+with open(acrg_path / "acrg_site_info.json") as f:
     site_info=json.load(f,object_pairs_hook=OrderedDict)
 
+    
 def open_ds(path):
     
     """
@@ -70,6 +53,7 @@ def open_ds(path):
     with xr.open_dataset(path) as ds:
         ds.load()
     return ds 
+
 
 def filenames(site, domain, start, end, height, fp_directory, network=None, species=None):
     """
@@ -168,6 +152,7 @@ def filenames(site, domain, start, end, height, fp_directory, network=None, spec
         print("Can't find footprints file: {}".format(glob_path))
     return files
 
+
 def read_netcdfs(files, dim = "time"):
     """
     The read_netcdfs function uses xarray to open sequential netCDF files and 
@@ -193,6 +178,7 @@ def read_netcdfs(files, dim = "time"):
     datasets = [open_ds(p) for p in sorted(files)]
     combined = xr.concat(datasets, dim)
     return combined   
+
 
 def footprints(sitecode_or_filename, fp_directory = None, 
                start = None, end = None, domain = None, height = None, network = None,
@@ -898,7 +884,8 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
 
             mfattrs = [key for key in site_ds.mf.attrs]
             if "units" in mfattrs:
-                units = float(site_ds.mf.attrs["units"])
+                if is_number(site_ds.mf.attrs["units"]):
+                    units = float(site_ds.mf.attrs["units"])
         
         if site_fp is not None:
             # If satellite data, check that the max_level in the obs and the max level in the processed FPs are the same

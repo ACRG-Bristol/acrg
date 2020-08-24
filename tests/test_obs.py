@@ -15,6 +15,7 @@ from pathlib import Path
 
 test_dir = Path("__file__").parent
 
+
 def checkUnits(data):
     '''
     Check the data units are numbers as needed in footprints_data_merge
@@ -23,6 +24,7 @@ def checkUnits(data):
         data - output from get_obs
     '''
     assert isinstance(data[".units"], int) or isinstance(data[".units"], float)
+
     
 def checkFilenames(fnames):
     '''
@@ -31,6 +33,7 @@ def checkFilenames(fnames):
     for f in fnames:
         assert isinstance(f, str)
         assert "/" not in f
+
     
 def test_get_obs_structure():
     '''
@@ -71,6 +74,7 @@ def test_get_obs_site():
     assert np.amin(recreated_data["MHD"].index) == pd.to_datetime(start_date)
     assert "mf" in recreated_data["MHD"].columns.values
     assert ("dmf" in recreated_data["MHD"].columns.values) or ("vmf" in recreated_data["MHD"].columns.values)
+
     
 def test_get_obs_gosat():
     '''
@@ -92,21 +96,14 @@ def test_get_obs_gosat():
     assert "mf" in recreated_data["GOSAT-UK"].columns.values
     assert ("dmf" in recreated_data["GOSAT-UK"].columns.values) or ("vmf" in recreated_data["GOSAT-UK"].columns.values)
 
-def test_dmf_average():
-    '''
-    Test if the quadratic sum function returns the expected values for empty and non empty inputs
-    '''
-    inputs = np.array([3.0, 4.0])
-    assert acrg_obs.read.quadratic_sum(inputs) == 2.5
-    inputs = np.array([])
-    assert np.isnan(acrg_obs.read.quadratic_sum(inputs))
-
+    
 def test_is_number():
     '''
     Test that is_number can parse units correctly
     '''
     assert acrg_obs.read.is_number(1e-9) == True
     assert acrg_obs.read.is_number("1e-9") == True
+    
     
 def test_listsearch():
     '''
@@ -131,7 +128,6 @@ def test_listsearch():
     with pytest.raises(ValueError):
         acrg_obs.read.listsearch(["Correct"], "NotCorrect", synonyms)
         
-        
     
 def test_file_search_and_split():
     '''
@@ -145,6 +141,7 @@ def test_file_search_and_split():
     
     assert len(fnames) == len(split)
     
+    
 def test_file_list():
     '''
     Test file-list returns the correct types
@@ -153,6 +150,7 @@ def test_file_list():
     assert isinstance(directory, str)
     assert isinstance(fnames, list)
     checkFilenames(fnames)
+    
     
 def test_process_utils_attributes():    
     '''
@@ -221,6 +219,7 @@ def test_obs_process_gc():
 
     # clean up
     shutil.rmtree(os.path.join(gc_files_directory, "CGO"))
+    
     
 def test_obs_process_crds():
 

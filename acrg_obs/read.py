@@ -42,6 +42,7 @@ from collections import OrderedDict
 import sys
 import sqlite3
 from acrg_config.paths import paths
+from acrg_utils import is_number
 
 acrg_path = paths.acrg
 obs_directory = paths.obs
@@ -53,17 +54,6 @@ with open(acrg_path / "acrg_species_info.json") as f:
 
 with open(acrg_path / "acrg_site_info.json") as f:
     site_info=json.load(f, object_pairs_hook=OrderedDict)
-
-    
-def is_number(s):
-    """
-    Is it a number?
-    """
-    try:
-        float(s)
-        return True
-    except ValueError:
-        return False
 
     
 def synonyms(search_string, info, alternative_label = "alt"):
