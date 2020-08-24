@@ -16,25 +16,6 @@ from pathlib import Path
 test_dir = Path("__file__").parent
 
 
-def checkUnits(data):
-    '''
-    Check the data units are numbers as needed in footprints_data_merge
-    
-    Inputs:
-        data - output from get_obs
-    '''
-    assert isinstance(data[".units"], int) or isinstance(data[".units"], float)
-
-    
-def checkFilenames(fnames):
-    '''
-    lists of file names should be strings, without / in them
-    '''
-    for f in fnames:
-        assert isinstance(f, str)
-        assert "/" not in f
-
-    
 def test_get_obs_structure():
     '''
     Test that the get_obs function returns the correct output structure
@@ -67,13 +48,11 @@ def test_get_obs_site():
                                       data_directory="files/obs/",
                                       keep_missing=True, average=["1H"])
     
-    checkUnits(recreated_data)
-    
     #test the date range is as expected
-    assert np.amax(recreated_data["MHD"].index) == pd.to_datetime(end_date)-pd.Timedelta(hours=1)
-    assert np.amin(recreated_data["MHD"].index) == pd.to_datetime(start_date)
-    assert "mf" in recreated_data["MHD"].columns.values
-    assert ("dmf" in recreated_data["MHD"].columns.values) or ("vmf" in recreated_data["MHD"].columns.values)
+    assert np.amax(recreated_data["MHD"][0].time) == pd.to_datetime(end_date)-pd.Timedelta(hours=1)
+    assert np.amin(recreated_data["MHD"][0].time) == pd.to_datetime(start_date)
+    assert "mf" in recreated_data["MHD"].variables
+    assert ("dmf" in recreated_data["MHD"].variables) or ("vmf" in recreated_data["MHD"].variables)
 
     
 def test_get_obs_gosat():
@@ -88,70 +67,13 @@ def test_get_obs_gosat():
                                       data_directory="files/obs/",
                                       max_level = 17)
     
-    checkUnits(recreated_data)
-    
     #test the date range is as expected
-    assert np.amax(recreated_data["GOSAT-UK"].index) < pd.to_datetime(end_date)
-    assert np.amin(recreated_data["GOSAT-UK"].index) >= pd.to_datetime(start_date)
-    assert "mf" in recreated_data["GOSAT-UK"].columns.values
-    assert ("dmf" in recreated_data["GOSAT-UK"].columns.values) or ("vmf" in recreated_data["GOSAT-UK"].columns.values)
+    assert np.amax(recreated_data["GOSAT-UK"][0].time) < pd.to_datetime(end_date)
+    assert np.amin(recreated_data["GOSAT-UK"][0].time) >= pd.to_datetime(start_date)
+    assert "mf" in recreated_data["GOSAT-UK"][0].variables
+    assert ("dmf" in recreated_data["GOSAT-UK"][0].variables) or ("vmf" in recreated_data["GOSAT-UK"].variables)
+    
 
-    
-def test_is_number():
-    '''
-    Test that is_number can parse units correctly
-    '''
-    assert acrg_obs.read.is_number(1e-9) == True
-    assert acrg_obs.read.is_number("1e-9") == True
-    
-    
-def test_listsearch():
-    '''
-    Test the listsearch function is able to get a correct string from a dictionary of synonyms, 
-    and that it reutrns None when this is not possible
-    '''
-    correctString = "Correct"
-    synonyms = {
-            "Correct": {
-                    "alt":["AlsoCorrect"]
-                    }
-            }
-    assert acrg_obs.read.listsearch(["Correct"], correctString, synonyms) is "Correct"
-    assert acrg_obs.read.listsearch(["correct"], correctString, synonyms) is "correct"
-    assert acrg_obs.read.listsearch(["AlsoCorrect"], correctString, synonyms) is "AlsoCorrect"
-    assert acrg_obs.read.listsearch(["Alsocorrect"], correctString, synonyms) is "Alsocorrect"
-    assert acrg_obs.read.listsearch(["Wrong", "AlsoCorrect"], correctString, synonyms) is "AlsoCorrect"
-    assert acrg_obs.read.listsearch(["Wrong"], correctString, synonyms) is None
-    
-    assert acrg_obs.read.listsearch(["Correct"], "AlsoCorrect", synonyms) is "Correct"
-    
-    with pytest.raises(ValueError):
-        acrg_obs.read.listsearch(["Correct"], "NotCorrect", synonyms)
-        
-    
-def test_file_search_and_split():
-    '''
-    Test that file_search_and_split correctly returns lists, where the filename is seperated from directory
-    '''
-    fnames, split = acrg_obs.read.file_search_and_split("files/obs/GOSAT/GOSAT-UK/*.nc")
-    
-    assert isinstance(fnames, list)
-    assert isinstance(split, list)
-    checkFilenames(fnames)
-    
-    assert len(fnames) == len(split)
-    
-    
-def test_file_list():
-    '''
-    Test file-list returns the correct types
-    '''
-    directory, fnames = acrg_obs.read.file_list("MHD", "CH4", "AGAGE", data_directory="files/obs")
-    assert isinstance(directory, str)
-    assert isinstance(fnames, list)
-    checkFilenames(fnames)
-    
-    
 def test_process_utils_attributes():    
     '''
     Test the acrg_obs.utils.attributes function
@@ -172,7 +94,7 @@ def test_process_utils_attributes():
                                    scale = "TEST",
                                    sampling_period = 60,
                                    date_range = ["2000-01-01", "2000-01-10"])
-
+    
     assert "cfc113" in out.variables
     assert "time" in out.variables
     assert out.time.attrs["sampling_period_seconds"] == 60
@@ -184,9 +106,11 @@ def test_process_utils_attributes():
 
 
 def test_obs_process_gc():
-
-    gc_files_directory = os.path.join(test_dir,
-                                      "files/obs/GC")
+    '''
+    Test GC processing
+    '''
+    
+    gc_files_directory = test_dir / "files/obs/GC"
     
     acrg_obs.process_gcwerks.gc("CGO", "medusa", "AGAGE",
                                 input_directory = gc_files_directory,
@@ -194,16 +118,16 @@ def test_obs_process_gc():
                                 version = "TEST")
 
     # Test if CGO directory has been created
-    assert os.path.exists(os.path.join(gc_files_directory, "CGO"))
+    assert (gc_files_directory / "CGO").exists()
     
     # Check that enough files have been created
-    assert len(glob.glob(os.path.join(gc_files_directory, "CGO/*.nc"))) == 56
+    assert len(list((gc_files_directory / "CGO").glob("*.nc"))) == 56
     
     # As an example, get CF4 data
-    cf4_file = os.path.join(gc_files_directory,
-                            "CGO/AGAGE-GCMSMedusa_CGO_20180101_cf4-70m-TEST.nc")
+    cf4_file = gc_files_directory / "CGO/AGAGE-GCMSMedusa_CGO_20180101_cf4-70m-TEST.nc"
+    
     # Check if file exists
-    assert os.path.exists(cf4_file)
+    assert cf4_file.exists()
     
     # Open dataset
     with xr.open_dataset(cf4_file) as f:
@@ -218,31 +142,33 @@ def test_obs_process_gc():
                        np.array(0.03679))
 
     # clean up
-    shutil.rmtree(os.path.join(gc_files_directory, "CGO"))
+    shutil.rmtree(gc_files_directory / "CGO")
     
     
 def test_obs_process_crds():
+    '''
+    Test CRDS file processing from GCWerks script
+    
+    '''
 
-    gc_files_directory = os.path.join(test_dir,
-                                      "files/obs/CRDS")
+    crds_files_directory = test_dir / "files/obs/CRDS"
     
     acrg_obs.process_gcwerks.crds("BSD", "DECC",
-                                input_directory = gc_files_directory,
-                                output_directory = gc_files_directory,
-                                version = "TEST")
+                                  input_directory = crds_files_directory,
+                                  output_directory = crds_files_directory,
+                                  version = "TEST")
 
-    # Test if CGO directory has been created
-    assert os.path.exists(os.path.join(gc_files_directory, "BSD"))
+    # Test if BSD directory has been created
+    assert (crds_files_directory / "BSD").exists()
     
     # Check that enough files have been created
-    assert len(glob.glob(os.path.join(gc_files_directory, "BSD/*.nc"))) == 3
+    assert len(list((crds_files_directory / "BSD").glob("*.nc"))) == 3
     
-    # As an example, get CF4 data
-    ch4_file = os.path.join(gc_files_directory,
-                            #"BSD/DECC-CRDS_BSD_20140130_ch4-248m-TEST.nc")
-                            "BSD/DECC-CRDS_BSD_20140130_ch4-TEST.nc")
+    # As an example, get CH4 data
+    ch4_file = crds_files_directory / "BSD/DECC-picarro_BSD_20140130_ch4-TEST.nc"
+    
     # Check if file exists
-    assert os.path.exists(ch4_file)
+    assert ch4_file.exists()
     
     # Open dataset
     with xr.open_dataset(ch4_file) as f:
@@ -256,6 +182,4 @@ def test_obs_process_crds():
                        np.array(0.398))
 
     # clean up
-    shutil.rmtree(os.path.join(gc_files_directory, "BSD"))
-    
-    
+    shutil.rmtree(crds_files_directory / "BSD")
