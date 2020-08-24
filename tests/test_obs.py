@@ -15,25 +15,6 @@ from pathlib import Path
 
 test_dir = Path("__file__").parent
 
-
-def test_get_obs_structure():
-    '''
-    Test that the get_obs function returns the correct output structure
-    '''
-    start_date = "20160101"
-    end_date = "20170101"
-    sites = ["MHD", "GOSAT-UK"]
-    
-    recreated_data = acrg_obs.get_obs(sites, "CH4", start_date, end_date,
-                                      data_directory="files/obs/",
-                                      keep_missing=True, average=["1H", None],
-                                      max_level=17)
-    
-    assert isinstance(recreated_data, dict)
-    
-    for site in sites:
-        assert site in recreated_data
-    
     
 def test_get_obs_site():
     '''
@@ -42,17 +23,20 @@ def test_get_obs_site():
     Called with keep_missing=True and average=["1H"] - these are then used to check that
     the start and end indicies within the output are as expected
     '''
-    start_date = "20160101"
-    end_date = "20160201"
-    recreated_data = acrg_obs.get_obs(["MHD"], "CH4", start_date, end_date,
-                                      data_directory="files/obs/",
+    start_date = "2014-01-30 00:00"
+    end_date = "2014-01-31 00:00"
+    recreated_data = acrg_obs.get_obs(["BSD"], "CH4",
+                                      start_date = start_date,
+                                      end_date = end_date,
+                                      file_paths = [str(test_dir / "files/obs/processed/DECC-picarro_BSD_20140130_ch4-TEST.nc")],
                                       keep_missing=True, average=["1H"])
     
     #test the date range is as expected
-    assert np.amax(recreated_data["MHD"][0].time) == pd.to_datetime(end_date)-pd.Timedelta(hours=1)
-    assert np.amin(recreated_data["MHD"][0].time) == pd.to_datetime(start_date)
-    assert "mf" in recreated_data["MHD"].variables
-    assert ("dmf" in recreated_data["MHD"].variables) or ("vmf" in recreated_data["MHD"].variables)
+    assert np.amax(recreated_data["BSD"][0].time) == pd.to_datetime(end_date)-pd.Timedelta(hours=1)
+    assert np.amin(recreated_data["BSD"][0].time) == pd.to_datetime(start_date)
+    assert "mf" in recreated_data["BSD"][0].variables
+    assert ("mf_repeatability" in recreated_data["BSD"][0].variables) or ("mf_variability" in recreated_data["BSD"][0].variables)
+    assert len(recreated_data["BSD"][0].time) == 24
 
     
 def test_get_obs_gosat():
@@ -71,7 +55,7 @@ def test_get_obs_gosat():
     assert np.amax(recreated_data["GOSAT-UK"][0].time) < pd.to_datetime(end_date)
     assert np.amin(recreated_data["GOSAT-UK"][0].time) >= pd.to_datetime(start_date)
     assert "mf" in recreated_data["GOSAT-UK"][0].variables
-    assert ("dmf" in recreated_data["GOSAT-UK"][0].variables) or ("vmf" in recreated_data["GOSAT-UK"].variables)
+    assert ("mf_repeatability" in recreated_data["GOSAT-UK"][0].variables) or ("mf_variability" in recreated_data["GOSAT-UK"][0].variables)
     
 
 def test_process_utils_attributes():    

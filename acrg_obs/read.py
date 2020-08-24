@@ -112,7 +112,7 @@ def scale_convert(ds, species, to_scale):
     else:
         print(f"... converting scale to {to_scale}")
     
-    scale_converter = pd.read_csv("acrg_obs_scale_convert.csv")
+    scale_converter = pd.read_csv(acrg_path / "acrg_obs/acrg_obs_scale_convert.csv")
     scale_converter_scales = scale_converter[scale_converter.isin([species.upper(), ds_scale, to_scale])][["species", "scale1", "scale2"]].dropna(axis=0, how = "any")
     
     if len(scale_converter_scales) == 0:
@@ -187,7 +187,7 @@ def get_single_site(site, species_in,
         status_flag_unflagged (list, optional) : 
             The value to use when filtering by status_flag. 
             Default = [0]
-        file_path (pathlib.Path object, optional) :
+        file_path (str, optional) :
             Path to file. If this is used, network, inlet and instrument are ignored. site and species are still required.
             Default=None.
         calibration_scale (str, optional) :
@@ -354,7 +354,7 @@ def get_single_site(site, species_in,
             print(query)
 
         # Run query and get list of files
-        files_to_get = c.execute(query, params)
+        files_to_get = list(c.execute(query, params))
 
         # close database
         conn.close()
@@ -577,7 +577,7 @@ def get_gosat(site, species, max_level,
     data["mf_prior_factor"] = prior_factor
     data["mf_prior_upper_level_factor"] = prior_upper_level_factor
     data["mf"] = data.xch4 - data.mf_prior_factor - data.mf_prior_upper_level_factor
-    data["dmf"] = data.xch4_uncertainty
+    data["mf_repeatability"] = data.xch4_uncertainty
 
     # rt17603: 06/04/2018 Added drop variables to ensure lev and id dimensions are also dropped, Causing problems in footprints_data_merge() function
     drop_data_vars = ["xch4","xch4_uncertainty","lon","lat","ch4_profile_apriori","xch4_averaging_kernel",
@@ -614,6 +614,7 @@ def get_obs(sites, species,
             status_flag_unflagged = None,
             max_level = None,
             data_directory = None,
+            file_paths = None,
             calibration_scale = None):
     """
     The get_obs function retrieves obervations for a set of sites and species between start and end dates.
@@ -674,8 +675,9 @@ def get_obs(sites, species,
         max_level (int) : 
             Required for satellite data only. Maximum level to extract up to from within satellite data.
         data_directory (str, optional) :
-            flux_directory can be specified if files are not in the default directory. 
-            Must point to a directory which contains subfolders organized by network.
+            Only for GOSAT data: directory where valid GOSAT data are stored
+        file_paths (list of str, optional):
+            Paths for specific files to read
         calibration_scale (str, optional) :
             Convert to this calibration scale (original scale and new scale must both be in acrg_obs_scale_convert.csv)            
     
@@ -729,6 +731,11 @@ def get_obs(sites, species,
                                    max_level = max_level,
                                    data_directory = data_directory)
         else:
+            if file_paths is not None:
+                file_path = file_paths[si]
+            else:
+                file_path = None
+            
             obs[site] = get_single_site(site, species, inlet = inlet[si],
                                    start_date = start_date, end_date = end_date,
                                    average = average[si],
@@ -736,7 +743,7 @@ def get_obs(sites, species,
                                    instrument = instrument[si],
                                    keep_missing = keep_missing,
                                    status_flag_unflagged = status_flag_unflagged[si],
-                                   data_directory = data_directory,
+                                   file_path = file_path,
                                    calibration_scale = calibration_scale)
 
     # Raise error if units don't match
