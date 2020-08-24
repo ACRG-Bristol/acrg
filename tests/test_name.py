@@ -412,7 +412,15 @@ def data(measurement_param_small):
     nt = len(time)
     obsdf = pd.DataFrame({"mf":np.random.rand(nt)*1000.,"dmf":np.random.rand(nt), "status_flag":np.zeros(nt)}, index=time)
     obsdf.index.name = 'time'
-    measurement_data = {'.species' : 'ch4', '.units' : 1e-9, 'MHD' : obsdf}    
+    obsds = xray.Dataset.from_dataframe(obsdf)
+    obsds.attrs["inlet"] = "10m"
+    obsds.mf.attrs["units"] = 1e-9
+    obsds.attrs["scale"] = "testscale"
+    obsds.attrs["species"] = "ch4"
+    
+    #measurement_data = {'.species' : 'ch4', '.units' : 1e-9, 'MHD' : obsdf}  
+    measurement_data = {"MHD": [obsds]}
+    
 
     return measurement_data
 
@@ -433,8 +441,13 @@ def data_sat(measurement_param_sat):
     nt = len(time)
     obsdf = pd.DataFrame({"mf":np.random.rand(nt)*1000.,"dmf":10*np.random.rand(nt), "mf_prior_factor":10*np.random.rand(nt), "mf_prior_upper_level_factor":15*np.random.rand(nt)}, index=time)
     obsdf.index.name = 'time'
-    obsdf.max_level = input_param["max_level"]
-    measurement_data_sat = {'.species' : input_param["species"], '.units' : 1e-9, input_param["sites"] : obsdf}  
+    #obsdf.max_level = input_param["max_level"]
+    obsds = xray.Dataset.from_dataframe(obsdf)
+    obsds.mf.attrs["units"] = 1e-9
+    obsds.attrs["max_level"] = input_param["max_level"]
+    obsds.attrs["species"] = input_param["species"]
+    measurement_data_sat = {input_param["sites"]: [obsds]}
+    #measurement_data_sat = {'.species' : input_param["species"], '.units' : 1e-9, input_param["sites"] : obsdf}  
     
     return measurement_data_sat
 
