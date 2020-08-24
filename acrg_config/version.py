@@ -14,10 +14,12 @@ from acrg_config.paths import paths
 acrg_path = paths.acrg
 
 def code_version():
-    '''    
+    '''   
+    Use git describe to return the latest tag (and git hash if applicable).
+    
     Returns
     -------
-    version : String defining the version of the code used
+    version : String defining the version of the code used, or "Unknown" if git is unavailable
 
     '''
     
@@ -27,7 +29,7 @@ def code_version():
         #remove newlines and cast as string
         version = str(output.stdout.strip('\n'))
     except:
-        print("WARNING: Unable to identify version using git.")
+        print("WARNING: Unable to identify version using git. Check that git is available to the python process.")
         #TODO: Add backup versioning method?
         version = "Unknown"
         
