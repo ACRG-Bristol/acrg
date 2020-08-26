@@ -825,7 +825,6 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
         site_ds_list = []
 
         for site_ds in data[site]:
-<<<<<<< HEAD
 
             if network is None:
                 network_site = list(site_info[site].keys())[0]
@@ -858,71 +857,6 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
             else:    
                 site_modifier_fp = site
 
-            if height is not None:
-
-                if type(height) is not dict:
-                    print("Height input needs to be a dictionary with {sitename:height}")
-                    #return None 
-                height_site = height[site] 
-            else:
-                #Find height closest to inlet
-                siteheights = [int(sh[:-4]) for sh in site_info[site][network_site]["height_name"]]
-                wh_height = np.where(abs(np.array(siteheights) - int(site_ds.inlet[:-1])) == np.min(abs(np.array(siteheights) - int(site_ds.inlet[:-1]))))
-                height_site = site_info[site][network_site]["height_name"][wh_height[0][0]] #NB often different to inlet
-
-            # Get footprints
-
-            site_fp = footprints(site_modifier_fp, fp_directory = fp_directory, 
-                                 start = start, end = end,
-                                 domain = domain,
-                                 species = species,
-                                 height = height_site,
-                                 network = network_site,
-                                 HiTRes = HiTRes) 
-
-            mfattrs = [key for key in site_ds.mf.attrs]
-            if "units" in mfattrs:
-                units = float(site_ds.mf.attrs["units"])
-        
-        if site_fp is not None:
-            # If satellite data, check that the max_level in the obs and the max level in the processed FPs are the same
-            # Set tolerance tin time to merge footprints and data   
-            # This needs to be made more general to 'satellite', 'aircraft' or 'ship'                
-=======
->>>>>>> e03bffb6e08b17753f65bceec3bb4ad0c9bef1fb
-
-            if network is None:
-                network_site = list(site_info[site].keys())[0]
-            elif not isinstance(network,str):
-                network_site = network[i]
-            else:
-                network_site = network
-
-            # Dataframe for this site            
-            # Get time range
-            df_start = pd.to_datetime(min(site_ds.time.values)) #.to_pydatetime()
-            start = dt.datetime(df_start.year, df_start.month, 1, 0, 0)
-
-            df_end = pd.to_datetime(max(site_ds.time.values)) #max(site_df.index).to_pydatetime()
-            month_days = calendar.monthrange(df_end.year, df_end.month)[1]
-            end = dt.datetime(df_end.year, df_end.month, 1, 0, 0) + \
-                    dt.timedelta(days = month_days)
-
-            #Get earliest start and latest end dates from all sites for loading fluxes and bcs
-            if flux_bc_start == None or flux_bc_start > start:
-                flux_bc_start = start
-            if flux_bc_end == None or flux_bc_end < end:
-                flux_bc_end = end
-
-
-            ## Convert to dataset
-            #site_ds = xr.Dataset.from_dataframe(site_df)
-            if site in list(site_modifier.keys()):
-                site_modifier_fp = site_modifier[site]
-            else:    
-                site_modifier_fp = site
-
-                
             if "platform" in site_info[site][network_site]:
                 platform = site_info[site][network_site]["platform"]
             else:
