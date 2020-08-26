@@ -25,26 +25,13 @@ import pandas as pd
 import os
 from os.path import join
 import sys
-
-if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
-    acrg_path = os.getenv("ACRG_PATH")
-    data_path = os.getenv("DATA_PATH") 
-else:
-    from acrg_config.paths import paths
-    acrg_path = paths.acrg
-    data_path = paths.data
-
-if acrg_path is None:
-    acrg_path = os.getenv("HOME")
-    print("Default ACRG directory is assumed to be home directory. Set path in .bashrc as \
-            export ACRG_PATH=/path/to/acrg/repository/ and restart python terminal")
-
-if data_path is None:
-    data_path = "/data/shared/"
-    print("Default Data directory is assumed to be /data/shared/. Set path in .bashrc as \
-          export DATA_PATH=/path/to/data/directory/ and restart python terminal")
-    
+from acrg_config.paths import paths
 import acrg_name.basis_functions
+import acrg_name.name
+
+
+acrg_path = paths.acrg
+
 acrg_name.basis_functions.fields_file_path = join(acrg_path, 'tests/files/LPDM/fp_NAME/')
 acrg_name.basis_functions.basis_dir = join(acrg_path, 'tests/files/output/')
 acrg_name.basis_functions.bc_basis_dir = join(acrg_path,'tests/files/output/')
@@ -57,7 +44,6 @@ output_folder_to_create = join(acrg_name.basis_functions.bc_basis_dir, 'EUROPE/'
 if not os.path.exists(output_folder_to_create):
     os.makedirs(output_folder_to_create)
         
-import acrg_name.name
 acrg_name.name.data_path = join(acrg_path, 'tests/files/')
 
 def test_acrg_basis_transd_shape():

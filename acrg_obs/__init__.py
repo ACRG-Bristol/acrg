@@ -1,7 +1,4 @@
-from __future__ import absolute_import
-from .read import get_obs
-from .read import plot
-from .read import get_single_site
+from .read import get_obs, get_single_site, get_gosat
 from . import read
 from . import utils
 from . import process_gcwerks

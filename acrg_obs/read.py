@@ -28,13 +28,9 @@ Calculate Cape Grim monthly means, with baseline filtering:
 Created on Sat Dec 27 17:17:01 2014
 @author: chxmr
 """
-from __future__ import print_function
-from __future__ import division
-
 from builtins import zip
 from builtins import str
 from builtins import range
-from past.utils import old_div
 import numpy as np
 import pandas as pd
 import glob
@@ -45,35 +41,22 @@ import xarray as xr
 from collections import OrderedDict
 import sys
 import sqlite3
+from acrg_config.paths import paths
+from acrg_utils import is_number
+import numexpr as ne
 
-if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
-    acrg_path = os.getenv("ACRG_PATH")
-    data_path = os.getenv("DATA_PATH")
-    obs_directory = os.path.join(data_path,"obs")    
-else:
-    from acrg_config.paths import paths
-
-    acrg_path = paths.acrg
-    obs_directory = paths.obs
+acrg_path = paths.acrg
+obs_directory = paths.obs
 
 #Get site info and species info from JSON files
 #with open(acrg_path / "acrg_species_info.json") as f:
-with open(os.path.join(acrg_path,"acrg_species_info.json")) as f:
+with open(acrg_path / "acrg_species_info.json") as f:
     species_info=json.load(f)
 
-with open(os.path.join(acrg_path,"acrg_site_info.json")) as f:
+with open(acrg_path / "acrg_site_info.json") as f:
     site_info=json.load(f, object_pairs_hook=OrderedDict)
 
-def is_number(s):
-    """
-    Is it a number?
-    """
-    try:
-        float(s)
-        return True
-    except ValueError:
-        return False
-
+    
 def synonyms(search_string, info, alternative_label = "alt"):
     '''
     Check to see if there are other names that we should be using for
@@ -130,7 +113,7 @@ def scale_convert(ds, species, to_scale):
     else:
         print(f"... converting scale to {to_scale}")
     
-    scale_converter = pd.read_csv("acrg_obs_scale_convert.csv")
+    scale_converter = pd.read_csv(acrg_path / "acrg_obs/acrg_obs_scale_convert.csv")
     scale_converter_scales = scale_converter[scale_converter.isin([species.upper(), ds_scale, to_scale])][["species", "scale1", "scale2"]].dropna(axis=0, how = "any")
     
     if len(scale_converter_scales) == 0:
@@ -149,7 +132,11 @@ def scale_convert(ds, species, to_scale):
     else:
         direction = "1to2"
 
-    ds["mf"].values = eval(converter[direction].replace("X", "ds.mf"))
+    # scale_convert file has variable X in equations, so let's create it
+    X = 1.
+    scale_factor = ne.evaluate(converter[direction])
+    ds["mf"].values *= scale_factor
+
     ds.attrs["scale"] = to_scale
     
     return(ds)
@@ -161,13 +148,16 @@ def get_single_site(site, species_in,
                     inlet = None, average = None,
                     instrument = None,
                     status_flag_unflagged = [0],
-                    version = None,
                     keep_missing = None,
-                    data_directory = None,
+                    file_path = None,
                     calibration_scale = None,
                     verbose = False):
     '''
-    Get measurements from one site
+    Get measurements from one site as a list of xarray datasets.
+    If there are multiple instruments and inlets at a particular site, 
+    note that the acrg_obs_defaults.csv file may be referenced to determine which instrument and inlet to use for each time period.
+    If an inlet or instrument changes at some point during time period, multiple datasets will be returned,
+    one for each inlet/instrument.
     
     Args:    
         site_in (str) :
@@ -202,16 +192,17 @@ def get_single_site(site, species_in,
         status_flag_unflagged (list, optional) : 
             The value to use when filtering by status_flag. 
             Default = [0]
-        data_directory (str, optional) :
-            directpry can be specified if files are not in the default directory. 
-            Must point to a directory which contains subfolders organized by site.
+        file_path (str, optional) :
+            Path to file. If this is used, network, inlet and instrument are ignored. site and species are still required.
             Default=None.
         calibration_scale (str, optional) :
             Convert to this calibration scale (original scale and new scale must both be in acrg_obs_scale_convert.csv)
     Returns:
         (list of xarray datasets):
-            Timeseries data frame for observations at site of species.
-
+            Mole fraction time series data as an xarray dataset, returned in a list. 
+            Each list element is for a unique instrument and inlet.
+            If either of these changes at some point during the timeseries, they are added as separate list elements.
+            
     '''
     
     # Check that site is in acrg_site_info.json
@@ -227,146 +218,153 @@ def get_single_site(site, species_in,
         return
     if species != species_in:
         print("... changing species from %s to %s" % (species_in, species))
-    
-    
-    
-    # Open defaults file
-    df_defaults = pd.read_csv(paths.acrg / "acrg_obs/acrg_obs_defaults.csv",
-                             parse_dates = ["startDate", "endDate"])
-    df_defaults.dropna(axis = 0, how = "all", inplace = True)
 
-    # Set early start date and late end date, if empty
-    df_defaults["startDate"] = df_defaults["startDate"].fillna(pd.Timestamp("1900-01-01"))
-    df_defaults["endDate"] = df_defaults["endDate"].fillna(pd.Timestamp("2100-01-01"))
-
-    df_defaults.replace(np.nan, "%", inplace = True)
-
-    
-    
-    # Read defaults database into memory
-    conn = sqlite3.connect(":memory:")
-
-    dtypes = {"site": "text",
-              "species": "text",
-              "startDate": "timestamp",
-              "endDate": "timestamp",
-              "instrument": "text",
-              "inlet": "text"}
-
-    # Convert to database
-    df_defaults.to_sql("defaults", conn, if_exists="replace", dtype = dtypes)
-
-    c = conn.cursor()
-
-    # Attach the obs database
-    c.execute("ATTACH DATABASE ? as obs", (str(paths.obs / "obs.db"),))
-
-    # Change some variables for query
-    start_date_query = pd.Timestamp(start_date).to_pydatetime()
-    end_date_query = pd.Timestamp(end_date).to_pydatetime()
-    species_query = species.replace("-", "").lower()
-    
-    
-    # Run a couple of initial queries to see whether there are any defaults defined for a particular site
-    df_defaults_for_site = pd.read_sql_query("SELECT * FROM defaults WHERE site = ? COLLATE NOCASE",
-                                             conn, params = (site,))
-    df_defaults_for_site_species = pd.read_sql_query('''
-                                                     SELECT * FROM defaults 
-                                                     WHERE site = ? COLLATE NOCASE AND 
-                                                     species = ? COLLATE NOCASE
-                                                     ''', 
-                                                     conn, params = (site, species_query))
-
-    # Check if defaults need to be over-written
-    if (inlet != None or instrument != None or network != None) and len(df_defaults_for_site) >= 1:
-        print("... You've set either an inlet, instrument or network, overriding any defaults.")
-        print("... Best to set all three of these, if you want to avoid ambiguity.")
-        override_defaults = True
-    else:
-        override_defaults = False
-
-    # Read filenames from database
-    if len(df_defaults_for_site) == 0 or override_defaults:
-        # Query only the 'files' table table to determine which files to read
-
-        print("... no defaults set")
-        query = '''
-                SELECT files.filename, files.inlet, files.instrument
-                FROM obs.files
-                WHERE files.species=? COLLATE NOCASE AND
-                      files.site=? COLLATE NOCASE AND
-                      (files.endDate > date(?) AND files.startDate < date(?))
-                '''
-        params = [species_query, site, start_date_query, end_date_query]
-
-        # If an inlet, network or instrument are specified, append to the query
-        if inlet != None:
-            query += " AND files.inlet=?"
-            params.append(inlet)
-
-        if network != None:
-            query += " AND files.network=?"
-            params.append(network)
-
-        if instrument != None:
-            query += " AND files.instrument=?"
-            params.append(instrument)
+        
+    if file_path is not None:
+        
+        files_to_get = [(file_path, "na", "na"),]
+        species_query = species
 
     else:
-        # Create an inner join of the defaults and files table and filter based on defaults
-        # Note that the LIKE statement below allows us to have a wildcard (%) in some columns
-        # The wildcard is set wherever there is a missing value in the defaults table, and
-        #  where there's only one inlet in the files database
+        
+        # Open defaults file
+        df_defaults = pd.read_csv(paths.acrg / "acrg_obs/acrg_obs_defaults.csv",
+                                 parse_dates = ["startDate", "endDate"])
+        df_defaults.dropna(axis = 0, how = "all", inplace = True)
 
-        query = '''
-                SELECT filename, inlet, instrument, defaultStartDate, defaultEndDate FROM
-                (
-                 SELECT files.filename,
-                        files.startDate,
-                        files.endDate,
-                        files.site,
-                        files.inlet,
-                        files.species,
-                        files.instrument,
-                        files.network,
-                        defaults.inlet,
-                        defaults.site,
-                        defaults.instrument,
-                        defaults.network,
-                        defaults.startDate AS defaultStartDate,
-                        defaults.endDate AS defaultEndDate
-                FROM obs.files
-                INNER JOIN defaults
-                ON files.site = defaults.site
-                WHERE files.species = ? COLLATE NOCASE AND
-                        files.species LIKE defaults.species COLLATE NOCASE AND
-                        files.site = ? COLLATE NOCASE AND
-                        files.inlet LIKE defaults.inlet AND
-                        files.instrument LIKE defaults.instrument AND
-                        files.network LIKE defaults.network COLLATE NOCASE AND
-                        (files.endDate > date(?) AND files.startDate < date(?)) AND
-                        (defaults.endDate > date(?) AND defaults.startDate < date(?))
-                        )
-                '''
+        # Set early start date and late end date, if empty
+        df_defaults["startDate"] = df_defaults["startDate"].fillna(pd.Timestamp("1900-01-01"))
+        df_defaults["endDate"] = df_defaults["endDate"].fillna(pd.Timestamp("2100-01-01"))
+
+        df_defaults.replace(np.nan, "%", inplace = True)
+
+        # Read defaults database into memory
+        conn = sqlite3.connect(":memory:")
+
+        dtypes = {"site": "text",
+                  "species": "text",
+                  "startDate": "timestamp",
+                  "endDate": "timestamp",
+                  "instrument": "text",
+                  "inlet": "text"}
+
+        # Convert to database
+        df_defaults.to_sql("defaults", conn, if_exists="replace", dtype = dtypes)
+
+        c = conn.cursor()
+
+        # Attach the obs database
+        c.execute("ATTACH DATABASE ? as obs", (str(paths.obs / "obs.db"),))
+
+        # Change some variables for query
+        start_date_query = pd.Timestamp(start_date).to_pydatetime()
+        end_date_query = pd.Timestamp(end_date).to_pydatetime()
+        species_query = species.replace("-", "").lower()
 
 
-        # If species explicitly appears in the defaults file, enforce matching to that value
-        # This is needed in the case that a species is measured on two instruments, 
-        #  but one instrument measures a whole load of stuff and therefore a wildcard is set 
-        #  for that instrument (e.g. SF6 on the ECD and Medusa at TAC)
-        if len(df_defaults_for_site_species) > 0:
-            query = query.replace("files.species LIKE defaults.species",
-                                  "files.species = defaults.species")
+        # Run a couple of initial queries to see whether there are any defaults defined for a particular site
+        df_defaults_for_site = pd.read_sql_query("SELECT * FROM defaults WHERE site = ? COLLATE NOCASE",
+                                                 conn, params = (site,))
+        df_defaults_for_site_species = pd.read_sql_query('''
+                                                         SELECT * FROM defaults 
+                                                         WHERE site = ? COLLATE NOCASE AND 
+                                                         species = ? COLLATE NOCASE
+                                                         ''', 
+                                                         conn, params = (site, species_query))
 
-        params = [species_query, site,
-                  start_date_query, end_date_query, start_date_query, end_date_query]
+        # Check if defaults need to be over-written
+        if (inlet != None or instrument != None or network != None) and len(df_defaults_for_site) >= 1:
+            print("... You've set either an inlet, instrument or network, overriding any defaults.")
+            print("... Best to set all three of these, if you want to avoid ambiguity.")
+            override_defaults = True
+        else:
+            override_defaults = False
 
-    if verbose:
-        print(query)
+        # Read filenames from database
+        if len(df_defaults_for_site) == 0 or override_defaults:
+            # Query only the 'files' table table to determine which files to read
 
-    # Run query and get list of files
-    files_to_get = c.execute(query, params)
-    
+            print("... no defaults set")
+            query = '''
+                    SELECT files.filename, files.inlet, files.instrument
+                    FROM obs.files
+                    WHERE files.species=? COLLATE NOCASE AND
+                          files.site=? COLLATE NOCASE AND
+                          (files.endDate > date(?) AND files.startDate < date(?))
+                    '''
+            params = [species_query, site, start_date_query, end_date_query]
+
+            # If an inlet, network or instrument are specified, append to the query
+            if inlet != None:
+                query += " AND files.inlet=?"
+                params.append(inlet)
+
+            if network != None:
+                query += " AND files.network=?"
+                params.append(network)
+
+            if instrument != None:
+                query += " AND files.instrument=?"
+                params.append(instrument)
+
+        else:
+            # Create an inner join of the defaults and files table and filter based on defaults
+            # Note that the LIKE statement below allows us to have a wildcard (%) in some columns
+            # The wildcard is set wherever there is a missing value in the defaults table, and
+            #  where there's only one inlet in the files database
+
+            query = '''
+                    SELECT filename, inlet, instrument, defaultStartDate, defaultEndDate FROM
+                    (
+                     SELECT files.filename,
+                            files.startDate,
+                            files.endDate,
+                            files.site,
+                            files.inlet,
+                            files.species,
+                            files.instrument,
+                            files.network,
+                            defaults.inlet,
+                            defaults.site,
+                            defaults.instrument,
+                            defaults.network,
+                            defaults.startDate AS defaultStartDate,
+                            defaults.endDate AS defaultEndDate
+                    FROM obs.files
+                    INNER JOIN defaults
+                    ON files.site = defaults.site
+                    WHERE files.species = ? COLLATE NOCASE AND
+                            files.species LIKE defaults.species COLLATE NOCASE AND
+                            files.site = ? COLLATE NOCASE AND
+                            files.inlet LIKE defaults.inlet AND
+                            files.instrument LIKE defaults.instrument AND
+                            files.network LIKE defaults.network COLLATE NOCASE AND
+                            (files.endDate > date(?) AND files.startDate < date(?)) AND
+                            (defaults.endDate > date(?) AND defaults.startDate < date(?))
+                            )
+                    '''
+
+            # If species explicitly appears in the defaults file, enforce matching to that value
+            # This is needed in the case that a species is measured on two instruments, 
+            #  but one instrument measures a whole load of stuff and therefore a wildcard is set 
+            #  for that instrument (e.g. SF6 on the ECD and Medusa at TAC)
+            if len(df_defaults_for_site_species) > 0:
+                query = query.replace("files.species LIKE defaults.species",
+                                      "files.species = defaults.species")
+
+            params = [species_query, site,
+                      start_date_query, end_date_query, start_date_query, end_date_query]
+
+        if verbose:
+            print(query)
+
+        # Run query and get list of files
+        files_to_get = list(c.execute(query, params))
+
+        # close database
+        conn.close()
+
+        
     obs_files = []
     
     # Retrieve files
@@ -398,14 +396,42 @@ def get_single_site(site, species_in,
 
         # If averaging is set, resample
         if average != None:
+            
+            if keep_missing == True:
+                
+                # Create a dataset with one element and NaNs to prepend or append
+                ds_single_element = ds[dict(time = 0)]
+                for v in ds_single_element.variables:
+                    if v != "time":
+                        ds_single_element[v].values = np.nan
+                
+                ds_concat = []
+                
+                # Pad with an empty entry at the start date
+                if min(ds.time) > pd.Timestamp(start_date):
+                    ds_single_element_start = ds_single_element.copy()
+                    ds_single_element_start.time.values = pd.Timestamp(start_date)
+                    ds_concat.append(ds_single_element_start)
 
+                ds_concat.append(ds)
+                
+                # Pad with an empty entry at the end date
+                if max(ds.time) < pd.Timestamp(end_date):
+                    ds_single_element_end = ds_single_element.copy()
+                    ds_single_element_end.time.values = pd.Timestamp(end_date) - pd.Timedelta("1ns")
+                    ds_concat.append(ds_single_element_end)
+                
+                ds = xr.concat(ds_concat, dim="time")
+                    
+                # Now sort to get everything in the right order
+                ds = ds.sortby("time")      
+            
             # First, just do a mean resample on all variables
             print(f"... resampling to {average}")
             ds_resampled = ds.resample(time = average, keep_attrs = True
-                                       ).mean()
+                                       ).mean(skipna=False)
             # keep_attrs doesn't seem to work for some reason, so manually copy
             ds_resampled.attrs = ds.attrs.copy()
-
             
             # For some variables, need a different type of resampling
             for var in ds.variables:
@@ -416,7 +442,7 @@ def get_single_site(site, species_in,
                 elif "variability" in var:
                     # Calculate std of 1 min mf obs in av period as new vmf 
                     ds_resampled[var] = ds[var].resample(time = average,
-                                                         keep_attrs = True).std()
+                                                         keep_attrs = True).std(skipna=False)
 
                 # Copy over some attributes
                 if "long_name" in ds[var].attrs:
@@ -430,7 +456,6 @@ def get_single_site(site, species_in,
         rename = {}
 
         for var in ds.variables:
-
             if var.lower() == species_query.lower():
                 rename[var] = "mf"
             if "repeatability" in var:
@@ -439,13 +464,20 @@ def get_single_site(site, species_in,
                 rename[var] = "mf_variability"
             if "number_of_observations" in var:
                 rename[var] = "mf_number_of_observations"
+            if "status_flag" in var:
+                rename[var] = "status_flag"
+            if "integration_flag" in var:
+                rename[var] = "integration_flag"
 
         ds = ds.rename_vars(rename)
 
-        
         # Append inlet and filename to attributes
         ds.attrs["filename"] = f[0]
-        ds.attrs["inlet"] = f[1]
+        if f[1] == "%":
+            first_network = next(iter(site_info[site]))
+            ds.attrs["inlet"] = site_info[site][first_network]["height"][0]
+        else:
+            ds.attrs["inlet"] = f[1]
         ds.attrs["instrument"] = f[2]
         ds.attrs["species"] = species
         if "Calibration_scale" in ds.attrs:
@@ -458,8 +490,6 @@ def get_single_site(site, species_in,
         # Store dataset
         obs_files.append(ds)
 
-    # close database
-    conn.close()
         
     if len(obs_files) == 0 and len(df_defaults_for_site) > 0:
         print(''' Your query didn't return anything. If you're sure the files exits
@@ -474,6 +504,7 @@ def get_single_site(site, species_in,
                 e.g. "cfc11", rather than "CFC-11"
                 ''')
     else:
+        
         # Check if units match
         units = [f.mf.attrs["units"] for f in obs_files]
         if len(set(units)) > 1:
@@ -485,7 +516,7 @@ def get_single_site(site, species_in,
             print(f"WARNING: scales don't match for these files: {[(f.attrs['scale'],f.attrs['filename']) for f in obs_files]}")
             print("... suggest setting calibration_scale to convert")
     
-    return(obs_files)
+    return obs_files
 
 
 def get_gosat(site, species, max_level,
@@ -522,20 +553,19 @@ def get_gosat(site, species, max_level,
     if max_level is None:
         raise ValueError("'max_level' ARGUMENT REQUIRED FOR SATELLITE OBS DATA")
             
-    data_directory = os.path.join(data_directory, "GOSAT", site)
-    files = glob.glob(os.path.join(data_directory, '*.nc'))
-    files = [os.path.split(f)[-1] for f in files]
+    data_directory = obs_directory / "GOSAT" / site
+    files = [f.name for f in data_directory.glob("*.nc")]
 
     files_date = [pd.to_datetime(f.split("_")[2][0:8]) for f in files]
 
     data = []
     for (f, d) in zip(files, files_date):
         if d >= pd.to_datetime(start_date) and d < pd.to_datetime(end_date):
-            with xr.open_dataset(os.path.join(data_directory,f)) as fxr:
+            with xr.open_dataset(data_directory / f) as fxr:
                 data.append(fxr.load())
     
     if len(data) == 0:
-        return None
+        return []
     
     data = xr.concat(data, dim = "time")
 
@@ -552,7 +582,7 @@ def get_gosat(site, species, max_level,
     data["mf_prior_factor"] = prior_factor
     data["mf_prior_upper_level_factor"] = prior_upper_level_factor
     data["mf"] = data.xch4 - data.mf_prior_factor - data.mf_prior_upper_level_factor
-    data["dmf"] = data.xch4_uncertainty
+    data["mf_repeatability"] = data.xch4_uncertainty
 
     # rt17603: 06/04/2018 Added drop variables to ensure lev and id dimensions are also dropped, Causing problems in footprints_data_merge() function
     drop_data_vars = ["xch4","xch4_uncertainty","lon","lat","ch4_profile_apriori","xch4_averaging_kernel",
@@ -566,21 +596,18 @@ def get_gosat(site, species, max_level,
         if coord in data.coords:
             data = data.drop(coord)
 
-    data = data.to_dataframe()
-    data = MetaDataFrame(data)
-    # rt17603: 06/04/2018 Added sort because some data was not being read in time order. 
-    # Causing problems in footprints_data_merge() function
-    data = data.sort_index()
+    data = data.sortby("time")
     
-    data.max_level = max_level
+    data.attrs["max_level"] = max_level
     if species.upper() == "CH4":
-        data.units = 1e-9
+        data.mf.attrs["units"] = '1e-9'
     if species.upper() == "CO2":
-        data.units = 1e-6
+        data.mf.attrs["units"] = '1e-6'
 
-    data.scale = "GOSAT"
+    data.attrs["scale"] = "GOSAT"
 
-    return data
+    # return single element list
+    return [data,]
     
 def get_obs(sites, species,
             start_date = "1900-01-01", end_date = "2100-01-01",
@@ -589,13 +616,15 @@ def get_obs(sites, species,
             keep_missing=False,
             network = None,
             instrument = None,
-            version = None,
             status_flag_unflagged = None,
             max_level = None,
             data_directory = None,
+            file_paths = None,
             calibration_scale = None):
     """
-    The get_obs function retrieves obervations for a set of sites and species between start and end dates
+    The get_obs function retrieves obervations for a set of sites and species between start and end dates.
+    This is essentially a wrapper function for get_single_site, to read in multiple sites.    
+    
     Note: max_level only pertains to satellite data
     
     TODO: 
@@ -609,15 +638,18 @@ def get_obs(sites, species,
         - For multiple sites, must be a list matching the number of sites.
     The status_flag_unflagged must also match the number of sites but must always be a list.
  
-    If not explicitly specified, height and network values can be extracted from acrg_site_info.json. If
-    there are multiple values are present, the first one will be used by default 
-    (*** May change with Matt's new acrg_site_info.json format ***)
+    For some sites where species are measured on multiple inlets and/or instruments,
+    the acrg_obs_defaults.csv file may be read to determine which inlet, instrument to be returned for each time period.
     
-    For example if we wanted to read in daily averaged methane data for Mace Head and Tacolneston for 2012 
-    we could include:
+    
+    Examples:
+    If we wanted to read in daily averaged methane data for Mace Head and Tacolneston for 2012:
     
         get_obs(sites=["MHD","TAC"],species="ch4",start_date="2012-01-01",end_date="2013-01-01",height=["10m","100m"],
                 average=["24H","24H"],network=["AGAGE","DECC"])
+    
+    To just go with the defaults at these sites, do:
+        get_obs(sites=["MHD","TAC"],species="ch4",start_date="2012-01-01",end_date="2013-01-01")
     
     Args:
         sites (list) :
@@ -638,7 +670,7 @@ def get_obs(sites, species,
             Each value should be a string of the form e.g. "2H", "30min" (should match pandas offset 
             aliases format). 
         keep_missing (bool, optional) :
-            Whether to keep missing data points or drop them.
+            Whether to keep missing data points or drop them when averaging.
         network (str/list, optional) : 
             Network for the site/instrument (must match number of sites). (optional)
         instrument (str/list, optional):
@@ -648,13 +680,15 @@ def get_obs(sites, species,
         max_level (int) : 
             Required for satellite data only. Maximum level to extract up to from within satellite data.
         data_directory (str, optional) :
-            flux_directory can be specified if files are not in the default directory. 
-            Must point to a directory which contains subfolders organized by network.
+            Only for GOSAT data: directory where valid GOSAT data are stored
+        file_paths (list of str, optional):
+            Paths for specific files to read
+        calibration_scale (str, optional) :
+            Convert to this calibration scale (original scale and new scale must both be in acrg_obs_scale_convert.csv)            
     
     Returns:
-        dict(pandas.DataFrame) : 
-            pandas Dataframe for every site, keywords of ".species" and ".units" are also included in
-            the dictionary.    
+        dict(list(xarray.Dataset)) : 
+            Returns a dictionary with site codes as keys. For each site, a list of xarray datasets is returned (see get_single_site)
     """
 
     def check_list_and_length(var, sites, error_message_string):
@@ -690,7 +724,6 @@ def get_obs(sites, species,
     average = check_list_and_length(average, sites, "average")
     network = check_list_and_length(network, sites, "network")
     instrument = check_list_and_length(instrument, sites, "instrument")
-    version = check_list_and_length(version, sites, "version")
     
     # Get data
     obs = {}
@@ -703,94 +736,47 @@ def get_obs(sites, species,
                                    max_level = max_level,
                                    data_directory = data_directory)
         else:
+            if file_paths is not None:
+                file_path = file_paths[si]
+            else:
+                file_path = None
+            
             obs[site] = get_single_site(site, species, inlet = inlet[si],
                                    start_date = start_date, end_date = end_date,
                                    average = average[si],
                                    network = network[si],
                                    instrument = instrument[si],
-                                   version = version[si],
                                    keep_missing = keep_missing,
                                    status_flag_unflagged = status_flag_unflagged[si],
-                                   data_directory = data_directory,
+                                   file_path = file_path,
                                    calibration_scale = calibration_scale)
-      
-    
-    # Raise error if units don't match
-    return(obs)
 
-    units = [s[0].mf.attrs["units"] for s in obs.items()]
-    if len(set(units)) > 1:
-        siteUnits = [':'.join([site, u]) for (site, u) in zip(sites, str(units)) if u is not None]
+    # Raise error if units don't match
+    units = []
+    for s, obs_site in obs.items():
+        if len(obs_site) > 0:
+            units.append(obs_site[0].mf.attrs["units"])
+        else:
+            units.append(None)
+
+    if len(set(filter(None, units))) > 1:
+        siteUnits = [': '.join([site, str(u)]) for (site, u) in zip(sites, units) if u is not None]
         errorMessage = f'''Units don't match for these sites: {siteUnits}'''
         raise ValueError(errorMessage)
 
     # Warning if scales don't match
-    scales = [s[0].attrs["scale"] for s in obs.items()]
-    if len(set(scales)) > 1:
-        siteScales = [':'.join([site, scale]) for (site, scale) in zip(sites, scales) if scale is not None]
+    scales = []
+    for s, obs_site in obs.items():
+        if len(obs_site) > 0:
+            scales.append(obs_site[0].attrs["scale"])
+        else:
+            scales.append(None)
+    
+    if len(set(filter(None, scales))) > 1:
+        siteScales = [': '.join([site, scale]) for (site, scale) in zip(sites, scales) if scale is not None]
         warningMessage = '''WARNING: scales don't match for these sites:
                             %s''' % ', '.join(siteScales)
         print(warningMessage)
 
-    return(obs)
+    return obs
     
-def label_species(species):
-    '''
-    Write species label in correct format for plotting with subscripts for number of atoms.
-    e.g. "CH4" becomes "CH$_{4}$" or "CHCl3" becomes "CHCl$_{3}$"
-    '''
-    import re
-    num = re.findall(r"\d+",species)
-    species_str = species
-    if num:
-        for n in num:
-            species_str = species_str.replace(n,"$_{{{num}}}$".format(num=n)) # {{{}}} needed to both use string formatting and print literal curly brackets.
-    
-    return species_str
-
-def plot(data_dict, output_file = None):
-    '''
-    Plot the data dictionary created by get_obs
-    
-    Args:
-        data_dict (dict) :
-            Dictionary of Pandas DataFrames output by get_obs. 
-            Keys are site names.
-    kwargs:
-        output_file (str): specify a file path, if you want to save the figure
-    '''
-    
-    import matplotlib.pyplot as plt
-    import matplotlib.patches as mpatches
-    
-    plots = []
-    
-    for site, df in data_dict.items():
-        if site[0] != '.':
-            if df is None:
-                plots.append(mpatches.Patch(label="%s (no data)" %site, color = "white"))
-            else:
-                if "vmf" in df.columns:
-                    error_col = "vmf"
-                    errors = df[error_col]
-                elif "dmf" in df.columns:
-                    error_col = "dmf"
-                    errors = df[error_col]
-                else:
-                    #TODO: Make this faster by duing a line plot, if there are no error bars
-                    errors = df.mf*0.
-                
-                plots.append(plt.errorbar(df.index, df.mf,
-                                          yerr = errors,
-                                          linewidth = 0, 
-                                          marker = '.', markersize = 6.,
-                                          label = site))
-
-    plt.legend(handles = plots)
-    #plt.ylabel("%s (%s)" %(data_dict[".species"], data_dict[".units"]))
-    plt.ylabel("%s (%s)" %(label_species(data_dict[".species"]), data_dict[".units"]))
-
-    if output_file:
-        plt.savefig(output_file)
-    
-    plt.show()
