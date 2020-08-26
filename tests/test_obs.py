@@ -13,10 +13,9 @@ import shutil
 import glob
 from pathlib import Path
 
-test_dir = Path("__file__").parent
+test_dir = Path(__file__).parent
 
 
-# TODO: Add test on scale conversion
 def test_scale_convert():
     '''
     Check that scale convert function is behaving as expected
@@ -25,12 +24,17 @@ def test_scale_convert():
     da = xr.DataArray(np.ones(10),
                       coords = {"time": pd.date_range("2018-01-01", periods = 10, freq = "D")},
                       dims = ["time"])
-    ds = xr.Dataset({"mf": da})
-    ds.attrs["scale"] = "WMO-X2004A"
+    ds_WMO = xr.Dataset({"mf": da.copy()})
+    ds_WMO.attrs["scale"] = "WMO-X2004A"
 
-    ds = acrg_obs.read.scale_convert(ds, "CH4", "TU1987")
+    ds_TU = xr.Dataset({"mf": da.copy()})
+    ds_TU.attrs["scale"] = "TU1987"
+    
+    ds_WMO = acrg_obs.read.scale_convert(ds_WMO, "CH4", "TU1987")
+    ds_TU = acrg_obs.read.scale_convert(ds_TU, "CH4", "WMO-X2004A")
 
-    assert np.allclose(ds["mf"], 0.998)
+    assert np.allclose(ds_WMO["mf"], 0.998)
+    assert np.allclose(ds_TU["mf"], 1.002)
     
     
 def test_get_obs_site():
