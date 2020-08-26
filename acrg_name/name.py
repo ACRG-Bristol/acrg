@@ -780,13 +780,13 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
     
     sites = [key for key in data]
 
-    if average is not None:
-        if type(average) is not dict:
-            print("WARNING: average list must be a dictionary with {site: averaging_period}\
-                  key value pairs. Ignoring. Output dataset will not be resampled.")
-            average = {x:None for x in sites}
-    else:
-        average = {x:None for x in sites}
+#     if average is not None:
+#         if type(average) is not dict:
+#             print("WARNING: average list must be a dictionary with {site: averaging_period}\
+#                   key value pairs. Ignoring. Output dataset will not be resampled.")
+#             average = {x:None for x in sites}
+#     else:
+#         average = {x:None for x in sites}
 
     species_list = []
     for site in sites:
@@ -795,11 +795,6 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
         raise Exception("Species do not match in for all measurements")
     else:
         species = species_list[0]
-<<<<<<< HEAD
-
-
-=======
->>>>>>> e03bffb6e08b17753f65bceec3bb4ad0c9bef1fb
 
     if load_flux:
         if emissions_name is not None:
@@ -937,9 +932,9 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                     site_ds.update({'fp_HiTRes' : (site_ds.fp_HiTRes.dims, 
                                                    old_div(site_ds.fp_HiTRes, units))})
 
-            # Resample, if required
-            if average[site] is not None:
-                site_ds = site_ds.resample(indexer={'time':average[site]})
+#             # Resample, if required
+#             if average[site] is not None:
+#                 site_ds = site_ds.resample(indexer={'time':average[site]})
               
             site_ds_list += [site_ds]
     
