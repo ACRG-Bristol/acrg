@@ -34,6 +34,7 @@ import glob
 import numpy as np
 import xarray as xray
 import pandas as pd
+import pickle
 
 import acrg_name.name as name
 #import acrg_agage as agage
@@ -504,7 +505,7 @@ def data(measurement_param_small):
     nt = len(time)
     obsdf = pd.DataFrame({"mf":np.random.rand(nt)*1000.,"dmf":np.random.rand(nt), "status_flag":np.zeros(nt)}, index=time)
     obsdf.index.name = 'time'
-    measurement_data = {'.species' : 'ch4', '.units' : 1e-9, 'MHD' : obsdf}    
+    measurement_data = {'.species' : 'ch4', '.units' : 1e-9, '.scales' : {'MHD':'Tohoku'}, 'MHD' : obsdf}    
 
     return measurement_data
 
@@ -581,7 +582,7 @@ def test_fp_data_merge_benchmark(data,measurement_param_small,fp_directory,flux_
         assert out[key] == benchmark_out[key]
         
     for key in benchmark_out.keys():
-        assert benchmark_out[key] == out[key]
+        assert benchmark_out[key] == out[key]    
 
 def test_fp_data_merge_long(data,measurement_param,fp_directory,flux_directory,bc_directory):
     '''
