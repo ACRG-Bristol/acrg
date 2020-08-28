@@ -23,10 +23,6 @@ To run all tests except those labelled 'long' use the syntax
 
 @author: rt17603
 """
-from __future__ import division
-
-from builtins import range
-from past.utils import old_div
 import pytest
 import os
 import sys
@@ -35,19 +31,13 @@ import numpy as np
 import xarray as xray
 import pandas as pd
 import pickle
-
 import acrg_name.name as name
-#import acrg_agage as agage
 import acrg_obs.read as read
+import pyfakefs
+from acrg_config.paths import paths
 
-#%%
 
-if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
-    acrg_path = os.getenv("ACRG_PATH") 
-else:
-    from acrg_config.paths import paths
-    acrg_path = paths.acrg
-
+acrg_path = paths.acrg
 
 @pytest.fixture(scope="module")
 def fp_directory():
