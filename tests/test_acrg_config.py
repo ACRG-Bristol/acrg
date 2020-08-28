@@ -32,10 +32,10 @@ import acrg_tdmcmc.tdmcmc_config as config_tdmcmc
 from acrg_tdmcmc.tdmcmc_config import all_mcmc_param
 from acrg_config.paths import paths
 
-acrg_path = paths.acrg
 
- 
-test_config_path = os.path.join(acrg_path,"tests/files/config")
+acrg_path = paths.acrg
+test_config_path = acrg_path / "tests/files/config"
+
 
 def test_version():
     version = acrg_config.version.code_version()
