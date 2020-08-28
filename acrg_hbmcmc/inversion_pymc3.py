@@ -648,7 +648,8 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
             outds["fluxapriori_hr"] = (['lat_hr','lon_hr'], aprioriflux_hr)
             outds["fluxmean_hr"] = (['lat_hr','lon_hr'], flux_hr)   
             outds["scalingmean_hr"] = (['lat_hr','lon_hr'], scalemap_hr)   
-            outds["basisfunctions_hr"] = (['lat_hr','lon_hr'], bfarray_hr) 
+            outds["basisfunctions_hr"] = (['lat_hr','lon_hr'], bfarray_hr)
+            outds = outds.assign_coords({"lat_hr":lat_hr, "lon_hr":lon_hr})
         
         outds.fluxmean.attrs["units"] = "mol/m2/s"
         outds.fluxapriori.attrs["units"] = "mol/m2/s"
