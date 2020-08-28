@@ -690,23 +690,21 @@ def getnaeiandedgarCH4(lon_out, lat_out):
     
 def get_naei_public(filename, lon_out, lat_out):
     '''
-    
+    Regrid the publically available NAEI .asc files that can be downloaded from https://naei.beis.gov.uk/data/map-uk-das
 
     Parameters
     ----------
-    filename : TYPE
-        DESCRIPTION.
-    lon_out : TYPE
-        DESCRIPTION.
-    lat_out : TYPE
-        DESCRIPTION.
-    naei_sector : TYPE
-        DESCRIPTION.
+    filename : string
+        Name of the .asc file to read in for naei data
+    lon_out : array like
+        longitude values for the output grid
+    lat_out : array like
+        latitude values for the output grid
 
     Returns
     -------
-    output : TYPE
-        DESCRIPTION.
+    output : xarray dataset
+        Regridded emissions data
 
     '''
     #OSGB projection for NAEI
@@ -718,12 +716,31 @@ def get_naei_public(filename, lon_out, lat_out):
     
     #ensure the grid is cell-centered:
     if raw_data.attrs["celltype"].lower() == "corner":
-        raw_data.lat = raw_data.lat + float(raw_data.attrs["cellsize"])/2
-        raw_data.lon = raw_data.lon + float(raw_data.attrs["cellsize"])/2
+        raw_data["lat"] = raw_data.lat + float(raw_data.attrs["cellsize"])/2
+        raw_data["lon"] = raw_data.lon + float(raw_data.attrs["cellsize"])/2
+        
+    #convert the OSGB grid to lat-lon
+    XX, YY = np.meshgrid(raw_data["lon"].values,raw_data["lat"].values)
+    XX, YY = pyproj.transform(OS_proj,ll_proj, XX, YY)
+    #create boundary mesh
+    XX_b, YY_b = acrg_grid.regrid_xesmf.getGridCC(raw_data["lon"].values,raw_data["lat"].values)
+    XX_b, YY_b = pyproj.transform(OS_proj,ll_proj, XX_b, YY_b)
     
-    regridded_data = acrg_grid.regrid_xesmf.regrid_uniform_cc(raw_data.data, raw_data.lat, raw_data.lon, lat_out, lon_out)
+    input_grid = xr.Dataset({'lon': (['x', 'y'], XX),
+                             'lat': (['x', 'y'], YY),
+                             'lon_b': (['x_b', 'y_b'], XX_b),
+                             'lat_b': (['x_b', 'y_b'], YY_b)})
     
-    output = regridded_data
+    output_grid = acrg_grid.regrid_xesmf.create_xesmf_grid_uniform_cc(lat_out, lon_out)
+    
+    #conda version of xesmf does not handle nans yet
+    data_sans_nans = np.nan_to_num(raw_data.data, copy=True)
+    regridded_data = acrg_grid.regrid_xesmf.regrid_betweenGrids(data_sans_nans, input_grid, output_grid)
+    
+    output = xr.Dataset({"data":(["lat", "lon"],regridded_data)},
+                        coords={"lat":(["lat"], lat_out),
+                                "lon":(["lon"], lon_out)})
+
     
     return output
 
