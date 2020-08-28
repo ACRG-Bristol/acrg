@@ -780,13 +780,13 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
     
     sites = [key for key in data]
 
-    if average is not None:
-        if type(average) is not dict:
-            print("WARNING: average list must be a dictionary with {site: averaging_period}\
-                  key value pairs. Ignoring. Output dataset will not be resampled.")
-            average = {x:None for x in sites}
-    else:
-        average = {x:None for x in sites}
+#     if average is not None:
+#         if type(average) is not dict:
+#             print("WARNING: average list must be a dictionary with {site: averaging_period}\
+#                   key value pairs. Ignoring. Output dataset will not be resampled.")
+#             average = {x:None for x in sites}
+#     else:
+#         average = {x:None for x in sites}
 
     species_list = []
     for site in sites:
@@ -852,7 +852,6 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
             else:    
                 site_modifier_fp = site
 
-                
             if "platform" in site_info[site][network_site]:
                 platform = site_info[site][network_site]["platform"]
             else:
@@ -861,7 +860,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
 
                 if type(height) is not dict:
                     print("Height input needs to be a dictionary with {sitename:height}")
-                    #return None 
+                    return None 
                 height_site = height[site] 
             else:
                 if platform == "satellite":
@@ -933,14 +932,14 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                     site_ds.update({'fp_HiTRes' : (site_ds.fp_HiTRes.dims, 
                                                    old_div(site_ds.fp_HiTRes, units))})
 
-            # Resample, if required
-            if average[site] is not None:
-                site_ds = site_ds.resample(indexer={'time':average[site]})
+#             # Resample, if required
+#             if average[site] is not None:
+#                 site_ds = site_ds.resample(indexer={'time':average[site]})
               
             site_ds_list += [site_ds]
     
     fp_and_data[site] = xr.merge(site_ds_list)
-    
+
     if load_flux:
 
         flux_dict = {} 

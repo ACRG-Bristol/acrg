@@ -23,6 +23,7 @@ To run all tests except those labelled 'long' use the syntax
 
 @author: rt17603
 """
+
 import pytest
 import os
 import sys
@@ -33,11 +34,11 @@ import pandas as pd
 import pickle
 import acrg_name.name as name
 import acrg_obs.read as read
-import pyfakefs
 from acrg_config.paths import paths
 
 
 acrg_path = paths.acrg
+
 
 @pytest.fixture(scope="module")
 def fp_directory():
