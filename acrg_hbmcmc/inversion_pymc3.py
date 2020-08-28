@@ -547,13 +547,13 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
             aprioriflux_hr = fp_data[".flux"]["all"].high_res.values[:,:,0]
             
             #! TODO: add hr grid into calculations here
-            for ci, cntry in enumerate(cntrynames):
-                cntrytottrace = np.sum( scalemap_trace * np.expand_dims(area * (cntrygrid == ci),axis=2) * 3600*24*365*molarmass/unit_factor, axis=(0,1))
-                cntrymean[ci] = np.mean(cntrytottrace)
-                cntrysd[ci] = np.std(cntrytottrace)
-                cntry68[ci, :] = pm.stats.hpd(cntrytottrace, 0.68)
-                cntry95[ci, :] = pm.stats.hpd(cntrytottrace, 0.95)
-                cntryprior[ci] = np.sum( area * (cntrygrid == ci) * 3600*24*365*molarmass/unit_factor, axis=(0,1))
+            # for ci, cntry in enumerate(cntrynames):
+            #     cntrytottrace = np.sum( scalemap_trace * np.expand_dims(area * (cntrygrid == ci),axis=2) * 3600*24*365*molarmass/unit_factor, axis=(0,1))
+            #     cntrymean[ci] = np.mean(cntrytottrace)
+            #     cntrysd[ci] = np.std(cntrytottrace)
+            #     cntry68[ci, :] = pm.stats.hpd(cntrytottrace, 0.68)
+            #     cntry95[ci, :] = pm.stats.hpd(cntrytottrace, 0.95)
+            #     cntryprior[ci] = np.sum( area * (cntrygrid == ci) * 3600*24*365*molarmass/unit_factor, axis=(0,1))
             
             bfarray_hr, bfarray = ppHR.unflattenArray( np.squeeze(bfds.basis.values-1), fp_data[".flux"]["all"])
             bfarray = np.squeeze(bfarray)
@@ -645,6 +645,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                                    'countrynames':(['countrynames'],cntrynames)})
         
         if "index" in bfds.dims.keys():
+            outds["fluxapriori_hr"] = (['lat_hr','lon_hr'], aprioriflux_hr)
             outds["fluxmean_hr"] = (['lat_hr','lon_hr'], flux_hr)   
             outds["scalingmean_hr"] = (['lat_hr','lon_hr'], scalemap_hr)   
             outds["basisfunctions_hr"] = (['lat_hr','lon_hr'], bfarray_hr) 

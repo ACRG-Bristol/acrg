@@ -251,7 +251,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                xprior,bcprior, sigprior,nit, burn, tune, nchain, verbose=verbose)
         process_kwargs = {}
     elif method.lower() == "drift":
-        ndrift = kwargs.pop("drift_index")
+        ndrift = np.array(kwargs.pop("drift_index"))
         drift_index = ndrift[siteindicator.astype(int)]
         time = setup.monthly_time(Ytime)
         xouts, bcouts, sigouts, c0outs, c1outs, c2outs, Ytrace, convergence, step1, step2 = mcmc.inferpymc3_withDrift(Hx, Hbc, Y, error,
