@@ -2351,25 +2351,7 @@ def process(domain, site, height, year, month,
                  
         if fp_file is not None:
             fp.append(fp_file)
-        
-        #Using the first datestring to select a file to gather information about the model.
-        #This information is added to the attributes of the processed file.
-        #Currently works for NAME or NAMEUKV
-        if datestr == datestrs[0]:
-            if transport_model == "NAME" or transport_model == "NAMEUKV":
-                if fields_folder == "MixR_files" or fields_folder == "MixR_hourly":
-                    name_info_file_str = os.path.join(subfolder,'MixR_files/*'+datestr+'*')
-                    name_info_file = glob.glob(name_info_file_str)[0]
-                    model_info = extract_file_lines(name_info_file)[0]
-                if fields_folder == "Fields_files":
-                    name_info_file_str = os.path.join(subfolder,'Fields_files/*'+datestr+'*')
-                    name_info_file = glob.glob(name_info_file_str)[0]
-                    model_info = extract_file_lines(name_info_file)[0]
-                else:
-                    model_info = "Version unknown"
-            else:
-                model_info = "Version unknown"
-                
+                       
         
             
     if len(fp) > 0:
@@ -2415,6 +2397,27 @@ def process(domain, site, height, year, month,
             lapse_error_in=None
         
         #Adding Global Attributes to fp file
+        
+        #Using the first datestring to select a file to gather information about the model.
+        #This information is added to the attributes of the processed file.
+        #Currently works for NAME or NAMEUKV
+        print(datestrs[0])
+        print("transport_model = ", transport_model)
+        print("fields_folder = ", fields_folder)
+        if transport_model == "NAME" or transport_model == "NAMEUKV":
+            if fields_folder == "MixR_files" or fields_folder == "MixR_hourly":
+                name_info_file_str = os.path.join(subfolder,'MixR_files/*'+datestrs[0]+'*')
+                name_info_file = glob.glob(name_info_file_str)[0]
+                model_info = extract_file_lines(name_info_file)[0]
+            elif fields_folder == "Fields_files":
+                name_info_file_str = os.path.join(subfolder,'Fields_files/*'+datestrs[0]+'*')
+                name_info_file = glob.glob(name_info_file_str)[0]
+                model_info = extract_file_lines(name_info_file)[0]
+            else:
+                model_info = "Version unknown"
+        else:
+            model_info = "Version unknown"
+ 
             
         fp.attrs["model"] = transport_model
         fp.attrs["model_version"] = model_info
