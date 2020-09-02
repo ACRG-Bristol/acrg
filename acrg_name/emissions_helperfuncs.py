@@ -44,6 +44,7 @@ from acrg_countrymask import domain_volume
 from acrg_name import flux
 import pyproj
 import acrg_grid.regrid_xesmf
+import getpass
 
 if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
     data_path = os.getenv("DATA_PATH") 
@@ -736,13 +737,79 @@ def get_naei_public(filename, lon_out, lat_out):
     #conda version of xesmf does not handle nans yet
     data_sans_nans = np.nan_to_num(raw_data.data, copy=True)
     regridded_data = acrg_grid.regrid_xesmf.regrid_betweenGrids(data_sans_nans, input_grid, output_grid)
+
     
     output = xr.Dataset({"data":(["lat", "lon"],regridded_data)},
                         coords={"lat":(["lat"], lat_out),
                                 "lon":(["lon"], lon_out)})
-
     
     return output
+
+def process_naei_public(naei_dir, species, year, sector, lon_out, lat_out, output_path = None):
+    """
+
+    Parameters
+    ----------
+    naei_dir : str
+        Directory containing unzupped naei .asc files
+    species : str
+        species as given in naei filenames
+    year : str
+        Two digit year (such as 17 for 2017)
+    sector : str
+        Sector name as given in naei filenames
+    lon_out : array like
+        longitude values for the output grid
+    lat_out : array like
+        latitude values for the output grid
+    output_path : str, optional
+        The filename to write the dataset to. The default is None, which does not output to a file
+
+    Returns
+    -------
+    output : xarray dataset
+        Regridded emissions data
+
+    """
+    
+    #run soome checks
+    sectorlist = ["energyprod","domcom","indcom","indproc","offshore","roadtrans",
+    "othertrans","waste","agric","nature","points","total","totarea"]
+    if sector not in sectorlist:
+        print('Sector {} not one of:'.format(sector))
+        print(sectorlist)
+        print('Returning None')
+        return None
+    filepath = os.path.join(naei_dir, sector+species+year+".asc")
+    
+    if not os.path.isfile(filepath):
+        print('Raw NAEI file {} does not exist'.format(filepath))
+        print('Returning None')
+        return None
+    
+    naei_ds = get_naei_public(filepath, lon_out, lat_out)
+    
+    #Convert to mol/m2/s
+    speciesmm = molar_mass(species)     
+       
+    if pd.to_datetime("20"+year).is_leap_year:
+        days = 366
+    else:
+        days = 365   
+        
+    #add attributes    
+    naei_ds["data"] = naei_ds["data"] / ((days * 3600*24) * speciesmm)
+    naei_ds["data"].attrs["units"] = "mol/m2/s"
+    naei_ds.attrs["Processed by"] = f"{getpass.getuser()}@bristol.ac.uk"
+    naei_ds.attrs["Processed on"] = str(pd.Timestamp.now(tz="UTC"))
+    naei_ds.attrs["Raw file used"] = filepath
+    
+    if output_path is not None:
+        naei_ds.to_netcdf(output_path)
+        
+    return naei_ds
+    
+
 
 def getNAEI(year, lon_out, lat_out, species, naei_sector):
  
