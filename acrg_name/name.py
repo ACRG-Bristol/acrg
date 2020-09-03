@@ -38,7 +38,6 @@ import cartopy
 from mpl_toolkits import mplot3d
 from collections import OrderedDict
 import acrg_obs as obs
-import errno
 
 if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
     acrg_path = os.getenv("ACRG_PATH")
@@ -336,8 +335,7 @@ def flux(domain, species, start = None, end = None, flux_directory=None):
     files = sorted(glob.glob(filename))
     
     if len(files) == 0:
-        print("\nError: Can't find flux files for domain '{0}' and species '{1}': ".format(domain,species))
-        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT),filename)
+        raise IOError("\nError: Can't find flux files for domain '{0}' and species '{1}' ".format(domain,species))
     
     flux_ds = read_netcdfs(files)
     # Check that time coordinate is present
@@ -483,11 +481,13 @@ def boundary_conditions(domain, species, start = None, end = None, bc_directory=
     if bc_directory is None:
         bc_directory = join(data_path, 'LPDM/bc/')
     
-    files = sorted(glob.glob(bc_directory + domain + "/" + 
-                   species.lower() + "_" + "*.nc"))
+    filenames = os.path.join(bc_directory,domain,species.lower() + "_" + "*.nc")
+    
+    files = sorted(glob.glob(filenames))
+    
     if len(files) == 0:
-        print("\nError: Can't find boundary condition files for domain '{0}' and species '{1}': ".format(domain,species))
-        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT),filename)
+        print("Cannot find boundary condition files in {}".format(filenames))
+        raise IOError("\nError: Cannot find boundary condition files for domain '{0}' and species '{1}': ".format(domain,species))
 
     bc_ds = read_netcdfs(files)
 
@@ -543,9 +543,8 @@ def basis(domain, basis_case, basis_directory = None):
     files = sorted(glob.glob(file_path))
     
     if len(files) == 0:
-        print("\nError: Can't find basis function files for domain '{0}' "
-              "and basis_case '{1}': ".format(domain,basis_case))
-        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT),file_path)
+        raise IOError("\nError: Can't find basis function files for domain '{0}' "
+              "and basis_case '{1}' ".format(domain,basis_case))
 
     basis_ds = read_netcdfs(files)
 
@@ -583,9 +582,8 @@ def basis_boundary_conditions(domain, basis_case, bc_basis_directory = None):
     files = sorted(glob.glob(file_path))
 
     if len(files) == 0:
-        print("\nError: Can't find boundary condition basis function files for domain '{0}' "
-              "and basis_case '{1}': ".format(domain,basis_case))
-        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT),file_path)
+        raise IOError("\nError: Can't find boundary condition basis function files for domain '{0}' "
+              "and basis_case '{1}' ".format(domain,basis_case))
 
     basis_ds = read_netcdfs(files)
 
@@ -726,7 +724,7 @@ def align_datasets(ds1, ds2, platform=None, resample_to_ds1=False):
     
 def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                           calc_timeseries = True, calc_bc = True, HiTRes = False,
-                          average = None, site_modifier = {}, height = None, network = None,
+                          site_modifier = {}, height = None, network = None,
                           emissions_name = None,
                           fp_directory = None,
                           flux_directory = None,
@@ -747,7 +745,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
         calc_timeseries (bool) : True calculates modelled mole fractions for each site using fluxes, False does not. Default True.
         calc_bc (bool)       : True calculates modelled baseline for each site using boundary conditions, False does not. Default True.
         HiTRes (bool)        : Set to True to include HiTRes footprints in output. Default False.
-        average (dict)       : Averaging period for each dataset (for each site). Should be a dictionary with
+        average (dict)       : [This keyword has been removed and its functionality commented out] Averaging period for each dataset (for each site). Should be a dictionary with
                                {site: averaging_period} key:value pairs.
                                Each value should be a string of the form e.g. "2H", "30min" (should match
                                pandas offset aliases format).
@@ -797,13 +795,13 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
     sites = [key for key in list(data.keys()) if key[0] != '.']
     attributes = [key for key in list(data.keys()) if key[0] == '.']
         
-    if average is not None:
-        if type(average) is not dict:
-            print("WARNING: average list must be a dictionary with {site: averaging_period}\
-                  key value pairs. Ignoring. Output dataset will not be resampled.")
-            average = {x:None for x in sites}
-    else:
-        average = {x:None for x in sites}
+#     if average is not None:
+#         if type(average) is not dict:
+#             print("WARNING: average list must be a dictionary with {site: averaging_period}\
+#                   key value pairs. Ignoring. Output dataset will not be resampled.")
+#             average = {x:None for x in sites}
+#     else:
+#         average = {x:None for x in sites}
 
 
     species = data[".species"]
@@ -929,8 +927,8 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                                                    old_div(site_ds.fp_HiTRes, data[".units"]))})
         
             # Resample, if required
-            if average[site] is not None:
-                site_ds = site_ds.resample(indexer={'time':average[site]})
+#             if average[site] is not None:
+#                 site_ds = site_ds.resample(indexer={'time':average[site]})
             
             fp_and_data[site] = site_ds
             
@@ -1287,7 +1285,7 @@ def bc_sensitivity(fp_and_data, domain, basis_case, bc_basis_directory = None):
         DS = DS.transpose('height','lat','lon','region','time')
 
         part_loc = np.hstack([DS.particle_locations_n,
-                                DS.particle_locations_e,
+                                DS.particle_locations_e, 
                                 DS.particle_locations_s,
                                 DS.particle_locations_w])
         

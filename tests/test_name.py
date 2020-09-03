@@ -23,10 +23,6 @@ To run all tests except those labelled 'long' use the syntax
 
 @author: rt17603
 """
-from __future__ import division
-
-from builtins import range
-from past.utils import old_div
 import pytest
 import os
 import sys
@@ -34,19 +30,14 @@ import glob
 import numpy as np
 import xarray as xray
 import pandas as pd
-
+import pickle
 import acrg_name.name as name
-#import acrg_agage as agage
 import acrg_obs.read as read
+import pyfakefs
+from acrg_config.paths import paths
 
-#%%
 
-if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
-    acrg_path = os.getenv("ACRG_PATH") 
-else:
-    from acrg_config.paths import paths
-    acrg_path = paths.acrg
-
+acrg_path = paths.acrg
 
 @pytest.fixture(scope="module")
 def fp_directory():
@@ -76,6 +67,12 @@ def basis_directory():
 def bc_basis_directory():
     ''' Define base directory containing boundary condition basis function files '''
     directory = os.path.join(acrg_path,"tests/files/LPDM/bc_basis_functions/")
+    return directory
+
+@pytest.fixture(scope="module")
+def output_directory():
+    ''' Define base directory containing output files '''
+    directory = os.path.join(acrg_path,"tests/files/LPDM/benchmark/")
     return directory
 
 @pytest.fixture()
@@ -111,6 +108,21 @@ def measurement_param_small():
     param["end"] = "2014-03-01"
     param["height"] = "10magl"
     param["species"] = "ch4"
+    
+    return param
+
+@pytest.fixture(scope="module")
+def small_domain_param():
+    ''' Define set of parameters to be used with tests on the SMALL-DOMAIN '''
+    
+    param = {}
+    param["sites"] = ["MHD"]
+    param["domain"] = "SMALL-DOMAIN"
+    param["start"] = "2014-02-01"
+    param["end"] = "2014-03-01"
+    param["heights"] = ["10magl"]
+    param["species"] = "ch4"
+    param["basis_case"] = "simple-grid"
     
     return param
 
@@ -483,7 +495,7 @@ def data(measurement_param_small):
     nt = len(time)
     obsdf = pd.DataFrame({"mf":np.random.rand(nt)*1000.,"dmf":np.random.rand(nt), "status_flag":np.zeros(nt)}, index=time)
     obsdf.index.name = 'time'
-    measurement_data = {'.species' : 'ch4', '.units' : 1e-9, 'MHD' : obsdf}    
+    measurement_data = {'.species' : 'ch4', '.units' : 1e-9, '.scales' : {'MHD':'Tohoku'}, 'MHD' : obsdf}    
 
     return measurement_data
 
@@ -533,6 +545,34 @@ def test_fp_data_merge(data,measurement_param_small,fp_directory,flux_directory,
         assert data_var in ds.data_vars
 
     return out
+
+def test_fp_data_merge_benchmark(data,measurement_param_small,fp_directory,flux_directory,
+                                 bc_directory,output_directory):
+    '''
+    Compare the output of footprints_data_merge function against the benchmarked output.
+    Output from footprints_data_merge is currently saved as a pickle, then reloaded here for
+    comparison. 
+    'tests/files/LPDM/benchmark/' also contains just the site dataset output as 
+    a netcdf file, which could be used for comparison instead.
+    '''
+    
+    domain = measurement_param_small["domain"]
+    species = measurement_param_small["species"]
+    
+    out = name.footprints_data_merge(data,domain=domain,fp_directory=fp_directory,
+                                     flux_directory=flux_directory,bc_directory=bc_directory)
+    
+    print(os.path.join(output_directory,'Benchmark_'+species+'_'+domain+'_fp_and_data_all.pickle'))
+    
+    file_in = open(os.path.join(output_directory,'Benchmark_'+species+'_'+domain+'_fp_and_data_all.pickle'),'rb')
+    benchmark_out = pickle.load(file_in)
+    file_in.close()
+    
+    for key in out.keys():
+        assert out[key] == benchmark_out[key]
+        
+    for key in benchmark_out.keys():
+        assert benchmark_out[key] == out[key]    
 
 def test_fp_data_merge_long(data,measurement_param,fp_directory,flux_directory,bc_directory):
     '''
@@ -595,6 +635,13 @@ def fp_data_merge(data,measurement_param_small,fp_directory,flux_directory,bc_di
                                      flux_directory=flux_directory,bc_directory=bc_directory)
     return out
 
+@pytest.fixture(scope="module")
+def fp_data_merge_small_domain(data,small_domain_param,fp_directory,flux_directory,bc_directory):
+    ''' Create fp_and_data dictionary from footprints_data_merge() function '''
+    out = name.footprints_data_merge(data,domain=small_domain_param["domain"],fp_directory=fp_directory,
+                                     flux_directory=flux_directory,bc_directory=bc_directory)
+    return out
+    
 @pytest.fixture()
 def fp_sensitivity_param(fp_data_merge,measurement_param_small,basis_function_param,basis_directory,flux_directory):
     ''' Define parameters for fp_sensitivity() function '''
@@ -607,12 +654,50 @@ def fp_sensitivity_param(fp_data_merge,measurement_param_small,basis_function_pa
 
     return input_param
 
+@pytest.fixture()
+def fp_sensitivity_small_domain_param(fp_data_merge_small_domain,small_domain_param,basis_directory,flux_directory):
+    ''' Define parameters for fp_sensitivity() function '''
+    
+    input_param = {}
+    input_param["fp_and_data"] = fp_data_merge_small_domain
+    input_param["domain"] = small_domain_param["domain"]
+    input_param["basis_case"] = small_domain_param["basis_case"]
+    input_param["basis_directory"] = basis_directory
+
+    return input_param
+
 def test_fp_sensitivity(fp_sensitivity_param):
     '''
     Test fp_sensitivity() function can create suitable output object from standard parameters.
     '''
     out = name.fp_sensitivity(**fp_sensitivity_param)
+    
     assert out
+    
+def test_fp_sensitivity_H(small_domain_param,fp_sensitivity_small_domain_param):
+    '''
+    Test fp_sensitivity() function can create suitable output object from standard parameters.
+    '''
+    fp_data_H = name.fp_sensitivity(**fp_sensitivity_small_domain_param)
+    lat_shape = fp_data_H['.flux']['all'].flux.values.shape[0]
+    lon_shape = fp_data_H['.flux']['all'].flux.values.shape[1]
+    time_shape = fp_data_H[small_domain_param["sites"][0]].fp.values.shape[2]
+    
+    H_all = fp_data_H[small_domain_param["sites"][0]].fp.values * fp_data_H['.flux']['all'].flux.values
+    H_all_flat = H_all.reshape(lat_shape*lon_shape,time_shape)
+    
+    with xray.open_dataset(glob.glob(os.path.join(fp_sensitivity_small_domain_param["basis_directory"],
+                                                  fp_sensitivity_small_domain_param["domain"],
+                                                  fp_sensitivity_small_domain_param["basis_case"]+'*.nc'))[0]) as basis:
+        
+        basis_flat = np.ravel(np.squeeze(basis.basis.values))
+    
+    H = np.zeros(((int(np.max(basis_flat)),time_shape)))
+    
+    for val in range(int(np.max(basis_flat))):
+        H[val,:] = np.sum(H_all_flat[np.where(basis_flat == val+1)[0],:],axis=0)
+    
+    assert np.all(H == fp_data_H[small_domain_param["sites"][0]].H.values) 
 
 #%%
 #----------------------------
