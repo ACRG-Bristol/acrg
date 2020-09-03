@@ -43,6 +43,7 @@ import pandas as pd
 import scipy.constants as const
 from acrg_grid import areagrid
 from acrg_time.convert import time2sec, sec2time
+from acrg_config.version import code_version
 import acrg_time.convert
 import os
 import json
@@ -2421,6 +2422,7 @@ def process(domain, site, height, year, month,
         fp.attrs["domain"] = domain
         fp.attrs["site"] = site
         fp.attrs["inlet_height"] = height
+        fp.attrs["Git_repository_version"] = code_version()
        
         #Write netCDF file
         #######################################
