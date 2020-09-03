@@ -20,15 +20,8 @@ from builtins import range
 import numpy as np
 from acrg_grid.coarsen import coarsen
 
-
-if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
-    acrg_path = os.getenv("ACRG_PATH")
-    data_path = os.getenv("DATA_PATH") 
-else:
-    from acrg_config.paths import paths
-    acrg_path = paths.acrg
-    data_path = paths.data
-
+from acrg_config.paths import paths
+acrg_path = paths.acrg
 
 def test_acrg_coarsen_shape():
     '''
