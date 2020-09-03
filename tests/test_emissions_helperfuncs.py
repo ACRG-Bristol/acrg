@@ -43,12 +43,14 @@ def test_getBloom2017(modeltype):
     assert np.isfinite(testout).all() 
     assert np.array_equal(testout.shape, outdim)
 
+@pytest.mark.skipif(os.path.exists("/dagage2/agage/metoffice/naei") == False, reason="Files on dagage2 not available")
 def test_getnaeiandedgarCH4():
     testout = ehf.getnaeiandedgarCH4(lon,lat)
     outdim = [len(lat), len(lon)]
     assert np.isfinite(testout).all() 
     assert np.array_equal(testout.shape, outdim)
 
+@pytest.mark.skipif(os.path.exists("/dagage2/agage/metoffice/naei") == False, reason="Files on dagage2 not available")
 @pytest.mark.parametrize('naei_sector, species', [("roadtrans", 'ch4'),("total", 'n2o'), ("totalexcship",'ch4')])  
 def test_getNAEI(naei_sector, species):
     testout = ehf.getNAEI(year, lon, lat, species, naei_sector)

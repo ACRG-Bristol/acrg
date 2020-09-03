@@ -229,12 +229,13 @@ def read_fields_file_sat_bypoint(get_fields_files_sat_bypoint):
     
     return header, column_headings, data_arrays, namever
 
+@pytest.mark.long
 def test_read_field_file_sat_mf_byday(get_fields_files_sat_mf_byday):
     '''  Test read_file function can run for satellite data separated by day. '''
     fields_file = get_fields_files_sat_mf_byday[0]
     header, column_headings, data_arrays, namever = process.read_file(fields_file)
 
-
+@pytest.mark.long
 def test_read_field_file_sat_bypoint(get_fields_files_sat_bypoint):
     ''' Test read_file function can run for satellite data separated by point. '''
     point = 10
@@ -248,7 +249,7 @@ def test_read_field_file_sat_bypoint(get_fields_files_sat_bypoint):
 #        print i,np.min(array),np.max(array),np.mean(array),np.sum(array)
 #    print "Over 17 elements of point {0}".format(point),np.mean(data_arrays_point)
  
-
+@pytest.mark.long
 def test_define_grid_sat_mf_byday(read_fields_file_sat_mf_byday,sat_param):
     '''
     Test that grid can be defined correctly when extracted from a NAME run over satellite data with points 
@@ -259,6 +260,7 @@ def test_define_grid_sat_mf_byday(read_fields_file_sat_mf_byday,sat_param):
     
     assert out
 
+@pytest.mark.long
 def test_define_grid_sat_bypoint(read_fields_file_sat_bypoint,sat_param):
     '''
     Test that grid can be defined correctly when extracted from a NAME run over satellite data with separate 
@@ -388,6 +390,7 @@ def test_particle_locations_sat_dummy_byday(define_grid_sat_dummy_byday,
             pl_per_id = out[pl_key].isel(id_slice)
             assert pl_per_id.sum() == value
 
+@pytest.mark.long
 def test_particle_locations_sat_mf_byday(define_grid_sat_mf_byday,
                                          get_particle_files_sat_mf_byday,
                                          define_heights,sat_param):
@@ -406,7 +409,8 @@ def test_particle_locations_sat_mf_byday(define_grid_sat_mf_byday,
     assert len(out["time"].values) > 1
     assert out
     ### TODO: ADD MORE STRINGENT TEST
-   
+
+@pytest.mark.long
 def test_particle_locations_sat_bypoint(define_grid_sat_bypoint,get_particle_files_sat_bypoint,
                                             define_heights,sat_param):
     '''
@@ -851,6 +855,7 @@ def test_footprint_array_sat_dummy_byday(get_fields_files_sat_dummy_byday,
         expected_value = row[name]
         assert value == expected_value   
 
+@pytest.mark.long
 def test_footprint_array_sat_mf_byday(get_fields_files_sat_mf_byday,
                                       get_particle_files_sat_mf_byday,
                                       read_met_sat_mf_byday,
@@ -869,6 +874,7 @@ def test_footprint_array_sat_mf_byday(get_fields_files_sat_mf_byday,
     
     out = process.footprint_array(fields_file_1,particle_file_1,met,satellite=True,upper_level=upper_level)
 
+@pytest.mark.long
 def test_footprint_array_sat_bypoint(get_fields_files_sat_bypoint,
                                      get_particle_files_sat_bypoint,
                                      read_met_sat_bypoint,
@@ -931,6 +937,7 @@ def fc_param_sat_bypoint(subfolder_sat_bypoint,read_met_sat_bypoint,
     
     return param
 
+@pytest.mark.long
 def test_footprint_concatenate_sat_mf_byday(fc_param_sat_mf_byday):
     '''
     Test footprint_concatenate function produces an output when files for satellite data are grouped by day.
@@ -940,6 +947,7 @@ def test_footprint_concatenate_sat_mf_byday(fc_param_sat_mf_byday):
     
     out = process.footprint_concatenate(**param)
   
+@pytest.mark.long
 def test_footprint_concatenate_sat_bypoint(fc_param_sat_bypoint):
     '''
     Test footprint_concatenate function produces an output when files for satellite data are separated by point.
@@ -987,6 +995,7 @@ def footprint_concatenate_sat_mf_byday(fc_param_sat_mf_byday):
     
     return fp_all
 
+@pytest.mark.long
 def test_satellite_vertical_profile_bypoint(footprint_concatenate_sat_bypoint,
                                           get_obs_files_sat_bypoint,sat_param):
     '''
@@ -997,6 +1006,7 @@ def test_satellite_vertical_profile_bypoint(footprint_concatenate_sat_bypoint,
     fp = footprint_concatenate_sat_bypoint[0]
     out = process.satellite_vertical_profile(fp,sat_obs_file,max_level=sat_param["max_level"])
 
+@pytest.mark.long
 def test_satellite_vertical_profile_mf_byday(footprint_concatenate_sat_mf_byday,
                                           get_obs_files_sat_mf_byday,sat_param):
     '''
@@ -1033,7 +1043,7 @@ def process_sat_bypoint_param(sat_param,folder_names,sat_bypoint_directory):
     
     return param
 
-      
+@pytest.mark.long
 def test_process_sat_bypoint(process_sat_bypoint_param,
                                    subfolder_sat_bypoint,folder_names,sat_param):
     '''
@@ -1045,6 +1055,7 @@ def test_process_sat_bypoint(process_sat_bypoint_param,
     
     out = process.process(**process_sat_bypoint_param)
 
+@pytest.mark.long
 def test_process_sat_mf_byday(process_sat_byday_mf_param,
                                  subfolder_sat_byday_mf,folder_names,sat_param):
     '''
