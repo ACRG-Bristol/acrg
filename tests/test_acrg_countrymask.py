@@ -12,11 +12,8 @@ import acrg_countrymask as countrymask
 import os
 import sys
 
-if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
-    acrg_path = os.getenv("ACRG_PATH") 
-else:
-    from acrg_config.paths import paths
-    acrg_path = paths.acrg
+from acrg_config.paths import paths
+acrg_path = paths.acrg
 
 #%%
 ##### Create list of current NAME footprints ###################
