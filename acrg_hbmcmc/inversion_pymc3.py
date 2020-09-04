@@ -202,7 +202,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                                xprior, bcprior, sigprior, Ytime, siteindicator, sigma_freq_index, data, fp_data,
                                emissions_name, domain, species, sites,
                                start_date, end_date, outputname, outputpath,
-                               basis_directory, country_file, fp_basis_case, country_unit_prefix):
+                               basis_directory, country_file, country_unit_prefix):
         """
         Takes the output from inferpymc3 function, along with some other input
         information, and places it all in a netcdf output. This function also 
@@ -294,8 +294,6 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                 Directory containing basis function file
             country_file (str):
                 Path of country definition file
-            fp_basis_case (str, optional):
-                Name of basis function to use for emissions.
             country_unit_prefix ('str', optional)
                 A prefix for scaling the country emissions. Current options are: 'T' will scale to Tg, 'G' to Gg, 'M' to Mg, 'P' to Pg.
                 To add additional options add to acrg_convert.prefix
@@ -345,14 +343,11 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
             site_lon[si] = fp_data[site].release_lon.values[0]
 
         #Calculate mean posterior scale map and flux field
-        if basis_directory is not None:
-            bfds = opends(basis_directory+domain+"/"+fp_basis_case+"_"+domain+"_"+start_date[:4]+".nc")
-        else:
-            bfds = opends(data_path+"/LPDM/basis_functions/"+fp_basis_case+"_"+domain+"_"+start_date[:4]+".nc")
-        scalemap = np.zeros_like(np.squeeze(bfds.basis.values))
-
+        bfds = fp_data[".basis"]
+        scalemap = np.zeros_like(bfds.values)
+        
         for npm in nparam:
-            scalemap[bfds.basis.values[:,:,0] == (npm+1)] = np.mean(outs[:,npm])
+            scalemap[bfds.values == (npm+1)] = np.mean(outs[:,npm])        
         if emissions_name == None:
             emds = name.name.flux(domain, species, start = start_date, end = end_date)
         else:
@@ -360,8 +355,8 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         flux = scalemap*emds.flux.values[:,:,0]
         
         #Basis functions to save
-        bfarray = np.squeeze(bfds.basis.values)-1
-
+        bfarray = bfds.values-1
+    
         #Calculate country totals   
         area = areagrid(lat, lon)
         c_object = name.get_country(domain, country_file=country_file)
