@@ -9,6 +9,9 @@ import pytest
 import numpy as np
 from acrg_name import emissions_helperfuncs as ehf
 import acrg_grid
+from acrg_config.paths import paths
+acrg_path = paths.acrg
+import os
 
 lon =  np.arange(-5,4,0.5)
 lat =  np.arange(50,55,0.5)
@@ -40,12 +43,14 @@ def test_getBloom2017(modeltype):
     assert np.isfinite(testout).all() 
     assert np.array_equal(testout.shape, outdim)
 
+@pytest.mark.skipif(os.path.exists("/dagage2/agage/metoffice/naei") == False, reason="Files on dagage2 not available")
 def test_getnaeiandedgarCH4():
     testout = ehf.getnaeiandedgarCH4(lon,lat)
     outdim = [len(lat), len(lon)]
     assert np.isfinite(testout).all() 
     assert np.array_equal(testout.shape, outdim)
 
+@pytest.mark.skipif(os.path.exists("/dagage2/agage/metoffice/naei") == False, reason="Files on dagage2 not available")
 @pytest.mark.parametrize('naei_sector, species', [("roadtrans", 'ch4'),("total", 'n2o'), ("totalexcship",'ch4')])  
 def test_getNAEI(naei_sector, species):
     testout = ehf.getNAEI(year, lon, lat, species, naei_sector)
@@ -165,3 +170,19 @@ def test_getGFED(monkeypatch, timeframe, species):
     outdim = [len(lat), len(lon), nt]
     assert np.isfinite(testout).all() 
     assert np.array_equal(testout.shape, outdim)
+    
+def test_get_naei_public():
+    filename = os.path.join(acrg_path, "tests/files/gridded_fluxes/raw_naei_mock.asc")
+    lat_out = np.arange(48.0, 58.1, 2.0)
+    lon_out = np.arange(-9.0,3.1, 2.0)
+    output = ehf.get_naei_public(filename, lon_out, lat_out)
+    output_sum = np.sum(output["data"] * acrg_grid.areagrid(lat_out, lon_out))
+    
+    raw = ehf.loadAscii(os.path.join(acrg_path, "tests/files/gridded_fluxes/raw_naei_mock.asc"))
+    raw_sum = np.sum(raw["data"] * raw.attrs["cellsize"] * raw.attrs["cellsize"])
+    
+    assert np.abs( (output_sum-raw_sum)/raw_sum ) < 0.01
+    
+    
+    
+    
