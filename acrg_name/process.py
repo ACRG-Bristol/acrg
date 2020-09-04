@@ -518,7 +518,7 @@ def read_met(fnames, met_def_dict=None,vertical_profile=False,satellite=False):
         for i in range(len(met)):
             cols = [col.strip() for col in met[i].split(',')]
             if len(cols)>1:
-                a=i
+                a = i
                 break
 
         m = pd.read_csv(fname, skiprows = a, encoding='utf-8',
@@ -1974,7 +1974,6 @@ def process(domain, site, height, year, month,
             particles_folder = "Particle_files",
             met_folder = ["Met_daily", "Met"],
             force_met_empty = False,
-            processed_folder = "Processed_Fields_files",
             use_surface_conditions = True,
             satellite = False,
             obs_folder = "Observations",
@@ -2030,10 +2029,6 @@ def process(domain, site, height, year, month,
         force_met_empty (bool, optional):
              Force the met data to be empty?
              Default = False.
-        processed_folder (str, optional):
-             Folder for processed field files.
-             Default = "Processed_Fields_files"
-             Antiquated - should be deleted
         use_surface_conditions (bool, optional) :
             Use default expected surface conditions for meteorological values
             if converting from gs/m3 to mol/mol / mol/m2/s units.
@@ -2153,7 +2148,7 @@ def process(domain, site, height, year, month,
     if not os.path.isdir(subfolder):
         raise Exception("Subfolder: {} does not exist.\nExpect NAME output folder of format: domain_site_height".format(subfolder))
     
-    if perturbed_folder is not None:
+    if perturbed_folder != None:
         if perturbed_folder[-1] == "/":
             subfolder += perturbed_folder
         else:
@@ -2228,7 +2223,6 @@ def process(domain, site, height, year, month,
 
     # Output filename
     full_out_path = os.path.join(process_dir, domain)
-#     full_out_path = os.path.join(subfolder,processed_folder)
     if species is None:
         outfile = os.path.join(full_out_path, site + "-" + height + \
                 "_" + domain + "_" + str(year) + str(month).zfill(2) + ".nc")
@@ -2399,9 +2393,6 @@ def process(domain, site, height, year, month,
         #Using the first datestring to select a file to gather information about the model.
         #This information is added to the attributes of the processed file.
         #Currently works for NAME or NAMEUKV
-        print(datestrs[0])
-        print("transport_model = ", transport_model)
-        print("fields_folder = ", fields_folder)
         if transport_model == "NAME" or transport_model == "NAMEUKV":
             if fields_folder == "MixR_files" or fields_folder == "MixR_hourly":
                 name_info_file_str = os.path.join(subfolder,'MixR_files/*'+datestrs[0]+'*')
