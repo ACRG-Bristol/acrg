@@ -14,12 +14,11 @@ import pytest
 import acrg_GCWerks.fitting as fitting
 import acrg_GCWerks.CRDS_H2OCorr as H2OCorr
 import numpy as np
-
 import os
 from os.path import join
 import sys
-
 from acrg_config.paths import paths
+
 
 acrg_path = paths.acrg
 
