@@ -32,10 +32,7 @@ import numpy as np
 import xarray as xray
 import pandas as pd
 import pickle
-<<<<<<< HEAD
 
-=======
->>>>>>> 1589a9cc5f25934e621d07b3f53ced87167d4a34
 import acrg_name.name as name
 import acrg_obs.read as read
 from acrg_config.paths import paths
@@ -178,7 +175,6 @@ def test_filenames(fs_mock, filenames_param):
     '''
     out = name.filenames(**filenames_param)
     assert out == [os.path.join(filenames_param["fp_directory"],"EUROPE/MHD-10magl_EUROPE_201402.nc")]
-
 def test_filenames_noheight(fs_mock, filenames_param):
     '''
     Test filenames() function can find height if it is not specified.
