@@ -42,6 +42,9 @@ import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 from acrg_countrymask import domain_volume
 from acrg_name import flux
+import pyproj
+import acrg_grid.regrid_xesmf
+import getpass
 
 if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
     data_path = os.getenv("DATA_PATH") 
@@ -51,6 +54,39 @@ else:
 
 output_directory = os.path.join(data_path,"LPDM/emissions/")
 
+def loadAscii(filename):
+    '''
+    Load an ASCII format grid of emissions from file
+
+    Parameters
+    ----------
+    filename : Name of ascii grid to read in
+
+    Returns
+    -------
+    output : xarray Dataset containing the data read from the file
+
+    '''
+    data = np.loadtxt(filename, skiprows = 6)
+    data = np.flip(data, axis=0)
+    header = np.loadtxt(filename,usecols=(1))[:6]
+    
+    #grab 'center' or 'corner' from header information
+    cell_type = np.loadtxt(filename,usecols=(0),dtype=str)[2][3:]
+    
+    data[data == float(header[5])] = np.nan
+    
+    xValues = np.arange(header[0]) * header[4] + header[2]
+    yValues = np.arange(header[1]) * header[4] + header[3]
+    
+    output = xr.Dataset({})
+    output["lat"] = xr.DataArray(yValues,dims="lat")
+    output["lon"] = xr.DataArray(xValues,dims="lon")
+    output["data"] = xr.DataArray(data,dims=["lat", "lon"])
+    output.attrs["celltype"] = cell_type
+    output.attrs["cellsize"] = header[4]
+    
+    return output
 
 def getGFED(year, lon_out, lat_out, timeframe='monthly', months = [1,2,3,4,5,6,7,8,9,10,11,12], species='CH4', incagr=False):
     """
@@ -653,6 +689,128 @@ def getnaeiandedgarCH4(lon_out, lat_out):
                              lat_out, lon_out)
     return(narr)
     
+def get_naei_public(filename, lon_out, lat_out):
+    '''
+    Regrid the publically available NAEI .asc files that can be downloaded from https://naei.beis.gov.uk/data/map-uk-das
+
+    Parameters
+    ----------
+    filename : string
+        Name of the .asc file to read in for naei data
+    lon_out : array like
+        longitude values for the output grid
+    lat_out : array like
+        latitude values for the output grid
+
+    Returns
+    -------
+    output : xarray dataset
+        Regridded emissions data
+
+    '''
+    #OSGB projection for NAEI
+    OS_proj = pyproj.Proj(init='epsg:7405')
+    #lat-lon projection
+    ll_proj = pyproj.Proj(init='epsg:4326')
+    
+    raw_data = loadAscii(filename)
+    
+    #ensure the grid is cell-centered:
+    if raw_data.attrs["celltype"].lower() == "corner":
+        raw_data["lat"] = raw_data.lat + float(raw_data.attrs["cellsize"])/2
+        raw_data["lon"] = raw_data.lon + float(raw_data.attrs["cellsize"])/2
+        
+    #convert the OSGB grid to lat-lon
+    XX, YY = np.meshgrid(raw_data["lon"].values,raw_data["lat"].values)
+    XX, YY = pyproj.transform(OS_proj,ll_proj, XX, YY)
+    #create boundary mesh
+    XX_b, YY_b = acrg_grid.regrid_xesmf.getGridCC(raw_data["lon"].values,raw_data["lat"].values)
+    XX_b, YY_b = pyproj.transform(OS_proj,ll_proj, XX_b, YY_b)
+    
+    input_grid = xr.Dataset({'lon': (['x', 'y'], XX),
+                             'lat': (['x', 'y'], YY),
+                             'lon_b': (['x_b', 'y_b'], XX_b),
+                             'lat_b': (['x_b', 'y_b'], YY_b)})
+    
+    output_grid = acrg_grid.regrid_xesmf.create_xesmf_grid_uniform_cc(lat_out, lon_out)
+    
+    #conda version of xesmf does not handle nans yet
+    data_sans_nans = np.nan_to_num(raw_data.data, copy=True)
+    regridded_data = acrg_grid.regrid_xesmf.regrid_betweenGrids(data_sans_nans, input_grid, output_grid)
+
+    
+    output = xr.Dataset({"data":(["lat", "lon"],regridded_data)},
+                        coords={"lat":(["lat"], lat_out),
+                                "lon":(["lon"], lon_out)})
+    
+    return output
+
+def process_naei_public(naei_dir, species, year, sector, lon_out, lat_out, output_path = None):
+    """
+
+    Parameters
+    ----------
+    naei_dir : str
+        Directory containing unzupped naei .asc files
+    species : str
+        species as given in naei filenames
+    year : str
+        Two digit year (such as 17 for 2017)
+    sector : str
+        Sector name as given in naei filenames
+    lon_out : array like
+        longitude values for the output grid
+    lat_out : array like
+        latitude values for the output grid
+    output_path : str, optional
+        The filename to write the dataset to. The default is None, which does not output to a file
+
+    Returns
+    -------
+    output : xarray dataset
+        Regridded emissions data
+
+    """
+    
+    #run soome checks
+    sectorlist = ["energyprod","domcom","indcom","indproc","offshore","roadtrans",
+    "othertrans","waste","agric","nature","points","total","totarea"]
+    if sector not in sectorlist:
+        print('Sector {} not one of:'.format(sector))
+        print(sectorlist)
+        print('Returning None')
+        return None
+    filepath = os.path.join(naei_dir, sector+species+year+".asc")
+    
+    if not os.path.isfile(filepath):
+        print('Raw NAEI file {} does not exist'.format(filepath))
+        print('Returning None')
+        return None
+    
+    naei_ds = get_naei_public(filepath, lon_out, lat_out)
+    
+    #Convert to mol/m2/s
+    speciesmm = molar_mass(species)     
+       
+    if pd.to_datetime("20"+year).is_leap_year:
+        days = 366
+    else:
+        days = 365   
+        
+    #add attributes    
+    naei_ds["data"] = naei_ds["data"] / ((days * 3600*24) * speciesmm)
+    naei_ds["data"].attrs["units"] = "mol/m2/s"
+    naei_ds.attrs["Processed by"] = f"{getpass.getuser()}@bristol.ac.uk"
+    naei_ds.attrs["Processed on"] = str(pd.Timestamp.now(tz="UTC"))
+    naei_ds.attrs["Raw file used"] = filepath
+    
+    if output_path is not None:
+        naei_ds.to_netcdf(output_path)
+        
+    return naei_ds
+    
+
+
 def getNAEI(year, lon_out, lat_out, species, naei_sector):
  
     """
