@@ -34,6 +34,7 @@ import glob
 import numpy as np
 import xarray as xray
 import pandas as pd
+import pickle
 
 import acrg_name.name as name
 #import acrg_agage as agage
@@ -496,7 +497,7 @@ def data(measurement_param_small):
     #measurement_data = read.get_obs(**input_param)
     time = pd.date_range(input_param["start"], input_param["end"], freq='2H')
     nt = len(time)
-    obsdf = pd.DataFrame({"mf":np.random.rand(nt)*1000.,"dmf":np.random.rand(nt), "status_flag":np.zeros(nt)}, index=time)
+    obsdf = pd.DataFrame({"mf":np.arange(nt)*1000.,"dmf":np.arange(nt), "status_flag":np.zeros(nt)}, index=time)
     obsdf.index.name = 'time'
     obsds = xray.Dataset.from_dataframe(obsdf)
     obsds.attrs["inlet"] = "10m"
@@ -552,14 +553,14 @@ def test_fp_data_merge(data,measurement_param_small,fp_directory,flux_directory,
     
     out = name.footprints_data_merge(data,domain=measurement_param_small["domain"],fp_directory=fp_directory,
                                      flux_directory=flux_directory,bc_directory=bc_directory)
-    ds = out[site]
+
+    benchmarkdir = os.path.join(acrg_path,"tests/files/benchmark/")
+    fpdm_file = open(os.path.join(benchmarkdir,"fp_data_merge_benchmark.pkl"), "rb")
+    benchmark_out = pickle.load(fpdm_file)
+    fpdm_file.close()
     
-    for key in expected_keys:
-        assert key in out
-
-    for data_var in expected_data_var:
-        assert data_var in ds.data_vars
-
+    assert out == benchmark_out
+    
     return out
 
 def test_fp_data_merge_long(data,measurement_param,fp_directory,flux_directory,bc_directory):
@@ -576,13 +577,12 @@ def test_fp_data_merge_long(data,measurement_param,fp_directory,flux_directory,b
     out = name.footprints_data_merge(data,domain=measurement_param["domain"],fp_directory=fp_directory,
                                      flux_directory=flux_directory,bc_directory=bc_directory,
                                      calc_bc=True,calc_timeseries=True)
-    ds = out[site]
+    benchmarkdir = os.path.join(acrg_path,"tests/files/benchmark/")
+    fpdm_file = open(os.path.join(benchmarkdir,"fp_data_merge_long_benchmark.pkl"), "rb")
+    benchmark_out = pickle.load(fpdm_file)
+    fpdm_file.close()
     
-    for key in expected_keys:
-        assert key in out
-
-    for data_var in expected_data_var:
-        assert data_var in ds.data_vars
+    assert out == benchmark_out
 
     return out
 
