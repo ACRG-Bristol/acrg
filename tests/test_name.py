@@ -41,6 +41,8 @@ from acrg_config.paths import paths
 acrg_path = paths.acrg
 
 
+benchmarkdir = os.path.join(acrg_path,"tests/files/benchmark/")
+
 @pytest.fixture(scope="module")
 def fp_directory():
     ''' Define base directory containing footprint files '''
@@ -548,9 +550,8 @@ def test_fp_data_merge(data,measurement_param_small,fp_directory,flux_directory,
     out = name.footprints_data_merge(data,domain=measurement_param_small["domain"],fp_directory=fp_directory,
                                      flux_directory=flux_directory,bc_directory=bc_directory)
 
-    benchmarkdir = os.path.join(acrg_path,"tests/files/benchmark/")
-    fpdm_file = open(os.path.join(benchmarkdir,"fp_data_merge_benchmark.pkl"), "rb")
-    benchmark_out = pickle.load(fpdm_file)
+    with open(os.path.join(benchmarkdir, "fp_data_merge_benchmark.pkl"), "rb") as fpdm_file:
+        benchmark_out = pickle.load(fpdm_file)
     fpdm_file.close()
     
     assert out == benchmark_out
@@ -572,9 +573,9 @@ def test_fp_data_merge_long(data,measurement_param,fp_directory,flux_directory,b
     out = name.footprints_data_merge(data,domain=measurement_param["domain"],fp_directory=fp_directory,
                                      flux_directory=flux_directory,bc_directory=bc_directory,
                                      calc_bc=True,calc_timeseries=True)
-    benchmarkdir = os.path.join(acrg_path,"tests/files/benchmark/")
-    fpdm_file = open(os.path.join(benchmarkdir,"fp_data_merge_long_benchmark.pkl"), "rb")
-    benchmark_out = pickle.load(fpdm_file)
+
+    with open(os.path.join(benchmarkdir, "fp_data_merge_long_benchmark.pkl"), "rb") as fpdm_file:
+        benchmark_out = pickle.load(fpdm_file)
     fpdm_file.close()
     
     assert out == benchmark_out
