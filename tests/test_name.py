@@ -547,7 +547,7 @@ def test_fp_data_merge(data,measurement_param,fp_directory,flux_directory,bc_dir
                                      flux_directory=flux_directory,bc_directory=bc_directory,
                                      calc_bc=True,calc_timeseries=True)
 
-    with open(benchmarkdir / "fp_data_merge_long_benchmark.pkl", "rb") as fpdm_file:
+    with open(benchmarkdir / "fp_data_merge_benchmark.pkl", "rb") as fpdm_file:
         benchmark_out = pickle.load(fpdm_file)
     
     for key, value in out.items():
