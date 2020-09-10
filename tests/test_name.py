@@ -32,12 +32,14 @@ import numpy as np
 import xarray as xray
 import pandas as pd
 import pickle
+
 import acrg_name.name as name
 import acrg_obs.read as read
 from acrg_config.paths import paths
 
 
 acrg_path = paths.acrg
+benchmarkdir = acrg_path / "tests/files/benchmark/"
 
 
 @pytest.fixture(scope="module")
@@ -174,7 +176,6 @@ def test_filenames(fs_mock, filenames_param):
     '''
     out = name.filenames(**filenames_param)
     assert out == [os.path.join(filenames_param["fp_directory"],"EUROPE/MHD-10magl_EUROPE_201402.nc")]
-
 def test_filenames_noheight(fs_mock, filenames_param):
     '''
     Test filenames() function can find height if it is not specified.
@@ -232,11 +233,6 @@ def test_footprints_from_site(footprint_param,flux_directory,bc_directory):
     
     assert out
 
-#%%
-#----------------------------
-
-#read_netcdfs() - tested as part of following functions
-#interp_times() - may need to add tests for this
 
 @pytest.fixture()
 def flux_param(flux_directory,measurement_param):
@@ -255,10 +251,8 @@ def test_flux(flux_param):
     '''
     out = name.flux(**flux_param)
     assert out
- 
-#%%
-#----------------------------
 
+    
 @pytest.fixture()
 def bc_param(bc_directory,measurement_param):
     ''' Define set of input parameters for boundary_conditions() function. Based on measurement_param '''
@@ -270,6 +264,7 @@ def bc_param(bc_directory,measurement_param):
     
     return input_param
 
+
 def test_boundary_conditions(bc_param):
     '''
     Test dataset can be created by boundary_conditions() function
@@ -277,8 +272,6 @@ def test_boundary_conditions(bc_param):
     out = name.boundary_conditions(**bc_param)
     assert out
 
-#%%
-#----------------------------
 
 @pytest.fixture()
 def basis_param(basis_directory,measurement_param,basis_function_param):
@@ -291,6 +284,7 @@ def basis_param(basis_directory,measurement_param,basis_function_param):
     
     return input_param
 
+
 def test_basis(basis_param):
     '''
     Test dataset can be created by basis() function
@@ -298,8 +292,6 @@ def test_basis(basis_param):
     out = name.basis(**basis_param)
     assert out
 
-#%%
-#----------------------------
 
 @pytest.fixture()
 def bc_basis_param(bc_basis_directory,measurement_param,basis_function_param):
@@ -319,8 +311,6 @@ def test_bc_basis(bc_basis_param):
     out = name.basis_boundary_conditions(**bc_basis_param)
     assert out
 
-#%%
-#----------------------------
 
 @pytest.fixture()
 def timeseries_periodic_1hr():
@@ -331,6 +321,7 @@ def timeseries_periodic_1hr():
                           coords={'time':times})
     return ds
 
+
 @pytest.fixture()
 def timeseries_periodic_30min():
     #emulate a faster periodic timeseries than footprints, perhaps for continuous data
@@ -339,6 +330,7 @@ def timeseries_periodic_30min():
     ds = xray.Dataset({'values': (['time'], values)},
                           coords={'time':times})
     return ds
+
 
 @pytest.fixture()
 def timeseries_random():
@@ -349,6 +341,7 @@ def timeseries_random():
                           coords={'time':times})
     return ds
 
+
 @pytest.fixture()
 def timeseries_quasiperiodic_1day():
     #a timeseries that is approximately periodic, like a manually triggered flask sample
@@ -357,6 +350,7 @@ def timeseries_quasiperiodic_1day():
     ds = xray.Dataset({'values': (['time'], values)},
                           coords={'time':times})
     return ds
+
 
 def test_align_skip(timeseries_quasiperiodic_1day, timeseries_periodic_1hr):
     #test that aligning is skipped for certain platforms
@@ -389,6 +383,7 @@ def test_align_periodic_datasets(timeseries_periodic_30min, timeseries_periodic_
         
     assert not errors, "errors occured:\n{}".format("\n".join(errors))
     
+    
 def test_combine_datasets_periodic(timeseries_periodic_30min, timeseries_periodic_1hr):
     dsa = timeseries_periodic_1hr
     dsa['a'] = xray.DataArray(np.arange(len(dsa.time)), dims=["time"])
@@ -403,6 +398,7 @@ def test_combine_datasets_periodic(timeseries_periodic_30min, timeseries_periodi
         errors.append("Variables missing from combined dataset")
     
     assert not errors, "errors occured:\n{}".format("\n".join(errors))
+    
     
 def test_combine_datasets_random(timeseries_random, timeseries_periodic_1hr):
     dsa = timeseries_random
@@ -419,6 +415,7 @@ def test_combine_datasets_random(timeseries_random, timeseries_periodic_1hr):
     
     assert not errors, "errors occured:\n{}".format("\n".join(errors))
     
+    
 def test_align_and_combine_quasiperiodic(timeseries_quasiperiodic_1day, timeseries_periodic_1hr):
     #Test for flask style data to be combined with regular hourly footprints
     dsa = timeseries_quasiperiodic_1day
@@ -434,6 +431,7 @@ def test_align_and_combine_quasiperiodic(timeseries_quasiperiodic_1day, timeseri
     
     assert np.all(ds_out.a.values == expected_output_a)
     assert np.all(ds_out.b.values == expected_output_b)
+    
     
 def test_indexesMatch(timeseries_periodic_1hr, timeseries_quasiperiodic_1day):
     #test the index matching function for same and different indexes
@@ -480,10 +478,14 @@ def test_indexesMatch(timeseries_periodic_1hr, timeseries_quasiperiodic_1day):
 #%%
 #----------------------------
 
+
 @pytest.fixture(scope="module")
 def data(measurement_param_small):
-    ''' Define set of input parameters to use with footprint_data_merge() function. 
-    Note: cannot specify data directory directly. '''
+    ''' 
+    Define set of input parameters to use with footprint_data_merge() function. 
+    Note: cannot specify data directory directly.
+    '''
+    
     input_param = {}
     input_param["sites"] = measurement_param_small["sites"]
     input_param["species"] = measurement_param_small["species"]
@@ -494,11 +496,17 @@ def data(measurement_param_small):
     #measurement_data = read.get_obs(**input_param)
     time = pd.date_range(input_param["start"], input_param["end"], freq='2H')
     nt = len(time)
-    obsdf = pd.DataFrame({"mf":np.random.rand(nt)*1000.,"dmf":np.random.rand(nt), "status_flag":np.zeros(nt)}, index=time)
+    obsdf = pd.DataFrame({"mf":np.arange(nt)*1000.,"mf_repeatability":np.arange(nt), "status_flag":np.zeros(nt)}, index=time)
     obsdf.index.name = 'time'
-    measurement_data = {'.species' : 'ch4', '.units' : 1e-9, '.scales' : {'MHD':'Tohoku'}, 'MHD' : obsdf}    
+    obsds = xray.Dataset.from_dataframe(obsdf)
+    obsds.attrs["inlet"] = "10m"
+    obsds.mf.attrs["units"] = 1e-9
+    obsds.attrs["scale"] = "testscale"
+    obsds.attrs["species"] = "ch4"
+    measurement_data =  {"MHD": [obsds]}
 
     return measurement_data
+
 
 @pytest.fixture(scope="module")
 def data_sat(measurement_param_sat):
@@ -511,11 +519,9 @@ def data_sat(measurement_param_sat):
     input_param["end"] = measurement_param_sat["end"]
     input_param["max_level"] = measurement_param_sat["max_level"]
     # Can't specify data directory
-    
-    #measurement_data_sat = read.get_obs(**input_param)
     time = pd.date_range(input_param["start"], input_param["end"], freq='0.5H')
     nt = len(time)
-    obsdf = pd.DataFrame({"mf":np.random.rand(nt)*1000.,"dmf":10*np.random.rand(nt), "mf_prior_factor":10*np.random.rand(nt), "mf_prior_upper_level_factor":15*np.random.rand(nt)}, index=time)
+    obsdf = pd.DataFrame({"mf":np.random.rand(nt)*1000.,"mf_repeatability":10*np.random.rand(nt), "mf_prior_factor":10*np.random.rand(nt), "mf_prior_upper_level_factor":15*np.random.rand(nt)}, index=time)
     obsdf.index.name = 'time'
     #obsdf.max_level = input_param["max_level"]
     obsds = xray.Dataset.from_dataframe(obsdf)
@@ -523,87 +529,34 @@ def data_sat(measurement_param_sat):
     obsds.attrs["max_level"] = input_param["max_level"]
     obsds.attrs["species"] = input_param["species"]
     measurement_data_sat = {input_param["sites"]: [obsds]}
-    #measurement_data_sat = {'.species' : input_param["species"], '.units' : 1e-9, input_param["sites"] : obsdf}  
     
     return measurement_data_sat
 
 
 @pytest.mark.basic
-def test_fp_data_merge(data,measurement_param_small,fp_directory,flux_directory,bc_directory):
+def test_fp_data_merge(data,measurement_param,fp_directory,flux_directory,bc_directory):
     '''
     Test footprints_data_merge() function (with one site).
-    Check parameters within dictionary.
-    Check data variables within dataset for site.
-    '''
-    site = measurement_param_small["sites"][0]
-    expected_keys = [".species",".units",".flux",".bc",site]
-    expected_data_var = ["mf","dmf","fp","particle_locations_n","particle_locations_e","particle_locations_s",
-                         "particle_locations_w","bc"]
-    
-    out = name.footprints_data_merge(data,domain=measurement_param_small["domain"],fp_directory=fp_directory,
-                                     flux_directory=flux_directory,bc_directory=bc_directory)
-    ds = out[site]
-    
-    for key in expected_keys:
-        assert key in out
-
-    for data_var in expected_data_var:
-        assert data_var in ds.data_vars
-
-    return out
-
-def test_fp_data_merge_benchmark(data,measurement_param_small,fp_directory,flux_directory,
-                                 bc_directory,output_directory):
-    '''
-    Compare the output of footprints_data_merge function against the benchmarked output.
+    Compares the output of footprints_data_merge function against the benchmarked output.
     Output from footprints_data_merge is currently saved as a pickle, then reloaded here for
     comparison. 
-    'tests/files/LPDM/benchmark/' also contains just the site dataset output as 
-    a netcdf file, which could be used for comparison instead.
-    '''
-    
-    domain = measurement_param_small["domain"]
-    species = measurement_param_small["species"]
-    
-    out = name.footprints_data_merge(data,domain=domain,fp_directory=fp_directory,
-                                     flux_directory=flux_directory,bc_directory=bc_directory)
-    
-    print(os.path.join(output_directory,'Benchmark_'+species+'_'+domain+'_fp_and_data_all.pickle'))
-    
-    file_in = open(os.path.join(output_directory,'Benchmark_'+species+'_'+domain+'_fp_and_data_all.pickle'),'rb')
-    benchmark_out = pickle.load(file_in)
-    file_in.close()
-    
-    for key in out.keys():
-        assert out[key] == benchmark_out[key]
-        
-    for key in benchmark_out.keys():
-        assert benchmark_out[key] == out[key]    
-
-def test_fp_data_merge_long(data,measurement_param,fp_directory,flux_directory,bc_directory):
-    '''
-    Test footprints_data_merge() function (with one site).
-    Check parameters within dictionary.
     Check data variables within dataset for site.
     '''
-    site = measurement_param["sites"][0]
-    expected_keys = [".species",".units",".bc",".flux",site]
-    expected_data_var = ["mf","dmf","fp","particle_locations_n","particle_locations_e",
-                         "particle_locations_s","particle_locations_w","bc"]#,"mf_mod"]
     
     out = name.footprints_data_merge(data,domain=measurement_param["domain"],fp_directory=fp_directory,
                                      flux_directory=flux_directory,bc_directory=bc_directory,
                                      calc_bc=True,calc_timeseries=True)
-    ds = out[site]
+
+    with open(benchmarkdir / "fp_data_merge_benchmark.pkl", "rb") as fpdm_file:
+        benchmark_out = pickle.load(fpdm_file)
     
-    for key in expected_keys:
-        assert key in out
+    for key, value in out.items():
+        if isinstance(value, xray.Dataset):
+            assert benchmark_out[key].equals(value)
+        else:
+            assert benchmark_out[key] == value
 
-    for data_var in expected_data_var:
-        assert data_var in ds.data_vars
-
-    return out
-
+            
 def test_fp_data_merge_sat(data_sat,measurement_param_sat,fp_directory,flux_directory,bc_directory):
     '''
     Test footprints_data_merge() function with GOSAT data.
@@ -612,8 +565,8 @@ def test_fp_data_merge_sat(data_sat,measurement_param_sat,fp_directory,flux_dire
     '''
     site = measurement_param_sat["site"]
     expected_keys = [".species",".units",".bc",".flux",site]
-    expected_data_var = ["mf","dmf","fp","particle_locations_n","particle_locations_e",
-                         "particle_locations_s","particle_locations_w","bc"]#,"mf_mod"]
+    expected_data_var = ["mf","mf_repeatability","fp","particle_locations_n","particle_locations_e",
+                         "particle_locations_s","particle_locations_w","bc"]
     
     out = name.footprints_data_merge(data=data_sat,domain=measurement_param_sat["domain"],fp_directory=fp_directory,
                                      flux_directory=flux_directory,bc_directory=bc_directory)
