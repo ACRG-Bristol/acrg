@@ -14,14 +14,11 @@ and against a benchmarked output.
 
 @author mi19881
 """
-from __future__ import print_function
-
 import numpy as np
 import xarray as xray
 import netCDF4 as nc
 import glob
 import pandas as pd
-
 import os
 from os.path import join
 import sys

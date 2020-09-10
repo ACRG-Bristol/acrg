@@ -5,17 +5,16 @@ Created on Mon Jan 14 15:13:44 2019
 
 @author: rt17603
 """
-from __future__ import print_function
-
 import pytest
 import acrg_countrymask as countrymask
 import os
 import sys
 from acrg_config.paths import paths
 
+
 acrg_path = paths.acrg
 
-#%%
+
 ##### Create list of current NAME footprints ###################
 
 @pytest.fixture(scope="module")
@@ -24,7 +23,7 @@ def name_domains():
     domains = ['AUSTRALIA','EASTASIA','EUROPE','NAMERICA']
     return domains
 
-#%%
+
 ####### Tests for domain_volume function ######
 def test_incorrect_domain():
     '''
