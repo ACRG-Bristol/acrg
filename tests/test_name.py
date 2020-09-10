@@ -534,32 +534,13 @@ def data_sat(measurement_param_sat):
 
 
 @pytest.mark.basic
-def test_fp_data_merge(data,measurement_param_small,fp_directory,flux_directory,bc_directory):
+def test_fp_data_merge(data,measurement_param,fp_directory,flux_directory,bc_directory):
     '''
     Test footprints_data_merge() function (with one site).
     Compares the output of footprints_data_merge function against the benchmarked output.
     Output from footprints_data_merge is currently saved as a pickle, then reloaded here for
     comparison. 
     Check data variables within dataset for site.
-    '''
-    
-    out = name.footprints_data_merge(data,domain=measurement_param_small["domain"],fp_directory=fp_directory,
-                                     flux_directory=flux_directory,bc_directory=bc_directory)
-    
-    with open(benchmarkdir / "fp_data_merge_benchmark.pkl", "rb") as fpdm_file:
-        benchmark_out = pickle.load(fpdm_file)
-    
-    for key, value in out.items():
-        if isinstance(value, xray.Dataset):
-            assert benchmark_out[key].equals(value)
-        else:
-            assert benchmark_out[key] == value
-    
-
-def test_fp_data_merge_long(data,measurement_param,fp_directory,flux_directory,bc_directory):
-    '''
-    In addition to the test_fp_data_merge test, test that model-predicted boundary conditions
-    and mole fractions are accurate
     '''
     
     out = name.footprints_data_merge(data,domain=measurement_param["domain"],fp_directory=fp_directory,
