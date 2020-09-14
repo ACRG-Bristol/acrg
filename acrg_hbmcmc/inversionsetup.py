@@ -60,19 +60,21 @@ def addaveragingerror(fp_all, sites, species, start_date, end_date, meas_period,
                           keep_missing=False,inlet=inlet, instrument=instrument,
                           data_directory=obs_directory)
     for si, site in enumerate(sites):
-        if min(dataerr[site].index) > pd.to_datetime(start_date):
-            dataerr[site].loc[pd.to_datetime(start_date)] = \
-                [np.nan for col in dataerr[site].columns]           
+        mergedae = xr.merge(dataerr[site])
+        sitedataerr = pd.DataFrame(mergedae.mf, index=mergedae.time.values) #xr.merge(dataerr[site]).to_array("mf")            
+        if min(sitedataerr.index) > pd.to_datetime(start_date):
+            sitedataerr.loc[pd.to_datetime(start_date)] = \
+                [np.nan for col in sitedataerr.columns]           
         # Pad with an empty entry at the end date
-        if max(dataerr[site].index) < pd.to_datetime(end_date):
-            dataerr[site].loc[pd.to_datetime(end_date)] = \
-                [np.nan for col in dataerr[site].columns]
+        if max(sitedataerr.index) < pd.to_datetime(end_date):
+            sitedataerr.loc[pd.to_datetime(end_date)] = \
+                [np.nan for col in sitedataerr.columns]
         # Now sort to get everything in the right order
-        dataerr[site] = dataerr[site].sort_index()
+        sitedataerr = sitedataerr.sort_index()
         if 'vmf' in fp_all[site]:
-            fp_all[site].vmf.values = np.sqrt(fp_all[site].vmf.values**2 + dataerr[site].mf.resample(meas_period[si]).std(ddof=0).dropna().values**2)
+            fp_all[site].vmf.values = np.sqrt(fp_all[site].vmf.values**2 + sitedataerr.mf.resample(meas_period[si]).std(ddof=0).dropna().values**2)
         elif 'dmf' in fp_all[site]:
-            fp_all[site].dmf.values = np.sqrt(fp_all[site].dmf.values**2 + dataerr[site].mf.resample(meas_period[si]).std(ddof=0).dropna().values**2)
+            fp_all[site].dmf.values = np.sqrt(fp_all[site].dmf.values**2 + sitedataerr.mf.resample(meas_period[si]).std(ddof=0).dropna().values**2)
         else:
             print('No mole fraction error information available in {}.'.format('fp_all'+str([site])))
     return fp_all

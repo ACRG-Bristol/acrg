@@ -167,9 +167,10 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                                         flux_directory = flux_directory,
                                         emissions_name=emissions_name)
     
-    if len(data[sites[0]].mf) == 0:
-        print("No observations for %s to %s" % (start_date, end_date))
-        return
+    for site in sites:
+        for j in range(len(data[site])):
+            if len(data[site][j].mf) == 0:
+                print("No observations for %s to %s for %s" % (start_date, end_date, site))
     if sites[0] not in fp_all.keys():
         print("No footprints for %s to %s" % (start_date, end_date))
         return
