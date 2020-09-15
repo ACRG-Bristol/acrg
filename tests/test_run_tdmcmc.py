@@ -27,14 +27,8 @@ import subprocess
 import xarray
 import numpy as np
 
-
-if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
-    acrg_path = os.getenv("ACRG_PATH")
-    data_path = os.getenv("DATA_PATH") 
-else:
-    from acrg_config.paths import paths
-    acrg_path = paths.acrg
-    data_path = paths.data
+from acrg_config.paths import paths
+acrg_path = paths.acrg
 
 tdmcmc_path = os.path.join(acrg_path,"acrg_tdmcmc")
 test_param_path = os.path.join(acrg_path,"tests/files/tdmcmc/")

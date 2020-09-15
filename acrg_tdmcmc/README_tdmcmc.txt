@@ -133,7 +133,7 @@ $ f2py -L/usr/lib64 -llapack -c -m tdmcmc_corr_pt --f90flags='-fopenmp' -lgomp a
 
 ***************** Compiling correlated hierarchical version with ifort ****************************************
 
-For the compiling the correlated code in this way there are extra intel libraries that need to be linked.
+For the compilation of the correlated code in this way there are extra intel libraries that need to be linked.
 How to link to these libraries can depend on the system being used.
 
 
@@ -178,8 +178,6 @@ catch all term if these aren't appropriate (this should use the default):
 This was the previous snowy compilation in python 2.7::
 
  $ f2py -L/opt/intel/mkl/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -c -m tdmcmc_corr_pt --fcompiler=intelem --f90flags='-fast -openmp' -liomp5 acrg_hbtdmcmc_corr.f90
-
-Note: that the only difference is a change in f90 flags from using openmp to qopenmp. This is needed if the latest version of intel is installed.
 
 
 To get this to work on air you'll need to copy the following into a terminal, or put in your bashrc:
