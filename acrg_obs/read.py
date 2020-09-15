@@ -402,7 +402,7 @@ def get_single_site(site, species_in,
             # First, just do a mean resample on all variables
             print(f"... resampling to {average}")
             ds_resampled = ds.resample(time = average, keep_attrs = True
-                                       ).mean(skipna=False)
+                                       ).mean(skipna=True)
             # keep_attrs doesn't seem to work for some reason, so manually copy
             ds_resampled.attrs = ds.attrs.copy()
             
@@ -423,6 +423,10 @@ def get_single_site(site, species_in,
                 if "units" in ds[var].attrs:
                     ds_resampled[var].attrs["units"] = ds[var].attrs["units"]
 
+            # Resampling may introduce NaNs, so remove, if not keep_missing
+            if keep_missing == False:
+                ds_resampled = ds_resampled.dropna(dim = "time")
+                    
             ds = ds_resampled.copy()
         
         # Rename variables
