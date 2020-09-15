@@ -262,8 +262,6 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                 same length at Y.
             sigma_freq_index (array):
                 Array of integer indexes that converts time into periods
-            data (data array):
-                Measurement data from get_obs function.
             fp_data (dict):
                 Output from footprints_data_merge + sensitivies
             emissions_name (dict): 
