@@ -177,6 +177,14 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     
     print('Running for %s to %s' % (start_date, end_date))
     
+    #If site contains measurement errors given as repeatability and variability, 
+    #place all in repeatability variable and drop variability
+    for site in sites:
+        if "mf_variability" in fp_all[site] and "mf_repeatability" in fp_all[site]:
+            fp_all[site]["mf_repeatability"][np.isnan(fp_all[site]["mf_repeatability"])] = \
+                fp_all[site]["mf_variability"][np.isfinite(fp_all[site]["mf_variability"])]
+            fp_all[site] = fp_all[site].drop_vars("mf_variability")
+
     #Add measurement variability in averaging period to measurement error
     if averagingerror:
         fp_all = setup.addaveragingerror(fp_all, sites, species, start_date, end_date,
