@@ -210,10 +210,10 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     Y = np.zeros(0)
     siteindicator = np.zeros(0)
     for si, site in enumerate(sites):
-        if 'vmf' in fp_data[site]:           
-            error = np.concatenate((error, fp_data[site].vmf.values))
-        if 'dmf' in fp_data[site]:
-            error = np.concatenate((error, fp_data[site].dmf.values))
+        if 'mf_repeatability' in fp_data[site]:           
+            error = np.concatenate((error, fp_data[site].mf_repeatability.values))
+        if 'mf_variability' in fp_data[site]:
+            error = np.concatenate((error, fp_data[site].mf_variability.values))
             
         Y = np.concatenate((Y,fp_data[site].mf.values)) 
         siteindicator = np.concatenate((siteindicator, np.ones_like(fp_data[site].mf.values)*si))
@@ -245,7 +245,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     mcmc.inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence, 
                            Hx, Hbc, Y, error, Ytrace,
                            step1, step2, 
-                           xprior, bcprior, sigprior,Ytime, siteindicator, sigma_freq_index, data, fp_data,
+                           xprior, bcprior, sigprior,Ytime, siteindicator, sigma_freq_index, fp_data,
                            emissions_name, domain, species, sites,
                            start_date, end_date, outputname, outputpath,
                            basis_directory, country_file, country_unit_prefix)
