@@ -886,57 +886,57 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                 if is_number(site_ds.mf.attrs["units"]):
                     units = float(site_ds.mf.attrs["units"])
         
-        if site_fp is not None:
-            # If satellite data, check that the max_level in the obs and the max level in the processed FPs are the same
-            # Set tolerance tin time to merge footprints and data   
-            # This needs to be made more general to 'satellite', 'aircraft' or 'ship'                
+            if site_fp is not None:
+                # If satellite data, check that the max_level in the obs and the max level in the processed FPs are the same
+                # Set tolerance tin time to merge footprints and data   
+                # This needs to be made more general to 'satellite', 'aircraft' or 'ship'                
 
-            if platform == "satellite":
-            #if "GOSAT" in site.upper():
-                ml_obs = site_ds.max_level
-                ml_fp = site_fp.max_level
-                tolerance = 60e9 # footprints must match data with this tolerance in [ns]
-                if ml_obs != ml_fp:
-                    print("ERROR: MAX LEVEL OF SAT OBS DOES NOT EQUAL MAX LEVEL IN FP")
-                    print("max_level_fp =",ml_fp)
-                    print("max_level_obs =",ml_obs)
-                    #return None
-            elif "GAUGE-FERRY" in site.upper():
-                tolerance = '5min'
-            elif "GAUGE-FAAM" in site.upper():
-                tolerance = '1min'    
-            else:
-                tolerance = None
+                if platform == "satellite":
+                #if "GOSAT" in site.upper():
+                    ml_obs = site_ds.max_level
+                    ml_fp = site_fp.max_level
+                    tolerance = 60e9 # footprints must match data with this tolerance in [ns]
+                    if ml_obs != ml_fp:
+                        print("ERROR: MAX LEVEL OF SAT OBS DOES NOT EQUAL MAX LEVEL IN FP")
+                        print("max_level_fp =",ml_fp)
+                        print("max_level_obs =",ml_obs)
+                        #return None
+                elif "GAUGE-FERRY" in site.upper():
+                    tolerance = '5min'
+                elif "GAUGE-FAAM" in site.upper():
+                    tolerance = '1min'    
+                else:
+                    tolerance = None
 
-            #gets number of unsorted times in time dimensions, sorting is expensive this is cheap
-            if np.sum(np.diff(site_fp.time.values.astype(float))<0) > 0:
-                site_fp = site_fp.sortby("time")
+                #gets number of unsorted times in time dimensions, sorting is expensive this is cheap
+                if np.sum(np.diff(site_fp.time.values.astype(float))<0) > 0:
+                    site_fp = site_fp.sortby("time")
 
-            site_ds, site_fp = align_datasets(site_ds, site_fp, platform=platform, resample_to_ds1=resample_to_data)
+                site_ds, site_fp = align_datasets(site_ds, site_fp, platform=platform, resample_to_ds1=resample_to_data)
 
-            site_ds = combine_datasets(site_ds, site_fp,
-                                       method = "ffill",
-                                       tolerance = tolerance)
+                site_ds = combine_datasets(site_ds, site_fp,
+                                           method = "ffill",
+                                           tolerance = tolerance)
 
-            #transpose to keep time in the last dimension position in case it has been moved in resample
-            expected_dim_order = ['height','lat','lon','lev','time','H_back']
-            for d in expected_dim_order[:]:
-                if d not in list(site_ds.dims.keys()):
-                    expected_dim_order.remove(d)
-            site_ds = site_ds.transpose(*expected_dim_order)
-            
-            # If units are specified, multiply by scaling factor
-            if units:
-                site_ds.update({'fp' : (site_ds.fp.dims, old_div(site_ds.fp, units))})
-                if HiTRes:
-                    site_ds.update({'fp_HiTRes' : (site_ds.fp_HiTRes.dims, 
-                                                   old_div(site_ds.fp_HiTRes, units))})
+                #transpose to keep time in the last dimension position in case it has been moved in resample
+                expected_dim_order = ['height','lat','lon','lev','time','H_back']
+                for d in expected_dim_order[:]:
+                    if d not in list(site_ds.dims.keys()):
+                        expected_dim_order.remove(d)
+                site_ds = site_ds.transpose(*expected_dim_order)
 
-#             # Resample, if required
-#             if average[site] is not None:
-#                 site_ds = site_ds.resample(indexer={'time':average[site]})
-              
-            site_ds_list += [site_ds]
+                # If units are specified, multiply by scaling factor
+                if units:
+                    site_ds.update({'fp' : (site_ds.fp.dims, old_div(site_ds.fp, units))})
+                    if HiTRes:
+                        site_ds.update({'fp_HiTRes' : (site_ds.fp_HiTRes.dims, 
+                                                       old_div(site_ds.fp_HiTRes, units))})
+
+    #             # Resample, if required
+    #             if average[site] is not None:
+    #                 site_ds = site_ds.resample(indexer={'time':average[site]})
+
+                site_ds_list += [site_ds]
     
     fp_and_data[site] = xr.merge(site_ds_list)
 
