@@ -18,6 +18,8 @@ from acrg_name import emissions_helperfuncs as emfuncs
 from acrg_name.name import open_ds
 import xesmf
 import pyproj
+import acrg_grid.regrid_xesmf as regrid
+import acrg_grid.areagrid as areagrid
 
 #OSGB projection for NAEI
 OS_proj = pyproj.Proj(init='epsg:7405')
@@ -371,130 +373,69 @@ def NAEIinEDGAR(species="ch4",
     #output.attrs["Notes"] = "2017 NAEI, with 2012 EDGAR"
     output.to_netcdf("{}/EUROPE/{}_edgar{}-naei_{}.nc".format(output_directory, species, EDGAR_year, NAEI_year))
 
-#def getFlux(ds, output_dir, name,
-#            NAEI_directory = "/data/al18242/flux/NAEI_RAW",
-#            NAEI_file = "totalch417.asc",
-#            species="ch4"):
-#    """
-#    get Flux using edgar and NAEI for footprint file given
-#    Currently only good for static annual emissions
-#    """
-#    year = pd.to_datetime(ds.time.values[0]).year
-#    
-#    naei_methane = loadAscii("{}/{}".format(NAEI_directory, NAEI_file))
-#    if species.lower() == "ch4":
-#        template = open_ds("/data/shared/Gridded_fluxes/CH4/EDGAR_v4.3.2/v432_CH4_TOTALS_nc/v432_CH4_2012.0.1x0.1.nc")
-#    elif species.lower() == "co2":
-#        template = open_ds("/data/shared/Gridded_fluxes/CO2/EDGARv4.2/v42_FT2010_CO2_excl_short-cycle_org_C_2010-1990_TOT_nc/v42_FT2010_CO2_excl_short-cycle_org_C_2010_TOT.0.1x0.1.nc")
-#    else:
-#        print("Invalid species")
-#        return 0;
-#    
-#    ################################################
-#    #Create the input grid
-#    ################################################
-#    
-#    #add 500m to make NAEI cell centered
-#    XX, YY = np.meshgrid(naei_methane.lon.values+500,naei_methane.lat.values+500)
-#    XX, YY = pyproj.transform(OS_proj,ll_proj, XX, YY)
-#    #create boundary mesh
-#    XX_b, YY_b = getGridCC(naei_methane.lon.values+500,naei_methane.lat.values+500)
-#    XX_b, YY_b = pyproj.transform(OS_proj,ll_proj, XX_b, YY_b)
-#    
-#    input_grid = xr.Dataset({'lon': (['x', 'y'], XX),
-#                             'lat': (['x', 'y'], YY),
-#                             'lon_b': (['x_b', 'y_b'], XX_b),
-#                             'lat_b': (['x_b', 'y_b'], YY_b)})
-#    
-#    ################################################
-#    #Create the EDGAR grid
-#    ################################################
-#    XX, YY = np.meshgrid(template.lon.values, template.lat.values)
-#    XX_b, YY_b = getGridCC(template.lon.values, template.lat.values)
-#    output_grid = xr.Dataset({'lon': (['x', 'y'], XX),
-#                             'lat': (['x', 'y'], YY),
-#                             'lon_b': (['x_b', 'y_b'], XX_b),
-#                             'lat_b': (['x_b', 'y_b'], YY_b)})
-#    
-#    regridder = xesmf.Regridder(input_grid, output_grid, 'conservative')
-#    naei_methane_regridded = regridder( np.nan_to_num(naei_methane.data,copy=True))
-#    
-#    ################################################
-#    #Convert units and combine grids to EDGAR
-#    ################################################
-#    combined = naei_methane_regridded * 1e-3 / (3600*24*365)
-#    edgar_indicies = np.where(naei_methane_regridded  == 0)
-#    if species.lower() == "ch4":
-#        combined[edgar_indicies] = template.emi_ch4.values[edgar_indicies]
-#        mw = 16.
-#    elif species.lower() == "co2":
-#        combined[edgar_indicies] = template.emi_co2.values[edgar_indicies]
-#        mw = 12.
-#    
-#    ################################################
-#    #Create the output grid and convert data too this grid
-#    ################################################
-#    template2 = open_ds("/data/al18242/fp_hr/EUROPE/TMB-HR_UKV_EUROPE_201805.nc")
-#    XX, YY = np.meshgrid(template2.lon.values, template2.lat.values)
-#    XX_b, YY_b = getGridCC(template2.lon.values, template2.lat.values)
-#    output_grid2 = xr.Dataset({'lon': (['x', 'y'], XX),
-#                             'lat': (['x', 'y'], YY),
-#                             'lon_b': (['x_b', 'y_b'], XX_b),
-#                             'lat_b': (['x_b', 'y_b'], YY_b)})
-#    regridder = xesmf.Regridder(output_grid, output_grid2, 'conservative')
-#    naei_edgar_out = regridder( np.nan_to_num(combined,copy=True))
-#    naei_edgar_out = np.expand_dims(naei_edgar_out,2) / (1000 * mw) *1e6
-#    
-#    ################################################
-#    #Create the hi-res grid and convert data too this grid
-#    ################################################
-#    XX, YY = np.meshgrid(ds.lon_high.values, ds.lat_high.values)
-#    XX_b, YY_b = getGridCC(ds.lon_high.values, ds.lat_high.values)
-#    output_grid_hr = xr.Dataset({'lon': (['x', 'y'], XX),
-#                             'lat': (['x', 'y'], YY),
-#                             'lon_b': (['x_b', 'y_b'], XX_b),
-#                             'lat_b': (['x_b', 'y_b'], YY_b)})
-#    regridder = xesmf.Regridder(input_grid, output_grid_hr, 'conservative')
-#    naei_edgar_out_hr = regridder( np.nan_to_num(naei_methane.data,copy=True))
-#    naei_edgar_out_hr = np.expand_dims(naei_edgar_out_hr,2) * 1e-3 / (3600*24*365) / (1000 * mw) *1e6
-#    
-#    ################################################
-#    #1D array book-keeping
-#    ################################################
-#    
-#    lowsize, highsize, lons_low, lats_low, lons_high, lats_high, indicies_to_remove, lons_out, lats_out = \
-#        getOverlapParameters(ds.lat.values, ds.lon.values, ds.lat_high.values, ds.lon_high.values)
-#        
-#    combined = naei_edgar_out[:,:,0]
-#    combined = combined.reshape(lowsize, order="F")
-#    combined = np.delete(combined, indicies_to_remove)
-#    combined = np.append(combined, naei_edgar_out_hr.reshape(highsize, order="F"))
-#    
-#    data_vars = {
-#            "low_res":(["lat", "lon", "time"], naei_edgar_out),
-#            "high_res":(["lat_high", "lon_high", "time"], naei_edgar_out_hr),
-#            "flux":(["index", "time"], np.expand_dims(combined,axis=1)),
-#            "index_lat":(["index"], lats_out),
-#            "index_lon":(["index"], lons_out)
-#            }
-#    coords = {
-#            "lat":np.unique(lats_low),
-#            "lon":np.unique(lons_low),
-#            "lat_high":np.unique(lats_high),
-#            "lon_high":np.unique(lons_high),
-#            "time":[np.datetime64(str( pd.to_datetime(ds.time.values[0]).year), 'Y')]
-#            }
-#    output = xr.Dataset(data_vars=data_vars, coords=coords)
-#    output.attrs["Notes"] = "2017 NAEI, with 2012 EDGAR V4.3.2"
-#    output.to_netcdf("{}/{}_{}.nc".format(output_dir, name,year))
+def add_inner_grid(data, template, output_file= None):
+    """
+    Modify an existing footprint file to contain an inner high resolution grid. This only changes the stored grid,
+    it does not increase the resolution of the underlying information. 
+
+    Parameters
+    ----------
+    data : DataSet or Str
+        A standard 30-day integrated footprint dataset to add an inner high resolution grid to, or the filepath to such a dataset
+    template : DataSet or Str
+        A footprint dataset that already contains the inner high resolution grid you want to add to data, or the filepath to such a dataset
+    output_file : str
+        File to save the new Dataset to. Default None results in the file not being saved
+
+    Returns
+    -------
+    data_with_inner_grid : Dataset
+        a copy of data with the high resolution grid added
+
+    """
+    if type(data) == str:
+        data = open_ds(data)
+    if type(template) == str:
+        template = open_ds(template)
     
-#    import acrg_name.flux as flux
-#    from datetime import datetime
-#    time = np.array([np.datetime64("2015-01-01")])#np.array([np.datetime64(pd.to_datetime("2015-01-01"))])
-#    time=np.array(['2015-01-01']).astype('datetime64[ns]')
-#    flux.write(lat,lon,time,np.expand_dims(combined,2),"CH4-NAEI-fixed","EUROPE",source=None,title="NAEI in EDGAR",
-#                   prior_info_dict={"TODO":["todo","todo","todo"]},flux_comments="NAEI + EDGAR",climatology=False,
-#                   regridder_used='acrg_grid.regrid.regrid_2D',output_directory="/data/al18242/flux/")
+    #calculate parameters to combien grids
+    lowsize, highsize, lons_low, lats_low, lons_high, lats_high, indicies_to_remove, lons_out, lats_out = \
+        getOverlapParameters(template.lat.values, template.lon.values,
+                             template.lat_high.values, template.lon_high.values)
+        
+    #cut out inner grid to improve speeds and allow checks
+    inner_grid_original = data.fp.loc[dict(lat = np.unique(lats_low[indicies_to_remove]),
+                                    lon= np.unique(lons_low[indicies_to_remove]))]
+    
+    #footprint has implicit area information - need to scale this correctly
+    area_original = areagrid(inner_grid_original.lat.values, inner_grid_original.lon.values)
+    area_new = areagrid(template.lat_high.values, template.lon_high.values)
+    
+    #regrid and check conservation:
+    inner_grid = (regrid.regrid_uniform_cc(inner_grid_original.transpose('time', 'lat', 'lon').values/area_original,
+                                          inner_grid_original.lat.values, inner_grid_original.lon.values,
+                                          template.lat_high.values, template.lon_high.values)*area_new).transpose([1,2,0])
+    
+    test_equal = np.allclose(np.sum(inner_grid_original.values, axis=(0,1)), np.sum(inner_grid, axis=(0,1)), rtol=1e-3)
+    if not test_equal:
+        print("WARNING: Total sensitivity has not been conserved.")
+
+    #create the new dataset
+    data_with_inner_grid = data.copy(deep=True)
+    data_with_inner_grid["fp_low"] = data.fp
+    
+    data_with_inner_grid["fp_high"] =  xr.DataArray(inner_grid,
+                                  dims=["lat_high", "lon_high", "time"],
+                                  coords= {"lat_high":template.lat_high,
+                                          "lon_high":template.lon_high,
+                                          "time":data_with_inner_grid.time})
+    
+    data_with_inner_grid = merge_resolutions(data_with_inner_grid.fp_low, data_with_inner_grid.fp_high, data_with_inner_grid)
+    
+    if output_file is not None:
+        data_with_inner_grid.to_netcdf(output_file)
+    
+    return data_with_inner_grid
     
 class quadTreeNode:    
     
