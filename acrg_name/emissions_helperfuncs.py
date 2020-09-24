@@ -983,46 +983,48 @@ def getUKGHGandEDGAR(species,year,edgar_sectors,ukghg_sectors,output_path=None):
         edgarfn = "v50_" + species.upper() + "_" + year + "_" + sector + ".0.1x0.1.nc"
         
         with xr.open_dataset(os.path.join(edgarfp,edgarfn)) as edgar_file:
-                edgar_flux,arr = regrid2d(edgar_file['emi_'+species.lower()].values,
-                                          edgar_file.lat.values,edgar_file.lon.values,
-                                          lat_out,lon_out)
-        
+            edgar_flux = edgar_file['emi_'+species.lower()].values
+            edgar_lat = edgar_file.lat.values
+            edgar_lon = edgar_file.lon.values
+            
         if i == 0:
-            edgar_out = edgar_flux.data
+            edgar_total = edgar_flux
         else:
-            edgar_out = np.add(edgar_out,edgar_flux.data)
+            edgar_total = np.add(edgar_total,edgar_flux)
+            
+    edgar_regrid,arr = regrid2d(edgar_total,edgar_lat,edgar_lon,lat_out,lon_out)
     
     #edgar flux in mol/m2/2
     speciesmm = molar_mass(species)
-    print(np.sum(edgar_out))
-    total_out = (edgar_out*1e3) / speciesmm
-    print(np.sum(total_out))
-          
+    total_flux = (edgar_regrid.data*1e3) / speciesmm
+    
     #ukghg flux in mol/m2/s
     for j,sector in enumerate(ukghg_sectors):
         
         ukghgfn = "uk_flux_" + sector + "_" + species.lower() + "_LonLat_0.01km_" + year + ".nc"
         
         with xr.open_dataset(os.path.join(ukghgfp,ukghgfn)) as ukghg_file:
-                ukghg_flux,arr = regrid2d(ukghg_file[species.lower()+'_flux'].values[0,:,:],
-                                            ukghg_file.latitude.values,ukghg_file.longitude.values,
-                                       lat_out,lon_out)
-        
+            ukghg_flux = ukghg_file[species.lower()+'_flux'].values[0,:,:]
+            ukghg_lat = ukghg_file.latitude.values
+            ukghg_lon = ukghg_file.longitude.values
+
         if j == 0:
-            ukghg_out = ukghg_flux.data
+            ukghg_total = ukghg_flux
 
         else:
-            ukghg_out = np.add(ukghg_out,ukghg_flux.data)
+            ukghg_total = np.add(ukghg_total,ukghg_flux)
+            
+    ukghg_regrid,arr = regrid2d(ukghg_total,ukghg_lat,ukghg_lon,lat_out,lon_out)
             
     with xr.open_dataset(os.path.join(data_path,'LPDM/countries/country_EUROPE.nc')) as c_file:
         country = c_file['country'].values       
         
-    for lat in range(total_out.shape[0]):
-        for lon in range(total_out.shape[1]):
+    for lat in range(total_flux.shape[0]):
+        for lon in range(total_flux.shape[1]):
             if country[lat,lon] == 7.0:
-                total_out[lat,lon] = ukghg_out[lat,lon]
+                total_flux[lat,lon] = ukghg_regrid.data[lat,lon]
     
-    flux_ds = xr.Dataset({"flux":(["lat", "lon"],total_out)},
+    flux_ds = xr.Dataset({"flux":(["lat", "lon"],total_flux)},
                             coords={"lat":(["lat"], lat_out),
                                     "lon":(["lon"], lon_out)})
     
