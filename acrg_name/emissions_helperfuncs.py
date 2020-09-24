@@ -878,39 +878,36 @@ def processUKGHG(ukghg_dir,species,year,sector,lon_out,lat_out,output_path=None)
     
     return ukghg_ds
 
-def getUKGHGandEDGAR(species,year,edgar_sectors,ukghg_sectors,output_path=None):
+def getUKGHGandEDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,output_path=None):
     """
     Extracts EDGAR and UKGHG gridded emissions data for the given year and sector.
     Regrids both datasets to the EUROPE domain and converts both the mol/m2/s.
     Embeds UKGHG emissions within the EDGAR map to create a grid of fluxes for the whole
     domain. For UK lat/lons fluxes = UKGHG. Outside the UK fluxes = EDGAR.
     
-    CURRENTLY ONLY TESTED WITH CH4 FOR EDGAR v5.0 2015 
+    Option to include sources for one inventory. In this case, the sum of those sectors 
+    only will be returned.
+    
+    CURRENTLY ONLY TESTED WITH EDGAR v5.0 CH4 2015 and UKGHG CH4 2015
         - DATA FILES FOR OTHER GASES/YEARS MAY NOT EXIST
     
     Args:
         year (str):
             Year of interest, e.g. '2015'
-        edgar_sectors (list of str):
+        edgar_sectors (list of str) (optional):
             EDGAR sectors to include. If list of values, the sum of these will be used.
-            List of possible sectors: ["AGS","AWB","CHE","ENE","ENF","FFF","IND","IRO","MNM",
-                                       "PRO_COAL","PRO_GAS","PRO_OIL","PRO","RCO",
-                                       "REF_TRF","SWD_INC","SWD_LDF","TNR_Aviation_CDS",
-                                       "TNR_Aviation_CRS","TNR_Aviation_LTO","TNR_Other",
-                                       "TNR_Ship","TRO","WWT"]
-        ukghg_sectors (list of str):
+            See below for list of possible sectors and full names.
+        ukghg_sectors (list of str) (optional):
             UKGHG sectors to include. If list of values, the sum of these will be used.
-            List of possible sectors: ["agric","energyprod","domcom","indcom","indproc",
-                                       "natural","offshore","othertrans","roadtrans",
-                                       "solvents","total","waste"]
+            See below for list of possible sectors.
         output_path (str):
             Full output path and name to write output datatset to. Default is None, which
             doesn not save outtput.
             
     Returns:
-        flux_all (array):
-            Array of regridded EDGAR fluxes with UKGHG embedded over UK lat/lons.
-            Dimentions of [lat,lon]
+        total_ds (xarray dataset):
+            Containing array of regridded EDGAR fluxes with UKGHG embedded over UK lat/lons.
+            Dimentions of [lat,lon,time]
             
     Example:
         getUKGHGandEDGAR("2015",["PRO_GAS","PRO_OIL"],["indcom"])
@@ -929,7 +926,7 @@ def getUKGHGandEDGAR(species,year,edgar_sectors,ukghg_sectors,output_path=None):
         "PRO_COAL" = Fuel exploitation - coal
         "PRO_GAS" = Fuel exploitation - gas
         "PRO_OIL" = Fuel expoitation - oil
-        "PRO" = Fuel exploitation
+        "PRO" = Fuel exploitation - contains coal, oil, gas
         "RCO" = Energy for buildings
         "REF_TRF" = Oil refineries and transformational industries
         "SWD_INC" = Solid waste disposal - incineration
@@ -949,95 +946,114 @@ def getUKGHGandEDGAR(species,year,edgar_sectors,ukghg_sectors,output_path=None):
     edgarfp = os.path.join(data_path,"Gridded_fluxes",species.upper(),"EDGAR_v5.0/yearly_sectoral")
     ukghgfp = os.path.join(data_path,"Gridded_fluxes",species.upper(),"UKGHG")
     
-    #run some checks on sector names
+    UKGHGsectorlist = ["agric","energyprod","domcom","indcom","indproc","natural","offshore",
+                       "othertrans","roadtrans","solvents","total","waste"]
+    
     EDGARsectorlist = ["AGS","AWB","CHE","ENE","ENF","FFF","IND","IRO","MNM",
                        "PRO_COAL","PRO_GAS","PRO_OIL","PRO","RCO","REF_TRF","SWD_INC",
                        "SWD_LDF","TNR_Aviation_CDS","TNR_Aviation_CRS",
                        "TNR_Aviation_LTO","TNR_Other","TNR_Ship","TRO","WWT"]
     
-    for EDGARsector in edgar_sectors:
-        if EDGARsector not in EDGARsectorlist:
-            print('EDGAR sector {} not one of:'.format(EDGARsector))
-            print(EDGARsectorlist)
-            print('Returning None')
-            return None
-        
-    UKGHGsectorlist = ["agric","energyprod","domcom","indcom","indproc","natural","offshore",
-                       "othertrans","roadtrans","solvents","total","waste"]
-    
-    for UKGHGsector in ukghg_sectors:
-        if UKGHGsector not in UKGHGsectorlist:
-            print('UKGHG sector {} not one of:'.format(UKGHGsector))
-            print(UKGHGsectorlist)
-            print('Returning None')
-            return None    
-     
     #extract output lat/lons from fp file
     domain_vol = domain_volume("EUROPE",os.path.join(data_path,"LPDM/fp_NAME"))
     lat_out = domain_vol[0]
     lon_out = domain_vol[1]
     
-    #edgar flux in kg/m2/s
-    for i,sector in enumerate(edgar_sectors):
-        
-        edgarfn = "v50_" + species.upper() + "_" + year + "_" + sector + ".0.1x0.1.nc"
-        
-        with xr.open_dataset(os.path.join(edgarfp,edgarfn)) as edgar_file:
-            edgar_flux = edgar_file['emi_'+species.lower()].values
-            edgar_lat = edgar_file.lat.values
-            edgar_lon = edgar_file.lon.values
-            
-        if i == 0:
-            edgar_total = edgar_flux
-        else:
-            edgar_total = np.add(edgar_total,edgar_flux)
-            
-    edgar_regrid,arr = regrid2d(edgar_total,edgar_lat,edgar_lon,lat_out,lon_out)
+    if edgar_sectors is not None:
+        print('Including EDGAR sectors.')
     
-    #edgar flux in mol/m2/2
-    speciesmm = molar_mass(species)
-    total_flux = (edgar_regrid.data*1e3) / speciesmm
-    
-    #ukghg flux in mol/m2/s
-    for j,sector in enumerate(ukghg_sectors):
+        for EDGARsector in edgar_sectors:
+            if EDGARsector not in EDGARsectorlist:
+                print('EDGAR sector {0} not one of: \n {1}'.format(EDGARsector,EDGAR_sectorlist))
+                print('Returning None')
+                return None
+            
+        #edgar flux in kg/m2/s
+        for i,sector in enumerate(edgar_sectors):
         
-        ukghgfn = "uk_flux_" + sector + "_" + species.lower() + "_LonLat_0.01km_" + year + ".nc"
-        
-        with xr.open_dataset(os.path.join(ukghgfp,ukghgfn)) as ukghg_file:
-            ukghg_flux = ukghg_file[species.lower()+'_flux'].values[0,:,:]
-            ukghg_lat = ukghg_file.latitude.values
-            ukghg_lon = ukghg_file.longitude.values
+            edgarfn = "v50_" + species.upper() + "_" + year + "_" + sector + ".0.1x0.1.nc"
 
-        if j == 0:
-            ukghg_total = ukghg_flux
+            with xr.open_dataset(os.path.join(edgarfp,edgarfn)) as edgar_file:
+                edgar_flux = edgar_file['emi_'+species.lower()].values
+                edgar_lat = edgar_file.lat.values
+                edgar_lon = edgar_file.lon.values
+
+            if i == 0:
+                edgar_total = edgar_flux
+            else:
+                edgar_total = np.add(edgar_total,edgar_flux)
+            
+        edgar_regrid_kg,arr = regrid2d(edgar_total,edgar_lat,edgar_lon,lat_out,lon_out)
+    
+        #edgar flux in mol/m2/2
+        speciesmm = molar_mass(species)
+        edgar_regrid = (edgar_regrid_kg.data*1e3) / speciesmm
+        
+        if ukghg_sectors is None:
+            total_flux = edgar_regrid
+            output_title = "EDGAR sectors regridded to EUROPE domain"
+    
+    #extract ukghg
+    if ukghg_sectors is not None:
+        print('Including UKGHG sectors.')
+        
+        for UKGHGsector in ukghg_sectors:
+            if UKGHGsector not in UKGHGsectorlist:
+                print('UKGHG sector {0} not one of: \n {1}'.format(UKGHGsector,UKGHGsectorlist))
+                print('Returning None')
+                return None    
+
+        #ukghg flux in mol/m2/s
+        for j,sector in enumerate(ukghg_sectors):
+
+            ukghgfn = "uk_flux_" + sector + "_" + species.lower() + "_LonLat_0.01km_" + year + ".nc"
+
+            with xr.open_dataset(os.path.join(ukghgfp,ukghgfn)) as ukghg_file:
+                ukghg_flux = ukghg_file[species.lower()+'_flux'].values[0,:,:]
+                ukghg_lat = ukghg_file.latitude.values
+                ukghg_lon = ukghg_file.longitude.values
+
+            if j == 0:
+                ukghg_total = ukghg_flux
+            else:
+                ukghg_total = np.add(ukghg_total,ukghg_flux)
+
+        ukghg_regrid,arr = regrid2d(ukghg_total,ukghg_lat,ukghg_lon,lat_out,lon_out)
+   
+        #if edgar, input ukghg over uk lat lons
+        if edgar_sectors is not None:  
+            print('Inserting UKGHG into EDGAR over UK lat/lons')
+            
+            with xr.open_dataset(os.path.join(data_path,'LPDM/countries/country_EUROPE.nc')) as c_file:
+                country = c_file['country'].values       
+
+            for lat in range(edgar_regrid.shape[0]):
+                for lon in range(edgar_regrid.shape[1]):
+                    if country[lat,lon] == 7.0:
+                        edgar_regrid[lat,lon] = ukghg_regrid.data[lat,lon]
+            output_title = "EDGAR with UK lat/lons replaced with UKGHG values, regridded to EUROPE domain"
+            total_flux = edgar_regrid
 
         else:
-            ukghg_total = np.add(ukghg_total,ukghg_flux)
+            total_flux = ukghg_regrid.data
+            output_title = "UKGHG sectors regridded to EUROPE domain"
             
-    ukghg_regrid,arr = regrid2d(ukghg_total,ukghg_lat,ukghg_lon,lat_out,lon_out)
-            
-    with xr.open_dataset(os.path.join(data_path,'LPDM/countries/country_EUROPE.nc')) as c_file:
-        country = c_file['country'].values       
-        
-    for lat in range(total_flux.shape[0]):
-        for lon in range(total_flux.shape[1]):
-            if country[lat,lon] == 7.0:
-                total_flux[lat,lon] = ukghg_regrid.data[lat,lon]
-    
-    flux_ds = xr.Dataset({"flux":(["lat", "lon"],total_flux)},
+    #output to ds
+    flux_ds = xr.Dataset({"flux":(["lat", "lon","time"],np.expand_dims(total_flux,2))},
                             coords={"lat":(["lat"], lat_out),
-                                    "lon":(["lon"], lon_out)})
-    
+                                    "lon":(["lon"], lon_out),
+                                    "time":np.array([np.datetime64(year+'-01-01T00')])})
+                                    
     flux_ds["flux"].attrs["units"] = "mol/m2/s"
     flux_ds.attrs["Processed by"] = f"{getpass.getuser()}@bristol.ac.uk"
     flux_ds.attrs["Processed on"] = str(pd.Timestamp.now(tz="UTC"))
     flux_ds.attrs["EDGAR sectors"] = edgar_sectors
     flux_ds.attrs["UKGHG sectors"] = ukghg_sectors
-    flux_ds.attrs['title'] = "EDGAR inventory with UK lat/lons replaced with UKGHG inventory values"
+    flux_ds.attrs["title"] = output_title
     
     if output_path is not None:
         flux_ds.to_netcdf(output_path+'.nc')
-        print('Regridded EDGAR and UKGHG saved to {}'.format(output_path))
+        print('Regridded emissions data saved to {}'.format(output_path))
     
     return flux_ds
     
