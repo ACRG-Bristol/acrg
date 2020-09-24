@@ -34,6 +34,7 @@ from builtins import range
 from netCDF4 import Dataset
 import netCDF4
 import glob
+import bz2
 import gzip
 import datetime
 import re
@@ -60,7 +61,6 @@ import scipy
 import pdb
 from multiprocessing import Pool
 import acrg_obs as obs
-
 
 #Default NAME output file version
 #This is changed depending on presence of "Fields:" line in files
@@ -1803,6 +1803,36 @@ def process_basic(fields_folder, outfile):
     fp = footprint_concatenate(fields_folder)
     write_netcdf(fp, outfile)
 
+def decompress_files(filepaths):
+    """ Decompress files at paths in filepaths
+
+        Args:
+            filepaths (list): List of paths to files to decompress
+        Returns:
+            list: List of paths to decompressed files
+    """
+    _, extension = os.path.splitext(filepaths[0])
+
+    if extension == ".bz2":
+        complib = bz2
+    elif extension == ".gz":
+        complib = gzip
+    else:
+        raise ValueError("Unable to decompress files other than bz2 and gz")
+        
+    decompressed_files = []
+   
+    for compressed_path in filepaths:
+        # Here decompressed_path will be the path minus the extension
+        decompressed_path, extension = os.path.splitext(compressed_path)
+
+        with complib.open(compressed_path, "rb") as f_in, open(decompressed_path, "wb") as f_out:
+            shutil.copyfileobj(f_in, f_out)
+
+        decompressed_files.append(decompressed_path)
+
+    return decompressed_files
+
 def process(domain, site, height, year, month, 
             base_dir = "/work/chxmr/shared/NAME_output/",
             process_dir = "/work/chxmr/shared/LPDM/fp_NAME/",
@@ -2005,6 +2035,7 @@ def process(domain, site, height, year, month,
     # Check for manual timestep (if footprints are for < 1min,
     # which is the min resolution of the NAME output file)
     timestep_file = os.path.join(subfolder,"time_step.txt")
+    
     if os.path.exists(timestep_file):
         with open(timestep_file) as f:
             timeStep = float(f.read())
@@ -2101,7 +2132,7 @@ def process(domain, site, height, year, month,
 
                 if maxday >= max(days):
                     return None
-                
+
     fp = []
      
     for datestr in datestrs:
