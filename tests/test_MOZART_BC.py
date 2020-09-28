@@ -34,13 +34,13 @@ def mozart_bc_benchmark_file():
 @pytest.fixture(scope="module")
 def mozart_bc_output_directory():
     ''' Define benchmark bc file '''
-    output_dir = os.path.join(acrg_path,'tests/files/')
+    output_dir = os.path.join(acrg_path,'tests/files/output/')
     return output_dir
 
 @pytest.fixture(scope="module")
 def mozart_bc_output_file():
     ''' Define benchmark bc file '''
-    filename = os.path.join(acrg_path,'tests/files/LPDM/bc/EUROPE/ch4_EUROPE_201403.nc')
+    filename = os.path.join(acrg_path,'tests/files/output/LPDM/bc/EUROPE/ch4_EUROPE_201403.nc')
     return filename
 
 
