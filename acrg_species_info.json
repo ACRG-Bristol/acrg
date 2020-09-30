@@ -439,7 +439,9 @@
         "long_name": "Radon-222", 
         "mol_mass": "222.01758", 
         "print_string": "$^{222}$Rn", 
-        "units": "mBq m$^{-3}$"
+        "units": "mBq m$^{-3}$",
+        "lifetime": "3.8232D",
+        "lifetime_reference":"http://www.nucleide.org/DDEP_WG/Nuclides/Rn-222_tables.pdf"
     }, 
     "SF6": {"alt": [],
         "group": "PFCs", 
