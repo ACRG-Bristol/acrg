@@ -37,6 +37,7 @@ from builtins import str
 
 from past.utils import old_div
 import os
+import sys
 import argparse
 import glob
 import shutil
@@ -50,8 +51,16 @@ from acrg_tdmcmc import tdmcmc_post_process as process
 import acrg_tdmcmc.tdmcmc_config as tdmcmc_config
 #import acrg_config as configread
 
-acrg_path = os.getenv("ACRG_PATH")
-data_path = os.getenv("DATA_PATH")
+if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
+    acrg_path = os.getenv("ACRG_PATH")
+    data_path = os.getenv("DATA_PATH") 
+else:
+    from acrg_config.paths import paths
+    acrg_path = paths.acrg
+    data_path = paths.data
+
+acrg_path = str(acrg_path)
+data_path = str(data_path)
 
 config_file = 'param.ini'
 config_path = os.path.join(acrg_path,"acrg_tdmcmc")
@@ -159,9 +168,9 @@ unique_copy = param['unique_copy']
 if output_dir == "/path/to/output/directory/":
     raise Exception("Please set output directory (output_dir) parameter within configuration file: {0}".format(config_file))
 elif output_dir.startswith("$ACRG_PATH"):
-    output_dir = output_dir.replace("$ACRG_PATH",acrg_path)
+    output_dir = output_dir.replace("$ACRG_PATH",str(acrg_path))
 elif output_dir.startswith("$DATA_PATH"):
-    output_dir = output_dir.replace("$DATA_PATH",data_path)
+    output_dir = output_dir.replace("$DATA_PATH",str(data_path))
 
 if not os.path.isdir(output_dir):
     raise Exception("Output directory: {} does not exist.".format(output_dir))
@@ -518,4 +527,3 @@ if unique_copy:
         pu_warn_file.close()
 else:
     shutil.copy(config_file,output_dir)
-

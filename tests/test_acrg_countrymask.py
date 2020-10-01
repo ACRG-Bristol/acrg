@@ -10,8 +10,10 @@ from __future__ import print_function
 import pytest
 import acrg_countrymask as countrymask
 import os
+import sys
 
-acrg_path = os.getenv("ACRG_PATH")
+from acrg_config.paths import paths
+acrg_path = paths.acrg
 
 #%%
 ##### Create list of current NAME footprints ###################

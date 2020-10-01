@@ -12,6 +12,7 @@ from builtins import zip
 import datetime
 import glob
 import os
+import sys
 from os.path import join
 from datetime import datetime as dt
 import json
@@ -21,22 +22,13 @@ from acrg_config.paths import paths
 import xarray as xr
 from pandas import Timestamp
 
-acrg_path = paths.acrg
-obs_directory = paths.obs
-
-# #acrg_path = os.path.dirname(os.path.realpath(__file__))
-# acrg_path = os.getenv("ACRG_PATH")
-# data_path = os.getenv("DATA_PATH")
-
-
-
-# if data_path is None:
-#     data_path = "/data/shared/"
-#     print("Default Data directory is assumed to be /data/shared/. Set path in .bashrc as \
-#             export DATA_PATH=/path/to/data/directory/ and restart python terminal")
-
-# # Set default obs folder
-# obs_directory = os.path.join(data_path, "obs/")
+if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
+    acrg_path = os.getenv("ACRG_PATH")
+    obs_directory = os.path.join(data_path, "obs")
+else:
+    from acrg_config.paths import paths
+    acrg_path = paths.acrg
+    obs_directory = paths.obs
 
 # Output unit strings (upper case for matching)
 unit_species = {"CO2": "1e-6",

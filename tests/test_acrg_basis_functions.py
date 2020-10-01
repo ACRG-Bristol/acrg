@@ -24,19 +24,10 @@ import pandas as pd
 
 import os
 from os.path import join
+import sys
 
-acrg_path = os.getenv("ACRG_PATH")
-data_path = os.getenv("DATA_PATH") 
-
-if acrg_path is None:
-    acrg_path = os.getenv("HOME")
-    print("Default ACRG directory is assumed to be home directory. Set path in .bashrc as \
-            export ACRG_PATH=/path/to/acrg/repository/ and restart python terminal")
-
-if data_path is None:
-    data_path = "/data/shared/"
-    print("Default Data directory is assumed to be /data/shared/. Set path in .bashrc as \
-          export DATA_PATH=/path/to/data/directory/ and restart python terminal")
+from acrg_config.paths import paths
+acrg_path = paths.acrg
     
 import acrg_name.basis_functions
 acrg_name.basis_functions.fields_file_path = join(acrg_path, 'tests/files/LPDM/fp_NAME/')
@@ -53,52 +44,6 @@ if not os.path.exists(output_folder_to_create):
         
 import acrg_name.name
 acrg_name.name.data_path = join(acrg_path, 'tests/files/')
-
-def test_acrg_basis_blocks_shape():
-    '''
-    Test if netcdf files called and saved correctly and that the elements of the basis function
-    are integers, and the min and max are the correct values.
-    '''
-    acrg_name.basis_functions.basis_blocks(domain = "EUROPE", time = "2014-02-01", blocksize = 5, basis_case="Test_block")
-    ##Read in one of the field datasets
-    filename_field = os.path.join(acrg_path,"tests/files/LPDM/fp_NAME/EUROPE/MHD-10magl_EUROPE_201402.nc")
-    with xray.open_dataset(filename_field) as temp:
-        field_dataset = temp.load()
-
-    lon_field_dim = len(field_dataset['lon'][:])
-    lat_field_dim = len(field_dataset['lat'][:])
-    ## Read in the newly created netcdf file
-    filename_basis = os.path.join(acrg_path,"tests/files/output/EUROPE/Test_block_EUROPE_2014.nc")
-    with xray.open_dataset(filename_basis) as temp:
-        test_basis_block = temp.load()
-
-    basis_array = test_basis_block.variables['basis'][:]
-    basis_array_shape = basis_array.shape
-    a = basis_array_shape[0]//5
-    b = basis_array_shape[1]//5
-    
-    assert basis_array_shape == (lat_field_dim, lon_field_dim, 1)
-    assert np.sum(np.remainder(basis_array,1.)) == 0.0
-    assert np.min(basis_array) == 1.0
-    assert np.max(basis_array) == a*b
-
-def test_acrg_basis_blocks_output():
-    '''
-    Test if the basis function array corresponds to a benchmark output
-    '''
-    acrg_name.basis_functions.basis_blocks(domain = "EUROPE", time = "2014-02-01", blocksize = 5, basis_case ="Test_block")
-    filename_basis = os.path.join(acrg_path,"tests/files/output/EUROPE/Test_block_EUROPE_2014.nc")
-    with xray.open_dataset(filename_basis) as temp:
-        test_basis_block = temp.load()
-
-    basis_array = test_basis_block.variables['basis'][:]
-    filename_benchmark = os.path.join(acrg_path,"tests/files/LPDM/basis_functions/EUROPE/Benchmark_block_EUROPE_2014.nc")
-    with xray.open_dataset(filename_benchmark) as temp:
-        benchmark_dataset = temp.load()
-
-    benchmark_basis_array = benchmark_dataset.variables['basis'][:]
-    
-    assert np.all(basis_array == benchmark_basis_array)
 
 def test_acrg_basis_transd_shape():
     '''
@@ -369,4 +314,3 @@ def test_acrg_basis_bc_pca():
     #assert np.all(bc_basis_e_array == benchmark_bc_basis_e_array)
     #assert np.all(bc_basis_s_array == benchmark_bc_basis_s_array)
     #assert np.all(bc_basis_w_array == benchmark_bc_basis_w_array)
-

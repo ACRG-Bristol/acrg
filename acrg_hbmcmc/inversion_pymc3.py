@@ -15,12 +15,18 @@ import getpass
 from acrg_hbmcmc.inversionsetup import opends
 from acrg_hbmcmc.hbmcmc_output import define_output_filename
 import os
+import sys
 import acrg_convert as convert
 import acrg_name.process_HiSRes as pHR
 import acrg_tdmcmc.post_process_HiSRes as ppHR
 import theano.tensor as tt
 
-data_path = os.getenv("DATA_PATH")
+if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
+    data_path = os.getenv("DATA_PATH") 
+else:
+    from acrg_config.paths import paths
+    data_path = paths.data
+
 
 def parsePrior(name, prior_params, shape = ()):
     """
@@ -338,7 +344,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                                xprior, bcprior, sigprior, Ytime, siteindicator, sigma_freq_index, data, fp_data,
                                emissions_name, domain, species, sites,
                                start_date, end_date, outputname, outputpath,
-                               basis_directory, country_file, fp_basis_case, country_unit_prefix, method="base", **kwargs):
+                               basis_directory, country_file, country_unit_prefix, method="base", **kwargs):
         """
         Takes the output from inferpymc3 function, along with some other input
         information, and places it all in a netcdf output. This function also 
@@ -430,8 +436,6 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                 Directory containing basis function file
             country_file (str):
                 Path of country definition file
-            fp_basis_case (str, optional):
-                Name of basis function to use for emissions.
             country_unit_prefix ('str', optional)
                 A prefix for scaling the country emissions. Current options are: 'T' will scale to Tg, 'G' to Gg, 'M' to Mg, 'P' to Pg.
                 To add additional options add to acrg_convert.prefix
@@ -482,13 +486,10 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
             site_lon[si] = fp_data[site].release_lon.values[0]
 
         #Calculate mean posterior scale map and flux field
-        if basis_directory is not None:
-            bfds = opends(basis_directory+domain+"/"+fp_basis_case+"_"+domain+"_"+start_date[:4]+".nc")
-        else:
-            bfds = opends(data_path+"/LPDM/basis_functions/"+fp_basis_case+"_"+domain+"_"+start_date[:4]+".nc")
-        scalemap = np.zeros_like(np.squeeze(bfds.basis.values))
-        
-        #common setup for country totals calculation
+        bfds = fp_data[".basis"]
+        scalemap = np.zeros_like(bfds.values)
+    
+        #Calculate country totals   
         area = areagrid(lat, lon)
         c_object = name.get_country(domain, country_file=country_file)
         cntryds = xr.Dataset({'country': (['lat','lon'], c_object.country), 
@@ -510,7 +511,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         country_units = country_unit_prefix + 'g'
             
         #emission and flux calculations dependant on lat/lon vs index dimensions
-        if "index" in bfds.dims.keys():
+        if "index" in bfds.dims:
             '''
             'index' used to add high spatial resolution features:
                 - hr coordinates
@@ -526,7 +527,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                                  fp_data[sites[0]].fp_high.lat_high.values, fp_data[sites[0]].fp_high.lon_high.values)
             
             #unfaltten and convert flux and scaling map to dataarrays
-            scalemap_hr_trace, scalemap_trace = ppHR.unflattenArray(np.squeeze(outs.T[(bfds.basis.values.astype(int)-1),:]), fp_data[".flux"]["all"])
+            scalemap_hr_trace, scalemap_trace = ppHR.unflattenArray(np.squeeze(outs.T[(bfds.values.astype(int)-1),:]), fp_data[".flux"]["all"])
             
             scalemap = xr.DataArray( np.mean(scalemap_trace,axis=2), coords=[lat, lon], dims = ["lat", "lon"])
             scalemap_hr = xr.DataArray(np.mean(scalemap_hr_trace,axis=2), coords=[lat_hr, lon_hr], dims = ["lat_high", "lon_high"])
@@ -555,13 +556,13 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
             #     cntry95[ci, :] = pm.stats.hpd(cntrytottrace, 0.95)
             #     cntryprior[ci] = np.sum( area * (cntrygrid == ci) * 3600*24*365*molarmass/unit_factor, axis=(0,1))
             
-            bfarray_hr, bfarray = ppHR.unflattenArray( np.squeeze(bfds.basis.values-1), fp_data[".flux"]["all"])
+            bfarray_hr, bfarray = ppHR.unflattenArray( np.squeeze(bfds.values-1), fp_data[".flux"]["all"])
             bfarray = np.squeeze(bfarray)
             bfarray_hr = np.squeeze(bfarray_hr)
             
         else:
             for npm in nparam:
-                scalemap[bfds.basis.values[:,:,0] == (npm+1)] = np.mean(outs[:,npm])
+                scalemap[bfds.values[:,:,0] == (npm+1)] = np.mean(outs[:,npm])
             if emissions_name == None:
                 emds = name.name.flux(domain, species, start = start_date, end = end_date)
             else:
@@ -569,7 +570,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
             flux = scalemap*emds.flux.values[:,:,0]
             
             #Basis functions to save
-            bfarray = np.squeeze(bfds.basis.values)-1
+            bfarray = np.squeeze(bfds.values)-1
     
             #Calculate country totals           
     
@@ -644,7 +645,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                                    'lon':(['lon'],lon),
                                    'countrynames':(['countrynames'],cntrynames)})
         
-        if "index" in bfds.dims.keys():
+        if "index" in bfds.dims:
             outds["fluxapriori_hr"] = (['lat_hr','lon_hr'], aprioriflux_hr)
             outds["fluxmean_hr"] = (['lat_hr','lon_hr'], flux_hr)   
             outds["scalingmean_hr"] = (['lat_hr','lon_hr'], scalemap_hr)   
@@ -727,5 +728,4 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         output_filename = define_output_filename(outputpath,species,domain,outputname,start_date,ext=".nc")
         #outds.to_netcdf(outputpath+"/"+species.upper()+'_'+domain+'_'+outputname+'_'+start_date+'.nc', encoding=encoding, mode="w")
         outds.to_netcdf(output_filename, encoding=encoding, mode="w")
-        return output_filename
 

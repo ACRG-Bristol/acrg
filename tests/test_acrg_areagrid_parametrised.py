@@ -15,12 +15,13 @@ Using a Parametrised test
 
 import numpy as np
 import os
+import sys
 import netCDF4 as nc
 import pytest
 from acrg_grid.areagrid import areagrid
 
-acrg_path = os.getenv("ACRG_PATH")
-data_path = os.getenv("DATA_PATH")
+from acrg_config.paths import paths
+acrg_path = paths.acrg
 
 @pytest.fixture(scope="module")
 def gen_netcdf_file():
@@ -72,4 +73,3 @@ def test_acrg_areagrid_areas(lat_array, lon_array, expected):
     Test if the areas are calculated as for the benchmark code
     '''
     assert np.all(np.round(areagrid(lat_array, lon_array)/1000000.,1) == expected)
-

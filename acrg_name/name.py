@@ -39,8 +39,13 @@ from mpl_toolkits import mplot3d
 from collections import OrderedDict
 import acrg_obs as obs
 
-acrg_path = os.getenv("ACRG_PATH")
-data_path = os.getenv("DATA_PATH")
+if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
+    acrg_path = os.getenv("ACRG_PATH")
+    data_path = os.getenv("DATA_PATH") 
+else:
+    from acrg_config.paths import paths
+    acrg_path = paths.acrg
+    data_path = paths.data
 
 if acrg_path is None:
     acrg_path = os.getenv("HOME")
@@ -97,8 +102,6 @@ def filenames(site, domain, start, end, height, fp_directory, network=None, spec
     Returns:
         list (str): matched filenames
     """
-
-    baseDirectory = fp_directory
         
     # Read site info for heights
     if height is None:
@@ -114,11 +117,14 @@ def filenames(site, domain, start, end, height, fp_directory, network=None, spec
     with open(os.path.join(acrg_path,"acrg_species_info.json")) as f:
         species_info=json.load(f)
  
-    species_obs = obs.read.synonyms(species, species_info)
-    
-    if 'lifetime' in species_info[species_obs].keys():
-        lifetime = species_info[species_obs]["lifetime"]
-        lifetime_hrs = convert.convert_to_hours(lifetime)
+    if species:
+        species_obs = obs.read.synonyms(species, species_info)
+        
+        if 'lifetime' in species_info[species_obs].keys():
+            lifetime = species_info[species_obs]["lifetime"]
+            lifetime_hrs = convert.convert_to_hours(lifetime)
+        else:
+            lifetime_hrs = None
     else:
         lifetime_hrs = None
     
@@ -133,19 +139,25 @@ def filenames(site, domain, start, end, height, fp_directory, network=None, spec
     files = []
     for ym in yearmonth:
 
-        f=glob.glob(baseDirectory + domain + "/" + site + "*" + "-" + height + "-" + species + "*" + domain + "*" + ym + "*.nc")
+        if species:
+            f=glob.glob(fp_directory + domain + "/" + site + "*" + "-" + height + "-" + species + "*" + domain + "*" + ym + "*.nc")
+        else:
+            #manually create empty list if no species specified
+            f = []
         
         if len(f) == 0:
-                        
+            
+            glob_path = fp_directory + domain + "/" + site + "*" + "-" + height  + "_" + domain + "*" + ym + "*.nc"
+            
             if lifetime_hrs is None:
-                print("No lifetime defined in species_info.json. WARNING: 30-day integrated footprint used without chemical loss.")
-                f=glob.glob(baseDirectory + domain + "/" + site + "*" + "-" + height  + "_" + domain + "*" + ym + "*.nc")
+                print("No lifetime defined in species_info.json or species not defined. WARNING: 30-day integrated footprint used without chemical loss.")
+                f=glob.glob(glob_path)
             elif lifetime_hrs <= 1440:
                 print("This is a short-lived species. Footprints must be species specific. Re-process in process.py with lifetime")
-                return
+                return []
             else:
-                f=glob.glob(baseDirectory + domain + "/" + site + "*" + "-" + height  + "_" + domain + "*" + ym + "*.nc")
-                
+                print("Treating species as long-lived.")
+                f=glob.glob(glob_path)        
             
         if len(f) > 0:
             files += f
@@ -153,9 +165,7 @@ def filenames(site, domain, start, end, height, fp_directory, network=None, spec
     files.sort()
 
     if len(files) == 0:
-        print("Can't find file: " + baseDirectory + \
-            domain + "/" + \
-            site + "*" + height + "*" + domain + "*" + "*.nc")
+        print("Can't find footprints file: {}".format(glob_path))
     return files
 
 def read_netcdfs(files, dim = "time"):
@@ -184,61 +194,9 @@ def read_netcdfs(files, dim = "time"):
     combined = xr.concat(datasets, dim)
     return combined   
 
-def interp_time(bc_ds,vmr_var_names, new_times):
-    """
-    The interp_time function interpolates the times of the VMR variable 
-    'vmr_var_name' in the xarray.Dataset 'bc_ds' to the times specified in 
-    'interp_times'. The variable must have dimensions (height, lat_or_lon, time) 
-    in that order. 
-    Note: This function was created to convert MOZART monthly averages into 
-    same frequency as NAME footprints.
-
-    TODO: Add details for vmr_var_names and new_times
-
-    Args:
-        bc_ds (xarray.Dataset) : 
-            Output from boundary_conditions() function
-        vmr_var_names (iterable) : 
-            ???
-        new_times (???) : 
-            ???
-    
-    Returns:
-        xarray.Dataset : 
-            New dataset with the VMRs recalculated at interpolated times.
-
-    """
-
-    vmr_dict={}
-
-    for vi,vmr_var_name in enumerate(vmr_var_names):
-
-        x_id= np.arange(len(bc_ds.time))
-        new_times_id = np.linspace(0.,np.max(x_id), num=len(new_times)) 
-        vmr_new = np.zeros((len(bc_ds.height),len(bc_ds[vmr_var_name][0,:,0]),len(new_times)))
-        for j in range(len(bc_ds.height)):
-            for i in range(len(bc_ds[vmr_var_name][0,:,0])):
-                y = bc_ds[vmr_var_name][j,i,:]
-                f = interp1d(x_id,y, bounds_error = False,kind='linear', 
-                                         fill_value = np.max(y))
-                vmr_new[j,i,:] = f(new_times_id)
-
-        vmr_dict[vmr_var_name]=vmr_new
-        
-    ds2 = xr.Dataset({"vmr_n": (["height", "lon", "time"],vmr_dict["vmr_n"]),
-                        "vmr_e": (["height", "lat", "time"],vmr_dict["vmr_e"]),
-                        "vmr_s": (["height", "lon", "time"],vmr_dict["vmr_s"]),
-                        "vmr_w": (["height", "lat", "time"],vmr_dict["vmr_w"])},
-                        coords={"lon":bc_ds.lon, "lat": bc_ds.lat, "time": new_times,
-                                "height":bc_ds.height})
-
-    return ds2
-
-
 def footprints(sitecode_or_filename, fp_directory = None, 
-               flux_directory = None, bc_directory = None,
                start = None, end = None, domain = None, height = None, network = None,
-               species = None, emissions_name = None, HiTRes = False, HiSRes = False):
+               species = None, HiTRes = False, HiSRes = False):
 
     """
     The footprints function loads a NAME footprint netCDF files into an xarray Dataset.
@@ -253,8 +211,6 @@ def footprints(sitecode_or_filename, fp_directory = None,
                     domain = "EUROPE")
     
     See filenames() function for expected format of files.
-    Note: fp_directory, flux_directory and bc_directory can point to specified directories
-    but if not specified, default directories will be used (set at the top of file).
 
     Args:
         sitecode_or_filename (str) : 
@@ -264,11 +220,6 @@ def footprints(sitecode_or_filename, fp_directory = None,
             of the form :
                 fp_directory = {"integrated":PATH_TO_INTEGRATED_FP,"HiTRes":PATH_TO_HIGHTRES_FP}
             otherwise can be a single string if only integrated FPs are used and non-default.
-        flux_directory (str, optional) : 
-            flux_directory can be specified if files are not in the default directory. 
-            Must point to a directory which contains subfolders organized by domain.
-        bc_directory (str, optional) : 
-            Same sytax as flux_directory
         start (str) : 
             Start date in format "YYYY-MM-DD" for range of files to find.
         end (str) : 
@@ -283,9 +234,6 @@ def footprints(sitecode_or_filename, fp_directory = None,
             This is used to extract site information e.g. height from acrg_site_info.json. 
         species (str) : 
             Species name. All species names are defined acrg_species_info.json.
-        emissions_name (str) : 
-            Allows emissions files such as co2nee_EUROPE_2012.nc to be read in. 
-            In this case EMISSIONS_NAME would be 'co2nee'
         HiTRes (bool, optional) : 
             Whether to include high time resolution footprints.
             Default = False.
@@ -312,11 +260,6 @@ def footprints(sitecode_or_filename, fp_directory = None,
                        to integrated and HiTRes footprints \
                        {integrated:path1, HiTRes:path2}")
                 return None
-                
-                print("As HiTRes is set to True, make sure that the high and low time resolution emissions name\
-                      pairs are input correctly for the emissions sources where HiTRes applies. They should look like:\
-                      emissions_name = {source_name:{'high_res':emissions_file_identifier,\
-                      'low_res':emissions_file_identifier}.")
     
     if '.nc' in sitecode_or_filename:
         if not '/' in sitecode_or_filename:
@@ -326,8 +269,8 @@ def footprints(sitecode_or_filename, fp_directory = None,
     else:
         site=sitecode_or_filename[:]
 
-    # Finds integrated footprints if specified as a dictionary with multiple entries (HiTRes = True) 
-    # or a string with one entry        
+        # Finds integrated footprints if specified as a dictionary with multiple entries (HiTRes = True) 
+        # or a string with one entry        
         if type(fp_directory) is dict:
             files = filenames(site, domain, start, end, height, fp_directory["integrated"], network=network, species=species)
         else:
@@ -337,7 +280,8 @@ def footprints(sitecode_or_filename, fp_directory = None,
                 files = filenames(site, domain, start, end, height, fp_directory, network=network, species=species)
 
     if len(files) == 0:
-        print("Can't find files, " + sitecode_or_filename)
+        print("\nWarning: Can't find footprint files for {}. "
+              "This site will not be included in the output dictionary.\n".format(sitecode_or_filename))
         return None
 
     else:
@@ -387,20 +331,19 @@ def flux(domain, species, start = None, end = None, flux_directory=None):
     
     if flux_directory is None:
         flux_directory = join(data_path, 'LPDM/emissions/')
-
-    print(("filename",flux_directory + domain + "/" + species.lower() + "_" + "*.nc"))
-    files = sorted(glob.glob(flux_directory + domain + "/" + 
-                   species.lower() + "_" + "*.nc"))
+    
+    filename = os.path.join(flux_directory,domain,species.lower()+"_" +"*.nc")
+    print("\nSearching for flux files: {}".format(filename))
+    
+    files = sorted(glob.glob(filename))
+    
     if len(files) == 0:
-        print("Can't find flux: " + domain + " " + species)
-        return None
+        raise IOError("\nError: Can't find flux files for domain '{0}' and species '{1}' ".format(domain,species))
     
     flux_ds = read_netcdfs(files)
     # Check that time coordinate is present
     if not "time" in list(flux_ds.coords.keys()):
-        print("ERROR: No 'time' coordinate " + \
-              "in flux dataset for " + domain + ", " + species)
-        return None
+        raise KeyError("ERROR: No 'time' coordinate in flux dataset for domain '{0}' species '{1}'".format(domain,species))
 
     # Check for level coordinate. If one level, assume surface and drop
     if "lev" in list(flux_ds.coords.keys()):
@@ -411,46 +354,45 @@ def flux(domain, species, start = None, end = None, flux_directory=None):
         else:
             return flux_ds.drop("lev")
         
-    if start == None:
+    if start == None or end == None:
+        print("To get fluxes for a certain time period you must specify a start or end date.")
         return flux_ds
     else:
-        if end == None:
-            print("To get fluxes for a certain time period you must specify an end date.")
-        else:
-            #Change timeslice to be the beginning and end of months in the dates specified.
-            start = pd.to_datetime(start)
-            month_start = dt.datetime(start.year, start.month, 1, 0, 0)
+
+        #Change timeslice to be the beginning and end of months in the dates specified.
+        start = pd.to_datetime(start)
+        month_start = dt.datetime(start.year, start.month, 1, 0, 0)
         
-            end = pd.to_datetime(end)
-            month_end = dt.datetime(end.year, end.month, 1, 0, 0) - \
+        end = pd.to_datetime(end)
+        month_end = dt.datetime(end.year, end.month, 1, 0, 0) - \
                         dt.timedelta(seconds = 1)
            
-            if 'climatology' in species:
-                ndate = pd.to_datetime(flux_ds.time.values)
-                if len(ndate) == 1:  #If it's a single climatology value
-                    dateadj = ndate - month_start  #Adjust climatology to start in same year as obs  
-                else: #Else if a monthly climatology
-                    dateadj = ndate[month_start.month-1] - month_start  #Adjust climatology to start in same year as obs  
-                ndate = ndate - dateadj
-                flux_ds = flux_ds.update({'time' : ndate})  
-                flux_tmp = flux_ds.copy()
-                while month_end > ndate[-1]:
-                    ndate = ndate + pd.DateOffset(years=1)      
-                    flux_ds = xr.merge([flux_ds, flux_tmp.update({'time' : ndate})])
+        if 'climatology' in species:
+            ndate = pd.to_datetime(flux_ds.time.values)
+            if len(ndate) == 1:  #If it's a single climatology value
+                dateadj = ndate - month_start  #Adjust climatology to start in same year as obs  
+            else: #Else if a monthly climatology
+                dateadj = ndate[month_start.month-1] - month_start  #Adjust climatology to start in same year as obs  
+            ndate = ndate - dateadj
+            flux_ds = flux_ds.update({'time' : ndate})  
+            flux_tmp = flux_ds.copy()
+            while month_end > ndate[-1]:
+                ndate = ndate + pd.DateOffset(years=1)      
+                flux_ds = xr.merge([flux_ds, flux_tmp.update({'time' : ndate})])
                     
+        flux_timeslice = flux_ds.sel(time=slice(month_start, month_end))
+        if np.logical_and(month_start.year != month_end.year, len(flux_timeslice.time) != dateutil.relativedelta.relativedelta(end, start).months):
+            month_start = dt.datetime(start.year, 1, 1, 0, 0)
             flux_timeslice = flux_ds.sel(time=slice(month_start, month_end))
-            if np.logical_and(month_start.year != month_end.year, len(flux_timeslice.time) != dateutil.relativedelta.relativedelta(end, start).months):
-                month_start = dt.datetime(start.year, 1, 1, 0, 0)
-                flux_timeslice = flux_ds.sel(time=slice(month_start, month_end))
-            if len(flux_timeslice.time)==0:
-                flux_timeslice = flux_ds.sel(time=start, method = 'ffill')
-                flux_timeslice = flux_timeslice.expand_dims('time',axis=-1)
-                print("Warning: No fluxes available during the time period specified so outputting\
+        if len(flux_timeslice.time)==0:
+            flux_timeslice = flux_ds.sel(time=start, method = 'ffill')
+            flux_timeslice = flux_timeslice.expand_dims('time',axis=-1)
+            print("Warning: No fluxes available during the time period specified so outputting\
                           flux from %s" %flux_timeslice.time.values[0])
-            else:
-                print("Slicing time to range {} - {}".format(month_start,month_end))
+        else:
+            print("Slicing time to range {} - {}".format(month_start,month_end))
             
-            return flux_timeslice
+        return flux_timeslice
 
 
 def flux_for_HiTRes(domain, emissions_dict, start=None, end=None, flux_directory=None):
@@ -542,35 +484,35 @@ def boundary_conditions(domain, species, start = None, end = None, bc_directory=
     if bc_directory is None:
         bc_directory = join(data_path, 'LPDM/bc/')
     
-    files = sorted(glob.glob(bc_directory + domain + "/" + 
-                   species.lower() + "_" + "*.nc"))
+    filenames = os.path.join(bc_directory,domain,species.lower() + "_" + "*.nc")
+    
+    files = sorted(glob.glob(filenames))
+    
     if len(files) == 0:
-        print("Can't find boundary condition files: " + domain + " " + species)
-        return None
+        print("Cannot find boundary condition files in {}".format(filenames))
+        raise IOError("\nError: Cannot find boundary condition files for domain '{0}' and species '{1}': ".format(domain,species))
 
     bc_ds = read_netcdfs(files)
 
-    if start == None:
+    if start == None or end == None:
+        print("To get boundary conditions for a certain time period you must specify an end date.")
         return bc_ds
     else:
-        if end == None:
-            print("To get boundary conditions for a certain time period you must specify an end date.")
-        else:
-            #Change timeslice to be the beginning and end of months in the dates specified.
-            start = pd.to_datetime(start)
-            month_start = dt.datetime(start.year, start.month, 1, 0, 0)
+        #Change timeslice to be the beginning and end of months in the dates specified.
+        start = pd.to_datetime(start)
+        month_start = dt.datetime(start.year, start.month, 1, 0, 0)
         
-            end = pd.to_datetime(end)
-            month_end = dt.datetime(end.year, end.month, 1, 0, 0) - \
-                        dt.timedelta(seconds = 1)
+        end = pd.to_datetime(end)
+        month_end = dt.datetime(end.year, end.month, 1, 0, 0) - \
+                    dt.timedelta(seconds = 1)
             
-            bc_timeslice = bc_ds.sel(time=slice(month_start, month_end))
-            if len(bc_timeslice.time)==0:
-                bc_timeslice = bc_ds.sel(time=start, method = 'ffill')
-                bc_timeslice = bc_timeslice.expand_dims('time',axis=-1)
-                print("No boundary conditions available during the time period specified so outputting\
-                          boundary conditions from %s" %bc_timeslice.time.values[0])
-            return bc_timeslice
+        bc_timeslice = bc_ds.sel(time=slice(month_start, month_end))
+        if len(bc_timeslice.time)==0:
+            bc_timeslice = bc_ds.sel(time=start, method = 'ffill')
+            bc_timeslice = bc_timeslice.expand_dims('time',axis=-1)
+            print("No boundary conditions available during the time period specified so outputting"
+                    "boundary conditions from %s" %bc_timeslice.time.values[0])
+        return bc_timeslice
 
 
 def basis(domain, basis_case, basis_directory = None):
@@ -599,11 +541,13 @@ def basis(domain, basis_case, basis_directory = None):
     if basis_directory is None:
         basis_directory = join(data_path, 'LPDM/basis_functions/')
         
-    files = sorted(glob.glob(basis_directory + domain + "/" +
-                    basis_case + "_" + domain + "*.nc"))
+    file_path = os.path.join(basis_directory,domain,basis_case + "_" + domain + "*.nc")
+        
+    files = sorted(glob.glob(file_path))
+    
     if len(files) == 0:
-        print("Can't find basis functions: " + domain + " " + basis_case)
-        return None
+        raise IOError("\nError: Can't find basis function files for domain '{0}' "
+              "and basis_case '{1}' ".format(domain,basis_case))
 
     basis_ds = read_netcdfs(files)
 
@@ -636,13 +580,14 @@ def basis_boundary_conditions(domain, basis_case, bc_basis_directory = None):
     if bc_basis_directory is None:
         bc_basis_directory = join(data_path,'LPDM/bc_basis_functions/')
     
-    files = sorted(glob.glob(bc_basis_directory + domain + "/" +
-                    basis_case + '_' + domain + "*.nc"))
+    file_path = os.path.join(bc_basis_directory,domain,basis_case + '_' + domain + "*.nc")
+    
+    files = sorted(glob.glob(file_path))
 
     if len(files) == 0:
-        print("Can't find boundary condition basis functions: " + domain + " " + basis_case)
-        return None
-    
+        raise IOError("\nError: Can't find boundary condition basis function files for domain '{0}' "
+              "and basis_case '{1}' ".format(domain,basis_case))
+
     basis_ds = read_netcdfs(files)
 
     return basis_ds
@@ -669,8 +614,14 @@ def indexesMatch(dsa, dsb):
         #first check lengths are the same to avoid error in second check
         if not len(dsa.indexes[index])==len(dsb.indexes[index]):
             return False
-        #check number of values that are not close (testing for equality with floating point sucks)
-        if not np.sum(~np.isclose(dsa.indexes[index].values.astype(float),dsb.indexes[index].values.astype(float) ))==0:
+        
+        #check number of values that are not close (testing for equality with floating point)
+        if index == "time":
+            #for time iverride the default to have ~ second precision
+            rtol = 1e-10
+        else:
+            rtol = 1e-5
+        if not np.sum(~np.isclose(dsa.indexes[index].values.astype(float),dsb.indexes[index].values.astype(float), rtol=rtol ))==0:
             return False
         
     return True
@@ -735,6 +686,9 @@ def align_datasets(ds1, ds2, platform=None, resample_to_ds1=False):
     Returns:
         2 xarray.dataset with aligned time dimensions
     """
+    platform_skip_resample = ("satellite","flask")
+    if platform in platform_skip_resample:
+        return ds1, ds2
     #lw13938: 12/04/2018 - This should slice the date to the smallest time frame
     # spanned by both the footprint and obs, then resamples the data 
     #using the mean to the one with coarsest median resolution 
@@ -762,8 +716,9 @@ def align_datasets(ds1, ds2, platform=None, resample_to_ds1=False):
     ds2 = ds2.sel(time=slice(start_s,end_s))
     
     
+    
     #only non satellite datasets with different periods need to be resampled
-    if platform != "satellite" and not np.isclose(ds1_timeperiod, ds2_timeperiod):
+    if not np.isclose(ds1_timeperiod, ds2_timeperiod):
         base = start_date.dt.hour.data + start_date.dt.minute.data/60. + start_date.dt.second.data/3600.
         if (ds1_timeperiod >= ds2_timeperiod) or (resample_to_ds1 == True):
             resample_period = str(round(ds1_timeperiod/3600e9,5))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
@@ -776,7 +731,7 @@ def align_datasets(ds1, ds2, platform=None, resample_to_ds1=False):
     
 def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                           calc_timeseries = True, calc_bc = True, HiTRes = False, HiSRes = False,
-                          average = None, site_modifier = {}, height = None,network = None,
+                          site_modifier = {}, height = None, network = None,
                           emissions_name = None,
                           fp_directory = None,
                           flux_directory = None,
@@ -797,7 +752,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
         calc_timeseries (bool) : True calculates modelled mole fractions for each site using fluxes, False does not. Default True.
         calc_bc (bool)       : True calculates modelled baseline for each site using boundary conditions, False does not. Default True.
         HiTRes (bool)        : Set to True to include HiTRes footprints in output. Default False.
-        average (dict)       : Averaging period for each dataset (for each site). Should be a dictionary with
+        average (dict)       : [This keyword has been removed and its functionality commented out] Averaging period for each dataset (for each site). Should be a dictionary with
                                {site: averaging_period} key:value pairs.
                                Each value should be a string of the form e.g. "2H", "30min" (should match
                                pandas offset aliases format).
@@ -847,13 +802,13 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
     sites = [key for key in list(data.keys()) if key[0] != '.']
     attributes = [key for key in list(data.keys()) if key[0] == '.']
         
-    if average is not None:
-        if type(average) is not dict:
-            print("WARNING: average list must be a dictionary with {site: averaging_period}\
-                  key value pairs. Ignoring. Output dataset will not be resampled.")
-            average = {x:None for x in sites}
-    else:
-        average = {x:None for x in sites}
+#     if average is not None:
+#         if type(average) is not dict:
+#             print("WARNING: average list must be a dictionary with {site: averaging_period}\
+#                   key value pairs. Ignoring. Output dataset will not be resampled.")
+#             average = {x:None for x in sites}
+#     else:
+#         average = {x:None for x in sites}
 
     if type(fp_directory) is not list:
         fp_directory = [fp_directory] * len(sites)
@@ -925,14 +880,11 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
         # Get footprints
 
         site_fp = footprints(site_modifier_fp, fp_directory = fp_directory[i], 
-                             flux_directory = flux_directory, 
-                             bc_directory = bc_directory,
                              start = start, end = end,
                              domain = domain,
                              species = species,
                              height = height_site,
                              network = network_site,
-                             emissions_name = None,
                              HiTRes = HiTRes,
                              HiSRes = HiSRes)                         
         
@@ -970,7 +922,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
             site_ds, site_fp = align_datasets(site_ds, site_fp, platform=platform, resample_to_ds1=resample_to_data)
                        
             site_ds = combine_datasets(site_ds, site_fp,
-                                       method = None,
+                                       method = "ffill",
                                        tolerance = tolerance)
 
             #transpose to keep time in the last dimension position in case it has been moved in resample
@@ -991,8 +943,8 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                     site_ds.update({'fp_high' : (site_ds.fp_high.dims, old_div(site_ds.fp_high, data[".units"]))})
         
             # Resample, if required
-            if average[site] is not None:
-                site_ds = site_ds.resample(indexer={'time':average[site]})
+#             if average[site] is not None:
+#                 site_ds = site_ds.resample(indexer={'time':average[site]})
             
             fp_and_data[site] = site_ds
             
@@ -1138,7 +1090,7 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                                 by domain. (optional)
     
     Returns:
-        dict (xarray.Dataset) : Same format as fp_and_data with sensitivity matrix added.
+        dict (xarray.Dataset) : Same format as fp_and_data with sensitivity matrix and basis function grid added.
     """    
     
     sites = [key for key in list(fp_and_data.keys()) if key[0] != '.']
@@ -1296,10 +1248,9 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                                           attrs = {'flux_source_used_to_create_sub_H':source})
        
                     fp_and_data[site] = fp_and_data[site].merge(sub_fp)
-                    fp_and_data[site] = fp_and_data[site].merge(sub_H)
-
-        fp_and_data[site]['H'] = concat_sensitivity                           
-
+                    fp_and_data[site] = fp_and_data[site].merge(sub_H)    
+        fp_and_data[site]['H'] = concat_sensitivity                             
+        fp_and_data['.basis'] = site_bf.basis.isel({"time":0}, drop=True)
                     
     return fp_and_data
 
@@ -1373,7 +1324,7 @@ def bc_sensitivity(fp_and_data, domain, basis_case, bc_basis_directory = None):
         DS = DS.transpose('height','lat','lon','region','time')
 
         part_loc = np.hstack([DS.particle_locations_n,
-                                DS.particle_locations_e,
+                                DS.particle_locations_e, 
                                 DS.particle_locations_s,
                                 DS.particle_locations_w])
         
@@ -1405,111 +1356,6 @@ def bc_sensitivity(fp_and_data, domain, basis_case, bc_basis_directory = None):
         fp_and_data[site] = fp_and_data[site].merge(sensitivity)
     
     return fp_and_data
-
-
-def merge_sensitivity(fp_data_H,
-                      out_filename = None,
-                      remove_nan = True):
-    """
-    The merge_sensitivity function outputs y, y_site, y_time in a single array for all sites
-    (as opposed to a dictionary) and H and H_bc if present in dataset.
-    
-    Args:
-        fp_data_H (dict)   : Output from footprints_data_merge() function. Dictionary of datasets.
-        out_filename (str) : If specified the output will be writen to this filename. Otherwise values are
-                             returned.
-        remove_nan (bool)  : Whether to remove NaN values in y. Default = True.
-        
-    Returns:
-        tuple : each variable as an array (y, y_error, y_site, y_time [...])
-        
-        H, H_bc are also returned if present otherwise None is returned in their place.
-        e.g.
-            (y, y_error, y_site, y_time, H, H_bc)
-            (y, y_error, y_site, y_time, None, H_bc)
-    """
-
-    y = []
-    y_error = []
-    y_site = []
-    y_time = []
-    H = []
-    H_bc = []
-    
-    sites = [key for key in list(fp_data_H.keys()) if key[0] != '.']
-    
-    for si, site in enumerate(sites):
-        
-        if remove_nan:
-            fp_data_H[site] = fp_data_H[site].dropna("time", how="all")
-        
-        y_site.append([site for i in range(len(fp_data_H[site].coords['time']))])
-        y_time.append(fp_data_H[site].coords['time'].values)        
-        
-        if 'mf' in fp_data_H[site].data_vars:
-            y.append(fp_data_H[site].mf.values)
-        
-            # Approximate y_error
-            if "vmf" in list(fp_data_H[site].keys()):
-                y_error.append(fp_data_H[site].vmf.values)
-            elif "dmf" in list(fp_data_H[site].keys()):
-                y_error.append(fp_data_H[site].dmf.values)
-            else:
-                print("Measurement error not found in dataset for site %s" %site)
-
-        if 'H' in fp_data_H[site].data_vars:        
-            # Make sure H matrices are aligned in the correct dimensions
-            if fp_data_H[site].H.dims[0] == "time":
-                H.append(fp_data_H[site].H.values)
-            else:
-                H.append(fp_data_H[site].H.values.T)
-                
-        if 'H_bc' in fp_data_H[site].data_vars:         
-            if fp_data_H[site].H_bc.dims[0] == "time":
-                H_bc.append(fp_data_H[site].H_bc.values)
-            else:
-                H_bc.append(fp_data_H[site].H_bc.values.T)
-
-
-    out_variables = ()
-
-    y_site = np.hstack(y_site)
-    y_time = np.hstack(y_time)
-
-    if len(y) > 0:
-        y = np.hstack(y)
-        out_variables += (y,)
-    else:
-        out_variables += (None,)
-    
-    if len(y_error) > 0:
-        y_error = np.hstack(y_error)
-        out_variables += (y_error,)
-    else:
-        out_variables += (None,)
-        
-    out_variables += (y_site, y_time)
-    
-    if len(H_bc) > 0:
-        H_bc = np.vstack(H_bc)
-        out_variables += (H_bc,)
-    else:
-        out_variables += (None,) 
-    
-    if len(H) > 0:
-        H = np.vstack(H)
-        out_variables += (H,)
-    else:
-        out_variables += (None,)
-
-    # Save or return y, y_error, y_site, y_time, H_bc, H
-    if out_filename is None:
-        return out_variables
-    else:
-        with open(out_filename, "w") as outfile:
-            pickle.dump(out_variables, outfile)
-        print("Written " + out_filename)
-        return out_variables
 
 
 def filtering(datasets_in, filters, keep_missing=False):
@@ -1550,19 +1396,63 @@ def filtering(datasets_in, filters, keep_missing=False):
 
     datasets = datasets_in.copy()
 
+    def local_solar_time(dataset):
+        """
+        Returns hour of day as a function of local solar time
+        relative to the Greenwich Meridian. 
+        """
+        sitelon = dataset.release_lon.values[0]
+        if sitelon < 0:
+            sitelon = 360. + sitelon
+        dataset["time"] = dataset.time + pd.Timedelta(minutes=float(24*60*sitelon/360.))
+        hours = dataset.time.to_pandas().index.hour
+        return hours
+    
+    def local_ratio(dataset):
+        """
+        Calculates the local ratio in the surrounding grid cells
+        """
+        release_lons = dataset.release_lon[0].values
+        release_lats = dataset.release_lat[0].values
+        dlon = dataset.lon[1].values - dataset.lon[0].values
+        dlat = dataset.lat[1].values-dataset.lat[0].values
+        local_sum=np.zeros((len(dataset.mf)))
+
+        for ti in range(len(dataset.mf)):
+            release_lon=dataset.release_lon[ti].values
+            release_lat=dataset.release_lat[ti].values
+            wh_rlon = np.where(abs(dataset.lon.values-release_lon) < dlon/2.)
+            wh_rlat = np.where(abs(dataset.lat.values-release_lat) < dlat/2.)
+            if np.any(wh_rlon[0]) and np.any(wh_rlat[0]):
+                local_sum[ti] = old_div(np.sum(dataset.fp[
+                        wh_rlat[0][0]-2:wh_rlat[0][0]+3,wh_rlon[0][0]-2:wh_rlon[0][0]+3,ti].values),np.sum(
+                        dataset.fp[:,:,ti].values))  
+            else:
+                local_sum[ti] = 0.0 
+        
+        return local_sum
+    
+    
+    
     # Filter functions
     def daily_median(dataset, keep_missing=False):
         """ Calculate daily median """
-        return dataset.resample(indexer={'time':"1D"}).median()
+        if keep_missing:
+            return dataset.resample(indexer={'time':"1D"}).median()
+        else:
+            return dataset.resample(indexer={'time':"1D"}).median().dropna(dim="time")
         
     def six_hr_mean(dataset, keep_missing=False):
-        """ Calculate daily median """
-        return dataset.resample(indexer={'time':"6H"}).mean()
+        """ Calculate six-hour median """
+        if keep_missing:
+            return dataset.resample(indexer={'time':"6H"}).mean()
+        else:
+            return dataset.resample(indexer={'time':"6H"}).mean().dropna(dim="time")
     
 
     def daytime(dataset, site,keep_missing=False):
         """ Subset during daytime hours (11:00-15:00) """
-        hours = dataset.time.to_pandas().index.hour
+        hours = local_solar_time(dataset)
         ti = [i for i, h in enumerate(hours) if h >= 11 and h <= 15]
         
         if keep_missing:
@@ -1574,7 +1464,7 @@ def filtering(datasets_in, filters, keep_missing=False):
         
     def daytime9to5(dataset, site,keep_missing=False):
         """ Subset during daytime hours (9:00-17:00) """
-        hours = dataset.time.to_pandas().index.hour
+        hours = local_solar_time(dataset)
         ti = [i for i, h in enumerate(hours) if h >= 9 and h <= 17]
         
         if keep_missing:
@@ -1586,7 +1476,7 @@ def filtering(datasets_in, filters, keep_missing=False):
             
     def nighttime(dataset, site,keep_missing=False):
         """ Subset during nighttime hours (23:00 - 03:00) """
-        hours = dataset.time.to_pandas().index.hour
+        hours = local_solar_time(dataset)
         ti = [i for i, h in enumerate(hours) if h >= 23 or h <= 3]
         
         if keep_missing:
@@ -1598,7 +1488,7 @@ def filtering(datasets_in, filters, keep_missing=False):
             
     def noon(dataset, site,keep_missing=False):
         """ Select only 12pm data """
-        hours = dataset.time.to_pandas().index.hour
+        hours = local_solar_time(dataset)
         ti = [i for i, h in enumerate(hours) if h == 12]
         
         if keep_missing:
@@ -1608,115 +1498,28 @@ def filtering(datasets_in, filters, keep_missing=False):
         else:
             return dataset[dict(time = ti)] 
         
-
-    def pblh_gt_threshold(dataset,site, keep_missing=False):
-        """
-        Subset for times when boundary layer height > threshold
-        Threshold needs to be set in dataset as pblh_threshold
-        """
-        threshold = dataset.pblh_threshold.values
-        ti = [i for i, pblh in enumerate(dataset.PBLH) if pblh > threshold]
-        
-        if keep_missing:
-            mf_data_array = dataset.mf            
-            dataset_temp = dataset.drop('mf')
-            
-            dataarray_temp = mf_data_array[dict(time = ti)]   
-            
-            mf_ds = xr.Dataset({'mf': (['time'], dataarray_temp)}, 
-                                  coords = {'time' : (dataarray_temp.coords['time'])})
-            
-            dataset_out = combine_datasets(dataset_temp, mf_ds, method=None)
-            return dataset_out
-        else:
-            return dataset[dict(time = ti)]
-            
-    def local_lapse(dataset,site, keep_missing=False):
-        """
-        Subset for times when linear combination of lapse rate and local influence
-        is below threshold.
-        
-        Both normalized by 500 m. Thus, for low inlets the local influence is more dominant.
-        For higher inlets the vertical profile of potential temperature (stability) is more dominant. 
-        
-        This combination correlates to variation in mole fraction difference between inlets.
-        """
-        in_height = dataset.inlet
-        lapse_norm = dataset.theta_slope*in_height/500.
-        lr_norm = old_div(dataset.local_ratio*500.,in_height)
-        comb_norm = lr_norm + lapse_norm
-        cutoff=0.5
-        ti = [i for i, lr in enumerate(comb_norm) if lr < cutoff]
-        
-        if len(ti) > 0:
-            if keep_missing:
-                mf_data_array = dataset.mf            
-                dataset_temp = dataset.drop('mf')
-                
-                dataarray_temp = mf_data_array[dict(time = ti)]   
-                
-                mf_ds = xr.Dataset({'mf': (['time'], dataarray_temp)}, 
-                                      coords = {'time' : (dataarray_temp.coords['time'])})
-                
-                dataset_out = combine_datasets(dataset_temp, mf_ds, method=None)
-                return dataset_out
-            else:
-                return dataset[dict(time = ti)]   
-        else:
-            return None       
-
-    def local_lapse_045(dataset,site, keep_missing=False):
-        """
-        Subset for times when linear combination of lapse rate and local influence
-        is below threshold.
-        
-        Both normalized by 500 m. Thus, for low inlets the local influence is more dominant.
-        For higher inlets the vertical profile of potential temperature (stability) is more dominant. 
-        
-        This combination correlates to variation in mole fraction difference between inlets.
-        """
-        in_height = dataset.inlet
-        lapse_norm = dataset.theta_slope*in_height/500.
-        lr_norm = old_div(dataset.local_ratio*500.,in_height)
-        comb_norm = lr_norm + lapse_norm
-        cutoff=0.45
-        ti = [i for i, lr in enumerate(comb_norm) if lr < cutoff]
-        
-        if len(ti) > 0:
-            if keep_missing:
-                mf_data_array = dataset.mf            
-                dataset_temp = dataset.drop('mf')
-                
-                dataarray_temp = mf_data_array[dict(time = ti)]   
-                
-                mf_ds = xr.Dataset({'mf': (['time'], dataarray_temp)}, 
-                                      coords = {'time' : (dataarray_temp.coords['time'])})
-                
-                dataset_out = combine_datasets(dataset_temp, mf_ds, method=None)
-                return dataset_out
-            else:
-                return dataset[dict(time = ti)]   
-        else:
-            return None                       
             
     def local_influence(dataset,site, keep_missing=False):
         """
         Subset for times when local influence is below threshold.       
         Local influence expressed as a fraction of the sum of entire footprint domain.
-        """
-        lr = dataset.local_ratio
+        """        
+        if not dataset.filter_by_attrs(standard_name="local_ratio"):
+            lr = local_ratio(dataset)
+        else:
+            lr = dataset.local_ratio
+            
         pc = 0.1
-        
         ti = [i for i, local_ratio in enumerate(lr) if local_ratio <= pc]
         if keep_missing is True: 
             mf_data_array = dataset.mf            
             dataset_temp = dataset.drop('mf')
-            
+
             dataarray_temp = mf_data_array[dict(time = ti)]   
-            
+
             mf_ds = xr.Dataset({'mf': (['time'], dataarray_temp)}, 
                                   coords = {'time' : (dataarray_temp.coords['time'])})
-            
+
             dataset_out = combine_datasets(dataset_temp, mf_ds, method=None)
             return dataset_out
         else:
@@ -1728,11 +1531,8 @@ def filtering(datasets_in, filters, keep_missing=False):
                          "daytime9to5":daytime9to5,
                          "nighttime":nighttime,
                          "noon":noon,
-                         "pblh_gt_threshold": pblh_gt_threshold,
                          "local_influence":local_influence,
-                         "six_hr_mean":six_hr_mean,
-                         "local_lapse":local_lapse,
-                         "local_lapse_045":local_lapse_045}
+                         "six_hr_mean":six_hr_mean}
 
     # Get list of sites
     sites = [key for key in list(datasets.keys()) if key[0] != '.']
@@ -2291,7 +2091,7 @@ class get_country(object):
   def __init__(self, domain, country_file=None):
         
         if country_file is None:
-            filename=glob.glob(data_path +'LPDM/countries/' + "/" + "country_" + domain + ".nc")
+            filename=glob.glob(join(data_path,'LPDM/countries/', ("country_" + domain + ".nc")))
             f = xr.open_dataset(filename[0])
         else:
             filename = country_file

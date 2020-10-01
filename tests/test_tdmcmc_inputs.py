@@ -21,10 +21,13 @@ To run all tests except those labelled 'long' use the syntax
 
 import pytest
 import os
+import sys
 import subprocess
 
-acrg_path = os.getenv("ACRG_PATH")
-data_path = os.getenv("DATA_PATH")
+from acrg_config.paths import paths
+acrg_path = paths.acrg
+
+
 
 tdmcmc_path = os.path.join(acrg_path,"acrg_tdmcmc")
 test_config_path = os.path.join(acrg_path,"tests/files/config")

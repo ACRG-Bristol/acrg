@@ -29,13 +29,19 @@ from past.utils import old_div
 import xarray as xr
 import numpy as np
 import os
+import sys
 import glob
 import getpass
 from acrg_name import name
 from datetime import datetime as dt
 from acrg_tdmcmc.tdmcmc_post_process import molar_mass
 
-data_path = os.getenv("DATA_PATH")
+if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
+    data_path = os.getenv("DATA_PATH") 
+else:
+    from acrg_config.paths import paths
+    data_path = paths.data
+
 
 def getCAMSdata(st_date, end_date, gridsize, NESW, species, outputname, nearrealtime = False,
                 timeframe="daily"):
@@ -345,4 +351,3 @@ def makeCAMS_BC(domain, species, st_date, end_date, gridsize, outdir=None):
     
     write_CAMS_BC_tonetcdf(vmr_n, vmr_e, vmr_s, vmr_w, st_date, species, domain, outdir, gridsize)
     
-

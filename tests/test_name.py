@@ -23,29 +23,26 @@ To run all tests except those labelled 'long' use the syntax
 
 @author: rt17603
 """
-from __future__ import division
-
-from builtins import range
-from past.utils import old_div
 import pytest
 import os
+import sys
 import glob
 import numpy as np
 import xarray as xray
 import pandas as pd
-
+import pickle
 import acrg_name.name as name
-#import acrg_agage as agage
 import acrg_obs.read as read
+import pyfakefs
+from acrg_config.paths import paths
 
-#%%
 
-acrg_path = os.getenv("ACRG_PATH")
+acrg_path = paths.acrg
 
 @pytest.fixture(scope="module")
 def fp_directory():
     ''' Define base directory containing footprint files '''
-    directory = os.path.join(acrg_path,"tests/files/LPDM/fp_NAME/")
+    directory = os.path.join(acrg_path,"tests/files/LPDM/fp_NAME_minimal/")
     return directory
 
 @pytest.fixture(scope="module")
@@ -72,6 +69,21 @@ def bc_basis_directory():
     directory = os.path.join(acrg_path,"tests/files/LPDM/bc_basis_functions/")
     return directory
 
+@pytest.fixture(scope="module")
+def output_directory():
+    ''' Define base directory containing output files '''
+    directory = os.path.join(acrg_path,"tests/files/LPDM/benchmark/")
+    return directory
+
+@pytest.fixture()
+def fs_mock(fs, fp_directory, flux_directory, bc_directory, basis_directory, bc_basis_directory):
+    #add the real jsons to the fake file system:
+    fs.add_real_file(os.path.join(acrg_path, "acrg_species_info.json"))
+    fs.add_real_file(os.path.join(acrg_path, "acrg_site_info.json"))
+    #create footprint files
+    fs.create_file(os.path.join(fp_directory, "EUROPE", "MHD-10magl_EUROPE_201402.nc"))
+    fs.create_file(os.path.join(fp_directory, "EUROPE", "MHD-10magl_EUROPE_201405.nc"))
+    fs.create_file(os.path.join(fp_directory, "EUROPE", "TAC-100magl_EUROPE_201402.nc"))
 
 @pytest.fixture(scope="module")
 def measurement_param():
@@ -96,6 +108,21 @@ def measurement_param_small():
     param["end"] = "2014-03-01"
     param["height"] = "10magl"
     param["species"] = "ch4"
+    
+    return param
+
+@pytest.fixture(scope="module")
+def small_domain_param():
+    ''' Define set of parameters to be used with tests on the SMALL-DOMAIN '''
+    
+    param = {}
+    param["sites"] = ["MHD"]
+    param["domain"] = "SMALL-DOMAIN"
+    param["start"] = "2014-02-01"
+    param["end"] = "2014-03-01"
+    param["heights"] = ["10magl"]
+    param["species"] = "ch4"
+    param["basis_case"] = "simple-grid"
     
     return param
 
@@ -140,22 +167,28 @@ def filenames_param(measurement_param,fp_directory):
     return input_param
 
 @pytest.mark.basic
-def test_filenames(filenames_param):
+def test_filenames(fs_mock, filenames_param):
     '''
     Test filenames function can find files of appropriate naming structure.
-    Currently expect fp_directory/domain/site + "*" + "-" + height + "*" + domain + "*" + yearmonth + "*.nc"
     '''
     out = name.filenames(**filenames_param)
-    assert out
+    assert out == [os.path.join(filenames_param["fp_directory"],"EUROPE/MHD-10magl_EUROPE_201402.nc")]
 
-def test_filenames_noheight(filenames_param):
+def test_filenames_noheight(fs_mock, filenames_param):
     '''
     Test filenames() function can find height if it is not specified.
-    Currently expect fp_directory/domain/site + "*" + "-" + height + "*" + domain + "*" + yearmonth + "*.nc"
     '''
     filenames_param["height"] = None
     out = name.filenames(**filenames_param)
-    assert out
+    assert out == [os.path.join(filenames_param["fp_directory"],"EUROPE/MHD-10magl_EUROPE_201402.nc")]
+    
+def test_filenames_shortlived_notavailable(fs_mock, filenames_param):
+    '''
+    Test filenames() function refuses 30 day integrated footprints if species is shortlived
+    '''
+    filenames_param["species"] = "CHBr3"
+    out = name.filenames(**filenames_param)
+    assert len(out) == 0
 
 #%%
 #----------------------------
@@ -192,19 +225,11 @@ def test_footprints_from_file(fp_directory,measurement_param):
 def test_footprints_from_site(footprint_param,flux_directory,bc_directory):
     '''
     Test dataset can be created from set of parameters with footprints() function.
-    Also testing flux and bc parameters have been successfully added to footprint dataset.
     '''
 
-    footprint_param["flux_directory"] = flux_directory
-    footprint_param["bc_directory"] = bc_directory
-
-    extra_names = ["vmr_e","vmr_n","vmr_s","vmr_w","flux"]
-
     out = name.footprints(**footprint_param)
-    out_names = out.data_vars
     
-    for ename in extra_names:
-        assert ename in out_names
+    assert out
 
 #%%
 #----------------------------
@@ -297,36 +322,54 @@ def test_bc_basis(bc_basis_param):
 #----------------------------
 
 @pytest.fixture()
-def dsa():
-    times = pd.date_range("2018-01-01", "2018-02-01", freq='4H')
-    vals = np.ones_like(times, dtype='float')
-    dsa = xray.Dataset({'vals_a': (['time'], vals)},
+def timeseries_periodic_1hr():
+    #emulate a footprint timeseries
+    times = pd.date_range("2018-01-01 00:00", "2018-02-01 00:00", freq='1H')
+    values = np.ones_like(times, dtype='float')
+    ds = xray.Dataset({'values': (['time'], values)},
                           coords={'time':times})
-    return dsa
+    return ds
 
 @pytest.fixture()
-def dsb():
-    times = pd.date_range("2018-01-07", "2018-02-07", freq='2H')
-    vals = np.ones_like(times, dtype='float')
-    dsb = xray.Dataset({'vals_b': (['time'], vals)},
+def timeseries_periodic_30min():
+    #emulate a faster periodic timeseries than footprints, perhaps for continuous data
+    times = pd.date_range("2018-01-01", "2018-02-01", freq='30min')
+    values = np.ones_like(times, dtype='float')
+    ds = xray.Dataset({'values': (['time'], values)},
                           coords={'time':times})
-    return dsb
+    return ds
 
-def test_combine_datasets(dsa, dsb, method = "nearest", tolerance = None):
-    """
-    Merge two datasets.   
-    """
-    ds_out = name.combine_datasets(dsa, dsb)
+@pytest.fixture()
+def timeseries_random():
+    #a random timeseries, as may be produced by a satellite
+    times = pd.to_datetime(["2018-01-01 12:35", "2018-01-01 12:55", "2018-01-05 09:33", "2018-01-17 16:01"])
+    values = np.ones_like(times, dtype='float')
+    ds = xray.Dataset({'values': (['time'], values)},
+                          coords={'time':times})
+    return ds
+
+@pytest.fixture()
+def timeseries_quasiperiodic_1day():
+    #a timeseries that is approximately periodic, like a manually triggered flask sample
+    times = pd.to_datetime(["2018-01-01 08:55", "2018-01-02 09:16", "2018-01-03 09:33", "2018-01-04 10:01"])
+    values = np.ones_like(times, dtype='float')
+    ds = xray.Dataset({'values': (['time'], values)},
+                          coords={'time':times})
+    return ds
+
+def test_align_skip(timeseries_quasiperiodic_1day, timeseries_periodic_1hr):
+    #test that aligning is skipped for certain platforms
+    for platform in ("satellite", "flask"):
+        ds, fp = name.align_datasets(timeseries_quasiperiodic_1day, timeseries_periodic_1hr, platform=platform)
+        assert ds == timeseries_quasiperiodic_1day
+        assert fp == timeseries_periodic_1hr
+        
+
+def test_align_periodic_datasets(timeseries_periodic_30min, timeseries_periodic_1hr):
+    #test that two periodic timeseries will align correctly
+    dsa = timeseries_periodic_30min
+    dsb = timeseries_periodic_1hr
     
-    errors = []
-    if not np.sum(ds_out.time != dsa.time) == 0:
-        errors.append("Output index does not match dsa index")
-    if not ('vals_a' in ds_out.keys()) and ('vals_b' in ds_out.keys()):
-        errors.append("Variables missing from combined dataset")
-    
-    assert not errors, "errors occured:\n{}".format("\n".join(errors))
-    
-def test_align_datasets(dsa, dsb):
     dsa_out, dsb_out = name.align_datasets(dsa, dsb)
     
     dsa_period = dsa.time[1] - dsa.time[0]
@@ -345,38 +388,65 @@ def test_align_datasets(dsa, dsb):
         
     assert not errors, "errors occured:\n{}".format("\n".join(errors))
     
-def test_indexesMatch(dsa, dsb):
-    dsa2 = dsa.copy() * 2.
-    
+def test_combine_datasets_periodic(timeseries_periodic_30min, timeseries_periodic_1hr):
+    dsa = timeseries_periodic_1hr
+    dsa['a'] = xray.DataArray(np.arange(len(dsa.time)), dims=["time"])
+    dsb = timeseries_periodic_1hr
+    dsb['b'] = xray.DataArray(np.arange(len(dsb.time)), dims=["time"])
+    ds_out = name.combine_datasets(dsa, dsb, method = "ffill")
+
     errors = []
-    if not name.indexesMatch(dsa, dsa2) == True:
+    if not np.sum(ds_out.time != dsa.time) == 0:
+        errors.append("Output index does not match dsa index")
+    if not ('a' in ds_out.keys()) and ('b' in ds_out.keys()):
+        errors.append("Variables missing from combined dataset")
+    
+    assert not errors, "errors occured:\n{}".format("\n".join(errors))
+    
+def test_combine_datasets_random(timeseries_random, timeseries_periodic_1hr):
+    dsa = timeseries_random
+    dsa['a'] = xray.DataArray(np.arange(len(dsa.time)), dims=["time"])
+    dsb = timeseries_periodic_1hr
+    dsb['b'] = xray.DataArray(np.arange(len(dsb.time)), dims=["time"])
+    ds_out = name.combine_datasets(dsa, dsb, method = "ffill")
+
+    errors = []
+    if not np.sum(ds_out.time != dsa.time) == 0:
+        errors.append("Output index does not match dsa index")
+    if not ('a' in ds_out.keys()) and ('b' in ds_out.keys()):
+        errors.append("Variables missing from combined dataset")
+    
+    assert not errors, "errors occured:\n{}".format("\n".join(errors))
+    
+def test_align_and_combine_quasiperiodic(timeseries_quasiperiodic_1day, timeseries_periodic_1hr):
+    #Test for flask style data to be combined with regular hourly footprints
+    dsa = timeseries_quasiperiodic_1day
+    dsa['a'] = xray.DataArray(np.arange(len(dsa.time)), dims=["time"])
+    dsb = timeseries_periodic_1hr
+    dsb['b'] = xray.DataArray(np.arange(len(dsb.time)), dims=["time"])
+    
+    dsa_out, dsb_out = name.align_datasets(dsa, dsb, platform="flask")
+    ds_out = name.combine_datasets(dsa_out, dsb_out, method = "ffill")
+    
+    expected_output_a =  dsa['a'].values
+    expected_output_b = dsb['b'].sel({"time":dsa['a'].time.dt.floor("1H")}).values
+    
+    assert np.all(ds_out.a.values == expected_output_a)
+    assert np.all(ds_out.b.values == expected_output_b)
+    
+def test_indexesMatch(timeseries_periodic_1hr, timeseries_quasiperiodic_1day):
+    #test the index matching function for same and different indexes
+    dsa2 = timeseries_periodic_1hr.copy() * 2.
+
+    errors = []
+    if not name.indexesMatch(timeseries_periodic_1hr, dsa2) == True:
         errors.append("Same indexes not seen as the same")
-    if not name.indexesMatch(dsa, dsb) == False:
+    if not name.indexesMatch(timeseries_periodic_1hr, timeseries_quasiperiodic_1day) == False:
         errors.append("Different indexes not seen as different")
     assert not errors, "errors occured:\n{}".format("\n".join(errors))
 
 #%%
 # ----------------------------
-
-@pytest.fixture()
-def footprint_flux_ds(footprint_param,flux_directory,bc_directory):
-    ''' Create dataset object containing footprint and flux parameters '''
-
-    footprint_param["flux_directory"] = flux_directory
-    footprint_param["bc_directory"] = bc_directory
-
-    out = name.footprints(**footprint_param)
-
-    return out
-
-@pytest.mark.long
-def test_timeseries(footprint_flux_ds):
-    '''
-    Test timeseries function can produce a suitable output
-    '''
-    out = name.timeseries(footprint_flux_ds)
-    
-    assert out.any()
 
 
 #TODO:
@@ -425,7 +495,7 @@ def data(measurement_param_small):
     nt = len(time)
     obsdf = pd.DataFrame({"mf":np.random.rand(nt)*1000.,"dmf":np.random.rand(nt), "status_flag":np.zeros(nt)}, index=time)
     obsdf.index.name = 'time'
-    measurement_data = {'.species' : 'ch4', '.units' : 1e-9, 'MHD' : obsdf}    
+    measurement_data = {'.species' : 'ch4', '.units' : 1e-9, '.scales' : {'MHD':'Tohoku'}, 'MHD' : obsdf}    
 
     return measurement_data
 
@@ -475,6 +545,34 @@ def test_fp_data_merge(data,measurement_param_small,fp_directory,flux_directory,
         assert data_var in ds.data_vars
 
     return out
+
+def test_fp_data_merge_benchmark(data,measurement_param_small,fp_directory,flux_directory,
+                                 bc_directory,output_directory):
+    '''
+    Compare the output of footprints_data_merge function against the benchmarked output.
+    Output from footprints_data_merge is currently saved as a pickle, then reloaded here for
+    comparison. 
+    'tests/files/LPDM/benchmark/' also contains just the site dataset output as 
+    a netcdf file, which could be used for comparison instead.
+    '''
+    
+    domain = measurement_param_small["domain"]
+    species = measurement_param_small["species"]
+    
+    out = name.footprints_data_merge(data,domain=domain,fp_directory=fp_directory,
+                                     flux_directory=flux_directory,bc_directory=bc_directory)
+    
+    print(os.path.join(output_directory,'Benchmark_'+species+'_'+domain+'_fp_and_data_all.pickle'))
+    
+    file_in = open(os.path.join(output_directory,'Benchmark_'+species+'_'+domain+'_fp_and_data_all.pickle'),'rb')
+    benchmark_out = pickle.load(file_in)
+    file_in.close()
+    
+    for key in out.keys():
+        assert out[key] == benchmark_out[key]
+        
+    for key in benchmark_out.keys():
+        assert benchmark_out[key] == out[key]    
 
 def test_fp_data_merge_long(data,measurement_param,fp_directory,flux_directory,bc_directory):
     '''
@@ -537,6 +635,13 @@ def fp_data_merge(data,measurement_param_small,fp_directory,flux_directory,bc_di
                                      flux_directory=flux_directory,bc_directory=bc_directory)
     return out
 
+@pytest.fixture(scope="module")
+def fp_data_merge_small_domain(data,small_domain_param,fp_directory,flux_directory,bc_directory):
+    ''' Create fp_and_data dictionary from footprints_data_merge() function '''
+    out = name.footprints_data_merge(data,domain=small_domain_param["domain"],fp_directory=fp_directory,
+                                     flux_directory=flux_directory,bc_directory=bc_directory)
+    return out
+    
 @pytest.fixture()
 def fp_sensitivity_param(fp_data_merge,measurement_param_small,basis_function_param,basis_directory,flux_directory):
     ''' Define parameters for fp_sensitivity() function '''
@@ -549,12 +654,50 @@ def fp_sensitivity_param(fp_data_merge,measurement_param_small,basis_function_pa
 
     return input_param
 
+@pytest.fixture()
+def fp_sensitivity_small_domain_param(fp_data_merge_small_domain,small_domain_param,basis_directory,flux_directory):
+    ''' Define parameters for fp_sensitivity() function '''
+    
+    input_param = {}
+    input_param["fp_and_data"] = fp_data_merge_small_domain
+    input_param["domain"] = small_domain_param["domain"]
+    input_param["basis_case"] = small_domain_param["basis_case"]
+    input_param["basis_directory"] = basis_directory
+
+    return input_param
+
 def test_fp_sensitivity(fp_sensitivity_param):
     '''
     Test fp_sensitivity() function can create suitable output object from standard parameters.
     '''
     out = name.fp_sensitivity(**fp_sensitivity_param)
+    
     assert out
+    
+def test_fp_sensitivity_H(small_domain_param,fp_sensitivity_small_domain_param):
+    '''
+    Test fp_sensitivity() function can create suitable output object from standard parameters.
+    '''
+    fp_data_H = name.fp_sensitivity(**fp_sensitivity_small_domain_param)
+    lat_shape = fp_data_H['.flux']['all'].flux.values.shape[0]
+    lon_shape = fp_data_H['.flux']['all'].flux.values.shape[1]
+    time_shape = fp_data_H[small_domain_param["sites"][0]].fp.values.shape[2]
+    
+    H_all = fp_data_H[small_domain_param["sites"][0]].fp.values * fp_data_H['.flux']['all'].flux.values
+    H_all_flat = H_all.reshape(lat_shape*lon_shape,time_shape)
+    
+    with xray.open_dataset(glob.glob(os.path.join(fp_sensitivity_small_domain_param["basis_directory"],
+                                                  fp_sensitivity_small_domain_param["domain"],
+                                                  fp_sensitivity_small_domain_param["basis_case"]+'*.nc'))[0]) as basis:
+        
+        basis_flat = np.ravel(np.squeeze(basis.basis.values))
+    
+    H = np.zeros(((int(np.max(basis_flat)),time_shape)))
+    
+    for val in range(int(np.max(basis_flat))):
+        H[val,:] = np.sum(H_all_flat[np.where(basis_flat == val+1)[0],:],axis=0)
+    
+    assert np.all(H == fp_data_H[small_domain_param["sites"][0]].H.values) 
 
 #%%
 #----------------------------
@@ -628,88 +771,83 @@ def fp_data_H_pblh_merge(fp_data_H_merge):
         fp_data_H_pblh = fp_data_H_pblh[site].assign(**{"pblh_threshold":500})
     return fp_data_H_pblh
     
-def add_local_ratio(fp_data_H):
-    
-    sites = [key for key in list(fp_data_H.keys()) if key[0] != '.']
-    
-    release_lons=np.zeros((len(sites)))
-    release_lats=np.zeros((len(sites)))
-    for si, site in enumerate(sites):
-        release_lons[si]=fp_data_H[site].release_lon[0].values
-        release_lats[si]=fp_data_H[site].release_lat[0].values
-        dlon=fp_data_H[site].sub_lon[1].values-fp_data_H[site].sub_lon[0].values
-        dlat=fp_data_H[site].sub_lat[1].values-fp_data_H[site].sub_lat[0].values
-        local_sum=np.zeros((len(fp_data_H[site].mf)))
-       
-        for ti in range(len(fp_data_H[site].mf)):
-            release_lon=fp_data_H[site].release_lon[ti].values
-            release_lat=fp_data_H[site].release_lat[ti].values
-            wh_rlon = np.where(abs(fp_data_H[site].sub_lon.values-release_lon) < dlon/2.)
-            wh_rlat = np.where(abs(fp_data_H[site].sub_lat.values-release_lat) < dlat/2.)
-            local_sum[ti] = old_div(np.sum(fp_data_H[site].sub_fp[
-            wh_rlat[0][0]-2:wh_rlat[0][0]+3,wh_rlon[0][0]-2:wh_rlon[0][0]+3,ti].values),np.sum(
-            fp_data_H[site].fp[:,:,ti].values))  
-            
-        local_ds = xray.Dataset({'local_ratio': (['time'], local_sum)},
-                                        coords = {'time' : (fp_data_H[site].coords['time'])})
-    
-        fp_data_H[site] = fp_data_H[site].merge(local_ds)
-    
-    return fp_data_H
 
 @pytest.fixture()
-def fp_data_H_lr_merge(fp_data_H_merge):
+def dummy_timeseries_dict_gen():
     ''' '''
-    fp_data_H_lr = add_local_ratio(fp_data_H_merge.copy())
-    return fp_data_H_lr
+#     time = pd.date_range("2010-01-01", "2010-01-02", freq="1H")
+#     data = np.arange(len(time))
+#     release_lon = np.repeat(10., len(time))
+#     testds = xray.Dataset({"mf" : (["time"], data), "release_lon":(["time"],release_lon)}, coords={"time":(["time"],time)})
+#     dummy_timeseries_dict = {"TEST":testds}
+    
+    time = pd.date_range("2010-01-01", "2010-01-02", freq="1H")
+    data = np.arange(len(time))
+    release_lon = np.repeat(10., len(time))
+    release_lat = np.repeat(10., len(time))
+    lat = np.arange(10)+5
+    lon = np.arange(10)+5
+    fp = np.ones((10,10,len(time)))
+    fp[3:8,3:8,:] = 0.0
+    fp[5,5,10:] = 100.
+    testds = xray.Dataset({"mf" : (["time"], data), 
+                           "release_lon":(["time"],release_lon),
+                           "release_lat":(["time"],release_lat),
+                           "fp":(["lat","lon","time"],fp)}, 
+                          coords={"time":(["time"],time),
+                                  "lat":(["lat"],lat),
+                                  "lon":(["lon"],lon)})
+    dummy_timeseries_dict = {"TEST":testds}
+    
+    return dummy_timeseries_dict
 
-def test_filtering_median(fp_data_H_merge):
+def test_filtering_median(dummy_timeseries_dict_gen):
     '''
     Test filtering() function can produce an output using "daily_median" filter
     '''
     filters = ["daily_median"]
-    out = name.filtering(fp_data_H_merge,filters)
-    assert out
+    out = name.filtering(dummy_timeseries_dict_gen,filters)
+    assert np.isclose(out["TEST"].mf.values, np.array([11.5,24.])).all()
 
-def test_filtering_daytime(fp_data_H_merge):
+def test_filtering_daytime(dummy_timeseries_dict_gen):
     '''
     Test filtering() function can produce an output using "daytime" filter
     '''
     filters = ["daytime"]
-    out = name.filtering(fp_data_H_merge,filters)
-    assert out
+    out = name.filtering(dummy_timeseries_dict_gen,filters)
+    assert np.isclose(out["TEST"].mf.values, np.array([11, 12, 13, 14, 15])).all()
 
-def test_filtering_nighttime(fp_data_H_merge):
+def test_filtering_nighttime(dummy_timeseries_dict_gen):
     '''
     Test filtering() function can produce an output using "nighttime" filter
     '''
     filters = ["nighttime"]
-    out = name.filtering(fp_data_H_merge,filters)
-    assert out
+    out = name.filtering(dummy_timeseries_dict_gen,filters)
+    assert np.isclose(out["TEST"].mf.values, np.array([0, 1, 2, 3, 23, 24])).all()
 
-def test_filtering_noon(fp_data_H_merge):
+def test_filtering_noon(dummy_timeseries_dict_gen):
     '''
     Test filtering() function can produce an output using "pblh_gt_threshold" filter
     '''
     filters = ["noon"]
-    out = name.filtering(fp_data_H_merge,filters)
-    assert out
+    out = name.filtering(dummy_timeseries_dict_gen,filters)
+    assert np.isclose(out["TEST"].mf.values, np.array([12])).all()
 
-def test_filtering_6hrmean(fp_data_H_merge):
+def test_filtering_6hrmean(dummy_timeseries_dict_gen):
     '''
     Test filtering() function can produce an output using "pblh_gt_threshold" filter
     '''
     filters = ["six_hr_mean"]
-    out = name.filtering(fp_data_H_merge,filters)
-    assert out
+    out = name.filtering(dummy_timeseries_dict_gen,filters)
+    assert np.isclose(out["TEST"].mf.values, np.array([2.5, 8.5, 14.5, 20.5, 24.0])).all()
 
-def test_filtering_local(fp_data_H_lr_merge):
+def test_filtering_local(dummy_timeseries_dict_gen):
     '''
     Test filtering() function can produce an output using "local_influence" filter
     '''
     filters = ["local_influence"]
-    out = name.filtering(fp_data_H_lr_merge,filters)
-    assert out
+    out = name.filtering(dummy_timeseries_dict_gen,filters)
+    assert np.isclose(out["TEST"].mf.values, np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])).all()
 
 # TODO: 
 #    Not working yet
@@ -733,14 +871,14 @@ def test_filtering_local(fp_data_H_lr_merge):
 #    assert out
 
 @pytest.mark.long
-def test_filtering_mult(fp_data_H_lr_merge):
+def test_filtering_mult(dummy_timeseries_dict_gen):
     '''
     Test filtering() function can produce an output using multiple (non-conflicting) filters ("nighttime and 
     "local_influence")
     '''
     filters = ["local_influence","nighttime"]
-    out = name.filtering(fp_data_H_lr_merge,filters)
-    assert out
+    out = name.filtering(dummy_timeseries_dict_gen,filters)
+    assert np.isclose(out["TEST"].mf.values, np.array([0, 1, 2, 3])).all()
 
 #----------------------------
 

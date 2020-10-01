@@ -16,13 +16,13 @@ To run this test suite only from within the tests/ directory use the syntax
 
 import pytest
 import os
+import sys
 import xarray
 import numpy as np
 import acrg_MOZART_BC as bc
 
-
-acrg_path = os.getenv("ACRG_PATH")
-data_path = os.getenv("DATA_PATH")
+from acrg_config.paths import paths
+acrg_path = paths.acrg
 
 
 @pytest.fixture(scope="module")

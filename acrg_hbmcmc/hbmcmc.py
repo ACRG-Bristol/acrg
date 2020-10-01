@@ -20,17 +20,24 @@ being annoying it will also slow down your run due to unnecessary forking.
 
 """
 import os
+import sys
 import numpy as np
 import acrg_name as name
 import acrg_obs as getobs
 import socket
 import acrg_hbmcmc.inversionsetup as setup 
 import acrg_hbmcmc.inversion_pymc3 as mcmc
-import acrg_hbmcmc.quadtreebasis as quadtree
+# import acrg_hbmcmc.quadtreebasis as quadtree
+import acrg_name.basis_functions as basis
 import shutil
 
-acrg_path = os.getenv("ACRG_PATH")
-data_path = os.getenv("DATA_PATH")
+if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
+    acrg_path = os.getenv("ACRG_PATH")
+    data_path = os.getenv("DATA_PATH") 
+else:
+    from acrg_config.paths import paths
+    acrg_path = paths.acrg
+    data_path = paths.data
 
 def fixedbasisMCMC(species, sites, domain, meas_period, start_date, 
                    end_date, outputpath, outputname, 
@@ -192,11 +199,11 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             print("Assuming you want to use %s " % fp_basis_case)
         else:
             if 'index' in fp_all[sites[0]].dims.keys():
-                tempdir = quadtree.quadtreebasisfunction_multiResolution(emissions_name, fp_all, sites, 
+                tempdir = basis.quadtreebasisfunction_multiResolution(emissions_name, fp_all, sites, 
                               start_date, domain, species, outputname,
                               nbasis=nbasis)
             else:
-                tempdir = quadtree.quadtreebasisfunction(emissions_name, fp_all, sites, 
+                tempdir = basis.quadtreebasisfunction(emissions_name, fp_all, sites, 
                               start_date, domain, species, outputname,
                               nbasis=nbasis)
             fp_basis_case= "quadtree"+species+"-"+outputname
@@ -271,10 +278,11 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                            xprior, bcprior, sigprior,Ytime, siteindicator, sigma_freq_index, data, fp_data,
                            emissions_name, domain, species, sites,
                            start_date, end_date, outputname, outputpath,
-                           basis_directory, country_file, fp_basis_case, country_unit_prefix, method=method, **process_kwargs)
+                           basis_directory, country_file, country_unit_prefix, method=method, **process_kwargs)
     
-    # remove the temporary basis function directory
-    shutil.rmtree(tempdir)
+    if quadtree_basis is True:
+        # remove the temporary basis function directory
+        shutil.rmtree(tempdir)
     
     print("All done")
 

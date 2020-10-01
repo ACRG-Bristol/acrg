@@ -426,7 +426,7 @@ def find_param_key(param_type,section=None,section_group=None):
     types = param_type # Get dictionary containing parameter names and types
     all_keys = list(types.keys()) # Extract all section/classification keys
     
-    # Find oarameter class if not specified (should be defined as first part of section split by '.' e.g. MCMC.MEASUREMENTS, section_group='MCMC')
+    # Find parameter class if not specified (should be defined as first part of section split by '.' e.g. MCMC.MEASUREMENTS, section_group='MCMC')
     if not section_group:
         section_group = section.split('.')[0]
         
@@ -442,7 +442,7 @@ def find_param_key(param_type,section=None,section_group=None):
         #keys = all_keys[keys_starter.index(section_group)]
         key_type = 'section'
     else:
-        keys = None
+        keys = [None]
         key_type = None
         #raise Exception('Section/Classification {0}/{1} does not match to any key in input param_type'.format(section_group,section))
         #print('Param class cannot be found i for section of parameters not defined. Using {0} as default'.format(section_groups[0]))
@@ -509,7 +509,6 @@ def get_value(name,config,section,param_type=None):
     
     return value
 
-import pdb # REMOVE
 
 def extract_params(config_file,expected_param=[],section=None,section_group=None,names=[],ignore_sections=[],
                    ignore_section_groups=[],

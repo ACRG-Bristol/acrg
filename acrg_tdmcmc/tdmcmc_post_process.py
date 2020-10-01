@@ -29,6 +29,7 @@ from acrg_grid import areagrid
 from netCDF4 import Dataset
 from acrg_time.convert import time2sec
 import os
+import sys
 import acrg_obs
 import json
 import matplotlib.mlab as mlab
@@ -41,7 +42,11 @@ from collections import OrderedDict
 import datetime as dt
 import getpass
 
-acrg_path = os.getenv("ACRG_PATH")
+if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
+    acrg_path = os.getenv("ACRG_PATH") 
+else:
+    from acrg_config.paths import paths
+    acrg_path = paths.acrg
 
 # Get acrg_site_info file
 with open(os.path.join(acrg_path, "acrg_site_info.json")) as f:
@@ -1131,7 +1136,8 @@ def regions_histogram(k_it, out_filename=None, fignum=2):
     
 def country_emissions(ds_mcmc, countries, species, domain, x_post_vit=None, q_ap_abs_v=None, 
                       percentiles=[5,16,50,84,95], units=None, ocean=True, 
-                      uk_split=False, fixed_map=False, country_dir = None):
+                      uk_split=False, fixed_map=False, country_file=None):
+                      #country_dir = None):
         
     """
     Generates national totals for a given list of countries
@@ -1211,12 +1217,14 @@ def country_emissions(ds_mcmc, countries, species, domain, x_post_vit=None, q_ap
     nlat=len(ds_mcmc.lat)    
     
     # GET COUNTRY DATA
-    if uk_split == True:
-        c_object=name.get_country(domain, ocean=True, ukmo=True, uk_split=uk_split, country_dir = country_dir)
-    elif ocean == True:
-        c_object=name.get_country(domain, ocean=True, ukmo=True, uk_split=False, country_dir = country_dir)
-    else:
-        c_object=name.get_country(domain, ocean=False, country_dir = country_dir)
+    # if uk_split == True:
+    #     c_object=name.get_country(domain, ocean=True, ukmo=True, uk_split=uk_split, country_dir = country_dir)
+    # elif ocean == True:
+    #     c_object=name.get_country(domain, ocean=True, ukmo=True, uk_split=False, country_dir = country_dir)
+    # else:
+    #     c_object=name.get_country(domain, ocean=False, country_dir = country_dir)
+    c_object=name.get_country(domain, country_file = country_file)
+    
     cds = xray.Dataset({'country': (['lat','lon'], c_object.country), 
                         'name' : (['ncountries'],c_object.name) },
                                         coords = {'lat': (c_object.lat),
