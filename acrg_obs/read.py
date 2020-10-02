@@ -1,31 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-Get AGAGE data, average, truncate and filter for baseline
-
-Expected format for filenames is:
-	"network-instrument_site_date_species-height.nc"
-	e.g. AGAGE-GC-FID_MHD_19940101_ch4-10m.nc
-
-Examples:
-
-Get Mace Head CH4 observations and average into 3 hourly periods:
-
-    import acrg_agage as agage
-    time, ch4, sigma = agage.get("MHD", "CH4", average="3H")
-    
-Get Mace Head CH4 observations, truncate for 2010-2012 inclusive
-and average into 6 hourly periods:
-
-    import acrg_agage as agage
-    time, ch4, sigma = agage.get("MHD", "CH4", startY=2010, endY=2013,average="6H")
-
-Calculate Cape Grim monthly means, with baseline filtering:
-    
-    import acrg_agage as agage
-    time, hfc134a, sigma = 
-        agage.get("CGO", "HFC-134a", baseline=True, average="1M")
-
-Created on Sat Dec 27 17:17:01 2014
 @author: chxmr
 """
 from builtins import zip
@@ -49,7 +23,6 @@ acrg_path = paths.acrg
 obs_directory = paths.obs
 
 #Get site info and species info from JSON files
-#with open(acrg_path / "acrg_species_info.json") as f:
 with open(acrg_path / "acrg_species_info.json") as f:
     species_info=json.load(f)
 
@@ -429,7 +402,7 @@ def get_single_site(site, species_in,
             # First, just do a mean resample on all variables
             print(f"... resampling to {average}")
             ds_resampled = ds.resample(time = average, keep_attrs = True
-                                       ).mean(skipna=False)
+                                       ).mean(skipna=True)
             # keep_attrs doesn't seem to work for some reason, so manually copy
             ds_resampled.attrs = ds.attrs.copy()
             
@@ -450,6 +423,10 @@ def get_single_site(site, species_in,
                 if "units" in ds[var].attrs:
                     ds_resampled[var].attrs["units"] = ds[var].attrs["units"]
 
+            # Resampling may introduce NaNs, so remove, if not keep_missing
+            if keep_missing == False:
+                ds_resampled = ds_resampled.dropna(dim = "time")
+                    
             ds = ds_resampled.copy()
         
         # Rename variables

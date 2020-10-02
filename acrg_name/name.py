@@ -45,7 +45,6 @@ with open(acrg_path / "acrg_site_info.json") as f:
 
     
 def open_ds(path):
-    
     """
     Function efficiently opens xray datasets.
     """
@@ -648,6 +647,7 @@ def combine_datasets(dsa, dsb, method = "ffill", tolerance = None):
         ds_temp = ds_temp[dict(time = flag[0])]
     return ds_temp
 
+
 def align_datasets(ds1, ds2, platform=None, resample_to_ds1=False):
     """
     Slice and resample two datasets to align along time
@@ -707,7 +707,8 @@ def align_datasets(ds1, ds2, platform=None, resample_to_ds1=False):
             ds1 = ds1.resample(indexer={'time':resample_period}, base=base).mean()
     
     return ds1, ds2
-    
+
+
 def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                           calc_timeseries = True, calc_bc = True, HiTRes = False,
                           site_modifier = {}, height = None, network = None,
@@ -855,9 +856,9 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
             if "platform" in site_info[site][network_site]:
                 platform = site_info[site][network_site]["platform"]
             else:
-                platform = None    
+                platform = None
+            
             if height is not None:
-
                 if type(height) is not dict:
                     print("Height input needs to be a dictionary with {sitename:height}")
                     return None 
@@ -872,14 +873,13 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                     height_site = site_info[site][network_site]["height_name"][wh_height[0][0]] #NB often different to inlet
 
             # Get footprints
-
             site_fp = footprints(site_modifier_fp, fp_directory = fp_directory, 
                                  start = start, end = end,
                                  domain = domain,
                                  species = species,
                                  height = height_site,
                                  network = network_site,
-                                 HiTRes = HiTRes) 
+                                 HiTRes = HiTRes)
 
             mfattrs = [key for key in site_ds.mf.attrs]
             if "units" in mfattrs:
