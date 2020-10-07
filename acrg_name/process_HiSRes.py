@@ -105,9 +105,9 @@ def process_all(domain, site, height,
 def process(domain, site, height, year, month,
             force_met_empty = False,
             satellite = False,
-            processed_folder = "Processed_Fields_files",
-            processed_folder_HR = "Processed_Fields_files_HR",
-            base_dir = "/data/al18242/name_out/",
+            processed_folder = "/work/al18242/fp/",#"Processed_Fields_files",
+            processed_folder_HR = "/work/al18242/fp_hr/",#"Processed_Fields_files_HR",
+            base_dir = "/work/al18242/name_out/",
             **kwargs):
     """
     Process high resolution footprints, by seperately processing the low and high resolution outputs
@@ -118,7 +118,7 @@ def process(domain, site, height, year, month,
     name.process.process(domain, site, height, year, month,
                          force_met_empty = force_met_empty,
                          satellite = satellite,
-                         processed_folder = processed_folder,
+                         process_dir = processed_folder,
                          base_dir=base_dir,
                          **kwargs)
     #process high resolution:
@@ -126,7 +126,7 @@ def process(domain, site, height, year, month,
                              force_met_empty = force_met_empty,
                              satellite = satellite,
                              fields_folder = "Fields_files_HR",
-                             processed_folder = processed_folder_HR,
+                             process_dir = processed_folder_HR,
                              base_dir=base_dir,
                              **kwargs)
     
