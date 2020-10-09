@@ -106,7 +106,7 @@ def process(domain, site, height, year, month,
             force_met_empty = False,
             satellite = False,
             processed_folder = "/work/al18242/fp/",#"Processed_Fields_files",
-            processed_folder_HR = "/work/al18242/fp_hr/",#"Processed_Fields_files_HR",
+            processed_folder_HR = "/work/al18242/fp_onlyHR/",#"Processed_Fields_files_HR",
             base_dir = "/work/al18242/name_out/",
             **kwargs):
     """
@@ -118,6 +118,7 @@ def process(domain, site, height, year, month,
     name.process.process(domain, site, height, year, month,
                          force_met_empty = force_met_empty,
                          satellite = satellite,
+                         fields_folder = "Fields_files",
                          process_dir = processed_folder,
                          base_dir=base_dir,
                          **kwargs)
@@ -131,9 +132,9 @@ def process(domain, site, height, year, month,
                              **kwargs)
     
     #open processed datasets to be combined
-    output_base = "{}{}_{}_{}/".format(base_dir,domain,site,height)
+    output_base = "/work/al18242/fp_hr/EUROPE/"#"{}{}_{}_{}/".format(base_dir,domain,site,height)
     filename = "{}-{}_{}_{}{}.nc".format(site,height,domain,str(year),str(month))
-    combine_date(output_base, processed_folder, processed_folder_HR, filename)
+    combine_date(output_base, processed_folder+domain, processed_folder_HR+domain, filename)
     
 def getOverlapParameters(lat_low, lon_low, lat_high, lon_high):
     """
@@ -214,8 +215,8 @@ def combine_date(output_base, processed_folder, processed_folder_HR, filename):
     """
     Combine the low and high resolution outputs into a single file
     """
-    fp_low = xr.open_dataset("{}{}/{}".format(output_base, processed_folder, filename))
-    fp_high = xr.open_dataset("{}{}/{}".format(output_base, processed_folder_HR, filename))
+    fp_low = xr.open_dataset("{}/{}".format(processed_folder, filename))
+    fp_high = xr.open_dataset("{}/{}".format(processed_folder_HR, filename))
     
     lowsize, highsize, lons_low, lats_low, lons_high, lats_high, indicies_to_remove, lons_out, lats_out = \
         getOverlapParameters(fp_low.lat.values, fp_low.lon.values, fp_high.lat.values, fp_high.lon.values)
@@ -246,7 +247,7 @@ def combine_date(output_base, processed_folder, processed_folder_HR, filename):
     output_file["index_lats"] = (["index"], lats_out)
     
     #save output
-    out_directory = "{}Processed_Fields_files_combined".format(output_base)
+    out_directory = output_base#"{}Processed_Fields_files_combined".format(output_base)
     if not os.path.exists(out_directory):
         os.makedirs(out_directory)
     output_file.to_netcdf("{}/{}".format(out_directory, filename))
