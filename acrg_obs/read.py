@@ -2,9 +2,9 @@
 """
 @author: chxmr
 """
-from builtins import zip
-from builtins import str
-from builtins import range
+#from builtins import zip
+#from builtins import str
+#from builtins import range
 import numpy as np
 import pandas as pd
 import glob
@@ -527,6 +527,7 @@ def get_gosat(site, species, max_level,
             xarray data frame for GOSAT observations.
             
     """
+    
     if max_level is None:
         raise ValueError("'max_level' ARGUMENT REQUIRED FOR SATELLITE OBS DATA")
             
@@ -578,14 +579,17 @@ def get_gosat(site, species, max_level,
     data.attrs["max_level"] = max_level
     if species.upper() == "CH4":
         data.mf.attrs["units"] = '1e-9'
+        data.attrs["species"] = "CH4"
     if species.upper() == "CO2":
         data.mf.attrs["units"] = '1e-6'
+        data.attrs["species"] = "CO2"
 
     data.attrs["scale"] = "GOSAT"
 
     # return single element list
     return [data,]
-    
+
+
 def get_obs(sites, species,
             start_date = "1900-01-01", end_date = "2100-01-01",
             inlet = None,

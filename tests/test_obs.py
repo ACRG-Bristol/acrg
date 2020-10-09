@@ -77,6 +77,7 @@ def test_get_obs_gosat():
     assert np.amin(recreated_data["GOSAT-UK"][0].time) >= pd.to_datetime(start_date)
     assert "mf" in recreated_data["GOSAT-UK"][0].variables
     assert ("mf_repeatability" in recreated_data["GOSAT-UK"][0].variables) or ("mf_variability" in recreated_data["GOSAT-UK"][0].variables)
+    assert recreated_data["GOSAT-UK"][0].attrs["species"] == "CH4"
     
 
 def test_process_utils_attributes():    
