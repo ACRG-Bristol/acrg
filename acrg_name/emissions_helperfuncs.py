@@ -883,7 +883,7 @@ def getUKGHGandEDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,output_p
     Extracts EDGAR and UKGHG gridded emissions data for the given year and sector.
     Regrids both datasets to the EUROPE domain and converts both the mol/m2/s.
     Embeds UKGHG emissions within the EDGAR map to create a grid of fluxes for the whole
-    domain. For UK lat/lons fluxes = UKGHG. Outside the UK fluxes = EDGAR.
+    domain. For UK lat/lons (as defined by country_EUROPE.nc) fluxes = UKGHG. Outside the UK fluxes = EDGAR.
     
     Option to include sources for one inventory. In this case, the sum of those sectors 
     only will be returned.
@@ -910,7 +910,7 @@ def getUKGHGandEDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,output_p
             Dimentions of [lat,lon,time]
             
     Example:
-        getUKGHGandEDGAR("2015",["PRO_GAS","PRO_OIL"],["indcom"])
+        getUKGHGandEDGAR("2015",["PRO_GAS","PRO_OIL"],["indcom","offshore"])
         
     Note:
         EDGAR sector names:
