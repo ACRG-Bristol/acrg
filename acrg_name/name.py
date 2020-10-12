@@ -140,14 +140,14 @@ def filenames(site, domain, start, end, height, fp_directory, network=None, spec
     for ym in yearmonth:
 
         if species:
-            f=glob.glob(fp_directory + domain + "/" + site + "*" + "-" + height + "-" + species + "*" + domain + "*" + ym + "*.nc")
+            f=glob.glob(fp_directory + domain + "/" + site + "*" + height + "*" + species + "*" + domain + "*" + ym + "*.nc")
         else:
             #manually create empty list if no species specified
             f = []
         
         if len(f) == 0:
             
-            glob_path = fp_directory + domain + "/" + site + "*" + "-" + height  + "_" + domain + "*" + ym + "*.nc"
+            glob_path = fp_directory + domain + "/" + site + "*" + height  + "*" + domain + "*" + ym + "*.nc"
             
             if lifetime_hrs is None:
                 print("No lifetime defined in species_info.json or species not defined. WARNING: 30-day integrated footprint used without chemical loss.")
@@ -1318,6 +1318,38 @@ def bc_sensitivity(fp_and_data, domain, basis_case, bc_basis_directory = None):
     
     return fp_and_data
 
+def define_localness(fp_data_H2, sites):        
+    """
+    Define the localness of each time point for each site
+    Sum up the 25 grid boxes surrounding the site.
+    """
+    for si, site in enumerate(sites):
+        release_lon=fp_data_H2[site].release_lon[0].values
+        release_lat=fp_data_H2[site].release_lat[0].values
+
+        # 20/11/2018 - back to my own obs criteria
+        dlon=fp_data_H2[site].lon[1].values-fp_data_H2[site].lon[0].values
+        dlat=fp_data_H2[site].lat[1].values-fp_data_H2[site].lat[0].values
+        wh_rlon = np.where(abs(fp_data_H2[site].lon.values-release_lon) < dlon/2.)[0]
+        wh_rlat = np.where(abs(fp_data_H2[site].lat.values-release_lat) < dlat/2.)[0]
+        local_sum=np.zeros((len(fp_data_H2[site].mf)))
+        #sub_lon=fp_data_H2[site].lon.values
+        #sub_lat=fp_data_H2[site].lat.values
+        #sub_flux_temp = fp_data_H2[site].flux.sel(lon=slice(np.min(sub_lon),np.max(sub_lon)), 
+        #                                lat=slice(np.min(sub_lat),np.max(sub_lat)))
+        #sub_flux_temp = fp_data_H2[site].flux
+        for ti in range(len(fp_data_H2[site].mf)):
+            local_sum[ti] = np.sum(fp_data_H2[site].fp[
+            wh_rlat[0]-2:wh_rlat[0]+3,wh_rlon[0]-2:wh_rlon[0]+3,ti].values)/np.sum(
+            fp_data_H2[site].fp[:,:,ti].values)
+
+        local_ds = xr.Dataset({'local_ratio': (['time'], local_sum)},
+                                    coords = {'time' : (fp_data_H2[site].coords['time'])})
+
+        fp_data_H2[site] = fp_data_H2[site].merge(local_ds)
+        
+    return fp_data_H2
+
 
 def filtering(datasets_in, filters, keep_missing=False):
     """
@@ -1331,8 +1363,17 @@ def filtering(datasets_in, filters, keep_missing=False):
     The order of the filters reflects the order they are applied, so for 
     instance when applying the "daily_median" filter if you only wanted
     to look at daytime values the filters list should be 
-    ["daytime","daily_median"]                
-
+    ["daytime","daily_median"]
+    
+    For "local_influence" and "pblh_gt_threshold", thresholds need to be added as 
+    attributes to the datasets, before calling name.filtering. Then localness needs 
+    to be defined for each site. For example:
+    
+        for i,site in enumerate(sites):
+            fp_data_H[site]["local_threshold"] = 0.08
+            fp_data_H[site]["pblh_threshold"] = max(inlet[site][:-1]+100,250)
+        fp_data_H = name.define_localness(fp_data_H,sites)
+        
     Args:
         datasets_in         : Output from footprints_data_merge(). Dictionary of datasets.
         filters (list)      : Which filters to apply to the datasets. 
@@ -1342,7 +1383,7 @@ def filtering(datasets_in, filters, keep_missing=False):
                                  "nighttime"         : Only b/w 23:00 - 03:00 inclusive
                                  "noon"              : Only 12:00 fp and obs used
                                  "daily_median"      : calculates the daily median
-                                 "pblh_gt_threshold" : 
+                                 "pblh_gt_threshold" : Only keeps data when pblh > threshold
                                  "local_influence"   : Only keep times when localness is low
                                  "six_hr_mean"       :
                                  "local_lapse"       :
@@ -1392,8 +1433,7 @@ def filtering(datasets_in, filters, keep_missing=False):
                 local_sum[ti] = 0.0 
         
         return local_sum
-    
-    
+
     
     # Filter functions
     def daily_median(dataset, keep_missing=False):
@@ -1459,18 +1499,19 @@ def filtering(datasets_in, filters, keep_missing=False):
         else:
             return dataset[dict(time = ti)] 
         
-            
-    def local_influence(dataset,site, keep_missing=False):
+    def local_influence(dataset,site, keep_missing):
         """
         Subset for times when local influence is below threshold.       
         Local influence expressed as a fraction of the sum of entire footprint domain.
-        """        
-        if not dataset.filter_by_attrs(standard_name="local_ratio"):
-            lr = local_ratio(dataset)
-        else:
-            lr = dataset.local_ratio
-            
-        pc = 0.1
+        """
+        
+        #dataset = define_localness(dataset_in,[site])
+        if not hasattr(dataset,"local_threshold"):
+            print("Attribute local_ratio does not exist in dataset. \nThis must be specified for each site") 
+        
+        lr = dataset.local_ratio
+        pc = dataset.local_threshold
+
         ti = [i for i, local_ratio in enumerate(lr) if local_ratio <= pc]
         if keep_missing is True: 
             mf_data_array = dataset.mf            
@@ -1478,7 +1519,7 @@ def filtering(datasets_in, filters, keep_missing=False):
 
             dataarray_temp = mf_data_array[dict(time = ti)]   
 
-            mf_ds = xr.Dataset({'mf': (['time'], dataarray_temp)}, 
+            mf_ds = xarray.Dataset({'mf': (['time'], dataarray_temp)}, 
                                   coords = {'time' : (dataarray_temp.coords['time'])})
 
             dataset_out = combine_datasets(dataset_temp, mf_ds, method=None)
@@ -1486,6 +1527,28 @@ def filtering(datasets_in, filters, keep_missing=False):
         else:
             return dataset[dict(time = ti)]
                      
+    def pblh_gt_threshold(dataset,site, keep_missing):
+        """
+        Subset for times when boundary layer height > threshold
+        Threshold needs to be set in dataset as pblh_threshold
+        """
+        threshold = dataset.pblh_threshold.values
+        ti = [i for i, pblh in enumerate(dataset.PBLH) if pblh > threshold]
+
+        if keep_missing:
+            mf_data_array = dataset.mf            
+            dataset_temp = dataset.drop('mf')
+
+            dataarray_temp = mf_data_array[dict(time = ti)]   
+
+            mf_ds = xraray.Dataset({'mf': (['time'], dataarray_temp)}, 
+                                  coords = {'time' : (dataarray_temp.coords['time'])})
+
+            dataset_out = combine_datasets(dataset_temp, mf_ds, method=None)
+            return dataset_out
+        else:
+            return dataset[dict(time = ti)]            
+
         
     filtering_functions={"daily_median":daily_median,
                          "daytime":daytime,
@@ -1493,6 +1556,7 @@ def filtering(datasets_in, filters, keep_missing=False):
                          "nighttime":nighttime,
                          "noon":noon,
                          "local_influence":local_influence,
+                         "pblh_gt_threshold":pblh_gt_threshold,
                          "six_hr_mean":six_hr_mean}
 
     # Get list of sites
