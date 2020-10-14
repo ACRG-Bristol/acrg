@@ -49,6 +49,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                    fp_basis_case=None, bc_basis_case="NESW", 
                    obs_directory = None, country_file = None,
                    fp_directory = None, bc_directory = None, flux_directory = None,
+                   max_level=None,
                    quadtree_basis=True,nbasis=100, 
                    averagingerror=True, bc_freq=None, sigma_freq=None, sigma_per_site=True,
                    country_unit_prefix=None,
@@ -121,8 +122,16 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
         obs_directory (str, optional):
             Directory containing the obs data (with site codes as subdirectories)
             if not default.
+        fp_directory (str, optional):
+            Directory containing the footprint data
+            if not default.
+        bc_directory (str, optional):
+            Directory containing the boundary condition data
+            if not default.
         country_file (str, optional):
             Path to the country definition file
+        max_level (int, optional):
+            The maximum level for a column measurement to be used for getting obs data
         quadtree_basis (bool, optional):
             Creates a basis function file for emissions on the fly using a 
             quadtree algorithm based on the a priori contribution to the mole
@@ -159,7 +168,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     """    
     data = getobs.get_obs(sites, species, start_date = start_date, end_date = end_date, 
                          average = meas_period, data_directory=obs_directory,
-                          keep_missing=False,inlet=inlet, instrument=instrument)
+                          keep_missing=False,inlet=inlet, instrument=instrument, max_level=max_level)
     fp_all = name.footprints_data_merge(data, domain=domain, calc_bc=True, 
                                         height=fpheight, 
                                         fp_directory = fp_directory,
