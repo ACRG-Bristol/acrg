@@ -878,6 +878,110 @@ def processUKGHG(ukghg_dir,species,year,sector,lon_out,lat_out,output_path=None)
     
     return ukghg_ds
 
+def get_US_EPA(epa_sectors=None,output_path=None):
+    """
+    Extracts yearly CH4 gridded emissions from EPA .nc files. 
+    Sums emissions from given list of sectors.
+    Regrids to USA domain lat/lons.
+    
+    Uses data files provided by Maasakkers, 2016 "A Gridded National Inventory 
+    of U.S.Methane Emissions". Only 2012 available.
+    
+    Args:
+        epa_sectors (list of str) (optional):
+            If list, sum of sectors returned. 
+            If None, total of all sectors returned.
+            See below for list of possible sector names.
+        output_path (str):
+            Full output path and name to write output datatset to. Default is None, which
+            does not save output.
+        
+    Returns:
+        flux_ds (xarray dataset):
+            Containing array of EPA fluxes, regridded to specified lat/lon.
+            Dimensions of [lat,lon,time]
+            
+    Example:
+        get_US_EPA("2012",["Enteric_Fermentation","Manure_Management"])
+            
+    """    
+
+    EPAsectorlist = ["1A_Combustion_Mobile","1A_Combustion_Stationary",
+                     "1B1a_Coal_Mining_Underground","1B1a_Coal_Mining_Surface",
+                     "1B1a_Abandoned_Coal","1B2a_Petroleum","1B2b_Natural_Gas_Production",
+                     "1B2b_Natural_Gas_Processing","1B2b_Natural_Gas_Transmission",
+                     "1B2b_Natural_Gas_Distribution","2B5_Petrochemical_Production",
+                     "2C2_Ferroalloy_Production","4A_Enteric_Fermentation",
+                     "4B_Manure_Management","4C_Rice_Cultivation",
+                     "4F_Field_Burning","5_Forest_Fires","6A_Landfills_Municipal",
+                     "6A_Landfills_Industrial","6B_Wastewater_Treatment_Domestic",
+                     "6B_Wastewater_Treatment_Industrial","6D_Composting"]
+        
+    #extract output lat/lons from fp file
+    domain_vol = domain_volume("USA",os.path.join(data_path,"LPDM/fp_NAME"))
+    lat_out = domain_vol[0]
+    lon_out = domain_vol[1]
+    
+    #check for correct sector names
+    if epa_sectors is not None:
+    
+        for EPAsector in epa_sectors:
+            if EPAsector not in EPAsectorlist:
+                print("EPA sector {0} is not one of: \n {1}".format(EPAsector,EPA_sectorlist))
+                print("Returning None")
+                return None
+        
+    epa_fp = os.path.join(data_path,"Gridded_fluxes/CH4/US_EPA/GEPA_Annual.nc")
+    
+    #epa flux in molec/cm2/s
+    with xr.open_dataset(epa_fp) as epa_file:
+        reference = epa_file.reference
+        inv_ver = epa_file.inventory_version
+        lat_in = epa_file.lat.values
+        lon_in = epa_file.lon.values
+
+        if epa_sectors is None:
+            print("Calculating total of all sectors")
+            sectors = list(epa_file.keys())
+        else:
+            print("Calculating total of given sectors")
+            sectors = ["emissions_" + s for s in epa_sectors]
+        
+        for i,s in enumerate(sectors):
+            if i == 0:
+                total_flux = np.nan_to_num(x=epa_file[s].values,nan=0.)
+            else:
+                total_flux = np.add(total_flux,np.nan_to_num(x=epa_file[s].values,nan=0.))
+    
+    #epa flux in mol/m2/s
+    print("Converting from molec/cm2/s to mol/m2/s")
+    n_mol = 6.02214076e23
+    
+    total = (total_flux / n_mol ) * 1e4
+    
+    print("Regridding to USA domain lat lon")
+    total_regrid,arr = regrid2d(total,lat_in,lon_in,lat_out,lon_out)
+        
+    flux_ds = xr.Dataset({"flux":(["lat", "lon","time"],np.expand_dims(total_regrid.data,2))},
+                            coords={"lat":(["lat"], lat_out),
+                                    "lon":(["lon"], lon_out),
+                                    "time":np.array([np.datetime64("2012-01-01T00")])})
+                                    
+    flux_ds["flux"].attrs["units"] = "mol/m2/s"
+    flux_ds.attrs["Processed by"] = f"{getpass.getuser()}@bristol.ac.uk"
+    flux_ds.attrs["Processed on"] = str(pd.Timestamp.now(tz="UTC"))
+    flux_ds.attrs["EPA sectors"] = epa_sectors
+    flux_ds.attrs["reference"] = reference
+    flux_ds.attrs["inventory_ver"] = inv_ver
+    flux_ds.attrs["description"] = "Sectoral U.S. EPA CH4 emissions regridded to 'USA' domain"
+    
+    if output_path is not None:
+        flux_ds.to_netcdf(output_path+'.nc')
+        print('Regridded emissions data saved to {}'.format(output_path))
+    
+    return flux_ds
+    
+
 def getUKGHGandEDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,output_path=None):
     """
     Extracts EDGAR and UKGHG gridded emissions data for the given year and sector.
@@ -902,12 +1006,12 @@ def getUKGHGandEDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,output_p
             See below for list of possible sectors.
         output_path (str):
             Full output path and name to write output datatset to. Default is None, which
-            doesn not save outtput.
+            does not save output.
             
     Returns:
         total_ds (xarray dataset):
             Containing array of regridded EDGAR fluxes with UKGHG embedded over UK lat/lons.
-            Dimentions of [lat,lon,time]
+            Dimensions of [lat,lon,time]
             
     Example:
         getUKGHGandEDGAR("2015",["PRO_GAS","PRO_OIL"],["indcom","offshore"])
@@ -940,9 +1044,7 @@ def getUKGHGandEDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,output_p
         "WWT" = Waste water treatment
         
     """
-    
-    data_path = '/home/cv18710/work_shared'
-    
+        
     edgarfp = os.path.join(data_path,"Gridded_fluxes",species.upper(),"EDGAR_v5.0/yearly_sectoral")
     ukghgfp = os.path.join(data_path,"Gridded_fluxes",species.upper(),"UKGHG")
     
@@ -985,7 +1087,7 @@ def getUKGHGandEDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,output_p
             
         edgar_regrid_kg,arr = regrid2d(edgar_total,edgar_lat,edgar_lon,lat_out,lon_out)
     
-        #edgar flux in mol/m2/2
+        #edgar flux in mol/m2/s
         speciesmm = molar_mass(species)
         edgar_regrid = (edgar_regrid_kg.data*1e3) / speciesmm
         
@@ -1056,8 +1158,7 @@ def getUKGHGandEDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,output_p
         print('Regridded emissions data saved to {}'.format(output_path))
     
     return flux_ds
-    
-        
+            
 def getNAEI(year, lon_out, lat_out, species, naei_sector):
  
     """
