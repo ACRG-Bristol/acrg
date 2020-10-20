@@ -29,6 +29,9 @@ from __future__ import print_function
 from builtins import zip
 from builtins import str
 import pytest
+import gzip
+import bz2
+import glob
 import os
 import sys
 import glob

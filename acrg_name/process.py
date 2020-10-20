@@ -48,10 +48,8 @@ import os
 import json
 from os.path import split, realpath, exists
 import xarray as xray
-import shutil
 from scipy.interpolate import interp1d
-import copy
-#import dirsync 
+import copy 
 import matplotlib.pyplot as plt
 import getpass
 import traceback
@@ -60,7 +58,6 @@ import scipy
 import pdb
 from multiprocessing import Pool
 import acrg_obs as obs
-
 
 #Default NAME output file version
 #This is changed depending on presence of "Fields:" line in files
@@ -1809,6 +1806,7 @@ def process_basic(fields_folder, outfile):
     fp = footprint_concatenate(fields_folder)
     write_netcdf(fp, outfile)
 
+
 def process(domain, site, height, year, month, 
             #base_dir = "/work/chxmr/shared/NAME_output/",
             #process_dir = "/work/chxmr/shared/LPDM/fp_NAME/",
@@ -2013,6 +2011,7 @@ def process(domain, site, height, year, month,
     # Check for manual timestep (if footprints are for < 1min,
     # which is the min resolution of the NAME output file)
     timestep_file = os.path.join(subfolder,"time_step.txt")
+    
     if os.path.exists(timestep_file):
         with open(timestep_file) as f:
             timeStep = float(f.read())
@@ -2109,7 +2108,7 @@ def process(domain, site, height, year, month,
 
                 if maxday >= max(days):
                     return None
-                
+
     fp = []
      
     for datestr in datestrs:
