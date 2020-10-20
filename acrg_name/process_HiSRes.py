@@ -434,7 +434,9 @@ def add_inner_grid(data, template, output_file= None):
     data_with_inner_grid = merge_resolutions(data_with_inner_grid.fp_low, data_with_inner_grid.fp_high, data_with_inner_grid)
     
     if output_file is not None:
-        data_with_inner_grid.to_netcdf(output_file)
+        comp = dict(zlib=True, complevel=5)
+        encoding = {var: comp for var in data_with_inner_grid.data_vars}
+        data_with_inner_grid.to_netcdf(output_file, encoding=encoding)
     
     return data_with_inner_grid
     
