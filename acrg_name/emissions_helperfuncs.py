@@ -1045,6 +1045,8 @@ def getUKGHGandEDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,output_p
         
     """
         
+    data_path = '/home/cv18710/work_shared/'
+    
     edgarfp = os.path.join(data_path,"Gridded_fluxes",species.upper(),"EDGAR_v5.0/yearly_sectoral")
     ukghgfp = os.path.join(data_path,"Gridded_fluxes",species.upper(),"UKGHG")
     
@@ -1076,7 +1078,7 @@ def getUKGHGandEDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,output_p
             edgarfn = "v50_" + species.upper() + "_" + year + "_" + sector + ".0.1x0.1.nc"
 
             with xr.open_dataset(os.path.join(edgarfp,edgarfn)) as edgar_file:
-                edgar_flux = edgar_file['emi_'+species.lower()].values
+                edgar_flux = np.nan_to_num(edgar_file['emi_'+species.lower()].values,0.)
                 edgar_lat = edgar_file.lat.values
                 edgar_lon = edgar_file.lon.values
 
@@ -1111,7 +1113,7 @@ def getUKGHGandEDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,output_p
             ukghgfn = "uk_flux_" + sector + "_" + species.lower() + "_LonLat_0.01km_" + year + ".nc"
 
             with xr.open_dataset(os.path.join(ukghgfp,ukghgfn)) as ukghg_file:
-                ukghg_flux = ukghg_file[species.lower()+'_flux'].values[0,:,:]
+                ukghg_flux = np.nan_to_num(ukghg_file[species.lower()+'_flux'].values[0,:,:],0.)
                 ukghg_lat = ukghg_file.latitude.values
                 ukghg_lon = ukghg_file.longitude.values
 
@@ -1140,10 +1142,8 @@ def getUKGHGandEDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,output_p
             total_flux = ukghg_regrid.data
             output_title = "UKGHG sectors regridded to EUROPE domain"
             
-    total_flux_time = np.nan_to_num(np.expand_dims(total_flux,2),0.)
-            
     #output to ds
-    flux_ds = xr.Dataset({"flux":(["lat", "lon","time"],total_flux_time)},
+    flux_ds = xr.Dataset({"flux":(["lat", "lon","time"],np.expand_dims(total_flux,2))},
                             coords={"lat":(["lat"], lat_out),
                                     "lon":(["lon"], lon_out),
                                     "time":np.array([np.datetime64(year+'-01-01T00')])})
