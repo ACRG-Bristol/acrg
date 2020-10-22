@@ -405,7 +405,14 @@
         "mol_mass": "252.05", 
         "print_string": "HFC-4310MEE", 
         "units": "ppt"
-    }, 
+    },
+    "HFO-1234yf": {"alt": ["HFO1234YF"],
+        "group": "HFOs",
+        "long_name": "HFC-1234YF",
+        "mol_mass": "114.0",
+        "print_string": "HFO-1234YF",
+        "units": "ppt"
+    },
     "Isoflurane": {"alt": [],
         "group": "Minor", 
         "long_name": "Isoflurane", 

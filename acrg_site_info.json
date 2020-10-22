@@ -1146,10 +1146,12 @@
   "JFJ": {
     "AGAGE": {
       "height": [
-        "10m"
+        "1000m",
+	"10m"
       ],
       "height_name": [
-        "10magl"
+        "1000magl",
+	"10magl"
       ],
       "height_station_masl": 3570.0,
       "latitude": 46.5475,
