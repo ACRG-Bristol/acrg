@@ -1066,7 +1066,7 @@ def getUKGHGandEDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,output_p
     
         for EDGARsector in edgar_sectors:
             if EDGARsector not in EDGARsectorlist:
-                print('EDGAR sector {0} not one of: \n {1}'.format(EDGARsector,EDGAR_sectorlist))
+                print('EDGAR sector {0} not one of: \n {1}'.format(EDGARsector,EDGARsectorlist))
                 print('Returning None')
                 return None
             
