@@ -987,7 +987,7 @@ def getUKGHGandEDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,output_p
     Extracts EDGAR and UKGHG gridded emissions data for the given year and sector.
     Regrids both datasets to the EUROPE domain and converts both the mol/m2/s.
     Embeds UKGHG emissions within the EDGAR map to create a grid of fluxes for the whole
-    domain. For UK lat/lons (as defined by country_EUROPE.nc) fluxes = UKGHG. Outside the UK fluxes = EDGAR.
+    domain. For UK lat/lons (as defined by country-ukmo_EUROPE.nc) fluxes = UKGHG. Outside the UK fluxes = EDGAR.
     
     Option to include sources for one inventory. In this case, the sum of those sectors 
     only will be returned.
@@ -1048,8 +1048,8 @@ def getUKGHGandEDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,output_p
     edgarfp = os.path.join(data_path,"Gridded_fluxes",species.upper(),"EDGAR_v5.0/yearly_sectoral")
     ukghgfp = os.path.join(data_path,"Gridded_fluxes",species.upper(),"UKGHG")
     
-    UKGHGsectorlist = ["agric","energyprod","domcom","indcom","indproc","natural","offshore",
-                       "othertrans","roadtrans","solvents","total","waste"]
+    UKGHGsectorlist = ["agric","domcom","energyprod","indcom","indproc","natural","offshore",
+                       "othertrans","roadtrans","total","waste"]
     
     EDGARsectorlist = ["AGS","AWB","CHE","ENE","ENF","FFF","IND","IRO","MNM",
                        "PRO_COAL","PRO_GAS","PRO_OIL","PRO","RCO","REF_TRF","SWD_INC",
@@ -1126,12 +1126,12 @@ def getUKGHGandEDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,output_p
         if edgar_sectors is not None:  
             print('Inserting UKGHG into EDGAR over UK lat/lons')
             
-            with xr.open_dataset(os.path.join(data_path,'LPDM/countries/country_EUROPE.nc')) as c_file:
+            with xr.open_dataset(os.path.join(data_path,'LPDM/countries/country-ukmo_EUROPE.nc')) as c_file:
                 country = c_file['country'].values       
 
             for lat in range(edgar_regrid.shape[0]):
                 for lon in range(edgar_regrid.shape[1]):
-                    if country[lat,lon] == 7.0:
+                    if country[lat,lon] == 19.0:
                         edgar_regrid[lat,lon] = ukghg_regrid.data[lat,lon]
             output_title = "EDGAR with UK lat/lons replaced with UKGHG values, regridded to EUROPE domain"
             total_flux = edgar_regrid
