@@ -1140,8 +1140,10 @@ def getUKGHGandEDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,output_p
             total_flux = ukghg_regrid.data
             output_title = "UKGHG sectors regridded to EUROPE domain"
             
+    total_flux_time = np.nan_to_num(np.expand_dims(total_flux,2),0.)
+            
     #output to ds
-    flux_ds = xr.Dataset({"flux":(["lat", "lon","time"],np.expand_dims(total_flux,2))},
+    flux_ds = xr.Dataset({"flux":(["lat", "lon","time"],total_flux_time)},
                             coords={"lat":(["lat"], lat_out),
                                     "lon":(["lon"], lon_out),
                                     "time":np.array([np.datetime64(year+'-01-01T00')])})
