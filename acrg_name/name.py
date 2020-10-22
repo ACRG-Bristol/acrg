@@ -140,14 +140,14 @@ def filenames(site, domain, start, end, height, fp_directory, network=None, spec
     for ym in yearmonth:
 
         if species:
-            f=glob.glob(fp_directory + domain + "/" + site + "*" + height + "*" + species + "*" + domain + "*" + ym + "*.nc")
+                       f=glob.glob(fp_directory + domain + "/" + site + "*" + height + "*" + species + "*" + domain + "*" + ym + "*.nc")
         else:
             #manually create empty list if no species specified
             f = []
         
         if len(f) == 0:
             
-            glob_path = fp_directory + domain + "/" + site + "*" + height  + "*" + domain + "*" + ym + "*.nc"
+            glob_path = fp_directory + domain + "/" + site + "*" + height + "*" + domain + "*" + ym + "*.nc"
             
             if lifetime_hrs is None:
                 print("No lifetime defined in species_info.json or species not defined. WARNING: 30-day integrated footprint used without chemical loss.")
