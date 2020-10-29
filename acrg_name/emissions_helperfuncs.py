@@ -982,7 +982,8 @@ def get_US_EPA(epa_sectors=None,output_path=None):
     return flux_ds
     
 
-def getUKGHGandEDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,output_path=None):
+def getUKGHGandEDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,
+                     output_title=None,output_path=None):
     """
     Extracts EDGAR and UKGHG gridded emissions data for the given year and sector.
     Regrids both datasets to the EUROPE domain and converts both the mol/m2/s.
@@ -1151,9 +1152,11 @@ def getUKGHGandEDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,output_p
     flux_ds["flux"].attrs["units"] = "mol/m2/s"
     flux_ds.attrs["Processed by"] = f"{getpass.getuser()}@bristol.ac.uk"
     flux_ds.attrs["Processed on"] = str(pd.Timestamp.now(tz="UTC"))
-    flux_ds.attrs["EDGAR sectors"] = edgar_sectors
-    flux_ds.attrs["UKGHG sectors"] = ukghg_sectors
     flux_ds.attrs["title"] = output_title
+    if edgar_sectors is not None:
+        flux_ds.attrs["EDGAR sectors"] = edgar_sectors
+    if ukghg_sectors is not None:
+        flux_ds.attrs["UKGHG sectors"] = ukghg_sectors
     
     if output_path is not None:
         flux_ds.to_netcdf(output_path+'.nc')
