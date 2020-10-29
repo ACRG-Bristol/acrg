@@ -26,6 +26,7 @@ dependencies:
   - xesmf=0.3.0
   - ipython=7.13.0
   - spyder=4.1.1
+  - spyder-kernels=1.9.3
   - pip=20.0.2
   - pip:
     - dirsync==2.2.4
