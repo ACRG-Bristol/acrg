@@ -262,14 +262,10 @@
   "BRW": {
     "NOAA": {
       "height": [
-        "17m",
-        "11m",
-        "5m"
+        "28m",
       ],
       "height_name": [
-        "17magl",
-        "11magl",
-        "5magl"
+        "20magl",
       ],
       "height_station_masl": 11.0,
       "latitude": 71.323,
@@ -1143,9 +1139,9 @@
         "1000magl"
       ],
       "height_station_masl": 3570.0,
-      "latitude": 46.5475,
+      "latitude": 46.5476,
       "long_name": "Jungfraujoch, Switzerland",
-      "longitude": 7.9867
+      "longitude": 7.9855
     },
     "EUROCOM": {
       "height": [
