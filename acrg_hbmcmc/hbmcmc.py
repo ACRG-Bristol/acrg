@@ -50,7 +50,8 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                    obs_directory = None, country_file = None,
                    fp_directory = None, bc_directory = None, flux_directory = None,
                    max_level=None,
-                   quadtree_basis=True,nbasis=100, 
+                   quadtree_basis=True,nbasis=100,
+                   filters = [],
                    averagingerror=True, bc_freq=None, sigma_freq=None, sigma_per_site=True,
                    country_unit_prefix=None,
                    verbose = False):
@@ -140,6 +141,8 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             Number of basis functions that you want if using quadtree derived
             basis function. This will optimise to closest value that fits with
             quadtree splitting algorithm, i.e. nbasis % 4 = 1.
+        filters (list, optional):
+            list of filters to apply from name.filtering. Defaults to empty list
         averagingerror (bool, optional):
             Adds the variability in the averaging period to the measurement 
             error if set to True.
@@ -207,6 +210,9 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             
     fp_data = name.fp_sensitivity(fp_all, domain=domain, basis_case=fp_basis_case,basis_directory=basis_directory)
     fp_data = name.bc_sensitivity(fp_data, domain=domain,basis_case=bc_basis_case)
+    
+    #apply named filters to the data
+    fp_data = name.filtering(fp_data, filters)
     
     for si, site in enumerate(sites):     
         fp_data[site].attrs['Domain']=domain
