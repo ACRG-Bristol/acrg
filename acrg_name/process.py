@@ -48,10 +48,8 @@ import os
 import json
 from os.path import split, realpath, exists
 import xarray as xray
-import shutil
 from scipy.interpolate import interp1d
-import copy
-#import dirsync 
+import copy 
 import matplotlib.pyplot as plt
 import getpass
 import traceback
@@ -60,7 +58,6 @@ import scipy
 import pdb
 from multiprocessing import Pool
 import acrg_obs as obs
-
 
 #Default NAME output file version
 #This is changed depending on presence of "Fields:" line in files
@@ -90,9 +87,14 @@ directory_status_log = os.getenv("HOME")
 
 if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
     acrg_path = os.getenv("ACRG_PATH") 
+    data_path = os.getenv("DATA_PATH") 
+    lpdm_path = os.path.join(data_path,"LPDM")
 else:
     from acrg_config.paths import paths
     acrg_path = paths.acrg
+    data_path = paths.data
+    lpdm_path = paths.lpdm
+    
 
 def load_NAME(file_lines, namever):
     """
@@ -1218,6 +1220,7 @@ def footprint_array(fields_file,
                 if units_str == 'g s / m^3' or units_str.replace(' ','') == 'gs/m^3':
                     status_log("NOT RECOMMENDED TO CREATE SATELLITE FOOTPRINTS USING CONVERTED g s / m3 UNITS. IF POSSIBILE, NAME FOOTPRINTS SHOULD BE RE-GENERATED IN UNITS OF ppm s.",
                                 error_or_warning="warning")
+                column = t*len(levs)+l
                 fp = convert_units(fp, slice_dict, column, units_str,use_surface_conditions=use_surface_conditions)
     else:
         for i in range(len(time)):
@@ -1639,8 +1642,6 @@ def satellite_vertical_profile(fp, satellite_obs_file, max_level):
     
     ntime = len(fp.time)
     
-    #import pdb
-    #pdb.set_trace()
     for t in range(ntime):
         if np.abs(sat.lon.values[t] - fp.release_lon.values[t,0]) > 1.:
             status_log("Satellite longitude doesn't match footprints",
@@ -1800,9 +1801,12 @@ def process_basic(fields_folder, outfile):
     fp = footprint_concatenate(fields_folder)
     write_netcdf(fp, outfile)
 
+
 def process(domain, site, height, year, month, 
-            base_dir = "/work/chxmr/shared/NAME_output/",
-            process_dir = "/work/chxmr/shared/LPDM/fp_NAME/",
+            #base_dir = "/work/chxmr/shared/NAME_output/",
+            #process_dir = "/work/chxmr/shared/LPDM/fp_NAME/",
+            base_dir = os.path.join(data_path,"NAME_output/"),
+            process_dir = os.path.join(lpdm_path,"fp_NAME/"),
             fields_folder = "MixR_files",
             particles_folder = "Particle_files",
             met_folder = ["Met_daily", "Met"],
@@ -2002,6 +2006,7 @@ def process(domain, site, height, year, month,
     # Check for manual timestep (if footprints are for < 1min,
     # which is the min resolution of the NAME output file)
     timestep_file = os.path.join(subfolder,"time_step.txt")
+    
     if os.path.exists(timestep_file):
         with open(timestep_file) as f:
             timeStep = float(f.read())
@@ -2061,7 +2066,7 @@ def process(domain, site, height, year, month,
     else:
         outfile = os.path.join(full_out_path, site + "-" + height + "-" + species.lower() + \
                     "_" + domain + "_" + str(year) + str(month).zfill(2) + ".nc")
- 
+
     if not os.path.isdir(full_out_path):
         os.makedirs(full_out_path)
     
@@ -2098,7 +2103,7 @@ def process(domain, site, height, year, month,
 
                 if maxday >= max(days):
                     return None
-                
+
     fp = []
      
     for datestr in datestrs:
@@ -2108,19 +2113,20 @@ def process(domain, site, height, year, month,
 
         # Get Met files
         if force_met_empty is not True:
-            if satellite:
-                met_search_str = subfolder + met_folder + "/*" + datestr + "/*.txt*"
-                met_files = sorted(glob.glob(met_search_str))
-            else:
-                if type(met_folder) == list:
-                    met_files = []
-                    for metf in met_folder:
+            if type(met_folder) == list:
+                met_files = []
+                for metf in met_folder:
+                    if satellite:
+                        met_search_str = subfolder + metf + "/*" + datestr + "/*.txt*"
+                    else:
                         met_search_str = subfolder + metf + "/*.txt*"
-                        met_files = met_files + sorted(glob.glob(met_search_str))
+                    met_files = met_files + sorted(glob.glob(met_search_str))
+            else:
+                if satellite:
+                    met_search_str = subfolder + met_folder + "/*" + datestr + "/*.txt*"
                 else:
                     met_search_str = subfolder + met_folder + "/*.txt*"
-                    met_files = sorted(glob.glob(met_search_str))
-                
+                met_files = sorted(glob.glob(met_search_str))
            
             if len(met_files) == 0:
                 status_log("Can't file MET files: " + met_search_str,

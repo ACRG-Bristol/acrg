@@ -23,14 +23,11 @@ import pytest
 import os
 import sys
 import subprocess
+import glob
 
-if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
-    acrg_path = os.getenv("ACRG_PATH")
-    data_path = os.getenv("DATA_PATH") 
-else:
-    from acrg_config.paths import paths
-    acrg_path = paths.acrg
-    data_path = paths.data
+from acrg_config.paths import paths
+acrg_path = paths.acrg
+
 
 
 tdmcmc_path = os.path.join(acrg_path,"acrg_tdmcmc")
@@ -48,12 +45,14 @@ def tdmcmc_config_file():
     filename = os.path.join(test_config_path,'tdmcmc_input_run.ini')
     return filename
 
+@pytest.mark.skipif(not glob.glob(tdmcmc_path+"/*.so"), reason="Compiled Fortran programme unavailable.")
 @pytest.mark.long
 def test_tdmcmc_inputs(tdmcmc_input_file,tdmcmc_config_file):
     ''' Check that tdmcmc_inputs.py can be run with a standard tdmcmc config file '''
     result = subprocess.call(["python",tdmcmc_input_file,"-c{}".format(tdmcmc_config_file)])
     assert result == 0
 
+@pytest.mark.skipif(not glob.glob(tdmcmc_path+"/*.so"), reason="Compiled Fortran programme unavailable.")
 @pytest.mark.long
 def test_tdmcmc_inputs_command_line(tdmcmc_input_file,tdmcmc_config_file):
     ''' Check that tdmcmc_inputs.py can be run with a standard tdmcmc config file '''
