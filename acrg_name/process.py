@@ -205,9 +205,8 @@ def load_NAME(file_lines, namever):
         
     column_headings['time'] = new_time_column_header
     
-    # skip the blank line after the column headers
-#    file_handle.next()
     #MLR
+    #This cuts off the first line of output so removing
     file_lines=file_lines[1:]
     
     # make a list of data arrays to hold the data for each column 
@@ -303,8 +302,6 @@ def read_file(fname):
             Data of NAME output files
     '''
     
-    global namever
-    
     #Extract line-by-line file contents from either txt.gz or txt file    
     file_lines=extract_file_lines(fname)
 
@@ -318,10 +315,10 @@ def read_file(fname):
     header, column_headings, data_arrays = \
         load_NAME(file_lines, namever)
 
-    return header, column_headings, data_arrays
+    return header, column_headings, data_arrays, namever
 
 
-def define_grid(header, column_headings, satellite = False, upper_level = None):
+def define_grid(namever, header, column_headings, satellite = False, upper_level = None):
     '''
     Define output grid using file header information.
     
@@ -1047,9 +1044,9 @@ def footprint_array(fields_file,
             data_arrays.append(fp_grid)       
             
     else:
-        header, column_headings, data_arrays = read_file(fields_file)
+        header, column_headings, data_arrays, namever = read_file(fields_file)
         # Define grid, including output heights    
-        lons, lats, levs, time, timeStep = define_grid(header, column_headings,
+        lons, lats, levs, time, timeStep = define_grid(namever, header, column_headings,
                                                        satellite = satellite,
                                                        upper_level = upper_level)
 

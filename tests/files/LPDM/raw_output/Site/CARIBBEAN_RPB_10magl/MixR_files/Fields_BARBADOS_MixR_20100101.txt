@@ -1,0 +1,28 @@
+NAME III (version 7.2)                                          
+ Title:               Back_General
+ Run time:            1128UTC 17/05/2020
+ Met data:            NWP Flow.Regional_flow
+ Start of release:     0000UTC 02/01/2010
+ End of release:       0000UTC 01/01/2010
+ Release rate:        Multiple Sources
+ Release location:    Multiple Sources
+ Release height:      Multiple Sources
+ Forecast duration:   744 hours
+ X grid origin:         -100.1880    
+ Y grid origin:         -26.12600    
+ X grid size:                  391
+ Y grid size:                  340
+ X grid resolution:     0.3520000    
+ Y grid resolution:     0.2340000    
+ Number of fields:              2
+ 
+                   ,                   ,                   ,                   ,                   INERT,                   INERT,                   
+                   ,                   ,                   ,                   ,              INERT_C_00,              INERT_C_01,              
+                   ,                   ,                   ,                   ,  744 hr time integrated,  744 hr time integrated,  
+                   ,                   ,                   ,                   ,            Mixing ratio,            Mixing ratio,            
+                   ,                   ,                   ,                   ,                    ppms,                    ppms,                    
+                   ,                   ,                   ,                   , From     0 -    40m agl, From     0 -    40m agl, 
+             X grid,             Y grid,          Longitude,           Latitude,      0000UTC 02/12/2009,      0000UTC 02/12/2009,    
+             
+           1.500000,         132.500000,        -100.012001,           4.644999,          1.00000000E+00,          3.00000000E+00,          
+           2.500000,         136.500000,         -99.660004,           5.580999,          2.00000000E+00,          4.00000000E+00,          
