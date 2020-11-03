@@ -616,78 +616,6 @@ def getBloom2017(year, lon_out, lat_out, modeltype='extended'):
        narr[:,:,i], reg = regrid2d(bloomch4[:,:,i], lat_in, lon_in,
                                  lat_out, lon_out)
     return(narr)
-
-def getnaeiandedgarCH4(lon_out, lat_out):
-    """
-    Get combined NAEI and EDGAR emissions using NAEI 2013 and EDGAR 2010
-    Regrids to desired lats and lons.
-    Note sure how useful this is...
-    
-    Args:
-        lon_out (array): 
-            Longitudes to output the data on
-        lat_out (array):
-            Latitudes to output the data on
-    
-    Returns:
-        narr (array): 
-            Array of regridded emissions in mol/m2/s.
-            Dimensions are [lat, lon, time]
-    
-    Note:
-        Raw NAEI data are in /dagage2/agage/metoffice/naei/naei_raw_priors
-        Currently this is for CH4 and N2O: 2012, 2013, 2015.
-        Use getNAEI for this. 
-        
-    """
-    
-    fdir='/dagage2/agage/metoffice/naei/'
-    fn = 'prior_UK_NAEI2013detailed_ch4_EU_EDGAR2010_UK40uncertain.txt'
-    
-    with open(fdir+fn, 'r') as f:
-    #Get extent of grid defined for NAEI / EDGAR
-        line = f.readline()
-        line = line.rstrip()
-        llextent = np.asarray(line.split()[0:4]).astype(float)
-        
-        #Get lon/lat grid spacing
-        line = f.readline()
-        line = line.rstrip()
-        llspacing = np.asarray(line.split()[0:2]).astype(float)
-        
-        #Get emissions for defined grid, units are in g/m2/s
-        while 1:
-            line = f.readline()
-            line = line.rstrip()
-            if line.startswith('   i') == False:
-                    continue
-            else:
-                k=0
-                while True:
-                    line = f.readline()
-                    if not line: break
-                    line = line.rstrip()
-                    dat = np.asarray(line.split()[0:3])
-                    if k == 0:
-                        dataarr = dat.astype(float)
-                        k = 1
-                    else:
-                        dataarr = np.vstack([dataarr, dat.astype(float)])
-            break
-        
-    lon = np.unique(dataarr[:,0]*llspacing[0] + llextent[0] + llspacing[0]/2.)
-    lat = np.unique(dataarr[:,1]*llspacing[1] + llextent[2] + llspacing[1]/2.)
-    emisarr = dataarr[:,2].reshape(len(lon), len(lat))/16.04
-
-    #Regrid the data to desired region
-    nlat = len(lat_out)
-    nlon = len(lon_out) 
-    
-    narr = np.zeros((nlat, nlon))
-    
-    narr, reg = regrid2d(emisarr, lat, lon,
-                             lat_out, lon_out)
-    return(narr)
     
 def get_naei_public(filename, lon_out, lat_out):
     '''
@@ -980,21 +908,21 @@ def get_US_EPA(epa_sectors=None,output_path=None):
         print('Regridded emissions data saved to {}'.format(output_path))
     
     return flux_ds
-    
 
 def getUKGHGandEDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,
                      output_title=None,output_path=None):
     """
     Extracts EDGAR and UKGHG gridded emissions data for the given year and sector.
-    Regrids both datasets to the EUROPE domain and converts both the mol/m2/s.
-    Embeds UKGHG emissions within the EDGAR map to create a grid of fluxes for the whole
-    domain. For UK lat/lons (as defined by country-ukmo_EUROPE.nc) fluxes = UKGHG. Outside the UK fluxes = EDGAR.
+    Regrids both datasets to the EUROPE domain and converts both to mol/m2/s.
+    Using the country mask country-ukmo_EUROPE.nc, embeds UKGHG emissions within the EDGAR map 
+    to create a grid of fluxes for the whole domain.
     
     Option to include sources for one inventory. In this case, the sum of those sectors 
     only will be returned.
     
     CURRENTLY ONLY TESTED WITH EDGAR v5.0 CH4 2015 and UKGHG CH4 2015
-        - DATA FILES FOR OTHER GASES/YEARS MAY NOT EXIST
+        - DATA FILES FOR OTHER GASES/YEARS MAY NOT EXIST OR MAY NEED TO BE UPZIPPED
+          BEFORE USING THIS FUNCTION
     
     Args:
         year (str):
@@ -1164,88 +1092,6 @@ def getUKGHGandEDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,
     
     return flux_ds
             
-def getNAEI(year, lon_out, lat_out, species, naei_sector):
- 
-    """
-    Converts raw NAEI into gridded emissions data in mol/m2/s
-    
-    Args:
-        lon_out (array): 
-            Longitudes to output the data on
-        lat_out (array):
-            Latitudes to output the data on
-        year (int): 
-            Year of interest
-        species (str):
-            Which species you want to look at. 
-            Currently only 'CH4' or 'N2O'
-        naei_sector (str):
-            Which sector to look at. Options are: 
-            "energyprod","domcom","indcom","indproc","offshore","roadtrans",
-            "othertrans","waste","agric","nature","points","total",
-            "totalexcship"
-        
-    Returns:
-        narr (array): 
-            Array of regridded emissions in mol/m2/s.
-            Dimensions are [lat, lon]
-    
-    Example: 
-        emissions  = getNAEI(2013, lon, lat, 'ch4', 'total')
-    
-    """   
-    
-    species = species.lower()   
-    naeidir = '/dagage2/agage/metoffice/naei/naei_raw_priors/'
-    fn = naeidir+'LatLong1km_'+species.upper()+'_'+str(year)+'.csv.gz'
-    #Checks
-    if not os.path.isfile(fn):
-        print('Raw NAEI file LatLong1km_'+species.upper()+'_'+str(year)+'.csv.gz does not exist')
-        print('Returning None')
-        return None
-    sectorlist = ["energyprod","domcom","indcom","indproc","offshore","roadtrans",
-    "othertrans","waste","agric","nature","points","total","totalexcship"]
-    if naei_sector not in sectorlist:
-        print('Sector not one of:')
-        print(sectorlist)
-        print('Returning None')
-        return None
-        
-    #Read emissions as tonnes/km^2/yr and naei lat and lons
-    #df = pd.DataFrame.from_csv(fn) # This syntax is deprecated 
-    df = pd.read_csv(fn)  
-    lat = np.asarray(df.Latitude)
-    lon = np.asarray(df.Longitude)    
-    emissions = np.asarray(df[naei_sector])
-    
-    #Make a square grid for the emissions
-    latarr = np.arange(min(lat), max(lat), 0.01)
-    lonarr = np.arange(min(lon), max(lon), 0.01)
-    grdemis = np.zeros((len(latarr), len(lonarr)))
-
-    for i in range(len(emissions)):
-        ilat = np.where(abs(latarr-lat[i]) == np.min(abs(latarr - lat[i])) )
-        ilon = np.where(abs(lonarr-lon[i]) == np.min(abs(lonarr - lon[i])) )
-        grdemis[ilat, ilon] = emissions[i]
-
-    #Convert to mol/m2/s
-    speciesmm = molar_mass(species)     
-#    if species == 'ch4':
-#        speciesmm = 16.0425
-#    if species == 'n2o':
-#        speciesmm = 44.013        
-    if year % 4 == 0:
-        diy = 365
-    else:
-        diy = 366    
-    grdemis = old_div(grdemis, (diy * 3600*24) * speciesmm)
-    
-    #Regrid to desired lats and lons
-    narr, reg = regrid2d(grdemis, latarr, lonarr,
-                                 lat_out, lon_out)
-
-    return(narr)
-
 def getedgarannualsectors(year, lon_out, lat_out, edgar_sectors, species='CH4'):
     """
     Get annual emission totals for species of interest from EDGAR v4.3.2 data
@@ -2167,8 +2013,6 @@ def database_options(print_options=False):
                     "natural":getothernaturalCH4,
                     "soilsink":getsoilsinkCH4,
                     "Bloom":getbloomwetlandsCH4,
-                    "NAEI":getNAEI,
-                    "NAEI_and_EDGAR":getnaeiandedgarCH4,
                     "JULES_wetlands":getJULESwetlands,
                     "Scarpelli":getScarpelliFossilFuelsCH4,
                     "Bloom2017":getBloom2017}
