@@ -1511,15 +1511,28 @@ def _JULESfile(year):
 
     return filename_jules
 
-def _SWAMPSfile():
+def _SWAMPSfile(product="inland_cap"):
     '''
     The _SWAMPSfile function opens the correct SWAMPS wetland fraction file as an 
     xarray.Dataset object.
+    
+    Args:
+        product (str, optional) :
+            Which SWAMPS product to use
+            Options:
+                "inland_cap" : Inland water fraction added and capped at 1.0
+                "inland_norm" : Inland water fraction added and renormalised to 1.0
+                "org" : Use original product without inland water
     '''
     path = os.path.join(data_path,"Gridded_fluxes/CH4/SWAMPS")
     #filename_swamps = os.path.join(path,"fw_swamps-glwd_2000-2012.nc") # Previous version
-    #filename_swamps = os.path.join(path,"gcp-ch4_wetlands_2000-2017_05deg.nc") # Without inland water
-    filename_swamps = os.path.join(path,"gcp-ch4_wetlands-and-inland-water_2000-2017_025deg_norm.nc")
+
+    if product == "inland_cap":
+        filename_swamps = os.path.join(path,"gcp-ch4_wetlands-and-inland-water_2000-2017_025deg_cap.nc")
+    elif product == "inland_norm":
+        filename_swamps = os.path.join(path,"gcp-ch4_wetlands-and-inland-water_2000-2017_025deg_norm.nc")
+    elif product == "org":
+        filename_swamps = os.path.join(path,"gcp-ch4_wetlands_2000-2017_05deg.nc") # Without inland water
     
     return filename_swamps
 
@@ -1586,7 +1599,7 @@ def _wetlandArea(frac,lon_in,lat_in,lon_out,lat_out):
     
     return wetl_area_domain,old_div(wetl_area_domain,wetl_area)
 
-def _SWAMPSwetlandArea(year,lon_out,lat_out,month=1):
+def _SWAMPSwetlandArea(year,lon_out,lat_out,month=1,product="inland_cap"):
     '''
     The _SWAMPSwetlandArea function calculates the area of the wetland extent 
     within a grid and the fraction of the total global wetlands area based on 
@@ -1602,6 +1615,8 @@ def _SWAMPSwetlandArea(year,lon_out,lat_out,month=1):
         month (int, optional) :
             Month to extract this area for. Should be between 1 and 12.
             Default = 1 (i.e. January)
+        product (str, optional) :
+            Which SWAMPS product to use (see _SWAMPSfile() for options)
     
     Returns:
         tuple (float,float) :
@@ -1613,7 +1628,7 @@ def _SWAMPSwetlandArea(year,lon_out,lat_out,month=1):
     else:
         raise ValueError("Did not recognise month input: {}. Expect value between 1 and 12.".format(month))
     
-    frac_swamps = xr.open_dataset(_SWAMPSfile())
+    frac_swamps = xr.open_dataset(_SWAMPSfile(product))
     fw = "Fw" # Name of variable within file
     
     lat_in = frac_swamps.lat.values
@@ -1627,8 +1642,8 @@ def _SWAMPSwetlandArea(year,lon_out,lat_out,month=1):
     return wetl_area_domain,wetl_frac
 
     
-def getJULESwetlands(year,lon_out,lat_out,species="CH4",extent_db="SWAMPS",scale_wetlands=True,
-                     total_w_emission=185e12):
+def getJULESwetlands(year,lon_out,lat_out,species="CH4",extent_db="SWAMPS",swamps_product="inland_cap",
+                     scale_wetlands=True,total_w_emission=185e12):
     '''
     The getJULESwetlands function creates an emissions grid for wetlands based on JULES wetlands maps.
     Rather than using the modelled  JULES wetland fraction, this is scaled against the observed SWAMPS 
@@ -1646,6 +1661,9 @@ def getJULESwetlands(year,lon_out,lat_out,species="CH4",extent_db="SWAMPS",scale
         extent_db (str, optional) :
             Which database to use for the wetlands extent while using JULES for the emissions.
             Default = "SWAMPS"
+        swamps_product (str, optional) :
+            If extent_db is "SWAMPS", which product to use.
+            See _SWAMPS_file() for options.
         scale_wetlands (bool, optional) :
             Whether to scale emissions by the wetland fraction of a total emissions value.
             Default = True.
@@ -1687,7 +1705,7 @@ def getJULESwetlands(year,lon_out,lat_out,species="CH4",extent_db="SWAMPS",scale
 
     if extent_db == "SWAMPS":
         ## Multiply by fractions from SWAMPS to rescale to measured rather than simulated inundation area
-        frac_swamps = xr.open_dataset(_SWAMPSfile())
+        frac_swamps = xr.open_dataset(_SWAMPSfile(swamps_product))
         fw_name = "Fw"
         
         frac_swamps[fw_name].values = np.nan_to_num(frac_swamps[fw_name])

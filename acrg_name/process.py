@@ -48,10 +48,8 @@ import os
 import json
 from os.path import split, realpath, exists
 import xarray as xray
-import shutil
 from scipy.interpolate import interp1d
-import copy
-#import dirsync 
+import copy 
 import matplotlib.pyplot as plt
 import getpass
 import traceback
@@ -60,7 +58,6 @@ import scipy
 import pdb
 from multiprocessing import Pool
 import acrg_obs as obs
-
 
 #Default NAME output file version
 #This is changed depending on presence of "Fields:" line in files
@@ -208,9 +205,8 @@ def load_NAME(file_lines, namever):
         
     column_headings['time'] = new_time_column_header
     
-    # skip the blank line after the column headers
-#    file_handle.next()
     #MLR
+    #This cuts off the first line of output so removing
     file_lines=file_lines[1:]
     
     # make a list of data arrays to hold the data for each column 
@@ -306,8 +302,6 @@ def read_file(fname):
             Data of NAME output files
     '''
     
-    global namever
-    
     #Extract line-by-line file contents from either txt.gz or txt file    
     file_lines=extract_file_lines(fname)
 
@@ -321,10 +315,10 @@ def read_file(fname):
     header, column_headings, data_arrays = \
         load_NAME(file_lines, namever)
 
-    return header, column_headings, data_arrays
+    return header, column_headings, data_arrays, namever
 
 
-def define_grid(header, column_headings, satellite = False, upper_level = None):
+def define_grid(namever, header, column_headings, satellite = False, upper_level = None):
     '''
     Define output grid using file header information.
     
@@ -1050,9 +1044,9 @@ def footprint_array(fields_file,
             data_arrays.append(fp_grid)       
             
     else:
-        header, column_headings, data_arrays = read_file(fields_file)
+        header, column_headings, data_arrays, namever = read_file(fields_file)
         # Define grid, including output heights    
-        lons, lats, levs, time, timeStep = define_grid(header, column_headings,
+        lons, lats, levs, time, timeStep = define_grid(namever, header, column_headings,
                                                        satellite = satellite,
                                                        upper_level = upper_level)
 
@@ -1807,6 +1801,7 @@ def process_basic(fields_folder, outfile):
     fp = footprint_concatenate(fields_folder)
     write_netcdf(fp, outfile)
 
+
 def process(domain, site, height, year, month, 
             #base_dir = "/work/chxmr/shared/NAME_output/",
             #process_dir = "/work/chxmr/shared/LPDM/fp_NAME/",
@@ -2011,6 +2006,7 @@ def process(domain, site, height, year, month,
     # Check for manual timestep (if footprints are for < 1min,
     # which is the min resolution of the NAME output file)
     timestep_file = os.path.join(subfolder,"time_step.txt")
+    
     if os.path.exists(timestep_file):
         with open(timestep_file) as f:
             timeStep = float(f.read())
@@ -2107,7 +2103,7 @@ def process(domain, site, height, year, month,
 
                 if maxday >= max(days):
                     return None
-                
+
     fp = []
      
     for datestr in datestrs:
