@@ -1364,8 +1364,8 @@ def filtering(datasets_in, filters, keep_missing=False):
         datasets_in         : Output from footprints_data_merge(). Dictionary of datasets.
         filters (list)      : Which filters to apply to the datasets. 
                               All options are:
-                                 "daytime"           : selects data between 1100 and 1500 UTC
-                                 "daytime9to5"       : selects data between 0900 and 1700 UTC
+                                 "daytime"           : selects data between 1100 and 1500 local solar time
+                                 "daytime9to5"       : selects data between 0900 and 1700 local solar time
                                  "nighttime"         : Only b/w 23:00 - 03:00 inclusive
                                  "noon"              : Only 12:00 fp and obs used
                                  "daily_median"      : calculates the daily median
@@ -1390,8 +1390,9 @@ def filtering(datasets_in, filters, keep_missing=False):
         relative to the Greenwich Meridian. 
         """
         sitelon = dataset.release_lon.values[0]
-        if sitelon < 0:
-            sitelon = 360. + sitelon
+        # convert lon to [-180,180], so time offset is negative west of 0 degrees
+        if sitelon > 180:
+            sitelon = sitelon - 360.
         dataset["time"] = dataset.time + pd.Timedelta(minutes=float(24*60*sitelon/360.))
         hours = dataset.time.to_pandas().index.hour
         return hours
