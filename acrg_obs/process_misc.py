@@ -1210,3 +1210,83 @@ def TMB(species="CH4"):
         print("Writing " + nc_filename)
             
         dataProcessed.to_netcdf(nc_filename)
+
+        
+def moya(flight_name, species='ch4'):
+    '''
+    Data files from MOYA and ZWAMPS flights
+    '''            
+    params = {
+        "site" : flight_name,
+        "network":"BAS",
+        "scale": {
+            "CH4": "WMO-X2004A"},
+        "instrument": {
+                "CH4": "LGR-uGGA"},
+        "global_attributes" : {
+                "contact": "James France" ,
+                "averaging": "1 minute"
+                }
+        }
+    if species.lower() == 'ch4':
+        fname = join("/home/ag12733/shared/obs_raw/MOYA", flight_name) + ".csv"
+        df = pd.read_csv(fname, skiprows=1,
+                 delimiter=",", names = ["Time", "Lon", "Lon_delta", "Lat", "Lat_delta", "Altitude", "Altitude_delta", \
+                                         'CH4', "CH4_variability"], \
+                         header=None,
+                 index_col = "Time", parse_dates=["Time"],
+                 dayfirst=True)
+        
+        df = df.drop(labels=["Lon", "Lon_delta", "Lat", "Lat_delta", "Altitude", "Altitude_delta"], axis = 1)
+             
+#     print("Assuming data is in JST. Check input file. CONVERTING TO UTC.")
+    
+#     df.index = df.index.tz_localize(pytz.timezone("Japan")).tz_convert(None) # Simpler solution
+
+    # Sort
+    df.sort_index(inplace = True)
+
+    # Rename columns to species
+    df.rename(columns = {df.columns[0]: species.upper()}, inplace = True)
+
+    df.rename(columns = {df.columns[1]: species.upper() + " repeatability"}, inplace = True)
+    
+    # Drop duplicates and rename index
+    df.index.name = "index"
+    df = df.reset_index().drop_duplicates(subset='index').set_index('index')              
+    df.index.name = "time"
+    
+    # remove 9999
+    df = df[df[species.upper()]!='']
+    
+    # convert to ppb from ppm
+    df[species.upper()] = df[species.upper()]*1000
+    df[species.upper()+ " repeatability"] = df[species.upper()+ " repeatability"]*1000   
+    
+    # Convert to dataset
+    ds = xr.Dataset.from_dataframe(df)
+    
+
+#     ds = ds.where((ds[species.upper() + " repeatability"] < 9000), drop = True)
+    
+    # Add attributes
+
+    ds = attributes(ds,
+                    species.upper(),
+                    params['site'].upper(),
+                    network=params["network"],
+                    global_attributes = params["global_attributes"],
+                    scale = params["scale"][species.upper()])
+   
+    # Write file
+    nc_filename = output_filename(obs_directory,
+                                  "MOYA-UMan",
+                                  params["instrument"][species.upper()],
+                                  params["site"],
+                                  ds.time.to_pandas().index.to_pydatetime()[0],
+                                  ds.species)
+    
+    print("Writing " + nc_filename)
+    ds.to_netcdf(nc_filename)
+
+
