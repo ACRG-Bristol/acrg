@@ -12,6 +12,7 @@ import acrg_grid
 from acrg_config.paths import paths
 acrg_path = paths.acrg
 import os
+import xr
 
 lon =  np.arange(-5,4,0.5)
 lat =  np.arange(50,55,0.5)
