@@ -812,7 +812,7 @@ def get_US_EPA(epa_sectors=None,output_path=None):
     Sums emissions from given list of sectors.
     Regrids to USA domain lat/lons.
     
-    Uses data files provided by Maasakkers, 2016 "A Gridded National Inventory 
+    Uses data files from Maasakkers (2016) "A Gridded National Inventory 
     of U.S.Methane Emissions". Only 2012 available.
     
     Args:
@@ -830,7 +830,7 @@ def get_US_EPA(epa_sectors=None,output_path=None):
             Dimensions of [lat,lon,time]
             
     Example:
-        get_US_EPA("2012",["Enteric_Fermentation","Manure_Management"])
+        get_US_EPA("2012",["4A_Enteric_Fermentation","4B_Manure_Management"])
             
     """    
 
@@ -855,7 +855,7 @@ def get_US_EPA(epa_sectors=None,output_path=None):
     
         for EPAsector in epa_sectors:
             if EPAsector not in EPAsectorlist:
-                print("EPA sector {0} is not one of: \n {1}".format(EPAsector,EPA_sectorlist))
+                print("EPA sector {0} is not one of: \n {1}".format(EPAsector,EPAsectorlist))
                 print("Returning None")
                 return None
         
@@ -909,7 +909,7 @@ def get_US_EPA(epa_sectors=None,output_path=None):
     
     return flux_ds
 
-def getUKGHGandEDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,
+def get_UKGHG_EDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,
                      output_title=None,output_path=None):
     """
     Extracts EDGAR and UKGHG gridded emissions data for the given year and sector.
@@ -943,7 +943,7 @@ def getUKGHGandEDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,
             Dimensions of [lat,lon,time]
             
     Example:
-        getUKGHGandEDGAR("2015",["PRO_GAS","PRO_OIL"],["indcom","offshore"])
+        get_UKGHG_EDGAR("2015",["PRO_GAS","PRO_OIL"],["indcom","offshore"])
         
     Note:
         EDGAR sector names:

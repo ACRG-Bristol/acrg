@@ -184,5 +184,29 @@ def test_get_naei_public():
     assert np.abs( (output_sum-raw_sum)/raw_sum ) < 0.01
     
     
+def test_processUKGHG():
+    ukghg_dir = os.path.join(acrg_path,"tests/files/gridded_fluxes/")
+    lat_out = np.arange(50.,65.,1.)
+    lon_out = np.arange(-10.,5.,1.0)
+
+    out = ehf.processUKGHG(ukghg_dir,"ch4","2015","total",lon_out,lat_out)
+    out_total = np.nansum(out["flux"].values * acrg_grid.areagrid(out.lat.values,
+                                                                  out.lon.values))
     
+    with xr.open_dataset(os.path.join(ukghg_dir,"uk_flux_total_ch4_LonLat_0.01km_2015.nc")) as raw_f:
+        raw_total = np.nansum(raw_f["ch4_flux"].values[0,:,:] * acrg_grid.areagrid(raw_f.latitude.values,
+                                                                         raw_f.longitude.values))
     
+    assert np.abs((out_total - raw_total)/raw_total) < 0.01
+    
+def test_get_US_EPA():
+
+    out = ehf.get_US_EPA(["6A_Landfills_Municipal"])
+    out_total = np.sum(out["flux"].values[:,:,0] * (acrg_grid.areagrid(out.lat.values,
+                                                                       out.lon.values)))
+                                                  
+    with xr.open_dataset(os.path.join(acrg_path,"tests/files/gridded_fluxes/GEPA_Annual.nc")) as raw_f:
+        raw_flux = raw_f["emissions_6A_Landfills_Municipal"].values / 6.02214076e23 * 1e4
+        raw_total = np.sum(raw_flux * acrg_grid.areagrid(raw_f.lat.values,raw_f.lon.values))
+                          
+    assert np.abs((out_total - raw_total)/raw_total) < 0.01
