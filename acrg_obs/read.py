@@ -2,9 +2,6 @@
 """
 @author: chxmr
 """
-#from builtins import zip
-#from builtins import str
-#from builtins import range
 import numpy as np
 import pandas as pd
 import glob
