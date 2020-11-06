@@ -539,6 +539,18 @@
       "longitude": 145.5
     }
   },
+  "CONGO-FAAM": {
+    "UMAN": {
+      "height": [
+        "various"
+      ],
+      "height_name": [
+        "various"
+      ],
+      "long_name": "FAAM flights Congo, Uganda, Zambia",
+      "platform": "aircraft"
+    }
+  },
   "CPS": {
     "EC": {
       "height": [
