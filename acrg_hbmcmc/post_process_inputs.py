@@ -98,21 +98,34 @@ if __name__=="__main__":
     ds_list,filenames = process.extract_hbmcmc_files(output_directory,species, domain, runname,dates,return_filenames=True)
     dates = process.check_missing_dates(filenames,dates)
     
+    lat = ds_list[0]["lat"]
+    lon=ds_list[0]["lon"]
+
+##  set lonmin, lonmax, latmin, latmax below if you only want to plot a subset of domain
+##  need to find a better way to set these inputs at top
+#     lonmin_ds = lon[np.where(np.isclose(lon, lonmin, atol = 0.3, rtol=0))[0][0]]
+#     lonmax_ds = lon[np.where(np.isclose(lon, lonmax, atol = 0.3, rtol=0))[0][0]]
+#     latmin_ds = lat[np.where(np.isclose(lat, latmin, atol = 0.2, rtol=0))[0][0]]
+#     latmax_ds = lat[np.where(np.isclose(lat, latmax, atol = 0.2, rtol=0))[0][0]]
+     
+#     lon = lon.sel(lon=slice(lonmin_ds,lonmax_ds))
+#     lat = lat.sel(lat=slice(latmin_ds,latmax_ds))
+    
     ## Plot scaling map
     if plot_scale_map == True:
-        process.plot_scale_map(ds_list,grid=grid_scale_map,clevels=s_clevels, 
+        process.plot_scale_map(ds_list, lat = lat, lon = lon, grid=grid_scale_map,clevels=s_clevels,
                                cmap=s_cmap,labels=None,title=None,smooth=s_smooth,
                                out_filename=s_out_filename,extend="both")
     
     ## Plot absolute difference map
     if plot_diff_map == True:
-        process.plot_diff_map(ds_list,species,grid=grid_diff_map,clevels=d_clevels, 
+        process.plot_diff_map(ds_list,species, lat = lat, lon = lon,grid=grid_diff_map,clevels=d_clevels, 
                                cmap=d_cmap,labels=None,title=None,smooth=d_smooth,
                                out_filename=d_out_filename,extend="both")
 
     ## Plot absolute map
     if plot_abs_map == True:
-        process.plot_abs_map(ds_list,species,grid=grid_abs_map,clevels=a_clevels, 
+        process.plot_abs_map(ds_list,species, lat = lat, lon = lon,grid=grid_abs_map,clevels=a_clevels, 
                                cmap=a_cmap,labels=None,title=None,smooth=a_smooth,
                                out_filename=a_out_filename,extend="max")
 
@@ -171,3 +184,4 @@ if __name__=="__main__":
                 cntryCI_arr = cntry68_arr
             process.plot_country_timeseries(cntrymean_arr[:,cntry_ind], cntryCI_arr[:,cntry_ind,:],
                                             cntryprior_arr[:,cntry_ind], dates, country_label = cntry, units = units, figsize = (7,3))
+

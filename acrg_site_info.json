@@ -245,6 +245,18 @@
       "longitude": -64.8788
     }
   },
+  "BOLIVIA-TWIN-OTTER": {
+    "BAS": {
+      "height": [
+        "various"
+      ],
+      "height_name": [
+        "various"
+      ],
+      "long_name": "Bolivia twin otter",
+      "platform": "aircraft"
+    }
+  },
   "BRA": {
     "EC": {
       "height": [
@@ -2219,3 +2231,4 @@
     }
   }
 }
+
