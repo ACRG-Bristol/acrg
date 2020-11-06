@@ -392,7 +392,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         for ci, cntry in enumerate(cntrynames):
             cntrytottrace = np.zeros(len(steps))
             cntrytotprior = 0
-            for bf in range(int(np.max(bfarray))):
+            for bf in range(int(np.max(bfarray))+1):
                 bothinds = np.logical_and(cntrygrid == ci, bfarray==bf)
                 cntrytottrace += np.sum(area[bothinds].ravel()*aprioriflux[bothinds].ravel()* \
                                3600*24*365*molarmass)*outs[:,bf]/unit_factor

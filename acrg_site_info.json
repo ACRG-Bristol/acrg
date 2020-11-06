@@ -245,6 +245,18 @@
       "longitude": -64.8788
     }
   },
+  "BOLIVIA-TWIN-OTTER": {
+    "BAS": {
+      "height": [
+        "various"
+      ],
+      "height_name": [
+        "various"
+      ],
+      "long_name": "Bolivia twin otter",
+      "platform": "aircraft"
+    }
+  },
   "BRA": {
     "EC": {
       "height": [
@@ -534,6 +546,18 @@
       "latitude": 43.167,
       "long_name": "Cape Ochiishi, Japan",
       "longitude": 145.5
+    }
+  },
+  "CONGO-FAAM": {
+    "UMAN": {
+      "height": [
+        "various"
+      ],
+      "height_name": [
+        "various"
+      ],
+      "long_name": "FAAM flights Congo, Uganda, Zambia",
+      "platform": "aircraft"
     }
   },
   "CPS": {
@@ -2234,3 +2258,4 @@
     }
   }
 }
+
