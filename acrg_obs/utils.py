@@ -376,10 +376,14 @@ def output_filename(output_directory,
                                                    suffix))
 
 
-def obs_database():
+def obs_database(data_directory = None):
     '''
     Creates an SQLite database in obs folder detailing contents of each file
+    
+    Args:
+        data_directory (pathlib, optional) : Path to user-defined obs_folder
     '''
+    
     # Directories to exclude from database
     exclude = ["GOSAT", "unknown"]
 
@@ -393,10 +397,15 @@ def obs_database():
     calibration_scale = []
     filename = []
 
-    print(f"Reading obs files in {paths.obs}")
+    if data_directory is None:
+        obs_path = paths.obs
+    else:
+        obs_path = data_directory
+    
+    print(f"Reading obs files in {obs_path}")
     
     # Find sub-directories in obs folder
-    for d in paths.obs.glob("*"):
+    for d in obs_path.glob("*"):
         if d.is_dir():
             if d.name not in exclude:
 
@@ -438,9 +447,9 @@ def obs_database():
     # Write database
     ######################################
     
-    print(f"Writing database {paths.obs / 'obs.db'}")
+    print(f"Writing database {obs_path / 'obs.db'}")
     
-    conn = sqlite3.connect(paths.obs / "obs.db")
+    conn = sqlite3.connect(obs_path / "obs.db")
     c = conn.cursor()
 
     c.execute('''DROP TABLE IF EXISTS files
@@ -536,6 +545,7 @@ def cleanup(site,
                 os.remove(f)
             zipf.close()
 
+            
 def cleanup_all():
     
     site_list = [site_dir for site_dir in os.listdir(obs_directory) if os.path.isdir(os.path.join(obs_directory,site_dir))]
