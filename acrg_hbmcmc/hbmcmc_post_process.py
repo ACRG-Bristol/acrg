@@ -543,6 +543,10 @@ def plot_scale_map(ds_list, lat=None, lon=None, grid=True, clevels=None, diverge
             Expects each data set to contain:
                 x_post_vit - posterior values for each iteration flattened along lat-lon axis.
                              Dimensions = nIt x NGrid (nlat x nlon)
+        lat (data array):
+            Data array of lat values to plot over - must match values in ds exactly
+        lon (data array):
+            Data array of lon values to plot over - must match values in ds exactly
         grid (bool, optional) :
             Whether to plot the posterior on one figure as a grid or on individual plots.
         labels (str/list, optional) :
@@ -604,6 +608,10 @@ def plot_abs_map(ds_list, species, lat=None, lon=None, grid=True, clevels=None, 
                              Dimensions = nIt x NGrid (nlat x nlon)
                 q_ap       - a priori flux values on a latitude x longitude grid.
                              Dimensions = nlat x nlon
+        lat (data array):
+            Data array of lat values to plot over - must match values in ds exactly
+        lon (data array):
+            Data array of lon values to plot over - must match values in ds exactly
         species (str) :
             Species for the tdmcmc output.
         grid (bool, optional) :
@@ -668,6 +676,10 @@ def plot_diff_map(ds_list, species, lat = None, lon = None, grid=True, clevels=N
                              Dimensions = nIt x NGrid (nlat x nlon)
                 q_ap       - a priori flux values on a latitude x longitude grid.
                              Dimensions = nlat x nlon
+        lat (data array):
+            Data array of lat values to plot over - must match values in ds exactly
+        lon (data array):
+            Data array of lon values to plot over - must match values in ds exactly
         species (str) :
             Species for the tdmcmc output.
         grid (bool, optional) :
