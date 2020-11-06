@@ -1238,10 +1238,6 @@ def moya(flight_name, species='ch4'):
                  dayfirst=True)
         
         df = df.drop(labels=["Lon", "Lon_delta", "Lat", "Lat_delta", "Altitude", "Altitude_delta"], axis = 1)
-             
-#     print("Assuming data is in JST. Check input file. CONVERTING TO UTC.")
-    
-#     df.index = df.index.tz_localize(pytz.timezone("Japan")).tz_convert(None) # Simpler solution
 
     # Sort
     df.sort_index(inplace = True)
@@ -1265,9 +1261,6 @@ def moya(flight_name, species='ch4'):
     
     # Convert to dataset
     ds = xr.Dataset.from_dataframe(df)
-    
-
-#     ds = ds.where((ds[species.upper() + " repeatability"] < 9000), drop = True)
     
     # Add attributes
 
