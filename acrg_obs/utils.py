@@ -22,14 +22,10 @@ import xarray as xr
 from pandas import Timestamp
 import pandas as pd
 import sqlite3
-
-if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
-    acrg_path = os.getenv("ACRG_PATH")
-    obs_directory = os.path.join(data_path, "obs")
-else:
-    from acrg_config.paths import paths
-    acrg_path = paths.acrg
-    obs_directory = paths.obs
+import pathlib
+from acrg_config.paths import paths
+acrg_path = paths.acrg
+obs_directory = paths.obs
 
 # Output unit strings (upper case for matching)
 unit_species = {"CO2": "1e-6",
@@ -381,7 +377,7 @@ def obs_database(data_directory = None):
     Creates an SQLite database in obs folder detailing contents of each file
     
     Args:
-        data_directory (pathlib, optional) : Path to user-defined obs_folder
+        data_directory (pathlib.Path or str, optional) : Path to user-defined obs_folder
     '''
     
     # Directories to exclude from database
@@ -400,7 +396,10 @@ def obs_database(data_directory = None):
     if data_directory is None:
         obs_path = paths.obs
     else:
-        obs_path = data_directory
+        if isinstance(data_directory, pathlib.PurePath):
+            obs_path = data_directory
+        else:
+            obs_path = pathlib.Path(data_directory)
     
     print(f"Reading obs files in {obs_path}")
     

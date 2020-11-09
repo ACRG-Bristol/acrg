@@ -14,6 +14,7 @@ import sys
 import sqlite3
 from acrg_config.paths import paths
 from acrg_utils import is_number
+from acrg_obs.utils import obs_database
 import numexpr as ne
 
 acrg_path = paths.acrg
@@ -120,6 +121,7 @@ def get_single_site(site, species_in,
                     status_flag_unflagged = [0],
                     keep_missing = None,
                     file_path = None,
+                    data_directory = None,
                     calibration_scale = None,
                     verbose = False):
     '''
@@ -165,6 +167,8 @@ def get_single_site(site, species_in,
         file_path (str, optional) :
             Path to file. If this is used, network, inlet and instrument are ignored. site and species are still required.
             Default=None.
+        data_directory (str or pathlib.Path, optional):
+            User-defined obs directory
         calibration_scale (str, optional) :
             Convert to this calibration scale (original scale and new scale must both be in acrg_obs_scale_convert.csv)
     Returns:
@@ -223,8 +227,15 @@ def get_single_site(site, species_in,
 
         c = conn.cursor()
 
-        # Attach the obs database
-        c.execute("ATTACH DATABASE ? as obs", (str(paths.obs / "obs.db"),))
+
+        # Attache the obs database
+        if data_directory is None:
+            # Attach the obs database
+            c.execute("ATTACH DATABASE ? as obs", (str(paths.obs / "obs.db"),))
+        else:
+            # Attach the obs database
+            c.execute("ATTACH DATABASE ? as obs", (str(Path(data_directory) / "obs.db"),))
+            override_defaults = True
 
         # Change some variables for query
         start_date_query = pd.Timestamp(start_date).to_pydatetime()
@@ -232,23 +243,24 @@ def get_single_site(site, species_in,
         species_query = species.replace("-", "").lower()
 
 
-        # Run a couple of initial queries to see whether there are any defaults defined for a particular site
-        df_defaults_for_site = pd.read_sql_query("SELECT * FROM defaults WHERE site = ? COLLATE NOCASE",
-                                                 conn, params = (site,))
-        df_defaults_for_site_species = pd.read_sql_query('''
-                                                         SELECT * FROM defaults 
-                                                         WHERE site = ? COLLATE NOCASE AND 
-                                                         species = ? COLLATE NOCASE
-                                                         ''', 
-                                                         conn, params = (site, species_query))
+        if data_directory is None:
+            # Run a couple of initial queries to see whether there are any defaults defined for a particular site
+            df_defaults_for_site = pd.read_sql_query("SELECT * FROM defaults WHERE site = ? COLLATE NOCASE",
+                                                     conn, params = (site,))
+            df_defaults_for_site_species = pd.read_sql_query('''
+                                                             SELECT * FROM defaults 
+                                                             WHERE site = ? COLLATE NOCASE AND 
+                                                             species = ? COLLATE NOCASE
+                                                             ''', 
+                                                             conn, params = (site, species_query))
 
-        # Check if defaults need to be over-written
-        if (inlet != None or instrument != None or network != None) and len(df_defaults_for_site) >= 1:
-            print("... You've set either an inlet, instrument or network, overriding any defaults.")
-            print("... Best to set all three of these, if you want to avoid ambiguity.")
-            override_defaults = True
-        else:
-            override_defaults = False
+            # Check if defaults need to be over-written
+            if (inlet != None or instrument != None or network != None) and len(df_defaults_for_site) >= 1:
+                print("... You've set either an inlet, instrument or network, overriding any defaults.")
+                print("... Best to set all three of these, if you want to avoid ambiguity.")
+                override_defaults = True
+            else:
+                override_defaults = False
 
         # Read filenames from database
         if len(df_defaults_for_site) == 0 or override_defaults:
@@ -527,16 +539,19 @@ def get_gosat(site, species, max_level,
     
     if max_level is None:
         raise ValueError("'max_level' ARGUMENT REQUIRED FOR SATELLITE OBS DATA")
-            
-    data_directory = obs_directory / "GOSAT" / site
-    files = [f.name for f in data_directory.glob("*.nc")]
+    
+    if data_directory is None:
+        gosat_directory = obs_directory / "GOSAT" / site
+    else:
+        gosat_directory = data_directory / "GOSAT" / site
+    files = [f.name for f in gosat_directory.glob("*.nc")]
 
     files_date = [pd.to_datetime(f.split("_")[2][0:8]) for f in files]
 
     data = []
     for (f, d) in zip(files, files_date):
         if d >= pd.to_datetime(start_date) and d < pd.to_datetime(end_date):
-            with xr.open_dataset(data_directory / f) as fxr:
+            with xr.open_dataset(gosat_directory / f) as fxr:
                 data.append(fxr.load())
     
     if len(data) == 0:
@@ -658,7 +673,7 @@ def get_obs(sites, species,
         max_level (int) : 
             Required for satellite data only. Maximum level to extract up to from within satellite data.
         data_directory (str, optional) :
-            Only for GOSAT data: directory where valid GOSAT data are stored
+            User-defined directory where data is stored. Note that if this is specified, an obs database will be created in this directory.
         file_paths (list of str, optional):
             Paths for specific files to read
         calibration_scale (str, optional) :
@@ -695,13 +710,14 @@ def get_obs(sites, species,
     if type(average) is not list:
         average = [average]*len(sites)
 
-    if (data_directory is None):
-        data_directory = obs_directory
-
     inlet = check_list_and_length(inlet, sites, "inlet")
     average = check_list_and_length(average, sites, "average")
     network = check_list_and_length(network, sites, "network")
     instrument = check_list_and_length(instrument, sites, "instrument")
+
+    if data_directory is not None:
+        # Need to create a database in data_directory
+        obs_database(data_directory = data_directory)
     
     # Get data
     obs = {}
@@ -718,7 +734,7 @@ def get_obs(sites, species,
                 file_path = file_paths[si]
             else:
                 file_path = None
-            
+                        
             obs[site] = get_single_site(site, species, inlet = inlet[si],
                                    start_date = start_date, end_date = end_date,
                                    average = average[si],
@@ -727,7 +743,8 @@ def get_obs(sites, species,
                                    keep_missing = keep_missing,
                                    status_flag_unflagged = status_flag_unflagged[si],
                                    file_path = file_path,
-                                   calibration_scale = calibration_scale)
+                                   calibration_scale = calibration_scale,
+                                   data_directory = data_directory)
 
     # Raise error if units don't match
     units = []

@@ -69,8 +69,11 @@ def test_get_obs_gosat():
     start_date = "20160602"
     end_date = "20160604"
     recreated_data = acrg_obs.get_obs(["GOSAT-UK"], "CH4", start_date, end_date,
-                                      data_directory="files/obs/",
+                                      data_directory=test_dir / "files/obs/",
                                       max_level = 17)
+    
+    # The above function should have created an obs.db file. check that it's there
+    assert (test_dir / "files/obs/obs.db").is_file()
     
     #test the date range is as expected
     assert np.amax(recreated_data["GOSAT-UK"][0].time) < pd.to_datetime(end_date)
@@ -78,6 +81,9 @@ def test_get_obs_gosat():
     assert "mf" in recreated_data["GOSAT-UK"][0].variables
     assert ("mf_repeatability" in recreated_data["GOSAT-UK"][0].variables) or ("mf_variability" in recreated_data["GOSAT-UK"][0].variables)
     assert recreated_data["GOSAT-UK"][0].attrs["species"] == "CH4"
+    
+    # clean up
+    os.remove(test_dir / "files/obs/obs.db")
     
 
 def test_process_utils_attributes():    
