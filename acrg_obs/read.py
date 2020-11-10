@@ -16,6 +16,7 @@ from acrg_config.paths import paths
 from acrg_utils import is_number
 from acrg_obs.utils import obs_database
 import numexpr as ne
+from pathlib import Path
 
 acrg_path = paths.acrg
 obs_directory = paths.obs
@@ -261,6 +262,8 @@ def get_single_site(site, species_in,
                 override_defaults = True
             else:
                 override_defaults = False
+        else:
+            df_defaults_for_site = []
 
         # Read filenames from database
         if len(df_defaults_for_site) == 0 or override_defaults:
