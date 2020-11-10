@@ -83,7 +83,6 @@ def create_CAMS_BC(ds,fp_lat,fp_lon,fp_height,date,domain,species="ch4",outdir=N
     if ds.coords['longitude'].values[lon_w] > min(fp_lon) and lon_w != 0:
         lon_e -= 1
     
-    print("hello1?")
     print("ds, z",ds["z"].dims)
     print("ds, ch4",ds["ch4"].dims)
     
@@ -114,5 +113,4 @@ def create_CAMS_BC(ds,fp_lat,fp_lon,fp_height,date,domain,species="ch4",outdir=N
     vmr_e = CAMS_BC.interplonlat(CAMS_BC.interpheight(east, fp_height, species, lonorlat='latitude'), fp_lat, species, lonorlat='latitude').rename({species : 'vmr_e'}) 
     vmr_w = CAMS_BC.interplonlat(CAMS_BC.interpheight(west, fp_height, species, lonorlat='latitude'), fp_lat, species, lonorlat='latitude').rename({species : 'vmr_w'})      
 
-    print("hello?")
     CAMS_BC.write_CAMS_BC_tonetcdf(vmr_n, vmr_e, vmr_s, vmr_w, date, species, domain, outdir, gridsize)  
