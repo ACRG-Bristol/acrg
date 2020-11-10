@@ -938,7 +938,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
 
                 site_ds_list += [site_ds]
     
-    fp_and_data[site] = xr.merge(site_ds_list)
+        fp_and_data[site] = xr.merge(site_ds_list)
 
     if load_flux:
 
