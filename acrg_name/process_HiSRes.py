@@ -250,6 +250,7 @@ def combine_date(output_base, processed_folder, processed_folder_HR, filename):
     out_directory = output_base#"{}Processed_Fields_files_combined".format(output_base)
     if not os.path.exists(out_directory):
         os.makedirs(out_directory)
+    print("Writing file {}/{}".format(out_directory, filename))
     output_file.to_netcdf("{}/{}".format(out_directory, filename))
     
 def NAEIinEDGAR(species="ch4",
