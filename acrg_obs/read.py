@@ -369,11 +369,11 @@ def get_single_site(site, species_in,
             if pd.Timestamp(end_date) < pd.Timestamp(f[4]):
                 slice_end = pd.Timestamp(end_date) - pd.Timedelta("1 ns")
             else:
-                slice_end = pd.Timestamp(f[4])
+                slice_end = pd.Timestamp(f[4]) - pd.Timedelta("1 ns")
 
         else:
             slice_start = pd.Timestamp(start_date)
-            slice_end = pd.Timestamp(end_date)
+            slice_end = pd.Timestamp(end_date) - pd.Timedelta("1 ns")
 
         if slice_start.round(freq = "T") != pd.Timestamp("1900-01-01") or  slice_end.round(freq = "T") != pd.Timestamp("2100-01-01"):
             print(f"... slicing from {slice_start} to {slice_end}")
