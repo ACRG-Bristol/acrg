@@ -164,8 +164,11 @@ if __name__=="__main__":
     args = parser.parse_args()
     
     config_file = args.config or args.config_file
-    start_date = args.start
-    end_date = args.end
+    command_line_args = {}
+    if args.start:
+        command_line_args["start_date"] = args.start
+    if args.end:
+        command_line_args["end_date"] = args.end
 
     if args.generate == True:
         template_file = os.path.join(acrg_path,"acrg_hbmcmc/config/hbmcmc_input_template.ini")
@@ -189,9 +192,9 @@ if __name__=="__main__":
     mcmc_function = define_mcmc_function(mcmc_type)
     print(f"Using MCMC type: {mcmc_type} - function {mcmc_function.__name__}(...)")
     
-    param = hbmcmc_extract_param(config_file,mcmc_type,start_date=start_date,end_date=end_date)
+    param = hbmcmc_extract_param(config_file,mcmc_type,**command_line_args)
 
-    output.copy_config_file(config_file,param=param,start_date=start_date,end_date=end_date)
+    output.copy_config_file(config_file,param=param,**command_line_args)
 
     mcmc_function(**param)
 

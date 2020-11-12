@@ -66,6 +66,16 @@
                 "data_owner_email": "brett.kuyper@gmail.com"
             }
         },
+        "DJI" : {
+            "gcwerks_site_name": "darjeeling",
+            "long_name": "Darjeeling, India",
+            "inlets": ["any"],
+            "inlet_label": ["any"],
+            "global_attributes": {
+                "data_owner": "Anita Ganesan",
+                "data_owner_email": "anita.ganesan@bristol.ac.uk"
+            }
+        },
         "HFD" : {
             "gcwerks_site_name": "heathfield",
             "inlets": ["100m", "50m"],

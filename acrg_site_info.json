@@ -245,6 +245,18 @@
       "longitude": -64.8788
     }
   },
+  "BOLIVIA-TWIN-OTTER": {
+    "BAS": {
+      "height": [
+        "various"
+      ],
+      "height_name": [
+        "various"
+      ],
+      "long_name": "Bolivia twin otter",
+      "platform": "aircraft"
+    }
+  },
   "BRA": {
     "EC": {
       "height": [
@@ -262,14 +274,10 @@
   "BRW": {
     "NOAA": {
       "height": [
-        "17m",
-        "11m",
-        "5m"
+        "28m"
       ],
       "height_name": [
-        "17magl",
-        "11magl",
-        "5magl"
+        "20magl"
       ],
       "height_station_masl": 11.0,
       "latitude": 71.323,
@@ -529,6 +537,18 @@
       "latitude": 43.167,
       "long_name": "Cape Ochiishi, Japan",
       "longitude": 145.5
+    }
+  },
+  "CONGO-FAAM": {
+    "UMAN": {
+      "height": [
+        "various"
+      ],
+      "height_name": [
+        "various"
+      ],
+      "long_name": "FAAM flights Congo, Uganda, Zambia",
+      "platform": "aircraft"
     }
   },
   "CPS": {
@@ -924,7 +944,7 @@
       "height_station_masl": 72.0,
       "latitude": 33.29244,
       "long_name": "Gosan, Korea",
-      "longitude": 126.1618
+      "longitude": 126.16181
     }
   },
   "HAD": {
@@ -1140,12 +1160,12 @@
         "10m"
       ],
       "height_name": [
-        "10magl"
+        "1000magl"
       ],
       "height_station_masl": 3570.0,
-      "latitude": 46.5475,
+      "latitude": 46.5476,
       "long_name": "Jungfraujoch, Switzerland",
-      "longitude": 7.979167
+      "longitude": 7.9855
     },
     "EUROCOM": {
       "height": [
@@ -1722,9 +1742,9 @@
         "10magl"
       ],
       "height_station_masl": 10.0,
-      "latitude": 32.8328,
+      "latitude": 32.867,
       "long_name": "Scripps Institue of Oceanography, California",
-      "longitude": -117.2713
+      "longitude": -117.257
     }
   },
   "SMO": {
@@ -2223,3 +2243,4 @@
     }
   }
 }
+

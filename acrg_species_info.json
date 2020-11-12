@@ -406,6 +406,13 @@
         "print_string": "HFC-4310MEE", 
         "units": "ppt"
     }, 
+    "HFO-1234yf": {"alt": ["HFO1234yf", "HFO-1234YF", "HFO1234YF","hfo1234yf","hfo-1234yf"],
+        "group": "HFCs", 
+        "long_name": "HFO-1234yf", 
+        "mol_mass": "114.04", 
+        "print_string": "HFO-1234YF", 
+        "units": "ppt"
+    }, 
     "Isoflurane": {"alt": [],
         "group": "Minor", 
         "long_name": "Isoflurane", 
@@ -439,7 +446,9 @@
         "long_name": "Radon-222", 
         "mol_mass": "222.01758", 
         "print_string": "$^{222}$Rn", 
-        "units": "mBq m$^{-3}$"
+        "units": "mBq m$^{-3}$",
+        "lifetime": "3.8232D",
+        "lifetime_reference":"http://www.nucleide.org/DDEP_WG/Nuclides/Rn-222_tables.pdf"
     }, 
     "SF6": {"alt": [],
         "group": "PFCs", 
