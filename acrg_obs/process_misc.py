@@ -1257,9 +1257,9 @@ def moya(flight_name, species='ch4'):
     # remove 9999
     df = df[df[species.upper()]!='']
     
-    # convert to ppb from ppm
-    df[species.upper()] = df[species.upper()]*1000
-    df[species.upper()+ " repeatability"] = df[species.upper()+ " repeatability"]*1000   
+#     # convert to ppb from ppm
+#     df[species.upper()] = df[species.upper()]*1000
+#     df[species.upper()+ " repeatability"] = df[species.upper()+ " repeatability"]*1000   
     
     # Convert to dataset
     ds = xr.Dataset.from_dataframe(df)
