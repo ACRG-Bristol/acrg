@@ -1217,14 +1217,14 @@ def moya(flight_name, species='ch4'):
     Data files from MOYA and ZWAMPS flights
     '''            
     params = {
-        "site" : flight_name,
-        "network":"BAS",
+        "site" : "CONGO-FAAM",
+        "network":"UMAN",
         "scale": {
             "CH4": "WMO-X2004A"},
         "instrument": {
-                "CH4": "LGR-uGGA"},
+                "CH4": "FGGA"},
         "global_attributes" : {
-                "contact": "James France" ,
+                "contact": "Grant Allen" ,
                 "averaging": "1 minute"
                 }
         }
@@ -1238,7 +1238,9 @@ def moya(flight_name, species='ch4'):
                  dayfirst=True)
         
         df = df.drop(labels=["Lon", "Lon_delta", "Lat", "Lat_delta", "Altitude", "Altitude_delta"], axis = 1)
-
+    
+    # change flight name from FAAM flight number in data file to user defined site name
+    flight_name = params["site"].upper()
     # Sort
     df.sort_index(inplace = True)
 
@@ -1273,7 +1275,7 @@ def moya(flight_name, species='ch4'):
    
     # Write file
     nc_filename = output_filename(obs_directory,
-                                  "MOYA-UMan",
+                                  params['network'].upper(),
                                   params["instrument"][species.upper()],
                                   params["site"],
                                   ds.time.to_pandas().index.to_pydatetime()[0],
