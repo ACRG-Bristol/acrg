@@ -1180,18 +1180,6 @@
       "latitude": 46.5476,
       "long_name": "Jungfraujoch, Switzerland",
       "longitude": 7.9855
-    },
-    "EUROCOM": {
-      "height": [
-        "10m"
-      ],
-      "height_name": [
-        "10magl"
-      ],
-      "height_station_masl": 3570.0,
-      "latitude": 46.5475,
-      "long_name": "Jungfraujoch, Switzerland",
-      "longitude": 7.979167
     }
   },
   "KAS": {
