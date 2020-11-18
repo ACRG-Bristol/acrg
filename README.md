@@ -10,7 +10,8 @@ Shared Python code for the Atmospheric Chemistry Research Group (University of B
 - anaconda (recommended)
 - fortran compiler (optional)
 
-The ACRG code is written primarily using python 3. It is recommended to use anaconda, and an environment file is provided to setup a compatible python environment. The TDMCMC section of the repository contains FORTRAN code that must be compiled by the user to be used. Git is required both for obtaining the code and for stamping code outputs with version numbers.
+The ACRG code is written primarily using python 3. It is recommended to use Anaconda and an environment file is provided 
+to setup a compatible python environment. The TDMCMC section of the repository contains FORTRAN code that must be compiled by the user to be used. Git is required both for obtaining the code and for stamping code outputs with version numbers.
 
 ### Installing
 
