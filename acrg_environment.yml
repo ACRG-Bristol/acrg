@@ -3,7 +3,7 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - python=3
+  - python=3.8
   - numpy=1.18.1
   - scipy=1.4.1
   - pandas=1.0.3
@@ -26,6 +26,7 @@ dependencies:
   - xesmf=0.3.0
   - ipython=7.13.0
   - spyder=4.1.1
+  - numexpr=2.7
   - spyder-kernels=1.9.3
   - pip=20.0.2
   - pip:
