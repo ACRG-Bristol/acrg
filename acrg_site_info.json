@@ -1210,6 +1210,20 @@
       "longitude": -80.158
     }
   },
+  "KJN": {
+    "UEXETER": {
+      "height": [
+        "5m"
+      ],
+      "height_name": [
+        "5magl"
+      ],
+      "height_station_masl": 2.0,
+      "latitude": 70.8531,
+      "long_name": "Kjolnes Atmospheric Observatory, Norway",
+      "longitude": 29.2359
+    }
+  },
   "KUM": {
     "NOAA": {
       "height": [
