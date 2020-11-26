@@ -108,11 +108,14 @@ def makeCAMSClimatologyBC(domain,st_date,st_end,
 
 if __name__=="__main__":
 
-    clim_start = "2010-01-01"
-    clim_end = "2019-01-01"
+#     clim_start = "2010-01-01"
+#     clim_end = "2019-01-01"
+
+    clim_start = None
+    clim_end = None
     
-    output_start = "2019-01-01"
-    output_end = "2020-01-01"
+    output_start = "2015-01-01"
+    output_end = "2016-01-01"
 
     domain = "SOUTHAFRICA"
 

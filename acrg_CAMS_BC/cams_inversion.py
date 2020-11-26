@@ -66,7 +66,6 @@ def create_CAMS_BC(ds,fp_lat,fp_lon,fp_height,date,domain,species="ch4",outdir=N
     
     ds = convertCAMSaltitude(ds)
     ds = ds.mean('time')
-    return ds
     ds[species].values *= 1e-9 
     
     #Select the gridcells closest to the edges of the  domain and make sure outside of fp
