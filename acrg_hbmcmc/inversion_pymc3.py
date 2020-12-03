@@ -566,39 +566,9 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
             else:
                 emds = name.name.flux(domain, list(emissions_name.values())[0], start = start_date, end = end_date)
             flux = scalemap*emds.flux.values[:,:,0]
-            
-            # Not sure how it's best to do this if multiple months in emissions 
-            # file. Now it scales a weighted average of a priori emissions
-            # If a priori emissions have frequency of more than monthly then this
-            # needs chaning.
-            aprioriflux = np.zeros_like(area)
-            if emds.flux.values.shape[2] > 1:
-                print("Assuming the inversion is over a year or less and emissions file is monthly")
-                allmonths = pd.date_range(start_date, end_date).month[:-1].values
-                allmonths -= np.min(allmonths)
-                for mi in allmonths:
-                    aprioriflux += emds.flux.values[:,:,mi]*np.sum(allmonths == mi)/len(allmonths)
-            else:
-                aprioriflux = np.squeeze(emds.flux.values)
-            
-            for ci, cntry in enumerate(cntrynames):
-                cntrytottrace = np.zeros(len(steps))
-                cntrytotprior = 0
-                for bf in range(int(np.max(bfarray))+1):
-                    bothinds = np.logical_and(cntrygrid == ci, bfarray==bf)
-                    cntrytottrace += np.sum(area[bothinds].ravel()*aprioriflux[bothinds].ravel()* \
-                                   3600*24*365*molarmass)*outs[:,bf]/unit_factor
-                    cntrytotprior += np.sum(area[bothinds].ravel()*aprioriflux[bothinds].ravel()* \
-                                   3600*24*365*molarmass)/unit_factor
-                cntrymean[ci] = np.mean(cntrytottrace)
-                cntrysd[ci] = np.std(cntrytottrace)
-                cntry68[ci, :] = pm.stats.hpd(cntrytottrace, 0.68)
-                cntry95[ci, :] = pm.stats.hpd(cntrytottrace, 0.95)
-                cntryprior[ci] = cntrytotprior
-
-            
+          
             #Basis functions to save
-            bfarray = np.squeeze(bfds.values)-1
+            bfarray = bfds.values-1
     
             #Calculate country totals           
     
@@ -618,12 +588,12 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
             for ci, cntry in enumerate(cntrynames):
                 cntrytottrace = np.zeros(len(steps))
                 cntrytotprior = 0
-                for bf in range(int(np.max(bfarray))):
+                for bf in range(int(np.max(bfarray))+1):
                     bothinds = np.logical_and(cntrygrid == ci, bfarray==bf)
                     cntrytottrace += np.sum(area[bothinds].ravel()*aprioriflux[bothinds].ravel()* \
                                    3600*24*365*molarmass)*outs[:,bf]/unit_factor
                     cntrytotprior += np.sum(area[bothinds].ravel()*aprioriflux[bothinds].ravel()* \
-                               3600*24*365*molarmass)/unit_factor
+                                   3600*24*365*molarmass)/unit_factor
                 cntrymean[ci] = np.mean(cntrytottrace)
                 cntrysd[ci] = np.std(cntrytottrace)
                 cntry68[ci, :] = pm.stats.hpd(cntrytottrace, 0.68)

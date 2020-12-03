@@ -825,122 +825,47 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
     flux_bc_end = None    
 
     
-
     for i, site in enumerate(sites):
 
-        if network is None:
-            network_site = list(site_info[site].keys())[0]
-        elif not isinstance(network,str):
-            network_site = network[i]
-        else:
-            network_site = network
+        site_ds_list = []
 
-        # Dataframe for this site            
-        site_df = data[site] 
-        # Get time range
-        df_start = min(site_df.index).to_pydatetime()
-        start = dt.datetime(df_start.year, df_start.month, 1, 0, 0)
-        
-        df_end = max(site_df.index).to_pydatetime()
-        month_days = calendar.monthrange(df_end.year, df_end.month)[1]
-        end = dt.datetime(df_end.year, df_end.month, 1, 0, 0) + \
-                dt.timedelta(days = month_days)
-      
-        #Get earliest start and latest end dates from all sites for loading fluxes and bcs
-        if flux_bc_start == None or flux_bc_start > start:
-            flux_bc_start = start
-        if flux_bc_end == None or flux_bc_end < end:
-            flux_bc_end = end
-            
-        # Convert to dataset
-        site_ds = xr.Dataset.from_dataframe(site_df)
-        
-        if site in list(site_modifier.keys()):
-            site_modifier_fp = site_modifier[site]
-        else:    
-            site_modifier_fp = site
-        
-        if height is not None:
-            
-            if type(height) is not dict:
-                print("Height input needs to be a dictionary with {sitename:height}")
-                return None 
-            height_site = height[site] 
-        else:
-            height_site = site_info[site][network_site]["height_name"][0]
-        
-        # Get footprints
+        for site_ds in data[site]:
 
-        site_fp = footprints(site_modifier_fp, fp_directory = fp_directory, 
-                             start = start, end = end,
-                             domain = domain,
-                             species = species,
-                             height = height_site,
-                             network = network_site,
-                             HiTRes = HiTRes,
-                             HiSRes = HiSRes)                         
-               
-        if site_fp is not None:                        
-            # If satellite data, check that the max_level in the obs and the max level in the processed FPs are the same
-            # Set tolerance tin time to merge footprints and data   
-            # This needs to be made more general to 'satellite', 'aircraft' or 'ship'                
+            if network is None:
+                network_site = list(site_info[site].keys())[0]
+            elif not isinstance(network,str):
+                network_site = network[i]
+            else:
+                network_site = network
+
+            # Dataframe for this site            
+            # Get time range
+            df_start = pd.to_datetime(min(site_ds.time.values)) #.to_pydatetime()
+            start = dt.datetime(df_start.year, df_start.month, 1, 0, 0)
+
+            df_end = pd.to_datetime(max(site_ds.time.values)) #max(site_df.index).to_pydatetime()
+            month_days = calendar.monthrange(df_end.year, df_end.month)[1]
+            end = dt.datetime(df_end.year, df_end.month, 1, 0, 0) + \
+                    dt.timedelta(days = month_days)
+
+            #Get earliest start and latest end dates from all sites for loading fluxes and bcs
+            if flux_bc_start == None or flux_bc_start > start:
+                flux_bc_start = start
+            if flux_bc_end == None or flux_bc_end < end:
+                flux_bc_end = end
+
+
+            ## Convert to dataset
+            #site_ds = xr.Dataset.from_dataframe(site_df)
+            if site in list(site_modifier.keys()):
+                site_modifier_fp = site_modifier[site]
+            else:    
+                site_modifier_fp = site
 
             if "platform" in site_info[site][network_site]:
                 platform = site_info[site][network_site]["platform"]
             else:
                 platform = None
-
-            if platform == "satellite":
-            #if "GOSAT" in site.upper():
-                ml_obs = site_df.max_level
-                ml_fp = site_fp.max_level
-                tolerance = 60e9 # footprints must match data with this tolerance in [ns]
-                if ml_obs != ml_fp:
-                    print("ERROR: MAX LEVEL OF SAT OBS DOES NOT EQUAL MAX LEVEL IN FP")
-                    print("max_level_fp =",ml_fp)
-                    print("max_level_obs =",ml_obs)
-                    return None
-            elif "GAUGE-FERRY" in site.upper():
-                tolerance = '5min'
-            elif "GAUGE-FAAM" in site.upper():
-                tolerance = '1min'    
-            else:
-                tolerance = None
-            
-            #gets number of unsorted times in time dimensions, sorting is expensive this is cheap
-            if np.sum(np.diff(site_fp.time.values.astype(float))<0) > 0:
-                site_fp = site_fp.sortby("time")
-            
-            site_ds, site_fp = align_datasets(site_ds, site_fp, platform=platform, resample_to_ds1=resample_to_data)
-                       
-            site_ds = combine_datasets(site_ds, site_fp,
-                                       method = "ffill",
-                                       tolerance = tolerance)
-
-            #transpose to keep time in the last dimension position in case it has been moved in resample
-            expected_dim_order = ['height','index','lat_high','lon_high','lat','lon','lev','time','H_back']
-            for d in expected_dim_order[:]:
-                if d not in list(site_ds.dims.keys()):
-                    expected_dim_order.remove(d)
-            site_ds = site_ds.transpose(*expected_dim_order)
-                
-            # If units are specified, multiply by scaling factor
-            if ".units" in attributes:
-                site_ds.update({'fp' : (site_ds.fp.dims, old_div(site_ds.fp, data[".units"]))})
-                if HiTRes:
-                    site_ds.update({'fp_HiTRes' : (site_ds.fp_HiTRes.dims, 
-                                                   old_div(site_ds.fp_HiTRes, data[".units"]))})
-                if 'fp_low' in site_ds.keys():
-                    site_ds.update({'fp_low' : (site_ds.fp_low.dims, old_div(site_ds.fp_low, data[".units"]))})
-                    site_ds.update({'fp_high' : (site_ds.fp_high.dims, old_div(site_ds.fp_high, data[".units"]))})
-        
-            # Resample, if required
-#             if average[site] is not None:
-#                 site_ds = site_ds.resample(indexer={'time':average[site]})
-            
-            fp_and_data[site] = site_ds
-=======
->>>>>>> develop
             
             if height is not None:
                 if type(height) is not dict:
@@ -963,7 +888,8 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                                  species = species,
                                  height = height_site,
                                  network = network_site,
-                                 HiTRes = HiTRes)
+                                 HiTRes = HiTRes,
+                                 HiSRes = HiSRes)
 
             mfattrs = [key for key in site_ds.mf.attrs]
             if "units" in mfattrs:
@@ -1002,7 +928,6 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                                            method = "ffill",
                                            tolerance = tolerance)
 
-                        
                 #transpose to keep time in the last dimension position in case it has been moved in resample
                 expected_dim_order = ['height','index','lat_high','lon_high','lat','lon','lev','time','H_back']
                 for d in expected_dim_order[:]:
@@ -1011,14 +936,15 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                 site_ds = site_ds.transpose(*expected_dim_order)
                     
                 # If units are specified, multiply by scaling factor
-                if units:
-                    site_ds.update({'fp' : (site_ds.fp.dims, old_div(site_ds.fp, units))})
+                if ".units" in attributes:
+                    site_ds.update({'fp' : (site_ds.fp.dims, old_div(site_ds.fp, data[".units"]))})
                     if HiTRes:
                         site_ds.update({'fp_HiTRes' : (site_ds.fp_HiTRes.dims, 
-                                                       old_div(site_ds.fp_HiTRes, units))})
+                                                       old_div(site_ds.fp_HiTRes, data[".units"]))})
                     if 'fp_low' in site_ds.keys():
-                        site_ds.update({'fp_low' : (site_ds.fp_low.dims, old_div(site_ds.fp_low, units))})
-                        site_ds.update({'fp_high' : (site_ds.fp_high.dims, old_div(site_ds.fp_high, units))})
+                        site_ds.update({'fp_low' : (site_ds.fp_low.dims, old_div(site_ds.fp_low, data[".units"]))})
+                        site_ds.update({'fp_high' : (site_ds.fp_high.dims, old_div(site_ds.fp_high, data[".units"]))})
+    
 
     #             # Resample, if required
     #             if average[site] is not None:
