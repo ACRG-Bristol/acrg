@@ -175,6 +175,20 @@
       "longitude": -115.918255
     }
   },
+  "BCOB": {
+    "AGAGE": {
+      "height": [
+        "10m"
+      ],
+      "height_name": [
+        "10magl"
+      ],
+      "height_station_masl": 0.0,
+      "latitude": 22.17,
+      "long_name": "Bangladesh Climate Observatory - Bhola Island",
+      "longitude": 90.71
+    }
+  },
   "BHD": {
     "NOAA": {
       "height": [
@@ -243,6 +257,18 @@
       "latitude": 32.2647,
       "long_name": "Tudor Hill, Bermuda",
       "longitude": -64.8788
+    }
+  },
+  "BOLIVIA-TWIN-OTTER": {
+    "BAS": {
+      "height": [
+        "various"
+      ],
+      "height_name": [
+        "various"
+      ],
+      "long_name": "Bolivia twin otter",
+      "platform": "aircraft"
     }
   },
   "BRA": {
@@ -525,6 +551,18 @@
       "latitude": 43.167,
       "long_name": "Cape Ochiishi, Japan",
       "longitude": 145.5
+    }
+  },
+  "CONGO-FAAM": {
+    "UMAN": {
+      "height": [
+        "various"
+      ],
+      "height_name": [
+        "various"
+      ],
+      "long_name": "FAAM flights Congo, Uganda, Zambia",
+      "platform": "aircraft"
     }
   },
   "CPS": {
@@ -1142,18 +1180,6 @@
       "latitude": 46.5476,
       "long_name": "Jungfraujoch, Switzerland",
       "longitude": 7.9855
-    },
-    "EUROCOM": {
-      "height": [
-        "10m"
-      ],
-      "height_name": [
-        "10magl"
-      ],
-      "height_station_masl": 3570.0,
-      "latitude": 46.5475,
-      "long_name": "Jungfraujoch, Switzerland",
-      "longitude": 7.979167
     }
   },
   "KAS": {
@@ -1182,6 +1208,20 @@
       "latitude": 25.6654,
       "long_name": "Key Biscane, Florida",
       "longitude": -80.158
+    }
+  },
+  "KJN": {
+    "UEXETER": {
+      "height": [
+        "5m"
+      ],
+      "height_name": [
+        "5magl"
+      ],
+      "height_station_masl": 2.0,
+      "latitude": 70.8531,
+      "long_name": "Kjolnes Atmospheric Observatory, Norway",
+      "longitude": 29.2359
     }
   },
   "KUM": {
@@ -1310,6 +1350,20 @@
       "latitude": 43.977,
       "long_name": "Mt. Bachelor Observatory, USA",
       "longitude": -121.686
+    }
+  },
+"MCOH": {
+    "AGAGE": {
+      "height": [
+        "15m"
+      ],
+      "height_name": [
+        "15magl"
+      ],
+      "height_station_masl": 1.5,
+      "latitude": 6.77643,
+      "long_name": "Maldives Climate Observatory - Hanimaadhoo",
+      "longitude": 73.18314
     }
   },
   "MDO": {
@@ -1450,7 +1504,7 @@
     "MPI": {
         "long_name" : "Namib Desert Atmospheric Observatory",
         "height": ["21m"],
-        "height_name": ["21m"],
+        "height_name": ["21magl"],
         "height_station_masl": 408.0,
         "latitude": -23.563,
         "longitude": 15.046}

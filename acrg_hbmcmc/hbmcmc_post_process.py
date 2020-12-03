@@ -37,6 +37,7 @@ from matplotlib.patches import Polygon
 from matplotlib.colors import BoundaryNorm
 from matplotlib.colors import Normalize
 from matplotlib import ticker
+import matplotlib.ticker as mticker
 from cartopy.feature import BORDERS
 from collections import OrderedDict
 import datetime as dt
@@ -353,7 +354,14 @@ def plot_map(data, lon, lat, clevels=None, divergeCentre = None, cmap=plt.cm.RdB
     ax.coastlines()
     if borders:
         ax.add_feature(BORDERS,linewidth=0.5)
-
+        
+    gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True,
+              linewidth=0, color='gray', linestyle='-')
+    gl.xlabels_top = False
+    gl.ylabels_right = False
+#     gl.xlocator = mticker.FixedLocator([-66, -65, -64, -63])
+#     gl.ylocator = mticker.FixedLocator([-15, -14, -13, -12])
+    
     if clevels is None:
         #print "Warning: using default contour levels. Include clevels keyword to change"
         #clevels = np.arange(-2., 2.1, 0.1)
@@ -377,7 +385,7 @@ def plot_map(data, lon, lat, clevels=None, divergeCentre = None, cmap=plt.cm.RdB
         else:
             norm = unbiasedDivergingCmap(data, zero=divergeCentre, minValue=clevels[0], maxValue=clevels[-1])
         cs = ax.pcolormesh(lons, lats, data,cmap=cmap, norm=norm, transform=ccrs.PlateCarree())
-        cb = plt.colorbar(cs, ax=ax, orientation='horizontal', pad=0.05, extend=extend)
+        cb = plt.colorbar(cs, ax=ax, orientation='horizontal', pad=0.1, extend=extend)
                 
     if label is not None:        
         cb.set_label(label)#,fontsize=14) 
@@ -519,7 +527,7 @@ def plot_map_mult(data_all, lon, lat, grid=True, subplot="auto", clevels=None, d
                  cmap=cmap, borders=borders, label=labels[i], smooth=smooth, stations=stations[i],
                  title=title, extend=extend, out_filename=out_filename, show=True, ax=ax, fig=fig)
 
-def plot_scale_map(ds_list, grid=True, clevels=None, divergeCentre=None, centre_zero=False,
+def plot_scale_map(ds_list, lat=None, lon=None, grid=True, clevels=None, divergeCentre=None, centre_zero=False,
                    cmap=plt.cm.YlGnBu, borders=True, labels=None, plot_stations=True,
                    use_site_info=False,
                    smooth=False, out_filename=None, fignum=None, title=None, extend="both",
@@ -535,6 +543,10 @@ def plot_scale_map(ds_list, grid=True, clevels=None, divergeCentre=None, centre_
             Expects each data set to contain:
                 x_post_vit - posterior values for each iteration flattened along lat-lon axis.
                              Dimensions = nIt x NGrid (nlat x nlon)
+        lat (data array):
+            Data array of lat values to plot over - must match values in ds exactly
+        lon (data array):
+            Data array of lon values to plot over - must match values in ds exactly
         grid (bool, optional) :
             Whether to plot the posterior on one figure as a grid or on individual plots.
         labels (str/list, optional) :
@@ -563,16 +575,23 @@ def plot_scale_map(ds_list, grid=True, clevels=None, divergeCentre=None, centre_
         stations = [define_stations(ds,use_site_info=use_site_info) for ds in ds_list]
     else:
         stations = None
+        
+    if lat is None:
+        lat = ds_list[0]["lat"]
+    if lon is None:
+        lon=ds_list[0]["lon"]
+        
+    ds_list = [ds.sel(lon=slice(np.min(lon.values),np.max(lon.values)),lat=slice(np.min(lat.values),np.max(lat.values))) for ds in ds_list]
     x_post_mean_list = [ds.scalingmean for ds in ds_list]
     
-    plot_map_mult(x_post_mean_list, lon=ds_list[0]["lon"], lat=ds_list[0]["lat"], grid=grid,
+    plot_map_mult(x_post_mean_list, lon=lon, lat=lat, grid=grid,
                   clevels=clevels, divergeCentre=divergeCentre, centre_zero=centre_zero, 
                   cmap=cmap, labels=labels, smooth=smooth, out_filename=out_filename, 
                   stations=stations, fignum=fignum, 
                   title=title, extend=extend, figsize=figsize)
     return x_post_mean_list
 
-def plot_abs_map(ds_list, species, grid=True, clevels=None, divergeCentre=None, 
+def plot_abs_map(ds_list, species, lat=None, lon=None, grid=True, clevels=None, divergeCentre=None, 
                    cmap=plt.cm.YlGnBu, borders=True, labels=None, plot_stations=True,
                    use_site_info=False,
                    smooth=False, out_filename=None, fignum=None, title=None, extend="both",
@@ -589,6 +608,10 @@ def plot_abs_map(ds_list, species, grid=True, clevels=None, divergeCentre=None,
                              Dimensions = nIt x NGrid (nlat x nlon)
                 q_ap       - a priori flux values on a latitude x longitude grid.
                              Dimensions = nlat x nlon
+        lat (data array):
+            Data array of lat values to plot over - must match values in ds exactly
+        lon (data array):
+            Data array of lon values to plot over - must match values in ds exactly
         species (str) :
             Species for the tdmcmc output.
         grid (bool, optional) :
@@ -619,15 +642,23 @@ def plot_abs_map(ds_list, species, grid=True, clevels=None, divergeCentre=None,
         stations = [define_stations(ds,use_site_info=use_site_info) for ds in ds_list]
     else:
         stations = None
+        
+    if lat is None:
+        lat = ds_list[0]["lat"]
+    if lon is None:
+        lon=ds_list[0]["lon"]
+        
+    ds_list = [ds.sel(lon=slice(np.min(lon.values),np.max(lon.values)),lat=slice(np.min(lat.values),np.max(lat.values))) for ds in ds_list]
     q_abs_list = [convert.mol2g(ds.fluxmean,species) for ds in ds_list]
     
-    plot_map_mult(q_abs_list, lon=ds_list[0]["lon"], lat=ds_list[0]["lat"], grid=grid,
+        
+    plot_map_mult(q_abs_list, lon=lon, lat=lat, grid=grid,
                   clevels=clevels, divergeCentre=divergeCentre, cmap=cmap, labels=labels, 
                   smooth=smooth, out_filename=out_filename, stations=stations, fignum=fignum, 
                   title=title, extend=extend, figsize=figsize)
     return q_abs_list
 
-def plot_diff_map(ds_list, species, grid=True, clevels=None, divergeCentre=None, 
+def plot_diff_map(ds_list, species, lat = None, lon = None, grid=True, clevels=None, divergeCentre=None, 
                    centre_zero=True,cmap=plt.cm.RdBu_r, borders=True, labels=None, plot_stations=True,
                    use_site_info=False,
                    smooth=False, out_filename=None, fignum=None, title=None, extend="both",
@@ -645,6 +676,10 @@ def plot_diff_map(ds_list, species, grid=True, clevels=None, divergeCentre=None,
                              Dimensions = nIt x NGrid (nlat x nlon)
                 q_ap       - a priori flux values on a latitude x longitude grid.
                              Dimensions = nlat x nlon
+        lat (data array):
+            Data array of lat values to plot over - must match values in ds exactly
+        lon (data array):
+            Data array of lon values to plot over - must match values in ds exactly
         species (str) :
             Species for the tdmcmc output.
         grid (bool, optional) :
@@ -675,10 +710,16 @@ def plot_diff_map(ds_list, species, grid=True, clevels=None, divergeCentre=None,
         stations = [define_stations(ds,use_site_info=use_site_info) for ds in ds_list]
     else:
         stations = None
-    
+
+    if lat is None:
+        lat = ds_list[0]["lat"]
+    if lon is None:
+        lon=ds_list[0]["lon"]
+        
+    ds_list = [ds.sel(lon=slice(np.min(lon.values),np.max(lon.values)),lat=slice(np.min(lat.values),np.max(lat.values))) for ds in ds_list]        
     q_diff_list = [convert.mol2g((ds.fluxmean - ds.fluxapriori),species) for ds in ds_list]
-    
-    plot_map_mult(q_diff_list, lon=ds_list[0]["lon"], lat=ds_list[0]["lat"], grid=grid,
+        
+    plot_map_mult(q_diff_list, lon=lon, lat=lat, grid=grid,
                   clevels=clevels, divergeCentre=divergeCentre, centre_zero=centre_zero,
                   cmap=cmap, labels=labels, smooth=smooth, out_filename=out_filename, stations=stations, fignum=fignum, 
                   title=title, extend=extend, figsize=figsize)
@@ -743,7 +784,7 @@ def country_emissions(ds, species, domain, country_file=None, country_unit_prefi
     for ci, cntry in enumerate(cntrynames):
         cntrytottrace = np.zeros(len(steps))
         cntrytotprior = 0
-        for bf in range(int(np.max(bfarray))):
+        for bf in range(int(np.max(bfarray))+1):
             bothinds = np.logical_and(cntrygrid == ci, bfarray.values==bf)
             cntrytottrace += np.sum(area[bothinds].ravel()*aprioriflux.values[bothinds].ravel()* \
                            3600*24*365*molarmass)*outs[:,bf]/unit_factor
@@ -1091,3 +1132,4 @@ def check_missing_dates(filenames,dates,labels=[]):
         return dates,labels
     else:
         return dates
+

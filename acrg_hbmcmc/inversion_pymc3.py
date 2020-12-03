@@ -341,7 +341,7 @@ def inferpymc3_withDrift(Hx, Hbc, Y, error, siteindicator, sigma_freq_index, dri
 def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence, 
                                Hx, Hbc, Y, error, Ytrace,
                                step1, step2, 
-                               xprior, bcprior, sigprior, Ytime, siteindicator, sigma_freq_index, data, fp_data,
+                               xprior, bcprior, sigprior, Ytime, siteindicator, sigma_freq_index,fp_data,
                                emissions_name, domain, species, sites,
                                start_date, end_date, outputname, outputpath,
                                basis_directory, country_file, country_unit_prefix, method="base", **kwargs):
@@ -404,8 +404,6 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                 same length at Y.
             sigma_freq_index (array):
                 Array of integer indexes that converts time into periods
-            data (data array):
-                Measurement data from get_obs function.
             fp_data (dict):
                 Output from footprints_data_merge + sensitivies
             emissions_name (dict): 
@@ -569,6 +567,36 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                 emds = name.name.flux(domain, list(emissions_name.values())[0], start = start_date, end = end_date)
             flux = scalemap*emds.flux.values[:,:,0]
             
+            # Not sure how it's best to do this if multiple months in emissions 
+            # file. Now it scales a weighted average of a priori emissions
+            # If a priori emissions have frequency of more than monthly then this
+            # needs chaning.
+            aprioriflux = np.zeros_like(area)
+            if emds.flux.values.shape[2] > 1:
+                print("Assuming the inversion is over a year or less and emissions file is monthly")
+                allmonths = pd.date_range(start_date, end_date).month[:-1].values
+                allmonths -= np.min(allmonths)
+                for mi in allmonths:
+                    aprioriflux += emds.flux.values[:,:,mi]*np.sum(allmonths == mi)/len(allmonths)
+            else:
+                aprioriflux = np.squeeze(emds.flux.values)
+            
+            for ci, cntry in enumerate(cntrynames):
+                cntrytottrace = np.zeros(len(steps))
+                cntrytotprior = 0
+                for bf in range(int(np.max(bfarray))+1):
+                    bothinds = np.logical_and(cntrygrid == ci, bfarray==bf)
+                    cntrytottrace += np.sum(area[bothinds].ravel()*aprioriflux[bothinds].ravel()* \
+                                   3600*24*365*molarmass)*outs[:,bf]/unit_factor
+                    cntrytotprior += np.sum(area[bothinds].ravel()*aprioriflux[bothinds].ravel()* \
+                                   3600*24*365*molarmass)/unit_factor
+                cntrymean[ci] = np.mean(cntrytottrace)
+                cntrysd[ci] = np.std(cntrytottrace)
+                cntry68[ci, :] = pm.stats.hpd(cntrytottrace, 0.68)
+                cntry95[ci, :] = pm.stats.hpd(cntrytottrace, 0.95)
+                cntryprior[ci] = cntrytotprior
+
+            
             #Basis functions to save
             bfarray = np.squeeze(bfds.values)-1
     
@@ -654,24 +682,24 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         
         outds.fluxmean.attrs["units"] = "mol/m2/s"
         outds.fluxapriori.attrs["units"] = "mol/m2/s"
-        outds.Yobs.attrs["units"] = str(data[".units"])+" "+"mol/mol"
-        outds.Yapriori.attrs["units"] = str(data[".units"])+" "+"mol/mol"
-        outds.Ymodmean.attrs["units"] = str(data[".units"])+" "+"mol/mol"
-        outds.Ymod95.attrs["units"] = str(data[".units"])+" "+"mol/mol"
-        outds.Ymod68.attrs["units"] = str(data[".units"])+" "+"mol/mol"
-        outds.YmodmeanBC.attrs["units"] = str(data[".units"])+" "+"mol/mol"
-        outds.Ymod95BC.attrs["units"] = str(data[".units"])+" "+"mol/mol"
-        outds.Ymod68BC.attrs["units"] = str(data[".units"])+" "+"mol/mol"
-        outds.YaprioriBC.attrs["units"] = str(data[".units"])+" "+"mol/mol"
-        outds.Yerror.attrs["units"] = str(data[".units"])+" "+"mol/mol"
+        outds.Yobs.attrs["units"] = str(fp_data[".units"])+" "+"mol/mol"
+        outds.Yapriori.attrs["units"] = str(fp_data[".units"])+" "+"mol/mol"
+        outds.Ymodmean.attrs["units"] = str(fp_data[".units"])+" "+"mol/mol"
+        outds.Ymod95.attrs["units"] = str(fp_data[".units"])+" "+"mol/mol"
+        outds.Ymod68.attrs["units"] = str(fp_data[".units"])+" "+"mol/mol"
+        outds.YmodmeanBC.attrs["units"] = str(fp_data[".units"])+" "+"mol/mol"
+        outds.Ymod95BC.attrs["units"] = str(fp_data[".units"])+" "+"mol/mol"
+        outds.Ymod68BC.attrs["units"] = str(fp_data[".units"])+" "+"mol/mol"
+        outds.YaprioriBC.attrs["units"] = str(fp_data[".units"])+" "+"mol/mol"
+        outds.Yerror.attrs["units"] = str(fp_data[".units"])+" "+"mol/mol"
         outds.countrymean.attrs["units"] = country_units
         outds.country68.attrs["units"] = country_units
         outds.country95.attrs["units"] = country_units
         outds.countrysd.attrs["units"] = country_units
         outds.countryprior.attrs["units"] = country_units
-        outds.xsensitivity.attrs["units"] = str(data[".units"])+" "+"mol/mol"
-        outds.bcsensitivity.attrs["units"] = str(data[".units"])+" "+"mol/mol"
-        outds.sigtrace.attrs["units"] = str(data[".units"])+" "+"mol/mol"
+        outds.xsensitivity.attrs["units"] = str(fp_data[".units"])+" "+"mol/mol"
+        outds.bcsensitivity.attrs["units"] = str(fp_data[".units"])+" "+"mol/mol"
+        outds.sigtrace.attrs["units"] = str(fp_data[".units"])+" "+"mol/mol"
         
         outds.Yobs.attrs["longname"] = "observations"
         outds.Yerror.attrs["longname"] = "measurement error"

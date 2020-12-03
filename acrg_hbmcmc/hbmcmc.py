@@ -189,15 +189,24 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                                         flux_directory = flux_directory,
                                         emissions_name=emissions_name)
     
-    if len(data[sites[0]].mf) == 0:
-        print("No observations for %s to %s" % (start_date, end_date))
-        return
+    for site in sites:
+        for j in range(len(data[site])):
+            if len(data[site][j].mf) == 0:
+                print("No observations for %s to %s for %s" % (start_date, end_date, site))
     if sites[0] not in fp_all.keys():
         print("No footprints for %s to %s" % (start_date, end_date))
         return
     
     print('Running for %s to %s' % (start_date, end_date))
     
+    #If site contains measurement errors given as repeatability and variability, 
+    #place all in repeatability variable and drop variability
+    for site in sites:
+        if "mf_variability" in fp_all[site] and "mf_repeatability" in fp_all[site]:
+            fp_all[site]["mf_repeatability"][np.isnan(fp_all[site]["mf_repeatability"])] = \
+                fp_all[site]["mf_variability"][np.isfinite(fp_all[site]["mf_variability"])]
+            fp_all[site] = fp_all[site].drop_vars("mf_variability")
+
     #Add measurement variability in averaging period to measurement error
     if averagingerror:
         fp_all = setup.addaveragingerror(fp_all, sites, species, start_date, end_date,
@@ -239,10 +248,10 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     Y = np.zeros(0)
     siteindicator = np.zeros(0)
     for si, site in enumerate(sites):
-        if 'vmf' in fp_data[site]:           
-            error = np.concatenate((error, fp_data[site].vmf.values))
-        if 'dmf' in fp_data[site]:
-            error = np.concatenate((error, fp_data[site].dmf.values))
+        if 'mf_repeatability' in fp_data[site]:           
+            error = np.concatenate((error, fp_data[site].mf_repeatability.values))
+        if 'mf_variability' in fp_data[site]:
+            error = np.concatenate((error, fp_data[site].mf_variability.values))
             
         Y = np.concatenate((Y,fp_data[site].mf.values)) 
         siteindicator = np.concatenate((siteindicator, np.ones_like(fp_data[site].mf.values)*si))
@@ -290,7 +299,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     output_file = mcmc.inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence, 
                            Hx, Hbc, Y, error, Ytrace,
                            step1, step2, 
-                           xprior, bcprior, sigprior,Ytime, siteindicator, sigma_freq_index, data, fp_data,
+                           xprior, bcprior, sigprior,Ytime, siteindicator, sigma_freq_index, fp_data,
                            emissions_name, domain, species, sites,
                            start_date, end_date, outputname, outputpath,
                            basis_directory, country_file, country_unit_prefix, method=method, **process_kwargs)

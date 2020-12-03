@@ -637,7 +637,7 @@ def get_single_site(site, species_in,
         return None
 
 
-def get_satellite(site, species, network, max_level,
+def get_gosat(site, species, max_level,
               start_date = None, end_date = None,
               data_directory = None):
     """retrieves obervations for a set of sites and species between start and 
@@ -671,11 +671,9 @@ def get_satellite(site, species, network, max_level,
     if max_level is None:
         raise ValueError("'max_level' ARGUMENT REQUIRED FOR SATELLITE OBS DATA")
             
-    data_directory = os.path.join(data_directory, network)
-    print("Searching for files in {}".format(data_directory))
+    data_directory = os.path.join(data_directory, "GOSAT", site)
     files = glob.glob(os.path.join(data_directory, '*.nc'))
     files = [os.path.split(f)[-1] for f in files]
-    print("Reading: {}".format("\n".join(files)))
 
     files_date = [pd.to_datetime(f.split("_")[2][0:8]) for f in files]
 
@@ -696,12 +694,9 @@ def get_satellite(site, species, network, max_level,
                     (1.-data.xch4_averaging_kernel[dict(lev=list(lower_levels))])* \
                     data.ch4_profile_apriori[dict(lev=list(lower_levels))]).sum(dim = "lev")
                     
-    upper_levels = list(range(max_level, len(data.lev.values)))
-    if len(upper_levels) > 0:           
-        prior_upper_level_factor = (data.pressure_weights[dict(lev=list(upper_levels))]* \
-                        data.ch4_profile_apriori[dict(lev=list(upper_levels))]).sum(dim = "lev")
-    else:
-        prior_upper_level_factor = 0.
+    upper_levels = list(range(max_level, len(data.lev.values)))            
+    prior_upper_level_factor = (data.pressure_weights[dict(lev=list(upper_levels))]* \
+                    data.ch4_profile_apriori[dict(lev=list(upper_levels))]).sum(dim = "lev")
                 
     data["mf_prior_factor"] = prior_factor
     data["mf_prior_upper_level_factor"] = prior_upper_level_factor
@@ -733,7 +728,7 @@ def get_satellite(site, species, network, max_level,
     if species.upper() == "CO2":
         data.mf.units = 1e-6
 
-    data.mf.scale = network
+    data.mf.scale = "GOSAT"
 
     return data
     
@@ -839,8 +834,6 @@ def get_obs(sites, species,
 
     if (data_directory is None):
         data_directory = obs_directory
-    if type(data_directory) is not list:
-        data_directory = [data_directory]*len(sites)
 
     inlet = check_list_and_length(inlet, sites, "inlet")
     average = check_list_and_length(average, sites, "average")
@@ -855,25 +848,11 @@ def get_obs(sites, species,
     
     for si, site in enumerate(sites):
         print("Getting %s data for %s..." %(species, site))
-        #if "GOSAT" in site.upper():
-
-        if network[si] is None:
-            network[si] = list(site_info[site].keys())[0]
-            print("... assuming network is %s" %network[si])
-        elif network[si] not in list(site_info[site].keys()):
-            print("Error: Available networks for site %s are %s." % (site, list(site_info[site].keys())))
-            print("       You'll need to add network %s to acrg_site_info.json" %network)
-            return
-        if "platform" in list(site_info[site][network[si]].keys()):
-            platform = site_info[site][network[si]]["platform"]
-        else:
-            platform = None
-
-        if platform == "satellite":
-            data = get_satellite(site, species, network = network[si],
+        if "GOSAT" in site.upper():
+            data = get_gosat(site, species,
                        start_date = start_date, end_date = end_date,
                        max_level = max_level,
-                       data_directory = data_directory[si])
+                       data_directory = data_directory)
         else:
             data = get_single_site(site, species, inlet = inlet[si],
                                    start_date = start_date, end_date = end_date,
@@ -883,27 +862,16 @@ def get_obs(sites, species,
                                    version = version[si],
                                    keep_missing = keep_missing,
                                    status_flag_unflagged = status_flag_unflagged[si],
-                                   data_directory = data_directory[si])
+                                   data_directory = data_directory)
         
         if data is None:
-            if keep_missing:
-                timeindex = pd.date_range(start_date,
-                                          pd.to_datetime(end_date) - pd.to_timedelta("1 ns"),
-                                          freq=average[si])
-                empty_timeseries = pd.DataFrame({"time":timeindex,
-                                                 "mf":np.array([np.nan]*len(timeindex)),
-                                                 "vmf":np.array([np.nan]*len(timeindex))})
-                empty_timeseries.set_index('time', inplace=True)
-                obs[site] = empty_timeseries
-                units.append(1e-9)
-            else:
-                obs[site] = None
-                units.append(None)
+            obs[site] = None
+            units.append(None)
             scales.append(None)
         else:    
             # reset mutli index into the expected standard index
             obs[site] = data.reset_index().set_index("time")
-            if platform == "satellite":
+            if "GOSAT" in site.upper():
                 if data is not None:
                     obs[site].max_level = data.max_level
             units.append(data.mf.units)
