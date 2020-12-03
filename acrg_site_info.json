@@ -2013,7 +2013,7 @@
     }
   },
   "TMB": {
-    "CRANFIELD": {
+    "LGHG": {
       "height": [
         "5m"
       ],
@@ -2369,7 +2369,7 @@
     }
   },
   "NPL": {
-    "NPL": {
+    "LGHG": {
       "height": [
         "17m"
       ], 
@@ -2410,7 +2410,7 @@
       "longitude": -2.600936
     }
   },
-  "LGHG-UW": {
+  "LUW": {
     "LGHG": {
       "height": [
         "38m"
@@ -2423,7 +2423,7 @@
       "longitude": -0.3244
     }
   },
-  "LGHG-SJ": {
+  "LSJ": {
     "LGHG": {
       "height": [
         "20m"
@@ -2436,7 +2436,7 @@
       "longitude": -0.1899
     }
   },
-  "LGHG-HFT": {
+  "LHFT": {
     "LGHG": {
       "height": [
         "42m"
@@ -2449,7 +2449,7 @@
       "longitude": 0.1745
     }
   },
-  "LGHG-SM": {
+  "LSM": {
     "LGHG": {
       "height": [
         "35m"
