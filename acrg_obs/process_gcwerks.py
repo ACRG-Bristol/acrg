@@ -1041,13 +1041,14 @@ def array_job(array_index):
     
     # Return if index is too large for the above list
     if array_index >= len(instrument):
-        return
+        return 0
     
     # Run the relevant script for each station and instrument
     wrapper(instrument[array_index-1][0], instrument[array_index-1][1])
 
     # Cleanup for particular station (cleans up everything, not just most recently processed instrument)
     cleanup(instrument[array_index-1][1][0])
+
     
 if __name__ == "__main__":
 
