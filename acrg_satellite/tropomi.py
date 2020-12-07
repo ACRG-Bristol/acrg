@@ -9,13 +9,42 @@ Functions for processing and using TROPOMI data
 """
 
 import os
+import socket
 import numpy as np
 import xarray as xr
 import time as timing_module
 from pathlib import Path
 from collections import OrderedDict
 import acrg_grid.regrid_xesmf as regrid
-from acrg_satellite.gosat import latlon_filter,extract_files,find_network
+import acrg_satellite.gosat as gosat_fn
+
+#from acrg_satellite.gosat import latlon_filter,extract_files,find_network
+
+try:
+    from acrg_config.paths import paths
+except ImportError:
+    data_path = os.getenv("DATA_PATH")
+else:
+    data_path = paths.data
+
+if not data_path:
+    server_name = socket.gethostname()
+    if "bp1" in server_name:
+        data_path = "/work/chxmr/shared/"
+    elif "bc4" in server_name:
+        data_path = "/mnt/storage/private/acrg/ACRG_Repository/data/"
+    elif "snowy" in server_name:
+        data_path = "/data/shared/"
+    else:
+        print("Unable to infer data_path")
+
+home = Path(os.getenv("HOME"))
+
+##TODO: Replace this with a central location when this has been sorted
+input_directory = Path("/home/rt17603/shared/obs_raw/TROPOMI/SOUTHAMERICA/")
+
+name_csv_directory = os.path.join(home,"NAME_files") # Where to write output NAME csv files
+obs_directory = os.path.join(data_path,'obs/') # Where to write output nc files
 
 def cornerGrid(geoData):
     '''Create lat and lon corner grids (for pcolormesh+xESMF etc) from geoData
@@ -116,7 +145,7 @@ def check_in_grid(ds,output_lat,output_lon,latlon=["latitude","longitude"]):
     lat_bounds = [output_lat[0],output_lat[-1]]
     lon_bounds = [output_lon[0],output_lon[-1]]
 
-    ds_check = latlon_filter(ds,lat_bounds,lon_bounds,columns=latlon)
+    ds_check = gosat_fn.latlon_filter(ds,lat_bounds,lon_bounds,columns=latlon)
 
     if len(ds_check[latlon[0]]) == 0 and len(ds_check[latlon[1]]) == 0:
         inside_grid = False
@@ -309,7 +338,7 @@ def regrid_orbit(ds_tropomi,output_lat,output_lon,names=None,ds_tropomi_geo=None
         lat_bounds = [output_lat[0]-lat_diff/2,output_lat[-1]+lat_diff/2]
         lon_bounds = [output_lon[0]-lon_diff/2,output_lon[-1]+lon_diff/2]
         
-        ds_tropomi = latlon_filter(ds_tropomi,lat_bounds,lon_bounds,columns=latlon)
+        ds_tropomi = gosat_fn.latlon_filter(ds_tropomi,lat_bounds,lon_bounds,columns=latlon)
         
         if len(ds_tropomi[latlon[0]]) == 0 and len(ds_tropomi[latlon[1]]) == 0:
             if verbose:
@@ -609,54 +638,17 @@ def unravel_grid(ds_grid):
     
     return ds_flatten
 
-def define_name_filenames(directory,base_name,number_of_points,max_points=50,ext=".csv"):
-    '''
-    Define filenames for NAME input files. For each day these will be split into
-    multiple files based on the max_points specified.
-    
-    Each file will be appended with an alphabetical character(s) depending
-    on the number of files e.g. "A-Z" for 1-26 files, "AA-ZZ" for 26-676 files,
-    "AAA-ZZZ" for 676 - 17,576 files.
-    
-    Output files will be of the form:
-        directory/...-[LETTER-SEQ].csv
-    e.g.
-        directory/...-BB.csv
-    
-    TODO: Need to add more parameters for making up expected NAME filename.
-    
-    Args:
-        directory
-        base_name
-        number_of_points
-        max_points
-        extension
+                # filename = site+"_"+date.replace('-','')
+                # if max_points:
+                #     if len(wh_date) > max_points:
+                #         letter_split = chr(ord("A")+int(old_div(ID,max_points)))
+                #         filename = "{}-{}".format(filename,letter_split)
+                #     ID_1 = ID%max_points
+                # else:
+                #     ID_1 = ID
+                # filename += '.csv'
+                # filename = os.path.join(name_directory,filename)
 
-    Returns:
-        list (str) :
-            List of filenames to write to.
-    '''
-    from itertools import chain, product
-    from string import ascii_uppercase as AUC
-    
-    if max_points:
-        number_of_files = int(number_of_points/max_points + 0.5)
-        if number_of_files > 26*26:
-              repeat = 3
-        elif number_of_files > 26:
-              repeat = 2
-        else:
-              repeat = 1
-        
-        labels = []
-        for i,chars in zip(range(number_of_files),chain(product(AUC, repeat=repeat))):
-              labels.append('-'+''.join(chars))
-    else:
-        labels = ['']
-    
-    filenames = [os.path.join(directory, f"{base_name}{label}{ext}") for label in labels]
-    
-    return filenames
     
 def create_labels(number_of_points,max_level):
     '''
@@ -691,15 +683,39 @@ def create_labels(number_of_points,max_level):
     
     return labels
         
-    
 
-def tropomi_output_name(ds,max_level=None,site=None,max_points=50,
-                        #,name_directory=""
-                        ):
+def write_tropomi_NAME(ds,site,max_level=None,max_points=50,
+                       name_directory=name_csv_directory):
     '''
+    Write NAME input files related to 1 day.
+    For ds input expect a dataset with 1D time,lat,lon values.
     
+    Args:
+        ds (xarray.Dataset) :
+            Dataset containing positions to write to NAME input files.
+        site (str) :
+            Name for the tropomi data selection e.g. TROPOMI-BRAZIL
+        max_level (int/None, optional) :
+            Maximum level to run to within NAME. Will only write 
+            pressure levels up to and including this level if 
+            specified.
+            Default = None # All levels written to file
+        max_points (int/None, optional):
+            Maximum number of points to include in one NAME input
+            file. If specified and number of points excees this number
+            then multiple files will be created labelled as e.g. -A, =B
+            etc. (see define_name_filenames() for more details).
+        name_directory (str, optional) :
+            Top level directory to write files for NAME. Full path will 
+            be based on the "network" related to "site" 
+            Default defined at the top of this module.            
+         
+    
+    ##TODO: May want to generalise this to allow files to be written
+    out for a longer time period rather than one day at a time.    
     '''
-    # Note column mapping here is out:in values rather than in:out because some columns in output do not map to input data variables.
+    # Note column mapping here is out:in values rather than in:out 
+    # because some columns in output do not map to input data variables.
     
     time = "time"
     latlon = ("lat","lon")
@@ -730,14 +746,13 @@ def tropomi_output_name(ds,max_level=None,site=None,max_points=50,
     if site is None:
         site = 'global'
     
-    network = find_network(site)[0] # Using first site as default
-
-    ##TODO: Update name_directory input - currently hardwired to RT local area
-    name_directory = Path("/home/rt17603/work/TROPOMI_processed/SOUTHAMERICA/NAME/")
+    date = ds["time"].values[0]
     
-    name_directory = os.path.join(name_directory,network)
-    if not os.path.isdir(name_directory):
-        os.makedirs(name_directory)
+    network = gosat_fn.find_network(site)[0] # Using first site as default
+
+    output_directory = os.path.join(name_directory,network)
+    if not os.path.isdir(output_directory):
+        os.makedirs(output_directory)
     
     number_of_points = ds.dims[time]
 
@@ -787,11 +802,10 @@ def tropomi_output_name(ds,max_level=None,site=None,max_points=50,
     df = ds_name.to_dataframe()
     df = df[col_order]
     
-    ### TODO: define_name_filenames() FUNCTION NEEDS UPDATING 
-    ## TO INCLUDE DATE AND SITE
     name_filenames = \
-        define_name_filenames(name_directory,"NAME_output",number_of_points,
-                              max_points)
+        gosat_fn.define_name_filenames(name_directory, site, date,
+                                       number_of_points=number_of_points,
+                                       max_points=max_points)
     
     if max_points:
         lines_per_file = max_points*max_level
@@ -805,48 +819,156 @@ def tropomi_output_name(ds,max_level=None,site=None,max_points=50,
         start = i*lines_per_file
         end = (i+1)*lines_per_file
 
-        #print(f"Writing to {name_fname}")        
+        print(f"Writing to {name_fname}")
         df.iloc[start:end].to_csv(name_fname)
+  
+
+def write_tropomi_output(ds,site,date,
+                         #species="ch4",
+                         output_directory=obs_directory):
+    '''
+    Write tropomi observation file for one day.
+    For obs data would expect dataset with 1D time,lat,lon values.
     
+    Args:
+        ds (xarray.Dataset) :
+            TROPOMI dataset to write to file. Should contain up to one 
+            day's worth of data at present.
+        site (str) :
+            Name for the tropomi data selection e.g. TROPOMI-BRAZIL
+        date (str) :
+            Date related to this tropomi data.
+        output_directory (str, optional) :
+            Top-level directory to write output. Full path will be based 
+            on the "network" related to "site".
+    
+    Returns:
+        None
+        
+        Writes ds out as netcdf file.
+    
+    ##TODO: Also want to filter to max_level input? Or just write as an 
+    attribute? Need to pass as a variable perhaps.
+    
+    ##TODO: May want to generalise this to allow files to be written
+    out for a longer time period rather than one day at a time.
+    '''
+    
+    instrument = "tropomi"
+    satellite = "sentinel5p"
+    
+    ## TODO: Generalise to allow for different species than methane
+    species = "ch4"
+    
+    network = gosat_fn.find_network(site)[0] # Using first site as default
+    
+    output_filename = \
+        gosat_fn.define_obs_filename(output_directory,network,instrument,
+                                     satellite,date,species,inlet=None,num=None)
+    
+    ##TODO: Add general attributes - time of creation, who created the
+    # file etc.    
+    
+    print(f"Writing to file: {output_filename}")
+    ds.to_netcdf(output_filename)
         
 
 
     
 
 def tropomi_process(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
-                    #species="ch4",input_directory="",output_directory=""
-                    time_increment="10s",apply_qa_filter=True,
+                    max_level,site=None,max_points=50,
+                    #species="ch4",
+                    time_increment="10s",
+                    #apply_qa_filter=True,
                     regrid_method="conservative",
-                    latlon=("latitude", "longitude"),
-                    pos_coords=("scanline", "ground_pixel"),set_nan=True,
-                    verbose=False,write_name=False):
+                    input_directory=input_directory,
+                    write_name=False,name_directory=name_csv_directory,
+                    output_directory=obs_directory,verbose=False):
     '''
+    Process tropomi data within date range including re-gridding onto 
+    a regular latitute-longitude grid.
     
-    ##TODO: Add site input to be used in obs and NAME output naming
+    Args:
+        start_date (str) :
+            YYYY-MM-DD
+        end_date (str) :
+            Up to but not including this date. YYYY-MM-DD
+        lat_bounds (list) :
+            Latitude lower and upper bounds to include in output (2-item list).
+            Upper bound included.
+        lon_bounds (list) :
+            Longitude lower and upper bounds to include in output (2-item list).
+            Upper bound included.
+        coord_bin (float/list) :
+            Bins to use for latitude and longitude dimensions.
+            Specify one value to use for both or a 2-item list to
+            use different values.
+        time_increment (str, optional) :
+            Time window to group tropomi points.
+            Default = "10s" # 10 seconds
+        regrid_method (str, optional) :
+            Regridding method to use. Options include:
+                "conservative"
+                "conservative_normed"
+            "conservative_normed" will retain more points but
+            requires the installation of the "masking" branch for xesmf.
+            Ask Rachel/Daniel for more details.
+        input_directory (str, optional) :
+            Top level directory for reading TROPOMI data.
+            Full path will be based on "species".
+        write_name (bool, optional) : 
+            Write output .csv file for input into NAME
+        name_directory (str, optional) : 
+            Top level directory to write files for NAME. Full path will 
+            be based on the "network" related to "site" 
+            Default defined at the top of this module.
+        output_directory (str, optional) :
+            Top level directory to write output. Full path will be based 
+            on the "network" related to "site"
+        verbose (bool, optional) :
+            Print more descriptive output as function executes.
+            Default = False
+    
+    Returns:
+        None
+        
+        Writes to netcdf file
+        
+        If write_name=True:
+            Writes to csv NAME input file.
+    
+    
+    ##TODO: Add (back in) filter for quality flag - may need to make
+    # delta_time coordinate so we don't get NaT values
+    ##TODO: Add species input and filter to choose correct search_species string
+
     '''
     timing_1 = timing_module.time()
     
     print(f"Processing tropomi files for date range: {start_date} - {end_date}")
     
     species = "ch4"
-    ##TODO: Update output paths, currently hardwired to RT local BP1 area
-    base_directory = Path("/home/rt17603/shared/obs_raw/TROPOMI/SOUTHAMERICA/")
-    base_output_directory = Path("/home/rt17603/work/TROPOMI_processed/SOUTHAMERICA/")
+    ##TODO: Update input paths, currently hardwired to RT local BP1 area
+    #base_directory = Path("/home/rt17603/shared/obs_raw/TROPOMI/SOUTHAMERICA/")
+    #base_output_directory = Path("/home/rt17603/work/TROPOMI_processed/SOUTHAMERICA/")
     if species == "ch4":
-        directory = base_directory / "CH4"
-        output_directory = base_output_directory / "CH4"
+        directory = input_directory / "CH4"
+        #output_directory = base_output_directory / "CH4"
         search_species = "CH4____"
     analysis_mode = "OFFL"
     search_str = f"S5P_{analysis_mode}_L2__{search_species}*.nc"
 
     time = "time"
+    #latlon=("latitude", "longitude")
+    #pos_coords=("scanline", "ground_pixel")
 
     dates = np.arange(start_date,end_date,dtype=np.datetime64).astype(str)
     for date in dates:
         start = date
         end = (np.datetime64(date) + np.timedelta64(1,'D')).astype(str)
         
-        filenames = extract_files(directory,search_str,start,end)
+        filenames = gosat_fn.extract_files(directory,search_str,start,end)
         
         if len(filenames) == 0:
             current_analysis_mode = analysis_mode
@@ -854,7 +976,7 @@ def tropomi_process(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
             if verbose:
                 print(f"Couldn't find {current_analysis_mode} files, looking for {analysis_mode} (reprocessed)")
             search_str_alt = search_str.replace(current_analysis_mode,analysis_mode)
-            filenames = extract_files(directory,search_str_alt,start,end)
+            filenames = gosat_fn.extract_files(directory,search_str_alt,start,end)
         
         if len(filenames) == 0:
             print(f"No files found for date: {start}")
@@ -889,7 +1011,7 @@ def tropomi_process(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
         # e.g. methane, pressure levels
         
         data_timeseries = unravel_grid(data_regridded)
-        #Temporary line for now
+        #TODO: Temporary line for now (update/remove)
         data_output = data_timeseries
         
         short_filenames = [os.path.split(fname)[1] for fname in filenames]
@@ -901,14 +1023,17 @@ def tropomi_process(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
         data_output.attrs["input_filename"] = short_filenames
         data_output.attrs["analysis_mode"] = f"Input files are from {analysis_mode} mode of analysis."
         
-        ##TODO: Sort out naming scheme for output file
-        output_filename = output_directory / f"TEMP-sentinel5p_tropomi_{start}_{species}-column.nc"
-        print(f"Writing to file: {output_filename}")
-        data_output.to_netcdf(output_filename)
+        write_tropomi_output(site,date,species=species,
+                             output_directory=output_directory)
+        
+        # output_filename = output_directory / f"tropomi_sentinel5p_{start}_{species}-column.nc"
+        # print(f"Writing to file: {output_filename}")
+        # data_output.to_netcdf(output_filename)
 
         if write_name:
-            ##TODO: Work out variables that need passing to this function
-            tropomi_output_name(data_output)
+            ##TODO: Work out additional variables that need passing to this function
+            write_tropomi_NAME(data_output,site=site,max_level=max_level,
+                                max_points=max_points)
 
         print(f"\nTime to execute: {timing_module.time() - timing_1}\n")
         

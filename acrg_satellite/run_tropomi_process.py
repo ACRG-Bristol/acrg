@@ -49,6 +49,8 @@ if __name__=="__main__":
     time_increment = "1h" # e.g. None, "10s", "30min" (always < 1 day)
     
     write_name = False
+    name_directory = Path("/home/rt17603/work/TROPOMI_processed/SOUTHAMERICA/NAME/")
     
     tropomi.tropomi_process(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
-                            time_increment=time_increment,write_name=write_name)
+                            time_increment=time_increment,write_name=write_name,
+                            name_directory=name_directory)
