@@ -3,7 +3,6 @@
 #PBS -l walltime=00:05:00
 #PBS -N gcwerks_db
 
-/bin/bash
 source ~/.bashrc
 
 conda activate $ACRG_CONDA_ENV
