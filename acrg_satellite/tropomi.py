@@ -516,10 +516,10 @@ def regrid_tropomi(ds_tropomi,lat_bounds,lon_bounds,coord_bin,
         data_split = [(dt,ds_tropomi)]
     
     else:
-        dt0 = ds_tropomi[time_full].isel({time:0},drop=True)
-
-        data_dt = ds_tropomi.assign_coords(coords={time_full:dt0})
-        data_dt = data_dt.swap_dims({"scanline":time_full})
+        if time_full not in ds_tropomi.coords:
+            dt0 = ds_tropomi[time_full].isel({time:0},drop=True)
+            ds_tropomi = ds_tropomi.assign_coords(coords={time_full:dt0})
+        data_dt = ds_tropomi.swap_dims({"scanline":time_full})
         data_split = data_dt.resample({time_full:time_increment})
     
     data_regridded = None
@@ -539,9 +539,10 @@ def regrid_tropomi(ds_tropomi,lat_bounds,lon_bounds,coord_bin,
                 data_regridded = xr.concat([data_regridded,regridded],dim=time)
 #        else:
 #            print(f"No tropomi data within output grid in file {os.path.split(filename)[-1]} for datetime: {dt}")
-
-    data_regridded.attrs["dlat"] = dlat
-    data_regridded.attrs["dlon"] = dlon
+    
+    if data_regridded is not None:
+        data_regridded.attrs["dlat"] = dlat
+        data_regridded.attrs["dlon"] = dlon
 
     ##TODO: Here or somewhere else: write something to remove all the weight
     # file which get created after regridding is finished.
@@ -823,8 +824,7 @@ def write_tropomi_NAME(ds,site,max_level=None,max_points=50,
         df.iloc[start:end].to_csv(name_fname)
   
 
-def write_tropomi_output(ds,site,date,
-                         #species="ch4",
+def write_tropomi_output(ds,site,date,species="ch4",
                          output_directory=obs_directory):
     '''
     Write tropomi observation file for one day.
@@ -838,6 +838,9 @@ def write_tropomi_output(ds,site,date,
             Name for the tropomi data selection e.g. TROPOMI-BRAZIL
         date (str) :
             Date related to this tropomi data.
+        species (str, optional) :
+            Species name for using within the filename.
+            Default = "ch4"
         output_directory (str, optional) :
             Top-level directory to write output. Full path will be based 
             on the "network" related to "site".
@@ -877,10 +880,10 @@ def write_tropomi_output(ds,site,date,
     
 
 def tropomi_process(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
-                    max_level,site=None,max_points=50,
+                    max_level=None,site=None,max_points=50,
                     #species="ch4",
                     time_increment="10s",
-                    #apply_qa_filter=True,
+                    apply_qa_filter=True,
                     regrid_method="conservative",
                     input_directory=input_directory,
                     write_name=False,name_directory=name_csv_directory,
@@ -904,9 +907,17 @@ def tropomi_process(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
             Bins to use for latitude and longitude dimensions.
             Specify one value to use for both or a 2-item list to
             use different values.
+        max_level (int/None) :
+            Maximum level to extract from TROPOMI for running through NAME.
+            TODO: MAY NEED TO UPDATE THIS EXPLANATION
+            Default = None     # Uses all levels
         time_increment (str, optional) :
             Time window to group tropomi points.
             Default = "10s" # 10 seconds
+        apply_qa_filter (bool, optional) :
+            Filter by the recommended quality conditions (combined
+            filter > 0.5).
+            Default = True
         regrid_method (str, optional) :
             Regridding method to use. Options include:
                 "conservative"
@@ -960,6 +971,7 @@ def tropomi_process(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
     search_str = f"S5P_{analysis_mode}_L2__{search_species}*.nc"
 
     time = "time"
+    time_full = "delta_time" # Time as np.datetime objects
     #latlon=("latitude", "longitude")
     #pos_coords=("scanline", "ground_pixel")
 
@@ -990,11 +1002,14 @@ def tropomi_process(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
             # set to bounds - need to to update this and follow it through
             # the chain.
             data = preProcessFile(filename,edge_coords="bounds")
-            
-            ## TODO: Add in quality filter so this doesn't introduce
+
+            dt0 = data[time_full].isel({time:0},drop=True)
+            data = data.assign_coords(coords={time_full:dt0})
+
+            # TODO: Add in quality filter so this doesn't introduce
             # NaT objects in delta_time
-            #if apply_qa_filter:
-            #    data = data.where(data["qa_pass"])
+            if apply_qa_filter:
+                data = data.where(data["qa_pass"])
             
             # Regrid data for each file
             regridded = regrid_tropomi(data,lat_bounds,lon_bounds,coord_bin,
@@ -1023,7 +1038,7 @@ def tropomi_process(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
         data_output.attrs["input_filename"] = short_filenames
         data_output.attrs["analysis_mode"] = f"Input files are from {analysis_mode} mode of analysis."
         
-        write_tropomi_output(site,date,species=species,
+        write_tropomi_output(data_output,site,date,species=species,
                              output_directory=output_directory)
         
         # output_filename = output_directory / f"tropomi_sentinel5p_{start}_{species}-column.nc"

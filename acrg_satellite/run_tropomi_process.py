@@ -14,6 +14,7 @@ Created on Fri Nov 13 17:33:47 2020
 
 import numpy as np
 import acrg_satellite.tropomi as tropomi
+from pathlib import Path
 
 if __name__=="__main__":
     
