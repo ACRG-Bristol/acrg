@@ -433,7 +433,6 @@ def gc(site, instrument, network,
             df[sp + " repeatability"] = precision[precision_index].\
                                             astype(float).\
                                             reindex_like(df, "pad")
-
         dfs.append(df)
 
     # Concatenate
@@ -474,7 +473,6 @@ def gc(site, instrument, network,
                             sp + " repeatability",
                             sp + " status_flag",
                             sp + " integration_flag",
-#                            "analysis_time",
                             "Inlet"]]
 
                 # No inlet label in file name
@@ -494,7 +492,6 @@ def gc(site, instrument, network,
                                        sp + " repeatability",
                                        sp + " status_flag",
                                        sp + " integration_flag",
-#                                       "analysis_time",
                                        "Inlet"]]
 
                 else:
@@ -511,7 +508,6 @@ def gc(site, instrument, network,
                                                               sp + " repeatability",
                                                               sp + " status_flag",
                                                               sp + " integration_flag",
-#                                                              "analysis_time"
                                                               "Inlet"]]
 
                 # re-label inlet if required
