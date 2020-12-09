@@ -46,7 +46,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                    sigprior={"pdf":"uniform", "lower":0.5, "upper":3},
                    nit=2.5e5, burn=50000, tune=1.25e5, nchain=2,
                    emissions_name=None, inlet=None, fpheight=None, instrument=None, 
-                   fp_basis_case=None, bc_basis_case="NESW", 
+                   fp_basis_case=None, basis_directory = None, bc_basis_case="NESW", 
                    obs_directory = None, country_file = None,
                    fp_directory = None, bc_directory = None, flux_directory = None,
                    max_level=None,
@@ -128,6 +128,9 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             if not default.
         bc_directory (str, optional):
             Directory containing the boundary condition data
+            if not default.
+        basis_directory (str, optional):
+            Directory containing the basis function
             if not default.
         country_file (str, optional):
             Path to the country definition file
@@ -215,7 +218,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             fp_basis_case= "quadtree"+species+"-"+outputname
             basis_directory = tempdir
     else:
-        basis_directory = None
+        basis_directory = basis_directory
             
     fp_data = name.fp_sensitivity(fp_all, domain=domain, basis_case=fp_basis_case,basis_directory=basis_directory)
     fp_data = name.bc_sensitivity(fp_data, domain=domain,basis_case=bc_basis_case)
