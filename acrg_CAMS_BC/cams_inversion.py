@@ -82,8 +82,6 @@ def create_CAMS_BC(ds,fp_lat,fp_lon,fp_height,date,domain,species="ch4",outdir=N
     if ds.coords['longitude'].values[lon_w] > min(fp_lon) and lon_w != 0:
         lon_e -= 1
     
-    print("ds, z",ds["z"].dims)
-    print("ds, ch4",ds["ch4"].dims)
     
     #Cut to these and then interpolate
     north = ds.sel(latitude = ds.coords['latitude'][lat_n],
@@ -95,18 +93,6 @@ def create_CAMS_BC(ds,fp_lat,fp_lon,fp_height,date,domain,species="ch4",outdir=N
     west = ds.sel(longitude = ds.coords['longitude'][lon_w],
                   latitude = slice(ds.coords['latitude'][lat_s],ds.coords['latitude'][lat_n])).drop(['longitude'])
     
-    #print("z",north["z"].dims)
-    #print("ch4",north["ch4"].dims)
-    #print(north.dims["level"],north.dims["longitude"])
-    
-    #import pdb
-    #pdb.set_trace()
-    
-    #vmr_n = CAMS_BC.interplonlat(CAMS_BC.interpheight(north, fp_height, species, reverse=False, lonorlat='longitude'), fp_lon, species, lonorlat='longitude').rename({species : 'vmr_n'})   
-    #vmr_s = CAMS_BC.interplonlat(CAMS_BC.interpheight(south, fp_height, species, reverse=False, lonorlat='longitude'), fp_lon, species, lonorlat='longitude').rename({species : 'vmr_s'}) 
-    #vmr_e = CAMS_BC.interplonlat(CAMS_BC.interpheight(east, fp_height, species, reverse=False, lonorlat='latitude'), fp_lat, species, reverse=False, lonorlat='latitude').rename({species : 'vmr_e'}) 
-    #vmr_w = CAMS_BC.interplonlat(CAMS_BC.interpheight(west, fp_height, species, reverse=False, lonorlat='latitude'), fp_lat, species, reverse=False, lonorlat='latitude').rename({species : 'vmr_w'})      
-
     vmr_n = CAMS_BC.interplonlat(CAMS_BC.interpheight(north, fp_height, species, lonorlat='longitude'), fp_lon, species, lonorlat='longitude').rename({species : 'vmr_n'})   
     vmr_s = CAMS_BC.interplonlat(CAMS_BC.interpheight(south, fp_height, species, lonorlat='longitude'), fp_lon, species, lonorlat='longitude').rename({species : 'vmr_s'}) 
     vmr_e = CAMS_BC.interplonlat(CAMS_BC.interpheight(east, fp_height, species, lonorlat='latitude'), fp_lat, species, lonorlat='latitude').rename({species : 'vmr_e'}) 

@@ -3,6 +3,8 @@
 """
 Created on Thu Nov 28 11:00:20 2019
 
+Use makeCAMSBC
+
 @author: rt17603
 """
 
@@ -65,10 +67,39 @@ def add_full_time(ds_seasonal,start,end):
 
     return ds
 
-def makeCAMSClimatologyBC(domain,st_date,st_end,
+def makeCAMSBC(domain,st_date,st_end,
                           clim_start=None,clim_end=None,
                           outdir=None,cams_directory=cams_directory):
-
+    ''' Make boundary condition files from the CAMS inversion product"
+    
+    Args:
+        domain (str): 
+            Domain name, e.g., "EUROPE"
+        st_date (str): 
+            Start date of output, e.g., "2015-01-01"
+        st_end (str): 
+            End date of output, e.g., "2016-01-01"
+        clim_start (str, optional): 
+            Start date to average fields into a climatology, e.g., "2010-01-01"
+            Default of none will assume st_date
+        clim_end (str, optional): 
+            End date to average fields into a climatology, e.g., "2010-01-01"    
+            Default of none will assume st_end
+        outdir (str, optional)
+            Output directory to save output. Output will automatically be written to outdir/LPDM/bc/DOMAIN
+            CHECK ON THIS
+        cams_directory (str, optional)
+            Location of CAMS inversion output
+ 
+    Returns:
+        netcdf files of monthly boundary condition curtain files corresponding to the edges of the corresponding NAME domain
+        
+    Example:
+        makeCAMSBC(domain,output_start,output_end,clim_start,clim_end)
+    
+    Todo: 
+        Add some error checking (e.g. check that domain is correct)
+    '''
     if clim_start is None and clim_end is None:
         clim_start = st_date
         clim_end = st_end
@@ -87,9 +118,6 @@ def makeCAMSClimatologyBC(domain,st_date,st_end,
     date_range = np.arange(st_date,st_end,dtype="datetime64[M]")
     date_range = [np.datetime_as_string(date)+"-01" for date in date_range]
     date_range += [st_end]
-    
-    print(date_range)
-    print(st_end)
 
     for start,end in zip(date_range[:-1],date_range[1:]):
         
@@ -121,5 +149,5 @@ if __name__=="__main__":
 
     outdir = os.path.join(data_path)
 
-    cams_bc = makeCAMSClimatologyBC(domain,output_start,output_end,clim_start,clim_end,outdir=outdir)
+    cams_bc = makeCAMSBC(domain,output_start,output_end,clim_start,clim_end,outdir=outdir)
     
