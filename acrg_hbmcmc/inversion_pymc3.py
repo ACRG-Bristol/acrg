@@ -202,7 +202,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                                xprior, bcprior, sigprior, Ytime, siteindicator, sigma_freq_index,fp_data,
                                emissions_name, domain, species, sites,
                                start_date, end_date, outputname, outputpath,
-                               basis_directory, country_file, country_unit_prefix):
+                               basis_directory, country_file, country_unit_prefix,flux_directory):
         """
         Takes the output from inferpymc3 function, along with some other input
         information, and places it all in a netcdf output. This function also 
@@ -347,9 +347,9 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         for npm in nparam:
             scalemap[bfds.values == (npm+1)] = np.mean(outs[:,npm])        
         if emissions_name == None:
-            emds = name.name.flux(domain, species, start = start_date, end = end_date)
+            emds = name.name.flux(domain, species, start = start_date, end = end_date, flux_directory=flux_directory)
         else:
-            emds = name.name.flux(domain, list(emissions_name.values())[0], start = start_date, end = end_date)
+            emds = name.name.flux(domain, list(emissions_name.values())[0], start = start_date, end = end_date, flux_directory=flux_directory)
         flux = scalemap*emds.flux.values[:,:,0]
         
         #Basis functions to save
