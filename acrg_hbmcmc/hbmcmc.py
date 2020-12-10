@@ -129,6 +129,9 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
         bc_directory (str, optional):
             Directory containing the boundary condition data
             if not default.
+        flux_directory (str, optional):
+            Directory containing the emissions data
+            if not default.
         country_file (str, optional):
             Path to the country definition file
         max_level (int, optional):
