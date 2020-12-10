@@ -98,7 +98,9 @@ def makeCAMSBC(domain,st_date,st_end,
         makeCAMSBC(domain,output_start,output_end,clim_start,clim_end)
     
     Todo: 
-        Add some error checking (e.g. check that domain is correct)
+        This code currently works as such:  if you want real CAMS inversion for a month (not a climatology), then you can only specify one year
+        at a time. If multiple years are given in st_date and st_end, it will average them together. This code needs to be split up with a 
+        climatology keywork so that it does not automatically do averaging.
     '''
     if clim_start is None and clim_end is None:
         clim_start = st_date
