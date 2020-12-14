@@ -18,10 +18,10 @@ from pathlib import Path
 
 if __name__=="__main__":
     
-    start_date = "2019-07-26"
-    end_date = "2019-07-27"
+    start_date = "2019-07-11"
+    end_date = "2019-07-15"
     
-    area="GOSAT-SOUTHAMERICA"
+    area="GOSAT-BRAZIL"
 
     if area == "GOSAT-SOUTHAMERICA":
         ## Match to GOSAT-SOUTHAMERICA bounds
@@ -43,15 +43,38 @@ if __name__=="__main__":
     lon_bounds = [lon_min,lon_max]
     coord_bin = [dlat,dlon]
     
-    # This is broken for now - not sure why!!
-    ##time_increment = None # e.g. None, "10s", "30min" (always < 1 day)
-    
+    time_increment = "1s" # e.g. None, "10s", "30min" (always < 1 day)
+    #time_increment = "10s" # e.g. None, "10s", "30min" (always < 1 day)
     #time_increment = "30min" # e.g. None, "10s", "30min" (always < 1 day)
-    time_increment = "1h" # e.g. None, "10s", "30min" (always < 1 day)
+    #time_increment = "1h" # e.g. None, "10s", "30min" (always < 1 day)
+    #time_increment = None
     
-    write_name = False
-    name_directory = Path("/home/rt17603/work/TROPOMI_processed/SOUTHAMERICA/NAME/")
+    site = area.replace("GOSAT-","TROPOMI-")
+    network = "TROPOMI/"+site
+    
+    write_name = True
+    #name_directory = Path("/home/rt17603/work/NAME_files/test")
+    name_directory = Path("/home/rt17603/work/NAME_files/")
+    use_name_pressure = True
+    pressure_domain = "SOUTHAMERICA"
+    pressure_max_days = 1
+    
+    #output_directory = Path("/home/rt17603/work/obs/test")
+    output_directory = Path("/home/rt17603/work/obs/")
+    
+    #max_points = None # Maximum number of points per NAME file
+    max_points = 50 # Maximum number of points per NAME file
+    
+    ## ** RERUN WITH THIS **
+    regrid_method = "conservative_normed"
     
     tropomi.tropomi_process(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
+                            site=site,network=network,
                             time_increment=time_increment,write_name=write_name,
-                            name_directory=name_directory)
+                            regrid_method=regrid_method,
+                            max_points=max_points,
+                            use_name_pressure=use_name_pressure,
+                            pressure_domain=pressure_domain,
+                            pressure_max_days=pressure_max_days,
+                            name_directory=name_directory,
+                            output_directory=output_directory)
