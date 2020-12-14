@@ -2075,7 +2075,7 @@ def ds_check_internal_unique(ds,axis="time"):
     
     return ds
 
-def define_obs_filename(output_directory,network,instrument,satellite,date,species,inlet=None,num=None):
+def define_obs_filename(output_directory,instrument,satellite,date,species,network=None,inlet=None,num=None):
     '''
     The define_obs_filename function creates an output filename of the correct 
     format for satellite data based on the inputs.
@@ -2085,10 +2085,8 @@ def define_obs_filename(output_directory,network,instrument,satellite,date,speci
     
     Args:
         output_directory (str) : 
-            Top level for output directory e.g. "/shared_data/air/shared/obs/"
-        network (str) : 
-            Which network is being considered e.g. "GOSAT/GOSAT-INDIA"
-            This will be used to create the output path e.g. "/shared_data/air/shared/obs/GOSAT/GOSAT-INDIA/"
+            Output directory or top level for output directory e.g. "/shared_data/air/shared/obs/"
+            if network is defined.
         instrument (str) : 
             Instrument on satellite being used. e.g. "gosat-fts"
         satellite (str) :
@@ -2097,6 +2095,9 @@ def define_obs_filename(output_directory,network,instrument,satellite,date,speci
             Date the measurements are relevant to e.g. "2010-01-01"
         species (str) : 
             Species being considered e.g. "ch4". Should be defined within "acrg_species_info.json" file
+        network (str/None, optional) : 
+            Which network is being considered e.g. "GOSAT/GOSAT-INDIA"
+            If present, this will be extend the output path e.g. "/shared_data/air/shared/obs/GOSAT/GOSAT-INDIA/"
         inlet (str/None, optional) : 
             Additional information to add to ch4 measurement e.g. column
         num (str/None, optional) : 
@@ -2107,7 +2108,8 @@ def define_obs_filename(output_directory,network,instrument,satellite,date,speci
              observation filename with path information
     '''
 
-    output_directory = os.path.join(output_directory,network)
+    if network is not None:
+        output_directory = os.path.join(output_directory,network)
     
     date = date.replace('-','') # Turn date from e.g. 2012-09-20 to 20120920
     
@@ -2118,6 +2120,8 @@ def define_obs_filename(output_directory,network,instrument,satellite,date,speci
   
     filename = '_'.join([instrument,satellite,date,species]) # Create filename string joined by "_" e.g. "gosat-fts_gosat_20120920-09_ch4-column"
     filename += '.nc' # Add file extension
+    
+    print("filename",filename)
     
     filename = os.path.join(output_directory,filename)
        
@@ -2135,7 +2139,7 @@ def define_obs_filename(output_directory,network,instrument,satellite,date,speci
     
     
 
-def gosat_output_filename(output_directory,network,instrument,date,species,inlet=None,num=None):
+def gosat_output_filename(output_directory,instrument,date,species,network=None,inlet=None,num=None):
     '''
     The gosat_output_filename function creates an output filename of the correct format for gosat based on the 
     inputs.
@@ -2145,16 +2149,17 @@ def gosat_output_filename(output_directory,network,instrument,date,species,inlet
     
     Args:
         output_directory (str) : 
-            Top level for output directory e.g. "/shared_data/air/shared/obs/"
-        network (str) : 
-            Which network is being considered e.g. "GOSAT/GOSAT-INDIA"
-            This will be used to create the output path e.g. "/shared_data/air/shared/obs/GOSAT/GOSAT-INDIA/"
+            Output directory or top level for output directory e.g. "/shared_data/air/shared/obs/"
+            if network is defined.
         instrument (str) : 
             Instrument on satellite being used. e.g. "gosat-fts"
         date (str) : 
             Date the measurements are relevant to e.g. "2010-01-01"
         species (str) : 
             Species being considered e.g. "ch4". Should be defined within "acrg_species_info.json" file
+        network (str/None, optional) : 
+            Which network is being considered e.g. "GOSAT/GOSAT-INDIA"
+            If present, this will be extend the output path e.g. "/shared_data/air/shared/obs/GOSAT/GOSAT-INDIA/"
         inlet (str/None, optional) : 
             Additional information to add to ch4 measurement e.g. column
         num (str/None, optional) : 
@@ -2193,9 +2198,10 @@ def gosat_output_filename(output_directory,network,instrument,date,species,inlet
 # #                inlet + ".nc")
 
     satellite = 'gosat'
-    filename = define_obs_filename(output_directory,network,
+    
+    filename = define_obs_filename(output_directory,
                                    instrument,satellite,date,
-                                   species,inlet=inlet,num=num)
+                                   species,network=network,inlet=inlet,num=num)
 
     return filename
   
@@ -2449,7 +2455,7 @@ def gosat_output(ds,site,species="ch4",file_per_day=False,output_directory=obs_d
             ds_output = gosat_split_output(ds,index=wh_date,mapping=data_var_mapping,split_dim=split_dim,ident=ident)
             
             # Create filename and write dataset to file
-            filename = gosat_output_filename(output_directory,network,instrument,date,species,inlet=inlet)
+            filename = gosat_output_filename(full_output_directory,instrument,date,species,inlet=inlet)
             ds_output.attrs["id"] = os.path.split(filename)[1]
             write_netcdf(ds_output,filename,overwrite=overwrite)
         else:
@@ -2458,28 +2464,39 @@ def gosat_output(ds,site,species="ch4",file_per_day=False,output_directory=obs_d
 
                 # Create filename and write dataset to file
                 ID_str = str(ID+1).zfill(3) # Number to add to filename - three digit with leading zeros
-                filename = gosat_output_filename(output_directory,network,instrument,date,species,num=ID_str,inlet=inlet)
+                filename = gosat_output_filename(full_output_directory,instrument,date,species,num=ID_str,inlet=inlet)
                 ds_output.attrs["id"] = os.path.split(filename)[1]
                 write_netcdf(ds_output,filename,overwrite=overwrite)
 
     
 def define_name_filenames(directory,site,date,
                           number_of_points=None,max_points=None,
-                          ext=".csv"):
+                          network=None,ext=".csv"):
     '''
-    Define filenames for NAME input files. For each day these will be split into
-    multiple files based on the max_points specified.
+    Define filenames for NAME input files. These can be defined in one of
+    three ways:
+        1. One file per day - one filename will be returned (as a list)
+        2. File per point - each point will be saved to a separate file 
+        and labelled as that point e.g. -001, -002 etc. (set max_points=1)
+        3. Multiple files per day if number_of_points > max_points. Each
+        set of points will be saved as a separate file labelled with 
+        alphabetic characters (see below)
     
-    Each file will be appended with an alphabetical character(s) depending
-    on the number of files e.g. "A-Z" for 1-26 files, "AA-ZZ" for 26-676 files,
+    If max_points is set (and does not equal 1), each file will be appended 
+    with an alphabetical character(s) depending on the number of files 
+    e.g. "A-Z" for 1-26 files, "AA-ZZ" for 26-676 files,
     "AAA-ZZZ" for 676 - 17,576 files.
     
     Output files will be of the form:
-        [directory]/[site]_[date]-[LETTER-SEQ].csv
+        1. [directory]/[site]_[date].csv
+        2. [directory]/[site]_[date]-[POINT-NUM].csv
+        3. [directory]/[site]_[date]-[LETTER-SEQ].csv
     e.g.
-        [directory]/TROPOMI-BRAZIL_20190726-BB.csv
-    
-    TODO: Need to add more parameters for making up expected NAME filename.
+        [directory]/TROPOMI-BRAZIL_20190726.csv
+        [directory]/TROPOMI-BRAZIL_20190726-001.csv
+        [directory]/TROPOMI-BRAZIL_20190726-AA.csv
+
+    All file naming can be identified by the NAME satellite scripts.
     
     Args:
         directory (str/Path) :
@@ -2488,22 +2505,34 @@ def define_name_filenames(directory,site,date,
         site (str) :
             Chosen name for your selection of tropomi points.
             e.g. TROPOMI-BRAZIL
-        date
-        number_of_points
-        max_points
-        network
-        extension
+        date (numpy.datetime64/str) :
+            Date of the output data. This can be a numpy.datetime64 object
+            directly or a string of the form "YYYY-MM-DD".
+        number_of_points (int/None, optional) :
+            Total number of points written to file. Must be specified if
+            max_points is set (i.e. want to split data over multiple files).
+        max_points (int/None, optional) :
+            Maximum number of points for each filename.
+            max_points = None, one filename for all points in one file
+            max_points = 1, names created for one point per file (-001 extension)
+            max_points > 1, names created for multiple point per file (-AA extension)
+        network (str/None, optional) :
+            If network is specified this will be used to extend the output
+            directory name.
+            Default = None
+        extension (str, optional) :
+            File extension. By default this is ".csv"
 
     Returns:
         list (str) :
-            List of filenames to write to.
+            List of filenames to be written to.
     '''
     from itertools import chain, product
     from string import ascii_uppercase as AUC
     
     if number_of_points is None and max_points is not None:
         # Cannot create output filenames:
-         # Need to know number of points to be able to use max points input
+        # Need to know number of points to be able to use max points input
         print("Cannot create NAME output files with max_points if number_of_points is not provided.")
         return None
     elif max_points is None:
@@ -2531,7 +2560,10 @@ def define_name_filenames(directory,site,date,
         labels = []
         for i,chars in zip(range(number_of_files),chain(product(AUC, repeat=repeat))):
               labels.append('-'+''.join(chars))
-        
+    
+    if isinstance(date,np.datetime64):
+        date = np.datetime_as_string(date,unit='D')
+    
     ## Reformat date if this includes '/' or '-' separators to remove them
     # e.g. 2019-01-01 --> 20190101
     seperator = ['-','/']
@@ -2539,6 +2571,9 @@ def define_name_filenames(directory,site,date,
         if s in date:
             date = date.replace(s,'')
             break
+    
+    if network is not None:
+        directory = os.path.join(directory, network)
     
     base_name = f"{site}_{date}"
     filenames = [os.path.join(directory, f"{base_name}{label}{ext}") for label in labels]
