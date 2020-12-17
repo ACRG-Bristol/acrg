@@ -14,22 +14,21 @@ and against a benchmarked output.
 
 @author mi19881
 """
-from __future__ import print_function
-
 import numpy as np
 import xarray as xray
 import netCDF4 as nc
 import glob
 import pandas as pd
-
 import os
 from os.path import join
 import sys
-
 from acrg_config.paths import paths
-acrg_path = paths.acrg
-    
 import acrg_name.basis_functions
+import acrg_name.name
+
+
+acrg_path = paths.acrg
+
 acrg_name.basis_functions.fields_file_path = join(acrg_path, 'tests/files/LPDM/fp_NAME/')
 acrg_name.basis_functions.basis_dir = join(acrg_path, 'tests/files/output/')
 acrg_name.basis_functions.bc_basis_dir = join(acrg_path,'tests/files/output/')
@@ -42,7 +41,6 @@ output_folder_to_create = join(acrg_name.basis_functions.bc_basis_dir, 'EUROPE/'
 if not os.path.exists(output_folder_to_create):
     os.makedirs(output_folder_to_create)
         
-import acrg_name.name
 acrg_name.name.data_path = join(acrg_path, 'tests/files/')
 
 def test_acrg_basis_transd_shape():
