@@ -27,6 +27,20 @@
       "longitude": -62.506
     }
   },
+  "AMB": {
+    "MPI": {
+      "height": [
+        "27m"
+      ],
+      "height_name": [
+        "30magl"
+      ],
+      "height_station_masl": 20.0,
+      "latitude": 69.6200,
+      "long_name": "Ambarchik, Russia",
+      "longitude": 162.3000
+    }
+  },
   "AMS": {
     "NOAA": {
       "height": [
