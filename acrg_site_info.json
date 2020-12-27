@@ -380,6 +380,20 @@
       "longitude": -162.72
     }
   },
+  "CBR": {
+    "FMI": {
+      "height": [
+        "10m"
+      ],
+      "height_name": [
+        "10magl"
+      ],
+      "height_station_masl": 20.0,
+      "latitude": 79.2804,
+      "long_name": "Cape Baranov Ice Research Station",
+      "longitude": 101.6176
+    }
+  },
   "CBW": {
     "ECN": {
       "height": [
