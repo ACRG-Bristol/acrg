@@ -6,8 +6,6 @@ Created on Fri Oct 16 14:08:07 2015
 """
 from __future__ import print_function
 
-from builtins import zip
-from builtins import range
 import datetime
 import numpy as np
 import pandas as pd
