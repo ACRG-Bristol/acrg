@@ -882,7 +882,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                     height_site = site_info[site][network_site]["height_name"][wh_height[0][0]] #NB often different to inlet
 
             # Get footprints
-            site_fp = footprints(site_modifier_fp, fp_directory = fp_directory, 
+            site_fp = footprints(site_modifier_fp, fp_directory = fp_directory[i], 
                                  start = start, end = end,
                                  domain = domain,
                                  species = species,
@@ -936,14 +936,14 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                 site_ds = site_ds.transpose(*expected_dim_order)
                     
                 # If units are specified, multiply by scaling factor
-                if ".units" in attributes:
-                    site_ds.update({'fp' : (site_ds.fp.dims, old_div(site_ds.fp, data[".units"]))})
+                if units:
+                    site_ds.update({'fp' : (site_ds.fp.dims, old_div(site_ds.fp, units))})
                     if HiTRes:
                         site_ds.update({'fp_HiTRes' : (site_ds.fp_HiTRes.dims, 
-                                                       old_div(site_ds.fp_HiTRes, data[".units"]))})
+                                                       old_div(site_ds.fp_HiTRes, units))})
                     if 'fp_low' in site_ds.keys():
-                        site_ds.update({'fp_low' : (site_ds.fp_low.dims, old_div(site_ds.fp_low, data[".units"]))})
-                        site_ds.update({'fp_high' : (site_ds.fp_high.dims, old_div(site_ds.fp_high, data[".units"]))})
+                        site_ds.update({'fp_low' : (site_ds.fp_low.dims, old_div(site_ds.fp_low, units))})
+                        site_ds.update({'fp_high' : (site_ds.fp_high.dims, old_div(site_ds.fp_high, units))})
     
 
     #             # Resample, if required
