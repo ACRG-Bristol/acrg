@@ -2026,6 +2026,20 @@
       "longitude": 0.32127
     }
   },
+  "TIK": {
+    "FMI": {
+      "height": [
+        "10m"
+      ],
+      "height_name": [
+        "10magl"
+      ],
+      "height_station_masl": 8.0,
+      "latitude": 71.5862,
+      "long_name": "Tiksi, Russia",
+      "longitude": 128.9188
+    }
+  },
   "TMD": {
     "NOAA": {
       "height": [
