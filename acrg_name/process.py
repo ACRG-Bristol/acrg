@@ -939,7 +939,7 @@ def footprint_array(fields_file,
                     satellite = False,
                     time_step = None,
                     upper_level = None,
-                    obs_file = None,
+                    #obs_file = None,
                     use_surface_conditions = True,
                     species = None):
     '''
@@ -1059,8 +1059,8 @@ def footprint_array(fields_file,
     if type(met) is not list:
         met = [met]
 
-    if satellite and obs_file:
-        time = extract_time_obs(obs_file)
+    #if satellite and obs_file:
+    #    time = extract_time_obs(obs_file)
     
     # If time_step is input, overwrite value from NAME output file
     if time_step is not None:
@@ -1581,7 +1581,8 @@ def write_netcdf(fp, outfile,
     status_log("Written... " + os.path.split(outfile)[1])
 
 
-def satellite_vertical_profile(fp, satellite_obs_file, max_level):
+def satellite_vertical_profile(fp, satellite_input_file, max_level,
+                               satellite_obs_file = None):
     '''Do weighted average by satellite averaging kernel and
     pressure weight. One time point only. Expects xray.dataset
     with one time point and N vertical levels.
@@ -1590,9 +1591,10 @@ def satellite_vertical_profile(fp, satellite_obs_file, max_level):
         fp (xarray dataset):
             footprint for ONE time point. N levels in lev dimension with 
             footprints and particle locations defined at each level
-        satellite_obs_file (str):
-            Filename of NetCDF-format satellite observation file. 
-            One per time step.
+        #satellite_obs_file (str):
+        #    Filename of NetCDF-format satellite observation file. 
+        #    One per time step.
+        TODO: Update this doc string
         max_level (int):
             Maximum vertical level of the retrieval that is included.
             (maximum for GOSAT to include all levels from model is 20). 
@@ -1636,17 +1638,29 @@ def satellite_vertical_profile(fp, satellite_obs_file, max_level):
                    error_or_warning="error")
         return None
     
-    status_log("Reading satellite obs file: " + satellite_obs_file)
-    with xray.open_dataset(satellite_obs_file) as f:
-        sat = f.load()
+    #status_log("Reading satellite obs file: " + satellite_obs_file)
+    #with xray.open_dataset(satellite_obs_file) as f:
+    #    sat = f.load()
+    
+    status_log("Reading satellite input file: " + satellite_input_file)
+    sat_input, ext = open_sat_file(satellite_input_file, return_ext=True)
+    
+    if ext == ".nc":
+        time = "time"
+        lon = "lon"
+        lat = "lat"
+    elif ext == ".csv":
+        time = "Time"
+        lon = "x"
+        lat = "y"
     
     ntime = len(fp.time)
     
     for t in range(ntime):
-        if np.abs(sat.lon.values[t] - fp.release_lon.values[t,0]) > 1.:
+        if np.abs(sat_input[lon].values[t] - fp.release_lon.values[t,0]) > 1.:
             status_log("Satellite longitude doesn't match footprints",
                        error_or_warning="error")
-        if np.abs(sat.lat.values[t] - fp.release_lat.values[t,0]) > 1:
+        if np.abs(sat_input[lat].values[t] - fp.release_lat.values[t,0]) > 1:
             status_log("Satellite latitude doesn't match footprints",
                        error_or_warning="error")
         
@@ -1658,19 +1672,25 @@ def satellite_vertical_profile(fp, satellite_obs_file, max_level):
             return None
 
     if ntime == 1:
-        if np.abs(sat.time.values[0] - fp.time.values[0]).astype(int) > 60*1e9:
+        if np.abs(sat_input[time].values[0] - fp.time.values[0]).astype(int) > 60*1e9:
             status_log("Satellite time doesn't match footprints",
                        error_or_warning="warning")
     else:
          status_log("Number of satellite time points > 1 so unable to rely on time interpolated from fields files to be correct. Not checking time within obs file against fields file time.",
                        error_or_warning="status")
-    
-        
 
     # Change timestamp to that from obs file
     #  because NAME output only has 1 minute resolution
 
-    fp["time"] = sat.time.values
+    fp["time"] = sat_input[time].values
+    
+    
+    if satellite_obs_file is None:
+        sat = sat_input
+    else:
+        with xray.open_dataset(satellite_obs_file) as f:
+            sat_all = f.load()
+        sat = sat_all.sel(time=fp["time"], tolerance=0.001)
 
     # Interpolate pressure levels
     variables = ["fp", "pl_n", "pl_e", "pl_s", "pl_w"]
@@ -1801,7 +1821,6 @@ def process_basic(fields_folder, outfile):
     fp = footprint_concatenate(fields_folder)
     write_netcdf(fp, outfile)
 
-
 def process(domain, site, height, year, month, 
             #base_dir = "/work/chxmr/shared/NAME_output/",
             #process_dir = "/work/chxmr/shared/LPDM/fp_NAME/",
@@ -1815,6 +1834,7 @@ def process(domain, site, height, year, month,
             use_surface_conditions = True,
             satellite = False,
             obs_folder = "Observations",
+            sat_input_folder = "Release_point_files",
             upper_level = None,
             max_level = None,
             force_update = False,
@@ -2160,21 +2180,30 @@ def process(domain, site, height, year, month,
            
         # Do satellite process
         if satellite:
-            obs_path = os.path.join(subfolder,obs_folder)
-            search_str = "*{label}_*.nc".format(label=datestr)
-            search_str = os.path.join(obs_path,search_str)
-            satellite_obs_file = glob.glob(search_str)
+            input_folder = obs_folder
+            ext = ".nc"
             
-            if len(satellite_obs_file) != 1:
-                status_log("There must be exactly one matching satellite " + 
-                           "file in the {}/ folder".format(obs_folder),
-                           error_or_warning="error")
-                status_log("Files: " + ','.join(satellite_obs_file),
-                           error_or_warning="error")
-                return None
+            satellite_input_file = find_sat_file(subfolder=subfolder,
+                                               label=datestr,
+                                               input_folder=input_folder,
+                                               ext=ext)
+            
+            # obs_path = os.path.join(subfolder,obs_folder)
+            # search_str = "*{label}_*.nc".format(label=datestr)
+            # search_str = os.path.join(obs_path,search_str)
+            # satellite_obs_file = glob.glob(search_str)
+            
+            # if len(satellite_obs_file) != 1:
+            #     status_log("There must be exactly one matching satellite " + 
+            #                "file in the {}/ folder".format(obs_folder),
+            #                error_or_warning="error")
+            #     status_log("Files: " + ','.join(satellite_obs_file),
+            #                error_or_warning="error")
+            #     return None
 
             fp_file = satellite_vertical_profile(fp_file,
-                                                 satellite_obs_file[0], max_level = max_level)  
+                                                 satellite_input_file, 
+                                                 max_level = max_level)  
             
             if fp_file is None:
                 return
@@ -2324,6 +2353,8 @@ def copy_processed(domain):
     Returns:
         None
     '''
+    import dirsync
+
     
     src_folder = "/dagage2/agage/metoffice/NAME_output/"
     dst_folder = "/data/shared/LPDM/fp_NAME/" + domain + "/"
@@ -2789,69 +2820,119 @@ def stiltfoot_array(prefix,
         
     return fp
 
-def open_obs(satellite_obs_file=None,subfolder=None,datestr=None,obs_folder="Observations"):
+def find_sat_file(subfolder, label, 
+                  input_folder="Observations", ext=".nc"):
+    '''
+    '''
+    
+    if ext == ".nc":
+        search_str = os.path.join(subfolder,f"{input_folder}/*{label}_*{ext}")
+    elif ext == ".csv":
+        search_str = os.path.join(subfolder,f"{input_folder}/*{label}{ext}")
+    
+    satellite_input_files = glob.glob(search_str)
+    
+    if len(satellite_input_files) == 0:
+        status_log("There must be exactly one matching satellite " + 
+                       f"file in the {input_folder} folder",
+                       error_or_warning="error")
+        status_log("No files found", error_or_warning="error")
+        return None
+    elif len(satellite_input_files) > 1:
+        status_log("There must be exactly one matching satellite " + 
+                           f"file in the {input_folder} folder",
+                           error_or_warning="error")
+        status_log("Files: " + ','.join(satellite_input_files),
+                           error_or_warning="error")
+        return None
+    
+    satellite_input_file = satellite_input_files[0]
+    
+    return satellite_input_file
+
+def open_sat_file(satellite_input_file=None, subfolder=None, label=None, 
+                  input_folder="Observations", ext=None, return_ext=False):
     '''
     Opens the satellite observations file. This should match
     the points within the NAME input csv and with the output of NAME.
     Used for satellite data as NAME input is not precise enough (minute precision).
     
-    Can either specify satellite_obs_file or specify subfolder,datestr,obs_folder so obs_fils can be found. 
+    Can either specify satellite_input_file or specify subfolder,datestr,input_folder so obs_fils can be found. 
     
     Args:
-        satellite_obs_file (str) :
-            Observation filename.
+        satellite_input_file (str) :
+            Observation or Release point filename.
         subfolder (str) :
-            Only include if satellite_obs_file is not specified.
-            Folder containing the output from NAME. Folder containing observations should be
+            Only include if satellite_input_file is not specified.
+            Folder containing the output from NAME. Folder containing files should be
             within this directory.
-        datestr (str) :
-            Only include if satellite_obs_file is not specified.
-            The date string being used to search for files. This should be of the form
-            'YYYYMMDD' or 'YYYYMMDD-NNN'
-        obs_folder (str, optional) :
-            Only include if satellite_obs_file is not specified.
+        label (str) :
+            Only include if satellite_input_file is not specified.
+            The label, typically a date string, being used to search for files.
+            This should be of the form:
+                'YYYYMMDD' or 'YYYYMMDD-NNN'
+        input_folder (str, optional) :
+            Only include if satellite_input_file is not specified.
             Name of the folder containing the observations data. Will be appended to subfolder
             to get the full path information.
+    
+        ext
+        TODO: Update doc string
     
      Returns:
         xarray.dataset:
             satellite file
             
     '''
-    if not satellite_obs_file:
-        try:
-            search_str = os.path.join(subfolder,"Observations/*{}_*.nc".format(datestr))
-        except AttributeError:
-            status_log("There must be exactly one matching satellite " + 
-                           "file in the Observations/ folder",
-                           error_or_warning="error")
-            status_log("Files: " + ','.join(satellite_obs_file),
-                           error_or_warning="error")
-            return None
-        
-        satellite_obs_files = glob.glob(search_str)
-
-        if len(satellite_obs_files) > 1:
-            status_log("There must be exactly one matching satellite " + 
-                               "file in the Observations/ folder",
-                               error_or_warning="error")
-            status_log("Files: " + ','.join(satellite_obs_files),
-                               error_or_warning="error")
-        
-        satellite_obs_file = satellite_obs_files[0]
+    if not satellite_input_file:
+        satellite_input_file = \
+            find_sat_file(subfolder, label, 
+                          input_folder=input_folder, ext=ext)
     
-    with xray.open_dataset(satellite_obs_file) as f:
-        sat = f.load()
+    if ext is None:
+        ext = os.path.splitext(satellite_input_file)[-1]
+        
+    if ext == ".nc":
+        with xray.open_dataset(satellite_input_file) as f:
+            sat = f.load()
+    elif ext == ".csv":
+        df = pd.read_csv(satellite_input_file, parse_dates=["Time"])
+        df = df.set_index("Time")
+        sat = df.to_xarray()
     
-    return sat
-
-def extract_time_obs(satellite_obs_file=None,subfolder=None,datestr=None,obs_folder="Observations"):
-    '''
-    '''
-    if satellite_obs_file:
-        sat = open_obs(satellite_obs_file)
+    if return_ext:
+        return sat, ext
     else:
-        sat = open_obs(subfolder=subfolder,datestr=datestr,obs_folder=obs_folder)
+        return sat
+
+def extract_time_obs(satellite_obs=None,satellite_obs_file=None,
+                     subfolder=None,label=None,obs_folder="Observations"):
+    '''
+    '''
+    if satellite_obs is not None:
+        sat = satellite_obs
+    elif satellite_obs_file:
+        sat = open_sat_file(satellite_obs_file, ext=".nc")
+    else:
+        sat = open_sat_file(subfolder=subfolder,label=label,input_folder=obs_folder,ext=".nc")
     
-    return sat.time.values
+    time_col = "time"
+    time = sat[time_col].values
     
+    return time
+
+def extract_release_times(release_data=None,release_point_file=None,
+                          subfolder=None,label=None,release_folder="Release_point_files"):
+    '''
+    '''
+    if release_data is not None:
+        sat = release_data
+    if release_point_file:
+        sat = open_sat_file(release_point_file, ext=".csv")
+    else:
+        sat = open_sat_file(subfolder=subfolder,label=label,input_folder=release_folder,ext=".csv")
+
+    time_column = "Time"
+    time = sat[time_column].astype("datetime64").values
+
+    return time
