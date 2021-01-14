@@ -1538,6 +1538,20 @@
         "longitude": 15.046}
 
   },
+  "NPL": {
+    "LGHG": {
+      "height": [
+        "17m"
+      ], 
+      "height_name": [
+        "17magl"
+      ], 
+      "height_station_masl": 30.0, 
+      "latitude": 51.424149, 
+      "long_name": "NPL, UK", 
+      "longitude": -0.343872
+    }
+  },
   "NMY": {
     "UHei": {
       "height": [
