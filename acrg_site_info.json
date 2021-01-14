@@ -1514,15 +1514,15 @@
       "longitude": -118.0586
     }
   },
-  "NYS": {
+  "NAS": {
     "TU": {
       "height": [
-        "10m"
+        "3m"
       ],
       "height_name": [
-        "10magl"
+        "5magl"
       ],
-      "height_station_masl": 30.0,
+      "height_station_masl": 40.0,
       "latitude": 78.9167,
       "long_name": "Ny-Alesund, Svalbard, Norway",
       "longitude": 11.9333
