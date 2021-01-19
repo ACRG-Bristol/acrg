@@ -525,10 +525,11 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                                  fp_data[sites[0]].fp_high.lat_high.values, fp_data[sites[0]].fp_high.lon_high.values)
             
             #unfaltten and convert flux and scaling map to dataarrays
-            scalemap_hr_trace, scalemap_trace = ppHR.unflattenArray(np.squeeze(outs.T[(bfds.values.astype(int)-1),:]), fp_data[".flux"]["all"])
+            outs_mean = np.mean(outs.T, axis=1)
+            scalemap_hr_trace, scalemap_trace = ppHR.unflattenArray(np.squeeze(outs_mean[(bfds.values.astype(int)-1)]), fp_data[".flux"]["all"])
             
             scalemap = xr.DataArray( np.mean(scalemap_trace,axis=2), coords=[lat, lon], dims = ["lat", "lon"])
-            scalemap_hr = xr.DataArray(np.mean(scalemap_hr_trace,axis=2), coords=[lat_hr, lon_hr], dims = ["lat_high", "lon_high"])
+            scalemap_hr = xr.DataArray( np.mean(scalemap_hr_trace,axis=2), coords=[lat_hr, lon_hr], dims = ["lat_high", "lon_high"])
             
             #unscaled sections of low resolution set to 1
             scalemap.loc[dict(lat = np.unique(lats_low[indicies_to_remove]),
