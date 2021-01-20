@@ -1142,7 +1142,15 @@ def BTT():
         print("Writing " + nc_filename)
         dataProcessed[species].to_netcdf(nc_filename)
         
-def TMB(species="CH4"):
+def TMB():
+    '''
+    Process the London Thames Barrier Picarro data from Valerio Ferracci
+
+    Returns
+    -------
+    None.
+
+    '''
     #parameters setup
     unit_species = {"CO2": "ppm",
                 "CH4": "ppb",
@@ -1154,14 +1162,13 @@ def TMB(species="CH4"):
                     "CH4": "Methane",
                     "CO": "CO"}
     params = {
-            "directory" : "/data/shared/obs_raw/TMB/",
-            "directory_output" : "/data/shared/obs/",
+            "directory_output" : obs_directory,
             "scale": {
                 "CH4": "WMO-CH4-X2004",
                 "CO2": "WMO-CO2-X2007",
                 "CO" : "WMO-CO-X2014"},
-            "instrument": "Picarro G2401",
-            "inlet": "5m",
+            "instrument": "PicarroG2401",
+            "inlet": "10m",
             "global_attributes": {
                 "data_owner": "Valerio Ferracci",
                 "data_owner_email": "V.Ferracci@cranfield.ac.uk",
@@ -1170,22 +1177,33 @@ def TMB(species="CH4"):
             }
 
     #find files
-    search_str = join(params["directory"],"*calibrated_data.csv")
+    raw_directory = os.path.join(data_path, "obs_raw/TMB")
+    search_str = join(raw_directory,"*calibrated_data.csv")
     fnames = glob.glob(search_str)
     fnames.sort()
 
-    for filename in fnames:
-        dataRaw = pd.read_csv(filename,
-                       parse_dates = [0],
-                       index_col = 0)
+    #for each species, read and combine all of the monthly files
+    #combining all the files could be done seperately first but is currently cheap so this works
+    for species in speciesList:  
         
-        #rename columns        
-        rename_dict = {}
-        rename_dict[species_label[species]] = species
-        dataRaw.rename(columns = rename_dict, inplace=True)
-        dataRaw.index.name = "time"
+        datas_to_concat = []
+        
+        #read in every file
+        for filename in fnames:
+            data_raw = pd.read_csv(filename,
+                           parse_dates = [0],
+                           index_col = 0)
             
-        dataProcessed = xr.Dataset.from_dataframe(dataRaw.loc[:, [species]].sort_index())
+            #rename columns        
+            rename_dict = {}
+            rename_dict[species_label[species]] = species
+            data_raw.rename(columns = rename_dict, inplace=True)
+            data_raw.index.name = "time"
+            
+            datas_to_concat.append(data_raw)
+             
+        data_raw_concat = pd.concat(datas_to_concat).sort_values("time")    
+        dataProcessed = xr.Dataset.from_dataframe(data_raw_concat.loc[:, [species]].sort_index())
         
         #convert methane to ppb
         if species == "CH4":
@@ -1198,15 +1216,16 @@ def TMB(species="CH4"):
         dataProcessed = attributes(dataProcessed,
                      species, site, global_attributes=params["global_attributes"],
                      units=unit_species[species], scale=params["scale"][species],
-                     sampling_period=None)
+                     sampling_period="5 seconds")
+        
         nc_filename = output_filename(params["directory_output"],
-                                          "CRANFIELD",
-                                          "CRDS",
+                                          "LGHG",
+                                          params["instrument"],
                                           site.upper(),
                                           dataProcessed.time.to_pandas().index.to_pydatetime()[0],
                                           dataProcessed.species,
-                                          None)
-        print(nc_filename)
+                                          params["inlet"])
+
         print("Writing " + nc_filename)
             
         dataProcessed.to_netcdf(nc_filename)

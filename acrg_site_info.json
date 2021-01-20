@@ -2055,14 +2055,14 @@
     }
   },
   "TMB": {
-    "CRANFIELD": {
+    "LGHG": {
       "height": [
-        "5m"
+        "10m"
       ],
       "height_name": [
-        "5magl"
+        "10magl"
       ],
-      "height_station_masl": 5.0,
+      "height_station_masl": 10.0,
       "latitude": 51.497,
       "long_name": "Thames Barrier, UK",
       "longitude": 0.037
