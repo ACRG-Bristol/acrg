@@ -768,8 +768,8 @@ def particle_locations(particle_file, time, lats, lons, levs, heights, id_is_lev
         meanvals[np.isnan(meanvals)]=0
         return meanvals
     
-    edge_lons = [min(lons), max(lons)]
-    edge_lats = [min(lats), max(lats)]
+    edge_lons = [lons.min(), lons.max()]
+    edge_lats = [lats.min(), lats.max()]
     dlons = lons[1] - lons[0]
     dlats = lats[1] - lats[0]
     
@@ -904,14 +904,14 @@ def particle_locations(particle_file, time, lats, lons, levs, heights, id_is_lev
                     hist[key][slice_dict] = hist[key][slice_dict_prev].values
         
         # Store extremes
-        if max(df["Lat"]) > particle_extremes["N"]:
-            particle_extremes["N"] = max(df["Lat"])
-        if min(df["Lat"]) < particle_extremes["S"]:
-            particle_extremes["S"] = min(df["Lat"])
-        if max(df["Long"]) > particle_extremes["E"]:
-            particle_extremes["E"] = max(df["Long"])
-        if min(df["Long"]) < particle_extremes["W"]:
-            particle_extremes["W"] = min(df["Long"])
+        if df["Lat"].max() > particle_extremes["N"]:
+            particle_extremes["N"] = df["Lat"].max()
+        if df["Lat"].min() < particle_extremes["S"]:
+            particle_extremes["S"] = df["Lat"].min()
+        if df["Long"].max() > particle_extremes["E"]:
+            particle_extremes["E"] = df["Long"].max()
+        if df["Long"].min() < particle_extremes["W"]:
+            particle_extremes["W"] = df["Long"].min()
 
     status_log("Number of particles reaching edge: " + ", ".join(particles_record),
                print_to_screen = False)

@@ -1210,3 +1210,93 @@ def TMB(species="CH4"):
         print("Writing " + nc_filename)
             
         dataProcessed.to_netcdf(nc_filename)
+
+def NPL_roof():
+    '''
+    Code to process raw Picarro data from the NPL Teddington campus roof
+    Excel files must be pre-processed to csv manually first
+
+    Returns
+    -------
+    None.
+
+    '''
+    unit_species = {"CO2": "ppm",
+                "CH4": "ppb"}
+    
+    site="NPL"
+    speciesList = ["CH4", "CO2"]
+    species_label = {"CO2": "Cal_CO2_dry",
+                    "CH4": "Cal_CH4_dry"}
+    params = {
+            "directory_output" : obs_directory,
+            "scale": {
+                "CH4": "WMO-CH4-X2004A",
+                "CO2": "WMO-CO2-X2007"},
+            "instrument": "PicarroG2401",
+            "inlet": "17m",
+            "global_attributes": {
+                "data_owner": "Tim Arnold",
+                "data_owner_email": "tim.arnold@npl.co.uk",
+                "Notes": "Rooftop instrument at NPL campus in Teddington"
+                }
+            }
+    
+    #find files
+    raw_directory = os.path.join(data_path, "obs_raw/NPL")
+    search_str = join(raw_directory ,"NPL_roof*")
+    fnames = glob.glob(search_str)
+    
+    #for each species, read and combine all of the monthly files
+    #combining all the files could be done seperately first but is currently cheap so this works
+    for species in speciesList:  
+        
+        datas_to_concat = []
+        for filename in fnames:
+            data_raw = pd.read_csv(filename, index_col = None, usecols=[0,1,2])
+            
+            #raw data contains many blank lines, remove these
+            data_raw["Time"].replace('', np.nan, inplace=True)
+            data_raw.dropna(subset=['Time'], inplace=True)
+            
+            #now we can convert datetimes
+            data_raw["time"] = pd.to_datetime(data_raw["Time"], format="%d/%m/%Y %H:%M")
+            
+            #rename columns
+            rename_dict = {}
+            for _species in speciesList:
+                rename_dict[species_label[_species]] = _species
+            data_raw.rename(columns = rename_dict, inplace=True)
+            data_raw.set_index("time", inplace=True)
+            
+            datas_to_concat.append(data_raw)
+        
+        data_raw_concat = pd.concat(datas_to_concat).sort_values("time")
+        dataProcessed = xr.Dataset.from_dataframe(data_raw_concat.loc[:, [species]].sort_index())
+        
+        #convert methane to ppb
+        if species == "CH4":
+            dataProcessed[species] *= 1000
+        
+        #no averaging applied to raw obs, set variability to 0 to allow get_obs to calculate when averaging    
+        dataProcessed["{}_variability".format(species)] = dataProcessed[species] * 0.0
+        
+        #remove points where no measurement was made
+        dataProcessed[species][ dataProcessed[species] < 10.] = np.nan
+        dataProcessed = dataProcessed.dropna("time")
+    
+        dataProcessed = attributes(dataProcessed,
+                     species, site, global_attributes=params["global_attributes"],
+                     units=unit_species[species], scale=params["scale"][species],
+                     sampling_period="1 minute")
+        nc_filename = output_filename(params["directory_output"],
+                                          "LGHG",
+                                          params["instrument"],
+                                          site.upper(),
+                                          dataProcessed.time.to_pandas().index.to_pydatetime()[0],
+                                          dataProcessed.species,
+                                          params["inlet"])
+        print(nc_filename)
+        print("Writing " + nc_filename)
+            
+        dataProcessed.to_netcdf(nc_filename)

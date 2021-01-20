@@ -6,8 +6,6 @@ Created on Fri Oct 16 14:08:07 2015
 """
 from __future__ import print_function
 
-from builtins import zip
-from builtins import range
 import datetime
 import numpy as np
 import pandas as pd
@@ -433,7 +431,6 @@ def gc(site, instrument, network,
             df[sp + " repeatability"] = precision[precision_index].\
                                             astype(float).\
                                             reindex_like(df, "pad")
-
         dfs.append(df)
 
     # Concatenate
@@ -474,7 +471,6 @@ def gc(site, instrument, network,
                             sp + " repeatability",
                             sp + " status_flag",
                             sp + " integration_flag",
-#                            "analysis_time",
                             "Inlet"]]
 
                 # No inlet label in file name
@@ -494,7 +490,6 @@ def gc(site, instrument, network,
                                        sp + " repeatability",
                                        sp + " status_flag",
                                        sp + " integration_flag",
-#                                       "analysis_time",
                                        "Inlet"]]
 
                 else:
@@ -511,7 +506,6 @@ def gc(site, instrument, network,
                                                               sp + " repeatability",
                                                               sp + " status_flag",
                                                               sp + " integration_flag",
-#                                                              "analysis_time"
                                                               "Inlet"]]
 
                 # re-label inlet if required
