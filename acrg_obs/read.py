@@ -424,23 +424,28 @@ def get_single_site(site, species_in,
                     ds_resampled[var] = np.sqrt((ds[var]**2).resample(time = average).sum()) / \
                                                  ds[var].resample(time = average).count()
 
-                elif "variability" in var:
-                    # Calculate std of 1 min mf obs in av period as new vmf 
-                    ds_resampled[var] = ds[species_query].resample(time = average,
-                                                         keep_attrs = True).std(skipna=False)
-
                 # Copy over some attributes
                 if "long_name" in ds[var].attrs:
                     ds_resampled[var].attrs["long_name"] = ds[var].attrs["long_name"]
                 if "units" in ds[var].attrs:
                     ds_resampled[var].attrs["units"] = ds[var].attrs["units"]
 
+            # Create a new variability variable, containing the standard deviation within the resampling period
+            ds_resampled[f"{species_query}_variability"] = ds[species_query].resample(time = average,
+                                                                                      keep_attrs = True).std(skipna=False)
+            # If there are any periods where only one measurement was resampled, just use the median variability
+            ds_resampled[f"{species_query}_variability"][ds_resampled[f"{species_query}_variability"] == 0.] = \
+                                                                ds_resampled[f"{species_query}_variability"].median()
+            # Create attributes for variability variable
+            ds_resampled[f"{species_query}_variability"].attrs["long_name"] = f"{ds[species_query].attrs['long_name']}_variability"
+            ds_resampled[f"{species_query}_variability"].attrs["units"] = ds[species_query].attrs["units"]
+
             # Resampling may introduce NaNs, so remove, if not keep_missing
             if keep_missing == False:
                 ds_resampled = ds_resampled.dropna(dim = "time")
                     
             ds = ds_resampled.copy()
-        
+
         # Rename variables
         rename = {}
 
