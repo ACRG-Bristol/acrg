@@ -305,7 +305,7 @@
         "28m"
       ],
       "height_name": [
-        "20magl"
+        "30magl"
       ],
       "height_station_masl": 11.0,
       "latitude": 71.323,
@@ -1514,6 +1514,20 @@
       "longitude": -118.0586
     }
   },
+  "NAS": {
+    "TU": {
+      "height": [
+        "3m"
+      ],
+      "height_name": [
+        "5magl"
+      ],
+      "height_station_masl": 40.0,
+      "latitude": 78.9167,
+      "long_name": "Ny-Alesund, Svalbard, Norway",
+      "longitude": 11.9333
+    }
+  },
   "NEB": {
     "NOAA": {
       "height": [
@@ -2038,6 +2052,20 @@
       "latitude": 52.73667,
       "long_name": "Tilney, UK",
       "longitude": 0.32127
+    }
+  },
+  "TIK": {
+    "FMI": {
+      "height": [
+        "10m"
+      ],
+      "height_name": [
+        "10magl"
+      ],
+      "height_station_masl": 8.0,
+      "latitude": 71.5862,
+      "long_name": "Tiksi, Russia",
+      "longitude": 128.9188
     }
   },
   "TMD": {
