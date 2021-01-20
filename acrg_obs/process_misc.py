@@ -1208,11 +1208,7 @@ def TMB():
         #convert methane to ppb
         if species == "CH4":
             dataProcessed[species] *= 1000
-        
-        #no averaging applied to raw obs, set variability to 0 to allow get_obs to calculate when averaging    
-        dataProcessed["{} variability".format(species)] = dataProcessed[species] * 0.
-        
-    
+           
         dataProcessed = attributes(dataProcessed,
                      species, site, global_attributes=params["global_attributes"],
                      units=unit_species[species], scale=params["scale"][species],
