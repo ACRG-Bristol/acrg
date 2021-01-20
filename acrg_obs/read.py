@@ -426,7 +426,7 @@ def get_single_site(site, species_in,
 
                 elif "variability" in var:
                     # Calculate std of 1 min mf obs in av period as new vmf 
-                    ds_resampled[var] = ds[var].resample(time = average,
+                    ds_resampled[var] = ds[species_query].resample(time = average,
                                                          keep_attrs = True).std(skipna=False)
 
                 # Copy over some attributes
