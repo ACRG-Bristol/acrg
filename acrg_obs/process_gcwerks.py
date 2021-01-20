@@ -971,7 +971,7 @@ def array_job(array_index):
     '''
     Run processing scripts through an array job:
     
-    qsub -J 1-40 -k oe -j oe -Wsandbox=PRIVATE process_gcwerks_array.sh
+    qsub -J 1-50 -k oe -j oe -Wsandbox=PRIVATE process_gcwerks_array.sh
     
     Note that will need to increase the max index to more than 40 if we add more stations/instruments
     
