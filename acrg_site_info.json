@@ -302,10 +302,10 @@
   "BRW": {
     "NOAA": {
       "height": [
-        "28m"
+        "16m"
       ],
       "height_name": [
-        "30magl"
+        "20magl"
       ],
       "height_station_masl": 11.0,
       "latitude": 71.323,
