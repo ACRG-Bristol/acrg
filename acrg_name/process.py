@@ -1105,7 +1105,6 @@ def footprint_array(fields_file,
                                            time, lats, lons, levs,
                                            heights, satellite = satellite,
                                            upper_level = upper_level)
-#         return particle_hist
     else:
         status_log("No particle location file corresponding to " + fields_file,
                    error_or_warning="error")
@@ -1350,15 +1349,6 @@ def footprint_concatenate(fields_prefix,
     fp = []
     if len(fields_files) > 0:
         for fields_file, particle_file in zip(fields_files, particle_files):
-#             blah = footprint_array(fields_file,
-#                       particle_file = particle_file,
-#                       met = met,
-#                       satellite = satellite,
-#                       time_step = time_step,
-#                       upper_level = upper_level,
-#                       use_surface_conditions = use_surface_conditions,
-#                                      species = species)
-#             return blah
             fp.append(footprint_array(fields_file,
                       particle_file = particle_file,
                       met = met,
@@ -2194,7 +2184,6 @@ def process(domain, site, height, year, month,
                                             upper_level = upper_level,
                                             use_surface_conditions=use_surface_conditions,
                                             species = species)
-#             return fp_file
            
         # Do satellite process
         if satellite:
