@@ -866,8 +866,8 @@ def particle_locations(particle_file, time, lats, lons, levs, heights, id_is_lev
         # This is only an issue if NAME was run with xUnbounded
         
         if xUnbounded:
-            hist.pl_e[slice_dict][:,:,:] = 0
-            hist.mean_age_e[slice_dict][:,:,:] = 0
+            hist.pl_e[slice_dict] = 0
+            hist.mean_age_e[slice_dict] = 0
         else:
             dfe = df[(df["Long"] > edge_lons[1] - dlons/2.) & (df["Id"] == i)]
             hist.pl_e[slice_dict] = \
@@ -886,8 +886,8 @@ def particle_locations(particle_file, time, lats, lons, levs, heights, id_is_lev
                                     lons, heights)   
         #Western edge
         if xUnbounded:
-            hist.pl_w[slice_dict][:,:,:] = 0 
-            hist.mean_age_w[slice_dict][:,:,:] = 0 
+            hist.pl_w[slice_dict] = 0 
+            hist.mean_age_w[slice_dict] = 0 
         else:
             dfe = df[(df["Long"] < edge_lons[0] + dlons/2.) & (df["Id"] == i)]
             hist.pl_w[slice_dict] = \
