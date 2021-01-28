@@ -775,7 +775,7 @@ def particle_locations(particle_file, time, lats, lons, levs, heights, id_is_lev
  
     # determine whether the domain is unbounded in the x direction and use this to set particle location histograms in 
     # east and west to 0
-    if np.isclose((edge_lons[1] - edge_lons[0] + dlons),360,1e-6,0):
+    if np.isclose((edge_lons[1] - edge_lons[0] + dlons),360,atol=1e-6,rtol=0):
         xUnbounded = True
     else:
         xUnbounded = False    
