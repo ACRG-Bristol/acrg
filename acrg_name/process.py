@@ -628,7 +628,7 @@ def read_met(fnames, met_def_dict=None,vertical_profile=False,satellite=False):
     
     if satellite:
         try:
-            re_met_match = re.compile(r"Met_[-]?\d+[.]\d+_[-]?\d+[.]\d+_\d{2,5}")
+            re_met_match = re.compile(r"Met_[-]?\d+[.]\d+_[-]?\d+[.]\d+_\d{2,}")
             file_match = [re.search(re_met_match,f).group() for f in fnames]
         except AttributeError:
             status_log("Could not match Met data filename to expected format.",error_or_warning="warning")
@@ -688,7 +688,8 @@ def met_satellite_split(met):
         met = [met]
     
     return met
- 
+
+# @profile
 def particle_locations(particle_file, time, lats, lons, levs, heights, id_is_lev = False,
                        satellite = False,upper_level=17):
     '''
@@ -936,7 +937,7 @@ def particle_locations(particle_file, time, lats, lons, levs, heights, id_is_lev
 
     return hist
 
-
+# @profile
 def footprint_array(fields_file, 
                     particle_file = None,
                     met = None,
@@ -1232,7 +1233,7 @@ def footprint_array(fields_file,
             fp = convert_units(fp, slice_dict, i, units_str,use_surface_conditions=use_surface_conditions)    
     return fp
     
-    
+# @profile
 def footprint_concatenate(fields_prefix, 
                           particle_prefix = None,
                           datestr = "*",
@@ -1584,7 +1585,7 @@ def write_netcdf(fp, outfile,
     ncF.close()
     status_log("Written... " + os.path.split(outfile)[1])
 
-
+# @profile
 def satellite_vertical_profile(fp, satellite_input_file, max_level,
                                satellite_obs_file = None):
     '''Do weighted average by satellite averaging kernel and
@@ -1683,18 +1684,17 @@ def satellite_vertical_profile(fp, satellite_input_file, max_level,
          status_log("Number of satellite time points > 1 so unable to rely on time interpolated from fields files to be correct. Not checking time within obs file against fields file time.",
                        error_or_warning="status")
 
-    # Change timestamp to that from obs file
+    # Change timestamp to that from satellite input file (obs or release points)
     #  because NAME output only has 1 minute resolution
 
     fp["time"] = sat_input[time].values
-    
     
     if satellite_obs_file is None:
         sat = sat_input
     else:
         with xray.open_dataset(satellite_obs_file) as f:
             sat_all = f.load()
-        sat = sat_all.sel(time=fp["time"], tolerance=0.001)
+        sat = sat_all.sel(time=fp["time"])#, tolerance=0.001)
 
     # Interpolate pressure levels
     variables = ["fp", "pl_n", "pl_e", "pl_s", "pl_w"]
@@ -1825,6 +1825,7 @@ def process_basic(fields_folder, outfile):
     fp = footprint_concatenate(fields_folder)
     write_netcdf(fp, outfile)
 
+# @profile
 def process(domain, site, height, year, month, 
             #base_dir = "/work/chxmr/shared/NAME_output/",
             #process_dir = "/work/chxmr/shared/LPDM/fp_NAME/",
@@ -2899,8 +2900,9 @@ def open_sat_file(satellite_input_file=None, subfolder=None, label=None,
         with xray.open_dataset(satellite_input_file) as f:
             sat = f.load()
     elif ext == ".csv":
-        df = pd.read_csv(satellite_input_file, parse_dates=["Time"])
-        df = df.set_index("Time")
+        df = pd.read_csv(satellite_input_file, parse_dates=["Time"],
+                         dtype={"ID_Level":str})
+        df = df.groupby("Time").first()
         sat = df.to_xarray()
     
     if return_ext:
