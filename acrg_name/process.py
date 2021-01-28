@@ -772,7 +772,15 @@ def particle_locations(particle_file, time, lats, lons, levs, heights, id_is_lev
     edge_lats = [lats.min(), lats.max()]
     dlons = lons[1] - lons[0]
     dlats = lats[1] - lats[0]
-    
+ 
+    # determine whether the domain is unbounded in the x direction and use this to set particle location histograms in 
+    # east and west to 0
+    if np.isclose((edge_lons[1] - edge_lons[0] + dlons),360,atol=1e-6,rtol=0):
+        xUnbounded = True
+    else:
+        xUnbounded = False    
+ 
+
     hist = []
     particles = []
     
@@ -848,13 +856,26 @@ def particle_locations(particle_file, time, lats, lons, levs, heights, id_is_lev
             mean_age_edges(dfe["Long"].values, dfe["Ht"].values,dfe["Age(hr)"].values,
                                     lons, heights)        
         #Eastern edge
-        dfe = df[(df["Long"] > edge_lons[1] - dlons/2.) & (df["Id"] == i)]
-        hist.pl_e[slice_dict] = \
-            particle_location_edges(dfe["Lat"].values, dfe["Ht"].values,
-                                    lats, heights)
-        hist.mean_age_e[slice_dict] = \
-            mean_age_edges(dfe["Lat"].values, dfe["Ht"].values, dfe["Age(hr)"].values,
-                                    lats, heights)
+        
+        # If domain is unbounded in x direction (i.e. 0-360), set E and W directions manually to 0
+        # This is done manually because any small number of particles that die in domain at 
+        # the end of the run can be associated with E and W directions
+        # In addition, the particle location files have long values from -180 to 180, but if NAME run with
+        # xUnbounded flag, the lon values can take on numbers between -180 to 360 causing issues with the
+        # interpretation of 'df["Long"] > edge_lons[1] - dlons/2.'
+        # This is only an issue if NAME was run with xUnbounded
+        
+        if xUnbounded:
+            hist.pl_e[slice_dict] = 0
+            hist.mean_age_e[slice_dict] = 0
+        else:
+            dfe = df[(df["Long"] > edge_lons[1] - dlons/2.) & (df["Id"] == i)]
+            hist.pl_e[slice_dict] = \
+                particle_location_edges(dfe["Lat"].values, dfe["Ht"].values,
+                                        lats, heights)
+            hist.mean_age_e[slice_dict] = \
+                mean_age_edges(dfe["Lat"].values, dfe["Ht"].values, dfe["Age(hr)"].values,
+                                        lats, heights)
         #Southern edge
         dfe = df[(df["Lat"] < edge_lats[0] + dlats/2.) & (df["Id"] == i)]
         hist.pl_s[slice_dict] = \
@@ -864,13 +885,17 @@ def particle_locations(particle_file, time, lats, lons, levs, heights, id_is_lev
             mean_age_edges(dfe["Long"].values, dfe["Ht"].values,dfe["Age(hr)"].values,
                                     lons, heights)   
         #Western edge
-        dfe = df[(df["Long"] < edge_lons[0] + dlons/2.) & (df["Id"] == i)]
-        hist.pl_w[slice_dict] = \
-            particle_location_edges(dfe["Lat"].values, dfe["Ht"].values,
-                                    lats, heights)
-        hist.mean_age_w[slice_dict] = \
-            mean_age_edges(dfe["Lat"].values, dfe["Ht"].values, dfe["Age(hr)"].values,
-                                    lats, heights)
+        if xUnbounded:
+            hist.pl_w[slice_dict] = 0 
+            hist.mean_age_w[slice_dict] = 0 
+        else:
+            dfe = df[(df["Long"] < edge_lons[0] + dlons/2.) & (df["Id"] == i)]
+            hist.pl_w[slice_dict] = \
+                particle_location_edges(dfe["Lat"].values, dfe["Ht"].values,
+                                        lats, heights)
+            hist.mean_age_w[slice_dict] = \
+                mean_age_edges(dfe["Lat"].values, dfe["Ht"].values, dfe["Age(hr)"].values,
+                                        lats, heights)
 
         #Calculate total particles and normalise
         hist_sum = hist[slice_dict].sum()
@@ -1275,7 +1300,7 @@ def footprint_concatenate(fields_prefix,
     Example:
         fp_dataset = footprint_concatenate("/dagage2/agage/metoffice/NAME_output/MY_FOOTPRINTS_FOLDER/Fields_Files/filename_prefix")
     '''
-    
+
     # Find footprint files and MATCHING particle location files
     # These files are identified by their date string. Make sure this is right!
     if satellite:
@@ -1324,7 +1349,6 @@ def footprint_concatenate(fields_prefix,
     fp = []
     if len(fields_files) > 0:
         for fields_file, particle_file in zip(fields_files, particle_files):
-            
             fp.append(footprint_array(fields_file,
                       particle_file = particle_file,
                       met = met,
@@ -2119,7 +2143,10 @@ def process(domain, site, height, year, month,
                     if satellite:
                         met_search_str = subfolder + metf + "/*" + datestr + "/*.txt*"
                     else:
-                        met_search_str = subfolder + metf + "/*.txt*"
+                        if metf == "Met":
+                            met_search_str = subfolder + metf + "/*" + str(year) + "*.txt*"
+                        else:    
+                            met_search_str = subfolder + metf + "/*.txt*"
                     met_files = met_files + sorted(glob.glob(met_search_str))
             else:
                 if satellite:

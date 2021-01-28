@@ -77,6 +77,23 @@ def site_param():
    
     return param
 
+@pytest.fixture()
+def site_param_xunbounded():
+    '''
+    Define input parameters for site data to test.
+    Keys include:
+        "domain" (str),"site" (str),"height" (str),"year" (int),"month" (int),"satellite" (bool)
+    '''
+    param = {}
+    param["domain"] = "ARCTIC"
+    param["site"] = "CBR"
+    param["height"] = "10magl"
+    param["year"] = 2010
+    param["month"] = 1
+    param["satellite"] = False
+   
+    return param
+
 def define_subfolder(domain,site,height):
     ''' Define subfolder name based on domain, site and height '''
     subfolder = "{domain}_{site}_{height}/".format(domain=domain,site=site,height=height)
@@ -88,6 +105,17 @@ def subfolder_site(site_param,site_directory):
     domain = site_param["domain"]
     site = site_param["site"]
     height = site_param["height"]
+    
+    subfolder_site = define_subfolder(domain,site,height)
+    subfolder = os.path.join(site_directory,subfolder_site)  
+    return subfolder
+
+@pytest.fixture()
+def subfolder_xunbounded_site(site_param_xunbounded,site_directory):
+    ''' Define full subfolder path for site data. '''
+    domain = site_param_xunbounded["domain"]
+    site = site_param_xunbounded["site"]
+    height = site_param_xunbounded["height"]
     
     subfolder_site = define_subfolder(domain,site,height)
     subfolder = os.path.join(site_directory,subfolder_site)  
@@ -169,6 +197,18 @@ def get_mixr_files_site(subfolder_site,folder_names,site_param):
     return fields_files
 
 @pytest.fixture()
+def get_mixr_files_xunbounded_site(subfolder_xunbounded_site,folder_names,site_param_xunbounded):
+    ''' 
+    Get filenames of fields files for satellite run with separate points. 
+    Finds field files based on datestr (see create_datestr), one file per day.
+    '''
+    datestr = create_datestr(site_param_xunbounded)
+    fields_folder = folder_names["mixr_fields_folder"]
+    
+    fields_files = get_fields_files(subfolder_xunbounded_site,fields_folder,datestr)
+    return fields_files
+
+@pytest.fixture()
 def get_mixr_hourly_site(subfolder_site,folder_names,site_param):
     ''' 
     Get filenames of fields files for satellite run with separate points. 
@@ -233,6 +273,58 @@ def mixr_file_information():
     return header, column_headings, data_arrays, namever, lons, lats, levs, time, timeStep
 
 @pytest.fixture()
+def mixr_file_xunbounded_information():
+    ''' Define values in the test fields file '''
+    
+    header = {'Title': 'Back_General',
+             'Run time': '1128UTC 17/05/2020',
+             'Met data': 'NWP Flow.Regional_flow',
+             'Start of release': '0000UTC 02/01/2010',
+             'End of release': '0000UTC 01/01/2010',
+             'Release rate': 'Multiple Sources',
+             'Release location': 'Multiple Sources',
+             'Release height': 'Multiple Sources',
+             'Forecast duration': '744 hours',
+             'X grid origin': -98.07578,
+             'Y grid origin': 35.97656,
+             'X grid size': 1024,
+             'Y grid size': 230,
+             'X grid resolution': 0.3515625,
+             'Y grid resolution': 0.2343750,
+             'Number of fields': 2}
+    
+    column_headings = {'species_category': ['', '', '', '', 'INERT', 'INERT'],
+                         'species': ['', '', '', '', 'INERT_C_00', 'INERT_C_01'],
+                         'cell_measure': ['','','','','744 hr time integrated','744 hr time integrated'],
+                         'quantity': ['', '', '', '', 'Mixing ratio', 'Mixing ratio'],
+                         'unit': ['', '', '', '', 'ppms', 'ppms'],
+                         'z_level': ['','','','','From     0 -    40m agl','From     0 -    40m agl'],
+                         'time': ['X grid','Y grid','Longitude','Latitude',
+                          datetime.datetime(2009, 12, 2, 0, 0),
+                          datetime.datetime(2009, 12, 2, 0, 0)]}
+    
+    data_arrays = []
+    data_arrays.append(np.zeros((230,1024)))
+    data_arrays[0][131,0] = 1
+    data_arrays[0][135,1] = 2
+    data_arrays.append(np.zeros((230,1024)))
+    data_arrays[1][131,0] = 3
+    data_arrays[1][135,1] = 4
+    
+    namever = 2
+    
+    lons = np.arange(-98.07578, -98.07578+0.3515625*1024-0.01, 0.3515625) + 0.3515625/2
+    lats = np.arange(35.97656 , 35.97656 +0.2343750*230-0.01, 0.2343750) + 0.2343750/2
+    
+    levs = ['From     0 -    40m agl']
+    
+    time = [datetime.datetime(2010, 1, 1, 0, 0), datetime.datetime(2010, 1, 1, 12, 0)]
+    
+    timeStep = 12
+    
+    return header, column_headings, data_arrays, namever, lons, lats, levs, time, timeStep
+
+@pytest.fixture()
 def particle_file_benchmark():
     '''Benchmark infromation from the dummy particle file'''
     pl_n = np.zeros((2,1,391,20))
@@ -261,6 +353,29 @@ def particle_file_benchmark():
     mean_age_w[1,0,213,1] = 120
     
     return pl_n, pl_w, mean_age_n, mean_age_w
+
+@pytest.fixture()
+def particle_file_xunbounded_benchmark():
+    '''Benchmark infromation from the dummy particle file, replacing values on E and W directions with 0 to test this feature'''
+    pl_n = np.zeros((2,1,1024,20))
+    pl_w = np.zeros((2,1,230,20))
+    pl_e = np.zeros((2,1,230,20))
+    mean_age_n = np.zeros((2,1,1024,20))
+    mean_age_w = np.zeros((2,1,230,20))
+    mean_age_e = np.zeros((2,1,230,20))
+    
+    pl_n[0,0,2,0] = 0.5   
+    pl_n[0,0,3,0] = 0.5   
+    pl_w[0,0,9,0] = 0
+    pl_e[0,0,14,0] = 0
+    
+    mean_age_n[0,0,2,0] = 120
+    mean_age_n[0,0,3,0] = 100
+    mean_age_w[0,0,9,0] = 0
+    mean_age_e[0,0,14,0] = 0
+
+    
+    return pl_n, pl_w, pl_e, mean_age_n, mean_age_w, mean_age_e
 
 @pytest.fixture()
 def met_file_benchmark():
@@ -421,6 +536,18 @@ def get_particle_files_site(subfolder_site,folder_names,
     return particle_files
 
 @pytest.fixture()
+def get_particle_files_xunbounded_site(subfolder_xunbounded_site,folder_names,
+                                         get_mixr_files_xunbounded_site):
+    ''' 
+    Get filenames of particle files for satellite run separated by point.
+    Note: filenames found are based on datestr extracted from the input field files.
+    '''
+    particles_folder = folder_names["particles_folder"]
+    particle_files = get_particle_files(subfolder_xunbounded_site,particles_folder,
+                                        get_mixr_files_xunbounded_site)
+    return particle_files
+
+@pytest.fixture()
 def define_heights():
     ''' Define height range for input into particle_locations function. '''
     dheights = 1000
@@ -439,7 +566,6 @@ def test_particle_locations_site(particle_file_benchmark,mixr_file_information,g
     
     pl_n_bench, pl_w_bench, mean_age_n_bench, mean_age_w_bench = particle_file_benchmark
     
-
     hist = process.particle_locations(particle_file_1,time_bench,lats_bench,lons_bench,levs_bench, heights,id_is_lev=False,
                                  satellite=False)
 
@@ -448,7 +574,28 @@ def test_particle_locations_site(particle_file_benchmark,mixr_file_information,g
     assert np.array_equal(hist["mean_age_n"].values,mean_age_n_bench)
     assert np.array_equal(hist["mean_age_w"].values,mean_age_w_bench)        
 
-#%% Test read_met()
+def test_particle_locations_xunbounded_site(particle_file_xunbounded_benchmark,mixr_file_xunbounded_information,get_particle_files_xunbounded_site,define_heights):
+    '''
+    Test particle_locations() function can produce the correct output for a. dummy particle location file.
+    '''
+
+    header_bench, column_headings_bench, data_arrays_bench, namever_bench, lons_bench, lats_bench, levs_bench, time_bench, timeStep_bench = mixr_file_xunbounded_information
+
+    particle_file_1 = get_particle_files_xunbounded_site[0]
+    heights =  define_heights
+    
+    pl_n_bench, pl_w_bench, pl_e_bench, mean_age_n_bench, mean_age_w_bench, mean_age_e_bench = particle_file_xunbounded_benchmark
+
+    hist = process.particle_locations(particle_file_1,time_bench,lats_bench,lons_bench,levs_bench, heights,id_is_lev=False,
+                                 satellite=False)
+
+    assert np.array_equal(hist["pl_n"].values,pl_n_bench)
+    assert np.array_equal(hist["pl_w"].values,pl_w_bench)
+    assert np.array_equal(hist["pl_e"].values,pl_e_bench)
+    assert np.array_equal(hist["mean_age_n"].values,mean_age_n_bench)
+    assert np.array_equal(hist["mean_age_w"].values,mean_age_w_bench)        
+    assert np.array_equal(hist["mean_age_e"].values,mean_age_e_bench) 
+
 
 def get_met_prefix(subfolder,met_folder):
     '''
