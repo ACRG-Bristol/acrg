@@ -27,6 +27,20 @@
       "longitude": -62.506
     }
   },
+  "AMB": {
+    "MPI": {
+      "height": [
+        "27m"
+      ],
+      "height_name": [
+        "30magl"
+      ],
+      "height_station_masl": 20.0,
+      "latitude": 69.6200,
+      "long_name": "Ambarchik, Russia",
+      "longitude": 162.3000
+    }
+  },
   "AMS": {
     "NOAA": {
       "height": [
@@ -288,7 +302,7 @@
   "BRW": {
     "NOAA": {
       "height": [
-        "28m"
+        "16m"
       ],
       "height_name": [
         "20magl"
@@ -378,6 +392,20 @@
       "latitude": 55.21,
       "long_name": "Cold Bay, Alaska",
       "longitude": -162.72
+    }
+  },
+  "CBR": {
+    "FMI": {
+      "height": [
+        "10m"
+      ],
+      "height_name": [
+        "10magl"
+      ],
+      "height_station_masl": 20.0,
+      "latitude": 79.2804,
+      "long_name": "Cape Baranov Ice Research Station",
+      "longitude": 101.6176
     }
   },
   "CBW": {
@@ -1486,6 +1514,20 @@
       "longitude": -118.0586
     }
   },
+  "NAS": {
+    "TU": {
+      "height": [
+        "3m"
+      ],
+      "height_name": [
+        "5magl"
+      ],
+      "height_station_masl": 40.0,
+      "latitude": 78.9167,
+      "long_name": "Ny-Alesund, Svalbard, Norway",
+      "longitude": 11.9333
+    }
+  },
   "NEB": {
     "NOAA": {
       "height": [
@@ -1509,6 +1551,20 @@
         "latitude": -23.563,
         "longitude": 15.046}
 
+  },
+  "NPL": {
+    "LGHG": {
+      "height": [
+        "17m"
+      ], 
+      "height_name": [
+        "17magl"
+      ], 
+      "height_station_masl": 30.0, 
+      "latitude": 51.424149, 
+      "long_name": "NPL, UK", 
+      "longitude": -0.343872
+    }
   },
   "NMY": {
     "UHei": {
@@ -1998,6 +2054,20 @@
       "longitude": 0.32127
     }
   },
+  "TIK": {
+    "FMI": {
+      "height": [
+        "10m"
+      ],
+      "height_name": [
+        "10magl"
+      ],
+      "height_station_masl": 8.0,
+      "latitude": 71.5862,
+      "long_name": "Tiksi, Russia",
+      "longitude": 128.9188
+    }
+  },
   "TMD": {
     "NOAA": {
       "height": [
@@ -2013,14 +2083,14 @@
     }
   },
   "TMB": {
-    "CRANFIELD": {
+    "LGHG": {
       "height": [
-        "5m"
+        "10m"
       ],
       "height_name": [
-        "5magl"
+        "10magl"
       ],
-      "height_station_masl": 5.0,
+      "height_station_masl": 10.0,
       "latitude": 51.497,
       "long_name": "Thames Barrier, UK",
       "longitude": 0.037
