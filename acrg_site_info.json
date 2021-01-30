@@ -2057,12 +2057,12 @@
   "TIK": {
     "FMI": {
       "height": [
-        "10m"
+        "29m"
       ],
       "height_name": [
         "10magl"
       ],
-      "height_station_masl": 8.0,
+      "height_station_masl": 19.0,
       "latitude": 71.5862,
       "long_name": "Tiksi, Russia",
       "longitude": 128.9188
