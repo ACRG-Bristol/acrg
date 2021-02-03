@@ -179,13 +179,27 @@ def create_regrid_mask(da, pos_coords=("scanline", "ground_pixel")):
     match to the shape of the input array for regridding with boolean 
     values indicating which positions contain NaN values.
     
+    Note: if the DataArray contains additional dimensions beyond
+    those specified by pos_coords, the first value of that dimension
+    is selected to create this mask.
+    
+    Args:
+        da (xarray.DataArray) :
+            Data values for one data variable (e.g. ds["xch4"]).
+        pos_coords (tuple, optional) :
+            The coordinate names describing the position within da.
+            Default = ("scanline", "ground_pixel")
+    
     Returns: numpy.array of boolean values
     '''
     dims = da.dims
+    # Make a copy of the DataArray to make sure the underlying values
+    # are not changed.
     da_copy = da.copy(deep=True)
     
     for dim in dims:
         if dim not in pos_coords:
+            # For additional dimensions take the first value
             da_copy = da_copy.isel({dim:0})
     
     input_values = da_copy.rename({pos_coords[0]:'x',pos_coords[1]:'y'})
@@ -282,8 +296,8 @@ def regrid_subset(ds_tropomi,output_lat,output_lon,names=None,ds_tropomi_geo=Non
                  exclude=["time_utc","qa_pass"],set_nan=True,
                  filter_latlon=True,verbose=False):
     '''
-    The regrid_subset function takes a tropomi orbit and regrids this onto a new 
-    output grid.
+    The regrid_subset function takes a subset from one tropomi orbit and 
+    regrids this onto a new output grid.
     
     Inputs:
         ds_tropomi (xarray.Dataset) :
@@ -440,7 +454,9 @@ def regrid_orbit(ds_tropomi,lat_bounds,lon_bounds,coord_bin,
                    method="conservative",time_increment="1min",
                    exclude=["time_utc","qa_pass"]):
     '''
-    The regrid_orbit function regrids data for a given input tropomi dataset.
+    The regrid_orbit function regrids data for one tropomi orbit. This can 
+    either be for the whole orbit at once or split into time windows based
+    on the time_increment input.    
     
     Args:
         ds_tropomi (xarray.Dataset) :
@@ -580,10 +596,15 @@ def make_time_unique(ds,name="time"):
     
     time_unique = None
     for t,tg in time_group:
+        # Adds a different number of nanoseconds to each repeat time to
+        # make the times unique
         repeats = len(tg)
         time_add = np.arange(0,repeats,step=1,dtype=int)
-        # TODO: We are assuming this is in units of ns so may want to make that explicit
-        time_update = tg + time_add
+        if "[ns]" in str(tg[0].dtype):
+            # At the moment, needs datetime in ns
+            time_update = tg + time_add
+        else:
+            raise ValueError("Do not recognise time units as nanoseconds")
         
         dim = tg.dims[0]
         
@@ -605,7 +626,7 @@ def unravel_grid(ds_grid):
     Unravel regridded data file to create a timeseries with 1D time,lat,lon 
     values. Expects input data to be on a (time, lat, lon) 3D grid.
     
-    Note this will also make time unique by adding small increments to
+    Note this will also make time unique by adding small increments (ns) to
     any repeated time values.
     
     Args:
@@ -687,6 +708,48 @@ def use_NAME_surface_pressure(ds, pressure_domain,
                               columns=["latitude","longitude","time"],
                               day_template=True,max_days=31):
     '''
+    Replace the surface pressure from within the TROPOMI file with the
+    surface pressure from NAME for the NAME input (release point) files.
+    
+    Args:
+        ds (xarray.Dataset) : 
+            Dataset containing pressure values to match the NAME surface pressure values to. Within the 
+            dataset the pressure values should be related to latitude, longitude and time values.
+        pressure_domain (str) :
+            Domain over which surface pressure values have been extracted (can be distinct from 
+            domain if pressure_domain contains area of domain).
+            Check $DATA_PATH/LPDM/surface_pressure folder to see which domains currently exist.
+        pressure_base_dir (str, optional) : 
+            Base directory containing the NAME output files for the SurfacePressure run.
+            Filename is assumed to be of the form "Pressure_C1_*.txt"
+            See name_pressure_file() function for more details.
+        pressure_NAME (np.array, optional) : 
+            If pressure from NAME run has already been extracted, this can be specified explicitly to save 
+            computing time.
+            If not specified, columns from ds and pressure_dir will be used to extract matching pressure values.
+        p_column (str, optional) : 
+            Name for the pressure_levels data (str). Default = "pressure_levels"
+        p_coord (str, optional) : 
+            Name for the layer co-ordinate within pressure_levels data (str). 
+            Default = "layer_bound"
+        columns (list, optional) : 
+            Names of data variables or co-ords within input Dataset for the latitude, longitude and time values 
+            (3 item list). Default = ["latitude","longitude","time"]
+        day_template (bool, optional) :
+            Use nearest day as a template for the change of pressure over the course of the day and match
+            to the nearest time on that day.
+            E.g. if datetime is 2012-05-01 03:00:00, max_days is 31 and nearest day is 2012-01-01 then 
+            use entry from 2012-01-01 03:00:00 (rather than 2012-02-01 00:00:00, which would be the 
+            nearest entry).
+            Default = True.
+        max_days (int, optional) : 
+            Maximum number of days from time within ds to search for the relevant pressure data. 
+            Default = 31 (days).
+
+    Returns:
+        xarray.Dataset:
+            Original dataset with surface pressure levels replaced.
+    
     '''
     
     if pressure_NAME is None:
@@ -731,6 +794,8 @@ def write_tropomi_NAME(ds,site,max_level=None,max_points=50,
     Write NAME input files related to 1 day.
     For ds input expect a dataset with 1D time,lat,lon values.
     
+    See: define_name_filenames() function for details of NAME csv filename.
+    
     Args:
         ds (xarray.Dataset) :
             Dataset containing positions to write to NAME input files.
@@ -746,17 +811,25 @@ def write_tropomi_NAME(ds,site,max_level=None,max_points=50,
             file. If specified and number of points excees this number
             then multiple files will be created labelled as e.g. -A, =B
             etc. (see define_name_filenames() for more details).
-        network (str/None, optional) :
-            TODO
+        network (str/None, optional) : 
+            Which network is being considered e.g. "GOSAT/GOSAT-INDIA"
+            If present, this will be extend the output path e.g. "/shared_data/air/shared/obs/GOSAT/GOSAT-INDIA/"
+        use_name_pressure (bool, optional) : 
+            Whether to use the NAME surface pressure rather than the surface pressure value for each data 
+            point.
         
-        use_name_pressure (bool, optional) :
-            TODO
+        See: use_NAME_surface_pressure() function for arguments used when
+        use_name_pressure is True
             
         name_directory (str, optional) :
             Top level directory to write files for NAME. Full path will 
             be based on the "network" related to "site" 
             Default defined at the top of this module.            
-         
+    
+    Returns:
+        None
+        
+        Dataset is reformatted and written output to a csv file.
     
     ##TODO: May want to generalise this to allow files to be written
     out for a longer time period rather than one day at a time.    
@@ -1090,6 +1163,8 @@ def tropomi_regrid(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
     if apply_qa_filter:
         data_regridded.attrs["qa_filter"] = "Quality filter of > 0.5 applied"
     
+    
+    
     return data_regridded
     
 
@@ -1139,8 +1214,8 @@ def tropomi_process(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
             Default = True
         regrid_method (str, optional) :
             Regridding method to use. Options include:
-                "conservative"
-                "conservative_normed"
+                - "conservative"
+                - "conservative_normed"
             "conservative_normed" will retain more points but
             requires the installation of the "masking" branch for xesmf.
             Ask Rachel/Daniel for more details.
