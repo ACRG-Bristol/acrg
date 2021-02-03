@@ -319,9 +319,9 @@ def getGFED(year, lon_out, lat_out, timeframe='monthly', months = [1,2,3,4,5,6,7
                              lat_out, lon_out)
     return(narr)
     
-def getedgarannualtotals(year, lon_out, lat_out, species='CH4'):
+def getedgarannualtotals(year, lon_out, lat_out, species='CH4', version = 'v50'):
     """
-    Get annual emission totals for species of interest from EDGAR v4.3.2 data.
+    Get annual emission totals for species of interest from EDGAR v4.3.2 or v5.0 data.
     At the time of making this the only species available are CH4 and N2O.
     Regrids to the desired lats and lons.
     
@@ -336,6 +336,9 @@ def getedgarannualtotals(year, lon_out, lat_out, species='CH4'):
             Which species you want to look at. 
             e.g. species = 'CH4'
             Default = 'CH4'
+        versions (str):
+            Version of EDGAR to use. Options are
+            'v50' and 'v432'
     
     Returns:
         narr (array): 
@@ -346,28 +349,46 @@ def getedgarannualtotals(year, lon_out, lat_out, species='CH4'):
     
     species = species.upper() #Make sure species is uppercase
     #Path to EDGAR files
-    edpath = os.path.join(data_path,'Gridded_fluxes/'+species+'/EDGAR_v4.3.2/v432_'+species+'_TOTALS_nc/')
     
-    #Check to see range of years. If desired year falls outside of this range 
-    #then take closest year
-    possyears = np.empty(shape=[0,0],dtype=int)
-    for f in glob.glob(edpath+'v432_'+species+'_*'):
-        fname = f.split('/')[-1]
-        fyear = fname[9:13]      #Extract year from filename
-        possyears = np.append(possyears, int(fyear))
-    if year > max(possyears):
-        print("%s is later than max year in EDGAR database" % str(year))
-        print("Using %s as the closest year" % str(max((possyears))))
-        year = max(possyears)
-    if year < min(possyears):
-        print("%s is earlier than min year in EDGAR database" % str(year))
-        print("Using %s as the closest year" % str(min((possyears))))
-        year = min(possyears)
+    if version == 'v50':
+        edpath = os.path.join(data_path,'Gridded_fluxes/'+species+'/EDGAR_v5.0/yearly/')
+        #Check to see range of years. If desired year falls outside of this range 
+        #then take closest year
+        possyears = np.empty(shape=[0,0],dtype=int)
+        for f in glob.glob(edpath+version+'_'+species+'_*'):
+            fname = f.split('/')[-1]
+            fyear = fname[8:12]      #Extract year from filename
+            possyears = np.append(possyears, int(fyear))
+        if year > max(possyears):
+            print("%s is later than max year in EDGAR database" % str(year))
+            print("Using %s as the closest year" % str(max((possyears))))
+            year = max(possyears)
+        if year < min(possyears):
+            print("%s is earlier than min year in EDGAR database" % str(year))
+            print("Using %s as the closest year" % str(min((possyears))))
+            year = min(possyears)            
+    else:
+        edpath = os.path.join(data_path,'Gridded_fluxes/'+species+'/EDGAR_v4.3.2/v432_'+species+'_TOTALS_nc/')
+        #Check to see range of years. If desired year falls outside of this range 
+        #then take closest year
+        possyears = np.empty(shape=[0,0],dtype=int)
+        for f in glob.glob(edpath+version+'_'+species+'_*'):
+            fname = f.split('/')[-1]
+            fyear = fname[9:13]      #Extract year from filename
+            possyears = np.append(possyears, int(fyear))
+        if year > max(possyears):
+            print("%s is later than max year in EDGAR database" % str(year))
+            print("Using %s as the closest year" % str(max((possyears))))
+            year = max(possyears)
+        if year < min(possyears):
+            print("%s is earlier than min year in EDGAR database" % str(year))
+            print("Using %s as the closest year" % str(min((possyears))))
+            year = min(possyears)
         
     
     #Read in EDGAR data of annual mean CH4 emissions
     #units are in kg/m2/s
-    edgar = edpath+'v432_'+species+'_'+str(year)+'.0.1x0.1.nc'
+    edgar = edpath+version+'_'+species+'_'+str(year)+'.0.1x0.1.nc'
     
     #Species molar mass
     speciesmm = molar_mass(species)
@@ -973,8 +994,6 @@ def get_UKGHG_EDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,
         "WWT" = Waste water treatment
         
     """
-        
-    data_path = '/home/cv18710/work_shared/'
     
     edgarfp = os.path.join(data_path,"Gridded_fluxes",species.upper(),"EDGAR_v5.0/yearly_sectoral")
     ukghgfp = os.path.join(data_path,"Gridded_fluxes",species.upper(),"UKGHG")
