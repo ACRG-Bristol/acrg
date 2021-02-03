@@ -56,6 +56,7 @@ def cornerGrid(geoData):
         lat - 2d array of latitude grid corners
         lon - 2d array of longitude grid corners
     '''
+
     lat = np.zeros([geoData.scanline.size +1, geoData.ground_pixel.size +1])
     lon = np.zeros([geoData.scanline.size +1, geoData.ground_pixel.size +1])
     
@@ -72,16 +73,24 @@ def cornerGrid(geoData):
     #corner
     lat[-1,-1] = geoData.latitude_bounds[0, -1, -1, 2]
     lon[-1,-1] = geoData.longitude_bounds[0, -1, -1, 2]
-       
+   
     return lat, lon
 
-def preProcessFile(filename,edge_coords="corners"):
+def preProcessFile(filename,add_corners=False):
     '''Combine important information from different netCDF groups into a single data frame
     
     input
         filename - string of full filename for TROPOMI file
-        edge_coords - "corners" or "bounds"
-    
+        add_corners (bool, optional) :
+            Explicitly add the cooridinates for the corners to 
+            the dataset. This will add the coordinates:
+                "lat_corners", "lon_corners"
+            Both with dimensions:
+                ("time", "scanline_c", "ground_pixel_c")
+            where the dimension of ground_pixel_c and scanline_c 
+            are ground_pixel + 1 and scanline + 1 respectively.
+            This is useful for plotting.
+        
     return
         tropomi_data - dataframe containing mixing ratio, quality flags, grid data, and column data
                         the "qa_pass" flag variable is True for good measurements and False for bad measurements
@@ -100,19 +109,21 @@ def preProcessFile(filename,edge_coords="corners"):
     tropomi_data['column_averaging_kernel'] = tropomi_data_aux.column_averaging_kernel
     tropomi_data['methane_profile_apriori']= tropomi_data_input.methane_profile_apriori
     
-    if edge_coords == "corners":
+    tropomi_data["dry_air_subcolumns"] = tropomi_data_input.dry_air_subcolumns
+    tropomi_data['pressure_weights'] = 1/tropomi_data["dry_air_subcolumns"]    
+    
+    tropomi_data = tropomi_data.assign_coords({'latitude_bounds':tropomi_data_geo['latitude_bounds']})
+    tropomi_data = tropomi_data.assign_coords({'longitude_bounds':tropomi_data_geo['longitude_bounds']})
+    
+    if add_corners:
         #calculate the meshgrid of corner points in the scan grid for further processing
-        lat, lon = cornerGrid(tropomi_data_geo)
+        #lat, lon = cornerGrid(tropomi_data_geo)
+        lat, lon = cornerGrid(tropomi_data)
         #tropomi_data['lat_corners'] = (["time", "scanline_c", "ground_pixel_c"], np.expand_dims(lat,0))
         #tropomi_data['lon_corners'] = (["time", "scanline_c", "ground_pixel_c"],np.expand_dims(lon,0))
         tropomi_data = tropomi_data.assign_coords({'lat_corners':(["time", "scanline_c", "ground_pixel_c"], np.expand_dims(lat,0))})
         tropomi_data = tropomi_data.assign_coords({'lon_corners':(["time", "scanline_c", "ground_pixel_c"],np.expand_dims(lon,0))})
         
-    elif edge_coords == "bounds":
-        #Explicitly add bounds (may want to change this)
-        tropomi_data = tropomi_data.assign_coords({'latitude_bounds':tropomi_data_geo['latitude_bounds']})
-        tropomi_data = tropomi_data.assign_coords({'longitude_bounds':tropomi_data_geo['longitude_bounds']})
-    
     #flag quality to remove outputs not flagged as 'success' and use recommended acceptable qa_values
     # Note: it may be the case that any value that passes the second condition necessarily passes the first
     quality_flag = (tropomi_data_aux.processing_quality_flags.values.astype(int) & 0xFF == 0) & \
@@ -186,7 +197,7 @@ def create_regrid_mask(da, pos_coords=("scanline", "ground_pixel")):
 def regrid_da(da_tropomi,output_lat,output_lon,ds_tropomi_geo,
               method="conservative",latlon=["latitude","longitude"],
               pos_coords=("ground_pixel","scanline"),
-              set_nan=True,create_corners=False,reuse_weights=False):
+              set_nan=True,reuse_weights=False):
     '''
     The regrid_da function regrids one variable from a tropomi orbit onto a new 
     output grid.
@@ -200,7 +211,7 @@ def regrid_da(da_tropomi,output_lat,output_lon,ds_tropomi_geo,
             Latitudes and longitudes for the output grid (each 1D)
         ds_tropomi_geo (xarray.Dataset) :
             Tropomi data from netcdf group "PRODUCT/SUPPORT_DATA/GEOLOCATIONS". 
-            This dataset needs to contain "lat_bounds" and "lon_bounds" data variables.
+            This dataset needs to contain "latitude_bounds" and "longitude_bounds" data variables.
         method (str, optional)
             string describing method to use when regridding. Should be one of:
                 "conservative"
@@ -216,11 +227,6 @@ def regrid_da(da_tropomi,output_lat,output_lon,ds_tropomi_geo,
         set_nan (bool, optional) :
             After regridding, explicitly set values of 0 to np.nan.
             Default = True
-        create_corners (bool, optional) :
-            Re-create corner co-ordinates based on current "lat_bounds" and "lon_bounds"
-            in the input file. This may be useful if the data has been filtered after
-            the dataset was first created.
-            Default = True
         reuse_weights (bool, optional) :
             Reuse previous weights created over the same grid area. This speeds
             up computation but should make sure this exactly matches the previous
@@ -231,11 +237,7 @@ def regrid_da(da_tropomi,output_lat,output_lon,ds_tropomi_geo,
     input_lat = da_tropomi[latlon[0]][0,:,:].values
     input_lon = da_tropomi[latlon[1]][0,:,:].values
     
-    if ("lat_corners" not in ds_tropomi_geo and "lon_corners" not in ds_tropomi_geo) or (create_corners):
-        input_lat_b, input_lon_b = cornerGrid(ds_tropomi_geo)
-    else:
-        input_lat_b = ds_tropomi_geo["lat_corners"].isel(time=0).values
-        input_lon_b = ds_tropomi_geo["lon_corners"].isel(time=0).values
+    input_lat_b, input_lon_b = cornerGrid(ds_tropomi_geo)
 
     input_grid = xr.Dataset({'lat': (['x', 'y'], input_lat),
                          'lon': (['x', 'y'], input_lon),
@@ -274,13 +276,13 @@ def regrid_da(da_tropomi,output_lat,output_lon,ds_tropomi_geo,
     return regridded
 
 
-def regrid_orbit(ds_tropomi,output_lat,output_lon,names=None,ds_tropomi_geo=None,
+def regrid_subset(ds_tropomi,output_lat,output_lon,names=None,ds_tropomi_geo=None,
                  method="conservative",latlon=("latitude", "longitude"),
                  pos_coords=("scanline", "ground_pixel"),
                  exclude=["time_utc","qa_pass"],set_nan=True,
-                 filter_latlon=True,create_corners=True,verbose=False):
+                 filter_latlon=True,verbose=False):
     '''
-    The regrid_orbit function takes a tropomi orbit and regrids this onto a new 
+    The regrid_subset function takes a tropomi orbit and regrids this onto a new 
     output grid.
     
     Inputs:
@@ -320,11 +322,6 @@ def regrid_orbit(ds_tropomi,output_lat,output_lon,names=None,ds_tropomi_geo=None
         filter_latlon (bool, optional) :
             Filter the input data to only include the range covered by the output grid.
             May make computation quicker.
-            Default = True
-        create_corners (bool, optional) :
-            Re-create corner co-ordinates based on current "lat_bounds" and "lon_bounds"
-            in the input file. This may be useful if the data has been filtered after
-            the dataset was first created.
             Default = True
         verbose (bool, optional) :
             Print detailed output at each stage (verbose).
@@ -418,7 +415,7 @@ def regrid_orbit(ds_tropomi,output_lat,output_lon,names=None,ds_tropomi_geo=None
         
         regridded = regrid_da(dv,output_lat,output_lon,ds_tropomi_geo,
                               method=method,latlon=latlon,pos_coords=pos_coords,
-                              set_nan=set_nan,create_corners=create_corners,
+                              set_nan=set_nan,
                               reuse_weights=reuse_weights)
         
         # Reorder dimensions to reflect original order
@@ -439,11 +436,11 @@ def regrid_orbit(ds_tropomi,output_lat,output_lon,names=None,ds_tropomi_geo=None
     return ds_tropomi_regridded
 
 
-def regrid_tropomi(ds_tropomi,lat_bounds,lon_bounds,coord_bin,
-                   method="conservative",time_increment="10s",
+def regrid_orbit(ds_tropomi,lat_bounds,lon_bounds,coord_bin,
+                   method="conservative",time_increment="1min",
                    exclude=["time_utc","qa_pass"]):
     '''
-    The regrid_tropomi function regrids data for a given input tropomi dataset.
+    The regrid_orbit function regrids data for a given input tropomi dataset.
     
     Args:
         ds_tropomi (xarray.Dataset) :
@@ -470,11 +467,11 @@ def regrid_tropomi(ds_tropomi,lat_bounds,lon_bounds,coord_bin,
                 https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#timeseries-offset-aliases
             For example:
                 "10s" (10 seconds)
-                "30min" (30 minutes)
+                "1min" (1 minute)
                 "1h" (1 hour)
             Should always be a day or less.
             Can set to None to not split the data by time.
-            Default = "10s"
+            Default = "1min"
         
         exclude (list, optional) :
             Data variables within the dataset to not include in the
@@ -531,7 +528,7 @@ def regrid_tropomi(ds_tropomi,lat_bounds,lon_bounds,coord_bin,
         if time_increment is not None:
             data_t = data_t.swap_dims({time_full:"scanline"})
         
-        regridded = regrid_orbit(data_t,output_lat,output_lon,
+        regridded = regrid_subset(data_t,output_lat,output_lon,
                                  method=method,exclude=exclude)
 
         if regridded is not None:
@@ -649,18 +646,7 @@ def unravel_grid(ds_grid):
     
     return ds_flatten
 
-                # filename = site+"_"+date.replace('-','')
-                # if max_points:
-                #     if len(wh_date) > max_points:
-                #         letter_split = chr(ord("A")+int(old_div(ID,max_points)))
-                #         filename = "{}-{}".format(filename,letter_split)
-                #     ID_1 = ID%max_points
-                # else:
-                #     ID_1 = ID
-                # filename += '.csv'
-                # filename = os.path.join(name_directory,filename)
-
-    
+   
 def create_labels(number_of_points,max_level):
     '''
     Make ID_Level labels for inclusion in output NAME file.
@@ -955,16 +941,163 @@ def write_tropomi_output(ds,site,date,species="ch4",
     
     print(f"Writing to file: {output_filename}")
     ds.to_netcdf(output_filename)
+
+def define_tropomi_search_str(species="ch4",analysis_mode="OFFL"):
+    '''
+    Define expected search string for tropomi files based on
+    species and analysis mod.
+    
+    S5P_{analysis_mode}_L2__{search_species}*.nc
+    
+    Args:
+        species (str, optional):
+            Currently only "ch4" for methane
+        analysis_mode (str, optional):
+            One of "OFFL" (offline mode) or "RPRO" (repreocessed).
+    
+    Returns:
+        str:
+            Filename string included wildcard (*)
+    '''
+    if species == "ch4":
+        search_species = "CH4____"
+    
+    search_str = f"S5P_{analysis_mode}_L2__{search_species}*.nc"
+    
+    return search_str
+    
+
+def tropomi_regrid(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
+                   time_increment="1min",
+                   apply_qa_filter=True,
+                   regrid_method="conservative",
+                   input_directory=input_directory,
+                   verbose=False):
+    '''
+    The tropomi_regrid function combines tropomi data for a given date
+    range onto a regular grid. This also involves grouping together
+    measurement in time and the minimum time granularity is 
+    determined by the the time_increment input.
+    
+    Args:
+        start_date (str) :
+            Start of the date range in the form "YYYY-MM-DD"
+        end_date (str) :
+            Up to but not including this date. "YYYY-MM-DD"
+        lat_bounds (list) :
+            Latitude lower and upper bounds to include in output (2-item list).
+            Upper bound included.
+        lon_bounds (list) :
+            Longitude lower and upper bounds to include in output (2-item list).
+            Upper bound included.
+        coord_bin (float/list) :
+            Bins to use for latitude and longitude dimensions.
+            Specify one value to use for both or a 2-item list to
+            use different values.
+        time_increment (str, optional) :
+            Time window to group tropomi points.
+            Default = "1min" # 1 minute
+        apply_qa_filter (bool, optional) :
+            Filter by the recommended quality conditions (combined
+            filter > 0.5).
+            Default = True
+        regrid_method (str, optional) :
+            Regridding method to use. Options include:
+                "conservative"
+                "conservative_normed"
+            "conservative_normed" will retain more points but
+            requires the installation of the "masking" branch for xesmf.
+            Ask Rachel/Daniel for more details.
+        input_directory (str, optional) :
+            Top level directory for reading TROPOMI data.
+            Full path will be based on "species".
+        verbose (bool, optional) :
+            Print more descriptive output as function executes.
+            Default = False
+    
+    Returns:
+        xarray.Dataset :
+            Grouped tropomi data on a regular grid with overall 
+            dimensions of:
+                'time', 'lat', 'lon, ['layer', 'layer_bound']
+    '''
+    
+    species = "ch4"
+    ##TODO: Update input paths, currently hardwired to RT local BP1 area
+    #base_directory = Path("/home/rt17603/shared/obs_raw/TROPOMI/SOUTHAMERICA/")
+    #base_output_directory = Path("/home/rt17603/work/TROPOMI_processed/SOUTHAMERICA/")
+    if species == "ch4":
+        directory = input_directory / "CH4"
+        #output_directory = base_output_directory / "CH4"
+    analysis_mode = "OFFL"
+    search_str = define_tropomi_search_str(species,analysis_mode)
+
+    time = "time"
+    time_full = "delta_time" # Time as np.datetime objects
         
+    filenames = gosat_fn.extract_files(directory,search_str,start_date,end_date)
+    
+    if len(filenames) == 0:
+        alt_analysis_mode = "RPRO"
+        if verbose:
+            print(f"Couldn't find {analysis_mode} files, looking for {alt_analysis_mode} (reprocessed)")
+        search_str_alt = define_tropomi_search_str(species,alt_analysis_mode)
+        #search_str_alt = search_str.replace(current_analysis_mode,analysis_mode)
+        filenames = gosat_fn.extract_files(directory,search_str_alt,start_date,end_date)
+    
+    if len(filenames) == 0:
+        print(f"No files found for date: {start_date} - {end_date}")
+    
+    data_regridded = None
+    input_filenames = []
+    for i,filename in enumerate(filenames):
+        
+        print(f"Processing input file: {filename}")
+        ## TODO: Currently seems to be relying on edge_coords being
+        # set to bounds - need to to update this and follow it through
+        # the chain.
+        data = preProcessFile(filename, add_corners=True)
 
+        # Make delta_time into a coordinate. This will be used
+        # if splitting my time increments and also means that
+        # these values do not get turned into NaT values if using
+        # filtering by the quality flag.
+        dt0 = data[time_full].isel({time:0},drop=True)
+        data = data.assign_coords(coords={time_full:dt0})
 
+        if apply_qa_filter:
+            data = data.where(data["qa_pass"])
+        
+        # Regrid data for each file
+        regridded = regrid_orbit(data,lat_bounds,lon_bounds,coord_bin,
+                                   method=regrid_method,
+                                   time_increment=time_increment)
+        
+        if regridded is not None:
+            if data_regridded is None:
+                data_regridded = regridded
+            else:
+                data_regridded = xr.concat([data_regridded,regridded],dim=time)
+            # Record filenames which contain data
+            input_filenames.append(filename)
+
+    short_filenames = [os.path.split(fname)[1] for fname in input_filenames]
+    short_filenames = ','.join(short_filenames)
+    
+    data_regridded.attrs["input_filename"] = short_filenames
+    data_regridded.attrs["analysis_mode"] = f"Input files are from {analysis_mode} mode of analysis."
+
+    if apply_qa_filter:
+        data_regridded.attrs["qa_filter"] = "Quality filter of > 0.5 applied"
+    
+    return data_regridded
     
 
 def tropomi_process(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
                     max_level=None,site=None,max_points=50,
                     network=None,
                     #species="ch4",
-                    time_increment="10s",
+                    time_increment="1min",
                     apply_qa_filter=True,
                     regrid_method="conservative",
                     input_directory=input_directory,
@@ -1083,13 +1216,10 @@ def tropomi_process(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
         for i,filename in enumerate(filenames):
             
             print(f"Processing input file: {filename}")
-            ## TODO: Currently seems to be relying on edge_coords being
-            # set to bounds - need to to update this and follow it through
-            # the chain.
-            data = preProcessFile(filename,edge_coords="bounds")
+            data = preProcessFile(filename)
 
-            # Make delta_time into a coordinate. This will be used
-            # if splitting my time increments and also means that
+            # Making delta_time into a coordinate. This will be used
+            # if splitting by time increments and also means that
             # these values do not get turned into NaT values if using
             # filtering by the quality flag.
             dt0 = data[time_full].isel({time:0},drop=True)
@@ -1099,7 +1229,7 @@ def tropomi_process(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
                 data = data.where(data["qa_pass"])
             
             # Regrid data for each file
-            regridded = regrid_tropomi(data,lat_bounds,lon_bounds,coord_bin,
+            regridded = regrid_orbit(data,lat_bounds,lon_bounds,coord_bin,
                                        method=regrid_method,
                                        time_increment=time_increment)
             
