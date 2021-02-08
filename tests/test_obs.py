@@ -49,7 +49,7 @@ def test_get_obs_site():
     recreated_data = acrg_obs.get_obs(["BSD"], "CH4",
                                       start_date = start_date,
                                       end_date = end_date,
-                                      file_paths = [str(test_dir / "files/obs/processed/DECC-picarro_BSD_20140130_ch4-TEST.nc")],
+                                      data_directory=test_dir / "files/obs/",
                                       keep_missing=True, average=["1H"])
     
     #test the date range is as expected
@@ -58,7 +58,28 @@ def test_get_obs_site():
     assert "mf" in recreated_data["BSD"][0].variables
     assert ("mf_repeatability" in recreated_data["BSD"][0].variables) or ("mf_variability" in recreated_data["BSD"][0].variables)
     assert len(recreated_data["BSD"][0].time) == 24
-
+    
+def test_get_obs_variability():
+    '''
+    Test that varability is correctly calculcated in time averages obs
+    '''
+    start_date = "2014-01-30 00:00"
+    end_date = "2014-01-31 00:00"
+    start_date = "2014-01-30 00:00"
+    end_date = "2014-01-31 00:00"
+    fine_data = acrg_obs.get_obs(["BSD"], "CH4",
+                                      start_date = start_date,
+                                      end_date = end_date,
+                                      data_directory=test_dir / "files/obs/")
+    
+    hourly_data = acrg_obs.get_obs(["BSD"], "CH4",
+                                      start_date = start_date,
+                                      end_date = end_date,
+                                      data_directory=test_dir / "files/obs/",
+                                      average=["1H"])
+    
+    calculated_variability = fine_data["BSD"][0].mf.resample(time="1H").std()
+    assert np.allclose(hourly_data["BSD"][0].mf_variability, calculated_variability)
     
 def test_get_obs_gosat():
     '''
