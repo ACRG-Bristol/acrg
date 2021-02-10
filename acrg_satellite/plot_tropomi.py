@@ -65,7 +65,7 @@ def plot_tropomi_orbit(filename, parameter="methane_mixing_ratio_bias_corrected"
     '''
     
     
-    data = tropomi.preProcessFile(filename)
+    data = tropomi.preProcessFile(filename, add_corners=True)
 
     ## Create parameters associated with chosen projection
     if projection == "Geostationary":
