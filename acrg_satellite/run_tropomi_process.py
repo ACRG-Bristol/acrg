@@ -52,8 +52,8 @@ if __name__=="__main__":
 
 
     ####### TO BE REMOVED ONCE CONFIG FILE IS IN PLACE #####
-#    start_date = "2019-07-19"
-#    end_date = "2019-07-22"
+    start_date = "2019-07-19"
+    end_date = "2019-07-22"
     
     area="GOSAT-BRAZIL"
 
@@ -70,47 +70,46 @@ if __name__=="__main__":
         lon_min = -76.0 # -75.98444
         lon_max = -32.7 # -32.79305
     
-#    dlat = 0.234
-#    dlon = 0.352
-    dlat = 0.10
-    dlon = 0.10
+    dlat = 0.234
+    dlon = 0.352
+#    dlat = 0.10
+#    dlon = 0.10
 
     lat_bounds = [lat_min,lat_max]
     lon_bounds = [lon_min,lon_max]
     coord_bin = [dlat,dlon]
     
-#    time_increment = "1s" # e.g. None, "10s", "30min" (always < 1 day)
-    time_increment = "1min"
-    #time_increment = "10s" # e.g. None, "10s", "30min" (always < 1 day)
+#    time_increment = "1min" # e.g. None, "10s", "30min" (always < 1 day)
     #time_increment = "30min" # e.g. None, "10s", "30min" (always < 1 day)
-    #time_increment = "1h" # e.g. None, "10s", "30min" (always < 1 day)
+    time_increment = "1h" # e.g. None, "10s", "30min" (always < 1 day)
     #time_increment = None
     
     site = area.replace("GOSAT-","TROPOMI-")
     network = "TROPOMI/"+site
     
     write_name = True
-    #name_directory = Path("/home/rt17603/work/NAME_files/test")
+    name_directory = Path("/home/rt17603/work/NAME_files/test")
     #name_directory = Path("/home/rt17603/work/NAME_files/")
 #    name_directory = Path("/home/rt17603/work/NAME_files/03_bin")
 #    name_directory = Path("/home/rt17603/work/NAME_files/05_bin")
 #    name_directory = Path("/home/rt17603/work/NAME_files/035_1min_bin")
-    name_directory = Path("/home/rt17603/work/NAME_files/010_1min_bin")
+    #name_directory = Path("/home/rt17603/work/NAME_files/010_1min_bin")
     use_name_pressure = True
     pressure_domain = "SOUTHAMERICA"
     pressure_max_days = 1
     
-    #output_directory = Path("/home/rt17603/work/obs/test")
+    output_directory = Path("/home/rt17603/work/obs/test")
 #    output_directory = Path("/home/rt17603/work/obs/")
     #output_directory = Path("/home/rt17603/work/obs/03_bin")
 #    output_directory = Path("/home/rt17603/work/obs/05_bin")
 #    output_directory = Path("/home/rt17603/work/obs/035_1min_bin")
-    output_directory = Path("/home/rt17603/work/obs/010_1min_bin")
+    #output_directory = Path("/home/rt17603/work/obs/010_1min_bin")
     
     #max_points = None # Maximum number of points per NAME file
     max_points = 50 # Maximum number of points per NAME file
     
-    regrid_method = "conservative_normed"
+    #regrid_method = "conservative_normed"
+    regrid_method = "conservative"
 
     
     tropomi.tropomi_process(start_date,end_date,lat_bounds,lon_bounds,coord_bin,

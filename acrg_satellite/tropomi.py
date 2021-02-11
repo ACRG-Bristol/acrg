@@ -40,8 +40,8 @@ if not data_path:
 
 home = Path(os.getenv("HOME"))
 
-##TODO: Replace this with a central location when this has been sorted
-input_directory = Path("/home/rt17603/shared/obs_raw/TROPOMI/SOUTHAMERICA/")
+##TODO: Replace this more general directory (not SOUTHAMERICA) once this is sorted
+input_directory = Path("/work/chxmr/shared/obs_raw/TROPOMI/SOUTHAMERICA/")
 
 name_csv_directory = os.path.join(home,"NAME_files") # Where to write output NAME csv files
 obs_directory = os.path.join(data_path,'obs/') # Where to write output nc files
@@ -482,16 +482,18 @@ def regrid_orbit(ds_tropomi,lat_bounds,lon_bounds,coord_bin,
             using pandas offset aliases:
                 https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#timeseries-offset-aliases
             For example:
-                "10s" (10 seconds)
-                "1min" (1 minute)
-                "1h" (1 hour)
+                - "10s" (10 seconds)
+                - "1min" (1 minute)
+                - "1h" (1 hour)
             Should always be a day or less.
             Can set to None to not split the data by time.
+            
             Default = "1min"
         
         exclude (list, optional) :
             Data variables within the dataset to not include in the
             regridded output.
+            
             Default = ["time_utc","qa_pass"]
             
         
@@ -568,7 +570,8 @@ def regrid_orbit(ds_tropomi,lat_bounds,lon_bounds,coord_bin,
         data_regridded.attrs["time_resample"] = comment
 
     ##TODO: Here or somewhere else: write something to remove all the weight
-    # file which get created after regridding is finished.
+    # files which get created after regridding is finished.
+    # Need to work out where these files are created!
     # conservative_*.nc
     # conservative_normed_*.nc
 
@@ -695,7 +698,7 @@ def create_labels(number_of_points,max_level):
     
     labels = []
     for n in range(1,number_of_points+1):        
-        point = f"{n:0{n_digits}d}"
+        point = f"{n:0{n_digits}d}" # Pad with zeros
         full_label = [point+f"{lev:02d}" for lev in range(1,max_level+1)]
         labels.extend(full_label)
     
@@ -767,9 +770,9 @@ def use_NAME_surface_pressure(ds, pressure_domain,
     # pressure from name_pressure_match() function is in hPa and needs to be
     # converted to Pa
     name_pressure_convert = 100.
-    print(pressure_NAME)
+    #print(pressure_NAME)
     pressure_NAME *= name_pressure_convert
-    print(pressure_NAME)
+    #print(pressure_NAME)
     
     # Reassign surface pressure to lower bound of layers
     surface_index = 0
@@ -795,6 +798,17 @@ def write_tropomi_NAME(ds,site,max_level=None,max_points=50,
     For ds input expect a dataset with 1D time,lat,lon values.
     
     See: define_name_filenames() function for details of NAME csv filename.
+
+    Example file format (GOSAT example):
+    ID_Level,Time,x,dx,y,dy,z,dz
+    00101,2018-02-01 15:11:48,-33.506783,0.094621,-3.650032,0.094429,99193.199539,3614.003754
+    00102,2018-02-01 15:11:48,-33.506783,0.094621,-3.650032,0.094429,93822.554398,7127.278900
+    [...]
+    00117,2018-02-01 15:11:48,-33.506783,0.094621,-3.650032,0.094429,4750.000000,3500.000000
+    00201,2018-02-01 15:11:53,-33.561993,0.094649,-3.906265,0.094429,99196.054268,3611.492538
+    00202,2018-02-01 15:11:53,-33.561993,0.094649,-3.906265,0.094429,93828.875732,7122.863770
+    00203,2018-02-01 15:11:53,-33.561993,0.094649,-3.906265,0.094429,86756.071472,7022.74475
+    [...]
     
     Args:
         ds (xarray.Dataset) :
@@ -834,6 +848,7 @@ def write_tropomi_NAME(ds,site,max_level=None,max_points=50,
     ##TODO: May want to generalise this to allow files to be written
     out for a longer time period rather than one day at a time.    
     '''
+    ## Define parameters which can be directly extracted from input Dataset
     # Note column mapping here is out:in values rather than in:out 
     # because some columns in output do not map to input data variables.
     
@@ -850,19 +865,9 @@ def write_tropomi_NAME(ds,site,max_level=None,max_points=50,
                                 ('z',None),
                                 ('dz',None)])    
     
+    # Define order of columns in output
     col_order = list(col_mapping.keys())[1:]
     
-    # Create data frame for all data and then group?
-    # How will NAME react to small time increment differences? Or should
-    # we just cut off time for printing out to NAME file? And how will this
-    # align with the footprints? With the current code this matches on time...
-    
-    #dx, dy will be based on whatever output grid was chosen so should be constant
-    #dz can be based on the pressure_levels as these have layer_bounds rather than
-    #just levels like with gosat.
-    # - i and i+1 in pressure_levels
-    # - Do we need to check these against the NAME surface again?
-
     if site is None:
         site = 'global'
     
@@ -875,12 +880,14 @@ def write_tropomi_NAME(ds,site,max_level=None,max_points=50,
     if network is None:
         network = gosat_fn.find_network(site)[0] # Using first site as default
 
+    ## Create output directiry if not present (based on network)
     output_directory = os.path.join(name_directory,network)
     if not os.path.isdir(output_directory):
         os.makedirs(output_directory)
     
     number_of_points = ds.dims[time]
 
+    ## Replace TROPOMI surface pressure with NAME surface pressure (if specified)
     if use_name_pressure:
         columns = [lat, lon, time]
         ds = use_NAME_surface_pressure(ds, columns=columns,
@@ -889,15 +896,21 @@ def write_tropomi_NAME(ds,site,max_level=None,max_points=50,
                                        max_days=pressure_max_days,
                                        day_template=pressure_day_template)
 
+    ## Extract pressure values (for z and dz outputs)
     dpressure = np.abs(ds[pressure].diff(dim="layer_bound",label="lower"))
     pressure = ds[pressure].isel(layer_bound=slice(0,-1)) + dpressure/2.
     
+    # Limit to max_level (if specified)
     if max_level:
         dpressure = dpressure.isel({"layer_bound":slice(0,max_level+1)})
         pressure = pressure.isel({"layer_bound":slice(0,max_level+1)})
     else:
         max_level = dpressure["layer_bound"].size
     
+    ## Start to construct output - ds_name
+    # Need repeated time, x, y for each layer (z)
+    # so expand these to repeat along the layer_bound dimension as well
+    # dims = (time x layer_bound)
     layer_bound = pressure["layer_bound"]
     
     ds_name = xr.Dataset()
@@ -907,34 +920,46 @@ def write_tropomi_NAME(ds,site,max_level=None,max_points=50,
             dv = dv.expand_dims(dim={"layer_bound":layer_bound},axis=-1)
             ds_name = ds_name.assign({new_name:dv})
     
+    ## Create dlon and dlat inputs (dx, dy) based on stored values
+    # - "dlat" and "dlon" attributes are created when regridded is applied
+    # These will be the same values for all x, y inputs.
     dlat = xr.DataArray(np.array(ds.attrs["dlat"]))
     dlon = xr.DataArray(np.array(ds.attrs["dlon"])) 
     
-    ## Can't do this because of missing points
+    ### Can't calculate this using lat, lon values because of missing points
     ##dlat = np.mean(ds[latlon[0]].diff(dim=time))#.values)
     ##dlon = np.mean(ds[latlon[1]].diff(dim=time))#.values)
 
     dlat = dlat.expand_dims(dim={"layer_bound":ds_name["layer_bound"]},axis=-1)
     dlon = dlon.expand_dims(dim={"layer_bound":ds_name["layer_bound"]},axis=-1)
 
+    ## Add remaining values to output Dataset
     ds_name = ds_name.assign({"dx":dlon})
     ds_name = ds_name.assign({"dy":dlat})
 
     ds_name = ds_name.assign({"z":pressure})
     ds_name = ds_name.assign({"dz":dpressure})
     
+    ## Unravel (flatten) time x layer_bound onto one dimension
     temp_dim = "stack"
     ds_name = ds_name.stack({temp_dim:("time","layer_bound")})
     ds_name = ds_name.reset_index(temp_dim)
     
+    ## Create ID values of the appropriate form and add to output
     id_label = create_labels(number_of_points,max_level)
     ds_name = ds_name.assign_coords({"ID_Level":(temp_dim,id_label)})
     ds_name = ds_name.swap_dims({temp_dim:"ID_Level"})
     ds_name = ds_name.drop(labels=["time","layer_bound"])
     
+    ## Cast output to a simple indexed DataFrame and make sure columns 
+    # are in the expected order
     df = ds_name.to_dataframe()
     df = df[col_order]
     
+    ## Write data to one or more output files
+    # If max_points is specified, the number of files is 
+    # number_of_points//max_points + 1
+    # i.e. files containing a maximum number of time points each
     name_filenames = \
         gosat_fn.define_name_filenames(output_directory, site, date,
                                        number_of_points=number_of_points,
@@ -945,8 +970,9 @@ def write_tropomi_NAME(ds,site,max_level=None,max_points=50,
     else:
         lines_per_file = number_of_points*max_level
     
-    ##TODO: Check start:end is including all the correct lines, since this 
-    # selection has been derived
+    ##TODO: Write in check for overwriting an existing file
+
+    # Write correct number of points from DataFrame to each output file
     for i, name_fname in enumerate(name_filenames):
         
         start = i*lines_per_file
@@ -1018,9 +1044,13 @@ def write_tropomi_output(ds,site,date,species="ch4",
 def define_tropomi_search_str(species="ch4",analysis_mode="OFFL"):
     '''
     Define expected search string for tropomi files based on
-    species and analysis mod.
+    species and analysis mode.
     
     S5P_{analysis_mode}_L2__{search_species}*.nc
+    
+    e.g. search_species for "ch4" is "CH4____"
+
+    Note: doesn't include path to filenames
     
     Args:
         species (str, optional):
@@ -1030,7 +1060,7 @@ def define_tropomi_search_str(species="ch4",analysis_mode="OFFL"):
     
     Returns:
         str:
-            Filename string included wildcard (*)
+            Filename search string including a wildcard (*)
     '''
     if species == "ch4":
         search_species = "CH4____"
@@ -1096,17 +1126,15 @@ def tropomi_regrid(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
     '''
     
     species = "ch4"
-    ##TODO: Update input paths, currently hardwired to RT local BP1 area
-    #base_directory = Path("/home/rt17603/shared/obs_raw/TROPOMI/SOUTHAMERICA/")
-    #base_output_directory = Path("/home/rt17603/work/TROPOMI_processed/SOUTHAMERICA/")
+
+    time = "time"
+    time_full = "delta_time" # Time as np.datetime objects
+
     if species == "ch4":
         directory = input_directory / "CH4"
         #output_directory = base_output_directory / "CH4"
     analysis_mode = "OFFL"
     search_str = define_tropomi_search_str(species,analysis_mode)
-
-    time = "time"
-    time_full = "delta_time" # Time as np.datetime objects
         
     filenames = gosat_fn.extract_files(directory,search_str,start_date,end_date)
     
@@ -1245,27 +1273,24 @@ def tropomi_process(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
     
     
     ##TODO: Add species input and filter to choose correct search_species string
-
+    ##TODO: Make this return something as well as writing to file?
     '''
     timing_1 = timing_module.time()
     
     print(f"Processing tropomi files for date range: {start_date} - {end_date}")
+
+    time = "time"
+    time_full = "delta_time" # Time as np.datetime objects
+    #latlon=("latitude", "longitude")
+    #pos_coords=("scanline", "ground_pixel")
     
     species = "ch4"
-    ##TODO: Update input paths, currently hardwired to RT local BP1 area
-    #base_directory = Path("/home/rt17603/shared/obs_raw/TROPOMI/SOUTHAMERICA/")
-    #base_output_directory = Path("/home/rt17603/work/TROPOMI_processed/SOUTHAMERICA/")
     if species == "ch4":
         directory = input_directory / "CH4"
         #output_directory = base_output_directory / "CH4"
         search_species = "CH4____"
     analysis_mode = "OFFL"
     search_str = f"S5P_{analysis_mode}_L2__{search_species}*.nc"
-
-    time = "time"
-    time_full = "delta_time" # Time as np.datetime objects
-    #latlon=("latitude", "longitude")
-    #pos_coords=("scanline", "ground_pixel")
 
     dates = np.arange(start_date,end_date,dtype=np.datetime64).astype(str)
     for date in dates:
@@ -1335,13 +1360,7 @@ def tropomi_process(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
                              network=network,
                              output_directory=output_directory)
         
-        # output_filename = output_directory / f"tropomi_sentinel5p_{start}_{species}-column.nc"
-        # print(f"Writing to file: {output_filename}")
-        # data_output.to_netcdf(output_filename)
-
         if write_name:
-            ##TODO: Work out additional variables that need passing to this function
-            
             write_tropomi_NAME(data_output,site=site,max_level=max_level,
                                 max_points=max_points,network=network,
                                 use_name_pressure=use_name_pressure,
