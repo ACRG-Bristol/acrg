@@ -34,13 +34,13 @@ def mozart_bc_benchmark_file():
 @pytest.fixture(scope="module")
 def mozart_bc_output_directory():
     ''' Define benchmark bc file '''
-    output_dir = os.path.join(acrg_path,'tests/files/')
+    output_dir = os.path.join(acrg_path,'tests/files/temp/')
     return output_dir
 
 @pytest.fixture(scope="module")
 def mozart_bc_output_file():
     ''' Define benchmark bc file '''
-    filename = os.path.join(acrg_path,'tests/files/LPDM/bc/EUROPE/ch4_EUROPE_201403.nc')
+    filename = os.path.join(acrg_path,'tests/files/temp/LPDM/bc/EUROPE/ch4_EUROPE_201403.nc')
     return filename
 
 
@@ -56,7 +56,7 @@ def test_mozart_bc_outputs(mozart_bc_benchmark_file, mozart_bc_output_directory,
     with xarray.open_dataset(mozart_bc_output_file) as temp:
         output = temp.load()
     
-    assert np.array_equal(output["vmr_e"], benchmark["vmr_e"])
-    assert np.array_equal(output["vmr_w"], benchmark["vmr_w"])
-    assert np.array_equal(output["vmr_n"], benchmark["vmr_n"])   
-    assert np.array_equal(output["vmr_s"], benchmark["vmr_s"])
+    assert np.allclose(output["vmr_e"], benchmark["vmr_e"])
+    assert np.allclose(output["vmr_w"], benchmark["vmr_w"])
+    assert np.allclose(output["vmr_n"], benchmark["vmr_n"])   
+    assert np.allclose(output["vmr_s"], benchmark["vmr_s"])

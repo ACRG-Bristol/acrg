@@ -552,7 +552,7 @@ def test_fp_data_merge(data,measurement_param,fp_directory,flux_directory,bc_dir
     
     for key, value in out.items():
         if isinstance(value, xray.Dataset):
-            assert benchmark_out[key].equals(value)
+            xray.testing.assert_allclose(benchmark_out[key], value)
         else:
             assert benchmark_out[key] == value
 
