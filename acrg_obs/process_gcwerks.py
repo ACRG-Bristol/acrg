@@ -1030,11 +1030,11 @@ def array_job(array_index):
         # Bristol CRDS
 #        [crds, ("BRI", "DECC")],
         # ICOS
-        [icos, ("TTA", "DECC")],
+#        [icos, ("TTA", "DECC")],
         [icos, ("MHD", "ICOS")]]
     
     # Return if index is too large for the above list
-    if array_index >= len(instrument):
+    if array_index > len(instrument):
         return 0
     
     # Run the relevant script for each station and instrument
