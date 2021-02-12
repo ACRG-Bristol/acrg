@@ -340,17 +340,59 @@ def get_single_site(site, species_in,
             params = [species_query, site,
                       start_date_query, end_date_query, start_date_query, end_date_query]
 
+        # Store query with parameters inserted, for error messages
+        query_params = query
+        for p in params:
+            query_params = query_params.replace("?", str(p), 1)
+
         if verbose:
-            print(query)
+            print(query_params)
 
         # Run query and get list of files
         files_to_get = list(c.execute(query, params))
-
+        
         # close database
         conn.close()
 
-        
+
+    # Create empty output list (will contain xarray datasets)
     obs_files = []
+    
+    # If no files were found, print warning message explaining why
+    if len(files_to_get) == 0 and len(df_defaults_for_site) == 0:
+        print(f'''No files were found for this combination of inputs (site, species, date range, etc.)
+                Have a look in {str(path.obs)} and check that the expected files are there.
+
+                The conditional statements from the query are printed below, to help you find the problem.
+                '''.replace("  ", ""))
+        print((query_params.split("WHERE ")[1]).replace("  ", "")[:-2])
+
+        return obs_files
+    elif len(files_to_get) == 0 and len(df_defaults_for_site) > 1:
+        print(f'''No files were found for this combination of inputs.
+                Note that there are some defaults set for this site.
+                
+                1. Check that there is some data for your selected inputs (e.g. within date range).
+                
+                2. Take a look at acrg_obs_defaults.csv. A common issue is that defaults
+                are added for some species at a particular site, but there's no
+                instruction for the remaining species. If that's the case, 
+                add a row to the file, which is empty, except for the site name. 
+                Be careful that this doesn't lead to any ambiguity in the files retrieved.
+                
+                3. Another common issue is that the species name in the defaults file doesn't match
+                the name in the files database. Make sure the species is the same as in the filename
+                e.g. "cfc11", rather than "CFC-11"
+                
+                The conditional statements from the query are printed below, to help you find the problem.
+                
+                Also shown are the defaults for this site.
+                '''.replace("  ", ""))
+        print((query_params.split("WHERE ")[1]).replace("  ", "")[:-2])
+        print(df_defaults_for_site)
+        
+        return obs_files
+        
     
     # Retrieve files
     for f in files_to_get:
@@ -484,32 +526,17 @@ def get_single_site(site, species_in,
         # Store dataset
         obs_files.append(ds)
 
-        
-    if len(obs_files) == 0 and len(df_defaults_for_site) > 0:
-        print(''' Your query didn't return anything. If you're sure the files exits
-                take a look at acrg_obs_defaults.csv. A common issue is that defaults
-                are added for some species at a particular site, but there's no
-                instruction for the remaining species. If that's the case, 
-                add a row to the file, which is empty, except for the site name. 
-                Be careful that this doesn't lead to any ambiguity in the files retrieved.
-                
-                Another common issue is that the species name in the defaults file doesn't match
-                the name in the files database. Make sure the species is the same as in the filename
-                e.g. "cfc11", rather than "CFC-11"
-                ''')
-    else:
-        
-        # Check if units match
-        units = [f.mf.attrs["units"] for f in obs_files]
-        if len(set(units)) > 1:
-            errorMessage = f'''Units don't match for these files: {[(f.mf.attrs["units"],f.attrs["filename"]) for f in obs_files]}'''
-            raise ValueError(errorMessage)
-    
-        scales = [f.attrs["scale"] for f in obs_files]
-        if len(set(scales)) > 1: 
-            print(f"WARNING: scales don't match for these files: {[(f.attrs['scale'],f.attrs['filename']) for f in obs_files]}")
-            print("... suggest setting calibration_scale to convert")
-    
+    # Check if units match
+    units = [f.mf.attrs["units"] for f in obs_files]
+    if len(set(units)) > 1:
+        errorMessage = f'''Units don't match for these files: {[(f.mf.attrs["units"],f.attrs["filename"]) for f in obs_files]}'''
+        raise ValueError(errorMessage)
+
+    scales = [f.attrs["scale"] for f in obs_files]
+    if len(set(scales)) > 1: 
+        print(f"WARNING: scales don't match for these files: {[(f.attrs['scale'],f.attrs['filename']) for f in obs_files]}")
+        print("... suggest setting calibration_scale to convert")
+
     return obs_files
 
 
