@@ -229,7 +229,7 @@ def get_single_site(site, species_in,
         c = conn.cursor()
 
 
-        # Attache the obs database
+        # Attach the obs database
         if data_directory is None:
             # Attach the obs database
             c.execute("ATTACH DATABASE ? as obs", (str(paths.obs / "obs.db"),))
@@ -242,7 +242,6 @@ def get_single_site(site, species_in,
         start_date_query = pd.Timestamp(start_date).to_pydatetime()
         end_date_query = pd.Timestamp(end_date).to_pydatetime()
         species_query = species.replace("-", "").lower()
-
 
         if data_directory is None:
             # Run a couple of initial queries to see whether there are any defaults defined for a particular site
@@ -265,6 +264,15 @@ def get_single_site(site, species_in,
         else:
             df_defaults_for_site = []
 
+            
+        # For debugging, get some info on the site and species in the obs.db
+        df_site_species = pd.read_sql_query('''
+                            SELECT files.inlet, files.instrument, files.startDate, files.endDate
+                            FROM obs.files
+                            WHERE files.species=? COLLATE NOCASE AND
+                                  files.site=? COLLATE NOCASE''', 
+                            conn, params = (species_query, site))
+        
         # Read filenames from database
         if len(df_defaults_for_site) == 0 or override_defaults:
             # Query only the 'files' table table to determine which files to read
@@ -360,19 +368,25 @@ def get_single_site(site, species_in,
     
     # If no files were found, print warning message explaining why
     if len(files_to_get) == 0 and len(df_defaults_for_site) == 0:
+        
         print(f'''No files were found for this combination of inputs (site, species, date range, etc.)
-                Have a look in {str(path.obs)} and check that the expected files are there.
+                Have a look in {[data_directory, str(paths.obs)][data_directory == None]} and check that the expected files are there.
 
-                The conditional statements from the query are printed below, to help you find the problem.
+                ---------------------------------------------------
+                obs.db entries for this site and species:
                 '''.replace("  ", ""))
-        print((query_params.split("WHERE ")[1]).replace("  ", "")[:-2])
+        print(df_site_species.to_string())
 
         return obs_files
+    
     elif len(files_to_get) == 0 and len(df_defaults_for_site) > 1:
+        
         print(f'''No files were found for this combination of inputs.
+                
                 Note that there are some defaults set for this site.
                 
-                1. Check that there is some data for your selected inputs (e.g. within date range).
+                1. Check that there is some data for your selected inputs (e.g. within date range)
+                in {[data_directory, str(paths.obs)][data_directory == None]}
                 
                 2. Take a look at acrg_obs_defaults.csv. A common issue is that defaults
                 are added for some species at a particular site, but there's no
@@ -384,12 +398,18 @@ def get_single_site(site, species_in,
                 the name in the files database. Make sure the species is the same as in the filename
                 e.g. "cfc11", rather than "CFC-11"
                 
-                The conditional statements from the query are printed below, to help you find the problem.
-                
-                Also shown are the defaults for this site.
+                ---------------------------------------------------
+                obs.db entries for this site:
                 '''.replace("  ", ""))
-        print((query_params.split("WHERE ")[1]).replace("  ", "")[:-2])
-        print(df_defaults_for_site)
+                
+        print(df_site_species.to_string())
+        print('''---------------------------------------------------
+                Defaults for this site:
+                '''.replace("  ", ""))
+        print(df_defaults_for_site.to_string())
+
+        # Conditional statements from query
+        # print((query_params.split("WHERE ")[1]).replace("  ", "")[:-2])
         
         return obs_files
         
