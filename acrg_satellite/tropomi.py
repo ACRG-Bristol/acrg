@@ -9,6 +9,7 @@ Functions for processing and using TROPOMI data
 """
 
 import os
+import glob
 import socket
 import numpy as np
 import xarray as xr
@@ -24,8 +25,10 @@ try:
     from acrg_config.paths import paths
 except ImportError:
     data_path = os.getenv("DATA_PATH")
+    acrg_path = os.getenv("ACRG_PATH")
 else:
     data_path = paths.data
+    acrg_path = paths.acrg
 
 if not data_path:
     server_name = socket.gethostname()
@@ -39,9 +42,11 @@ if not data_path:
         print("Unable to infer data_path")
 
 home = Path(os.getenv("HOME"))
+if not acrg_path:
+    acrg_path = os.path.join(home,"acrg")
 
 ##TODO: Replace this more general directory (not SOUTHAMERICA) once this is sorted
-input_directory = Path("/work/chxmr/shared/obs_raw/TROPOMI/SOUTHAMERICA/")
+input_directory = os.path.join(data_path, "obs_raw/TROPOMI/SOUTHAMERICA/")
 
 name_csv_directory = os.path.join(home,"NAME_files") # Where to write output NAME csv files
 obs_directory = os.path.join(data_path,'obs/') # Where to write output nc files
@@ -106,11 +111,20 @@ def preProcessFile(filename,add_corners=False):
                                 np.reshape(np.arange(0,13),newshape=(1,1,1,-1)))
     tropomi_data['pressure_levels'] = (["time", "scanline", "ground_pixel", "layer_bound"], pressure_data)
     
-    tropomi_data['column_averaging_kernel'] = tropomi_data_aux.column_averaging_kernel
-    tropomi_data['methane_profile_apriori']= tropomi_data_input.methane_profile_apriori
+    #tropomi_data['column_averaging_kernel'] = tropomi_data_aux.column_averaging_kernel
+    #tropomi_data['methane_profile_apriori']= tropomi_data_input.methane_profile_apriori
+ 
+    ## Add additional parameters using same naming scheme as GOSAT
+    # This is to be consistent with other processes within the repository
+    tropomi_data['xch4_averaging_kernel'] = tropomi_data_aux.column_averaging_kernel
     
-    tropomi_data["dry_air_subcolumns"] = tropomi_data_input.dry_air_subcolumns
-    tropomi_data['pressure_weights'] = 1/tropomi_data["dry_air_subcolumns"]    
+    # Calculating the pressure weights from the dry air subcolumns
+    tropomi_data['dry_air_subcolumns'] = tropomi_data_input.dry_air_subcolumns
+    tropomi_data['pressure_weights'] = tropomi_data["dry_air_subcolumns"]/tropomi_data["dry_air_subcolumns"].sum(dim="layer")
+    
+    # Updating the a priori profile to match to GOSAT equations so we can
+    # apply the pressure weights in the same way
+    tropomi_data['ch4_profile_apriori']= tropomi_data_input.methane_profile_apriori/tropomi_data["dry_air_subcolumns"]
     
     tropomi_data = tropomi_data.assign_coords({'latitude_bounds':tropomi_data_geo['latitude_bounds']})
     tropomi_data = tropomi_data.assign_coords({'longitude_bounds':tropomi_data_geo['longitude_bounds']})
@@ -207,6 +221,54 @@ def create_regrid_mask(da, pos_coords=("scanline", "ground_pixel")):
     
     return input_values
 
+def remove_weight_files(method, path=None):
+    '''
+    Remove weight files created by regrid method. Be careful not to
+    do this if multiple regridding processes are being run in 
+    parallel.
+    
+    Expect weight files have been created within the same folder as 
+    this module with file naming convention:
+        METHOD_NUMxNUM_NUMxNUM.nc
+        e.g.
+        conservative_normed_577x202_706x494.nc
+    
+    Args:
+        method (str):
+            Method name for regrid. Usually one of "conservative" or
+            "conservative_normed".
+        path (str/None, optional):
+            Path to search for files. If not specified:
+                 - looks within the same folder as this module file.
+                 - if that can't be identified then it looks within 
+                   ACRG_PATH/acrg_satellite folder.    
+            
+    Returns:
+        None
+        
+        Files matching the path and search string are deleted.
+    '''
+    if path is None:
+        try:
+            filename = os.path.realpath(__file__)
+            path = os.path.split(filename)[0]
+        except NameError:
+            path = os.path.join(acrg_path,"acrg_satellite")
+
+    # Find all files within this folder than are netcdf files that
+    # loosely match the method name and expected format (first pass)
+    weight_files = glob.glob(os.path.join(path,f"{method}*.nc"))
+
+    # Extra check to make sure the correct files are being selected
+    # for deletion (using regular expressions).
+    # e.g. don't delete "conservative_normed" files if running "conservative" method
+    import re
+    re_search = re.compile(os.path.join(path,f"{method}_\d+x\d+_\d+x\d+[.]nc"))    
+    print(f"Removing regrid weighting files for {method} method from: {path}")
+    for file in weight_files:
+        if re_search.match(file):
+            os.remove(file)
+
 
 def regrid_da(da_tropomi,output_lat,output_lon,ds_tropomi_geo,
               method="conservative",latlon=["latitude","longitude"],
@@ -294,7 +356,8 @@ def regrid_subset(ds_tropomi,output_lat,output_lon,names=None,ds_tropomi_geo=Non
                  method="conservative",latlon=("latitude", "longitude"),
                  pos_coords=("scanline", "ground_pixel"),
                  exclude=["time_utc","qa_pass"],set_nan=True,
-                 filter_latlon=True,verbose=False):
+                 filter_latlon=True,clean_up_weights=False,
+                 verbose=False):
     '''
     The regrid_subset function takes a subset from one tropomi orbit and 
     regrids this onto a new output grid.
@@ -447,12 +510,16 @@ def regrid_subset(ds_tropomi,output_lat,output_lon,names=None,ds_tropomi_geo=Non
     
     ds_tropomi_regridded.attrs["regridded"] = f"Regridded to output grid of lat = {output_lat[0]:.3f} - {output_lat[-1]:.3f}, lon = {output_lon[0]:.3f} - {output_lon[-1]:.3f}"
     
+    if clean_up_weights:
+        remove_weight_files(method)
+    
     return ds_tropomi_regridded
 
 
 def regrid_orbit(ds_tropomi,lat_bounds,lon_bounds,coord_bin,
                    method="conservative",time_increment="1min",
-                   exclude=["time_utc","qa_pass"]):
+                   exclude=["time_utc","qa_pass"],
+                   clean_up_weights=True):
     '''
     The regrid_orbit function regrids data for one tropomi orbit. This can 
     either be for the whole orbit at once or split into time windows based
@@ -569,11 +636,8 @@ def regrid_orbit(ds_tropomi,lat_bounds,lon_bounds,coord_bin,
         
         data_regridded.attrs["time_resample"] = comment
 
-    ##TODO: Here or somewhere else: write something to remove all the weight
-    # files which get created after regridding is finished.
-    # Need to work out where these files are created!
-    # conservative_*.nc
-    # conservative_normed_*.nc
+    if clean_up_weights:
+        remove_weight_files(method)
 
     return data_regridded
 
@@ -1075,6 +1139,7 @@ def tropomi_regrid(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
                    apply_qa_filter=True,
                    regrid_method="conservative",
                    input_directory=input_directory,
+                   allow_parallel=False,
                    verbose=False):
     '''
     The tropomi_regrid function combines tropomi data for a given date
@@ -1127,6 +1192,11 @@ def tropomi_regrid(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
     
     species = "ch4"
 
+    if allow_parallel:
+        clean_up_weights = False
+    else:
+        clean_up_weights = True
+
     time = "time"
     time_full = "delta_time" # Time as np.datetime objects
 
@@ -1172,7 +1242,8 @@ def tropomi_regrid(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
         # Regrid data for each file
         regridded = regrid_orbit(data,lat_bounds,lon_bounds,coord_bin,
                                    method=regrid_method,
-                                   time_increment=time_increment)
+                                   time_increment=time_increment,
+                                   clean_up_weights=clean_up_weights)
         
         if regridded is not None:
             if data_regridded is None:
@@ -1209,7 +1280,8 @@ def tropomi_process(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
                     pressure_base_dir=name_pressure_directory,
                     pressure_domain=None,pressure_max_days=31,
                     pressure_day_template=True,
-                    output_directory=obs_directory,verbose=False):
+                    output_directory=obs_directory,
+                    allow_parallel=True,verbose=False):
     '''
     Process tropomi data within date range including re-gridding onto 
     a regular latitute-longitude grid.
@@ -1230,8 +1302,8 @@ def tropomi_process(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
             Specify one value to use for both or a 2-item list to
             use different values.
         max_level (int/None) :
-            Maximum level to extract from TROPOMI for running through NAME.
-            TODO: MAY NEED TO UPDATE THIS EXPLANATION
+            Maximum level to extract from TROPOMI for running through 
+            NAME.
             Default = None     # Uses all levels
         time_increment (str, optional) :
             Time window to group tropomi points.
@@ -1276,6 +1348,11 @@ def tropomi_process(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
     ##TODO: Make this return something as well as writing to file?
     '''
     timing_1 = timing_module.time()
+    
+    if allow_parallel:
+        clean_up_weights = False
+    else:
+        clean_up_weights = True
     
     print(f"Processing tropomi files for date range: {start_date} - {end_date}")
 
@@ -1331,7 +1408,8 @@ def tropomi_process(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
             # Regrid data for each file
             regridded = regrid_orbit(data,lat_bounds,lon_bounds,coord_bin,
                                        method=regrid_method,
-                                       time_increment=time_increment)
+                                       time_increment=time_increment,
+                                       clean_up_weights=clean_up_weights)
             
             if regridded is not None:
                 if data_regridded is None:
@@ -1371,6 +1449,5 @@ def tropomi_process(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
                                 name_directory=name_directory)
 
         print(f"\nTime to execute: {timing_module.time() - timing_1}\n")
-        
-    
+
     
