@@ -573,7 +573,7 @@ def basis_boundary_conditions(domain, basis_case, bc_basis_directory = None):
     file_no_acc = [ff for ff in files if not os.access(ff, os.R_OK)]
     files       = [ff for ff in files if os.access(ff, os.R_OK)]
     if len(file_no_acc)>0:
-        print('Warning: unable to read all boundary conditions files which match this criteria:')
+        print('Warning: unable to read all boundary conditions basis function files which match this criteria:')
         [print(ff) for ff in file_no_acc]
 
     if len(files) == 0:
