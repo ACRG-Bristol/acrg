@@ -99,11 +99,20 @@ def preProcessFile(filename,add_corners=False):
     return
         tropomi_data - dataframe containing mixing ratio, quality flags, grid data, and column data
                         the "qa_pass" flag variable is True for good measurements and False for bad measurements
+    
+    ## TODO: Add species input and allow this to choose which parameters
+    # to extract based on the species.
     '''
     tropomi_data = xr.open_dataset(filename, group="PRODUCT")
     tropomi_data_aux = xr.open_dataset(filename, group="PRODUCT/SUPPORT_DATA/DETAILED_RESULTS")
     tropomi_data_geo = xr.open_dataset(filename, group="PRODUCT/SUPPORT_DATA/GEOLOCATIONS")
     tropomi_data_input = xr.open_dataset(filename, group="PRODUCT/SUPPORT_DATA/INPUT_DATA")
+    
+    # If delta_time is a timedelta64 (<m8[ns]) and not a datetime64 
+    # (<M8[ns]) - make sure the reference time is added to make this 
+    # into a datetime64
+    if tropomi_data["delta_time"].values.dtype == '<m8[ns]':
+        tropomi_data["delta_time"] = tropomi_data["delta_time"] + tropomi_data["time"]
     
     #calculate boundaries of pressure bands from surface pressure and constant intervals
     pressure_data = (np.expand_dims(tropomi_data_input.surface_pressure,axis=3) - \
@@ -852,6 +861,7 @@ def use_NAME_surface_pressure(ds, pressure_domain,
 
 def write_tropomi_NAME(ds,site,max_level=None,max_points=50,
                        network=None,
+                       #overwrite=False,
                        use_name_pressure=False,
                        pressure_base_dir=name_pressure_directory,
                        pressure_domain=None,pressure_max_days=31,
@@ -892,6 +902,9 @@ def write_tropomi_NAME(ds,site,max_level=None,max_points=50,
         network (str/None, optional) : 
             Which network is being considered e.g. "GOSAT/GOSAT-INDIA"
             If present, this will be extend the output path e.g. "/shared_data/air/shared/obs/GOSAT/GOSAT-INDIA/"
+        #overwrite (bool, optional) :
+        #    Whether to allow overwiting of existing files, if present.
+        #    Default = False.
         use_name_pressure (bool, optional) : 
             Whether to use the NAME surface pressure rather than the surface pressure value for each data 
             point.
@@ -939,6 +952,8 @@ def write_tropomi_NAME(ds,site,max_level=None,max_points=50,
     lat = "lat"
     lon = "lon"
     
+    ##TODO: Fix problem with extracting date here - coming out as a 
+    #timedelta object?
     date = ds["time"].values[0]
     
     if network is None:
@@ -1050,6 +1065,7 @@ def write_tropomi_NAME(ds,site,max_level=None,max_points=50,
 
 def write_tropomi_output(ds,site,date,species="ch4",
                          network=None,
+                         #overwrite=False,
                          output_directory=obs_directory):
     '''
     Write tropomi observation file for one day.
@@ -1080,6 +1096,8 @@ def write_tropomi_output(ds,site,date,species="ch4",
     
     ##TODO: May want to generalise this to allow files to be written
     out for a longer time period rather than one day at a time.
+    
+    ##TODO: Add checks for overwriting files
     '''
     
     instrument = "tropomi"
@@ -1136,7 +1154,7 @@ def define_tropomi_search_str(species="ch4",analysis_mode="OFFL"):
 
 def tropomi_regrid(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
                    time_increment="1min",
-                   apply_qa_filter=True,
+                   quality_filt=True,
                    regrid_method="conservative",
                    input_directory=input_directory,
                    allow_parallel=False,
@@ -1165,7 +1183,7 @@ def tropomi_regrid(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
         time_increment (str, optional) :
             Time window to group tropomi points.
             Default = "1min" # 1 minute
-        apply_qa_filter (bool, optional) :
+        quality_filt (bool, optional) :
             Filter by the recommended quality conditions (combined
             filter > 0.5).
             Default = True
@@ -1236,7 +1254,7 @@ def tropomi_regrid(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
         dt0 = data[time_full].isel({time:0},drop=True)
         data = data.assign_coords(coords={time_full:dt0})
 
-        if apply_qa_filter:
+        if quality_filt:
             data = data.where(data["qa_pass"])
         
         # Regrid data for each file
@@ -1259,34 +1277,38 @@ def tropomi_regrid(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
     data_regridded.attrs["input_filename"] = short_filenames
     data_regridded.attrs["analysis_mode"] = f"Input files are from {analysis_mode} mode of analysis."
 
-    if apply_qa_filter:
+    if quality_filt:
         data_regridded.attrs["qa_filter"] = "Quality filter of > 0.5 applied"
-    
     
     
     return data_regridded
     
 
-def tropomi_process(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
-                    max_level=None,site=None,max_points=50,
+def tropomi_process(site,start_date,end_date,lat_bounds,lon_bounds,
+                    coord_bin,
                     network=None,
-                    #species="ch4",
+                    species="ch4",
                     time_increment="1min",
-                    apply_qa_filter=True,
+                    quality_filt=True,
                     regrid_method="conservative",
                     input_directory=input_directory,
                     write_name=False,name_directory=name_csv_directory,
+                    max_name_level=None,max_name_points=50,
+                    file_per_day=True,
                     use_name_pressure=False,
                     pressure_base_dir=name_pressure_directory,
                     pressure_domain=None,pressure_max_days=31,
                     pressure_day_template=True,
                     output_directory=obs_directory,
+                    #overwrite=False,
                     allow_parallel=True,verbose=False):
     '''
     Process tropomi data within date range including re-gridding onto 
     a regular latitute-longitude grid.
     
     Args:
+        site (str) :
+            Site name for TROPOMI output e.g. "TROPOMI-BRAZIL"
         start_date (str) :
             YYYY-MM-DD
         end_date (str) :
@@ -1301,14 +1323,21 @@ def tropomi_process(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
             Bins to use for latitude and longitude dimensions.
             Specify one value to use for both or a 2-item list to
             use different values.
-        max_level (int/None) :
-            Maximum level to extract from TROPOMI for running through 
-            NAME.
-            Default = None     # Uses all levels
+        network (str/None, optional) :
+            Specify the network for this site. By default this will
+            use acrg_site_info file to extract this information
+            based on the site name and will use the network to create
+            the output file path for the obs and NAME data.
+            Default = None    # Extract from definition file
+        species (str, optional) :
+            Species to extract. One of:
+                - "ch4" (methane)
+            TODO: This needs to be updated to accept other species
+            Default = "ch4"
         time_increment (str, optional) :
             Time window to group tropomi points.
             Default = "10s" # 10 seconds
-        apply_qa_filter (bool, optional) :
+        quality_filt (bool, optional) :
             Filter by the recommended quality conditions (combined
             filter > 0.5).
             Default = True
@@ -1328,6 +1357,18 @@ def tropomi_process(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
             Top level directory to write files for NAME. Full path will 
             be based on the "network" related to "site" 
             Default defined at the top of this module.
+        max_name_level (int/None, optional) :
+            Maximum level to extract from TROPOMI for running through 
+            NAME.
+            Default = None     # Uses all levels
+        max_name_points (int/None, optional) :
+            Maximum number of points within in each NAME input file.
+            Default = 50
+        file_per_day (bool, optional) :
+            Group NAME points across a day into one file (subject to
+            max_name_points) rather than outputting this as one point per
+            file.
+            Default = True
         output_directory (str, optional) :
             Top level directory to write output. Full path will be based 
             on the "network" related to "site"
@@ -1344,8 +1385,11 @@ def tropomi_process(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
             Writes to csv NAME input file.
     
     
-    ##TODO: Add species input and filter to choose correct search_species string
+    ##TODO: Allow more species to be specified and filter to choose 
+    # correct search_species string
     ##TODO: Make this return something as well as writing to file?
+    ##TODO: Pass along overwrite parameter to write functions when
+    this functionality has been added.
     '''
     timing_1 = timing_module.time()
     
@@ -1361,7 +1405,6 @@ def tropomi_process(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
     #latlon=("latitude", "longitude")
     #pos_coords=("scanline", "ground_pixel")
     
-    species = "ch4"
     if species == "ch4":
         directory = input_directory / "CH4"
         #output_directory = base_output_directory / "CH4"
@@ -1392,8 +1435,10 @@ def tropomi_process(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
         input_filenames = []
         for i,filename in enumerate(filenames):
             
+            ## ONLY WORKS FOR METHANE FILES ("ch4") AT THE MOMENT!
             print(f"Processing input file: {filename}")
             data = preProcessFile(filename)
+            
 
             # Making delta_time into a coordinate. This will be used
             # if splitting by time increments and also means that
@@ -1402,7 +1447,7 @@ def tropomi_process(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
             dt0 = data[time_full].isel({time:0},drop=True)
             data = data.assign_coords(coords={time_full:dt0})
 
-            if apply_qa_filter:
+            if quality_filt:
                 data = data.where(data["qa_pass"])
             
             # Regrid data for each file
@@ -1429,18 +1474,24 @@ def tropomi_process(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
         short_filenames = [os.path.split(fname)[1] for fname in input_filenames]
         short_filenames = ','.join(short_filenames)
         
-        if apply_qa_filter:
+        if quality_filt:
             data_output.attrs["qa_filter"] = "Quality filter of > 0.5 applied"
         data_output.attrs["input_filename"] = short_filenames
         data_output.attrs["analysis_mode"] = f"Input files are from {analysis_mode} mode of analysis."
+        
+        if max_name_level is None:
+            print(data_output["layer"].values[-1])
+            data_output.attrs["max_level"] = data_output["layer"].values[-1]
+        else:
+            data_output.attrs["max_level"] = max_name_level
         
         write_tropomi_output(data_output,site,date,species=species,
                              network=network,
                              output_directory=output_directory)
         
         if write_name:
-            write_tropomi_NAME(data_output,site=site,max_level=max_level,
-                                max_points=max_points,network=network,
+            write_tropomi_NAME(data_output,site=site,max_level=max_name_level,
+                                max_points=max_name_points,network=network,
                                 use_name_pressure=use_name_pressure,
                                 pressure_base_dir=pressure_base_dir,
                                 pressure_domain=pressure_domain,

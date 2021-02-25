@@ -14,7 +14,8 @@ gosat_process
 For the gosat_process() inputs an input parameter dictionary is pre-defined (gosat_param_dict()) 
 and separates the parameters by section.
 This dictionary allows us to define which inputs we expect and the associated types.
-Unless specified as optional parameters an error is returned if those parameters aren't present.
+Some parameters can be specified as expected and an error will be returned if these parameters
+aren't present.
 
 See templates/gosat_process_template.ini for the template configuration file on which the parameter
 dictionary is based.
