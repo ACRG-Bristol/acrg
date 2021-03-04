@@ -1315,3 +1315,100 @@ def NPL_roof():
         print("Writing " + nc_filename)
             
         dataProcessed.to_netcdf(nc_filename)
+
+def LGHG_licor():
+    '''
+    Code to process the various LICOR devices as part of the LGHG network
+
+    Returns
+    -------
+    None.
+
+    '''
+    unit_species = {"CO2": "ppm",
+                "CH4": "ppb"}
+    
+    site="NPL"
+    speciesList = ["CH4", "CO2"]
+    species_label = {"CO2": "CO2(ppm)",
+                    "CH4": "CH4(ppb)"}
+    params = {
+            "directory_output" : obs_directory,
+            "scale": {
+                "CH4": "-",
+                "CO2": "-"},
+            "instrument": "Licor",
+            #"inlet": "17m",
+            "global_attributes": {
+                "data_owner": "Shiwei Fan",
+                "data_owner_email": "sf588@cam.ac.uk",
+                "Notes": "Drifting LICOR device installed in a building"
+                }
+            }
+    
+    #find files
+    raw_directory = os.path.join(data_path, "obs_raw/LGHG_Licor")
+    
+    sites = ["Highfield Tower", "St Judes Church", "St Marys Church", "Westminster", "Woodgreen Farm"]
+    
+    site_codes = {"Highfield Tower":"LHFT",
+                  "St Judes Church":"LSTJ",
+                  "St Marys Church":"LSTM",
+                  "Westminster":"LWMH",
+                  "Woodgreen Farm":"LWGF"}
+    
+    inlets = {"Highfield Tower":"45m",
+                  "St Judes Church":"20m",
+                  "St Marys Church":"36m",
+                  "Westminster":"40m",
+                  "Woodgreen Farm":"6m"}
+    
+    for site in sites:
+       
+        
+        #for each species, read and combine all of the monthly files
+        for species in speciesList:  
+            
+            #files are seperated into site subfolders, with each gas in seperate files
+            search_str = join(raw_directory, site, "*{}*".format(species))
+            fnames = glob.glob(search_str)
+            
+            datas_to_concat = []
+            for filename in fnames:
+                data_raw = pd.read_csv(filename, index_col = None)
+                
+                
+                #now we can convert datetimes
+                data_raw["time"] = pd.to_datetime(data_raw["Time"], format="%Y/%m/%d %H:%M:%S")
+                
+                #rename columns
+                rename_dict = {}
+                for _species in speciesList:
+                    rename_dict[species_label[_species]] = _species
+                data_raw.rename(columns = rename_dict, inplace=True)
+                data_raw.set_index("time", inplace=True)
+                
+                datas_to_concat.append(data_raw)
+            
+            data_raw_concat = pd.concat(datas_to_concat).sort_values("time")
+            dataProcessed = xr.Dataset.from_dataframe(data_raw_concat.loc[:, [species]].sort_index())
+            
+            #no averaging applied to raw obs, set variability to 0 to allow get_obs to calculate when averaging    
+            dataProcessed["{}_variability".format(species)] = dataProcessed[species] * 0.0
+        
+            dataProcessed = attributes(dataProcessed,
+                         species, site_codes[site], global_attributes=params["global_attributes"],
+                         units=unit_species[species], scale=params["scale"][species],
+                         sampling_period="1 second")
+            nc_filename = output_filename(params["directory_output"],
+                                              "LGHG",
+                                              params["instrument"],
+                                              site_codes[site],
+                                              dataProcessed.time.to_pandas().index.to_pydatetime()[0],
+                                              dataProcessed.species,
+                                              inlets[site])
+            print(nc_filename)
+            print("Writing " + nc_filename)
+                
+            dataProcessed.to_netcdf(nc_filename)
+    
