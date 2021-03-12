@@ -108,16 +108,17 @@ def preProcessFile(filename,add_corners=False):
     tropomi_data_geo = xr.open_dataset(filename, group="PRODUCT/SUPPORT_DATA/GEOLOCATIONS")
     tropomi_data_input = xr.open_dataset(filename, group="PRODUCT/SUPPORT_DATA/INPUT_DATA")
     
-    # If delta_time is a timedelta64 (<m8[ns]) and not a datetime64 
-    # (<M8[ns]) - make sure the reference time is added to make this 
+    # If delta_time is a timedelta64 and not a datetime64 object
+    # make sure the reference time is added to make this 
     # into a datetime64
-    if tropomi_data["delta_time"].values.dtype == '<m8[ns]':
+    if tropomi_data["delta_time"].values.dtype == 'timedelta64[ns]':
         tropomi_data["delta_time"] = tropomi_data["delta_time"] + tropomi_data["time"]
     
+    nlevel = tropomi_data["level"].shape[0]
     #calculate boundaries of pressure bands from surface pressure and constant intervals
     pressure_data = (np.expand_dims(tropomi_data_input.surface_pressure,axis=3) - \
                                 np.expand_dims(tropomi_data_input.pressure_interval,axis=3) * \
-                                np.reshape(np.arange(0,13),newshape=(1,1,1,-1)))
+                                np.reshape(np.arange(0,nlevel),newshape=(1,1,1,-1)))
     tropomi_data['pressure_levels'] = (["time", "scanline", "ground_pixel", "layer_bound"], pressure_data)
     
     #tropomi_data['column_averaging_kernel'] = tropomi_data_aux.column_averaging_kernel
@@ -526,9 +527,9 @@ def regrid_subset(ds_tropomi,output_lat,output_lon,names=None,ds_tropomi_geo=Non
 
 
 def regrid_orbit(ds_tropomi,lat_bounds,lon_bounds,coord_bin,
-                   method="conservative",time_increment="1min",
-                   exclude=["time_utc","qa_pass"],
-                   clean_up_weights=True):
+                 method="conservative",time_increment="1min",
+                 exclude=["time_utc","qa_pass"],
+                 clean_up_weights=True):
     '''
     The regrid_orbit function regrids data for one tropomi orbit. This can 
     either be for the whole orbit at once or split into time windows based
