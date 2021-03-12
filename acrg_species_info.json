@@ -447,8 +447,9 @@
         "mol_mass": "222.01758", 
         "print_string": "$^{222}$Rn", 
         "units": "mBq m$^{-3}$",
-        "lifetime": "3.8232D",
-        "lifetime_reference":"http://www.nucleide.org/DDEP_WG/Nuclides/Rn-222_tables.pdf"
+        "lifetime": "5.5157D",
+        "lifetime_reference":"http://www.nucleide.org/DDEP_WG/Nuclides/Rn-222_tables.pdf",
+        "comment":"converted from half life (3.8232D) to e-folding time"
     }, 
     "SF6": {"alt": [],
         "group": "PFCs", 
