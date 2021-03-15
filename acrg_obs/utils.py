@@ -381,7 +381,7 @@ def obs_database(data_directory = None):
     '''
     
     # Directories to exclude from database
-    exclude = ["GOSAT", "unknown"]
+    exclude = ["GOSAT", "TROPOMI", "unknown"]
 
     network = []
     instrument = []
