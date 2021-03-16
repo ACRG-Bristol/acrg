@@ -1328,10 +1328,9 @@ def LGHG_licor():
     unit_species = {"CO2": "ppm",
                 "CH4": "ppb"}
     
-    site="NPL"
     speciesList = ["CH4", "CO2"]
-    species_label = {"CO2": "CO2(ppm)",
-                    "CH4": "CH4(ppb)"}
+    species_label = {"CO2": "CO2ppm",
+                    "CH4": "CH4ppb"}
     params = {
             "directory_output" : obs_directory,
             "scale": {
@@ -1370,7 +1369,8 @@ def LGHG_licor():
         for species in speciesList:  
             
             #files are seperated into site subfolders, with each gas in seperate files
-            search_str = join(raw_directory, site, "*{}*".format(species))
+            #There are hourly, minutely, and secondly data. Process minutely data for balance between size and resolution
+            search_str = join(raw_directory, site, "*{}*min.csv".format(species))
             fnames = glob.glob(search_str)
             
             datas_to_concat = []
