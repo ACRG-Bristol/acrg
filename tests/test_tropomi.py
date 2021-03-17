@@ -59,14 +59,14 @@ def extent_Brazil():
 
 def dummy_coords():
     '''
-    Creating dummy coordinates for a mocking.
+    Creating dummy coordinates for a mocker.
     
     Dimensions:
         - time = 1
         - scanline = 4
         - ground_pixel = 2
         - level = 3
-        - layer = 4 (level + 1)
+        - layer = 2 (level - 1)
     
     Creating offset latitude and longitude 2D values to allow us 
     to test regridding onto a regular grid.
@@ -92,8 +92,8 @@ def dummy_coords():
     scanline = np.arange(0.0, n_scanline, 1.0)
     ground_pixel = np.arange(0.0, n_ground_pixel, 1.0)
     corner = np.arange(0.0, 4.0, 1.0)
-    layer = np.arange(0.0, n_level-1, 1.0)
     level = np.arange(0.0, n_level, 1.0)
+    layer = np.arange(0.0, n_level-1, 1.0)
     
     latitude = np.array([[[9.8, 10.0],
                           [10.0, 10.2],
@@ -616,23 +616,81 @@ def test_pre_process_delta_time_2(mocker):
     
     xr.testing.assert_equal(delta_time, delta_time_expected)
 
-def calc_pressure_levels(surface_pressure, interval, nlevel=13):
+def calc_pressure_bounds(surface_pressure, interval, nlevel=13):
     '''
-    Calculate the pressure levels based on the surface pressure and
+    Calculate the pressure bounds based on the surface pressure and
     the pressure interval.
+    ndim = nlevel
     '''
     ndim = surface_pressure.ndim
     shape = (1,)*ndim + (-1,)    
     
     intervals = np.expand_dims(interval,-1)*np.reshape(np.arange(0,nlevel),newshape=shape)
     
-    pressure_levels = np.expand_dims(surface_pressure,-1)
+    pressure_bounds = np.expand_dims(surface_pressure,-1)
+    pressure_bounds = pressure_bounds - intervals
+    
+    return pressure_bounds
+
+@pytest.mark.preprocess
+def test_pre_process_pressure_bounds(mocker):
+    '''
+    Test "pressure_levels" values (not coords) have been correctly 
+    calculated based on inputs.
+    '''     
+    mocker.patch.object(
+            tropomi.xr,
+            "open_dataset",
+            mock_open_dataset
+    )
+
+    ds = tropomi.preProcessFile("fake_name.nc")
+
+    pressure_bounds = ds["pressure_bounds"]
+    
+    # Use known inputs to create expected pressure levels output
+    ds_expected_support = dummy_support_input()
+    surface_pressure = ds_expected_support["surface_pressure"]
+    pressure_interval = ds_expected_support["pressure_interval"]
+    nlevel = len(dummy_coords()["level"])
+    
+    pressure_bounds_expect = calc_pressure_bounds(surface_pressure, 
+                                                  pressure_interval,
+                                                  nlevel=nlevel)
+    
+    print("surface pressure")
+    print(surface_pressure)
+    print("pressure interval")
+    print(pressure_interval)
+    print("presssure bounds")
+    print(pressure_bounds_expect)
+    
+    # Test numpy array values and shape (coords not important)
+    np.testing.assert_allclose(pressure_bounds, pressure_bounds_expect)
+
+def calc_pressure_levels(surface_pressure, interval, nlevel=13, nlayer=None):
+    '''
+    Calculate the mid point pressure levels based on the surface 
+    pressure and the pressure interval.
+    ndim = nlevel-1 OR = nlayer
+    '''
+    ndim = surface_pressure.ndim
+    shape = (1,)*ndim + (-1,)    
+    
+    if nlayer is None:
+        nlayer = nlevel-1
+    
+    intervals = np.expand_dims(interval,-1)*np.reshape(np.arange(0,nlayer),newshape=shape)
+    
+    bottom_mid_pressure = surface_pressure - interval/2.
+    
+    pressure_levels = np.expand_dims(bottom_mid_pressure,-1)
     pressure_levels = pressure_levels - intervals
     
-    return pressure_levels    
+    return pressure_levels 
     
 @pytest.mark.preprocess
-def test_pre_process_pressure(mocker):
+def test_pre_process_pressure_levels(mocker):
     '''
     Test "pressure_levels" values (not coords) have been correctly 
     calculated based on inputs.
@@ -651,11 +709,19 @@ def test_pre_process_pressure(mocker):
     ds_expected_support = dummy_support_input()
     surface_pressure = ds_expected_support["surface_pressure"]
     pressure_interval = ds_expected_support["pressure_interval"]
-    nlevel = len(dummy_coords()["level"])
-    
+    nlayer = len(dummy_coords()["layer"])
+
     pressure_levels_expect = calc_pressure_levels(surface_pressure, 
                                                   pressure_interval,
-                                                  nlevel=nlevel)
+                                                  nlayer=nlayer)
+
+    print("surface pressure")
+    print(surface_pressure)
+    print("pressure interval")
+    print(pressure_interval)
+    print("presssure bounds")
+    print(pressure_levels_expect)
+
     
     # Test numpy array values and shape (coords not important)
     np.testing.assert_allclose(pressure_levels, pressure_levels_expect)
@@ -759,6 +825,8 @@ def test_pre_process_quality_flag(mocker):
 #     ds = tropomi.unravel_grid(tropomi_regridded_dataset)
     
 #     return ds
+
+#%%
 
 
 
