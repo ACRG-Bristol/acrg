@@ -114,12 +114,20 @@ def preProcessFile(filename,add_corners=False):
     if tropomi_data["delta_time"].values.dtype == 'timedelta64[ns]':
         tropomi_data["delta_time"] = tropomi_data["delta_time"] + tropomi_data["time"]
     
+    #calculate boundaries of pressure boundaries from surface pressure and constant intervals
     nlevel = tropomi_data["level"].shape[0]
-    #calculate boundaries of pressure bands from surface pressure and constant intervals
-    pressure_data = (np.expand_dims(tropomi_data_input.surface_pressure,axis=3) - \
-                                np.expand_dims(tropomi_data_input.pressure_interval,axis=3) * \
-                                np.reshape(np.arange(0,nlevel),newshape=(1,1,1,-1)))
-    tropomi_data['pressure_levels'] = (["time", "scanline", "ground_pixel", "layer_bound"], pressure_data)
+    pressure_bounds = (np.expand_dims(tropomi_data_input.surface_pressure,axis=3) - \
+                     np.expand_dims(tropomi_data_input.pressure_interval,axis=3) * \
+                     np.reshape(np.arange(0,nlevel),newshape=(1,1,1,-1)))
+    tropomi_data['pressure_bounds'] = (["time", "scanline", "ground_pixel", "layer_bound"], pressure_bounds)
+
+    #calculate mid point of pressure layers from surface pressure and constant intervals
+    nlayer = tropomi_data["layer"].shape[0]
+    surface_layer_mid_pressure = tropomi_data_input.surface_pressure - tropomi_data_input.pressure_interval/2.
+    pressure_data = (np.expand_dims(surface_layer_mid_pressure,axis=3) - \
+                     np.expand_dims(tropomi_data_input.pressure_interval,axis=3) * \
+                     np.reshape(np.arange(0,nlayer),newshape=(1,1,1,-1)))    
+    tropomi_data['pressure_levels'] = (["time", "scanline", "ground_pixel", "layer"], pressure_data)    
     
     #tropomi_data['column_averaging_kernel'] = tropomi_data_aux.column_averaging_kernel
     #tropomi_data['methane_profile_apriori']= tropomi_data_input.methane_profile_apriori
@@ -855,7 +863,8 @@ def use_NAME_surface_pressure(ds, pressure_domain,
     if axis == len(dims)-1:
         ds[p_column][...,surface_index] = pressure_NAME
         ds[p_column].attrs["name_surface_pressure"] = f"Surface pressure ({p_coord}={surface_index}) matched to NAME surface pressure"
-        ds["surface_pressure"] = f"Surface pressure ({p_coord}={surface_index}) matched to NAME surface pressure"
+        #ds["surface_pressure"] = f"Surface pressure ({p_coord}={surface_index}) matched to NAME surface pressure"
+        ds["surface_pressure"].attrs["updated"] = f"Surface pressure ({p_coord}={surface_index}) matched to NAME surface pressure"
     
     return ds    
       
@@ -929,10 +938,11 @@ def write_tropomi_NAME(ds,site,max_level=None,max_points=50,
     ## Define parameters which can be directly extracted from input Dataset
     # Note column mapping here is out:in values rather than in:out 
     # because some columns in output do not map to input data variables.
-    
+
     time = "time"
-    latlon = ("lat","lon")
-    pressure = "pressure_levels"
+    lat = "lat"
+    lon = "lon"
+    pressure_column = "pressure_bounds"
     
     col_mapping = OrderedDict([('ID_Level',None),
                                 ('Time','time'),
@@ -948,14 +958,10 @@ def write_tropomi_NAME(ds,site,max_level=None,max_points=50,
     
     if site is None:
         site = 'global'
-    
-    time = "time"
-    lat = "lat"
-    lon = "lon"
-    
+        
     ##TODO: Fix problem with extracting date here - coming out as a 
     #timedelta object?
-    date = ds["time"].values[0]
+    date = ds[time].values[0]
     
     if network is None:
         network = gosat_fn.find_network(site)[0] # Using first site as default
@@ -971,14 +977,15 @@ def write_tropomi_NAME(ds,site,max_level=None,max_points=50,
     if use_name_pressure:
         columns = [lat, lon, time]
         ds = use_NAME_surface_pressure(ds, columns=columns,
+                                       p_column=pressure_column,
                                        pressure_base_dir=pressure_base_dir,
                                        pressure_domain=pressure_domain,
                                        max_days=pressure_max_days,
                                        day_template=pressure_day_template)
 
     ## Extract pressure values (for z and dz outputs)
-    dpressure = np.abs(ds[pressure].diff(dim="layer_bound",label="lower"))
-    pressure = ds[pressure].isel(layer_bound=slice(0,-1)) + dpressure/2.
+    dpressure = np.abs(ds[pressure_column].diff(dim="layer_bound",label="lower"))
+    pressure = ds[pressure_column].isel(layer_bound=slice(0,-1)) + dpressure/2.
     
     # Limit to max_level (if specified)
     if max_level:
@@ -1486,10 +1493,17 @@ def tropomi_process(site,start_date,end_date,lat_bounds,lon_bounds,
         else:
             data_output.attrs["max_level"] = max_name_level
         
+        ## Rename "layer" output to match "lev" used within GOSAT files.
+        # TROPOMI - level describes the bounds of each layer, layer = level-1
+        # GOSAT - level describes the midpoint of each layer
+        data_output = data_output.rename({"layer":"lev"})
+        #if "layer_bound" in data_output.dims:
+        #    data_output = data_output.rename({"layer_bound":"lev_bound"})        
+        
         write_tropomi_output(data_output,site,date,species=species,
                              network=network,
                              output_directory=output_directory)
-        
+                
         if write_name:
             write_tropomi_NAME(data_output,site=site,max_level=max_name_level,
                                 max_points=max_name_points,network=network,
