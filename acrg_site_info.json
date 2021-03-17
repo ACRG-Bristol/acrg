@@ -2138,6 +2138,18 @@
       "longitude": 2.112
     }
   },
+  "TROPOMI-BRAZIL": {
+    "TROPOMI/TROPOMI-BRAZIL": {
+      "height": [
+        "column"
+      ],
+      "height_name": [
+        "column"
+      ],
+      "long_name": "TROPOMI, Brazil",
+      "platform": "satellite"
+    }
+  },
   "TTA": {
     "DECC": {
       "height": [
