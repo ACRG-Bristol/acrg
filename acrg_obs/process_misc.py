@@ -1341,7 +1341,7 @@ def LGHG_licor():
             "global_attributes": {
                 "data_owner": "Shiwei Fan",
                 "data_owner_email": "sf588@cam.ac.uk",
-                "Notes": "Drifting LICOR device installed in a building"
+                "Notes": "Uncalibrated LICOR LI-7810 (CH4)/ LI-7815 (CO2) installed in a building"
                 }
             }
     
