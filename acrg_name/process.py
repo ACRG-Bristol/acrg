@@ -1724,8 +1724,16 @@ def satellite_vertical_profile(fp, satellite_obs_file, max_level,
     
     fp_combined = fp[dict(lev = [0])].copy()
     
-    # pressure conversion from hPa to Pa
-    conversion=100.
+    # pressure conversion from units (e.g. hPa) to Pa
+    if "units" in sat.pressure_levels.attrs:
+        pressure_units = sat.pressure_levels.attrs["units"]
+    else:
+        pressure_units = "hPa"
+    
+    if pressure_units == "hPa":
+        conversion=100.
+    elif pressure_units == "Pa":
+        conversion=1.
     
     for t in range(ntime):
         sum_ak_pw = np.sum(sat.pressure_weights.values[t][lower_levels] * \
