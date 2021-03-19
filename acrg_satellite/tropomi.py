@@ -1125,7 +1125,7 @@ def write_tropomi_output(ds,site,date,species="ch4",
 
     output_filename = \
         gosat_fn.define_obs_filename(full_output_directory,instrument,
-                                     satellite,date,species,inlet=None,num=None)
+                                     satellite,date,species,inlet="column",num=None)
     
     ##TODO: Add general attributes - time of creation, who created the
     # file etc.    
