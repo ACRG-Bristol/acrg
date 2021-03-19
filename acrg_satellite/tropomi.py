@@ -120,6 +120,7 @@ def preProcessFile(filename,add_corners=False):
                      np.expand_dims(tropomi_data_input.pressure_interval,axis=3) * \
                      np.reshape(np.arange(0,nlevel),newshape=(1,1,1,-1)))
     tropomi_data['pressure_bounds'] = (["time", "scanline", "ground_pixel", "layer_bound"], pressure_bounds)
+    tropomi_data['pressure_bounds'].attrs["units"] = tropomi_data_input.surface_pressure.attrs["units"]
 
     #calculate mid point of pressure layers from surface pressure and constant intervals
     nlayer = tropomi_data["layer"].shape[0]
@@ -128,6 +129,7 @@ def preProcessFile(filename,add_corners=False):
                      np.expand_dims(tropomi_data_input.pressure_interval,axis=3) * \
                      np.reshape(np.arange(0,nlayer),newshape=(1,1,1,-1)))    
     tropomi_data['pressure_levels'] = (["time", "scanline", "ground_pixel", "layer"], pressure_data)    
+    tropomi_data['pressure_levels'].attrs["units"] = tropomi_data_input.surface_pressure.attrs["units"]
     
     #tropomi_data['column_averaging_kernel'] = tropomi_data_aux.column_averaging_kernel
     #tropomi_data['methane_profile_apriori']= tropomi_data_input.methane_profile_apriori
@@ -1227,7 +1229,7 @@ def tropomi_regrid(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
     time_full = "delta_time" # Time as np.datetime objects
 
     if species == "ch4":
-        directory = input_directory / "CH4"
+        directory = os.path.join(input_directory, "CH4")
         #output_directory = base_output_directory / "CH4"
     analysis_mode = "OFFL"
     search_str = define_tropomi_search_str(species,analysis_mode)
@@ -1476,36 +1478,34 @@ def tropomi_process(site,start_date,end_date,lat_bounds,lon_bounds,
         # e.g. methane, pressure levels
         
         data_timeseries = unravel_grid(data_regridded)
-        #TODO: Temporary line for now (update/remove)
-        data_output = data_timeseries
         
         short_filenames = [os.path.split(fname)[1] for fname in input_filenames]
         short_filenames = ','.join(short_filenames)
         
         if quality_filt:
-            data_output.attrs["qa_filter"] = "Quality filter of > 0.5 applied"
-        data_output.attrs["input_filename"] = short_filenames
-        data_output.attrs["analysis_mode"] = f"Input files are from {analysis_mode} mode of analysis."
+            data_timeseries.attrs["qa_filter"] = "Quality filter of > 0.5 applied"
+        data_timeseries.attrs["input_filename"] = short_filenames
+        data_timeseries.attrs["analysis_mode"] = f"Input files are from {analysis_mode} mode of analysis."
         
         if max_name_level is None:
-            print(data_output["layer"].values[-1])
-            data_output.attrs["max_level"] = data_output["layer"].values[-1]
+            print(data_timeseries["layer"].values[-1])
+            data_timeseries.attrs["max_level"] = data_timeseries["layer"].values[-1]
         else:
-            data_output.attrs["max_level"] = max_name_level
+            data_timeseries.attrs["max_level"] = max_name_level
         
         ## Rename "layer" output to match "lev" used within GOSAT files.
         # TROPOMI - level describes the bounds of each layer, layer = level-1
         # GOSAT - level describes the midpoint of each layer
-        data_output = data_output.rename({"layer":"lev"})
-        #if "layer_bound" in data_output.dims:
-        #    data_output = data_output.rename({"layer_bound":"lev_bound"})        
+        data_timeseries = data_timeseries.rename({"layer":"lev"})
+        #if "layer_bound" in data_timeseries.dims:
+        #    data_timeseries = data_timeseries.rename({"layer_bound":"lev_bound"})        
         
-        write_tropomi_output(data_output,site,date,species=species,
+        write_tropomi_output(data_timeseries,site,date,species=species,
                              network=network,
                              output_directory=output_directory)
                 
         if write_name:
-            write_tropomi_NAME(data_output,site=site,max_level=max_name_level,
+            write_tropomi_NAME(data_timeseries,site=site,max_level=max_name_level,
                                 max_points=max_name_points,network=network,
                                 use_name_pressure=use_name_pressure,
                                 pressure_base_dir=pressure_base_dir,
