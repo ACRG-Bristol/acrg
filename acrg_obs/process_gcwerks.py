@@ -6,8 +6,6 @@ Created on Fri Oct 16 14:08:07 2015
 """
 from __future__ import print_function
 
-from builtins import zip
-from builtins import range
 import datetime
 import numpy as np
 import pandas as pd
@@ -433,7 +431,6 @@ def gc(site, instrument, network,
             df[sp + " repeatability"] = precision[precision_index].\
                                             astype(float).\
                                             reindex_like(df, "pad")
-
         dfs.append(df)
 
     # Concatenate
@@ -474,7 +471,6 @@ def gc(site, instrument, network,
                             sp + " repeatability",
                             sp + " status_flag",
                             sp + " integration_flag",
-#                            "analysis_time",
                             "Inlet"]]
 
                 # No inlet label in file name
@@ -494,7 +490,6 @@ def gc(site, instrument, network,
                                        sp + " repeatability",
                                        sp + " status_flag",
                                        sp + " integration_flag",
-#                                       "analysis_time",
                                        "Inlet"]]
 
                 else:
@@ -511,7 +506,6 @@ def gc(site, instrument, network,
                                                               sp + " repeatability",
                                                               sp + " status_flag",
                                                               sp + " integration_flag",
-#                                                              "analysis_time"
                                                               "Inlet"]]
 
                 # re-label inlet if required
@@ -977,7 +971,7 @@ def array_job(array_index):
     '''
     Run processing scripts through an array job:
     
-    qsub -J 1-40 -k oe -j oe -Wsandbox=PRIVATE process_gcwerks_array.sh
+    qsub -J 1-50 -k oe -j oe -Wsandbox=PRIVATE process_gcwerks_array.sh
     
     Note that will need to increase the max index to more than 40 if we add more stations/instruments
     
@@ -1036,18 +1030,19 @@ def array_job(array_index):
         # Bristol CRDS
 #        [crds, ("BRI", "DECC")],
         # ICOS
-        [icos, ("TTA", "DECC")],
+#        [icos, ("TTA", "DECC")],
         [icos, ("MHD", "ICOS")]]
     
     # Return if index is too large for the above list
-    if array_index >= len(instrument):
-        return
+    if array_index > len(instrument):
+        return 0
     
     # Run the relevant script for each station and instrument
     wrapper(instrument[array_index-1][0], instrument[array_index-1][1])
 
     # Cleanup for particular station (cleans up everything, not just most recently processed instrument)
     cleanup(instrument[array_index-1][1][0])
+
     
 if __name__ == "__main__":
 

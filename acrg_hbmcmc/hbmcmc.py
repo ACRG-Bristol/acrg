@@ -46,7 +46,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                    sigprior={"pdf":"uniform", "lower":0.5, "upper":3},
                    nit=2.5e5, burn=50000, tune=1.25e5, nchain=2,
                    emissions_name=None, inlet=None, fpheight=None, instrument=None, 
-                   fp_basis_case=None, bc_basis_case="NESW", 
+                   fp_basis_case=None, basis_directory = None, bc_basis_case="NESW", 
                    obs_directory = None, country_file = None,
                    fp_directory = None, bc_directory = None, flux_directory = None,
                    max_level=None,
@@ -129,8 +129,13 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
         bc_directory (str, optional):
             Directory containing the boundary condition data
             if not default.
+<<<<<<< HEAD
         flux_directory (str, optional):
             Directory containing the emissions data
+=======
+        basis_directory (str, optional):
+            Directory containing the basis function
+>>>>>>> dcdf98c21bbbbe12cbcd31d3c726ff1fdb5aed84
             if not default.
         country_file (str, optional):
             Path to the country definition file
@@ -193,11 +198,11 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     print('Running for %s to %s' % (start_date, end_date))
     
     #If site contains measurement errors given as repeatability and variability, 
-    #place all in repeatability variable and drop variability
+    #use variability to replace missing repeatability values, then drop variability
     for site in sites:
         if "mf_variability" in fp_all[site] and "mf_repeatability" in fp_all[site]:
             fp_all[site]["mf_repeatability"][np.isnan(fp_all[site]["mf_repeatability"])] = \
-                fp_all[site]["mf_variability"][np.isfinite(fp_all[site]["mf_variability"])]
+                fp_all[site]["mf_variability"][np.logical_and(np.isfinite(fp_all[site]["mf_variability"]),np.isnan(fp_all[site]["mf_repeatability"]) )]
             fp_all[site] = fp_all[site].drop_vars("mf_variability")
 
     #Add measurement variability in averaging period to measurement error
@@ -218,7 +223,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             fp_basis_case= "quadtree"+species+"-"+outputname
             basis_directory = tempdir
     else:
-        basis_directory = None
+        basis_directory = basis_directory
             
     fp_data = name.fp_sensitivity(fp_all, domain=domain, basis_case=fp_basis_case,basis_directory=basis_directory)
     fp_data = name.bc_sensitivity(fp_data, domain=domain,basis_case=bc_basis_case)

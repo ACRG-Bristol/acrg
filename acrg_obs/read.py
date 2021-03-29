@@ -229,7 +229,7 @@ def get_single_site(site, species_in,
         c = conn.cursor()
 
 
-        # Attache the obs database
+        # Attach the obs database
         if data_directory is None:
             # Attach the obs database
             c.execute("ATTACH DATABASE ? as obs", (str(paths.obs / "obs.db"),))
@@ -242,7 +242,6 @@ def get_single_site(site, species_in,
         start_date_query = pd.Timestamp(start_date).to_pydatetime()
         end_date_query = pd.Timestamp(end_date).to_pydatetime()
         species_query = species.replace("-", "").lower()
-
 
         if data_directory is None:
             # Run a couple of initial queries to see whether there are any defaults defined for a particular site
@@ -265,6 +264,15 @@ def get_single_site(site, species_in,
         else:
             df_defaults_for_site = []
 
+            
+        # For debugging, get some info on the site and species in the obs.db
+        df_site_species = pd.read_sql_query('''
+                            SELECT files.inlet, files.instrument, files.startDate, files.endDate
+                            FROM obs.files
+                            WHERE files.species=? COLLATE NOCASE AND
+                                  files.site=? COLLATE NOCASE''', 
+                            conn, params = (species_query, site))
+        
         # Read filenames from database
         if len(df_defaults_for_site) == 0 or override_defaults:
             # Query only the 'files' table table to determine which files to read
@@ -340,17 +348,71 @@ def get_single_site(site, species_in,
             params = [species_query, site,
                       start_date_query, end_date_query, start_date_query, end_date_query]
 
+        # Store query with parameters inserted, for error messages
+        query_params = query
+        for p in params:
+            query_params = query_params.replace("?", str(p), 1)
+
         if verbose:
-            print(query)
+            print(query_params)
 
         # Run query and get list of files
         files_to_get = list(c.execute(query, params))
-
+        
         # close database
         conn.close()
 
-        
+
+    # Create empty output list (will contain xarray datasets)
     obs_files = []
+    
+    # If no files were found, print warning message explaining why
+    if len(files_to_get) == 0 and len(df_defaults_for_site) == 0:
+        
+        print(f'''No files were found for this combination of inputs (site, species, date range, etc.)
+                Have a look in {[data_directory, str(paths.obs)][data_directory == None]} and check that the expected files are there.
+
+                ---------------------------------------------------
+                obs.db entries for this site and species:
+                '''.replace("  ", ""))
+        print(df_site_species.to_string())
+
+        return obs_files
+    
+    elif len(files_to_get) == 0 and len(df_defaults_for_site) > 1:
+        
+        print(f'''No files were found for this combination of inputs.
+                
+                Note that there are some defaults set for this site.
+                
+                1. Check that there is some data for your selected inputs (e.g. within date range)
+                in {[data_directory, str(paths.obs)][data_directory == None]}
+                
+                2. Take a look at acrg_obs_defaults.csv. A common issue is that defaults
+                are added for some species at a particular site, but there's no
+                instruction for the remaining species. If that's the case, 
+                add a row to the file, which is empty, except for the site name. 
+                Be careful that this doesn't lead to any ambiguity in the files retrieved.
+                
+                3. Another common issue is that the species name in the defaults file doesn't match
+                the name in the files database. Make sure the species is the same as in the filename
+                e.g. "cfc11", rather than "CFC-11"
+                
+                ---------------------------------------------------
+                obs.db entries for this site:
+                '''.replace("  ", ""))
+                
+        print(df_site_species.to_string())
+        print('''---------------------------------------------------
+                Defaults for this site:
+                '''.replace("  ", ""))
+        print(df_defaults_for_site.to_string())
+
+        # Conditional statements from query
+        # print((query_params.split("WHERE ")[1]).replace("  ", "")[:-2])
+        
+        return obs_files
+        
     
     # Retrieve files
     for f in files_to_get:
@@ -424,23 +486,28 @@ def get_single_site(site, species_in,
                     ds_resampled[var] = np.sqrt((ds[var]**2).resample(time = average).sum()) / \
                                                  ds[var].resample(time = average).count()
 
-                elif "variability" in var:
-                    # Calculate std of 1 min mf obs in av period as new vmf 
-                    ds_resampled[var] = ds[var].resample(time = average,
-                                                         keep_attrs = True).std(skipna=False)
-
                 # Copy over some attributes
                 if "long_name" in ds[var].attrs:
                     ds_resampled[var].attrs["long_name"] = ds[var].attrs["long_name"]
                 if "units" in ds[var].attrs:
                     ds_resampled[var].attrs["units"] = ds[var].attrs["units"]
 
+            # Create a new variability variable, containing the standard deviation within the resampling period
+            ds_resampled[f"{species_query}_variability"] = ds[species_query].resample(time = average,
+                                                                                      keep_attrs = True).std(skipna=False)
+            # If there are any periods where only one measurement was resampled, just use the median variability
+            ds_resampled[f"{species_query}_variability"][ds_resampled[f"{species_query}_variability"] == 0.] = \
+                                                                ds_resampled[f"{species_query}_variability"].median()
+            # Create attributes for variability variable
+            ds_resampled[f"{species_query}_variability"].attrs["long_name"] = f"{ds[species_query].attrs['long_name']}_variability"
+            ds_resampled[f"{species_query}_variability"].attrs["units"] = ds[species_query].attrs["units"]
+
             # Resampling may introduce NaNs, so remove, if not keep_missing
             if keep_missing == False:
                 ds_resampled = ds_resampled.dropna(dim = "time")
                     
             ds = ds_resampled.copy()
-        
+
         # Rename variables
         rename = {}
 
@@ -479,32 +546,17 @@ def get_single_site(site, species_in,
         # Store dataset
         obs_files.append(ds)
 
-        
-    if len(obs_files) == 0 and len(df_defaults_for_site) > 0:
-        print(''' Your query didn't return anything. If you're sure the files exits
-                take a look at acrg_obs_defaults.csv. A common issue is that defaults
-                are added for some species at a particular site, but there's no
-                instruction for the remaining species. If that's the case, 
-                add a row to the file, which is empty, except for the site name. 
-                Be careful that this doesn't lead to any ambiguity in the files retrieved.
-                
-                Another common issue is that the species name in the defaults file doesn't match
-                the name in the files database. Make sure the species is the same as in the filename
-                e.g. "cfc11", rather than "CFC-11"
-                ''')
-    else:
-        
-        # Check if units match
-        units = [f.mf.attrs["units"] for f in obs_files]
-        if len(set(units)) > 1:
-            errorMessage = f'''Units don't match for these files: {[(f.mf.attrs["units"],f.attrs["filename"]) for f in obs_files]}'''
-            raise ValueError(errorMessage)
-    
-        scales = [f.attrs["scale"] for f in obs_files]
-        if len(set(scales)) > 1: 
-            print(f"WARNING: scales don't match for these files: {[(f.attrs['scale'],f.attrs['filename']) for f in obs_files]}")
-            print("... suggest setting calibration_scale to convert")
-    
+    # Check if units match
+    units = [f.mf.attrs["units"] for f in obs_files]
+    if len(set(units)) > 1:
+        errorMessage = f'''Units don't match for these files: {[(f.mf.attrs["units"],f.attrs["filename"]) for f in obs_files]}'''
+        raise ValueError(errorMessage)
+
+    scales = [f.attrs["scale"] for f in obs_files]
+    if len(set(scales)) > 1: 
+        print(f"WARNING: scales don't match for these files: {[(f.attrs['scale'],f.attrs['filename']) for f in obs_files]}")
+        print("... suggest setting calibration_scale to convert")
+
     return obs_files
 
 
