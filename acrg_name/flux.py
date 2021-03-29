@@ -130,7 +130,7 @@ def write(lat, lon, time, flux, species, domain,
         elif len(time) == 12:
             time = np.arange('1900-01', '1901-01', dtype='datetime64[M]')
         else:
-           sys.exit('Expecting either yearly or monthly climatology. Make sure time dimension is of size 1 or 12.')
+            sys.exit('Expecting either yearly or monthly climatology. Make sure time dimension is of size 1 or 12.')
     
     if type(time[0]) == np.datetime64:
         #time=time
@@ -150,11 +150,11 @@ def write(lat, lon, time, flux, species, domain,
     #Open netCDF file
     year = pd.DatetimeIndex([time[0]]).year[0]
     if copy_from_year != None:
-        ncname = os.path.join(output_directory, '%s/%s_%s_%s_copy-from-%s.nc' %(domain, file_source, domain, year, copy_from_year))
+        ncname = os.path.join(output_directory,domain,f"{file_source}_{domain}_{year}_copy-from-{copy_from_year}.nc")
     elif climatology == True:
-        ncname = os.path.join(output_directory, '%s/%s_%s.nc' %(domain, file_source, domain))
+        ncname = os.path.join(output_directory,domain,f"{file_source}_{domain}.nc")
     else:
-        ncname = os.path.join(output_directory, '%s/%s_%s_%s.nc' %(domain, file_source, domain, year))
+        ncname = os.path.join(output_directory,domain,f"{file_source}_{domain}_{year}.nc")
 
     if os.path.isfile(ncname) == True:
         answer = input("You are about to overwrite an existing file, do you want to continue? Y/N ")
@@ -193,10 +193,10 @@ def write(lat, lon, time, flux, species, domain,
     if flux_comments != None:
         glob_attrs['comments'] = flux_comments
         if copy_from_year != None:
-            glob_attrs['comments'] = "Fluxes copied from year %s. %s" %(copy_from_year, flux_comments)
+            glob_attrs['comments'] = f"Fluxes copied from year {copy_from_year}. {flux_comments}" 
     
     elif copy_from_year != None:
-        glob_attrs['comments'] = "Fluxes copied from year %s." %copy_from_year
+        glob_attrs['comments'] = f"Fluxes copied from year {copy_from_year}."
 
     flux_ds = xray.Dataset({'flux':(['lat','lon','time'], flux, flux_attrs)},
                               coords = {'lat' : lat,
@@ -209,7 +209,7 @@ def write(lat, lon, time, flux, species, domain,
     flux_ds.time.attrs['notes'] = "Start of time period"
     
     if not os.path.exists(os.path.join(output_directory,domain)):
-        print("Creating {} subdirectory in output directory: {}".format(domain,output_directory))
+        print(f"Creating {domain} subdirectory in output directory: {output_directory}")
         os.makedirs(os.path.join(output_directory,domain))
 
     flux_ds.flux.encoding = {'zlib':True}                        
