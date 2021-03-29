@@ -129,6 +129,8 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
         bc_directory (str, optional):
             Directory containing the boundary condition data
             if not default.
+        flux_directory (str, optional):
+            Directory containing the emissions data
         basis_directory (str, optional):
             Directory containing the basis function
             if not default.
@@ -274,7 +276,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                            xprior, bcprior, sigprior,Ytime, siteindicator, sigma_freq_index, fp_data,
                            emissions_name, domain, species, sites,
                            start_date, end_date, outputname, outputpath,
-                           basis_directory, country_file, country_unit_prefix)
+                           basis_directory, country_file, country_unit_prefix,flux_directory)
 
     if quadtree_basis is True:
         # remove the temporary basis function directory
