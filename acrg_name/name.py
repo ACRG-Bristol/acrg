@@ -317,11 +317,11 @@ def flux(domain, species, start = None, end = None, flux_directory=None):
         flux_directory = join(data_path, 'LPDM/emissions/')
     
     if "-" not in species:
-        species_search_str = [(species+"-total").lower(), species]
+        species_search_list = [(species+"-total").lower(), species]
     else:
-        species_search_str = [species.lower()]
+        species_search_list = [species.lower()]
     
-    for species_search in species_search_str:
+    for species_search in species_search_list:
         filename = os.path.join(flux_directory,domain,species_search+"_" +"*.nc")
         print("\nSearching for flux files: {}".format(filename))
     
