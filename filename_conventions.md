@@ -2,11 +2,9 @@
 
 ## Observation files
 
-The central location for storing observation files on BP1 is /work/chxmr/shared/obs. You can also create your own data directory, if you want to work with non-standard observation data (e.g. pseudo-data).
+The default central location for storing observation files is <data_path>/obs. You can also create your own data directory, if you want to work with non-standard observation data (e.g. pseudo-data).
 
-Within this folder, obs files should be stored in a folder with the site code. E.g. Mace Head data will be in:
-
-/work/chxmr/shared/obs/MHD/
+Within this folder, obs files should be stored in a folder with the site code. E.g. Mace Head data will be in: <data_path>/obs/MHD/
 
 Files must then be named as follows:
 
@@ -34,12 +32,41 @@ Examples:
 
 ## Footprint files
 
+Default path: <data_path>/LPDM/fp_NAME/ or <data_path>/LPDM/fp_NAME_high_time_res/
 
+Footprint file names are defined in acrg_name/name.py::filenames(...) as
+
+```[fp_directory]/domain/site*-height-species*domain*ym*.nc ``` or ```[fp_directory]/domain/site*-height_domain*ym*.nc ```
+
+- site: sitecode
+- height: release height of footprint (may not be same as actual inlet height, check site json)
+- species: (optional) for short-lived species to account for decay during 30 day footprint, leave out for all long lived tracer species
+- domain: NAME domain for file
+- ym: yearmonth format date of the footprint file
 
 ## Boundary condition files
 
+Default path: <data_path>/LPDM/bc/
 
+```[bc_directory]/domain/species_*.nc ```
+
+- domain: NAME domain
+- species: (all lowercase) species name
+
+## Basis files
+
+Default path: <data_path>/LPDM/basis_function/ or <data_path>/LPDM/bc_basis_function/ for bc basis
+
+```[basis_directory]/domain/basis_domain*.nc ```
+
+- domain: NAME domain
+- basis: the basis case to be used, eg quadtree
 
 ## Emissions files
 
+Default path: <data_path>/LPDM/emissions/
 
+```[emissions_directory]/domain/species_*.nc ```
+
+- domain: NAME domain
+- species: (all lowercase) species to grab emissions for. Also used to signify sectors etc
