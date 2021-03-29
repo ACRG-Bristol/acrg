@@ -1557,7 +1557,8 @@ def plot(fp_data, date, out_filename=None, out_format = 'pdf',
     
     Args:
         fp_data (dict): 
-            Dictionary of xarray datasets containing footprints and other variables
+            Output of footprints_data_merge(). Dictionary of xarray datasets containing   
+            footprints and other variables
         date (str): 
             Almost any time format should work (datetime object, string, etc). An example
             time format is '2014-01-01 00:00'. Footprints from all sites in dictionary that 
