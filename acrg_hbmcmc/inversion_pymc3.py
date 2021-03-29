@@ -17,6 +17,7 @@ from acrg_hbmcmc.hbmcmc_output import define_output_filename
 import os
 import sys
 import acrg_convert as convert
+from acrg_config.version import code_version
 
 if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
     data_path = os.getenv("DATA_PATH") 
@@ -373,7 +374,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
 
         unit_factor = convert.prefix(country_unit_prefix)
         if country_unit_prefix is None:
-           country_unit_prefix=''
+            country_unit_prefix=''
         country_units = country_unit_prefix + 'g'
 
         # Not sure how it's best to do this if multiple months in emissions 
@@ -464,7 +465,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         outds.country68.attrs["units"] = country_units
         outds.country95.attrs["units"] = country_units
         outds.countrysd.attrs["units"] = country_units
-        outds.countryprior.attrs["units"] = country_units
+        outds.countryapriori.attrs["units"] = country_units
         outds.xsensitivity.attrs["units"] = str(fp_data[".units"])+" "+"mol/mol"
         outds.bcsensitivity.attrs["units"] = str(fp_data[".units"])+" "+"mol/mol"
         outds.sigtrace.attrs["units"] = str(fp_data[".units"])+" "+"mol/mol"
@@ -509,6 +510,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         outds.attrs['Creator'] = getpass.getuser()
         outds.attrs['Date created'] = str(pd.Timestamp('today'))
         outds.attrs['Convergence'] = convergence
+        outds.attrs['Repository version'] = code_version()
         
         comp = dict(zlib=True, complevel=5)
         encoding = {var: comp for var in outds.data_vars}
