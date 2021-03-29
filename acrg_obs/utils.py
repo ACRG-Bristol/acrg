@@ -22,14 +22,10 @@ import xarray as xr
 from pandas import Timestamp
 import pandas as pd
 import sqlite3
-
-if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
-    acrg_path = os.getenv("ACRG_PATH")
-    obs_directory = os.path.join(data_path, "obs")
-else:
-    from acrg_config.paths import paths
-    acrg_path = paths.acrg
-    obs_directory = paths.obs
+import pathlib
+from acrg_config.paths import paths
+acrg_path = paths.acrg
+obs_directory = paths.obs
 
 # Output unit strings (upper case for matching)
 unit_species = {"CO2": "1e-6",
@@ -376,12 +372,16 @@ def output_filename(output_directory,
                                                    suffix))
 
 
-def obs_database():
+def obs_database(data_directory = None):
     '''
     Creates an SQLite database in obs folder detailing contents of each file
+    
+    Args:
+        data_directory (pathlib.Path or str, optional) : Path to user-defined obs_folder
     '''
+    
     # Directories to exclude from database
-    exclude = ["GOSAT", "unknown"]
+    exclude = ["GOSAT", "TROPOMI", "unknown"]
 
     network = []
     instrument = []
@@ -393,10 +393,18 @@ def obs_database():
     calibration_scale = []
     filename = []
 
-    print(f"Reading obs files in {paths.obs}")
+    if data_directory is None:
+        obs_path = paths.obs
+    else:
+        if isinstance(data_directory, pathlib.PurePath):
+            obs_path = data_directory
+        else:
+            obs_path = pathlib.Path(data_directory)
+    
+    print(f"Reading obs files in {obs_path}")
     
     # Find sub-directories in obs folder
-    for d in paths.obs.glob("*"):
+    for d in obs_path.glob("*"):
         if d.is_dir():
             if d.name not in exclude:
 
@@ -438,9 +446,9 @@ def obs_database():
     # Write database
     ######################################
     
-    print(f"Writing database {paths.obs / 'obs.db'}")
+    print(f"Writing database {obs_path / 'obs.db'}")
     
-    conn = sqlite3.connect(paths.obs / "obs.db")
+    conn = sqlite3.connect(obs_path / "obs.db")
     c = conn.cursor()
 
     c.execute('''DROP TABLE IF EXISTS files
@@ -536,6 +544,7 @@ def cleanup(site,
                 os.remove(f)
             zipf.close()
 
+            
 def cleanup_all():
     
     site_list = [site_dir for site_dir in os.listdir(obs_directory) if os.path.isdir(os.path.join(obs_directory,site_dir))]

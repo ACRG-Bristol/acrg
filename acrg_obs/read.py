@@ -2,9 +2,6 @@
 """
 @author: chxmr
 """
-#from builtins import zip
-#from builtins import str
-#from builtins import range
 import numpy as np
 import pandas as pd
 import glob
@@ -17,7 +14,9 @@ import sys
 import sqlite3
 from acrg_config.paths import paths
 from acrg_utils import is_number
+from acrg_obs.utils import obs_database
 import numexpr as ne
+from pathlib import Path
 
 acrg_path = paths.acrg
 obs_directory = paths.obs
@@ -123,6 +122,7 @@ def get_single_site(site, species_in,
                     status_flag_unflagged = [0],
                     keep_missing = None,
                     file_path = None,
+                    data_directory = None,
                     calibration_scale = None,
                     verbose = False):
     '''
@@ -168,6 +168,8 @@ def get_single_site(site, species_in,
         file_path (str, optional) :
             Path to file. If this is used, network, inlet and instrument are ignored. site and species are still required.
             Default=None.
+        data_directory (str or pathlib.Path, optional):
+            User-defined obs directory
         calibration_scale (str, optional) :
             Convert to this calibration scale (original scale and new scale must both be in acrg_obs_scale_convert.csv)
     Returns:
@@ -226,33 +228,51 @@ def get_single_site(site, species_in,
 
         c = conn.cursor()
 
+
         # Attach the obs database
-        c.execute("ATTACH DATABASE ? as obs", (str(paths.obs / "obs.db"),))
+        if data_directory is None:
+            # Attach the obs database
+            c.execute("ATTACH DATABASE ? as obs", (str(paths.obs / "obs.db"),))
+        else:
+            # Attach the obs database
+            c.execute("ATTACH DATABASE ? as obs", (str(Path(data_directory) / "obs.db"),))
+            override_defaults = True
 
         # Change some variables for query
         start_date_query = pd.Timestamp(start_date).to_pydatetime()
         end_date_query = pd.Timestamp(end_date).to_pydatetime()
         species_query = species.replace("-", "").lower()
 
+        if data_directory is None:
+            # Run a couple of initial queries to see whether there are any defaults defined for a particular site
+            df_defaults_for_site = pd.read_sql_query("SELECT * FROM defaults WHERE site = ? COLLATE NOCASE",
+                                                     conn, params = (site,))
+            df_defaults_for_site_species = pd.read_sql_query('''
+                                                             SELECT * FROM defaults 
+                                                             WHERE site = ? COLLATE NOCASE AND 
+                                                             species = ? COLLATE NOCASE
+                                                             ''', 
+                                                             conn, params = (site, species_query))
 
-        # Run a couple of initial queries to see whether there are any defaults defined for a particular site
-        df_defaults_for_site = pd.read_sql_query("SELECT * FROM defaults WHERE site = ? COLLATE NOCASE",
-                                                 conn, params = (site,))
-        df_defaults_for_site_species = pd.read_sql_query('''
-                                                         SELECT * FROM defaults 
-                                                         WHERE site = ? COLLATE NOCASE AND 
-                                                         species = ? COLLATE NOCASE
-                                                         ''', 
-                                                         conn, params = (site, species_query))
-
-        # Check if defaults need to be over-written
-        if (inlet != None or instrument != None or network != None) and len(df_defaults_for_site) >= 1:
-            print("... You've set either an inlet, instrument or network, overriding any defaults.")
-            print("... Best to set all three of these, if you want to avoid ambiguity.")
-            override_defaults = True
+            # Check if defaults need to be over-written
+            if (inlet != None or instrument != None or network != None) and len(df_defaults_for_site) >= 1:
+                print("... You've set either an inlet, instrument or network, overriding any defaults.")
+                print("... Best to set all three of these, if you want to avoid ambiguity.")
+                override_defaults = True
+            else:
+                override_defaults = False
         else:
-            override_defaults = False
+            df_defaults_for_site = []
 
+            
+        # For debugging, get some info on the site and species in the obs.db
+        df_site_species = pd.read_sql_query('''
+                            SELECT files.inlet, files.instrument, files.startDate, files.endDate
+                            FROM obs.files
+                            WHERE files.species=? COLLATE NOCASE AND
+                                  files.site=? COLLATE NOCASE''', 
+                            conn, params = (species_query, site))
+        
         # Read filenames from database
         if len(df_defaults_for_site) == 0 or override_defaults:
             # Query only the 'files' table table to determine which files to read
@@ -328,17 +348,71 @@ def get_single_site(site, species_in,
             params = [species_query, site,
                       start_date_query, end_date_query, start_date_query, end_date_query]
 
+        # Store query with parameters inserted, for error messages
+        query_params = query
+        for p in params:
+            query_params = query_params.replace("?", str(p), 1)
+
         if verbose:
-            print(query)
+            print(query_params)
 
         # Run query and get list of files
         files_to_get = list(c.execute(query, params))
-
+        
         # close database
         conn.close()
 
-        
+
+    # Create empty output list (will contain xarray datasets)
     obs_files = []
+    
+    # If no files were found, print warning message explaining why
+    if len(files_to_get) == 0 and len(df_defaults_for_site) == 0:
+        
+        print(f'''No files were found for this combination of inputs (site, species, date range, etc.)
+                Have a look in {[data_directory, str(paths.obs)][data_directory == None]} and check that the expected files are there.
+
+                ---------------------------------------------------
+                obs.db entries for this site and species:
+                '''.replace("  ", ""))
+        print(df_site_species.to_string())
+
+        return obs_files
+    
+    elif len(files_to_get) == 0 and len(df_defaults_for_site) > 1:
+        
+        print(f'''No files were found for this combination of inputs.
+                
+                Note that there are some defaults set for this site.
+                
+                1. Check that there is some data for your selected inputs (e.g. within date range)
+                in {[data_directory, str(paths.obs)][data_directory == None]}
+                
+                2. Take a look at acrg_obs_defaults.csv. A common issue is that defaults
+                are added for some species at a particular site, but there's no
+                instruction for the remaining species. If that's the case, 
+                add a row to the file, which is empty, except for the site name. 
+                Be careful that this doesn't lead to any ambiguity in the files retrieved.
+                
+                3. Another common issue is that the species name in the defaults file doesn't match
+                the name in the files database. Make sure the species is the same as in the filename
+                e.g. "cfc11", rather than "CFC-11"
+                
+                ---------------------------------------------------
+                obs.db entries for this site:
+                '''.replace("  ", ""))
+                
+        print(df_site_species.to_string())
+        print('''---------------------------------------------------
+                Defaults for this site:
+                '''.replace("  ", ""))
+        print(df_defaults_for_site.to_string())
+
+        # Conditional statements from query
+        # print((query_params.split("WHERE ")[1]).replace("  ", "")[:-2])
+        
+        return obs_files
+        
     
     # Retrieve files
     for f in files_to_get:
@@ -357,11 +431,11 @@ def get_single_site(site, species_in,
             if pd.Timestamp(end_date) < pd.Timestamp(f[4]):
                 slice_end = pd.Timestamp(end_date) - pd.Timedelta("1 ns")
             else:
-                slice_end = pd.Timestamp(f[4])
+                slice_end = pd.Timestamp(f[4]) - pd.Timedelta("1 ns")
 
         else:
             slice_start = pd.Timestamp(start_date)
-            slice_end = pd.Timestamp(end_date)
+            slice_end = pd.Timestamp(end_date) - pd.Timedelta("1 ns")
 
         if slice_start.round(freq = "T") != pd.Timestamp("1900-01-01") or  slice_end.round(freq = "T") != pd.Timestamp("2100-01-01"):
             print(f"... slicing from {slice_start} to {slice_end}")
@@ -412,23 +486,28 @@ def get_single_site(site, species_in,
                     ds_resampled[var] = np.sqrt((ds[var]**2).resample(time = average).sum()) / \
                                                  ds[var].resample(time = average).count()
 
-                elif "variability" in var:
-                    # Calculate std of 1 min mf obs in av period as new vmf 
-                    ds_resampled[var] = ds[var].resample(time = average,
-                                                         keep_attrs = True).std(skipna=False)
-
                 # Copy over some attributes
                 if "long_name" in ds[var].attrs:
                     ds_resampled[var].attrs["long_name"] = ds[var].attrs["long_name"]
                 if "units" in ds[var].attrs:
                     ds_resampled[var].attrs["units"] = ds[var].attrs["units"]
 
+            # Create a new variability variable, containing the standard deviation within the resampling period
+            ds_resampled[f"{species_query}_variability"] = ds[species_query].resample(time = average,
+                                                                                      keep_attrs = True).std(skipna=False)
+            # If there are any periods where only one measurement was resampled, just use the median variability
+            ds_resampled[f"{species_query}_variability"][ds_resampled[f"{species_query}_variability"] == 0.] = \
+                                                                ds_resampled[f"{species_query}_variability"].median()
+            # Create attributes for variability variable
+            ds_resampled[f"{species_query}_variability"].attrs["long_name"] = f"{ds[species_query].attrs['long_name']}_variability"
+            ds_resampled[f"{species_query}_variability"].attrs["units"] = ds[species_query].attrs["units"]
+
             # Resampling may introduce NaNs, so remove, if not keep_missing
             if keep_missing == False:
                 ds_resampled = ds_resampled.dropna(dim = "time")
                     
             ds = ds_resampled.copy()
-        
+
         # Rename variables
         rename = {}
 
@@ -467,32 +546,17 @@ def get_single_site(site, species_in,
         # Store dataset
         obs_files.append(ds)
 
-        
-    if len(obs_files) == 0 and len(df_defaults_for_site) > 0:
-        print(''' Your query didn't return anything. If you're sure the files exits
-                take a look at acrg_obs_defaults.csv. A common issue is that defaults
-                are added for some species at a particular site, but there's no
-                instruction for the remaining species. If that's the case, 
-                add a row to the file, which is empty, except for the site name. 
-                Be careful that this doesn't lead to any ambiguity in the files retrieved.
-                
-                Another common issue is that the species name in the defaults file doesn't match
-                the name in the files database. Make sure the species is the same as in the filename
-                e.g. "cfc11", rather than "CFC-11"
-                ''')
-    else:
-        
-        # Check if units match
-        units = [f.mf.attrs["units"] for f in obs_files]
-        if len(set(units)) > 1:
-            errorMessage = f'''Units don't match for these files: {[(f.mf.attrs["units"],f.attrs["filename"]) for f in obs_files]}'''
-            raise ValueError(errorMessage)
-    
-        scales = [f.attrs["scale"] for f in obs_files]
-        if len(set(scales)) > 1: 
-            print(f"WARNING: scales don't match for these files: {[(f.attrs['scale'],f.attrs['filename']) for f in obs_files]}")
-            print("... suggest setting calibration_scale to convert")
-    
+    # Check if units match
+    units = [f.mf.attrs["units"] for f in obs_files]
+    if len(set(units)) > 1:
+        errorMessage = f'''Units don't match for these files: {[(f.mf.attrs["units"],f.attrs["filename"]) for f in obs_files]}'''
+        raise ValueError(errorMessage)
+
+    scales = [f.attrs["scale"] for f in obs_files]
+    if len(set(scales)) > 1: 
+        print(f"WARNING: scales don't match for these files: {[(f.attrs['scale'],f.attrs['filename']) for f in obs_files]}")
+        print("... suggest setting calibration_scale to convert")
+
     return obs_files
 
 
@@ -530,16 +594,19 @@ def get_gosat(site, species, max_level,
     
     if max_level is None:
         raise ValueError("'max_level' ARGUMENT REQUIRED FOR SATELLITE OBS DATA")
-            
-    data_directory = obs_directory / "GOSAT" / site
-    files = [f.name for f in data_directory.glob("*.nc")]
+    
+    if data_directory is None:
+        gosat_directory = obs_directory / "GOSAT" / site
+    else:
+        gosat_directory = data_directory / "GOSAT" / site
+    files = [f.name for f in gosat_directory.glob("*.nc")]
 
     files_date = [pd.to_datetime(f.split("_")[2][0:8]) for f in files]
 
     data = []
     for (f, d) in zip(files, files_date):
         if d >= pd.to_datetime(start_date) and d < pd.to_datetime(end_date):
-            with xr.open_dataset(data_directory / f) as fxr:
+            with xr.open_dataset(gosat_directory / f) as fxr:
                 data.append(fxr.load())
     
     if len(data) == 0:
@@ -661,7 +728,7 @@ def get_obs(sites, species,
         max_level (int) : 
             Required for satellite data only. Maximum level to extract up to from within satellite data.
         data_directory (str, optional) :
-            Only for GOSAT data: directory where valid GOSAT data are stored
+            User-defined directory where data is stored. Note that if this is specified, an obs database will be created in this directory.
         file_paths (list of str, optional):
             Paths for specific files to read
         calibration_scale (str, optional) :
@@ -698,13 +765,14 @@ def get_obs(sites, species,
     if type(average) is not list:
         average = [average]*len(sites)
 
-    if (data_directory is None):
-        data_directory = obs_directory
-
     inlet = check_list_and_length(inlet, sites, "inlet")
     average = check_list_and_length(average, sites, "average")
     network = check_list_and_length(network, sites, "network")
     instrument = check_list_and_length(instrument, sites, "instrument")
+
+    if data_directory is not None:
+        # Need to create a database in data_directory
+        obs_database(data_directory = data_directory)
     
     # Get data
     obs = {}
@@ -721,7 +789,7 @@ def get_obs(sites, species,
                 file_path = file_paths[si]
             else:
                 file_path = None
-            
+                        
             obs[site] = get_single_site(site, species, inlet = inlet[si],
                                    start_date = start_date, end_date = end_date,
                                    average = average[si],
@@ -730,7 +798,8 @@ def get_obs(sites, species,
                                    keep_missing = keep_missing,
                                    status_flag_unflagged = status_flag_unflagged[si],
                                    file_path = file_path,
-                                   calibration_scale = calibration_scale)
+                                   calibration_scale = calibration_scale,
+                                   data_directory = data_directory)
 
     # Raise error if units don't match
     units = []
