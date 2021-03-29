@@ -31,7 +31,7 @@ def test_write(tmpdir):
     write(lat, lon, time, flux, species, domain,
           source, title, prior_info_dict,
           output_directory = str(tmpdir))
-    with xr.open_dataset(os.path.join(tmpdir,'/EUROPE/n2o-ocean_EUROPE_2009.nc')) as load:
+    with xr.open_dataset(os.path.join(tmpdir,'EUROPE/n2o-ocean_EUROPE_2009.nc')) as load:
         testds = load.load()
     del testds.attrs['author']
     del testds.attrs['date_created']
