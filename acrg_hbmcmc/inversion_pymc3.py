@@ -496,7 +496,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         outds.country68.attrs["longname"] = "0.68 Bayesian credible interval of ocean and country totals"
         outds.country95.attrs["longname"] = "0.95 Bayesian credible interval of ocean and country totals"        
         outds.countrysd.attrs["longname"] = "standard deviation of ocean and country totals" 
-        outds.countryprior.attrs["longname"] = "prior mean of ocean and country totals"
+        outds.countryapriori.attrs["longname"] = "prior mean of ocean and country totals"
         outds.xsensitivity.attrs["longname"] = "emissions sensitivity timeseries"   
         outds.bcsensitivity.attrs["longname"] = "boundary conditions sensitivity timeseries"  
         
