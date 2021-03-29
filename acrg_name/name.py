@@ -294,6 +294,8 @@ def flux(domain, species, start = None, end = None, flux_directory=None):
             Domain name. The flux files should be sub-categorised by the domain.
         species (str) : 
             Species name. All species names are defined acrg_species_info.json.
+            The source can also be specified as part of the species name e.g. "co2-ff"
+            will find all co2 emissions file for the fossil fuel sector.
         start (str, optional) : 
             Start date in format "YYYY-MM-DD" to output only a time slice of all the flux files.
             The start date used will be the first of the input month. I.e. if "2014-01-06" is input,
@@ -314,12 +316,20 @@ def flux(domain, species, start = None, end = None, flux_directory=None):
     if flux_directory is None:
         flux_directory = join(data_path, 'LPDM/emissions/')
     
-    filename = os.path.join(flux_directory,domain,species.lower()+"_" +"*.nc")
-    print("\nSearching for flux files: {}".format(filename))
+    if "-" not in species:
+        species_search_str = [(species+"-total").lower(), species]
+    else:
+        species_search_str = [species.lower()]
     
-    files = sorted(glob.glob(filename))
+    for species_search in species_search_str:
+        filename = os.path.join(flux_directory,domain,species_search+"_" +"*.nc")
+        print("\nSearching for flux files: {}".format(filename))
     
-    if len(files) == 0:
+        files = sorted(glob.glob(filename))
+        
+        if len(files) > 0:
+            break
+    else:
         raise IOError("\nError: Can't find flux files for domain '{0}' and species '{1}' ".format(domain,species))
     
     flux_ds = read_netcdfs(files)
