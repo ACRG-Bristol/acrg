@@ -690,7 +690,6 @@ def met_satellite_split(met):
     
     return met
  
-
 def particle_locations(particle_file, time, lats, lons, levs, heights, id_is_lev = False,
                        satellite = False,upper_level=17):
     '''
@@ -830,6 +829,11 @@ def particle_locations(particle_file, time, lats, lons, levs, heights, id_is_lev
         t=0
         l=0
     
+    df_n = df[(df["Lat"] > edge_lats[1] - dlats/2.)]
+    df_e = df[(df["Long"] > edge_lons[1] - dlons/2.)]
+    df_s = df[(df["Lat"] < edge_lats[0] + dlats/2.)]
+    df_w = df[(df["Long"] < edge_lons[0] + dlons/2.)]
+    
     for i in id_values:
         
         if satellite:
@@ -849,7 +853,7 @@ def particle_locations(particle_file, time, lats, lons, levs, heights, id_is_lev
             slice_dict = {"time": [i-1]}
             
         #Northern edge
-        dfe = df[(df["Lat"] > edge_lats[1] - dlats/2.) & (df["Id"] == i)]
+        dfe = df_n[df_n["Id"] == i]
         hist.pl_n[slice_dict] = \
             particle_location_edges(dfe["Long"].values, dfe["Ht"].values,
                                     lons, heights)
@@ -857,7 +861,6 @@ def particle_locations(particle_file, time, lats, lons, levs, heights, id_is_lev
             mean_age_edges(dfe["Long"].values, dfe["Ht"].values,dfe["Age(hr)"].values,
                                     lons, heights)        
         #Eastern edge
-        
         # If domain is unbounded in x direction (i.e. 0-360), set E and W directions manually to 0
         # This is done manually because any small number of particles that die in domain at 
         # the end of the run can be associated with E and W directions
@@ -870,15 +873,16 @@ def particle_locations(particle_file, time, lats, lons, levs, heights, id_is_lev
             hist.pl_e[slice_dict] = 0
             hist.mean_age_e[slice_dict] = 0
         else:
-            dfe = df[(df["Long"] > edge_lons[1] - dlons/2.) & (df["Id"] == i)]
+            dfe = df_e[df_e["Id"] == i]
             hist.pl_e[slice_dict] = \
-                particle_location_edges(dfe["Lat"].values, dfe["Ht"].values,
-                                        lats, heights)
+            particle_location_edges(dfe["Lat"].values, dfe["Ht"].values,
+                                    lats, heights)
             hist.mean_age_e[slice_dict] = \
-                mean_age_edges(dfe["Lat"].values, dfe["Ht"].values, dfe["Age(hr)"].values,
-                                        lats, heights)
+            mean_age_edges(dfe["Lat"].values, dfe["Ht"].values, dfe["Age(hr)"].values,
+                                    lats, heights)
+
         #Southern edge
-        dfe = df[(df["Lat"] < edge_lats[0] + dlats/2.) & (df["Id"] == i)]
+        dfe = df_s[df_s["Id"] == i]
         hist.pl_s[slice_dict] = \
             particle_location_edges(dfe["Long"].values, dfe["Ht"].values,
                                     lons, heights)
@@ -890,7 +894,7 @@ def particle_locations(particle_file, time, lats, lons, levs, heights, id_is_lev
             hist.pl_w[slice_dict] = 0 
             hist.mean_age_w[slice_dict] = 0 
         else:
-            dfe = df[(df["Long"] < edge_lons[0] + dlons/2.) & (df["Id"] == i)]
+            dfe = df_w[df_w["Id"] == i]
             hist.pl_w[slice_dict] = \
                 particle_location_edges(dfe["Lat"].values, dfe["Ht"].values,
                                         lats, heights)
@@ -929,15 +933,15 @@ def particle_locations(particle_file, time, lats, lons, levs, heights, id_is_lev
                 for key in hist.data_vars.keys():
                     hist[key][slice_dict] = hist[key][slice_dict_prev].values
         
-        # Store extremes
-        if df["Lat"].max() > particle_extremes["N"]:
-            particle_extremes["N"] = df["Lat"].max()
-        if df["Lat"].min() < particle_extremes["S"]:
-            particle_extremes["S"] = df["Lat"].min()
-        if df["Long"].max() > particle_extremes["E"]:
-            particle_extremes["E"] = df["Long"].max()
-        if df["Long"].min() < particle_extremes["W"]:
-            particle_extremes["W"] = df["Long"].min()
+    # Store extremes
+    if df["Lat"].max() > particle_extremes["N"]:
+        particle_extremes["N"] = df["Lat"].max()
+    if df["Lat"].min() < particle_extremes["S"]:
+        particle_extremes["S"] = df["Lat"].min()
+    if df["Long"].max() > particle_extremes["E"]:
+        particle_extremes["E"] = df["Long"].max()
+    if df["Long"].min() < particle_extremes["W"]:
+        particle_extremes["W"] = df["Long"].min()
 
     status_log("Number of particles reaching edge: " + ", ".join(particles_record),
                print_to_screen = False)
@@ -1992,7 +1996,6 @@ def process_basic(fields_folder, outfile):
     fp = footprint_concatenate(fields_folder)
     write_netcdf(fp, outfile)
 
-
 def process(domain, site, height, year, month, 
             #base_dir = "/work/chxmr/shared/NAME_output/",
             #process_dir = "/work/chxmr/shared/LPDM/fp_NAME/",
@@ -2568,6 +2571,7 @@ def copy_processed(domain):
     Returns:
         None
     '''
+    import dirsync
     
     src_folder = "/dagage2/agage/metoffice/NAME_output/"
     dst_folder = "/data/shared/LPDM/fp_NAME/" + domain + "/"
