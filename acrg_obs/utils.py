@@ -10,7 +10,7 @@ from builtins import str
 from builtins import zip
 import datetime
 import glob
-import os
+import os, stat, shutil
 import sys
 from os.path import join
 from datetime import datetime as dt
@@ -446,6 +446,9 @@ def obs_database(data_directory = None):
     # Write database
     ######################################
     
+    # To avoid permissions problems, remove old file
+    (obs_path / 'obs.db').unlink(missing_ok=True)
+    
     print(f"Writing database {obs_path / 'obs.db'}")
     
     conn = sqlite3.connect(obs_path / "obs.db")
@@ -462,6 +465,9 @@ def obs_database(data_directory = None):
     conn.commit()
     conn.close()
 
+    # Change permissions on obs.db to prevent it becoming locked to one user
+    shutil.chown(obs_path / 'obs.db', group="acrg")
+    os.chmod(obs_path / 'obs.db', stat.S_IRWXU | stat.S_IRWXG | stat.S_IROTH)
 
 
 def cleanup(site,
