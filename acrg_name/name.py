@@ -60,8 +60,8 @@ def filenames(site, domain, start, end, height, fp_directory, network=None, spec
     for given site, domain, directory and date range.
     
     Expect filenames of the form:
-        [fp_directory]/domain/site*-height*domain*yearmonth*.nc
-        e.g. [/data/shared/LPDM/fp_NAME/EUROPE/MHD-10magl_EUROPE_201401.nc
+        [fp_directory]/domain/site*-height-species*domain*ym*.nc or [fp_directory]/domain/site*-height_domain*ym*.nc
+        e.g. /data/shared/LPDM/fp_NAME/EUROPE/HFD-UKV-100magl-rn_EUROPE_202012.nc or /data/shared/LPDM/fp_NAME/EUROPE/MHD-10magl_EUROPE_201401.nc 
     
     Args:
         site (str) : 
@@ -1532,7 +1532,7 @@ def filtering(datasets_in, filters, keep_missing=False):
     return datasets
 
 
-def plot(fp_data, date, network = None, out_filename=None, out_format = 'pdf',
+def plot(fp_data, date, out_filename=None, out_format = 'pdf',
          lon_range=None, lat_range=None, log_range = [5., 9.], plot_borders = False,
          zoom = False, colormap = 'YlGnBu', tolerance = None, interpolate = False, dpi = 300,
          figsize=None, nlevels=256):
@@ -1541,7 +1541,8 @@ def plot(fp_data, date, network = None, out_filename=None, out_format = 'pdf',
     
     Args:
         fp_data (dict): 
-            Dictionary of xarray datasets containing footprints and other variables
+            Output of footprints_data_merge(). Dictionary of xarray datasets containing   
+            footprints and other variables
         date (str): 
             Almost any time format should work (datetime object, string, etc). An example
             time format is '2014-01-01 00:00'. Footprints from all sites in dictionary that 
@@ -1619,7 +1620,9 @@ def plot(fp_data, date, network = None, out_filename=None, out_format = 'pdf',
     if zoom:
         release_lons = [fp_data[key].release_lon for key in list(fp_data.keys()) if key[0] != '.']     
         release_lats = [fp_data[key].release_lat for key in list(fp_data.keys()) if key[0] != '.']
-                      
+        
+        release_lons = [y for x in release_lons for y in x]
+        release_lats = [y for x in release_lats for y in x]
         lon_range = [np.min(release_lons)-10, np.max(release_lons)+10]
         lat_range = [np.min(release_lats)-10, np.max(release_lats)+10]
 
@@ -1734,8 +1737,7 @@ def plot(fp_data, date, network = None, out_filename=None, out_format = 'pdf',
     # over-plot release location
     if len(release_lon) > 0:
         for site in sites:
-            if network is None:
-                network = list(site_info[site].keys())[0]
+            network = list(site_info[site].keys())[0]
             if site in release_lon:
                 if "platform" in site_info[site][network]:
                     color = rp_color[site_info[site][network]["platform"].upper()]
