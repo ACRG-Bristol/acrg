@@ -468,7 +468,12 @@ def boundary_conditions(domain, species, start = None, end = None, bc_directory=
     
     filenames = os.path.join(bc_directory,domain,species.lower() + "_" + "*.nc")
     
-    files = sorted(glob.glob(filenames))
+    files       = sorted(glob.glob(filenames))
+    file_no_acc = [ff for ff in files if not os.access(ff, os.R_OK)]
+    files       = [ff for ff in files if os.access(ff, os.R_OK)]
+    if len(file_no_acc)>0:
+        print('Warning: unable to read all boundary conditions files which match this criteria:')
+        [print(ff) for ff in file_no_acc]
     
     if len(files) == 0:
         print("Cannot find boundary condition files in {}".format(filenames))
@@ -564,7 +569,12 @@ def basis_boundary_conditions(domain, basis_case, bc_basis_directory = None):
     
     file_path = os.path.join(bc_basis_directory,domain,basis_case + '_' + domain + "*.nc")
     
-    files = sorted(glob.glob(file_path))
+    files       = sorted(glob.glob(file_path))
+    file_no_acc = [ff for ff in files if not os.access(ff, os.R_OK)]
+    files       = [ff for ff in files if os.access(ff, os.R_OK)]
+    if len(file_no_acc)>0:
+        print('Warning: unable to read all boundary conditions basis function files which match this criteria:')
+        [print(ff) for ff in file_no_acc]
 
     if len(files) == 0:
         raise IOError("\nError: Can't find boundary condition basis function files for domain '{0}' "
@@ -732,10 +742,6 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
         calc_timeseries (bool) : True calculates modelled mole fractions for each site using fluxes, False does not. Default True.
         calc_bc (bool)       : True calculates modelled baseline for each site using boundary conditions, False does not. Default True.
         HiTRes (bool)        : Set to True to include HiTRes footprints in output. Default False.
-        average (dict)       : [This keyword has been removed and its functionality commented out] Averaging period for each dataset (for each site). Should be a dictionary with
-                               {site: averaging_period} key:value pairs.
-                               Each value should be a string of the form e.g. "2H", "30min" (should match
-                               pandas offset aliases format).
         site_modifier        : An optional site modifier dictionary is used that maps the site name in the
                                obs file to the site name in the footprint file, if they are different. This
                                is useful for example if the same site FPs are run with a different met and 
@@ -780,14 +786,6 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
     """
     
     sites = [key for key in data]
-
-#     if average is not None:
-#         if type(average) is not dict:
-#             print("WARNING: average list must be a dictionary with {site: averaging_period}\
-#                   key value pairs. Ignoring. Output dataset will not be resampled.")
-#             average = {x:None for x in sites}
-#     else:
-#         average = {x:None for x in sites}
 
     species_list = []
     for site in sites:
@@ -931,10 +929,6 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                     if HiTRes:
                         site_ds.update({'fp_HiTRes' : (site_ds.fp_HiTRes.dims, 
                                                        old_div(site_ds.fp_HiTRes, units))})
-
-    #             # Resample, if required
-    #             if average[site] is not None:
-    #                 site_ds = site_ds.resample(indexer={'time':average[site]})
 
                 site_ds_list += [site_ds]
     

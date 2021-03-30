@@ -1352,6 +1352,71 @@
       "longitude": 6.353
     }
   },
+  "LHFT": {
+    "LGHG": {
+      "height": [
+        "45m"
+      ],
+      "height_name": [
+        "45magl"
+      ],
+      "latitude": 51.608031,
+      "long_name": "Highfield Tower, London, UK",
+      "longitude": 0.174544
+    }
+  },
+  "LSTJ": {
+    "LGHG": {
+      "height": [
+        "20m"
+      ],
+      "height_name": [
+        "20magl"
+      ],
+      "latitude": 51.58015486,
+      "long_name": "St Jude's Church, London, UK",
+      "longitude": -0.189911658
+    }
+  },
+  "LSTM": {
+    "LGHG": {
+      "height": [
+        "36m"
+      ],
+      "height_name": [
+        "36magl"
+      ],
+      "latitude": 51.504423,
+      "long_name": "St Mary's Church, London, UK",
+      "longitude": -0.305762
+    }
+  },
+  "LWMH": {
+    "LGHG": {
+      "height": [
+        "40m"
+      ],
+      "height_name": [
+        "40magl"
+      ],
+      "latitude": 51.577558,
+      "long_name": "University of Westminster - Harrow Campus, London, UK",
+      "longitude": -0.324358
+    }
+  },
+  "LWGF": {
+    "LGHG": {
+      "height": [
+        "6m"
+      ],
+      "height_name": [
+        "6magl"
+      ],
+      "latitude": 51.700313,
+      "long_name": "Woodgreen Farm, London, UK",
+      "longitude": -0.083932
+    }
+  },
   "MBC": {
     "NOAA": {
       "height": [

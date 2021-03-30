@@ -600,7 +600,7 @@ def getBloom2017(year, lon_out, lat_out, modeltype='extended'):
             Array of regridded emissions in mol/m2/s.
             Dimensions are [lat, lon, time]
     """    
-    path = os.path.join(data_path,'Gridded_fluxes/CH4/Bloom2017/')
+    path = os.path.join(data_path,'Gridded_fluxes/CH4/WetCHARTs/')
     if modeltype == 'extended':
         bloomwetlands = 'WetCHARTs_extended_ensemble_mean.nc4'
         possyears = np.arange(15) + 2001
