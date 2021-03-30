@@ -11,9 +11,11 @@ Files must then be named as follows:
 ```NETWORK-INSTRUMENT_SITECODE_STARTDATE_SPECIES-{INLET-}VERSION.nc```
 
 **NOTE: DO NOT include underscores or hyphens in any of the individual entries**:
+
 - Network: The measurement network, or institution of the data owner (e.g. AGAGE, UoB, etc.)
 - Instrument: The measurement instrument. Make sure this is descriptive enough to allow for an instrument change that measures the same gas at the same site (e.g. GCECD, picarro5310)
 - Sitecode:
+
     - For measurement sites, this is the three-letter site code (typically from the registered code at the GAWSIS data centre). E.g. MHD, CGO, etc. 
     - For satellite data, this is an indication of both the satellite indicator (e.g. gosat, tropomi) and a name for the region the observation files are related to (seperated by a '-') e.g. gosat-india, tropomi-brazil
  
@@ -73,4 +75,4 @@ Default path: <data_path>/LPDM/emissions/
 ```[emissions_directory]/domain/species_*.nc ```
 
 - domain: NAME domain
-- species: (all lowercase) species to grab emissions for. Also used to signify sectors etc
+- species: (all lowercase) species to grab emissions for. Also used to signify sectors by adding a -, eg ch4-wetlands
