@@ -26,11 +26,8 @@ import getpass
 import pandas as pd
 from os.path import join
 
-if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
-    data_path = os.getenv("DATA_PATH") 
-else:
-    from acrg_config.paths import paths
-    data_path = paths.data
+from acrg_config.paths import paths
+data_path = paths.data
 
 if data_path is None:
     data_path = "/work/chxmr/shared/"

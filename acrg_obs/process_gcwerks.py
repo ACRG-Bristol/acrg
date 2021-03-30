@@ -19,11 +19,8 @@ import fnmatch
 from acrg_obs.utils import attributes, output_filename, cleanup
 import sys
 
-if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
-    acrg_path = getenv("ACRG_PATH")
-else:
-    from acrg_config.paths import paths as acrg_paths
-    acrg_path = acrg_paths.acrg
+from acrg_config.paths import paths as acrg_paths
+acrg_path = acrg_paths.acrg
 
 # Read site info file
 info_file = join(acrg_path,

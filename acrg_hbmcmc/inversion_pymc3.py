@@ -18,11 +18,8 @@ import os
 import sys
 import acrg_convert as convert
 
-if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
-    data_path = os.getenv("DATA_PATH") 
-else:
-    from acrg_config.paths import paths
-    data_path = paths.data
+from acrg_config.paths import paths
+data_path = paths.data
 
 
 def parsePrior(name, prior_params, shape = ()):

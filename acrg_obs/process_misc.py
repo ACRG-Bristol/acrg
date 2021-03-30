@@ -30,16 +30,11 @@ import sys
 ## Set default obs folder
 #obs_directory = join(data_path, "obs_2018/")
 
-if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
-    acrg_path = os.getenv("ACRG_PATH")
-    data_path = os.getenv("DATA_PATH")
-    obs_directory = os.path.join(data_path,"obs")    
-else:
-    from acrg_config.paths import paths
+from acrg_config.paths import paths
 
-    acrg_path = paths.acrg
-    obs_directory = paths.obs
-    data_path = obs_directory.parent
+acrg_path = paths.acrg
+obs_directory = paths.obs
+data_path = obs_directory.parent
 
 
 with open(os.path.join(acrg_path, "acrg_site_info.json")) as f:
