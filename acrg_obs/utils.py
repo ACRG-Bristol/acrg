@@ -6,12 +6,8 @@ Created on Thu Dec 13 17:31:42 2018
 """
 from __future__ import print_function
 
-from builtins import str
-from builtins import zip
-import datetime
 import glob
-import os, stat, shutil
-import sys
+import os, stat, shutil, grp
 from os.path import join
 from datetime import datetime as dt
 import json
@@ -126,6 +122,7 @@ def site_info_attributes(site, network):
         return {}
 
     return attributes
+
 
 def attributes(ds, species, site, network=None, global_attributes=None, units=None, scale=None, 
                                                             sampling_period=None, date_range=None):
@@ -380,6 +377,9 @@ def obs_database(data_directory = None):
         data_directory (pathlib.Path or str, optional) : Path to user-defined obs_folder
     '''
     
+    if not getpass.getuser() in grp.getgrnam("acrg").gr_mem:
+        raise Exception("You need to be in the acrg group to run this")
+
     # Directories to exclude from database
     exclude = ["GOSAT", "TROPOMI", "unknown"]
 
