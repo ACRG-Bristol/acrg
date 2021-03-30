@@ -338,5 +338,8 @@ def MOZART_BC_nc(start = '2012-01-01', end = "2014-09-01", species = 'CH4', file
         MZ = MOZART_vmr(species, start = i, end = i, freq=freq, filename = filename)
         MZ_edges = MOZART_boundaries(MZ, domain)
         yearmonth = str(i.year) + str(i.month).zfill(2)
-        MZ_edges.to_netcdf(path = join(output_dir, "LPDM/bc/%s/%s_%s_%s.nc")
-                                                    %(domain,species.lower(),domain,yearmonth), mode = 'w')
+        output_path = join(output_dir, "LPDM/bc/%s/")%(domain)
+        output_name = join(output_path, "%s_%s_%s.nc")%(species.lower(),domain,yearmonth)
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
+        MZ_edges.to_netcdf(path = output_name, mode = 'w')
