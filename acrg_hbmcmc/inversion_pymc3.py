@@ -205,6 +205,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                                start_date, end_date, outputname, outputpath,
                                basis_directory, country_file, country_unit_prefix,
                                flux_directory):
+
         """
         Takes the output from inferpymc3 function, along with some other input
         information, and places it all in a netcdf output. This function also 
@@ -300,6 +301,9 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                 A prefix for scaling the country emissions. Current options are: 'T' will scale to Tg, 'G' to Gg, 'M' to Mg, 'P' to Pg.
                 To add additional options add to acrg_convert.prefix
                 Default is none and no scaling will be applied (output in g).
+            flux_directory (str, optional):
+                Directory containing the emissions data if
+                not default
                 
                 
         Returns:
