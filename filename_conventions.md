@@ -13,10 +13,9 @@ Files must then be named as follows:
 **NOTE: DO NOT include underscores or hyphens in any of the individual entries**:
 - Network: The measurement network, or institution of the data owner (e.g. AGAGE, UoB, etc.)
 - Instrument: The measurement instrument. Make sure this is descriptive enough to allow for an instrument change that measures the same gas at the same site (e.g. GCECD, picarro5310)
-- Sitecode: 
-
- - For measurement sites, this is the three-letter site code (typically from the registered code at the GAWSIS data centre). E.g. MHD, CGO, etc. 
- - For satellite data, this is an indication of both the satellite indicator (e.g. gosat, tropomi) and a name for the region the observation files are related to (seperated by a '-') e.g. gosat-india, tropomi-brazil
+- Sitecode:
+    - For measurement sites, this is the three-letter site code (typically from the registered code at the GAWSIS data centre). E.g. MHD, CGO, etc. 
+    - For satellite data, this is an indication of both the satellite indicator (e.g. gosat, tropomi) and a name for the region the observation files are related to (seperated by a '-') e.g. gosat-india, tropomi-brazil
  
 - Startdate: YYYYMMDD of the first data point
 - Species: Gas species (e.g. ch4, co2, cfc11). *Don't* include hyphens in here (e.g. cfc11, not cfc-11). *Do* check that species are named consistently with the acrg_species_info.json keys.
