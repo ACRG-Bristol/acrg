@@ -1381,7 +1381,7 @@ def footprint_array(fields_file,
         remfpds = remfpvar.to_dataset(name = 'fp_HiTRes')
         fp = xray.merge([fp, remfpds])
     
-    fp.attrs["model_units"] = units_str
+    fp.attrs["fp_output_units"] = units_str
     
     return fp
     
@@ -1994,8 +1994,7 @@ def process_basic(fields_folder, outfile):
 
 
 def process(domain, site, height, year, month, 
-            #base_dir = "/work/chxmr/shared/NAME_output/",
-            #process_dir = "/work/chxmr/shared/LPDM/fp_NAME/",
+            met_model = None,
             base_dir = os.path.join(data_path,"NAME_output/"),
             process_dir = os.path.join(lpdm_path,"fp_NAME/"),
             fields_folder = "MixR_files",
@@ -2040,6 +2039,10 @@ def process(domain, site, height, year, month,
             The year
         month (int):
             The month, can be e.g. 5 or 05
+        met_model (str):
+            Met model used to run NAME
+            Default is None and implies the standard global met model
+            Alternates include 'UKV' and this met model must be in the outputfolder NAME
         base_dir (str, optional):
             Base directory containing NAME output
             Default (i.e. on BP1) ="/work/chxmr/shared/NAME_output/",
@@ -2121,9 +2124,11 @@ def process(domain, site, height, year, month,
     '''
   
     global directory_status_log
-        
-    subfolder = base_dir + domain + "_" + site + "_" + height + "/"
     
+    if met_model is None:
+        subfolder = base_dir + domain + "_" + site + "_" + height + "/"
+    else:
+        subfolder = base_dir + domain + "_" + met_model + "_" + site + "_" + height + "/"
     directory_status_log = subfolder
     
     # do not run hourly processing if species specified but it is not pointing to the MixR_hourly directory
@@ -2253,12 +2258,20 @@ def process(domain, site, height, year, month,
 
     # Output filename
     full_out_path = os.path.join(process_dir, domain)
-    if species is None:
-        outfile = os.path.join(full_out_path, site + "-" + height + \
-                "_" + domain + "_" + str(year) + str(month).zfill(2) + ".nc")
-    else:
-        outfile = os.path.join(full_out_path, site + "-" + height + "-" + species.lower() + \
+    if met_model is None:
+        if species is None:
+            outfile = os.path.join(full_out_path, site + "-" + height +  \
                     "_" + domain + "_" + str(year) + str(month).zfill(2) + ".nc")
+        else:
+            outfile = os.path.join(full_out_path, site + "-" + height + "_" + species.lower() + \
+                        "_" + domain + "_" + str(year) + str(month).zfill(2) + ".nc")
+    else:
+        if species is None:
+            outfile = os.path.join(full_out_path, site + "-" + height + "_" + met_model + \
+                    "_" + domain + "_" + str(year) + str(month).zfill(2) + ".nc")
+        else:
+            outfile = os.path.join(full_out_path, site + "-" + height + "_" + met_model + "_" + species.lower() + \
+                        "_" + domain + "_" + str(year) + str(month).zfill(2) + ".nc")
 
     if not os.path.isdir(full_out_path):
         os.makedirs(full_out_path)
@@ -2427,7 +2440,7 @@ def process(domain, site, height, year, month,
         #Using the first datestring to select a file to gather information about the model.
         #This information is added to the attributes of the processed file.
         #Currently works for NAME or NAMEUKV
-        if transport_model == "NAME" or transport_model == "NAMEUKV":
+        if transport_model == "NAME":
             if fields_folder == "MixR_files" or fields_folder == "MixR_hourly":
                 name_info_file_str = os.path.join(subfolder,'MixR_files/*'+datestrs[0]+'*')
                 name_info_file = glob.glob(name_info_file_str)[0]
@@ -2440,14 +2453,32 @@ def process(domain, site, height, year, month,
                 model_info = "Version unknown"
         else:
             model_info = "Version unknown"
+        
+        if fields_folder == "MixR_files" or fields_folder == "MixR_hourly":
+            model_output = "Mixing Ratio"
+        elif fields_folder == "Fields_files":
+            model_output = "Air concentration"
  
+        if species is None:
+            output_species = "Inert"
+        else:
+            output_species = species
             
+        fp.attrs["species"] = output_species
+        fp.attrs["fp_output"] = model_output 
+        if species is not None:
+            fp.attrs["species_lifetime_hrs"] = lifetime_hrs           
         fp.attrs["model"] = transport_model
+        if met_model is None:
+            fp.attrs["met_model"] = "Global"
+        else:
+            fp.attrs["met_model"] = met_model
+        fp.attrs["output_folder"] = fields_folder
         fp.attrs["model_version"] = model_info
         fp.attrs["domain"] = domain
         fp.attrs["site"] = site
         fp.attrs["inlet_height"] = height
-        fp.attrs["Git_repository_version"] = code_version()
+        fp.attrs["ACRG_repository_version"] = code_version()
        
         #Write netCDF file
         #######################################
