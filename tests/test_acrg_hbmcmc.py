@@ -29,6 +29,9 @@ hbmcmc_path = os.path.join(acrg_path,"acrg_hbmcmc")
 test_config_path = os.path.join(acrg_path,"tests/files/config")
 outputpath = os.path.join(acrg_path,"tests/files/output")
 
+#stop CPU stealing
+os.environ["OPENBLAS_NUM_THREADS"] = "2"
+
 
 @pytest.fixture(scope="module")
 def example_prior():
