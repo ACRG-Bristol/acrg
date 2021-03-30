@@ -317,7 +317,7 @@ def flux(domain, species, start = None, end = None, flux_directory=None):
         flux_directory = join(data_path, 'LPDM/emissions/')
     
     if "-" not in species:
-        species_search_list = [(species+"-total").lower(), species]
+        species_search_list = [(species+"-total").lower(), species.lower()]
     else:
         species_search_list = [species.lower()]
     
