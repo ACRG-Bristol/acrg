@@ -61,7 +61,7 @@ def filenames(site, domain, start, end, height, fp_directory, network=None, spec
     
     Expect filenames of the form:
         [fp_directory]/domain/site*-height-species*domain*ym*.nc or [fp_directory]/domain/site*-height_domain*ym*.nc
-        e.g. [/data/shared/LPDM/fp_NAME/EUROPE/MHD-10magl_EUROPE_201401.nc
+        e.g. /data/shared/LPDM/fp_NAME/EUROPE/HFD-UKV-100magl-rn_EUROPE_202012.nc or /data/shared/LPDM/fp_NAME/EUROPE/MHD-10magl_EUROPE_201401.nc 
     
     Args:
         site (str) : 
