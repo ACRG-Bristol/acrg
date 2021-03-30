@@ -54,8 +54,7 @@ def mean_month(ds,time_col="time",):
 
     return ds
 
-
-def seasonal_cycle(ds, time_col="time"):
+def monthly_cycle(ds, time_col="time"):
     '''
     Calculate the monthly cycle across time period of input object.
     
