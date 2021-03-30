@@ -2350,8 +2350,8 @@ def create_emissions(databases,species,domain,year=None,lon_out=[],lat_out=[],
     # Define list of functions to call based on inputs databases
     functions = []
     for i,database in enumerate(databases):
+        # EDGAR has two versions and three associated functions, use inputs to work out which one to use.
         if database == "EDGARv5.0":
-            # EDGAR has three functions associated functions, use inputs to work out which one to use.
             if edgar_keyword:
                 if edgar_keyword == "yearly":
                     functions.append(db_functions[database]["yearly"])
