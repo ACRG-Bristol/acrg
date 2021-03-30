@@ -152,26 +152,24 @@ def hbmcmc_config_file():
 def test_hbmcmc_inputs(hbmcmc_input_file,hbmcmc_config_file):
     ''' Check that run_hbmcmc.py can be run with a standard hbmcmc config file '''
     result = subprocess.call(["python",hbmcmc_input_file,"-c{}".format(hbmcmc_config_file)])
-    os.remove(os.path.join(test_config_path,'hbmcmc_inputs_pytest.ini'))
-    os.remove(os.path.join(outputpath, "CH4_EUROPE_pytest-deleteifpresent_2013-03-01.ini"))
-    os.remove(os.path.join(outputpath, "CH4_EUROPE_pytest-deleteifpresent_2013-03-01.nc"))
+    os.remove(os.path.join(outputpath, "CH4_EUROPE_pytest-deleteifpresent_2014-02-01.ini"))
+    os.remove(os.path.join(outputpath, "CH4_EUROPE_pytest-deleteifpresent_2014-02-01.nc"))
     assert result == 0
 
 @pytest.mark.long
 def test_hbmcmc_inputs_command_line(hbmcmc_input_file,hbmcmc_config_file):
     ''' Check that run_hbmcmc.py can be run with a standard hbmcmc config file incl. dates '''
-    result = subprocess.call(["python",hbmcmc_input_file, "2013-03-01", "2013-04-01", "-c{}".format(hbmcmc_config_file)])
-    os.remove(os.path.join(test_config_path,'hbmcmc_inputs_pytest.ini'))
-    os.remove(os.path.join(outputpath, "CH4_EUROPE_pytest-deleteifpresent_2013-03-01.ini"))
-    os.remove(os.path.join(outputpath, "CH4_EUROPE_pytest-deleteifpresent_2013-03-01.nc"))
+    result = subprocess.call(["python",hbmcmc_input_file, "2014-02-01", "2014-04-01", "-c{}".format(hbmcmc_config_file)])
+    os.remove(os.path.join(outputpath, "CH4_EUROPE_pytest-deleteifpresent_2014-02-01.ini"))
+    os.remove(os.path.join(outputpath, "CH4_EUROPE_pytest-deleteifpresent_2014-02-01.nc"))
     assert result == 0
 
 @pytest.mark.long
 def test_hbmcmc_output_exists(hbmcmc_input_file,hbmcmc_config_file):
     """ Check hbmcmcm output file exists and that variables etc exits"""
     subprocess.call(["python",hbmcmc_input_file,"-c{}".format(hbmcmc_config_file)])
-    outfile = Path(outputpath) / "CH4_EUROPE_pytest-deleteifpresent_2013-03-01.nc"
-    outconfig = Path(outputpath) / "CH4_EUROPE_pytest-deleteifpresent_2013-03-01.ini"
+    outfile = Path(outputpath) / "CH4_EUROPE_pytest-deleteifpresent_2014-02-01.nc"
+    outconfig = Path(outputpath) / "CH4_EUROPE_pytest-deleteifpresent_2014-02-01.ini"
     
     #Check that expected files exist
     assert outconfig.exists() 
