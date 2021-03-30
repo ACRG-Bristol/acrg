@@ -60,7 +60,7 @@ def filenames(site, domain, start, end, height, fp_directory, network=None, spec
     for given site, domain, directory and date range.
     
     Expect filenames of the form:
-        [fp_directory]/domain/site*-height*domain*yearmonth*.nc
+        [fp_directory]/domain/site*-height-species*domain*ym*.nc or [fp_directory]/domain/site*-height_domain*ym*.nc
         e.g. [/data/shared/LPDM/fp_NAME/EUROPE/MHD-10magl_EUROPE_201401.nc
     
     Args:
