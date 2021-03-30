@@ -2351,36 +2351,63 @@ def create_emissions(databases,species,domain,year=None,lon_out=[],lat_out=[],
     functions = []
     for i,database in enumerate(databases):
         # EDGAR has two versions and three associated functions, use inputs to work out which one to use.
-        if database == "EDGARv5.0":
-            if edgar_keyword:
-                if edgar_keyword == "yearly":
+        if "EDGARv5.0" in database:
+            if database == "EDGARv5.0":
+                if edgar_keyword:
+                    if edgar_keyword == "yearly":
+                        functions.append(db_functions[database]["yearly"])
+                        kwargs["version"] = 'v5.0'
+                    elif edgar_keyword == "sector_yearly":
+                        functions.append(db_functions[database]["sector_yearly"])
+                    elif edgar_keyword == "sector_monthly":
+                        raise Exception("'sector_monthly' not currently available for EDGARv5.0 as files have not been downloaded. Please update or use EDGARv4.3.2")
+                    else:
+                        raise Exception("Did not recognise edgar_keyword input. Please use one of 'yearly', 'sector_yearly' or 'sector_monthly': {}".format(kwargs))
+                else:
+                    print("No edgar_keyword specified. Using EDGARv5.0 annual totals as default.")
                     functions.append(db_functions[database]["yearly"])
                     kwargs["version"] = 'v5.0'
-                elif edgar_keyword == "sector_yearly":
-                    functions.append(db_functions[database]["sector_yearly"])
-                elif edgar_keyword == "sector_monthly":
-                    raise Exception("'sector_monthly' not currently available for EDGARv5.0 as files have not been downloaded. Please update or use EDGARv4.3.2")
-                else:
-                    raise Exception("Did not recognise edgar_keyword input. Please use one of 'yearly', 'sector_yearly' or 'sector_monthly': {}".format(kwargs))
-            else:
-                print("No edgar_keyword specified. Using EDGARv5.0 annual totals as default.")
+            elif "_yearly" in database and "_sector" not in database:
+                database = "EDGARv5.0"
                 functions.append(db_functions[database]["yearly"])
-                kwargs["version"] = 'v5.0'
-        elif database == "EDGARv4.3.2":
-            if edgar_keyword:
-                if edgar_keyword == "yearly":
+                kwargs["version"] = 'v5.0' 
+            elif "_sector_yearly" in database:
+                database = "EDGARv5.0"
+                functions.append(db_functions[database]["sector_yearly"])
+            elif "_sector_monthly" in database:
+                database = "EDGARv5.0"
+                raise Exception("'sector_monthly' not currently available for EDGARv5.0 as files have not been downloaded. Please update or use EDGARv4.3.2")
+            else: 
+                raise Exception("EDGARv5.0 database input not recognised. Please check database entry is one of the accepted options.")
+                     
+        elif "EDGARv4.3.2" in database:
+            if database == "EDGARv4.3.2":
+                if edgar_keyword:
+                    if edgar_keyword == "yearly":
+                        functions.append(db_functions[database]["yearly"])
+                        kwargs["version"] = 'v4.3.2'
+                    elif edgar_keyword == "sector_yearly":
+                        functions.append(db_functions[database]["sector_yearly"])
+                    elif edgar_keyword == "sector_monthly":
+                        functions.append(db_functions[database]["sector_monthly"])
+                    else:
+                        raise Exception("Did not recognise edgar_keyword argument. Please use one of 'yearly', 'sector_yearly' or 'sector_monthly': {}".format(kwargs))
+                else:
+                    print("No edgar_keyword specified. Using EDGARv4.3.2 annual totals as default.")
                     functions.append(db_functions[database]["yearly"])
                     kwargs["version"] = 'v4.3.2'
-                elif edgar_keyword == "sector_yearly":
-                    functions.append(db_functions[database]["sector_yearly"])
-                elif edgar_keyword == "sector_monthly":
-                    functions.append(db_functions[database]["sector_monthly"])
-                else:
-                    raise Exception("Did not recognise edgar_keyword input. Please use one of 'yearly', 'sector_yearly' or 'sector_monthly': {}".format(kwargs))
-            else:
-                print("No edgar_keyword specified. Using EDGARv4.3.2 annual totals as default.")
+            elif database == "EDGARv4.3.2_yearly":
+                database = "EDGARv4.3.2"
                 functions.append(db_functions[database]["yearly"])
-                kwargs["version"] = 'v4.3.2'
+                kwargs["version"] = 'v4.3.2' 
+            elif database == "EDGARv4.3.2_sector_yearly":
+                database = "EDGARv4.3.2"
+                functions.append(db_functions[database]["sector_yearly"])
+            elif database == "EDGARv4.3.2_sector_monthly":
+                database = "EDGARv4.3.2"
+                functions.append(db_functions[database]["sector_monthly"]) 
+            else: 
+                raise Exception("EDGARv4.3.2 database input not recognised. Please check database entry is one of the accepted options.")
         else:
             functions.append(db_functions[database])
 
