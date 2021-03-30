@@ -12,15 +12,16 @@ Files must then be named as follows:
 
 ```NETWORK-INSTRUMENT_SITECODE_STARTDATE_SPECIES-{INLET-}VERSION.nc```
 
+**NOTE: DO NOT include underscores or hyphens in any of the individual entries**:
 - Network: The measurement network, or institution of the data owner (e.g. AGAGE, UoB, etc.)
 - Instrument: The measurement instrument. Make sure this is descriptive enough to allow for an instrument change that measures the same gas at the same site (e.g. GCECD, picarro5310)
 - Sitecode: Three-letter site code (typically from the registered code at the GAWSIS data centre). E.g. MHD, CGO, etc.
 - Startdate: YYYYMMDD of the first data point
-- Species: Gas species (e.g. ch4, co2, cfc11). *Don't* include hyphens in here (e.g. cfc11, not cfc-11)
+- Species: Gas species (e.g. ch4, co2, cfc11). *Don't* include hyphens in here (e.g. cfc11, not cfc-11). *Do* check that species are named consistently with the acrg_species_info.json keys.
 - Inlet (**optional**): If multiple inlets are available at a site, use this entry to specify the inlet name, typically the height with an "m". E.g. "100m".
 - Version: A version name/number, typically the date that the file was created.
 
-It's important to note that the final group of parameters, separated by "-", can be either two elements long (no inlet), or three elements (inlet specified).
+It's important to note that the final group of parameters (```SPECIES-{INLET-}VERSION```), can be either two elements long (no inlet), or three elements (inlet specified).
 
 Examples:
 
