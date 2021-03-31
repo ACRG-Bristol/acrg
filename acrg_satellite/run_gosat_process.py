@@ -35,11 +35,8 @@ import argparse
 
 if __name__=="__main__":
 
-    if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
-        acrg_path = os.getenv("ACRG_PATH") 
-    else:
-        from acrg_config.paths import paths
-        acrg_path = paths.acrg
+    from acrg_config.paths import paths
+    acrg_path = paths.acrg
 
     config_file = os.path.join(acrg_path,"acrg_satellite/gosat_process.ini")
     
