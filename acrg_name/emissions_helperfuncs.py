@@ -2217,8 +2217,9 @@ def create_emissions(databases,species,domain,year=None,lon_out=[],lat_out=[],
     Note: For "EDGARv5.0" and "EDGARv4.3.2", three databases are available based on annual data, 
     annual sector data and monthly sector data (for EDGARv4.3.2 (2010) only, there is currently no 
     monthly sector data downloaded for EDGARv5.0). If "EDGARv5.0" or "EDGARv4.3.2" database is 
-    used, this function will assume annual data is wanted unless specified otherwise using the
-    edgar_keyword argument.
+    used, this function will assume annual data is wanted unless specified otherwise by using an
+    explicit database (e.g."EDGARv5.0_yearly", see database options) or by using the edgar_keyword 
+    argument.
     
     WARNING: At the moment this function is unable to interpret "months" as an input (included
     as part of the keyword arguments) and so this input will be ignored if specified.
@@ -2228,17 +2229,22 @@ def create_emissions(databases,species,domain,year=None,lon_out=[],lat_out=[],
         databases (list) :
             List of databases to use to create emissions file.
             The following inputs can be included:
-                - "GFED"                 - GFED v4.1 biomass burning database
-                - "EDGARv5.0"            - EDGAR v5.0 anthropogenic database
-                - "EDGARv4.3.2"          - EDGAR v4.3.2 anthropogenic database
-                - "natural"              - other natural CH4 emissions (volcanoes, termites, hydrates) from Fung et al 1987
-                - "soilsink"             - soil sink CH4 emissions from Bousquet et al 2006
-                - "Bloom"                - CH4 wetland emissions from Bloom et al
-                - "Bloom2017"            - CH4 wetland emissions for updated WetCHARTS map from Bloom et al 2017
-                - "NAEI"                 - NAEI anthropogenic database
-                - "NAEI_and_EDGAR"       - Combined dataset of NAEI and EDGAR
-                - "JULES_wetlands"       - CH4 wetlands emissions from combining JULES model emissions output and SWAMPS wetlands extent.
-                - "Scarpelli"            - CH4 from fugitive fossil fuel emissions (NB this is not yet published)
+                - "GFED"                        - GFED v4.1 biomass burning database
+                - "EDGARv5.0"                   - EDGAR v5.0 anthropogenic database
+                - "EDGARv4.3.2"                 - EDGAR v4.3.2 anthropogenic database
+                - "EDGARv5.0_yearly"            - explicitly use yearly EDGARv5.0 database
+                - "EDGARv5.0_sector_yearly"     - explicitly use annual sector EDGARv5.0 database
+                - "EDGARv4.3.2_yearly"          - explicitly use yearly EDGARv4.3.2 database
+                - "EDGARv4.3.2_sector_yearly"   - explicitly use annual sector EDGARv4.3.2 database
+                - "EDGARv4.3.2_sector_monthly"  - explicitly use monthly sector EDGARv4.3.2 database
+                - "natural"                     - other natural CH4 emissions (volcanoes, termites, hydrates) from Fung et al 1987
+                - "soilsink"                    - soil sink CH4 emissions from Bousquet et al 2006
+                - "Bloom"                       - CH4 wetland emissions from Bloom et al
+                - "Bloom2017"                   - CH4 wetland emissions for updated WetCHARTS map from Bloom et al 2017
+                - "NAEI"                        - NAEI anthropogenic database
+                - "NAEI_and_EDGAR"              - Combined dataset of NAEI and EDGAR
+                - "JULES_wetlands"              - CH4 wetlands emissions from combining JULES model emissions output and SWAMPS wetlands extent.
+                - "Scarpelli"                   - CH4 from fugitive fossil fuel emissions (NB this is not yet published)
             See database_options() function for full and correct list of options.
         species (str) :
             Species of interest. All listed databases must have data for this species.
@@ -2367,15 +2373,14 @@ def create_emissions(databases,species,domain,year=None,lon_out=[],lat_out=[],
                     print("No edgar_keyword specified. Using EDGARv5.0 annual totals as default.")
                     functions.append(db_functions[database]["yearly"])
                     kwargs["version"] = 'v5.0'
-            elif "_yearly" in database and "_sector" not in database:
+            elif database == "EDGARv5.0_yearly":
                 database = "EDGARv5.0"
                 functions.append(db_functions[database]["yearly"])
                 kwargs["version"] = 'v5.0' 
-            elif "_sector_yearly" in database:
+            elif database == "EDGARv5.0_sector_yearly":
                 database = "EDGARv5.0"
                 functions.append(db_functions[database]["sector_yearly"])
-            elif "_sector_monthly" in database:
-                database = "EDGARv5.0"
+            elif database == "EDGARv5.0_sector_monthly":
                 raise Exception("'sector_monthly' not currently available for EDGARv5.0 as files have not been downloaded. Please update or use EDGARv4.3.2")
             else: 
                 raise Exception("EDGARv5.0 database input not recognised. Please check database entry is one of the accepted options.")
