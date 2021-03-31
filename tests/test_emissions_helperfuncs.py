@@ -13,11 +13,13 @@ from acrg_config.paths import paths
 acrg_path = paths.acrg
 import os
 import xarray as xr
+import glob
 
 lon =  np.arange(-5,4,0.5)
 lat =  np.arange(50,55,0.5)
 year = 2012
 
+@pytest.mark.skipif(not glob.glob(os.path.join(paths.data,"Gridded_fluxes")), reason="No access to files in data_path")
 @pytest.mark.parametrize('species', [('ch4'),('n2o')])    
 def test_getedgarannualtotals(species):    
     testout = ehf.getedgarannualtotals(year, lon, lat, species=species)  
@@ -25,18 +27,21 @@ def test_getedgarannualtotals(species):
     assert np.isfinite(testout).all() 
     assert np.array_equal(testout.shape, outdim)
     
+@pytest.mark.skipif(not glob.glob(os.path.join(paths.data,"Gridded_fluxes")), reason="No access to files in data_path")
 def test_getothernaturalCH4():
     testout = ehf.getothernaturalCH4(lon, lat)
     outdim = [len(lat), len(lon),12]
     assert np.isfinite(testout).all() 
     assert np.array_equal(testout.shape, outdim)
-    
+
+@pytest.mark.skipif(not glob.glob(os.path.join(paths.data,"Gridded_fluxes")), reason="No access to files in data_path")
 def test_getsoilsinkCH4():
     testout = ehf.getsoilsinkCH4(lon, lat)
     outdim = [len(lat), len(lon),12]
     assert np.isfinite(testout).all() 
     assert np.array_equal(testout.shape, outdim)
 
+@pytest.mark.skipif(not glob.glob(os.path.join(paths.data,"Gridded_fluxes")), reason="No access to files in data_path")
 @pytest.mark.parametrize('modeltype', [('extended'),('full')])    
 def test_getBloom2017(modeltype):
     testout = ehf.getBloom2017(year, lon, lat, modeltype=modeltype)
@@ -58,7 +63,8 @@ def test_getNAEI(naei_sector, species):
     outdim = [len(lat), len(lon)]
     assert np.isfinite(testout).all() 
     assert np.array_equal(testout.shape, outdim)
-    
+
+@pytest.mark.skipif(not glob.glob(os.path.join(paths.data,"Gridded_fluxes")), reason="No access to files in data_path")
 def test_getedgarannualsectors():
     secdict = {'powerindustry' : '1A1a', 
                'oilrefineriesandtransformationindustry' : '1A1b_1A1c_1A5b1_1B1b_1B2a5_1B2a6_1B2b5_2C1b',
@@ -94,7 +100,8 @@ def test_getedgarannualsectors():
     outdim = [len(lat), len(lon)]
     assert np.isfinite(testout).all() 
     assert np.array_equal(testout.shape, outdim)
-    
+
+@pytest.mark.skipif(not glob.glob(os.path.join(paths.data,"Gridded_fluxes")), reason="No access to files in data_path")
 def test_getedgarmonthlysectors():
     secdict = {'powerindustry' : '1A1a', 
                'oilrefineriesandtransformationindustry' : '1A1b_1A1c_1A5b1_1B1b_1B2a5_1B2a6_1B2b5_2C1b',
@@ -132,14 +139,16 @@ def test_getedgarmonthlysectors():
     outdim = [len(lat), len(lon), len(months)]
     assert np.isfinite(testout).all() 
     assert np.array_equal(testout.shape, outdim)
-    
+
+@pytest.mark.skipif(not glob.glob(os.path.join(paths.data,"Gridded_fluxes")), reason="No access to files in data_path")
 @pytest.mark.parametrize('scarpelli_sector', [('coal'), ('oil'), ('gas'), ('all')])  
 def test_getScarpelliFossilFuelsCH4(scarpelli_sector):
     testout = ehf.getScarpelliFossilFuelsCH4(lon, lat, scarpelli_sector=scarpelli_sector)
     outdim = [len(lat), len(lon)]
     assert np.isfinite(testout).all() 
     assert np.array_equal(testout.shape, outdim)
-
+    
+@pytest.mark.skipif(not glob.glob(os.path.join(paths.data,"Gridded_fluxes")), reason="No access to files in data_path")
 @pytest.mark.parametrize('scale_wetlands, total_w_emission', [(True, 185e12), (True, 100e12), (False, 185e12)]) 
 def test_getJULESwetlands(scale_wetlands, total_w_emission):
     testout = ehf.getJULESwetlands(year,lon,lat,scale_wetlands=scale_wetlands,
@@ -148,6 +157,7 @@ def test_getJULESwetlands(scale_wetlands, total_w_emission):
     assert np.isfinite(testout).all() 
     assert np.array_equal(testout.shape, outdim)
 
+@pytest.mark.skipif(not glob.glob(os.path.join(paths.data,"Gridded_fluxes")), reason="No access to files in data_path")
 @pytest.mark.parametrize('timeframe, nt', [('daily', 365), ('monthly', 12)])     
 def test_getbloomwetlandsCH4(timeframe, nt):
     testout = ehf.getbloomwetlandsCH4(year, lon, lat, timeframe=timeframe)
@@ -155,7 +165,7 @@ def test_getbloomwetlandsCH4(timeframe, nt):
     assert np.isfinite(testout).all() 
     assert np.array_equal(testout.shape, outdim)
     
-
+@pytest.mark.skipif(not glob.glob(os.path.join(paths.data,"Gridded_fluxes")), reason="No access to files in data_path")
 @pytest.mark.parametrize('timeframe, species', [('monthly', 'ch4'), ('daily', 'ch4'), ('3hourly', 'ch4'), ('monthly', 'co2')])  
 def test_getGFED(monkeypatch, timeframe, species):
     if timeframe == 'monthly':
@@ -199,7 +209,8 @@ def test_processUKGHG():
                                                                          raw_f.longitude.values))
     
     assert np.abs((out_total - raw_total)/raw_total) < 0.01
-    
+
+@pytest.mark.skipif(not glob.glob(os.path.join(paths.data,"Gridded_fluxes")), reason="No access to files in data_path")
 def test_get_US_EPA():
 
     out = ehf.get_US_EPA(["6A_Landfills_Municipal"])
