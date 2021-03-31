@@ -2375,12 +2375,12 @@ def create_emissions(databases,species,domain,year=None,lon_out=[],lat_out=[],
                     kwargs["version"] = 'v5.0'
             elif database == "EDGARv5.0_yearly":
                 databases[i] = "EDGARv5.0"
-                database = 'EDGARv5.0'
+                database = databases[i]
                 functions.append(db_functions[database]["yearly"])
                 kwargs["version"] = 'v5.0' 
             elif database == "EDGARv5.0_sector_yearly":
                 databases[i] = "EDGARv5.0"
-                database = 'EDGARv5.0'
+                database = databases[i]
                 functions.append(db_functions[database]["sector_yearly"])
             elif database == "EDGARv5.0_sector_monthly":
                 raise Exception("'sector_monthly' not currently available for EDGARv5.0 as files have not been downloaded. Please update or use EDGARv4.3.2")
@@ -2405,16 +2405,16 @@ def create_emissions(databases,species,domain,year=None,lon_out=[],lat_out=[],
                     kwargs["version"] = 'v4.3.2'
             elif database == "EDGARv4.3.2_yearly":
                 databases[i] = "EDGARv4.3.2"
-                database = 'EDGARV4.3.2'
+                database = databases[i]
                 functions.append(db_functions[database]["yearly"])
                 kwargs["version"] = 'v4.3.2' 
             elif database == "EDGARv4.3.2_sector_yearly":
                 databases[i] = "EDGARv4.3.2"
-                database = 'EDGARv4.3.2'
+                database = databases[i]
                 functions.append(db_functions[database]["sector_yearly"])
             elif database == "EDGARv4.3.2_sector_monthly":
                 databases[i] = "EDGARv4.3.2"
-                database = 'EDGARv4.3.2'
+                database = databases[i]
                 functions.append(db_functions[database]["sector_monthly"]) 
             else: 
                 raise Exception("EDGARv4.3.2 database input not recognised. Please check database entry is one of the accepted options.")
