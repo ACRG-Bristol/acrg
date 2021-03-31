@@ -2328,7 +2328,7 @@ def process(domain, site, height, year, month,
                 met_files = sorted(glob.glob(met_search_str))
            
             if len(met_files) == 0:        
-                raise Exception("Can't find MET files: {}".format(met_search_str))
+                raise FileNotFoundError(f"Can't find MET files: {met_search_str}")
                 
             else:
                 met = read_met(met_files,satellite=satellite)
