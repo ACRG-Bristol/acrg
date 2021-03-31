@@ -2189,19 +2189,16 @@ def process(domain, site, height, year, month,
     # Check that the specified transport model is valid.
     if transport_model == "STILT":
         if satellite:
-#             status_log("stiltfoot_array is not set up for satellite data!" +\
-#                        " Levels will be wrong!", error_or_warning="error")
-            raise Exception("stiltfoot_array is not set up for satellite data! Levels will be wrong!")
+            status_log("stiltfoot_array is not set up for satellite data!" +\
+                       " Levels will be wrong!", error_or_warning="error")
         if not force_met_empty:
-#             status_log("STILT neither provides nor requires met information" +\
-#                        " to interpret footprints. Met will probably be set" +\
-#                        " to default values. Don't rely on these values!")
-            raise Exception("STILT neither provides nor requires met information to interpret footprints. Met will probably be set to default values. Don't rely on these values!")
+            status_log("STILT neither provides nor requires met information" +\
+                       " to interpret footprints. Met will probably be set" +\
+                       " to default values. Don't rely on these values!")
     elif transport_model != "NAME" and transport_model !="NAMEUKV":
-#         status_log(transport_model + " is not a valid transport model!" +\
-#                    " Unable to read footprint information!", 
-#                    error_or_warning="error")
-        raise Exception("{} is not a valid transport model! Unable to read footprint information!".format(transport_model))
+        status_log(transport_model + " is not a valid transport model!" +\
+                   " Unable to read footprint information!", 
+                   error_or_warning="error")
     
     # Check for manual timestep (if footprints are for < 1min,
     # which is the min resolution of the NAME output file)
@@ -2213,22 +2210,20 @@ def process(domain, site, height, year, month,
             if satellite:
                 timeStep = timeStep/3600. # Assume time step input from satellite is in seconds rather than hours.
     elif satellite == True:
-#         status_log("A time step file called 'time_step.txt' must be specified for satellite data. "
-#                    +"The file should just contain the number of retrieval seconds for the NAME run in seconds. "
-#                    +"This is necessary because the time step cannot be accurately determined from the "
-#                    +"input fields file details.", 
-#                    error_or_warning="error")
-#         return None
-        raise Exception("A time step file called 'time_step.txt' must be specified for satellite data. The file should just contain the number of retrieval seconds for the NAME run in seconds. This is necessary because the time step cannot be accurately determined from the input fields file details.")
+        status_log("A time step file called 'time_step.txt' must be specified for satellite data. "
+                   +"The file should just contain the number of retrieval seconds for the NAME run in seconds. "
+                   +"This is necessary because the time step cannot be accurately determined from the "
+                   +"input fields file details.", 
+                   error_or_warning="error")
+        return None
     else:
         timeStep = None
 
     if satellite:
         if upper_level is None:
-#             status_log("Upper Level must be specified for satellite data.",
-#                    error_or_warning="error")
-#             return None
-            raise Exception("upper_level must be specified for satellite data.")
+            status_log("Upper Level must be specified for satellite data.",
+                   error_or_warning="error")
+            return None
         elif max_level is None:
             status_log("No max level specified, so set to match upper level of footprints.",
                    error_or_warning="status")
@@ -2250,10 +2245,9 @@ def process(domain, site, height, year, month,
 
         # Check that we've found something
         if len(datestrs) == 0:
-#             status_log("can't find files in " + file_search_string,
-#                        error_or_warning="error")
-#             return None
-            raise Exception("Can't find files in {}".format(file_search_string))
+            status_log("can't find files in " + file_search_string,
+                       error_or_warning="error")
+            return None
     else:
         if transport_model == "STILT":
             datestrs = ["stilt" + str(year) + "x" + str(month).zfill(2) + "x"]
@@ -2370,13 +2364,12 @@ def process(domain, site, height, year, month,
             satellite_obs_file = glob.glob(search_str)
             
             if len(satellite_obs_file) != 1:
-#                 status_log("There must be exactly one matching satellite " + 
-#                            "file in the {}/ folder".format(obs_folder),
-#                            error_or_warning="error")
-#                 status_log("Files: " + ','.join(satellite_obs_file),
-#                            error_or_warning="error")
-#                 return None
-                raise Exception("There must be exactly one matching satellite file in the {0} folder Files: {1}".format(obs_folder, satellite_obs_file))
+                status_log("There must be exactly one matching satellite " + 
+                           "file in the {}/ folder".format(obs_folder),
+                           error_or_warning="error")
+                status_log("Files: " + ','.join(satellite_obs_file),
+                           error_or_warning="error")
+                return None
 
             fp_file = satellite_vertical_profile(fp_file,
                                                  satellite_obs_file[0], max_level = max_level)  
@@ -2516,10 +2509,9 @@ def process(domain, site, height, year, month,
             
 
     else:
-#         status_log("FAILED. Couldn't seem to find any files, or some files are missing for %s" %
-#                    datestr,
-#                    error_or_warning="error")
-        raise Exception("FAILED. Couldn't seem to find any files, or some files are missing for {}".format(datestr))
+        status_log("FAILED. Couldn't seem to find any files, or some files are missing for %s" %
+                   datestr,
+                   error_or_warning="error")
 
     return fp
     
