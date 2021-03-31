@@ -43,3 +43,16 @@ def prefix(units):
             print('Undefined prefix: outputting in g/yr')
             unit_factor=1.
         return unit_factor
+
+def concentration(units):
+    '''
+    Conversion between mol/mol to parts-per- units
+    '''
+    unit_factor = 1e-12 if units.lower() == 'ppt' else \
+                  1e-9 if units.lower()  == 'ppb' else \
+                  1e-6 if units.lower()  == 'ppm' else \
+                  1
+    if unit_factor==1:
+        print('Undefined prefix')
+        
+    return unit_factor
