@@ -91,7 +91,8 @@ def mean_month(ds,time_col="time",):
         data_vars = list(ds.data_vars)
         
         for dv in data_vars:
-            ds[dv]   = ds[dv].mean(dim="month",keep_attrs=True)
+            if 'month' in ds[dv].dims:
+                    ds[dv] = ds[dv].mean(dim="month",keep_attrs=True)
         ds[time_col] = ds[time_col].swap_dims({"month":time_col})
             
         ds["month"]  = ds["month"].mean(dim="month", dtype=np.int)
@@ -150,11 +151,12 @@ def monthly_cycle(ds, time_col="time"):
     ds_new  = ds_new.swap_dims({time_col:"month"})
     
     group   = ds_new.groupby("month")
-    
-    ds_mean = group.apply(mean_month,**{"time_col":time_col})
+    ds_mean = group.map(mean_month,**{"time_col":time_col})
     
     if isinstance(ds,xr.core.dataset.Dataset):
         for i,dv in enumerate(ds.data_vars):
+            if 'month' in ds_mean[dv].dims and 'month' not in dims_list[i]:
+                dims_list[i].insert(1, 'month')
             ds_mean[dv] = ds_mean[dv].transpose(*dims_list[i])
     else:
         ds_mean = ds_mean.transpose(*dims_list[0])
