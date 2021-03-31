@@ -129,9 +129,9 @@ def filenames(site, domain, start, end, height, fp_directory, met_model = None, 
         if species:
 
             if met_model:
-                f=glob.glob(os.path.join(fp_directory,domain,f"{site}*-{height}_{met_model}_{species}*_{domain}*{ym}*.nc"))
+                f=glob.glob(os.path.join(fp_directory,domain,f"{site}-{height}_{met_model}_{species}_{domain}_{ym}*.nc"))
             else:
-                f=glob.glob(os.path.join(fp_directory,domain,f"{site}*-{height}_{species}*_{domain}*{ym}*.nc"))
+                f=glob.glob(os.path.join(fp_directory,domain,f"{site}-{height}_{species}_{domain}_{ym}*.nc"))
 
 
         else:
@@ -141,9 +141,9 @@ def filenames(site, domain, start, end, height, fp_directory, met_model = None, 
         if len(f) == 0:
 
             if met_model:
-                glob_path = os.path.join(fp_directory,domain,f"{site}*-{height}_{met_model}_{domain}*{ym}*.nc")
+                glob_path = os.path.join(fp_directory,domain,f"{site}-{height}_{met_model}_{domain}_{ym}*.nc")
             else:
-                glob_path = os.path.join(fp_directory,domain,f"{site}*-{height}_{domain}*{ym}*.nc")
+                glob_path = os.path.join(fp_directory,domain,f"{site}-{height}_{domain}_{ym}*.nc")
             
             if lifetime_hrs is None:
                 print("No lifetime defined in species_info.json or species not defined. WARNING: 30-day integrated footprint used without chemical loss.")
