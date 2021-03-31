@@ -60,8 +60,8 @@ def filenames(site, domain, start, end, height, fp_directory, met_model = None, 
     for given site, domain, directory and date range.
     
     Expect filenames of the form:
-        [fp_directory]/domain/site*-height*domain*yearmonth*.nc
-        e.g. [/data/shared/LPDM/fp_NAME/EUROPE/MHD-10magl_EUROPE_201401.nc
+        [fp_directory]/domain/site*-height-species*domain*ym*.nc or [fp_directory]/domain/site*-height_domain*ym*.nc
+        e.g. /data/shared/LPDM/fp_NAME/EUROPE/HFD-UKV-100magl-rn_EUROPE_202012.nc or /data/shared/LPDM/fp_NAME/EUROPE/MHD-10magl_EUROPE_201401.nc 
     
     Args:
         site (str) : 
@@ -127,20 +127,24 @@ def filenames(site, domain, start, end, height, fp_directory, met_model = None, 
     for ym in yearmonth:
 
         if species:
+
             if met_model:
-                f=glob.glob(fp_directory + domain + "/" + site + "*" + "-" + height + "_" + met_model + "_" + species + "*" + domain + "*" + ym + "*.nc")
+                f=glob.glob(os.path.join(fp_directory,domain,f"{site}*-{height}_{met_model}_{species}*_{domain}*{ym}*.nc"))
             else:
-                f=glob.glob(fp_directory + domain + "/" + site + "*" + "-" + height + "_" + species + "*" + domain + "*" + ym + "*.nc")
+                f=glob.glob(os.path.join(fp_directory,domain,f"{site}*-{height}_{species}*_{domain}*{ym}*.nc"))
+
+
         else:
             #manually create empty list if no species specified
             f = []
-        
+            
         if len(f) == 0:
+
             if met_model:
-                glob_path = fp_directory + domain + "/" + site + "*" + "-" + height + "_" + met_model  + "_" + domain + "*" + ym + "*.nc"
+                glob_path = os.path.join(fp_directory,domain,f"{site}*-{height}_{met_model}_{domain}*{ym}*.nc")
             else:
-                glob_path = fp_directory + domain + "/" + site + "*" + "-" + height  + "_" + domain + "*" + ym + "*.nc"
-                
+                glob_path = os.path.join(fp_directory,domain,f"{site}*-{height}_{domain}*{ym}*.nc")
+            
             if lifetime_hrs is None:
                 print("No lifetime defined in species_info.json or species not defined. WARNING: 30-day integrated footprint used without chemical loss.")
                 f=glob.glob(glob_path)
@@ -157,7 +161,7 @@ def filenames(site, domain, start, end, height, fp_directory, met_model = None, 
     files.sort()
 
     if len(files) == 0:
-        print("Can't find footprints file: {}".format(glob_path))
+        print(f"Can't find footprints file: {glob_path}")
     return files
 
 
@@ -275,8 +279,8 @@ def footprints(sitecode_or_filename, met_model = None, fp_directory = None,
             files = filenames(site, domain, start, end, height, fp_directory, met_model = met_model, network=network, species=species)
 
     if len(files) == 0:
-        print("\nWarning: Can't find footprint files for {}. "
-              "This site will not be included in the output dictionary.\n".format(sitecode_or_filename))
+        print(f"\nWarning: Can't find footprint files for {sitecode_or_filename}. \
+              This site will not be included in the output dictionary.\n")
         return None
 
     else:
@@ -327,23 +331,23 @@ def flux(domain, species, start = None, end = None, flux_directory=None):
     if flux_directory is None:
         flux_directory = join(data_path, 'LPDM/emissions/')
     
-    filename = os.path.join(flux_directory,domain,species.lower()+"_" +"*.nc")
+    filename = os.path.join(flux_directory,domain,f"{species.lower()}_*.nc")
     print("\nSearching for flux files: {}".format(filename))
     
     files = sorted(glob.glob(filename))
     
     if len(files) == 0:
-        raise IOError("\nError: Can't find flux files for domain '{0}' and species '{1}' ".format(domain,species))
+        raise IOError(f"\nError: Can't find flux files for domain '{domain}' and species '{species}' ")
     
     flux_ds = read_netcdfs(files)
     # Check that time coordinate is present
     if not "time" in list(flux_ds.coords.keys()):
-        raise KeyError("ERROR: No 'time' coordinate in flux dataset for domain '{0}' species '{1}'".format(domain,species))
+        raise KeyError(f"ERROR: No 'time' coordinate in flux dataset for domain '{domain}' species '{species}'")
 
     # Check for level coordinate. If one level, assume surface and drop
     if "lev" in list(flux_ds.coords.keys()):
-        print("WARNING: Can't support multi-level fluxes. Trying to remove 'lev' coordinate " + \
-              "from flux dataset for " + domain + ", " + species)
+        print(f"WARNING: Can't support multi-level fluxes. Trying to remove 'lev' coordinate \
+              from flux dataset for {domain}, {species}")
         if len(flux_ds.lev) > 1:
             print("ERROR: More than one flux level")
         else:
@@ -479,7 +483,7 @@ def boundary_conditions(domain, species, start = None, end = None, bc_directory=
     if bc_directory is None:
         bc_directory = join(data_path, 'LPDM/bc/')
     
-    filenames = os.path.join(bc_directory,domain,species.lower() + "_" + "*.nc")
+    filenames = os.path.join(bc_directory,domain,f"{species.lower()}_*.nc")
     
     files       = sorted(glob.glob(filenames))
     file_no_acc = [ff for ff in files if not os.access(ff, os.R_OK)]
@@ -490,7 +494,7 @@ def boundary_conditions(domain, species, start = None, end = None, bc_directory=
     
     if len(files) == 0:
         print("Cannot find boundary condition files in {}".format(filenames))
-        raise IOError("\nError: Cannot find boundary condition files for domain '{0}' and species '{1}': ".format(domain,species))
+        raise IOError(f"\nError: Cannot find boundary condition files for domain '{domain}' and species '{species}' ")
 
     bc_ds = read_netcdfs(files)
 
@@ -510,8 +514,8 @@ def boundary_conditions(domain, species, start = None, end = None, bc_directory=
         if len(bc_timeslice.time)==0:
             bc_timeslice = bc_ds.sel(time=start, method = 'ffill')
             bc_timeslice = bc_timeslice.expand_dims('time',axis=-1)
-            print("No boundary conditions available during the time period specified so outputting"
-                    "boundary conditions from %s" %bc_timeslice.time.values[0])
+            print(f"No boundary conditions available during the time period specified so outputting\
+                    boundary conditions from {bc_timeslice.time.values[0]}")
         return bc_timeslice
 
 
@@ -541,13 +545,13 @@ def basis(domain, basis_case, basis_directory = None):
     if basis_directory is None:
         basis_directory = join(data_path, 'LPDM/basis_functions/')
         
-    file_path = os.path.join(basis_directory,domain,basis_case + "_" + domain + "*.nc")
+    file_path = os.path.join(basis_directory,domain,f"{basis_case}_{domain}*.nc")
         
     files = sorted(glob.glob(file_path))
     
     if len(files) == 0:
-        raise IOError("\nError: Can't find basis function files for domain '{0}' "
-              "and basis_case '{1}' ".format(domain,basis_case))
+        raise IOError(f"\nError: Can't find basis function files for domain '{domain}' \
+                          and basis_case '{basis_case}' ")
 
     basis_ds = read_netcdfs(files)
 
@@ -580,7 +584,7 @@ def basis_boundary_conditions(domain, basis_case, bc_basis_directory = None):
     if bc_basis_directory is None:
         bc_basis_directory = join(data_path,'LPDM/bc_basis_functions/')
     
-    file_path = os.path.join(bc_basis_directory,domain,basis_case + '_' + domain + "*.nc")
+    file_path = os.path.join(bc_basis_directory,domain,f"{basis_case}_{domain}*.nc")
     
     files       = sorted(glob.glob(file_path))
     file_no_acc = [ff for ff in files if not os.access(ff, os.R_OK)]
@@ -1548,7 +1552,7 @@ def filtering(datasets_in, filters, keep_missing=False):
     return datasets
 
 
-def plot(fp_data, date, network = None, out_filename=None, out_format = 'pdf',
+def plot(fp_data, date, out_filename=None, out_format = 'pdf',
          lon_range=None, lat_range=None, log_range = [5., 9.], plot_borders = False,
          zoom = False, colormap = 'YlGnBu', tolerance = None, interpolate = False, dpi = 300,
          figsize=None, nlevels=256):
@@ -1557,7 +1561,8 @@ def plot(fp_data, date, network = None, out_filename=None, out_format = 'pdf',
     
     Args:
         fp_data (dict): 
-            Dictionary of xarray datasets containing footprints and other variables
+            Output of footprints_data_merge(). Dictionary of xarray datasets containing   
+            footprints and other variables
         date (str): 
             Almost any time format should work (datetime object, string, etc). An example
             time format is '2014-01-01 00:00'. Footprints from all sites in dictionary that 
@@ -1635,7 +1640,9 @@ def plot(fp_data, date, network = None, out_filename=None, out_format = 'pdf',
     if zoom:
         release_lons = [fp_data[key].release_lon for key in list(fp_data.keys()) if key[0] != '.']     
         release_lats = [fp_data[key].release_lat for key in list(fp_data.keys()) if key[0] != '.']
-                      
+        
+        release_lons = [y for x in release_lons for y in x]
+        release_lats = [y for x in release_lats for y in x]
         lon_range = [np.min(release_lons)-10, np.max(release_lons)+10]
         lat_range = [np.min(release_lats)-10, np.max(release_lats)+10]
 
@@ -1750,8 +1757,7 @@ def plot(fp_data, date, network = None, out_filename=None, out_format = 'pdf',
     # over-plot release location
     if len(release_lon) > 0:
         for site in sites:
-            if network is None:
-                network = list(site_info[site].keys())[0]
+            network = list(site_info[site].keys())[0]
             if site in release_lon:
                 if "platform" in site_info[site][network]:
                     color = rp_color[site_info[site][network]["platform"].upper()]
@@ -2091,7 +2097,7 @@ class get_country(object):
   def __init__(self, domain, country_file=None):
         
         if country_file is None:
-            filename=glob.glob(join(data_path,'LPDM/countries/', ("country_" + domain + ".nc")))
+            filename=glob.glob(join(data_path,'LPDM/countries/',f"country_{domain}.nc"))
             f = xr.open_dataset(filename[0])
         else:
             filename = country_file

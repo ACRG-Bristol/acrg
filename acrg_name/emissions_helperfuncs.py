@@ -46,11 +46,8 @@ import pyproj
 import acrg_grid.regrid_xesmf
 import getpass
 
-if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
-    data_path = os.getenv("DATA_PATH") 
-else:
-    from acrg_config.paths import paths
-    data_path = paths.data
+from acrg_config.paths import paths
+data_path = paths.data
 
 output_directory = os.path.join(data_path,"LPDM/emissions/")
 
