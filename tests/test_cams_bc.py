@@ -59,7 +59,7 @@ def bc_output_climatology_file():
     '''
     Define output filename
     '''
-    filename = os.path.join(acrg_path,'tests','files','LPDM','bc','EUROPE','ch4_EUROPE_201605.nc')
+    filename = os.path.join(acrg_path,'tests','files','LPDM','bc','EUROPE','ch4_EUROPE_201703_climatology.nc')
     return filename
     
 @pytest.mark.long
@@ -83,10 +83,8 @@ def test_bc_outputs(bc_benchmark, bc_output_directory, bc_output_file):
 
     with xr.open_dataset(bc_output_file) as temp:
         output = temp.load()
-    print(bc_output_file)
-    print(cams_directory)
     
-#     os.remove(bc_output_file)
+    os.remove(bc_output_file)
 
     assert np.array_equal(output["vmr_e"], bc_benchmark["vmr_e"])
     assert np.array_equal(output["vmr_w"], bc_benchmark["vmr_w"])
@@ -103,24 +101,22 @@ def test_bc_climatology_outputs(bc_benchmark, bc_output_directory, bc_output_fil
     Compare to the benchmark file defined above
     '''
     cams_directory = bc_output_directory
-    bc.makeCAMSBC(start            = '2016-05-01',
-                  end              = '2016-06-01',
+    bc.makeCAMSBC(start            = '2017-03-01',
+                  end              = '2017-04-01',
                   species          = 'ch4',
                   domain           = 'EUROPE', 
                   outdir           = bc_output_directory,
                   cams_directory   = bc_output_directory,
                   clim_start       = '2016-03-01',
-                  clim_end         = '2016-05-01',
+                  clim_end         = '2016-04-01',
                   make_climatology = True,
                   overwrite        = True,
                   test             = True)
-
-    with xr.open_dataset(bc_output_file) as temp:
-        output = temp.load()
-    print(bc_output_file)
-    print(cams_directory)
     
-#     os.remove(bc_output_file)
+    with xr.open_dataset(bc_output_climatology_file) as temp:
+        output = temp.load()
+    
+    os.remove(bc_output_climatology_file)
 
     assert np.array_equal(output["vmr_e"], bc_benchmark["vmr_e"])
     assert np.array_equal(output["vmr_w"], bc_benchmark["vmr_w"])
