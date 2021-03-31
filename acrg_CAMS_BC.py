@@ -36,11 +36,8 @@ from acrg_name import name
 from datetime import datetime as dt
 from acrg_tdmcmc.tdmcmc_post_process import molar_mass
 
-if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
-    data_path = os.getenv("DATA_PATH") 
-else:
-    from acrg_config.paths import paths
-    data_path = paths.data
+from acrg_config.paths import paths
+data_path = paths.data
 
 
 def getCAMSdata(st_date, end_date, gridsize, NESW, species, outputname, nearrealtime = False,
