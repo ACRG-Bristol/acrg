@@ -26,11 +26,12 @@ import getpass
 import pandas as pd
 from os.path import join
 
-data_path = os.getenv("DATA_PATH")
+from acrg_config.paths import paths
+data_path = paths.data
 
 if data_path is None:
-    data_path = "/data/shared/"
-    print("Default Data directory is assumed to be /data/shared/. Set path in .bashrc as \
+    data_path = "/work/chxmr/shared/"
+    print("Default Data directory is assumed to be /work/chxmr/shared/. Set path in .bashrc as \
             export DATA_PATH=/path/to/data/directory/ and restart python terminal")
 
 normal_fp_dir = join(data_path, 'NAME/fp/')
