@@ -54,7 +54,7 @@ def open_ds(path):
     return ds 
 
 
-def filenames(site, domain, start, end, height, fp_directory, network=None, species=None):
+def filenames(site, domain, start, end, height, fp_directory, met_model = None, network=None, species=None):
     """
     The filenames function outputs a list of available footprint file names,
     for given site, domain, directory and date range.
@@ -77,6 +77,10 @@ def filenames(site, domain, start, end, height, fp_directory, network=None, spec
         fp_directory (str) :
             fp_directory can be specified if files are not in the default directory must point to a directory 
             which contains subfolders organized by domain.
+        met_model (str):
+            Met model used to run NAME
+            Default is None and implies the standard global met model
+            Alternates include 'UKV' and this met model must be in the outputfolder NAME        
         network (str, optional) : 
             Network for site. 
             If not specified, first entry in acrg_site_info.json file will be used (if there are multiple).
@@ -118,20 +122,25 @@ def filenames(site, domain, start, end, height, fp_directory, network=None, spec
     # first search for species specific footprint files.
     # if does not exist, use integrated files if lifetime of species is over 2 months
     # if lifetime under 2 months and no species specific file exists, fail
-    
+
     files = []
     for ym in yearmonth:
 
         if species:
-            f=glob.glob(fp_directory + domain + "/" + site + "*" + "-" + height + "-" + species + "*" + domain + "*" + ym + "*.nc")
+            if met_model:
+                f=glob.glob(fp_directory + domain + "/" + site + "*" + "-" + height + "_" + met_model + "_" + species + "*" + domain + "*" + ym + "*.nc")
+            else:
+                f=glob.glob(fp_directory + domain + "/" + site + "*" + "-" + height + "_" + species + "*" + domain + "*" + ym + "*.nc")
         else:
             #manually create empty list if no species specified
             f = []
         
         if len(f) == 0:
-            
-            glob_path = fp_directory + domain + "/" + site + "*" + "-" + height  + "_" + domain + "*" + ym + "*.nc"
-            
+            if met_model:
+                glob_path = fp_directory + domain + "/" + site + "*" + "-" + height + "_" + met_model  + "_" + domain + "*" + ym + "*.nc"
+            else:
+                glob_path = fp_directory + domain + "/" + site + "*" + "-" + height  + "_" + domain + "*" + ym + "*.nc"
+                
             if lifetime_hrs is None:
                 print("No lifetime defined in species_info.json or species not defined. WARNING: 30-day integrated footprint used without chemical loss.")
                 f=glob.glob(glob_path)
@@ -179,7 +188,7 @@ def read_netcdfs(files, dim = "time"):
     return combined   
 
 
-def footprints(sitecode_or_filename, fp_directory = None, 
+def footprints(sitecode_or_filename, met_model = None, fp_directory = None, 
                start = None, end = None, domain = None, height = None, network = None,
                species = None, HiTRes = False):
 
@@ -200,6 +209,10 @@ def footprints(sitecode_or_filename, fp_directory = None,
     Args:
         sitecode_or_filename (str) : 
             Site (e.g. 'MHD') or a netCDF filename (*.nc) (str)
+        met_model (str):
+            Met model used to run NAME
+            Default is None and implies the standard global met model
+            Alternates include 'UKV' and this met model must be in the outputfolder NAME
         fp_directory (str/dict) : 
             If the high time resolution footprints are used (HiTRes = True) fp_directory must be a dictionary
             of the form :
@@ -257,9 +270,9 @@ def footprints(sitecode_or_filename, fp_directory = None,
         # Finds integrated footprints if specified as a dictionary with multiple entries (HiTRes = True) 
         # or a string with one entry        
         if type(fp_directory) is dict:
-            files = filenames(site, domain, start, end, height, fp_directory["integrated"], network=network, species=species)
+            files = filenames(site, domain, start, end, height, fp_directory["integrated"], met_model = met_model, network=network, species=species)
         else:
-            files = filenames(site, domain, start, end, height, fp_directory, network=network, species=species)
+            files = filenames(site, domain, start, end, height, fp_directory, met_model = met_model, network=network, species=species)
 
     if len(files) == 0:
         print("\nWarning: Can't find footprint files for {}. "
@@ -719,7 +732,7 @@ def align_datasets(ds1, ds2, platform=None, resample_to_ds1=False):
     return ds1, ds2
 
 
-def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
+def footprints_data_merge(data, domain, met_model = None, load_flux = True, load_bc = True,
                           calc_timeseries = True, calc_bc = True, HiTRes = False,
                           site_modifier = {}, height = None, network = None,
                           emissions_name = None,
@@ -737,15 +750,14 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                                Should match output from acrg_agage.get_obs() function. For example:
                                data = {"MHD": MHD_dataframe, "TAC": TAC_dataframe}
         domain (str)         : Domain name. The footprint files should be sub-categorised by the domain.
+        met_model (str)      : Met model used to run NAME
+                               Default is None and implies the standard global met model
+                               Alternates include 'UKV' and this met model must be in the outputfolder NAME
         load_flux (bool)     : True includes fluxes in output, False does not. Default True.
         load_bc (bool)       : True includes boundary conditions in output, False does not. Default True.
         calc_timeseries (bool) : True calculates modelled mole fractions for each site using fluxes, False does not. Default True.
         calc_bc (bool)       : True calculates modelled baseline for each site using boundary conditions, False does not. Default True.
         HiTRes (bool)        : Set to True to include HiTRes footprints in output. Default False.
-        average (dict)       : [This keyword has been removed and its functionality commented out] Averaging period for each dataset (for each site). Should be a dictionary with
-                               {site: averaging_period} key:value pairs.
-                               Each value should be a string of the form e.g. "2H", "30min" (should match
-                               pandas offset aliases format).
         site_modifier        : An optional site modifier dictionary is used that maps the site name in the
                                obs file to the site name in the footprint file, if they are different. This
                                is useful for example if the same site FPs are run with a different met and 
@@ -788,16 +800,8 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
         Dictionary of the form {"MHD": MHD_xarray_dataset, "TAC": TAC_xarray_dataset, ".flux": dictionary_of_flux_datasets, ".bc": boundary_conditions_dataset}:
             combined dataset for each site
     """
-    
-    sites = [key for key in data]
 
-#     if average is not None:
-#         if type(average) is not dict:
-#             print("WARNING: average list must be a dictionary with {site: averaging_period}\
-#                   key value pairs. Ignoring. Output dataset will not be resampled.")
-#             average = {x:None for x in sites}
-#     else:
-#         average = {x:None for x in sites}
+    sites = [key for key in data]
 
     species_list = []
     for site in sites:
@@ -883,7 +887,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                     height_site = site_info[site][network_site]["height_name"][wh_height[0][0]] #NB often different to inlet
 
             # Get footprints
-            site_fp = footprints(site_modifier_fp, fp_directory = fp_directory, 
+            site_fp = footprints(site_modifier_fp, met_model = met_model, fp_directory = fp_directory, 
                                  start = start, end = end,
                                  domain = domain,
                                  species = species,
@@ -941,10 +945,6 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                     if HiTRes:
                         site_ds.update({'fp_HiTRes' : (site_ds.fp_HiTRes.dims, 
                                                        old_div(site_ds.fp_HiTRes, units))})
-
-    #             # Resample, if required
-    #             if average[site] is not None:
-    #                 site_ds = site_ds.resample(indexer={'time':average[site]})
 
                 site_ds_list += [site_ds]
     

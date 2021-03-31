@@ -2463,9 +2463,9 @@ def process(domain, site, height, year, month,
             output_species = "Inert"
         else:
             output_species = species
-            
-        fp.attrs["species"] = output_species
+
         fp.attrs["fp_output"] = model_output 
+        fp.attrs["species"] = output_species
         if species is not None:
             fp.attrs["species_lifetime_hrs"] = lifetime_hrs           
         fp.attrs["model"] = transport_model
