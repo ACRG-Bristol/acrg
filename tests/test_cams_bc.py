@@ -21,7 +21,7 @@ import copy
 import numpy as np
 import xarray as xr
 from acrg_name.name import open_ds
-from acrg_BC import create_BC_CAMS as bc
+from acrg_BC import BC_CAMS as bc
 from acrg_config.paths import paths
 
 acrg_path = paths.acrg
@@ -92,7 +92,7 @@ def test_bc_outputs(bc_benchmark, bc_output_directory, bc_output_file):
     assert np.array_equal(output["vmr_s"], bc_benchmark["vmr_s"])
     
 @pytest.mark.long
-def test_bc_climatology_outputs(bc_benchmark, bc_output_directory, bc_output_file):
+def test_bc_climatology_outputs(bc_benchmark, bc_output_directory, bc_output_climatology_file):
     '''
     Use a dummy CAMS inversion file, which has vmr=1 and coordinates time, height, lat, & lon
     Create a boundary conditions file which should have contain 2D arrays of ones for 
