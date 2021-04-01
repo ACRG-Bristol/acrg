@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 Use this section to keep track of any intermediate changes that can then be moved to a versioned section.
 
-## [0.2.0] - 2020-XX-XX
+## [0.2.0] - 2020-04-01
 ### Added
 - Ability to convert calibration scale in get_obs
 - New "defaults" file that specifies inlets and instruments to use for particular time periods
