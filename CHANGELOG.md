@@ -20,6 +20,7 @@ Use this section to keep track of any intermediate changes that can then be move
 - get_obs now returns a dictionary containing lists of datasets
 - calibration scale and inlet are now attributes to obs datasets (e.g. ds.attrs["scale"])
 - fp_data_merge now works with new get_obs object
+- The flux function will now look for species-total_*.nc named files first and then look for species_*.nc files. This will not be able to read both files. This can still accept an more explicit source such as co2-ff_*.nc as an alternative tto this. 
 
 ### Removed
 - N/A

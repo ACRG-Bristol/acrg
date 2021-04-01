@@ -6,12 +6,8 @@ Created on Thu Dec 13 17:31:42 2018
 """
 from __future__ import print_function
 
-from builtins import str
-from builtins import zip
-import datetime
 import glob
-import os
-import sys
+import os, stat, shutil, grp
 from os.path import join
 from datetime import datetime as dt
 import json
@@ -126,6 +122,7 @@ def site_info_attributes(site, network):
         return {}
 
     return attributes
+
 
 def attributes(ds, species, site, network=None, global_attributes=None, units=None, scale=None, 
                                                             sampling_period=None, date_range=None):
@@ -380,6 +377,9 @@ def obs_database(data_directory = None):
         data_directory (pathlib.Path or str, optional) : Path to user-defined obs_folder
     '''
     
+    if not getpass.getuser() in grp.getgrnam("acrg").gr_mem:
+        raise Exception("You need to be in the acrg group to run this")
+
     # Directories to exclude from database
     exclude = ["GOSAT", "TROPOMI", "unknown"]
 
@@ -446,6 +446,9 @@ def obs_database(data_directory = None):
     # Write database
     ######################################
     
+    # To avoid permissions problems, remove old file
+    (obs_path / 'obs.db').unlink(missing_ok=True)
+    
     print(f"Writing database {obs_path / 'obs.db'}")
     
     conn = sqlite3.connect(obs_path / "obs.db")
@@ -462,6 +465,9 @@ def obs_database(data_directory = None):
     conn.commit()
     conn.close()
 
+    # Change permissions on obs.db to prevent it becoming locked to one user
+    shutil.chown(obs_path / 'obs.db', group="acrg")
+    os.chmod(obs_path / 'obs.db', stat.S_IRWXU | stat.S_IRWXG | stat.S_IROTH)
 
 
 def cleanup(site,

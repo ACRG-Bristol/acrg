@@ -2322,10 +2322,9 @@ def process(domain, site, height, year, month,
                     met_search_str = subfolder + met_folder + "/*.txt*"
                 met_files = sorted(glob.glob(met_search_str))
            
-            if len(met_files) == 0:
-                status_log("Can't file MET files: " + met_search_str,
-                           error_or_warning="error")
-                return None
+            if len(met_files) == 0:        
+                raise FileNotFoundError(f"Can't find MET files: {met_search_str}")
+                
             else:
                 met = read_met(met_files,satellite=satellite)
         else:
