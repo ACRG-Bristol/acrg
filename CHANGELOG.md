@@ -15,6 +15,7 @@ Use this section to keep track of any intermediate changes that can then be move
 - notebooks/tutorials directory for notebook based tutorials
 - a tmp directory to store random job script output files
 - added a dev environment that includes spyder and a lighter environment that does not
+- acrg_BC for creating boundary conditions
 
 ### Changed
 - get_single_site now returns a list of xarray datasets, one for each combination of inlet and site. If defaults are specified, the list will contain the default instruments and inlets for each period
