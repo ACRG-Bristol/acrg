@@ -5,17 +5,17 @@ Created on Mon Jan 14 15:13:44 2019
 
 @author: rt17603
 """
-from __future__ import print_function
-
 import pytest
 import acrg_countrymask as countrymask
 import os
 import sys
-
 from acrg_config.paths import paths
+import glob
+
+
 acrg_path = paths.acrg
 
-#%%
+
 ##### Create list of current NAME footprints ###################
 
 @pytest.fixture(scope="module")
@@ -24,7 +24,7 @@ def name_domains():
     domains = ['AUSTRALIA','EASTASIA','EUROPE','NAMERICA']
     return domains
 
-#%%
+
 ####### Tests for domain_volume function ######
 def test_incorrect_domain():
     '''
@@ -57,6 +57,7 @@ def test_other_directory():
     assert fp_height is not None
 
 @pytest.mark.long
+@pytest.mark.skipif(not glob.glob(os.path.join(paths.data,"LPDM/fp")), reason="No access to files in data_path")
 def test_all_domains(name_domains):
     '''
     Test all (current) domains are recognised and can be accessed

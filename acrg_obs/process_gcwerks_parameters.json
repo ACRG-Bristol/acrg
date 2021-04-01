@@ -25,9 +25,9 @@
             }
         },
         "directory" : {
-            "GCMD":   "/dagage2/agage/summary/data/",
-            "GCMS":   "/dagage2/agage/summary/data-gcms/",
-            "medusa": "/dagage2/agage/summary/data-gcms/"
+            "GCMD":   "/work/chxmr/shared/obs_raw/AGAGE_GCWerks/data/",
+            "GCMS":   "/work/chxmr/shared/obs_raw/AGAGE_GCWerks/data-gcms/",
+            "medusa": "/work/chxmr/shared/obs_raw/AGAGE_GCWerks/data-gcms/"
         },
         "sampling_period": {
             "GCMD": 75,
@@ -39,7 +39,7 @@
             "GCMS": "Gas chromatograph-mass spectrometer measurements. Output from GCWerks.",
             "medusa": "Medusa measurements. Output from GCWerks. See Miller et al. (2008)."
         },
-        "directory_output" : "/data/shared/obs",
+        "directory_output" : "/work/chxmr/shared/obs",
         "BSD" : {
             "gcwerks_site_name": "bilsdale",
             "inlets": ["108m", "42m", "248m"],
@@ -64,6 +64,16 @@
             "global_attributes": {
                 "data_owner": "Brett Kuyper",
                 "data_owner_email": "brett.kuyper@gmail.com"
+            }
+        },
+        "DJI" : {
+            "gcwerks_site_name": "darjeeling",
+            "long_name": "Darjeeling, India",
+            "inlets": ["any"],
+            "inlet_label": ["any"],
+            "global_attributes": {
+                "data_owner": "Anita Ganesan",
+                "data_owner_email": "anita.ganesan@bristol.ac.uk"
             }
         },
         "HFD" : {
@@ -190,9 +200,15 @@
         }
     },
     "CRDS": {
-        "directory" : "/dagage2/agage/%site-picarro/results-gcwerks/",
-        "directory_output" : "/data/shared/obs",
+        "directory" : "/work/chxmr/shared/obs_raw/AGAGE_GCWerks/data-picarro/%site/",
+        "directory_output" : "/work/chxmr/shared/obs",
         "comment": "Cavity ring-down measurements. Output from GCWerks",
+        "default_scales": {
+            "N2O": "WMO-X2006A",
+            "CH4": "WMO-X2004A",
+            "CO2": "WMO-X2007",
+            "CO": "WMO-X2014A"
+        },
         "BSD" : {
             "gcwerks_site_name": "bilsdale",
             "global_attributes": {
@@ -237,8 +253,8 @@
         }
     },
     "ICOS": {
-        "directory" : "/dagage2/agage/%site-picarro/results-icos/",
-        "directory_output" : "/data/shared/obs",
+        "directory" : "/work/chxmr/shared/obs_raw/AGAGE_GCWerks/data-icos/%site/",
+        "directory_output" : "/work/chxmr/shared/obs",
         "MHD" : {
             "gcwerks_site_name": "macehead",
             "inlet_rename": {"15m": "10m"},

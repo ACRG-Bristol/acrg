@@ -1,0 +1,37 @@
+ NAME III (version 7.2)                                          
+ Run name:                   SOUTHAMERICA_GOSAT-BRAZIL_column_20130101
+ Run time:                   26/04/2019 11:24:06.613 UTC+01:00
+ Met data:                   NWP Flow.Global_Mk6_PT1 Flow; NWP Flow.Global_Mk6_PT2 Flow; NWP Flow.Global_Mk6_PT3 Flow; NWP Flow.Global_Mk6_PT4 Flow; NWP Flow.Global_Mk6_PT5 Flow; NWP Flow.Global_Mk6_PT6 Flow; NWP Flow.Global_Mk6_PT7 Flow; NWP Flow.Global_Mk6_PT8 Flow; NWP Flow.Global_Mk6_PT9 Flow; NWP Flow.Global_Mk6_PT10 Flow; NWP Flow.Global_Mk6_PT11 Flow; NWP Flow.Global_Mk6_PT12 Flow; NWP Flow.Global_Mk6_PT13 Flow; NWP Flow.Global_Mk6_PT14 Flow
+ Start of release:           01/01/2013 14:59 UTC
+ End of release:             02/12/2012 14:58 UTC
+ Source strength:            1.000000 g / s
+ Release location:           5.5000E   55.5000N
+ Release height:             10.000m asl +/- 0.000m
+ Run duration:               30day 1hr 45min
+ X grid origin:                -50.00000    
+ Y grid origin:                -10.00000
+ X grid size:                           1
+ Y grid size:                           1
+ X grid resolution:            0.5000000    
+ Y grid resolution:            1.0000000    
+ Number of preliminary cols:            3
+ Number of field cols:                  5
+ 
+ Fields:
+                        ,                        ,                        ,                              ,                              ,                              ,                              ,                              ,
+                        ,                        ,                        ,           Unnamed Field Req 1,           Unnamed Field Req 2,           Unnamed Field Req 3,           Unnamed Field Req 4,           Unnamed Field Req 5,
+                        ,                        ,                        ,               Temperature (C),          Boundary layer depth,                 Pressure (Pa),                    Wind speed,      Wind direction (degrees),
+                        ,                        ,                        ,                              ,                              ,                              ,                              ,                              ,
+                        ,                        ,                        ,                         deg C,                             m,                            Pa,                         m / s,                           deg,
+                        ,                        ,                        ,                              ,                              ,                              ,                              ,                              ,
+                        ,                        ,                        ,         No ensemble averaging,         No ensemble averaging,         No ensemble averaging,         No ensemble averaging,         No ensemble averaging,
+                        ,                        ,                        ,             No time averaging,             No time averaging,             No time averaging,             No time averaging,             No time averaging,
+                        ,                        ,                        ,       No horizontal averaging,       No horizontal averaging,       No horizontal averaging,       No horizontal averaging,       No horizontal averaging,
+                        ,                        ,                        ,         No vertical averaging,         No vertical averaging,         No vertical averaging,         No vertical averaging,         No vertical averaging,
+                        ,                        ,                        ,                              ,                              ,                              ,                              ,                              ,
+                        ,                        ,                        ,                              ,                              ,                              ,                              ,                              ,
+                        ,                        ,                        ,                              ,                              ,                              ,                              ,                              ,
+                        ,                        ,                        ,               Z = 99528.62 Pa,               Z = 99528.62 Pa,               Z = 99528.62 Pa,               Z = 99528.62 Pa,               Z = 99528.62 Pa,
+                        ,                        ,                        ,                              ,                              ,                              ,                              ,                              ,
+                       T,            X (Lat-Long),            Y (Lat-Long),                              ,                              ,                              ,                              ,                              ,
+    01/01/2013 14:58 UTC,               -50.00000,               -10.00000,                      25.00000,                      600.0000,                      99000.00,                      7.00000,                      100.0000,

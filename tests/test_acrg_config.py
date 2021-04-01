@@ -34,7 +34,8 @@ from acrg_config.paths import paths
 
 
 acrg_path = paths.acrg
-test_config_path = os.path.join(acrg_path,"tests/files/config")
+test_config_path = acrg_path / "tests/files/config"
+
 
 def test_version():
     version = acrg_config.version.code_version()

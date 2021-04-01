@@ -24,21 +24,19 @@ import scipy.optimize
 import getpass
 import uuid
 
-if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
-    acrg_path = os.getenv("ACRG_PATH")
-    data_path = os.getenv("DATA_PATH") 
-else:
-    from acrg_config.paths import paths
-    acrg_path = paths.acrg
-    data_path = paths.data
+from acrg_config.paths import paths
+acrg_path = paths.acrg
+data_path = paths.data
 
 if acrg_path is None:
     acrg_path = os.getenv("HOME")
-    print("Default ACRG directory is assumed to be home directory. Set path in .bashrc as \
+    print("Default ACRG directory is assumed to be home directory. To change this, \
+            update your acrg_config/paths.yaml file or set a path in your bash.rc using \
             export ACRG_PATH=/path/to/acrg/repository/ and restart python terminal")
 if data_path is None:
-    data_path = "/data/shared/"
-    print("Default Data directory is assumed to be /data/shared/. Set path in .bashrc as \
+    data_path = "/work/chxmr/shared/"
+    print("Default Data directory is assumed to be /work/chxmr/shared/. To change this, \
+            update your acrg_config/paths.yaml file or set a path in your bash.rc using \
             export DATA_PATH=/path/to/data/directory/ and restart python terminal")
 
 # These are the default directories if no optional arguments are specified in footprints_data_merge,
@@ -86,7 +84,7 @@ def basis_transd(domain, time, basis_case = "sub-transd", sub_lon_min = None,
     
 #     load a Fields file to get the domain
 
-    files = glob.glob(fields_file_path + domain + "/*")
+    files = glob.glob(join(fields_file_path,domain,"*"))
     
     time = pd.to_datetime(time)
     
@@ -94,7 +92,7 @@ def basis_transd(domain, time, basis_case = "sub-transd", sub_lon_min = None,
         fields_ds = temp.load()
 
     if len(files) == 0:
-        print("Can't find Fields files: " + domain)
+        print(f"Can't find Fields files: {domain}")
         return None
     
     lat = fields_ds["lat"].values
@@ -124,7 +122,7 @@ def basis_transd(domain, time, basis_case = "sub-transd", sub_lon_min = None,
                       'sub_lat': (['sub_lat'],sub_lat),\
                       'sub_lon': (['sub_lon'],sub_lon)})
                 
-    basis_ds.to_netcdf(basis_dir + domain +"/" + basis_case + "_" + domain + "_" + str(time.year) + ".nc")
+    basis_ds.to_netcdf(join(basis_dir,domain,f"{basis_case}_{domain}_{str(time.year)}.nc"))
     
 
 def basis_bc_blocks(domain, time, basis_case = "NESW", vertical=1):
@@ -150,7 +148,7 @@ def basis_bc_blocks(domain, time, basis_case = "NESW", vertical=1):
         basis_bc_blocks(domain='SOUTHASIA', basis_case='NESW', time='2012-01-01', vertical = 4)
     """
         
-    files = glob.glob(fields_file_path + domain + "/*")
+    files = glob.glob(join(fields_file_path,domain,"*"))
 
     
     time = pd.to_datetime(time)
@@ -192,7 +190,7 @@ def basis_bc_blocks(domain, time, basis_case = "NESW", vertical=1):
                           'lat':(['lat'], lat), \
                           'time':(['time'],[time])})
     
-    basis_ds.to_netcdf(bc_basis_dir + domain +"/" + basis_case + "_" + domain + "_" + str(time.year) + ".nc")                
+    basis_ds.to_netcdf(join(bc_basis_dir,domain,f"{basis_case}_{domain}_{str(time.year)}.nc"))                
     
 def basis_bc_uniform(domain, time, basis_case = "uniform"):
     """Creates creates one uniform scaling for boundary conditions for all directions
@@ -215,7 +213,7 @@ def basis_bc_uniform(domain, time, basis_case = "uniform"):
     
  
 
-    files = glob.glob(fields_file_path + domain + "/*")
+    files = glob.glob(join(fields_file_path,domain,"*"))
     
     time = pd.to_datetime(time)
     
@@ -252,7 +250,7 @@ def basis_bc_uniform(domain, time, basis_case = "uniform"):
                           'lat':(['lat'], lat), \
                           'time':(['time'],[time])})
                 
-    basis_ds.to_netcdf(bc_basis_dir + domain +"/" + basis_case + "_" + domain + "_" + time.strftime('%m')+str(time.year) + ".nc")
+    basis_ds.to_netcdf(join(bc_basis_dir,domain,f"{basis_case}_{domain}_{time.strftime('%m')+str(time.year)}.nc"))
 
 def basis_bc_all_gradients(domain, time, species, units='ppb', basis_case='horiz-strat-grad'):
     """Creates five terms for bc basis regions
@@ -287,7 +285,7 @@ def basis_bc_all_gradients(domain, time, species, units='ppb', basis_case='horiz
         
     """
     
-    files = glob.glob(fields_file_path + domain + "/*")
+    files = glob.glob(join(fields_file_path,domain,"*"))
     
     time = pd.to_datetime(time)
     
@@ -295,7 +293,7 @@ def basis_bc_all_gradients(domain, time, species, units='ppb', basis_case='horiz
         fields_ds = temp.load()
 
     if len(files) == 0:
-        print("Can't find Fields files: " + domain)
+        print(f"Can't find Fields files: {domain}")
         return None
     
     lat = fields_ds["lat"].values
@@ -430,7 +428,7 @@ def basis_bc_all_gradients(domain, time, species, units='ppb', basis_case='horiz
                           'lat':(['lat'], lat), \
                           'time':(['time'],[time])})
                 
-    basis_ds.to_netcdf(bc_basis_dir + domain +"/" + basis_case + "_" + domain + "_" + time.strftime('%m')+str(time.year) + ".nc")           
+    basis_ds.to_netcdf(join(bc_basis_dir,domain,f"{basis_case}_{domain}_{time.strftime('%m')+str(time.year)}.nc"))           
 
 def basis_bc_horiz_gradients(domain, time, basis_case='horiz-grad'):
     """Creates three terms for bc basis regions for each direction
@@ -456,7 +454,7 @@ def basis_bc_horiz_gradients(domain, time, basis_case='horiz-grad'):
         
     """
     
-    files = glob.glob(fields_file_path + domain + "/*")
+    files = glob.glob(join(fields_file_path,domain,"*"))
     
     time = pd.to_datetime(time)
     
@@ -566,7 +564,7 @@ def basis_bc_horiz_gradients(domain, time, basis_case='horiz-grad'):
     basis_ds.bc_basis_s.encoding = {'zlib':True}  
     basis_ds.bc_basis_e.encoding = {'zlib':True}  
     basis_ds.bc_basis_w.encoding = {'zlib':True}                                   
-    basis_ds.to_netcdf(bc_basis_dir + domain +"/" + basis_case + "_" + domain + "_" + str(time.year) + ".nc", mode='w')           
+    basis_ds.to_netcdf(join(bc_basis_dir,domain,f"{basis_case}_{domain}_{str(time.year)}.nc"), mode='w')          
  
                
 def basis_bc_pca(domain, time, species, units='ppb', basis_case='pca', numregions = 4):
@@ -596,7 +594,7 @@ def basis_bc_pca(domain, time, species, units='ppb', basis_case='pca', numregion
 #   
 # will be species specific
     
-    files = glob.glob(fields_file_path + domain + "/*")
+    files = glob.glob(join(fields_file_path,domain,"*"))
     
     time = pd.to_datetime(time)
     
@@ -604,7 +602,7 @@ def basis_bc_pca(domain, time, species, units='ppb', basis_case='pca', numregion
         fields_ds = temp.load()
 
     if len(files) == 0:
-        print("Can't find Fields files: " + domain)
+        print(f"Can't find Fields files: {domain}")
         return None
     
     lat = fields_ds["lat"].values
@@ -701,7 +699,7 @@ def basis_bc_pca(domain, time, species, units='ppb', basis_case='pca', numregion
                           'region':(['region'],regions), \
                           'time':(['time'],[time])})
                 
-    basis_ds.to_netcdf(bc_basis_dir + domain +"/" + species + "_" + basis_case + "_" + domain + "_" + time.strftime('%m')+str(time.year) + ".nc")           
+    basis_ds.to_netcdf(join(bc_basis_dir,domain,f"{species}_{basis_case}_{domain}_{time.strftime('%m')}+{str(time.year)}.nc"))           
  
  
 class quadTreeNode:    
@@ -867,13 +865,13 @@ def quadtreebasisfunction(emissions_name, fp_all, sites,
     
     if outputdir is None:
         cwd = os.getcwd()
-        tempdir = cwd + "/Temp" + str(uuid.uuid4()) + "/"
+        tempdir = os.path.join(cwd,f"Temp_{str(uuid.uuid4())}")
         os.mkdir(tempdir)    
-        os.mkdir(tempdir + domain)  
-        newds.to_netcdf(tempdir+domain+"/quadtree"+species+"-"+outputname+"_"+domain+"_"+start_date.split("-")[0]+'.nc', mode='w')
+        os.mkdir(os.path.join(tempdir,f"{domain}/"))
+        newds.to_netcdf(os.path.join(tempdir,domain,f"quadtree{species}-{outputname}_{domain}_{start_date.split('-')[0]}.nc"), mode='w')
         return tempdir
     else:
         basisoutpath = os.path.join(outputdir,domain)
         if not os.path.exists(basisoutpath):
             os.makedirs(basisoutpath)
-            newds.to_netcdf(basisoutpath+"/quadtree"+species+"-"+outputname+"_"+domain+"_"+start_date.split("-")[0]+'.nc', mode='w')
+        newds.to_netcdf(os.path.join(basisoutpath,f"quadtree{species}-{outputname}_{domain}_{start_date.split('-')[0]}.nc"), mode='w')

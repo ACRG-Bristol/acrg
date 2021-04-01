@@ -46,11 +46,8 @@ import pyproj
 import acrg_grid.regrid_xesmf
 import getpass
 
-if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
-    data_path = os.getenv("DATA_PATH") 
-else:
-    from acrg_config.paths import paths
-    data_path = paths.data
+from acrg_config.paths import paths
+data_path = paths.data
 
 output_directory = os.path.join(data_path,"LPDM/emissions/")
 
@@ -319,9 +316,9 @@ def getGFED(year, lon_out, lat_out, timeframe='monthly', months = [1,2,3,4,5,6,7
                              lat_out, lon_out)
     return(narr)
     
-def getedgarannualtotals(year, lon_out, lat_out, species='CH4'):
+def getedgarannualtotals(year, lon_out, lat_out, species='CH4', version = 'v5.0'):
     """
-    Get annual emission totals for species of interest from EDGAR v4.3.2 data.
+    Get annual emission totals for species of interest from EDGAR v4.3.2 or v5.0 data.
     At the time of making this the only species available are CH4 and N2O.
     Regrids to the desired lats and lons.
     
@@ -336,6 +333,9 @@ def getedgarannualtotals(year, lon_out, lat_out, species='CH4'):
             Which species you want to look at. 
             e.g. species = 'CH4'
             Default = 'CH4'
+        version (str):
+            Version of EDGAR to use. Options are
+            'v5.0' and 'v4.3.2'
     
     Returns:
         narr (array): 
@@ -346,28 +346,50 @@ def getedgarannualtotals(year, lon_out, lat_out, species='CH4'):
     
     species = species.upper() #Make sure species is uppercase
     #Path to EDGAR files
-    edpath = os.path.join(data_path,'Gridded_fluxes/'+species+'/EDGAR_v4.3.2/v432_'+species+'_TOTALS_nc/')
     
-    #Check to see range of years. If desired year falls outside of this range 
-    #then take closest year
-    possyears = np.empty(shape=[0,0],dtype=int)
-    for f in glob.glob(edpath+'v432_'+species+'_*'):
-        fname = f.split('/')[-1]
-        fyear = fname[9:13]      #Extract year from filename
-        possyears = np.append(possyears, int(fyear))
-    if year > max(possyears):
-        print("%s is later than max year in EDGAR database" % str(year))
-        print("Using %s as the closest year" % str(max((possyears))))
-        year = max(possyears)
-    if year < min(possyears):
-        print("%s is earlier than min year in EDGAR database" % str(year))
-        print("Using %s as the closest year" % str(min((possyears))))
-        year = min(possyears)
+    if version == 'v5.0':
+        version_short = 'v50'
+        edpath = os.path.join(data_path,'Gridded_fluxes/'+species+'/EDGAR_v5.0/yearly/')
+        #Check to see range of years. If desired year falls outside of this range 
+        #then take closest year
+        possyears = np.empty(shape=[0,0],dtype=int)
+        for f in glob.glob(edpath+version_short+'_'+species+'_*'):
+            fname = f.split('/')[-1]
+            fyear = fname[8:12]      #Extract year from filename
+            possyears = np.append(possyears, int(fyear))
+        if year > max(possyears):
+            print("%s is later than max year in EDGAR database" % str(year))
+            print("Using %s as the closest year" % str(max((possyears))))
+            year = max(possyears)
+        if year < min(possyears):
+            print("%s is earlier than min year in EDGAR database" % str(year))
+            print("Using %s as the closest year" % str(min((possyears))))
+            year = min(possyears)            
+    elif version == 'v4.3.2':
+        version_short = 'v432'
+        edpath = os.path.join(data_path,'Gridded_fluxes/'+species+'/EDGAR_v4.3.2/v432_'+species+'_TOTALS_nc/')
+        #Check to see range of years. If desired year falls outside of this range 
+        #then take closest year
+        possyears = np.empty(shape=[0,0],dtype=int)
+        for f in glob.glob(edpath+version_short+'_'+species+'_*'):
+            fname = f.split('/')[-1]
+            fyear = fname[9:13]      #Extract year from filename
+            possyears = np.append(possyears, int(fyear))
+        if year > max(possyears):
+            print("%s is later than max year in EDGAR database" % str(year))
+            print("Using %s as the closest year" % str(max((possyears))))
+            year = max(possyears)
+        if year < min(possyears):
+            print("%s is earlier than min year in EDGAR database" % str(year))
+            print("Using %s as the closest year" % str(min((possyears))))
+            year = min(possyears)       
+    else:
+        raise ValueError("Version input {} not recognised. Input 'v5.0' or 'v4.3.2' instead.".format(version))
         
     
     #Read in EDGAR data of annual mean CH4 emissions
     #units are in kg/m2/s
-    edgar = edpath+'v432_'+species+'_'+str(year)+'.0.1x0.1.nc'
+    edgar = edpath+version_short+'_'+species+'_'+str(year)+'.0.1x0.1.nc'
     
     #Species molar mass
     speciesmm = molar_mass(species)
@@ -575,7 +597,7 @@ def getBloom2017(year, lon_out, lat_out, modeltype='extended'):
             Array of regridded emissions in mol/m2/s.
             Dimensions are [lat, lon, time]
     """    
-    path = os.path.join(data_path,'Gridded_fluxes/CH4/Bloom2017/')
+    path = os.path.join(data_path,'Gridded_fluxes/CH4/WetCHARTs/')
     if modeltype == 'extended':
         bloomwetlands = 'WetCHARTs_extended_ensemble_mean.nc4'
         possyears = np.arange(15) + 2001
@@ -615,78 +637,6 @@ def getBloom2017(year, lon_out, lat_out, modeltype='extended'):
     for i in range(nt):
        narr[:,:,i], reg = regrid2d(bloomch4[:,:,i], lat_in, lon_in,
                                  lat_out, lon_out)
-    return(narr)
-
-def getnaeiandedgarCH4(lon_out, lat_out):
-    """
-    Get combined NAEI and EDGAR emissions using NAEI 2013 and EDGAR 2010
-    Regrids to desired lats and lons.
-    Note sure how useful this is...
-    
-    Args:
-        lon_out (array): 
-            Longitudes to output the data on
-        lat_out (array):
-            Latitudes to output the data on
-    
-    Returns:
-        narr (array): 
-            Array of regridded emissions in mol/m2/s.
-            Dimensions are [lat, lon, time]
-    
-    Note:
-        Raw NAEI data are in /dagage2/agage/metoffice/naei/naei_raw_priors
-        Currently this is for CH4 and N2O: 2012, 2013, 2015.
-        Use getNAEI for this. 
-        
-    """
-    
-    fdir='/dagage2/agage/metoffice/naei/'
-    fn = 'prior_UK_NAEI2013detailed_ch4_EU_EDGAR2010_UK40uncertain.txt'
-    
-    with open(fdir+fn, 'r') as f:
-    #Get extent of grid defined for NAEI / EDGAR
-        line = f.readline()
-        line = line.rstrip()
-        llextent = np.asarray(line.split()[0:4]).astype(float)
-        
-        #Get lon/lat grid spacing
-        line = f.readline()
-        line = line.rstrip()
-        llspacing = np.asarray(line.split()[0:2]).astype(float)
-        
-        #Get emissions for defined grid, units are in g/m2/s
-        while 1:
-            line = f.readline()
-            line = line.rstrip()
-            if line.startswith('   i') == False:
-                    continue
-            else:
-                k=0
-                while True:
-                    line = f.readline()
-                    if not line: break
-                    line = line.rstrip()
-                    dat = np.asarray(line.split()[0:3])
-                    if k == 0:
-                        dataarr = dat.astype(float)
-                        k = 1
-                    else:
-                        dataarr = np.vstack([dataarr, dat.astype(float)])
-            break
-        
-    lon = np.unique(dataarr[:,0]*llspacing[0] + llextent[0] + llspacing[0]/2.)
-    lat = np.unique(dataarr[:,1]*llspacing[1] + llextent[2] + llspacing[1]/2.)
-    emisarr = dataarr[:,2].reshape(len(lon), len(lat))/16.04
-
-    #Regrid the data to desired region
-    nlat = len(lat_out)
-    nlon = len(lon_out) 
-    
-    narr = np.zeros((nlat, nlon))
-    
-    narr, reg = regrid2d(emisarr, lat, lon,
-                             lat_out, lon_out)
     return(narr)
     
 def get_naei_public(filename, lon_out, lat_out):
@@ -809,100 +759,473 @@ def process_naei_public(naei_dir, species, year, sector, lon_out, lat_out, outpu
         
     return naei_ds
     
-
-
-def getNAEI(year, lon_out, lat_out, species, naei_sector):
- 
+def processUKGHG(ukghg_dir,species,year,sector,lon_out,lat_out,output_path=None):
     """
-    Converts raw NAEI into gridded emissions data in mol/m2/s
+    Processes UKGHG .nc files to resolution provided by lon_out and lat_out.
+    Adds timestamp, author and raw file info to the output dataset.
     
     Args:
+        ukghg_dir (str):
+            Directory containing ukghg LonLat .nc files at 0.01 km resolution
+        species (str):
+            Species as given in ukghg filenames
+        year (str):
+            Year to use (e.g."2015")
+        sector (str):
+            Sector name as given in ukghg filenames. 
+            Options: "agric","domcom","energyprod",'"indcom","indproc","natural",
+                     "offshore","othertrans","roadtrans","solvents","total",'waste"
+        lon_out (array):
+            Longitude values for the output grid
+        lat_out (array):
+            Latitude values for the output grid
+        output_path (str), optional:
+            Filepath to write output dataset to. Default is None, which does not save output.
+
+    Returns:
+        ukghg_ds (xarray dataset):
+            Regridded emissions data
+
+    """
+    
+    #run soome checks
+    sectorlist = ["agric","energyprod","domcom","indcom","indproc","natural","offshore",
+                  "othertrans","roadtrans","solvents","total","waste"]
+    if sector not in sectorlist:
+        print('Sector {} not one of:'.format(sector))
+        print(sectorlist)
+        print('Returning None')
+        return None
+    
+    filepath = os.path.join(ukghg_dir,
+                            'uk_flux_'+sector+'_'+species+'_LonLat_0.01km_'+year+".nc")
+    
+    if not os.path.isfile(filepath):
+        print('Raw UKGHG file {} does not exist'.format(filepath))
+        print('Returning None')
+        return None
+    
+    with xr.open_dataset(filepath) as file:
+        flux = file[species+'_flux'].values[0,:,:]
+        lat_in = file.latitude.values
+        lon_in = file.longitude.values
+
+    #regrid to NAME resolution
+    regrid_data,reg = regrid2d(flux,lat_in,lon_in,lat_out,lon_out)
+    
+    ukghg_ds = xr.Dataset({"flux":(["lat", "lon"],regrid_data.data)},
+                            coords={"lat":(["lat"], lat_out),
+                                    "lon":(["lon"], lon_out)})
+    
+    ukghg_ds["flux"].attrs["units"] = "mol/m2/s"
+    ukghg_ds.attrs["Processed by"] = f"{getpass.getuser()}@bristol.ac.uk"
+    ukghg_ds.attrs["Processed on"] = str(pd.Timestamp.now(tz="UTC"))
+    ukghg_ds.attrs["Raw file used"] = filepath
+    
+    if output_path is not None:
+        ukghg_ds.to_netcdf(output_path+'.nc')
+        print('Regridded UKGHG saved to {}'.format(output_path))
+    
+    return ukghg_ds
+
+def get_US_EPA(epa_sectors=None,output_path=None):
+    """
+    Extracts yearly CH4 gridded emissions from EPA .nc files. 
+    Sums emissions from given list of sectors.
+    Regrids to USA domain lat/lons.
+    
+    Uses data files from Maasakkers (2016) "A Gridded National Inventory 
+    of U.S.Methane Emissions". Only 2012 available.
+    
+    Args:
+        epa_sectors (list of str) (optional):
+            If list, sum of sectors returned. 
+            If None, total of all sectors returned.
+            See below for list of possible sector names.
+        output_path (str):
+            Full output path and name to write output datatset to. Default is None, which
+            does not save output.
+        
+    Returns:
+        flux_ds (xarray dataset):
+            Containing array of EPA fluxes, regridded to specified lat/lon.
+            Dimensions of [lat,lon,time]
+            
+    Example:
+        get_US_EPA("2012",["4A_Enteric_Fermentation","4B_Manure_Management"])
+            
+    """    
+
+    EPAsectorlist = ["1A_Combustion_Mobile","1A_Combustion_Stationary",
+                     "1B1a_Coal_Mining_Underground","1B1a_Coal_Mining_Surface",
+                     "1B1a_Abandoned_Coal","1B2a_Petroleum","1B2b_Natural_Gas_Production",
+                     "1B2b_Natural_Gas_Processing","1B2b_Natural_Gas_Transmission",
+                     "1B2b_Natural_Gas_Distribution","2B5_Petrochemical_Production",
+                     "2C2_Ferroalloy_Production","4A_Enteric_Fermentation",
+                     "4B_Manure_Management","4C_Rice_Cultivation",
+                     "4F_Field_Burning","5_Forest_Fires","6A_Landfills_Municipal",
+                     "6A_Landfills_Industrial","6B_Wastewater_Treatment_Domestic",
+                     "6B_Wastewater_Treatment_Industrial","6D_Composting"]
+        
+    #extract output lat/lons from fp file
+    domain_vol = domain_volume("USA",os.path.join(data_path,"LPDM/fp_NAME"))
+    lat_out = domain_vol[0]
+    lon_out = domain_vol[1]
+    
+    #check for correct sector names
+    if epa_sectors is not None:
+    
+        for EPAsector in epa_sectors:
+            if EPAsector not in EPAsectorlist:
+                print("EPA sector {0} is not one of: \n {1}".format(EPAsector,EPAsectorlist))
+                print("Returning None")
+                return None
+        
+    epa_fp = os.path.join(data_path,"Gridded_fluxes/CH4/US_EPA/GEPA_Annual.nc")
+    
+    #epa flux in molec/cm2/s
+    with xr.open_dataset(epa_fp) as epa_file:
+        reference = epa_file.reference
+        inv_ver = epa_file.inventory_version
+        lat_in = epa_file.lat.values
+        lon_in = epa_file.lon.values
+
+        if epa_sectors is None:
+            print("Calculating total of all sectors")
+            sectors = list(epa_file.keys())
+        else:
+            print("Calculating total of given sectors")
+            sectors = ["emissions_" + s for s in epa_sectors]
+        
+        for i,s in enumerate(sectors):
+            if i == 0:
+                total_flux = np.nan_to_num(x=epa_file[s].values,nan=0.)
+            else:
+                total_flux = np.add(total_flux,np.nan_to_num(x=epa_file[s].values,nan=0.))
+    
+    #epa flux in mol/m2/s
+    print("Converting from molec/cm2/s to mol/m2/s")
+    n_mol = 6.02214076e23
+    
+    total = (total_flux / n_mol ) * 1e4
+    
+    print("Regridding to USA domain lat lon")
+    total_regrid,arr = regrid2d(total,lat_in,lon_in,lat_out,lon_out)
+        
+    flux_ds = xr.Dataset({"flux":(["lat", "lon","time"],np.expand_dims(total_regrid.data,2))},
+                            coords={"lat":(["lat"], lat_out),
+                                    "lon":(["lon"], lon_out),
+                                    "time":np.array([np.datetime64("2012-01-01T00")])})
+                                    
+    flux_ds["flux"].attrs["units"] = "mol/m2/s"
+    flux_ds.attrs["Processed by"] = f"{getpass.getuser()}@bristol.ac.uk"
+    flux_ds.attrs["Processed on"] = str(pd.Timestamp.now(tz="UTC"))
+    flux_ds.attrs["EPA sectors"] = epa_sectors
+    flux_ds.attrs["reference"] = reference
+    flux_ds.attrs["inventory_ver"] = inv_ver
+    flux_ds.attrs["description"] = "Sectoral U.S. EPA CH4 emissions regridded to 'USA' domain"
+    
+    if output_path is not None:
+        flux_ds.to_netcdf(output_path+'.nc')
+        print('Regridded emissions data saved to {}'.format(output_path))
+    
+    return flux_ds
+
+def get_UKGHG_EDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,
+                     output_title=None,output_path=None):
+    """
+    Extracts EDGAR and UKGHG gridded emissions data for the given year and sector.
+    Regrids both datasets to the EUROPE domain and converts both to mol/m2/s.
+    Using the country mask country-ukmo_EUROPE.nc, embeds UKGHG emissions within the EDGAR map 
+    to create a grid of fluxes for the whole domain.
+    
+    Option to include sources for one inventory. In this case, the sum of those sectors 
+    only will be returned.
+    
+    CURRENTLY ONLY TESTED WITH EDGAR v5.0 CH4 2015 and UKGHG CH4 2015
+        - DATA FILES FOR OTHER GASES/YEARS MAY NOT EXIST OR MAY NEED TO BE UPZIPPED
+          BEFORE USING THIS FUNCTION
+    
+    Args:
+        year (str):
+            Year of interest, e.g. '2015'
+        edgar_sectors (list of str) (optional):
+            EDGAR sectors to include. If list of values, the sum of these will be used.
+            See below for list of possible sectors and full names.
+        ukghg_sectors (list of str) (optional):
+            UKGHG sectors to include. If list of values, the sum of these will be used.
+            See below for list of possible sectors.
+        output_path (str):
+            Full output path and name to write output datatset to. Default is None, which
+            does not save output.
+            
+    Returns:
+        total_ds (xarray dataset):
+            Containing array of regridded EDGAR fluxes with UKGHG embedded over UK lat/lons.
+            Dimensions of [lat,lon,time]
+            
+    Example:
+        get_UKGHG_EDGAR("2015",["PRO_GAS","PRO_OIL"],["indcom","offshore"])
+        
+    Note:
+        EDGAR sector names:
+        "AGS" = Agricultural soils
+        "AWB" = Agricultural waste burning
+        "CHE" = Chemical processes
+        "ENE" = Power industry
+        "ENF" = Enteric fermentation
+        "FFF" = Fossil fuel fires
+        "IND" = Combustion for manufacturing
+        "IRO" = Iron and steel production
+        "MNM" = Maure management
+        "PRO_COAL" = Fuel exploitation - coal
+        "PRO_GAS" = Fuel exploitation - gas
+        "PRO_OIL" = Fuel expoitation - oil
+        "PRO" = Fuel exploitation - contains coal, oil, gas
+        "RCO" = Energy for buildings
+        "REF_TRF" = Oil refineries and transformational industries
+        "SWD_INC" = Solid waste disposal - incineration
+        "SWD_LDF" = Solid waste disposal - landfill
+        "TNR_Aviation_CDS" = Aviation - climbing and descent
+        "TNR_Aviation_CRS" = Aviation - cruise
+        "TNR_Aviation_LTO" = Aviation - landing and takeoff 
+        "TNR_Other" = Railways, pipelines and off-road transport
+        "TNR_Ship" = Shipping
+        "TRO" = Road transportation
+        "WWT" = Waste water treatment
+        
+    """
+    
+    edgarfp = os.path.join(data_path,"Gridded_fluxes",species.upper(),"EDGAR_v5.0/yearly_sectoral")
+    ukghgfp = os.path.join(data_path,"Gridded_fluxes",species.upper(),"UKGHG")
+    
+    UKGHGsectorlist = ["agric","domcom","energyprod","indcom","indproc","natural","offshore",
+                       "othertrans","roadtrans","total","waste"]
+    
+    EDGARsectorlist = ["AGS","AWB","CHE","ENE","ENF","FFF","IND","IRO","MNM",
+                       "PRO_COAL","PRO_GAS","PRO_OIL","PRO","RCO","REF_TRF","SWD_INC",
+                       "SWD_LDF","TNR_Aviation_CDS","TNR_Aviation_CRS",
+                       "TNR_Aviation_LTO","TNR_Other","TNR_Ship","TRO","WWT"]
+    
+    #extract output lat/lons from fp file
+    domain_vol = domain_volume("EUROPE",os.path.join(data_path,"LPDM/fp_NAME"))
+    lat_out = domain_vol[0]
+    lon_out = domain_vol[1]
+    
+    if edgar_sectors is not None:
+        print('Including EDGAR sectors.')
+    
+        for EDGARsector in edgar_sectors:
+            if EDGARsector not in EDGARsectorlist:
+                print('EDGAR sector {0} not one of: \n {1}'.format(EDGARsector,EDGARsectorlist))
+                print('Returning None')
+                return None
+            
+        #edgar flux in kg/m2/s
+        for i,sector in enumerate(edgar_sectors):
+        
+            edgarfn = "v50_" + species.upper() + "_" + year + "_" + sector + ".0.1x0.1.nc"
+
+            with xr.open_dataset(os.path.join(edgarfp,edgarfn)) as edgar_file:
+                edgar_flux = np.nan_to_num(edgar_file['emi_'+species.lower()].values,0.)
+                edgar_lat = edgar_file.lat.values
+                edgar_lon = edgar_file.lon.values
+
+            if i == 0:
+                edgar_total = edgar_flux
+            else:
+                edgar_total = np.add(edgar_total,edgar_flux)
+            
+        edgar_regrid_kg,arr = regrid2d(edgar_total,edgar_lat,edgar_lon,lat_out,lon_out)
+    
+        #edgar flux in mol/m2/s
+        speciesmm = molar_mass(species)
+        edgar_regrid = (edgar_regrid_kg.data*1e3) / speciesmm
+        
+        if ukghg_sectors is None:
+            total_flux = edgar_regrid
+            output_title = "EDGAR sectors regridded to EUROPE domain"
+    
+    #extract ukghg
+    if ukghg_sectors is not None:
+        print('Including UKGHG sectors.')
+        
+        for UKGHGsector in ukghg_sectors:
+            if UKGHGsector not in UKGHGsectorlist:
+                print('UKGHG sector {0} not one of: \n {1}'.format(UKGHGsector,UKGHGsectorlist))
+                print('Returning None')
+                return None    
+
+        #ukghg flux in mol/m2/s
+        for j,sector in enumerate(ukghg_sectors):
+
+            ukghgfn = "uk_flux_" + sector + "_" + species.lower() + "_LonLat_0.01km_" + year + ".nc"
+
+            with xr.open_dataset(os.path.join(ukghgfp,ukghgfn)) as ukghg_file:
+                ukghg_flux = np.nan_to_num(ukghg_file[species.lower()+'_flux'].values[0,:,:],0.)
+                ukghg_lat = ukghg_file.latitude.values
+                ukghg_lon = ukghg_file.longitude.values
+
+            if j == 0:
+                ukghg_total = ukghg_flux
+            else:
+                ukghg_total = np.add(ukghg_total,ukghg_flux)
+
+        ukghg_regrid,arr = regrid2d(ukghg_total,ukghg_lat,ukghg_lon,lat_out,lon_out)
+   
+        #if edgar, input ukghg over uk lat lons
+        if edgar_sectors is not None:  
+            print('Inserting UKGHG into EDGAR over UK lat/lons')
+            
+            with xr.open_dataset(os.path.join(data_path,'LPDM/countries/country-ukmo_EUROPE.nc')) as c_file:
+                country = c_file['country'].values       
+
+            for lat in range(edgar_regrid.shape[0]):
+                for lon in range(edgar_regrid.shape[1]):
+                    if country[lat,lon] == 19.0:
+                        edgar_regrid[lat,lon] = ukghg_regrid.data[lat,lon]
+            output_title = "EDGAR with UK lat/lons replaced with UKGHG values, regridded to EUROPE domain"
+            total_flux = edgar_regrid
+
+        else:
+            total_flux = ukghg_regrid.data
+            output_title = "UKGHG sectors regridded to EUROPE domain"
+            
+    #output to ds
+    flux_ds = xr.Dataset({"flux":(["lat", "lon","time"],np.expand_dims(total_flux,2))},
+                            coords={"lat":(["lat"], lat_out),
+                                    "lon":(["lon"], lon_out),
+                                    "time":np.array([np.datetime64(year+'-01-01T00')])})
+                                    
+    flux_ds["flux"].attrs["units"] = "mol/m2/s"
+    flux_ds.attrs["Processed by"] = f"{getpass.getuser()}@bristol.ac.uk"
+    flux_ds.attrs["Processed on"] = str(pd.Timestamp.now(tz="UTC"))
+    flux_ds.attrs["title"] = output_title
+    if edgar_sectors is not None:
+        flux_ds.attrs["EDGAR sectors"] = edgar_sectors
+    if ukghg_sectors is not None:
+        flux_ds.attrs["UKGHG sectors"] = ukghg_sectors
+    
+    if output_path is not None:
+        flux_ds.to_netcdf(output_path+'.nc')
+        print('Regridded emissions data saved to {}'.format(output_path))
+    
+    return flux_ds
+
+def getedgarv5annualsectors(year, lon_out, lat_out, edgar_sectors, species='CH4'):
+    """
+    Get annual emission totals for species of interest from EDGAR v5.0 data
+    for sector or sectors.
+    Regrids to the desired lats and lons.
+    
+    CURRENTLY ONLY 2012 AND 2015 ANNUAL SECTORS IN SHARED DIRECTORY. OTHER YEARS NEED DOWNLOADING.
+    
+    Args:
+        year (int): 
+            Year of interest
         lon_out (array): 
             Longitudes to output the data on
         lat_out (array):
             Latitudes to output the data on
-        year (int): 
-            Year of interest
+        edgar_sectors (list of str) (optional):
+            EDGAR sectors to include. If list of values, the sum of these will be used.
+            See below for list of possible sectors and full names.
         species (str):
             Which species you want to look at. 
-            Currently only 'CH4' or 'N2O'
-        naei_sector (str):
-            Which sector to look at. Options are: 
-            "energyprod","domcom","indcom","indproc","offshore","roadtrans",
-            "othertrans","waste","agric","nature","points","total",
-            "totalexcship"
-        
-    Returns:
+            e.g. species = 'CH4'
+            Default = 'CH4'
+            Currently only works for CH4.
+            
+    Returns: 
         narr (array): 
             Array of regridded emissions in mol/m2/s.
             Dimensions are [lat, lon]
+            
+    If there is no data for the species you are looking at you may have to 
+    download it from: 
+    https://edgar.jrc.ec.europa.eu/overview.php?v=50_GHG
+    and place in:
+    /data/shared/Gridded_fluxes/<species>/EDGAR_v5.0/yearly_sectoral/ 
     
-    Example: 
-        emissions  = getNAEI(2013, lon, lat, 'ch4', 'total')
-    
-    """   
-    
-    species = species.lower()   
-    naeidir = '/dagage2/agage/metoffice/naei/naei_raw_priors/'
-    fn = naeidir+'LatLong1km_'+species.upper()+'_'+str(year)+'.csv.gz'
-    #Checks
-    if not os.path.isfile(fn):
-        print('Raw NAEI file LatLong1km_'+species.upper()+'_'+str(year)+'.csv.gz does not exist')
-        print('Returning None')
-        return None
-    sectorlist = ["energyprod","domcom","indcom","indproc","offshore","roadtrans",
-    "othertrans","waste","agric","nature","points","total","totalexcship"]
-    if naei_sector not in sectorlist:
-        print('Sector not one of:')
-        print(sectorlist)
-        print('Returning None')
-        return None
+    Note:
+        EDGAR sector names:
+        "AGS" = Agricultural soils
+        "AWB" = Agricultural waste burning
+        "CHE" = Chemical processes
+        "ENE" = Power industry
+        "ENF" = Enteric fermentation
+        "FFF" = Fossil fuel fires
+        "IND" = Combustion for manufacturing
+        "IRO" = Iron and steel production
+        "MNM" = Maure management
+        "PRO_COAL" = Fuel exploitation - coal
+        "PRO_GAS" = Fuel exploitation - gas
+        "PRO_OIL" = Fuel expoitation - oil
+        "PRO" = Fuel exploitation - contains coal, oil, gas
+        "RCO" = Energy for buildings
+        "REF_TRF" = Oil refineries and transformational industries
+        "SWD_INC" = Solid waste disposal - incineration
+        "SWD_LDF" = Solid waste disposal - landfill
+        "TNR_Aviation_CDS" = Aviation - climbing and descent
+        "TNR_Aviation_CRS" = Aviation - cruise
+        "TNR_Aviation_LTO" = Aviation - landing and takeoff 
+        "TNR_Other" = Railways, pipelines and off-road transport
+        "TNR_Ship" = Shipping
+        "TRO" = Road transportation
+        "WWT" = Waste water treatment
         
-    #Read emissions as tonnes/km^2/yr and naei lat and lons
-    #df = pd.DataFrame.from_csv(fn) # This syntax is deprecated 
-    df = pd.read_csv(fn)  
-    lat = np.asarray(df.Latitude)
-    lon = np.asarray(df.Longitude)    
-    emissions = np.asarray(df[naei_sector])
+    """
     
-    #Make a square grid for the emissions
-    latarr = np.arange(min(lat), max(lat), 0.01)
-    lonarr = np.arange(min(lon), max(lon), 0.01)
-    grdemis = np.zeros((len(latarr), len(lonarr)))
-
-    for i in range(len(emissions)):
-        ilat = np.where(abs(latarr-lat[i]) == np.min(abs(latarr - lat[i])) )
-        ilon = np.where(abs(lonarr-lon[i]) == np.min(abs(lonarr - lon[i])) )
-        grdemis[ilat, ilon] = emissions[i]
-
-    #Convert to mol/m2/s
-    speciesmm = molar_mass(species)     
-#    if species == 'ch4':
-#        speciesmm = 16.0425
-#    if species == 'n2o':
-#        speciesmm = 44.013        
-    if year % 4 == 0:
-        diy = 365
-    else:
-        diy = 366    
-    grdemis = old_div(grdemis, (diy * 3600*24) * speciesmm)
+    edgarfp = os.path.join(data_path,"Gridded_fluxes",species.upper(),"EDGAR_v5.0/yearly_sectoral")
     
-    #Regrid to desired lats and lons
-    narr, reg = regrid2d(grdemis, latarr, lonarr,
-                                 lat_out, lon_out)
+    EDGARsectorlist = ["AGS","AWB","CHE","ENE","ENF","FFF","IND","IRO","MNM",
+                       "PRO_COAL","PRO_GAS","PRO_OIL","PRO","RCO","REF_TRF","SWD_INC",
+                       "SWD_LDF","TNR_Aviation_CDS","TNR_Aviation_CRS",
+                       "TNR_Aviation_LTO","TNR_Other","TNR_Ship","TRO","WWT"]
+    
+    if edgar_sectors is not None:
+        print('Including EDGAR sectors.')
+    
+        for EDGARsector in edgar_sectors:
+            if EDGARsector not in EDGARsectorlist:
+                print('EDGAR sector {0} not one of: \n {1}'.format(EDGARsector,EDGARsectorlist))
+                print('Returning None')
+                return None
+            
+        #edgar flux in kg/m2/s
+        for i,sector in enumerate(edgar_sectors):
+        
+            edgarfn = "v50_" + species.upper() + "_" + str(year) + "_" + sector + ".0.1x0.1.nc"
 
-    return(narr)
+            with xr.open_dataset(os.path.join(edgarfp,edgarfn)) as edgar_file:
+                edgar_flux = np.nan_to_num(edgar_file['emi_'+species.lower()].values,0.)
+                edgar_lat = edgar_file.lat.values
+                edgar_lon = edgar_file.lon.values
 
-def getedgarannualsectors(year, lon_out, lat_out, edgar_sectors, species='CH4'):
+            if i == 0:
+                edgar_total = edgar_flux
+            else:
+                edgar_total = np.add(edgar_total,edgar_flux)
+            
+        edgar_regrid_kg,arr = regrid2d(edgar_total,edgar_lat,edgar_lon,lat_out,lon_out)
+    
+        #edgar flux in mol/m2/s
+        speciesmm = molar_mass(species)
+        edgar_regrid = (edgar_regrid_kg.data*1e3) / speciesmm
+        
+    return(edgar_regrid)
+            
+def getedgarv432annualsectors(year, lon_out, lat_out, edgar_sectors, species='CH4'):
     """
     Get annual emission totals for species of interest from EDGAR v4.3.2 data
     for sector or sectors.
     Regrids to the desired lats and lons.
+    
     If there is no data for the species you are looking at you may have to 
     download it from: 
     http://edgar.jrc.ec.europa.eu/overview.php?v=432_GHG&SECURE=123
     and placed in: 
-    /data/shared/Gridded_fluxes/<species>/EDGAR_v4.3.2/<species>_sector_yearly/
+    /data/shared/Gridded_fluxes/<species>/EDGAR_v4.3.2/<species>_sector_yearly/ 
     
     Args:
         year (int): 
@@ -956,12 +1279,11 @@ def getedgarannualsectors(year, lon_out, lat_out, edgar_sectors, species='CH4'):
            'fossilfuelfires'; 
            'indirectemissionsfromNOxandNH3';  
     """
-    
-    
     species = species.upper() #Make sure species is uppercase
-    #Path to EDGAR files
+        
+#Path to EDGAR files
     edpath = os.path.join(data_path,'Gridded_fluxes/'+species+'/EDGAR_v4.3.2/'+species+'_sector_yearly/')
-    
+
     #Dictionary of codes for sectors
     secdict = {'powerindustry' : '1A1a', 
                'oilrefineriesandtransformationindustry' : '1A1b_1A1c_1A5b1_1B1b_1B2a5_1B2a6_1B2b5_2C1b',
@@ -992,7 +1314,7 @@ def getedgarannualsectors(year, lon_out, lat_out, edgar_sectors, species='CH4'):
                'fossilfuelfires' : '7A',
                'indirectemissionsfromNOxandNH3' : '7B_7C'           
     } 
-    
+
     #Check to see range of years. If desired year falls outside of this range 
     #then take closest year
     possyears = np.empty(shape=[0,0],dtype=int)
@@ -1312,15 +1634,28 @@ def _JULESfile(year):
 
     return filename_jules
 
-def _SWAMPSfile():
+def _SWAMPSfile(product="inland_cap"):
     '''
     The _SWAMPSfile function opens the correct SWAMPS wetland fraction file as an 
     xarray.Dataset object.
+    
+    Args:
+        product (str, optional) :
+            Which SWAMPS product to use
+            Options:
+                "inland_cap" : Inland water fraction added and capped at 1.0
+                "inland_norm" : Inland water fraction added and renormalised to 1.0
+                "org" : Use original product without inland water
     '''
     path = os.path.join(data_path,"Gridded_fluxes/CH4/SWAMPS")
     #filename_swamps = os.path.join(path,"fw_swamps-glwd_2000-2012.nc") # Previous version
-    #filename_swamps = os.path.join(path,"gcp-ch4_wetlands_2000-2017_05deg.nc") # Without inland water
-    filename_swamps = os.path.join(path,"gcp-ch4_wetlands-and-inland-water_2000-2017_025deg_norm.nc")
+
+    if product == "inland_cap":
+        filename_swamps = os.path.join(path,"gcp-ch4_wetlands-and-inland-water_2000-2017_025deg_cap.nc")
+    elif product == "inland_norm":
+        filename_swamps = os.path.join(path,"gcp-ch4_wetlands-and-inland-water_2000-2017_025deg_norm.nc")
+    elif product == "org":
+        filename_swamps = os.path.join(path,"gcp-ch4_wetlands_2000-2017_05deg.nc") # Without inland water
     
     return filename_swamps
 
@@ -1387,7 +1722,7 @@ def _wetlandArea(frac,lon_in,lat_in,lon_out,lat_out):
     
     return wetl_area_domain,old_div(wetl_area_domain,wetl_area)
 
-def _SWAMPSwetlandArea(year,lon_out,lat_out,month=1):
+def _SWAMPSwetlandArea(year,lon_out,lat_out,month=1,product="inland_cap"):
     '''
     The _SWAMPSwetlandArea function calculates the area of the wetland extent 
     within a grid and the fraction of the total global wetlands area based on 
@@ -1403,6 +1738,8 @@ def _SWAMPSwetlandArea(year,lon_out,lat_out,month=1):
         month (int, optional) :
             Month to extract this area for. Should be between 1 and 12.
             Default = 1 (i.e. January)
+        product (str, optional) :
+            Which SWAMPS product to use (see _SWAMPSfile() for options)
     
     Returns:
         tuple (float,float) :
@@ -1414,7 +1751,7 @@ def _SWAMPSwetlandArea(year,lon_out,lat_out,month=1):
     else:
         raise ValueError("Did not recognise month input: {}. Expect value between 1 and 12.".format(month))
     
-    frac_swamps = xr.open_dataset(_SWAMPSfile())
+    frac_swamps = xr.open_dataset(_SWAMPSfile(product))
     fw = "Fw" # Name of variable within file
     
     lat_in = frac_swamps.lat.values
@@ -1428,8 +1765,8 @@ def _SWAMPSwetlandArea(year,lon_out,lat_out,month=1):
     return wetl_area_domain,wetl_frac
 
     
-def getJULESwetlands(year,lon_out,lat_out,species="CH4",extent_db="SWAMPS",scale_wetlands=True,
-                     total_w_emission=185e12):
+def getJULESwetlands(year,lon_out,lat_out,species="CH4",extent_db="SWAMPS",swamps_product="inland_cap",
+                     scale_wetlands=True,total_w_emission=185e12):
     '''
     The getJULESwetlands function creates an emissions grid for wetlands based on JULES wetlands maps.
     Rather than using the modelled  JULES wetland fraction, this is scaled against the observed SWAMPS 
@@ -1447,6 +1784,9 @@ def getJULESwetlands(year,lon_out,lat_out,species="CH4",extent_db="SWAMPS",scale
         extent_db (str, optional) :
             Which database to use for the wetlands extent while using JULES for the emissions.
             Default = "SWAMPS"
+        swamps_product (str, optional) :
+            If extent_db is "SWAMPS", which product to use.
+            See _SWAMPS_file() for options.
         scale_wetlands (bool, optional) :
             Whether to scale emissions by the wetland fraction of a total emissions value.
             Default = True.
@@ -1488,7 +1828,7 @@ def getJULESwetlands(year,lon_out,lat_out,species="CH4",extent_db="SWAMPS",scale
 
     if extent_db == "SWAMPS":
         ## Multiply by fractions from SWAMPS to rescale to measured rather than simulated inundation area
-        frac_swamps = xr.open_dataset(_SWAMPSfile())
+        frac_swamps = xr.open_dataset(_SWAMPSfile(swamps_product))
         fw_name = "Fw"
         
         frac_swamps[fw_name].values = np.nan_to_num(frac_swamps[fw_name])
@@ -1757,7 +2097,8 @@ def _define_prior_dict(databases):
     '''
     # Note: "natural" has global resolution of 4 x 5 degrees in Fung et al 1987 but 1 x 1 degrees in file.
     
-    resolution = {"EDGAR":"0.1 x 0.1 degrees",
+    resolution = {"EDGARv5.0":"0.1 x 0.1 degrees",
+                  "EDGARv4.3.2":"0.1 x 0.1 degrees",
                   "GFED":"0.25 degrees x 0.25 degrees",
                   "JULES_wetlands":"0.5 x 0.5 degrees",
                   "SWAMPS":"0.5 x 0.5 degrees",
@@ -1769,7 +2110,8 @@ def _define_prior_dict(databases):
                   "Scarpelli":"0.1 x 0.1 degrees",
                   "Bloom2017":"0.5 x 0.5 degrees"}
 
-    prior_info = {"EDGAR":["v4.3.2",resolution["EDGAR"],"http://edgar.jrc.ec.europa.eu/overview.php?v=432&SECURE=123"],
+    prior_info = {"EDGARv5.0":["v5.0",resolution["EDGARv5.0"],"https://edgar.jrc.ec.europa.eu/overview.php?v=50_GHG"],
+                  "EDGARv4.3.2":["v4.3.2",resolution["EDGARv4.3.2"],"http://edgar.jrc.ec.europa.eu/overview.php?v=432&SECURE=123"],
                   "GFED":["v4.1",resolution["GFED"],"https://daac.ornl.gov/cgi-bin/dsviewer.pl?ds_id=1293"],
                   "JULES_wetlands":["v4.1",resolution["JULES_wetlands"],"Created by: nicola.gedney@metoffice.gov.uk"],
                   "SWAMPS":["Global Carbon Project CH4 v2",resolution["SWAMPS"],"Schroeder et al. 2015\nBased on v3.2 SWAMPS\nCreated by: benjamin.poulter@nasa.gov"],
@@ -1805,23 +2147,21 @@ def database_options(print_options=False):
             - List of databases which contain climatological values rather than specific years.
     '''
     db_functions = {"GFED":getGFED,
-                    "EDGAR":{"yearly":getedgarannualtotals,
-                             "sector_yearly":getedgarannualsectors,
+                    "EDGARv5.0":{"yearly":getedgarannualtotals,
+                             "sector_yearly":getedgarv5annualsectors},
+                    "EDGARv4.3.2":{"yearly":getedgarannualtotals,
+                             "sector_yearly":getedgarv432annualsectors,
                              "sector_monthly":getedgarmonthlysectors},
-                    "EDGAR_yearly":getedgarannualtotals,
-                    "EDGAR_sector_yearly":getedgarannualsectors,
-                    "EDGAR_sector_monthly":getedgarmonthlysectors,
                     "natural":getothernaturalCH4,
                     "soilsink":getsoilsinkCH4,
                     "Bloom":getbloomwetlandsCH4,
-                    "NAEI":getNAEI,
-                    "NAEI_and_EDGAR":getnaeiandedgarCH4,
                     "JULES_wetlands":getJULESwetlands,
                     "Scarpelli":getScarpelliFossilFuelsCH4,
                     "Bloom2017":getBloom2017}
 
     # Note GFED species not defined here yet.
-    db_species = {"EDGAR":["CH4","N2O"],
+    db_species = {"EDGARv5.0":["CH4","N2O"],
+                  "EDGARv4.3.2":["CH4","N2O"],
                   "natural":["CH4"],
                   "soilsink":["CH4"],
                   "Bloom":["CH4"],
@@ -1834,7 +2174,8 @@ def database_options(print_options=False):
     db_timeframes = {"GFED":["monthly","daily","3hourly"],"Bloom":["daily","monthly"]}
     
     db_sector = {"GFED":"fire",
-                 "EDGAR":"anthro",
+                 "EDGARv5.0":"anthro",
+                 "EDGARv4.3.2":"anthro",
                  "natural":"natural",
                  "soilsink":"soilsink",
                  "Bloom":"wetlands",
@@ -1870,11 +2211,12 @@ def create_emissions(databases,species,domain,year=None,lon_out=[],lat_out=[],
     
     Either a domain or longitude and latitude grid values must be specified.
     
-    Note: For "*EDGAR*", three databases are available based on annual data, annual sector 
-    data and monthly sector data (for 2010 only). If "EDGAR" database is specified, this 
-    function will attempt to discern which of these functions to use based on the inputs.
-    It is recommended that you use the "*EDGAR_yearly*", "*EDGAR_sector_yearly*" or 
-    "*EDGAR_sector_monthly*" keywords to ensure the expected database is used.
+    Note: For "EDGARv5.0" and "EDGARv4.3.2", three databases are available based on annual data, 
+    annual sector data and monthly sector data (for EDGARv4.3.2 (2010) only, there is currently no 
+    monthly sector data downloaded for EDGARv5.0). If "EDGARv5.0" or "EDGARv4.3.2" database is 
+    used, this function will assume annual data is wanted unless specified otherwise by using an
+    explicit database (e.g."EDGARv5.0_yearly", see database options) or by using the edgar_keyword 
+    argument.
     
     WARNING: At the moment this function is unable to interpret "months" as an input (included
     as part of the keyword arguments) and so this input will be ignored if specified.
@@ -1884,19 +2226,22 @@ def create_emissions(databases,species,domain,year=None,lon_out=[],lat_out=[],
         databases (list) :
             List of databases to use to create emissions file.
             The following inputs can be included:
-                - "GFED"                 - GFED v4.1 biomass burning database
-                - "EDGAR"                - EDGAR v4.3.2 anthropogenic database
-                - "EDGAR_yearly"         - explicitly use yearly EDGAR database
-                - "EDGAR_sector_yearly"  - explicitly use yearly sector EDGAR database (sector inputs must be included)
-                - "EDGAR_sector_monthly" - explicitly use monthly sector EDGAR database (sector inputs must be included)
-                - "natural"              - other natural CH4 emissions (volcanoes, termites, hydrates) from Fung et al 1987
-                - "soilsink"             - soil sink CH4 emissions from Bousquet et al 2006
-                - "Bloom"                - CH4 wetland emissions from Bloom et al
-                - "Bloom2017"            - CH4 wetland emissions for updated WetCHARTS map from Bloom et al 2017
-                - "NAEI"                 - NAEI anthropogenic database
-                - "NAEI_and_EDGAR"       - Combined dataset of NAEI and EDGAR
-                - "JULES_wetlands"       - CH4 wetlands emissions from combining JULES model emissions output and SWAMPS wetlands extent.
-                - "Scarpelli"            - CH4 from fugitive fossil fuel emissions (NB this is not yet published)
+                - "GFED"                        - GFED v4.1 biomass burning database
+                - "EDGARv5.0"                   - EDGAR v5.0 anthropogenic database
+                - "EDGARv4.3.2"                 - EDGAR v4.3.2 anthropogenic database
+                - "EDGARv5.0_yearly"            - explicitly use yearly EDGARv5.0 database
+                - "EDGARv5.0_sector_yearly"     - explicitly use annual sector EDGARv5.0 database
+                - "EDGARv4.3.2_yearly"          - explicitly use yearly EDGARv4.3.2 database
+                - "EDGARv4.3.2_sector_yearly"   - explicitly use annual sector EDGARv4.3.2 database
+                - "EDGARv4.3.2_sector_monthly"  - explicitly use monthly sector EDGARv4.3.2 database
+                - "natural"                     - other natural CH4 emissions (volcanoes, termites, hydrates) from Fung et al 1987
+                - "soilsink"                    - soil sink CH4 emissions from Bousquet et al 2006
+                - "Bloom"                       - CH4 wetland emissions from Bloom et al
+                - "Bloom2017"                   - CH4 wetland emissions for updated WetCHARTS map from Bloom et al 2017
+                - "NAEI"                        - NAEI anthropogenic database
+                - "NAEI_and_EDGAR"              - Combined dataset of NAEI and EDGAR
+                - "JULES_wetlands"              - CH4 wetlands emissions from combining JULES model emissions output and SWAMPS wetlands extent.
+                - "Scarpelli"                   - CH4 from fugitive fossil fuel emissions (NB this is not yet published)
             See database_options() function for full and correct list of options.
         species (str) :
             Species of interest. All listed databases must have data for this species.
@@ -1931,21 +2276,29 @@ def create_emissions(databases,species,domain,year=None,lon_out=[],lat_out=[],
             
             timeframe :
                 Can be one of "3hourly","daily","monthly". Optional for "GFED" and "Bloom" databases.
+            edgar_keyword : 
+                Can be one of 'yearly', 'sector_yearly' or 'sector_monthly'. MUST be specified if 
+                annual sector data or monthly sector data is required for 'EDGARv5.0' or 'EDGARv4.3.2' 
+                databases.
             edgar_sectors :
-                Specific sectors for EDGAR database. MUST be specified if "EDGAR_sector_yearly"
-                or "EDGAR_sector_monthly" databases are used.
+                Specific sectors for EDGAR database. MUST be specified if "EDGARv5.0"
+                or "EDGARv4.3.2" databases are used and 'sector_yearly' or 'sector_monthly' 
+                edgar_keywords are specified.
             naei_sector :
                 Specific sector for NAEI database. MUST be specified if "NAEI" database is used.
             scarpelli_sector :
-                Specific sector for Scarpelli inventory. MUST be specified if "Scarpelli" inventory is used.
+                Specific sector for Scarpelli inventory. MUST be specified if "Scarpelli" inventory is
+                used.
             incagr :
                 Include agricultural waste burning. Optional for "GFED" database.
             extent_db :
                 Use a different extent database with the JULES emissions. Optional for "JULES_wetlands"
             scale_wetlands :
-                Scale wetlands to match a fraction of a total emissions value. Optional for "JULES_wetlands"
+                Scale wetlands to match a fraction of a total emissions value. Optional for 
+                "JULES_wetlands"
             total_w_emission :
-                Total wetland emissions to scale emissions map to. Only used if scale_wetlands=True. Optional for "JULES_wetlands"
+                Total wetland emissions to scale emissions map to. Only used if scale_wetlands=True. 
+                Optional for "JULES_wetlands"
             modeltype :
                 Model type to use for WetCHARTS based on options available. One of 'extended' or 'full'.
                 Optional for "Bloom2017"
@@ -1961,7 +2314,6 @@ def create_emissions(databases,species,domain,year=None,lon_out=[],lat_out=[],
     
     db_functions,db_species,db_timeframes,db_sector,db_climatology = database_options()
     
-    EDGAR_options = ["EDGAR_yearly","EDGAR_sector_yearly","EDGAR_sector_monthly"]
     timeframe_options = {"monthly":12,"daily":365,"3hourly":old_div(365*24,3)}
     
     #if "EDGAR" in databases and "GFED" in databases and "sectors" not in kwargs:
@@ -1982,6 +2334,12 @@ def create_emissions(databases,species,domain,year=None,lon_out=[],lat_out=[],
         print("When applicable, using timeframe: {}".format(timeframe))
     else:
         timeframe = None
+        
+    if "edgar_keyword" in kwargs:
+        edgar_keyword = kwargs["edgar_keyword"]
+        print("Using edgar_keyword: {}".format(edgar_keyword))
+    else:
+        edgar_keyword = None
     
     if "months" in kwargs:
         ## TODO: Currently unable to work with a sub-set of months. Need to decide on sensible behaviour
@@ -1995,42 +2353,71 @@ def create_emissions(databases,species,domain,year=None,lon_out=[],lat_out=[],
     # Define list of functions to call based on inputs databases
     functions = []
     for i,database in enumerate(databases):
-        if database == "EDGAR":
-            # EDGAR has three functions associated functions, use inputs to work out which one to use.
-            if timeframe:
-                if timeframe == "yearly" and "sectors" not in kwargs:
-                    functions.append(db_functions[database]["yearly"])
-                elif timeframe == "yearly" and "sectors" in kwargs:
-                    functions.append(db_functions[database]["sector_yearly"])
-                elif timeframe == "monthly" and "sectors" in kwargs and "months" in kwargs:
-                    functions.append(db_functions[database]["sector_monthly"])
-                elif timeframe == "monthly" and "sectors" in kwargs and not "months" in kwargs:
-                    print("Sectors specified and monthly timeframe specified but no months specified. Using EDGAR annual sectors as default.")
-                    functions.append(db_functions[database]["sector_yearly"])
-                elif timeframe != "monthly" and timeframe != "yearly" and "sectors" in kwargs:
-                    print("Sectors specified but timeframe of monthly or yearly is not specified. Using EDGAR annual sectors as default.")
-                    functions.append(db_functions[database]["sector_yearly"])
-                elif timeframe == "monthly" and "sectors" not in kwargs:
-                    print("Only able to extract monthly EDGAR data when sectors are also specified. Using EDGAR annual totals.")
-                    functions.append(db_functions[database]["yearly"])
-                elif timeframe != "yearly" and "sectors" not in kwargs:
-                    print("Using EDGAR annual totals as default.")
-                    functions.append(db_functions[database]["yearly"])
+        # EDGAR has two versions and three associated functions, use inputs to work out which one to use.
+        if "EDGARv5.0" in database:
+            if database == "EDGARv5.0":
+                if edgar_keyword:
+                    if edgar_keyword == "yearly":
+                        functions.append(db_functions[database]["yearly"])
+                        kwargs["version"] = 'v5.0'
+                    elif edgar_keyword == "sector_yearly":
+                        functions.append(db_functions[database]["sector_yearly"])
+                    elif edgar_keyword == "sector_monthly":
+                        raise Exception("'sector_monthly' not currently available for EDGARv5.0 as files have not been downloaded. Please update or use EDGARv4.3.2")
+                    else:
+                        raise Exception("Did not recognise edgar_keyword input. Please use one of 'yearly', 'sector_yearly' or 'sector_monthly': {}".format(kwargs))
                 else:
-                    raise Exception("Did not recognise combined input for EDGAR database: {}".format(kwargs))
-            elif "edgar_sectors" in kwargs:
-                print("Sectors specified but timeframe of monthly or yearly is not specified. Using EDGAR annual sectors as default.")
-                functions.append(db_functions[database]["sector_yearly"])
-            else:
-                print("No timeframe specified. Using EDGAR annual totals as default.")
+                    print("No edgar_keyword specified. Using EDGARv5.0 annual totals as default.")
+                    functions.append(db_functions[database]["yearly"])
+                    kwargs["version"] = 'v5.0'
+            elif database == "EDGARv5.0_yearly":
+                databases[i] = "EDGARv5.0"
+                database = databases[i]
                 functions.append(db_functions[database]["yearly"])
+                kwargs["version"] = 'v5.0' 
+            elif database == "EDGARv5.0_sector_yearly":
+                databases[i] = "EDGARv5.0"
+                database = databases[i]
+                functions.append(db_functions[database]["sector_yearly"])
+            elif database == "EDGARv5.0_sector_monthly":
+                raise Exception("'sector_monthly' not currently available for EDGARv5.0 as files have not been downloaded. Please update or use EDGARv4.3.2")
+            else: 
+                raise Exception("EDGARv5.0 database input not recognised. Please check database entry is one of the accepted options.")
+                     
+        elif "EDGARv4.3.2" in database:
+            if database == "EDGARv4.3.2":
+                if edgar_keyword:
+                    if edgar_keyword == "yearly":
+                        functions.append(db_functions[database]["yearly"])
+                        kwargs["version"] = 'v4.3.2'
+                    elif edgar_keyword == "sector_yearly":
+                        functions.append(db_functions[database]["sector_yearly"])
+                    elif edgar_keyword == "sector_monthly":
+                        functions.append(db_functions[database]["sector_monthly"])
+                    else:
+                        raise Exception("Did not recognise edgar_keyword argument. Please use one of 'yearly', 'sector_yearly' or 'sector_monthly': {}".format(kwargs))
+                else:
+                    print("No edgar_keyword specified. Using EDGARv4.3.2 annual totals as default.")
+                    functions.append(db_functions[database]["yearly"])
+                    kwargs["version"] = 'v4.3.2'
+            elif database == "EDGARv4.3.2_yearly":
+                databases[i] = "EDGARv4.3.2"
+                database = databases[i]
+                functions.append(db_functions[database]["yearly"])
+                kwargs["version"] = 'v4.3.2' 
+            elif database == "EDGARv4.3.2_sector_yearly":
+                databases[i] = "EDGARv4.3.2"
+                database = databases[i]
+                functions.append(db_functions[database]["sector_yearly"])
+            elif database == "EDGARv4.3.2_sector_monthly":
+                databases[i] = "EDGARv4.3.2"
+                database = databases[i]
+                functions.append(db_functions[database]["sector_monthly"]) 
+            else: 
+                raise Exception("EDGARv4.3.2 database input not recognised. Please check database entry is one of the accepted options.")
         else:
             functions.append(db_functions[database])
-        
-        if database in EDGAR_options:
-            databases = databases[:]
-            databases[i] = "EDGAR"
-   
+
     # Checks species can be resolved for all databases in list.
     for database in databases:
         if database in list(db_species.keys()):

@@ -17,12 +17,10 @@ from acrg_hbmcmc.hbmcmc_output import define_output_filename
 import os
 import sys
 import acrg_convert as convert
+from acrg_config.version import code_version
 
-if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
-    data_path = os.getenv("DATA_PATH") 
-else:
-    from acrg_config.paths import paths
-    data_path = paths.data
+from acrg_config.paths import paths
+data_path = paths.data
 
 
 def parsePrior(name, prior_params, shape = ()):
@@ -199,10 +197,12 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
 def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence, 
                                Hx, Hbc, Y, error, Ytrace,
                                step1, step2, 
-                               xprior, bcprior, sigprior, Ytime, siteindicator, sigma_freq_index, data, fp_data,
+                               xprior, bcprior, sigprior, Ytime, siteindicator, sigma_freq_index,fp_data,
                                emissions_name, domain, species, sites,
                                start_date, end_date, outputname, outputpath,
-                               basis_directory, country_file, country_unit_prefix):
+                               basis_directory, country_file, country_unit_prefix,
+                               flux_directory):
+
         """
         Takes the output from inferpymc3 function, along with some other input
         information, and places it all in a netcdf output. This function also 
@@ -262,8 +262,6 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                 same length at Y.
             sigma_freq_index (array):
                 Array of integer indexes that converts time into periods
-            data (data array):
-                Measurement data from get_obs function.
             fp_data (dict):
                 Output from footprints_data_merge + sensitivies
             emissions_name (dict): 
@@ -292,12 +290,17 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                 Path to where output should be saved.
             basis_directory (str):
                 Directory containing basis function file
+            flux_directory (str, optional):
+                Directory containing the emissions data if not default
             country_file (str):
                 Path of country definition file
             country_unit_prefix ('str', optional)
                 A prefix for scaling the country emissions. Current options are: 'T' will scale to Tg, 'G' to Gg, 'M' to Mg, 'P' to Pg.
                 To add additional options add to acrg_convert.prefix
                 Default is none and no scaling will be applied (output in g).
+            flux_directory (str, optional):
+                Directory containing the emissions data if
+                not default
                 
                 
         Returns:
@@ -349,9 +352,9 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         for npm in nparam:
             scalemap[bfds.values == (npm+1)] = np.mean(outs[:,npm])        
         if emissions_name == None:
-            emds = name.name.flux(domain, species, start = start_date, end = end_date)
+            emds = name.name.flux(domain, species, start = start_date, end = end_date, flux_directory=flux_directory)
         else:
-            emds = name.name.flux(domain, list(emissions_name.values())[0], start = start_date, end = end_date)
+            emds = name.name.flux(domain, list(emissions_name.values())[0], start = start_date, end = end_date, flux_directory=flux_directory)
         flux = scalemap*emds.flux.values[:,:,0]
         
         #Basis functions to save
@@ -375,7 +378,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
 
         unit_factor = convert.prefix(country_unit_prefix)
         if country_unit_prefix is None:
-           country_unit_prefix=''
+            country_unit_prefix=''
         country_units = country_unit_prefix + 'g'
 
         # Not sure how it's best to do this if multiple months in emissions 
@@ -394,7 +397,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         for ci, cntry in enumerate(cntrynames):
             cntrytottrace = np.zeros(len(steps))
             cntrytotprior = 0
-            for bf in range(int(np.max(bfarray))):
+            for bf in range(int(np.max(bfarray))+1):
                 bothinds = np.logical_and(cntrygrid == ci, bfarray==bf)
                 cntrytottrace += np.sum(area[bothinds].ravel()*aprioriflux[bothinds].ravel()* \
                                3600*24*365*molarmass)*outs[:,bf]/unit_factor
@@ -435,7 +438,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                             'countrysd':(['countrynames'], cntrysd),
                             'country68':(['countrynames', 'nUI'],cntry68),
                             'country95':(['countrynames', 'nUI'],cntry95),
-                            'countryprior':(['countrynames'],cntryprior),
+                            'countryapriori':(['countrynames'],cntryprior),
                             'xsensitivity':(['nmeasure','nparam'], Hx.T),
                             'bcsensitivity':(['nmeasure', 'nBC'],Hbc.T)},
                         coords={'stepnum' : (['steps'], steps), 
@@ -452,24 +455,24 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         
         outds.fluxmean.attrs["units"] = "mol/m2/s"
         outds.fluxapriori.attrs["units"] = "mol/m2/s"
-        outds.Yobs.attrs["units"] = str(data[".units"])+" "+"mol/mol"
-        outds.Yapriori.attrs["units"] = str(data[".units"])+" "+"mol/mol"
-        outds.Ymodmean.attrs["units"] = str(data[".units"])+" "+"mol/mol"
-        outds.Ymod95.attrs["units"] = str(data[".units"])+" "+"mol/mol"
-        outds.Ymod68.attrs["units"] = str(data[".units"])+" "+"mol/mol"
-        outds.YmodmeanBC.attrs["units"] = str(data[".units"])+" "+"mol/mol"
-        outds.Ymod95BC.attrs["units"] = str(data[".units"])+" "+"mol/mol"
-        outds.Ymod68BC.attrs["units"] = str(data[".units"])+" "+"mol/mol"
-        outds.YaprioriBC.attrs["units"] = str(data[".units"])+" "+"mol/mol"
-        outds.Yerror.attrs["units"] = str(data[".units"])+" "+"mol/mol"
+        outds.Yobs.attrs["units"] = str(fp_data[".units"])+" "+"mol/mol"
+        outds.Yapriori.attrs["units"] = str(fp_data[".units"])+" "+"mol/mol"
+        outds.Ymodmean.attrs["units"] = str(fp_data[".units"])+" "+"mol/mol"
+        outds.Ymod95.attrs["units"] = str(fp_data[".units"])+" "+"mol/mol"
+        outds.Ymod68.attrs["units"] = str(fp_data[".units"])+" "+"mol/mol"
+        outds.YmodmeanBC.attrs["units"] = str(fp_data[".units"])+" "+"mol/mol"
+        outds.Ymod95BC.attrs["units"] = str(fp_data[".units"])+" "+"mol/mol"
+        outds.Ymod68BC.attrs["units"] = str(fp_data[".units"])+" "+"mol/mol"
+        outds.YaprioriBC.attrs["units"] = str(fp_data[".units"])+" "+"mol/mol"
+        outds.Yerror.attrs["units"] = str(fp_data[".units"])+" "+"mol/mol"
         outds.countrymean.attrs["units"] = country_units
         outds.country68.attrs["units"] = country_units
         outds.country95.attrs["units"] = country_units
         outds.countrysd.attrs["units"] = country_units
-        outds.countryprior.attrs["units"] = country_units
-        outds.xsensitivity.attrs["units"] = str(data[".units"])+" "+"mol/mol"
-        outds.bcsensitivity.attrs["units"] = str(data[".units"])+" "+"mol/mol"
-        outds.sigtrace.attrs["units"] = str(data[".units"])+" "+"mol/mol"
+        outds.countryapriori.attrs["units"] = country_units
+        outds.xsensitivity.attrs["units"] = str(fp_data[".units"])+" "+"mol/mol"
+        outds.bcsensitivity.attrs["units"] = str(fp_data[".units"])+" "+"mol/mol"
+        outds.sigtrace.attrs["units"] = str(fp_data[".units"])+" "+"mol/mol"
         
         outds.Yobs.attrs["longname"] = "observations"
         outds.Yerror.attrs["longname"] = "measurement error"
@@ -497,7 +500,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         outds.country68.attrs["longname"] = "0.68 Bayesian credible interval of ocean and country totals"
         outds.country95.attrs["longname"] = "0.95 Bayesian credible interval of ocean and country totals"        
         outds.countrysd.attrs["longname"] = "standard deviation of ocean and country totals" 
-        outds.countryprior.attrs["longname"] = "prior mean of ocean and country totals"
+        outds.countryapriori.attrs["longname"] = "prior mean of ocean and country totals"
         outds.xsensitivity.attrs["longname"] = "emissions sensitivity timeseries"   
         outds.bcsensitivity.attrs["longname"] = "boundary conditions sensitivity timeseries"  
         
@@ -511,6 +514,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         outds.attrs['Creator'] = getpass.getuser()
         outds.attrs['Date created'] = str(pd.Timestamp('today'))
         outds.attrs['Convergence'] = convergence
+        outds.attrs['Repository version'] = code_version()
         
         comp = dict(zlib=True, complevel=5)
         encoding = {var: comp for var in outds.data_vars}

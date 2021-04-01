@@ -1,4 +1,3 @@
-#!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 """
 Created on Thu Dec 13 17:31:42 2018
@@ -7,12 +6,8 @@ Created on Thu Dec 13 17:31:42 2018
 """
 from __future__ import print_function
 
-from builtins import str
-from builtins import zip
-import datetime
 import glob
-import os
-import sys
+import os, stat, shutil, grp
 from os.path import join
 from datetime import datetime as dt
 import json
@@ -21,14 +16,12 @@ import getpass
 from acrg_config.paths import paths
 import xarray as xr
 from pandas import Timestamp
-
-if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
-    acrg_path = os.getenv("ACRG_PATH")
-    obs_directory = os.path.join(data_path, "obs")
-else:
-    from acrg_config.paths import paths
-    acrg_path = paths.acrg
-    obs_directory = paths.obs
+import pandas as pd
+import sqlite3
+import pathlib
+from acrg_config.paths import paths
+acrg_path = paths.acrg
+obs_directory = paths.obs
 
 # Output unit strings (upper case for matching)
 unit_species = {"CO2": "1e-6",
@@ -129,6 +122,7 @@ def site_info_attributes(site, network):
         return {}
 
     return attributes
+
 
 def attributes(ds, species, site, network=None, global_attributes=None, units=None, scale=None, 
                                                             sampling_period=None, date_range=None):
@@ -375,6 +369,107 @@ def output_filename(output_directory,
                                                    suffix))
 
 
+def obs_database(data_directory = None):
+    '''
+    Creates an SQLite database in obs folder detailing contents of each file
+    
+    Args:
+        data_directory (pathlib.Path or str, optional) : Path to user-defined obs_folder
+    '''
+    
+    if not getpass.getuser() in grp.getgrnam("acrg").gr_mem:
+        raise Exception("You need to be in the acrg group to run this")
+
+    # Directories to exclude from database
+    exclude = ["GOSAT", "TROPOMI", "unknown"]
+
+    network = []
+    instrument = []
+    site_code = []
+    start_date = []
+    end_date = []
+    species = []
+    inlet = []
+    calibration_scale = []
+    filename = []
+
+    if data_directory is None:
+        obs_path = paths.obs
+    else:
+        if isinstance(data_directory, pathlib.PurePath):
+            obs_path = data_directory
+        else:
+            obs_path = pathlib.Path(data_directory)
+    
+    print(f"Reading obs files in {obs_path}")
+    
+    # Find sub-directories in obs folder
+    for d in obs_path.glob("*"):
+        if d.is_dir():
+            if d.name not in exclude:
+
+                # Find netcdf files
+                files = d.glob("*.nc")
+                for f in files:
+
+                    # TODO: Some files are empty. Figure out why!
+                    if os.stat(f).st_size != 0:
+
+                        #TODO: add try/except to see if files open with xarray 
+
+                        f_parts = f.name.split("_")
+
+                        network.append(f_parts[0].split("-")[0])
+                        instrument.append(f_parts[0].split("-")[1])
+
+                        site_code.append(f_parts[1])
+
+                        extras = f_parts[3].split("-")
+                        species.append(extras[0])
+                        if len(extras) == 3:
+                            inlet.append(extras[1])
+                        else:
+                            inlet.append("%")
+
+                        with xr.open_dataset(f) as ds:
+                            if "Calibration_scale" in ds.attrs.keys():
+                                calibration_scale.append(ds.attrs["Calibration_scale"])
+                            else:
+                                calibration_scale.append(None)
+                            start_date.append(pd.Timestamp(ds["time"].values[0]).to_pydatetime())
+                            end_date.append(pd.Timestamp(ds["time"].values[-1]).to_pydatetime())
+
+                        filename.append(str(f))
+                        
+    file_info = list(zip(filename, network, instrument, site_code, species, inlet, calibration_scale, start_date, end_date))    
+
+    # Write database
+    ######################################
+    
+    # To avoid permissions problems, remove old file
+    (obs_path / 'obs.db').unlink(missing_ok=True)
+    
+    print(f"Writing database {obs_path / 'obs.db'}")
+    
+    conn = sqlite3.connect(obs_path / "obs.db")
+    c = conn.cursor()
+
+    c.execute('''DROP TABLE IF EXISTS files
+              ''')
+    
+    c.execute('''CREATE TABLE files
+                 (filename text, network text, instrument text, site text, species text, inlet text, scale text, startDate timestamp, endDate timestamp)''')
+
+    c.executemany('INSERT INTO files VALUES (?,?,?,?,?,?,?,?,?)', file_info)
+
+    conn.commit()
+    conn.close()
+
+    # Change permissions on obs.db to prevent it becoming locked to one user
+    shutil.chown(obs_path / 'obs.db', group="acrg")
+    os.chmod(obs_path / 'obs.db', stat.S_IRWXU | stat.S_IRWXG | stat.S_IROTH)
+
+
 def cleanup(site,
             version = None):
     '''
@@ -455,7 +550,9 @@ def cleanup(site,
                 os.remove(f)
             zipf.close()
 
+            
 def cleanup_all():
+    
     site_list = [site_dir for site_dir in os.listdir(obs_directory) if os.path.isdir(os.path.join(obs_directory,site_dir))]
     for site in site_list:
         cleanup(site)

@@ -1,0 +1,42 @@
+ NAME III (version 7.2)                                          
+ Run name:                   MetExtraction_Global_PT9_J_UMG_Mk10_L59PT9pp
+ Run time:                   09/01/2020 01:18:57.973 UTC
+ Met data:                   NWP Flow.Global_PT9_flow
+ Start of release:           31/12/2019 00:00 UTC
+ End of release:             01/01/2020 00:00 UTC
+ Source strength:            1.1574074E-05 g / s
+ Release location:           0.0000E   55.0000N
+ Release height:             200.000m agl +/- 2.500m
+ Run duration:               1day 0hr 0min
+ X grid origin:               
+ Y grid origin:               
+ X grid size:                           1
+ Y grid size:                           1
+ X grid resolution:            0.1000000    
+ Y grid resolution:            0.1000000    
+ Number of preliminary cols:            1
+ Number of field cols:                  6
+ 
+ Fields:
+                        ,                              ,                              ,                              ,                              ,                              ,                              ,
+                        ,           Unnamed Field Req 1,           Unnamed Field Req 2,           Unnamed Field Req 3,           Unnamed Field Req 4,           Unnamed Field Req 5,           Unnamed Field Req 6,
+                        ,               Temperature (C),          Boundary layer depth,                 Pressure (Pa),                    Wind speed,      Wind direction (degrees),                    Topography,
+                        ,                              ,                              ,                              ,                              ,                              ,                              ,
+                        ,                         deg C,                             m,                            Pa,                         m / s,                           deg,                             m,
+                        ,                              ,                              ,                              ,                              ,                              ,                              ,
+                        ,         No ensemble averaging,         No ensemble averaging,         No ensemble averaging,         No ensemble averaging,         No ensemble averaging,         No ensemble averaging,
+                        ,             No time averaging,             No time averaging,             No time averaging,             No time averaging,             No time averaging,             No time averaging,
+                        ,       No horizontal averaging,       No horizontal averaging,       No horizontal averaging,       No horizontal averaging,       No horizontal averaging,       No horizontal averaging,
+                        ,         No vertical averaging,         No vertical averaging,         No vertical averaging,         No vertical averaging,         No vertical averaging,         No vertical averaging,
+                        ,                              ,                              ,                              ,                              ,                              ,                              ,
+                        ,                              ,                              ,                              ,                              ,                              ,                              ,
+                        ,                              ,                              ,                              ,                              ,                              ,                              ,
+                        ,                      BARBADOS,                      BARBADOS,                      BARBADOS,                      BARBADOS,                      BARBADOS,                      BARBADOS,
+                        ,        X = -59.43330 Lat-Long,        X = -59.43330 Lat-Long,        X = -59.43330 Lat-Long,        X = -59.43330 Lat-Long,        X = -59.43330 Lat-Long,        X = -59.43330 Lat-Long,
+                        ,         Y = 13.16670 Lat-Long,         Y = 13.16670 Lat-Long,         Y = 13.16670 Lat-Long,         Y = 13.16670 Lat-Long,         Y = 13.16670 Lat-Long,         Y = 13.16670 Lat-Long,
+                        ,            Z = 10.00000 m agl,            Z = 10.00000 m agl,            Z = 10.00000 m agl,            Z = 10.00000 m agl,            Z = 10.00000 m agl,            Z = 10.00000 m agl,
+                        ,                              ,                              ,                              ,                              ,                              ,                              ,
+                       T,                              ,                              ,                              ,                              ,                              ,                              ,
+    01/01/2010 00:00 UTC,                      27.07520,                      778.9576,                      101161.4,                      5.697351,                      72.90572,                      7.668399,
+    01/01/2010 12:00 UTC,                      26.98370,                      782.4219,                      101163.7,                      5.695338,                      76.33878,                      7.668400,
+  
