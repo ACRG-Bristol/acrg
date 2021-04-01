@@ -75,9 +75,7 @@ def test_getedgarv5annualsectors():
     assert np.isfinite(testout).all() 
     assert np.array_equal(testout.shape, outdim)
     
-<<<<<<< HEAD
 @pytest.mark.skipif(not glob.glob(os.path.join(paths.data,"Gridded_fluxes")), reason="No access to files in data_path")
-=======
 def test_getedgarv5annualsectors():
     EDGARsectorlist = ["AGS","AWB","CHE","ENE","ENF","FFF","IND","IRO","MNM",
                        "PRO_COAL","PRO_GAS","PRO_OIL","PRO","RCO","REF_TRF","SWD_INC",
@@ -88,7 +86,7 @@ def test_getedgarv5annualsectors():
     assert np.isfinite(testout).all() 
     assert np.array_equal(testout.shape, outdim)
     
->>>>>>> develop
+@pytest.mark.skipif(not glob.glob(os.path.join(paths.data,"Gridded_fluxes")), reason="No access to files in data_path")    
 def test_getedgarv432annualsectors():
     secdict = {'powerindustry' : '1A1a', 
                'oilrefineriesandtransformationindustry' : '1A1b_1A1c_1A5b1_1B1b_1B2a5_1B2a6_1B2b5_2C1b',
