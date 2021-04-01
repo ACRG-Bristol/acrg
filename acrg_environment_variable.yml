@@ -19,7 +19,6 @@ dependencies:
   - yaml
   - numba
   - python-dateutil
-  - ipython
   - pip
   - pip:
     - dirsync
