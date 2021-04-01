@@ -47,11 +47,8 @@ import pymc3 as pm
 import matplotlib.dates as mdates
 import pandas as pd
 
-if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
-    acrg_path = os.getenv("ACRG_PATH") 
-else:
-    from acrg_config.paths import paths
-    acrg_path = paths.acrg
+from acrg_config.paths import paths
+acrg_path = paths.acrg
 
 # Get acrg_site_info file
 with open(os.path.join(acrg_path, "acrg_site_info.json")) as f:
@@ -1133,3 +1130,65 @@ def check_missing_dates(filenames,dates,labels=[]):
     else:
         return dates
 
+def calculate_DIC(ds, silence=False):
+    """
+    Calculates the Deviance information criterion (DIC) for an inversion.
+    It does this using two different definitions:
+    1) Spiegelhalter et al. (2002) https://doi.org/10.1111/1467-9868.00353
+    2) Gelman et al. (2004) http://www.stat.columbia.edu/~gelman/research/published/waic_understand3.pdf
+    
+    The DIC is similar to metrics like AIC (Akaike Information Criterion) but 
+    better suited to hierarchical models and MCMC.
+    What this is useful for is for testing things such as whether increasing the number of 
+    basis functions improves things, or is it just fitting to the noise and making uncertainty larger.
+    The lower the DIC the better.
+    It should be noted that this doesn't give a hard and fast description of the suitability of a 
+    statistical model but is the most useful indicator I can find.
+    
+    Args:
+        ds (xarray dataset)      : dataset output from hbmcmc 
+        silence (bool, optional) : Set to True to not print to screen  
+    Returns:
+        float : DIC using Spiegelhalter et al. (2002) definition
+        float : DIC using Gelman et al. (2004) definition
+    """
+    sitenames = ds.sitenames.values
+    # Calculate the log-likelihood of the means of the parameters    
+    sig_arr=np.empty(len(ds.nmeasure.values))
+    sig_trace_arr = np.empty((len(ds.nmeasure.values), len(ds.steps)))
+
+    for n,site in enumerate(sitenames):
+        site_idx=np.where(ds['siteindicator']==np.where(sitenames==site)[0][0])[0]
+        sig_arr[site_idx]=np.mean(ds.sigtrace.values[:,n,:])
+        sig_trace_arr[site_idx,:] =  ds.sigtrace.values[:,n,:].T
+
+    y = ds.Yobs.values  
+    hx_all_post=np.dot(ds.xsensitivity.values,np.mean(ds.xtrace.values,axis=0))
+    hbc_all_post=np.dot(ds.bcsensitivity.values,np.mean(ds.bctrace.values,axis=0))
+    mubar = hx_all_post+hbc_all_post
+    D_thetabar= -0.5*(np.sum(2*np.log(sig_arr)) + np.sum((y-mubar)**2 / sig_arr**2) + \
+                      np.log(2*np.pi)*len(y))
+
+    # Calculate the mean log-likelihood
+    mu_trace = np.dot(ds.xsensitivity.values,ds.xtrace.values.T) + \
+                          np.dot(ds.bcsensitivity.values,ds.bctrace.values.T)
+    D_theta_trace = -0.5*(np.sum(2*np.log(sig_trace_arr), axis=0) + \
+                          np.sum((np.expand_dims(y, axis=1)-mu_trace)**2 / sig_trace_arr**2, axis=0) + \
+                          np.log(2*np.pi)*len(y)) 
+    Dbar_theta = np.mean(D_theta_trace, axis=0)
+    p_DIC = 2*(D_thetabar - Dbar_theta)
+    p_DIC_alt = 2*np.var(D_theta_trace)
+
+    
+    # DIC using Spiegelhalter et al. (2002) definition
+    DIC_1 = -2*D_thetabar + 2*p_DIC
+    # DIC using Gelman et al. (2004) definition
+    DIC_2 = -2*D_thetabar + 2*p_DIC_alt
+
+    if not silence:
+        print("DIC using Spiegelhalter et al. (2002) definition")
+        print(DIC_1)
+        print("DIC using Gelman et al. (2004) definition")
+        print(DIC_2)
+    
+    return DIC_1, DIC_2

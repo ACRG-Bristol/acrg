@@ -31,13 +31,9 @@ import acrg_hbmcmc.inversion_pymc3 as mcmc
 import acrg_name.basis_functions as basis
 import shutil
 
-if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
-    acrg_path = os.getenv("ACRG_PATH")
-    data_path = os.getenv("DATA_PATH") 
-else:
-    from acrg_config.paths import paths
-    acrg_path = paths.acrg
-    data_path = paths.data
+from acrg_config.paths import paths
+acrg_path = paths.acrg
+data_path = paths.data
 
 def fixedbasisMCMC(species, sites, domain, meas_period, start_date, 
                    end_date, outputpath, outputname, 

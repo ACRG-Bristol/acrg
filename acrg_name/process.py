@@ -86,15 +86,10 @@ timestep_for_output = 0.
 # Default to home directory, but update if proper directory is specified
 directory_status_log = os.getenv("HOME")
 
-if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
-    acrg_path = os.getenv("ACRG_PATH") 
-    data_path = os.getenv("DATA_PATH") 
-    lpdm_path = os.path.join(data_path,"LPDM")
-else:
-    from acrg_config.paths import paths
-    acrg_path = paths.acrg
-    data_path = paths.data
-    lpdm_path = paths.lpdm
+from acrg_config.paths import paths
+acrg_path = paths.acrg
+data_path = paths.data
+lpdm_path = paths.lpdm
     
 
 def load_NAME(file_lines, namever):
@@ -2327,10 +2322,9 @@ def process(domain, site, height, year, month,
                     met_search_str = subfolder + met_folder + "/*.txt*"
                 met_files = sorted(glob.glob(met_search_str))
            
-            if len(met_files) == 0:
-                status_log("Can't file MET files: " + met_search_str,
-                           error_or_warning="error")
-                return None
+            if len(met_files) == 0:        
+                raise FileNotFoundError(f"Can't find MET files: {met_search_str}")
+                
             else:
                 met = read_met(met_files,satellite=satellite)
         else:

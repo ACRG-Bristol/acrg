@@ -10,6 +10,7 @@ import acrg_countrymask as countrymask
 import os
 import sys
 from acrg_config.paths import paths
+import glob
 
 
 acrg_path = paths.acrg
@@ -56,6 +57,7 @@ def test_other_directory():
     assert fp_height is not None
 
 @pytest.mark.long
+@pytest.mark.skipif(not glob.glob(os.path.join(paths.data,"LPDM/fp")), reason="No access to files in data_path")
 def test_all_domains(name_domains):
     '''
     Test all (current) domains are recognised and can be accessed
