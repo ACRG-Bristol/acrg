@@ -422,9 +422,15 @@ def makeCAMSBC(domain, start, end,
         clim_start = start
         clim_end   = end
     
-    fp_lat,fp_lon,fp_height = domain_volume(domain)
+    # find a file with the NAME grid to match the input file to
+    # is testing, this will be in the test files
+    if test:
+        fp_directory = os.path.join(acrg_path, 'tests', 'files', 'LPDM', 'fp_NAME')
+        fp_lat,fp_lon,fp_height = domain_volume(domain, fp_directory=fp_directory)
+    else:
+        fp_lat,fp_lon,fp_height = domain_volume(domain)
     
-    outdir  = os.path.join(data_path, f"LPDM/bc/{domain}/") if outdir is None else outdir
+    outdir  = os.path.join(data_path, 'LPDM', 'bc', domain) if outdir is None else outdir
     
     cams_ds = readCAMSInversion(clim_start, clim_end, cams_directory = cams_directory)
     
