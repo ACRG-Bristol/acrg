@@ -9,15 +9,29 @@ To run this test suite only from within the tests/ directory use the syntax
 >> pytest test_acrg_hbmcmc.py
 
 @author: al18242
+# Version history
+# 2021/03/29 LMW: Added additional tests, including testing inputs/outputs
 """
 
 import pytest
 
-#import acrg_agage as agage
 import acrg_hbmcmc.inversion_pymc3 as mcmc
 import pymc3 as pm
 import numpy as np
-#from builtins import str
+from acrg_config.paths import paths
+import os
+import subprocess
+from pathlib import Path
+import xarray as xr
+
+acrg_path = paths.acrg
+hbmcmc_path = os.path.join(acrg_path,"acrg_hbmcmc")
+test_config_path = os.path.join(acrg_path,"tests/files/config")
+outputpath = os.path.join(acrg_path,"tests/files/output")
+
+#stop CPU stealing
+os.environ["OPENBLAS_NUM_THREADS"] = "2"
+
 
 @pytest.fixture(scope="module")
 def example_prior():
@@ -118,4 +132,86 @@ def test_toyProblem():
     assert ( np.abs(np.mean(sigouts[:,0,0]) - sigma1_true ) < 0.1 ), "Discrepency in {}: {}".format("sig1 mean", np.abs(np.mean(sigouts[:,0,0]) - sigma1_true ))
     
     assert ( np.abs(np.mean(sigouts[:,0,1]) - sigma2_true ) < 0.2 ), "Discrepency in {}: {}".format("sig2 mean", np.abs(np.mean(sigouts[:,0,1]) - sigma2_true ))
+    
+@pytest.fixture(scope="module")
+def hbmcmc_input_file():
+    ''' Define hbmcmc inputs python script '''
+    filename = os.path.join(hbmcmc_path,'run_hbmcmc.py')
+    return filename
+
+@pytest.fixture(scope="module")
+def hbmcmc_config_file():
+    ''' Define hbmcmc config file input to run hbmcmc code '''
+    origfilename = os.path.join(test_config_path,'hbmcmc_inputs.ini')
+    filename = os.path.join(test_config_path,'hbmcmc_inputs_pytest.ini')
+    patho = Path(origfilename)
+    pathn = Path(filename)
+    text = patho.read_text()
+    text = text.replace("%%ACRG_PATH%%", str(acrg_path))
+    pathn.write_text(text)
+    return filename
+
+@pytest.mark.long
+def test_hbmcmc_inputs(hbmcmc_input_file,hbmcmc_config_file):
+    ''' Check that run_hbmcmc.py can be run with a standard hbmcmc config file '''
+    result = subprocess.call(["python",hbmcmc_input_file,"-c{}".format(hbmcmc_config_file)])
+    os.remove(os.path.join(outputpath, "CH4_EUROPE_pytest-deleteifpresent_2014-02-01.ini"))
+    os.remove(os.path.join(outputpath, "CH4_EUROPE_pytest-deleteifpresent_2014-02-01.nc"))
+    assert result == 0
+
+@pytest.mark.long
+def test_hbmcmc_inputs_command_line(hbmcmc_input_file,hbmcmc_config_file):
+    ''' Check that run_hbmcmc.py can be run with a standard hbmcmc config file incl. dates '''
+    result = subprocess.call(["python",hbmcmc_input_file, "2014-02-01", "2014-04-01", "-c{}".format(hbmcmc_config_file)])
+    os.remove(os.path.join(outputpath, "CH4_EUROPE_pytest-deleteifpresent_2014-02-01.ini"))
+    os.remove(os.path.join(outputpath, "CH4_EUROPE_pytest-deleteifpresent_2014-02-01.nc"))
+    assert result == 0
+
+@pytest.mark.long
+def test_hbmcmc_output_exists(hbmcmc_input_file,hbmcmc_config_file):
+    """ Check hbmcmcm output file exists and that variables etc exits"""
+    subprocess.call(["python",hbmcmc_input_file,"-c{}".format(hbmcmc_config_file)])
+    outfile = Path(outputpath) / "CH4_EUROPE_pytest-deleteifpresent_2014-02-01.nc"
+    outconfig = Path(outputpath) / "CH4_EUROPE_pytest-deleteifpresent_2014-02-01.ini"
+    
+    #Check that expected files exist
+    assert outconfig.exists() 
+    outconfig.unlink()
+    assert outfile.exists()
+    
+    #Open test output file
+    with xr.open_dataset(outfile) as load:
+        ds_out = load.load()
+        
+    #Check that the attributes exist in the file
+    attrs_list = ['Start date', 'End date', 'Latent sampler', 'Hyper sampler', 
+                  'Emissions Prior', 'Model error Prior', 'BCs Prior', 'Creator', 
+                  'Date created', 'Convergence', 'Repository version']
+    output_attrs_list = [key for key in ds_out.attrs.keys()]
+    for key in attrs_list:
+        assert key in output_attrs_list
+        
+    #Check that the data variables exist in the file
+    data_vars_list = ['Yobs','Yerror','Ytime','Yapriori','Ymodmean','Ymod95',
+                      'Ymod68','YaprioriBC','YmodmeanBC','Ymod95BC','Ymod68BC',
+                      'xtrace','bctrace','sigtrace','siteindicator','sigma_freq_index',
+                      'sitenames','sitelons','sitelats','fluxapriori','fluxmean',
+                      'scalingmean','basisfunctions','countrymean','countrysd',
+                      'country68','country95','countryapriori','xsensitivity',
+                      'bcsensitivity']
+    output_data_vars_list = [var for var in ds_out.data_vars]
+    for var in data_vars_list:
+        assert var in output_data_vars_list
+        
+    #Check that coords exists
+    coord_list = ["stepnum","paramnum","numBC","measurenum","UInum","nsites",
+                  "nsigma_time","nsigma_site","lat","lon","countrynames"]
+    output_coord_list = [coord for coord in ds_out.coords]
+    for coord in coord_list:
+        assert coord in output_coord_list
+    outfile.unlink()
+
+    
+
+    
     

@@ -6,8 +6,6 @@ Created on Fri Oct 16 14:08:07 2015
 """
 from __future__ import print_function
 
-from builtins import zip
-from builtins import range
 import datetime
 import numpy as np
 import pandas as pd
@@ -64,13 +62,6 @@ unit_interpret = {"ppm": "1e-6",
                   "ppq": "1e-15",
                   "else": "unknown"}
 
-# Default calibration scales
-# TODO: Remove this? seems dangerous
-scales = {"CO2": "NOAA-2007",
-          "CH4": "NOAA-2004A",
-          "N2O": "SIO-98",
-          "CO": "Unknown"}
-
 
 # For species which need more than just a hyphen removing or changing to lower case
 # First element of list is the output variable name,
@@ -105,11 +96,6 @@ species_translator = {"CO2": ["co2", "carbon_dioxide"],
                       "DCO2C14": ["dco2c14", "delta_co2_c14"],
                       "APO": ["apo", "atmospheric_potential_oxygen"]
                       }
-
-# Translate header strings
-crds_header_string_interpret = {"C": "",
-                                "stdev": " variability",
-                                "N": " number_of_observations"}
 
 def parser_YYMMDD(yymmdd):
     return dt.strptime(yymmdd, '%y%m%d')
@@ -445,7 +431,6 @@ def gc(site, instrument, network,
             df[sp + " repeatability"] = precision[precision_index].\
                                             astype(float).\
                                             reindex_like(df, "pad")
-
         dfs.append(df)
 
     # Concatenate
@@ -486,7 +471,6 @@ def gc(site, instrument, network,
                             sp + " repeatability",
                             sp + " status_flag",
                             sp + " integration_flag",
-#                            "analysis_time",
                             "Inlet"]]
 
                 # No inlet label in file name
@@ -506,7 +490,6 @@ def gc(site, instrument, network,
                                        sp + " repeatability",
                                        sp + " status_flag",
                                        sp + " integration_flag",
-#                                       "analysis_time",
                                        "Inlet"]]
 
                 else:
@@ -523,7 +506,6 @@ def gc(site, instrument, network,
                                                               sp + " repeatability",
                                                               sp + " status_flag",
                                                               sp + " integration_flag",
-#                                                              "analysis_time"
                                                               "Inlet"]]
 
                 # re-label inlet if required
@@ -587,6 +569,9 @@ def gc(site, instrument, network,
                                                   inlet = [None, inlet_label][len(inlets) > 1],
                                                   version = version)
 
+                    # compress
+                    ds_sp = set_encoding(ds_sp)
+                    
                     print("Writing... " + nc_filename)
                     ds_sp.to_netcdf(nc_filename)
                     print("... written.")
@@ -601,6 +586,12 @@ def crds_data_read(data_file):
         Returns:
             tuple: Tuple of xarray.Dataset and list of species
     """
+
+    # Translate header strings
+    crds_header_string_interpret = {"C": "",
+                                    "stdev": "_variability",
+                                    "N": "_number_of_observations"}
+    
     print("Reading " + data_file)
 
     # Read file header
@@ -637,7 +628,7 @@ def crds_data_read(data_file):
                      sep=r"\s+",
                      names = header,
                      index_col=["DATE_TIME"],
-                     parse_dates=[[0,1]],
+                     parse_dates=[["DATE", "TIME"]],
                      date_parser=parse_date)
 
     # Check if the index is sorted and if not sort it
@@ -685,6 +676,7 @@ def crds(site, network,
     # Search for species and inlets from file names
     data_file_search = join(data_folder, site.lower() + ".*.1minute.*.dat")
     data_files = glob.glob(data_file_search)
+    instruments = [f.split(".")[1] for f in data_files]
     inlets = [f.split(".")[-2] for f in data_files]
 
     for i, inlet in enumerate(inlets):
@@ -697,8 +689,8 @@ def crds(site, network,
 
             # Species-specific dataset
             ds_sp = ds[[sp,
-                        sp + " variability",
-                        sp + " number_of_observations"]]
+                        sp + "_variability",
+                        sp + "_number_of_observations"]]
             ds_sp = ds_sp.dropna("time")
 
             global_attributes = params_crds[site]["global_attributes"]
@@ -708,7 +700,7 @@ def crds(site, network,
             ds_sp = attributes(ds_sp, sp, site.upper(),
                                network = network,
                                global_attributes = global_attributes,
-                               scale = scales[sp],
+                               scale = params_crds["default_scales"][sp],
                                sampling_period=60,
                                date_range = date_range)
 
@@ -723,17 +715,39 @@ def crds(site, network,
                 # Write file
                 nc_filename = output_filename(output_folder,
                                               network,
-                                              "CRDS",
+                                              instruments[i],
                                               site.upper(),
                                               ds_sp.time.to_pandas().index.to_pydatetime()[0],
                                               ds_sp.species,
                                               inlet = [None, inlet][len(inlets) > 1],
                                               version = version)
-
+                
+                # compress data
+                ds_sp = set_encoding(ds_sp)
+                
                 print("Writing " + nc_filename)
                 ds_sp.to_netcdf(nc_filename)
                 print("... written.")
 
+def set_encoding(ds):
+    '''
+    Specify encoding to prevent files getting too big
+    
+    This function makes sure that number_of_observations is an integer
+    non-time variables are float32, and applies compression.
+    '''
+    
+    for var in ds:
+        if "number_of_observations" in var:
+            ds[var].values = ds[var].values.astype(int)
+            ds[var].encoding["dtype"]="int16"
+        else:
+            if var != "time":
+                ds[var].encoding["dtype"] = "float32"
+#            ds[var].encoding["zlib"] = True
+        ds[var].encoding["zlib"]=True
+
+    return(ds)
 
 def ale_gage(site, network):
     """
@@ -952,8 +966,84 @@ def data_freeze(version,
     gc("MHD", "medusa", "AGAGE", input_directory = input_directory, output_directory = output_directory, version = version, date_range = date_range)
 
 
+    
+def array_job(array_index):
+    '''
+    Run processing scripts through an array job:
+    
+    qsub -J 1-50 -k oe -j oe -Wsandbox=PRIVATE process_gcwerks_array.sh
+    
+    Note that will need to increase the max index to more than 40 if we add more stations/instruments
+    
+    Check job status using qstat -t <JOBID>[] (note the square brackets)
+    '''
+    
+    
+    def wrapper(func, args):
+        func(*args)
+    
+    instrument = [ #AGAGE Medusa
+        [gc, ("MHD", "medusa", "AGAGE")],
+        [gc, ("CGO", "medusa", "AGAGE")],
+        [gc, ("GSN", "medusa", "AGAGE")],
+        [gc, ("SDZ", "medusa", "AGAGE")],
+        [gc, ("THD", "medusa", "AGAGE")],
+        [gc, ("RPB", "medusa", "AGAGE")],
+        [gc, ("SMO", "medusa", "AGAGE")],
+        [gc, ("SIO", "medusa", "AGAGE")],
+        [gc, ("JFJ", "medusa", "AGAGE")],
+        [gc, ("CMN", "medusa", "AGAGE")],
+        [gc, ("ZEP", "medusa", "AGAGE")],
+        # AGAGE GC data
+        [gc, ("RPB", "GCMD", "AGAGE")],
+        [gc, ("CGO", "GCMD", "AGAGE")],
+        [gc, ("MHD", "GCMD", "AGAGE")],
+        [gc, ("SMO", "GCMD", "AGAGE")],
+        [gc, ("THD", "GCMD", "AGAGE")],
+        # AGAGE GCMS data
+        [gc, ("CGO", "GCMS", "AGAGE")],
+        [gc, ("MHD", "GCMS", "AGAGE")],
+        [gc, ("RPB", "GCMS", "AGAGE")],
+        [gc, ("SMO", "GCMS", "AGAGE")],
+        [gc, ("THD", "GCMS", "AGAGE")],
+        [gc, ("JFJ", "GCMS", "AGAGE")],
+        [gc, ("CMN", "GCMS", "AGAGE")],
+        [gc, ("ZEP", "GCMS", "AGAGE")],
+        # AGAGE CRDS data
+        [crds, ("RPB", "AGAGE")],
+        # GAUGE CRDS data
+        [crds, ("HFD", "DECC")],
+        [crds, ("BSD", "DECC")],
+        # GAUGE GC data
+        [gc, ("BSD", "GCMD", "DECC")],
+        [gc, ("HFD", "GCMD", "DECC")],
+        # DECC CRDS data
+        [crds, ("TTA", "DECC")],
+        [crds, ("RGL", "DECC")],
+        [crds, ("TAC", "DECC")],
+        # DECC GC data
+        [gc, ("BSD", "GCMD", "DECC")],
+        [gc, ("TAC", "GCMD", "DECC")],
+        [gc, ("RGL", "GCMD", "DECC")],
+        # DECC Medusa
+        [gc, ("TAC", "medusa", "DECC")],
+        # Bristol CRDS
+#        [crds, ("BRI", "DECC")],
+        # ICOS
+#        [icos, ("TTA", "DECC")],
+        [icos, ("MHD", "ICOS")]]
+    
+    # Return if index is too large for the above list
+    if array_index > len(instrument):
+        return 0
+    
+    # Run the relevant script for each station and instrument
+    wrapper(instrument[array_index-1][0], instrument[array_index-1][1])
 
+    # Cleanup for particular station (cleans up everything, not just most recently processed instrument)
+    cleanup(instrument[array_index-1][1][0])
 
+    
 if __name__ == "__main__":
 
     # AGAGE Medusa
@@ -1009,6 +1099,10 @@ if __name__ == "__main__":
     # DECC Medusa
     gc("TAC", "medusa", "DECC")
 
+    # ICOS
+    icos("TTA", network = "DECC")
+    icos("MHD", network = "ICOS")
+
     cleanup("CGO")
     cleanup("MHD")
     cleanup("RPB")
@@ -1025,19 +1119,3 @@ if __name__ == "__main__":
     cleanup("HFD")
     cleanup("BSD")
     cleanup("TTA")
-
-    # ICOS
-    icos("TTA", network = "DECC")
-    icos("MHD", network = "ICOS")
-
-
-#    # Copy files
-#    networks = ["AGAGE", "GAUGE", "DECC", "ICOS"]
-#    src_dir = "/dagage2/agage/metoffice/processed_observations_2018"
-#    dest_dir = "/data/shared/obs_2018"
-#
-#    for network in networks:
-#        files = glob.glob(join(src_dir, network, "*.nc"))
-#        for f in files:
-#            print("Copying %s..." % (split(f)[-1]))
-#            shutil.copy(f, join(dest_dir, network))

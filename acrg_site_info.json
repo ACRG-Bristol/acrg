@@ -27,6 +27,20 @@
       "longitude": -62.506
     }
   },
+  "AMB": {
+    "MPI": {
+      "height": [
+        "27m"
+      ],
+      "height_name": [
+        "30magl"
+      ],
+      "height_station_masl": 20.0,
+      "latitude": 69.6200,
+      "long_name": "Ambarchik, Russia",
+      "longitude": 162.3000
+    }
+  },
   "AMS": {
     "NOAA": {
       "height": [
@@ -175,6 +189,20 @@
       "longitude": -115.918255
     }
   },
+  "BCOB": {
+    "AGAGE": {
+      "height": [
+        "10m"
+      ],
+      "height_name": [
+        "10magl"
+      ],
+      "height_station_masl": 0.0,
+      "latitude": 22.17,
+      "long_name": "Bangladesh Climate Observatory - Bhola Island",
+      "longitude": 90.71
+    }
+  },
   "BHD": {
     "NOAA": {
       "height": [
@@ -274,7 +302,7 @@
   "BRW": {
     "NOAA": {
       "height": [
-        "28m"
+        "16m"
       ],
       "height_name": [
         "20magl"
@@ -364,6 +392,20 @@
       "latitude": 55.21,
       "long_name": "Cold Bay, Alaska",
       "longitude": -162.72
+    }
+  },
+  "CBR": {
+    "FMI": {
+      "height": [
+        "10m"
+      ],
+      "height_name": [
+        "10magl"
+      ],
+      "height_station_masl": 20.0,
+      "latitude": 79.2804,
+      "long_name": "Cape Baranov Ice Research Station",
+      "longitude": 101.6176
     }
   },
   "CBW": {
@@ -1166,18 +1208,6 @@
       "latitude": 46.5476,
       "long_name": "Jungfraujoch, Switzerland",
       "longitude": 7.9855
-    },
-    "EUROCOM": {
-      "height": [
-        "10m"
-      ],
-      "height_name": [
-        "10magl"
-      ],
-      "height_station_masl": 3570.0,
-      "latitude": 46.5475,
-      "long_name": "Jungfraujoch, Switzerland",
-      "longitude": 7.979167
     }
   },
   "KAS": {
@@ -1206,6 +1236,20 @@
       "latitude": 25.6654,
       "long_name": "Key Biscane, Florida",
       "longitude": -80.158
+    }
+  },
+  "KJN": {
+    "UEXETER": {
+      "height": [
+        "5m"
+      ],
+      "height_name": [
+        "5magl"
+      ],
+      "height_station_masl": 2.0,
+      "latitude": 70.8531,
+      "long_name": "Kjolnes Atmospheric Observatory, Norway",
+      "longitude": 29.2359
     }
   },
   "KUM": {
@@ -1308,6 +1352,71 @@
       "longitude": 6.353
     }
   },
+  "LHFT": {
+    "LGHG": {
+      "height": [
+        "45m"
+      ],
+      "height_name": [
+        "45magl"
+      ],
+      "latitude": 51.608031,
+      "long_name": "Highfield Tower, London, UK",
+      "longitude": 0.174544
+    }
+  },
+  "LSTJ": {
+    "LGHG": {
+      "height": [
+        "20m"
+      ],
+      "height_name": [
+        "20magl"
+      ],
+      "latitude": 51.58015486,
+      "long_name": "St Jude's Church, London, UK",
+      "longitude": -0.189911658
+    }
+  },
+  "LSTM": {
+    "LGHG": {
+      "height": [
+        "36m"
+      ],
+      "height_name": [
+        "36magl"
+      ],
+      "latitude": 51.504423,
+      "long_name": "St Mary's Church, London, UK",
+      "longitude": -0.305762
+    }
+  },
+  "LWMH": {
+    "LGHG": {
+      "height": [
+        "40m"
+      ],
+      "height_name": [
+        "40magl"
+      ],
+      "latitude": 51.577558,
+      "long_name": "University of Westminster - Harrow Campus, London, UK",
+      "longitude": -0.324358
+    }
+  },
+  "LWGF": {
+    "LGHG": {
+      "height": [
+        "6m"
+      ],
+      "height_name": [
+        "6magl"
+      ],
+      "latitude": 51.700313,
+      "long_name": "Woodgreen Farm, London, UK",
+      "longitude": -0.083932
+    }
+  },
   "MBC": {
     "NOAA": {
       "height": [
@@ -1334,6 +1443,20 @@
       "latitude": 43.977,
       "long_name": "Mt. Bachelor Observatory, USA",
       "longitude": -121.686
+    }
+  },
+"MCOH": {
+    "AGAGE": {
+      "height": [
+        "15m"
+      ],
+      "height_name": [
+        "15magl"
+      ],
+      "height_station_masl": 1.5,
+      "latitude": 6.77643,
+      "long_name": "Maldives Climate Observatory - Hanimaadhoo",
+      "longitude": 73.18314
     }
   },
   "MDO": {
@@ -1456,6 +1579,20 @@
       "longitude": -118.0586
     }
   },
+  "NAS": {
+    "TU": {
+      "height": [
+        "3m"
+      ],
+      "height_name": [
+        "5magl"
+      ],
+      "height_station_masl": 40.0,
+      "latitude": 78.9167,
+      "long_name": "Ny-Alesund, Svalbard, Norway",
+      "longitude": 11.9333
+    }
+  },
   "NEB": {
     "NOAA": {
       "height": [
@@ -1474,11 +1611,25 @@
     "MPI": {
         "long_name" : "Namib Desert Atmospheric Observatory",
         "height": ["21m"],
-        "height_name": ["21m"],
+        "height_name": ["21magl"],
         "height_station_masl": 408.0,
         "latitude": -23.563,
         "longitude": 15.046}
 
+  },
+  "NPL": {
+    "LGHG": {
+      "height": [
+        "17m"
+      ], 
+      "height_name": [
+        "17magl"
+      ], 
+      "height_station_masl": 30.0, 
+      "latitude": 51.424149, 
+      "long_name": "NPL, UK", 
+      "longitude": -0.343872
+    }
   },
   "NMY": {
     "UHei": {
@@ -1968,6 +2119,20 @@
       "longitude": 0.32127
     }
   },
+  "TIK": {
+    "FMI": {
+      "height": [
+        "10m"
+      ],
+      "height_name": [
+        "10magl"
+      ],
+      "height_station_masl": 8.0,
+      "latitude": 71.5862,
+      "long_name": "Tiksi, Russia",
+      "longitude": 128.9188
+    }
+  },
   "TMD": {
     "NOAA": {
       "height": [
@@ -1983,14 +2148,14 @@
     }
   },
   "TMB": {
-    "CRANFIELD": {
+    "LGHG": {
       "height": [
-        "5m"
+        "10m"
       ],
       "height_name": [
-        "5magl"
+        "10magl"
       ],
-      "height_station_masl": 5.0,
+      "height_station_masl": 10.0,
       "latitude": 51.497,
       "long_name": "Thames Barrier, UK",
       "longitude": 0.037
@@ -2243,4 +2408,3 @@
     }
   }
 }
-

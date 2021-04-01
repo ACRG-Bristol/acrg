@@ -19,8 +19,9 @@ import sys
 import netCDF4 as nc
 import pytest
 from acrg_grid.areagrid import areagrid
-
 from acrg_config.paths import paths
+
+
 acrg_path = paths.acrg
 
 @pytest.fixture(scope="module")

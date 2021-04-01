@@ -19,9 +19,9 @@ import pytest
 from builtins import range
 import numpy as np
 from acrg_grid.coarsen import coarsen
-
 from acrg_config.paths import paths
 acrg_path = paths.acrg
+
 
 def test_acrg_coarsen_shape():
     '''

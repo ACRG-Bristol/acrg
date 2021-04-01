@@ -46,7 +46,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                    sigprior={"pdf":"uniform", "lower":0.5, "upper":3},
                    nit=2.5e5, burn=50000, tune=1.25e5, nchain=2,
                    emissions_name=None, inlet=None, fpheight=None, instrument=None, 
-                   fp_basis_case=None, bc_basis_case="NESW", 
+                   fp_basis_case=None, basis_directory = None, bc_basis_case="NESW", 
                    obs_directory = None, country_file = None,
                    fp_directory = None, bc_directory = None, flux_directory = None,
                    max_level=None,
@@ -129,6 +129,11 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
         bc_directory (str, optional):
             Directory containing the boundary condition data
             if not default.
+        flux_directory (str, optional):
+            Directory containing the emissions data if not default
+        basis_directory (str, optional):
+            Directory containing the basis function
+            if not default.
         country_file (str, optional):
             Path to the country definition file
         max_level (int, optional):
@@ -179,15 +184,24 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                                         flux_directory = flux_directory,
                                         emissions_name=emissions_name)
     
-    if len(data[sites[0]].mf) == 0:
-        print("No observations for %s to %s" % (start_date, end_date))
-        return
+    for site in sites:
+        for j in range(len(data[site])):
+            if len(data[site][j].mf) == 0:
+                print("No observations for %s to %s for %s" % (start_date, end_date, site))
     if sites[0] not in fp_all.keys():
         print("No footprints for %s to %s" % (start_date, end_date))
         return
     
     print('Running for %s to %s' % (start_date, end_date))
     
+    #If site contains measurement errors given as repeatability and variability, 
+    #use variability to replace missing repeatability values, then drop variability
+    for site in sites:
+        if "mf_variability" in fp_all[site] and "mf_repeatability" in fp_all[site]:
+            fp_all[site]["mf_repeatability"][np.isnan(fp_all[site]["mf_repeatability"])] = \
+                fp_all[site]["mf_variability"][np.logical_and(np.isfinite(fp_all[site]["mf_variability"]),np.isnan(fp_all[site]["mf_repeatability"]) )]
+            fp_all[site] = fp_all[site].drop_vars("mf_variability")
+
     #Add measurement variability in averaging period to measurement error
     if averagingerror:
         fp_all = setup.addaveragingerror(fp_all, sites, species, start_date, end_date,
@@ -206,7 +220,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             fp_basis_case= "quadtree"+species+"-"+outputname
             basis_directory = tempdir
     else:
-        basis_directory = None
+        basis_directory = basis_directory
             
     fp_data = name.fp_sensitivity(fp_all, domain=domain, basis_case=fp_basis_case,basis_directory=basis_directory)
     fp_data = name.bc_sensitivity(fp_data, domain=domain,basis_case=bc_basis_case)
@@ -224,10 +238,10 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     Y = np.zeros(0)
     siteindicator = np.zeros(0)
     for si, site in enumerate(sites):
-        if 'vmf' in fp_data[site]:           
-            error = np.concatenate((error, fp_data[site].vmf.values))
-        if 'dmf' in fp_data[site]:
-            error = np.concatenate((error, fp_data[site].dmf.values))
+        if 'mf_repeatability' in fp_data[site]:           
+            error = np.concatenate((error, fp_data[site].mf_repeatability.values))
+        if 'mf_variability' in fp_data[site]:
+            error = np.concatenate((error, fp_data[site].mf_variability.values))
             
         Y = np.concatenate((Y,fp_data[site].mf.values)) 
         siteindicator = np.concatenate((siteindicator, np.ones_like(fp_data[site].mf.values)*si))
@@ -259,10 +273,10 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     mcmc.inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence, 
                            Hx, Hbc, Y, error, Ytrace,
                            step1, step2, 
-                           xprior, bcprior, sigprior,Ytime, siteindicator, sigma_freq_index, data, fp_data,
+                           xprior, bcprior, sigprior,Ytime, siteindicator, sigma_freq_index, fp_data,
                            emissions_name, domain, species, sites,
                            start_date, end_date, outputname, outputpath,
-                           basis_directory, country_file, country_unit_prefix)
+                           basis_directory, country_file, country_unit_prefix, flux_directory)
 
     if quadtree_basis is True:
         # remove the temporary basis function directory
