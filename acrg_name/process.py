@@ -481,7 +481,7 @@ def read_met(fnames, met_def_dict=None,vertical_profile=False,satellite=False):
         A dictionary of output column names and met file header search strings
         is given in the met_default dictionary at the top of process.py.
         Vertical profile assumes a file structure that consists of a time column 
-        14 temperture (C) columns, followed by 14 pressure (Pa), and 14 potential 
+        14 temperature (C) columns, followed by 14 pressure (Pa), and 14 potential 
         temperature (K)
     '''
 
@@ -1527,7 +1527,7 @@ def write_netcdf(fp, outfile,
         outfile (str): 
             Name of output file
         temperature (array, optional): 
-            Input temperature variable in K. Default=None
+            Input temperature variable in C. Default=None
         pressure (array, optional): 
             Input pressure variable in hPa. Default = None
         wind_speed (array, optional): 
@@ -1660,7 +1660,7 @@ def write_netcdf(fp, outfile,
         nctemp=ncF.createVariable('temperature', 'f', ('time',), zlib = True,
                             least_significant_digit = 4)
         nctemp[:]=temperature
-        nctemp.units='K'
+        nctemp.units='C'
 
     if pressure is not None:
         ncpress=ncF.createVariable('pressure', 'f', ('time',), zlib = True,
