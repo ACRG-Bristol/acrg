@@ -844,7 +844,12 @@ def quadtreebasisfunction(emissions_name, fp_all, sites,
     def qtoptim(x):
         basisQuad, boxes = quadTreeGrid(fps, x)
         return (nbasis - np.max(basisQuad)-1)**2
-    optim = scipy.optimize.dual_annealing(qtoptim, np.expand_dims([0,100], axis=0))
+    cost = 1e6
+    pwr = 0
+    while cost > 3.:
+        optim = scipy.optimize.dual_annealing(qtoptim, np.expand_dims([0,100/10**pwr], axis=0))
+        cost = np.sqrt(optim.fun)
+        pwr +=1
     basisQuad, boxes = quadTreeGrid(fps, optim.x[0])
     
     lon = fp_all[sites[0]].lon.values
