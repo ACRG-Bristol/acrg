@@ -52,7 +52,8 @@ with open(os.path.join(acrg_path, "acrg_species_info.json")) as f:
 # data_path      = paths.data
 # cams_directory = os.path.join(data_path, 'ECMWF_CAMS', 'CAMS_inversion/')
 
-def readCAMSInversion(start, end, species='ch4', cams_directory=cams_directory):
+def readCAMSInversion(start, end, species='ch4', cams_directory=cams_directory,
+                      version='v19'):
     '''
     Args:
         start, end (str)
@@ -60,11 +61,16 @@ def readCAMSInversion(start, end, species='ch4', cams_directory=cams_directory):
         species (str)
         cams_directory (str)
             Path to CAMS files
+        version (str, int)
+            version number of inversion, e.g. 'v19'
+            if an int is entered, it will be converted to a str starting with 'v'
             
     Returns:
         xarray dataset of combined CAMS inversions
     '''
-    search_str = f"cams73_latest_{species}*.nc"
+    version = f'v{version}' if not isinstance(version, str) else version
+    
+    search_str = f"cams73*{version}*{species}*.nc"
     
     files   = extract_files(cams_directory, search_str, start=start, end=end, day=False)
     ds_list = [open_ds(file) for file in files]
@@ -364,6 +370,7 @@ def create_CAMS_BC(ds, fp_lat, fp_lon, fp_height, date, domain, species="ch4",
 def makeCAMSBC(domain, start, end,
                species = 'ch4',
                outdir = None, cams_directory = cams_directory,
+               cams_version = 'v19',
                clim_start = None, clim_end = None,
                make_climatology = False,
                verbose = False, overwrite = False, test=False):
@@ -388,6 +395,9 @@ def makeCAMSBC(domain, start, end,
             Output directory to save output. Output will automatically be written to outdir/LPDM/bc/DOMAIN
         cams_directory (str, optional)
             Location of CAMS inversion output
+        cams_version (str, int)
+            version number of CAMS inversion, e.g. 'v19'
+            if an int is entered, it will be converted to a str starting with 'v'
         clim_start (str, optional): 
             Start date to average fields into a climatology, e.g., "2010-01-01"
             Default of none will assume start
@@ -432,7 +442,7 @@ def makeCAMSBC(domain, start, end,
     
     outdir  = os.path.join(data_path, 'LPDM', 'bc', domain) if outdir is None else outdir
     
-    cams_ds = readCAMSInversion(clim_start, clim_end, cams_directory = cams_directory)
+    cams_ds = readCAMSInversion(clim_start, clim_end, cams_directory = cams_directory, version=cams_version)
     
     # create climatology if required
     if make_climatology:

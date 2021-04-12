@@ -78,6 +78,7 @@ def test_bc_outputs(bc_benchmark, bc_output_directory, bc_output_file):
                   domain         = 'EUROPE', 
                   outdir         = bc_output_directory,
                   cams_directory = bc_output_directory,
+                  cams_version     = 'latest',
                   overwrite      = True,
                   test           = True)
 
@@ -107,6 +108,7 @@ def test_bc_climatology_outputs(bc_benchmark, bc_output_directory, bc_output_cli
                   domain           = 'EUROPE', 
                   outdir           = bc_output_directory,
                   cams_directory   = bc_output_directory,
+                  cams_version     = 'latest',
                   clim_start       = '2016-03-01',
                   clim_end         = '2016-04-01',
                   make_climatology = True,
