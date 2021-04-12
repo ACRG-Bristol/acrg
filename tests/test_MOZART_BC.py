@@ -19,6 +19,7 @@ import os
 import sys
 import xarray
 import numpy as np
+import glob
 import acrg_MOZART_BC as bc
 
 from acrg_config.paths import paths
@@ -45,6 +46,7 @@ def mozart_bc_output_file():
 
 
 @pytest.mark.long
+@pytest.mark.skipif(not glob.glob(os.path.join(paths.data,"LPDM/bc")), reason="No access to files in data_path")
 def test_mozart_bc_outputs(mozart_bc_benchmark_file, mozart_bc_output_directory, mozart_bc_output_file):
     ''' Checks the netcdf output of MOZART_BC.py matches a benchmarked ch4_EUROPE_201403_benchmark.nc file '''
         
