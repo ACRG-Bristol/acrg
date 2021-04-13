@@ -23,6 +23,7 @@ import os
 import subprocess
 from pathlib import Path
 import xarray as xr
+import glob
 
 acrg_path = paths.acrg
 hbmcmc_path = os.path.join(acrg_path,"acrg_hbmcmc")
