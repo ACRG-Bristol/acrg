@@ -850,6 +850,8 @@ def quadtreebasisfunction(emissions_name, fp_all, sites,
         optim = scipy.optimize.dual_annealing(qtoptim, np.expand_dims([0,100/10**pwr], axis=0))
         cost = np.sqrt(optim.fun)
         pwr +=1
+        if pwr > 10:
+            raise Exception("Quadtree did not converge after max iterations.")
     basisQuad, boxes = quadTreeGrid(fps, optim.x[0])
     
     lon = fp_all[sites[0]].lon.values
