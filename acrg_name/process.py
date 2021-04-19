@@ -1501,180 +1501,14 @@ def footprint_concatenate(fields_prefix,
 
     return fp
 
-def write_netcdf(fp, outfile, temperature=None, pressure=None,
-                 wind_speed=None, wind_direction=None,
-                 PBLH=None, fp_HiTRes_inc=False, varname="fp", varname2="fp_HiTRes",
-                 release_lon = None, release_lat = None,
-                 particle_locations=None, particle_mean_age = None, particle_heights=None,
-                 global_attributes = {}, lapse_rate=None, lapse_error=None, units = None):
-    '''
-    Writes netCDF with footprints, particle locations, meteorology and release locations.
-    
-    Args:
-        fp (xarray dataset): 
-            Array of all footprint and particle fields in (mol/mol)/(mol/m2/s)
-        lons (array): 
-            1D array of longitudes
-        lats (array): 
-            1D array of latitudes
-        levs (???array or list):
-            TODO: Clarify inputs
-            1D array of particle levels
-        time (???str or datetime object): 
-            TODO: Clarify inputs
-            Timestamps for footprints
-        outfile (str): 
-            Name of output file
-        temperature (array, optional): 
-            Input temperature variable in C. Default=None
-        pressure (array, optional): 
-            Input pressure variable in hPa. Default = None
-        wind_speed (array, optional): 
-            Input wind speed variable in m/s. Default = None
-        wind_direction (array, optional): 
-            Input wind direction variable in degrees. 
-            Default = None
-        PBLH (array, optional): 
-            Input planetary boundary layer height in m. 
-            Default = None
-        fp_HiTRes_inc (str, optional):
-            True if writing out fp_HiTRes
-        varname (str, optional): 
-            Name of output footprint variable. Default = 'fp'
-        release_lon (array, optional): 
-            Array of release longitude locations. 
-            Default = None
-        release_lat (array, optional): 
-            Array of release latitude locations. 
-            Default = None
-        particle_locations (xarray dataset, optional): 
-            Number of particles at locations at each boundary
-            Default=None
-        particle_heights (array, optional): 
-            Heights of particles leaving boundary.
-            Default=None
-        global_attributes (dictionary, optional): 
-            Dictionary of global attributes.
-            Default={} (empty)
-        lapse_rate (array, optional): 
-            Potential temperature gradient from 60 - 300 m in K/km. 
-            Default=None
-        lapse_error (array, optional): 
-            Error in potential temperature gradient in K/km
-            
-    Returns:
-        None.
-        Writes netCDF with footprints, particle locations, meteorology and release locations
-        
-    Note: 
-        netCDF4 is required, as we make use of compression.    
-    '''
-    
-    fp_attr_loss = fp.fp.attrs["loss_lifetime_hrs"]
-    
-    lons = fp.lon.values.squeeze()
-    lats = fp.lat.values.squeeze()
-    levs = fp.lev.values
-    time = fp.time.to_pandas().index.to_pydatetime()
-    fp_ds = fp.fp.transpose("lat", "lon", "time").values.squeeze()
-    
-    if fp_HiTRes_inc == True:
-        H_back    = fp.H_back.values
-        fp_HiTRes = fp.fp_HiTRes.transpose("lat", "lon", "time", "H_back").values.squeeze()
-    
-    time_seconds, time_reference = time2sec(time)   
-    
-    coords     = {'time' : time_seconds,
-                  'lat'  : lats,
-                  'lon'  : lons,
-                  'lev'  : np.array(levs)}
-    
-    attrs      = {'temperature'    : {'units' : 'C'},
-                  'pressure'       : {'units' : 'hPa'},
-                  'wind_speed'     : {'units' : 'm/s'},
-                  'wind_direction' : {'units' : 'degrees'},
-                  'PBLH'           : {'units' : 'm'},
-                  'release_lon'    : {'units' : 'Degrees_east'},
-                  'release_lat'    : {'units' : 'Degrees_north'},
-                  'fp_ds'          : {'units' : units if units is not None else '(mol/mol)/(mol/m2/s)',
-                                      'loss_lifetime_hrs' : fp_attr_loss},
-                  'lapse_rate'     : {'long_name' : "Potential temperature gradient from 60 - 300 m",
-                                      'units' : 'K/km'},
-                  'lapse_error'    : {'long_name' : 'Error in potential temperature gradient',
-                                      'units' : 'K/km'},
-                  'H_back'         : {'units'     : 'Hours',
-                                      'long_name' : 'Hours back from release time'}
-                 }
-    
-    variables = {}
-    for var in ['temperature', 'pressure', 'wind_speed', 'wind_direction', 'PBLH',
-                'release_lon', 'release_lat', 'lapse_rate', 'lapse_error']:
-        if locals()[var] is not None:
-            variables[var] = (['time'], locals()[var], attrs[var])
-    variables[varname] = (['lat', 'lon', 'time'], fp_ds, attrs['fp_ds'])
-    
-    if particle_locations is not None:
-        coords['height'] = particle_heights
-        
-        variables['particle_locations_n'] = (['height', 'lon', 'time'], particle_locations["N"],
-                                             {'units' : '',
-                                              'long_name': 'Fraction of total particles leaving domain (N side)'})
-        variables['particle_locations_e'] = (['height', 'lat', 'time'], particle_locations["E"],
-                                             {'units' : '',
-                                              'long_name': 'Fraction of total particles leaving domain (E side)'})
-        variables['particle_locations_s'] = (['height', 'lon', 'time'], particle_locations["S"],
-                                             {'units' : '',
-                                              'long_name': 'Fraction of total particles leaving domain (S side)'})
-        variables['particle_locations_w'] = (['height', 'lat', 'time'], particle_locations["W"],
-                                             {'units' : '',
-                                              'long_name': 'Fraction of total particles leaving domain (W side)'})
-        
-        variables['mean_age_particles_n'] = (['height', 'lon', 'time'], particle_mean_age["N"],
-                                             {'units' : 'hrs',
-                                              'long_name': 'Fraction of total particles leaving domain (N side)'})
-        variables['mean_age_particles_e'] = (['height', 'lat', 'time'], particle_mean_age["E"],
-                                             {'units' : 'hrs',
-                                              'long_name': 'Fraction of total particles leaving domain (E side)'})
-        variables['mean_age_particles_s'] = (['height', 'lon', 'time'], particle_mean_age["S"],
-                                             {'units' : 'hrs',
-                                              'long_name': 'Fraction of total particles leaving domain (S side)'})
-        variables['mean_age_particles_w'] = (['height', 'lat', 'time'], particle_mean_age["W"],
-                                             {'units' : 'hrs',
-                                              'long_name': 'Fraction of total particles leaving domain (W side)'})
-    
-    if fp_HiTRes_inc == True:
-        coords['H_back'] = H_back
-        #variables['H_back']  = (['H_back'], H_back, attrs['H_back'])
-        variables[varname2]  = (['lat', 'lon', 'time', 'H_back'], fp_HiTRes, attrs['fp_ds'])
-    
-    global_attributes["author"]  = getpass.getuser()
-    global_attributes["created"] = str(dt.datetime.now())
-    
-    fp_ds = xray.Dataset(variables, coords = coords, attrs = global_attributes)
-    
-    global timestep_for_output
-    fp_ds.time.attrs = {'long_name'     : 'time',
-                        'standard_name' : 'time',
-                        'units'         : f'seconds since {np.str(time_reference)}',
-                        'label'         : 'left',
-                        'period'        : f'{timestep_for_output} hours',
-                        'comment'       : 'time stamp corresponds to the beginning of each averaging period',
-                        'calendar'      : 'gregorian'}
-    fp_ds.lon.attrs  = {'units'         : 'Degrees_east'}
-    fp_ds.lat.attrs  = {'units'         : 'Degrees_north'}
-    
-    fp_ds.to_netcdf(outfile)
-    
-    status_log("Written... " + os.path.split(outfile)[1])
-
-# def write_netcdf(fp, outfile,
-#             temperature=None, pressure=None,
-#             wind_speed=None, wind_direction=None,
-#             PBLH=None, fp_HiTRes_inc=False, varname="fp", varname2="fp_HiTRes",
-#             release_lon = None, release_lat = None,
-#             particle_locations=None, particle_mean_age = None, particle_heights=None,
-#             global_attributes = {}, lapse_rate=None, lapse_error=None, units = None):
-#     '''Writes netCDF with footprints, particle locations, meteorology and release locations.
+# def write_netcdf(fp, outfile, temperature=None, pressure=None,
+#                  wind_speed=None, wind_direction=None,
+#                  PBLH=None, fp_HiTRes_inc=False, varname="fp", varname2="fp_HiTRes",
+#                  release_lon = None, release_lat = None,
+#                  particle_locations=None, particle_mean_age = None, particle_heights=None,
+#                  global_attributes = {}, lapse_rate=None, lapse_error=None, units = None):
+#     '''
+#     Writes netCDF with footprints, particle locations, meteorology and release locations.
     
 #     Args:
 #         fp (xarray dataset): 
@@ -1745,195 +1579,360 @@ def write_netcdf(fp, outfile, temperature=None, pressure=None,
 #     fp_ds = fp.fp.transpose("lat", "lon", "time").values.squeeze()
     
 #     if fp_HiTRes_inc == True:
-#         H_back = fp.H_back.values
+#         H_back    = fp.H_back.values
 #         fp_HiTRes = fp.fp_HiTRes.transpose("lat", "lon", "time", "H_back").values.squeeze()
     
 #     time_seconds, time_reference = time2sec(time)   
     
-#     #Write NetCDF file
-#     ncF=Dataset(outfile, 'w')
-#     ncF.createDimension('time', len(time))
-#     ncF.createDimension('lon', len(lons))
-#     ncF.createDimension('lat', len(lats))
-#     ncF.createDimension('lev', 1)
-#     if fp_HiTRes_inc == True:
-#         ncF.createDimension('H_back', len(H_back))
+#     coords     = {'time' : time_seconds,
+#                   'lat'  : lats,
+#                   'lon'  : lons,
+#                   'lev'  : np.array(levs)}
     
-#     # pass any global attributes in fp to the netcdf file
-#     for key in list(global_attributes.keys()):
-#         ncF.__setattr__(key,global_attributes[key])
-#     ncF.__setattr__("author", getpass.getuser())
-#     ncF.__setattr__("created", str(dt.datetime.now()))
+#     attrs      = {'temperature'    : {'units' : 'C'},
+#                   'pressure'       : {'units' : 'hPa'},
+#                   'wind_speed'     : {'units' : 'm/s'},
+#                   'wind_direction' : {'units' : 'degrees'},
+#                   'PBLH'           : {'units' : 'm'},
+#                   'release_lon'    : {'units' : 'Degrees_east'},
+#                   'release_lat'    : {'units' : 'Degrees_north'},
+#                   'fp_ds'          : {'units' : units if units is not None else '(mol/mol)/(mol/m2/s)',
+#                                       'loss_lifetime_hrs' : fp_attr_loss},
+#                   'lapse_rate'     : {'long_name' : "Potential temperature gradient from 60 - 300 m",
+#                                       'units' : 'K/km'},
+#                   'lapse_error'    : {'long_name' : 'Error in potential temperature gradient',
+#                                       'units' : 'K/km'},
+#                   'H_back'         : {'units'     : 'Hours',
+#                                       'long_name' : 'Hours back from release time'}
+#                  }
     
+#     variables = {}
+#     for var in ['temperature', 'pressure', 'wind_speed', 'wind_direction', 'PBLH',
+#                 'release_lon', 'release_lat', 'lapse_rate', 'lapse_error']:
+#         if locals()[var] is not None:
+#             variables[var] = (['time'], locals()[var], attrs[var])
+#     variables[varname] = (['lat', 'lon', 'time'], fp_ds, attrs['fp_ds'])
     
-#     nctime=ncF.createVariable('time', 'd', ('time',))
-#     nclon=ncF.createVariable('lon', 'f', ('lon',))
-#     nclat=ncF.createVariable('lat', 'f', ('lat',))
-#     nclev=ncF.createVariable('lev', 'S1', ('lev',))
-#     ncfp=ncF.createVariable(varname, 'f', ('lat', 'lon', 'time'), zlib = True,
-#                             least_significant_digit = 5)
-    
-#     if fp_HiTRes_inc == True:
-#         ncH_back=ncF.createVariable('H_back', 'f', ('H_back',))
-#         ncfp_HiTRes=ncF.createVariable(varname2, 'f', ('lat', 'lon', 'time', 'H_back'), zlib = True,
-#                             least_significant_digit = 5)
-    
-#     nctime[:]=time_seconds
-#     nctime.long_name='time'
-#     nctime.standard_name='time'
-#     nctime.units='seconds since ' + np.str(time_reference)
-#     nctime.label='left'
-#     nctime.period = str(timestep_for_output) + " hours"
-#     nctime.comment = 'time stamp corresponds to the beginning of each averaging period'
-#     nctime.calendar='gregorian'
-
-#     nclon[:]=lons
-#     nclon.units='Degrees_east'
-    
-#     nclat[:]=lats
-#     nclat.units='Degrees_north'
-
-#     nclev[:]=np.array(levs)
-    
-#     if fp_HiTRes_inc == True:
-#         ncH_back[:]=H_back
-#         ncH_back.units='Hours'
-#         ncH_back.long_name='Hours back from release time'
-        
-    
-#     ncfp[:, :, :]=fp_ds
-#     if units == None:
-#         ncfp.units='(mol/mol)/(mol/m2/s)'
-#     else:
-#         ncfp.units = units
-
-#     if fp_HiTRes_inc == True:
-#         ncfp_HiTRes[:, :, :]=fp_HiTRes
-#         if units == None:
-#             ncfp_HiTRes.units='(mol/mol)/(mol/m2/s)'
-#         else:
-#             ncfp_HiTRes.units = units
-
-        
-#     ncfp.loss_lifetime_hrs = fp_attr_loss
-
-#     if fp_HiTRes_inc == True:
-#         ncfp_HiTRes.loss_lifetime_hrs = fp_attr_loss
-
-
-#     if temperature is not None:
-#         nctemp=ncF.createVariable('temperature', 'f', ('time',), zlib = True,
-#                             least_significant_digit = 4)
-#         nctemp[:]=temperature
-#         nctemp.units='C'
-
-#     if pressure is not None:
-#         ncpress=ncF.createVariable('pressure', 'f', ('time',), zlib = True,
-#                             least_significant_digit = 4)
-#         ncpress[:]=pressure/100.
-#         ncpress.units='hPa'
-
-#     if wind_speed is not None:
-#         ncwind_speed=ncF.createVariable('wind_speed', 'f', ('time',), zlib = True,
-#                             least_significant_digit = 4)
-#         ncwind_speed[:]=wind_speed
-#         ncwind_speed.units='m/s'
-
-#     if wind_direction is not None:
-#         ncwind_direction=ncF.createVariable('wind_direction', 'f', ('time',), zlib = True,
-#                             least_significant_digit = 4)
-#         ncwind_direction[:]=wind_direction
-#         ncwind_direction.units='degrees'
-
-#     if PBLH is not None:
-#         ncPBLH=ncF.createVariable('PBLH', 'f', ('time',), zlib = True,
-#                             least_significant_digit = 4)
-#         ncPBLH[:]=PBLH
-#         ncPBLH.units='m'
-
-#     if release_lon is not None:
-#         ncRlon=ncF.createVariable('release_lon', 'f', ('time',), zlib = True,
-#                             least_significant_digit = 4)
-#         ncRlon[:]=release_lon
-#         ncRlon.units='Degrees_east'
-
-#     if release_lat is not None:
-#         ncRlat=ncF.createVariable('release_lat', 'f', ('time',), zlib = True,
-#                             least_significant_digit = 4)
-#         ncRlat[:]=release_lat
-#         ncRlat.units='Degrees_north'
-
 #     if particle_locations is not None:
-#         ncF.createDimension('height', len(particle_heights))
-#         ncHeight=ncF.createVariable('height', 'f',
-#                                    ('height',),
-#                                     zlib = True, least_significant_digit = 4)
-#         ncPartN=ncF.createVariable('particle_locations_n', 'f',
-#                                    ('height', 'lon', 'time'),
-#                                     zlib = True, least_significant_digit = 7)
-#         ncPartE=ncF.createVariable('particle_locations_e', 'f',
-#                                    ('height', 'lat', 'time'),
-#                                     zlib = True, least_significant_digit = 7)
-#         ncPartS=ncF.createVariable('particle_locations_s', 'f',
-#                                    ('height', 'lon', 'time'),
-#                                     zlib = True, least_significant_digit = 7)
-#         ncPartW=ncF.createVariable('particle_locations_w', 'f',
-#                                    ('height', 'lat', 'time'),
-#                                     zlib = True, least_significant_digit = 7)
-#         ncmeanageN=ncF.createVariable('mean_age_particles_n', 'f',
-#                                    ('height', 'lon', 'time'),
-#                                     zlib = True, least_significant_digit = 7)
-#         ncmeanageE=ncF.createVariable('mean_age_particles_e', 'f',
-#                                    ('height', 'lat', 'time'),
-#                                     zlib = True, least_significant_digit = 7)
-#         ncmeanageS=ncF.createVariable('mean_age_particles_s', 'f',
-#                                    ('height', 'lon', 'time'),
-#                                     zlib = True, least_significant_digit = 7)
-#         ncmeanageW=ncF.createVariable('mean_age_particles_w', 'f',
-#                                    ('height', 'lat', 'time'),
-#                                     zlib = True, least_significant_digit = 7)
+#         coords['height'] = particle_heights
         
-#         ncHeight[:]=particle_heights
-#         ncPartN[:, :, :]=particle_locations["N"]
-#         ncPartE[:, :, :]=particle_locations["E"]
-#         ncPartS[:, :, :]=particle_locations["S"]
-#         ncPartW[:, :, :]=particle_locations["W"]
-#         ncmeanageN[:, :, :]=particle_mean_age["N"]
-#         ncmeanageE[:, :, :]=particle_mean_age["E"]
-#         ncmeanageS[:, :, :]=particle_mean_age["S"]
-#         ncmeanageW[:, :, :]=particle_mean_age["W"]
-#         ncPartN.units=''
-#         ncPartN.long_name='Fraction of total particles leaving domain (N side)'
-#         ncPartE.units=''
-#         ncPartE.long_name='Fraction of total particles leaving domain (E side)'
-#         ncPartS.units=''
-#         ncPartS.long_name='Fraction of total particles leaving domain (S side)'
-#         ncPartW.units=''
-#         ncPartW.long_name='Fraction of total particles leaving domain (W side)'
-#         ncmeanageN.units='hrs'
-#         ncmeanageN.long_name='Mean age of particles leaving domain (N side)'
-#         ncmeanageE.units='hrs'
-#         ncmeanageE.long_name='Mean age of particles leaving domain (E side)'
-#         ncmeanageS.units='hrs'
-#         ncmeanageS.long_name='Mean age of particles leaving domain (S side)'
-#         ncmeanageW.units='hrs'
-#         ncmeanageW.long_name='Mean age of particles leaving domain (W side)'    
-#     if lapse_rate is not None:
-#         nclapse=ncF.createVariable('lapse_rate', 'f', ('time',), zlib = True,
-#                             least_significant_digit = 4)
-#         nclapse[:]=lapse_rate
-#         nclapse.long_name="Potential temperature gradient from 60 - 300 m"
-#         nclapse.units='K/km'
+#         variables['particle_locations_n'] = (['height', 'lon', 'time'], particle_locations["N"],
+#                                              {'units' : '',
+#                                               'long_name': 'Fraction of total particles leaving domain (N side)'})
+#         variables['particle_locations_e'] = (['height', 'lat', 'time'], particle_locations["E"],
+#                                              {'units' : '',
+#                                               'long_name': 'Fraction of total particles leaving domain (E side)'})
+#         variables['particle_locations_s'] = (['height', 'lon', 'time'], particle_locations["S"],
+#                                              {'units' : '',
+#                                               'long_name': 'Fraction of total particles leaving domain (S side)'})
+#         variables['particle_locations_w'] = (['height', 'lat', 'time'], particle_locations["W"],
+#                                              {'units' : '',
+#                                               'long_name': 'Fraction of total particles leaving domain (W side)'})
         
-#     if lapse_error is not None:
-#         nclerror=ncF.createVariable('lapse_error', 'f', ('time',), zlib = True,
-#                             least_significant_digit = 4)
-#         nclerror[:]=lapse_error
-#         nclerror.long_name="Error in potential temperature gradient"
-#         nclerror.units='K/km'
+#         variables['mean_age_particles_n'] = (['height', 'lon', 'time'], particle_mean_age["N"],
+#                                              {'units' : 'hrs',
+#                                               'long_name': 'Fraction of total particles leaving domain (N side)'})
+#         variables['mean_age_particles_e'] = (['height', 'lat', 'time'], particle_mean_age["E"],
+#                                              {'units' : 'hrs',
+#                                               'long_name': 'Fraction of total particles leaving domain (E side)'})
+#         variables['mean_age_particles_s'] = (['height', 'lon', 'time'], particle_mean_age["S"],
+#                                              {'units' : 'hrs',
+#                                               'long_name': 'Fraction of total particles leaving domain (S side)'})
+#         variables['mean_age_particles_w'] = (['height', 'lat', 'time'], particle_mean_age["W"],
+#                                              {'units' : 'hrs',
+#                                               'long_name': 'Fraction of total particles leaving domain (W side)'})
     
-#     ncF.close()
+#     if fp_HiTRes_inc == True:
+#         coords['H_back'] = H_back
+#         #variables['H_back']  = (['H_back'], H_back, attrs['H_back'])
+#         variables[varname2]  = (['lat', 'lon', 'time', 'H_back'], fp_HiTRes, attrs['fp_ds'])
+    
+#     global_attributes["author"]  = getpass.getuser()
+#     global_attributes["created"] = str(dt.datetime.now())
+    
+#     fp_ds = xray.Dataset(variables, coords = coords, attrs = global_attributes)
+    
+#     global timestep_for_output
+#     fp_ds.time.attrs = {'long_name'     : 'time',
+#                         'standard_name' : 'time',
+#                         'units'         : f'seconds since {np.str(time_reference)}',
+#                         'label'         : 'left',
+#                         'period'        : f'{timestep_for_output} hours',
+#                         'comment'       : 'time stamp corresponds to the beginning of each averaging period',
+#                         'calendar'      : 'gregorian'}
+#     fp_ds.lon.attrs  = {'units'         : 'Degrees_east'}
+#     fp_ds.lat.attrs  = {'units'         : 'Degrees_north'}
+    
+#     fp_ds.to_netcdf(outfile)
+    
 #     status_log("Written... " + os.path.split(outfile)[1])
+
+def write_netcdf(fp, outfile,
+            temperature=None, pressure=None,
+            wind_speed=None, wind_direction=None,
+            PBLH=None, fp_HiTRes_inc=False, varname="fp", varname2="fp_HiTRes",
+            release_lon = None, release_lat = None,
+            particle_locations=None, particle_mean_age = None, particle_heights=None,
+            global_attributes = {}, lapse_rate=None, lapse_error=None, units = None):
+    '''Writes netCDF with footprints, particle locations, meteorology and release locations.
+    
+    Args:
+        fp (xarray dataset): 
+            Array of all footprint and particle fields in (mol/mol)/(mol/m2/s)
+        lons (array): 
+            1D array of longitudes
+        lats (array): 
+            1D array of latitudes
+        levs (???array or list):
+            TODO: Clarify inputs
+            1D array of particle levels
+        time (???str or datetime object): 
+            TODO: Clarify inputs
+            Timestamps for footprints
+        outfile (str): 
+            Name of output file
+        temperature (array, optional): 
+            Input temperature variable in C. Default=None
+        pressure (array, optional): 
+            Input pressure variable in hPa. Default = None
+        wind_speed (array, optional): 
+            Input wind speed variable in m/s. Default = None
+        wind_direction (array, optional): 
+            Input wind direction variable in degrees. 
+            Default = None
+        PBLH (array, optional): 
+            Input planetary boundary layer height in m. 
+            Default = None
+        fp_HiTRes_inc (str, optional):
+            True if writing out fp_HiTRes
+        varname (str, optional): 
+            Name of output footprint variable. Default = 'fp'
+        release_lon (array, optional): 
+            Array of release longitude locations. 
+            Default = None
+        release_lat (array, optional): 
+            Array of release latitude locations. 
+            Default = None
+        particle_locations (xarray dataset, optional): 
+            Number of particles at locations at each boundary
+            Default=None
+        particle_heights (array, optional): 
+            Heights of particles leaving boundary.
+            Default=None
+        global_attributes (dictionary, optional): 
+            Dictionary of global attributes.
+            Default={} (empty)
+        lapse_rate (array, optional): 
+            Potential temperature gradient from 60 - 300 m in K/km. 
+            Default=None
+        lapse_error (array, optional): 
+            Error in potential temperature gradient in K/km
+            
+    Returns:
+        None.
+        Writes netCDF with footprints, particle locations, meteorology and release locations
+        
+    Note: 
+        netCDF4 is required, as we make use of compression.    
+    '''
+    
+    fp_attr_loss = fp.fp.attrs["loss_lifetime_hrs"]
+    
+    lons = fp.lon.values.squeeze()
+    lats = fp.lat.values.squeeze()
+    levs = fp.lev.values
+    time = fp.time.to_pandas().index.to_pydatetime()
+    fp_ds = fp.fp.transpose("lat", "lon", "time").values.squeeze()
+    
+    if fp_HiTRes_inc == True:
+        H_back = fp.H_back.values
+        fp_HiTRes = fp.fp_HiTRes.transpose("lat", "lon", "time", "H_back").values.squeeze()
+    
+    time_seconds, time_reference = time2sec(time)   
+    
+    #Write NetCDF file
+    ncF=Dataset(outfile, 'w')
+    ncF.createDimension('time', len(time))
+    ncF.createDimension('lon', len(lons))
+    ncF.createDimension('lat', len(lats))
+    ncF.createDimension('lev', 1)
+    if fp_HiTRes_inc == True:
+        ncF.createDimension('H_back', len(H_back))
+    
+    # pass any global attributes in fp to the netcdf file
+    for key in list(global_attributes.keys()):
+        ncF.__setattr__(key,global_attributes[key])
+    ncF.__setattr__("author", getpass.getuser())
+    ncF.__setattr__("created", str(dt.datetime.now()))
+    
+    
+    nctime=ncF.createVariable('time', 'd', ('time',))
+    nclon=ncF.createVariable('lon', 'f', ('lon',))
+    nclat=ncF.createVariable('lat', 'f', ('lat',))
+    nclev=ncF.createVariable('lev', 'S1', ('lev',))
+    ncfp=ncF.createVariable(varname, 'f', ('lat', 'lon', 'time'), zlib = True,
+                            least_significant_digit = 5)
+    
+    if fp_HiTRes_inc == True:
+        ncH_back=ncF.createVariable('H_back', 'f', ('H_back',))
+        ncfp_HiTRes=ncF.createVariable(varname2, 'f', ('lat', 'lon', 'time', 'H_back'), zlib = True,
+                            least_significant_digit = 5)
+    
+    nctime[:]=time_seconds
+    nctime.long_name='time'
+    nctime.standard_name='time'
+    nctime.units='seconds since ' + np.str(time_reference)
+    nctime.label='left'
+    nctime.period = str(timestep_for_output) + " hours"
+    nctime.comment = 'time stamp corresponds to the beginning of each averaging period'
+    nctime.calendar='gregorian'
+
+    nclon[:]=lons
+    nclon.units='Degrees_east'
+    
+    nclat[:]=lats
+    nclat.units='Degrees_north'
+
+    nclev[:]=np.array(levs)
+    
+    if fp_HiTRes_inc == True:
+        ncH_back[:]=H_back
+        ncH_back.units='Hours'
+        ncH_back.long_name='Hours back from release time'
+        
+    
+    ncfp[:, :, :]=fp_ds
+    if units == None:
+        ncfp.units='(mol/mol)/(mol/m2/s)'
+    else:
+        ncfp.units = units
+
+    if fp_HiTRes_inc == True:
+        ncfp_HiTRes[:, :, :]=fp_HiTRes
+        if units == None:
+            ncfp_HiTRes.units='(mol/mol)/(mol/m2/s)'
+        else:
+            ncfp_HiTRes.units = units
+
+        
+    ncfp.loss_lifetime_hrs = fp_attr_loss
+
+    if fp_HiTRes_inc == True:
+        ncfp_HiTRes.loss_lifetime_hrs = fp_attr_loss
+
+    if temperature is not None:
+        nctemp=ncF.createVariable('temperature', 'f', ('time',), zlib = True,
+                            least_significant_digit = 4)
+        nctemp[:]=temperature
+        nctemp.units='C'
+
+    if pressure is not None:
+        ncpress=ncF.createVariable('pressure', 'f', ('time',), zlib = True,
+                            least_significant_digit = 4)
+        ncpress[:]=pressure/100.
+        ncpress.units='hPa'
+
+    if wind_speed is not None:
+        ncwind_speed=ncF.createVariable('wind_speed', 'f', ('time',), zlib = True,
+                            least_significant_digit = 4)
+        ncwind_speed[:]=wind_speed
+        ncwind_speed.units='m/s'
+
+    if wind_direction is not None:
+        ncwind_direction=ncF.createVariable('wind_direction', 'f', ('time',), zlib = True,
+                            least_significant_digit = 4)
+        ncwind_direction[:]=wind_direction
+        ncwind_direction.units='degrees'
+
+    if PBLH is not None:
+        ncPBLH=ncF.createVariable('PBLH', 'f', ('time',), zlib = True,
+                            least_significant_digit = 4)
+        ncPBLH[:]=PBLH
+        ncPBLH.units='m'
+
+    if release_lon is not None:
+        ncRlon=ncF.createVariable('release_lon', 'f', ('time',), zlib = True,
+                            least_significant_digit = 4)
+        ncRlon[:]=release_lon
+        ncRlon.units='Degrees_east'
+
+    if release_lat is not None:
+        ncRlat=ncF.createVariable('release_lat', 'f', ('time',), zlib = True,
+                            least_significant_digit = 4)
+        ncRlat[:]=release_lat
+        ncRlat.units='Degrees_north'
+
+    if particle_locations is not None:
+        ncF.createDimension('height', len(particle_heights))
+        ncHeight=ncF.createVariable('height', 'f',
+                                   ('height',),
+                                    zlib = True, least_significant_digit = 4)
+        ncPartN=ncF.createVariable('particle_locations_n', 'f',
+                                   ('height', 'lon', 'time'),
+                                    zlib = True, least_significant_digit = 7)
+        ncPartE=ncF.createVariable('particle_locations_e', 'f',
+                                   ('height', 'lat', 'time'),
+                                    zlib = True, least_significant_digit = 7)
+        ncPartS=ncF.createVariable('particle_locations_s', 'f',
+                                   ('height', 'lon', 'time'),
+                                    zlib = True, least_significant_digit = 7)
+        ncPartW=ncF.createVariable('particle_locations_w', 'f',
+                                   ('height', 'lat', 'time'),
+                                    zlib = True, least_significant_digit = 7)
+        ncmeanageN=ncF.createVariable('mean_age_particles_n', 'f',
+                                   ('height', 'lon', 'time'),
+                                    zlib = True, least_significant_digit = 7)
+        ncmeanageE=ncF.createVariable('mean_age_particles_e', 'f',
+                                   ('height', 'lat', 'time'),
+                                    zlib = True, least_significant_digit = 7)
+        ncmeanageS=ncF.createVariable('mean_age_particles_s', 'f',
+                                   ('height', 'lon', 'time'),
+                                    zlib = True, least_significant_digit = 7)
+        ncmeanageW=ncF.createVariable('mean_age_particles_w', 'f',
+                                   ('height', 'lat', 'time'),
+                                    zlib = True, least_significant_digit = 7)
+        
+        ncHeight[:]=particle_heights
+        ncPartN[:, :, :]=particle_locations["N"]
+        ncPartE[:, :, :]=particle_locations["E"]
+        ncPartS[:, :, :]=particle_locations["S"]
+        ncPartW[:, :, :]=particle_locations["W"]
+        ncmeanageN[:, :, :]=particle_mean_age["N"]
+        ncmeanageE[:, :, :]=particle_mean_age["E"]
+        ncmeanageS[:, :, :]=particle_mean_age["S"]
+        ncmeanageW[:, :, :]=particle_mean_age["W"]
+        ncPartN.units=''
+        ncPartN.long_name='Fraction of total particles leaving domain (N side)'
+        ncPartE.units=''
+        ncPartE.long_name='Fraction of total particles leaving domain (E side)'
+        ncPartS.units=''
+        ncPartS.long_name='Fraction of total particles leaving domain (S side)'
+        ncPartW.units=''
+        ncPartW.long_name='Fraction of total particles leaving domain (W side)'
+        ncmeanageN.units='hrs'
+        ncmeanageN.long_name='Mean age of particles leaving domain (N side)'
+        ncmeanageE.units='hrs'
+        ncmeanageE.long_name='Mean age of particles leaving domain (E side)'
+        ncmeanageS.units='hrs'
+        ncmeanageS.long_name='Mean age of particles leaving domain (S side)'
+        ncmeanageW.units='hrs'
+        ncmeanageW.long_name='Mean age of particles leaving domain (W side)'    
+    if lapse_rate is not None:
+        nclapse=ncF.createVariable('lapse_rate', 'f', ('time',), zlib = True,
+                            least_significant_digit = 4)
+        nclapse[:]=lapse_rate
+        nclapse.long_name="Potential temperature gradient from 60 - 300 m"
+        nclapse.units='K/km'
+        
+    if lapse_error is not None:
+        nclerror=ncF.createVariable('lapse_error', 'f', ('time',), zlib = True,
+                            least_significant_digit = 4)
+        nclerror[:]=lapse_error
+        nclerror.long_name="Error in potential temperature gradient"
+        nclerror.units='K/km'
+    
+    ncF.close()
+    status_log("Written... " + os.path.split(outfile)[1])
 
 
 def satellite_vertical_profile(fp, satellite_obs_file, max_level):
