@@ -90,7 +90,32 @@ from acrg_config.paths import paths
 acrg_path = paths.acrg
 data_path = paths.data
 lpdm_path = paths.lpdm
+
+def unzip(filename, out_filename=None, return_filename=False):
+    '''
+    Unzip .gz files
     
+    Args:
+        filename (str)
+            name of file to be unzipped, including path to file
+        out_filename (str)
+            filename for unzipped file
+            if None, the original filename is used
+    '''
+    import gzip
+    
+    out_filename = filename.split('.gz')[0] if out_filename is None else out_filename
+    
+    in_file = gzip.GzipFile(filename, 'rb')
+    in_data = in_file.read()
+    in_file.close()
+    
+    out_file = open(out_filename, 'wb')
+    out_file.write(in_data)
+    out_file.close()
+    
+    if return_filename:
+        return out_filename
 
 def load_NAME(file_lines, namever):
     """
@@ -1483,6 +1508,8 @@ def footprint_concatenate(fields_prefix,
     # Create a list of xray datasets
     fp = []
     if len(fields_files) > 0:
+        
+        fields_files = [unzip(ff, return_filename=True) for ff in fields_files if '.gz' in ff]
         for fields_file, particle_file in zip(fields_files, particle_files):
             fp.append(footprint_array(fields_file,
                       particle_file = particle_file,
@@ -1500,172 +1527,6 @@ def footprint_concatenate(fields_prefix,
         fp = None
 
     return fp
-
-# def write_netcdf(fp, outfile, temperature=None, pressure=None,
-#                  wind_speed=None, wind_direction=None,
-#                  PBLH=None, fp_HiTRes_inc=False, varname="fp", varname2="fp_HiTRes",
-#                  release_lon = None, release_lat = None,
-#                  particle_locations=None, particle_mean_age = None, particle_heights=None,
-#                  global_attributes = {}, lapse_rate=None, lapse_error=None, units = None):
-#     '''
-#     Writes netCDF with footprints, particle locations, meteorology and release locations.
-    
-#     Args:
-#         fp (xarray dataset): 
-#             Array of all footprint and particle fields in (mol/mol)/(mol/m2/s)
-#         lons (array): 
-#             1D array of longitudes
-#         lats (array): 
-#             1D array of latitudes
-#         levs (???array or list):
-#             TODO: Clarify inputs
-#             1D array of particle levels
-#         time (???str or datetime object): 
-#             TODO: Clarify inputs
-#             Timestamps for footprints
-#         outfile (str): 
-#             Name of output file
-#         temperature (array, optional): 
-#             Input temperature variable in C. Default=None
-#         pressure (array, optional): 
-#             Input pressure variable in hPa. Default = None
-#         wind_speed (array, optional): 
-#             Input wind speed variable in m/s. Default = None
-#         wind_direction (array, optional): 
-#             Input wind direction variable in degrees. 
-#             Default = None
-#         PBLH (array, optional): 
-#             Input planetary boundary layer height in m. 
-#             Default = None
-#         fp_HiTRes_inc (str, optional):
-#             True if writing out fp_HiTRes
-#         varname (str, optional): 
-#             Name of output footprint variable. Default = 'fp'
-#         release_lon (array, optional): 
-#             Array of release longitude locations. 
-#             Default = None
-#         release_lat (array, optional): 
-#             Array of release latitude locations. 
-#             Default = None
-#         particle_locations (xarray dataset, optional): 
-#             Number of particles at locations at each boundary
-#             Default=None
-#         particle_heights (array, optional): 
-#             Heights of particles leaving boundary.
-#             Default=None
-#         global_attributes (dictionary, optional): 
-#             Dictionary of global attributes.
-#             Default={} (empty)
-#         lapse_rate (array, optional): 
-#             Potential temperature gradient from 60 - 300 m in K/km. 
-#             Default=None
-#         lapse_error (array, optional): 
-#             Error in potential temperature gradient in K/km
-            
-#     Returns:
-#         None.
-#         Writes netCDF with footprints, particle locations, meteorology and release locations
-        
-#     Note: 
-#         netCDF4 is required, as we make use of compression.    
-#     '''
-    
-#     fp_attr_loss = fp.fp.attrs["loss_lifetime_hrs"]
-    
-#     lons = fp.lon.values.squeeze()
-#     lats = fp.lat.values.squeeze()
-#     levs = fp.lev.values
-#     time = fp.time.to_pandas().index.to_pydatetime()
-#     fp_ds = fp.fp.transpose("lat", "lon", "time").values.squeeze()
-    
-#     if fp_HiTRes_inc == True:
-#         H_back    = fp.H_back.values
-#         fp_HiTRes = fp.fp_HiTRes.transpose("lat", "lon", "time", "H_back").values.squeeze()
-    
-#     time_seconds, time_reference = time2sec(time)   
-    
-#     coords     = {'time' : time_seconds,
-#                   'lat'  : lats,
-#                   'lon'  : lons,
-#                   'lev'  : np.array(levs)}
-    
-#     attrs      = {'temperature'    : {'units' : 'C'},
-#                   'pressure'       : {'units' : 'hPa'},
-#                   'wind_speed'     : {'units' : 'm/s'},
-#                   'wind_direction' : {'units' : 'degrees'},
-#                   'PBLH'           : {'units' : 'm'},
-#                   'release_lon'    : {'units' : 'Degrees_east'},
-#                   'release_lat'    : {'units' : 'Degrees_north'},
-#                   'fp_ds'          : {'units' : units if units is not None else '(mol/mol)/(mol/m2/s)',
-#                                       'loss_lifetime_hrs' : fp_attr_loss},
-#                   'lapse_rate'     : {'long_name' : "Potential temperature gradient from 60 - 300 m",
-#                                       'units' : 'K/km'},
-#                   'lapse_error'    : {'long_name' : 'Error in potential temperature gradient',
-#                                       'units' : 'K/km'},
-#                   'H_back'         : {'units'     : 'Hours',
-#                                       'long_name' : 'Hours back from release time'}
-#                  }
-    
-#     variables = {}
-#     for var in ['temperature', 'pressure', 'wind_speed', 'wind_direction', 'PBLH',
-#                 'release_lon', 'release_lat', 'lapse_rate', 'lapse_error']:
-#         if locals()[var] is not None:
-#             variables[var] = (['time'], locals()[var], attrs[var])
-#     variables[varname] = (['lat', 'lon', 'time'], fp_ds, attrs['fp_ds'])
-    
-#     if particle_locations is not None:
-#         coords['height'] = particle_heights
-        
-#         variables['particle_locations_n'] = (['height', 'lon', 'time'], particle_locations["N"],
-#                                              {'units' : '',
-#                                               'long_name': 'Fraction of total particles leaving domain (N side)'})
-#         variables['particle_locations_e'] = (['height', 'lat', 'time'], particle_locations["E"],
-#                                              {'units' : '',
-#                                               'long_name': 'Fraction of total particles leaving domain (E side)'})
-#         variables['particle_locations_s'] = (['height', 'lon', 'time'], particle_locations["S"],
-#                                              {'units' : '',
-#                                               'long_name': 'Fraction of total particles leaving domain (S side)'})
-#         variables['particle_locations_w'] = (['height', 'lat', 'time'], particle_locations["W"],
-#                                              {'units' : '',
-#                                               'long_name': 'Fraction of total particles leaving domain (W side)'})
-        
-#         variables['mean_age_particles_n'] = (['height', 'lon', 'time'], particle_mean_age["N"],
-#                                              {'units' : 'hrs',
-#                                               'long_name': 'Fraction of total particles leaving domain (N side)'})
-#         variables['mean_age_particles_e'] = (['height', 'lat', 'time'], particle_mean_age["E"],
-#                                              {'units' : 'hrs',
-#                                               'long_name': 'Fraction of total particles leaving domain (E side)'})
-#         variables['mean_age_particles_s'] = (['height', 'lon', 'time'], particle_mean_age["S"],
-#                                              {'units' : 'hrs',
-#                                               'long_name': 'Fraction of total particles leaving domain (S side)'})
-#         variables['mean_age_particles_w'] = (['height', 'lat', 'time'], particle_mean_age["W"],
-#                                              {'units' : 'hrs',
-#                                               'long_name': 'Fraction of total particles leaving domain (W side)'})
-    
-#     if fp_HiTRes_inc == True:
-#         coords['H_back'] = H_back
-#         #variables['H_back']  = (['H_back'], H_back, attrs['H_back'])
-#         variables[varname2]  = (['lat', 'lon', 'time', 'H_back'], fp_HiTRes, attrs['fp_ds'])
-    
-#     global_attributes["author"]  = getpass.getuser()
-#     global_attributes["created"] = str(dt.datetime.now())
-    
-#     fp_ds = xray.Dataset(variables, coords = coords, attrs = global_attributes)
-    
-#     global timestep_for_output
-#     fp_ds.time.attrs = {'long_name'     : 'time',
-#                         'standard_name' : 'time',
-#                         'units'         : f'seconds since {np.str(time_reference)}',
-#                         'label'         : 'left',
-#                         'period'        : f'{timestep_for_output} hours',
-#                         'comment'       : 'time stamp corresponds to the beginning of each averaging period',
-#                         'calendar'      : 'gregorian'}
-#     fp_ds.lon.attrs  = {'units'         : 'Degrees_east'}
-#     fp_ds.lat.attrs  = {'units'         : 'Degrees_north'}
-    
-#     fp_ds.to_netcdf(outfile)
-    
-#     status_log("Written... " + os.path.split(outfile)[1])
 
 def write_netcdf(fp, outfile,
             temperature=None, pressure=None,
