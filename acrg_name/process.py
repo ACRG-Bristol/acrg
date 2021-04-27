@@ -992,7 +992,8 @@ def footprint_array(fields_file,
                     obs_file = None,
                     use_surface_conditions = True,
                     species = None,
-                    user_max_hour_back = 24.):
+                    user_max_hour_back = 24.,
+                    lifetime_hrs = None):
     '''
     Convert text output from given files into arrays in an xarray.Dataset.
     
@@ -1033,6 +1034,10 @@ def footprint_array(fields_file,
         user_max_hour_back (float, required when species = 'CO2'):
             Defaults to 24 hours. This is the maximum amount of time back from release time that 
             hourly footprints are calculated.
+        lifetime_hrs (float, optional):
+            Defaults to None which will process footprints for an inert species.
+            Otherwise will process it for the specified loss timescale.
+            
     Returns:
         fp (xarray.Dataset): 
             Dataset of footprint data.       
@@ -1047,19 +1052,24 @@ def footprint_array(fields_file,
 
     status_log("Reading... " + os.path.split(fields_file)[1])
 
-    if species is not None:
-        with open(os.path.join(acrg_path,"acrg_species_info.json")) as f:
-            species_info=json.load(f)        
-        species = obs.read.synonyms(species, species_info)
-        if species == "CO2":
-            lifetime_attr = "No loss applied"
-        else:
-            lifetime = species_info[species]["lifetime"]
-            lifetime_hrs = acrg_time.convert.convert_to_hours(lifetime)
-            lifetime_attr = str(lifetime_hrs)
-    else:
-        lifetime_attr = "No loss applied"
+#     if species is not None:
+#         with open(os.path.join(acrg_path,"acrg_species_info.json")) as f:
+#             species_info=json.load(f)        
+#         species = obs.read.synonyms(species, species_info)
+#         if species == "CO2":
+#             lifetime_attr = "No loss applied"
+#         else:
+#             lifetime = species_info[species]["lifetime"]
+#             lifetime_hrs = acrg_time.convert.convert_to_hours(lifetime)
+#             lifetime_attr = str(lifetime_hrs)
+#     else:
+#         lifetime_attr = "No loss applied"
 
+    if lifetime_hrs is None:
+        lifetime_attr = "No loss applied"
+    else:
+        lifetime_attr = str(lifetime_hrs)
+        
     # note the code will fail early if a species is not defined or if it is long-lived   
     if 'MixR_hourly' in fields_file:
         if species == "CO2":
@@ -1419,7 +1429,8 @@ def footprint_concatenate(fields_prefix,
                           upper_level = None,
                           use_surface_conditions = True,
                           species = None,
-                          user_max_hour_back=24.):
+                          user_max_hour_back=24.,
+                          lifetime_hrs = None):
     '''Given file search string, finds all fields and particle
     files, reads them and concatenates the output arrays.
     
@@ -1452,6 +1463,9 @@ def footprint_concatenate(fields_prefix,
         user_max_hour_back (float, optional):
             Defaults to 24 hours. This will calculate high-time res footprints back to the
             number of hours specied here.
+        lifetime_hrs (float, optional):
+            Defaults to None which will process footprints for an inert species.
+            Otherwise will process it for the specified loss timescale.
     
     Returns:
         fp (xarray dataset): 
@@ -1509,7 +1523,7 @@ def footprint_concatenate(fields_prefix,
     fp = []
     if len(fields_files) > 0:
         
-        fields_files = [unzip(ff, return_filename=True) for ff in fields_files if '.gz' in ff]
+#         fields_files = [unzip(ff, return_filename=True) for ff in fields_files if '.gz' in ff else ff]
         for fields_file, particle_file in zip(fields_files, particle_files):
             fp.append(footprint_array(fields_file,
                       particle_file = particle_file,
@@ -1518,7 +1532,8 @@ def footprint_concatenate(fields_prefix,
                       time_step = time_step,
                       upper_level = upper_level,
                       use_surface_conditions = use_surface_conditions,
-                                     species = species, user_max_hour_back=24.))   
+                      species = species, user_max_hour_back=24.,
+                      lifetime_hrs = lifetime_hrs))   
             
     # Concatenate
     if len(fp) > 0:
@@ -2060,7 +2075,7 @@ def process(domain, site, height, year, month,
         year (int):
             The year
         month (int):
-            The month, can be e.g. 5 or 05
+            1,2,3,4,5,6,7,8,9,10,11,12
         met_model (str):
             Met model used to run NAME
             Default is None and implies the standard global met model
@@ -2166,10 +2181,10 @@ def process(domain, site, height, year, month,
     # do not run hourly processing if species is long-lived
     
     if species is not None and 'MixR_hourly' not in fields_folder:
-        print("A species was specified but the fields_folder is not MixR_hourly")
-        return
+        print("A species was specified so fields_folder changed to MixR_hourly")
+        fields_folder = "MixR_hourly"
     elif species is None and 'MixR_hourly' in fields_folder:
-        print("No species was specified. For efficiency, fields_folder should be MixR_files not MixR_hourly")
+        print("No species was specified. For efficiency, fields_folder should be MixR_files or Fields_files, not MixR_hourly")
         return
     
     if species is not None:
@@ -2178,18 +2193,25 @@ def process(domain, site, height, year, month,
         species = obs.read.synonyms(species, species_info)
         if 'lifetime' in species_info[species].keys():
             lifetime = species_info[species]["lifetime"]
-            lifetime_hrs = acrg_time.convert.convert_to_hours(lifetime)
+            if type(lifetime) == list:
+                lifetime_hrs = acrg_time.convert.convert_to_hours(lifetime[month-1])
+            else:
+                lifetime_hrs = acrg_time.convert.convert_to_hours(lifetime)
             print('Lifetime of species in hours is', lifetime_hrs)
             
             if lifetime_hrs > 1440:
-                print("This is a long-lived species. For efficiency, fields_folder should be MixR_files not MixR_hourly")
-                return
+                print("This is a long-lived species. For efficiency, folder has been changed to MixR_files (inert species).")
+                lifetime_hrs = None
+                fields_folder = "MixR_files"
         elif species == 'CO2':
             print('Preparing footprints with high temporal resolution for CO2')
-            
+            lifetime_hrs = None
         else:
             print('No lifetime has been defined in species_info.json')
             return
+    else:
+        print('Running for an inert substance')
+        lifetime_hrs = None
     
 
     # Check that there are no errors from the NAME run
@@ -2391,7 +2413,8 @@ def process(domain, site, height, year, month,
                                             time_step = timeStep,
                                             upper_level = upper_level,
                                             use_surface_conditions=use_surface_conditions,
-                                            species = species)
+                                            species = species,
+                                            lifetime_hrs = lifetime_hrs)
            
         # Do satellite process
         if satellite:
@@ -2492,7 +2515,7 @@ def process(domain, site, height, year, month,
 
         fp.attrs["fp_output"] = model_output 
         fp.attrs["species"] = output_species
-        if species is not None and species!='CO2':
+        if species is not None and species!='CO2' and lifetime_hrs is not None:
             fp.attrs["species_lifetime_hrs"] = lifetime_hrs           
         fp.attrs["model"] = transport_model
         if met_model is None:
