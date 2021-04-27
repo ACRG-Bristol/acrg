@@ -91,7 +91,7 @@ acrg_path = paths.acrg
 data_path = paths.data
 lpdm_path = paths.lpdm
 
-def unzip(filename, out_filename=None, return_filename=False):
+def unzip(filename, out_filename=None, return_filename=False, delete_zipped_file=False, verbose=True):
     '''
     Unzip .gz files
     
@@ -101,18 +101,25 @@ def unzip(filename, out_filename=None, return_filename=False):
         out_filename (str)
             filename for unzipped file
             if None, the original filename is used
+        delete_zipped_file (bool)
+            if True the zipped file will be deleted and be replaced with the unzipped version
+            if False both the original and gzipped file will remain
     '''
     import gzip
     
+    if not os.path.exists(filename):
+        print(f'File does not exist : {filename}')
+        return None
+    
     out_filename = filename.split('.gz')[0] if out_filename is None else out_filename
     
-    in_file = gzip.GzipFile(filename, 'rb')
-    in_data = in_file.read()
-    in_file.close()
+    with gzip.GzipFile(filename, 'rb') as in_file, open(out_filename, 'wb') as out_file:
+        in_data = in_file.read()
+        out_file.write(in_data)
     
-    out_file = open(out_filename, 'wb')
-    out_file.write(in_data)
-    out_file.close()
+    if delete_zipped_file:
+        print(f'Deleting file : {filename}')
+        os.remove(filename)
     
     if return_filename:
         return out_filename
@@ -1052,19 +1059,6 @@ def footprint_array(fields_file,
 
     status_log("Reading... " + os.path.split(fields_file)[1])
 
-#     if species is not None:
-#         with open(os.path.join(acrg_path,"acrg_species_info.json")) as f:
-#             species_info=json.load(f)        
-#         species = obs.read.synonyms(species, species_info)
-#         if species == "CO2":
-#             lifetime_attr = "No loss applied"
-#         else:
-#             lifetime = species_info[species]["lifetime"]
-#             lifetime_hrs = acrg_time.convert.convert_to_hours(lifetime)
-#             lifetime_attr = str(lifetime_hrs)
-#     else:
-#         lifetime_attr = "No loss applied"
-
     if lifetime_hrs is None:
         lifetime_attr = "No loss applied"
     else:
@@ -1072,91 +1066,54 @@ def footprint_array(fields_file,
         
     # note the code will fail early if a species is not defined or if it is long-lived   
     if 'MixR_hourly' in fields_file:
-        if species == "CO2":
-            fields_ds = Dataset(fields_file, "r", format="NETCDF4")
-            lons = np.array(fields_ds.variables["Longitude"][:])
-            lats = np.array(fields_ds.variables["Latitude"][:])
-            attributes = fields_ds.ncattrs()
-            releasetime_str = [s for s in attributes if 'ReleaseTime' in s]
-            releasetime = [f.split("ReleaseTime")[1] for f in releasetime_str]
-            time = [datetime.datetime.strptime(f, '%Y%m%d%H%M') for f in releasetime]
-            levs = ['From     0 -    40m agl'] # not in the file, not sure if needed, placeholder
-            timeStep = fields_ds.getncattr('ReleaseDurationHours')
-            data_arrays = []
+        fields_ds       = Dataset(fields_file, "r", format="NETCDF4")
+        lons            = np.array(fields_ds.variables["Longitude"][:])
+        lats            = np.array(fields_ds.variables["Latitude"][:])
+        attributes      = fields_ds.ncattrs()
+        releasetime_str = [s for s in attributes if 'ReleaseTime' in s]
+        releasetime     = [f.split("ReleaseTime")[1] for f in releasetime_str]
+        time            = [datetime.datetime.strptime(f, '%Y%m%d%H%M') for f in releasetime]
+        levs            = ['From     0 -    40m agl'] # not in the file, not sure if needed, placeholder
+        timeStep        = fields_ds.getncattr('ReleaseDurationHours')
+        data_arrays     = []     
+        
+        for rtime in releasetime:
+            rt_dt       = datetime.datetime.strptime(rtime, '%Y%m%d%H%M')
+            fp_grid     = np.zeros((len(lats), len(lons)))
+            fields_vars = fields_ds.get_variables_by_attributes(ReleaseTime=rtime)
+            outputtime  = [fields_vars[ii].getncattr('OutputTime') for ii in range(len(fields_vars))]
+            outputtime  = list(sorted(set(outputtime)))
             
-            FDS_rt = xray.Dataset({"fp_HiTRes": (["time", "lev", "lat", "lon", "H_back"],
-                              np.zeros((len(time), len(levs),len(lats), len(lons), int(user_max_hour_back))))},
-                        coords={"time": time, "lev": levs, "lat": lats, "lon": lons,  
-                                "H_back": np.arange(0,user_max_hour_back)})
-   
-            for rtime in releasetime:
-                rt_dt = datetime.datetime.strptime(rtime, '%Y%m%d%H%M')
-                fp_grid = np.zeros((len(lats), len(lons)))
-                fields_vars = fields_ds.get_variables_by_attributes(ReleaseTime=rtime)
-                outputtime=[]            
-                for ii in range(len(fields_vars)):
-                    outputtime.append(fields_vars[ii].getncattr('OutputTime'))
-                outputtime = list(sorted(set(outputtime)))
+            for ot in outputtime:
+                data    = [f for f in fields_vars if f.getncattr('OutputTime') == ot]
+                xindex  = [f for f in data if 'Xindex' in f.name][0][:]-1 # Alistair's files index from 1
+                yindex  = [f for f in data if 'Yindex' in f.name][0][:]-1 # Alistair's files index from 1
+                fp_vals = [f for f in data if 'NAMEdata' in f.name][0][:]
+                fp_grid_temp     = np.zeros((len(lats), len(lons)))
+                ot_dt            = datetime.datetime.strptime(ot, '%Y%m%d%H%M')
+                fp_timedelta_hrs = (rt_dt - ot_dt).total_seconds()/3600 + timeStep/2 # average time elapsed in hours
+                # turn this data into a grid
+                for ii in range(len(xindex)):
+                    fp_grid_temp[yindex[ii], xindex[ii]] = fp_vals[ii]
                 
-                for ot in outputtime:
-                    hr_back = datetime.datetime.strptime(rtime, '%Y%m%d%H%M') - datetime.datetime.strptime(ot, '%Y%m%d%H%M')
-                    hr_back = hr_back.total_seconds()/3600.
-                    data = [f for f in fields_vars if f.getncattr('OutputTime') == ot]
-                    xindex = [f for f in data if 'Xindex' in f.name][0][:]-1 # Alistair's files index from 1
-                    yindex = [f for f in data if 'Yindex' in f.name][0][:]-1 # Alistair's files index from 1
-                    fp_vals = [f for f in data if 'NAMEdata' in f.name][0][:]
-                    fp_grid_temp = np.zeros((len(lats), len(lons)))
-                    ot_dt = datetime.datetime.strptime(ot, '%Y%m%d%H%M')
-                    fp_timedelta_hrs = (rt_dt - ot_dt).total_seconds()/3600 + timeStep/2 # average time elapsed in hours
-                    # turn this data into a grid
-                    for ii in range(len(xindex)):
-                        fp_grid_temp[yindex[ii], xindex[ii]]=fp_vals[ii]
-                    
+                if species == "CO2":
                     # add to the total for that release time    
                     fp_grid+=fp_grid_temp
                     
+                    hr_back = datetime.datetime.strptime(rtime, '%Y%m%d%H%M') - datetime.datetime.strptime(ot, '%Y%m%d%H%M')
+                    hr_back = hr_back.total_seconds()/3600.
+                    
+                    FDS_rt = xray.Dataset({"fp_HiTRes": (["time", "lev", "lat", "lon", "H_back"],
+                                           np.zeros((len(time), len(levs),len(lats), len(lons), int(user_max_hour_back))))},
+                                          coords={"time": time, "lev": levs, "lat": lats, "lon": lons,  
+                                                  "H_back": np.arange(0,user_max_hour_back)})
                     if hr_back < user_max_hour_back:
                         FDS_rt.fp_HiTRes.loc[dict(lev='From     0 -    40m agl', time=rt_dt, H_back=hr_back)] = fp_grid_temp
-                                    
-                data_arrays.append(fp_grid)       
-                        
-        else:
-            fields_ds = Dataset(fields_file, "r", format="NETCDF4")
-            lons = np.array(fields_ds.variables["Longitude"][:])
-            lats = np.array(fields_ds.variables["Latitude"][:])
-            attributes = fields_ds.ncattrs()
-            releasetime_str = [s for s in attributes if 'ReleaseTime' in s]
-            releasetime = [f.split("ReleaseTime")[1] for f in releasetime_str]
-            time = [datetime.datetime.strptime(f, '%Y%m%d%H%M') for f in releasetime]
-            levs = ['From     0 -    40m agl'] # not in the file, not sure if needed, placeholder
-            timeStep = fields_ds.getncattr('ReleaseDurationHours')
-            data_arrays = []
-    
-            for rtime in releasetime:
-                rt_dt = datetime.datetime.strptime(rtime, '%Y%m%d%H%M')
-                fp_grid = np.zeros((len(lats), len(lons)))
-                fields_vars = fields_ds.get_variables_by_attributes(ReleaseTime=rtime)
-                outputtime=[]            
-                for ii in range(len(fields_vars)):
-                    outputtime.append(fields_vars[ii].getncattr('OutputTime'))
-                outputtime = list(sorted(set(outputtime)))
-                
-                for ot in outputtime:
-                    data = [f for f in fields_vars if f.getncattr('OutputTime') == ot]
-                    xindex = [f for f in data if 'Xindex' in f.name][0][:]-1 # Alistair's files index from 1
-                    yindex = [f for f in data if 'Yindex' in f.name][0][:]-1 # Alistair's files index from 1
-                    fp_vals = [f for f in data if 'NAMEdata' in f.name][0][:]
-                    fp_grid_temp = np.zeros((len(lats), len(lons)))
-                    ot_dt = datetime.datetime.strptime(ot, '%Y%m%d%H%M')
-                    fp_timedelta_hrs = (rt_dt - ot_dt).total_seconds()/3600 + timeStep/2 # average time elapsed in hours
-                    # turn this data into a grid
-                    for ii in range(len(xindex)):
-                        fp_grid_temp[yindex[ii], xindex[ii]]=fp_vals[ii]
-                    
+                else:                 
                     # add to the total for that release time    
                     fp_grid+=fp_grid_temp*np.exp(-1*fp_timedelta_hrs/lifetime_hrs) # lifetime applied
-                
-                data_arrays.append(fp_grid)       
+                    
+            data_arrays.append(fp_grid)    
             
     else:
         header, column_headings, data_arrays, namever = read_file(fields_file)
@@ -1411,14 +1368,17 @@ def footprint_array(fields_file,
         addfp = fp.fp_HiTRes.sum(dim='H_back')
         remfp = fp.fp - addfp
         remfpval = np.expand_dims(remfp.values, 4)
-        remfpvar = xray.DataArray(remfpval, dims=['time','lev','lat', 'lon','H_back'], coords={'time': fp.time, 'lev': fp.lev, 'lat': fp.lat, 'lon': fp.lon, 'H_back': [user_max_hour_back]})
+        remfpvar = xray.DataArray(remfpval,
+                                  dims   = ['time','lev','lat', 'lon','H_back'],
+                                  coords = {'time': fp.time, 'lev': fp.lev,
+                                            'lat': fp.lat, 'lon': fp.lon,
+                                            'H_back': [user_max_hour_back]})
         remfpds = remfpvar.to_dataset(name = 'fp_HiTRes')
         fp = xray.merge([fp, remfpds])
     
     fp.attrs["fp_output_units"] = units_str
     
     return fp
-    
     
 def footprint_concatenate(fields_prefix, 
                           particle_prefix = None,
@@ -1523,18 +1483,23 @@ def footprint_concatenate(fields_prefix,
     fp = []
     if len(fields_files) > 0:
         
-#         fields_files = [unzip(ff, return_filename=True) for ff in fields_files if '.gz' in ff else ff]
-        for fields_file, particle_file in zip(fields_files, particle_files):
+        # unzip .gz files
+        fields_files_unzip = [unzip(ff, return_filename=True) if '.gz' in ff else ff for ff in fields_files]
+        # extract footprints
+        for fields_file, particle_file in zip(fields_files_unzip, particle_files):
             fp.append(footprint_array(fields_file,
-                      particle_file = particle_file,
-                      met = met,
-                      satellite = satellite,
-                      time_step = time_step,
-                      upper_level = upper_level,
-                      use_surface_conditions = use_surface_conditions,
-                      species = species, user_max_hour_back=24.,
-                      lifetime_hrs = lifetime_hrs))   
-            
+                                      particle_file = particle_file,
+                                      met = met,
+                                      satellite = satellite,
+                                      time_step = time_step,
+                                      upper_level = upper_level,
+                                      use_surface_conditions = use_surface_conditions,
+                                      species = species,
+                                      user_max_hour_back=user_max_hour_back,
+                                      lifetime_hrs = lifetime_hrs))
+        # remove unzipped files to save space
+        [os.remove(fields_file) for ff, fields_file in enumerate(fields_files_unzip) if '.gz' in fields_files[ff]]
+        
     # Concatenate
     if len(fp) > 0:
         fp = xray.concat(fp, "time")
@@ -2415,7 +2380,8 @@ def process(domain, site, height, year, month,
                                             upper_level = upper_level,
                                             use_surface_conditions=use_surface_conditions,
                                             species = species,
-                                            lifetime_hrs = lifetime_hrs)
+                                            lifetime_hrs = lifetime_hrs,
+                                            user_max_hour_back = user_max_hour_back)
            
         # Do satellite process
         if satellite:
