@@ -447,7 +447,10 @@ def obs_database(data_directory = None):
     ######################################
     
     # To avoid permissions problems, remove old file
-    (obs_path / 'obs.db').unlink(missing_ok=True)
+    try:
+        (obs_path / 'obs.db').unlink()
+    except FileNotFoundError:
+        pass
     
     print(f"Writing database {obs_path / 'obs.db'}")
     
