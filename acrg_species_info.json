@@ -434,6 +434,13 @@
         "print_string": "NF$_3$", 
         "units": "ppt"
     }, 
+    "O2": {"alt": ["oxygen"],
+        "group": "O2", 
+        "long_name": "Oxygen", 
+        "mol_mass": "31.9988", 
+        "print_string": "O$_2$", 
+        "units": "ppm"
+    },
     "PCE": {"alt": [],
         "group": "PCE", 
         "long_name": "PCE", 
