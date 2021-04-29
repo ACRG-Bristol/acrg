@@ -891,8 +891,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
 
             mfattrs = [key for key in site_ds.mf.attrs]
             if "units" in mfattrs:
-                if is_number(site_ds.mf.attrs["units"]):
-                    units = float(site_ds.mf.attrs["units"])
+                units = float(site_ds.mf.attrs["units"]) if is_number(site_ds.mf.attrs["units"]) else None
         
             if site_fp is not None:
                 # If satellite data, check that the max_level in the obs and the max level in the processed FPs are the same
