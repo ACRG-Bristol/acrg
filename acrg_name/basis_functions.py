@@ -829,7 +829,12 @@ def quadtreebasisfunction(emissions_name, fp_all, sites,
     if emissions_name == None:
         meanflux = np.squeeze(fp_all['.flux']['all'].flux.values)
     else:
-        meanflux = np.squeeze(fp_all[".flux"][list(emissions_name.keys())[0]].flux.values)
+        if isinstance(fp_all[".flux"][list(emissions_name.keys())[0]], dict):
+            keys = list(fp_all[".flux"][list(emissions_name.keys())[0]].keys())
+            arr = fp_all[".flux"][list(emissions_name.keys())[0]][keys[0]]
+            meanflux = np.squeeze(arr.flux.values)
+        else:
+            meanflux = np.squeeze(fp_all[".flux"][list(emissions_name.keys())[0]].flux.values)
     meanfp = np.zeros((fp_all[sites[0]].fp.shape[0],fp_all[sites[0]].fp.shape[1]))
     div=0
     for site in sites:
@@ -875,10 +880,10 @@ def quadtreebasisfunction(emissions_name, fp_all, sites,
         tempdir = os.path.join(cwd,f"Temp_{str(uuid.uuid4())}")
         os.mkdir(tempdir)    
         os.mkdir(os.path.join(tempdir,f"{domain}/"))
-        newds.to_netcdf(os.path.join(tempdir,domain,f"quadtree{species}-{outputname}_{domain}_{start_date.split('-')[0]}.nc"), mode='w')
+        newds.to_netcdf(os.path.join(tempdir,domain,f"quadtree_{species}-{outputname}_{domain}_{start_date.split('-')[0]}.nc"), mode='w')
         return tempdir
     else:
         basisoutpath = os.path.join(outputdir,domain)
         if not os.path.exists(basisoutpath):
             os.makedirs(basisoutpath)
-        newds.to_netcdf(os.path.join(basisoutpath,f"quadtree{species}-{outputname}_{domain}_{start_date.split('-')[0]}.nc"), mode='w')
+        newds.to_netcdf(os.path.join(basisoutpath,f"quadtree_{species}-{outputname}_{domain}_{start_date.split('-')[0]}.nc"), mode='w')
