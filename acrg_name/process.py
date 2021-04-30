@@ -1482,9 +1482,17 @@ def footprint_concatenate(fields_prefix,
     # Create a list of xray datasets
     fp = []
     if len(fields_files) > 0:
-        
         # unzip .gz files
-        fields_files_unzip = [unzip(ff, return_filename=True) if '.gz' in ff else ff for ff in fields_files]
+        # - check if the filename has .nc.gz and if there is already an unzipped version
+        fields_files_unzip = [unzip(ff, return_filename=True) if '.nc.gz' in ff and
+                              [ff.split('.gz')[0] in fil for fil in fields_files].count(True)==1
+                              else None if '.nc.gz' in ff
+                              else ff for ff in fields_files]
+        
+        # filter out any Nones and any duplicates
+        fields_files_unzip = [ff for ff in fields_files_unzip if ff is not None]
+        fields_files_unzip = list(dict.fromkeys(fields_files_unzip))
+        
         # extract footprints
         for fields_file, particle_file in zip(fields_files_unzip, particle_files):
             fp.append(footprint_array(fields_file,
