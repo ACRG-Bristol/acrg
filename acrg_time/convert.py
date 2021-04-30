@@ -171,5 +171,18 @@ def julian2time(dates):
     return return_iter(dates_julian, notIter)
         
 def convert_to_hours(time):
+    '''
+    Convert to hours
+    
+    Returns in the input provided, float or list of floats
+    '''
     hours_per_unit = {"H": 1, "D": 24, "W": 168, "M": 732, "Y":8760}
-    return float(time[:-1]) * hours_per_unit[time[-1]]
+    if type(time) is list:
+        time_hrs_list = []
+        for ii in range(len(time)):
+            time_hrs = float(time[ii][:-1]) * hours_per_unit[time[ii][-1]]
+            time_hrs_list.append(time_hrs)   
+        return time_hrs_list    
+    else:
+        time_hrs = float(time[:-1]) * hours_per_unit[time[-1]]
+        return time_hrs

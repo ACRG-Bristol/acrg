@@ -110,6 +110,10 @@ def filenames(site, domain, start, end, height, fp_directory, met_model = None, 
         if 'lifetime' in species_info[species_obs].keys():
             lifetime = species_info[species_obs]["lifetime"]
             lifetime_hrs = convert.convert_to_hours(lifetime)
+            # if a monthly lifetime is a list, use the minimum lifetime 
+            # in the list to determine whether a species specific footprint is needed
+            if type(lifetime) == list:
+                lifetime_hrs = min(lifetime_hrs)
         else:
             lifetime_hrs = None
     else:
@@ -904,7 +908,7 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
             site_fp = footprints(site_modifier_fp, met_model = met_model, fp_directory = fp_directory, 
                                  start = start, end = end,
                                  domain = domain,
-                                 species = species,
+                                 species = species.lower(),
                                  height = height_site,
                                  network = network_site,
                                  HiTRes = HiTRes)
@@ -1081,8 +1085,17 @@ def add_bc(fp_and_data, load_bc, species):
             
             if 'lifetime' in species_info[species_obs].keys():
                 lifetime = species_info[species_obs]["lifetime"]
-                lifetime_hrs = convert.convert_to_hours(lifetime)
+                lifetime_hrs_list_or_float = convert.convert_to_hours(lifetime)
 
+                # calculate the lifetime_hrs associated with each time point in fp_and_data
+                # this is because lifetime can be a list of monthly values
+                
+                time_month = fp_and_data[site].time.dt.month
+                if type(lifetime_hrs_list_or_float) is list:
+                    lifetime_hrs = [lifetime_hrs_list_or_float[item-1] for item in time_month.values]
+                else:
+                    lifetime_hrs = lifetime_hrs_list_or_float
+                                
                 loss_n = np.exp(-1*fp_and_data[site].mean_age_particles_n/lifetime_hrs).rename('loss_n')
                 loss_e = np.exp(-1*fp_and_data[site].mean_age_particles_e/lifetime_hrs).rename('loss_e')
                 loss_s = np.exp(-1*fp_and_data[site].mean_age_particles_s/lifetime_hrs).rename('loss_s')
@@ -1303,7 +1316,16 @@ def bc_sensitivity(fp_and_data, domain, basis_case, bc_basis_directory = None):
         # compute any chemical loss to the BCs, use lifetime or else set loss to 1 (no loss)
         if 'lifetime' in species_info[species].keys():
             lifetime = species_info[species]["lifetime"]
-            lifetime_hrs = convert.convert_to_hours(lifetime)
+            lifetime_hrs_list = convert.convert_to_hours(lifetime)
+
+            # calculate the lifetime_hrs associated with each time point in fp_and_data
+            # this is because lifetime can be a list of monthly values
+
+            time_month = fp_and_data[site].time.dt.month
+            if type(lifetime_hrs_list_or_float) is list:
+                lifetime_hrs = [lifetime_hrs_list_or_float[item-1] for item in time_month.values]
+            else:
+                lifetime_hrs = lifetime_hrs_list_or_float
 
             loss_n = np.exp(-1*fp_and_data[site].mean_age_particles_n/lifetime_hrs).rename('loss_n')
             loss_e = np.exp(-1*fp_and_data[site].mean_age_particles_e/lifetime_hrs).rename('loss_e')
