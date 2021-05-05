@@ -1316,7 +1316,7 @@ def bc_sensitivity(fp_and_data, domain, basis_case, bc_basis_directory = None):
         # compute any chemical loss to the BCs, use lifetime or else set loss to 1 (no loss)
         if 'lifetime' in species_info[species].keys():
             lifetime = species_info[species]["lifetime"]
-            lifetime_hrs_list = convert.convert_to_hours(lifetime)
+            lifetime_hrs_list_or_float = convert.convert_to_hours(lifetime)
 
             # calculate the lifetime_hrs associated with each time point in fp_and_data
             # this is because lifetime can be a list of monthly values
