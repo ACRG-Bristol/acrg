@@ -66,7 +66,8 @@
       "height_station_masl": 53.0,
       "latitude": 45.0345,
       "long_name": "Argyle, Maine, United States",
-      "longitude": -68.6821
+      "longitude": -68.6821,
+      "platform": "flask"
     }
   },
   "AND": {
@@ -1235,7 +1236,8 @@
       "height_station_masl": 1.0,
       "latitude": 25.6654,
       "long_name": "Key Biscane, Florida",
-      "longitude": -80.158
+      "longitude": -80.158,
+      "platform": "flask"
     }
   },
   "KJN": {
@@ -1263,7 +1265,8 @@
       "height_station_masl": 3.0,
       "latitude": 19.52,
       "long_name": "Cape Kumukahi, Hawaii",
-      "longitude": -154.82
+      "longitude": -154.82,
+      "platform": "flask"
     }
   },
   "LEF": {
@@ -1277,7 +1280,8 @@
       "height_station_masl": 472.0,
       "latitude": 45.9451,
       "long_name": "Park Falls, Wisconsin, United States",
-      "longitude": -90.2732
+      "longitude": -90.2732,
+      "platform": "flask"
     }
   },
   "LEW": {
@@ -1839,7 +1843,8 @@
       "height_station_masl": 115.2,
       "latitude": 33.4057,
       "long_name": "Beech Island, South Carolina, United States",
-      "longitude": -81.8334
+      "longitude": -81.8334,
+      "platform": "flask"
     }
   },
   "SDZ": {
@@ -1867,7 +1872,8 @@
       "height_station_masl": 314.0,
       "latitude": 36.607,
       "long_name": "Southern Great Plains, Oklahoma, United States",
-      "longitude": -97.489
+      "longitude": -97.489,
+      "platform": "flask"
     }
   },
   "SHM": {
@@ -2090,7 +2096,8 @@
       "height_station_masl": 107.0,
       "latitude": 41.0541,
       "long_name": "Trinidad Head, California",
-      "longitude": -124.151
+      "longitude": -124.151,
+      "platform": "flask"
     },
     "SIOCC": {
       "height": [
@@ -2254,7 +2261,8 @@
       "height_station_masl": 1327.0,
       "latitude": 39.9018,
       "long_name": "Wendover, Utah, United States",
-      "longitude": -113.7181
+      "longitude": -113.7181,
+      "platform": "flask"
     }
   },
   "UUM": {
@@ -2320,7 +2328,8 @@
       "height_station_masl": 241.7,
       "latitude": 41.7248,
       "long_name": "West Branch, Iowa, United States",
-      "longitude": -91.3529
+      "longitude": -91.3529,
+      "platform": "flask"
     }
   },
   "WGC": {
@@ -2362,7 +2371,8 @@
       "height_station_masl": 251.0,
       "latitude": 31.3149,
       "long_name": "Moody, Texas, United States",
-      "longitude": -97.3269
+      "longitude": -97.3269,
+      "platform": "flask"
     }
   },
   "WLG": {
