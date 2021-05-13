@@ -1390,7 +1390,8 @@ def footprint_concatenate(fields_prefix,
                           use_surface_conditions = True,
                           species = None,
                           user_max_hour_back=24.,
-                          lifetime_hrs = None):
+                          lifetime_hrs = None,
+                          unzip=False):
     '''Given file search string, finds all fields and particle
     files, reads them and concatenates the output arrays.
     
@@ -1426,6 +1427,8 @@ def footprint_concatenate(fields_prefix,
         lifetime_hrs (float, optional):
             Defaults to None which will process footprints for an inert species.
             Otherwise will process it for the specified loss timescale.
+        unzip (bool)
+            If True, unzip .nc.gz field files, defaults to False
     
     Returns:
         fp (xarray dataset): 
@@ -1482,16 +1485,21 @@ def footprint_concatenate(fields_prefix,
     # Create a list of xray datasets
     fp = []
     if len(fields_files) > 0:
-        # unzip .gz files
-        # - check if the filename has .nc.gz and if there is already an unzipped version
-        fields_files_unzip = [unzip(ff, return_filename=True) if '.nc.gz' in ff and
-                              [ff.split('.gz')[0] in fil for fil in fields_files].count(True)==1
-                              else None if '.nc.gz' in ff
-                              else ff for ff in fields_files]
+        if unzip:
+            # unzip .gz files
+            # - check if the filename has .nc.gz and if there is already an unzipped version
+            fields_files_unzip = [unzip(ff, return_filename=True) if '.nc.gz' in ff and
+                                  [ff.split('.gz')[0] in fil for fil in fields_files].count(True)==1
+                                  else None if '.nc.gz' in ff
+                                  else ff for ff in fields_files]
+
+            # filter out any Nones and any duplicates
+            fields_files_unzip = [ff for ff in fields_files_unzip if ff is not None]
+            fields_files_unzip = list(dict.fromkeys(fields_files_unzip))
         
-        # filter out any Nones and any duplicates
-        fields_files_unzip = [ff for ff in fields_files_unzip if ff is not None]
-        fields_files_unzip = list(dict.fromkeys(fields_files_unzip))
+        else:
+            # list of field files excluding .gz files
+            fields_files_unzip = [ff for ff in fields_files if '.gz' not in ff]
         
         # extract footprints
         for fields_file, particle_file in zip(fields_files_unzip, particle_files):
@@ -1505,8 +1513,10 @@ def footprint_concatenate(fields_prefix,
                                       species = species,
                                       user_max_hour_back=user_max_hour_back,
                                       lifetime_hrs = lifetime_hrs))
-        # remove unzipped files to save space
-        [os.remove(fields_file) for ff, fields_file in enumerate(fields_files_unzip) if '.gz' in fields_files[ff]]
+        if unzip:
+            # remove unzipped files to save space
+            [os.remove(fields_file) for ff, fields_file in
+             enumerate(fields_files_unzip) if '.gz' in fields_files[ff]]
         
     # Concatenate
     if len(fp) > 0:
