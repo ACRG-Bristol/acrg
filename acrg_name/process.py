@@ -1499,8 +1499,8 @@ def footprint_concatenate(fields_prefix,
         
         else:
             # list of field files excluding .gz files
-            fields_files_unzip = [ff for ff in fields_files if '.gz' not in ff]
-        
+#             fields_files_unzip = [ff for ff in fields_files if '.gz' not in ff]
+            fields_files_unzip = fields_files        
         # extract footprints
         for fields_file, particle_file in zip(fields_files_unzip, particle_files):
             fp.append(footprint_array(fields_file,

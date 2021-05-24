@@ -192,6 +192,15 @@ def read_netcdfs(files, dim = "time"):
         print(fname)
     
     datasets = [open_ds(p) for p in sorted(files)]
+    
+    # reindex all of the lat-lon values to a common one to prevent floating point error differences
+    with xr.open_dataset(files[0]) as temp:
+        fields_ds = temp.load()
+    fp_lat = fields_ds["lat"].values
+    fp_lon = fields_ds["lon"].values
+
+    datasets = [ds.reindex(indexers={"lat":fp_lat, "lon":fp_lon}, method="nearest", tolerance=1e-5) for ds in datasets]
+
     combined = xr.concat(datasets, dim)
     return combined   
 
