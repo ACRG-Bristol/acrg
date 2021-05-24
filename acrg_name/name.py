@@ -226,10 +226,10 @@ def footprints(sitecode_or_filename, met_model = None, fp_directory = None,
     Args:
         sitecode_or_filename (str) : 
             Site (e.g. 'MHD') or a netCDF filename (*.nc) (str)
-        met_model (str):
-            Met model used to run NAME
-            Default is None and implies the standard global met model
-            Alternates include 'UKV' and this met model must be in the outputfolder NAME
+        met_model (dict)     : Met model used to run NAME for each site in data
+                               Default is None and implies the standard global met model used for all sites
+                               Alternate examples: {"MHD":'UKV', "JFJ":None} or {"MHD":'UKV', "TAC":"UKV"}
+                               {"MHD":None, "TAC":None} is equivalent to met_model = None
         fp_directory (str/dict) : 
             If the high time resolution footprints are used (HiTRes = True) fp_directory must be a dictionary
             of the form :
@@ -743,17 +743,16 @@ def align_datasets(ds1, ds2, platform=None, resample_to_ds1=False):
     
     ds1 = ds1.sel(time=slice(start_s,end_s))
     ds2 = ds2.sel(time=slice(start_s,end_s))
-    
-    
+  
     
     #only non satellite datasets with different periods need to be resampled
     if not np.isclose(ds1_timeperiod, ds2_timeperiod):
         base = start_date.dt.hour.data + start_date.dt.minute.data/60. + start_date.dt.second.data/3600.
         if (ds1_timeperiod >= ds2_timeperiod) or (resample_to_ds1 == True):
-            resample_period = str(round(ds1_timeperiod/3600e9,5))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
+            resample_period = str(round(ds1_timeperiod/3600e9,4))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
             ds2 = ds2.resample(indexer={'time':resample_period}, base=base).mean()
         elif ds1_timeperiod < ds2_timeperiod or (resample_to_ds1 == False):
-            resample_period = str(round(ds2_timeperiod/3600e9,5))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
+            resample_period = str(round(ds2_timeperiod/3600e9,4))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
             ds1 = ds1.resample(indexer={'time':resample_period}, base=base).mean()
     
     return ds1, ds2
@@ -777,9 +776,12 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
                                Should match output from acrg_agage.get_obs() function. For example:
                                data = {"MHD": MHD_dataframe, "TAC": TAC_dataframe}
         domain (str)         : Domain name. The footprint files should be sub-categorised by the domain.
-        met_model (str)      : Met model used to run NAME
-                               Default is None and implies the standard global met model
-                               Alternates include 'UKV' and this met model must be in the outputfolder NAME
+        met_model (dict or str)     : Met model used to run NAME for each site in data
+                               Default is None and implies the standard global met model used for all sites
+                               met_model = 'UKV' will work if all sites are the same 'UKV'
+                               {"MHD":'UKV', "JFJ":None} or {"MHD":'UKV', "TAC":"UKV"}
+                               {"MHD":None, "TAC":None} is equivalent to met_model = None
+                               {"MHD":'UKV', "TAC":'UKV'} is equivalent to met_model = 'UKV'
         load_flux (bool)     : True includes fluxes in output, False does not. Default True.
         load_bc (bool)       : True includes boundary conditions in output, False does not. Default True.
         calc_timeseries (bool) : True calculates modelled mole fractions for each site using fluxes, False does not. Default True.
@@ -912,9 +914,14 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
                     siteheights = [int(sh[:-4]) for sh in site_info[site][network_site]["height_name"]]
                     wh_height = np.where(abs(np.array(siteheights) - int(site_ds.inlet[:-1])) == np.min(abs(np.array(siteheights) - int(site_ds.inlet[:-1]))))
                     height_site = site_info[site][network_site]["height_name"][wh_height[0][0]] #NB often different to inlet
-
+            
+            if type(met_model) is dict:
+                met_model_site = met_model[site]
+            else:
+                met_model_site = met_model
+            
             # Get footprints
-            site_fp = footprints(site_modifier_fp, met_model = met_model, fp_directory = fp_directory, 
+            site_fp = footprints(site_modifier_fp, met_model = met_model_site, fp_directory = fp_directory, 
                                  start = start, end = end,
                                  domain = domain,
                                  species = species.lower(),
@@ -954,7 +961,7 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
                     site_fp = site_fp.sortby("time")
 
                 site_ds, site_fp = align_datasets(site_ds, site_fp, platform=platform, resample_to_ds1=resample_to_data)
-
+                
                 site_ds = combine_datasets(site_ds, site_fp,
                                            method = "ffill",
                                            tolerance = tolerance)
