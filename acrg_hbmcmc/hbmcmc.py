@@ -173,7 +173,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     data = getobs.get_obs(sites, species, start_date = start_date, end_date = end_date, 
                          average = meas_period, data_directory=obs_directory,
                           keep_missing=False,inlet=inlet, instrument=instrument, max_level=max_level)
-    fp_all = name.footprints_data_merge(data, domain=domain, calc_bc=True, 
+    fp_all = name.footprints_data_merge(data, domain=domain, met_model = met_model, calc_bc=True, 
                                         height=fpheight, 
                                         fp_directory = fp_directory,
                                         bc_directory = bc_directory,
