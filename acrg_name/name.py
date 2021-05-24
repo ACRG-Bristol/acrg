@@ -226,10 +226,12 @@ def footprints(sitecode_or_filename, met_model = None, fp_directory = None,
     Args:
         sitecode_or_filename (str) : 
             Site (e.g. 'MHD') or a netCDF filename (*.nc) (str)
-        met_model (dict)     : Met model used to run NAME for each site in data
+        met_model (dict or str)     : Met model used to run NAME for each site in data
                                Default is None and implies the standard global met model used for all sites
-                               Alternate examples: {"MHD":'UKV', "JFJ":None} or {"MHD":'UKV', "TAC":"UKV"}
+                               met_model = 'UKV' will work if all sites are the same 'UKV'
+                               {"MHD":'UKV', "JFJ":None} or {"MHD":'UKV', "TAC":"UKV"}
                                {"MHD":None, "TAC":None} is equivalent to met_model = None
+                               {"MHD":'UKV', "TAC":'UKV'} is equivalent to met_model = 'UKV'
         fp_directory (str/dict) : 
             If the high time resolution footprints are used (HiTRes = True) fp_directory must be a dictionary
             of the form :
