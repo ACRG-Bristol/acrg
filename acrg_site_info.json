@@ -369,6 +369,18 @@
       "longitude": -76.9556
     }
   },
+  "CAR": {
+    "NOAA": {
+      "height": [
+        "various"
+      ],
+      "height_name": [
+        "various"
+      ],
+      "long_name": "Briggsdale, Colorado, United States",
+      "platform": "aircraft"
+    }
+  },
   "CARIBIC": {
     "MPI": {
       "height": [
@@ -670,6 +682,18 @@
       "longitude": -24.8672
     }
   },
+  "DND": {
+    "NOAA": {
+      "height": [
+        "various"
+      ],
+      "height_name": [
+        "various"
+      ],
+      "long_name": "Dahlen, North Dakota, United States",
+      "platform": "aircraft"
+    }
+  },  
   "DJI": {
     "AGAGE": {
       "height": [
@@ -737,6 +761,18 @@
       "longitude": -126.544097
     }
   },
+  "ESP-aircraft": {
+    "NOAA": {
+      "height": [
+        "various"
+      ],
+      "height_name": [
+        "various"
+      ],
+      "long_name": "Estevan Point, British Columbia, Canada",
+      "platform": "aircraft"
+    }
+  },  
   "EST": {
     "EC": {
       "height": [
@@ -765,6 +801,18 @@
       "longitude": -104.986864
     }
   },
+  "ETL-aircraft": {
+    "NOAA": {
+      "height": [
+        "various"
+      ],
+      "height_name": [
+        "various"
+      ],
+      "long_name": "East Trout Lake, Saskatchewan, Canada",
+      "platform": "aircraft"
+    }
+  },  
   "FLK": {
     "BAS": {
       "height": [
@@ -1090,6 +1138,18 @@
       "longitude": -72.18
     }
   },
+  "HIL": {
+    "NOAA": {
+      "height": [
+        "various"
+      ],
+      "height_name": [
+        "various"
+      ],
+      "long_name": "Homer, Illinois, United States",
+      "platform": "aircraft"
+    }
+  },  
   "HSU": {
     "NOAA": {
       "height": [
@@ -1284,6 +1344,18 @@
       "platform": "flask"
     }
   },
+  "LEF-aircraft": {
+    "NOAA": {
+      "height": [
+        "various"
+      ],
+      "height_name": [
+        "various"
+      ],
+      "long_name": "Park Falls, Wisconsin, United States",
+      "platform": "aircraft"
+    }
+  },  
   "LEW": {
     "NOAA": {
       "height": [
@@ -1621,6 +1693,18 @@
         "longitude": 15.046}
 
   },
+  "NHA": {
+    "NOAA": {
+      "height": [
+        "various"
+      ],
+      "height_name": [
+        "various"
+      ],
+      "long_name": "Offshore Portsmouth, New Hampshire, United States",
+      "platform": "aircraft"
+    }
+  },  
   "NPL": {
     "LGHG": {
       "height": [
@@ -1832,6 +1916,18 @@
       "longitude": 29.60
     }
   },
+  "SCA": {
+    "NOAA": {
+      "height": [
+        "various"
+      ],
+      "height_name": [
+        "various"
+      ],
+      "long_name": "Charleston, South Carolina, United States",
+      "platform": "aircraft"
+    }
+  },  
   "SCT": {
     "NOAA": {
       "height": [
@@ -1876,6 +1972,18 @@
       "platform": "flask"
     }
   },
+  "SGP-aircraft": {
+    "NOAA": {
+      "height": [
+        "various"
+      ],
+      "height_name": [
+        "various"
+      ],
+      "long_name": "Southern Great Plains, Oklahoma, United States",
+      "platform": "aircraft"
+    }
+  },  
   "SHM": {
     "NOAA": {
       "height": [
@@ -2073,6 +2181,18 @@
       "longitude": 126.12
     }
   },
+  "TGC": {
+    "NOAA": {
+      "height": [
+        "various"
+      ],
+      "height_name": [
+        "various"
+      ],
+      "long_name": "Offshore Corpus Christi, Texas, United States",
+      "platform": "aircraft"
+    }
+  },  
   "THD": {
     "AGAGE": {
       "height": [
@@ -2332,6 +2452,18 @@
       "platform": "flask"
     }
   },
+  "WBI-aircraft": {
+    "NOAA": {
+      "height": [
+        "various"
+      ],
+      "height_name": [
+        "various"
+      ],
+      "long_name": "West Branch, Iowa, United States",
+      "platform": "aircraft"
+    }
+  },  
   "WGC": {
     "NOAA": {
       "height": [
