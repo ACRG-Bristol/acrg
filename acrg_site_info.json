@@ -761,7 +761,7 @@
       "longitude": -126.544097
     }
   },
-  "ESP-aircraft": {
+  "ESP-AIRCRAFT": {
     "NOAA": {
       "height": [
         "various"
@@ -801,7 +801,7 @@
       "longitude": -104.986864
     }
   },
-  "ETL-aircraft": {
+  "ETL-AIRCRAFT": {
     "NOAA": {
       "height": [
         "various"
@@ -1344,7 +1344,7 @@
       "platform": "flask"
     }
   },
-  "LEF-aircraft": {
+  "LEF-AIRCRAFT": {
     "NOAA": {
       "height": [
         "various"
@@ -1972,7 +1972,7 @@
       "platform": "flask"
     }
   },
-  "SGP-aircraft": {
+  "SGP-AIRCRAFT": {
     "NOAA": {
       "height": [
         "various"
@@ -2452,7 +2452,7 @@
       "platform": "flask"
     }
   },
-  "WBI-aircraft": {
+  "WBI-AIRCRAFT": {
     "NOAA": {
       "height": [
         "various"
