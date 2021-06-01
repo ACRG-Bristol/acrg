@@ -75,7 +75,7 @@ def test_priorSetup():
               "mu":mus[2],
               "sd":sds[2]}
     
-    xouts, bcouts, sigouts, Youts, convergence, step1, step2 = mcmc.inferpymc3(Hx, Hbc, Y, error, np.array([0]), np.array([0]), 
+    xouts, bcouts, sigouts, Youts, YBCtrace, convergence, step1, step2 = mcmc.inferpymc3(Hx, Hbc, Y, error, np.array([0]), np.array([0]), 
                xprior,bcprior, sigprior,nit=5e3, burn=1e3, tune=1e3, nchain=2)
     
     #test outputs match inputs
@@ -121,7 +121,7 @@ def test_toyProblem():
               "sigma":1.0}
                 
     
-    xouts, bcouts, sigouts, Youts, convergence, step1, step2 = mcmc.inferpymc3(Hx, Hbc, Y, error, indicators, indicators_sigma,
+    xouts, bcouts, sigouts, Youts, YBCtrace, convergence, step1, step2 = mcmc.inferpymc3(Hx, Hbc, Y, error, indicators, indicators_sigma,
                xprior,bcprior, sigprior,nit=5e3, burn=1e3, tune=1e3, nchain=2)
     
     #test outputs match inputs
