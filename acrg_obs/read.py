@@ -771,8 +771,9 @@ def get_obs(sites, species,
     instrument = check_list_and_length(instrument, sites, "instrument")
 
     if data_directory is not None:
-        # Need to create a database in data_directory
-        obs_database(data_directory = data_directory)
+        if not (Path(obs_directory) / "obs.db").exists():
+            # Need to create a database in data_directory
+            obs_database(data_directory = data_directory)
     
     # Get data
     obs = {}
