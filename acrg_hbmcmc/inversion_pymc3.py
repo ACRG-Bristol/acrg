@@ -14,6 +14,7 @@ from acrg_grid import areagrid
 import getpass
 from acrg_hbmcmc.inversionsetup import opends
 from acrg_hbmcmc.hbmcmc_output import define_output_filename
+import acrg_hbmcmc.inversionsetup as setup 
 import os
 import sys
 import acrg_convert as convert
@@ -77,7 +78,8 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
                xprior={"pdf":"lognormal", "mu":1, "sd":1},
                bcprior={"pdf":"lognormal", "mu":0.004, "sd":0.02},
                sigprior={"pdf":"uniform", "lower":0.5, "upper":3},
-                nit=2.5e5, burn=50000, tune=1.25e5, nchain=2, sigma_per_site = True, verbose=False):       
+               nit=2.5e5, burn=50000, tune=1.25e5, nchain=2, 
+               sigma_per_site = True, add_offset = False, verbose=False):       
     """
     Uses pym3 module for Bayesian inference for emissions field, boundary 
     conditions and (currently) a single model error value.
@@ -116,6 +118,8 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
         sigma_per_site (bool):
             Whether a model sigma value will be calculated for each site independantly (True) or all sites together (False).
             Default: True
+        add_offset (bool):
+            Add an offset (intercept) to all sites but the first in the site list? Default False.
         verbose:
             When True, prints progress bar
 
@@ -142,7 +146,6 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
      
     TO DO:
        - Allow non-iid variables
-       - Allow more than one model-error
     """
     burn = int(burn)         
     
@@ -162,13 +165,20 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
         sites = np.zeros_like(siteindicator).astype(int)
         nsites = 1
     nsigmas = np.amax(sigma_freq_index)+1
+    
+    if add_offset:
+        B = setup.offset_matrix(siteindicator)
 
     with pm.Model() as model:
         x = parsePrior("x", xprior, shape=nx)
         xbc = parsePrior("xbc", bcprior, shape=nbc)
         sig = parsePrior("sig", sigprior, shape=(nsites, nsigmas))
-        
-        mu = pm.math.dot(hx,x) + pm.math.dot(hbc,xbc)        
+        if add_offset:
+            offset = pm.Normal("offset", mu=0, sd=1, shape=nsites-1)
+            offset_vec = pm.math.concatenate( (np.array([0]), offset), axis=0)
+            mu = pm.math.dot(hx,x) + pm.math.dot(hbc,xbc) + pm.math.dot(B, offset_vec)
+        else:
+            mu = pm.math.dot(hx,x) + pm.math.dot(hbc,xbc)       
         epsilon = pm.math.sqrt(error**2 + sig[sites, sigma_freq_index]**2)
         y = pm.Normal('y', mu = mu, sd=epsilon, observed=Y, shape = ny)
         
@@ -190,12 +200,18 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
         else:
             convergence = "Passed"
         
-        Ytrace = np.dot(Hx.T,outs.T) + np.dot(Hbc.T,bcouts.T)
+        if add_offset:
+            offset_outs = trace.get_values(offset, burn=burn)[0:int((nit)-burn)]
+            offset_trace = np.hstack([np.zeros((int(nit-burn),1)), offset_outs])
+            YBCtrace = np.dot(Hbc.T,bcouts.T) + np.dot(B, offset_trace.T)   
+        else:
+            YBCtrace = np.dot(Hbc.T,bcouts.T)
+        Ytrace = np.dot(Hx.T,outs.T) + YBCtrace
         
-        return outs, bcouts, sigouts, Ytrace, convergence, step1, step2
+        return outs, bcouts, sigouts, Ytrace, YBCtrace, convergence, step1, step2
 
 def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence, 
-                               Hx, Hbc, Y, error, Ytrace,
+                               Hx, Hbc, Y, error, Ytrace, YBCtrace,
                                step1, step2, 
                                xprior, bcprior, sigprior, Ytime, siteindicator, sigma_freq_index,fp_data,
                                emissions_name, domain, species, sites,
@@ -326,7 +342,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         nmeasure = np.arange(ny)
         nparam = np.arange(nx)
         nBC = np.arange(nbc)
-        YBCtrace = np.dot(Hbc.T,bcouts.T)
+        #YBCtrace = np.dot(Hbc.T,bcouts.T)
         YmodBC = np.mean(YBCtrace, axis=1)
         Ymod95BC = pm.stats.hpd(YBCtrace.T, 0.95)
         Ymod68BC = pm.stats.hpd(YBCtrace.T, 0.68)

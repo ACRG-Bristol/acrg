@@ -49,7 +49,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                    quadtree_basis=True,nbasis=100,
                    filters = [],
                    averagingerror=True, bc_freq=None, sigma_freq=None, sigma_per_site=True,
-                   country_unit_prefix=None,
+                   country_unit_prefix=None, add_offset = False,
                    verbose = False):
 
     """
@@ -162,6 +162,8 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             'T' will scale to Tg, 'G' to Gg, 'M' to Mg, 'P' to Pg.
             To add additional options add to acrg_convert.prefix
             Default is none and no scaling will be applied (output in g).
+        add_offset (bool):
+            Add an offset (intercept) to all sites but the first in the site list? Default False.
 
             
     Returns:
@@ -263,11 +265,11 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     sigma_freq_index = setup.sigma_freq_indicies(Ytime, sigma_freq)
 
     #Run Pymc3 inversion
-    xouts, bcouts, sigouts, Ytrace, convergence, step1, step2 = mcmc.inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
-           xprior,bcprior, sigprior,nit, burn, tune, nchain, sigma_per_site, verbose=verbose)
+    xouts, bcouts, sigouts, Ytrace, YBCtrace, convergence, step1, step2 = mcmc.inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
+           xprior,bcprior, sigprior,nit, burn, tune, nchain, sigma_per_site, add_offset=add_offset, verbose=verbose)
     #Process and save inversion output
     mcmc.inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence, 
-                           Hx, Hbc, Y, error, Ytrace,
+                           Hx, Hbc, Y, error, Ytrace,YBCtrace,
                            step1, step2, 
                            xprior, bcprior, sigprior,Ytime, siteindicator, sigma_freq_index, fp_data,
                            emissions_name, domain, species, sites,
