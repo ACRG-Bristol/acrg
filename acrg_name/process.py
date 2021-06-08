@@ -2169,8 +2169,7 @@ def process(domain, site, height, year, month,
         print("A species was specified so fields_folder changed to MixR_hourly")
         fields_folder = "MixR_hourly"
     elif species is None and 'MixR_hourly' in fields_folder:
-        print("No species was specified. For efficiency, fields_folder should be MixR_files or Fields_files, not MixR_hourly")
-        return
+        fields_folder = "MixR_files"
     
     if species is not None:
         with open(os.path.join(acrg_path,"acrg_species_info.json")) as f:
