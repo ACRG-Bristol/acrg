@@ -42,10 +42,21 @@ Default path: <data_path>/LPDM/fp_NAME/ or <data_path>/LPDM/fp_NAME_high_time_re
 
 Footprint file names are defined in acrg_name/name.py::filenames(...) as
 
-```[fp_directory]/domain/site*-height-species*domain*ym*.nc ``` or ```[fp_directory]/domain/site*-height_domain*ym*.nc ```
+- species and met model defined:
+``` fp_directory,domain,f"{site}-{height}_{met_model}_{species}_{domain}_{ym}*.nc" ``` or 
+
+- species defined but no met model
+``` fp_directory,domain,f"{site}-{height}_{species}_{domain}_{ym}*.nc" ``` or
+
+- met model defined but no species
+``` fp_directory,domain,f"{site}-{height}_{met_model}_{domain}_{ym}*.nc" ``` or
+
+- no met model or species defined
+``` fp_directory,domain,f"{site}-{height}_{domain}_{ym}*.nc" ```
 
 - site: sitecode
 - height: release height of footprint (may not be same as actual inlet height, check site json)
+- met_model: (optional) Met model used to run NAME (e.g., UKV)
 - species: (optional) for short-lived species to account for decay during 30 day footprint, leave out for all long lived tracer species
 - domain: NAME domain for file
 - ym: yearmonth format date of the footprint file
