@@ -2129,3 +2129,150 @@ class get_country(object):
         self.latmin = np.min(lat)
         self.country = np.asarray(country)
         self.name = name 
+
+def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = True, output_fpXflux = True,
+                      output_type='DataArray', output_file=None, show_progress=False):
+    """
+    The timeseries_HiTRes function computes flux * HiTRes footprints.
+    
+    HiTRes footprints record the footprint at each 2 hour period back in time for the first 24 hours.
+    Need a high time resolution flux to multiply the first 24 hours back of footprints.
+    Need a residual flux to multiply the residual integrated footprint for the remainder of the 30 
+    day period.
+    
+    Args:
+        fp_HiTRes_ds (xarray.Dataset)
+            Dataset of High Time resolution footprint. HiTRes footprints record the footprint at 
+            each 2 hour period back in time for the first 24 hours.
+        domain (str)
+            Domain name. The footprint files should be sub-categorised by the domain.
+        flux_dict (dict)
+            This should be a dictionary of the form output in the format
+            flux_dict: {'high_freq': flux_dataset, 'low_freq': flux_dataset}.
+            This is because this function needs two time resolutions of fluxes as
+            explained in the header.
+            
+            If there are multiple sectors, the format should be:
+            flux_dict: {'high_freq' : {sector1 : flux_dataset, sector2 : flux_dataset},
+                        'low_freq'  : {sector1 : flux_dataset, sector2 : flux_dataset}}
+        output_TS (bool)
+            Output the timeseries. Default is True.
+        output_fpXflux (bool)
+            Output the sensitivity map. Default is True.
+        show_progress (bool)
+            show progress bar throughout loop
+    
+    Returns:
+        xarray.Dataset or dict
+            Same format as flux_dict['high_freq']:
+                If flux_dict['high_freq'] is an xarray.Dataset then an xarray.Dataset is returned
+                If flux_dict['high_freq'] is a dict of xarray.Datasets then a dict of xarray.Datasets
+                is returned (an xarray.Dataset for each sector)
+        
+            If output_TS is True:
+                Outputs the timeseries
+            If output_fpXflux is True:
+                Outputs the sensitivity map   
+    """
+    ### get the high time res footprint
+    if fp_HiTRes_ds is None and fp_file is None:
+        print('Must provide either a footprint Dataset or filename')
+        return None
+    elif fp_HiTRes_ds is None:
+        fp_HiTRes_ds = xr.open_dataset(fp_file, chunks={'lat': 25, 'lon': 25})
+        fp_HiTRes    = fp_HiTRes_ds.fp_HiTRes
+    else:
+        fp_HiTRes = fp_HiTRes_ds.fp_HiTRes.chunk({'lat':25, 'lon':25})
+    
+    # rename varables for ease in loop
+    # H_back is the time coordinate for the 24 hour 2hrly footprint (hour back)
+    fp_HiTRes = fp_HiTRes.rename({'time'   : 'release_time'})
+    fp_HiTRes = fp_HiTRes.rename({'H_back' : 'time'})
+    
+    # convert fluxes to dictionaries with sectors as keys
+    flux_HiTRes = flux_dict['high_freq'] if isinstance(flux_dict['high_freq'], dict) else \
+                  {'total': flux_dict['high_freq']}
+    flux_resid  = flux_dict['low_freq']  if isinstance(flux_dict['low_freq'],  dict) else \
+                  {'total': flux_dict['low_freq']}
+    
+    ### check that the flux and footprint datetimes match
+    time_check = [flux.time == fp_HiTRes_ds.time for flux in flux_HiTRes.keys()]
+    if not all(time_check):
+        print('Footprint and flux time coordinates must match')
+        return None
+    
+    # Set up a numpy array to calculate the product of the footprint (H matrix) with the fluxes
+    fpXflux   = {sector: da.zeros((len(fp_HiTRes_ds.lat),
+                                   len(fp_HiTRes_ds.lon),
+                                   len(fp_HiTRes_ds.time)))
+                 for sector in flux_HiTRes.keys()}
+    
+    ### iterate through the time coord to get the total mf at each time step using the H back coord
+    iters = tqdm(fp_HiTRes.release_time) if show_progress else fp_HiTRes.release_time
+    for ti, time in enumerate(iters):
+        # get 4 dimensional chunk of high time res footprint for this timestep
+        # this chunk has the dimension H_back which corresponds to the previous 24 hours
+        # units : mol/mol/mol/m2/s
+        fp_time   = fp_HiTRes.sel(release_time=time)
+        # drop the release time dimension and reverse the time coordinate
+        fp_time   = fp_time.drop('release_time')
+        fp_time   = fp_time[:,:,::-1]
+        
+        # Change time from number hours to time stamps to use as the time variable for the footprint chunk
+        # Get the datetimes for the previous 24 hrs
+        time_back = [time.values - np.timedelta64(int(hh), 'h') for hh in fp_time.time.values]
+        fp_time   = fp_time.assign_coords({'time': time_back})
+        fp_time   = fp_time.resample(time='2H').interpolate("linear")
+        
+        fp_time   = da.from_array(fp_time.values)
+        
+        # Use end of hours back as closest point for finding the emissions file
+        # select the emissions for the corresponding 24 hours
+        emissions     = {sector: da.from_array(fl_sector.sel(time=slice(time_back[0], time_back[-1]),
+                                                             drop=True).flux.values)
+                         for sector, fl_sector in flux_HiTRes.items()}
+        emissions_end = {sector: da.from_array(flux_resid[sector].sel(time = time_back[0],
+                                                                      method = 'bfill').flux.values)
+                         for sector in flux_HiTRes.keys()}
+        
+        for sector in flux_HiTRes.keys():
+            # append the residual emissions
+            emissions[sector][:,:,0] = emissions_end[sector]
+            
+            # Multiply the HiTRes footprint with the HiTRes emissions to give mf
+            # flux units : mol/m2/s
+            # fp units : mol/mol/mol/m2/s
+            # --> mol/mol/mol/m2/s * mol/m2/s === mol / mol
+            # Sum over time (H back) to give the total mf at this timestep
+            fpXflux[sector][:,:,ti] = (fp_time * emissions[sector]).sum(axis=2)
+    
+    if output_fpXflux and not output_TS:
+        return fpXflux
+    
+    else:
+        # work out timeseries by summing the mf map over lat & lon
+        timeseries = {sector: np.sum(fpXflux[sector], axis = (0,1)) for sector in fpXflux.keys()}
+        
+        # put timeseries into an xarray Dataset if required
+        for sec, ts_sec in timeseries.items():
+            print(f'{sec} : {ts_sec.shape}')
+            
+        print(f'release_time : {fp_HiTRes.release_time.shape}')
+        # for each sector create a tuple of ['time'] (coord name) and the timeseries
+        # if the output required is a dataset
+        timeseries = {sec : (['time'], ts_sec) for sec, ts_sec in timeseries.items()} \
+                     if output_type.lower()=='dataarray' else timeseries
+        timeseries = xr.Dataset(timeseries,
+                                coords={'time' : fp_HiTRes.release_time.values}) \
+                     if output_type.lower()=='dataarray' else timeseries
+        
+        if output_file is not None and output_type.lower()=='dataarray':
+            print(f'Saving to {output_file}')
+            timeseries.to_netcdf(output_file)
+        elif output_file is not None:
+            print(f'output type must be dataarray to save to file')
+        
+        if output_fpXflux:
+            return timeseries, fpXflux
+        elif output_TS:
+            return timeseries
