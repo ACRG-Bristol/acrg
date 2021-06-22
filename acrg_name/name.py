@@ -2190,22 +2190,34 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
     fp_HiTRes = fp_HiTRes.rename({'H_back' : 'time'})
     
     # convert fluxes to dictionaries with sectors as keys
-    flux_HiTRes = flux_dict['high_freq'] if isinstance(flux_dict['high_freq'], dict) else \
-                  {'total': flux_dict['high_freq']}
-    flux_resid  = flux_dict['low_freq']  if isinstance(flux_dict['low_freq'],  dict) else \
-                  {'total': flux_dict['low_freq']}
+#     flux_HiTRes = flux_dict['high_freq'] if isinstance(flux_dict['high_freq'], dict) else \
+#                   {'total': flux_dict['high_freq']}
+#     flux_resid  = flux_dict['low_freq']  if isinstance(flux_dict['low_freq'],  dict) else \
+#                   {'total': flux_dict['low_freq']}
+    
+    flux = {freq: flux_freq if isinstance(flux_freq, dict) else {'total': flux_freq}
+            for freq, flux_freq in emissions.items()}
+        # use dask array to chunk the flux data
+    flux = {freq: {sector: flux_sector.chunk({'lat':25, 'lon':25})
+                   for sector, flux_sector in flux_freq.items()}
+            for freq, flux_freq in flux.items()}
     
     ### check that the flux and footprint datetimes match
-    time_check = [flux.time == fp_HiTRes_ds.time for flux in flux_HiTRes.keys()]
+    time_check = [flux.time == fp_HiTRes_ds.time for flux in flux['high_freq'].keys()]
     if not all(time_check):
         print('Footprint and flux time coordinates must match')
         return None
     
     # Set up a numpy array to calculate the product of the footprint (H matrix) with the fluxes
-    fpXflux   = {sector: da.zeros((len(fp_HiTRes_ds.lat),
-                                   len(fp_HiTRes_ds.lon),
-                                   len(fp_HiTRes_ds.time)))
-                 for sector in flux_HiTRes.keys()}
+    if output_fpXflux:
+        fpXflux   = {sector: da.zeros((len(fp_HiTRes_ds.lat),
+                                       len(fp_HiTRes_ds.lon),
+                                       len(fp_HiTRes_ds.time)))
+                     for sector in flux['high_freq'].keys()}
+    
+    if output_TS:
+        timeseries = {sector: np.zeros(len(fp_HiTRes_ds.time))
+                      for sector in flux['high_freq'].keys()}
     
     ### iterate through the time coord to get the total mf at each time step using the H back coord
     iters = tqdm(fp_HiTRes.release_time) if show_progress else fp_HiTRes.release_time
@@ -2228,36 +2240,49 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
         
         # Use end of hours back as closest point for finding the emissions file
         # select the emissions for the corresponding 24 hours
-        emissions     = {sector: da.from_array(fl_sector.sel(time=slice(time_back[0], time_back[-1]),
-                                                             drop=True).flux.values)
-                         for sector, fl_sector in flux_HiTRes.items()}
-        emissions_end = {sector: da.from_array(flux_resid[sector].sel(time = time_back[0],
-                                                                      method = 'bfill').flux.values)
-                         for sector in flux_HiTRes.keys()}
         
-        for sector in flux_HiTRes.keys():
+        emissions     = {sector: flux_sector.sel(time=slice(fp_time.time[0].values,
+                                                            fp_time.time[-1].values),
+                                                 drop=True).flux[:,:,1:]
+                         for sector, flux_sector in flux['high_freq'].items()}
+        emissions_end = {sector: flux_sector.sel(time = fp_time.time[0].values,
+                                                 method = 'ffill').flux
+                         for sector, flux_sector in flux['low_freq'].items()}
+        emissions_end = {sector: em_end.expand_dims({'time': 1}, axis=2)
+                         for sector, em_end in emissions_end.items()}
+        
+#         emissions     = {sector: da.from_array(fl_sector.sel(time=slice(time_back[0], time_back[-1]),
+#                                                              drop=True).flux.values)
+#                          for sector, fl_sector in flux['high_freq'].items()}
+#         emissions_end = {sector: da.from_array(flux['low_freq'][sector].sel(time = time_back[0],
+#                                                                       method = 'ffill').flux.values)
+#                          for sector in flux['high_freq'].keys()}
+        
+        for sector in flux['high_freq'].keys():
             # append the residual emissions
-            emissions[sector][:,:,0] = emissions_end[sector]
+#             emissions[sector][:,:,0] = emissions_end[sector]
+            em_sec = xr.concat([emissions_end[sector], em_sec], dim='time')
             
             # Multiply the HiTRes footprint with the HiTRes emissions to give mf
             # flux units : mol/m2/s
             # fp units : mol/mol/mol/m2/s
             # --> mol/mol/mol/m2/s * mol/m2/s === mol / mol
             # Sum over time (H back) to give the total mf at this timestep
-            fpXflux[sector][:,:,ti] = (fp_time * emissions[sector]).sum(axis=2)
+            if output_fpXflux:
+                fpXflux[sector][:,:,ti] = (fp_time * emissions[sector]).sum(axis=2)
+            
+            if output_TS:
+                # work out timeseries by summing over lat, lon, & time
+                timeseries[sector][ti] = (fp_time * emissions[sector]).sum()
     
     if output_fpXflux and not output_TS:
         return fpXflux
     
     else:
         # work out timeseries by summing the mf map over lat & lon
-        timeseries = {sector: np.sum(fpXflux[sector], axis = (0,1)) for sector in fpXflux.keys()}
+#         timeseries = {sector: np.sum(fpXflux[sector], axis = (0,1)) for sector in fpXflux.keys()}
         
         # put timeseries into an xarray Dataset if required
-        for sec, ts_sec in timeseries.items():
-            print(f'{sec} : {ts_sec.shape}')
-            
-        print(f'release_time : {fp_HiTRes.release_time.shape}')
         # for each sector create a tuple of ['time'] (coord name) and the timeseries
         # if the output required is a dataset
         timeseries = {sec : (['time'], ts_sec) for sec, ts_sec in timeseries.items()} \
