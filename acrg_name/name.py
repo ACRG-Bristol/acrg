@@ -835,15 +835,17 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
 
     sites = [key for key in data]
     
-    if species_footprint is None:
-        species_list = []
-        for site in sites:
-            species_list += [item.species for item in data[site]]
-        if not all(s==species_list[0] for s in species_list):
-            raise Exception("Species do not match in for all measurements")
-        else:
-            species = species_list[0]
-    else: species = species_footprint
+    species_list = []
+    for site in sites:
+        species_list += [item.species for item in data[site]]
+    if not all(s==species_list[0] for s in species_list):
+        raise Exception("Species do not match in for all measurements")
+    else:
+        species = species_list[0]
+        
+    species_footprint = species if species_footprint is None else species_footprint
+    if species_footprint!=species:
+        print(f'Finding footprints files for {species_footprint}')
 
     if load_flux:
         if emissions_name is not None:
@@ -929,7 +931,7 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
             site_fp = footprints(site_modifier_fp, met_model = met_model_site, fp_directory = fp_directory, 
                                  start = start, end = end,
                                  domain = domain,
-                                 species = species.lower(),
+                                 species = species_footprint.lower(),
                                  height = height_site,
                                  network = network_site,
                                  HiTRes = HiTRes)
