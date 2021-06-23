@@ -767,7 +767,8 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
                           fp_directory = None,
                           flux_directory = None,
                           bc_directory = None,
-                          resample_to_data = False):
+                          resample_to_data = False,
+                          species_footprint = None):
 
     """
     Output a dictionary of xarray footprint datasets, that correspond to a given
@@ -833,14 +834,16 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
     """
 
     sites = [key for key in data]
-
-    species_list = []
-    for site in sites:
-        species_list += [item.species for item in data[site]]
-    if not all(s==species_list[0] for s in species_list):
-        raise Exception("Species do not match in for all measurements")
-    else:
-        species = species_list[0]
+    
+    if species_footprint is None:
+        species_list = []
+        for site in sites:
+            species_list += [item.species for item in data[site]]
+        if not all(s==species_list[0] for s in species_list):
+            raise Exception("Species do not match in for all measurements")
+        else:
+            species = species_list[0]
+    else: species_footprint = species
 
     if load_flux:
         if emissions_name is not None:
@@ -935,6 +938,8 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
             if "units" in mfattrs:
                 if is_number(site_ds.mf.attrs["units"]):
                     units = float(site_ds.mf.attrs["units"])
+                else: units = None
+            else: units = None
         
             if site_fp is not None:
                 # If satellite data, check that the max_level in the obs and the max level in the processed FPs are the same
