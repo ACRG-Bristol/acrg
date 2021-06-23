@@ -843,7 +843,7 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
             raise Exception("Species do not match in for all measurements")
         else:
             species = species_list[0]
-    else: species_footprint = species
+    else: species = species_footprint
 
     if load_flux:
         if emissions_name is not None:
