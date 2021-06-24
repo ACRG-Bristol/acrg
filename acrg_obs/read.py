@@ -421,7 +421,14 @@ def get_single_site(site, species_in,
         with xr.open_dataset(f[0]) as f_ds:
             ds = f_ds.load()
 
-        # If 4 elements, it means the query returned a start and end date
+        # Remove any spaces from variable names:
+        var_rename = {}
+        for var in ds.variables:
+            if " " in var:
+                var_rename[var] = var.replace(" ", "_")
+        ds = ds.rename_vars(var_rename)
+
+        # If 5 elements, it means the query returned a start and end date
         # Otherwise, return whole dataset
         if len(f) == 5:
             if pd.Timestamp(start_date) > pd.Timestamp(f[3]):
