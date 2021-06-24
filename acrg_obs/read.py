@@ -536,8 +536,17 @@ def get_single_site(site, species_in,
             ds.attrs["inlet"] = f[1]
         ds.attrs["instrument"] = f[2]
         ds.attrs["species"] = species
-        if "Calibration_scale" in ds.attrs:
-            ds.attrs["scale"] = ds.attrs.pop("Calibration_scale")
+
+        # Find calibration scale in file
+        scale_count = 0
+        for attr in ds.attrs:
+            if "calibration" in attr.lower() or "scale" in attr.lower():
+                scale = ds.attrs[attr]
+                scale_count += 1
+        
+        if scale_count > 1:
+            raise Exception("Ambiguous calibration scale: Check if the file has multiple global attributs containing the words calibration and scale")
+        ds.attrs["scale"] = scale
 
         # Convert calibration scale, if needed
         if calibration_scale != None:
