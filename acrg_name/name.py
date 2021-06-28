@@ -767,7 +767,8 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
                           fp_directory = None,
                           flux_directory = None,
                           bc_directory = None,
-                          resample_to_data = False):
+                          resample_to_data = False,
+                          species_footprint = None):
 
     """
     Output a dictionary of xarray footprint datasets, that correspond to a given
@@ -833,7 +834,7 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
     """
 
     sites = [key for key in data]
-
+    
     species_list = []
     for site in sites:
         species_list += [item.species for item in data[site]]
@@ -841,6 +842,10 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
         raise Exception("Species do not match in for all measurements")
     else:
         species = species_list[0]
+        
+    species_footprint = species if species_footprint is None else species_footprint
+    if species_footprint!=species:
+        print(f'Finding footprints files for {species_footprint}')
 
     if load_flux:
         if emissions_name is not None:
@@ -926,14 +931,17 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
             site_fp = footprints(site_modifier_fp, met_model = met_model_site, fp_directory = fp_directory, 
                                  start = start, end = end,
                                  domain = domain,
-                                 species = species.lower(),
+                                 species = species_footprint.lower(),
                                  height = height_site,
                                  network = network_site,
                                  HiTRes = HiTRes)
 
             mfattrs = [key for key in site_ds.mf.attrs]
             if "units" in mfattrs:
-                units = float(site_ds.mf.attrs["units"]) if is_number(site_ds.mf.attrs["units"]) else None
+                if is_number(site_ds.mf.attrs["units"]):
+                    units = float(site_ds.mf.attrs["units"])
+                else: units = None
+            else: units = None
         
             if site_fp is not None:
                 # If satellite data, check that the max_level in the obs and the max level in the processed FPs are the same
