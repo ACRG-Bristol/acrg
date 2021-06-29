@@ -1453,7 +1453,7 @@ def LGHG_licor():
                 
                 
                 #now we can convert datetimes
-                data_raw["time"] = pd.to_datetime(data_raw["Time"], format="%Y/%m/%d %H:%M:%S")
+                data_raw["time"] = pd.to_datetime(data_raw["Time"], format="%d/%m/%Y %H:%M")
                 
                 #rename columns
                 rename_dict = {}
