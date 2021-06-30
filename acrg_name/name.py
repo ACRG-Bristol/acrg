@@ -152,7 +152,7 @@ def filenames(site, domain, start, end, height, fp_directory, network=None, spec
     return files
 
 
-def read_netcdfs(files, dim = "time"):
+def read_netcdfs(files, dim = "time", chunks=None):
     """
     The read_netcdfs function uses xarray to open sequential netCDF files and 
     and concatenates them along the specified dimension.
@@ -173,9 +173,12 @@ def read_netcdfs(files, dim = "time"):
     print("Reading and concatenating files: ")
     for fname in files:
         print(fname)
-    
-    datasets = [open_ds(p) for p in sorted(files)]
-    combined = xr.concat(datasets, dim)
+    if chunks is not None:
+        datasets = [xr.open_dataset(p, chunks=chunks) for p in sorted(files)]
+        combined = xr.concat(datasets, dim)
+    else:
+        datasets = [open_ds(p) for p in sorted(files)]
+        combined = xr.concat(datasets, dim)
     return combined   
 
 
