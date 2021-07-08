@@ -334,7 +334,7 @@ def footprints(sitecode_or_filename, met_model = None, fp_directory = None,
         return fp
 
 
-def flux(domain, species, start = None, end = None, flux_directory=None):
+def flux(domain, species, start = None, end = None, flux_directory=None, chunk=True):
     """
     The flux function reads in all flux files for the domain and species as an xarray Dataset.
     Note that at present ALL flux data is read in per species per domain or by emissions name.
@@ -389,7 +389,8 @@ def flux(domain, species, start = None, end = None, flux_directory=None):
     else:
         raise IOError("\nError: Can't find flux files for domain '{0}' and species '{1}' (using search: {2})".format(domain,species,species_search_list))
     
-    flux_ds = read_netcdfs(files)
+    chunks = None if start == None or end == None or not chunk else {'lat': 50, 'lon': 50}
+    flux_ds = read_netcdfs(files, chunks=chunks)
     # Check that time coordinate is present
     if not "time" in list(flux_ds.coords.keys()):
         raise KeyError(f"ERROR: No 'time' coordinate in flux dataset for domain '{domain}' species '{species}'")
@@ -440,7 +441,8 @@ def flux(domain, species, start = None, end = None, flux_directory=None):
                           flux from %s" %flux_timeslice.time.values[0])
         else:
             print("Slicing time to range {} - {}".format(month_start,month_end))
-            
+        
+        flux_timeslice = flux_timeslice.compute()
         return flux_timeslice
 
 
