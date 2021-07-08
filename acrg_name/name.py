@@ -35,6 +35,7 @@ from collections import OrderedDict
 import acrg_obs as obs
 from acrg_config.paths import paths
 from acrg_utils import is_number
+from tqdm import tqdm
 
 acrg_path = paths.acrg
 data_path = paths.data
@@ -44,13 +45,25 @@ with open(acrg_path / "acrg_site_info.json") as f:
     site_info=json.load(f,object_pairs_hook=OrderedDict)
 
     
-def open_ds(path):
+def open_ds(path, chunks=None):
     """
     Function efficiently opens xray datasets.
+
+    Args:
+        path (str)
+        chunks (dict)
+            size of chunks for each dimension
+            e.g. {'lat': 50, 'lon': 50}
+            opens dataset with dask, such that it is opened 'lazily'
+            and all of the data is not loaded into memory
+            defaults to None - dataset is opened with out dask
     """
     # use a context manager, to ensure the file gets closed after use
-    with xr.open_dataset(path) as ds:
-        ds.load()
+    if chunks is not None:
+        ds = xr.open_mfdataset(path, chunks=chunks)
+    else:
+        with xr.open_dataset(path) as ds:
+            ds.load()
     return ds 
 
 
@@ -181,6 +194,12 @@ def read_netcdfs(files, dim = "time", chunks=None):
         dim (str, optional) : 
             Dimension of netCDF to use for concatenating the files.
             Default = "time".
+        chunks (dict)
+            size of chunks for each dimension
+            e.g. {'lat': 50, 'lon': 50}
+            opens dataset with dask, such that it is opened 'lazily'
+            and all of the data is not loaded into memory
+            defaults to None - dataset is opened with out dask
     
     Returns:
         xarray.Dataset : 
@@ -191,7 +210,7 @@ def read_netcdfs(files, dim = "time", chunks=None):
     for fname in files:
         print(fname)
     
-    datasets = [open_ds(p) for p in sorted(files)]
+    datasets = [open_ds(p, chunks=chunks) for p in sorted(files)]
     
     # reindex all of the lat-lon values to a common one to prevent floating point error differences
     with xr.open_dataset(files[0]) as temp:
@@ -207,7 +226,7 @@ def read_netcdfs(files, dim = "time", chunks=None):
 
 def footprints(sitecode_or_filename, met_model = None, fp_directory = None, 
                start = None, end = None, domain = None, height = None, network = None,
-               species = None, HiTRes = False):
+               species = None, HiTRes = False, chunks = None):
 
     """
     The footprints function loads a NAME footprint netCDF files into an xarray Dataset.
@@ -254,6 +273,12 @@ def footprints(sitecode_or_filename, met_model = None, fp_directory = None,
         HiTRes (bool, optional) : 
             Whether to include high time resolution footprints.
             Default = False.
+        chunks (dict)
+            size of chunks for each dimension
+            e.g. {'lat': 50, 'lon': 50}
+            opens dataset with dask, such that it is opened 'lazily'
+            and all of the data is not loaded into memory
+            defaults to None - dataset is opened with out dask
         
     Returns:
         xarray.Dataset : 
@@ -299,12 +324,12 @@ def footprints(sitecode_or_filename, met_model = None, fp_directory = None,
         return None
 
     else:
-        fp=read_netcdfs(files)  
+        fp=read_netcdfs(files, chunks=chunks)  
 
-        if HiTRes == True:
-            HiTRes_files = filenames(site, domain, start, end, height, fp_directory["HiTRes"])
-            HiTRes_ds = read_netcdfs(HiTRes_files)
-            fp = combine_datasets(fp, HiTRes_ds, method='ffill')
+        # if HiTRes == True:
+        #     HiTRes_files = filenames(site, domain, start, end, height, fp_directory["HiTRes"])
+        #     HiTRes_ds = read_netcdfs(HiTRes_files)
+        #     fp = combine_datasets(fp, HiTRes_ds, method='ffill')
 
         return fp
 
@@ -768,7 +793,8 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
                           flux_directory = None,
                           bc_directory = None,
                           resample_to_data = False,
-                          species_footprint = None):
+                          species_footprint = None,
+                          chunks = False):
 
     """
     Output a dictionary of xarray footprint datasets, that correspond to a given
@@ -826,6 +852,12 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
                                   If set to None (default), then the footprints and data are sampled to the 
                                   coarset resolution of the two.
                                   (optional)
+        chunks (dict)
+            size of chunks for each dimension of fp
+            e.g. {'lat': 50, 'lon': 50}
+            opens dataset with dask, such that it is opened 'lazily'
+            and all of the data is not loaded into memory
+            defaults to None - dataset is opened with out dask
                                     
     
     Returns:
@@ -934,7 +966,8 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
                                  species = species_footprint.lower(),
                                  height = height_site,
                                  network = network_site,
-                                 HiTRes = HiTRes)
+                                 HiTRes = HiTRes,
+                                 chunks = chunks)
 
             mfattrs = [key for key in site_ds.mf.attrs]
             if "units" in mfattrs:
@@ -1071,7 +1104,10 @@ def add_timeseries(fp_and_data, load_flux):
         for site in sites:                    
             for source in sources:
                 if type(fp_and_data['.flux'][source]) == dict:
-                    fp_and_data[site]['mf_mod_'+source] = xr.DataArray(timeseries_HiTRes(fp_and_data[site],fp_and_data['.flux'][source], output_fpXflux=False), coords = {'time': fp_and_data[site].time})
+                    fp_and_data[site]['mf_mod_'+source] = xr.DataArray(timeseries_HiTRes(fp_HiTRes_ds = fp_and_data[site],
+                                                                                         flux_dict = fp_and_data['.flux'][source],
+                                                                                         output_fpXflux = False),
+                                                                       coords = {'time': fp_and_data[site].time})
                 else:
                     flux_reindex = fp_and_data['.flux'][source].reindex_like(fp_and_data[site], 'ffill')
                     if source == 'all':
@@ -2199,7 +2235,8 @@ class get_country(object):
         self.name = name 
 
 def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = True, output_fpXflux = True,
-                      output_type='Dataset', output_file=None, show_progress=False, number_chunks=25):
+                      output_type='Dataset', output_file=None, show_progress=False, chunks=None,
+                      time_resolution='2H'):
     """
     The timeseries_HiTRes function computes flux * HiTRes footprints.
     
@@ -2229,6 +2266,12 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
             Output the sensitivity map. Default is True.
         show_progress (bool)
             show progress bar throughout loop
+        chunks (dict)
+            size of chunks for each dimension
+            e.g. {'lat': 50, 'lon': 50}
+            opens dataset with dask, such that it is opened 'lazily'
+            and all of the data is not loaded into memory
+            defaults to None - dataset is opened with out dask
     
     Returns:
         xarray.Dataset or dict
@@ -2247,106 +2290,119 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
         print('Must provide either a footprint Dataset or filename')
         return None
     elif fp_HiTRes_ds is None:
-        fp_HiTRes_ds = read_netcdfs(fp_file, chunks={'lat': number_chunks, 'lon': number_chunks})
+        fp_HiTRes_ds = read_netcdfs(fp_file, chunks=chunks)
         fp_HiTRes    = fp_HiTRes_ds.fp_HiTRes
     else:
-        fp_HiTRes = fp_HiTRes_ds.fp_HiTRes.chunk({'lat':number_chunks, 'lon':number_chunks}) \
-                    if fp_HiTRes_ds.chunks is None else fp_HiTRes_ds.fp_HiTRes
-    
-    # rename varables for ease in loop
-    # time is the release time of particles into the model
-    # H_back is the time coordinate for the 24 hour 2hrly footprint (hour back)
-    fp_HiTRes = fp_HiTRes.rename({'time'   : 'release_time'})
-    fp_HiTRes = fp_HiTRes.rename({'H_back' : 'time'})
+        fp_HiTRes = fp_HiTRes_ds if type(fp_HiTRes_ds)==xr.core.dataarray.DataArray else \
+                    fp_HiTRes_ds.fp_HiTRes.chunk(chunks) \
+                    if fp_HiTRes_ds.chunks is None and chunks is not None else fp_HiTRes_ds.fp_HiTRes
     
     # convert fluxes to dictionaries with sectors as keys
     flux = {freq: flux_freq if isinstance(flux_freq, dict) else {'total': flux_freq}
             for freq, flux_freq in flux_dict.items()}
-    # use dask array to chunk the flux data
-    flux = {freq: {sector: None if flux_sector is None 
-                           else flux_sector.chunk({'lat':number_chunks, 'lon':number_chunks})
-                           if flux_sector.chunks is None else flux_sector
+    flux = {freq: {sector: None if flux_sector is None else flux_sector
                    for sector, flux_sector in flux_freq.items()}
             for freq, flux_freq in flux.items()}
     
+    # create time array to loop through, with the required resolution
+    # fp_HiTRes.time is the release time of particles into the model
+    time_array = np.arange(fp_HiTRes.time[0].values, fp_HiTRes.time[-1].values,
+                           int(time_resolution[0]),
+                           dtype=f'datetime64[{time_resolution[1].lower()}]')
+    
     # Set up a numpy array to calculate the product of the footprint (H matrix) with the fluxes
     if output_fpXflux:
-        fpXflux   = {sector: da.zeros((len(fp_HiTRes_ds.lat),
+        fpXflux   = {sector: np.zeros((len(fp_HiTRes_ds.lat),
                                        len(fp_HiTRes_ds.lon),
-                                       len(fp_HiTRes_ds.time)))
+                                       len(time_array)))
                      for sector in flux['high_freq'].keys()}
     
     elif output_TS:
-        timeseries = {sector: da.zeros(len(fp_HiTRes_ds.time))
+        timeseries = {sector: np.zeros(len(fp_HiTRes_ds.time))
                       for sector in flux['high_freq'].keys()}
-    
+
+    # put the time array into tqdm if we want a progress bar to show throughout the loop
+    iters = tqdm(time_array) if show_progress else time_array
     ### iterate through the time coord to get the total mf at each time step using the H back coord
     # at each release time we disaggregate the particles backwards over the previous 24hrs
-    iters = tqdm(fp_HiTRes.release_time) if show_progress else fp_HiTRes.release_time
     for ti, time in enumerate(iters):
         # get 4 dimensional chunk of high time res footprint for this timestep
         # units : mol/mol/mol/m2/s
-        fp_time   = fp_HiTRes.sel(release_time=time)
-        # drop the release time dimension and reverse the time coordinate
-        # the time coordinate tells us the number of hours before the release time
-        fp_time   = fp_time.drop('release_time')
-        fp_time   = fp_time[:,:,::-1]
+        fp_time   = fp_HiTRes.sel(time=time).compute()
+
+        # drop the release time dimension
+        fp_time   = fp_time.drop('time')
+
+        # reverse the time coordinate to be chronological, and resample
+        num       = int(time_resolution[0])
+        fp_time   = fp_time[:,:,::-num]
         
-        # Change time from number hours to time stamps to use as the time variable for the footprint chunk
         # Get the datetimes for the previous 24 hrs
-        time_back = [time.values - np.timedelta64(int(hh), 'h') for hh in fp_time.time.values]
-        fp_time   = fp_time.assign_coords({'time': time_back})
-        fp_time   = fp_time.resample(time='2H').interpolate("linear")
+        # H_back is the time coordinate for the 24 hour footprint (hour back)
+        time_24hrs = [time - np.timedelta64(int(hh), 'h') for hh in fp_time.H_back.values]
         
-        # Use end of hours back as closest point for finding the emissions file
         # select the emissions for the corresponding 24 hours
-        emissions     = {sector: flux_sector.sel(time=slice(fp_time.time[1].values,
-                                                            fp_time.time[-1].values),
-                                                 drop=True).flux
+        # if there aren't any high frequency data it will select from the low frequency data
+        # this is so that we can compare emissions data with different resolutions e.g. ocean species
+        # we take the arry out of xarray to save on memory use
+        emissions     = {sector: flux_sector.sel(time=slice(time_24hrs[1], time_24hrs[-1]),
+                                                 drop=True).flux.values
                                  if flux_sector is not None else
-                                 flux['low_freq'][sector].sel(time=fp_time.time[0].values,
+                                 flux['low_freq'][sector].sel(time=time_24hrs[1],
                                                               method='ffill',
-                                                              drop=True).flux
+                                                              drop=True).flux.values
                          for sector, flux_sector in flux['high_freq'].items()}
-        fpXflux_time  = {sector: em_sec * fp_time[:,:,1:] for sector, em_sec in emissions.items()}
-        
-        emissions_end = {sector: flux_sector.sel(time = fp_time.time[0].values,
-                                                 method = 'ffill').flux
+        # add an axis if the emissions is array is 2D so that it can be multiplied by the fp
+        emissions     = {sector: em_sec[:,:,np.newaxis] if len(em_sec.shape)==2 else em_sec
+                        for sector, em_sec in emissions.items()}
+        # select residual (monthly) emissions
+        # ffill will sfill forward i.e. will select the start of the month
+        emissions_end = {sector: flux_sector.sel(time = time_24hrs[0],
+                                                 method = 'ffill').flux.values
                          for sector, flux_sector in flux['low_freq'].items()}
-        fpXflux_end   = {sector: em_end.values * fp_time[:,:,0]
-                         for sector, em_end in emissions_end.items()}
+        
+        # Multiply the HiTRes footprint with the HiTRes emissions to give mf
+        # flux units : mol/m2/s;       fp units : mol/mol/mol/m2/s
+        # --> mol/mol/mol/m2/s * mol/m2/s === mol / mol
+        fpXflux_time  = {sector: em_sec * fp_time[:,:,1:].values for sector, em_sec in emissions.items()}
+        fpXflux_end   = {sector: em_end * fp_time[:,:,0].values for sector, em_end in emissions_end.items()}
+        # append the residual emissions
+        fpXflux_time  = {sector: np.dstack((fp_fl, fpXflux_end[sector]))
+                         for sector, fp_fl in fpXflux_time.items()}
         
         for sector, fp_fl in fpXflux_time.items():
-            # append the residual emissions
-            fp_fl = xr.concat([fpXflux_end[sector], fp_fl], dim='time')
-            
-            # Multiply the HiTRes footprint with the HiTRes emissions to give mf
-            # flux units : mol/m2/s
-            # fp units : mol/mol/mol/m2/s
-            # --> mol/mol/mol/m2/s * mol/m2/s === mol / mol
-            # Sum over time (H back) to give the total mf at this timestep
             if output_fpXflux:
-                fpXflux[sector][:,:,ti] = fp_fl.fillna(0).sum(axis=2)
+                # Sum over time (H back) to give the total mf at this timestep
+                fpXflux[sector][:,:,ti] = fp_fl.sum(axis=2)
             
             elif output_TS:
-                # work out timeseries by summing over lat, lon, & time
-                timeseries[sector][ti] = fp_fl.fillna(0).sum()
+                # work out timeseries by summing over lat, lon, & time (24 hrs)
+                timeseries[sector][ti] = fp_fl.sum()
     
     if output_fpXflux and not output_TS:
+        fpXflux = xr.Dataset(fpXflux,
+                             coords={'lat'  : fp_HiTRes.lat.values,
+                                     'lon'  : fp_HiTRes.lon.values,
+                                     'time' : fp_HiTRes.release_time.values}) \
+                  if output_type.lower()=='dataset' else fpXflux
         return fpXflux
     
     else:
         if output_fpXflux:
             # if not already done then calculate the timeseries
-            timeseries = {sector: fp_fl.sum(axis=[0,1]) for sector, fp_fl in fpXflux.items()}
-            fpXflux    = {sector: fp_fl.compute() for sector, fp_fl in fpXflux.items()}
+            timeseries = {sector: fp_fl.sum(axis=(0,1)) for sector, fp_fl in fpXflux.items()}
+            fpXflux = xr.Dataset(fpXflux,
+                                 coords={'lat'  : fp_HiTRes.lat.values,
+                                         'lon'  : fp_HiTRes.lon.values,
+                                         'time' : fp_HiTRes.release_time.values}) \
+                      if output_type.lower()=='dataset' else fpXflux
         # for each sector create a tuple of ['time'] (coord name) and the timeseries
         # if the output required is a dataset
         timeseries = {sec : (['time'], ts_sec) for sec, ts_sec in timeseries.items()} \
                      if output_type.lower()=='dataset' else timeseries
         timeseries = xr.Dataset(timeseries,
                                 coords={'time' : fp_HiTRes.release_time.values}) \
-                     if output_type.lower()=='dataset' else timeseries.compute()
+                     if output_type.lower()=='dataset' else timeseries
         
         if output_file is not None and output_type.lower()=='dataset':
             print(f'Saving to {output_file}')
