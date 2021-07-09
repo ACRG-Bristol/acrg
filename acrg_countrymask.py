@@ -32,6 +32,7 @@ import glob
 import getpass
 import os
 import sys
+from aospy.utils.longitude import lon_to_0360
 
 from acrg_config.paths import paths
 data_path = paths.data
@@ -71,7 +72,7 @@ def domain_volume(domain,fp_directory=fp_directory):
     else:
         raise Exception('Cannot extract volume for domain: {1}. No footprint file found within {0}'.format(directory,domain))
         #return None
-
+        
 def range_from_bounds(bounds,step,include_upper=False):
     '''
     Create an array covering a range from a set of bounds. Choose whether to include upper
@@ -396,10 +397,16 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
         lat,lon,height = domain_volume(domain)
     
     if database == "Natural_Earth" and scale == "1:50m":
+        # moves longitude values onto 0-360 range if lons have values less than 0 and greater than 180, as regionmask cannot use a lon range that has both 
+        if any(lon < 0) & any(lon > 180):
+            lon = lon_to_0360(lon)
         mask = regionmask.defined_regions.natural_earth.countries_50.mask(lon,lat,xarray=True)
     elif database == "Natural_Earth" and scale == "1:110m":
+        # moves longitude values onto 0-360 range if lons have values less than 0 and greater than 180, as regionmask cannot use a lon range that has both 
+        if any(lon < 0) & any(lon > 180):
+            lon = lon_to_0360(lon)
         mask = regionmask.defined_regions.natural_earth.countries_110.mask(lon,lat,xarray=True)
-    
+
     if use_domain_extent:
         lat_outer = np.where((mask["lat"].values < sub_lat[0]) | (mask["lat"].values >= sub_lat[-1]))[0]
         lon_outer = np.where((mask["lon"].values < sub_lon[0]) | (mask["lon"].values >= sub_lon[-1]))[0]
@@ -497,4 +504,3 @@ if __name__=="__main__":
     # Lat/Lon can be specified explictly or a domain footprint file can be used to find these values.
     
     ds = create_country_mask(domain,write=write,reset_index=True,ocean_label=True)
-    
