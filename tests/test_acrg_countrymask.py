@@ -68,7 +68,7 @@ def test_all_domains(name_domains):
         
 def test_convert_lons_0360():
     '''
-    Test lonitude values are converted to 0-360 range for domains with longitudes > 180 and < 0.
+    Test longitude values are converted to 0-360 range for domains with longitudes > 180 and < 0 (currently only the Arctic domain).
     '''  
     
     domain = 'ARCTIC'
@@ -78,6 +78,7 @@ def test_convert_lons_0360():
 
     assert lon_0360 is not None
     assert all(lon_0360 > 0) is True
+    assert all(lon_0360 < 360) is True
 
 
 ##########
