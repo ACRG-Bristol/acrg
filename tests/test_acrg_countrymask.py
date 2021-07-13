@@ -77,7 +77,7 @@ def test_convert_lons_0360():
         lon_0360 = countrymask.convert_lons_0360(fp_lon)
 
     assert lon_0360 is not None
-    assert all(lon_0360 > 0) is True
+    assert all(lon_0360 >= 0) is True
     assert all(lon_0360 < 360) is True
 
 
