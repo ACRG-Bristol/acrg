@@ -20,8 +20,8 @@ acrg_path = paths.acrg
 
 @pytest.fixture(scope="module")
 def name_domains():
-    #domains = ['AUSTRALIA','CARIBBEAN','EASTASIA','EUROPE','NAMERICA','PACIFIC','SOUTHAFRICA','SOUTHASIA','WESTUSA']
-    domains = ['AUSTRALIA','EASTASIA','EUROPE','NAMERICA']
+    #domains = ['ARCTIC', AUSTRALIA','CARIBBEAN','EASTASIA','EUROPE','NAMERICA','PACIFIC','SOUTHAFRICA','SOUTHASIA','WESTUSA']
+    domains = ['ARCTIC','AUSTRALIA','EASTASIA','EUROPE','NAMERICA']
     return domains
 
 
@@ -44,7 +44,7 @@ def test_wrong_input():
 
 def test_other_directory():
     '''
-    Test that function can used with file read from a different directory
+    Test that function can be used with file read from a different directory
     '''
     fp_dir = os.path.join(acrg_path,"tests/files/LPDM/fp_NAME/")
     print("acrg_path",acrg_path)
@@ -64,6 +64,21 @@ def test_all_domains(name_domains):
     '''
     for domain in name_domains:
         fp_lat,fp_lon,fp_height = countrymask.domain_volume(domain)
+        
+        
+def test_convert_lons_0360():
+    '''
+    Test lonitude values are converted to 0-360 range for domains with longitudes > 180 and < 0.
+    '''  
+    
+    domain = 'ARCTIC'
+    fp_lat,fp_lon,fp_height = countrymask.domain_volume(domain)
+    if any(fp_lon < 0) & any(fp_lon > 180):
+        lon_0360 = countrymask.convert_lons_0360(fp_lon)
+
+    assert lon_0360 is not None
+    assert all(lon_0360 > 0) is True
+
 
 ##########
 

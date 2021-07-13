@@ -32,7 +32,6 @@ import glob
 import getpass
 import os
 import sys
-from aospy.utils.longitude import lon_to_0360
 
 from acrg_config.paths import paths
 data_path = paths.data
@@ -72,7 +71,23 @@ def domain_volume(domain,fp_directory=fp_directory):
     else:
         raise Exception('Cannot extract volume for domain: {1}. No footprint file found within {0}'.format(directory,domain))
         #return None
-        
+
+def convert_lons_0360(lons):
+    '''
+    Convert longitude values onto a 0-360 range from -180-180 range. Uses floored division. 
+    
+    Args:
+        lons (arr):
+            1D array of longitudes.            
+    Returns:
+        array:
+            Longitudes on 0-360 range.           
+    '''
+ 
+    div = lons // 360
+
+    return lons - div*360
+
 def range_from_bounds(bounds,step,include_upper=False):
     '''
     Create an array covering a range from a set of bounds. Choose whether to include upper
@@ -399,12 +414,12 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
     if database == "Natural_Earth" and scale == "1:50m":
         # moves longitude values onto 0-360 range if lons have values less than 0 and greater than 180, as regionmask cannot use a lon range that has both 
         if any(lon < 0) & any(lon > 180):
-            lon = lon_to_0360(lon)
+            lon = convert_lons_0360(lon)
         mask = regionmask.defined_regions.natural_earth.countries_50.mask(lon,lat,xarray=True)
     elif database == "Natural_Earth" and scale == "1:110m":
         # moves longitude values onto 0-360 range if lons have values less than 0 and greater than 180, as regionmask cannot use a lon range that has both 
         if any(lon < 0) & any(lon > 180):
-            lon = lon_to_0360(lon)
+            lon = convert_lons_0360(lon)
         mask = regionmask.defined_regions.natural_earth.countries_110.mask(lon,lat,xarray=True)
 
     if use_domain_extent:
@@ -490,7 +505,7 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
         filename = os.path.join(output_dir,filename)
         if not os.path.isfile(filename):    
             print('Writing output to {}'.format(filename))
-            ds.to_netcdf(filename)
+#             ds.to_netcdf(filename)
         else:
             print("ERROR: DID NOT WRITE TO FILE: {} already exists".format(filename))
     
