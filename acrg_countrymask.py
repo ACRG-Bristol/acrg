@@ -505,7 +505,7 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
         filename = os.path.join(output_dir,filename)
         if not os.path.isfile(filename):    
             print('Writing output to {}'.format(filename))
-#             ds.to_netcdf(filename)
+            ds.to_netcdf(filename)
         else:
             print("ERROR: DID NOT WRITE TO FILE: {} already exists".format(filename))
     
