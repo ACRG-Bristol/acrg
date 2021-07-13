@@ -1119,10 +1119,16 @@ def add_timeseries(fp_and_data, load_flux, verbose=True):
         for site in sites:                    
             for source in sources:
                 if type(fp_and_data['.flux'][source]) == dict:
+                    # work out the lowest resolution of the flux and the fp, to use estimating the timeseries
+                    res = [(fp_and_data['.flux'][source].time[1] - fp_and_data['.flux'][source].time[0]).values.astype('timedelta64[h]').astype(int),
+                           (fp_and_data[site].time[1] - fp_and_data[site].time[0]).values.astype('timedelta64[h]').astype(int)]
+                    res = np.nanmin(res)
+                    # estimate the timeseries
                     fp_and_data[site]['mf_mod_'+source] = timeseries_HiTRes(fp_HiTRes_ds = fp_and_data[site],
                                                                             flux_dict = fp_and_data['.flux'][source],
                                                                             output_fpXflux = False,
                                                                             verbose = verbose,
+                                                                            time_resolution = res,
                                                                             output_type = 'DataArray')
                 else:
                     flux_reindex = fp_and_data['.flux'][source].reindex_like(fp_and_data[site], 'ffill')
@@ -1247,8 +1253,11 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                 if 'fp_HiTRes' in list(fp_and_data[site].keys()):
                     site_bf = xr.Dataset({"fp_HiTRes":fp_and_data[site]["fp_HiTRes"],
                                           "fp":fp_and_data[site]["fp"]})
+                    res = [(fp_and_data['.flux'][source].time[1] - fp_and_data['.flux'][source].time[0]).values.astype('timedelta64[h]').astype(int),
+                           (site_bf.time[1] - site_bf.time[0]).values.astype('timedelta64[h]').astype(int)]
+                    res = np.nanmin(res)
                     H_all = timeseries_HiTRes(fp_HiTRes_ds = site_bf, flux_dict = fp_and_data['.flux'][source], output_TS = False,
-                                              output_fpXflux = True, output_type = 'DataArray', verbose = verbose)
+                                              output_fpXflux = True, output_type = 'DataArray', time_resolution=f'{res}H', verbose = verbose)
                 else:
                     print("fp_and_data needs the variable fp_HiTRes to use the emissions dictionary with high_freq and low_freq emissions.")
         
@@ -2301,10 +2310,10 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
                 Outputs the sensitivity map   
     """
     if verbose:
-        print('Calculating timeseries, this might take a few minutes')
+        print(f'\nCalculating timeseries with {time_resolution} resolution, this might take a few minutes')
     ### get the high time res footprint
     if fp_HiTRes_ds is None and fp_file is None:
-        print('Must provide either a footprint Dataset or filename')
+        print('Must provide either a footprint Dataset or footprint filename')
         return None
     elif fp_HiTRes_ds is None:
         fp_HiTRes_ds = read_netcdfs(fp_file, chunks=chunks)
