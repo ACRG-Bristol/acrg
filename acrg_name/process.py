@@ -1077,6 +1077,11 @@ def footprint_array(fields_file,
         timeStep        = fields_ds.getncattr('ReleaseDurationHours')
         data_arrays     = []     
         
+        if species == 'CO2':
+            FDS_rt = xray.Dataset({"fp_HiTRes": (["time", "lev", "lat", "lon", "H_back"],
+                                    np.zeros((len(time), len(levs),len(lats), len(lons), int(user_max_hour_back))))},
+                                    coords={"time": time, "lev": levs, "lat": lats, "lon": lons,  
+                                            "H_back": np.arange(0,user_max_hour_back)})
         for rtime in releasetime:
             rt_dt       = datetime.datetime.strptime(rtime, '%Y%m%d%H%M')
             fp_grid     = np.zeros((len(lats), len(lons)))
@@ -1103,10 +1108,6 @@ def footprint_array(fields_file,
                     hr_back = datetime.datetime.strptime(rtime, '%Y%m%d%H%M') - datetime.datetime.strptime(ot, '%Y%m%d%H%M')
                     hr_back = hr_back.total_seconds()/3600.
                     
-                    FDS_rt = xray.Dataset({"fp_HiTRes": (["time", "lev", "lat", "lon", "H_back"],
-                                           np.zeros((len(time), len(levs),len(lats), len(lons), int(user_max_hour_back))))},
-                                          coords={"time": time, "lev": levs, "lat": lats, "lon": lons,  
-                                                  "H_back": np.arange(0,user_max_hour_back)})
                     if hr_back < user_max_hour_back:
                         FDS_rt.fp_HiTRes.loc[dict(lev='From     0 -    40m agl', time=rt_dt, H_back=hr_back)] = fp_grid_temp
                 else:                 
@@ -1365,6 +1366,7 @@ def footprint_array(fields_file,
                 fp = convert_units(fp, slice_dict, i, units_str,use_surface_conditions=use_surface_conditions)
                 
     if species == 'CO2':
+        status_log("Adding residual footprints")
         addfp = fp.fp_HiTRes.sum(dim='H_back')
         remfp = fp.fp - addfp
         remfpval = np.expand_dims(remfp.values, 4)
@@ -1372,7 +1374,9 @@ def footprint_array(fields_file,
                                   dims   = ['time','lev','lat', 'lon','H_back'],
                                   coords = {'time': fp.time, 'lev': fp.lev,
                                             'lat': fp.lat, 'lon': fp.lon,
-                                            'H_back': [user_max_hour_back]})
+                                            'H_back': [user_max_hour_back]},
+                                  attrs = {'description': 'Disaggregated fp, where the last slice is the residual fp'})
+        remfpvar = xray.concat([fp.fp_HiTRes, remfpvar], dim = 'H_back')
         remfpds = remfpvar.to_dataset(name = 'fp_HiTRes')
         fp = xray.merge([fp, remfpds])
     
@@ -2501,7 +2505,7 @@ def process(domain, site, height, year, month,
         fp.attrs["fp_output"] = model_output 
         fp.attrs["species"] = output_species
         if species is not None and species!='CO2' and lifetime_hrs is not None:
-            fp.attrs["species_lifetime_hrs"] = lifetime_hrs           
+            fp.attrs["species_lifetime_hrs"] = lifetime_hrs
         fp.attrs["model"] = transport_model
         if met_model is None:
             fp.attrs["met_model"] = "Global"
@@ -3059,6 +3063,8 @@ def stiltfoot_array(prefix,
     fp.lon.attrs = {"units": "degrees_east"}
     fp.lat.attrs = {"units": "degrees_north"}
     fp.time.attrs = {"long_name": "start of time period"}
+    if species=='CO2':
+        fp.fp_HiTRes.attrs = {"description" : "disaggregated fp, where the last slice is the residual 29 day fp"}
     
     # assign dummy met variables 
     # This met information is not from observations and is not used to interpret 
