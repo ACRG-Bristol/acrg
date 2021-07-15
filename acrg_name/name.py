@@ -2323,7 +2323,7 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
                     fp_HiTRes_ds.fp_HiTRes.chunk(chunks) \
                     if fp_HiTRes_ds.chunks is None and chunks is not None else fp_HiTRes_ds.fp_HiTRes
     
-    # resample fp and extract array to use in numba loop
+    # resample fp and extract array to make the loop quicker
     fp_HiTRes = fp_HiTRes.resample(time=time_resolution).ffill()
     fp_HiTRes = da.array(fp_HiTRes)
 
@@ -2359,40 +2359,48 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
     
     elif output_TS:
         timeseries = {sector: da.zeros(len(time_array)) for sector in flux.keys()}
-
-    num       = int(time_resolution[0])
+    
+    # month and year of the start of the data - used to index the low res data
+    start = {dd: getattr(time_array[0].astype(object), dd) for dd in ['month', 'year']}
+    
+    # get the data timesteps - used for resampling the hourly footprints
+    num = int(time_resolution[0])
+    
     # put the time array into tqdm if we want a progress bar to show throughout the loop
     iters = tqdm(time_array) if verbose else time_array
     ### iterate through the time coord to get the total mf at each time step using the H back coord
     # at each release time we disaggregate the particles backwards over the previous 24hrs
     for tt, time in enumerate(iters):
-        tt_low = time.astype(object).month - 1
-
         # get 4 dimensional chunk of high time res footprint for this timestep
         # units : mol/mol/mol/m2/s
-        # reverse the time coordinate to be chronological, and resample
+        # reverse the H_back coordinate to be chronological, and resample
         fp_time   = fp_HiTRes[:,:,tt,::-num]
                 
-        # select the emissions for the corresponding 24 hours
+        # get the correct index for the low res data
+        # estimated using the difference between the current and start month and year
+        current = {dd: getattr(time.astype(object), dd) for dd in ['month', 'year']}
+        tt_low = current['month'] - start['month'] + 12*(current['year']-start['year'])
+
+        # select the high res emissions for the corresponding 24 hours
         # if there aren't any high frequency data it will select from the low frequency data
         # this is so that we can compare emissions data with different resolutions e.g. ocean species
-        # we take the arry out of xarray to save on memory use
-        emissions     = {sector: flux_sector['high_freq'][:,:,tt+1:tt+13]
+        emissions     = {sector: flux_sector['high_freq'][:,:,tt+1:tt+fp_time.shape[2]]
                                  if flux_sector['high_freq'] is not None else
                                  flux_sector['low_freq'][:,:,tt_low]
                          for sector, flux_sector in flux.items()}
         # add an axis if the emissions is array is 2D so that it can be multiplied by the fp
         emissions     = {sector: em_sec[:,:,np.newaxis] if len(em_sec.shape)==2 else em_sec
                         for sector, em_sec in emissions.items()}
-        # select residual (monthly) emissions
-        # ffill will sfill forward i.e. will select the start of the month
+        # select average monthly emissions for the start of the month
         emissions_end = {sector: flux_sector['low_freq'][:,:,tt_low]
                          for sector, flux_sector in flux.items()}
         
         # Multiply the HiTRes footprint with the HiTRes emissions to give mf
+        # we take all but the slice for H_back==24 as these are the hourly disaggregated fps
         # flux units : mol/m2/s;       fp units : mol/mol/mol/m2/s
         # --> mol/mol/mol/m2/s * mol/m2/s === mol / mol
         fpXflux_time  = {sector: em_sec * fp_time[:,:,1:] for sector, em_sec in emissions.items()}
+        # multiply the monthly flux by the residual fp, at H_back==24
         fpXflux_end   = {sector: em_end * fp_time[:,:,0] for sector, em_end in emissions_end.items()}
         # append the residual emissions
         fpXflux_time  = {sector: np.dstack((fp_fl, fpXflux_end[sector]))
