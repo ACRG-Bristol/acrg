@@ -1120,9 +1120,10 @@ def add_timeseries(fp_and_data, load_flux, verbose=True):
             for source in sources:
                 if type(fp_and_data['.flux'][source]) == dict:
                     # work out the lowest resolution of the flux and the fp, to use estimating the timeseries
-                    res = [(fp_and_data['.flux'][source].time[1] - fp_and_data['.flux'][source].time[0]).values.astype('timedelta64[h]').astype(int),
+                    res = [(fp_and_data['.flux'][source]['high_freq'].time[1] -
+                            fp_and_data['.flux'][source]['high_freq'].time[0]).values.astype('timedelta64[h]').astype(int),
                            (fp_and_data[site].time[1] - fp_and_data[site].time[0]).values.astype('timedelta64[h]').astype(int)]
-                    res = np.nanmin(res)
+                    res = str(np.nanmax(res)) + 'H'
                     # estimate the timeseries
                     fp_and_data[site]['mf_mod_'+source] = timeseries_HiTRes(fp_HiTRes_ds = fp_and_data[site],
                                                                             flux_dict = fp_and_data['.flux'][source],
