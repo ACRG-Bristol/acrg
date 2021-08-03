@@ -896,7 +896,7 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
             if type(emissions_name) != dict:
                 print("emissions_name should be a dictionary: {source_name: emissions_file_identifier}.\
                       Setting load_flux to False.")
-                load_flux=False   
+                load_flux=False
         else:
             emissions_name = {'all':species}    
 
@@ -1043,10 +1043,10 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
 
         flux_dict = {} 
         basestring = (str, bytes)    
-        for source in list(emissions_name.keys()):
+        for source, emiss_source in emissions_name.items():
 
             if isinstance(emissions_name[source], basestring):
-                flux_dict[source] = flux(domain, emissions_name[source], start=flux_bc_start, end=flux_bc_end,
+                flux_dict[source] = flux(domain, emiss_source, start=flux_bc_start, end=flux_bc_end,
                                          flux_directory=flux_directory, verbose=verbose)
 
             elif isinstance(emissions_name[source], dict):
@@ -1056,7 +1056,7 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
                           dictionary or turn HiTRes to True to use the two emissions files together with HiTRes footprints." %source)
                     #return None
                 else:
-                    flux_dict[source] = flux_for_HiTRes(domain, emissions_name[source], start=flux_bc_start,
+                    flux_dict[source] = flux_for_HiTRes(domain, emiss_source, start=flux_bc_start,
                                                         end=flux_bc_end, flux_directory=flux_directory, verbose=verbose)
 
         fp_and_data['.flux'] = flux_dict
@@ -1131,6 +1131,8 @@ def add_timeseries(fp_and_data, load_flux, verbose=True):
                                                                             verbose = verbose,
                                                                             time_resolution = res,
                                                                             output_type = 'DataArray')
+                    # use forward fill to replace nans
+                    fp_and_data[site]['mf_mod_'+source] = fp_and_data[site]['mf_mod_'+source].ffill(dim='time')
                 else:
                     flux_reindex = fp_and_data['.flux'][source].reindex_like(fp_and_data[site], 'ffill')
                     if source == 'all':
@@ -1254,11 +1256,19 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                 if 'fp_HiTRes' in list(fp_and_data[site].keys()):
                     site_bf = xr.Dataset({"fp_HiTRes":fp_and_data[site]["fp_HiTRes"],
                                           "fp":fp_and_data[site]["fp"]})
-                    res = [(fp_and_data['.flux'][source].time[1] - fp_and_data['.flux'][source].time[0]).values.astype('timedelta64[h]').astype(int),
-                           (site_bf.time[1] - site_bf.time[0]).values.astype('timedelta64[h]').astype(int)]
-                    res = np.nanmin(res)
+                    # work out the lowest resolution of the flux and the fp, to use estimating the timeseries
+                    res = [(fp_and_data['.flux'][source]['high_freq'].time[1] -
+                            fp_and_data['.flux'][source]['high_freq'].time[0]).values.astype('timedelta64[h]').astype(int),
+                           (fp_and_data[site].time[1] - fp_and_data[site].time[0]).values.astype('timedelta64[h]').astype(int)]
+                    res = str(np.nanmax(res)) + 'H'
+                    
+                    # calcualate the H matrix
                     H_all = timeseries_HiTRes(fp_HiTRes_ds = site_bf, flux_dict = fp_and_data['.flux'][source], output_TS = False,
-                                              output_fpXflux = True, output_type = 'DataArray', time_resolution=f'{res}H', verbose = verbose)
+                                              output_fpXflux = True, output_type = 'DataArray', time_resolution=res, verbose = verbose)
+                    
+                    # reindex to match the footprint times if required
+                    if (H_all.time[1] - H_all.time[0]).values != (fp_and_data[site].time[1] - fp_and_data[site].time[0]).values:
+                        H_all = H_all.reindex(time=fp_and_data[site].time.values, method='ffill')
                 else:
                     print("fp_and_data needs the variable fp_HiTRes to use the emissions dictionary with high_freq and low_freq emissions.")
         
@@ -1331,6 +1341,7 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                 concat_sensitivity = xr.concat((concat_sensitivity,sensitivity), dim='region')
             
             sub_basis_cases = 0
+            
             if basis_case[source].startswith('sub'):
                 """
                 To genrate sub_lon and sub_lat grids basis case must start with 'sub'
@@ -2325,8 +2336,10 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
                     if fp_HiTRes_ds.chunks is None and chunks is not None else fp_HiTRes_ds.fp_HiTRes
     
     # resample fp and extract array to make the loop quicker
-    fp_HiTRes = fp_HiTRes.resample(time=time_resolution).ffill()
-    fp_HiTRes = da.array(fp_HiTRes)
+    fp_HiTRes  = fp_HiTRes.resample(time=time_resolution).ffill()
+    # create time array to loop through, with the required resolution
+    time_array = fp_HiTRes.time.values
+    fp_HiTRes  = da.array(fp_HiTRes)
 
     # convert fluxes to dictionaries with sectors as keys
     # flux = {freq: flux_freq if isinstance(flux_freq, dict) else {'total': flux_freq}
@@ -2345,12 +2358,6 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
                    for freq, flux_freq in flux_sector.items()}
             for sector, flux_sector in flux.items()}
     
-    # create time array to loop through, with the required resolution
-    # fp_HiTRes.time is the release time of particles into the model
-    time_array = np.arange(fp_HiTRes_ds.time[0].values, fp_HiTRes_ds.time[-1].values,
-                           int(time_resolution[0]),
-                           dtype=f'datetime64[{time_resolution[1].lower()}]')
-    
     # Set up a numpy array to calculate the product of the footprint (H matrix) with the fluxes
     if output_fpXflux:
         fpXflux   = {sector: da.zeros((len(fp_HiTRes_ds.lat),
@@ -2362,7 +2369,8 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
         timeseries = {sector: da.zeros(len(time_array)) for sector in flux.keys()}
     
     # month and year of the start of the data - used to index the low res data
-    start = {dd: getattr(time_array[0].astype(object), dd) for dd in ['month', 'year']}
+    start = {dd: getattr(np.datetime64(time_array[0], 'h').astype(object), dd)
+             for dd in ['month', 'year']}
     
     # get the data timesteps - used for resampling the hourly footprints
     num = int(time_resolution[0])
@@ -2379,7 +2387,8 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
                 
         # get the correct index for the low res data
         # estimated using the difference between the current and start month and year
-        current = {dd: getattr(time.astype(object), dd) for dd in ['month', 'year']}
+        current = {dd: getattr(np.datetime64(time, 'h').astype(object), dd)
+                   for dd in ['month', 'year']}
         tt_low = current['month'] - start['month'] + 12*(current['year']-start['year'])
 
         # select the high res emissions for the corresponding 24 hours
@@ -2416,30 +2425,36 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
                 # work out timeseries by summing over lat, lon, & time (24 hrs)
                 timeseries[sector][tt] = fp_fl.sum()
     
-    if output_fpXflux and not output_TS:
+    if output_fpXflux and output_TS:
+        # if not already done then calculate the timeseries
+        timeseries = {sector: fp_fl.sum(axis=(0,1)) for sector, fp_fl in fpXflux.items()}
+    
+    if output_fpXflux:
         fpXflux = xr.Dataset(fpXflux,
-                             coords={'lat'  : fp_HiTRes.lat.values,
-                                     'lon'  : fp_HiTRes.lon.values,
+                             coords={'lat'  : fp_HiTRes_ds.lat.values,
+                                     'lon'  : fp_HiTRes_ds.lon.values,
                                      'time' : time_array}) \
-                  if output_type.lower()=='dataset' else fpXflux
-        return fpXflux.compute()
+                  if output_type.lower()=='dataset' else \
+                  {sector: xr.DataArray(data = fpXflux_sector,
+                                        dims = ['lat', 'lon', 'time'],
+                                        coords = {'lat' : fp_HiTRes_ds.lat.values,
+                                                  'lon'  : fp_HiTRes_ds.lon.values,
+                                                  'time' : time_array})
+                   for sector, fpXflux_sector in fpXflux.items()} \
+                  if output_type.lower()=='dataarray' else fpXflux
+    
+        if output_type.lower()=='dataset':
+            fpXflux = fpXflux if fpXflux.chunks is None else fpXflux.compute()
+        else:
+            fpXflux = {sec: ff if ff.chunks is None else ff.compute() for sec, ff in fpXflux.items()}
+        
+        if output_type.lower()=='dataarray' and list(flux.keys())==['total']:
+            fpXflux = fpXflux['total']
+        
+    if output_fpXflux and not output_TS:
+        return fpXflux
     
     else:
-        if output_fpXflux:
-            # if not already done then calculate the timeseries
-            timeseries = {sector: fp_fl.sum(axis=(0,1)) for sector, fp_fl in fpXflux.items()}
-            fpXflux = xr.Dataset(fpXflux,
-                                 coords={'lat'  : fp_HiTRes.lat.values,
-                                         'lon'  : fp_HiTRes.lon.values,
-                                         'time' : time_array}) \
-                      if output_type.lower()=='dataset' else \
-                      {sector: xr.DataArray(data = fpXflux_sector,
-                                   dims = ['lat', 'lon', 'time'],
-                                   coords = {'lat' : fp_HiTRes.lat.values,
-                                             'lon'  : fp_HiTRes.lon.values,
-                                             'time' : time_array})
-                       for sector, fpXflux_sector in fpXflux.items()} \
-                      if output_type.lower()=='dataarray' else fpXflux
         # for each sector create a tuple of ['time'] (coord name) and the timeseries
         # if the output required is a dataset
         timeseries = {sec : (['time'], ts_sec) for sec, ts_sec in timeseries.items()} \
@@ -2452,17 +2467,22 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
                                            coords = {'time' : time_array})
                       for sector, ts_sector in timeseries.items()} \
                      if output_type.lower()=='dataarray' else timeseries
+        
+        if output_type.lower()=='dataset':
+            timeseries = timeseries if timeseries.chunks is None else timeseries.compute()
+        else:
+            timeseries = {sec: tt if tt.chunks is None else tt.compute() for sec, tt in timeseries.items()}
+        
         if output_type.lower()=='dataarray' and list(flux.keys())==['total']:
-            if output_fpXflux: fpXflux = fpXflux['total']
             timeseries = timeseries['total']
         
         if output_file is not None and output_type.lower()=='dataset':
             print(f'Saving to {output_file}')
-            timeseries.compute().to_netcdf(output_file)
+            timeseries.to_netcdf(output_file)
         elif output_file is not None:
             print(f'output type must be dataset to save to file')
         
         if output_fpXflux:
-            return timeseries.compute(), fpXflux.compute()
+            return timeseries, fpXflux
         elif output_TS:
-            return timeseries.compute()
+            return timeseries
