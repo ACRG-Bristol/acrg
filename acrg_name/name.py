@@ -483,11 +483,9 @@ def flux_for_HiTRes(domain, emissions_dict, start=None, end=None, flux_directory
     """
     
     if 'low_freq' not in list(emissions_dict.keys()):
-        print("low_freq must be a key in the emissions_dict in order to combine with HiTRes footprints.")
-        return None
-    elif 'high_freq' not in list(emissions_dict.keys()):
-        print("high_freq must be a key in the emissions_dict in order to use HiTRes footprints.")
-        return None
+        print("Warning: low_freq must be a key in the emissions_dict in order to combine with HiTRes footprints.")
+    if 'high_freq' not in list(emissions_dict.keys()):
+        print("Warning: high_freq must be a key in the emissions_dict in order to use HiTRes footprints.")
     
     flux_dict = {}
     
@@ -497,13 +495,12 @@ def flux_for_HiTRes(domain, emissions_dict, start=None, end=None, flux_directory
         #are in the previous month.
         start = str(pd.to_datetime(start) - dateutil.relativedelta.relativedelta(months=1))
     
-    fluxes_highfreq = flux(domain, emissions_dict['high_freq'], start = start, end = end,flux_directory=flux_directory,
-                           verbose=verbose)
-    fluxes_lowfreq = flux(domain, emissions_dict['low_freq'], start = start, end = end,flux_directory=flux_directory,
-                          verbose=verbose)
-    
-    flux_dict['low_freq'] = fluxes_lowfreq
-    flux_dict['high_freq'] = fluxes_highfreq
+    if 'high_freq' in list(emissions_dict.keys()):
+        flux_dict['high_freq'] = flux(domain, emissions_dict['high_freq'], start = start, end = end,
+                                      flux_directory=flux_directory, verbose=verbose)
+    if 'low_freq' in list(emissions_dict.keys()):
+        flux_dict['low_freq'] = flux(domain, emissions_dict['low_freq'], start = start, end = end,
+                                     flux_directory=flux_directory, verbose=verbose)
     
     return flux_dict
 
@@ -1119,17 +1116,14 @@ def add_timeseries(fp_and_data, load_flux, verbose=True):
         for site in sites:                    
             for source in sources:
                 if type(fp_and_data['.flux'][source]) == dict:
-                    # work out the lowest resolution of the flux and the fp, to use estimating the timeseries
-                    res = [(fp_and_data['.flux'][source]['high_freq'].time[1] -
-                            fp_and_data['.flux'][source]['high_freq'].time[0]).values.astype('timedelta64[h]').astype(int),
-                           (fp_and_data[site].time[1] - fp_and_data[site].time[0]).values.astype('timedelta64[h]').astype(int)]
-                    res = str(np.nanmax(res)) + 'H'
+                    # work out the resolution of the fp, to use to estimate the timeseries
+                    fp_time = (fp_and_data[site].time[1] - fp_and_data[site].time[0]).values.astype('timedelta64[h]').astype(int)
                     # estimate the timeseries
                     fp_and_data[site]['mf_mod_'+source] = timeseries_HiTRes(fp_HiTRes_ds = fp_and_data[site],
                                                                             flux_dict = fp_and_data['.flux'][source],
                                                                             output_fpXflux = False,
                                                                             verbose = verbose,
-                                                                            time_resolution = res,
+                                                                            time_resolution = f'{fp_time}H',
                                                                             output_type = 'DataArray')
                     # use forward fill to replace nans
                     fp_and_data[site]['mf_mod_'+source] = fp_and_data[site]['mf_mod_'+source].ffill(dim='time')
@@ -1256,19 +1250,13 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                 if 'fp_HiTRes' in list(fp_and_data[site].keys()):
                     site_bf = xr.Dataset({"fp_HiTRes":fp_and_data[site]["fp_HiTRes"],
                                           "fp":fp_and_data[site]["fp"]})
-                    # work out the lowest resolution of the flux and the fp, to use estimating the timeseries
-                    res = [(fp_and_data['.flux'][source]['high_freq'].time[1] -
-                            fp_and_data['.flux'][source]['high_freq'].time[0]).values.astype('timedelta64[h]').astype(int),
-                           (fp_and_data[site].time[1] - fp_and_data[site].time[0]).values.astype('timedelta64[h]').astype(int)]
-                    res = str(np.nanmax(res)) + 'H'
                     
-                    # calcualate the H matrix
+                    fp_time = (fp_and_data[site].time[1] - fp_and_data[site].time[0]).values.astype('timedelta64[h]').astype(int)
+                    
+                    # calculate the H matrix
                     H_all = timeseries_HiTRes(fp_HiTRes_ds = site_bf, flux_dict = fp_and_data['.flux'][source], output_TS = False,
-                                              output_fpXflux = True, output_type = 'DataArray', time_resolution=res, verbose = verbose)
-                    
-                    # reindex to match the footprint times if required
-                    if (H_all.time[1] - H_all.time[0]).values != (fp_and_data[site].time[1] - fp_and_data[site].time[0]).values:
-                        H_all = H_all.reindex(time=fp_and_data[site].time.values, method='ffill')
+                                              output_fpXflux = True, output_type = 'DataArray',
+                                              time_resolution = f'{fp_time}H', verbose = verbose)
                 else:
                     print("fp_and_data needs the variable fp_HiTRes to use the emissions dictionary with high_freq and low_freq emissions.")
         
@@ -2321,6 +2309,10 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
             If output_fpXflux is True:
                 Outputs the sensitivity map   
     """
+    if 'high_freq' not in flux_dict.keys() or flux_dict['high_freq'] is None:
+        print('\nWarning: no high frequency flux data, estimating a timeseries using the low frequency data')
+        if 'high_freq' not in flux_dict.keys():
+            flux_dict['high_freq'] = None
     if verbose:
         print(f'\nCalculating timeseries with {time_resolution} resolution, this might take a few minutes')
     ### get the high time res footprint
@@ -2351,11 +2343,25 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
     # extract the required time data
     flux = {sector: {freq: flux_freq.sel(time=slice(fp_HiTRes_ds.time[0] - np.timedelta64(24, 'h'),
                                                     fp_HiTRes_ds.time[-1])).flux
-                   for freq, flux_freq in flux_sector.items()}
+                     if flux_freq is not None else None
+                     for freq, flux_freq in flux_sector.items() }
+                     
             for sector, flux_sector in flux.items()}
+    
+    for sector, flux_sector in flux.items():
+        if flux_sector['high_freq'] is not None:
+            # reindex the high frequency data to match the fp
+            time_flux = np.arange(fp_HiTRes_ds.time[0].values - np.timedelta64(24, 'h'),
+                                  fp_HiTRes_ds.time[-1].values + np.timedelta64(time_resolution[0], 
+                                                                                time_resolution[1].lower()),
+                                  time_resolution[0], dtype=f'datetime64[{time_resolution[1].lower()}]')
+            flux_sector['high_freq'] = flux_sector['high_freq'].reindex(time=time_flux, method='ffill')
+    
     # convert to array to use in numba loop
-    flux = {sector: {freq: flux_freq.values if flux_freq.chunks is None else da.array(flux_freq)
-                   for freq, flux_freq in flux_sector.items()}
+    flux = {sector: {freq: None if flux_freq is None else
+                           flux_freq.values if flux_freq.chunks is None else
+                           da.array(flux_freq)
+                     for freq, flux_freq in flux_sector.items()}
             for sector, flux_sector in flux.items()}
     
     # Set up a numpy array to calculate the product of the footprint (H matrix) with the fluxes
