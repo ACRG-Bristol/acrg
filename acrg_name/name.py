@@ -1382,7 +1382,6 @@ def bc_sensitivity(fp_and_data, domain, basis_case, bc_basis_directory = None):
         dict (xarray.Dataset) : Same format as fp_and_data with sensitivity matrix added.
     """    
     
-    
     sites = [key for key in list(fp_and_data.keys()) if key[0] != '.']
 
     basis_func = basis_boundary_conditions(domain = domain,
@@ -1398,6 +1397,10 @@ def bc_sensitivity(fp_and_data, domain, basis_case, bc_basis_directory = None):
     species = obs.read.synonyms(species, species_info)
             
     for site in sites:
+        if fp_and_data[site].bc.chunks is not None:
+            for particles in ['particle_locations_n', 'particle_locations_e',
+                              'particle_locations_s', 'particle_locations_w']:
+                fp_and_data[site][particles] = fp_and_data[site][particles].compute()
         # compute any chemical loss to the BCs, use lifetime or else set loss to 1 (no loss)
         if 'lifetime' in species_info[species].keys():
             lifetime = species_info[species]["lifetime"]
