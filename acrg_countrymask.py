@@ -32,6 +32,7 @@ import glob
 import getpass
 import os
 import sys
+from acrg_convert import convert_lons_0360
 
 from acrg_config.paths import paths
 data_path = paths.data
@@ -71,22 +72,6 @@ def domain_volume(domain,fp_directory=fp_directory):
     else:
         raise Exception('Cannot extract volume for domain: {1}. No footprint file found within {0}'.format(directory,domain))
         #return None
-
-def convert_lons_0360(lons):
-    '''
-    Convert longitude values onto a 0-360 range from -180-180 range. Uses floored division. 
-    
-    Args:
-        lons (arr):
-            1D array of longitudes.            
-    Returns:
-        array:
-            Longitudes on 0-360 range.           
-    '''
- 
-    div = lons // 360
-
-    return lons - div*360
 
 def range_from_bounds(bounds,step,include_upper=False):
     '''
