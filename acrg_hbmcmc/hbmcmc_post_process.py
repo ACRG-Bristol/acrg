@@ -46,7 +46,6 @@ import acrg_convert as convert
 import pymc3 as pm
 import matplotlib.dates as mdates
 import pandas as pd
-import acrg_countrymask as countrymask
 
 from acrg_config.paths import paths
 acrg_path = paths.acrg
@@ -758,9 +757,7 @@ def country_emissions(ds, species, domain, country_file=None, country_unit_prefi
     bfarray = ds["basisfunctions"]
     nui = ds["UInum"]
     steps = ds["stepnum"]
-    
-    lon = countrymask.convert_lons_0360(lon)
-    
+        
     area = areagrid(lat, lon)
     
     if countries is None:
@@ -780,20 +777,19 @@ def country_emissions(ds, species, domain, country_file=None, country_unit_prefi
         country_unit_prefix=''
     country_units = country_unit_prefix + 'g'
 
-    for i, cntry in enumerate(cntrynames):
-        ci = np.where(cntryds.name.values == cntry)[0][0]
-        cntrytotprior = 0
+    for ci, cntry in enumerate(cntrynames):
         cntrytottrace = np.zeros(len(steps))
+        cntrytotprior = 0
         for bf in range(int(np.max(bfarray))+1):
-            bothinds = np.logical_and(cntrygrid == ci, bfarray==bf)
+            bothinds = np.logical_and(cntrygrid == ci, bfarray.values==bf)
             cntrytottrace += np.sum(area[bothinds].ravel()*aprioriflux.values[bothinds].ravel()* \
-                           3600*24*365*molarmass)*outs[:,bf]/unit_factor    
+                           3600*24*365*molarmass)*outs[:,bf]/unit_factor
             cntrytotprior += np.sum(area[bothinds].ravel()*aprioriflux.values[bothinds].ravel()* \
                    3600*24*365*molarmass)/unit_factor
-        cntrymean[i] = np.mean(cntrytottrace)
-        cntry68[i, :] = pm.stats.hpd(np.expand_dims(cntrytottrace,axis=1), 0.68)
-        cntry95[i, :] = pm.stats.hpd(np.expand_dims(cntrytottrace,axis=1), 0.95)
-        cntryprior[i] = cntrytotprior
+        cntrymean[ci] = np.mean(cntrytottrace)
+        cntry68[ci, :] = pm.stats.hpd(np.expand_dims(cntrytottrace,axis=1), 0.68)
+        cntry95[ci, :] = pm.stats.hpd(np.expand_dims(cntrytottrace,axis=1), 0.95)
+        cntryprior[ci] = cntrytotprior 
         
     return cntrymean, cntry68, cntry95, cntryprior
     
