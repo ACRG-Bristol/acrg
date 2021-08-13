@@ -46,6 +46,7 @@ import acrg_convert as convert
 import pymc3 as pm
 import matplotlib.dates as mdates
 import pandas as pd
+import acrg_countrymask as countrymask
 
 from acrg_config.paths import paths
 acrg_path = paths.acrg
@@ -747,8 +748,7 @@ def country_emissions(ds, species, domain, country_file=None, country_unit_prefi
     lonmax_ds = lon_ds[np.where(np.isclose(lon_ds, lonmax_cds, atol = 0.01, rtol=0))[0][0]]
     latmin_ds = lat_ds[np.where(np.isclose(lat_ds, latmin_cds, atol = 0.01, rtol=0))[0][0]]
     latmax_ds = lat_ds[np.where(np.isclose(lat_ds, latmax_cds, atol = 0.01, rtol=0))[0][0]]
-    
-    
+       
     ds = ds.sel(lon=slice(lonmin_ds,lonmax_ds),lat=slice(latmin_ds,latmax_ds))
 
     lon=ds["lon"].values
@@ -758,6 +758,8 @@ def country_emissions(ds, species, domain, country_file=None, country_unit_prefi
     bfarray = ds["basisfunctions"]
     nui = ds["UInum"]
     steps = ds["stepnum"]
+    
+    lon = countrymask.convert_lons_0360(lon)
     
     area = areagrid(lat, lon)
     
@@ -775,23 +777,24 @@ def country_emissions(ds, species, domain, country_file=None, country_unit_prefi
 
     unit_factor = convert.prefix(country_unit_prefix)
     if country_unit_prefix is None:
-       country_unit_prefix=''
+        country_unit_prefix=''
     country_units = country_unit_prefix + 'g'
 
-    for ci, cntry in enumerate(cntrynames):
-        cntrytottrace = np.zeros(len(steps))
+    for i, cntry in enumerate(cntrynames):
+        ci = np.where(cntryds.name.values == cntry)[0][0]
         cntrytotprior = 0
+        cntrytottrace = np.zeros(len(steps))
         for bf in range(int(np.max(bfarray))+1):
-            bothinds = np.logical_and(cntrygrid == ci, bfarray.values==bf)
+            bothinds = np.logical_and(cntrygrid == ci, bfarray==bf)
             cntrytottrace += np.sum(area[bothinds].ravel()*aprioriflux.values[bothinds].ravel()* \
-                           3600*24*365*molarmass)*outs[:,bf]/unit_factor
+                           3600*24*365*molarmass)*outs[:,bf]/unit_factor    
             cntrytotprior += np.sum(area[bothinds].ravel()*aprioriflux.values[bothinds].ravel()* \
                    3600*24*365*molarmass)/unit_factor
-        cntrymean[ci] = np.mean(cntrytottrace)
-        cntry68[ci, :] = pm.stats.hpd(cntrytottrace, 0.68)
-        cntry95[ci, :] = pm.stats.hpd(cntrytottrace, 0.95)
-        cntryprior[ci] = cntrytotprior
-
+        cntrymean[i] = np.mean(cntrytottrace)
+        cntry68[i, :] = pm.stats.hpd(np.expand_dims(cntrytottrace,axis=1), 0.68)
+        cntry95[i, :] = pm.stats.hpd(np.expand_dims(cntrytottrace,axis=1), 0.95)
+        cntryprior[i] = cntrytotprior
+        
     return cntrymean, cntry68, cntry95, cntryprior
     
 def country_emissions_mult(ds_list, species, domain, country_file=None, country_unit_prefix=None, countries = None):
