@@ -777,7 +777,8 @@ def country_emissions(ds, species, domain, country_file=None, country_unit_prefi
         country_unit_prefix=''
     country_units = country_unit_prefix + 'g'
 
-    for ci, cntry in enumerate(cntrynames):
+    for i, cntry in enumerate(cntrynames):
+        ci = np.where(cntryds.name.values == cntry)[0][0]
         cntrytottrace = np.zeros(len(steps))
         cntrytotprior = 0
         for bf in range(int(np.max(bfarray))+1):
@@ -786,10 +787,10 @@ def country_emissions(ds, species, domain, country_file=None, country_unit_prefi
                            3600*24*365*molarmass)*outs[:,bf]/unit_factor
             cntrytotprior += np.sum(area[bothinds].ravel()*aprioriflux.values[bothinds].ravel()* \
                    3600*24*365*molarmass)/unit_factor
-        cntrymean[ci] = np.mean(cntrytottrace)
-        cntry68[ci, :] = pm.stats.hpd(np.expand_dims(cntrytottrace,axis=1), 0.68)
-        cntry95[ci, :] = pm.stats.hpd(np.expand_dims(cntrytottrace,axis=1), 0.95)
-        cntryprior[ci] = cntrytotprior 
+        cntrymean[i] = np.mean(cntrytottrace)
+        cntry68[i, :] = pm.stats.hpd(np.expand_dims(cntrytottrace,axis=1), 0.68)
+        cntry95[i, :] = pm.stats.hpd(np.expand_dims(cntrytottrace,axis=1), 0.95)
+        cntryprior[i] = cntrytotprior 
         
     return cntrymean, cntry68, cntry95, cntryprior
     
