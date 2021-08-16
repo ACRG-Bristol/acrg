@@ -45,6 +45,7 @@ from acrg_name import flux
 import pyproj
 import acrg_grid.regrid_xesmf
 import getpass
+import copy
 
 from acrg_config.paths import paths
 data_path = paths.data
@@ -931,6 +932,76 @@ def get_US_EPA(epa_sectors=None,output_path=None):
     
     return flux_ds
 
+def embed_UKGHG_EDGAR(edgar_flux, ukghg_flux, time=False, country=None, data_type='np_array',
+                      crop=None, global_attrs=None, verbose=True):
+    '''
+    Embed UKGHG map into the EDGAR map using a country mask
+    EDGAR and UKGHG map grid should match
+    
+    Args:
+        edgar_flux, ukghg_flux (xarray DataArray)
+            EDGAR and UKGHG flux maps
+        time (bool)
+            True if the flux data is 3d (lat, lon, time)
+        country (xarray DataArray, optional)
+            country mask
+            if None then the file country-ukmo_EUROPE.nc is used by default
+        data_type (str, optional)
+            data type to return (case insensitive)
+            either np_array, xr_array, or xr_dataset
+        crop (dict, optional)
+            lat and lon to crop data to
+            {'lat': [lat_1, lat_1], 'lon': [lon_1, lon_2]}
+        global_attrs (dict, optional)
+            global attributes to apply to the Dataset
+            only used if date_type is xr_dataset
+        verbose (bool, optional)
+            print update statements
+    
+    Returns:
+        xarray DataArray, xarray Dataset, or numpy array
+            map with UKGHG flux data embedded into EDGAR
+        
+    '''
+    if country is None:
+        country_file = os.path.join(paths.data,'LPDM', 'countries', 'country-ukmo_EUROPE.nc')
+        with xr.open_dataset(country_file) as c_file:
+            country = c_file['country']
+    
+    if crop is not None:
+        edgar_flux = edgar_flux.sel(lat=slice(crop[lat][0], crop[lat][0]),
+                                    lon=slice(crop[lon][0], crop[lon][0]))
+        ukghg_flux = ukghg_flux.sel(lat=slice(crop[lat][0], crop[lat][0]),
+                                    lon=slice(crop[lon][0], crop[lon][0]))
+        country = country.sel(lat=slice(crop[lat][0], crop[lat][0]),
+                              lon=slice(crop[lon][0], crop[lon][0]))
+    
+    print('Embedding UKGHG into EDGAR map')
+    edgar_ukghg = copy.deepcopy(edgar_flux)
+    # For lat lon values where the country code is 19 (UK) replace EDGAR values with UKGHG
+    for lat in range(edgar_ukghg.shape[0]):
+        for lon in range(edgar_ukghg.shape[1]):
+            if country[lat,lon] == 19.0:
+                if time:
+                    edgar_ukghg[lat,lon,:] = ukghg_flux[lat,lon,:]
+                else:
+                    edgar_ukghg[lat,lon] = ukghg_flux[lat,lon]
+    
+    # convert data to required ouput type
+    if data_type.lower()=='np_array':
+        if verbose: print('Outputting numpy array')
+        edgar_ukghg = edgar_ukghg.values
+    else:
+        if data_type.lower()=='xr_dataset':
+            if verbose: print('Outputting xarray dataset')
+            global_attrs = {} if global_attrs is None else global_attrs
+            edgar_ukghg = edgar_ukghg.to_dataset(name='flux')
+            edgar_ukghg = edgar_ukghg.assign_attrs(global_attrs)
+        else:
+            if verbose: print('Outputting xarray dataarray')
+            
+    return edgar_ukghg
+
 def get_UKGHG_EDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,
                      output_title=None,output_path=None):
     """
@@ -1077,15 +1148,14 @@ def get_UKGHG_EDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,
         if edgar_sectors is not None:  
             print('Inserting UKGHG into EDGAR over UK lat/lons')
             
-            with xr.open_dataset(os.path.join(data_path,'LPDM/countries/country-ukmo_EUROPE.nc')) as c_file:
-                country = c_file['country'].values       
-
-            for lat in range(edgar_regrid.shape[0]):
-                for lon in range(edgar_regrid.shape[1]):
-                    if country[lat,lon] == 19.0:
-                        edgar_regrid[lat,lon] = ukghg_regrid.data[lat,lon]
+            total_flux = embed_UKGHG_EDGAR(edgar_flux = edgar_regrid,
+                                           ukghg_flux = ukghg_regrid,
+                                           time = False,
+                                           country = None,
+                                           data_type = 'np_array',
+                                           verbose = False)
+            
             output_title = "EDGAR with UK lat/lons replaced with UKGHG values, regridded to EUROPE domain"
-            total_flux = edgar_regrid
 
         else:
             total_flux = ukghg_regrid.data
