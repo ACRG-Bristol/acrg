@@ -954,7 +954,7 @@ def embed_UKGHG_EDGAR(edgar_flux, ukghg_flux, time=False, country=None, data_typ
             {'lat': [lat_1, lat_2], 'lon': [lon_1, lon_2]}
         global_attrs (dict, optional)
             global attributes to apply to the Dataset
-            only used if date_type is xr_dataset
+            only used if data_type is xr_dataset
         verbose (bool, optional)
             print update statements
     
@@ -992,14 +992,13 @@ def embed_UKGHG_EDGAR(edgar_flux, ukghg_flux, time=False, country=None, data_typ
     if data_type.lower()=='np_array':
         if verbose: print('Outputting numpy array')
         edgar_ukghg = edgar_ukghg.values
+    elif data_type.lower()=='xr_dataset':
+        if verbose: print('Outputting xarray dataset')
+        global_attrs = {} if global_attrs is None else global_attrs
+        edgar_ukghg = edgar_ukghg.to_dataset(name='flux')
+        edgar_ukghg = edgar_ukghg.assign_attrs(global_attrs)
     else:
-        if data_type.lower()=='xr_dataset':
-            if verbose: print('Outputting xarray dataset')
-            global_attrs = {} if global_attrs is None else global_attrs
-            edgar_ukghg = edgar_ukghg.to_dataset(name='flux')
-            edgar_ukghg = edgar_ukghg.assign_attrs(global_attrs)
-        else:
-            if verbose: print('Outputting xarray dataarray')
+        if verbose: print('Outputting xarray dataarray')
             
     return edgar_ukghg
 
