@@ -951,7 +951,7 @@ def embed_UKGHG_EDGAR(edgar_flux, ukghg_flux, time=False, country=None, data_typ
             either np_array, xr_array, or xr_dataset
         crop (dict, optional)
             lat and lon to crop data to
-            {'lat': [lat_1, lat_1], 'lon': [lon_1, lon_2]}
+            {'lat': [lat_1, lat_2], 'lon': [lon_1, lon_2]}
         global_attrs (dict, optional)
             global attributes to apply to the Dataset
             only used if date_type is xr_dataset
@@ -969,19 +969,20 @@ def embed_UKGHG_EDGAR(edgar_flux, ukghg_flux, time=False, country=None, data_typ
             country = c_file['country']
     
     if crop is not None:
-        edgar_flux = edgar_flux.sel(lat=slice(crop[lat][0], crop[lat][0]),
-                                    lon=slice(crop[lon][0], crop[lon][0]))
-        ukghg_flux = ukghg_flux.sel(lat=slice(crop[lat][0], crop[lat][0]),
-                                    lon=slice(crop[lon][0], crop[lon][0]))
-        country = country.sel(lat=slice(crop[lat][0], crop[lat][0]),
-                              lon=slice(crop[lon][0], crop[lon][0]))
+        edgar_flux = edgar_flux.sel(lat=slice(crop['lat'][0], crop['lat'][1]),
+                                    lon=slice(crop['lon'][0], crop['lon'][1]))
+        ukghg_flux = ukghg_flux.sel(lat=slice(crop['lat'][0], crop['lat'][1]),
+                                    lon=slice(crop['lon'][0], crop['lon'][1]))
+        country = country.sel(lat=slice(crop['lat'][0], crop['lat'][1]),
+                              lon=slice(crop['lon'][0], crop['lon'][1]))
     
     print('Embedding UKGHG into EDGAR map')
     edgar_ukghg = copy.deepcopy(edgar_flux)
-    # For lat lon values where the country code is 19 (UK) replace EDGAR values with UKGHG
     for lat in range(edgar_ukghg.shape[0]):
         for lon in range(edgar_ukghg.shape[1]):
-            if country[lat,lon] == 19.0:
+            # For lat lon values where the country code is 19 (UK) replace EDGAR values with UKGHG
+            uk_country_code = 19.0
+            if country[lat,lon] == uk_country_code:
                 if time:
                     edgar_ukghg[lat,lon,:] = ukghg_flux[lat,lon,:]
                 else:
