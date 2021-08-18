@@ -2316,6 +2316,8 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
         print('\nWarning: no high frequency flux data, estimating a timeseries using the low frequency data')
         if 'high_freq' not in flux_dict.keys():
             flux_dict['high_freq'] = None
+    if 'low_freq' not in flux_dict.keys():
+        flux_dict['low_freq'] = None
     if verbose:
         print(f'\nCalculating timeseries with {time_resolution} resolution, this might take a few minutes')
     ### get the high time res footprint
@@ -2359,6 +2361,10 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
                                                                                 time_resolution[1].lower()),
                                   time_resolution[0], dtype=f'datetime64[{time_resolution[1].lower()}]')
             flux_sector['high_freq'] = flux_sector['high_freq'].reindex(time=time_flux, method='ffill')
+            
+            if flux_sector['low_freq'] is None:
+                print('\nWarning: no low frequency flux data, resampling from high frequency data')
+                flux_sector['low_freq'] = flux_sector['high_freq'].resample(time='MS').mean()
     
     # convert to array to use in numba loop
     flux = {sector: {freq: None if flux_freq is None else
