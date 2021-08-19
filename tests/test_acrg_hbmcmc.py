@@ -27,6 +27,7 @@ import glob
 
 acrg_path = paths.acrg
 hbmcmc_path = os.path.join(acrg_path,"acrg_hbmcmc")
+test_obs_path = os.path.join(acrg_path,"tests/files/obs")
 test_config_path = os.path.join(acrg_path,"tests/files/config")
 outputpath = os.path.join(acrg_path,"tests/files/output")
 
@@ -221,3 +222,4 @@ def test_cleanup(hbmcmc_config_file):
     """
 
     os.remove(hbmcmc_config_file)
+    os.remove(os.path.join(test_obs_path, "obs.db"))
