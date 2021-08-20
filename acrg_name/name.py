@@ -2263,7 +2263,7 @@ class get_country(object):
 
 def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = True, output_fpXflux = True,
                       output_type='Dataset', output_file=None, verbose=False, chunks=None,
-                      time_resolution='2H'):
+                      time_resolution='1H'):
     """
     The timeseries_HiTRes function computes flux * HiTRes footprints.
     
@@ -2312,12 +2312,6 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
             If output_fpXflux is True:
                 Outputs the sensitivity map   
     """
-    if 'high_freq' not in flux_dict.keys() or flux_dict['high_freq'] is None:
-        print('\nWarning: no high frequency flux data, estimating a timeseries using the low frequency data')
-        if 'high_freq' not in flux_dict.keys():
-            flux_dict['high_freq'] = None
-    if 'low_freq' not in flux_dict.keys():
-        flux_dict['low_freq'] = None
     if verbose:
         print(f'\nCalculating timeseries with {time_resolution} resolution, this might take a few minutes')
     ### get the high time res footprint
@@ -2339,32 +2333,33 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
     fp_HiTRes  = da.array(fp_HiTRes)
 
     # convert fluxes to dictionaries with sectors as keys
-    # flux = {freq: flux_freq if isinstance(flux_freq, dict) else {'total': flux_freq}
-    #         for freq, flux_freq in flux_dict.items()}
     flux = {'total': flux_dict} if any([ff in list(flux_dict.keys()) for ff in ['high_freq', 'low_freq']]) else flux_dict
-    flux = {freq: {sector: None if flux_sector is None else flux_sector
-                   for sector, flux_sector in flux_freq.items()}
-            for freq, flux_freq in flux.items()}
+    flux = {sector: {freq: None if flux_freq is None else flux_freq
+                   for freq, flux_freq in flux_sector.items()}
+            for sector, flux_sector in flux.items()}
+    
     # extract the required time data
     flux = {sector: {freq: flux_freq.sel(time=slice(fp_HiTRes_ds.time[0] - np.timedelta64(24, 'h'),
                                                     fp_HiTRes_ds.time[-1])).flux
                      if flux_freq is not None else None
                      for freq, flux_freq in flux_sector.items() }
-                     
             for sector, flux_sector in flux.items()}
     
     for sector, flux_sector in flux.items():
-        if flux_sector['high_freq'] is not None:
+        if 'high_freq' in flux_sector.keys() and flux_sector['high_freq'] is not None:
             # reindex the high frequency data to match the fp
             time_flux = np.arange(fp_HiTRes_ds.time[0].values - np.timedelta64(24, 'h'),
                                   fp_HiTRes_ds.time[-1].values + np.timedelta64(time_resolution[0], 
                                                                                 time_resolution[1].lower()),
                                   time_resolution[0], dtype=f'datetime64[{time_resolution[1].lower()}]')
             flux_sector['high_freq'] = flux_sector['high_freq'].reindex(time=time_flux, method='ffill')
-            
-            if flux_sector['low_freq'] is None:
-                print('\nWarning: no low frequency flux data, resampling from high frequency data')
-                flux_sector['low_freq'] = flux_sector['high_freq'].resample(time='MS').mean()
+        else:
+            print(f'\nWarning: no high frequency flux data for {sector}, estimating a timeseries using the low frequency data')
+            flux_sector['high_freq'] = None
+        
+        if 'low_freq' not in flux_sector.keys() or flux_sector['low_freq'] is None:
+            print(f'\nWarning: no low frequency flux data for {sector}, resampling from high frequency data')
+            flux_sector['low_freq'] = flux_sector['high_freq'].resample(time='MS').mean()
     
     # convert to array to use in numba loop
     flux = {sector: {freq: None if flux_freq is None else
@@ -2434,17 +2429,21 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
         for sector, fp_fl in fpXflux_time.items():
             if output_fpXflux:
                 # Sum over time (H back) to give the total mf at this timestep
-                fpXflux[sector][:,:,tt] = fp_fl.sum(axis=2)
+                fpXflux[sector][:,:,tt] = np.nansum(fp_fl, axis=2)
             
             elif output_TS:
                 # work out timeseries by summing over lat, lon, & time (24 hrs)
-                timeseries[sector][tt] = fp_fl.sum()
+                timeseries[sector][tt] = np.nansum(fp_fl)
     
     if output_fpXflux and output_TS:
         # if not already done then calculate the timeseries
         timeseries = {sector: fp_fl.sum(axis=(0,1)) for sector, fp_fl in fpXflux.items()}
     
     if output_fpXflux:
+        fpXflux = {sec : (['lat', 'lon', 'time'], ff_sec)
+                   for sec, ff_sec in fpXflux.items()} \
+                  if output_type.lower()=='dataset' else fpXflux
+        
         fpXflux = xr.Dataset(fpXflux,
                              coords={'lat'  : fp_HiTRes_ds.lat.values,
                                      'lon'  : fp_HiTRes_ds.lon.values,
