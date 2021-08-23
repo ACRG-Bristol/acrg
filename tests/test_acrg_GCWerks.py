@@ -44,9 +44,9 @@ def test_acrg_GCWerks_CRDS_H2OCorr():
     '''
     Test CRDS_H2OCorr.py function is creating the same corrections
     '''
-    basedir = join(acrg_path,'tests/files/raw_obs/H2OCorr/')
-    outdir = join(acrg_path,'tests/files/raw_obs/H2OCorr/Plots/')
-    out1, out2 = H2OCorr.calcread_multi(sites = "BSD", years = "2018", basedir = basedir, outdir = outdir)
+    basedir = join(acrg_path,'tests/files/H2OCorr/')
+    outdir = join(acrg_path,'tests/files/H2OCorr/Plots/')
+    out1, out2 = H2OCorr.calcread_multi(sites = "BSD", years = "2018", basedir = basedir, outdir = outdir, No_plots=True)
     
     assert round(out2['B_0']['a_ch4'][0],6) == -0.013575
     assert round(out2['B_0']['a_ch4_sd'][0],6) == 0.000391
@@ -178,7 +178,7 @@ def test_acrg_GCWerks_CRDS_H2OCorr():
     assert round(out2['S_8']['b_co2'][0],6) == 0.000171
     assert round(out2['S_8']['b_co2_sd'][0],6) == 8.9e-05
     assert out2['S_8']['date'] == '20180814'
-    assert out2['S_8']['site'] == 'BSD'       
+    assert out2['S_8']['site'] == 'BSD'
     
-    
-    
+if __name__ == "__main__":
+    test_acrg_GCWerks_CRDS_H2OCorr()

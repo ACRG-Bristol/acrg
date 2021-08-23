@@ -58,7 +58,11 @@ def test_get_obs_site():
     assert "mf" in recreated_data["BSD"][0].variables
     assert ("mf_repeatability" in recreated_data["BSD"][0].variables) or ("mf_variability" in recreated_data["BSD"][0].variables)
     assert len(recreated_data["BSD"][0].time) == 24
+
+    # clean up
+    os.remove(test_dir / "files/obs/obs.db")    
     
+
 def test_get_obs_variability():
     '''
     Test that varability is correctly calculcated in time averages obs
@@ -80,7 +84,11 @@ def test_get_obs_variability():
     
     calculated_variability = fine_data["BSD"][0].mf.resample(time="1H").std()
     assert np.allclose(hourly_data["BSD"][0].mf_variability, calculated_variability)
-    
+
+    # clean up
+    os.remove(test_dir / "files/obs/obs.db")    
+
+
 def test_get_obs_gosat():
     '''
     call get_obs on an example data file and test the properties are as expected
@@ -181,7 +189,6 @@ def test_obs_process_gc():
 def test_obs_process_crds():
     '''
     Test CRDS file processing from GCWerks script
-    
     '''
 
     crds_files_directory = test_dir / "files/obs/CRDS"
