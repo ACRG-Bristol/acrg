@@ -21,24 +21,20 @@ To download new CAMS data you will have to:
       pip install --user https://software.ecmwf.int/wiki/download/attachments/56664858/ecmwf-api-client-python.tgz
 
 """
-from __future__ import print_function
-from __future__ import division
-from builtins import str
-from builtins import range
 from past.utils import old_div
 import xarray as xr
 import numpy as np
 import os
-import sys
 import glob
 import getpass
-from acrg_name import name
 from datetime import datetime as dt
-from acrg_tdmcmc.tdmcmc_post_process import molar_mass
 
-from acrg_config.paths import paths
-data_path = paths.data
+from acrg.name import name
+from acrg.tdmcmc.tdmcmc_post_process import molar_mass
+from acrg.config.paths import Paths
 
+
+data_path = Paths.data
 
 def getCAMSdata(st_date, end_date, gridsize, NESW, species, outputname, nearrealtime = False,
                 timeframe="daily"):
@@ -66,7 +62,9 @@ def getCAMSdata(st_date, end_date, gridsize, NESW, species, outputname, nearreal
         dictionary.
         
     """
+    
     from ecmwfapi import ECMWFDataServer
+
     area = "%s/%s/%s/%s" % (NESW[0], NESW[2], NESW[4], NESW[6])
     params = {'ch4' : '4.217','co': '123.210'}     #Dictionary of species' paramater number 
     if nearrealtime == True:
@@ -252,7 +250,6 @@ def makeCAMS_BC(domain, species, st_date, end_date, gridsize, outdir=None):
         If working with a species other than ch4 or co then you'll have to update 
         the molar masses and getCAMSdata().
     """
-    
     
     if outdir == None:
         outdir = data_path
