@@ -400,7 +400,7 @@ def obs_database(data_directory = None):
             obs_path = pathlib.Path(data_directory)
     
     print(f"Reading obs files in {obs_path}")
-    
+
     # Find sub-directories in obs folder
     for d in obs_path.glob("*"):
         if d.is_dir():
@@ -438,28 +438,28 @@ def obs_database(data_directory = None):
                             end_date.append(pd.Timestamp(ds["time"].values[-1]).to_pydatetime())
 
                         filename.append(str(f))
-                        
-    file_info = list(zip(filename, network, instrument, site_code, species, inlet, calibration_scale, start_date, end_date))    
+
+    file_info = list(zip(filename, network, instrument, site_code, species, inlet, calibration_scale, start_date, end_date))
 
     # Write database
     ######################################
-    
+
     # To avoid permissions problems, remove old file
     try:
         (obs_path / 'obs.db').unlink()
     except FileNotFoundError:
         pass
-    
+
     print(f"Writing database {obs_path / 'obs.db'}")
-    
+
     conn = sqlite3.connect(obs_path / "obs.db")
     c = conn.cursor()
 
     c.execute('''DROP TABLE IF EXISTS files
-              ''')
-    
+                ''')
+
     c.execute('''CREATE TABLE files
-                 (filename text, network text, instrument text, site text, species text, inlet text, scale text, startDate timestamp, endDate timestamp)''')
+                    (filename text, network text, instrument text, site text, species text, inlet text, scale text, startDate timestamp, endDate timestamp)''')
 
     c.executemany('INSERT INTO files VALUES (?,?,?,?,?,?,?,?,?)', file_info)
 
