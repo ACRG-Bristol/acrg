@@ -15,7 +15,7 @@ acrg_hbmcmc/Temp/*
 *~
 .cache
 .DS_Store
-acrg_config/paths.y*ml
+acrg/config/paths.y*ml
 .vscode*
 *.code-workspace
 *.jupyter_symlinks
