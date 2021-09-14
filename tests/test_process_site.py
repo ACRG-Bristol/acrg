@@ -28,9 +28,9 @@ import pytest
 import os
 import glob
 import numpy as np
-import xarray as xray
 import datetime
 import pandas as pd
+import xarray as xr
 
 import acrg.name.process as process
 from acrg.config.paths import Paths
@@ -842,7 +842,7 @@ def test_footprint_array_site(benchmark_output_directory,get_mixr_files_site,
     
     fp_bench_file = os.path.join(benchmark_output_directory,'Test_process_footprint_array.nc')
     
-    with xray.open_dataset(fp_bench_file) as f: 
+    with xr.open_dataset(fp_bench_file) as f: 
         fp_bench = f.load()
     
     fields_file_1 = get_mixr_files_site[0]
@@ -1069,6 +1069,27 @@ def test_process_site(process_site_param):
 
     assert out is not None
 
+def test_process_site_benchmark(process_site_param):
+    '''
+    Test process function output against a benchmark for the same data.
+    '''
+    remove_processed_file(process_site_param)
+    process.process(**process_site_param)
+
+    out_file = find_processed_file(process_site_param)
+    out = xr.open_dataset(out_file)
+
+    # Benchmark was run on 14/09/2021
+    # RPB, 10magl, CARIBBEAN domain, January, 2010 data
+    # *If this does not match to your current inputs - benchmark must be updated.*
+
+    benchmark_file = "files/LPDM/raw_output/benchmarks/RPB-10magl_CARIBBEAN_201001.nc"
+    benchmark = xr.open_dataset(benchmark_file)
+
+    print(out["particle_locations_n"], benchmark["particle_locations_n"])
+
+    xr.testing.assert_equal(out, benchmark)
+
 
 #%%
 
@@ -1106,10 +1127,30 @@ def test_process_site_species(process_site_species_param):
     print(process_site_species_param)
     out = process.process(**process_site_species_param)
 
-    print("out", out)
     assert out is not None
     assert out is not False
+
+
+def test_process_site_species_benchmark(process_site_species_param):
+    '''
+    Test process function output against a benchmark for the same data.
+    '''
+    remove_processed_file(process_site_species_param)
     
+    process.process(**process_site_species_param)
+
+    out_file = find_processed_file(process_site_species_param)
+    out = xr.open_dataset(out_file)
+
+    # Benchmark was run on 14/09/2021
+    # RPB, 10magl, CARIBBEAN domain, January, 2010 data for species hfo-1234zee
+    # *If this does not match to your current inputs - benchmark must be updated.*
+
+    benchmark_file = "files/LPDM/raw_output/benchmarks/RPB-10magl_hfo-1234zee_CARIBBEAN_201001.nc"
+    benchmark = xr.open_dataset(benchmark_file)
+
+    xr.testing.assert_equal(out, benchmark)
+
 
 @pytest.fixture()
 def process_site_co2_param(site_param_co2,folder_names,site_directory):
@@ -1126,6 +1167,7 @@ def process_site_co2_param(site_param_co2,folder_names,site_directory):
 
     return param
 
+
 # Rudimentary check that this runs (for now)
 def test_process_site_co2(process_site_co2_param):
     '''
@@ -1140,10 +1182,27 @@ def test_process_site_co2(process_site_co2_param):
     '''
     remove_processed_file(process_site_co2_param)
     
-    print(process_site_co2_param)
     out = process.process(**process_site_co2_param)
     
-    print("out", out)
     assert out is not None
     assert out is not False
+
+def test_process_site_co2_benchmark(process_site_co2_param):
+    '''
+    Test process function output against a benchmark for the same data.
+    '''
+    remove_processed_file(process_site_co2_param)
+    process.process(**process_site_co2_param)
+
+    out_file = find_processed_file(process_site_co2_param)
+    out = xr.open_dataset(out_file)
+
+    # Benchmark was run on 14/09/2021
+    # RPB, 10magl, CARIBBEAN domain, January, 2010 for co2 data
+    # *If this does not match to your current inputs - benchmark must be updated.*
+
+    benchmark_file = "files/LPDM/raw_output/benchmarks/RPB-10magl_co2_CARIBBEAN_201001.nc"
+    benchmark = xr.open_dataset(benchmark_file)
+
+    xr.testing.assert_equal(out, benchmark)
 
