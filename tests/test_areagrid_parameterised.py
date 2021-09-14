@@ -18,11 +18,11 @@ import os
 import sys
 import netCDF4 as nc
 import pytest
-from acrg_grid.areagrid import areagrid
-from acrg_config.paths import paths
+from acrg.grid.areagrid import areagrid
+from acrg.config.paths import Paths
 
 
-acrg_path = paths.acrg
+acrg_path = Paths.acrg
 
 @pytest.fixture(scope="module")
 def gen_netcdf_file():

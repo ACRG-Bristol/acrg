@@ -22,16 +22,15 @@ To run all tests except those labelled 'long' use the syntax
 
 import pytest
 import os
-import sys
 import subprocess
 import xarray
 import numpy as np
 
-from acrg_config.paths import paths
-acrg_path = paths.acrg
+from acrg.config.paths import Paths
+acrg_path = Paths.acrg
 
-tdmcmc_path = os.path.join(acrg_path,"acrg_tdmcmc")
-test_param_path = os.path.join(acrg_path,"tests/files/tdmcmc/")
+tdmcmc_path = os.path.join(acrg_path, "acrg/tdmcmc")
+test_param_path = os.path.join(acrg_path, "tests/files/tdmcmc/")
 
 @pytest.fixture(scope="module")
 def tdmcmc_input_file():
