@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Use this section to keep track of any intermediate changes that can then be moved to a versioned section.
 
 ### Changed
+- directory structure of acrg package has changed. Many import statements will likely need modifying
 - the filename structure of the footprint nc files created in acrg_name.process has changed and the new filenames are detailed in filename_convention.md
 - the footprint files now have an explicit convention for labeling a met_model such as 'UKV'
 - allows species lifetime to be specified monthly or annually in species_info.json
