@@ -35,8 +35,11 @@ from scipy.odr import ODR, Model, Data, RealData
 # use_drygaps = set if you want to identify the wet periods as the "non dry" bits
 # h2o_jump = set to the gap between consecutive h2o measurments that's used to identify the start of wet section defaults to 0.4
 # H2Orange = set the H2O x axis range on the residual plots
-def calcread_multi(sites, years, basedir = '/Users/as13988/Documents/Work/Picarro/H2OCorr/', outdir = '/home/mi19881/programs/acrg/tests/files/raw_obs/H2OCorr/Plots/', dir_suffix = '', quick_plot = None, \
-h2o_jump = 0.4, ignorefirst = 5, dry_cutoff = 0.005, h2o_sd = 0.2, co2_sd = 0.05, ch4_sd = 0.4,  H2O_Range = None, No_plots = None, sd_flag = None):
+def calcread_multi(sites, years, basedir = '/Users/as13988/Documents/Work/Picarro/H2OCorr/',
+            outdir = '/home/mi19881/programs/acrg/tests/files/raw_obs/H2OCorr/Plots/',
+            dir_suffix = '', quick_plot = None,
+            h2o_jump = 0.4, ignorefirst = 5, dry_cutoff = 0.005, h2o_sd = 0.2, co2_sd = 0.05, ch4_sd = 0.4,
+            H2O_Range = None, No_plots = None, sd_flag = None):
     
     outputs = {}
     means_all = {}
@@ -81,7 +84,8 @@ h2o_jump = 0.4, ignorefirst = 5, dry_cutoff = 0.005, h2o_sd = 0.2, co2_sd = 0.05
             output, means = plot_ratio_multi(wet_raw, dry_data, wet_instcorr, outdir = outdir, dir_suffix = dir_suffix, No_plots = No_plots, sd_flag = sd_flag)
             
             # plot the change from the built in residual for ALL runs
-            plot_residual(means, wet_raw, wet_instcorr, dry_data, outdir=outdir, saveas=1, dir_suffix = dir_suffix, useinbuilt=1, H2O_Range = H2O_Range, sd_flag = sd_flag)
+            if No_plots == None:
+                plot_residual(means, wet_raw, wet_instcorr, dry_data, outdir=outdir, saveas=1, dir_suffix = dir_suffix, useinbuilt=1, H2O_Range = H2O_Range, sd_flag = sd_flag)
             
             outputs[i + '_' + str(j)] = output
             means_all[i + '_' + str(j)] = means
@@ -779,7 +783,9 @@ def plot_residual_multi(data, outdir = '/Users/as13988/Documents/Work/Picarro/H2
 # The co2_dry output of GCWerks ≠ the co2_dry parameters from the CRDS if there's a water corrections file
 # need to extract the data after removing the water corrections file to get the inbuilt correction
 # and read it in as a second "wet_data" file
-def plot_residual(means, wet_data, wet_data_nocorr, dry_data, outdir = '/Users/as13988/Documents/Work/Picarro/H2OCorr/Plots/', dir_suffix=None, saveas = None, useinbuilt = None, H2O_Range = None, sd_flag=None):
+def plot_residual(means, wet_data, wet_data_nocorr, dry_data,
+                outdir = '/Users/as13988/Documents/Work/Picarro/H2OCorr/Plots/', dir_suffix=None, saveas = None,
+                useinbuilt = None, H2O_Range = None, sd_flag=None):
     
     # extract the wet data and concatenate it into one large data blob
     co2 = []
