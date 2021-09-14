@@ -16,7 +16,7 @@ import scipy.optimize
 import getpass
 import uuid
 
-import acrg.name as name
+from acrg.name import name
 from acrg.config.paths import Paths
 
 acrg_path = Paths.acrg
@@ -612,7 +612,7 @@ def basis_bc_pca(domain, time, species, units='ppb', basis_case='pca', numregion
 
     # find principal companents of MOZART vmr
 
-    bc_ds =  name.boundary_conditions(domain, species)
+    bc_ds = name.boundary_conditions(domain, species)
     bc_ds = bc_ds.sel(time = time)
     
     if units == 'ppb':
