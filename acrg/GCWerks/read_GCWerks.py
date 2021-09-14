@@ -4,9 +4,6 @@ Created on Mon Mar 23 10:22:22 2015
 
 @author: as13988
 """
-from __future__ import print_function
-
-from builtins import object
 import os
 import numpy as np
 import datetime as dt
@@ -298,8 +295,6 @@ class read_gcexport_crds_old(object):
 
 class read_gcexport_crds_new(object):
     def __init__(self, data, datafile):
-        
-        pdb.set_trace()        
         
         date = data[:,0]
         time = data[:,1]

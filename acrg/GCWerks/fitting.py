@@ -4,15 +4,13 @@ Created on Thu Mar 19 15:06:16 2015
 
 @author: as13988
 """
-from __future__ import print_function
-from builtins import str
-from builtins import object
 import matplotlib as mpl
-mpl.use('agg')
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 import numpy as np
 import pdb
+
+mpl.use('agg')
 
 # Code to generate data
 class generate_data(object):

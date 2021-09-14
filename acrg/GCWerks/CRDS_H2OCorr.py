@@ -6,12 +6,6 @@ Created on Thu Jun 11 12:24:37 2015
 
 updated Fri Mar 1 by mi19881 to ensure that an outdir is passed to all plot functions.
 """
-from __future__ import print_function
-from builtins import zip
-from builtins import map
-from builtins import str
-from builtins import object
-from acrg_GCWerks import acrg_read_GCwerks
 import matplotlib.pylab as plt
 import numpy as np
 import matplotlib 
@@ -24,6 +18,8 @@ from os.path import isfile, join
 from operator import itemgetter
 from itertools import groupby
 from scipy.odr import ODR, Model, Data, RealData
+
+from . import read_GCwerks
 
 # Read in the data for a given list of sites and list of years
 # calculate the fits and do the plotting
