@@ -44,7 +44,7 @@ from acrg.config.paths import Paths
 acrg_path = Paths.acrg
 
 # Get acrg_site_info file
-with open(os.path.join(acrg_path, "acrg_site_info.json")) as f:
+with open(acrg_path / "data/site_info.json") as f:
     site_info=json.load(f,object_pairs_hook=OrderedDict)
 
 def append_netcdf(flux_mean, flux_percentile, flux_it, country_mean, country_percentile,
@@ -244,11 +244,11 @@ def write_netcdf(flux_mean, flux_percentile, flux_it, flux_prior, flux_ap_percen
 
 def molar_mass(species):
     '''
-    This function extracts the molar mass of a species from the acrg_species_info.json file.
+    This function extracts the molar mass of a species from the data/species_info.json file.
     Returns:
         float : Molar mass of species
     '''
-    species_info_file = os.path.join(acrg_path,"acrg_species_info.json")
+    species_info_file = os.path.join(acrg_path, "data/species_info.json")
     with open(species_info_file) as f:
             species_info=json.load(f)
     species_key = acrg_obs.read.synonyms(species, species_info)

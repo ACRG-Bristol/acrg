@@ -6,9 +6,10 @@ Created on Thu Apr  2 12:54:43 2020
 @author: lw13938
 """
 import numpy as np
-import acrg_obs as getobs
 import pandas as pd
 import xarray as xr
+
+import acrg.obs as getobs
 
 def opends(fn):
     '''

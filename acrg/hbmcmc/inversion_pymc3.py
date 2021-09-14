@@ -6,22 +6,21 @@ Created on Thu Apr  2 12:57:23 2020
 @author: lw13938
 """
 import numpy as np
-import acrg_name as name
 import pymc3 as pm
 import pandas as pd
 import xarray as xr
-from acrg_grid import areagrid
 import getpass
-from acrg_hbmcmc.inversionsetup import opends
-from acrg_hbmcmc.hbmcmc_output import define_output_filename
-import os
-import sys
-import acrg_convert as convert
-from acrg_config.version import code_version
 
-from acrg_config.paths import paths
-data_path = paths.data
+import acrg.name as name
+from acrg.grid import areagrid
+from acrg.hbmcmc.inversionsetup import opends
+from acrg.hbmcmc.hbmcmc_output import define_output_filename
+import acrg.convert as convert
+from acrg.config.version import code_version
+from acrg.config.paths import Paths
 
+
+data_path = Paths.data
 
 def parsePrior(name, prior_params, shape = ()):
     """

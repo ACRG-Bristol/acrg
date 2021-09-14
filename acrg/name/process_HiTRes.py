@@ -9,9 +9,6 @@ Created on Mon Feb 19 11:09:53 2018
 """
 Functions for processing HiTRes footprint files
 """
-
-from past.utils import old_div
-import acrg_name.process as proc
 import datetime as dt
 from dateutil import parser
 import gzip
@@ -19,21 +16,18 @@ import sys
 import os
 import os.path
 import glob
-import acrg_name.name as nm
 import numpy as np
 import xarray as xray
 import getpass
 import pandas as pd
 from os.path import join
 
-from acrg_config.paths import paths
-data_path = paths.data
+import acrg.name.process as proc
+import acrg.name.name as nm
+from acrg.config.paths import Paths
 
-if data_path is None:
-    data_path = "/work/chxmr/shared/"
-    print("Default Data directory is assumed to be /work/chxmr/shared/. Set path in .bashrc as \
-            export DATA_PATH=/path/to/data/directory/ and restart python terminal")
 
+data_path = Paths.data
 normal_fp_dir = join(data_path, 'NAME/fp/')
 
 

@@ -17,12 +17,13 @@ import os
 import sys
 import netCDF4 as nc
 import pytest
-from acrg_grid.regrid import regrid2d
-from acrg_grid.regrid import regrid3d
-from acrg_grid.areagrid import areagrid
 
-from acrg_config.paths import paths
-acrg_path = paths.acrg
+from acrg.grid.regrid import regrid2d
+from acrg.grid.regrid import regrid3d
+from acrg.grid.areagrid import areagrid
+from acrg.config.paths import Paths
+
+acrg_path = Paths.acrg
 
 @pytest.fixture(scope="module")
 def gen_netcdf_file_new():

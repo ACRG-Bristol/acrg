@@ -8,8 +8,7 @@ Created on Tue May 12 17:14:57 2020
 
 import os
 import re
-#from shutil import copyfile
-import acrg_config.config as config
+from acrg.config import config
 
 
 def check_and_create_folder(outputpath):

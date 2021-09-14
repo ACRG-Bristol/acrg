@@ -17,40 +17,34 @@ This should probably be changed at some point to regrid over all timesteps in
 one go.
 
 """
-from __future__ import print_function
-from __future__ import division
-
-from builtins import zip
-from builtins import str
-from builtins import range
 from past.utils import old_div
 import numpy as np
 import xarray as xray
 import glob 
 import h5py
 import os
-import sys
-from acrg_grid.regrid import regrid2d
-from acrg_grid import areagrid
 import datetime
 import pandas as pd
 import xarray as xr
 import datetime as dt
 from dateutil.relativedelta import relativedelta
-from acrg_tdmcmc.tdmcmc_post_process import molar_mass
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
-from acrg_countrymask import domain_volume
-from acrg_name import flux
 import pyproj
-import acrg_grid.regrid_xesmf
 import getpass
 import copy
 
-from acrg_config.paths import paths
-data_path = paths.data
+from acrg.grid import regrid_xesmf
+from acrg.grid.regrid import regrid2d
+from acrg.grid.areagrid import areagrid
+from acrg.tdmcmc.tdmcmc_post_process import molar_mass
+from acrg.countrymask import domain_volume
+from acrg.name import flux
+from acrg.config.paths import Paths
 
-output_directory = os.path.join(data_path,"LPDM/emissions/")
+
+data_path = Paths.data
+output_directory = data_path / "LPDM/emissions/"
 
 def loadAscii(filename):
     '''
@@ -675,7 +669,7 @@ def get_naei_public(filename, lon_out, lat_out):
     XX, YY = np.meshgrid(raw_data["lon"].values,raw_data["lat"].values)
     XX, YY = pyproj.transform(OS_proj,ll_proj, XX, YY)
     #create boundary mesh
-    XX_b, YY_b = acrg_grid.regrid_xesmf.getGridCC(raw_data["lon"].values,raw_data["lat"].values)
+    XX_b, YY_b = regrid_xesmf.getGridCC(raw_data["lon"].values,raw_data["lat"].values)
     XX_b, YY_b = pyproj.transform(OS_proj,ll_proj, XX_b, YY_b)
     
     input_grid = xr.Dataset({'lon': (['x', 'y'], XX),
@@ -683,13 +677,12 @@ def get_naei_public(filename, lon_out, lat_out):
                              'lon_b': (['x_b', 'y_b'], XX_b),
                              'lat_b': (['x_b', 'y_b'], YY_b)})
     
-    output_grid = acrg_grid.regrid_xesmf.create_xesmf_grid_uniform_cc(lat_out, lon_out)
+    output_grid = regrid_xesmf.create_xesmf_grid_uniform_cc(lat_out, lon_out)
     
     #conda version of xesmf does not handle nans yet
     data_sans_nans = np.nan_to_num(raw_data.data, copy=True)
-    regridded_data = acrg_grid.regrid_xesmf.regrid_betweenGrids(data_sans_nans, input_grid, output_grid)
+    regridded_data = regrid_xesmf.regrid_betweenGrids(data_sans_nans, input_grid, output_grid)
 
-    
     output = xr.Dataset({"data":(["lat", "lon"],regridded_data)},
                         coords={"lat":(["lat"], lat_out),
                                 "lon":(["lon"], lon_out)})
@@ -964,7 +957,7 @@ def embed_UKGHG_EDGAR(edgar_flux, ukghg_flux, time=False, country=None, data_typ
         
     '''
     if country is None:
-        country_file = os.path.join(paths.data,'LPDM', 'countries', 'country-ukmo_EUROPE.nc')
+        country_file = os.path.join(data_path,'LPDM', 'countries', 'country-ukmo_EUROPE.nc')
         with xr.open_dataset(country_file) as c_file:
             country = c_file['country']
     

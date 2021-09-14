@@ -19,21 +19,19 @@ before launching Spyder, else you will use every available thread. Apart from
 being annoying it will also slow down your run due to unnecessary forking.
 
 """
-import os
-import sys
 import numpy as np
-import acrg_name as name
-import acrg_obs as getobs
-import socket
-import acrg_hbmcmc.inversionsetup as setup 
-import acrg_hbmcmc.inversion_pymc3 as mcmc
-# import acrg_hbmcmc.quadtreebasis as quadtree
-import acrg_name.basis_functions as basis
 import shutil
 
-from acrg_config.paths import paths
-acrg_path = paths.acrg
-data_path = paths.data
+import acrg.name as name
+import acrg.obs as getobs
+import acrg.hbmcmc.inversionsetup as setup 
+import acrg.hbmcmc.inversion_pymc3 as mcmc
+import acrg.name.basis_functions as basis
+from acrg.config.paths import Paths
+
+
+acrg_path = Paths.acrg
+data_path = Paths.data
 
 def fixedbasisMCMC(species, sites, domain, meas_period, start_date, 
                    end_date, outputpath, outputname,

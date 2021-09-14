@@ -3,47 +3,44 @@
 Created on Mon Nov 10 10:45:51 2014
 
 """
-from builtins import str
-from builtins import range
-from builtins import object
 from past.utils import old_div
-import netCDF4 as nc
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
+from matplotlib import ticker
 import datetime as dt
 import os
 import sys
 import glob
-from matplotlib import ticker
 import pandas as pd
 import bisect
 import subprocess
 import json
 from os.path import join
 import xarray as xr
-from acrg_time import convert
 import calendar
-import pickle
-from scipy.interpolate import interp1d
 import dateutil.relativedelta
 import cartopy.crs as ccrs
 import cartopy
-from mpl_toolkits import mplot3d
 from collections import OrderedDict
-import acrg_obs as obs
-from acrg_config.paths import paths
-from acrg_utils import is_number
 
-acrg_path = paths.acrg
-data_path = paths.data
+from acrg.time import convert
+import acrg.obs as obs
+from acrg.config.paths import Paths
+from acrg.utils import is_number
 
-# Get acrg_site_info file
-with open(acrg_path / "acrg_site_info.json") as f:
+
+acrg_path = Paths.acrg
+data_path = Paths.data
+
+# Get site_info and species_info file
+with open(acrg_path / "data/site_info.json") as f:
     site_info=json.load(f,object_pairs_hook=OrderedDict)
 
-    
+with open(acrg_path / "data/species_info.json") as f:
+    species_info=json.load(f)
+
 def open_ds(path):
     """
     Function efficiently opens xray datasets.
@@ -65,7 +62,7 @@ def filenames(site, domain, start, end, height, fp_directory, met_model = None, 
     
     Args:
         site (str) : 
-            Site name. Full list of site names should be defined within acrg_site_info.json
+            Site name. Full list of site names should be defined within data/site_info.json
         domain (str) : 
             Domain name. The footprint files should be sub-categorised by the NAME domain name.
         start (str) : 
@@ -83,7 +80,7 @@ def filenames(site, domain, start, end, height, fp_directory, met_model = None, 
             Alternates include 'UKV' and this met model must be in the outputfolder NAME        
         network (str, optional) : 
             Network for site. 
-            If not specified, first entry in acrg_site_info.json file will be used (if there are multiple).
+            If not specified, first entry in data/site_info.json file will be used (if there are multiple).
         species (str, optional)
             If specified, will search for species specific footprint files.
     Returns:
@@ -93,7 +90,7 @@ def filenames(site, domain, start, end, height, fp_directory, met_model = None, 
     # Read site info for heights
     if height is None:
         if not site in list(site_info.keys()):
-            print("Site code not found in arcg_site_info.json to get height information. " + \
+            print("Site code not found in data/site_info.json to get height information. " + \
                   "Check that site code is as intended. "+ \
                   "If so, either add new site to file or input height manually.")
             return None
@@ -101,9 +98,6 @@ def filenames(site, domain, start, end, height, fp_directory, met_model = None, 
             network = list(site_info[site].keys())[0]
         height = site_info[site][network]["height_name"][0]
     
-    with open(os.path.join(acrg_path,"acrg_species_info.json")) as f:
-        species_info=json.load(f)
- 
     if species:
         species_obs = obs.read.synonyms(species, species_info)
         
@@ -245,12 +239,12 @@ def footprints(sitecode_or_filename, met_model = None, fp_directory = None,
             Domain name. The footprint files should be sub-categorised by the domain.
         height (str, optional) : 
             Height related to NAME. If the HEIGHT keyword is not specified, the default height from the 
-            acrg_site_info.json file is assumed.
+            data/site_info.json file is assumed.
         network (str, optional) :
             Network associated with the site. This is only needed if there are multiple network options.
-            This is used to extract site information e.g. height from acrg_site_info.json. 
+            This is used to extract site information e.g. height from data/site_info.json. 
         species (str) : 
-            Species name. All species names are defined acrg_species_info.json.
+            Species name. All species names are defined data/species_info.json.
         HiTRes (bool, optional) : 
             Whether to include high time resolution footprints.
             Default = False.
@@ -325,7 +319,7 @@ def flux(domain, species, start = None, end = None, flux_directory=None):
         domain (str) : 
             Domain name. The flux files should be sub-categorised by the domain.
         species (str) : 
-            Species name. All species names are defined acrg_species_info.json.
+            Species name. All species names are defined data/species_info.json.
             The source can also be specified as part of the species name e.g. "co2-ff"
             will find all co2 emissions file for the fossil fuel sector.
         start (str, optional) : 
@@ -485,7 +479,7 @@ def boundary_conditions(domain, species, start = None, end = None, bc_directory=
         domain (str) : 
             Domain name. The boundary condition files should be sub-categorised by the domain.
         species (str) : 
-            Species name. All species names are defined acrg_species_info.json.
+            Species name. All species names are defined data/species_info.json.
         start (str, optional) : 
             Start date in format "YYYY-MM-DD" to output only a time slice of all the flux files.
             The start date used will be the first of the input month. I.e. if "2014-01-06" is input,
@@ -799,7 +793,7 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
                                {site: height} key:value pairs. Can be found from acrg_sites_info.json
         network (str/list)   : Network associated with the site. This is only needed if there are multiple 
                                network options. This is used to extract site information 
-                               e.g. height from acrg_site_info.json. 
+                               e.g. height from data/site_info.json. 
                                Can be specified as a string for one network for all sites or as a list for
                                multiple networks.
         emissions_name (dict): Allows emissions files with filenames that are longer than just the species name
@@ -1095,15 +1089,13 @@ def add_bc(fp_and_data, load_bc, species):
             name of species in the dataset
     """
     if load_bc == False:
+
         print("Can't get modelled baseline timeseries because load_bc is set to False.")
+
     else:
         
-        with open(os.path.join(acrg_path,"acrg_species_info.json")) as f:
-            species_info=json.load(f)
- 
         species_obs = obs.read.synonyms(species, species_info)
     
-
         sites = [key for key in list(fp_and_data.keys()) if key[0] != '.']
         for site in sites:
             bc_reindex = fp_and_data['.bc'].reindex_like(fp_and_data[site], 'ffill')
@@ -1333,8 +1325,6 @@ def bc_sensitivity(fp_and_data, domain, basis_case, bc_basis_directory = None):
     basis_func = basis_func.reindex({"time":timenew})
     
     species = fp_and_data[".species"]
-    with open(os.path.join(acrg_path,"acrg_species_info.json")) as f:
-        species_info=json.load(f)
     species = obs.read.synonyms(species, species_info)
             
     for site in sites:

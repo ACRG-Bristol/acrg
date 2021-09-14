@@ -4,17 +4,11 @@ Created on Thu Nov 26 18:13:48 2015
 
 @author: chxmr
 """
-from __future__ import print_function
-
-from builtins import input
-from builtins import str
-from builtins import object
 import numpy as np
 import datetime as dt
 import os
 import netCDF4 as nc
 import getpass
-import acrg_time
 import re
 import numpy as np 
 import xarray as xray
@@ -22,9 +16,10 @@ import collections as c
 import sys
 import pandas as pd
 
-from acrg_config.paths import paths
-data_path = paths.data
+from acrg.config.paths import Paths
 
+
+data_path = Paths.data
 output_directory = os.path.join(data_path,'LPDM/emissions/')
 
 def write(lat, lon, time, flux, species, domain,

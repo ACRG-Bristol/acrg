@@ -24,13 +24,6 @@ in the Processed_Fields_files directory.
 
 @author: chxmr
 """
-from __future__ import print_function
-from __future__ import division
-
-from builtins import zip
-from builtins import str
-from builtins import range
-#from past.utils import old_div
 from netCDF4 import Dataset
 import netCDF4
 import glob
@@ -41,24 +34,21 @@ import datetime as dt
 import numpy as np
 import pandas as pd
 import scipy.constants as const
-from acrg_grid import areagrid
-from acrg_time.convert import time2sec, sec2time
-from acrg_config.version import code_version
-import acrg_time.convert
 import os
 import json
-from os.path import split, realpath, exists
 import xarray as xray
-from scipy.interpolate import interp1d
-import copy 
 import matplotlib.pyplot as plt
 import getpass
-import traceback
-import sys
 import scipy
-import pdb
 from multiprocessing import Pool
-import acrg_obs as obs
+
+from acrg.grid.areagrid import areagrid
+from acrg.time.convert import time2sec, sec2time
+from acrg.config.version import code_version
+import acrg.obs as obs
+import acrg.time as acrg_time
+from acrg.config.paths import Paths
+
 
 #Default NAME output file version
 #This is changed depending on presence of "Fields:" line in files
@@ -86,10 +76,9 @@ timestep_for_output = 0.
 # Default to home directory, but update if proper directory is specified
 directory_status_log = os.getenv("HOME")
 
-from acrg_config.paths import paths
-acrg_path = paths.acrg
-data_path = paths.data
-lpdm_path = paths.lpdm
+acrg_path = Paths.acrg
+data_path = Paths.data
+lpdm_path = Paths.lpdm
 
 def unzip(filename, out_filename=None, return_filename=False, delete_zipped_file=False, verbose=True):
     '''
@@ -2172,7 +2161,7 @@ def process(domain, site, height, year, month,
         fields_folder = "MixR_files"
     
     if species is not None:
-        with open(os.path.join(acrg_path,"acrg_species_info.json")) as f:
+        with open(os.path.join(acrg_path,"data/species_info.json")) as f:
             species_info=json.load(f)
         species = obs.read.synonyms(species, species_info)
         if 'lifetime' in species_info[species].keys():

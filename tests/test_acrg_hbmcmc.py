@@ -14,19 +14,20 @@ To run this test suite only from within the tests/ directory use the syntax
 """
 
 import pytest
-
-import acrg_hbmcmc.inversion_pymc3 as mcmc
 import pymc3 as pm
 import numpy as np
-from acrg_config.paths import paths
 import os
 import subprocess
 from pathlib import Path
 import xarray as xr
 import glob
 
-acrg_path = paths.acrg
-hbmcmc_path = os.path.join(acrg_path,"acrg_hbmcmc")
+import acrg.hbmcmc.inversion_pymc3 as mcmc
+from acrg.config.paths import Paths
+
+acrg_path = Paths.acrg
+data_path = Paths.data
+hbmcmc_path = os.path.join(acrg_path,"hbmcmc")
 test_obs_path = os.path.join(acrg_path,"tests/files/obs")
 test_config_path = os.path.join(acrg_path,"tests/files/config")
 outputpath = os.path.join(acrg_path,"tests/files/output")
@@ -153,7 +154,7 @@ def hbmcmc_config_file():
     pathn.write_text(text)
     return filename
 
-@pytest.mark.skipif(not glob.glob(os.path.join(paths.data,"LPDM/bc")), reason="No access to files in data_path")
+@pytest.mark.skipif(not glob.glob(os.path.join(data_path,"LPDM/bc")), reason="No access to files in data_path")
 @pytest.mark.long
 def test_hbmcmc_inputs(hbmcmc_input_file,hbmcmc_config_file):
     ''' Check that run_hbmcmc.py can be run with a standard hbmcmc config file '''
@@ -162,7 +163,7 @@ def test_hbmcmc_inputs(hbmcmc_input_file,hbmcmc_config_file):
     os.remove(os.path.join(outputpath, "CH4_EUROPE_pytest-deleteifpresent_2014-02-01.nc"))
     assert result == 0
 
-@pytest.mark.skipif(not glob.glob(os.path.join(paths.data,"LPDM/bc")), reason="No access to files in data_path")
+@pytest.mark.skipif(not glob.glob(os.path.join(data_path,"LPDM/bc")), reason="No access to files in data_path")
 @pytest.mark.long
 def test_hbmcmc_inputs_command_line(hbmcmc_input_file,hbmcmc_config_file):
     ''' Check that run_hbmcmc.py can be run with a standard hbmcmc config file incl. dates '''
@@ -171,7 +172,7 @@ def test_hbmcmc_inputs_command_line(hbmcmc_input_file,hbmcmc_config_file):
     os.remove(os.path.join(outputpath, "CH4_EUROPE_pytest-deleteifpresent_2014-02-01.nc"))
     assert result == 0
 
-@pytest.mark.skipif(not glob.glob(os.path.join(paths.data,"LPDM/bc")), reason="No access to files in data_path")
+@pytest.mark.skipif(not glob.glob(os.path.join(data_path,"LPDM/bc")), reason="No access to files in data_path")
 @pytest.mark.long
 def test_hbmcmc_output_exists(hbmcmc_input_file,hbmcmc_config_file):
     """ Check hbmcmcm output file exists and that variables etc exits"""

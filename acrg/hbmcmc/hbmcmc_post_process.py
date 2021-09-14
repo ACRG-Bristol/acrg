@@ -18,40 +18,31 @@ country_emissions - calculate emissions from given list of countries
 
 @author: ml12574
 """
-from __future__ import print_function
-
 import numpy as np
 import matplotlib.pyplot as plt
 import glob
 import cartopy.crs as ccrs
 import xarray as xray
-import acrg_name as name
-from acrg_grid import areagrid
-from netCDF4 import Dataset
-from acrg_time.convert import time2sec
 import os
-import sys
 import json
-import matplotlib.mlab as mlab
-from matplotlib.patches import Polygon
-from matplotlib.colors import BoundaryNorm
-from matplotlib.colors import Normalize
+from matplotlib.colors import BoundaryNorm, Normalize
+import matplotlib.dates as mdates
 from matplotlib import ticker
-import matplotlib.ticker as mticker
 from cartopy.feature import BORDERS
 from collections import OrderedDict
-import datetime as dt
-import getpass
-import acrg_convert as convert
 import pymc3 as pm
-import matplotlib.dates as mdates
 import pandas as pd
 
-from acrg_config.paths import paths
-acrg_path = paths.acrg
+import acrg.name as name
+from acrg.grid import areagrid
+from acrg import convert
+from acrg.config.paths import Paths
+
+
+acrg_path = Paths.acrg
 
 # Get acrg_site_info file
-with open(os.path.join(acrg_path, "acrg_site_info.json")) as f:
+with open(acrg_path / "data/site_info.json") as f:
     site_info=json.load(f,object_pairs_hook=OrderedDict)
 
 def check_platform(site,network=None):

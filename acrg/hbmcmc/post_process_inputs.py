@@ -9,21 +9,18 @@ Uses tdmcmc_post_process
 
 @author: ml12574 (updated by rt17603)
 """
-from __future__ import print_function
-from __future__ import absolute_import
 
 ########### INPUTS ####################
 
 import numpy as np
 import hbmcmc_post_process as process
-import pandas
 import os
-import sys
 import matplotlib.pyplot as plt
 
-from acrg_config.paths import paths
-acrg_path = paths.acrg
+from acrg.config.paths import Paths
 
+
+acrg_path = Paths.acrg
 
 if __name__=="__main__":
 

@@ -27,10 +27,11 @@ import os
 import sys
 import argparse
 from shutil import copyfile
-import acrg_hbmcmc.hbmcmc as mcmc
-import acrg_config.config as config
-from acrg_config.paths import paths
-import acrg_hbmcmc.hbmcmc_output as output
+
+import acrg.hbmcmc.hbmcmc as mcmc
+import acrg.config.config as config
+from acrg.config.paths import Paths
+import acrg.hbmcmc.hbmcmc_output as output
 
 def fixed_basis_expected_param():
     '''
@@ -151,7 +152,7 @@ def hbmcmc_extract_param(config_file,mcmc_type="fixed_basis",print_param=True,**
 
 if __name__=="__main__":
 
-    acrg_path = paths.acrg
+    acrg_path = Paths.acrg
     default_config_file = os.path.join(acrg_path,"acrg_hbmcmc/hbmcmc_input.ini")
     config_file = default_config_file
 

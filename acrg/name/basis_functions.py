@@ -6,27 +6,21 @@ Created on Sat Jul 25 15:46:31 2015
 
 Creat basis functions for domain
 """
-from __future__ import print_function
-from __future__ import division
-
-from builtins import str
-from builtins import range
-
 import numpy as np
 import xarray as xray
 import glob
 import pandas as pd
-import acrg_name as name
 import os
 from os.path import join
-import sys
 import scipy.optimize
 import getpass
 import uuid
 
-from acrg_config.paths import paths
-acrg_path = paths.acrg
-data_path = paths.data
+import acrg.name as name
+from acrg.config.paths import Paths
+
+acrg_path = Paths.acrg
+data_path = Paths.data
 
 if acrg_path is None:
     acrg_path = os.getenv("HOME")
