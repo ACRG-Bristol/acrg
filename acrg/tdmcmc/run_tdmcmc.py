@@ -24,16 +24,7 @@ uncertainties differently (emissions uncertainty > baseline uncertainty).
 
 @author: ml12574
 """
-from __future__ import print_function
-from __future__ import division
-#import tdmcmc_uncorr
-#import tdmcmc_evencorr
-from builtins import str
-from builtins import range
 from past.utils import old_div
-import acrg_name as name
-import numpy as np
-import acrg_obs
 import pandas
 import datetime as dt
 from numba import jit
@@ -42,6 +33,10 @@ import xarray as xray
 import os
 import re
 from collections import OrderedDict
+import numpy as np
+
+import acrg.name as name
+import acrg.obs as acrg_obs
 
 
 @jit(nopython=True)
@@ -763,7 +758,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
         if para_temp:
             import acrg_tdmcmc.tdmcmc_uncorr_pt as tdmcmc_uncorr
         else:
-            from acrg_tdmcmc import tdmcmc_uncorr as tdmcmc_uncorr
+            from acrg.tdmcmc import tdmcmc_uncorr as tdmcmc_uncorr
 
         k_it, x_out, regions_out, plon_out, plat_out, sigma_model_out,sigma_y_out, \
         n0T_out,pdf_param1_out,pdf_param2_out, accept, reject, \
@@ -785,9 +780,9 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     
     elif inv_type == 'evencorr':
         if para_temp:
-            import acrg_tdmcmc.tdmcmc_evencorr_pt as tdmcmc_evencorr
+            import acrg.tdmcmc.tdmcmc_evencorr_pt as tdmcmc_evencorr
         else:
-            from acrg_tdmcmc import tdmcmc_evencorr as tdmcmc_evencorr
+            from acrg.tdmcmc import tdmcmc_evencorr as tdmcmc_evencorr
         
         k_it, x_out, regions_out, plon_out, plat_out, sigma_y_out, sigma_model_out, \
         n0T_out,pdf_param1_out,pdf_param2_out, tau_out, y_out,accept, reject, \
@@ -815,9 +810,9 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     
     elif inv_type == 'corr':
         if para_temp:
-            import acrg_tdmcmc.tdmcmc_corr_pt as tdmcmc_corr
+            import acrg.tdmcmc.tdmcmc_corr_pt as tdmcmc_corr
         else:
-            from acrg_tdmcmc import tdmcmc_corr as tdmcmc_corr
+            from acrg.tdmcmc import tdmcmc_corr as tdmcmc_corr
         
         k_it, x_out, regions_out, plon_out, plat_out, sigma_y_out, sigma_model_out, \
         n0T_out,pdf_param1_out,pdf_param2_out, tau_out, y_out,accept, reject, \

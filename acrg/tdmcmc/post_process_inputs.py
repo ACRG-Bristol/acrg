@@ -6,27 +6,18 @@ Template file for creating plots with output of tdmcmc
 
 Uses tdmcmc_post_process
 
-
 @author: ml12574 (updated by rt17603)
 """
-from __future__ import print_function
-from __future__ import absolute_import
-
-########### INPUTS ####################
-
 import numpy as np
 from . import tdmcmc_post_process as process
 import glob
 import pandas
 import os
-import sys
 import matplotlib.pyplot as plt
 
-if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
-    acrg_path = os.getenv("ACRG_PATH") 
-else:
-    from acrg_config.paths import paths
-    acrg_path = paths.acrg
+from acrg.config.paths import Paths
+
+acrg_path = Paths.acrg
 
 def extract_tdmcmc_files(directory,species,network,dates,return_filenames=False):
     '''

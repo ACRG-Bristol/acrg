@@ -18,19 +18,12 @@ country_emissions - calculate emissions from given list of countries
 
 @author: ml12574
 """
-from __future__ import print_function
-
 import numpy as np
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 import xarray as xray
-import acrg_name as name
-from acrg_grid import areagrid
 from netCDF4 import Dataset
-from acrg_time.convert import time2sec
 import os
-import sys
-import acrg_obs
 import json
 import matplotlib.mlab as mlab
 from matplotlib.patches import Polygon
@@ -42,11 +35,13 @@ from collections import OrderedDict
 import datetime as dt
 import getpass
 
-if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
-    acrg_path = os.getenv("ACRG_PATH") 
-else:
-    from acrg_config.paths import paths
-    acrg_path = paths.acrg
+import acrg.name as name
+from acrg.grid import areagrid
+from acrg.time.convert import time2sec
+import acrg.obs as acrg_obs
+from acrg.config.paths import Paths
+
+acrg_path = Paths.acrg
 
 # Get acrg_site_info file
 with open(os.path.join(acrg_path, "acrg_site_info.json")) as f:

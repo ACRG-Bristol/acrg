@@ -36,25 +36,20 @@ acrg_config.generate_param_dict() function for more details.
 
 @author: rt17603
 """
-from __future__ import print_function
-
 import os
-import sys
-import acrg_obs
 import numpy as np
-import acrg_config.config as config
-from collections import OrderedDict
 
-if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
-    acrg_path = os.getenv("ACRG_PATH") 
-else:
-    from acrg_config.paths import paths
-    acrg_path = paths.acrg
+import acrg.config.config as config
+import acrg.obs as acrg_obs
+from acrg.config.paths import Paths
+
+
+acrg_path = Paths.acrg
 
 ## Functions below are specifically related to the MCMC code which build on the functions within acrg_config module
 
 def tdmcmc_template_file():
-    reference_file = os.path.join(acrg_path,"acrg_config/templates/tdmcmc_template.ini")
+    reference_file = os.path.join(acrg_path,"acrg/config/templates/tdmcmc_template.ini")
     return reference_file
 
 def mcmc_param_type(alt_filename=None):

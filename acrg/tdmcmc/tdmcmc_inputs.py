@@ -31,10 +31,6 @@ to adjust the uncertainties differently (emissions uncertainty > baseline uncert
 
 @author: ml12574 (updated by rt17603)
 """
-from __future__ import print_function
-from __future__ import division
-from builtins import str
-
 from past.utils import old_div
 import os
 import sys
@@ -45,22 +41,15 @@ import sys
 import numpy as np
 import pandas as pd
 import datetime as dt
-import acrg_name as name
-from acrg_tdmcmc import run_tdmcmc 
-from acrg_tdmcmc import tdmcmc_post_process as process
-import acrg_tdmcmc.tdmcmc_config as tdmcmc_config
-#import acrg_config as configread
 
-if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
-    acrg_path = os.getenv("ACRG_PATH")
-    data_path = os.getenv("DATA_PATH") 
-else:
-    from acrg_config.paths import paths
-    acrg_path = paths.acrg
-    data_path = paths.data
+import acrg.name as name
+from acrg.tdmcmc import run_tdmcmc 
+from acrg.tdmcmc import tdmcmc_post_process as process
+import acrg.tdmcmc.tdmcmc_config as tdmcmc_config
+from acrg.config.paths import Paths
 
-acrg_path = str(acrg_path)
-data_path = str(data_path)
+acrg_path = Paths.acrg
+data_path = Paths.data
 
 config_file = 'param.ini'
 config_path = os.path.join(acrg_path,"acrg_tdmcmc")

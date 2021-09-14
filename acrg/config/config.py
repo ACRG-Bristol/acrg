@@ -64,16 +64,10 @@ A param_type dictionary can be defined both to fix expected inputs and to explic
 
 @author: rt17603
 """
-from __future__ import print_function
-
-from builtins import str
-from builtins import input
-from builtins import zip
 import configparser
 from collections import OrderedDict
 import numpy as np
 import os
-import sys
 
 def open_config(config_file):
     '''

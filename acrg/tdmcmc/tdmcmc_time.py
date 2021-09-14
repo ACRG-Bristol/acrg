@@ -9,35 +9,23 @@ Idea is to break the emissions space up in time
 
 For this first version just keep BC and fixed reigons separate from rest
 
-
 @author: Mark Lunt
 """
-from __future__ import print_function
-import acrg_name as name
 import numpy as np
-import acrg_obs
 import pandas
-import datetime as dt
 from numba import jit
 import time as run_time
-import xray
+import xarray as xray
 import os
-import cams_reanalysis
-import argparse
-import matplotlib.pyplot as plt
-from mpl_toolkits.basemap import Basemap
-from matplotlib.colors import BoundaryNorm
-from acrg_tdmcmc import tdmcmc_post_process as process
-import scipy
-from acrg_grid import areagrid
+from acrg.tdmcmc import tdmcmc_post_process as process
 
-if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
-    acrg_path = os.getenv("ACRG_PATH")
-    data_path = os.getenv("DATA_PATH") 
-else:
-    from acrg_config.paths import paths
-    acrg_path = paths.acrg
-    data_path = paths.data
+import acrg.obs as acrg_obs
+from acrg.grid import areagrid
+import acrg.name as name
+from acrg.config.paths import Paths
+
+acrg_path = Paths.acrg
+data_path = Paths.data
 
 #%%
 # Commands for argument parsing from a shell script
@@ -701,7 +689,7 @@ pdf_param2_pdf=pdf_param2_pdf0
 print('Starting MCMC...')
 startt = run_time.time()
 if inv_type is 'corr':
-    from acrg_tdmcmc import tdmcmc_time_corr
+    from acrg.tdmcmc import tdmcmc_time_corr
     
     k_it, x_out, regions_out, phour_out, sigma_y_out, sigma_model_out, n0T_out, \
     pdf_param1_out,pdf_param2_out, k_sector_out, sector_index_out, tau_out, accept, reject, \
@@ -726,7 +714,7 @@ if inv_type is 'corr':
 
 
 elif inv_type is 'uncorr':
-    from acrg_tdmcmc import tdmcmc_time_uncorr
+    from acrg.tdmcmc import tdmcmc_time_uncorr
     
     k_it, x_out, regions_out, phour_out, sigma_model_out,sigma_y_out, \
     n0T_out,pdf_param1_out,pdf_param2_out, k_sector_out, sector_index_out, accept, reject, \

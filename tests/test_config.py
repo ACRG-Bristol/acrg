@@ -17,28 +17,23 @@ To run only the basic tests use the syntax
 
 @author: rt17603
 """
-
-from builtins import zip
-from builtins import str
 import numpy as np
 import os
-import sys
 import pytest
-import acrg_config.version
 
-import acrg_config.config as configread
-from acrg_config.config import extract_params,all_param
-import acrg_tdmcmc.tdmcmc_config as config_tdmcmc
-from acrg_tdmcmc.tdmcmc_config import all_mcmc_param
-from acrg_config.paths import paths
+from acrg.config import version as config_version
+import acrg.config.config as configread
+from acrg.config.config import extract_params, all_param
+import acrg.tdmcmc.tdmcmc_config as config_tdmcmc
+from acrg.tdmcmc.tdmcmc_config import all_mcmc_param
+from acrg.config.paths import Paths
 
 
-acrg_path = paths.acrg
+acrg_path = Paths.acrg
 test_config_path = acrg_path / "tests/files/config"
 
-
 def test_version():
-    version = acrg_config.version.code_version()
+    version = config_version.code_version()
     assert type(version) == str
     assert version != "Unknown"
 
