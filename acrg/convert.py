@@ -40,3 +40,19 @@ def prefix(units):
             print('Undefined prefix: outputting in g/yr')
             unit_factor=1.
         return unit_factor
+
+def convert_lons_0360(lons):
+    '''
+    Convert longitude values onto a 0-360 range from -180-180 range. Uses floored division. 
+    
+    Args:
+        lons (arr):
+            1D array of longitudes.            
+    Returns:
+        array:
+            Longitudes on 0-360 range.           
+    '''
+ 
+    div = lons // 360
+
+    return lons - div*360
