@@ -14,7 +14,7 @@ Feel free to add other paths, as required.
 import yaml
 from pathlib import Path
 
-_acrg_path = Path(__file__).parents[1]
+_acrg_path = Path(__file__).parents[2]
 _acrg_config_path = Path(__file__).parents[0]
 
 _user_defined_data_paths = sorted(_acrg_config_path.glob("paths.y*ml"))
@@ -27,7 +27,7 @@ with open(_data_paths_file, 'r') as f:
     _data_paths = yaml.load(f, Loader = yaml.SafeLoader)
 
 
-class paths:
+class Paths:
     '''
     Object that contains the acrg, observation and data drive paths
     ACRG path is determined from the repo directory
