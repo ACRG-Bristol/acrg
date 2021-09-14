@@ -9,7 +9,7 @@ Created on Tue Aug 18 12:39:12 2020
 import os
 import glob
 
-import acrg_name.process as process
+import acrg.name.process as process
 
 def define_subfolder(domain,site,height):
     ''' Define subfolder name based on domain, site and height '''
