@@ -19,10 +19,6 @@ Function to use for creating the country file is:
 
 @author: rt17603
 """
-from __future__ import print_function
-
-from builtins import zip
-from builtins import range
 import regionmask
 import iso3166
 import numpy as np
@@ -31,11 +27,11 @@ from collections import OrderedDict
 import glob
 import getpass
 import os
-import sys
-from acrg_convert import convert_lons_0360
 
-from acrg_config.paths import paths
-data_path = paths.data
+from acrg.convert import convert_lons_0360
+from acrg.config.paths import Paths
+
+data_path = Paths.data
 
 fp_directory = os.path.join(data_path,'LPDM/fp_NAME/')
 country_directory = os.path.join(data_path,'LPDM/countries/')
