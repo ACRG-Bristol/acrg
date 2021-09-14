@@ -693,8 +693,8 @@ def basis_bc_pca(domain, time, species, units='ppb', basis_case='pca', numregion
                           'region':(['region'],regions), \
                           'time':(['time'],[time])})
                 
-    basis_ds.to_netcdf(join(bc_basis_dir,domain,f"{species}_{basis_case}_{domain}_{time.strftime('%m')}+{str(time.year)}.nc"))           
- 
+    basis_ds.to_netcdf(join(bc_basis_dir,domain,f"{species}_{basis_case}_{domain}_{time.strftime('%m')+str(time.year)}.nc"))     
+
  
 class quadTreeNode:    
     

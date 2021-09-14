@@ -68,6 +68,8 @@ def test_acrg_basis_transd_shape():
     assert np.sum(np.remainder(basis_array,1.)) == 0.0
     assert np.min(basis_array) == 0.0
     assert np.max(basis_array) == 4.0
+    
+    os.remove(filename_basis)
 
 def test_acrg_basis_transd_output():
     '''
@@ -85,7 +87,8 @@ def test_acrg_basis_transd_output():
     benchmark_basis_array = benchmark_dataset.variables['basis'][:]
     
     assert np.all(basis_array == benchmark_basis_array)
-
+    
+    os.remove(filename_basis)
 
 def test_acrg_basis_bc_blocks_shape():
     '''
@@ -123,7 +126,8 @@ def test_acrg_basis_bc_blocks_shape():
     assert np.sum(bc_basis_s_array) == lon_field_dim*20
     assert np.sum(bc_basis_w_array) == lat_field_dim*20
 
-
+    os.remove(filename_basis)
+    
 def test_acrg_basis_bc_blocks_output():
     '''
     Test if the basis function array corresponds to a benchmark output
@@ -152,7 +156,8 @@ def test_acrg_basis_bc_blocks_output():
     assert np.all(bc_basis_e_array == benchmark_bc_basis_e_array)
     assert np.all(bc_basis_s_array == benchmark_bc_basis_s_array)
     assert np.all(bc_basis_w_array == benchmark_bc_basis_w_array)
-    
+
+    os.remove(filename_basis)
 
 def test_acrg_basis_bc_uniform_shape():
     '''
@@ -189,6 +194,7 @@ def test_acrg_basis_bc_uniform_shape():
     assert np.sum(bc_basis_s_array) == lon_field_dim*20
     assert np.sum(bc_basis_w_array) == lat_field_dim*20
 
+    os.remove(filename_basis)
 
 def test_acrg_basis_bc_uniform_output():
     '''
@@ -218,7 +224,8 @@ def test_acrg_basis_bc_uniform_output():
     assert np.all(bc_basis_s_array == benchmark_bc_basis_s_array)
     assert np.all(bc_basis_w_array == benchmark_bc_basis_w_array)
     
-
+    os.remove(filename_basis)
+    
 def test_acrg_basis_bc_all_gradients():
     '''
     Test if the bc gradient array corresponds to a benchmark output
@@ -250,7 +257,8 @@ def test_acrg_basis_bc_all_gradients():
     assert np.all(bc_basis_s_array == benchmark_bc_basis_s_array)
     assert np.all(bc_basis_w_array == benchmark_bc_basis_w_array)
 
-
+    os.remove(filename_basis)
+    
 def test_acrg_basis_bc_horiz_gradient():
     '''
     Test if the bc gradient array corresponds to a benchmark output
@@ -282,7 +290,8 @@ def test_acrg_basis_bc_horiz_gradient():
     assert np.all(bc_basis_s_array == benchmark_bc_basis_s_array)
     assert np.all(bc_basis_w_array == benchmark_bc_basis_w_array)
 
-
+    os.remove(filename_basis)
+    
 def test_acrg_basis_bc_pca():
     '''
     Test if the bc gradient array corresponds to a benchmark output
@@ -309,7 +318,4 @@ def test_acrg_basis_bc_pca():
     assert bc_basis_s_array.shape == benchmark_bc_basis_s_array.shape
     assert bc_basis_w_array.shape == benchmark_bc_basis_w_array.shape
     
-    #assert np.all(bc_basis_n_array == benchmark_bc_basis_n_array)
-    #assert np.all(bc_basis_e_array == benchmark_bc_basis_e_array)
-    #assert np.all(bc_basis_s_array == benchmark_bc_basis_s_array)
-    #assert np.all(bc_basis_w_array == benchmark_bc_basis_w_array)
+    os.remove(filename_basis)

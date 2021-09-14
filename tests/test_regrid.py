@@ -14,7 +14,6 @@ Using a Parametrised test
 
 import numpy as np
 import os
-import sys
 import netCDF4 as nc
 import pytest
 
