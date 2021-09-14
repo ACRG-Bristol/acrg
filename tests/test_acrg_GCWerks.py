@@ -11,16 +11,15 @@ The test deterimines if the fitted coefficients are the same as a benchmark case
 """
 
 import pytest
-import acrg_GCWerks.fitting as fitting
-import acrg_GCWerks.CRDS_H2OCorr as H2OCorr
+import acrg.GCWerks.fitting as fitting
+import acrg.GCWerks.CRDS_H2OCorr as H2OCorr
 import numpy as np
-import os
 from os.path import join
-import sys
-from acrg_config.paths import paths
+
+from acrg.config.paths import Paths
 
 
-acrg_path = paths.acrg
+acrg_path = Paths.acrg
 
 
 @pytest.mark.parametrize("x, y, fit_type, expected", [
