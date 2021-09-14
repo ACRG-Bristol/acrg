@@ -1,18 +1,3 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Feb 22 12:48:53 2019
-
-Tests for checking the basis function generation:
-    coarsen
-
-Testing the value produced by distance function
-
-
-@author: mi19881
-"""
-
-import pytest
 import numpy as np
 from acrg.grid.haversine import distance
 

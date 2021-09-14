@@ -14,7 +14,7 @@ from pathlib import Path
 
 import acrg.name as name
 from acrg.grid import areagrid
-from acrg.hbmcmc.inversionsetup import setup
+from .inversionsetup import offset_matrix
 from acrg.hbmcmc.hbmcmc_output import define_output_filename
 import acrg.convert as convert
 from acrg.config.version import code_version
@@ -173,7 +173,7 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
     nsigmas = np.amax(sigma_freq_index)+1
     
     if add_offset:
-        B = setup.offset_matrix(siteindicator)
+        B = offset_matrix(siteindicator)
 
     with pm.Model() as model:
         x = parsePrior("x", xprior, shape=nx)
