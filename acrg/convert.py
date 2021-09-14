@@ -1,10 +1,11 @@
 import os
-import sys
 import json
-import acrg_obs
 
-from acrg_config.paths import paths
-acrg_path = paths.acrg
+from acrg.obs.read import synonyms
+from acrg.config.paths import Paths
+
+
+acrg_path = Paths.acrg
 
 def molar_mass(species):
     '''
@@ -15,7 +16,7 @@ def molar_mass(species):
     species_info_file = os.path.join(acrg_path,"acrg_species_info.json")
     with open(species_info_file) as f:
             species_info=json.load(f)
-    species_key = acrg_obs.read.synonyms(species, species_info)
+    species_key = synonyms(species, species_info)
     molmass = float(species_info[species_key]['mol_mass'])
     return molmass
 
