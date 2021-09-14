@@ -78,18 +78,9 @@ This could be run as:
                             write_nc=False,
                             write_name=False)
 """
-from __future__ import print_function
-from __future__ import absolute_import
-from __future__ import division
-
-from builtins import zip
-from builtins import str
-from builtins import chr
-from builtins import range
 from past.utils import old_div
 import glob
 import os
-import sys
 import re
 import random
 import math
@@ -99,12 +90,14 @@ import xarray as xray
 import datetime as dt
 from collections import OrderedDict
 import itertools
-import acrg_obs
-from .barometric import pressure_at_height
-from acrg_countrymask import domain_volume
 
-from acrg_config.paths import paths
-data_path = paths.data
+import acrg.obs as acrg_obs
+from .barometric import pressure_at_height
+from acrg.countrymask import domain_volume
+from acrg.config.paths import Paths
+
+
+data_path = Paths.data
 
 home = os.getenv("HOME")
 input_directory=os.path.join(data_path,"obs_raw/GOSAT/CH4_GOS_OCPR_v7.2/")
@@ -2091,7 +2084,7 @@ def gosat_output_filename(output_directory,network,instrument,date,species,inlet
         date (str) : 
             Date the measurements are relevant to e.g. "2010-01-01"
         species (str) : 
-            Species being considered e.g. "ch4". Should be defined within "acrg_species_info.json" file
+            Species being considered e.g. "ch4". Should be defined within "data/species_info.json" file
         inlet (str/None, optional) : 
             Additional information to add to ch4 measurement e.g. column
         num (str/None, optional) : 
@@ -2323,7 +2316,7 @@ def gosat_output(ds,site,species="ch4",file_per_day=False,output_directory=obs_d
         site (str) : 
             Specified sub-set defined for gosat e.g. GOSAT-INDIA (should be defined within acrg_sites_info.json)
         species (str, optional) : 
-            Species of interest e.g. "ch4" (should be defined within acrg_species_info.json).
+            Species of interest e.g. "ch4" (should be defined within data/species_info.json).
             Default = "ch4"
         file_per_day (bool, optional) : 
             Output all results to one file per day rather than splitting out per time point. Default = False.
@@ -2840,7 +2833,7 @@ def gosat_process(site,species="ch4",input_directory=input_directory,start=None,
         site (str) : 
             Specified sub-set defined for gosat e.g. GOSAT-INDIA. Should be defined within acrg_sites_info.json
         species (str, optional) : 
-            Species of interest. Should be defined within acrg_species_info.json
+            Species of interest. Should be defined within data/species_info.json
             Default = "ch4"
         input_directory (str, optional) : 
             Top level directory containing GOSAT CH4 Level 2 Data Product files only.

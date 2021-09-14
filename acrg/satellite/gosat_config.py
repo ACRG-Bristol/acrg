@@ -42,12 +42,13 @@ The main function to use for reading in parameters from a config file are:
 @author: rt17603
 """
 
-import acrg_config.config as config
 import os
-import sys
 
-from acrg_config.paths import paths
-acrg_path = paths.acrg
+from acrg.config import config
+from acrg.config.paths import Paths
+
+
+acrg_path = Paths.acrg
 
 def gosat_param_dict():
     '''
@@ -94,7 +95,7 @@ def gosat_param_dict():
 #                      {"overwrite":bool}
 #                    }
     
-    reference_file = os.path.join(acrg_path,"acrg_config/templates/gosat_process_template.ini")
+    reference_file = os.path.join(acrg_path,"acrg/config/templates/gosat_process_template.ini")
     param_dict = config.generate_param_dict(reference_file)
     
     return param_dict  

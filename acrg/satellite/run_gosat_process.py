@@ -25,18 +25,16 @@ Run as:
 @author: rt17603
 """
 
-#import gosat
-#import gosat_config
-import acrg_satellite.gosat as gosat
-import acrg_satellite.gosat_config as gosat_config
 import os
-import sys
 import argparse
+
+import acrg.satellite.gosat as gosat
+import acrg.satellite.gosat_config as gosat_config
 
 if __name__=="__main__":
 
-    from acrg_config.paths import paths
-    acrg_path = paths.acrg
+    from acrg.config.paths import Paths
+    acrg_path = Paths.acrg
 
     config_file = os.path.join(acrg_path,"acrg_satellite/gosat_process.ini")
     

@@ -6,10 +6,10 @@ Created on Fri Nov 27 11:48:12 2020
 @author: rt17603
 """
 
-from . import tropomi
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 
+from . import tropomi
 
 def plot_tropomi_orbit(filename, parameter="methane_mixing_ratio_bias_corrected",
                        projection="Geostationary",central_longitude=0.0,
