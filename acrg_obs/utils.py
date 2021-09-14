@@ -401,76 +401,77 @@ def obs_database(data_directory = None):
         else:
             obs_path = pathlib.Path(data_directory)
     
-    print(f"Reading obs files in {obs_path}")
+    if not (obs_path / "obs.db").exists():
     
-    # Find sub-directories in obs folder
-    for d in obs_path.glob("*"):
-        if d.is_dir():
-            if d.name not in exclude:
+        print(f"Reading obs files in {obs_path}")
 
-                # Find netcdf files
-                files = d.glob("*.nc")
-                for f in files:
+        # Find sub-directories in obs folder
+        for d in obs_path.glob("*"):
+            if d.is_dir():
+                if d.name not in exclude:
 
-                    # TODO: Some files are empty. Figure out why!
-                    if os.stat(f).st_size != 0:
+                    # Find netcdf files
+                    files = d.glob("*.nc")
+                    for f in files:
 
-                        #TODO: add try/except to see if files open with xarray 
+                        # TODO: Some files are empty. Figure out why!
+                        if os.stat(f).st_size != 0:
 
-                        f_parts = f.name.split("_")
+                            #TODO: add try/except to see if files open with xarray 
 
-                        network.append(f_parts[0].split("-")[0])
-                        instrument.append(f_parts[0].split("-")[1])
+                            f_parts = f.name.split("_")
 
-                        site_code.append(f_parts[1])
+                            network.append(f_parts[0].split("-")[0])
+                            instrument.append(f_parts[0].split("-")[1])
 
-                        extras = f_parts[3].split("-")
-                        species.append(extras[0])
-                        if len(extras) == 3:
-                            inlet.append(extras[1])
-                        else:
-                            inlet.append("%")
+                            site_code.append(f_parts[1])
 
-                        with xr.open_dataset(f) as ds:
-                            if "Calibration_scale" in ds.attrs.keys():
-                                calibration_scale.append(ds.attrs["Calibration_scale"])
+                            extras = f_parts[3].split("-")
+                            species.append(extras[0])
+                            if len(extras) == 3:
+                                inlet.append(extras[1])
                             else:
-                                calibration_scale.append(None)
-                            start_date.append(pd.Timestamp(ds["time"].values[0]).to_pydatetime())
-                            end_date.append(pd.Timestamp(ds["time"].values[-1]).to_pydatetime())
+                                inlet.append("%")
 
-                        filename.append(str(f))
-                        
-    file_info = list(zip(filename, network, instrument, site_code, species, inlet, calibration_scale, start_date, end_date))    
+                            with xr.open_dataset(f) as ds:
+                                if "Calibration_scale" in ds.attrs.keys():
+                                    calibration_scale.append(ds.attrs["Calibration_scale"])
+                                else:
+                                    calibration_scale.append(None)
+                                start_date.append(pd.Timestamp(ds["time"].values[0]).to_pydatetime())
+                                end_date.append(pd.Timestamp(ds["time"].values[-1]).to_pydatetime())
 
-    # Write database
-    ######################################
-    
-    # To avoid permissions problems, remove old file
-    try:
-        (obs_path / 'obs.db').unlink()
-    except FileNotFoundError:
-        pass
-    
-    print(f"Writing database {obs_path / 'obs.db'}")
-    
-    conn = sqlite3.connect(obs_path / "obs.db")
-    c = conn.cursor()
+                            filename.append(str(f))
 
-    c.execute('''DROP TABLE IF EXISTS files
-              ''')
-    
-    c.execute('''CREATE TABLE files
-                 (filename text, network text, instrument text, site text, species text, inlet text, scale text, startDate timestamp, endDate timestamp)''')
+        file_info = list(zip(filename, network, instrument, site_code, species, inlet, calibration_scale, start_date, end_date))       
+        # Write database
+        ######################################
 
-    c.executemany('INSERT INTO files VALUES (?,?,?,?,?,?,?,?,?)', file_info)
+        # To avoid permissions problems, remove old file
+        try:
+            (obs_path / 'obs.db').unlink()
+        except FileNotFoundError:
+            pass
 
-    conn.commit()
-    conn.close()
+        print(f"Writing database {obs_path / 'obs.db'}")
 
-    # Change permissions on obs.db to prevent it becoming locked to one user
-    shutil.chown(obs_path / 'obs.db', group="acrg")
-    os.chmod(obs_path / 'obs.db', stat.S_IRWXU | stat.S_IRWXG | stat.S_IROTH)
+        conn = sqlite3.connect(obs_path / "obs.db")
+        c = conn.cursor()
+
+        c.execute('''DROP TABLE IF EXISTS files
+                  ''')
+
+        c.execute('''CREATE TABLE files
+                     (filename text, network text, instrument text, site text, species text, inlet text, scale text, startDate timestamp, endDate timestamp)''')
+
+        c.executemany('INSERT INTO files VALUES (?,?,?,?,?,?,?,?,?)', file_info)
+
+        conn.commit()
+        conn.close()
+
+        # Change permissions on obs.db to prevent it becoming locked to one user
+        shutil.chown(obs_path / 'obs.db', group="acrg")
+        os.chmod(obs_path / 'obs.db', stat.S_IRWXU | stat.S_IRWXG | stat.S_IROTH)
 
 
 def cleanup(site,
