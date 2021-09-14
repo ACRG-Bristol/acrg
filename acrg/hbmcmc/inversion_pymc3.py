@@ -10,10 +10,11 @@ import pymc3 as pm
 import pandas as pd
 import xarray as xr
 import getpass
+from pathlib import Path
 
 import acrg.name as name
 from acrg.grid import areagrid
-from acrg.hbmcmc.inversionsetup import opends
+from acrg.hbmcmc.inversionsetup import setup
 from acrg.hbmcmc.hbmcmc_output import define_output_filename
 import acrg.convert as convert
 from acrg.config.version import code_version
@@ -76,7 +77,9 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
                xprior={"pdf":"lognormal", "mu":1, "sd":1},
                bcprior={"pdf":"lognormal", "mu":0.004, "sd":0.02},
                sigprior={"pdf":"uniform", "lower":0.5, "upper":3},
-                nit=2.5e5, burn=50000, tune=1.25e5, nchain=2, sigma_per_site = True, verbose=False):       
+               offsetprior={"pdf":"normal", "mu":0, "sd":1},
+               nit=2.5e5, burn=50000, tune=1.25e5, nchain=2, 
+               sigma_per_site = True, add_offset = False, verbose=False):       
     """
     Uses pym3 module for Bayesian inference for emissions field, boundary 
     conditions and (currently) a single model error value.
@@ -112,9 +115,13 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
             Same as above but for boundary conditions.
         sigprior (dict):
             Same as above but for model error.
+        offsetprior (dict):
+            Same as above but for bias offset. Only used is addoffset=True.
         sigma_per_site (bool):
             Whether a model sigma value will be calculated for each site independantly (True) or all sites together (False).
             Default: True
+        add_offset (bool):
+            Add an offset (intercept) to all sites but the first in the site list. Default False.
         verbose:
             When True, prints progress bar
 
@@ -126,6 +133,10 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
             MCMC chain for boundary condition scaling factors.
         sigouts (array):
             MCMC chain for model error.
+        Ytrace (array):
+            MCMC chain for modelled obs.
+        YBCtrace (array):
+            MCMC chain for modelled boundary condition.
         convergence (str):
             Passed/Failed convergence test as to whether mutliple chains
             have a Gelman-Rubin diagnostic value <1.05
@@ -141,7 +152,6 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
      
     TO DO:
        - Allow non-iid variables
-       - Allow more than one model-error
     """
     burn = int(burn)         
     
@@ -161,13 +171,20 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
         sites = np.zeros_like(siteindicator).astype(int)
         nsites = 1
     nsigmas = np.amax(sigma_freq_index)+1
+    
+    if add_offset:
+        B = setup.offset_matrix(siteindicator)
 
     with pm.Model() as model:
         x = parsePrior("x", xprior, shape=nx)
         xbc = parsePrior("xbc", bcprior, shape=nbc)
         sig = parsePrior("sig", sigprior, shape=(nsites, nsigmas))
-        
-        mu = pm.math.dot(hx,x) + pm.math.dot(hbc,xbc)        
+        if add_offset:
+            offset = parsePrior("offset", offsetprior, shape=nsites-1) 
+            offset_vec = pm.math.concatenate( (np.array([0]), offset), axis=0)
+            mu = pm.math.dot(hx,x) + pm.math.dot(hbc,xbc) + pm.math.dot(B, offset_vec)
+        else:
+            mu = pm.math.dot(hx,x) + pm.math.dot(hbc,xbc)       
         epsilon = pm.math.sqrt(error**2 + sig[sites, sigma_freq_index]**2)
         y = pm.Normal('y', mu = mu, sd=epsilon, observed=Y, shape = ny)
         
@@ -189,18 +206,24 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
         else:
             convergence = "Passed"
         
-        Ytrace = np.dot(Hx.T,outs.T) + np.dot(Hbc.T,bcouts.T)
+        if add_offset:
+            offset_outs = trace.get_values(offset, burn=burn)[0:int((nit)-burn)]
+            offset_trace = np.hstack([np.zeros((int(nit-burn),1)), offset_outs])
+            YBCtrace = np.dot(Hbc.T,bcouts.T) + np.dot(B, offset_trace.T)   
+        else:
+            YBCtrace = np.dot(Hbc.T,bcouts.T)
+        Ytrace = np.dot(Hx.T,outs.T) + YBCtrace
         
-        return outs, bcouts, sigouts, Ytrace, convergence, step1, step2
+        return outs, bcouts, sigouts, Ytrace, YBCtrace, convergence, step1, step2
 
 def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence, 
-                               Hx, Hbc, Y, error, Ytrace,
+                               Hx, Hbc, Y, error, Ytrace, YBCtrace,
                                step1, step2, 
-                               xprior, bcprior, sigprior, Ytime, siteindicator, sigma_freq_index,fp_data,
+                               xprior, bcprior, sigprior, offsetprior, Ytime, siteindicator, sigma_freq_index,fp_data,
                                emissions_name, domain, species, sites,
                                start_date, end_date, outputname, outputpath,
                                basis_directory, country_file, country_unit_prefix,
-                               flux_directory):
+                               flux_directory, add_offset=False):
 
         """
         Takes the output from inferpymc3 function, along with some other input
@@ -254,6 +277,8 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                 Same as above but for boundary conditions.
             sigprior (dict):
                 Same as above but for model error.
+            offsetprior (dict):
+                Same as above but for bias offset. Only used is addoffset=True.
             Ytime (pandas datetime array):
                 Time stamp of measurements as used by the inversion.
             siteindicator (array):
@@ -300,6 +325,8 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
             flux_directory (str, optional):
                 Directory containing the emissions data if
                 not default
+            add_offset (bool):
+                Add an offset (intercept) to all sites but the first in the site list. Default False.
                 
                 
         Returns:
@@ -325,7 +352,7 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         nmeasure = np.arange(ny)
         nparam = np.arange(nx)
         nBC = np.arange(nbc)
-        YBCtrace = np.dot(Hbc.T,bcouts.T)
+        #YBCtrace = np.dot(Hbc.T,bcouts.T)
         YmodBC = np.mean(YBCtrace, axis=1)
         Ymod95BC = pm.stats.hpd(YBCtrace.T, 0.95)
         Ymod68BC = pm.stats.hpd(YBCtrace.T, 0.68)
@@ -510,6 +537,8 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         outds.attrs['Emissions Prior'] = " ".join([str(x) for x in list(xprior.values())])
         outds.attrs['Model error Prior'] = " ".join([str(x) for x in list(sigprior.values())])
         outds.attrs['BCs Prior'] = " ".join([str(x) for x in list(bcprior.values())])
+        if add_offset:
+            outds.attrs['Offset Prior'] = " ".join([str(x) for x in list(offsetprior.values())])
         outds.attrs['Creator'] = getpass.getuser()
         outds.attrs['Date created'] = str(pd.Timestamp('today'))
         outds.attrs['Convergence'] = convergence
@@ -518,5 +547,5 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         comp = dict(zlib=True, complevel=5)
         encoding = {var: comp for var in outds.data_vars}
         output_filename = define_output_filename(outputpath,species,domain,outputname,start_date,ext=".nc")
-        #outds.to_netcdf(outputpath+"/"+species.upper()+'_'+domain+'_'+outputname+'_'+start_date+'.nc', encoding=encoding, mode="w")
+        Path(outputpath).mkdir(parents=True, exist_ok=True)
         outds.to_netcdf(output_filename, encoding=encoding, mode="w")
