@@ -152,6 +152,18 @@ def measurement_param_sat():
     
     return param
 
+@pytest.fixture(scope="module")
+def hitres_timeseries_benchmark_file():
+    ''' Define benchmark bc file '''
+    filename = os.path.join(acrg_path, 'tests', 'files', 'benchmark', 'HiTRes_timeseries_201801.nc')
+    return filename
+
+@pytest.fixture(scope="module")
+def hitres_sens_benchmark_file():
+    ''' Define benchmark bc file '''
+    filename = os.path.join(acrg_path, 'tests', 'files', 'benchmark', 'HiTRes_sens_201801.nc')
+    return filename
+
 #%%
 #------------------------------
 
@@ -808,6 +820,39 @@ def test_filtering_local(dummy_timeseries_dict_gen):
     out = name.filtering(dummy_timeseries_dict_gen,filters)
     assert np.isclose(out["TEST"].mf.values, np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])).all()
 
+@pytest.mark.long
+def test_hitres_timeseries(hitres_timeseries_benchmark_file, hitres_sens_benchmark_file):
+    '''
+    Checks the output of name.timeseries_HiTRes matches a benchmarked version saved to
+    HiTRes_timeseries_201801.nc
+    '''
+    
+    with xray.open_dataset(hitres_timeseries_benchmark_file) as benchmark:
+        benchmark.load()
+    with xray.open_dataset(hitres_sens_benchmark_file) as benchmark_sens:
+        benchmark_sens.load()
+    
+    fp_file_name = os.path.join(paths.acrg, 'tests', 'files', 'LPDM', 'fp_NAME', 'EUROPE', 'WAO-20magl_UKV_co2_EUROPE_201801.nc')
+    with xray.open_dataset(fp_file_name) as footprint:
+        footprint.load()
+    
+    emiss_file_name = os.path.join(paths.acrg, 'tests', 'files', 'LPDM', 'emissions', 'EUROPE', 'co2-ukghg-total-1hr_EUROPE_2018.nc')
+    with xray.open_dataset(emiss_file_name) as emiss:
+        emiss.load()
+    flux_dict = {'high_freq': emiss}
+    
+    timeseries, sens = name.timeseries_HiTRes(flux_dict = flux_dict,
+                                              fp_HiTRes_ds = footprint,
+                                              output_TS = True,
+                                              output_fpXflux = True,
+                                              output_type = 'Dataset',
+                                              output_file = None,
+                                              verbose = False,
+                                              time_resolution = '1H')
+    
+    assert np.allclose(timeseries['total'], benchmark['total'])
+    assert np.allclose(sens['total'], benchmark_sens['total'])
+    
 # TODO: 
 #    Not working yet
 #def test_filtering_pblh(fp_data_H_pblh_merge):
