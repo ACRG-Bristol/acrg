@@ -1335,7 +1335,8 @@
       "height_station_masl": 45.0,
       "latitude": 35.52,
       "long_name": "Lampedusa, Italy",
-      "longitude": 12.62
+      "longitude": 12.62,
+      "platform" : "flask"
     }
   },
   "LUT": {

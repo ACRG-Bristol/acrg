@@ -41,6 +41,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                    xprior={"pdf":"lognormal", "mu":1, "sd":1},
                    bcprior={"pdf":"lognormal", "mu":0.004, "sd":0.02},
                    sigprior={"pdf":"uniform", "lower":0.5, "upper":3},
+                   offsetprior={"pdf":"normal", "mu":0, "sd":1},
                    nit=2.5e5, burn=50000, tune=1.25e5, nchain=2,
                    emissions_name=None, inlet=None, fpheight=None, instrument=None, 
                    fp_basis_case=None, basis_directory = None, bc_basis_case="NESW", 
@@ -50,7 +51,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                    quadtree_basis=True,nbasis=100,
                    filters = [],
                    averagingerror=True, bc_freq=None, sigma_freq=None, sigma_per_site=True,
-                   country_unit_prefix=None,
+                   country_unit_prefix=None, add_offset = False,
                    verbose = False):
 
     """
@@ -88,6 +89,8 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             Same as above but for boundary conditions.
         sigprior (dict):
             Same as above but for model error.
+        offsetprior (dict):
+            Same as above but for bias offset. Only used is addoffset=True.
         nit (int):
             Number of iterations for MCMC
         burn (int):
@@ -163,6 +166,8 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             'T' will scale to Tg, 'G' to Gg, 'M' to Mg, 'P' to Pg.
             To add additional options add to acrg_convert.prefix
             Default is none and no scaling will be applied (output in g).
+        add_offset (bool):
+            Add an offset (intercept) to all sites but the first in the site list. Default False.
 
             
     Returns:
@@ -264,16 +269,16 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     sigma_freq_index = setup.sigma_freq_indicies(Ytime, sigma_freq)
 
     #Run Pymc3 inversion
-    xouts, bcouts, sigouts, Ytrace, convergence, step1, step2 = mcmc.inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
-           xprior,bcprior, sigprior,nit, burn, tune, nchain, sigma_per_site, verbose=verbose)
+    xouts, bcouts, sigouts, Ytrace, YBCtrace, convergence, step1, step2 = mcmc.inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
+           xprior,bcprior, sigprior, offsetprior, nit, burn, tune, nchain, sigma_per_site, add_offset=add_offset, verbose=verbose)
     #Process and save inversion output
     mcmc.inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence, 
-                           Hx, Hbc, Y, error, Ytrace,
+                           Hx, Hbc, Y, error, Ytrace,YBCtrace,
                            step1, step2, 
-                           xprior, bcprior, sigprior,Ytime, siteindicator, sigma_freq_index, fp_data,
+                           xprior, bcprior, sigprior, offsetprior, Ytime, siteindicator, sigma_freq_index, fp_data,
                            emissions_name, domain, species, sites,
                            start_date, end_date, outputname, outputpath,
-                           basis_directory, country_file, country_unit_prefix, flux_directory)
+                           basis_directory, country_file, country_unit_prefix, flux_directory, add_offset=add_offset)
 
     if quadtree_basis is True:
         # remove the temporary basis function directory
