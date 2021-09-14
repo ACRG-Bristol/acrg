@@ -32,6 +32,7 @@ import glob
 import getpass
 import os
 import sys
+from acrg_convert import convert_lons_0360
 
 from acrg_config.paths import paths
 data_path = paths.data
@@ -396,10 +397,16 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
         lat,lon,height = domain_volume(domain)
     
     if database == "Natural_Earth" and scale == "1:50m":
+        # moves longitude values onto 0-360 range if lons have values less than 0 and greater than 180, as regionmask cannot use a lon range that has both 
+        if any(lon < 0) & any(lon > 180):
+            lon = convert_lons_0360(lon)
         mask = regionmask.defined_regions.natural_earth.countries_50.mask(lon,lat,xarray=True)
     elif database == "Natural_Earth" and scale == "1:110m":
+        # moves longitude values onto 0-360 range if lons have values less than 0 and greater than 180, as regionmask cannot use a lon range that has both 
+        if any(lon < 0) & any(lon > 180):
+            lon = convert_lons_0360(lon)
         mask = regionmask.defined_regions.natural_earth.countries_110.mask(lon,lat,xarray=True)
-    
+
     if use_domain_extent:
         lat_outer = np.where((mask["lat"].values < sub_lat[0]) | (mask["lat"].values >= sub_lat[-1]))[0]
         lon_outer = np.where((mask["lon"].values < sub_lon[0]) | (mask["lon"].values >= sub_lon[-1]))[0]
@@ -497,4 +504,3 @@ if __name__=="__main__":
     # Lat/Lon can be specified explictly or a domain footprint file can be used to find these values.
     
     ds = create_country_mask(domain,write=write,reset_index=True,ocean_label=True)
-    
