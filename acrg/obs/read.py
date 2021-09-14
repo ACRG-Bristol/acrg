@@ -12,6 +12,7 @@ from acrg.config.paths import Paths
 from acrg.obs.utils import obs_database
 import numexpr as ne
 from pathlib import Path
+import pathlib
 
 acrg_path = Paths.acrg
 obs_directory = Paths.obs
@@ -786,6 +787,8 @@ def get_obs(sites, species,
 
     #Need to create a database in data_directory if it doesn't exist
     if not data_directory is None:
+        if not isinstance(data_directory, pathlib.PurePath):
+            data_directory = Path(data_directory)
         if not (data_directory / "obs.db").exists():
             obs_database(data_directory = data_directory)
     
