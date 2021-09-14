@@ -13,14 +13,13 @@ Testing the values in a coarsened array.
 """
 
 import os
-import sys
 import netCDF4 as nc
-import pytest
 from builtins import range
 import numpy as np
-from acrg_grid.coarsen import coarsen
-from acrg_config.paths import paths
-acrg_path = paths.acrg
+from acrg.grid.coarsen import coarsen
+from acrg.config.paths import Paths
+
+acrg_path = Paths.acrg
 
 
 def test_acrg_coarsen_shape():

@@ -14,7 +14,7 @@ Testing the value produced by distance function
 
 import pytest
 import numpy as np
-from acrg_grid.haversine import distance
+from acrg.grid.haversine import distance
 
 def test_acrg_haversine():
     '''
