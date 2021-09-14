@@ -4,8 +4,6 @@ Created on Thu Aug 13 16:09:07 2015
 
 @author: chxmr
 """
-
-from builtins import range
 import numpy as np
 from numba import jit
 

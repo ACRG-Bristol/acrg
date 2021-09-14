@@ -72,8 +72,6 @@ MLR: Added distancelist. Given a list of lon/lat pairs, outputs a list of
     if lons and lats are of length N, output will also be of length N
 
 """
- 
-from builtins import object
 import math
 import numpy as np
 from numba import jit
@@ -140,7 +138,6 @@ class multipledistances(object):
             else:
                 distances = np.concatenate((distances,d))
 
-
         # Find the minimum distance
         mindist = min(distances)
         
@@ -153,7 +150,6 @@ class multipledistances(object):
         mindist_index=[lat_index, lon_index]        
         
         mindist_loc=[lat[lat_index], lon[lon_index]]        
-        
         
         self.distances=distances
         self.mindist = mindist

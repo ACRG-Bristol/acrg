@@ -17,23 +17,18 @@ sitefile = a text file with the site acronym, lat and then lon separated by spac
     
 
 """
-from __future__ import print_function
-from __future__ import division
-from builtins import str
 from past.utils import old_div
-from builtins import object
 import netCDF4
 import numpy as np
 import datetime as dt
-from acrg_grid.hybridcoords import hybridcoords as hybrid_coords
 import bisect
 import os
 import matplotlib.pyplot as plt
-#from mpl_toolkits.basemap import Basemap
-from matplotlib import ticker
 import pandas as pd
-#import dateutil.relativedelta
-#import sys
+import xarray as xray
+
+from acrg.grid.hybridcoords import hybridcoords as hybrid_coords
+
 # ___________________________________________________________________________________________________________________
 # CODE TO READ THE DIFFERENT DATA TYPES
 # ___________________________________________________________________________________________________________________
@@ -229,9 +224,7 @@ class read_flux(object):
             dt_date = [dt.datetime(year[i],month[i],day[i]) for i in np.arange(len(date))]
         
         
-        # Calculate monthly means use xray
-        import xray
-        
+        # Calculate monthly means use xray        
         x_data = xray.DataArray(emiss, [('date', dt_date), ('lat', lat), ('lon', lon)])
         monthly_means = x_data.resample('MS', dim='date', how='mean')
         
@@ -497,10 +490,7 @@ class read_sitefile_txt(object):
 class extract_site_info(object):
     def __init__(self, sitefile, sitename):
         
-        if sum([sitefile[0].find('acf'), sitefile[0].find('ferry')])  < -1:
-            sitedata=read_sitefile_txt(sitefile)
-        else:
-            sitedata=read_sitefile_GONZI_nc(sitefile)
+        sitedata=read_sitefile_txt(sitefile)
             
         site_i = (np.where(sitedata.sitenames==sitename))[0]      
         
@@ -1162,105 +1152,6 @@ class data_match_mobile(object):
 # CODE TO WRITE THE DIFFERENT DATA TYPES
 # ___________________________________________________________________________________________________________________
             
-            
-# Class to write out the data from a moving platform
-
-# filtereddata: the output of data_match_mobile
-# outdir: the directory you wish to write the file to. Defaults to the directory containing the original MOZART file.
-# filename: name for output file defaults to "species"_"casename".mzt.h0."Timestamp"_"sitetype".nc
-
-class write_ncdf_mobile(object):
-    def __init__(self, filtereddata, outdir = 0, filename=0):
-        
-        import os
-        
-        mzfile = filtereddata.mzfile
-        
-        if type(outdir) == int:
-            outdir = os.path.dirname(mzfile)
-    
-        
-        if type(filename) == int:
-            if type(mzfile) == tuple:  
-                filetimestamp = (filtereddata.mzfile[0])[(filtereddata.mzfile[0]).find('h0')+ 2: (filtereddata.mzfile[0]).find('.nc')]
-            if type(mzfile) == str:
-                filetimestamp = filtereddata.mzfile[filtereddata.mzfile.find('h0')+ 2: filtereddata.mzfile.find('.nc')]
-            filename = filtereddata.species + '_' + filtereddata.case + '.mzt.h0'+  filetimestamp + '_' + filtereddata.sitetype+'.nc'
-        
-        print('writing file: ' + outdir + '/'+ filename)
-        
-        
-        #Write NetCDF file
-        ncF = netCDF4.Dataset(outdir + '/'+ filename, 'w')
-        
-        # Create the dimensions
-        ncF.createDimension('time', len(filtereddata.site_time))
-        
-        # Make some global attributes
-        ncF.mzfile = filtereddata.mzfile
-        ncF.sitefile = filtereddata.sitefile
-        ncF.case = filtereddata.case
-        ncF.species = filtereddata.species
-        ncF.sitetype = filtereddata.sitetype
-        
-        # Create the variables
-        ncsitenames = ncF.createVariable('sitename',type(filtereddata.site[0]), ('time',))        
-        
-        ncobs_time = ncF.createVariable('obs_time', 'i', ('time',))
-        ncobs_lon = ncF.createVariable('obs_lon', 'f', ('time',))
-        ncobs_lat = ncF.createVariable('obs_lat', 'f', ('time',))
-        ncobs_alt = ncF.createVariable('obs_alt', 'f', ('time',))
-        ncobs_press = ncF.createVariable('obs_pressure', 'f', ('time',))
-        ncobs_conc = ncF.createVariable('obs_conc', 'f', ('time',))
-        ncobs_repeat = ncF.createVariable('obs_repeatability', 'f', ('time',))
-        
-        ncmodel_time = ncF.createVariable('model_time', 'i', ('time',))
-        ncmodel_lon = ncF.createVariable('model_lon', 'f', ('time',))
-        ncmodel_lat = ncF.createVariable('model_lat', 'f', ('time',))
-        ncmodel_press = ncF.createVariable('model_pressure', 'f', ('time',))
-
-
-        for i in np.arange(len(filterdata.concnames)):
-            ncmodel_conc = ncF.createVariable(filtereddata.concnames[i], 'f', ('time'))
-            ncmodel_conc[:] = filtereddata.conc[i,:]
-            ncmodel_conc.units = filtereddata.model_units[i]
-        
-        # Fill the variables
-        ncsitenames[:] = filtereddata.site        
-                
-        # times as seconds since 1/1/2009
-        ncobs_time[:] = [(t - dt.datetime(2009,1,1,0,0,0)).total_seconds() for t in filtereddata.site_time]     
-    
-        ncobs_lon[:] = filtereddata.site_lon
-        ncobs_lat[:] = filtereddata.site_lat
-        ncobs_alt[:] = filtereddata.site_alt
-        ncobs_press[:] = filtereddata.site_pressure
-        ncobs_conc[:] = filtereddata.site_conc
-        ncobs_repeat[:] = filtereddata.site_repeat
-        
-        # times as seconds since 1/1/2009
-        ncmodel_time[:] = [(t - dt.datetime(2009,1,1,0,0,0)).total_seconds() for t in filtereddata.model_time]     
-    
-        ncmodel_lon[:] = filtereddata.model_lon
-        ncmodel_lat[:] = filtereddata.model_lat
-        ncmodel_press[:] = filtereddata.model_pressure
-
-        
-        
-        
-        # Give the variables some attributes        
-        ncmodel_lon.units = 'Degrees east'
-        ncmodel_lat.units = 'Degrees north'
-        ncmodel_conc.units = filtereddata.concunits
-        ncobs_conc.units = filtereddata.site_units
-        ncmodel_press.units = filtereddata.pressureunits
-        ncmodel_time.units = 'seconds since 2009-01-01 00:00:00'
-        
-        ncF.close()
-        print("Written " + outdir + '/'+ filename)
-
-
-
 # Class to write out the data from a stationary platform
 
 # filtereddata: the output of data_match_fixed
@@ -1553,7 +1444,7 @@ class read_ncdf_mobile(object):
     def __init__(self,  filenames = None, species = 'CH4', filepattern = '*_mobile.nc',\
         directory = None):
         
-        if filename is None:
+        if filenames is None:
             import fnmatch
             import os
             
@@ -1667,210 +1558,7 @@ class read_ncdf_mobile(object):
             self.concunits = data.variables['model_conc'].getncattr('units')
             self.pressureunits = data.variables['model_pressure'].getncattr('units')
        
-# ___________________________________________________________________________________________________________________
-# CODE TO PLOT THE DIFFERENT DATA TYPES
-# ___________________________________________________________________________________________________________________
 
-# Class to plot the filtered output
-# Plots the output of read_ncdf_fixed against the obs at the given site
-
-# data: output of read_necdf_fixed
-# sitename: 3 letter acronym of the site of interest
-# scaling: a scaling factoras the MOZART output is in mol/mol not ppm or ppb
-# x_range: set a fixed range for the x axis 
-# save_plot: set if you'd like to save the plot. Saves the pot to a new subdirectory 'plots' in the same location as the data file
-# network: set the network of the obs you wish to compare to
-# height: set the height of the intake you wish to plot
-# speciesname: set if you wish to plot of a single species only. Otherwise default to plotting all species given in the file.
-# diff: set to plot the difference between the MOZART output and the observations
-
-class plot_ncdf_fixed(object):
-    def __init__(self, data, sitename = 'mhd', scaling = 1e06, x_range = None, save_plot = 0, network = None, height = None, speciesname = None, diff=None):
-        
-        import matplotlib.ticker as ticker
-        import matplotlib.pyplot as plt
-        import acrg_plottools as plottools
-        
-        # Extract the model data for the given site
-        sites = data.sitenames
-        matched = np.where(sites == sitename)[0]
-          
-        print(matched)
-          
-        if len(matched) > 1:
-            # This means that the site was listed twice in the site file as two measurement networks share it.
-            # As we're pulling out model data at the same location it doesn't matter which version we use
-            # Default to using the first one
-            matched = [matched[0]]
-            
-        
-        if len(matched) == 0:
-            print('There is no sitename matching : ' + sitename)
-            print('Check the sitename or try using lowercase')
-        else: 
-            time = data.time
-            # conc is lon x lat x lev x time x site
-            #conc = np.squeeze(data.conc[:,:,:,:,matched])
-            pressure = np.squeeze(data.pressure[:,:,:,:,matched])
-            
-            # Plot for the given species only at multiple gridboxes
-            if speciesname != None:
-                species_no = (np.where(speciesname in data.concnames))[0]
-                # conc is species x site x time x lev x lon x lat
-                conc = np.squeeze(data.conc[species_no,matched,:,:,:])
-                reshapedconc = np.reshape(conc,(np.shape(conc)[0],27))
-                reshapedpressure = np.reshape(pressure, (27,np.shape(pressure)[-1]))
-                
-                n_colours = 27
-                
-            # PLot all the species/tracers at the central point only
-            else:
-                # conc is species x site x time x lev x lon x lat
-                conc = np.squeeze(data.conc[:,matched,:,1,1,1])
-                reshapedconc = np.transpose(conc)
-                reshapedpressure = np.squeeze(pressure[1,1,1,:])
-
-                n_colours = len(data.concnames)
-            
-            
-             
-            # Indicies for lats, lons and levs
-            lat_i = [1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3]
-            lon_i = [1,1,1,2,2,2,3,3,3,1,1,1,2,2,2,3,3,3,1,1,1,2,2,2,3,3,3]
-            lev_i = [1,2,3,1,2,3,1,2,3,1,2,3,1,2,3,1,2,3,1,2,3,1,2,3,1,2,3]  
-            
-                    
-            
-            colours = plottools.generatecolours(n_colours).RGB
-            
-            # Plot model ooutput for fixed site data
-            fig = plt.figure()
-            fig.subplots_adjust(right = 0.8)
-            
-            legend_spacing = np.arange(n_colours)   
-            
-                        
-            
-            for i in np.arange(n_colours):      
-                
-                conc_i = reshapedconc[:,i]        
-                yaxislabel = data.species + '(' + data.units + '*' + str(scaling) + ')'
-               
-                if diff is not None:
-                    conc_i = conc_i - reshapedconc[:,diff]
-                    yaxislabel = data.species + '- '+data.concnames[diff] + ' (' + data.units + '*' + str(scaling) + ')'
-                    
-                # Plot the data
-                plt1 = plt.subplot()
-                
-                plt1.plot(time, conc_i*scaling, "-", color = colours[i], markersize = 3)
-                    
-                y_formatter = ticker.ScalarFormatter(useOffset=False)
-                plt1.yaxis.set_major_formatter(y_formatter)
-                
-                x_tickno_formatter = ticker.MaxNLocator(5)
-                plt1.xaxis.set_major_locator(x_tickno_formatter)
-                
-                plt1.set_title('Model output at '+ sitename)
-                plt1.set_ylabel(yaxislabel)
-                plt1.set_xlabel('Time')
-    
-                if speciesname != None: legend_i = str(data.lat[matched, lat_i[i]-1][0]) + ', ' +str(data.lon[matched,lon_i[i]-1][0]) + ', ' + str(lev_i[i]-1)
-                if speciesname is None: legend_i = data.concnames[i]
-                    
-                plt.figtext(0.82, 0.85-(0.03*legend_spacing[i]), legend_i, verticalalignment='bottom', \
-                horizontalalignment='left', color=colours[i], fontsize=8)
-                    
-    
-            if speciesname != None: 
-                plt1.plot(time, reshapedconc[:,13]*scaling, "--", color = 'black', markersize = 3)
-                plt.figtext(0.82, 0.88, 'Lat, Lon, Lev', verticalalignment='bottom', horizontalalignment='left', color='black', fontsize=8)
-                plt.figtext(0.6, 0.2, 'Central point ---', verticalalignment='bottom', horizontalalignment='left', color='black', fontsize=8)
-              
-            
-            
-            if x_range != None:
-                plt1.set_xlim(x_range)            
-            
-            if save_plot != 0:
-                outdir = os.path.dirname(os.path.dirname(data.filenames[0]))
-                fig.savefig(outdir + '/plots/' + data.species+ '_'+ sitename+ '_Model.png', dpi=100)
-                print('Figure saved as : ' + outdir + '/plots/' + data.species+ '_'+ sitename+ '_Model.png')
-            
-            
-            plt.show()
-        
-            plt.close()
-            
-            if speciesname != None:
-                 # Plot model output and obs    
-                # Read in the obs
-                import acrg_agage
-                import json
-                
-                print('Plotting site ' + sitename)
-                print('Plotting data from /dagage2/agage/metoffice/processed_obs/')
-                
-                # check if there is UKMO data for that site
-                acrg_path=os.path.split(os.path.realpath(__file__))
-    
-                with open(acrg_path[0] + "/acrg_site_info.json") as f:
-                    site_info=json.load(f)
-                
-                site = acrg_agage.synonyms(sitename, site_info)
-                
-                if site is None:
-                    print("Site " + sitename + ' is not listed')
-                
-                else:
-                    
-                    obs = acrg_agage.get(sitename, data.species, network = network, height = height)         
-                    
-                                   
-                    
-                    # Only plot model output for the same time range as the obs
-                    #start = bisect.bisect_left(time, min(obs_time)) -1
-                    #finish = bisect.bisect_right(time, max(obs_time))
-                    
-                    model_time = time
-                    model_conc = reshapedconc[:,13]
-                    
-                    fig = plt.figure()
-                     
-                    # Plot the data
-                    plt1 = plt.subplot()
-                    
-                    plt1.plot(obs.index, obs['mf'], "r-", markersize = 3, markeredgecolor = 'red')
-                    plt1.plot(model_time, model_conc*scaling, "b-", markersize = 3, markeredgecolor = 'blue')
-                     
-                    y_formatter = ticker.ScalarFormatter(useOffset=False)
-                    plt1.yaxis.set_major_formatter(y_formatter)
-                    
-                    x_tickno_formatter = ticker.MaxNLocator(5)
-                    plt1.xaxis.set_major_locator(x_tickno_formatter)
-                    
-                    plt1.set_title('Model output and observations at '+ sitename )
-                    plt1.set_ylabel(data.species + '(' + data.units + '*' + str(scaling) + ')')
-                    plt1.set_xlabel('Time')
-        
-                    if x_range != None:
-                        plt1.set_xlim(x_range)
-                        
-                    if save_plot != 0:
-                        outdir = os.path.dirname(os.path.dirname(data.filenames[0]))
-                        fig.savefig(outdir + '/plots/' + data.species+ '_UKMO_'+ sitename+ '.png', dpi=100)
-                        print('Figure saved as : ' + outdir + '/plots/' + data.species+ '_UKMO_'+ sitename+ '.png')
-                    
-                    
-                    plt.show()
-                    
-                
-                    plt.close()
-                 
-                                         
-        
-        
-        
 # Class to plot the filtered output
 # Plots the output of read_ncdf_mobile
 # defaults to not plotting the obs concentrations as we only have these for CH4 at the moment
@@ -2012,186 +1700,6 @@ class plot_ncdf_mobile(object):
             plt.show()      
 
 
-
-# Code to set up input for contour plotting
-class plot_map_setup(object):
-    def __init__(self, data, lat, lon, 
-                 lon_range = None, lat_range = None):
-
-        if lon_range is None:
-            lon_range = (min(lon), max(lon))
-        if lat_range is None:
-            lat_range = (min(lat), max(lat))
-        
-        m = Basemap(projection='gall',
-            llcrnrlat=lat_range[0], urcrnrlat=lat_range[1],
-            llcrnrlon=lon_range[0], urcrnrlon=lon_range[1],
-            resolution='l')
-
-        lons, lats = np.meshgrid(lon, lat)
-        x, y = m(lons, lats)
-        
-        self.x = x
-        self.y = y
-        self.m = m
-
-# data: output of read
-# lat: 1D array of latitudes (optinal)
-# lon: 1D array of longitudes (optinal)
-# time: 1D array of time values (optinal)
-# timestep: which timestep you want to plot e.g. set to 3 to plot the third timestep either a pandas time variable or a string '%d/%m/%y
-# out_filename: name of output file defaults to 'MZT_' + species + '_L'+str(level)+ '_'+time.strftime('%y%m%d_%H%M')+'.png' (optinal)
-# range_all: base the range of the contour colours on all the data rather than just the data for that timestep (optinal)
-# lon_range : set lon range (optinal)
-# lat_range: set lat_range (optinal)
-# species: set to species or defaults to data.species (optinal)
-# scale: set optional scaling factor (optinal)
-# rangescale: scaling factor for range (optinal)
-# colourbar_label: label for colourbar  defaults to  species + ' [' + units + ']' (optinal)
-# savefig: set if you want to save the figure(optinal)
-# map_data: precalculated output of acrg_plottools.plot_map_setup instead of calculating it each time(optinal)
-# nlevels: set to the number of levels you want to use in the contours defaults to 10 (optinal)
-# levels: imput specific contour levels to use (optinal)
-# minconc: minimum concentration used to calculate the levels (optinal)
-# maxconc: maximim concentration used to calculate the levels (optinal)
-# title: plot title
-# outdir: where the plots are saved    
-# Plot a filled contour map of a given MZT output
-# Defaults to plotting the first timestep at ground level
-def plotlevel_MZT(data, lat = None, lon = None, time = None, level = -1, timestep = 0, out_filename=None, range_all = None,
-         lon_range=None, lat_range=None, species = None, species_choice = 0, scale = None, rangescale = 100, colourbar_label = None, savefig =None,
-         map_data = None, nlevels = 10, levels = None, minconc = None, maxconc = None, title = None, outdir = '/home/as16992/MOZART/plots/'):
-
-    if map_data is None:
-
-        if lat == None:
-            lat = data.lat
-        
-        if lon == None:
-            lon = data.lon
-
-        map_data = plot_map_setup(data, lat, lon, 
-                                  lon_range = lon_range,
-                                  lat_range = lat_range)
-    
-    fig = plt.figure(figsize=(8,8))
-    fig.add_axes([0.1,0.1,0.8,0.8])
-
-    map_data.m.drawcoastlines()
-#    map_data.m.drawstates()
-#    map_data.m.drawcountries()
-#    map_data.m.shadedrelief()
-    
-    if species == None:           
-        species = data.species
-    
-    species_options = np.array(['CO2', 'CH4', 'N2O', 'C2H6','Error', 'Flux']) 
-    scale_options = [1e6, 1e9, 1e9, 1e9, 1, 1]
-    unit_options = ['ppm', 'ppb', 'ppb', 'ppb', '%', '']    
-    
-    index = np.where(np.array(species_options) == species)[0][0]
-    if scale == None:
-        scale = scale_options[index]
-    units = unit_options[index]    
-    
-    if level < 0 :
-        level = np.arange(56)[level]
-    
-    # make range for conc contours
-    # Rounds to the nearest 100
-    if isinstance(data, np.ndarray):
-        conc = data[timestep, :,:]
-    else:
-        conc = data.conc[species_choice]
-        conc = conc[timestep,level,:,:]
-        
-    conc = np.squeeze(conc)*scale
-    
-    if np.shape(conc) != np.shape(map_data.x):
-        conc = np.transpose(conc)
-    
-    
-    #pdb.set_trace()
-    
-    if minconc == None:
-        if range_all == None:
-            minconc = np.floor(old_div(np.nanmin(conc),rangescale))*rangescale
-        else:
-            minconc = np.floor(old_div(np.nanmin(data),rangescale))*rangescale
-            
-    if maxconc == None:
-        if range_all == None:
-            maxconc = np.ceil(old_div(np.nanmax(conc),rangescale))*rangescale
-        else:
-            maxconc = np.ceil(old_div(np.nanmax(data),rangescale))*rangescale
-    
-    
-    step = old_div((maxconc - minconc),nlevels)
-    
-    if levels == None:
-        levels = np.arange(minconc, maxconc+step, step)
-   
-
-    #Plot map
-    #cs = map_data.m.contourf(map_data.x, map_data.y, conc, levels, cmap = plt.cm.Spectral_r    
-    cs = map_data.m.contourf(map_data.x, map_data.y, conc, levels, cmap = plt.cm.RdYlBu)
-
-    """     
-    # Alter this at some point to plot the tall tower sites ?
-                       
-    #Plot release location
-    if "release_lat" in dir(fp_data):
-        rplons, rplats = np.meshgrid(fp_data.release_lon[time_index],
-                                     fp_data.release_lat[time_index])
-        rpx, rpy = map_data.m(rplons, rplats)
-        rp = map_data.m.scatter(rpx, rpy, 100, color = 'black')
-        
-    """
-    if time == None:    
-        time = data.time
-        
-    time = time[timestep]
-    
-    if isinstance(time, pd.tslib.Timestamp):
-       time = (time).strftime('%d/%m/%y')
-       
-    # Determine the average pressure at that level in kPa
-    if isinstance(data, np.ndarray):
-        P = 'Ground'
-    else:        
-        P = np.round(np.mean(np.squeeze(data.pressure[timestep, level, :,:]))/1000.0)
-    
-    if title == None:
-        title = 'MOZART output P = ' + str(P) + 'kPa at ' + str(time)
-    
-    
-    plt.title(title, fontsize=16)
-
-    cb = map_data.m.colorbar(cs, location='bottom', pad="5%")
-    
-    tick_locator = ticker.MaxNLocator(nbins=7)
-    cb.locator = tick_locator
-    cb.update_ticks()
- 
-    if colourbar_label == None:
-        colourbar_label = species + ' [' + units + ']' 
- 
-    cb.set_label(colourbar_label, 
-                 fontsize=12)
-    cb.ax.tick_params(labelsize=13) 
-    
-    if out_filename == None:
-        out_filename = 'MZT_' + species + '_L'+str(level)+ '_'+time.strftime('%y%m%d_%H%M')+'.png'
-        
-    if savefig is not None:
-        plt.savefig(outdir + out_filename)
-        plt.show()
-        plt.close()
-    else:        
-        plt.show()
-        
-    return map_data, conc, levels
-    
 # Plot multiple profile plots for a given MZT output file at a given lon against lat and then at a given lat against lon
 # Defaults to plotting the first timestep at lat = 0.94 and lon = 0
 

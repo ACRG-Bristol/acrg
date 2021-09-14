@@ -16,31 +16,27 @@ agree with NAME output.
 
 @author: ew14860
 """
-from __future__ import print_function
-from __future__ import division
-
 from builtins import str
 from builtins import range
 from past.utils import old_div
 import xarray as xray
 import numpy as np
-import bisect
 from scipy import interpolate
-import acrg_MOZART as mz
 import os
-import sys
 import pandas as pd
 import glob
 import datetime as dt
 import getpass
 import collections as c
-import pdb
+
 from os.path import join
 
-from acrg_config.paths import paths
-acrg_path = paths.acrg
-data_path = paths.data
+import acrg.MOZART as mz
+from acrg.config.paths import Paths
 
+
+acrg_path = Paths.acrg
+data_path = Paths.data
 
 if acrg_path is None:
     acrg_path = os.getenv("HOME")
