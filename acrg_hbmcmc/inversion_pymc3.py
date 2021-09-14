@@ -78,6 +78,7 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
                xprior={"pdf":"lognormal", "mu":1, "sd":1},
                bcprior={"pdf":"lognormal", "mu":0.004, "sd":0.02},
                sigprior={"pdf":"uniform", "lower":0.5, "upper":3},
+               offsetprior={"pdf":"normal", "mu":0, "sd":1},
                nit=2.5e5, burn=50000, tune=1.25e5, nchain=2, 
                sigma_per_site = True, add_offset = False, verbose=False):       
     """
@@ -174,7 +175,7 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
         xbc = parsePrior("xbc", bcprior, shape=nbc)
         sig = parsePrior("sig", sigprior, shape=(nsites, nsigmas))
         if add_offset:
-            offset = pm.Normal("offset", mu=0, sd=1, shape=nsites-1)
+            offset = parsePrior("offset", offsetprior, shape=nsites-1) 
             offset_vec = pm.math.concatenate( (np.array([0]), offset), axis=0)
             mu = pm.math.dot(hx,x) + pm.math.dot(hbc,xbc) + pm.math.dot(B, offset_vec)
         else:
@@ -213,11 +214,11 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
 def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence, 
                                Hx, Hbc, Y, error, Ytrace, YBCtrace,
                                step1, step2, 
-                               xprior, bcprior, sigprior, Ytime, siteindicator, sigma_freq_index,fp_data,
+                               xprior, bcprior, sigprior, offsetprior, Ytime, siteindicator, sigma_freq_index,fp_data,
                                emissions_name, domain, species, sites,
                                start_date, end_date, outputname, outputpath,
                                basis_directory, country_file, country_unit_prefix,
-                               flux_directory):
+                               flux_directory, add_offset=False):
 
         """
         Takes the output from inferpymc3 function, along with some other input
@@ -527,6 +528,8 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         outds.attrs['Emissions Prior'] = " ".join([str(x) for x in list(xprior.values())])
         outds.attrs['Model error Prior'] = " ".join([str(x) for x in list(sigprior.values())])
         outds.attrs['BCs Prior'] = " ".join([str(x) for x in list(bcprior.values())])
+        if add_offset:
+            outds.attrs['Offset Prior'] = " ".join([str(x) for x in list(offsetprior.values())])
         outds.attrs['Creator'] = getpass.getuser()
         outds.attrs['Date created'] = str(pd.Timestamp('today'))
         outds.attrs['Convergence'] = convergence
@@ -535,5 +538,4 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         comp = dict(zlib=True, complevel=5)
         encoding = {var: comp for var in outds.data_vars}
         output_filename = define_output_filename(outputpath,species,domain,outputname,start_date,ext=".nc")
-        #outds.to_netcdf(outputpath+"/"+species.upper()+'_'+domain+'_'+outputname+'_'+start_date+'.nc', encoding=encoding, mode="w")
         outds.to_netcdf(output_filename, encoding=encoding, mode="w")
