@@ -26,7 +26,6 @@ else:
 with open(_data_paths_file, 'r') as f:
     _data_paths = yaml.load(f, Loader = yaml.SafeLoader)
 
-
 class Paths:
     '''
     Object that contains the acrg, observation and data drive paths

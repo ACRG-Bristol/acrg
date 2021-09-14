@@ -22,7 +22,7 @@ being annoying it will also slow down your run due to unnecessary forking.
 import numpy as np
 import shutil
 
-import acrg.name as name
+import acrg.name.name as name
 import acrg.obs as getobs
 import acrg.hbmcmc.inversionsetup as setup 
 import acrg.hbmcmc.inversion_pymc3 as mcmc
