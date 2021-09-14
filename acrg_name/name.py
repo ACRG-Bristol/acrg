@@ -54,7 +54,7 @@ def open_ds(path):
     return ds 
 
 
-def filenames(site, domain, start, end, height, fp_directory, network=None, species=None):
+def filenames(site, domain, start, end, height, fp_directory, met_model = None, network=None, species=None):
     """
     The filenames function outputs a list of available footprint file names,
     for given site, domain, directory and date range.
@@ -77,6 +77,10 @@ def filenames(site, domain, start, end, height, fp_directory, network=None, spec
         fp_directory (str) :
             fp_directory can be specified if files are not in the default directory must point to a directory 
             which contains subfolders organized by domain.
+        met_model (str):
+            Met model used to run NAME
+            Default is None and implies the standard global met model
+            Alternates include 'UKV' and this met model must be in the outputfolder NAME        
         network (str, optional) : 
             Network for site. 
             If not specified, first entry in acrg_site_info.json file will be used (if there are multiple).
@@ -106,6 +110,10 @@ def filenames(site, domain, start, end, height, fp_directory, network=None, spec
         if 'lifetime' in species_info[species_obs].keys():
             lifetime = species_info[species_obs]["lifetime"]
             lifetime_hrs = convert.convert_to_hours(lifetime)
+            # if a monthly lifetime is a list, use the minimum lifetime 
+            # in the list to determine whether a species specific footprint is needed
+            if type(lifetime) == list:
+                lifetime_hrs = min(lifetime_hrs)
         else:
             lifetime_hrs = None
     else:
@@ -118,19 +126,28 @@ def filenames(site, domain, start, end, height, fp_directory, network=None, spec
     # first search for species specific footprint files.
     # if does not exist, use integrated files if lifetime of species is over 2 months
     # if lifetime under 2 months and no species specific file exists, fail
-    
+
     files = []
     for ym in yearmonth:
 
         if species:
-            f=glob.glob(os.path.join(fp_directory,domain,f"{site}*-{height}-{species}*{domain}*{ym}*.nc"))
+
+            if met_model:
+                f=glob.glob(os.path.join(fp_directory,domain,f"{site}-{height}_{met_model}_{species}_{domain}_{ym}*.nc"))
+            else:
+                f=glob.glob(os.path.join(fp_directory,domain,f"{site}-{height}_{species}_{domain}_{ym}*.nc"))
+
+
         else:
             #manually create empty list if no species specified
             f = []
-        
-        if len(f) == 0:
             
-            glob_path = os.path.join(fp_directory,domain,f"{site}*-{height}_{domain}*{ym}*.nc")
+        if len(f) == 0:
+
+            if met_model:
+                glob_path = os.path.join(fp_directory,domain,f"{site}-{height}_{met_model}_{domain}_{ym}*.nc")
+            else:
+                glob_path = os.path.join(fp_directory,domain,f"{site}-{height}_{domain}_{ym}*.nc")
             
             if lifetime_hrs is None:
                 print("No lifetime defined in species_info.json or species not defined. WARNING: 30-day integrated footprint used without chemical loss.")
@@ -175,11 +192,20 @@ def read_netcdfs(files, dim = "time"):
         print(fname)
     
     datasets = [open_ds(p) for p in sorted(files)]
+    
+    # reindex all of the lat-lon values to a common one to prevent floating point error differences
+    with xr.open_dataset(files[0]) as temp:
+        fields_ds = temp.load()
+    fp_lat = fields_ds["lat"].values
+    fp_lon = fields_ds["lon"].values
+
+    datasets = [ds.reindex(indexers={"lat":fp_lat, "lon":fp_lon}, method="nearest", tolerance=1e-5) for ds in datasets]
+
     combined = xr.concat(datasets, dim)
     return combined   
 
 
-def footprints(sitecode_or_filename, fp_directory = None, 
+def footprints(sitecode_or_filename, met_model = None, fp_directory = None, 
                start = None, end = None, domain = None, height = None, network = None,
                species = None, HiTRes = False):
 
@@ -200,6 +226,12 @@ def footprints(sitecode_or_filename, fp_directory = None,
     Args:
         sitecode_or_filename (str) : 
             Site (e.g. 'MHD') or a netCDF filename (*.nc) (str)
+        met_model (dict or str)     : Met model used to run NAME for each site in data
+                               Default is None and implies the standard global met model used for all sites
+                               met_model = 'UKV' will work if all sites are the same 'UKV'
+                               {"MHD":'UKV', "JFJ":None} or {"MHD":'UKV', "TAC":"UKV"}
+                               {"MHD":None, "TAC":None} is equivalent to met_model = None
+                               {"MHD":'UKV', "TAC":'UKV'} is equivalent to met_model = 'UKV'
         fp_directory (str/dict) : 
             If the high time resolution footprints are used (HiTRes = True) fp_directory must be a dictionary
             of the form :
@@ -257,9 +289,9 @@ def footprints(sitecode_or_filename, fp_directory = None,
         # Finds integrated footprints if specified as a dictionary with multiple entries (HiTRes = True) 
         # or a string with one entry        
         if type(fp_directory) is dict:
-            files = filenames(site, domain, start, end, height, fp_directory["integrated"], network=network, species=species)
+            files = filenames(site, domain, start, end, height, fp_directory["integrated"], met_model = met_model, network=network, species=species)
         else:
-            files = filenames(site, domain, start, end, height, fp_directory, network=network, species=species)
+            files = filenames(site, domain, start, end, height, fp_directory, met_model = met_model, network=network, species=species)
 
     if len(files) == 0:
         print(f"\nWarning: Can't find footprint files for {sitecode_or_filename}. \
@@ -713,30 +745,30 @@ def align_datasets(ds1, ds2, platform=None, resample_to_ds1=False):
     
     ds1 = ds1.sel(time=slice(start_s,end_s))
     ds2 = ds2.sel(time=slice(start_s,end_s))
-    
-    
+  
     
     #only non satellite datasets with different periods need to be resampled
     if not np.isclose(ds1_timeperiod, ds2_timeperiod):
         base = start_date.dt.hour.data + start_date.dt.minute.data/60. + start_date.dt.second.data/3600.
         if (ds1_timeperiod >= ds2_timeperiod) or (resample_to_ds1 == True):
-            resample_period = str(round(ds1_timeperiod/3600e9,5))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
+            resample_period = str(round(ds1_timeperiod/3600e9,4))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
             ds2 = ds2.resample(indexer={'time':resample_period}, base=base).mean()
         elif ds1_timeperiod < ds2_timeperiod or (resample_to_ds1 == False):
-            resample_period = str(round(ds2_timeperiod/3600e9,5))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
+            resample_period = str(round(ds2_timeperiod/3600e9,4))+'H' # rt17603: Added 24/07/2018 - stops pandas frequency error for too many dp.
             ds1 = ds1.resample(indexer={'time':resample_period}, base=base).mean()
     
     return ds1, ds2
 
 
-def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
+def footprints_data_merge(data, domain, met_model = None, load_flux = True, load_bc = True,
                           calc_timeseries = True, calc_bc = True, HiTRes = False,
                           site_modifier = {}, height = None, network = None,
                           emissions_name = None,
                           fp_directory = None,
                           flux_directory = None,
                           bc_directory = None,
-                          resample_to_data = False):
+                          resample_to_data = False,
+                          species_footprint = None):
 
     """
     Output a dictionary of xarray footprint datasets, that correspond to a given
@@ -747,6 +779,12 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                                Should match output from acrg_agage.get_obs() function. For example:
                                data = {"MHD": MHD_dataframe, "TAC": TAC_dataframe}
         domain (str)         : Domain name. The footprint files should be sub-categorised by the domain.
+        met_model (dict or str)     : Met model used to run NAME for each site in data
+                               Default is None and implies the standard global met model used for all sites
+                               met_model = 'UKV' will work if all sites are the same 'UKV'
+                               {"MHD":'UKV', "JFJ":None} or {"MHD":'UKV', "TAC":"UKV"}
+                               {"MHD":None, "TAC":None} is equivalent to met_model = None
+                               {"MHD":'UKV', "TAC":'UKV'} is equivalent to met_model = 'UKV'
         load_flux (bool)     : True includes fluxes in output, False does not. Default True.
         load_bc (bool)       : True includes boundary conditions in output, False does not. Default True.
         calc_timeseries (bool) : True calculates modelled mole fractions for each site using fluxes, False does not. Default True.
@@ -794,9 +832,9 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
         Dictionary of the form {"MHD": MHD_xarray_dataset, "TAC": TAC_xarray_dataset, ".flux": dictionary_of_flux_datasets, ".bc": boundary_conditions_dataset}:
             combined dataset for each site
     """
-    
-    sites = [key for key in data]
 
+    sites = [key for key in data]
+    
     species_list = []
     for site in sites:
         species_list += [item.species for item in data[site]]
@@ -804,6 +842,10 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
         raise Exception("Species do not match in for all measurements")
     else:
         species = species_list[0]
+        
+    species_footprint = species if species_footprint is None else species_footprint
+    if species_footprint!=species:
+        print(f'Finding footprints files for {species_footprint}')
 
     if load_flux:
         if emissions_name is not None:
@@ -879,19 +921,27 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                     siteheights = [int(sh[:-4]) for sh in site_info[site][network_site]["height_name"]]
                     wh_height = np.where(abs(np.array(siteheights) - int(site_ds.inlet[:-1])) == np.min(abs(np.array(siteheights) - int(site_ds.inlet[:-1]))))
                     height_site = site_info[site][network_site]["height_name"][wh_height[0][0]] #NB often different to inlet
-
+            
+            if type(met_model) is dict:
+                met_model_site = met_model[site]
+            else:
+                met_model_site = met_model
+            
             # Get footprints
-            site_fp = footprints(site_modifier_fp, fp_directory = fp_directory, 
+            site_fp = footprints(site_modifier_fp, met_model = met_model_site, fp_directory = fp_directory, 
                                  start = start, end = end,
                                  domain = domain,
-                                 species = species,
+                                 species = species_footprint.lower(),
                                  height = height_site,
                                  network = network_site,
                                  HiTRes = HiTRes)
 
             mfattrs = [key for key in site_ds.mf.attrs]
             if "units" in mfattrs:
-                units = float(site_ds.mf.attrs["units"]) if is_number(site_ds.mf.attrs["units"]) else None
+                if is_number(site_ds.mf.attrs["units"]):
+                    units = float(site_ds.mf.attrs["units"])
+                else: units = None
+            else: units = None
         
             if site_fp is not None:
                 # If satellite data, check that the max_level in the obs and the max level in the processed FPs are the same
@@ -920,7 +970,7 @@ def footprints_data_merge(data, domain, load_flux = True, load_bc = True,
                     site_fp = site_fp.sortby("time")
 
                 site_ds, site_fp = align_datasets(site_ds, site_fp, platform=platform, resample_to_ds1=resample_to_data)
-
+                
                 site_ds = combine_datasets(site_ds, site_fp,
                                            method = "ffill",
                                            tolerance = tolerance)
@@ -1060,8 +1110,17 @@ def add_bc(fp_and_data, load_bc, species):
             
             if 'lifetime' in species_info[species_obs].keys():
                 lifetime = species_info[species_obs]["lifetime"]
-                lifetime_hrs = convert.convert_to_hours(lifetime)
+                lifetime_hrs_list_or_float = convert.convert_to_hours(lifetime)
 
+                # calculate the lifetime_hrs associated with each time point in fp_and_data
+                # this is because lifetime can be a list of monthly values
+                
+                time_month = fp_and_data[site].time.dt.month
+                if type(lifetime_hrs_list_or_float) is list:
+                    lifetime_hrs = [lifetime_hrs_list_or_float[item-1] for item in time_month.values]
+                else:
+                    lifetime_hrs = lifetime_hrs_list_or_float
+                                
                 loss_n = np.exp(-1*fp_and_data[site].mean_age_particles_n/lifetime_hrs).rename('loss_n')
                 loss_e = np.exp(-1*fp_and_data[site].mean_age_particles_e/lifetime_hrs).rename('loss_e')
                 loss_s = np.exp(-1*fp_and_data[site].mean_age_particles_s/lifetime_hrs).rename('loss_s')
@@ -1282,7 +1341,16 @@ def bc_sensitivity(fp_and_data, domain, basis_case, bc_basis_directory = None):
         # compute any chemical loss to the BCs, use lifetime or else set loss to 1 (no loss)
         if 'lifetime' in species_info[species].keys():
             lifetime = species_info[species]["lifetime"]
-            lifetime_hrs = convert.convert_to_hours(lifetime)
+            lifetime_hrs_list_or_float = convert.convert_to_hours(lifetime)
+
+            # calculate the lifetime_hrs associated with each time point in fp_and_data
+            # this is because lifetime can be a list of monthly values
+
+            time_month = fp_and_data[site].time.dt.month
+            if type(lifetime_hrs_list_or_float) is list:
+                lifetime_hrs = [lifetime_hrs_list_or_float[item-1] for item in time_month.values]
+            else:
+                lifetime_hrs = lifetime_hrs_list_or_float
 
             loss_n = np.exp(-1*fp_and_data[site].mean_age_particles_n/lifetime_hrs).rename('loss_n')
             loss_e = np.exp(-1*fp_and_data[site].mean_age_particles_e/lifetime_hrs).rename('loss_e')

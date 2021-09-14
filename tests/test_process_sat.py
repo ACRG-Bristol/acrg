@@ -18,7 +18,7 @@ import acrg_name.process as process
 import deprecated.process as process_org
 from acrg_name.name import open_ds
 from acrg_grid import areagrid
-import process_general as pg
+from . import process_general as pg
 import pdb
 
 from acrg_config.paths import paths

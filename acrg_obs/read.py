@@ -424,7 +424,14 @@ def get_single_site(site, species_in,
         with xr.open_dataset(f[0]) as f_ds:
             ds = f_ds.load()
 
-        # If 4 elements, it means the query returned a start and end date
+        # Remove any spaces from variable names:
+        var_rename = {}
+        for var in ds.variables:
+            if " " in var:
+                var_rename[var] = var.replace(" ", "_")
+        ds = ds.rename_vars(var_rename)
+
+        # If 5 elements, it means the query returned a start and end date
         # Otherwise, return whole dataset
         if len(f) == 5:
             if pd.Timestamp(start_date) > pd.Timestamp(f[3]):
@@ -539,8 +546,17 @@ def get_single_site(site, species_in,
             ds.attrs["inlet"] = f[1]
         ds.attrs["instrument"] = f[2]
         ds.attrs["species"] = species
-        if "Calibration_scale" in ds.attrs:
-            ds.attrs["scale"] = ds.attrs.pop("Calibration_scale")
+
+        # Find calibration scale in file
+        scale_count = 0
+        for attr in ds.attrs:
+            if "calibration" in attr.lower() or "scale" in attr.lower():
+                scale = ds.attrs[attr]
+                scale_count += 1
+        
+        if scale_count > 1:
+            raise Exception("Ambiguous calibration scale: Check if the file has multiple global attributs containing the words calibration and scale")
+        ds.attrs["scale"] = scale
 
         # Convert calibration scale, if needed
         if calibration_scale != None:
