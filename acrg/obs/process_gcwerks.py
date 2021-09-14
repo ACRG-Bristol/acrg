@@ -4,8 +4,6 @@ Created on Fri Oct 16 14:08:07 2015
 
 @author: chxmr
 """
-from __future__ import print_function
-
 import datetime
 import numpy as np
 import pandas as pd
@@ -14,21 +12,21 @@ from datetime import datetime as dt
 import glob
 import xarray as xray
 import json
-from os import getenv, stat
+from os import stat
 import fnmatch
-from acrg_obs.utils import attributes, output_filename, cleanup
-import sys
+from .utils import attributes, output_filename, cleanup
 
-from acrg_config.paths import paths as acrg_paths
-acrg_path = acrg_paths.acrg
+from acrg.config.paths import Paths
+
+acrg_path = Paths.acrg
 
 # Read site info file
 info_file = join(acrg_path,
-                 "acrg_obs/process_gcwerks_parameters.json")
+                 "acrg/obs/process_gcwerks_parameters.json")
 with open(info_file) as sf:
     params = json.load(sf)
 
-site_info_file = join(acrg_path, "acrg_site_info.json")
+site_info_file = join(acrg_path, "data/site_info.json")
 with open(site_info_file) as sf:
     site_params = json.load(sf)
 
