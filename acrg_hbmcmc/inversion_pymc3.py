@@ -117,11 +117,13 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
             Same as above but for boundary conditions.
         sigprior (dict):
             Same as above but for model error.
+        offsetprior (dict):
+            Same as above but for bias offset. Only used is addoffset=True.
         sigma_per_site (bool):
             Whether a model sigma value will be calculated for each site independantly (True) or all sites together (False).
             Default: True
         add_offset (bool):
-            Add an offset (intercept) to all sites but the first in the site list? Default False.
+            Add an offset (intercept) to all sites but the first in the site list. Default False.
         verbose:
             When True, prints progress bar
 
@@ -133,6 +135,10 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
             MCMC chain for boundary condition scaling factors.
         sigouts (array):
             MCMC chain for model error.
+        Ytrace (array):
+            MCMC chain for modelled obs.
+        YBCtrace (array):
+            MCMC chain for modelled boundary condition.
         convergence (str):
             Passed/Failed convergence test as to whether mutliple chains
             have a Gelman-Rubin diagnostic value <1.05
@@ -273,6 +279,8 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
                 Same as above but for boundary conditions.
             sigprior (dict):
                 Same as above but for model error.
+            offsetprior (dict):
+                Same as above but for bias offset. Only used is addoffset=True.
             Ytime (pandas datetime array):
                 Time stamp of measurements as used by the inversion.
             siteindicator (array):
@@ -319,6 +327,8 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
             flux_directory (str, optional):
                 Directory containing the emissions data if
                 not default
+            add_offset (bool):
+                Add an offset (intercept) to all sites but the first in the site list. Default False.
                 
                 
         Returns:

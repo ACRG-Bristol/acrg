@@ -167,7 +167,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             To add additional options add to acrg_convert.prefix
             Default is none and no scaling will be applied (output in g).
         add_offset (bool):
-            Add an offset (intercept) to all sites but the first in the site list? Default False.
+            Add an offset (intercept) to all sites but the first in the site list. Default False.
 
             
     Returns:
