@@ -19,6 +19,7 @@ import os
 import sys
 import acrg_convert as convert
 from acrg_config.version import code_version
+from pathlib import Path
 
 from acrg_config.paths import paths
 data_path = paths.data
@@ -538,4 +539,5 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         comp = dict(zlib=True, complevel=5)
         encoding = {var: comp for var in outds.data_vars}
         output_filename = define_output_filename(outputpath,species,domain,outputname,start_date,ext=".nc")
+        Path(outputpath).mkdir(parents=True, exist_ok=True)
         outds.to_netcdf(output_filename, encoding=encoding, mode="w")
