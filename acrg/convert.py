@@ -13,7 +13,7 @@ def molar_mass(species):
     Returns:
         float : Molar mass of species
     '''
-    species_info_file = os.path.join(acrg_path,"acrg_species_info.json")
+    species_info_file = os.path.join(acrg_path,"data/species_info.json")
     with open(species_info_file) as f:
             species_info=json.load(f)
     species_key = synonyms(species, species_info)

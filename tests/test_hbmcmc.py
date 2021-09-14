@@ -27,7 +27,7 @@ from acrg.config.paths import Paths
 
 acrg_path = Paths.acrg
 data_path = Paths.data
-hbmcmc_path = os.path.join(acrg_path,"hbmcmc")
+hbmcmc_path = os.path.join(acrg_path,"acrg/hbmcmc")
 test_obs_path = os.path.join(acrg_path,"tests/files/obs")
 test_config_path = os.path.join(acrg_path,"tests/files/config")
 outputpath = os.path.join(acrg_path,"tests/files/output")

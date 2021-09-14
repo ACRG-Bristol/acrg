@@ -12,8 +12,9 @@ import xarray as xr
 import getpass
 from pathlib import Path
 
-import acrg.name as name
-from acrg.grid import areagrid
+import acrg.name.name as name
+from acrg.grid.areagrid import areagrid
+from acrg.hbmcmc.inversionsetup import opends
 from .inversionsetup import offset_matrix
 from acrg.hbmcmc.hbmcmc_output import define_output_filename
 import acrg.convert as convert
@@ -378,9 +379,9 @@ def inferpymc3_postprocessouts(outs,bcouts, sigouts, convergence,
         for npm in nparam:
             scalemap[bfds.values == (npm+1)] = np.mean(outs[:,npm])        
         if emissions_name == None:
-            emds = name.name.flux(domain, species, start = start_date, end = end_date, flux_directory=flux_directory)
+            emds = name.flux(domain, species, start = start_date, end = end_date, flux_directory=flux_directory)
         else:
-            emds = name.name.flux(domain, list(emissions_name.values())[0], start = start_date, end = end_date, flux_directory=flux_directory)
+            emds = name.flux(domain, list(emissions_name.values())[0], start = start_date, end = end_date, flux_directory=flux_directory)
         flux = scalemap*emds.flux.values[:,:,0]
         
         #Basis functions to save
