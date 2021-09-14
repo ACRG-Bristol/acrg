@@ -3,8 +3,10 @@ import bz2
 import os 
 import shutil
 
-from acrg.config.paths import paths
-acrg_path = paths.acrg
+from acrg.config.paths import Paths
+
+
+acrg_path = Paths.acrg
 
 def decompress_files(filepaths):
     """ Decompress files at paths in filepaths

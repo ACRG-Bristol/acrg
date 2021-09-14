@@ -4,14 +4,14 @@
 Tests for acrg_tools
 """
 
-import pytest
 import gzip
 import bz2
-from acrg_tools import file_decompression as decompress
+
+from acrg.utils import decompress_files
+from acrg.config.paths import Paths
 
 
-from acrg_config.paths import paths
-acrg_path = paths.acrg
+acrg_path = Paths.acrg
 
 def test_decompress_files(tmp_path):
     string_one = b"this is a string of words"
@@ -30,7 +30,7 @@ def test_decompress_files(tmp_path):
         
         bzip_paths.append(tmp_filepath_bz2)
 
-    decompressed_bz = decompress.decompress_files(bzip_paths)
+    decompressed_bz = decompress_files(bzip_paths)
 
     for fpath, test_str in zip(decompressed_bz, strings_to_compress):
         with open(fpath, "r") as f:
@@ -48,7 +48,7 @@ def test_decompress_files(tmp_path):
         
         gzip_paths.append(tmp_filepath_gz)
 
-    decompressed_gz = decompress.decompress_files(gzip_paths)
+    decompressed_gz = decompress_files(gzip_paths)
     
     for fpath, test_str in zip(decompressed_gz, strings_to_compress):
         with open(fpath, "r") as f:
