@@ -369,7 +369,7 @@ def output_filename(output_directory,
                                                    suffix))
 
 
-def obs_database(data_directory = None):
+def obs_database(data_directory = None, force_overwrite=False):
     '''
     Creates an SQLite database in obs folder detailing contents of each file
     
@@ -401,7 +401,7 @@ def obs_database(data_directory = None):
         else:
             obs_path = pathlib.Path(data_directory)
     
-    if not (obs_path / "obs.db").exists():
+    if not (obs_path / "obs.db").exists() or force_overwrite:
     
         print(f"Reading obs files in {obs_path}")
 
