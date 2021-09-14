@@ -11,6 +11,6 @@ source ~/.bashrc
 
 conda activate $ACRG_CONDA_ENV
 
-acrg_path=`python -c 'from acrg_config.paths import paths; print(paths.acrg)'`
+acrg_path=`python -c 'from acrg.config.paths import Paths; print(Paths.acrg)'`
 
-python -c "import acrg_obs.process_gcwerks as process; process.array_job($PBS_ARRAY_INDEX)" > $acrg_path/tmp/process_gcwerks_$PBS_ARRAY_INDEX
+python -c "import acrg.obs.process_gcwerks as process; process.array_job($PBS_ARRAY_INDEX)" > $acrg_path/tmp/process_gcwerks_$PBS_ARRAY_INDEX

@@ -5,39 +5,26 @@ Created on Fri Dec 14 14:02:12 2018
 
 @author: chxmr
 """
-from __future__ import print_function
-
 import json
 import pandas as pd
 import glob
 import os
 from os.path import join, split
 import xarray as xr
-from acrg_obs.utils import attributes, output_filename
+from acrg.obs.utils import attributes, output_filename
 import pytz
 import numpy as np
 import datetime as dt
 from collections import OrderedDict
-import sys
 
-## Site info file
-#acrg_path = getenv("ACRG_PATH")
-#data_path = getenv("DATA_PATH")
-#site_info_file = join(acrg_path, "acrg_site_info.json")
-#with open(site_info_file) as sf:
-#    site_params = json.load(sf)
-#
-## Set default obs folder
-#obs_directory = join(data_path, "obs_2018/")
+from acrg.config.paths import Paths
 
-from acrg_config.paths import paths
-
-acrg_path = paths.acrg
-obs_directory = paths.obs
+acrg_path = Paths.acrg
+obs_directory = Paths.obs
 data_path = obs_directory.parent
 
 
-with open(os.path.join(acrg_path, "acrg_site_info.json")) as f:
+with open(acrg_path / "data/site_info.json") as f:
     site_params=json.load(f, object_pairs_hook=OrderedDict)
 
 
