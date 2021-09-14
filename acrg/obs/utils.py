@@ -4,24 +4,22 @@ Created on Thu Dec 13 17:31:42 2018
 
 @author: chxmr
 """
-from __future__ import print_function
 
 import glob
 import os, stat, shutil, grp
 from os.path import join
-from datetime import datetime as dt
 import json
 import time
 import getpass
-from acrg_config.paths import paths
+from acrg.config.paths import Paths
 import xarray as xr
 from pandas import Timestamp
 import pandas as pd
 import sqlite3
 import pathlib
-from acrg_config.paths import paths
-acrg_path = paths.acrg
-obs_directory = paths.obs
+
+acrg_path = Paths.acrg
+obs_directory = Paths.obs
 
 # Output unit strings (upper case for matching)
 unit_species = {"CO2": "1e-6",
@@ -97,7 +95,7 @@ def site_info_attributes(site, network):
             dict: Dictionary containing site attributes
     """
     # Read site info file
-    site_info_file = join(acrg_path, "acrg_site_info.json")
+    site_info_file = acrg_path / "data/site_info.json"
     with open(site_info_file) as sf:
         site_params = json.load(sf)
 
@@ -394,7 +392,7 @@ def obs_database(data_directory = None):
     filename = []
 
     if data_directory is None:
-        obs_path = paths.obs
+        obs_path = Paths.obs
     else:
         if isinstance(data_directory, pathlib.PurePath):
             obs_path = data_directory

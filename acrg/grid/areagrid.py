@@ -3,7 +3,6 @@
 Created on Tue Nov 11 11:23:48 2014
 @author: chxmr
 """
-from builtins import range
 import numpy as np
 
 def areagrid(lat, lon):

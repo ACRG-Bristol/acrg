@@ -10,8 +10,8 @@ This file contains a method of obtaining the version of the code used to generat
 
 import subprocess
 
-from acrg_config.paths import paths
-acrg_path = paths.acrg
+from acrg.config.paths import Paths
+acrg_path = Paths.acrg
 
 def code_version():
     '''   

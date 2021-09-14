@@ -4,8 +4,6 @@ Created on Thu Nov 26 16:58:34 2015
 
 @author: chxmr and Mark Lunt
 """
-from __future__ import print_function
-
 import numpy as np
 from iris.coords import DimCoord
 from iris.cube import Cube

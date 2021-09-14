@@ -4,28 +4,23 @@
 """
 import numpy as np
 import pandas as pd
-import glob
-import os
-import re
 import json
 import xarray as xr
 from collections import OrderedDict
-import sys
 import sqlite3
-from acrg_config.paths import paths
-from acrg_utils import is_number
-from acrg_obs.utils import obs_database
+from acrg.config.paths import Paths
+from acrg.obs.utils import obs_database
 import numexpr as ne
 from pathlib import Path
 
-acrg_path = paths.acrg
-obs_directory = paths.obs
+acrg_path = Paths.acrg
+obs_directory = Paths.obs
 
 #Get site info and species info from JSON files
-with open(acrg_path / "acrg_species_info.json") as f:
+with open(acrg_path / "data/species_info.json") as f:
     species_info=json.load(f)
 
-with open(acrg_path / "acrg_site_info.json") as f:
+with open(acrg_path / "data/site_info.json") as f:
     site_info=json.load(f, object_pairs_hook=OrderedDict)
 
     
@@ -69,7 +64,7 @@ def synonyms(search_string, info, alternative_label = "alt"):
 
 def scale_convert(ds, species, to_scale):
     '''
-    Convert to a new calibration scale, based on conversions in acrg_obs_scale_convert.csv
+    Convert to a new calibration scale, based on conversions in obs_scale_convert.csv
     
     Args:
         ds (xarray Dataset): Must contain an mf variable (mole fraction), and scale must be in global attributes
@@ -85,14 +80,14 @@ def scale_convert(ds, species, to_scale):
     else:
         print(f"... converting scale to {to_scale}")
     
-    scale_converter = pd.read_csv(acrg_path / "acrg_obs/acrg_obs_scale_convert.csv")
+    scale_converter = pd.read_csv(acrg_path / "acrg/obs/obs_scale_convert.csv")
     scale_converter_scales = scale_converter[scale_converter.isin([species.upper(), ds_scale, to_scale])][["species", "scale1", "scale2"]].dropna(axis=0, how = "any")
     
     if len(scale_converter_scales) == 0:
-        errorMessage = f'''Scales {ds_scale} and {to_scale} are not both in any one row in acrg_obs_scale_convert.csv for species {species}'''
+        errorMessage = f'''Scales {ds_scale} and {to_scale} are not both in any one row in obs_scale_convert.csv for species {species}'''
         raise ValueError(errorMessage)
     elif len(scale_converter_scales) > 1:
-        errorMessage = f'''Duplicate rows in acrg_obs_scale_convert.csv?'''
+        errorMessage = f'''Duplicate rows in obs_scale_convert.csv?'''
         raise ValueError(errorMessage)
     else:
         row = scale_converter_scales.index[0]
@@ -171,7 +166,7 @@ def get_single_site(site, species_in,
         data_directory (str or pathlib.Path, optional):
             User-defined obs directory
         calibration_scale (str, optional) :
-            Convert to this calibration scale (original scale and new scale must both be in acrg_obs_scale_convert.csv)
+            Convert to this calibration scale (original scale and new scale must both be in obs_scale_convert.csv)
     Returns:
         (list of xarray datasets):
             Mole fraction time series data as an xarray dataset, returned in a list. 
@@ -203,7 +198,7 @@ def get_single_site(site, species_in,
     else:
         
         # Open defaults file
-        df_defaults = pd.read_csv(paths.acrg / "acrg_obs/acrg_obs_defaults.csv",
+        df_defaults = pd.read_csv(acrg_path / "acrg/obs/obs_defaults.csv",
                                  parse_dates = ["startDate", "endDate"])
         df_defaults.dropna(axis = 0, how = "all", inplace = True)
 
@@ -232,7 +227,7 @@ def get_single_site(site, species_in,
         # Attach the obs database
         if data_directory is None:
             # Attach the obs database
-            c.execute("ATTACH DATABASE ? as obs", (str(paths.obs / "obs.db"),))
+            c.execute("ATTACH DATABASE ? as obs", (str(Paths.obs / "obs.db"),))
         else:
             # Attach the obs database
             c.execute("ATTACH DATABASE ? as obs", (str(Path(data_directory) / "obs.db"),))
@@ -370,7 +365,7 @@ def get_single_site(site, species_in,
     if len(files_to_get) == 0 and len(df_defaults_for_site) == 0:
         
         print(f'''No files were found for this combination of inputs (site, species, date range, etc.)
-                Have a look in {[data_directory, str(paths.obs)][data_directory == None]} and check that the expected files are there.
+                Have a look in {[data_directory, str(Paths.obs)][data_directory == None]} and check that the expected files are there.
 
                 ---------------------------------------------------
                 obs.db entries for this site and species:
@@ -386,7 +381,7 @@ def get_single_site(site, species_in,
                 Note that there are some defaults set for this site.
                 
                 1. Check that there is some data for your selected inputs (e.g. within date range)
-                in {[data_directory, str(paths.obs)][data_directory == None]}
+                in {[data_directory, str(Paths.obs)][data_directory == None]}
                 
                 2. Take a look at acrg_obs_defaults.csv. A common issue is that defaults
                 are added for some species at a particular site, but there's no
@@ -748,7 +743,7 @@ def get_obs(sites, species,
         file_paths (list of str, optional):
             Paths for specific files to read
         calibration_scale (str, optional) :
-            Convert to this calibration scale (original scale and new scale must both be in acrg_obs_scale_convert.csv)            
+            Convert to this calibration scale (original scale and new scale must both be in obs_scale_convert.csv)            
     
     Returns:
         dict(list(xarray.Dataset)) : 
