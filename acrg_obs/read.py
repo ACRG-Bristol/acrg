@@ -789,8 +789,10 @@ def get_obs(sites, species,
     network = check_list_and_length(network, sites, "network")
     instrument = check_list_and_length(instrument, sites, "instrument")
 
-    #Need to create a database in data_directory
-    obs_database(data_directory = data_directory)
+    #Need to create a database in data_directory if it doesn't exist
+    if not data_directory is None:
+        if not (data_directory / "obs.db").exists():
+            obs_database(data_directory = data_directory)
     
     # Get data
     obs = {}
