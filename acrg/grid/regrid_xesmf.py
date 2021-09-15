@@ -40,7 +40,7 @@ def create_xesmf_grid_uniform_cc(lat, lon):
 
 def regrid_uniform_cc(data, input_lat, input_lon, output_lat, output_lon):
     """
-    Regrid data between two uniform, cell centered grids using a conservative method
+    Regrid data between two uniform, cell centered grids using a conservative method. Can handle data with dimensions [lat, lon] ans [lat, lon, time].
     
     inputs
         data - numpy array
@@ -52,6 +52,9 @@ def regrid_uniform_cc(data, input_lat, input_lon, output_lat, output_lon):
     returns
         data regridded as numpy array
     """
+
+    if data.ndim == 3:
+        data = np.moveaxis(data, 2, 0)
     
     input_grid = create_xesmf_grid_uniform_cc(input_lat, input_lon)
     
@@ -59,6 +62,10 @@ def regrid_uniform_cc(data, input_lat, input_lon, output_lat, output_lon):
     
     regridder = xesmf.Regridder(input_grid, output_grid, 'conservative')
     regridded = regridder( data )
+
+    if data.ndim == 3:
+        regridded = np.moveaxis(regridded, 0, 2)
+        
     return regridded
 
 def regrid_betweenGrids(data, input_grid, output_grid, method="conservative"):
