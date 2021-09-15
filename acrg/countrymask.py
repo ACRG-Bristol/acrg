@@ -568,6 +568,8 @@ def create_country_mask_eez(domain,include_ocean_territories=True,countries=None
         land_codes = countries
     else:
         land_codes = df_land['ADM0_A3'].values
+        
+        land_codes = np.unique(land_codes) # this also puts them in alphabetical order, is this ok?
     
     if include_ocean_territories:
         
@@ -649,7 +651,7 @@ def create_country_mask_eez(domain,include_ocean_territories=True,countries=None
     ds.attrs["Notes"] = "Created using NaturalEarth 10m Land and Marineregion datasets"
     ds.attrs["Marine_regions_data"] = "https://www.marineregions.org/eez.php"
     ds.attrs["Land_regions_data"] = "https://www.naturalearthdata.com/downloads/10m-cultural-vectors/"
-    ds.attrs["Includes_ocean_territories"] = include_ocean_territories
+    ds.attrs["Includes_ocean_territories"] = str(include_ocean_territories)
     ds.attrs["Created_by"] = f"{getpass.getuser()}@bristol.ac.uk"
     ds.attrs["Created_on"] = str(pd.Timestamp.now(tz="UTC"))
     
