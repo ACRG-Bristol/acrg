@@ -15,6 +15,9 @@ Use this section to keep track of any intermediate changes that can then be move
 - updated acrg_hbmcmc files to accommodate new footprint naming structure and to read in met_model through the .ini file
 - no changes will need to be made to user workflow
 
+### Removed
+- removed GCWerks modules
+
 
 ## [0.2.0] - 2020-04-01
 ### Added
