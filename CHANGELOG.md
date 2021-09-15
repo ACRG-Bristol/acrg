@@ -14,6 +14,7 @@ Use this section to keep track of any intermediate changes that can then be move
 - allows CO2 footprint files in fp_NAME_high_time_res to be processed using the acrg_name.process code by calling species = 'CO2'
 - updated acrg_hbmcmc files to accommodate new footprint naming structure and to read in met_model through the .ini file
 - no changes will need to be made to user workflow
+- update name.name.footprints_data_merge to accommodate high time res emissions, e.g. CO2
 
 ### Removed
 - removed GCWerks modules
