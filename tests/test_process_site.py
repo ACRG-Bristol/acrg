@@ -47,10 +47,9 @@ def site_directory():
 
 @pytest.fixture()
 def benchmark_output_directory():
-    ''' Define base directory containing grouped satellite footprint files '''
-    directory = os.path.join(acrg_path,"tests/files/LPDM/raw_output/benchmarks/")
+    ''' Define base directory containing benchmark files '''
+    directory = os.path.join(acrg_path,"tests/files/LPDM/raw_output/benchmark/")
     return directory
-
 
 @pytest.fixture()
 def site_param():
@@ -1069,7 +1068,7 @@ def test_process_site(process_site_param):
 
     assert out is not None
 
-def test_process_site_benchmark(process_site_param):
+def test_process_site_benchmark(process_site_param, benchmark_output_directory):
     '''
     Test process function output against a benchmark for the same data.
     '''
@@ -1083,7 +1082,7 @@ def test_process_site_benchmark(process_site_param):
     # RPB, 10magl, CARIBBEAN domain, January, 2010 data
     # *If this does not match to your current inputs - benchmark must be updated.*
 
-    benchmark_file = "files/LPDM/raw_output/benchmarks/RPB-10magl_CARIBBEAN_201001.nc"
+    benchmark_file = os.path.join(benchmark_output_directory, "RPB-10magl_CARIBBEAN_201001.nc")
     benchmark = xr.open_dataset(benchmark_file)
 
     print(out["particle_locations_n"], benchmark["particle_locations_n"])
@@ -1131,7 +1130,8 @@ def test_process_site_species(process_site_species_param):
     assert out is not False
 
 
-def test_process_site_species_benchmark(process_site_species_param):
+def test_process_site_species_benchmark(process_site_species_param,
+                                        benchmark_output_directory):
     '''
     Test process function output against a benchmark for the same data.
     '''
@@ -1146,7 +1146,7 @@ def test_process_site_species_benchmark(process_site_species_param):
     # RPB, 10magl, CARIBBEAN domain, January, 2010 data for species hfo-1234zee
     # *If this does not match to your current inputs - benchmark must be updated.*
 
-    benchmark_file = "files/LPDM/raw_output/benchmarks/RPB-10magl_hfo-1234zee_CARIBBEAN_201001.nc"
+    benchmark_file = os.path.join(benchmark_output_directory, "RPB-10magl_hfo-1234zee_CARIBBEAN_201001.nc")
     benchmark = xr.open_dataset(benchmark_file)
 
     xr.testing.assert_equal(out, benchmark)
@@ -1187,7 +1187,7 @@ def test_process_site_co2(process_site_co2_param):
     assert out is not None
     assert out is not False
 
-def test_process_site_co2_benchmark(process_site_co2_param):
+def test_process_site_co2_benchmark(process_site_co2_param,benchmark_output_directory):
     '''
     Test process function output against a benchmark for the same data.
     '''
@@ -1201,7 +1201,7 @@ def test_process_site_co2_benchmark(process_site_co2_param):
     # RPB, 10magl, CARIBBEAN domain, January, 2010 for co2 data
     # *If this does not match to your current inputs - benchmark must be updated.*
 
-    benchmark_file = "files/LPDM/raw_output/benchmarks/RPB-10magl_co2_CARIBBEAN_201001.nc"
+    benchmark_file = os.path.join(benchmark_output_directory, "RPB-10magl_co2_CARIBBEAN_201001.nc")
     benchmark = xr.open_dataset(benchmark_file)
 
     xr.testing.assert_equal(out, benchmark)
