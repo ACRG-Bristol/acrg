@@ -7,17 +7,15 @@ Test cases for acrg_gosat module
 
 @author: rt17603
 """
-from __future__ import print_function
-
 import pytest
-import acrg_satellite.gosat as gosat
 import os
-import sys
 import xarray as xray
 import numpy as np
 
-from acrg_config.paths import paths
-acrg_path = paths.acrg
+import acrg.satellite.gosat as gosat
+from acrg.config.paths import Paths
+
+acrg_path = Paths.acrg
 
 #%%
 ##### Create dummy data for small test case with known result #######

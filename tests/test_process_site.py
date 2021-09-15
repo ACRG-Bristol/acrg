@@ -24,24 +24,18 @@ To only run tests which check against a benchmark file:
 
 @author: rt17603
 """
-from __future__ import print_function
-
-from builtins import zip
-from builtins import str
 import pytest
 import os
-import sys
 import glob
 import numpy as np
 import xarray as xray
-import acrg_name.process as process
-from acrg_name.name import open_ds
 import datetime
 import pandas as pd
-import pdb
 
-from acrg_config.paths import paths
-acrg_path = paths.acrg
+import acrg.name.process as process
+from acrg.config.paths import Paths
+
+acrg_path = Paths.acrg
 
 #%%  Setting up directory fixtures
 
