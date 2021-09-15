@@ -500,3 +500,162 @@ if __name__=="__main__":
     # Lat/Lon can be specified explictly or a domain footprint file can be used to find these values.
     
     ds = create_country_mask(domain,write=write,reset_index=True,ocean_label=True)
+    
+def calcMask(polygons,lons,lats,lon_grid):
+    dx = lons[1] - lons[0]
+    dy = lats[1] - lats[0]
+    land_grid = np.zeros_like(lon_grid, dtype=bool)
+    for polygon in polygons:
+        for x, lon in enumerate(lons):
+            for y, lat in enumerate(lats):
+                if(land_grid[y, x] == True):
+                    continue
+                point = Polygon([[lon-dx/2., lat-dy/2.],
+                                 [lon+dx/2., lat-dy/2.],
+                                 [lon+dx/2., lat+dy/2.],
+                                 [lon-dx/2., lat+dy/2.]])
+                land_grid[y, x] = land_grid[y, x] | polygon.intersects(point)
+                
+    return land_grid
+
+def create_country_mask_eez(domain,include_ocean_territories=True,countries=None,
+                            output_path=None):
+    """
+    Creates a mask for all countries within the domain, or for selected
+    countries, by specifying 'countries' parameter.
+    Uses Natural Earth 10m land datasets and Admin_0_map_units datasets
+    for specifiying country and ocean boundaries.
+    Option to include EEZ (Exclusive Economic Zones e.g. marine 
+    territories) is True by default. Remaining areas are given a value of 0.
+    
+    Based on code written by Daniel Hoare al18242.
+    
+    Args:
+        domain (str):
+            The domain the mask should cover, e.g. 'EUROPE'.
+        include_ocean_territories (bool):
+            If True, include areas within EEZ (marine territories) in the 
+            country mask.
+        country (list of str) (optional):
+            Name of countries, e.g. ['United Kingdom', 'Republic of Ireland','France'].
+        out_path (str) (optional):
+            Path and name to save mask to. If None, does not save dataset.
+    Returns:
+        ds (xarray dataset):
+            Country mask dataset.
+    """
+
+    fp_path = os.path.join(data_path,'LPDM/fp_NAME/')
+    
+    # extract lats and lons from fp file
+    with xr.open_dataset(glob.glob(os.path.join(fp_path,domain+'/*'))[0]) as fp_file:
+        lats = fp_file.lat.values
+        lons = fp_file.lon.values
+        lat_da = fp_file.lat
+        lon_da = fp_file.lon
+        
+    lon_grid,lat_grid = np.meshgrid(lons,lats)
+    
+    print('Loading land country files...')
+    
+    # get country borders
+    shpfilename_land = shapereader.natural_earth('10m','cultural','admin_0_map_units')
+    
+    # read the shapefile using geopandas
+    df_land = gpd.read_file(shpfilename_land)
+    
+    if countries is not None:
+        land_codes = countries
+    else:
+        land_codes = df_land['ADM0_A3'].values
+    
+    if include_ocean_territories:
+        
+        print('Loading ocean country files...')
+        
+        shpfilename_ocean = os.path.join(data_path,'World_shape_databases/MarineRegions/eez_v10.shp')
+          
+        df_ocean = gpd.read_file(shpfilename_ocean)
+        
+        ocean_codes = df_ocean['ISO_Ter1'].values
+      
+    # loop through each country
+    count = 1
+    country_names = []
+
+    for i,l_code in enumerate(land_codes):
+
+        print(f'Creating land country mask for {l_code}...')
+
+        country_polygon_land = df_land.loc[df_land['ADM0_A3'] == l_code]['geometry'].values
+
+        country_grid_land = calcMask([prep(p) for p in country_polygon_land],lons,lats,lon_grid)
+
+        # fill empty grid with each country
+        if i == 0:
+            country_grid_all = np.zeros(country_grid_land.shape)
+
+        country_grid_all[np.where(country_grid_land == True)] = count
+
+        country_names.append(df_land.loc[df_land['ADM0_A3'] == l_code]['ADMIN'].values[0].upper())
+
+        if include_ocean_territories:
+
+            if l_code in ocean_codes:
+
+                print(f'Creating ocean country mask for {l_code}...')
+
+                country_polygon_ocean = df_ocean.loc[df_ocean['ISO_Ter1'] == l_code]['geometry'].values
+
+                country_grid_ocean = calcMask([prep(p) for p in country_polygon_ocean],lons,lats,lon_grid)
+
+                country_grid_all[np.where(country_grid_ocean == True)] = count
+
+            else:
+
+                print(f'No ocean territory for {l_code}.')
+
+        count += 1
+    
+    ncountries = np.arange(len(country_names)+1)
+
+    country_names_all = ['OCEAN'] + country_names
+
+    country_ocean_da = xr.DataArray(country_grid_ocean,
+                               dims=["lat", "lon"],
+                               coords=[lat_da,lon_da],
+                             attrs={'long_name':'Only ocean country indices'})
+
+    country_land_da = xr.DataArray(country_grid_land,
+                               dims=["lat", "lon"],
+                               coords=[lat_da,lon_da],
+                             attrs={'long_name':'Only land country indices'})
+
+    country_da = xr.DataArray(country_grid_all,
+                               dims=["lat", "lon"],
+                               coords=[lat_da,lon_da],
+                             attrs={'long_name':'Land and ocean country indices'})
+
+    country_names_da = xr.DataArray(country_names_all,
+                                   dims=["ncountries"],
+                                   coords=[ncountries],
+                                    attrs={'long_name':'Country names'})
+
+    ds = xr.Dataset({"country":country_da,
+                     "country_land":country_land_da,
+                    "country_ocean":country_ocean_da,
+                     "name":country_names_da})
+
+    ds.attrs["Notes"] = "Created using NaturalEarth 10m Land and Marineregion datasets"
+    ds.attrs["Marine_regions_data"] = "https://www.marineregions.org/eez.php"
+    ds.attrs["Land_regions_data"] = "https://www.naturalearthdata.com/downloads/10m-cultural-vectors/"
+    ds.attrs["Includes_ocean_territories"] = include_ocean_territories
+    ds.attrs["Created_by"] = f"{getpass.getuser()}@bristol.ac.uk"
+    ds.attrs["Created_on"] = str(pd.Timestamp.now(tz="UTC"))
+    
+    if output_path is not None:
+        
+        ds.to_netcdf(f'{output_path}.nc')
+        print(f'Output saved to {output_path}.')
+        
+    return ds
