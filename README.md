@@ -17,7 +17,7 @@ to setup a compatible python environment. The TDMCMC section of the repository c
 
 1. Clone the repository
 2. Setup paths:
-    - copy acrg_config/templates/paths_default.yaml to acrg_config/paths.yaml
+    - copy acrg/config/templates/paths_default.yaml to acrg/config/paths.yaml
     - Overwrite the default folder paths in acrg_config/paths.yaml with your system specific values
 
 3. Setup the python environment: 

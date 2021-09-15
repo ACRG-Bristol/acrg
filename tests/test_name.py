@@ -33,12 +33,12 @@ import xarray as xray
 import pandas as pd
 import pickle
 
-import acrg_name.name as name
-import acrg_obs.read as read
-from acrg_config.paths import paths
+import acrg.name.name as name
+import acrg.obs.read as read
+from acrg.config.paths import Paths
 
 
-acrg_path = paths.acrg
+acrg_path = Paths.acrg
 benchmarkdir = acrg_path / "tests/files/benchmark/"
 
 
@@ -81,8 +81,8 @@ def output_directory():
 @pytest.fixture()
 def fs_mock(fs, fp_directory, flux_directory, bc_directory, basis_directory, bc_basis_directory):
     #add the real jsons to the fake file system:
-    fs.add_real_file(os.path.join(acrg_path, "acrg_species_info.json"))
-    fs.add_real_file(os.path.join(acrg_path, "acrg_site_info.json"))
+    fs.add_real_file(os.path.join(acrg_path, "data/species_info.json"))
+    fs.add_real_file(os.path.join(acrg_path, "data/site_info.json"))
     #create footprint files
     fs.create_file(os.path.join(fp_directory, "EUROPE", "MHD-10magl_EUROPE_201402.nc"))
     fs.create_file(os.path.join(fp_directory, "EUROPE", "MHD-10magl_EUROPE_201405.nc"))
