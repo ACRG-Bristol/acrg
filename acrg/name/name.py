@@ -30,6 +30,8 @@ import acrg.obs as obs
 from acrg.config.paths import Paths
 from acrg.utils import is_number
 
+from tqdm import tqdm
+import dask.array as da
 
 acrg_path = Paths.acrg
 data_path = Paths.data
