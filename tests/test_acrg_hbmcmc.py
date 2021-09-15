@@ -27,6 +27,7 @@ import glob
 
 acrg_path = paths.acrg
 hbmcmc_path = os.path.join(acrg_path,"acrg_hbmcmc")
+test_obs_path = os.path.join(acrg_path,"tests/files/obs")
 test_config_path = os.path.join(acrg_path,"tests/files/config")
 outputpath = os.path.join(acrg_path,"tests/files/output")
 
@@ -206,7 +207,7 @@ def test_hbmcmc_output_exists(hbmcmc_input_file,hbmcmc_config_file):
     output_data_vars_list = [var for var in ds_out.data_vars]
     for var in data_vars_list:
         assert var in output_data_vars_list
-        
+    
     #Check that coords exists
     coord_list = ["stepnum","paramnum","numBC","measurenum","UInum","nsites",
                   "nsigma_time","nsigma_site","lat","lon","countrynames"]
@@ -215,7 +216,10 @@ def test_hbmcmc_output_exists(hbmcmc_input_file,hbmcmc_config_file):
         assert coord in output_coord_list
     outfile.unlink()
 
-    
 
-    
-    
+def test_cleanup(hbmcmc_config_file):
+    """Remove the config file
+    """
+
+    os.remove(hbmcmc_config_file)
+    os.remove(os.path.join(test_obs_path, "obs.db"))
