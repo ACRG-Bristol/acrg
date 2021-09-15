@@ -24,18 +24,6 @@ import dateutil.relativedelta
 import cartopy.crs as ccrs
 import cartopy
 from collections import OrderedDict
-<<<<<<< HEAD:acrg_name/name.py
-import acrg_obs as obs
-from acrg_config.paths import paths
-from acrg_utils import is_number
-from tqdm import tqdm
-import dask.array as da
-from numba import jit
-
-import dask
-dask.config.set({"array.slicing.split_large_chunks": True})
-=======
->>>>>>> develop:acrg/name/name.py
 
 from acrg.time import convert
 import acrg.obs as obs
@@ -50,15 +38,10 @@ data_path = Paths.data
 with open(acrg_path / "data/site_info.json") as f:
     site_info=json.load(f,object_pairs_hook=OrderedDict)
 
-<<<<<<< HEAD:acrg_name/name.py
-    
-def open_ds(path, chunks=None):
-=======
 with open(acrg_path / "data/species_info.json") as f:
     species_info=json.load(f)
 
-def open_ds(path):
->>>>>>> develop:acrg/name/name.py
+def open_ds(path, chunks=None):
     """
     Function efficiently opens xray datasets.
 
