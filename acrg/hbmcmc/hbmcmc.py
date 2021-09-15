@@ -150,7 +150,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             Adds the variability in the averaging period to the measurement 
             error if set to True.
         bc_freq (str, optional):
-            The perdiod over which the baseline is estimates. Set to "monthly"
+            The perdiod over which the baseline is estimated. Set to "monthly"
             to estimate per calendar month; set to a number of days,
             as e.g. "30D" for 30 days; or set to None to estimate to have one
             scaling for the whole inversion period.
@@ -268,15 +268,19 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
 
     #Run Pymc3 inversion
     xouts, bcouts, sigouts, Ytrace, YBCtrace, convergence, step1, step2 = mcmc.inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
-           xprior,bcprior, sigprior, offsetprior, nit, burn, tune, nchain, sigma_per_site, add_offset=add_offset, verbose=verbose)
+           xprior,bcprior, sigprior, nit, burn, tune, nchain, sigma_per_site, offsetprior=offsetprior, add_offset=add_offset, verbose=verbose)
     #Process and save inversion output
     mcmc.inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence, 
-                           Hx, Hbc, Y, error, Ytrace,YBCtrace,
-                           step1, step2, 
-                           xprior, bcprior, sigprior, offsetprior, Ytime, siteindicator, sigma_freq_index, fp_data,
-                           emissions_name, domain, species, sites,
-                           start_date, end_date, outputname, outputpath,
-                           basis_directory, country_file, country_unit_prefix, flux_directory, add_offset=add_offset)
+                               Hx, Hbc, Y, error, Ytrace, YBCtrace,
+                               step1, step2, 
+                               xprior, bcprior, sigprior, offsetprior, Ytime, siteindicator, sigma_freq_index,
+                               emissions_name, domain, species, sites,
+                               start_date, end_date, outputname, outputpath,
+                               country_unit_prefix,
+                               burn, tune, nchain, sigma_per_site,
+                               fp_data=fp_data, flux_directory=flux_directory, emissions_name=emissions_name, 
+                               basis_directory=basis_directory, country_file=country_file,
+                               add_offset=add_offset)
 
     if quadtree_basis is True:
         # remove the temporary basis function directory
@@ -284,4 +288,84 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     
     print("All done")
 
+def rerun_output(input_file, outputname, outputpath, verbose=False):
+    """
+    Args:
+        input_file (str):
+            Full path to previously written ncdf file
+        outputname (list):
+            Unique identifier for output/run name.
+        domain (str):
+            Inversion spatial domain.
     
+    Returns:
+        Saves an output from the inversion code using inferpymc3_postprocessouts.
+    
+    Note: At the moment fluxapriori in the output is the mean apriori flux over the 
+          inversion period and so will not be identical to the original a priori flux, if 
+          it varies over the inversion period.
+    """
+    def isFloat(string):
+        try:
+            float(string)
+            return True
+        except ValueError:
+            return False
+    
+    ds_in = setup.opends(input_file)
+    
+    # Read inputs from ncdf output
+    start_date = ds_in.attrs['Start date']
+    end_date = ds_in.attrs['End date']
+    Hx = ds_in.xsensitivity.values.T
+    Hbc = ds_in.bcsensitivity.values.T
+    Y = ds_in.Yobs.values
+    Ytime = ds_in.Ytime.values
+    error = ds_in.Yerror.values
+    siteindicator = ds_in.siteindicator.values
+    sigma_freq_index = ds_in.sigmafreqindex.values
+    xprior_string = ds_in.attrs["Emissions Prior"].split(",")
+    xprior = {k:float(v) if isFloat(v) else v for k,v in zip(xprior_string[::2], xprior_string[1::2])}
+    bcprior_string = ds_in.attrs["BCs Prior"].split(",")
+    bcprior = {k:float(v) if isFloat(v) else v for k,v in zip(bcprior_string[::2], bcprior_string[1::2])}
+    sigprior_string = ds_in.attrs["Model error Prior"].split(",")
+    sigprior = {k:float(v) if isFloat(v) else v for k,v in zip(sigprior_string[::2], sigprior_string[1::2])}
+    if 'Offset Prior' in ds_in.attrs.keys():
+        offsetprior_string = ds_in.attrs["Offset Prior"].split(",")
+        offsetprior = {k:float(v) if isFloat(v) else v for k,v in zip(offsetprior_string[::2], offsetprior_string[1::2])}
+        add_offset = True
+    else:
+        add_offset = False
+        offsetprior = None
+    nit = len(ds_in.steps)
+    burn = int(ds_in.attrs["Burn in"])
+    tune = int(ds_in.attrs["Tuning steps"])
+    nchain = int(ds_in.attrs['Number of chains'])
+    if ds_in.attrs['Error for each site'] == "True":
+        sigma_per_site = True
+    else:
+        sigma_per_site = False
+    sites = ds_in.sitenames.values
+    
+    file_list = input_file.split("/")[-1].split("_")
+    species = file_list[0]
+    domain = file_list[1]
+    if ds_in.countrymean.attrs["units"] != "g":
+        country_unit_prefix = ds_in.countrymean.attrs["units"][0]
+    else:
+        country_unit_prefix = None
+    
+    xouts, bcouts, sigouts, Ytrace, YBCtrace, convergence, step1, step2 = \
+            mcmc.inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
+                               xprior,bcprior, sigprior, nit, burn, 
+                               tune, nchain, sigma_per_site, offsetprior=offsetprior,
+                               add_offset=add_offset, verbose=verbose)
+
+    mcmc.inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence, 
+                                   Hx, Hbc, Y, error, Ytrace, YBCtrace,
+                                   step1, step2, 
+                                   xprior, bcprior, sigprior, offsetprior, Ytime, siteindicator, sigma_freq_index,
+                                   domain, species, sites,
+                                   start_date, end_date, outputname, outputpath, country_unit_prefix,
+                                   burn, tune, nchain, sigma_per_site,
+                                   add_offset=add_offset, rerun_file=ds_in)
