@@ -290,13 +290,17 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
 
 def rerun_output(input_file, outputname, outputpath, verbose=False):
     """
+    Rerun the MCMC code by taking the inputs from a previous output using this code
+    and rewrite a new output. This allows reproducibility of results without the need
+    to transfer all raw input files.
+    
     Args:
         input_file (str):
             Full path to previously written ncdf file
         outputname (list):
-            Unique identifier for output/run name.
-        domain (str):
-            Inversion spatial domain.
+            Unique identifier new for output/run name.
+        outputpath (str):
+            Path to where output should be saved.
     
     Returns:
         Saves an output from the inversion code using inferpymc3_postprocessouts.

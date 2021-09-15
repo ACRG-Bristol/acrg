@@ -264,6 +264,8 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
                 Measurement error vector, containg a value for each element of Y.
             Ytrace (array):
                 Trace of modelled y values calculated from mcmc outputs and H matrices
+            YBCtrace (array):
+                Trace of modelled boundary condition values calculated from mcmc outputs and Hbc matrices
             step1 (str):
                 Type of MCMC sampler for emissions and boundary condition updates.
             step2 (str):
@@ -291,18 +293,6 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
                 same length at Y.
             sigma_freq_index (array):
                 Array of integer indexes that converts time into periods
-            fp_data (dict):
-                Output from footprints_data_merge + sensitivies
-            emissions_name (dict): 
-                Allows emissions files with filenames that are longer than just the species name
-                to be read in (e.g. co2-ff-mth_EUROPE_2014.nc). This should be a dictionary
-                with {source_name: emissions_file_identifier} (e.g. {'anth':'co2-ff-mth'}). This way
-                multiple sources can be read in simultaneously if they are added as separate entries to
-                the emissions_name dictionary.
-                If using HiTRes footprints, both the high and low frequency emissions files must be specified
-                in a second dictionary like so: {'anth': {'high_freq':'co2-ff-2hr', 'low_freq':'co2-ff-mth'}}.
-                It is not a problem to have a mixture of sources, with some that use HiTRes footprints and some
-                that don't.
             domain (str):
                 Inversion spatial domain.
             species (str):
@@ -317,22 +307,42 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
                 Unique identifier for output/run name.
             outputpath (str):
                 Path to where output should be saved.
-            basis_directory (str):
-                Directory containing basis function file
-            flux_directory (str, optional):
-                Directory containing the emissions data if not default
-            country_file (str):
-                Path of country definition file
             country_unit_prefix ('str', optional)
-                A prefix for scaling the country emissions. Current options are: 'T' will scale to Tg, 'G' to Gg, 'M' to Mg, 'P' to Pg.
+                A prefix for scaling the country emissions. Current options are: 
+                'T' will scale to Tg, 'G' to Gg, 'M' to Mg, 'P' to Pg.
                 To add additional options add to acrg_convert.prefix
                 Default is none and no scaling will be applied (output in g).
+            burn (int):
+                Number of iterations burned in MCMC
+            tune (int):
+                Number of iterations used to tune step size
+            nchain (int):
+                Number of independent chains run 
+            sigma_per_site (bool):
+                Whether a model sigma value was be calculated for each site independantly (True) 
+                or all sites together (False).
+            fp_data (dict, optional):
+                Output from footprints_data_merge + sensitivies
             flux_directory (str, optional):
-                Directory containing the emissions data if
-                not default
+                Directory containing the emissions data if not default
+            emissions_name (dict, optional): 
+                Allows emissions files with filenames that are longer than just the species name
+                to be read in (e.g. co2-ff-mth_EUROPE_2014.nc). This should be a dictionary
+                with {source_name: emissions_file_identifier} (e.g. {'anth':'co2-ff-mth'}). This way
+                multiple sources can be read in simultaneously if they are added as separate entries to
+                the emissions_name dictionary.
+                If using HiTRes footprints, both the high and low frequency emissions files must be specified
+                in a second dictionary like so: {'anth': {'high_freq':'co2-ff-2hr', 'low_freq':'co2-ff-mth'}}.
+                It is not a problem to have a mixture of sources, with some that use HiTRes footprints and some
+                that don't.
+            basis_directory (str, optional):
+                Directory containing basis function file
+            country_file (str, optional):
+                Path of country definition file
             add_offset (bool):
                 Add an offset (intercept) to all sites but the first in the site list. Default False.
-                
+            rerun_file (xarray dataset, optional):
+                An xarray dataset containing the ncdf output from a previous run of the MCMC code.
                 
         Returns:
             netdf file containing results from inversion
