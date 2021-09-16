@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 Use this section to keep track of any intermediate changes that can then be moved to a versioned section.
 
+### Added
+- hbmcmc code now has a function (and relevant additions to output) that allows the inversion to be rerun (i.e. reproduced)
+  using only the output as inputs and ACRG repository.  
+
 ### Changed
 - directory structure of acrg package has changed. Many import statements will likely need modifying
 - the filename structure of the footprint nc files created in acrg_name.process has changed and the new filenames are detailed in filename_convention.md
@@ -14,6 +18,7 @@ Use this section to keep track of any intermediate changes that can then be move
 - allows CO2 footprint files in fp_NAME_high_time_res to be processed using the acrg_name.process code by calling species = 'CO2'
 - updated acrg_hbmcmc files to accommodate new footprint naming structure and to read in met_model through the .ini file
 - no changes will need to be made to user workflow
+- Some additions to hbmcmc output and changed string format for some attributes.
 
 ### Removed
 - removed GCWerks modules
