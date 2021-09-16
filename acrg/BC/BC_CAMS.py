@@ -39,18 +39,25 @@ cams_bc = makeCAMSBC(domain           = domain,
 
 """
 from datetime import datetime as dt
-from acrg_countrymask import domain_volume
-from acrg_satellite.gosat import extract_files
-from acrg_convert import concentration
+from acrg.countrymask import domain_volume
+from acrg.satellite.gosat import extract_files
+from acrg.convert import concentration
 import json
 from collections import OrderedDict
-from .__init__ import *
+from acrg.config.paths import Paths
+import os
+import numpy as np
+import xarray as xr
+from acrg.name.name import open_ds
+from acrg.config.paths import Paths
+from . import climatology
 
-with open(os.path.join(acrg_path, "acrg_species_info.json")) as f:
+acrg_path = Paths.acrg
+data_path = Paths.data
+cams_directory = os.path.join(data_path, 'ECMWF_CAMS', 'CAMS_inversion/')
+
+with open(os.path.join(acrg_path, "data/species_info.json")) as f:
     species_info=json.load(f,object_pairs_hook=OrderedDict)
-
-# data_path      = paths.data
-# cams_directory = os.path.join(data_path, 'ECMWF_CAMS', 'CAMS_inversion/')
 
 def readCAMSInversion(start, end, species='ch4', cams_directory=cams_directory,
                       version='v19'):

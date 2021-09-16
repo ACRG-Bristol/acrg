@@ -20,11 +20,12 @@ import glob
 import copy
 import numpy as np
 import xarray as xr
-from acrg_name.name import open_ds
-from acrg_BC import BC_CAMS as bc
-from acrg_config.paths import paths
+from acrg.name.name import open_ds
+from acrg.BC import BC_CAMS as bc
+from acrg.config.paths import Paths
 
-acrg_path = paths.acrg
+acrg_path = Paths.acrg
+data_path = Paths.data
 
 @pytest.fixture(scope="module")
 def bc_benchmark():

@@ -10,8 +10,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from collections import OrderedDict
-from acrg_satellite.gosat import coord_order
-import pdb
+from acrg.satellite.gosat import coord_order
 
 
 def add_full_time(ds_seasonal, start, end, verbose=False):
