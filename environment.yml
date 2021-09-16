@@ -26,7 +26,4 @@ dependencies:
   - esmpy=8.0.1
   - xesmf=0.3.0
   - numexpr=2.7
-  - pip=20.0.2
-  - pip:
-    - dirsync==2.2.4
-    - iso3166==1.0.1
+  - iso3166=1.0.1
