@@ -319,12 +319,7 @@ def footprints(sitecode_or_filename, met_model = None, fp_directory = None,
         return None
 
     else:
-        fp=read_netcdfs(files, chunks=chunks, verbose=verbose)  
-
-        # if HiTRes == True:
-        #     HiTRes_files = filenames(site, domain, start, end, height, fp_directory["HiTRes"])
-        #     HiTRes_ds = read_netcdfs(HiTRes_files)
-        #     fp = combine_datasets(fp, HiTRes_ds, method='ffill')
+        fp = read_netcdfs(files, chunks=chunks, verbose=verbose)  
 
         return fp
 
@@ -2260,8 +2255,9 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
     
     Args:
         fp_HiTRes_ds (xarray.Dataset)
-            Dataset of High Time resolution footprint. HiTRes footprints record the footprint at 
-            each 2 hour period back in time for the first 24 hours.
+            Dataset of high time resolution footprints. HiTRes footprints record the footprint at 
+            each timestep back in time for a given amount of time
+            (e.g. hourly time steps back in time for the first 24 hours).
         domain (str)
             Domain name. The footprint files should be sub-categorised by the domain.
         flux_dict (dict)
