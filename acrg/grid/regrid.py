@@ -26,7 +26,7 @@ def regrid2d(array_in, lat_in, lon_in,
         lon_out (array): 
             longitude to regrid onto
         global_grid (boolean):
-            True if grid covers the whole Earth, otherwise it does not realise 
+            True if grid wraps around Earth, otherwise it does not realise 
             that 0 and 360 deg longitude are the same, and your grid will have 
             a strange gap in. 
         
@@ -37,9 +37,6 @@ def regrid2d(array_in, lat_in, lon_in,
         
     Example:
         new_array, newcube = regrid2d(array_in, lat_in, lon_in, lat_out, lon_out)
-    
-    Todo:
-        Only handles a 2D array at the moment. We should add time.
     '''
 
 
@@ -92,32 +89,44 @@ def regrid2d(array_in, lat_in, lon_in,
 
 
 def regrid3d(array_in, lat_in, lon_in,
-             lat_out, lon_out, time):
+             lat_out, lon_out, time, global_grid = False):
     '''3D mass-conservative regrid using a cached regridder
     
     Args:
-        array_in (array): 3D field to regrid -- Dimensions of [lat_in, lon_in, time_in]
-        lat_in (array): latitudes corresponding to array_in
-        lon_in (array): longitude corresponding to array_in
-        lat_out (array): latitude to regrid onto
-        lon_out (array): longitude to regrid onto
-        time (array): times to regrid onto
+        array_in (array): 
+            3D field to regrid -- Dimensions of [lat_in, lon_in, time_in]
+        lat_in (array): 
+            latitudes corresponding to array_in
+        lon_in (array): 
+            longitude corresponding to array_in
+        lat_out (array): 
+            latitude to regrid onto
+        lon_out (array): 
+            longitude to regrid onto
+        time (array): 
+            times to regrid onto
+        global_grid (boolean):
+            True if grid wraps around Earth, otherwise it does not realise 
+            that 0 and 360 deg longitude are the same, and your grid will have 
+            a strange gap in. 
         
     Returns
-        array: regridded 3D array of dimensions [lat_out, lon_out, time]
+        array: 
+            regridded 3D array of dimensions [lat_out, lon_out, time]
         
     Example:
         array_out = regrid3d(array_in, lat_in, lon_in, lat_out, lon_out, time)
     '''
 
-    def get_cube_in(array_in, lat_in, lon_in, time):
+    def get_cube_in(array_in, lat_in, lon_in, time, global_grid):
         #Define input grid
         cube_lat_in = DimCoord(lat_in,
                                standard_name='latitude',
                                units='degrees')
         cube_lon_in = DimCoord(lon_in,
                                standard_name='longitude',
-                               units='degrees')
+                               units='degrees',
+                               circular = global_grid)
         cube_time = DimCoord(time,
                                standard_name='time',
                                units='seconds')
@@ -131,14 +140,15 @@ def regrid3d(array_in, lat_in, lon_in,
         
         return cube_in
 
-    def get_cube_out(lat_out, lon_out, time):
+    def get_cube_out(lat_out, lon_out, time, global_grid):
         # Define output grid
         cube_lat_out = DimCoord(lat_out,
                                 standard_name='latitude',
                                 units='degrees')
         cube_lon_out = DimCoord(lon_out,
                                 standard_name='longitude',
-                                units='degrees')
+                                units='degrees',
+                                circular = global_grid)
         cube_time = DimCoord(time,
                                standard_name='time',
                                units='seconds')
@@ -155,8 +165,8 @@ def regrid3d(array_in, lat_in, lon_in,
     
     # Regrid
     print("Getting cube in and cube out")
-    cube_in = get_cube_in(array_in, lat_in, lon_in, time)    
-    cube_out = get_cube_out(lat_out, lon_out,time)     
+    cube_in = get_cube_in(array_in, lat_in, lon_in, time, global_grid)    
+    cube_out = get_cube_out(lat_out, lon_out,time, global_grid)     
     
     array_out = np.zeros((len(lat_out), len(lon_out), len(time)))
     
