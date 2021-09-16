@@ -17,7 +17,6 @@ sitefile = a text file with the site acronym, lat and then lon separated by spac
     
 
 """
-from past.utils import old_div
 import netCDF4
 import numpy as np
 import datetime as dt
@@ -463,7 +462,7 @@ class calc_pressure(object):
  # P0 = surface pressure in Pa
  # P =  pressure in Pa
 def calc_altitude(P, P0, h0=7.64e3):
-    alt = -h0*np.log(old_div(P,P0))
+    alt = -h0*np.log(P/P0)
     return alt
 
  # Class to read in the site file txt version
@@ -527,8 +526,8 @@ class match_latlon(object):
             lon = 360 - lon
         
         
-        lat_index = bisect.bisect(lat_array+(old_div(lat_spacing,2)), lat) # nb: the adjustment shifts the grid so that it returns the closest point
-        lon_index = bisect.bisect(lon_array+(old_div(lon_spacing,2)), lon) # nb: the adjustment shifts the grid so that it returns the closest point
+        lat_index = bisect.bisect(lat_array+(lat_spacing/2), lat) # nb: the adjustment shifts the grid so that it returns the closest point
+        lon_index = bisect.bisect(lon_array+(lon_spacing/2), lon) # nb: the adjustment shifts the grid so that it returns the closest point
 
 
         # Check the edges of the lon grid
@@ -1046,7 +1045,7 @@ class data_match_mobile(object):
                 
                 # Match obs timestamp to the closest model timestamp
                 time_gap = model_secs[1] - model_secs[0]
-                timeindex_j = bisect.bisect(model_secs + (old_div(time_gap,2)), obs_secs[j])
+                timeindex_j = bisect.bisect(model_secs + (time_gap / 2), obs_secs[j])
                 
                 
                 #pdb.set_trace()                
@@ -1726,8 +1725,8 @@ def plotprofiles_MZT(data, timestep = 0, latindex = 48, lonindex = 0, out_filena
     # extract the corresponding pressures
     conc_lons = np.squeeze(data.conc[timestep, :, latindex,:])*scale
     conc_lats = np.squeeze(data.conc[timestep, :, :,lonindex])*scale
-    p_lons = old_div(np.squeeze(data.pressure[timestep, :, latindex,:]),1000)
-    p_lats = old_div(np.squeeze(data.pressure[timestep, :, :,lonindex]),1000)
+    p_lons = np.squeeze(data.pressure[timestep, :, latindex,:]) / 1000
+    p_lats = np.squeeze(data.pressure[timestep, :, :,lonindex]) / 1000
     lon_lons, b = np.meshgrid(data.lon, np.arange(56))
     lat_lats, b = np.meshgrid(data.lat, np.arange(56))
     
@@ -1736,7 +1735,7 @@ def plotprofiles_MZT(data, timestep = 0, latindex = 48, lonindex = 0, out_filena
     ax = fig.gca(projection='3d')
     
     
-    for i in np.arange(old_div(len(data.lon),3))*3:
+    for i in np.arange(len(data.lon)//3)*3:
         y = conc_lons[:,i]
         z = p_lons[:,i]
         x = lon_lons[:,i]
