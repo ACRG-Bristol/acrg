@@ -22,11 +22,17 @@ Function to use for creating the country file is:
 import regionmask
 import iso3166
 import numpy as np
-import xarray as xray
+import xarray as xr
 from collections import OrderedDict
 import glob
 import getpass
 import os
+import cartopy
+import cartopy.io.shapereader as shapereader
+from shapely.prepared import prep
+from shapely.geometry import Polygon
+import geopandas as gpd
+import pandas as pd
 
 from acrg.convert import convert_lons_0360
 from acrg.config.paths import Paths
@@ -57,7 +63,7 @@ def domain_volume(domain,fp_directory=fp_directory):
     if listoffiles:
         filename = listoffiles[0]
         print('Using footprint file: {0} to extract domain'.format(filename))
-        with xray.open_dataset(filename) as temp:
+        with xr.open_dataset(filename) as temp:
             fields_ds = temp.load()
         
         fp_lat = fields_ds["lat"].values
@@ -464,9 +470,9 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
 
     countries = np.array(countries).astype(str)
     if reset_index:
-        ds["name"] = xray.DataArray(countries,dims="ncountries")
+        ds["name"] = xr.DataArray(countries,dims="ncountries")
     else:
-        ds["name"] = xray.DataArray(countries,coords={"ncountries":regions},dims={"ncountries":len(regions)})
+        ds["name"] = xr.DataArray(countries,coords={"ncountries":regions},dims={"ncountries":len(regions)})
     
     ds["country"].attrs = {"long_name":"Country indices"}
     ds["lat"].attrs = {"long_name":"latitude","units":"degrees_north"}
@@ -544,8 +550,8 @@ def create_country_mask_eez(domain,include_ocean_territories=True,countries=None
         ds (xarray dataset):
             Country mask dataset.
     """
-
-    fp_path = os.path.join(data_path,'LPDM/fp_NAME/')
+    
+    fp_path = os.path.join(data_path,'LPDM','fp_NAME')
     
     # extract lats and lons from fp file
     with xr.open_dataset(glob.glob(os.path.join(fp_path,domain+'/*'))[0]) as fp_file:
