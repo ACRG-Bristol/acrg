@@ -33,6 +33,7 @@ from shapely.prepared import prep
 from shapely.geometry import Polygon
 import geopandas as gpd
 import pandas as pd
+from scipy import stats
 
 from acrg.convert import convert_lons_0360
 from acrg.config.paths import Paths
@@ -524,17 +525,16 @@ def calcMask(polygons,lons,lats,lon_grid):
                 
     return land_grid
 
-def create_country_mask_eez(domain,include_ocean_territories=True,countries=None,
+def create_country_mask_eez(domain,include_ocean_territories=True,fill_gaps=True,
                             output_path=None):
     """
-    Creates a mask for all countries within the domain, or for selected
-    countries, by specifying 'countries' parameter.
+    Creates a mask for all countries within the domain.
     Uses Natural Earth 10m land datasets and Admin_0_map_units datasets
     for specifiying country and ocean boundaries.
     Option to include EEZ (Exclusive Economic Zones e.g. marine 
     territories) is True by default. Remaining areas are given a value of 0.
     
-    Based on code written by Daniel Hoare al18242.
+    Based on code written by Daniel Hoare and Rachel Tunnicliffe.
     
     Args:
         domain (str):
@@ -542,8 +542,8 @@ def create_country_mask_eez(domain,include_ocean_territories=True,countries=None
         include_ocean_territories (bool):
             If True, include areas within EEZ (marine territories) in the 
             country mask.
-        country (list of str) (optional):
-            Name of countries, e.g. ['United Kingdom', 'Republic of Ireland','France'].
+        fill_gaps (bool):
+            Fills in gaps between the land and ocean masks that are missed.
         out_path (str) (optional):
             Path and name to save mask to. If None, does not save dataset.
     Returns:
@@ -559,87 +559,108 @@ def create_country_mask_eez(domain,include_ocean_territories=True,countries=None
         lons = fp_file.lon.values
         lat_da = fp_file.lat
         lon_da = fp_file.lon
-        
-    lon_grid,lat_grid = np.meshgrid(lons,lats)
     
-    print('Loading land country files...')
-    
-    # get country borders
+    # load in land files
     shpfilename_land = shapereader.natural_earth('10m','cultural','admin_0_map_units')
-    
-    # read the shapefile using geopandas
+
     df_land = gpd.read_file(shpfilename_land)
     
-    if countries is not None:
-        land_codes = countries
-    else:
-        land_codes = df_land['ADM0_A3'].values
-        
-        land_codes = np.unique(land_codes) # this also puts them in alphabetical order, is this ok?
+    print('Creating land mask...')
+    mask = regionmask.mask_3D_geopandas(df_land['geometry'],lons,lats)
     
+    land_regions = mask.region.values
+    
+    # load in ocean files
     if include_ocean_territories:
-        
-        print('Loading ocean country files...')
-        
+
         shpfilename_ocean = os.path.join(data_path,'World_shape_databases/MarineRegions/eez_v10.shp')
-          
+
         df_ocean = gpd.read_file(shpfilename_ocean)
         
-        ocean_codes = df_ocean['ISO_Ter1'].values
-      
-    # loop through each country
-    count = 1
+        print('Creating ocean mask...')
+        mask_ocean = regionmask.mask_3D_geopandas(df_ocean['geometry'],lons,lats)
+        
+        ocean_regions = mask_ocean.region.values
+        
+    else:
+        print('Not including ocean territories')
+        
+        
+    all_grid = np.zeros((lats.shape[0],lons.shape[0]))
     country_names = []
 
-    for i,l_code in enumerate(land_codes):
+    land_codes_all = np.unique(df_land.loc[land_regions]['ADM0_A3'])
 
-        print(f'Creating land country mask for {l_code}...')
+    count = 1
 
-        country_polygon_land = df_land.loc[df_land['ADM0_A3'] == l_code]['geometry'].values
+    # loop through all countries
+    for c in land_codes_all:
 
-        country_grid_land = calcMask([prep(p) for p in country_polygon_land],lons,lats,lon_grid)
+        country_names.append(df_land[df_land['ADM0_A3'] == c]['ADMIN'].values[0].upper())
 
-        # fill empty grid with each country
-        if i == 0:
-            country_grid_all = np.zeros(country_grid_land.shape)
+        #print(f'\nLand for {c}')
+        
+        # find shapefile dataset indexes that correspond to the country code 
+        land_region_indexes = np.where(df_land['ADM0_A3'] == c)[0]
 
-        country_grid_all[np.where(country_grid_land == True)] = count
+        for r in land_region_indexes:
 
-        country_names.append(df_land.loc[df_land['ADM0_A3'] == l_code]['ADMIN'].values[0].upper())
+            if r in land_regions:
+                
+                # find mask index that corresponds to the dataset index
+                land_mask_index = np.where(land_regions == r)[0][0]
 
-        if include_ocean_territories:
+                all_grid[np.where(mask[land_mask_index].values == True)] = count
 
-            if l_code in ocean_codes:
+        if include_ocean_territories:    
+            
+            # find shapefile dataset indexes that correspond to the country code
+            ocean_region_indexes = np.where(df_ocean['ISO_Ter1'] == c)[0]
 
-                print(f'Creating ocean country mask for {l_code}...')
+            #if len(ocean_region_indexes) == 0:
+            #    print(f'No ocean for {c}')
+            #else:
+            #    print(f'Ocean for {c}')   
 
-                country_polygon_ocean = df_ocean.loc[df_ocean['ISO_Ter1'] == l_code]['geometry'].values
+            for r in ocean_region_indexes:
 
-                country_grid_ocean = calcMask([prep(p) for p in country_polygon_ocean],lons,lats,lon_grid)
+                if r in ocean_regions:
+                    
+                    # find ocean mask index that corresponds to the dataset index
+                    ocean_mask_index = np.where(ocean_regions == r)[0][0]
 
-                country_grid_all[np.where(country_grid_ocean == True)] = count
-
-            else:
-
-                print(f'No ocean territory for {l_code}.')
+                    all_grid[np.where(mask_ocean[ocean_mask_index].values == True)] = count
 
         count += 1
+        
+    if fill_gaps:
+        
+        # loop through grid to check for missing cells
+
+        for i in np.arange(1,all_grid.shape[0]-1):
+            for j in np.arange(1,all_grid.shape[1]-1):
+
+                if all_grid[i,j] == 0.:
+
+                    surrounding = np.delete(all_grid[i-1:i+2,j-1:j+2].flatten(),4)
+
+                    # if all surrounding cells are identical, fill in the gap
+                    if np.all(surrounding == surrounding[0]):
+
+                        all_grid[i,j] = surrounding[0]
+
+                    # if all but one of the surrounding cells are identical, fill in the gap
+                    # (fills in gaps of two adjacent grid cells)
+                    elif np.count_nonzero(surrounding == stats.mode(surrounding)[0][0]) == 7.:
+
+                        all_grid[i,j] = stats.mode(surrounding)[0][0]
     
+    # create output dataset
     ncountries = np.arange(len(country_names)+1)
 
     country_names_all = ['OCEAN'] + country_names
 
-    country_ocean_da = xr.DataArray(country_grid_ocean,
-                               dims=["lat", "lon"],
-                               coords=[lat_da,lon_da],
-                             attrs={'long_name':'Only ocean country indices'})
-
-    country_land_da = xr.DataArray(country_grid_land,
-                               dims=["lat", "lon"],
-                               coords=[lat_da,lon_da],
-                             attrs={'long_name':'Only land country indices'})
-
-    country_da = xr.DataArray(country_grid_all,
+    country_da = xr.DataArray(all_grid,
                                dims=["lat", "lon"],
                                coords=[lat_da,lon_da],
                              attrs={'long_name':'Land and ocean country indices'})
@@ -650,14 +671,14 @@ def create_country_mask_eez(domain,include_ocean_territories=True,countries=None
                                     attrs={'long_name':'Country names'})
 
     ds = xr.Dataset({"country":country_da,
-                     "country_land":country_land_da,
-                    "country_ocean":country_ocean_da,
-                     "name":country_names_da})
+                     "name":country_names_da
+                    })
 
     ds.attrs["Notes"] = "Created using NaturalEarth 10m Land and Marineregion datasets"
     ds.attrs["Marine_regions_data"] = "https://www.marineregions.org/eez.php"
     ds.attrs["Land_regions_data"] = "https://www.naturalearthdata.com/downloads/10m-cultural-vectors/"
     ds.attrs["Includes_ocean_territories"] = str(include_ocean_territories)
+    ds.attrs["domain"] = domain
     ds.attrs["Created_by"] = f"{getpass.getuser()}@bristol.ac.uk"
     ds.attrs["Created_on"] = str(pd.Timestamp.now(tz="UTC"))
     
