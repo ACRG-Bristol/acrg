@@ -28,12 +28,13 @@ import pytest
 import os
 import glob
 import numpy as np
-import xarray as xray
 import datetime
 import pandas as pd
+import xarray as xr
 
 import acrg.name.process as process
 from acrg.config.paths import Paths
+from . import process_helper as ph
 
 acrg_path = Paths.acrg
 
@@ -47,10 +48,9 @@ def site_directory():
 
 @pytest.fixture()
 def benchmark_output_directory():
-    ''' Define base directory containing grouped satellite footprint files '''
-    directory = os.path.join(acrg_path,"tests/files/LPDM/raw_output/benchmarks/")
+    ''' Define base directory containing benchmark files '''
+    directory = os.path.join(acrg_path,"tests/files/LPDM/raw_output/benchmark/")
     return directory
-
 
 @pytest.fixture()
 def site_param():
@@ -842,7 +842,7 @@ def test_footprint_array_site(benchmark_output_directory,get_mixr_files_site,
     
     fp_bench_file = os.path.join(benchmark_output_directory,'Test_process_footprint_array.nc')
     
-    with xray.open_dataset(fp_bench_file) as f: 
+    with xr.open_dataset(fp_bench_file) as f: 
         fp_bench = f.load()
     
     fields_file_1 = get_mixr_files_site[0]
@@ -997,77 +997,36 @@ def process_site_param(site_param,folder_names,site_directory):
     
     return param
 
-def find_processed_file(param):
-    '''
-    Find NAME processed file based on search string:
-        "{site}-{height}[_{species}]_{domain}_{year}{month:02}*.nc"
-    Args:
-        #subfolder (str) :
-        #    Main sub-folder containing NAME output files
-        #processed_folder (str) :
-        #    Directory containing the processed file.
-        param (dict) :
-            Parameter dictionary containing
-            'site','height','domain','year','month', 'species', 'process_dir'
-    Returns
-        str / list:
-            Filename
-        None :
-            If no files or more than one file is found
-    '''
-    #directory = os.path.join(subfolder,processed_folder)
-    directory = os.path.join(param["process_dir"], param["domain"])
-
-    if "species" in param:
-        optional_species_str = "_"+param["species"].lower()
-    else:
-        optional_species_str = ""
-
-    search_str = f"{param['site']}-{param['height']}{optional_species_str}_{param['domain']}_{param['year']}{param['month']:02}*.nc"
-
-    full_search_str = os.path.join(directory,search_str)
-    
-    processed_file = glob.glob(full_search_str)
-    if len(processed_file) == 1:
-        processed_file = processed_file[0]
-    elif len(processed_file) == 0:
-        print("No processed file found")
-        processed_file = None
-    elif len(processed_file) > 1:
-        print("Too many processed files found. Not unique")
-        processed_file = None
-    
-    return processed_file
-
-#def remove_processed_file(subfolder,processed_folder,param):
-def remove_processed_file(param):
-    '''
-    Check and remove any files matching datestr extracted from param input from processed files folder.
-    This is to allow test of process function to be run multiple times.
-    Processed files are found within processed files folder based on datestr from 
-    param["year"] + param["month"].zfill(2)
-    '''
-    
-    files_in_folder = find_processed_file(param)
-    
-#    folder = os.path.join(subfolder,processed_folder)
-#    
-#    search_str = "*{}*.nc".format(create_datestr(param))
-#    search_str = os.path.join(folder,search_str)
-#    files_in_folder = glob.glob(search_str)
-    
-    if files_in_folder is not None:
-        os.remove(files_in_folder)
-    
 # Rudimentary check that this runs (for now)
 def test_process_site(process_site_param):
     '''
     Test process function produces an output for site data.
     '''
-    remove_processed_file(process_site_param)
+    ph.remove_processed_file(process_site_param)
     out = process.process(**process_site_param)
 
     assert out is not None
+
+def test_process_site_benchmark(process_site_param, benchmark_output_directory):
+    '''
+    Test process function output against a benchmark for the same data.
+    '''
+    ph.remove_processed_file(process_site_param)
+    process.process(**process_site_param)
+
+    out_file = ph.find_processed_file(process_site_param)
+    out = xr.open_dataset(out_file)
+
+    # Benchmark was run on 14/09/2021
+    # RPB, 10magl, CARIBBEAN domain, January, 2010 data
+    # *If this does not match to your current inputs - benchmark must be updated.*
+
+    benchmark_file = os.path.join(benchmark_output_directory, "RPB-10magl_CARIBBEAN_201001.nc")
+    benchmark = xr.open_dataset(benchmark_file)
+
+    print(out["particle_locations_n"], benchmark["particle_locations_n"])
+
+    xr.testing.assert_equal(out, benchmark)
 
 
 #%%
@@ -1101,15 +1060,36 @@ def test_process_site_species(process_site_species_param):
     This is run against a paired down netcdf hourly file which contains a 
     4-hour back period (OutputTime) for 1 release (ReleaseTime) at 04:00 
     '''
-    remove_processed_file(process_site_species_param)
+    ph.remove_processed_file(process_site_species_param)
     
     print(process_site_species_param)
     out = process.process(**process_site_species_param)
 
-    print("out", out)
     assert out is not None
     assert out is not False
+
+
+def test_process_site_species_benchmark(process_site_species_param,
+                                        benchmark_output_directory):
+    '''
+    Test process function output against a benchmark for the same data.
+    '''
+    ph.remove_processed_file(process_site_species_param)
     
+    process.process(**process_site_species_param)
+
+    out_file = ph.find_processed_file(process_site_species_param)
+    out = xr.open_dataset(out_file)
+
+    # Benchmark was run on 14/09/2021
+    # RPB, 10magl, CARIBBEAN domain, January, 2010 data for species hfo-1234zee
+    # *If this does not match to your current inputs - benchmark must be updated.*
+
+    benchmark_file = os.path.join(benchmark_output_directory, "RPB-10magl_hfo-1234zee_CARIBBEAN_201001.nc")
+    benchmark = xr.open_dataset(benchmark_file)
+
+    xr.testing.assert_equal(out, benchmark)
+
 
 @pytest.fixture()
 def process_site_co2_param(site_param_co2,folder_names,site_directory):
@@ -1126,6 +1106,7 @@ def process_site_co2_param(site_param_co2,folder_names,site_directory):
 
     return param
 
+
 # Rudimentary check that this runs (for now)
 def test_process_site_co2(process_site_co2_param):
     '''
@@ -1138,15 +1119,14 @@ def test_process_site_co2(process_site_co2_param):
     This is run against a paired down netcdf hourly file which contains a 
     4-hour back period (OutputTime) for 1 release (ReleaseTime) at 04:00 
     '''
-    remove_processed_file(process_site_co2_param)
+    ph.remove_processed_file(process_site_co2_param)
     
-    print(process_site_co2_param)
     out = process.process(**process_site_co2_param)
     
-    print("out", out)
     assert out is not None
     assert out is not False
 
+<<<<<<< HEAD
 def test_footprint_array_co2(process_site_co2_param):
     '''
     Test that footprint array function of processworks for co2
@@ -1181,3 +1161,24 @@ def test_footprint_array_co2(process_site_co2_param):
 
     assert np.isclose(fp_array, benchmark.fp_HiTRes).all()
     
+=======
+def test_process_site_co2_benchmark(process_site_co2_param, benchmark_output_directory):
+    '''
+    Test process function output against a benchmark for the same data.
+    '''
+    ph.remove_processed_file(process_site_co2_param)
+    process.process(**process_site_co2_param)
+
+    out_file = ph.find_processed_file(process_site_co2_param)
+    out = xr.open_dataset(out_file)
+
+    # Benchmark was run on 14/09/2021
+    # RPB, 10magl, CARIBBEAN domain, January, 2010 for co2 data
+    # *If this does not match to your current inputs - benchmark must be updated.*
+
+    benchmark_file = os.path.join(benchmark_output_directory, "RPB-10magl_co2_CARIBBEAN_201001.nc")
+    benchmark = xr.open_dataset(benchmark_file)
+
+    xr.testing.assert_equal(out, benchmark)
+
+>>>>>>> origin/process_benchmark
