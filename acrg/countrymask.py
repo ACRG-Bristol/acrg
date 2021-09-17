@@ -16,6 +16,10 @@ the previous file if you wish to create a new file using this method.
 
 Function to use for creating the country file is:
  - create_country_mask(...)
+ 
+New function added to create country files that include marine territories (Exclusive 
+Economic Zones). Function to do this is :
+ - create_country_mask_eez(...)
 
 @author: rt17603
 """
@@ -623,8 +627,9 @@ def create_country_mask_eez(domain,include_ocean_territories=True,fill_gaps=True
             #    print(f'Ocean for {c}')   
 
             for r in ocean_region_indexes:
-
-                if r in ocean_regions:
+                
+                # checks that ocean region is in domain and not disputed territory
+                if r in ocean_regions and df_ocean['ISO_Ter2'][r] is None:
                     
                     # find ocean mask index that corresponds to the dataset index
                     ocean_mask_index = np.where(ocean_regions == r)[0][0]
