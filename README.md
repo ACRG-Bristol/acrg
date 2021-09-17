@@ -21,7 +21,7 @@ to setup a compatible python environment. The TDMCMC section of the repository c
     - Overwrite the default folder paths in acrg_config/paths.yaml with your system specific values
 
 3. Setup the python environment: 
-    - conda env create -f acrg_environment.yml
+    - conda env create -f environment.yml
     - conda activate acrg
     - Note: creating the environment may take several minutes
 
