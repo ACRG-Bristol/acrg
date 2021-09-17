@@ -1148,6 +1148,11 @@ def test_process_site_co2(process_site_co2_param):
     assert out is not False
 
 def test_footprint_array_co2(process_site_co2_param):
+    '''
+    Test that footprint array function of processworks for co2
+    
+    Compares the output with a pared down version for Barbados
+    '''
 
     subfolder = f"{process_site_co2_param['base_dir']}{process_site_co2_param['domain']}_{process_site_co2_param['site']}_{process_site_co2_param['height']}/"
     fields_prefix = os.path.join(subfolder, process_site_co2_param['fields_folder'])
