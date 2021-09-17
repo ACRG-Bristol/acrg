@@ -23,6 +23,7 @@ import xarray as xr
 import glob
 
 import acrg.hbmcmc.inversion_pymc3 as mcmc
+import acrg.hbmcmc.hbmcmc as hbmcmc
 from acrg.config.paths import Paths
 
 acrg_path = Paths.acrg
@@ -171,7 +172,7 @@ def test_hbmcmc_inputs_command_line(hbmcmc_input_file,hbmcmc_config_file):
     os.remove(os.path.join(outputpath, "CH4_EUROPE_pytest-deleteifpresent_2014-02-01.ini"))
     os.remove(os.path.join(outputpath, "CH4_EUROPE_pytest-deleteifpresent_2014-02-01.nc"))
     assert result == 0
-
+       
 @pytest.mark.skipif(not glob.glob(os.path.join(data_path,"LPDM/bc")), reason="No access to files in data_path")
 @pytest.mark.long
 def test_hbmcmc_output_exists(hbmcmc_input_file,hbmcmc_config_file):
@@ -192,7 +193,8 @@ def test_hbmcmc_output_exists(hbmcmc_input_file,hbmcmc_config_file):
     #Check that the attributes exist in the file
     attrs_list = ['Start date', 'End date', 'Latent sampler', 'Hyper sampler', 
                   'Emissions Prior', 'Model error Prior', 'BCs Prior', 'Creator', 
-                  'Date created', 'Convergence', 'Repository version']
+                  'Date created', 'Convergence', 'Repository version','Burn in',
+                  'Tuning steps','Number of chains']
     output_attrs_list = [key for key in ds_out.attrs.keys()]
     for key in attrs_list:
         assert key in output_attrs_list
@@ -200,11 +202,11 @@ def test_hbmcmc_output_exists(hbmcmc_input_file,hbmcmc_config_file):
     #Check that the data variables exist in the file
     data_vars_list = ['Yobs','Yerror','Ytime','Yapriori','Ymodmean','Ymod95',
                       'Ymod68','YaprioriBC','YmodmeanBC','Ymod95BC','Ymod68BC',
-                      'xtrace','bctrace','sigtrace','siteindicator','sigma_freq_index',
+                      'xtrace','bctrace','sigtrace','siteindicator','sigmafreqindex',
                       'sitenames','sitelons','sitelats','fluxapriori','fluxmean',
                       'scalingmean','basisfunctions','countrymean','countrysd',
                       'country68','country95','countryapriori','xsensitivity',
-                      'bcsensitivity']
+                      'bcsensitivity','countrydefinition']
     output_data_vars_list = [var for var in ds_out.data_vars]
     for var in data_vars_list:
         assert var in output_data_vars_list
@@ -217,7 +219,17 @@ def test_hbmcmc_output_exists(hbmcmc_input_file,hbmcmc_config_file):
         assert coord in output_coord_list
     outfile.unlink()
 
-
+@pytest.mark.skipif(not glob.glob(os.path.join(data_path,"LPDM/bc")), reason="No access to files in data_path")
+@pytest.mark.long
+def test_hbmcmc_rerunoutput(hbmcmc_input_file,hbmcmc_config_file):
+    ''' Check that run_hbmcmc.py can be run with a standard hbmcmc config file incl. dates '''
+    result = subprocess.call(["python",hbmcmc_input_file, "2014-02-01", "2014-04-01", "-c{}".format(hbmcmc_config_file)])
+    os.remove(os.path.join(outputpath, "CH4_EUROPE_pytest-deleteifpresent_2014-02-01.ini")) 
+    hbmcmc.rerun_output(os.path.join(outputpath, "CH4_EUROPE_pytest-deleteifpresent_2014-02-01.nc"), "rerun-pytest-deleteifpresent", outputpath)
+    os.remove(os.path.join(outputpath, "CH4_EUROPE_pytest-deleteifpresent_2014-02-01.nc"))
+    os.remove(os.path.join(outputpath, "CH4_EUROPE_rerun-pytest-deleteifpresent_2014-02-01.nc"))
+    assert result == 0
+                        
 def test_cleanup(hbmcmc_config_file):
     """Remove the config file
     """
