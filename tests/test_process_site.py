@@ -1126,8 +1126,7 @@ def test_process_site_co2(process_site_co2_param):
     assert out is not None
     assert out is not False
 
-<<<<<<< HEAD
-def test_footprint_array_co2(process_site_co2_param):
+def test_footprint_array_co2(process_site_co2_param, benchmark_output_directory):
     '''
     Test that footprint array function of processworks for co2
     
@@ -1154,14 +1153,12 @@ def test_footprint_array_co2(process_site_co2_param):
                                       lat = slice(11.5, 14.5), 
                                       lon = slice(-61.5, -57.5))
 
-    benchmark_output_directory = os.path.join(acrg_path,"tests/files/LPDM/raw_output/benchmarks/")
     benchmark_file = os.path.join(benchmark_output_directory, 'process_footprint_array_co2.nc')
-    with xray.open_dataset(benchmark_file) as benchmark:
+    with xr.open_dataset(benchmark_file) as benchmark:
         benchmark.load()
 
     assert np.isclose(fp_array, benchmark.fp_HiTRes).all()
     
-=======
 def test_process_site_co2_benchmark(process_site_co2_param, benchmark_output_directory):
     '''
     Test process function output against a benchmark for the same data.
@@ -1180,5 +1177,3 @@ def test_process_site_co2_benchmark(process_site_co2_param, benchmark_output_dir
     benchmark = xr.open_dataset(benchmark_file)
 
     xr.testing.assert_equal(out, benchmark)
-
->>>>>>> origin/process_benchmark
