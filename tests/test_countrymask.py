@@ -8,6 +8,7 @@ Created on Mon Jan 14 15:13:44 2019
 import pytest
 import os
 import glob
+import numpy as np
 
 from acrg import countrymask
 from acrg.config.paths import Paths
@@ -92,15 +93,15 @@ def test_country_match(country_codes):
     
     ds_land = countrymask.create_country_mask_eez(domain='EUROPE',include_land_territories=True,
                                                   include_ocean_territories=False,
-                                                  fill_gaps=True,output_path=None)
+                                                  fill_gaps=False,output_path=None)
     
     ds_ocean = countrymask.create_country_mask_eez(domain='EUROPE',include_land_territories=False,
                                                   include_ocean_territories=True,
-                                                  fill_gaps=True,output_path=None)
+                                                  fill_gaps=False,output_path=None)
     
-    ds_ocean = countrymask.create_country_mask_eez(domain='EUROPE',include_land_territories=True,
+    ds_both = countrymask.create_country_mask_eez(domain='EUROPE',include_land_territories=True,
                                                   include_ocean_territories=True,
-                                                  fill_gaps=True,output_path=None)
+                                                  fill_gaps=False,output_path=None)
     
     
     
@@ -120,10 +121,8 @@ def test_country_match(country_codes):
         country_both[np.where(both == country_num)] = 1.0
     
         diff = country_land_ocean - country_both
-        
-        print(len(np.nonzero(diff)[0]))
 
-        assert len(np.nonzero(diff)[0]) < 10.
+        assert len(np.nonzero(diff)[0]) == 0.
     
 ##########
 
