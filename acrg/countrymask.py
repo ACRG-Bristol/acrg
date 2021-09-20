@@ -529,7 +529,8 @@ def calcMask(polygons,lons,lats,lon_grid):
                 
     return land_grid
 
-def create_country_mask_eez(domain,include_ocean_territories=True,fill_gaps=True,
+def create_country_mask_eez(domain,include_land_territories=True,
+                            include_ocean_territories=True,fill_gaps=True,
                             output_path=None):
     """
     Creates a mask for all countries within the domain.
@@ -543,6 +544,9 @@ def create_country_mask_eez(domain,include_ocean_territories=True,fill_gaps=True
     Args:
         domain (str):
             The domain the mask should cover, e.g. 'EUROPE'.
+        include_land_territories (bool):
+            If True, include land territories for all countries in the 
+            country mask.
         include_ocean_territories (bool):
             If True, include areas within EEZ (marine territories) in the 
             country mask.
@@ -592,39 +596,40 @@ def create_country_mask_eez(domain,include_ocean_territories=True,fill_gaps=True
         
     all_grid = np.zeros((lats.shape[0],lons.shape[0]))
     country_names = []
+    country_codes = []
 
     land_codes_all = np.unique(df_land.loc[land_regions]['ADM0_A3'])
 
     count = 1
 
     # loop through all countries
-    for c in land_codes_all:
+    for i,c in enumerate(land_codes_all):
 
         country_names.append(df_land[df_land['ADM0_A3'] == c]['ADMIN'].values[0].upper())
-
-        #print(f'\nLand for {c}')
+        country_codes.append(c)
         
-        # find shapefile dataset indexes that correspond to the country code 
-        land_region_indexes = np.where(df_land['ADM0_A3'] == c)[0]
+        if include_land_territories:
+        
+            # find shapefile dataset indexes that correspond to the country code 
+            land_region_indexes = np.where(df_land['ADM0_A3'] == c)[0]
 
-        for r in land_region_indexes:
+            for r in land_region_indexes:
 
-            if r in land_regions:
-                
-                # find mask index that corresponds to the dataset index
-                land_mask_index = np.where(land_regions == r)[0][0]
+                if r in land_regions:
 
-                all_grid[np.where(mask[land_mask_index].values == True)] = count
+                    # find mask index that corresponds to the dataset index
+                    land_mask_index = np.where(land_regions == r)[0][0]
+
+                    all_grid[np.where(mask[land_mask_index].values == True)] = count
+                    
+        elif i == 0:
+            
+            print('Not including land territories')
 
         if include_ocean_territories:    
             
             # find shapefile dataset indexes that correspond to the country code
             ocean_region_indexes = np.where(df_ocean['ISO_Ter1'] == c)[0]
-
-            #if len(ocean_region_indexes) == 0:
-            #    print(f'No ocean for {c}')
-            #else:
-            #    print(f'Ocean for {c}')   
 
             for r in ocean_region_indexes:
                 
@@ -664,6 +669,7 @@ def create_country_mask_eez(domain,include_ocean_territories=True,fill_gaps=True
     ncountries = np.arange(len(country_names)+1)
 
     country_names_all = ['OCEAN'] + country_names
+    country_codes_all = ['OCEAN'] + country_codes
 
     country_da = xr.DataArray(all_grid,
                                dims=["lat", "lon"],
@@ -674,9 +680,15 @@ def create_country_mask_eez(domain,include_ocean_territories=True,fill_gaps=True
                                    dims=["ncountries"],
                                    coords=[ncountries],
                                     attrs={'long_name':'Country names'})
+    
+    country_codes_da = xr.DataArray(country_codes_all,
+                                   dims=["ncountries"],
+                                   coords=[ncountries],
+                                    attrs={'long_name':'Country codes'})
 
     ds = xr.Dataset({"country":country_da,
-                     "name":country_names_da
+                     "name":country_names_da,
+                     "country_code":country_codes_da
                     })
 
     ds.attrs["Notes"] = "Created using NaturalEarth 10m Land and Marineregion datasets"

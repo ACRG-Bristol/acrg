@@ -15,6 +15,10 @@ from acrg.config.paths import Paths
 
 acrg_path = Paths.acrg
 
+@pytest.fixture(scope="module")
+def country_codes():
+    country_codes = ['GBR','ESP','NOR']
+    return country_codes
 
 ##### Create list of current NAME footprints ###################
 
@@ -80,7 +84,47 @@ def test_convert_lons_0360():
     assert all(lon_0360 >= 0) is True
     assert all(lon_0360 < 360) is True
 
+def test_country_match(country_codes):
+    """
+    Test that total (land + ocean) countrymask is equivalent to
+    the separate land and ocean masks, up to a threshold number of grid cells.
+    """
+    
+    ds_land = countrymask.create_country_mask_eez(domain='EUROPE',include_land_territories=True,
+                                                  include_ocean_territories=False,
+                                                  fill_gaps=True,output_path=None)
+    
+    ds_ocean = countrymask.create_country_mask_eez(domain='EUROPE',include_land_territories=False,
+                                                  include_ocean_territories=True,
+                                                  fill_gaps=True,output_path=None)
+    
+    ds_ocean = countrymask.create_country_mask_eez(domain='EUROPE',include_land_territories=True,
+                                                  include_ocean_territories=True,
+                                                  fill_gaps=True,output_path=None)
+    
+    
+    
+    land = ds_land['country'].values
+    ocean = ds_ocean['country'].values
+    both = ds_both['country'].values
+    
+    for c_code in country_codes:
 
+        country_num = np.where(ds_both['country_code'].values == c_code)
+        
+        country_land_ocean = np.zeros(land.shape)
+        country_land_ocean[np.where(land == country_num)] = 1.0
+        country_land_ocean[np.where(ocean == country_num)] = 1.0
+
+        country_both = np.zeros(both.shape)
+        country_both[np.where(both == country_num)] = 1.0
+    
+        diff = country_land_ocean - country_both
+        
+        print(len(np.nonzero(diff)[0]))
+
+        assert len(np.nonzero(diff)[0]) < 10.
+    
 ##########
 
 
