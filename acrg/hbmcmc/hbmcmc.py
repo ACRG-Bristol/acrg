@@ -86,7 +86,9 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
         bcprior (dict):
             Same as above but for boundary conditions.
         sigprior (dict):
-            Same as above but for model error.
+            Same as above but for model error. If running with fixed hyperparameters
+            needs "pdf" parameter set to "fixed" and a "fixed_value" parameter set to 
+            required value e.g. {"pdf": "fixed", "fixed_value": 3}.
         offsetprior (dict):
             Same as above but for bias offset. Only used is addoffset=True.
         nit (int):
