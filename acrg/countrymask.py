@@ -511,23 +511,6 @@ if __name__=="__main__":
     # Lat/Lon can be specified explictly or a domain footprint file can be used to find these values.
     
     ds = create_country_mask(domain,write=write,reset_index=True,ocean_label=True)
-    
-def calcMask(polygons,lons,lats,lon_grid):
-    dx = lons[1] - lons[0]
-    dy = lats[1] - lats[0]
-    land_grid = np.zeros_like(lon_grid, dtype=bool)
-    for polygon in polygons:
-        for x, lon in enumerate(lons):
-            for y, lat in enumerate(lats):
-                if(land_grid[y, x] == True):
-                    continue
-                point = Polygon([[lon-dx/2., lat-dy/2.],
-                                 [lon+dx/2., lat-dy/2.],
-                                 [lon+dx/2., lat+dy/2.],
-                                 [lon-dx/2., lat+dy/2.]])
-                land_grid[y, x] = land_grid[y, x] | polygon.intersects(point)
-                
-    return land_grid
 
 def create_country_mask_eez(domain,include_land_territories=True,
                             include_ocean_territories=True,fill_gaps=True,
