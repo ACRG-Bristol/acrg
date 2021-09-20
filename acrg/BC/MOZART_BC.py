@@ -31,7 +31,7 @@ import collections as c
 
 from os.path import join
 
-import acrg.MOZART as mz
+import acrg.BC.MOZART as mz
 from acrg.config.paths import Paths
 
 

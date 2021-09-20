@@ -29,7 +29,4 @@ dependencies:
   - spyder=4.1.1
   - numexpr=2.7
   - spyder-kernels=1.9.3
-  - pip=20.0.2
-  - pip:
-    - dirsync==2.2.4
-    - iso3166==1.0.1
+  - iso3166=1.0.1

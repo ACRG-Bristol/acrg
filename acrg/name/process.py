@@ -2608,34 +2608,6 @@ def process_parallel(domain, site, height, years, months, kwargs={}, nprocess=4)
         pool.close()
         pool.join()
 
-def copy_processed(domain):
-    '''
-    Routine to copy files from:
-        /dagage2/agage/metoffice/NAME_output/DOMAIN_SITE_HEIGHT/Processed_Fields_files
-        to:
-        air.chm:/data/shared/LPDM/fp_netcdf/DOMAIN/
-        
-    Args:
-        domain (str):
-            Domain of interest
-            
-    Returns:
-        None
-    '''
-    import dirsync
-    
-    src_folder = "/dagage2/agage/metoffice/NAME_output/"
-    dst_folder = "/data/shared/LPDM/fp_NAME/" + domain + "/"
-    
-    files = glob.glob(src_folder + domain +
-        "_*/Processed_Fields_files/*.nc")
-        
-    folders = set([os.path.split(f)[0] for f in files])
-
-    for f in folders:
-        print("Syncing " + f + " and " + dst_folder)
-        dirsync.sync(f, dst_folder, "sync")
-    print("Done sync")
 
 def test_processed_met(domain, site, height,
                        base_dir = "/dagage2/agage/metoffice/NAME_output/"):
