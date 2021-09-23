@@ -15,7 +15,7 @@ from pathlib import Path
 import acrg.name.name as name
 from acrg.grid.areagrid import areagrid
 from acrg.hbmcmc.inversionsetup import opends
-from .inversionsetup import offset_matrix
+from acrg.hbmcmc.inversionsetup import offset_matrix
 from acrg.hbmcmc.hbmcmc_output import define_output_filename
 import acrg.convert as convert
 from acrg.config.version import code_version
@@ -305,8 +305,8 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
                 Same as above but for boundary conditions.
             sigprior (dict):
                 Same as above but for model error. If running with fixed hyperparameters
-            needs "pdf" parameter set to "fixed" and a "fixed_value" parameter set to 
-            required value e.g. {"pdf": "fixed", "fixed_value": 3}.
+                needs "pdf" parameter set to "fixed" and a "fixed_value" parameter set to 
+                required value e.g. {"pdf": "fixed", "fixed_value": 3}.
             offsetprior (dict):
                 Same as above but for bias offset. Only used is addoffset=True.
             Ytime (pandas datetime array):
