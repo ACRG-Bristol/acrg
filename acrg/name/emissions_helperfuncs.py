@@ -17,7 +17,7 @@ This should probably be changed at some point to regrid over all timesteps in
 one go.
 
 """
-from past.utils import old_div
+
 import numpy as np
 import xarray as xray
 import glob 
@@ -401,7 +401,7 @@ def getedgarannualtotals(year, lon_out, lat_out, species='CH4', version = 'v5.0'
     
     ds = xr.open_dataset(edgar)
     soiname = 'emi_'+species.lower()    
-    tot = old_div(ds[soiname].values*1e3,speciesmm)
+    tot = ds[soiname].values*1e3 / speciesmm
     lat_in = ds.lat.values
     lon_in = ds.lon.values
     mtohe = lon_in > 180
@@ -1419,9 +1419,9 @@ def getedgarv432annualsectors(year, lon_out, lat_out, edgar_sectors, species='CH
             ds = xr.open_dataset(edgar)
             soiname = 'emi_'+species.lower()
             if tot is None:
-                tot = old_div(ds[soiname].values*1e3,speciesmm)
+                tot = ds[soiname].values*1e3 / speciesmm
             else:
-                tot += old_div(ds[soiname].values*1e3,speciesmm)
+                tot += ds[soiname].values*1e3 / speciesmm
         else:
             print('No annual file for sector %s and %s' % (sec, species))
         
@@ -1564,9 +1564,9 @@ def getedgarmonthlysectors(lon_out, lat_out, edgar_sectors, months=[1,2,3,4,5,6,
                 ds = xr.open_dataset(edgar)
                 soiname = 'emi_'+species.lower()
                 if tot.any() == None:
-                    tot = old_div(ds[soiname].values*1e3,speciesmm)
+                    tot = ds[soiname].values*1e3 / speciesmm
                 else:
-                    tot += old_div(ds[soiname].values*1e3,speciesmm)
+                    tot += ds[soiname].values*1e3 / speciesmm
             else:
                 warnings.append('No monthly file for sector %s' % sec)
                 #print 'No monthly file for sector %s' % sec
@@ -1783,7 +1783,7 @@ def _wetlandArea(frac,lon_in,lat_in,lon_out,lat_out):
     grid_domain = areagrid(lat_out,lon_out)
     wetl_area_domain = np.sum(frac_wetl_domain*grid_domain)
     
-    return wetl_area_domain,old_div(wetl_area_domain,wetl_area)
+    return wetl_area_domain, wetl_area_domain / wetl_area
 
 def _SWAMPSwetlandArea(year,lon_out,lat_out,month=1,product="inland_cap"):
     '''
@@ -1886,7 +1886,7 @@ def getJULESwetlands(year,lon_out,lat_out,species="CH4",extent_db="SWAMPS",swamp
     molmass = molar_mass(species)
     flux_jules[fch4_name].values = flux_jules[fch4_name].values*1000./molmass
 
-    flux_jules_frac = np.abs(old_div(flux_jules[fch4_name], flux_jules[fwetl_name]))
+    flux_jules_frac = np.abs(flux_jules[fch4_name] / flux_jules[fwetl_name])
     flux_jules_frac.values = np.nan_to_num(flux_jules_frac) # Any number divided by 0.0 will be nan, so change these back to 0.0
 
     if extent_db == "SWAMPS":
@@ -1927,7 +1927,7 @@ def getJULESwetlands(year,lon_out,lat_out,species="CH4",extent_db="SWAMPS",swamp
         for i in range(nt):
             if extent_db == "SWAMPS":
                 frac = _SWAMPSwetlandArea(year,lon_out,lat_out,month=i+1)[1]
-            scale = round(old_div((total_w_emission*frac),1e12),1)*1e12
+            scale = round((total_w_emission*frac) / 1e12, 1) * 1e12
             print("{:02}) Scaling total JULES wetlands emissions within domain to: {} g/yr".format(i+1,scale))
             narr[:,:,i] = scale_emissions(narr[:,:,i],species,lat_out,lon_out,total_emission=scale)
 
@@ -2377,7 +2377,7 @@ def create_emissions(databases,species,domain,year=None,lon_out=[],lat_out=[],
     
     db_functions,db_species,db_timeframes,db_sector,db_climatology = database_options()
     
-    timeframe_options = {"monthly":12,"daily":365,"3hourly":old_div(365*24,3)}
+    timeframe_options = {"monthly":12, "daily":365, "3hourly":365 * 24 // 3}
     
     #if "EDGAR" in databases and "GFED" in databases and "sectors" not in kwargs:
     #    raise Exception("Cannot combine EDGAR and GFED ")
