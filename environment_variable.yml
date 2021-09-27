@@ -19,8 +19,5 @@ dependencies:
   - yaml
   - numba
   - python-dateutil
-  - pip
-  - pip:
-    - dirsync
-    - iso3166
+  - iso3166
 

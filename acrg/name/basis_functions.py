@@ -775,7 +775,7 @@ def quadTreeGrid(grid, limit):
 
 def quadtreebasisfunction(emissions_name, fp_all, sites, 
                           start_date, domain, species, outputname, outputdir=None,
-                          nbasis=100):
+                          nbasis=100, abs_flux=False):
     """
     Creates a basis function with nbasis grid cells using a quadtree algorithm.
     The domain is split with smaller grid cells for regions which contribute
@@ -814,16 +814,28 @@ def quadtreebasisfunction(emissions_name, fp_all, sites,
             Number of basis functions that you want. This will optimise to 
             closest value that fits with quadtree splitting algorithm, 
             i.e. nbasis % 4 = 1.
+        abs_flux (bool):
+            If True this will take the absolute value of the flux
     
     Returns:
         If outputdir is None, then returns a Temp directory. The new basis function is saved in this Temp directory.
         If outputdir is not None, then does not return anything but saves the basis function in outputdir.
     """
-
+    if abs_flux:
+        print('Using absolute values of flux array')
     if emissions_name == None:
-        meanflux = np.squeeze(fp_all['.flux']['all'].flux.values)
+        flux = np.absolute(fp_all['.flux']['all'].flux.values) if abs_flux else fp_all['.flux']['all'].flux.values 
+        meanflux = np.squeeze(flux)
     else:
-        meanflux = np.squeeze(fp_all[".flux"][list(emissions_name.keys())[0]].flux.values)
+        if isinstance(fp_all[".flux"][list(emissions_name.keys())[0]], dict):
+            keys = list(fp_all[".flux"][list(emissions_name.keys())[0]].keys())
+            arr = fp_all[".flux"][list(emissions_name.keys())[0]][keys[0]]
+            flux = np.absolute(arr.flux.values) if abs_flux else arr.flux.values
+            meanflux = np.squeeze(flux)
+        else:
+            flux = np.absolute(fp_all[".flux"][list(emissions_name.keys())[0]].flux.values) if abs_flux else \
+                   fp_all[".flux"][list(emissions_name.keys())[0]].flux.values 
+            meanflux = np.squeeze(flux)
     meanfp = np.zeros((fp_all[sites[0]].fp.shape[0],fp_all[sites[0]].fp.shape[1]))
     div=0
     for site in sites:
@@ -869,10 +881,10 @@ def quadtreebasisfunction(emissions_name, fp_all, sites,
         tempdir = os.path.join(cwd,f"Temp_{str(uuid.uuid4())}")
         os.mkdir(tempdir)    
         os.mkdir(os.path.join(tempdir,f"{domain}/"))
-        newds.to_netcdf(os.path.join(tempdir,domain,f"quadtree{species}-{outputname}_{domain}_{start_date.split('-')[0]}.nc"), mode='w')
+        newds.to_netcdf(os.path.join(tempdir,domain,f"quadtree_{species}-{outputname}_{domain}_{start_date.split('-')[0]}.nc"), mode='w')
         return tempdir
     else:
         basisoutpath = os.path.join(outputdir,domain)
         if not os.path.exists(basisoutpath):
             os.makedirs(basisoutpath)
-        newds.to_netcdf(os.path.join(basisoutpath,f"quadtree{species}-{outputname}_{domain}_{start_date.split('-')[0]}.nc"), mode='w')
+        newds.to_netcdf(os.path.join(basisoutpath,f"quadtree_{species}-{outputname}_{domain}_{start_date.split('-')[0]}.nc"), mode='w')

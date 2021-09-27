@@ -19,7 +19,7 @@ import xarray
 import numpy as np
 import glob
 
-import acrg.MOZART_BC as bc
+import acrg.BC.MOZART_BC as bc
 from acrg.config.paths import Paths
 
 acrg_path = Paths.acrg

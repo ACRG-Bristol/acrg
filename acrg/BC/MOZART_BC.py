@@ -16,9 +16,7 @@ agree with NAME output.
 
 @author: ew14860
 """
-from builtins import str
-from builtins import range
-from past.utils import old_div
+
 import xarray as xray
 import numpy as np
 from scipy import interpolate
@@ -31,7 +29,7 @@ import collections as c
 
 from os.path import join
 
-import acrg.MOZART as mz
+import acrg.BC.MOZART as mz
 from acrg.config.paths import Paths
 
 
@@ -119,7 +117,7 @@ def convert_lon(DS, data_var):
         Updates DS in place with new co-ordinate system
     """
     DS.coords['lon'] = DS.coords['lon'] - 180
-    L = old_div(len(DS.coords['lon']),2)
+    L = len(DS.coords['lon'])//2
     var0 = DS[data_var]
     var = np.zeros(np.shape(var0))
     if 'height' in DS[data_var].dims:
