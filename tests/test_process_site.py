@@ -1126,6 +1126,39 @@ def test_process_site_co2(process_site_co2_param):
     assert out is not None
     assert out is not False
 
+def test_footprint_array_co2(process_site_co2_param, benchmark_output_directory):
+    '''
+    Test that footprint array function of processworks for co2
+    
+    Compares the output with a pared down version for Barbados
+    '''
+
+    subfolder = f"{process_site_co2_param['base_dir']}{process_site_co2_param['domain']}_{process_site_co2_param['site']}_{process_site_co2_param['height']}/"
+    fields_prefix = os.path.join(subfolder, process_site_co2_param['fields_folder'])
+    datestr = '20100101'
+
+    met_files = sorted(glob.glob(os.path.join(subfolder, '*Met*', '*.txt')))
+    particle_files = sorted(glob.glob(os.path.join(subfolder, 'Particle_files', 'Particles*.txt')))
+    fields_files = sorted(glob.glob(os.path.join(fields_prefix, f"*{datestr}*.nc*")))
+    fields_files
+
+    met = process.read_met(met_files[0])
+    fp_array = process.footprint_array(fields_file = fields_files[0],
+                                       particle_file = particle_files[0],
+                                       met = met,
+                                       species = 'CO2')
+
+    fp_array = fp_array.fp_HiTRes.sel(time = fp_array.time[12],
+                                      lev = fp_array.lev[0],
+                                      lat = slice(11.5, 14.5), 
+                                      lon = slice(-61.5, -57.5))
+
+    benchmark_file = os.path.join(benchmark_output_directory, 'process_footprint_array_co2.nc')
+    with xr.open_dataset(benchmark_file) as benchmark:
+        benchmark.load()
+
+    assert np.isclose(fp_array, benchmark.fp_HiTRes).all()
+    
 def test_process_site_co2_benchmark(process_site_co2_param, benchmark_output_directory):
     '''
     Test process function output against a benchmark for the same data.
@@ -1144,4 +1177,3 @@ def test_process_site_co2_benchmark(process_site_co2_param, benchmark_output_dir
     benchmark = xr.open_dataset(benchmark_file)
 
     xr.testing.assert_equal(out, benchmark)
-
