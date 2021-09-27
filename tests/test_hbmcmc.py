@@ -155,13 +155,23 @@ def hbmcmc_config_file():
     pathn.write_text(text)
     return filename
 
+def delete_created_files():
+    created_ini_file = os.path.join(outputpath, "CH4_EUROPE_pytest-deleteifpresent_2014-02-01.ini")
+    if os.path.exists(created_ini_file):
+        os.remove(created_ini_file)
+    
+    created_nc_file = os.path.join(outputpath, "CH4_EUROPE_pytest-deleteifpresent_2014-02-01.nc")
+    if os.path.exists(created_nc_file):
+        os.remove(created_nc_file)
+
 @pytest.mark.skipif(not glob.glob(os.path.join(data_path,"LPDM/bc")), reason="No access to files in data_path")
 @pytest.mark.long
 def test_hbmcmc_inputs(hbmcmc_input_file,hbmcmc_config_file):
     ''' Check that run_hbmcmc.py can be run with a standard hbmcmc config file '''
     result = subprocess.call(["python",hbmcmc_input_file,"-c{}".format(hbmcmc_config_file)])
-    os.remove(os.path.join(outputpath, "CH4_EUROPE_pytest-deleteifpresent_2014-02-01.ini"))
-    os.remove(os.path.join(outputpath, "CH4_EUROPE_pytest-deleteifpresent_2014-02-01.nc"))
+    
+    delete_created_files()
+
     assert result == 0
 
 @pytest.mark.skipif(not glob.glob(os.path.join(data_path,"LPDM/bc")), reason="No access to files in data_path")
@@ -169,14 +179,15 @@ def test_hbmcmc_inputs(hbmcmc_input_file,hbmcmc_config_file):
 def test_hbmcmc_inputs_command_line(hbmcmc_input_file,hbmcmc_config_file):
     ''' Check that run_hbmcmc.py can be run with a standard hbmcmc config file incl. dates '''
     result = subprocess.call(["python",hbmcmc_input_file, "2014-02-01", "2014-04-01", "-c{}".format(hbmcmc_config_file)])
-    os.remove(os.path.join(outputpath, "CH4_EUROPE_pytest-deleteifpresent_2014-02-01.ini"))
-    os.remove(os.path.join(outputpath, "CH4_EUROPE_pytest-deleteifpresent_2014-02-01.nc"))
+    
+    delete_created_files()
+
     assert result == 0
        
 @pytest.mark.skipif(not glob.glob(os.path.join(data_path,"LPDM/bc")), reason="No access to files in data_path")
 @pytest.mark.long
 def test_hbmcmc_output_exists(hbmcmc_input_file,hbmcmc_config_file):
-    """ Check hbmcmcm output file exists and that variables etc exits"""
+    """ Check hbmcmc output file exists and that variables etc exits"""
     subprocess.call(["python",hbmcmc_input_file,"-c{}".format(hbmcmc_config_file)])
     outfile = Path(outputpath) / "CH4_EUROPE_pytest-deleteifpresent_2014-02-01.nc"
     outconfig = Path(outputpath) / "CH4_EUROPE_pytest-deleteifpresent_2014-02-01.ini"
