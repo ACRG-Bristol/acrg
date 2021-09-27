@@ -287,6 +287,7 @@ def footprints(sitecode_or_filename, met_model = None, fp_directory = None,
     if fp_directory is None:
         fp_integrated_directory = join(data_path, 'LPDM/fp_NAME/')
         fp_HiTRes_directory = join(data_path,'LPDM/fp_NAME_high_time_res/')
+        fp_HiTRes_directory = join(data_path,'LPDM/fp_NAME/')
         fp_directory = {'integrated': fp_integrated_directory,
                         'HiTRes': fp_HiTRes_directory}
 
@@ -1221,7 +1222,6 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
     
     
     for site in sites:
-        
         for si, source in enumerate(flux_sources):
         
             if source in list(basis_case.keys()):
@@ -1240,6 +1240,7 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                     H_all = timeseries_HiTRes(fp_HiTRes_ds = site_bf, flux_dict = fp_and_data['.flux'][source], output_TS = False,
                                               output_fpXflux = True, output_type = 'DataArray',
                                               time_resolution = f'{fp_time}H', verbose = verbose)
+                    
                 else:
                     print("fp_and_data needs the variable fp_HiTRes to use the emissions dictionary with high_freq and low_freq emissions.")
         
