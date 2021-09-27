@@ -217,7 +217,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             tempdir = basis.quadtreebasisfunction(emissions_name, fp_all, sites, 
                           start_date, domain, species, outputname,
                           nbasis=nbasis)
-            fp_basis_case= "quadtree"+species+"-"+outputname
+            fp_basis_case= "quadtree_"+species+"-"+outputname
             basis_directory = tempdir
     else:
         basis_directory = basis_directory
