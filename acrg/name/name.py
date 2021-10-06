@@ -942,6 +942,8 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
             else:
                 if platform == "satellite":
                     height_site = site_info[site][network_site]["height_name"][0]
+                elif platform == 'aircraft':
+                    height_site = 'various'
                 else:
                     #Find height closest to inlet
                     siteheights = [int(sh[:-4]) for sh in site_info[site][network_site]["height_name"]]

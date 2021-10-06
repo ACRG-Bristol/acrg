@@ -1,4 +1,28 @@
 {
+  "ACT-AMERICA-b200": {
+    "NASA": {
+      "height": [
+        "various"
+      ],
+      "height_name": [
+        "various"
+      ],
+      "long_name": "ACT-AMERICA-b200",
+      "platform": "aircraft"
+    }
+  },
+  "ACT-AMERICA-c130": {
+    "NASA": {
+      "height": [
+        "various"
+      ],
+      "height_name": [
+        "various"
+      ],
+      "long_name": "ACT-AMERICA-c130",
+      "platform": "aircraft"
+    }
+  },
   "ADR": {
     "ALE": {
       "height": [

@@ -500,7 +500,7 @@ def get_single_site(site, species_in,
 
             # Create a new variability variable, containing the standard deviation within the resampling period
             ds_resampled[f"{species_query}_variability"] = ds[species_query].resample(time = average,
-                                                                                      keep_attrs = True).std(skipna=False)
+                                                                                      keep_attrs = True).std(skipna=True)
             # If there are any periods where only one measurement was resampled, just use the median variability
             ds_resampled[f"{species_query}_variability"][ds_resampled[f"{species_query}_variability"] == 0.] = \
                                                                 ds_resampled[f"{species_query}_variability"].median()

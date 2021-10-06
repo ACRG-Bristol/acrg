@@ -38,7 +38,7 @@ import getpass
 import acrg.name as name
 from acrg.grid import areagrid
 from acrg.time.convert import time2sec
-import acrg.obs as acrg_obs
+from acrg.obs import read
 from acrg.config.paths import Paths
 
 acrg_path = Paths.acrg
@@ -251,7 +251,7 @@ def molar_mass(species):
     species_info_file = os.path.join(acrg_path, "data/species_info.json")
     with open(species_info_file) as f:
             species_info=json.load(f)
-    species_key = acrg_obs.read.synonyms(species, species_info)
+    species_key = read.synonyms(species, species_info)
     molmass = float(species_info[species_key]['mol_mass'])
     return molmass
 
