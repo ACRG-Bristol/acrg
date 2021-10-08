@@ -228,7 +228,7 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
                                burn, tune, nchain, sigma_per_site,
                                fp_data=None, flux_directory=None, emissions_name=None, 
                                basis_directory=None, country_file=None,
-                               add_offset=False, rerun_file=None):
+                               add_offset=False, rerun_file=None, HiTRes=False):
 
         """
         Takes the output from inferpymc3 function, along with some other input
@@ -343,6 +343,8 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
                 Add an offset (intercept) to all sites but the first in the site list. Default False.
             rerun_file (xarray dataset, optional):
                 An xarray dataset containing the ncdf output from a previous run of the MCMC code.
+            HiTRes (bool):
+                True if using HiTRes footprints
                 
         Returns:
             netdf file containing results from inversion
@@ -410,7 +412,9 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
             if emissions_name == None:
                 emds = name.flux(domain, species, start = start_date, end = end_date, flux_directory=flux_directory)
             else:
-                emds = name.flux(domain, list(emissions_name.values())[0], start = start_date, end = end_date, flux_directory=flux_directory)
+                emds = name.flux(domain, list(emissions_name.values())[0], start = start_date, end = end_date, flux_directory=flux_directory) \
+                       if not HiTRes else \
+                       name.flux_for_HiTRes(domain, emissions_name, start = start_date, end = end_date, flux_directory=flux_directory)['high_freq']
             emissions_flux = emds.flux.values
         flux = scalemap*emissions_flux[:,:,0]
         
