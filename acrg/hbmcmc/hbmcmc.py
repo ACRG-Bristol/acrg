@@ -76,6 +76,8 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
         species_footprint (str, optional):
             species of the footprint to be imported, if different to the species
             of interest (e.g. import co2 footprints for HiTRes studies)
+        HiTRes (bool)
+            True if using HiTRes footprints
         outputpath (str):
             Path to where output should be saved.
         xprior (dict):
@@ -179,9 +181,11 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     TO DO:
         Add a wishlist...
     """    
+    keep_missing = True if HiTRes else False
     data = getobs.get_obs(sites, species, start_date = start_date, end_date = end_date, 
                          average = meas_period, data_directory=obs_directory,
-                          keep_missing=False,inlet=inlet, instrument=instrument, max_level=max_level)
+                          keep_missing=keep_missing,inlet=inlet, instrument=instrument,
+                          max_level=max_level)
     print(f'species_footprint: {species_footprint}')
     fp_all = name.footprints_data_merge(data, domain=domain, met_model = met_model, calc_bc=True,
                                         HiTRes = HiTRes,
@@ -233,6 +237,10 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     fp_data = name.fp_sensitivity(fp_all, domain=domain, basis_case=fp_basis_case,basis_directory=basis_directory)
     fp_data = name.bc_sensitivity(fp_data, domain=domain,basis_case=bc_basis_case)
     
+    if HiTRes:
+        for site in sites:
+            fp_data[site] = fp_data[site].dropna(dim='time')
+        
     #apply named filters to the data
     fp_data = name.filtering(fp_data, filters)
     
@@ -288,7 +296,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                                burn, tune, nchain, sigma_per_site,
                                fp_data=fp_data, flux_directory=flux_directory, emissions_name=emissions_name, 
                                basis_directory=basis_directory, country_file=country_file,
-                               add_offset=add_offset)
+                               add_offset=add_offset, HiTRes=HiTRes)
 
     if quadtree_basis is True:
         # remove the temporary basis function directory
