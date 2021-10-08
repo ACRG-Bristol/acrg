@@ -2255,12 +2255,6 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
     day period.
     
     Args:
-        fp_HiTRes_ds (xarray.Dataset)
-            Dataset of high time resolution footprints. HiTRes footprints record the footprint at 
-            each timestep back in time for a given amount of time
-            (e.g. hourly time steps back in time for the first 24 hours).
-        domain (str)
-            Domain name. The footprint files should be sub-categorised by the domain.
         flux_dict (dict)
             This should be a dictionary of the form output in the format
             flux_dict: {'high_freq': flux_dataset, 'low_freq': flux_dataset}.
@@ -2270,18 +2264,34 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
             If there are multiple sectors, the format should be:
             flux_dict: {sector1 : {'high_freq' : flux_dataset, 'low_freq'  : flux_dataset},
                         sector2 : {'high_freq' : flux_dataset, 'low_freq'  : flux_dataset}}
-        output_TS (bool)
+        fp_HiTRes_ds (xarray.Dataset)
+            Dataset of high time resolution footprints. HiTRes footprints record the footprint at 
+            each timestep back in time for a given amount of time
+            (e.g. hourly time steps back in time for the first 24 hours).
+        fp_file (str, optional)
+            footprint filename
+            not needed if fp_HiTRes_ds is given
+        output_TS (bool, optional)
             Output the timeseries. Default is True.
-        output_fpXflux (bool)
+        output_fpXflux (bool, optional)
             Output the sensitivity map. Default is True.
-        verbose (bool)
+        output_type (str, optional)
+            object type to be returned
+            default is Dataset which returns an xarray.Dataset
+        output_file (str, optional)
+            filename to save data to
+            data is not saved by default
+        verbose (bool, optional)
             show progress bar throughout loop
-        chunks (dict)
+        chunks (dict, optional)
             size of chunks for each dimension
             e.g. {'lat': 50, 'lon': 50}
             opens dataset with dask, such that it is opened 'lazily'
             and all of the data is not loaded into memory
             defaults to None - dataset is opened with out dask
+        time_resolution (str, optional)
+            required time resolution of timeseries
+            defaults to '1H'
     
     Returns:
         xarray.Dataset or dict
