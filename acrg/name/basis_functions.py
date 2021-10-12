@@ -845,7 +845,9 @@ def quadtreebasisfunction(emissions_name, fp_all, sites,
     
     if meanflux.shape != meanfp.shape:
         meanflux = np.mean(meanflux, axis=2)
-    fps = meanfp*meanflux
+#     fps = meanfp*meanflux
+###### REMEMBER TO REMOVE - For creating quadtree that is based only on meanfp
+    fps = meanfp*1e-10
 
     def qtoptim(x):
         basisQuad, boxes = quadTreeGrid(fps, x)

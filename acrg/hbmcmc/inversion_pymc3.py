@@ -20,6 +20,7 @@ from acrg.hbmcmc.hbmcmc_output import define_output_filename
 import acrg.convert as convert
 from acrg.config.version import code_version
 from acrg.config.paths import Paths
+import sys
 
 
 data_path = Paths.data
@@ -192,6 +193,7 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
             sig = sigprior["fixed_value"]  
             mu = pm.math.dot(hx,x) + pm.math.dot(hbc,xbc)
             epsilon = pm.math.sqrt(error**2 + sig**2)   
+            print('Epsilon squared =', error**2 + sig**2)
         else:
             sig = parsePrior("sig", sigprior, shape=(nsites, nsigmas))
             if add_offset:
@@ -201,6 +203,8 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
             else:
                 mu = pm.math.dot(hx,x) + pm.math.dot(hbc,xbc)       
             epsilon = pm.math.sqrt(error**2 + sig[sites, sigma_freq_index]**2)
+            print('Epsilon squared =', error**2 + sig[sites, sigma_freq_index]**2)
+                        
         y = pm.Normal('y', mu = mu, sd=epsilon, observed=Y, shape = ny)
         
         step1 = pm.NUTS(vars=[x,xbc])
