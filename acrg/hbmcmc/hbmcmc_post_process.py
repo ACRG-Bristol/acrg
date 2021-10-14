@@ -41,13 +41,13 @@ from acrg.config.paths import Paths
 
 acrg_path = Paths.acrg
 
-# Get acrg_site_info file
+# Get site_info file
 with open(acrg_path / "data/site_info.json") as f:
     site_info=json.load(f,object_pairs_hook=OrderedDict)
 
 def check_platform(site,network=None):
     '''
-    This function extracts platform (if specified) for the site from data/site_info.json file.
+    This function extracts platform (if specified) for the site from site_info.json file.
     network can be specified if site is associated with more than one. If not specified, the first
     network will be used by default.
     Returns:
@@ -69,7 +69,7 @@ def define_stations(ds,sites=None,use_site_info=False):
     a dataset.
     
     If sites is not specified, if the platform for the site is listed as "aircraft" or 
-    "satellite" in the data/site_info.json file then no values are included in the stations
+    "satellite" in the site_info.json file then no values are included in the stations
     dictionary for this site.
     
     Args:
@@ -84,7 +84,7 @@ def define_stations(ds,sites=None,use_site_info=False):
             If not specified, the sites will be extracted from the input dataset assuming a 
             data variable "sites" is included within the dataset.
         use_site_info (bool, optional) :
-            Use positions from data/site_info.json file rather than extract them from the tdmcmc dataset.
+            Use positions from site_info.json file rather than extract them from the tdmcmc dataset.
             Default = False.
     
     Returns:
@@ -544,7 +544,7 @@ def plot_scale_map(ds_list, lat=None, lon=None, grid=True, clevels=None, diverge
         plot_stations (bool, optional) :
             Plot site positions on the output map. Will not plot aircraft or satellite positions.
         use_site_info (bool, optional) :
-            If plotting site positions, use positions from data/site_info.json file rather
+            If plotting site positions, use positions from site_info.json file rather
             than extract them from the tdmcmc dataset.
             Default = False.
         
@@ -611,7 +611,7 @@ def plot_abs_map(ds_list, species, lat=None, lon=None, grid=True, clevels=None, 
         plot_stations (bool, optional) :
             Plot site positions on the output map. Will not plot aircraft or satellite positions.
         use_site_info (bool, optional) :
-            If plotting site positions, use positions from data/site_info.json file rather
+            If plotting site positions, use positions from site_info.json file rather
             than extract them from the tdmcmc dataset.
             Default = False.
         
@@ -679,7 +679,7 @@ def plot_diff_map(ds_list, species, lat = None, lon = None, grid=True, clevels=N
         plot_stations (bool, optional) :
             Plot site positions on the output map. Will not plot aircraft or satellite positions.
         use_site_info (bool, optional) :
-            If plotting site positions, use positions from data/site_info.json file rather
+            If plotting site positions, use positions from site_info.json file rather
             than extract them from the tdmcmc dataset.
             Default = False.
         
