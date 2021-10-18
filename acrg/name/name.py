@@ -284,39 +284,26 @@ def footprints(sitecode_or_filename, met_model = None, fp_directory = None,
     # into an annual footprint file in (mol/mol) / (mol/m2/s)
     # using acrg_name_process
     
-    if fp_directory is None:
-        fp_integrated_directory = join(data_path, 'LPDM/fp_NAME/')
-        fp_HiTRes_directory = join(data_path,'LPDM/fp_NAME_high_time_res/')
-        fp_HiTRes_directory = join(data_path,'LPDM/fp_NAME/')
-        fp_directory = {'integrated': fp_integrated_directory,
-                        'HiTRes': fp_HiTRes_directory}
-
-    #   Error message if looking for HiTRes files and fp_directory is not a dictionary        
-        if HiTRes is True:
-            if type(fp_directory) is not dict:
-                print("fp_directory needs to be a dictionary containing paths \
-                       to integrated and HiTRes footprints \
-                       {integrated:path1, HiTRes:path2}")
-                return None
+    fp_directory = join(data_path, 'LPDM/fp_NAME/') if fp_directory is None else fp_directory
+    
+    if HiTRes:
+        print('Finding high time resolution footprints, setting species = co2')
+        species = 'co2'
     
     if '.nc' in sitecode_or_filename:
         if not '/' in sitecode_or_filename:
             files = [os.path.join(fp_directory, sitecode_or_filename)]
         else:
-            files=[sitecode_or_filename]
+            files = [sitecode_or_filename]
     else:
         site=sitecode_or_filename[:]
 
-        # Finds integrated footprints if specified as a dictionary with multiple entries (HiTRes = True) 
-        # or a string with one entry        
-        if type(fp_directory) is dict:
-            files = filenames(site, domain, start, end, height, fp_directory["integrated"], met_model = met_model, network=network, species=species)
-        else:
-            files = filenames(site, domain, start, end, height, fp_directory, met_model = met_model, network=network, species=species)
+        # Finds integrated footprints if specified as a dictionary with multiple entries (HiTRes = True)
+        files = filenames(site, domain, start, end, height, fp_directory, met_model = met_model, network=network, species=species)
 
     if len(files) == 0:
-        print(f"\nWarning: Can't find footprint files for {sitecode_or_filename}. \
-              This site will not be included in the output dictionary.\n")
+        print(f"\nWarning: Can't find footprint files for {sitecode_or_filename}. " \
+              + "This site will not be included in the output dictionary.\n")
         return None
 
     else:
@@ -448,7 +435,7 @@ def flux_for_HiTRes(domain, emissions_dict, start=None, end=None, flux_directory
             Domain name. The flux files should be sub-categorised by the domain.
         emissions_dict (dict) : 
             This should be a dictionary of the form:
-                {'high_freq':high_freq_emissions_name, 'low_freq':low_freq_emissions_name}
+                {'high_freq': high_freq_emissions_name, 'low_freq': low_freq_emissions_name}
                 e.g. {'high_freq':'co2-ff-2hr', 'low_freq':'co2-ff-mth'}.
         start (str, optional) : 
             Start date in format "YYYY-MM-DD" to output only a time slice of all the flux files.
@@ -464,29 +451,26 @@ def flux_for_HiTRes(domain, emissions_dict, start=None, end=None, flux_directory
             flux_directory can be specified if files are not in the default directory. 
             Must point to a directory which contains subfolders organized by domain.
     Returns:
-        dictionary {'high_freq': flux_xray_dataset, 'low_freq': flux_xray_dataset} :
-            Dictionary containing xray datasets for both high and low frequency fluxes.
+        dictionary:
+            Dictionary containing xarray Datasets for both high and low frequency fluxes for the
+            dates required and 1 month prior to start
+            {'high_freq': xarray.Dataset, 'low_freq': xarray.Dataset}
     """
-    
-    if 'low_freq' not in list(emissions_dict.keys()):
-        print("Warning: low_freq must be a key in the emissions_dict in order to combine with HiTRes footprints.")
-    if 'high_freq' not in list(emissions_dict.keys()):
-        print("Warning: high_freq must be a key in the emissions_dict in order to use HiTRes footprints.")
     
     flux_dict = {}
     
     if start:
-        #Get the month before the one one requested because this will be needed for the first few
-        #days in timeseries_HiTRes to calculate the modleed molefractions for times when the footprints
-        #are in the previous month.
+        # Get the month before the one one requested because this will be needed for the first few
+        # days in timeseries_HiTRes to calculate the modleed molefractions for times when the footprints
+        # are in the previous month.
         start = str(pd.to_datetime(start) - dateutil.relativedelta.relativedelta(months=1))
-    
-    if 'high_freq' in list(emissions_dict.keys()):
-        flux_dict['high_freq'] = flux(domain, emissions_dict['high_freq'], start = start, end = end,
-                                      flux_directory=flux_directory, verbose=verbose)
-    if 'low_freq' in list(emissions_dict.keys()):
-        flux_dict['low_freq'] = flux(domain, emissions_dict['low_freq'], start = start, end = end,
-                                     flux_directory=flux_directory, verbose=verbose)
+        
+    for freq in ['low_freq', 'high_freq']:
+        if freq not in list(emissions_dict.keys()):
+            print(f"Warning: {freq} key not found in emissions_dict.")
+        else:
+            flux_dict[freq] = flux(domain, emissions_dict[freq], start = start, end = end,
+                                   flux_directory = flux_directory, verbose = verbose)
     
     return flux_dict
 
@@ -2250,17 +2234,16 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
     The timeseries_HiTRes function computes flux * HiTRes footprints.
     
     HiTRes footprints record the footprint at each 2 hour period back in time for the first 24 hours.
-    Need a high time resolution flux to multiply the first 24 hours back of footprints.
-    Need a residual flux to multiply the residual integrated footprint for the remainder of the 30 
-    day period.
+    A high time resolution flux is used to multiply the first 24 hours back of footprints, high 
+    frequency flux can be estimated by resampling low frequency data if required
+    
+    A residual flux is used to multiply the residual integrated footprint for the remainder of the 30 
+    day period, the residual can be calculated from the high frequency flux.
     
     Args:
         flux_dict (dict)
-            This should be a dictionary of the form output in the format
-            flux_dict: {'high_freq': flux_dataset, 'low_freq': flux_dataset}.
-            This is because this function needs two time resolutions of fluxes as
-            explained in the header.
-            
+            A dictionary of the form output in the format:
+            flux_dict: {'high_freq': xarray.Dataset, 'low_freq': xarray.Dataset}.            
             If there are multiple sectors, the format should be:
             flux_dict: {sector1 : {'high_freq' : flux_dataset, 'low_freq'  : flux_dataset},
                         sector2 : {'high_freq' : flux_dataset, 'low_freq'  : flux_dataset}}
@@ -2294,16 +2277,17 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
             defaults to '1H'
     
     Returns:
-        xarray.Dataset or dict
+        xarray.Dataset, xarray.DataArray or dict
             Same format as flux_dict['high_freq']:
-                If flux_dict['high_freq'] is an xarray.Dataset then an xarray.Dataset is returned
-                If flux_dict['high_freq'] is a dict of xarray.Datasets then a dict of xarray.Datasets
-                is returned (an xarray.Dataset for each sector)
+                If flux_dict['high_freq'] is an xarrayobject then an xarray object is returned
+                (either DataArray or Dataset, as specified by output_type)
+                If flux_dict['high_freq'] is a dict of xarray objects then a dict of xarray objects
+                is returned (an xarray.Dataset or xarray.DataArray for each sector)
         
             If output_TS is True:
-                Outputs the timeseries
+                Outputs a mol fraction timeseries, i.e. latlon sum of footprint * flux
             If output_fpXflux is True:
-                Outputs the sensitivity map   
+                Outputs a sensitivity map, i.e. footprint * flux
     """
     if verbose:
         print(f'\nCalculating timeseries with {time_resolution} resolution, this might take a few minutes')
