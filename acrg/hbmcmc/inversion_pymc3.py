@@ -414,7 +414,7 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
             else:
                 emds = name.flux(domain, list(emissions_name.values())[0], start = start_date, end = end_date, flux_directory=flux_directory) \
                        if not HiTRes else \
-                       name.flux_for_HiTRes(domain, emissions_name, start = start_date, end = end_date, flux_directory=flux_directory)['high_freq']
+                       name.flux_for_HiTRes(domain, list(emissions_name.values())[0], start = start_date, end = end_date, flux_directory=flux_directory)['high_freq']
             emissions_flux = emds.flux.values
         flux = scalemap*emissions_flux[:,:,0]
         
