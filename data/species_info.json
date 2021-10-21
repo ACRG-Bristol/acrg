@@ -2,7 +2,7 @@
     "APO": {"alt": [],
         "group": "Other", 
         "long_name": "Atmospheric Potential Oxygen", 
-        "mol_mass": "None",
+        "mol_mass": "31.9988",
         "print_string": "APO", 
         "units": "per meg"
     },
