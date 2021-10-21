@@ -484,7 +484,7 @@ def flux_for_HiTRes(domain, emissions_dict, start=None, end=None, flux_directory
     return flux_dict
 
 
-def boundary_conditions(domain, species, start = None, end = None, bc_directory=None):
+def boundary_conditions(domain, species, start = None, end = None, bc_directory=None, chunks=None):
     """
     The boundary_conditions function reads in the files with the global model vmrs at the domain edges 
     to give the boundary conditions as an xarray Dataset.
@@ -511,6 +511,8 @@ def boundary_conditions(domain, species, start = None, end = None, bc_directory=
         bc_directory (str, optional) : 
             bc_directory can be specified if files are not in the default directory. 
             Must point to a directory which contains subfolders organized by domain.
+        chunks (dict, optional):
+            size of chunks to load data using dask e.g. {'time': 50}
 
     Returns:
         xarray.Dataset : 
@@ -533,7 +535,7 @@ def boundary_conditions(domain, species, start = None, end = None, bc_directory=
         print("Cannot find boundary condition files in {}".format(filenames))
         raise IOError(f"\nError: Cannot find boundary condition files for domain '{domain}' and species '{species}' ")
 
-    bc_ds = read_netcdfs(files)
+    bc_ds = read_netcdfs(files, chunks=chunks)
 
     if start == None or end == None:
         print("To get boundary conditions for a certain time period you must specify an end date.")
@@ -1039,7 +1041,7 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
             
         
     if load_bc:       
-        bc = boundary_conditions(domain, species, start=flux_bc_start, end=flux_bc_end, bc_directory=bc_directory)
+        bc = boundary_conditions(domain, species, start=flux_bc_start, end=flux_bc_end, bc_directory=bc_directory, chunks=chunks)
         if units:
             fp_and_data['.bc'] = old_div(bc, units)               
         else:
