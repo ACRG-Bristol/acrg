@@ -2336,11 +2336,14 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
     for sector, flux_sector in flux.items():
         if 'high_freq' in flux_sector.keys() and flux_sector['high_freq'] is not None:
             # reindex the high frequency data to match the fp
-            time_flux = np.arange(fp_HiTRes_ds.time[0].values - np.timedelta64(24, 'h'),
-                                  fp_HiTRes_ds.time[-1].values + np.timedelta64(time_resolution[0], 
-                                                                                time_resolution[1].lower()),
-                                  time_resolution[0], dtype=f'datetime64[{time_resolution[1].lower()}]')
-            flux_sector['high_freq'] = flux_sector['high_freq'].reindex(time=time_flux, method='ffill')
+            try:
+                time_flux = np.arange(fp_HiTRes_ds.time[0].values - np.timedelta64(24, 'h'),
+                                      fp_HiTRes_ds.time[-1].values + np.timedelta64(time_resolution[0], 
+                                                                                    time_resolution[1].lower()),
+                                      time_resolution[0], dtype=f'datetime64[{time_resolution[1].lower()}]')
+                flux_sector['high_freq'] = flux_sector['high_freq'].reindex(time=time_flux, method='ffill')
+            except:
+                print(f'could not reindex {sector} time')
         else:
             print(f'\nWarning: no high frequency flux data for {sector}, estimating a timeseries using the low frequency data')
             flux_sector['high_freq'] = None
