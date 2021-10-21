@@ -437,6 +437,8 @@ def flux_for_HiTRes(domain, emissions_dict, start=None, end=None, flux_directory
             This should be a dictionary of the form:
                 {'high_freq': high_freq_emissions_name, 'low_freq': low_freq_emissions_name}
                 e.g. {'high_freq':'co2-ff-2hr', 'low_freq':'co2-ff-mth'}.
+                Or it can be the emissions names for different sources
+                e.g. {'anth': {'high_freq':'co2-ff-2hr', 'low_freq':'co2-ff-mth'}}
         start (str, optional) : 
             Start date in format "YYYY-MM-DD" to output only a time slice of all the flux files.
             The start date used will be the first of the input month. I.e. if "2014-01-06" is input,
@@ -464,13 +466,20 @@ def flux_for_HiTRes(domain, emissions_dict, start=None, end=None, flux_directory
         # days in timeseries_HiTRes to calculate the modleed molefractions for times when the footprints
         # are in the previous month.
         start = str(pd.to_datetime(start) - dateutil.relativedelta.relativedelta(months=1))
-        
-    for freq in ['low_freq', 'high_freq']:
-        if freq not in list(emissions_dict.keys()):
-            print(f"Warning: {freq} key not found in emissions_dict.")
-        else:
-            flux_dict[freq] = flux(domain, emissions_dict[freq], start = start, end = end,
-                                   flux_directory = flux_directory, verbose = verbose)
+    
+    emissions_dict = {'no_source': emissions_dict} if any([freq in emissions_dict.keys() for freq in ['high_freq', 'low_freq']]) else \
+                     emissions_dict
+    
+    for source, em_source in emissions_dict.items():
+        flux_dict[source] = {}
+        for freq in ['low_freq', 'high_freq']:
+            if freq not in list(em_source.keys()):
+                print(f"Warning: {freq} key not found in emissions_dict.")
+            else:
+                flux_dict[source][freq] = flux(domain, em_source[freq], start = start, end = end,
+                                               flux_directory = flux_directory, verbose = verbose)
+                
+    flux_dict = flux_dict['no_source'] if list(flux_dict.keys())==['no_source'] else flux_dict
     
     return flux_dict
 
