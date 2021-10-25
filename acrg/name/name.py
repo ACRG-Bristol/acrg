@@ -3,35 +3,34 @@
 Created on Mon Nov 10 10:45:51 2014
 
 """
-from past.utils import old_div
-import numpy as np
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-from matplotlib.ticker import MaxNLocator
-from matplotlib import ticker
-import datetime as dt
 import os
 import sys
 import glob
-import pandas as pd
-import bisect
-import subprocess
 import json
-from os.path import join
-import xarray as xr
-import calendar
-import dateutil.relativedelta
-import cartopy.crs as ccrs
+import bisect
 import cartopy
-from collections import OrderedDict
-
-from acrg.time import convert
-import acrg.obs as obs
-from acrg.config.paths import Paths
-from acrg.utils import is_number
-
+import calendar
+import subprocess
+import numpy as np
+import pandas as pd
+import xarray as xr
 from tqdm import tqdm
+import datetime as dt
 import dask.array as da
+from os.path import join
+import matplotlib as mpl
+import cartopy.crs as ccrs
+from matplotlib import ticker
+import dateutil.relativedelta
+from past.utils import old_div
+import matplotlib.pyplot as plt
+from collections import OrderedDict
+from matplotlib.ticker import MaxNLocator
+
+import acrg.obs as obs
+from acrg.time import convert
+from acrg.utils import is_number
+from acrg.config.paths import Paths
 
 acrg_path = Paths.acrg
 data_path = Paths.data
@@ -137,35 +136,23 @@ def filenames(site, domain, start, end, height, fp_directory, met_model = None, 
 
     files = []
     for ym in yearmonth:
+        met_str = f'_{met_model}' if met_model else ''
 
         if species:
-
-            if met_model:
-                f=glob.glob(os.path.join(fp_directory,domain,f"{site}-{height}_{met_model}_{species}_{domain}_{ym}*.nc"))
-            else:
-                f=glob.glob(os.path.join(fp_directory,domain,f"{site}-{height}_{species}_{domain}_{ym}*.nc"))
-
-
-        else:
-            #manually create empty list if no species specified
-            f = []
+            f = glob.glob(os.path.join(fp_directory,domain,f"{site}-{height}{met_str}_{species}_{domain}_{ym}*.nc"))
             
-        if len(f) == 0:
-
-            if met_model:
-                glob_path = os.path.join(fp_directory,domain,f"{site}-{height}_{met_model}_{domain}_{ym}*.nc")
-            else:
-                glob_path = os.path.join(fp_directory,domain,f"{site}-{height}_{domain}_{ym}*.nc")
+        else:
+            glob_path = os.path.join(fp_directory,domain,f"{site}-{height}{met_str}_{domain}_{ym}*.nc")
             
             if lifetime_hrs is None:
                 print("No lifetime defined in species_info.json or species not defined. WARNING: 30-day integrated footprint used without chemical loss.")
-                f=glob.glob(glob_path)
+                f = glob.glob(glob_path)
             elif lifetime_hrs <= 1440:
                 print("This is a short-lived species. Footprints must be species specific. Re-process in process.py with lifetime")
                 return []
             else:
                 print("Treating species as long-lived.")
-                f=glob.glob(glob_path)        
+                f = glob.glob(glob_path)        
             
         if len(f) > 0:
             files += f
@@ -368,6 +355,21 @@ def flux(domain, species, start = None, end = None, flux_directory=None, chunk=T
     else:
         raise IOError("\nError: Can't find flux files for domain '{0}' and species '{1}' (using search: {2})".format(domain,species,species_search_list))
     
+    if start and end and 'climatology' not in species:
+        # extract the year and date from the filename and convert to a pandas datetime
+        f_date_str = {ff: ff.split('_')[-1].split('.')[0] for ff in files}
+        f_date = {ff: pd.to_datetime('-'.join([f_d[:4], f_d[4:]])) if is_number(f_d) and len(f_d)==6 else
+                      pd.to_datetime(f_d) if is_number(f_d) and len(f_d)==4 else 'clim'
+                  for ff, f_d in f_date_str.items()}
+        
+        # check for files for which the filename dates are within the start-end time period
+        files_lim = [ff for ff, f_d in f_date.items() if f_d in np.arange(start, end, dtype='datetime64[M]') and len(f_date_str[ff])==6 or
+                     pd.to_datetime(str(f_d)) in np.arange(f'{str(pd.to_datetime(start).year)}-01-01',
+                                                           f'{str(pd.to_datetime(end).year+1)}-01-01', dtype='datetime64[Y]') or f_d=='clim']
+        
+        # if no files are found for the required time period then data will be sliced below
+        files = files_lim if len(files_lim)>0 else files
+    
     chunks = None if start == None or end == None or not chunk else {'lat': 50, 'lon': 50}
     flux_ds = read_netcdfs(files, chunks=chunks)
     # Check that time coordinate is present
@@ -376,8 +378,8 @@ def flux(domain, species, start = None, end = None, flux_directory=None, chunk=T
 
     # Check for level coordinate. If one level, assume surface and drop
     if "lev" in list(flux_ds.coords.keys()):
-        print(f"WARNING: Can't support multi-level fluxes. Trying to remove 'lev' coordinate \
-              from flux dataset for {domain}, {species}")
+        print(f"WARNING: Can't support multi-level fluxes. Trying to remove 'lev' coordinate" \
+              + f" from flux dataset for {domain}, {species}")
         if len(flux_ds.lev) > 1:
             print("ERROR: More than one flux level")
         else:
@@ -416,11 +418,11 @@ def flux(domain, species, start = None, end = None, flux_directory=None, chunk=T
         if len(flux_timeslice.time)==0:
             flux_timeslice = flux_ds.sel(time=start, method = 'ffill')
             flux_timeslice = flux_timeslice.expand_dims('time',axis=-1)
-            print("Warning: No fluxes available during the time period specified so outputting\
-                          flux from %s" %flux_timeslice.time.values[0])
+            print("Warning: No fluxes available during the time period specified so outputting"\
+                          + f"flux from {flux_timeslice.time.values[0]}")
         else:
             if verbose:
-                print("Slicing time to range {} - {}".format(month_start,month_end))
+                print(f"Slicing time to range {month_start} - {month_end}")
         
         flux_timeslice = flux_timeslice.compute()
         return flux_timeslice
@@ -519,29 +521,44 @@ def boundary_conditions(domain, species, start = None, end = None, bc_directory=
             Combined dataset of matching boundary conditions files
     """
     
-    if bc_directory is None:
-        bc_directory = join(data_path, 'LPDM/bc/')
+    bc_directory = join(data_path, 'LPDM/bc/') if bc_directory is None else bc_directory
     
     filenames = os.path.join(bc_directory,domain,f"{species.lower()}_*.nc")
     
     files       = sorted(glob.glob(filenames))
     file_no_acc = [ff for ff in files if not os.access(ff, os.R_OK)]
     files       = [ff for ff in files if os.access(ff, os.R_OK)]
+    
     if len(file_no_acc)>0:
         print('Warning: unable to read all boundary conditions files which match this criteria:')
         [print(ff) for ff in file_no_acc]
     
     if len(files) == 0:
-        print("Cannot find boundary condition files in {}".format(filenames))
+        print(f"Cannot find boundary condition files in {filenames}")
         raise IOError(f"\nError: Cannot find boundary condition files for domain '{domain}' and species '{species}' ")
-
-    bc_ds = read_netcdfs(files, chunks=chunks)
 
     if start == None or end == None:
         print("To get boundary conditions for a certain time period you must specify an end date.")
+        bc_ds = read_netcdfs(files, chunks=chunks)
         return bc_ds
     else:
-        #Change timeslice to be the beginning and end of months in the dates specified.
+        if 'climatology' not in species:
+            # extract the year and date from the filename and convert to a pandas datetime
+            f_date_str = {ff: ff.split('_')[-1].split('.')[0] for ff in files}
+            f_date = {ff: pd.to_datetime('-'.join([f_d[:4], f_d[4:]])) if is_number(f_d) and len(f_d)==6 else
+                          pd.to_datetime(f_d) if is_number(f_d) and len(f_d)==4 else 'clim'
+                      for ff, f_d in f_date_str.items()}
+            
+            # check for files for which the filename dates are within the start-end time period
+            files_lim = [ff for ff, f_d in f_date.items() if f_d in np.arange(start, end, dtype='datetime64[M]') and len(f_date_str[ff])==6 or
+                         pd.to_datetime(str(f_d)) in np.arange(f'{str(pd.to_datetime(start).year)}-01-01',
+                                                               f'{str(pd.to_datetime(end).year+1)}-01-01', dtype='datetime64[Y]') or f_d=='clim']
+            # if no files are found for the required time period then data will be sliced below
+            files = files_lim if len(files_lim)>0 else files
+        
+        bc_ds = read_netcdfs(files, chunks=chunks)
+        
+        # Change timeslice to be the beginning and end of months in the dates specified.
         start = pd.to_datetime(start)
         month_start = dt.datetime(start.year, start.month, 1, 0, 0)
         
