@@ -1,0 +1,23 @@
+# This is a variable version acrg_environment.yml file. Will download whichever version of the packages are available when environment is created.
+name: acrg_var
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - numpy
+  - scipy
+  - pandas
+  - h5py
+  - netCDF4
+  - xarray
+  - matplotlib
+  - cartopy
+  - geopandas
+  - iris
+  - pymc3
+  - future
+  - yaml
+  - numba
+  - python-dateutil
+  - iso3166
+

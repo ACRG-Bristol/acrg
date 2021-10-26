@@ -24,27 +24,18 @@ To only run tests which check against a benchmark file:
 
 @author: rt17603
 """
-from __future__ import print_function
-
-from builtins import zip
-from builtins import str
 import pytest
 import os
-import sys
 import glob
 import numpy as np
 import xarray as xray
-import acrg_name.process as process
-from acrg_name.name import open_ds
 import datetime
 import pandas as pd
-import pdb
 
-if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
-    acrg_path = os.getenv("ACRG_PATH") 
-else:
-    from acrg_config.paths import paths
-    acrg_path = paths.acrg
+import acrg.name.process as process
+from acrg.config.paths import Paths
+
+acrg_path = Paths.acrg
 
 #%%  Setting up directory fixtures
 
@@ -59,6 +50,7 @@ def benchmark_output_directory():
     ''' Define base directory containing grouped satellite footprint files '''
     directory = os.path.join(acrg_path,"tests/files/LPDM/raw_output/benchmarks/")
     return directory
+
 
 @pytest.fixture()
 def site_param():
@@ -94,6 +86,44 @@ def site_param_xunbounded():
    
     return param
 
+@pytest.fixture()
+def site_param_species():
+    '''
+    Define input parameters for site data to test.
+    Keys include:
+        "domain" (str),"site" (str),"height" (str),"year" (int),"month" (int),"satellite" (bool), "species" (str)
+    '''
+    param = {}
+    param["domain"] = "CARIBBEAN"
+    param["site"] = "RPB"
+    param["height"] = "10magl"
+    param["year"] = 2010
+    param["month"] = 1
+    param["satellite"] = False
+    param["species"] = "HFO-1234zee"
+   
+    return param
+
+@pytest.fixture()
+def site_param_co2():
+    '''
+    Define input parameters for site data to test.
+    Keys include:
+        "domain" (str),"site" (str),"height" (str),"year" (int),"month" (int),"satellite" (bool), "species" (str)
+    '''
+    param = {}
+    param["domain"] = "CARIBBEAN"
+    param["site"] = "RPB"
+    param["height"] = "10magl"
+    param["year"] = 2010
+    param["month"] = 1
+    param["satellite"] = False
+    param["species"] = "co2"
+   
+    return param
+
+#%%
+
 def define_subfolder(domain,site,height):
     ''' Define subfolder name based on domain, site and height '''
     subfolder = "{domain}_{site}_{height}/".format(domain=domain,site=site,height=height)
@@ -126,16 +156,19 @@ def folder_names():
     '''
     Define subfolders within NAME output directory structure
     Keys includes:
-        "fields_folder","particles_folder","met_folder","processed_folder","obs_folder"
+        "fields_folder", "fields_folder_hourly", "particles_folder","met_folder","obs_folder", 
+        (also "mixr_fields_folder","mixr_hourly_folder" but largely deprecated)
     '''
     param = {}
-    param["fields_folder"] = "Fields_files"
-    param["mixr_fields_folder"] = "MixR_files"
-    param["mixr_hourly_folder"] = "MixR_hourly"
+    
+    param["fields_folder"] = "MixR_files"
+    param["fields_folder_hourly"] = "MixR_hourly"
     param["particles_folder"] = "Particle_files"
     param["met_folder"] = "Met_daily"
-    param["processed_folder"] = "Processed_Fields_files"
     param["obs_folder"] = "Observations"
+    
+    param["mixr_fields_folder"] = param["fields_folder"] # supporting legacy code (for now)
+    param["mixr_hourly_folder"] = param["fields_folder_hourly"]  # supporting legacy code (for now)
 
     return param    
 
@@ -387,13 +420,40 @@ def met_file_benchmark():
     '''
     values = {}
     
-    values["release_lon"] = [-59.43330,-59.43330]
-    values["release_lat"] = [13.16670,13.16670]
-    values["temp"] = [27.07520,26.98370]
-    values["PBLH"] = [778.9576,782.4219]
-    values["press"] = [101161.4,101163.7]
-    values["wind"] = [5.697351,5.695338]
-    values["wind_direction"] = [72.90572,76.33878]
+    #values["release_lon"] = [-59.43330,-59.43330]
+    #values["release_lat"] = [13.16670,13.16670]
+    #values["temp"] = [27.07520,26.98370]
+    #values["PBLH"] = [778.9576,782.4219]
+    #values["press"] = [101161.4,101163.7]
+    #values["wind"] = [5.697351,5.695338]
+    #values["wind_direction"] = [72.90572,76.33878]
+
+    # Define values for each parameter
+    # Repeated for hours 0-11 and 12-23
+    release_lon_H_0_11 = [-59.43330]*12 # Repeat the same value 12 times for each hour
+    release_lat_H_0_11 = [13.16670]*12
+    temp_H_0_11 = [27.07520]*12
+    PBLH_H_0_11 = [778.9576]*12
+    press_H_0_11 = [101161.4]*12
+    wind_H_0_11 = [5.697351]*12
+    wind_direction_H_0_11 = [72.90572]*12
+
+    release_lon_H_12_23 = [-59.43330]*12 # Repeat the same value 12 times for each hour
+    release_lat_H_12_23 = [13.16670]*12
+    temp_H_12_23 = [26.98370]*12
+    PBLH_H_12_23 = [782.4219]*12
+    press_H_12_23 = [101163.7]*12
+    wind_H_12_23 = [5.695338]*12
+    wind_direction_H_12_23 = [76.33878]*12
+
+    # Concatenate two sets of values together to make a table
+    values["release_lon"] = release_lon_H_0_11 + release_lon_H_12_23
+    values["release_lat"] = release_lat_H_0_11 + release_lat_H_12_23
+    values["temp"] = temp_H_0_11 + temp_H_12_23
+    values["PBLH"] = PBLH_H_0_11 + PBLH_H_12_23
+    values["press"] = press_H_0_11 + press_H_12_23
+    values["wind"] = wind_H_0_11 + wind_H_12_23
+    values["wind_direction"] = wind_direction_H_0_11 + wind_direction_H_12_23
 
     df = pd.DataFrame(values)
 
@@ -847,6 +907,15 @@ def footprint_concatenate_param(subfolder,read_met,folder_names,parameters,satel
         param["time_step"] = get_time_step
         param["upper_level"] = parameters["upper_level"]
 
+    # footprint_concatenate expects str rather than list input for "datestr" and "met"
+    if isinstance(param["datestr"], list):
+        print("datestr", param["datestr"])
+        param["datestr"] = param["datestr"][0]
+    
+    if isinstance(param["met"], list):
+        print("met", param["met"])
+        param["met"] = param["met"][0]
+
     return param
 
 @pytest.fixture()
@@ -862,15 +931,15 @@ def fc_param_site(subfolder_site,read_met_site,folder_names,site_param):
     
     return param
 
-@pytest.mark.skip(reason="Needs to be updated.")
+#@pytest.mark.skip(reason="Needs to be updated.")
 def test_footprint_concatenate_site(fc_param_site):
     '''
     Test footprint_concatenate function produces an output when files are for site data.
     '''
     param = fc_param_site
-    param["datestr"] = param["datestr"][0]
 
     out = process.footprint_concatenate(**param)
+    assert out is not None
     
 #%% Test process()
 
@@ -895,14 +964,20 @@ def process_param(input_param,folder_names,satellite):
     param["height"] = input_param["height"]
     param["year"] = input_param["year"]
     param["month"] = input_param["month"]
+    
     if satellite:
         param["max_level"] = input_param["max_level"]
         param["upper_level"] = input_param["upper_level"]
     
-    param["fields_folder"] = folder_names["fields_folder"]
+    if "species" in input_param:
+        param["species"] = input_param["species"]
+        param["fields_folder"] = folder_names["fields_folder_hourly"]
+    else:
+        param["fields_folder"] = folder_names["fields_folder"]
+    
     param["particles_folder"] = folder_names["particles_folder"]
     param["met_folder"] = folder_names["met_folder"]
-    param["processed_folder"] = folder_names["processed_folder"]
+    #param["processed_folder"] = folder_names["processed_folder"]
 
     param["satellite"] = satellite
     
@@ -916,32 +991,42 @@ def process_site_param(site_param,folder_names,site_directory):
     '''    
     param = process_param(site_param,folder_names,satellite=False)
     param["base_dir"] = site_directory
-    param["process_dir"] = os.path.join(site_directory,"Processed_Fields_files")
+    
+    process_dir = os.path.join(site_directory, "Processed_Fields_files")
+    param["process_dir"] = process_dir
     
     return param
 
-def find_processed_file(subfolder,processed_folder,param):
+def find_processed_file(param):
     '''
     Find NAME processed file based on search string:
-        "{site}-{height}_{domain}_{year}{month:02}*.nc"
+        "{site}-{height}[_{species}]_{domain}_{year}{month:02}*.nc"
     Args:
-        subfolder (str) :
-            Main sub-folder containing NAME output files
-        processed_folder (str) :
-            Directory containing the processed file.
+        #subfolder (str) :
+        #    Main sub-folder containing NAME output files
+        #processed_folder (str) :
+        #    Directory containing the processed file.
         param (dict) :
             Parameter dictionary containing
-            'site','height','domain','year','month'
+            'site','height','domain','year','month', 'species', 'process_dir'
     Returns
         str / list:
             Filename
         None :
-            If no files or more than one file are found
+            If no files or more than one file is found
     '''
-    directory = os.path.join(subfolder,processed_folder)
-    search_str = "{site}-{height}_{domain}_{year}{month:02}*.nc".format(site=param["site"],height=param["height"],domain=param["domain"],year=param["year"],month=param["month"])
+    #directory = os.path.join(subfolder,processed_folder)
+    directory = os.path.join(param["process_dir"], param["domain"])
+
+    if "species" in param:
+        optional_species_str = "_"+param["species"].lower()
+    else:
+        optional_species_str = ""
+
+    search_str = f"{param['site']}-{param['height']}{optional_species_str}_{param['domain']}_{param['year']}{param['month']:02}*.nc"
+
     full_search_str = os.path.join(directory,search_str)
-    print("search string",full_search_str)
+    
     processed_file = glob.glob(full_search_str)
     if len(processed_file) == 1:
         processed_file = processed_file[0]
@@ -954,7 +1039,8 @@ def find_processed_file(subfolder,processed_folder,param):
     
     return processed_file
 
-def remove_processed_file(subfolder,processed_folder,param):
+#def remove_processed_file(subfolder,processed_folder,param):
+def remove_processed_file(param):
     '''
     Check and remove any files matching datestr extracted from param input from processed files folder.
     This is to allow test of process function to be run multiple times.
@@ -962,7 +1048,7 @@ def remove_processed_file(subfolder,processed_folder,param):
     param["year"] + param["month"].zfill(2)
     '''
     
-    files_in_folder = find_processed_file(subfolder,processed_folder,param)
+    files_in_folder = find_processed_file(param)
     
 #    folder = os.path.join(subfolder,processed_folder)
 #    
@@ -973,12 +1059,91 @@ def remove_processed_file(subfolder,processed_folder,param):
     if files_in_folder is not None:
         os.remove(files_in_folder)
     
-       
-def test_process_site(process_site_param,subfolder_site,folder_names,site_param):
+# Rudimentary check that this runs (for now)
+def test_process_site(process_site_param):
     '''
     Test process function produces an output for site data.
     '''
-    processed_folder = folder_names["processed_folder"]
-    remove_processed_file(subfolder_site,processed_folder,site_param)
+    remove_processed_file(process_site_param)
+    out = process.process(**process_site_param)
+
+    assert out is not None
+
+
+#%%
+
+@pytest.fixture()
+def process_site_species_param(site_param_species,folder_names,site_directory):
+    '''
+    Define input parameters for process.process function for site data.
+    Additional "base_dir" parameter added to point to Site folder.
+    '''    
+    param = process_param(site_param_species, folder_names, satellite=False)
     
-    out = process.process(**process_site_param)   
+    param["base_dir"] = site_directory
+    
+    process_dir = os.path.join(site_directory, "Processed_Fields_files")
+    param["process_dir"] = process_dir
+
+    #param["unzip"] = True
+    
+    return param
+
+# Rudimentary check that this runs (for now)
+def test_process_site_species(process_site_species_param):
+    '''
+    Test process function can work with hourly input netcdf data.
+
+    Additional input parameters:
+     - "species" = "HFO-1234zee"
+     - "fields_folder" = "MixR_hourly"
+
+    This is run against a paired down netcdf hourly file which contains a 
+    4-hour back period (OutputTime) for 1 release (ReleaseTime) at 04:00 
+    '''
+    remove_processed_file(process_site_species_param)
+    
+    print(process_site_species_param)
+    out = process.process(**process_site_species_param)
+
+    print("out", out)
+    assert out is not None
+    assert out is not False
+    
+
+@pytest.fixture()
+def process_site_co2_param(site_param_co2,folder_names,site_directory):
+    '''
+    Define input parameters for process.process function for site data.
+    Additional "base_dir" parameter added to point to Site folder.
+    '''    
+    param = process_param(site_param_co2,folder_names,satellite=False)
+    
+    param["base_dir"] = site_directory
+
+    process_dir = os.path.join(site_directory, "Processed_Fields_files")
+    param["process_dir"] = process_dir
+
+    return param
+
+# Rudimentary check that this runs (for now)
+def test_process_site_co2(process_site_co2_param):
+    '''
+    Test process function work with hourly input netcdf data when species is co2.
+
+    Additional input parameters:
+     - "species" = "co2"
+     - "fields_folder" = "MixR_hourly"
+
+    This is run against a paired down netcdf hourly file which contains a 
+    4-hour back period (OutputTime) for 1 release (ReleaseTime) at 04:00 
+    '''
+    remove_processed_file(process_site_co2_param)
+    
+    print(process_site_co2_param)
+    out = process.process(**process_site_co2_param)
+    
+    print("out", out)
+    assert out is not None
+    assert out is not False
+

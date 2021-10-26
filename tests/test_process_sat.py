@@ -8,24 +8,20 @@ Created on Tue Aug 18 10:15:58 2020
 
 import pytest
 import os
-import sys
 import glob
 import gzip
 import numpy as np
 import pandas as pd
-import xarray as xray
-import acrg_name.process as process
-import deprecated.process as process_org
-from acrg_name.name import open_ds
-from acrg_grid import areagrid
-import process_general as pg
-import pdb
 
-if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
-    acrg_path = os.getenv("ACRG_PATH") 
-else:
-    from acrg_config.paths import paths
-    acrg_path = paths.acrg
+import acrg.name.process as process
+from acrg.name.name import open_ds
+from acrg.grid.areagrid import areagrid
+from . import test_process_general as pg
+
+from acrg.config.paths import Paths
+
+
+acrg_path = Paths.acrg
 
 #%% Setting up directory fixtures
 

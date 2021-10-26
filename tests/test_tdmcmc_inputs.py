@@ -21,16 +21,14 @@ To run all tests except those labelled 'long' use the syntax
 
 import pytest
 import os
-import sys
 import subprocess
 import glob
 
-from acrg_config.paths import paths
-acrg_path = paths.acrg
+from acrg.config.paths import Paths
 
 
-
-tdmcmc_path = os.path.join(acrg_path,"acrg_tdmcmc")
+acrg_path = Paths.acrg
+tdmcmc_path = os.path.join(acrg_path,"acrg/tdmcmc")
 test_config_path = os.path.join(acrg_path,"tests/files/config")
 
 @pytest.fixture(scope="module")

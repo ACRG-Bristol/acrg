@@ -1,5 +1,6 @@
 *.pyc
 *.bak
+*.so
 tests/.cache/v/cache/lastfailed
 acrg_tdmcmc/param.ini
 acrg_satellite/gosat_process.ini
@@ -7,6 +8,7 @@ acrg_satellite/tropomi_process.ini
 tests/files/LPDM/raw_output/*/*/PROCESS*.txt
 tests/files/LPDM/raw_output/*/*/Processed_Fields_files/*
 tests/files/LPDM/raw_output/*/*/Processed_Fields_files_Org
+tests/files/LPDM/raw_output/*/Processed_Fields_files
 tests/files/raw_obs/H2OCorr/Plots/BSD/*
 tests/files/output/*
 acrg_hbmcmc/Temp/*
@@ -16,4 +18,7 @@ acrg_hbmcmc/Temp/*
 .DS_Store
 acrg_config/paths.y*ml
 conservative_*.nc
+.vscode*
+*.code-workspace
+*.jupyter_symlinks
 
