@@ -16,13 +16,13 @@ import xarray as xr
 import time as timing_module
 from pathlib import Path
 from collections import OrderedDict
-import acrg_grid.regrid_xesmf as regrid
-import acrg_satellite.gosat as gosat_fn
+import acrg.grid.regrid_xesmf as regrid
+import acrg.satellite.gosat as gosat_fn
 
 #from acrg_satellite.gosat import latlon_filter,extract_files,find_network
 
 try:
-    from acrg_config.paths import paths
+    from acrg.config.paths import paths
 except ImportError:
     data_path = os.getenv("DATA_PATH")
     acrg_path = os.getenv("ACRG_PATH")

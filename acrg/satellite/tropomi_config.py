@@ -9,19 +9,19 @@ Created on Fri Feb 19 13:28:05 2021
 import os
 import sys
 from pathlib import Path
-import acrg_config.config as config
+import acrg.config.config as config
 
 if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
     acrg_path = os.getenv("ACRG_PATH") 
 else:
-    from acrg_config.paths import paths
+    from acrg.config.paths import paths
     acrg_path = paths.acrg
 
 def tropomi_template_file():
     '''
     Define template file for inputs to tropomi.tropomi_process() function.
     '''
-    reference_file = os.path.join(acrg_path,"acrg_config/templates/tropomi_process_template.ini")
+    reference_file = os.path.join(acrg_path,"acrg/config/templates/tropomi_process_template.ini")
     return reference_file
 
 def tropomi_param_dict():

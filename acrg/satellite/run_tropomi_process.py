@@ -10,11 +10,11 @@ import os
 import sys
 from pathlib import Path
 import argparse
-from acrg_satellite import tropomi,tropomi_config
-from acrg_config.config import generate_from_template
+from acrg.satellite import tropomi,tropomi_config
+from acrg.config.config import generate_from_template
 
 try:
-    from acrg_config.paths import paths
+    from acrg.config.paths import paths
 except ImportError:
     acrg_path = os.getenv("ACRG_PATH")
 else:
@@ -23,7 +23,7 @@ else:
 
 if __name__=="__main__":
     
-    default_config_file = os.path.join(acrg_path,"acrg_satellite/tropomi_process.ini")
+    default_config_file = os.path.join(acrg_path,"acrg/satellite/tropomi_process.ini")
     config_file = default_config_file
     
     parser = argparse.ArgumentParser(description='Running tropomi process script')
