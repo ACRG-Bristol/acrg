@@ -137,22 +137,20 @@ def filenames(site, domain, start, end, height, fp_directory, met_model = None, 
     files = []
     for ym in yearmonth:
         met_str = f'_{met_model}' if met_model else ''
-
-        if species:
-            f = glob.glob(os.path.join(fp_directory,domain,f"{site}-{height}{met_str}_{species}_{domain}_{ym}*.nc"))
-            
-        else:
-            glob_path = os.path.join(fp_directory,domain,f"{site}-{height}{met_str}_{domain}_{ym}*.nc")
-            
-            if lifetime_hrs is None:
-                print("No lifetime defined in species_info.json or species not defined. WARNING: 30-day integrated footprint used without chemical loss.")
-                f = glob.glob(glob_path)
-            elif lifetime_hrs <= 1440:
+        spec_str = f'_{species}' if species else ''
+        
+        glob_path = os.path.join(fp_directory,domain,f"{site}-{height}{met_str}{spec_str}_{domain}_{ym}*.nc")
+        
+        if species is None and lifetime_hrs is not None:
+            if lifetime_hrs <= 1440:
                 print("This is a short-lived species. Footprints must be species specific. Re-process in process.py with lifetime")
                 return []
             else:
                 print("Treating species as long-lived.")
-                f = glob.glob(glob_path)        
+        elif species is None and lifetime_hrs is None:
+            print("No lifetime defined in species_info.json or species not defined. WARNING: 30-day integrated footprint used without chemical loss.")
+        
+        f = glob.glob(glob_path)      
             
         if len(f) > 0:
             files += f
@@ -2378,13 +2376,10 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
     
     # Set up a numpy array to calculate the product of the footprint (H matrix) with the fluxes
     if output_fpXflux:
-        fpXflux   = {sector: da.zeros((len(fp_HiTRes_ds.lat),
-                                       len(fp_HiTRes_ds.lon),
-                                       len(time_array)))
-                     for sector in flux.keys()}
+        fpXflux = {sector: None for sector in flux.keys()}
     
     elif output_TS:
-        timeseries = {sector: da.zeros(len(time_array)) for sector in flux.keys()}
+        timeseries = {sector: None for sector in flux.keys()}
     
     # month and year of the start of the data - used to index the low res data
     start = {dd: getattr(np.datetime64(time_array[0], 'h').astype(object), dd)
@@ -2437,11 +2432,13 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
         for sector, fp_fl in fpXflux_time.items():
             if output_fpXflux:
                 # Sum over time (H back) to give the total mf at this timestep
-                fpXflux[sector][:,:,tt] = np.nansum(fp_fl, axis=2)
+                fpXflux[sector] = da.asarray(np.nansum(fp_fl, axis=2)) if fpXflux[sector] is None else \
+                                  da.dstack([fpXflux[sector], np.nansum(fp_fl, axis=2)])
             
             elif output_TS:
                 # work out timeseries by summing over lat, lon, & time (24 hrs)
-                timeseries[sector][tt] = np.nansum(fp_fl)
+                timeseries[sector] = da.from_array([np.nansum(fp_fl)]) if timeseries[sector] is None else \
+                                     da.concatenate([timeseries[sector], [np.nansum(fp_fl)]], axis=0)
     
     if output_fpXflux and output_TS:
         # if not already done then calculate the timeseries
