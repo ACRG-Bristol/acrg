@@ -32,10 +32,10 @@ bc_obj.make_bc_file(fp_directory    = None,
 -------
 
 '''
-if 'os'    not in dir(): import os
-if 'np'    not in dir(): import numpy as np
-if 'xr'    not in dir(): import xarray as xr
-if 'paths' not in dir(): from acrg_config.paths import paths
+import os
+import numpy as np
+import xarray as xr
+from acrg.config.paths import Paths
     
 class BoundaryConditions:
     def __init__(self, vmr_var, gph_height_var, dataset=None, filename=None,
@@ -78,8 +78,8 @@ class BoundaryConditions:
             else:
                 print(f'Cannot find file: {filename}')
         
-        self.data_path    = paths.data
-        self.acrg_path    = paths.acrg
+        self.data_path    = Paths.data
+        self.acrg_path    = Paths.acrg
         
         self.vmr_var      = vmr_var
         self.height_var   = gph_height_var
