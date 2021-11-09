@@ -1132,7 +1132,7 @@ def add_timeseries(fp_and_data, load_flux, verbose=True):
     return fp_and_data
 
 
-def add_bc(fp_and_data, load_bc, species):
+def add_bc(fp_and_data, load_bc, species, bc=None):
     """
     Add boundary condition mole fraction values in footprint_data_merge
     Boundary conditions are multipled by any loss (exp(-t/lifetime)) for the species
@@ -1155,7 +1155,8 @@ def add_bc(fp_and_data, load_bc, species):
     
         sites = [key for key in list(fp_and_data.keys()) if key[0] != '.']
         for site in sites:
-            bc_reindex = fp_and_data['.bc'].reindex_like(fp_and_data[site], 'ffill')
+            bc_reindex = bc.reindex_like(fp_and_data[site], 'ffill') if bc is not None else \
+                         fp_and_data['.bc'].reindex_like(fp_and_data[site], 'ffill')
             
             if 'lifetime' in species_info[species_obs].keys():
                 lifetime = species_info[species_obs]["lifetime"]
