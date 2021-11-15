@@ -1189,7 +1189,7 @@ def add_bc(fp_and_data, load_bc, species, bc=None):
 
 
 def fp_sensitivity(fp_and_data, domain, basis_case,
-                   basis_directory = None, verbose=True):
+                   basis_directory = None, calc_timeseries=False, verbose=True):
     """
     The fp_sensitivity function adds a sensitivity matrix, H, to each site xarray dataframe in fp_and_data.
 
@@ -1245,12 +1245,25 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                     site_bf = xr.Dataset({"fp_HiTRes":fp_and_data[site]["fp_HiTRes"],
                                           "fp":fp_and_data[site]["fp"]})
                     
+                    # work out the resolution of the fp, to use to estimate the timeseries
                     fp_time = (fp_and_data[site].time[1] - fp_and_data[site].time[0]).values.astype('timedelta64[h]').astype(int)
                     
                     # calculate the H matrix
-                    H_all = timeseries_HiTRes(fp_HiTRes_ds = site_bf, flux_dict = fp_and_data['.flux'][source], output_TS = False,
-                                              output_fpXflux = True, output_type = 'DataArray',
-                                              time_resolution = f'{fp_time}H', verbose = verbose)
+                    output_TS = True if calc_timeseries else False
+                    ts_HiTRes = timeseries_HiTRes(fp_HiTRes_ds = site_bf,
+                                                  flux_dict = fp_and_data['.flux'][source],
+                                                  output_TS = output_TS,
+                                                  output_fpXflux = True,
+                                                  output_type = 'DataArray',
+                                                  time_resolution = f'{fp_time}H',
+                                                  verbose = verbose)
+                    if calc_timeseries:
+                        # estimate the timeseries
+                        H_all, fp_and_data[site]['mf_mod_'+source] = ts_HiTRes                
+                        # use forward fill to replace nans
+                        fp_and_data[site]['mf_mod_'+source] = fp_and_data[site]['mf_mod_'+source].ffill(dim='time')
+                    else:
+                        H_all = ts_HiTRes
                     
                 else:
                     print("fp_and_data needs the variable fp_HiTRes to use the emissions dictionary with high_freq and low_freq emissions.")
