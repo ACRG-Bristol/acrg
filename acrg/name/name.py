@@ -1061,7 +1061,7 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
             fp_and_data['.bc'] = old_div(bc, units)               
         else:
             fp_and_data['.bc'] = bc
-            
+
     # Calculate model time series, if required
     if calc_timeseries:
         fp_and_data = add_timeseries(fp_and_data, load_flux, verbose=verbose)
@@ -1111,24 +1111,22 @@ def add_timeseries(fp_and_data, load_flux, verbose=True):
         sources = list(fp_and_data['.flux'].keys())
         for site in sites:                    
             for source in sources:
+                mf_name = 'mf_mod' if source=='all' else f'mf_mod_{source}'
                 if type(fp_and_data['.flux'][source]) == dict:
                     # work out the resolution of the fp, to use to estimate the timeseries
                     fp_time = (fp_and_data[site].time[1] - fp_and_data[site].time[0]).values.astype('timedelta64[h]').astype(int)
                     # estimate the timeseries
-                    fp_and_data[site]['mf_mod_'+source] = timeseries_HiTRes(fp_HiTRes_ds = fp_and_data[site],
-                                                                            flux_dict = fp_and_data['.flux'][source],
-                                                                            output_fpXflux = False,
-                                                                            verbose = verbose,
-                                                                            time_resolution = f'{fp_time}H',
-                                                                            output_type = 'DataArray')
+                    fp_and_data[site][mf_name] = timeseries_HiTRes(fp_HiTRes_ds = fp_and_data[site],
+                                                                   flux_dict = fp_and_data['.flux'][source],
+                                                                   output_fpXflux = False,
+                                                                   verbose = verbose,
+                                                                   time_resolution = f'{fp_time}H',
+                                                                   output_type = 'DataArray')
                     # use forward fill to replace nans
-                    fp_and_data[site]['mf_mod_'+source] = fp_and_data[site]['mf_mod_'+source].ffill(dim='time')
+                    fp_and_data[site][mf_name] = fp_and_data[site][mf_name].ffill(dim='time')
                 else:
                     flux_reindex = fp_and_data['.flux'][source].reindex_like(fp_and_data[site], 'ffill')
-                    if source == 'all':
-                        fp_and_data[site]['mf_mod'] = xr.DataArray((fp_and_data[site].fp*flux_reindex.flux).sum(["lat", "lon"]), coords = {'time':fp_and_data[site].time})
-                    else:
-                        fp_and_data[site]['mf_mod_'+source] = xr.DataArray((fp_and_data[site].fp*flux_reindex.flux).sum(["lat", "lon"]), coords = {'time':fp_and_data[site].time})
+                    fp_and_data[site][mf_name] = xr.DataArray((fp_and_data[site].fp*flux_reindex.flux).sum(["lat", "lon"]), coords = {'time':fp_and_data[site].time})
     return fp_and_data
 
 
@@ -1214,36 +1212,30 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
     """    
     
     sites = [key for key in list(fp_and_data.keys()) if key[0] != '.']
-    
     flux_sources = list(fp_and_data['.flux'].keys())
     
     if type(basis_case) is not dict:
-        if len(flux_sources) == 1:
-            basis_case = {flux_sources[0]:basis_case}
-        else:
-            basis_case = {'all':basis_case}
+        basis_case = {flux_sources[0]:basis_case} if len(flux_sources) == 1 else \
+                     {'all': basis_case}
     
     if len(list(basis_case.keys())) != len(flux_sources):
         if len(list(basis_case.keys())) == 1:
             print("Using %s as the basis case for all sources" %basis_case[list(basis_case.keys())[0]])
         else:
-            print("There should either only be one basis_case, or it should be a dictionary the same length\
-                  as the number of sources.")
+            print("There should either only be one basis_case, or it should be a dictionary the same length " +\
+                  "as the number of sources.")
             return None
-    
     
     for site in sites:
         for si, source in enumerate(flux_sources):
-        
-            if source in list(basis_case.keys()):
-                basis_func = basis(domain = domain, basis_case = basis_case[source], basis_directory = basis_directory)
-            else:
-                basis_func = basis(domain = domain, basis_case = basis_case['all'], basis_directory = basis_directory)
-            
+            bc_source = source if source in list(basis_case.keys()) else 'all' 
+            basis_func = basis(domain = domain, basis_case = basis_case[bc_source], basis_directory = basis_directory)
+
+            mf_name = 'mf_mod' if source=='all' else f'mf_mod_{source}'
             if type(fp_and_data['.flux'][source]) == dict:
                 if 'fp_HiTRes' in list(fp_and_data[site].keys()):
-                    site_bf = xr.Dataset({"fp_HiTRes":fp_and_data[site]["fp_HiTRes"],
-                                          "fp":fp_and_data[site]["fp"]})
+                    site_bf = xr.Dataset({"fp_HiTRes": fp_and_data[site]["fp_HiTRes"],
+                                          "fp": fp_and_data[site]["fp"]})
                     
                     # work out the resolution of the fp, to use to estimate the timeseries
                     fp_time = (fp_and_data[site].time[1] - fp_and_data[site].time[0]).values.astype('timedelta64[h]').astype(int)
@@ -1259,9 +1251,9 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                                                   verbose = verbose)
                     if calc_timeseries:
                         # estimate the timeseries
-                        H_all, fp_and_data[site]['mf_mod_'+source] = ts_HiTRes                
+                        H_all, fp_and_data[site][mf_name] = ts_HiTRes                
                         # use forward fill to replace nans
-                        fp_and_data[site]['mf_mod_'+source] = fp_and_data[site]['mf_mod_'+source].ffill(dim='time')
+                        fp_and_data[site][mf_name] = fp_and_data[site][mf_name].ffill(dim='time')
                     else:
                         H_all = ts_HiTRes
                     
@@ -1270,13 +1262,15 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
         
             else:
                 site_bf = combine_datasets(fp_and_data[site]["fp"].to_dataset(), fp_and_data['.flux'][source])
-                H_all=site_bf.fp*site_bf.flux
+                H_all = site_bf.fp*site_bf.flux
+
+                if calc_timeseries:
+                    flux_reindex = fp_and_data['.flux'][source].reindex_like(fp_and_data[site], 'ffill')
+                    fp_and_data[site][mf_name] = xr.DataArray((fp_and_data[site].fp*flux_reindex.flux).sum(["lat", "lon"]), coords = {'time':fp_and_data[site].time})
             
-            H_all_v=H_all.values.reshape((len(site_bf.lat)*len(site_bf.lon),len(site_bf.time)))        
-        
+            H_all_v = H_all.values.reshape((len(site_bf.lat)*len(site_bf.lon),len(site_bf.time)))        
         
             if 'region' in list(basis_func.dims.keys()):
-            
                 if 'time' in basis_func.basis.dims:
                     basis_func = basis_func.isel(time=0)
             
@@ -1290,19 +1284,15 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                     H[i,:] = np.sum(H_all_v*base_v[:,i,np.newaxis], axis = 0)
                 
                 if source == all:
-                    if (sys.version_info < (3,0)):
-                        region_name = site_bf.region
-                    else:
-                        region_name = site_bf.region.decode('ascii')
+                    region_name = site_bf.region if (sys.version_info < (3,0)) else \
+                                  site_bf.region.decode('ascii')
                 else:
-                    if (sys.version_info < (3,0)):
-                        region_name = [source+'-'+reg for reg in site_bf.region.values]
-                    else:
-                        region_name = [source+'-'+reg.decode('ascii') for reg in site_bf.region.values]
+                    region_name = [source+'-'+reg for reg in site_bf.region.values] \
+                                  if (sys.version_info < (3,0)) else \
+                                  [source+'-'+reg.decode('ascii') for reg in site_bf.region.values]
 
-                sensitivity = xr.DataArray(H, 
-                                             coords=[('region', region_name), 
-                                                     ('time', fp_and_data[site].coords['time'])])
+                sensitivity = xr.DataArray(H, coords=[('region', region_name), 
+                                                      ('time', fp_and_data[site].coords['time'])])
         
             else:
                 print("Warning: Using basis functions without a region dimension may be deprecated shortly.")
@@ -1327,14 +1317,10 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                 else:
                     region_name = [source+'-'+str(reg) for reg in range(1,int(np.max(site_bf.basis.values)+1))]
 
-                sensitivity = xr.DataArray(H, 
-                                             coords=[('region', region_name), 
-                                                     ('time', fp_and_data[site].coords['time'])])
-                                     
-            if si == 0:
-                concat_sensitivity = sensitivity
-            else:
-                concat_sensitivity = xr.concat((concat_sensitivity,sensitivity), dim='region')
+                sensitivity = xr.DataArray(H, coords=[('region', region_name), 
+                                                      ('time', fp_and_data[site].coords['time'])])
+
+            concat_sensitivity = sensitivity if si == 0 else xr.concat((concat_sensitivity,sensitivity), dim='region')
             
             sub_basis_cases = 0
             
