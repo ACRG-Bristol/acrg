@@ -547,7 +547,15 @@ def boundary_conditions(domain, species, start = None, end = None, bc_directory=
     else:
         #Change timeslice to be the beginning and end of months in the dates specified.
         start = pd.to_datetime(start)
-        month_start = dt.datetime(start.year, start.month, 1, 0, 0)
+        
+#         month_start = dt.datetime(start.year, start.month, 1, 0, 0)
+
+        #specific to Arctic BRW until we get 2020 bcs
+        if start.year == 2020:
+            month_start = dt.datetime(start.year-1, start.month, 1, 0, 0)
+            print(f'Using bcs from {month_start}')
+        else:
+            month_start = dt.datetime(start.year, start.month, 1, 0, 0)
         
         end = pd.to_datetime(end)
         month_end = dt.datetime(end.year, end.month, 1, 0, 0) - \
@@ -1866,17 +1874,17 @@ def plot(fp_data, date, out_filename=None, out_format = 'pdf',
                     color = rp_color["SURFACE"]
                 plt.plot(release_lon[site], release_lat[site], color = color, marker = 'o', markersize=4,  transform=ccrs.PlateCarree())
 
-    plt.title(str(pd.to_datetime(str(date))), fontsize=12)
+    # plt.title(str(pd.to_datetime(str(date))), fontsize=12)
 
-    cb = plt.colorbar(orientation='horizontal', pad=0.05)
+    # cb = plt.colorbar(orientation='horizontal', pad=0.05)
    
-    tick_locator = ticker.MaxNLocator(nbins=np.ceil(log_range[1] - log_range[0]).astype(int))
-    cb.locator = tick_locator
-    cb.update_ticks()
+    # tick_locator = ticker.MaxNLocator(nbins=np.ceil(log_range[1] - log_range[0]).astype(int))
+    # cb.locator = tick_locator
+    # cb.update_ticks()
  
-    cb.set_label('log$_{10}$( (nmol/mol) / (mol/m$^2$/s) )', 
-                fontsize=12)
-    cb.ax.tick_params(labelsize=12) 
+    # cb.set_label('log$_{10}$( (nmol/mol) / (mol/m$^2$/s) )', 
+    #             fontsize=16)
+    # cb.ax.tick_params(labelsize=16) 
     
     if out_filename is not None:
         plt.savefig(out_filename, dpi = dpi, format = out_format)
