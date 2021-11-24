@@ -187,9 +187,11 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                           keep_missing=keep_missing,inlet=inlet, instrument=instrument,
                           max_level=max_level)
     print(f'species_footprint: {species_footprint}')
+    
     fp_all = name.footprints_data_merge(data, domain=domain, met_model = met_model, calc_bc=True,
                                         HiTRes = HiTRes,
-                                        height = fpheight, 
+                                        height = fpheight,
+                                        calc_timeseries = False,
                                         fp_directory = fp_directory,
                                         bc_directory = bc_directory,
                                         flux_directory = flux_directory,
@@ -233,9 +235,10 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             basis_directory = tempdir
     else:
         basis_directory = basis_directory
-            
-    fp_data = name.fp_sensitivity(fp_all, domain=domain, basis_case=fp_basis_case,basis_directory=basis_directory)
-    fp_data = name.bc_sensitivity(fp_data, domain=domain,basis_case=bc_basis_case)
+    
+    fp_data = name.fp_sensitivity(fp_all, domain=domain, basis_case=fp_basis_case, basis_directory=basis_directory,
+                                  calc_timeseries = True)
+    fp_data = name.bc_sensitivity(fp_data, domain=domain, basis_case=bc_basis_case)
     
     if HiTRes:
         for site in sites:
