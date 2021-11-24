@@ -1197,18 +1197,26 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
     Region numbering must start from 1
     
     Args:
-        fp_and_data (dict)    : Output from footprints_data_merge() function. Dictionary of datasets.
-        domain (str)          : Domain name. The footprint files should be sub-categorised by the domain.
-        basis_case            : Basis case to read in. Examples of basis cases are "NESW","stratgrad".
-                                String if only one basis case is required. Dict if there are multiple
-                                sources that require separate basis cases. In which case, keys in dict should
-                                reflect keys in emissions_name dict used in fp_data_merge.
-        basis_directory (str) : basis_directory can be specified if files are not in the default 
-                                directory. Must point to a directory which contains subfolders organized 
-                                by domain. (optional)
+        fp_and_data (dict):
+            Output from footprints_data_merge() function. Dictionary of datasets.
+        domain (str):
+            Domain name. The footprint files should be sub-categorised by the domain.
+        basis_case:
+            Basis case to read in. Examples of basis cases are "NESW","stratgrad".
+            String if only one basis case is required. Dict if there are multiple
+            sources that require separate basis cases. In which case, keys in dict should
+            reflect keys in emissions_name dict used in fp_data_merge.
+        basis_directory (str):
+            basis_directory can be specified if files are not in the default 
+            directory. Must point to a directory which contains subfolders organized 
+            by domain. (optional)
+        calc_timeseries (bool): 
+            if True, calculate the mf timeseries and add to the fpdm object,
+            default is False
     
     Returns:
-        dict (xarray.Dataset) : Same format as fp_and_data with sensitivity matrix and basis function grid added.
+        dict (xarray.Dataset):
+            Same format as fp_and_data with sensitivity matrix and basis function grid added.
     """    
     
     sites = [key for key in list(fp_and_data.keys()) if key[0] != '.']
@@ -1220,7 +1228,7 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
     
     if len(list(basis_case.keys())) != len(flux_sources):
         if len(list(basis_case.keys())) == 1:
-            print("Using %s as the basis case for all sources" %basis_case[list(basis_case.keys())[0]])
+            print(f"Using {basis_case[list(basis_case.keys())[0]]} as the basis case for all sources")
         else:
             print("There should either only be one basis_case, or it should be a dictionary the same length " +\
                   "as the number of sources.")
