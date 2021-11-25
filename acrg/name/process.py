@@ -2026,7 +2026,8 @@ def process(domain, site, height, year, month,
             transport_model="NAME",
             units = None,
             species = None,
-            user_max_hour_back = 24.):
+            user_max_hour_back = 24.,
+            check_error_files = True):
     
     '''Process a single month of footprints for a given domain, site, height,
     year, month. 
@@ -2129,6 +2130,10 @@ def process(domain, site, height, year, month,
         user_max_hour_back (float, required when species = 'CO2'):
             Defaults to 24 hours. This is the maximum amount of time back from release time that 
             hourly footprints are calculated.
+        check_error_files (bool, optional)
+            If True will raise exception if month has errors in the NAME output. 
+            Set to False  to ignore errors. 
+            Default=True.
         
     Returns:
         None.
@@ -2202,11 +2207,15 @@ def process(domain, site, height, year, month,
                 error_days.append(re.search(r"[0-9]{8}(\S+)", file_name).group(0))
                 error_days.sort()
                 num_days = len(error_days)
-
-        if len(error_days) > 0:
-            print(f"\nEXCEPTION: This month cannot be processed as there are {str(num_days)} days with with errors: {str(error_days)}\n")
-            raise Exception()
-        
+                
+        if check_error_files:         
+            if len(error_days) > 0:
+                print(f"\nEXCEPTION: This month cannot be processed as there are {str(num_days)} days with with errors: {str(error_days)}\n")
+                raise Exception()
+        else:
+            if len(error_days) > 0:
+                print(f"This month has {str(num_days)} days with with errors: {str(error_days)}. Running anyway as check_error_files = False\n")
+                
    # Check for existance of subfolder
     if not os.path.isdir(subfolder):
         print(f"\nEXCEPTION: Subfolder: {subfolder} does not exist.\nExpect NAME output folder of format: domain_site_height\n")
@@ -2575,7 +2584,7 @@ def process(domain, site, height, year, month,
     
 
 
-def process_parallel(domain, site, height, years, months, kwargs={}, nprocess=4):
+def process_parallel(domain, site, height, years, months, kwargs={}, nprocess=4, check_error_files = True):
     """
     This script processes multiple months in parallel (but loops through years
     in serial). It basically just calls process.process in parallel.
@@ -2597,6 +2606,10 @@ def process_parallel(domain, site, height, years, months, kwargs={}, nprocess=4)
         nprocess (int):
             Number of threads (and number of months to run in parallel).
             Default = 4
+        check_error_files (bool, optional)
+            If True will raise exception if a month has errors in the NAME output. 
+            Set to False to ignore errors. 
+            Default=True.
             
     Returns:
         None
