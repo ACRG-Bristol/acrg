@@ -87,6 +87,14 @@ def latlon_distance(lat, lon, units=None, verbose=True):
     verbose: bool, optional
         default: True
     '''
+    units = 'km' if units is None else units
+    if verbose:
+        print(f'Converting to units of {units}')
+    
+    if units not in ['m', 'metres', 'meters', 'km', 'kilometres', 'kilometers']:
+        print('Please select units from: [m, metres, meters, km, kilometres, kilometers]')
+        return None
+    
     latlon = {key: [np.deg2rad(ll) for ll in latlon_deg]
               for key, latlon_deg in {'lat': lat, 'lon': lon}.items()}
     d_latlon = {key: abs(ll[1] - ll[0]) for key, ll in latlon.items()}
@@ -116,26 +124,7 @@ def convert_degrees_metres(lat, d_lat, d_lon, units=None, verbose=True):
     verbose: bool, optional
         default: True
     '''
-    units = 'km' if units is None else units
-    if verbose:
-        print(f'Converting to units of {units}')
-    
-    if units not in ['m', 'metres', 'meters', 'km', 'kilometres', 'kilometers']:
-        print('Please select units from: [m, metres, meters, km, kilometres, kilometers]')
-        return None
-    
-    radius_earth = 6378.137    # radius of the earth, km
-    radius_earth = radius_earth * 1e3 if units in ['m', 'metres', 'meters'] else radius_earth
-
-    # convert all values to radians
-    d_lat = np.deg2rad(d_lat)
-    d_lon = np.deg2rad(d_lon)
-    lat = np.deg2rad(lat)
- 
-    # get the 2 points of latitude
+    lon = [0, d_lon]
     lat = [lat - d_lat, lat + d_lat]
- 
-    # apply haversine formulae
-    a = (np.sin(d_lat / 2))**2 + (np.sin(d_lon / 2))**2 * np.cos(lat[0]) * np.cos(lat[1])
-    c = 2 * np.arcsinh(np.sqrt(a))
-    return radius_earth * c
+    dist = latlon_distance(lat, lon, units=units, verbose=verbose)
+    return dist
