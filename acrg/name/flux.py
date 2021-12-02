@@ -174,10 +174,10 @@ def write(lat, lon, time, flux, species, domain,
     
     glob_attrs["regridder_used"] = regridder_used
     
-    flux_comments = '' if flux_comments is None else flux_comments
     if flux_comments is not None or copy_from_year is not None:
+        flux_comments = '' if flux_comments is None else flux_comments
         glob_attrs['comments'] = flux_comments if copy_from_year is None else \
-                                f"Fluxes copied from year {copy_from_year}. {flux_comments}" 
+                                 f"Fluxes copied from year {copy_from_year}. {flux_comments}" 
 
     flux_dict = {'flux':(['lat','lon','time'], flux, flux_attrs)}
     if uncertainty is not None:
