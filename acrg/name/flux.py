@@ -123,26 +123,22 @@ def write(lat, lon, time, flux, species, domain,
                [t.astype("datetime64[ns]") for t in time] if isinstance(time, list) else \
                time
     else:
-        sys.exit('Time format not correct, needs to be a list of type numpy.datetime64. A DatetimeIndex will not work.\
-                 To convert a DatetimeIndex to correct format: time = [np.datetime64(i) for i in DatetimeIndex]')
+        sys.exit('Time format not correct, needs to be a list of type numpy.datetime64. A DatetimeIndex will not work. ' + \
+                 'To convert a DatetimeIndex to correct format: time = [np.datetime64(i) for i in DatetimeIndex]')
 
     if not os.path.exists(output_directory):
         raise IOError("Unable to write file to specified output directory. Does not exist: {}.".format(output_directory))        
 
-    #Open netCDF file
+    # Open netCDF file
     year = pd.DatetimeIndex([time[0]]).year[0]
-    if copy_from_year != None:
-        ncname = os.path.join(output_directory,domain,f"{file_source.lower()}_{domain}_{year}_copy-from-{copy_from_year}.nc")
-    elif climatology == True:
-        ncname = os.path.join(output_directory,domain,f"{file_source.lower()}_{domain}.nc")
-    else:
-        ncname = os.path.join(output_directory,domain,f"{file_source.lower()}_{domain}_{year}.nc")
+    ncdesc = f'_{year}_copy-from-{copy_from_year}' if copy_from_year is not None else '' if climatology else f'_{year}'
+    ncname = os.path.join(output_directory,domain,f"{file_source.lower()}_{domain}{ncdesc}.nc")
 
     if os.path.isfile(ncname) == True:
         answer = input("You are about to overwrite an existing file, do you want to continue? Y/N ")
-        if answer == 'N':
+        if answer.lower() == 'n':
             sys.exit()
-        elif answer == 'Y':
+        elif answer.lower() == 'y':
             pass
     
     flux_attrs = {"source" : file_source,
@@ -178,13 +174,10 @@ def write(lat, lon, time, flux, species, domain,
     
     glob_attrs["regridder_used"] = regridder_used
     
-    if flux_comments != None:
-        glob_attrs['comments'] = flux_comments
-        if copy_from_year != None:
-            glob_attrs['comments'] = f"Fluxes copied from year {copy_from_year}. {flux_comments}" 
-    
-    elif copy_from_year != None:
-        glob_attrs['comments'] = f"Fluxes copied from year {copy_from_year}."
+    flux_comments = '' if flux_comments is None else flux_comments
+    if flux_comments is not None or copy_from_year is not None:
+        glob_attrs['comments'] = flux_comments if copy_from_year is None else \
+                                f"Fluxes copied from year {copy_from_year}. {flux_comments}" 
 
     flux_dict = {'flux':(['lat','lon','time'], flux, flux_attrs)}
     if uncertainty is not None:
@@ -203,6 +196,7 @@ def write(lat, lon, time, flux, species, domain,
         print(f"Creating {domain} subdirectory in output directory: {output_directory}")
         os.makedirs(os.path.join(output_directory,domain))
 
+    print(f'Saving to {ncname}')
     flux_ds.flux.encoding = {'zlib':True}                        
     flux_ds.to_netcdf(ncname, mode='w')    
 
