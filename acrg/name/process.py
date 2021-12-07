@@ -1435,10 +1435,10 @@ def footprint_concatenate(fields_prefix,
         fields_files = sorted(glob.glob(fields_prefix + "*" +
                              datestr + ".txt*"))
     elif 'MixR_hourly' in fields_prefix:
-        fields_files = sorted(glob.glob(fields_prefix + "*" +
+        fields_files = sorted(glob.glob(fields_prefix + 
                              datestr + "*.nc*"))       
     else:
-        fields_files = sorted(glob.glob(fields_prefix + "*" +
+        fields_files = sorted(glob.glob(fields_prefix + 
                              datestr + "*.txt*"))
     
     # Search for particle files
@@ -2333,12 +2333,12 @@ def process(domain, site, height, year, month,
                     days = [int(os.path.split(stilt_file)[1].split("x")[2]) \
                             for stilt_file in stilt_files]
                 elif fields_folder == "MixR_hourly":
-                    fields_files = glob.glob(subfolder + fields_folder + "/*" + \
+                    fields_files = glob.glob(subfolder + fields_folder + "/" + \
                                              datestrs[0] + "*.nc*")
                     days = [int(os.path.split(fields_file)[1].split("_")[-1][6:8]) \
                             for fields_file in fields_files]
                 else:
-                    fields_files = glob.glob(subfolder + fields_folder + "/*" + \
+                    fields_files = glob.glob(subfolder + fields_folder + "/" + \
                                              datestrs[0] + "*.txt*")
                     days = [int(os.path.split(fields_file)[1].split("_")[-1][6:8]) \
                             for fields_file in fields_files]
@@ -2388,7 +2388,8 @@ def process(domain, site, height, year, month,
                                       met=met, satellite=satellite,
                                       time_step=timeStep)
         else: # for NAME
-            fields_prefix = subfolder + fields_folder + "/"
+            fields_prefix = subfolder + fields_folder + "/Fields_" + domain + '_' + site \
+                           + '_' + height + '_'
             if particles_folder is not None:
                 particles_prefix = subfolder + particles_folder + "/"
             else:
@@ -2480,11 +2481,11 @@ def process(domain, site, height, year, month,
         #Currently works for NAME or NAMEUKV
         if transport_model == "NAME":
             if fields_folder == "MixR_files" or fields_folder == "MixR_hourly":
-                name_info_file_str = os.path.join(subfolder,'MixR_files/*'+datestrs[0]+'*')
+                name_info_file_str = os.path.join(subfolder,'MixR_files/Fields_'+ domain + '_' + site +'_' + height + '_' +datestrs[0]+'*')
                 name_info_file = glob.glob(name_info_file_str)[0]
                 model_info = extract_file_lines(name_info_file)[0]
             elif fields_folder == "Fields_files":
-                name_info_file_str = os.path.join(subfolder,'Fields_files/*'+datestrs[0]+'*')
+                name_info_file_str = os.path.join(subfolder,'Fields_files/Fields_'+ domain + '_' + site +'_' + height + '_' +datestrs[0]+'*')
                 name_info_file = glob.glob(name_info_file_str)[0]
                 model_info = extract_file_lines(name_info_file)[0]
             else:
@@ -2584,7 +2585,8 @@ def process(domain, site, height, year, month,
     
 
 
-def process_parallel(domain, site, height, years, months, kwargs={}, nprocess=4, check_error_files = True):
+def process_parallel(domain, site, height, years, months, check_error_files = True,
+                     kwargs={}, nprocess=4):
     """
     This script processes multiple months in parallel (but loops through years
     in serial). It basically just calls process.process in parallel.
@@ -2613,13 +2615,12 @@ def process_parallel(domain, site, height, years, months, kwargs={}, nprocess=4,
             
     Returns:
         None
-    """
+    """    
     nprocess = int(nprocess)
     for year in years:
         pool = Pool(processes = nprocess)
         try:
-            [pool.apply_async(process, args=(domain, site, height, year, month), kwds=kwargs) \
-             for month in months]
+            [pool.apply_async(process, args=(domain, site, height, year, month, check_error_files), kwds=kwargs) for month in months]
         except:
             pool.close()
             pool.join()
