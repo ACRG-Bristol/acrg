@@ -297,7 +297,7 @@ def footprints(sitecode_or_filename, met_model = None, fp_directory = None,
         return fp
 
 
-def flux(domain, species, start = None, end = None, flux_directory=None, chunk=True, verbose=True):
+def flux(domain, species, start = None, end = None, flux_directory=None, chunks=None, verbose=True):
     """
     The flux function reads in all flux files for the domain and species as an xarray Dataset.
     Note that at present ALL flux data is read in per species per domain or by emissions name.
@@ -368,7 +368,6 @@ def flux(domain, species, start = None, end = None, flux_directory=None, chunk=T
         # if no files are found for the required time period then data will be sliced below
         files = files_lim if len(files_lim)>0 else files
     
-    chunks = None if start == None or end == None or not chunk else {'lat': 50, 'lon': 50}
     flux_ds = read_netcdfs(files, chunks=chunks)
     # Check that time coordinate is present
     if not "time" in list(flux_ds.coords.keys()):
@@ -426,7 +425,7 @@ def flux(domain, species, start = None, end = None, flux_directory=None, chunk=T
         return flux_timeslice
 
 
-def flux_for_HiTRes(domain, emissions_dict, start=None, end=None, flux_directory=None, verbose=True):
+def flux_for_HiTRes(domain, emissions_dict, start=None, end=None, flux_directory=None, chunks=None, verbose=True):
     """
     Creates a dictionary of high and low frequency fluxes for use with HiTRes footprints.
     
@@ -477,7 +476,7 @@ def flux_for_HiTRes(domain, emissions_dict, start=None, end=None, flux_directory
                 print(f"Warning: {freq} key not found in emissions_dict.")
             else:
                 flux_dict[source][freq] = flux(domain, em_source[freq], start = start, end = end,
-                                               flux_directory = flux_directory, verbose = verbose)
+                                               flux_directory = flux_directory, chunks = chunks, verbose = verbose)
                 
     flux_dict = flux_dict['no_source'] if list(flux_dict.keys())==['no_source'] else flux_dict
     
