@@ -1255,10 +1255,10 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                                                   output_fpXflux = True,
                                                   output_type = 'DataArray',
                                                   time_resolution = f'{fp_time}H',
-                                                  verbose = verbose)
+                                                  verbose = False) #verbose)
                     if calc_timeseries:
                         # estimate the timeseries
-                        H_all, fp_and_data[site][mf_name] = ts_HiTRes                
+                        fp_and_data[site][mf_name], H_all = ts_HiTRes                
                         # use forward fill to replace nans
                         fp_and_data[site][mf_name] = fp_and_data[site][mf_name].ffill(dim='time')
                     else:
