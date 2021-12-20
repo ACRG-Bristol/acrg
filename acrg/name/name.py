@@ -797,7 +797,7 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
                           bc_directory = None,
                           resample_to_data = False,
                           species_footprint = None,
-                          chunks = False,
+                          chunks = None,
                           verbose = True):
 
     """
