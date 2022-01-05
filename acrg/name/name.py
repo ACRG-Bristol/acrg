@@ -357,13 +357,13 @@ def flux(domain, species, start = None, end = None, flux_directory=None, chunks=
         # extract the year and date from the filename and convert to a pandas datetime
         f_date_str = {ff: ff.split('_')[-1].split('.')[0] for ff in files}
         f_date = {ff: pd.to_datetime('-'.join([f_d[:4], f_d[4:]])) if is_number(f_d) and len(f_d)==6 else
-                      pd.to_datetime(f_d) if is_number(f_d) and len(f_d)==4 else 'clim'
+                      pd.to_datetime(f_d) if is_number(f_d) and len(f_d)==4 else 1900
                   for ff, f_d in f_date_str.items()}
         
         # check for files for which the filename dates are within the start-end time period
         files_lim = [ff for ff, f_d in f_date.items() if f_d in np.arange(start, end, dtype='datetime64[M]') and len(f_date_str[ff])==6 or
                      pd.to_datetime(str(f_d)) in np.arange(f'{str(pd.to_datetime(start).year)}-01-01',
-                                                           f'{str(pd.to_datetime(end).year+1)}-01-01', dtype='datetime64[Y]') or f_d=='clim']
+                                                           f'{str(pd.to_datetime(end).year+1)}-01-01', dtype='datetime64[Y]') or f_d==1900]
         
         # if no files are found for the required time period then data will be sliced below
         files = files_lim if len(files_lim)>0 else files
@@ -540,16 +540,17 @@ def boundary_conditions(domain, species, start = None, end = None, bc_directory=
         return bc_ds
     else:
         if 'climatology' not in species:
-            # extract the year and date from the filename and convert to a pandas datetime
+            # extract the year and date from the filename and convert to a pandas datetime, if using a climatology set date string to 1900
             f_date_str = {ff: ff.split('_')[-1].split('.')[0] for ff in files}
             f_date = {ff: pd.to_datetime('-'.join([f_d[:4], f_d[4:]])) if is_number(f_d) and len(f_d)==6 else
-                          pd.to_datetime(f_d) if is_number(f_d) and len(f_d)==4 else 'clim'
+                          pd.to_datetime(f_d) if is_number(f_d) and len(f_d)==4 else 1900
                       for ff, f_d in f_date_str.items()}
             
             # check for files for which the filename dates are within the start-end time period
             files_lim = [ff for ff, f_d in f_date.items() if f_d in np.arange(start, end, dtype='datetime64[M]') and len(f_date_str[ff])==6 or
                          pd.to_datetime(str(f_d)) in np.arange(f'{str(pd.to_datetime(start).year)}-01-01',
-                                                               f'{str(pd.to_datetime(end).year+1)}-01-01', dtype='datetime64[Y]') or f_d=='clim']
+                                                               f'{str(pd.to_datetime(end).year+1)}-01-01', dtype='datetime64[Y]') or f_d==1900]
+
             # if no files are found for the required time period then data will be sliced below
             files = files_lim if len(files_lim)>0 else files
         
