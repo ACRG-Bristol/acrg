@@ -2585,7 +2585,7 @@ def process(domain, site, height, year, month,
     
 
 
-def process_parallel(domain, site, height, years, months, check_error_files = True,
+def process_parallel(domain, site, height, years, months,
                      kwargs={}, nprocess=4):
     """
     This script processes multiple months in parallel (but loops through years
@@ -2604,14 +2604,10 @@ def process_parallel(domain, site, height, years, months, check_error_files = Tr
             List of months to process (e.g. np.arange(12)+1)
         kwargs (dict):
             Dictionary of optional arguments that you would pass to process, e.g.
-            kwargs = {"met_folder":"Met_daily", "fields_folder" : "MixR_files"}
+            kwargs = {"met_folder":"Met_daily", "fields_folder" : "MixR_files", "check_error_files": True}
         nprocess (int):
             Number of threads (and number of months to run in parallel).
             Default = 4
-        check_error_files (bool, optional)
-            If True will raise exception if a month has errors in the NAME output. 
-            Set to False to ignore errors. 
-            Default=True.
             
     Returns:
         None
@@ -2620,7 +2616,7 @@ def process_parallel(domain, site, height, years, months, check_error_files = Tr
     for year in years:
         pool = Pool(processes = nprocess)
         try:
-            [pool.apply_async(process, args=(domain, site, height, year, month, check_error_files), kwds=kwargs) for month in months]
+            [pool.apply_async(process, args=(domain, site, height, year, month), kwds=kwargs) for month in months]
         except:
             pool.close()
             pool.join()
