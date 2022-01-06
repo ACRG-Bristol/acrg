@@ -1435,10 +1435,10 @@ def footprint_concatenate(fields_prefix,
         fields_files = sorted(glob.glob(fields_prefix + "*" +
                              datestr + ".txt*"))
     elif 'MixR_hourly' in fields_prefix:
-        fields_files = sorted(glob.glob(fields_prefix + 
+        fields_files = sorted(glob.glob(fields_prefix + "*" + 
                              datestr + "*.nc*"))       
     else:
-        fields_files = sorted(glob.glob(fields_prefix + 
+        fields_files = sorted(glob.glob(fields_prefix + "*" + 
                              datestr + "*.txt*"))
     
     # Search for particle files
