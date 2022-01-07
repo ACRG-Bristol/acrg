@@ -214,7 +214,7 @@ class BoundaryConditions:
         
         lon_w = (np.abs(self.dataset.coords['lon'].values - min(self.fp_lon))).argmin()
         if self.dataset.coords['lon'].values[lon_w] > min(self.fp_lon) and lon_w != 0:
-            lat_w -= 1
+            lon_w -= 1
             
         # Cut to these
         north = self.dataset.sel(lat  = self.dataset.coords['lat'][lat_n],
