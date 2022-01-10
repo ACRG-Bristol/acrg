@@ -33,9 +33,17 @@ bc_obj.make_bc_file(fp_directory    = None,
 
 '''
 import os
+import json
 import numpy as np
 import xarray as xr
+from scipy import interpolate
+from collections import OrderedDict
+
+from acrg.name.name import open_ds
 from acrg.config.paths import Paths
+from acrg.convert import concentration
+from acrg.countrymask import domain_volume
+
     
 class BoundaryConditions:
     def __init__(self, vmr_var, gph_height_var, dataset=None, filename=None,
@@ -73,7 +81,6 @@ class BoundaryConditions:
             if filename is None:
                 print('Please provide either a dataset or filename containing vmr')
             elif os.path.isfile(filename):
-                from acrg_name.name import open_ds
                 dataset = open_ds(filename)
             else:
                 print(f'Cannot find file: {filename}')
@@ -145,7 +152,7 @@ class BoundaryConditions:
         if verbose: print('\nSaving to netcdf\n----------------')
         # save to a netcdf file with a standardised filename
         self.to_netcdf(datasource=datasource, out_path=out_path, glob_attrs=glob_attrs,
-                       copy_glob_attrs=copy_glob_attrs, verbose=verbose)
+                       copy_glob_attrs=copy_glob_attrs, verbose=verbose, overwrite=False)
             
     
     def get_unit_conversion(self, verbose=True):
@@ -156,11 +163,7 @@ class BoundaryConditions:
             int
                 Adds an integer to the BoundaryConditions object
                 Can be accessed using BoundaryConditions_obj.conversion
-        '''
-        if 'json' not in dir(): import json
-        from collections import OrderedDict
-        from acrg_convert import concentration
-        
+        '''        
         with open(os.path.join(self.acrg_path, "acrg_species_info.json")) as ff:
             species_info=json.load(ff, object_pairs_hook=OrderedDict)
         
@@ -190,8 +193,6 @@ class BoundaryConditions:
                 for north, south, east, and west
                 Can be accessed using BoundaryConditions_obj.edges
         '''
-        from acrg_countrymask import domain_volume
-        
         fp_directory = os.path.join(self.data_path, 'LPDM', 'fp_NAME') if fp_directory is None else fp_directory
         self.fp_lat, self.fp_lon, self.fp_height = domain_volume(self.domain, fp_directory=fp_directory)
         
@@ -205,12 +206,12 @@ class BoundaryConditions:
             lat_n -= 1
         
         lat_s = (np.abs(self.dataset.coords['lat'].values - min(self.fp_lat))).argmin()
-        if self.dataset.coords['lat'].values[lat_s] > min(self.fp_lat) and lat_s != (len(dataset.coords['lat'].values)-1):
+        if self.dataset.coords['lat'].values[lat_s] > min(self.fp_lat) and lat_s != (len(self.dataset.coords['lat'].values)-1):
             lat_s += 1
         
         lon_e = (np.abs(self.dataset.coords['lon'].values - max(self.fp_lon))).argmin()
-        if self.dataset.coords['lon'].values[lon_e] < max(self.fp_lon) and lon_e != (len(dataset.coords['lon'].values)-1):
-            lat_s += 1
+        if self.dataset.coords['lon'].values[lon_e] < max(self.fp_lon) and lon_e != (len(self.dataset.coords['lon'].values)-1):
+            lon_e += 1
         
         lon_w = (np.abs(self.dataset.coords['lon'].values - min(self.fp_lon))).argmin()
         if self.dataset.coords['lon'].values[lon_w] > min(self.fp_lon) and lon_w != 0:
@@ -288,8 +289,6 @@ class BoundaryConditions:
                 with a 3D VMR array interpolated to the NAME heights
                 Can be accessed using BoundaryConditions_obj.edges
         '''
-        if 'interpolate' not in dir(): from scipy import interpolate
-
         # get the axis along which to interpolate
         # either 'longitude' (or 'lon', N or S) or 'latitude' (or 'lat', E or W)
         latorlon = 'lon' if 'lon' in self.edges[direction] else 'lat'
@@ -358,8 +357,6 @@ class BoundaryConditions:
                 with a 3D VMR array interpolated to the NAME latitudes and longitudes
                 Can be accessed using BoundaryConditions_obj.edges
         '''
-        if 'interpolate' not in dir(): from scipy import interpolate
-
         # get the axis along which to interpolate
         # either 'longitude' (or 'lon', N or S) or 'latitude' (or 'lat', E or W)
         latorlon = 'lon'       if 'lon'       in self.edges[direction] else \
@@ -418,7 +415,7 @@ class BoundaryConditions:
         if verbose: print(f'Output filename : {self.out_filename}')
     
     def to_netcdf(self, datasource=None, out_path=None, glob_attrs={}, from_climatology=False,
-                  copy_glob_attrs=False, verbose=True):
+                  copy_glob_attrs=False, verbose=True, overwrite=False):
         '''
         Args
             datasource (str, optional)
@@ -449,7 +446,7 @@ class BoundaryConditions:
 
             Includes DataArrays for the n, s, e, and w boundaries
         '''        
-        edges    = {dd : self.edges[dd].rename({self.vmr_var: f'vmr_{dd}'})
+        edges    = {dd : self.edges[dd].rename({self.vmr_var: f'vmr_{dd[0]}'})
                     for dd in ['north', 'south', 'east', 'west']}
         
         # merge the interpolated n, s, e, & w Datasets
@@ -479,8 +476,20 @@ class BoundaryConditions:
                        os.path.join(self.data_path, 'LPDM', 'bc', self.domain)
         
         self.bc_filename(from_climatology=from_climatology, verbose=verbose)
-        if verbose: print(f'Saving boundary conditions to : {os.path.join(out_path, self.out_filename)}')
-        BC_edges.to_netcdf(path = os.path.join(out_path, self.out_filename), mode = 'w')
+        if overwrite and verbose:
+            save = True
+            if os.path.isfile(os.path.join(out_path, self.out_filename)):
+                print(f'Boundary condition file {os.path.join(out_path, self.out_filename)} already exists and is being overwritten.')
+        if os.path.isfile(os.path.join(out_path, self.out_filename)) and not overwrite:
+            print(f'Boundary condition file {os.path.join(out_path, self.out_filename)} already exists.')
+            answer = input("You are about to overwrite an existing file, do you want to continue? Y/N ")
+            if answer.upper() == 'N':
+                save = False
+            elif answer.upper() == 'Y':
+                save = True
+        if save == True:
+            if verbose: print(f'Saving boundary conditions to : {os.path.join(out_path, self.out_filename)}')
+            BC_edges.to_netcdf(path = os.path.join(out_path, self.out_filename), mode = 'w')
 
 
     
