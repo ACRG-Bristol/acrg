@@ -480,13 +480,15 @@ class BoundaryConditions:
             save = True
             if os.path.isfile(os.path.join(out_path, self.out_filename)):
                 print(f'Boundary condition file {os.path.join(out_path, self.out_filename)} already exists and is being overwritten.')
-        if os.path.isfile(os.path.join(out_path, self.out_filename)) and not overwrite:
+        elif os.path.isfile(os.path.join(out_path, self.out_filename)) and not overwrite:
             print(f'Boundary condition file {os.path.join(out_path, self.out_filename)} already exists.')
             answer = input("You are about to overwrite an existing file, do you want to continue? Y/N ")
             if answer.upper() == 'N':
                 save = False
             elif answer.upper() == 'Y':
                 save = True
+        else:
+            save = True
         if save == True:
             if verbose: print(f'Saving boundary conditions to : {os.path.join(out_path, self.out_filename)}')
             BC_edges.to_netcdf(path = os.path.join(out_path, self.out_filename), mode = 'w')
