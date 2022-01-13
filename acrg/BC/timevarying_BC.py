@@ -47,8 +47,8 @@ from acrg.countrymask import domain_volume
     
 class BoundaryConditions:
     def __init__(self, vmr_var, gph_height_var, dataset=None, filename=None,
-                 file_dir=None, time_coord='time', height_coord='height', species=None,
-                 domain='EUROPE', start_date=None):
+                 file_dir=None, time_coord='time', species=None,
+                 domain='EUROPE', start_date=None, adjust=None):
         '''
         vmr_var : str
             The VMR variable name in the nesw dataset
@@ -98,7 +98,12 @@ class BoundaryConditions:
         # rename latitude and longitude to short version
         if 'latitude'  in dataset: dataset.rename({'latitude'  : 'lat'})
         if 'longitude' in dataset: dataset.rename({'longitude' : 'lon'})
-        self.dataset      = dataset
+
+        if adjust is not None:
+            print(f'Adjusting vmr by {adjust}')
+            dataset[vmr_var] = dataset[vmr_var] + adjust
+    
+        self.dataset = dataset
     
     def make_bc_file(self, fp_directory=None, fp_height_coord='height', reverse=None,
                      convert_units=True, datasource=None, out_path=None, glob_attrs={},
