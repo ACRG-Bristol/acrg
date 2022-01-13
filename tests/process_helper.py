@@ -256,8 +256,8 @@ def footprint_concatenate_param(subfolder,read_met,folder_names,parameters,satel
         param["fields_prefix"] = get_fields_prefix(subfolder,folder_names["mixr_folder"])
         field_files = get_fields_files(subfolder,folder_names["mixr_folder"],datestr)
     elif fields == "conc":
-        param["fields_prefix"] = get_fields_prefix(subfolder,folder_names["fields_folder"])
-        field_files = get_fields_files(subfolder,folder_names["fields_folder"],datestr)
+        param["fields_prefix"] = get_fields_prefix(subfolder,folder_names["conc_folder"])
+        field_files = get_fields_files(subfolder,folder_names["conc_folder"],datestr)
     param["datestr"] = get_field_file_datestr(field_files)
     
     if satellite:
@@ -268,7 +268,7 @@ def footprint_concatenate_param(subfolder,read_met,folder_names,parameters,satel
 
 #%% Process
 
-def process_param(input_param,folder_names,satellite):
+def process_param(input_param, folder_names, satellite, fields="mixr"):
     '''
     Define input parameters for process.process function.
     Args:
@@ -289,11 +289,16 @@ def process_param(input_param,folder_names,satellite):
     param["height"] = input_param["height"]
     param["year"] = input_param["year"]
     param["month"] = input_param["month"]
+    
     if satellite:
         param["max_level"] = input_param["max_level"]
         param["upper_level"] = input_param["upper_level"]
     
-    param["fields_folder"] = folder_names["fields_folder"]
+    if fields == "mixr":
+        param["fields_folder"] = folder_names["mixr_folder"]
+    elif fields == "conc":
+        param["fields_folder"] = folder_names["conc_folder"]
+    
     param["particles_folder"] = folder_names["particles_folder"]
     param["met_folder"] = folder_names["met_folder"]
     param["processed_folder"] = folder_names["processed_folder"]
@@ -302,28 +307,89 @@ def process_param(input_param,folder_names,satellite):
     
     return param
 
-def find_processed_file(subfolder,processed_folder,param):
+# def find_processed_file(subfolder,processed_folder,param):
+#     '''
+#     Find NAME processed file based on search string:
+#         "{site}-{height}_{domain}_{year}{month:02}*.nc"
+#     Args:
+#         subfolder (str) :
+#             Main sub-folder containing NAME output files
+#         processed_folder (str) :
+#             Directory containing the processed file.
+#         param (dict) :
+#             Parameter dictionary containing
+#             'site','height','domain','year','month'
+#     Returns
+#         str / list:
+#             Filename
+#         None :
+#             If no files or more than one file are found
+#     '''
+#     directory = os.path.join(subfolder,processed_folder)
+#     search_str = "{site}-{height}_{domain}_{year}{month:02}*.nc".format(site=param["site"],height=param["height"],domain=param["domain"],year=param["year"],month=param["month"])
+#     full_search_str = os.path.join(directory,search_str)
+#     print("search string",full_search_str)
+#     processed_file = glob.glob(full_search_str)
+#     if len(processed_file) == 1:
+#         processed_file = processed_file[0]
+#     elif len(processed_file) == 0:
+#         print("No processed file found")
+#         processed_file = None
+#     elif len(processed_file) > 1:
+#         print("Too many processed files found. Not unique")
+#         processed_file = None
+    
+#     return processed_file
+
+# def remove_processed_file(subfolder,processed_folder,param):
+#     '''
+#     Check and remove any files matching datestr extracted from param input from processed files folder.
+#     This is to allow test of process function to be run multiple times.
+#     Processed files are found within processed files folder based on datestr from 
+#     param["year"] + param["month"].zfill(2)
+#     '''
+    
+#     files_in_folder = find_processed_file(subfolder,processed_folder,param)
+    
+# #    folder = os.path.join(subfolder,processed_folder)
+# #    
+# #    search_str = "*{}*.nc".format(create_datestr(param))
+# #    search_str = os.path.join(folder,search_str)
+# #    files_in_folder = glob.glob(search_str)
+    
+#     if files_in_folder is not None:
+#         os.remove(files_in_folder)
+
+def find_processed_file(param):
     '''
     Find NAME processed file based on search string:
-        "{site}-{height}_{domain}_{year}{month:02}*.nc"
+        "{site}-{height}[_{species}]_{domain}_{year}{month:02}*.nc"
     Args:
-        subfolder (str) :
-            Main sub-folder containing NAME output files
-        processed_folder (str) :
-            Directory containing the processed file.
+        #subfolder (str) :
+        #    Main sub-folder containing NAME output files
+        #processed_folder (str) :
+        #    Directory containing the processed file.
         param (dict) :
             Parameter dictionary containing
-            'site','height','domain','year','month'
+            'site','height','domain','year','month', 'species', 'process_dir'
     Returns
         str / list:
             Filename
         None :
-            If no files or more than one file are found
+            If no files or more than one file is found
     '''
-    directory = os.path.join(subfolder,processed_folder)
-    search_str = "{site}-{height}_{domain}_{year}{month:02}*.nc".format(site=param["site"],height=param["height"],domain=param["domain"],year=param["year"],month=param["month"])
+    #directory = os.path.join(subfolder,processed_folder)
+    directory = os.path.join(param["process_dir"], param["domain"])
+
+    if "species" in param:
+        optional_species_str = "_"+param["species"].lower()
+    else:
+        optional_species_str = ""
+
+    search_str = f"{param['site']}-{param['height']}{optional_species_str}_{param['domain']}_{param['year']}{param['month']:02}*.nc"
+
     full_search_str = os.path.join(directory,search_str)
-    print("search string",full_search_str)
+    
     processed_file = glob.glob(full_search_str)
     if len(processed_file) == 1:
         processed_file = processed_file[0]
@@ -336,7 +402,8 @@ def find_processed_file(subfolder,processed_folder,param):
     
     return processed_file
 
-def remove_processed_file(subfolder,processed_folder,param):
+
+def remove_processed_file(param):
     '''
     Check and remove any files matching datestr extracted from param input from processed files folder.
     This is to allow test of process function to be run multiple times.
@@ -344,7 +411,7 @@ def remove_processed_file(subfolder,processed_folder,param):
     param["year"] + param["month"].zfill(2)
     '''
     
-    files_in_folder = find_processed_file(subfolder,processed_folder,param)
+    files_in_folder = find_processed_file(param)
     
 #    folder = os.path.join(subfolder,processed_folder)
 #    
