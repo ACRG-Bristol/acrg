@@ -41,6 +41,7 @@ import matplotlib.pyplot as plt
 import getpass
 import scipy
 from multiprocessing import Pool
+import sys
 
 from acrg.grid.areagrid import areagrid
 from acrg.time.convert import time2sec, sec2time
@@ -1157,7 +1158,8 @@ def footprint_array(fields_file,
             if force_met_empty == True:
                 metr = met[0].tail(1)
             if np.isnan(metr.values).any():
-                raise ValueError("No met data for given date %s" % t)
+                print(f"\nValueError: No met data for given date {t}\n")
+                raise ValueError()
             
         for key in list(metr.keys()):
             if key != "time":
@@ -2086,6 +2088,7 @@ def process(domain, site, height, year, month,
         This routine outputs a copy of the xarray dataset that is written to file.
     
     '''
+    
     # define the path for processed files, check it exists, and check that the user has write permission
     full_out_path = os.path.join(process_dir, domain)
     if not os.path.isdir(full_out_path):
@@ -2154,11 +2157,13 @@ def process(domain, site, height, year, month,
                 num_days = len(error_days)
 
         if len(error_days) > 0:
-            raise Exception('This month cannot be processed as there are '+str(num_days)+' days with with errors: '+str(error_days))
+            print(f"\nEXCEPTION: This month cannot be processed as there are {str(num_days)} days with with errors: {str(error_days)}\n")
+            raise Exception()
         
    # Check for existance of subfolder
     if not os.path.isdir(subfolder):
-        raise Exception("Subfolder: {} does not exist.\nExpect NAME output folder of format: domain_site_height".format(subfolder))
+        print(f"\nEXCEPTION: Subfolder: {subfolder} does not exist.\nExpect NAME output folder of format: domain_site_height\n")
+        raise Exception()
     
     if perturbed_folder != None:
         if perturbed_folder[-1] == "/":
@@ -2313,7 +2318,8 @@ def process(domain, site, height, year, month,
                 met_files = sorted(glob.glob(met_search_str))
            
             if len(met_files) == 0:        
-                raise FileNotFoundError(f"Can't find MET files: {met_search_str}")
+                print(f"\nFileNotFoundError: Can't find MET files: {met_search_str}\n")
+                raise FileNotFoundError()
                 
             else:
                 met = read_met(met_files,satellite=satellite)
