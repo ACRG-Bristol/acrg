@@ -125,6 +125,6 @@ def convert_degrees_metres(lat, d_lat, d_lon, units=None, verbose=True):
         default: True
     '''
     lon = [0, d_lon]
-    lat = [lat - d_lat, lat + d_lat]
+    lat = [lat - d_lat/2, lat + d_lat/2]
     dist = latlon_distance(lat, lon, units=units, verbose=verbose)
     return dist
