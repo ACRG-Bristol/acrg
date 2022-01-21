@@ -351,7 +351,7 @@ def flux(domain, species, start = None, end = None, flux_directory=None, chunks=
         if len(files) > 0:
             break
     else:
-        raise IOError("\nError: Can't find flux files for domain '{0}' and species '{1}' (using search: {2})".format(domain,species,species_search_list))
+        raise IOError(f"\nError: Can't find flux files for domain '{domain}' and species '{species}' (using search: {species_search_list})")
     
     if start and end and 'climatology' not in species:
         # extract the year and date from the filename and convert to a pandas datetime
@@ -604,14 +604,13 @@ def basis(domain, basis_case, basis_directory = None):
     files = sorted(glob.glob(file_path))
     
     if len(files) == 0:
-        raise IOError(f"\nError: Can't find basis function files for domain '{domain}' \
-                          and basis_case '{basis_case}' ")
+        raise IOError(f"\nError: Can't find basis function files for domain '{domain}' and basis_case '{basis_case}' ")
 
     basis_ds = read_netcdfs(files)
 
     return basis_ds
 
-def basis_boundary_conditions(domain, basis_case, bc_basis_directory = None):
+def basis_boundary_conditions(domain, basis_case, bc_basis_directory=None, start=None, end=None):
     """
     The basis_boundary_conditions function reads in all matching files for the boundary conditions 
     basis case and domain as an xarray Dataset.
@@ -641,6 +640,24 @@ def basis_boundary_conditions(domain, basis_case, bc_basis_directory = None):
     file_path = os.path.join(bc_basis_directory,domain,f"{basis_case}_{domain}*.nc")
     
     files       = sorted(glob.glob(file_path))
+
+    start = 1900 if start is None else start
+    end = 3000 if end is None else end
+
+    # extract the year and date from the filename and convert to a pandas datetime, if using a climatology set date string to 1900
+    f_date_str = {ff: ff.split('_')[-1].split('.')[0] for ff in files}
+    f_date = {ff: pd.to_datetime('-'.join([f_d[:4], f_d[4:]])) if is_number(f_d) and len(f_d)==6 else
+                  pd.to_datetime(f_d) if is_number(f_d) and len(f_d)==4 else 1900
+              for ff, f_d in f_date_str.items()}
+            
+    # check for files for which the filename dates are within the start-end time period
+    files_lim = [ff for ff, f_d in f_date.items() if f_d in np.arange(start, end, dtype='datetime64[M]') and len(f_date_str[ff])==6 or
+                 pd.to_datetime(str(f_d)) in np.arange(f'{str(pd.to_datetime(start).year)}-01-01',
+                                                       f'{str(pd.to_datetime(end).year+1)}-01-01', dtype='datetime64[Y]') or f_d==1900]
+
+    # if no files are found for the required time period then data will be sliced below
+    files = files_lim if len(files_lim)>0 else files
+
     file_no_acc = [ff for ff in files if not os.access(ff, os.R_OK)]
     files       = [ff for ff in files if os.access(ff, os.R_OK)]
     if len(file_no_acc)>0:
@@ -648,8 +665,7 @@ def basis_boundary_conditions(domain, basis_case, bc_basis_directory = None):
         [print(ff) for ff in file_no_acc]
 
     if len(files) == 0:
-        raise IOError("\nError: Can't find boundary condition basis function files for domain '{0}' "
-              "and basis_case '{1}' ".format(domain,basis_case))
+        raise IOError(f"\nError: Can't find boundary condition basis function files for domain '{domain}' and basis_case '{basis_case}' ")
 
     basis_ds = read_netcdfs(files)
 
@@ -1367,7 +1383,7 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
     return fp_and_data
 
 
-def bc_sensitivity(fp_and_data, domain, basis_case, bc_basis_directory = None):
+def bc_sensitivity(fp_and_data, domain, basis_case, bc_basis_directory=None, start=None, end=None):
 
     """
     The bc_sensitivity adds H_bc to the sensitivity matrix, to each site xarray dataframe in fp_and_data.
@@ -1387,8 +1403,11 @@ def bc_sensitivity(fp_and_data, domain, basis_case, bc_basis_directory = None):
     sites = [key for key in list(fp_and_data.keys()) if key[0] != '.']
 
     basis_func = basis_boundary_conditions(domain = domain,
-                                           basis_case = basis_case, bc_basis_directory=bc_basis_directory)
-# sort basis_func into time order    
+                                           basis_case = basis_case,
+                                           bc_basis_directory = bc_basis_directory,
+                                           start = start,
+                                           end = end)
+    # sort basis_func into time order    
     ind = basis_func.time.argsort()                                        
     timenew = basis_func.time[ind]
     basis_func = basis_func.reindex({"time":timenew})
