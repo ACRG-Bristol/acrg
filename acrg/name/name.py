@@ -575,8 +575,8 @@ def boundary_conditions(domain, species, start = None, end = None, bc_directory=
         if len(bc_timeslice.time)==0:
             bc_timeslice = bc_ds.sel(time=start, method = 'ffill')
             bc_timeslice = bc_timeslice.expand_dims('time',axis=-1)
-            print(f"No boundary conditions available during the time period specified so outputting\
-                    boundary conditions from {bc_timeslice.time.values[0]}")
+            print(f"No boundary conditions available during the time period specified so outputting " + \
+                    "boundary conditions from {bc_timeslice.time.values[0]}")
         return bc_timeslice
 
 
