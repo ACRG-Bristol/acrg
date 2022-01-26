@@ -63,6 +63,37 @@ def open_ds(path, chunks=None):
             ds.load()
     return ds 
 
+def filter_files_by_date(files, start, end):
+    '''
+    Filter files for those in the start-end date range
+    Avoids loading in data that is not needed
+
+    Args:
+        files (list) :
+            files which are to be filtered
+        start, end (str) :
+            start and end of the date range required
+    
+    Returns:
+        files (list) :
+            list of files which are within the start-end date range
+            if no files are found within this date range then the original file list is returned
+    '''
+    # extract the year and date from the filename and convert to a pandas datetime, if it is a climatology set date string to 1900
+    f_date_str = {ff: ff.split('_')[-1].split('.')[0] for ff in files}
+    f_date = {ff: pd.to_datetime('-'.join([f_d[:4], f_d[4:]])) if is_number(f_d) and len(f_d)==6 else
+                  pd.to_datetime(f_d) if is_number(f_d) and len(f_d)==4 else 1900
+              for ff, f_d in f_date_str.items()}
+
+    # check for files for which the filename dates are within the start-end time period
+    files_lim = [ff for ff, f_d in f_date.items() if f_d in np.arange(start, end, dtype='datetime64[M]') and len(f_date_str[ff])==6 or
+                 pd.to_datetime(str(f_d)) in np.arange(f'{str(pd.to_datetime(start).year)}-01-01',
+                                                       f'{str(pd.to_datetime(end).year+1)}-01-01', dtype='datetime64[Y]') or f_d==1900]
+    
+    # if no files are found for the required time period then data will be sliced below
+    files = files_lim if len(files_lim)>0 else files
+
+    return files
 
 def filenames(site, domain, start, end, height, fp_directory, met_model = None, network=None, species=None):
     """
@@ -354,19 +385,7 @@ def flux(domain, species, start = None, end = None, flux_directory=None, chunks=
         raise IOError(f"\nError: Can't find flux files for domain '{domain}' and species '{species}' (using search: {species_search_list})")
     
     if start and end and 'climatology' not in species:
-        # extract the year and date from the filename and convert to a pandas datetime
-        f_date_str = {ff: ff.split('_')[-1].split('.')[0] for ff in files}
-        f_date = {ff: pd.to_datetime('-'.join([f_d[:4], f_d[4:]])) if is_number(f_d) and len(f_d)==6 else
-                      pd.to_datetime(f_d) if is_number(f_d) and len(f_d)==4 else 1900
-                  for ff, f_d in f_date_str.items()}
-        
-        # check for files for which the filename dates are within the start-end time period
-        files_lim = [ff for ff, f_d in f_date.items() if f_d in np.arange(start, end, dtype='datetime64[M]') and len(f_date_str[ff])==6 or
-                     pd.to_datetime(str(f_d)) in np.arange(f'{str(pd.to_datetime(start).year)}-01-01',
-                                                           f'{str(pd.to_datetime(end).year+1)}-01-01', dtype='datetime64[Y]') or f_d==1900]
-        
-        # if no files are found for the required time period then data will be sliced below
-        files = files_lim if len(files_lim)>0 else files
+        files = filter_files_by_date(files, start, end)
     
     flux_ds = read_netcdfs(files, chunks=chunks)
     # Check that time coordinate is present
@@ -540,19 +559,7 @@ def boundary_conditions(domain, species, start = None, end = None, bc_directory=
         return bc_ds
     else:
         if 'climatology' not in species:
-            # extract the year and date from the filename and convert to a pandas datetime, if using a climatology set date string to 1900
-            f_date_str = {ff: ff.split('_')[-1].split('.')[0] for ff in files}
-            f_date = {ff: pd.to_datetime('-'.join([f_d[:4], f_d[4:]])) if is_number(f_d) and len(f_d)==6 else
-                          pd.to_datetime(f_d) if is_number(f_d) and len(f_d)==4 else 1900
-                      for ff, f_d in f_date_str.items()}
-            
-            # check for files for which the filename dates are within the start-end time period
-            files_lim = [ff for ff, f_d in f_date.items() if f_d in np.arange(start, end, dtype='datetime64[M]') and len(f_date_str[ff])==6 or
-                         pd.to_datetime(str(f_d)) in np.arange(f'{str(pd.to_datetime(start).year)}-01-01',
-                                                               f'{str(pd.to_datetime(end).year+1)}-01-01', dtype='datetime64[Y]') or f_d==1900]
-
-            # if no files are found for the required time period then data will be sliced below
-            files = files_lim if len(files_lim)>0 else files
+            files = filter_files_by_date(files, start, end)
         
         bc_ds = read_netcdfs(files, chunks=chunks)
         
@@ -644,19 +651,7 @@ def basis_boundary_conditions(domain, basis_case, bc_basis_directory=None, start
     start = 1900 if start is None else start
     end = 3000 if end is None else end
 
-    # extract the year and date from the filename and convert to a pandas datetime, if using a climatology set date string to 1900
-    f_date_str = {ff: ff.split('_')[-1].split('.')[0] for ff in files}
-    f_date = {ff: pd.to_datetime('-'.join([f_d[:4], f_d[4:]])) if is_number(f_d) and len(f_d)==6 else
-                  pd.to_datetime(f_d) if is_number(f_d) and len(f_d)==4 else 1900
-              for ff, f_d in f_date_str.items()}
-            
-    # check for files for which the filename dates are within the start-end time period
-    files_lim = [ff for ff, f_d in f_date.items() if f_d in np.arange(start, end, dtype='datetime64[M]') and len(f_date_str[ff])==6 or
-                 pd.to_datetime(str(f_d)) in np.arange(f'{str(pd.to_datetime(start).year)}-01-01',
-                                                       f'{str(pd.to_datetime(end).year+1)}-01-01', dtype='datetime64[Y]') or f_d==1900]
-
-    # if no files are found for the required time period then data will be sliced below
-    files = files_lim if len(files_lim)>0 else files
+    files = filter_files_by_date(files, start, end)
 
     file_no_acc = [ff for ff in files if not os.access(ff, os.R_OK)]
     files       = [ff for ff in files if os.access(ff, os.R_OK)]
@@ -896,8 +891,8 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
     else:
         species = species_list[0]
         
-    species_footprint = species if species_footprint is None else species_footprint
-    if species_footprint!=species:
+    species_footprint = species_footprint.lower() if species_footprint is not None else species_footprint
+    if species_footprint not in [species, None]:
         print(f'Finding footprints files for {species_footprint}')
 
     if load_flux:
@@ -984,7 +979,7 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
             site_fp = footprints(site_modifier_fp, met_model = met_model_site, fp_directory = fp_directory, 
                                  start = start, end = end,
                                  domain = domain,
-                                 species = species_footprint.lower(),
+                                 species = species_footprint,
                                  height = height_site,
                                  network = network_site,
                                  HiTRes = HiTRes,
