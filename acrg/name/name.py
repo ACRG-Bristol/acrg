@@ -646,12 +646,9 @@ def basis_boundary_conditions(domain, basis_case, bc_basis_directory=None, start
     
     file_path = os.path.join(bc_basis_directory,domain,f"{basis_case}_{domain}*.nc")
     
-    files       = sorted(glob.glob(file_path))
-
-    start = 1900 if start is None else start
-    end = 3000 if end is None else end
-
-    files = filter_files_by_date(files, start, end)
+    files = sorted(glob.glob(file_path))
+    if start is not None and end is not None:
+        files = filter_files_by_date(files, start, end)
 
     file_no_acc = [ff for ff in files if not os.access(ff, os.R_OK)]
     files       = [ff for ff in files if os.access(ff, os.R_OK)]
