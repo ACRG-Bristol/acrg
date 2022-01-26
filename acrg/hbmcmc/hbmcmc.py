@@ -182,12 +182,13 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
         Add a wishlist...
     """    
     keep_missing = True if HiTRes else False
+    if verbose and species_footprint is not None:
+        print(f'species_footprint: {species_footprint}')
+    
     data = getobs.get_obs(sites, species, start_date = start_date, end_date = end_date, 
                          average = meas_period, data_directory=obs_directory,
                           keep_missing=keep_missing,inlet=inlet, instrument=instrument,
                           max_level=max_level)
-    print(f'species_footprint: {species_footprint}')
-    
     fp_all = name.footprints_data_merge(data, domain=domain, met_model = met_model, calc_bc=True,
                                         HiTRes = HiTRes,
                                         height = fpheight,
