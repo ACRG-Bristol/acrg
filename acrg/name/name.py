@@ -1057,10 +1057,7 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
         
     # Calculate boundary conditions, if required         
     if calc_bc:
-        if domain == 'ARCTIC' and fp_and_data[sites[0]].time[0] < np.datetime64('2010-01-01'):
-            fp_and_data = add_bc(fp_and_data, load_bc, species, xunbounded_pre_2010 = True)
-        else:
-            fp_and_data = add_bc(fp_and_data, load_bc, species, xunbounded_pre_2010 = False)
+        fp_and_data = add_bc(fp_and_data, load_bc, species)
     
     #Add "." attributes manually to be back-compatible
     fp_and_data[".species"] = species
@@ -1124,7 +1121,7 @@ def add_timeseries(fp_and_data, load_flux, verbose=True):
     return fp_and_data
 
 
-def add_bc(fp_and_data, load_bc, species, xunbounded_pre_2010 = False):
+def add_bc(fp_and_data, load_bc, species):
     """
     Add boundary condition mole fraction values in footprint_data_merge
     Boundary conditions are multipled by any loss (exp(-t/lifetime)) for the species
@@ -1171,8 +1168,8 @@ def add_bc(fp_and_data, load_bc, species, xunbounded_pre_2010 = False):
                 loss_e = 1
                 loss_s = 1
                 loss_w = 1
-                
-            if xunbounded_pre_2010:
+            
+            if 0 in np.sum(fp_and_data[site].particle_locations_s.values, axis = (0,1)):
                 
                 fp_and_data[site]['particle_locations_n'] = xr.zeros_like(fp_and_data[site].mean_age_particles_n)
                 fp_and_data[site]['particle_locations_e'] = xr.zeros_like(fp_and_data[site].mean_age_particles_e)
