@@ -302,7 +302,7 @@ def footprints(sitecode_or_filename, met_model = None, fp_directory = None,
     
     fp_directory = join(data_path, 'LPDM/fp_NAME/') if fp_directory is None else fp_directory
     
-    if HiTRes:
+    if HiTRes and met_model=='UKV':
         print('Finding high time resolution footprints, setting species = co2')
         species = 'co2'
     
@@ -576,7 +576,7 @@ def boundary_conditions(domain, species, start = None, end = None, bc_directory=
             bc_timeslice = bc_ds.sel(time=start, method = 'ffill')
             bc_timeslice = bc_timeslice.expand_dims('time',axis=-1)
             print(f"No boundary conditions available during the time period specified so outputting " + \
-                    "boundary conditions from {bc_timeslice.time.values[0]}")
+                  f"boundary conditions from {bc_timeslice.time.values[0]}")
         return bc_timeslice
 
 
@@ -1031,7 +1031,8 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
 
                 # If units are specified, multiply by scaling factor
                 if units:
-                    site_ds.update({'fp' : (site_ds.fp.dims, old_div(site_ds.fp, units))})
+                    if 'fp' in site_ds.data_vars:
+                        site_ds.update({'fp' : (site_ds.fp.dims, old_div(site_ds.fp, units))})
                     if HiTRes:
                         site_ds.update({'fp_HiTRes' : (site_ds.fp_HiTRes.dims, 
                                                        old_div(site_ds.fp_HiTRes, units))})
@@ -1396,9 +1397,7 @@ def bc_sensitivity(fp_and_data, domain, basis_case, bc_basis_directory=None, sta
 
     basis_func = basis_boundary_conditions(domain = domain,
                                            basis_case = basis_case,
-                                           bc_basis_directory = bc_basis_directory,
-                                           start = start,
-                                           end = end)
+                                           bc_basis_directory = bc_basis_directory)
     # sort basis_func into time order    
     ind = basis_func.time.argsort()                                        
     timenew = basis_func.time[ind]
