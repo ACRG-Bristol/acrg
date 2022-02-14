@@ -239,7 +239,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     
     fp_data = name.fp_sensitivity(fp_all, domain=domain, basis_case=fp_basis_case, basis_directory=basis_directory,
                                   calc_timeseries = True)
-    fp_data = name.bc_sensitivity(fp_data, domain=domain, basis_case=bc_basis_case, start=start_date, end=end_date)
+    fp_data = name.bc_sensitivity(fp_data, domain=domain, basis_case=bc_basis_case)
     
     if HiTRes:
         for site in sites:
