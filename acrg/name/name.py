@@ -2311,19 +2311,23 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
     # resample fp to match the required time resolution
     fp_HiTRes  = fp_HiTRes.resample(time=time_resolution).ffill()
 
-    # get the data timesteps - used for resampling the hourly footprints
-    num = int(time_resolution[0])
-    # check the length of H_back to see if it needs to be resampled
-    resample = num if fp_HiTRes.H_back[1].values - fp_HiTRes.H_back[0].values == 1 else \
-               1 if fp_HiTRes.H_back[1].values - fp_HiTRes.H_back[0].values == num else None
-    if resample is None:
-        print('Cannot resample H_back')
-        return None
+    # get the H_back timestep and max number of hours back
+    H_back_hour_diff = int(fp_HiTRes["H_back"].diff(dim="H_back").values.mean())
+    max_H_back = int(fp_HiTRes["H_back"].values[-1])
     
     # create time array to loop through, with the required resolution
     time_array = fp_HiTRes.time.values
     # extract as a dask array to make the loop quicker
     fp_HiTRes  = da.array(fp_HiTRes)
+    
+    # this is the number of hours over which the H_back will be resampled to match time_resolution
+    H_resample = int(time_resolution[0]) if H_back_hour_diff == 1 else \
+                 1 if H_back_hour_diff == int(time_resolution[0]) else None
+    if H_resample is None:
+        print('Cannot resample H_back')
+        return None
+    # reverse the H_back coordinate to be chronological, and resample to match time_resolution
+    fp_HiTRes   = fp_HiTRes[:,:,:,::-H_resample]
 
     # convert fluxes to dictionaries with sectors as keys
     flux = {'total': flux_dict} if any([ff in list(flux_dict.keys()) for ff in ['high_freq', 'low_freq']]) else flux_dict
@@ -2341,7 +2345,7 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
     for sector, flux_sector in flux.items():
         if 'high_freq' in flux_sector.keys() and flux_sector['high_freq'] is not None:
             # reindex the high frequency data to match the fp
-            time_flux = np.arange(fp_HiTRes_ds.time[0].values - np.timedelta64(24, 'h'),
+            time_flux = np.arange(fp_HiTRes_ds.time[0].values - np.timedelta64(max_H_back, 'h'),
                                   fp_HiTRes_ds.time[-1].values + np.timedelta64(time_resolution[0], 
                                                                                 time_resolution[1].lower()),
                                   time_resolution[0], dtype=f'datetime64[{time_resolution[1].lower()}]')
@@ -2380,11 +2384,9 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
     ### iterate through the time coord to get the total mf at each time step using the H back coord
     # at each release time we disaggregate the particles backwards over the previous 24hrs
     for tt, time in enumerate(iters):
-        print(tt)
         # get 4 dimensional chunk of high time res footprint for this timestep
         # units : mol/mol/mol/m2/s
-        # reverse the H_back coordinate to be chronological, and resample
-        fp_time   = fp_HiTRes[:,:,tt,::-resample]
+        fp_time = fp_HiTRes[:,:,tt,:]
                 
         # get the correct index for the low res data
         # estimated using the difference between the current and start month and year
