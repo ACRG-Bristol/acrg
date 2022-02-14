@@ -2308,19 +2308,21 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
                     fp_HiTRes_ds.fp_HiTRes.chunk(chunks) \
                     if fp_HiTRes_ds.chunks is None and chunks is not None else fp_HiTRes_ds.fp_HiTRes
     
-    # resample fp and extract array to make the loop quicker
+    # resample fp to match the required time resolution
     fp_HiTRes  = fp_HiTRes.resample(time=time_resolution).ffill()
 
     # get the data timesteps - used for resampling the hourly footprints
     num = int(time_resolution[0])
-    reverse = num if len(fp_HiTRes.H_back)-1/num==24/num else \
-              1 if len(fp_HiTRes.H_back)-1==24/num else None
-    if reverse is None:
+    # check the length of H_back to see if it needs to be resampled
+    resample = num if len(fp_HiTRes.H_back)-1/num==24/num else \
+               1 if len(fp_HiTRes.H_back)-1==24/num else None
+    if resample is None:
         print('Cannot resample H_back')
         return None
     
     # create time array to loop through, with the required resolution
     time_array = fp_HiTRes.time.values
+    # extract as a dask array to make the loop quicker
     fp_HiTRes  = da.array(fp_HiTRes)
 
     # convert fluxes to dictionaries with sectors as keys
@@ -2372,10 +2374,7 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
     # month and year of the start of the data - used to index the low res data
     start = {dd: getattr(np.datetime64(time_array[0], 'h').astype(object), dd)
              for dd in ['month', 'year']}
-    
-    # get the data timesteps - used for resampling the hourly footprints
-    num = int(time_resolution[0])
-    
+        
     # put the time array into tqdm if we want a progress bar to show throughout the loop
     iters = tqdm(time_array) if verbose else time_array
     ### iterate through the time coord to get the total mf at each time step using the H back coord
@@ -2384,7 +2383,7 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
         # get 4 dimensional chunk of high time res footprint for this timestep
         # units : mol/mol/mol/m2/s
         # reverse the H_back coordinate to be chronological, and resample
-        fp_time   = fp_HiTRes[:,:,tt,::-reverse]
+        fp_time   = fp_HiTRes[:,:,tt,::-resample]
                 
         # get the correct index for the low res data
         # estimated using the difference between the current and start month and year
