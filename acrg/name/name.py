@@ -2314,7 +2314,7 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
     # get the data timesteps - used for resampling the hourly footprints
     num = int(time_resolution[0])
     # check the length of H_back to see if it needs to be resampled
-    resample = num if len(fp_HiTRes.H_back)-1/num==24/num else \
+    resample = num if (len(fp_HiTRes.H_back)-1)/num==24/num else \
                1 if len(fp_HiTRes.H_back)-1==24/num else None
     if resample is None:
         print('Cannot resample H_back')
