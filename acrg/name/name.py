@@ -2310,6 +2310,15 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
     
     # resample fp and extract array to make the loop quicker
     fp_HiTRes  = fp_HiTRes.resample(time=time_resolution).ffill()
+
+    # get the data timesteps - used for resampling the hourly footprints
+    num = int(time_resolution[0])
+    reverse = num if len(fp_HiTRes.H_back)-1/num==24/num else \
+              1 if len(fp_HiTRes.H_back)-1==24/num else None
+    if reverse is None:
+        print('Cannot resample H_back')
+        return None
+    
     # create time array to loop through, with the required resolution
     time_array = fp_HiTRes.time.values
     fp_HiTRes  = da.array(fp_HiTRes)
@@ -2375,7 +2384,7 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
         # get 4 dimensional chunk of high time res footprint for this timestep
         # units : mol/mol/mol/m2/s
         # reverse the H_back coordinate to be chronological, and resample
-        fp_time   = fp_HiTRes[:,:,tt,::-num]
+        fp_time   = fp_HiTRes[:,:,tt,::-reverse]
                 
         # get the correct index for the low res data
         # estimated using the difference between the current and start month and year
