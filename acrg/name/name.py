@@ -2314,8 +2314,8 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
     # get the data timesteps - used for resampling the hourly footprints
     num = int(time_resolution[0])
     # check the length of H_back to see if it needs to be resampled
-    resample = num if (len(fp_HiTRes.H_back)-1)/num==24/num else \
-               1 if len(fp_HiTRes.H_back)-1==24/num else None
+    resample = num if fp_HiTRes.H_back[1].values - fp_HiTRes.H_back[0].values == 1 else \
+               1 if fp_HiTRes.H_back[1].values - fp_HiTRes.H_back[0].values == num else None
     if resample is None:
         print('Cannot resample H_back')
         return None
@@ -2380,6 +2380,7 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
     ### iterate through the time coord to get the total mf at each time step using the H back coord
     # at each release time we disaggregate the particles backwards over the previous 24hrs
     for tt, time in enumerate(iters):
+        print(tt)
         # get 4 dimensional chunk of high time res footprint for this timestep
         # units : mol/mol/mol/m2/s
         # reverse the H_back coordinate to be chronological, and resample
