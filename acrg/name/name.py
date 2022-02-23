@@ -88,7 +88,7 @@ def filter_files_by_date(files, start, end):
     # check for files for which the filename dates are within the start-end time period
     files_lim = [ff for ff, f_d in f_date.items() if f_d in np.arange(start, end, dtype='datetime64[M]') and len(f_date_str[ff])==6 or
                  pd.to_datetime(str(f_d)) in np.arange(f'{str(pd.to_datetime(start).year)}-01-01',
-                                                       f'{str(pd.to_datetime(end).year+1)}-01-01', dtype='datetime64[Y]') or f_d==1900]
+                                                       f'{str(pd.to_datetime(end).year)}-12-31', dtype='datetime64[Y]') or f_d==1900]
     
     # if no files are found for the required time period then data will be sliced below
     files = files_lim if len(files_lim)>0 else files
@@ -328,7 +328,7 @@ def footprints(sitecode_or_filename, met_model = None, fp_directory = None,
         return fp
 
 
-def flux(domain, species, start = None, end = None, flux_directory=None, chunks=None, verbose=True):
+def flux(domain, species, start = None, end = None, flux_directory=None, HiTRes=False, chunks=None, verbose=True):
     """
     The flux function reads in all flux files for the domain and species as an xarray Dataset.
     Note that at present ALL flux data is read in per species per domain or by emissions name.
@@ -428,7 +428,7 @@ def flux(domain, species, start = None, end = None, flux_directory=None, chunks=
                 flux_ds = xr.merge([flux_ds, flux_tmp.update({'time' : ndate})])
                     
         flux_timeslice = flux_ds.sel(time=slice(month_start, month_end))
-        if np.logical_and(month_start.year != month_end.year, len(flux_timeslice.time) != dateutil.relativedelta.relativedelta(end, start).months):
+        if np.logical_and(month_start.year != month_end.year, len(flux_timeslice.time) != dateutil.relativedelta.relativedelta(end, start).months) and not HiTRes:
             month_start = dt.datetime(start.year, 1, 1, 0, 0)
             flux_timeslice = flux_ds.sel(time=slice(month_start, month_end))
         if len(flux_timeslice.time)==0:
@@ -495,7 +495,7 @@ def flux_for_HiTRes(domain, emissions_dict, start=None, end=None, flux_directory
                 print(f"Warning: {freq} key not found in emissions_dict.")
             else:
                 flux_dict[source][freq] = flux(domain, em_source[freq], start = start, end = end,
-                                               flux_directory = flux_directory, chunks = chunks, verbose = verbose)
+                                               flux_directory = flux_directory, HiTRes=True, chunks = chunks, verbose = verbose)
                 
     flux_dict = flux_dict['no_source'] if list(flux_dict.keys())==['no_source'] else flux_dict
     
