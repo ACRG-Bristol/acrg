@@ -88,7 +88,7 @@ def filter_files_by_date(files, start, end):
     # check for files for which the filename dates are within the start-end time period
     files_lim = [ff for ff, f_d in f_date.items() if f_d in np.arange(start, end, dtype='datetime64[M]') and len(f_date_str[ff])==6 or
                  pd.to_datetime(str(f_d)) in np.arange(f'{str(pd.to_datetime(start).year)}-01-01',
-                                                       f'{str(pd.to_datetime(end).year)}-12-31', dtype='datetime64[Y]') or f_d==1900]
+                                                       f'{str(pd.to_datetime(end).year+1)}-01-01', dtype='datetime64[Y]') or f_d==1900]
     
     # if no files are found for the required time period then data will be sliced below
     files = files_lim if len(files_lim)>0 else files
