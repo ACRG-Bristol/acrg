@@ -542,6 +542,9 @@ def create_country_mask_eez(domain,include_land_territories=True,
             Country mask dataset.
     """
     
+    print("If you are having issues with downloading the required files from natural earth:")
+    print("Try installing cartopy version 0.20.0, this may fix the issue.")
+    
     fp_path = os.path.join(data_path,'LPDM','fp_NAME')
     
     # extract lats and lons from fp file
