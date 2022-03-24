@@ -832,11 +832,11 @@ def test_hitres_timeseries(hitres_timeseries_benchmark_file, hitres_sens_benchma
     with xray.open_dataset(hitres_sens_benchmark_file) as benchmark_sens:
         benchmark_sens.load()
     
-    fp_file_name = os.path.join(acrg_path, 'tests', 'files', 'LPDM', 'fp_NAME', 'EUROPE', 'WAO-20magl_UKV_co2_EUROPE_201801.nc')
+    fp_file_name = os.path.join(acrg_path, 'tests', 'files', 'LPDM', 'fp_NAME_minimal', 'EUROPE', 'WAO-20magl_UKV_co2_EUROPE_201801.nc')
     with xray.open_dataset(fp_file_name) as footprint:
         footprint.load()
     
-    emiss_file_name = os.path.join(acrg_path, 'tests', 'files', 'LPDM', 'emissions', 'EUROPE', 'co2-ukghg-total-1hr_EUROPE_2018.nc')
+    emiss_file_name = os.path.join(acrg_path, 'tests', 'files', 'LPDM', 'emissions', 'SMALL-DOMAIN', 'co2-ukghg-total-1hr_EUROPE_2018.nc')
     with xray.open_dataset(emiss_file_name) as emiss:
         emiss.load()
     flux_dict = {'high_freq': emiss}
