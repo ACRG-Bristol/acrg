@@ -20,6 +20,7 @@ Use this section to keep track of any intermediate changes that can then be move
 - no changes will need to be made to user workflow
 - Some additions to hbmcmc output and changed string format for some attributes
 - update name.name.footprints_data_merge to accommodate high time res emissions, e.g. CO2.
+- NAME process script has been rewritten to not rely on load_NAME proprietry code
 
 ### Removed
 - removed GCWerks modules

@@ -41,6 +41,7 @@ import matplotlib.pyplot as plt
 import getpass
 import scipy
 from multiprocessing import Pool
+import sys
 
 from acrg.grid.areagrid import areagrid
 from acrg.time.convert import time2sec, sec2time
@@ -113,165 +114,6 @@ def unzip(filename, out_filename=None, return_filename=False, delete_zipped_file
     if return_filename:
         return out_filename
 
-def load_NAME(file_lines, namever):
-    """
-    Loads the Met Office's NAME III grid output files returning
-    headers, column definitions and data arrays as 3 separate lists.
-    For a technical specification see 
-    http://www-hc.metoffice.com/~apdg/nameiii/ModelDocumentation/md2_4_v2%28Output%29.pdf
-    
-    Args:
-        file_lines (list): 
-            list of file text lines (extracted using the extract_file_lines routine)
-        namever (int): 
-            the NAME version. Options are 2 or 3
-        
-    Returns:
-        headers (list): 
-            Headers of NAME output files
-        column_headings (list): 
-            Colums headings of NAME output files
-        data_arrays (list): 
-            Data of NAME output files
-    
-    Example: 
-        headers, column_headings, data_arrays = load_NAME(file_lines, namever)
-    
-    Note:
-        Where I've modified the original Met Office routine to accept file_lines, 
-        rather than the file itself, I've put the initials MLR
-    """
-    # loading a file gives a generator of lines which can be progressed using the next() method. 
-    # This will come in handy as we wish to progress through the file line by line.
-#    file_handle = file(filename)
-    
-    # define a dictionary which can hold the header metadata about this file
-    headers = {}
-    
-    # skip the NAME header of the file which looks something like 'NAME III (version X.X.X)'
-#    file_handle.next()
-    file_lines=file_lines[1:]
-    
-    # read the next 16 lines of header information, putting the form "header name:    header value" into a dictionary
-    if namever == 2:
-        nlines = 16
-    elif namever == 3:
-        nlines = 17
-    for _ in range(nlines):
-#        header_name, header_value = file_handle.next().split(':',1)
-        #MLR        
-        header_name, header_value = file_lines[0].split(':',1)
-        file_lines=file_lines[1:]
-        
-        # strip off any spurious space characters in the header name and value
-        header_name = header_name.strip()
-        header_value = header_value.strip()
-
-        # cast some headers into floats or integers if they match a given header name
-        if header_name in ['X grid origin', 'Y grid origin', 'X grid resolution', 'Y grid resolution']:
-            header_value = float(header_value)
-        elif header_name in ['X grid size', 'Y grid size', 'Number of fields',
-                             'Number of preliminary cols','Number of field cols']:
-            header_value = int(header_value)
-        # Commented out date formatting as Start and End of release can be infinity
-        #elif header_name in ['Run time', 'Start of release', 'End of release']:
-            # convert the time (currently only works for name 2 format) to python datetimes
-            #if namever==2:
-               #header_value = datetime.datetime.strptime(header_value, UTC_format)
-
-        headers[header_name] = header_value
-
-    # skip the next blank line in the file.    
-#    file_handle.next()    
-    #MLR
-    file_lines=file_lines[1:]
-
-    # Read the lines of column definitions
-    if namever == 2:
-        column_headings = {}
-        for column_header_name in ['species_category', 'species', 'cell_measure', 'quantity', 'unit', 'z_level', 'time']:
-#            column_headings[column_header_name] = [col.strip() for col in file_handle.next().split(',')][:-1]
-            #MLR
-            column_headings[column_header_name] = [col.strip() for col in file_lines[0].split(',')][:-1]
-            file_lines=file_lines[1:]
-            
-    elif namever == 3:
-        # skip the next line (contains the word Fields:) in the file.    
-#        file_handle.next()
-        #MLR
-        file_lines=file_lines[1:]
-        column_headings = {}
-        for column_header_name in ['category', 'name', 'quantity', 'species', 'unit','source','ensemble','time_averaging',
-                                   'horiz_averaging','vert_averaging','prob_percentile','prob_percentile_ensemble',
-                                   'prob_percentile_time','time', 'z_level', 'D']:
-#            column_headings[column_header_name] = [col.strip() for col in file_handle.next().split(',')][:-1]  
-            column_headings[column_header_name] = [col.strip() for col in file_lines[0].split(',')][:-1]
-            file_lines=file_lines[1:]
-
-    # convert the time to python datetimes
-    new_time_column_header = []
-    for i, t in enumerate(column_headings['time']):
-        # the first 4 columns aren't time at all, so don't convert them to datetimes
-        if i >= 4:
-            if namever == 2:
-                new_time_column_header.append(datetime.datetime.strptime(t, UTC_format))
-            elif namever == 3:
-                new_time_column_header.append(datetime.datetime.strptime(t, NAMEIII_short_format))
-        else:
-            new_time_column_header.append(t)
-        
-    column_headings['time'] = new_time_column_header
-    
-    #MLR
-    #This cuts off the first line of output so removing
-    file_lines=file_lines[1:]
-    
-    # make a list of data arrays to hold the data for each column 
-    data_shape = (headers['Y grid size'], headers['X grid size'])
-    if namever==2:
-        data_arrays = [np.zeros(data_shape, dtype=np.float32) for i in range(headers['Number of fields'])]
-    elif namever==3:
-        data_arrays = [np.zeros(data_shape, dtype=np.float32) for i in range(headers['Number of field cols'])]
-      
-    # iterate over the remaining lines which represent the data in a column form
-#    for line in file_handle:
-    #MLR
-    for line in file_lines:
-        
-        # split the line by comma, removing the last empty column caused by the trailing comma
-        vals = line.split(',')[:-1]
-        
-        # cast the x and y grid positions to floats and convert them to zero based indices
-        # (the numbers are 1 based grid positions where 0.5 represents half a grid point.)
-        if namever == 2:
-            x = int(float(vals[0]) - 1.5)
-            y = int(float(vals[1]) - 1.5)
-        elif namever == 3:
-            x = int(float(vals[0]) - 1)
-            y = int(float(vals[1]) - 1)
-        
-        # populate the data arrays (i.e. all columns but the leading 4) 
-        for i, data_array in enumerate(data_arrays):
-            data_array[y, x] = float(vals[int(i) + 4])
-    
-    if 'cell_measure' in column_headings:
-        #Extract the time integration period
-        dt_fp = int(column_headings['cell_measure'][4][0:3])
-        #This should only apply to NAME version 2 HiTRes footprints which currently do not have the correct start and end release times in the header
-        if dt_fp < 24:
-            end_release_date = headers['End of release'][-10:]
-            end_release_tz = headers['End of release'][4:7]
-            end_release_time = column_headings['species'][4][-2:]
-            end_release = dt.datetime.strptime(end_release_time + "00" + end_release_tz + " " + end_release_date, '%H%M%Z %d/%m/%Y')
-            start_release = end_release + dt.timedelta(hours = dt_fp)
-            endreleaseline = end_release.strftime('%H%M%Z') + end_release_tz + " " + end_release.strftime('%d/%m/%Y')
-            startreleaseline = start_release.strftime('%H%M%Z') + end_release_tz + " " + start_release.strftime('%d/%m/%Y')
-            headers['End of release'] = endreleaseline
-            headers['Start of release'] = startreleaseline
-    
-    return headers, column_headings, data_arrays
-    
-
 def extract_file_lines(fname):
     '''
     Determine whether file is zipped or not, and then extract text into
@@ -301,39 +143,149 @@ def extract_file_lines(fname):
 
     return file_lines
 
-
 def read_file(fname):
-    '''
-    Read a given fields file and break into header, column_headings and data_arrays.
-     
-    Args:
-        fname (str): 
-            File name to extract data from.
-        
-    Returns:
-        headers (list): 
-            Headers of NAME output files
-        column_headings (list): 
-            Colums headings of NAME output files
-        data_arrays (list): 
-            Data of NAME output files
-    '''
-    
-    #Extract line-by-line file contents from either txt.gz or txt file    
-    file_lines=extract_file_lines(fname)
 
-    #Determine NAME version
-    if file_lines[19].strip().upper() == 'FIELDS:':
-        namever=3
+    file_lines = extract_file_lines(fname)
+
+    # Determine NAME version
+    # In version 3, expect an extra "FIELDS: " line to be present in line 20 (19 with zero-indexing).
+    check_index = 19
+    if file_lines[check_index].strip().upper() == 'FIELDS:':
+        namever = 3
     else:
-        namever=2
+        namever = 2
     
-    #Load header, column headings and data using Andrew Jones script
-    header, column_headings, data_arrays = \
-        load_NAME(file_lines, namever)
+    # Define number of expected header lines based on version
+    # Note this includes the "NAME III ..." line (this was explicitly skipped before)
+    if namever == 2:
+        nheader = 17 # Was 16 in previous version, now includes "NAME III ..." line, as this is ignored
+        nskip = 1 # Skip lines after the header lines, before title rows
+    elif namever == 3:
+        nheader = 18 # Was 17 in previous version, now includes "NAME III ..." line, as this is ignored
+        nskip = 2 # Skip lines after the header lines, before title rows
 
-    return header, column_headings, data_arrays, namever
+    # Each column has several rows defining details for each field run.
+    # Define the name for each of these rows dependent on the NAME output version
+    if namever == 2:
+        title_rows = ['species_category', 'species', 'cell_measure', 'quantity', 'unit', 'z_level', 'time']
+        nextra_titles = 0 # Additional rows of titles not being extracted
+    elif namever == 3:
+        title_rows = ['category', 'name', 'quantity', 'species', 'unit','source','ensemble','time_averaging',
+                       'horiz_averaging','vert_averaging','prob_percentile','prob_percentile_ensemble',
+                       'prob_percentile_time','time', 'z_level', 'D']
+        ntitle_rows = len(title_rows)
+        nextra_titles = 1 # Additional rows of titles not being extracted
+    
+    # Define the start and end line numbers for the title rows
+    ntitle_rows = len(title_rows)
+    tstart = nheader + nskip
+    tend = tstart + ntitle_rows
 
+    # Extract header and title rows from file
+    header_lines = file_lines[0:nheader]
+    title_lines = file_lines[tstart:tend]
+
+    # Extract and format header information
+    value_as_int = ['X grid size', 'Y grid size', 'Number of fields', 'Number of preliminary cols','Number of field cols']
+    value_as_float = ['X grid origin', 'Y grid origin', 'X grid resolution', 'Y grid resolution']
+
+    header_values = [line.split(":", 1) for line in header_lines if ":" in line]
+    headers = {key.strip(): value.strip() for key, value in header_values}
+    for key, value in headers.items():
+        if key in value_as_int:
+            headers[key] = int(value)
+        elif key in value_as_float:
+            headers[key] = float(value)       
+
+    # Define number of positional columns at the start
+    # Other columns should be field columns
+    if namever == 2:
+        nposition_cols = 4 # Have to make this assumption
+    elif namever == 3:
+        nposition_cols = headers["Number of preliminary cols"]
+
+    # Check we have the correct number of title rows.
+    if len(title_lines) != len(title_rows):
+        raise ValueError(f"Do not have the correct number of title rows. Check namever: {namever} is correct.")
+
+    # Extract column headings
+    column_headings = {}
+    for name, line in zip(title_rows, title_lines):
+        headings = [entry.strip() for entry in line.split(',')][:-1]
+        column_headings[name] = headings
+
+    # convert the time to python datetimes
+    time = column_headings['time'][nposition_cols:]
+    if namever == 2:
+        time = pd.to_datetime(time, format=UTC_format)
+    elif namever == 3:
+        time = pd.to_datetime(time, format=NAMEIII_short_format)
+    time = time.tz_localize(None) # Remove timezone to match to previous version
+    time = time.to_pydatetime()
+    column_headings['time'][nposition_cols:] = time
+
+    # Redefine start and end time if integration is less than 24 hours
+    # Not updated much from previous version (14/09/2021) but this is not likely to be part of the proprietary NAME code
+    if 'cell_measure' in column_headings:
+        # Extract the time integration period
+        entry = column_headings['cell_measure'][-1] # Last entry should be a field column
+        time_integration_h = int(entry.split()[0]) # e.g. split 744 hours
+        # This should only apply to NAME version 2 HiTRes footprints which currently do not have the correct start and end release times in the header
+        if time_integration_h < 24:
+            end_release_date = headers['End of release'][-10:]
+            end_release_tz = headers['End of release'][4:7]
+            end_release_time = column_headings['species'][4][-2:]
+            end_release = dt.datetime.strptime(end_release_time + "00" + end_release_tz + " " + end_release_date, '%H%M%Z %d/%m/%Y')
+            start_release = end_release + dt.timedelta(hours = time_integration_h)
+            endreleaseline = end_release.strftime('%H%M%Z') + end_release_tz + " " + end_release.strftime('%d/%m/%Y')
+            startreleaseline = start_release.strftime('%H%M%Z') + end_release_tz + " " + start_release.strftime('%d/%m/%Y')
+            headers['End of release'] = endreleaseline
+            headers['Start of release'] = startreleaseline
+
+    # Extract data (including suitable stand-in header)
+    nstart = nheader + nskip + (ntitle_rows - 1) + nextra_titles # Want to include bottom title row for clean column headings
+    data = pd.read_csv(fname, skiprows=nstart, skipinitialspace=True)
+    data = data.dropna(how="all", axis=1) # Drop empty column
+
+    field_columns = data.columns[nposition_cols:]
+
+    # Correction is needed to match the X grid, Y grid values to index values
+    if namever == 2:
+        index_correction = 1.5
+    elif namever == 3:
+        index_correction = 1
+
+    if namever == 2:
+        x_grid = "X grid"
+        y_grid = "Y grid"
+    elif namever == 3:
+        x_grid = "X Index"
+        y_grid = "Y Index"
+
+    data[x_grid] = data[x_grid] - index_correction
+    data[y_grid] = data[y_grid] - index_correction
+
+    # Creating full lat, lon grid with values populated
+    # Defining size of grid based on header details
+    x_grid_size = headers["X grid size"]
+    y_grid_size = headers["Y grid size"]
+    if namever == 2:
+        num_field_cols = headers["Number of fields"]
+    elif namever == 3:
+        num_field_cols = headers["Number of field cols"]
+
+    # Create data_arrays list, one 2D numpy grid for each field
+    data_arrays = [np.zeros((y_grid_size, x_grid_size), dtype=np.float32) for i in range(num_field_cols)]
+
+    if len(field_columns) != len(data_arrays):
+       raise ValueError(f"Number of field columns {len(field_columns)} does not match to the number listed in the header: {len(data_arrays)}")
+
+    # Assigning data values to correct y, x grid indices for each data_array
+    indices = (data[y_grid].values.astype(int), data[x_grid].values.astype(int))
+    for column, data_array in zip(field_columns, data_arrays):
+        data_array[indices] = data[column].values
+
+    return headers, column_headings, data_arrays, namever
 
 def define_grid(namever, header, column_headings, satellite = False, upper_level = None):
     '''
@@ -1066,6 +1018,11 @@ def footprint_array(fields_file,
         timeStep        = fields_ds.getncattr('ReleaseDurationHours')
         data_arrays     = []     
         
+        if species == 'CO2':
+            FDS_rt = xray.Dataset({"fp_HiTRes": (["time", "lev", "lat", "lon", "H_back"],
+                                    np.zeros((len(time), len(levs),len(lats), len(lons), int(user_max_hour_back))))},
+                                    coords={"time": time, "lev": levs, "lat": lats, "lon": lons,  
+                                            "H_back": np.arange(0,user_max_hour_back)})
         for rtime in releasetime:
             rt_dt       = datetime.datetime.strptime(rtime, '%Y%m%d%H%M')
             fp_grid     = np.zeros((len(lats), len(lons)))
@@ -1092,10 +1049,6 @@ def footprint_array(fields_file,
                     hr_back = datetime.datetime.strptime(rtime, '%Y%m%d%H%M') - datetime.datetime.strptime(ot, '%Y%m%d%H%M')
                     hr_back = hr_back.total_seconds()/3600.
                     
-                    FDS_rt = xray.Dataset({"fp_HiTRes": (["time", "lev", "lat", "lon", "H_back"],
-                                           np.zeros((len(time), len(levs),len(lats), len(lons), int(user_max_hour_back))))},
-                                          coords={"time": time, "lev": levs, "lat": lats, "lon": lons,  
-                                                  "H_back": np.arange(0,user_max_hour_back)})
                     if hr_back < user_max_hour_back:
                         FDS_rt.fp_HiTRes.loc[dict(lev='From     0 -    40m agl', time=rt_dt, H_back=hr_back)] = fp_grid_temp
                 else:                 
@@ -1205,9 +1158,8 @@ def footprint_array(fields_file,
             if force_met_empty == True:
                 metr = met[0].tail(1)
             if np.isnan(metr.values).any():
-                
-                print(t)
-                raise ValueError("No met data for given date %s" % t)
+                print(f"\nValueError: No met data for given date {t}\n")
+                raise ValueError()
             
         for key in list(metr.keys()):
             if key != "time":
@@ -1354,6 +1306,7 @@ def footprint_array(fields_file,
                 fp = convert_units(fp, slice_dict, i, units_str,use_surface_conditions=use_surface_conditions)
                 
     if species == 'CO2':
+        status_log("Adding residual footprints")
         addfp = fp.fp_HiTRes.sum(dim='H_back')
         remfp = fp.fp - addfp
         remfpval = np.expand_dims(remfp.values, 4)
@@ -1361,7 +1314,9 @@ def footprint_array(fields_file,
                                   dims   = ['time','lev','lat', 'lon','H_back'],
                                   coords = {'time': fp.time, 'lev': fp.lev,
                                             'lat': fp.lat, 'lon': fp.lon,
-                                            'H_back': [user_max_hour_back]})
+                                            'H_back': [user_max_hour_back]},
+                                  attrs = {'description': 'Disaggregated fp, where the last slice is the residual fp'})
+        remfpvar = xray.concat([fp.fp_HiTRes, remfpvar], dim = 'H_back')
         remfpds = remfpvar.to_dataset(name = 'fp_HiTRes')
         fp = xray.merge([fp, remfpds])
     
@@ -2133,6 +2088,7 @@ def process(domain, site, height, year, month,
         This routine outputs a copy of the xarray dataset that is written to file.
     
     '''
+    
     # define the path for processed files, check it exists, and check that the user has write permission
     full_out_path = os.path.join(process_dir, domain)
     if not os.path.isdir(full_out_path):
@@ -2201,11 +2157,13 @@ def process(domain, site, height, year, month,
                 num_days = len(error_days)
 
         if len(error_days) > 0:
-            raise Exception('This month cannot be processed as there are '+str(num_days)+' days with with errors: '+str(error_days))
+            print(f"\nEXCEPTION: This month cannot be processed as there are {str(num_days)} days with with errors: {str(error_days)}\n")
+            raise Exception()
         
    # Check for existance of subfolder
     if not os.path.isdir(subfolder):
-        raise Exception("Subfolder: {} does not exist.\nExpect NAME output folder of format: domain_site_height".format(subfolder))
+        print(f"\nEXCEPTION: Subfolder: {subfolder} does not exist.\nExpect NAME output folder of format: domain_site_height\n")
+        raise Exception()
     
     if perturbed_folder != None:
         if perturbed_folder[-1] == "/":
@@ -2360,7 +2318,8 @@ def process(domain, site, height, year, month,
                 met_files = sorted(glob.glob(met_search_str))
            
             if len(met_files) == 0:        
-                raise FileNotFoundError(f"Can't find MET files: {met_search_str}")
+                print(f"\nFileNotFoundError: Can't find MET files: {met_search_str}\n")
+                raise FileNotFoundError()
                 
             else:
                 met = read_met(met_files,satellite=satellite)
@@ -2490,7 +2449,7 @@ def process(domain, site, height, year, month,
         fp.attrs["fp_output"] = model_output 
         fp.attrs["species"] = output_species
         if species is not None and species!='CO2' and lifetime_hrs is not None:
-            fp.attrs["species_lifetime_hrs"] = lifetime_hrs           
+            fp.attrs["species_lifetime_hrs"] = lifetime_hrs
         fp.attrs["model"] = transport_model
         if met_model is None:
             fp.attrs["met_model"] = "Global"
@@ -3020,6 +2979,8 @@ def stiltfoot_array(prefix,
     fp.lon.attrs = {"units": "degrees_east"}
     fp.lat.attrs = {"units": "degrees_north"}
     fp.time.attrs = {"long_name": "start of time period"}
+    if species=='CO2':
+        fp.fp_HiTRes.attrs = {"description" : "disaggregated fp, where the last slice is the residual 29 day fp"}
     
     # assign dummy met variables 
     # This met information is not from observations and is not used to interpret 

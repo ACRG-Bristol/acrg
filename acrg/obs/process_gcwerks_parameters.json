@@ -25,9 +25,9 @@
             }
         },
         "directory" : {
-            "GCMD":   "/work/chxmr/shared/obs_raw/AGAGE_GCWerks/data/",
-            "GCMS":   "/work/chxmr/shared/obs_raw/AGAGE_GCWerks/data-gcms/",
-            "medusa": "/work/chxmr/shared/obs_raw/AGAGE_GCWerks/data-gcms/"
+            "GCMD":   "/user/work/chxmr/shared/obs_raw/AGAGE_GCWerks/data/",
+            "GCMS":   "/user/work/chxmr/shared/obs_raw/AGAGE_GCWerks/data-gcms/",
+            "medusa": "/user/work/chxmr/shared/obs_raw/AGAGE_GCWerks/data-gcms/"
         },
         "sampling_period": {
             "GCMD": 75,
@@ -39,7 +39,7 @@
             "GCMS": "Gas chromatograph-mass spectrometer measurements. Output from GCWerks.",
             "medusa": "Medusa measurements. Output from GCWerks. See Miller et al. (2008)."
         },
-        "directory_output" : "/work/chxmr/shared/obs",
+        "directory_output" : "/user/work/chxmr/shared/obs",
         "BSD" : {
             "gcwerks_site_name": "bilsdale",
             "inlets": ["108m", "42m", "248m"],
@@ -113,7 +113,7 @@
         },
         "MHD" : {
             "gcwerks_site_name": "macehead",
-            "inlets": ["10m"],
+            "inlets": ["any"],
             "inlet_label": ["10m"],
             "global_attributes": {
                 "data_owner": "Simon O'Doherty",
@@ -200,13 +200,13 @@
         }
     },
     "CRDS": {
-        "directory" : "/work/chxmr/shared/obs_raw/AGAGE_GCWerks/data-picarro/%site/",
-        "directory_output" : "/work/chxmr/shared/obs",
+        "directory" : "/user/work/chxmr/shared/obs_raw/AGAGE_GCWerks/data-picarro/%site/",
+        "directory_output" : "/user/work/chxmr/shared/obs",
         "comment": "Cavity ring-down measurements. Output from GCWerks",
         "default_scales": {
             "N2O": "WMO-X2006A",
             "CH4": "WMO-X2004A",
-            "CO2": "WMO-X2007",
+            "CO2": "WMO-X2019",
             "CO": "WMO-X2014A"
         },
         "BSD" : {
@@ -253,8 +253,8 @@
         }
     },
     "ICOS": {
-        "directory" : "/work/chxmr/shared/obs_raw/AGAGE_GCWerks/data-icos/%site/",
-        "directory_output" : "/work/chxmr/shared/obs",
+        "directory" : "/user/work/chxmr/shared/obs_raw/AGAGE_GCWerks/data-icos/%site/",
+        "directory_output" : "/user/work/chxmr/shared/obs",
         "MHD" : {
             "gcwerks_site_name": "macehead",
             "inlet_rename": {"15m": "10m"},
