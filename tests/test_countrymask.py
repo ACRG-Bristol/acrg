@@ -13,7 +13,6 @@ import numpy as np
 from acrg import countrymask
 from acrg.config.paths import Paths
 
-
 acrg_path = Paths.acrg
 
 @pytest.fixture(scope="module")
@@ -21,16 +20,15 @@ def country_codes():
     country_codes = ['GBR','ESP','NOR']
     return country_codes
 
-##### Create list of current NAME footprints ###################
-
+# Create list of current NAME footprints
 @pytest.fixture(scope="module")
 def name_domains():
     #domains = ['ARCTIC', AUSTRALIA','CARIBBEAN','EASTASIA','EUROPE','NAMERICA','PACIFIC','SOUTHAFRICA','SOUTHASIA','WESTUSA']
     domains = ['ARCTIC','AUSTRALIA','EASTASIA','EUROPE','NAMERICA']
     return domains
 
+#%% Tests for domain_volume function
 
-####### Tests for domain_volume function ######
 def test_incorrect_domain():
     '''
     Test Exception is raised when incorrect domain is specified as a str
@@ -38,6 +36,7 @@ def test_incorrect_domain():
     with pytest.raises(Exception):# as e_info:
         domain = "MMM"
         countrymask.domain_volume(domain)
+
 
 def test_wrong_input():
     '''
@@ -47,19 +46,24 @@ def test_wrong_input():
         domain = 1
         countrymask.domain_volume(domain)
 
-def test_other_directory():
+
+@pytest.fixture(scope="module")
+def fp_directory():
+    fp_dir = os.path.join(acrg_path,"tests/files/LPDM/fp_NAME/")
+    return fp_dir
+
+
+def test_other_directory(fp_directory):
     '''
     Test that function can be used with file read from a different directory
     '''
-    fp_dir = os.path.join(acrg_path,"tests/files/LPDM/fp_NAME/")
-    print("acrg_path",acrg_path)
-    print("fp_dir",fp_dir)
     domain = "EUROPE"
-    fp_lat,fp_lon,fp_height = countrymask.domain_volume(domain,fp_directory=fp_dir)
+    fp_lat,fp_lon,fp_height = countrymask.domain_volume(domain,fp_directory=fp_directory)
     
     assert fp_lat is not None
     assert fp_lon is not None
     assert fp_height is not None
+
 
 @pytest.mark.long
 @pytest.mark.skipif(not glob.glob(os.path.join(Paths.data,"LPDM/fp")), reason="No access to files in data_path")
@@ -85,7 +89,8 @@ def test_convert_lons_0360():
     assert all(lon_0360 >= 0) is True
     assert all(lon_0360 < 360) is True
 
-def test_country_match(country_codes):
+
+def test_country_match(country_codes, fp_directory):
     """
     Test that total (land + ocean) countrymask is equivalent to
     the separate land and ocean masks, up to a threshold number of grid cells.
@@ -93,17 +98,18 @@ def test_country_match(country_codes):
     
     ds_land = countrymask.create_country_mask_eez(domain='EUROPE',include_land_territories=True,
                                                   include_ocean_territories=False,
-                                                  fill_gaps=False,output_path=None)
+                                                  fill_gaps=False,fp_directory=fp_directory,
+                                                  output_path=None)
     
     ds_ocean = countrymask.create_country_mask_eez(domain='EUROPE',include_land_territories=False,
                                                   include_ocean_territories=True,
-                                                  fill_gaps=False,output_path=None)
+                                                  fill_gaps=False,fp_directory=fp_directory,
+                                                  output_path=None)
     
     ds_both = countrymask.create_country_mask_eez(domain='EUROPE',include_land_territories=True,
                                                   include_ocean_territories=True,
-                                                  fill_gaps=False,output_path=None)
-    
-    
+                                                  fill_gaps=False,fp_directory=fp_directory,
+                                                  output_path=None)
     
     land = ds_land['country'].values
     ocean = ds_ocean['country'].values
@@ -124,7 +130,4 @@ def test_country_match(country_codes):
 
         assert len(np.nonzero(diff)[0]) == 0.
     
-##########
-
-
-#Samoa lat and lon 13.7590° S, 172.1046° W
+# Samoa lat and lon 13.7590° S, 172.1046° W

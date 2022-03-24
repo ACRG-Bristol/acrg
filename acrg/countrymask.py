@@ -342,8 +342,7 @@ def mask_index_reset(mask,regions=None):
     
     
 def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=True,use_domain_extent=False,
-                        write=True,
-                        output_dir=country_directory):
+                        fp_directory=fp_directory,write=True,output_dir=country_directory):
     '''
     Creates a country mask for the latitude and longitude range. Derives country data from
     Natural Earth database (at 1:50m resolution).
@@ -377,6 +376,9 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
             mask out any values outside the lat, lon bounds (treat lat,lon as a sub-domain).
             Note: Only the lat and lon outer values will be used as the latitude and longnitude values
             in the grid must match the domain values.
+        fp_directory (str, optional) :
+            Base footprint directory to use to extract domain values. Uses footprint directory on data path
+            by default and expects sub-directories of domain name. Only used if lat, lon are not specified.
         write (bool, optional) :
             Write produced dataset to file of the form "country_"DOMAIN".nc".
             Default = True.
@@ -395,13 +397,13 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
     scale = "1:50m"
     
     if lat is None and lon is None:
-        lat,lon,height = domain_volume(domain)
+        lat,lon,height = domain_volume(domain, fp_directory=fp_directory)
     elif lat is None or lon is None:
         raise Exception("Latitude and Longitude arrays must both be specified. Otherwise domain can be used to find these values.")
     elif use_domain_extent:
         sub_lat = lat[:]
         sub_lon = lon[:]
-        lat,lon,height = domain_volume(domain)
+        lat,lon,height = domain_volume(domain, fp_directory=fp_directory)
     
     if database == "Natural_Earth" and scale == "1:50m":
         # moves longitude values onto 0-360 range if lons have values less than 0 and greater than 180, as regionmask cannot use a lon range that has both 
@@ -514,6 +516,7 @@ if __name__=="__main__":
 
 def create_country_mask_eez(domain,include_land_territories=True,
                             include_ocean_territories=True,fill_gaps=True,
+                            fp_directory=fp_directory,
                             output_path=None):
     """
     Creates a mask for all countries within the domain.
@@ -535,7 +538,10 @@ def create_country_mask_eez(domain,include_land_territories=True,
             country mask.
         fill_gaps (bool):
             Fills in gaps between the land and ocean masks that are missed.
-        out_path (str) (optional):
+        fp_directory (str, optional) :
+            Base footprint directory to use to extract domain values. Uses footprint directory on data path
+            by default and expects sub-directories of domain name.
+         out_path (str) (optional):
             Path and name to save mask to. If None, does not save dataset.
     Returns:
         ds (xarray dataset):
@@ -545,10 +551,8 @@ def create_country_mask_eez(domain,include_land_territories=True,
     print("If you are having issues with downloading the required files from natural earth:")
     print("Try installing cartopy version 0.20.0, this may fix the issue.")
     
-    fp_path = os.path.join(data_path,'LPDM','fp_NAME')
-    
     # extract lats and lons from fp file
-    with xr.open_dataset(glob.glob(os.path.join(fp_path,domain+'/*'))[0]) as fp_file:
+    with xr.open_dataset(glob.glob(os.path.join(fp_directory,domain+'/*'))[0]) as fp_file:
         lats = fp_file.lat.values
         lons = fp_file.lon.values
         lat_da = fp_file.lat
