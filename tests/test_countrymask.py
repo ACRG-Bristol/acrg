@@ -72,7 +72,8 @@ def test_convert_lons_0360():
     '''  
     
     domain = 'ARCTIC'
-    fp_lat,fp_lon,fp_height = countrymask.domain_volume(domain)
+    fp_directory = os.path.join(acrg_path, "tests/files/LPDM/fp_NAME/")
+    fp_lat,fp_lon,fp_height = countrymask.domain_volume(domain, fp_directory=fp_directory)
     if any(fp_lon < 0) & any(fp_lon > 180):
         lon_0360 = countrymask.convert_lons_0360(fp_lon)
 
