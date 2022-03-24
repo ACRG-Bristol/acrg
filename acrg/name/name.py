@@ -2313,7 +2313,7 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
 
     # get the H_back timestep and max number of hours back
     H_back_hour_diff = int(fp_HiTRes["H_back"].diff(dim="H_back").values.mean())
-    max_H_back = int(fp_HiTRes["H_back"].values[-1])
+    max_H_back = int(fp_HiTRes["H_back"].values[-2])
     
     # create time array to loop through, with the required resolution
     time_array = fp_HiTRes.time.values
@@ -2336,7 +2336,7 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
             for sector, flux_sector in flux.items()}
     
     # extract the required time data
-    flux = {sector: {freq: flux_freq.sel(time=slice(fp_HiTRes_ds.time[0] - np.timedelta64(24, 'h'),
+    flux = {sector: {freq: flux_freq.sel(time=slice(fp_HiTRes_ds.time[0] - np.timedelta64(max_H_back, 'h'),
                                                     fp_HiTRes_ds.time[-1])).flux
                      if flux_freq is not None else None
                      for freq, flux_freq in flux_sector.items() }
@@ -2397,7 +2397,7 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
         # select the high res emissions for the corresponding 24 hours
         # if there aren't any high frequency data it will select from the low frequency data
         # this is so that we can compare emissions data with different resolutions e.g. ocean species
-        emissions     = {sector: flux_sector['high_freq'][:,:,tt+1:tt+fp_time.shape[2]]
+        emissions     = {sector: flux_sector['high_freq'][:,:,tt:tt+fp_time.shape[2]-1]
                                  if flux_sector['high_freq'] is not None else
                                  flux_sector['low_freq'][:,:,tt_low]
                          for sector, flux_sector in flux.items()}
