@@ -393,8 +393,7 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
             lat = fp_data[sites[0]].lat.values
             site_lat = np.zeros(len(sites))
             site_lon = np.zeros(len(sites))
-            for si, site in enumerate(
-            ):
+            for si, site in enumerate(sites):
                 site_lat[si] = fp_data[site].release_lat.values[0]
                 site_lon[si] = fp_data[site].release_lon.values[0]
             bfds = fp_data[".basis"]
@@ -594,7 +593,7 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
         outds.attrs['Date created'] = str(pd.Timestamp('today'))
         outds.attrs['Convergence'] = convergence
         outds.attrs['Repository version'] = code_version()
-        if removed_sites.size > 0:
+        if len(removed_sites) > 0:
             outds.attrs['Removed sites due to no obs'] = removed_sites
         
         comp = dict(zlib=True, complevel=5)
