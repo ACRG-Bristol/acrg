@@ -240,10 +240,14 @@ def test_hbmcmc_rerunoutput(hbmcmc_input_file,hbmcmc_config_file):
     os.remove(os.path.join(outputpath, "CH4_EUROPE_pytest-deleteifpresent_2014-02-01.nc"))
     os.remove(os.path.join(outputpath, "CH4_EUROPE_rerun-pytest-deleteifpresent_2014-02-01.nc"))
     assert result == 0
-                        
+
+                     
 def test_cleanup(hbmcmc_config_file):
     """Remove the config file
     """
 
     os.remove(hbmcmc_config_file)
-    os.remove(os.path.join(test_obs_path, "obs.db"))
+
+    obs_db_file = os.path.join(test_obs_path, "obs.db")
+    if os.path.exists(obs_db_file):
+        os.remove(obs_db_file)
