@@ -14,10 +14,16 @@ from acrg import countrymask
 from acrg.config.paths import Paths
 
 acrg_path = Paths.acrg
+data_path = Paths.data
 
 @pytest.fixture(scope="module")
 def country_codes():
     country_codes = ['GBR','ESP','NOR']
+    return country_codes
+
+@pytest.fixture(scope="module")
+def not_country_codes():
+    country_codes = ['BRA','CHN','NZL']
     return country_codes
 
 # Create list of current NAME footprints
@@ -74,7 +80,7 @@ def test_all_domains(name_domains):
     for domain in name_domains:
         fp_lat,fp_lon,fp_height = countrymask.domain_volume(domain)
         
-        
+@pytest.mark.skipif(not glob.glob(os.path.join(data_path,"World_shape_databases")), reason="No access to files in data_path")
 def test_convert_lons_0360():
     '''
     Test longitude values are converted to 0-360 range for domains with longitudes > 180 and < 0 (currently only the Arctic domain).
@@ -89,34 +95,39 @@ def test_convert_lons_0360():
     assert all(lon_0360 >= 0) is True
     assert all(lon_0360 < 360) is True
 
-
-def test_country_match(country_codes, fp_directory):
+@pytest.mark.skipif(not glob.glob(os.path.join(data_path,"World_shape_databases")), reason="No access to files in data_path")
+def test_country_match(country_codes,not_country_codes,fp_directory):
     """
-    Test that total (land + ocean) countrymask is equivalent to
+    Tests that total (land + ocean) countrymask is equivalent to
     the separate land and ocean masks, up to a threshold number of grid cells.
+    Also tests if a couple of expected countries are/are not included.
     """
     
     ds_land = countrymask.create_country_mask_eez(domain='EUROPE',include_land_territories=True,
                                                   include_ocean_territories=False,
                                                   fill_gaps=False,fp_directory=fp_directory,
-                                                  output_path=None)
+                                                  output_path=None,save=False)
     
     ds_ocean = countrymask.create_country_mask_eez(domain='EUROPE',include_land_territories=False,
                                                   include_ocean_territories=True,
                                                   fill_gaps=False,fp_directory=fp_directory,
-                                                  output_path=None)
+                                                  output_path=None,save=False)
     
     ds_both = countrymask.create_country_mask_eez(domain='EUROPE',include_land_territories=True,
                                                   include_ocean_territories=True,
                                                   fill_gaps=False,fp_directory=fp_directory,
-                                                  output_path=None)
+                                                  output_path=None,save=False)
     
     land = ds_land['country'].values
     ocean = ds_ocean['country'].values
     both = ds_both['country'].values
     
     for c_code in country_codes:
-
+        
+        country_code_match = [c_code for c in ds_both['country_code'].values if c_code == c]
+        
+        assert len(country_code_match) == 1
+                              
         country_num = np.where(ds_both['country_code'].values == c_code)
         
         country_land_ocean = np.zeros(land.shape)
@@ -129,5 +140,11 @@ def test_country_match(country_codes, fp_directory):
         diff = country_land_ocean - country_both
 
         assert len(np.nonzero(diff)[0]) == 0.
+        
+    for not_c_code in not_country_codes:
+        
+        country_code_match = [not_c_code for c in ds_both['country_code'].values if not_c_code == c]
+        
+        assert len(country_code_match) == 0
     
 # Samoa lat and lon 13.7590° S, 172.1046° W

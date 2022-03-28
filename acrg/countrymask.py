@@ -517,7 +517,7 @@ if __name__=="__main__":
 def create_country_mask_eez(domain,include_land_territories=True,
                             include_ocean_territories=True,fill_gaps=True,
                             fp_directory=fp_directory,
-                            output_path=None):
+                            output_path=None,save=False):
     """
     Creates a mask for all countries within the domain.
     Uses Natural Earth 10m land datasets and Admin_0_map_units datasets
@@ -550,14 +550,10 @@ def create_country_mask_eez(domain,include_land_territories=True,
     
     print("If you are having issues with downloading the required files from natural earth:")
     print("Try installing cartopy version 0.20.0, this may fix the issue.")
-    
+   
     # extract lats and lons from fp file
-    with xr.open_dataset(glob.glob(os.path.join(fp_directory,domain+'/*'))[0]) as fp_file:
-        lats = fp_file.lat.values
-        lons = fp_file.lon.values
-        lat_da = fp_file.lat
-        lon_da = fp_file.lon
-    
+    lats,lons,heights = domain_volume(domain,fp_directory=fp_directory)
+
     # load in land files
     shpfilename_land = shapereader.natural_earth('10m','cultural','admin_0_map_units')
 
@@ -634,6 +630,9 @@ def create_country_mask_eez(domain,include_land_territories=True,
         count += 1
         
     if fill_gaps:
+        #TODO: create a test for fill_gaps
+        print('\nFilling in gaps between the land and ocean masks\nby checking if surrounding cells are indentical.')
+        print('\nWARNING: this part of the code is currently untested.')
         
         # loop through grid to check for missing cells
 
@@ -660,6 +659,14 @@ def create_country_mask_eez(domain,include_land_territories=True,
 
     country_names_all = ['OCEAN'] + country_names
     country_codes_all = ['OCEAN'] + country_codes
+    
+    lat_da = xr.DataArray(lats,
+                          coords = {'lat':lats},
+                          attrs = {"long_name":"latitude","units":"degrees_north"})
+    lon_da = xr.DataArray(lons,
+                          coords = {'lat':lons},
+                          attrs = {"long_name":"longitude","units":"degrees_east"})
+    
 
     country_da = xr.DataArray(all_grid,
                                dims=["lat", "lon"],
@@ -680,7 +687,7 @@ def create_country_mask_eez(domain,include_land_territories=True,
                      "name":country_names_da,
                      "country_code":country_codes_da
                     })
-
+    
     ds.attrs["Notes"] = "Created using NaturalEarth 10m Land and Marineregion datasets"
     ds.attrs["Marine_regions_data"] = "https://www.marineregions.org/eez.php"
     ds.attrs["Land_regions_data"] = "https://www.naturalearthdata.com/downloads/10m-cultural-vectors/"
@@ -689,7 +696,9 @@ def create_country_mask_eez(domain,include_land_territories=True,
     ds.attrs["Created_by"] = f"{getpass.getuser()}@bristol.ac.uk"
     ds.attrs["Created_on"] = str(pd.Timestamp.now(tz="UTC"))
     
-    if output_path is not None:
+    if save == True:
+        if output_path is None:
+            output_path = f'country_{domain}'
         
         ds.to_netcdf(f'{output_path}.nc')
         print(f'Output saved to {output_path}.')
