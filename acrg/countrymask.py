@@ -505,14 +505,6 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
     
     return ds
 
-if __name__=="__main__":
-    
-    ## EXAMPLE OF HOW THIS MODULE CAN BE USED ##
-    write = True
-    domain = "NORTHAFRICA"
-    # Lat/Lon can be specified explictly or a domain footprint file can be used to find these values.
-    
-    ds = create_country_mask(domain,write=write,reset_index=True,ocean_label=True)
 
 def create_country_mask_eez(domain,include_land_territories=True,
                             include_ocean_territories=True,fill_gaps=True,
@@ -704,3 +696,13 @@ def create_country_mask_eez(domain,include_land_territories=True,
         print(f'Output saved to {output_path}.')
         
     return ds
+
+
+if __name__=="__main__":
+    
+    ## EXAMPLE OF HOW THIS MODULE CAN BE USED ##
+    write = True
+    domain = "NORTHAFRICA"
+    # Lat/Lon can be specified explictly or a domain footprint file can be used to find these values.
+    
+    ds = create_country_mask(domain,write=write,reset_index=True,ocean_label=True)
