@@ -654,9 +654,11 @@ def create_country_mask_eez(domain,include_land_territories=True,
     
     lat_da = xr.DataArray(lats,
                           coords = {'lat':lats},
+                          dims = ('lat'),
                           attrs = {"long_name":"latitude","units":"degrees_north"})
     lon_da = xr.DataArray(lons,
-                          coords = {'lat':lons},
+                          coords = {'lon':lons},
+                          dims = ('lon'),
                           attrs = {"long_name":"longitude","units":"degrees_east"})
     
 
