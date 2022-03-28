@@ -26,12 +26,6 @@ def not_country_codes():
     country_codes = ['BRA','CHN','NZL']
     return country_codes
 
-# Create list of current NAME footprints
-@pytest.fixture(scope="module")
-def name_domains():
-    #domains = ['ARCTIC', AUSTRALIA','CARIBBEAN','EASTASIA','EUROPE','NAMERICA','PACIFIC','SOUTHAFRICA','SOUTHASIA','WESTUSA']
-    domains = ['ARCTIC','AUSTRALIA','EASTASIA','EUROPE','NAMERICA']
-    return domains
 
 #%% Tests for domain_volume function
 
@@ -70,15 +64,6 @@ def test_other_directory(fp_directory):
     assert fp_lon is not None
     assert fp_height is not None
 
-
-@pytest.mark.long
-@pytest.mark.skipif(not glob.glob(os.path.join(Paths.data,"LPDM/fp")), reason="No access to files in data_path")
-def test_all_domains(name_domains):
-    '''
-    Test all (current) domains are recognised and can be accessed
-    '''
-    for domain in name_domains:
-        fp_lat,fp_lon,fp_height = countrymask.domain_volume(domain)
         
 @pytest.mark.skipif(not glob.glob(os.path.join(data_path,"World_shape_databases")), reason="No access to files in data_path")
 def test_convert_lons_0360():
