@@ -847,7 +847,6 @@ def quadtreebasisfunction(emissions_name, fp_all, sites,
         meanflux = np.mean(meanflux, axis=2)
     fps = meanfp*meanflux
 
-
     def qtoptim(x):
         basisQuad, boxes = quadTreeGrid(fps, x)
         return (nbasis - np.max(basisQuad)-1)**2
