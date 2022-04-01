@@ -1488,6 +1488,7 @@ def filtering(datasets_in, filters, keep_missing=False):
                                  "local_influence"   : Only keep times when localness is low
                                  "six_hr_mean"       :
                                  "local_lapse"       :
+                                 "BRW_wind_dir_filter": 
         keep_missing (bool) : Whether to reindex to retain missing data.
     
     Returns:
@@ -1628,7 +1629,27 @@ def filtering(datasets_in, filters, keep_missing=False):
             return dataset_out
         else:
             return dataset[dict(time = ti)]
+        
+    def BRW_wind_dir_filter(dataset):
+        '''
+        Filters BRW data for BRW wind direction.
+        '''
+        start_date = dataset.time[0].values
+        end_date = dataset.time[-1].values
+        
+        met_file = os.path.join(data_path, 'obs/BRW/NOAA-None_BRW_19800101_met-20210421.nc')
+        met_data = xr.open_dataset(met_file)
+        met_data = met_data.loc[dict(time = slice(start_date, end_date))].rename({'wind_speed':'wind_sp'})
+        
+        dataset = xr.merge([dataset, met_data])
                      
+        # remove windspeeds below 3m/s and wind directions from Barrow
+        ti = np.where((dataset.wind_sp > 3) | (dataset.wind_dir <= 210))[0]
+        dataset = dataset[dict(time = ti)]
+        dataset = dataset.drop(['wind_sp', 'wind_dir'])
+        
+        return dataset
+        
         
     filtering_functions={"daily_median":daily_median,
                          "daytime":daytime,
@@ -1636,7 +1657,8 @@ def filtering(datasets_in, filters, keep_missing=False):
                          "nighttime":nighttime,
                          "noon":noon,
                          "local_influence":local_influence,
-                         "six_hr_mean":six_hr_mean}
+                         "six_hr_mean":six_hr_mean,
+                         "BRW_wind_dir_filter":BRW_wind_dir_filter}
 
     # Get list of sites
     sites = [key for key in list(datasets.keys()) if key[0] != '.']
@@ -1647,6 +1669,8 @@ def filtering(datasets_in, filters, keep_missing=False):
             for filt in filters:
                 if filt == "daily_median" or filt == "six_hr_mean":
                     datasets[site] = filtering_functions[filt](datasets[site], keep_missing=keep_missing)
+                elif filt == 'BRW_wind_dir_filter':
+                    datasets[site] = filtering_functions[filt](datasets[site])
                 else:
                     datasets[site] = filtering_functions[filt](datasets[site], site, keep_missing=keep_missing)
 
