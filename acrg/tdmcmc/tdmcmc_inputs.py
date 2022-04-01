@@ -31,7 +31,6 @@ to adjust the uncertainties differently (emissions uncertainty > baseline uncert
 
 @author: ml12574 (updated by rt17603)
 """
-from past.utils import old_div
 import os
 import sys
 import argparse
@@ -232,7 +231,7 @@ if verbose:
     print('Inversion type: {0}'.format(inv_type))
     print('Regions in trans-dimensional grid - minimum allowed: {0}, maximum allowed: {1}, starting value: {2}'.format(kmin,kmax,k_ap))
     print('Burn-in iterations: {0}'.format(burn_in))
-    print('Number of iterations to run: {0} (nsub = {1}, {2} iterations will be saved)\n'.format(nIt,nsub,old_div(nIt,nsub)))
+    print('Number of iterations to run: {0} (nsub = {1}, {2} iterations will be saved)\n'.format(nIt,nsub, nIt//nsub))
     print('\n---------------\n') 
     
 ############################################################
