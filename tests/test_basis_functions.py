@@ -51,7 +51,7 @@ def test_acrg_basis_transd_shape():
     '''
     basis_functions.basis_transd(domain = "EUROPE", time = "2014-02-01", basis_case="sub-transd", sub_lon_min = -80., sub_lon_max = 20., sub_lat_min = 30., sub_lat_max = 70.)
     ##Read in one of the field datasets
-    filename_field = os.path.join(acrg_path,"tests/files/LPDM/fp_NAME/EUROPE/MHD-10magl_EUROPE_201402.nc")
+    filename_field = os.path.join(acrg_path,"tests/files/LPDM/fp_NAME_minimal/EUROPE/MHD-10magl_EUROPE_201402.nc")
     with xray.open_dataset(filename_field) as temp:
         field_dataset = temp.load()
 
@@ -97,7 +97,7 @@ def test_acrg_basis_bc_blocks_shape():
     '''
     basis_functions.basis_bc_blocks(domain = "EUROPE", basis_case='Test_NESW', time = "2014-02-01", vertical = 4)
     ##Read in one of the field datasets
-    filename_field = os.path.join(acrg_path,"tests/files/LPDM/fp_NAME/EUROPE/MHD-10magl_EUROPE_201402.nc")
+    filename_field = os.path.join(acrg_path,"tests/files/LPDM/fp_NAME_minimal/EUROPE/MHD-10magl_EUROPE_201402.nc")
     with xray.open_dataset(filename_field) as temp:
         field_dataset = temp.load()
 
@@ -166,7 +166,7 @@ def test_acrg_basis_bc_uniform_shape():
     '''
     basis_functions.basis_bc_uniform(domain = "EUROPE", time = "2014-02-01", basis_case='Test_uniform')
     ##Read in one of the field datasets
-    filename_field = os.path.join(acrg_path,"tests/files/LPDM/fp_NAME/EUROPE/MHD-10magl_EUROPE_201402.nc")
+    filename_field = os.path.join(acrg_path,"tests/files/LPDM/fp_NAME_minimal/EUROPE/MHD-10magl_EUROPE_201402.nc")
     with xray.open_dataset(filename_field) as temp:
         field_dataset = temp.load()
     lon_field_dim = len(field_dataset['lon'][:])
