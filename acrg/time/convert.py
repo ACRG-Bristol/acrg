@@ -21,7 +21,6 @@ Created on Fri Nov 21 10:48:30 2014
 
 @author: chxmr
 """
-from past.utils import old_div
 import datetime as dt
 import time as tm
 import calendar
@@ -130,7 +129,7 @@ def time2decimal(dates):
     
         yearElapsed = s(date) - s(startOfThisYear)
         yearDuration = s(startOfNextYear) - s(startOfThisYear)
-        fraction = old_div(yearElapsed,yearDuration)
+        fraction = yearElapsed/yearDuration
 
         frac.append(date.year + fraction)
         
