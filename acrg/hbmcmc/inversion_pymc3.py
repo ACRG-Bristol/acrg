@@ -228,7 +228,7 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
                                burn, tune, nchain, sigma_per_site,
                                fp_data=None, flux_directory=None, emissions_name=None, 
                                basis_directory=None, country_file=None,
-                               add_offset=False, rerun_file=None, HiTRes=False):
+                               add_offset=False, rerun_file=None):
 
         """
         Takes the output from inferpymc3 function, along with some other input
@@ -409,15 +409,14 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
             # it varies over the inversion period
             emissions_flux = np.expand_dims(rerun_file.fluxapriori.values,2)
         else:
-            if emissions_name == None:
-                emds = name.flux(domain, species, start = start_date, end = end_date, flux_directory=flux_directory)
-            else:
-                spec = list(emissions_name.values())[0] if not HiTRes else \
-                       {list(emissions_name.keys())[0]: emissions_name[list(emissions_name.keys())[0]]}
-                emds = name.flux(domain, spec, start = start_date, end = end_date, flux_directory=flux_directory) \
-                       if not HiTRes else \
-                       name.flux_for_HiTRes(domain, spec, start = start_date, end = end_date,
-                                            flux_directory=flux_directory)['high_freq']
+            spec = species if emissions_name == None else list(emissions_name.values())[0]
+            emds = name.flux(domain=domain, species=spec, start=start_date, end=end_date, flux_directory=flux_directory)
+                # spec = list(emissions_name.values())[0] if not HiTRes else \
+                #        {list(emissions_name.keys())[0]: emissions_name[list(emissions_name.keys())[0]]}
+                # emds = name.flux(domain, spec, start = start_date, end = end_date, flux_directory=flux_directory) \
+                #        if not HiTRes else \
+                    #    name.flux_for_HiTRes(domain, spec, start = start_date, end = end_date,
+                    #                         flux_directory=flux_directory)['high_freq']
             emissions_flux = emds.flux.values
         flux = scalemap*emissions_flux[:,:,0]
         
