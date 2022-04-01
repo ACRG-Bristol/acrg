@@ -7,8 +7,7 @@ sec2time: Convert "seconds since YYYY-MM-DD HH:MM" format (e.g. from CF files)
     to datetime
 
     Example: 
-        time = \
-        acrg_time.convert.sec2time(seconds, "2000-01-01 00:00")
+        time = acrg_time.convert.sec2time(seconds, "2000-01-01 00:00")
 
 time2sec: Calculate seconds since some reference time. Assumes you want 
     a reference time at the beginning of that year, unless you specify a 
@@ -22,11 +21,6 @@ Created on Fri Nov 21 10:48:30 2014
 
 @author: chxmr
 """
-from __future__ import division
-import sys
-if sys.version_info[0] == 2:
-    from builtins import str
-
 from past.utils import old_div
 import datetime as dt
 import time as tm

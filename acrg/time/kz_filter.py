@@ -26,9 +26,6 @@ Created on Thu Nov 20 12:27:48 2014
 
 @author: chxmr
 """
-from __future__ import division
-
-from builtins import range
 from past.utils import old_div
 import numpy as np
 import matplotlib.dates as dates
