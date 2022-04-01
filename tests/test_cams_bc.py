@@ -73,15 +73,17 @@ def test_bc_outputs(bc_benchmark, bc_output_directory, bc_output_file):
     Compare to the benchmark file defined above
     '''
     cams_directory = bc_output_directory
+    fp_directory = os.path.join(acrg_path, "tests/files/LPDM/bc")
     bc.makeCAMSBC(start          = '2016-03-01',
                   end            = '2016-04-01',
                   species        = 'ch4',
                   domain         = 'EUROPE', 
                   outdir         = bc_output_directory,
                   cams_directory = bc_output_directory,
-                  cams_version     = 'latest',
+                  cams_version   = 'latest',
                   overwrite      = True,
-                  test           = True)
+                  fp_directory   = fp_directory,
+                  test = True)
 
     with xr.open_dataset(bc_output_file) as temp:
         output = temp.load()
@@ -103,6 +105,7 @@ def test_bc_climatology_outputs(bc_benchmark, bc_output_directory, bc_output_cli
     Compare to the benchmark file defined above
     '''
     cams_directory = bc_output_directory
+    fp_directory = os.path.join(acrg_path, "tests/files/LPDM/bc")
     bc.makeCAMSBC(start            = '2017-03-01',
                   end              = '2017-04-01',
                   species          = 'ch4',
@@ -114,7 +117,8 @@ def test_bc_climatology_outputs(bc_benchmark, bc_output_directory, bc_output_cli
                   clim_end         = '2016-04-01',
                   make_climatology = True,
                   overwrite        = True,
-                  test             = True)
+                  test             = True,
+                  fp_directory     = fp_directory)
     
     with xr.open_dataset(bc_output_climatology_file) as temp:
         output = temp.load()
