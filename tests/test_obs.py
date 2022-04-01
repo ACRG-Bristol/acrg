@@ -3,15 +3,16 @@ Created on Mon Jan 14 11:31:20 2019
 
 @author: al18242
 """
-import acrg_obs
-import pytest
 import numpy as np
 import pandas as pd
 import xarray as xr
 import os
 import shutil
-import glob
 from pathlib import Path
+
+from acrg.obs.read import get_single_site, get_obs, scale_convert
+from acrg.obs.utils import attributes
+from acrg.obs import process_gcwerks
 
 test_dir = Path(__file__).parent
 
@@ -30,8 +31,8 @@ def test_scale_convert():
     ds_TU = xr.Dataset({"mf": da.copy()})
     ds_TU.attrs["scale"] = "TU1987"
     
-    ds_WMO = acrg_obs.read.scale_convert(ds_WMO, "CH4", "TU1987")
-    ds_TU = acrg_obs.read.scale_convert(ds_TU, "CH4", "WMO-X2004A")
+    ds_WMO = scale_convert(ds_WMO, "CH4", "TU1987")
+    ds_TU = scale_convert(ds_TU, "CH4", "WMO-X2004A")
 
     assert np.allclose(ds_WMO["mf"], 0.998)
     assert np.allclose(ds_TU["mf"], 1.002)
@@ -46,19 +47,23 @@ def test_get_obs_site():
     '''
     start_date = "2014-01-30 00:00"
     end_date = "2014-01-31 00:00"
-    recreated_data = acrg_obs.get_obs(["BSD"], "CH4",
-                                      start_date = start_date,
-                                      end_date = end_date,
-                                      data_directory=test_dir / "files/obs/",
-                                      keep_missing=True, average=["1H"])
-    
+    recreated_data = get_obs(["BSD"], "CH4",
+                            start_date = start_date,
+                            end_date = end_date,
+                            data_directory=test_dir / "files/obs/",
+                            keep_missing=True, average=["1H"])
+
     #test the date range is as expected
     assert np.amax(recreated_data["BSD"][0].time) == pd.to_datetime(end_date)-pd.Timedelta(hours=1)
     assert np.amin(recreated_data["BSD"][0].time) == pd.to_datetime(start_date)
     assert "mf" in recreated_data["BSD"][0].variables
     assert ("mf_repeatability" in recreated_data["BSD"][0].variables) or ("mf_variability" in recreated_data["BSD"][0].variables)
     assert len(recreated_data["BSD"][0].time) == 24
+
+    # clean up
+    os.remove(test_dir / "files/obs/obs.db")    
     
+
 def test_get_obs_variability():
     '''
     Test that varability is correctly calculcated in time averages obs
@@ -67,20 +72,24 @@ def test_get_obs_variability():
     end_date = "2014-01-31 00:00"
     start_date = "2014-01-30 00:00"
     end_date = "2014-01-31 00:00"
-    fine_data = acrg_obs.get_obs(["BSD"], "CH4",
-                                      start_date = start_date,
-                                      end_date = end_date,
-                                      data_directory=test_dir / "files/obs/")
-    
-    hourly_data = acrg_obs.get_obs(["BSD"], "CH4",
-                                      start_date = start_date,
-                                      end_date = end_date,
-                                      data_directory=test_dir / "files/obs/",
-                                      average=["1H"])
+    fine_data = get_obs(["BSD"], "CH4",
+                        start_date = start_date,
+                        end_date = end_date,
+                        data_directory=test_dir / "files/obs/")
+
+    hourly_data = get_obs(["BSD"], "CH4",
+                        start_date = start_date,
+                        end_date = end_date,
+                        data_directory=test_dir / "files/obs/",
+                        average=["1H"])
     
     calculated_variability = fine_data["BSD"][0].mf.resample(time="1H").std()
     assert np.allclose(hourly_data["BSD"][0].mf_variability, calculated_variability)
-    
+
+    # clean up
+    os.remove(test_dir / "files/obs/obs.db")    
+
+
 def test_get_obs_gosat():
     '''
     call get_obs on an example data file and test the properties are as expected
@@ -89,9 +98,9 @@ def test_get_obs_gosat():
     '''
     start_date = "20160602"
     end_date = "20160604"
-    recreated_data = acrg_obs.get_obs(["GOSAT-UK"], "CH4", start_date, end_date,
-                                      data_directory=test_dir / "files/obs/",
-                                      max_level = 17)
+    recreated_data = get_obs(["GOSAT-UK"], "CH4", start_date, end_date,
+                            data_directory=test_dir / "files/obs/",
+                            max_level = 17)
     
     # The above function should have created an obs.db file. check that it's there
     assert (test_dir / "files/obs/obs.db").is_file()
@@ -121,12 +130,12 @@ def test_process_utils_attributes():
     with xr.open_dataset(attributes_test_file) as ds:
         ds.load()
     
-    out = acrg_obs.utils.attributes(ds, "CFC-113", "MHD",
-                                   global_attributes = {"test": "testing"},
-                                   units = "ppt",
-                                   scale = "TEST",
-                                   sampling_period = 60,
-                                   date_range = ["2000-01-01", "2000-01-10"])
+    out = attributes(ds, "CFC-113", "MHD",
+                    global_attributes = {"test": "testing"},
+                    units = "ppt",
+                    scale = "TEST",
+                    sampling_period = 60,
+                    date_range = ["2000-01-01", "2000-01-10"])
     
     assert "cfc113" in out.variables
     assert "time" in out.variables
@@ -145,10 +154,10 @@ def test_obs_process_gc():
     
     gc_files_directory = test_dir / "files/obs/GC"
     
-    acrg_obs.process_gcwerks.gc("CGO", "medusa", "AGAGE",
-                                input_directory = gc_files_directory,
-                                output_directory = gc_files_directory,
-                                version = "TEST")
+    process_gcwerks.gc("CGO", "medusa", "AGAGE",
+                        input_directory = gc_files_directory,
+                        output_directory = gc_files_directory,
+                        version = "TEST")
 
     # Test if CGO directory has been created
     assert (gc_files_directory / "CGO").exists()
@@ -181,15 +190,14 @@ def test_obs_process_gc():
 def test_obs_process_crds():
     '''
     Test CRDS file processing from GCWerks script
-    
     '''
 
     crds_files_directory = test_dir / "files/obs/CRDS"
     
-    acrg_obs.process_gcwerks.crds("BSD", "DECC",
-                                  input_directory = crds_files_directory,
-                                  output_directory = crds_files_directory,
-                                  version = "TEST")
+    process_gcwerks.crds("BSD", "DECC",
+                        input_directory = crds_files_directory,
+                        output_directory = crds_files_directory,
+                        version = "TEST")
 
     # Test if BSD directory has been created
     assert (crds_files_directory / "BSD").exists()

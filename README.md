@@ -1,5 +1,5 @@
 # __ACRG Repository __
-Shared Python code for the Atmospheric Chemistry Research Group (University of Bristol). Dealing with observations, NAME output and inversion code.
+Shared Python code for the Atmospheric Chemistry Research Group (ACRG, University of Bristol). Dealing with trace gas observations, NAME model output and inversion code.
 
 ## __Getting Started__
 
@@ -17,11 +17,11 @@ to setup a compatible python environment. The TDMCMC section of the repository c
 
 1. Clone the repository
 2. Setup paths:
-    - copy acrg_config/templates/paths_default.yaml to acrg_config/paths.yaml
-    - Overwrite the default folder paths in acrg_config/paths.yaml with your system specific values
+    - copy acrg/config/templates/paths_default.yaml to acrg/config/paths.yaml
+    - Overwrite the default folder paths in acrg/config/paths.yaml with your system specific values
 
 3. Setup the python environment: 
-    - conda env create -f acrg_environment.yml
+    - conda env create -f environment.yml
     - conda activate acrg
     - Note: creating the environment may take several minutes
 
@@ -36,6 +36,4 @@ From the /tests/ folder run the terminal command 'pytest'. The complete test sui
 ## __Credits__
 The code is developed and maintained by the ACRG Modelling team (http://www.bristol.ac.uk/chemistry/research/acrg/)
 
-## __License__
-The code currently has no license. This should change to enable sharing and further users. 
 

@@ -6,6 +6,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 Use this section to keep track of any intermediate changes that can then be moved to a versioned section.
 
+### Added
+
+### Changed
+
+### Removed
+
+
+## [0.3.0] - 2022-04-01
+### Added
+- hbmcmc code now has a function (and relevant additions to output) that allows the inversion to be rerun (i.e. reproduced)
+  using only the output as inputs and ACRG repository.
+- Country mask code has now been updated to allow ocean territories (Economic Exclusion Zone, EEZ) to be included.
+
+### Changed
+- directory structure of acrg package has changed. Many import statements will likely need modifying
+- the filename structure of the footprint nc files created in acrg_name.process has changed and the new filenames are detailed in filename_convention.md
+- the footprint files now have an explicit convention for labeling a met_model such as 'UKV'
+- allows species lifetime to be specified monthly or annually in species_info.json
+- allows CO2 footprint files in fp_NAME_high_time_res to be processed using the acrg_name.process code by calling species = 'CO2'
+- updated acrg_hbmcmc files to accommodate new footprint naming structure and to read in met_model through the .ini file
+- no changes will need to be made to user workflow
+- Some additions to hbmcmc output and changed string format for some attributes
+- update name.name.footprints_data_merge to accommodate high time res emissions, e.g. CO2.
+- NAME process script has been rewritten to not rely on load_NAME proprietry code
+
+### Removed
+- removed GCWerks modules
+
+
 ## [0.2.0] - 2020-04-01
 ### Added
 - Ability to convert calibration scale in get_obs
@@ -15,6 +44,9 @@ Use this section to keep track of any intermediate changes that can then be move
 - notebooks/tutorials directory for notebook based tutorials
 - a tmp directory to store random job script output files
 - added a dev environment that includes spyder and a lighter environment that does not
+- acrg_BC for creating boundary conditions
+- 2021/06/01, LMW: Added ability to have an offset between sites in hbmcmc code. 
+
 
 ### Changed
 - get_single_site now returns a list of xarray datasets, one for each combination of inlet and site. If defaults are specified, the list will contain the default instruments and inlets for each period
