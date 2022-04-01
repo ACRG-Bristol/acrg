@@ -17,4 +17,8 @@ dependencies:
   - pymc3
   - yaml
   - numba
+  - tqdm
+  - numexpr
   - iso3166
+  - regionmask
+  - xesmf
