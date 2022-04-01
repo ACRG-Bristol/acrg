@@ -380,7 +380,8 @@ def makeCAMSBC(domain, start, end,
                cams_version = 'v19',
                clim_start = None, clim_end = None,
                make_climatology = False,
-               verbose = False, overwrite = False, test=False):
+               fp_directory = None,
+               verbose = False, overwrite = False, test = False):
     '''
     Make boundary condition files from the CAMS inversion product
     
@@ -413,6 +414,9 @@ def makeCAMSBC(domain, start, end,
             Default of none will assume end
         make_climatology (bool, optional)
             If True climatologies will be created from the dates clim_start & clim_end, or start & end if clim_start and clim_end are None
+        fp_directory (str/None, optional):
+            Footprint folder to use when extracting domain volume. By default, this will use your data_path and expected file structure by default.
+            If specified, sub-folder of domain name will be assumed.
         verbose (bool, optional)
             If False do not print updates
         overwrite (bool, optional)
@@ -439,10 +443,8 @@ def makeCAMSBC(domain, start, end,
         clim_start = start
         clim_end   = end
     
-    # find a file with the NAME grid to match the input file to
-    # is testing, this will be in the test files
-    if test:
-        fp_directory = os.path.join(acrg_path, 'tests', 'files', 'LPDM', 'fp_NAME')
+    # Use fp_directory if specified.
+    if fp_directory is not None:
         fp_lat,fp_lon,fp_height = domain_volume(domain, fp_directory=fp_directory)
     else:
         fp_lat,fp_lon,fp_height = domain_volume(domain)
