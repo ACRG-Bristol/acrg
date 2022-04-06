@@ -852,7 +852,7 @@ def test_open_name_pressure_file():
     '''
     Test pressure file can be opened using name_pressure_file() function.
     '''
-    filename = os.path.join(acrg_path,"tests/files/LPDM/surface_pressure/SOUTHAMERICA/Pressure_C1_20120101_1d.txt")
+    filename = os.path.join(acrg_path,"tests/files/LPDM/surface_pressure/SOUTHAMERICA/Pressure_C1_20120101_1d.txt.gz")
     out = gosat.name_pressure_file(filename)
     assert out != None
 
