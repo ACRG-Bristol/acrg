@@ -54,70 +54,93 @@ from . import climatology
 
 acrg_path = Paths.acrg
 data_path = Paths.data
-cams_directory = os.path.join(data_path, 'ECMWF_CAMS', 'CAMS_inversion/')
 
 with open(os.path.join(acrg_path, "data/species_info.json")) as f:
     species_info=json.load(f,object_pairs_hook=OrderedDict)
 
-def readCAMSInversion(start, end, species='ch4', cams_directory=cams_directory,
-                      version='v19'):
+def readCAMSInversion(start, end, species=None, cams_directory=None,
+                      version=None, file_start_str=None, time_var=None):
     '''
     Args:
         start, end (str)
             Start and end dates
-        species (str)
-        cams_directory (str)
+        species (str, optional)
+            defaults to 'ch4'
+        cams_directory (str, optional)
             Path to CAMS files
-        version (str, int)
+        version (str, int, optional))
             version number of inversion, e.g. 'v19'
             if an int is entered, it will be converted to a str starting with 'v'
+            defaults to 'v19'
+        file_start (str, optional)
+            string at the start of the filename, used to search for files
+            defaults to 'cams73'
+        time_var (str, optional)
+            name of the time variable, defaults to 'time'
             
     Returns:
         xarray dataset of combined CAMS inversions
     '''
+    # set default inputs if not given
+    species = 'ch4' if species is None else species
+    file_start_str = 'cams73' if file_start_str is None else file_start_str
+    cams_directory = os.path.join(data_path, 'ECMWF_CAMS', 'CAMS_inversion/') if cams_directory is None else cams_directory
+    version = 'v19' if version is None else version
     version = f'v{version}' if not isinstance(version, str) else version
+    time_var = 'time' if time_var is None else time_var
     
-    search_str = f"cams73*{version}*{species}*.nc"
+    search_str = f"{file_start_str}*{version}*{species}*.nc"
     
-    files   = extract_files(cams_directory, search_str, start=start, end=end, day=False)
+    files = extract_files(cams_directory, search_str, start=start, end=end, day=False)
     ds_list = [open_ds(file) for file in files]
     
-    ds      = ds_list[0] if len(ds_list)==1 else xr.concat(ds_list, dim="time")
+    ds = ds_list[0] if len(ds_list)==1 else xr.concat(ds_list, dim=time_var)
     if species.upper() in ds:
         ds  = ds.rename({species.upper(): species})
     
     return ds
 
-def convertCAMSaltitude(ds):
+def convertCAMSaltitude(ds, altitude_var=None, hlevel_var=None,
+                        lat_var=None, lon_var=None, time_var=None):
     '''
     Convert altitude coordinate to level
     
     Args
         ds (xarray.Dataset)
             CAMS data
+        altitude_var, hlevel_var, lat_var, lon_var, time_var (str, optional)
+            name of the altitude, hlevel, latitude, longitude, and time variables
+            default to: 'altitude', 'hlevel', 'latitude', 'longitude', and 'time'
             
     Returns
         xarray.Dataset
     '''
-    
-    hlevels  = ds.hlevel.values
-    h_min    = hlevels[0]
-    h_max    = hlevels[-1]
+    # set defaults if not given
+    altitude_var = 'altitude' if altitude_var is None else altitude_var
+    hlevel_var = 'hlevel' if hlevel_var is None else hlevel_var
+    lat_var = 'latitude' if lat_var is None else lat_var
+    lon_var = 'longitude' if lon_var is None else lon_var
+    time_var = 'time' if time_var is None else time_var
 
-    low_alt  = ds["altitude"].sel(**{"hlevel":slice(h_min,h_max-1)})
-    high_alt = ds["altitude"].sel(**{"hlevel":slice(h_min+1,h_max)})
+    hlevels = ds[hlevel_var].values
+    h_min = hlevels[0]
+    h_max = hlevels[-1]
+
+    low_alt = ds[altitude_var].sel(**{hlevel_var:slice(h_min,h_max-1)})
+    high_alt = ds[altitude_var].sel(**{hlevel_var:slice(h_min+1,h_max)})
     
     altitude_diff = high_alt.values - low_alt.values
     z = low_alt + altitude_diff/2.
     
-    z_dims = tuple([dim if dim!="hlevel" else "level" for dim in ds["altitude"].dims])
+    z_dims = tuple([dim if dim!=hlevel_var else "level" for dim in ds[altitude_var].dims])
     
     ds = ds.assign(**{"z":(z_dims,z)})
-    ds["z"] = ds["z"].transpose(*("time","level","latitude","longitude"))
+    ds["z"] = ds["z"].transpose(*(time_var,"level",lat_var,lon_var)) if time_var in ds[altitude_var].dims else \
+              ds["z"].transpose(*("level",lat_var,lon_var))
     
     return ds
 
-def interpheight(nesw, fp_height, species, lonorlat=None, reverse=None, z_dim="level"):
+def interpheight(nesw, fp_height, species=None, lonorlat=None, reverse=None, z_var=None, level_var=None):
     """
     Interpolates the CAMS data to the NAME heights
     
@@ -129,48 +152,55 @@ def interpheight(nesw, fp_height, species, lonorlat=None, reverse=None, z_dim="l
         species (string)
             The gas species of interest
         lonorlat (string)
-            Whether you're interpolating along the 'longitude' 
-            (N or S) or the 'latitude' (E or W).
+            Whether you're interpolating along the longitude (N or S) or the latitude (E or W).
         reverse (bool/None)
             Whether height values within is nesw input are in reverse order 
             (i.e. nesw["z"] level 1 values > nesw["z"] level 2 values).
             Default = None. If this is set to None this will be automatically determined.
-        z_dim (str, optional) : Used if reverse is not defined to extract appropriate
+        z_var: (str, optional)
+            name of z (altitude) variable with level coordinate, default to 'z'
+        level_var (str, optional) : Used if reverse is not defined to extract appropriate
             height values to compare.
+            deaults to 'level'
             
     Returns:
         dataset : CAMS BC data interpolated to NAME heights
         
     """
-    if lonorlat == 'longitude':     
+    # set defaults if not given
+    species = 'ch4' if species is None else species
+    z_var = "z" if z_var is None else z_var
+    level_var = "level" if level_var is None else level_var
+
+    if lonorlat.lower() in ['longitude', 'lon']:     
         interp = np.zeros((len(fp_height),len(nesw.longitude) ))
-    elif lonorlat == 'latitude':
+    elif lonorlat.lower() in ['latitude', 'lat']:
         interp = np.zeros((len(fp_height),len(nesw.latitude) ))
     else:
         print("Please specify either lonorlat='longitude' or 'latitude'")
         return None
     
     if reverse is None:
-        z_coords = nesw[z_dim].values
-        z_0 = nesw['z'].sel(**{z_dim:z_coords[0]}).values[0]
-        z_1 = nesw['z'].sel(**{z_dim:z_coords[1]}).values[0]
+        z_coords = nesw[level_var].values
+        z_0 = nesw[z_var].sel(**{level_var:z_coords[0]}).values[0]
+        z_1 = nesw[z_var].sel(**{level_var:z_coords[1]}).values[0]
 
         if z_1 >= z_0:
             reverse=False
         elif z_0 > z_1:
             reverse=True        
     
-    for jj in range(len(nesw['z'][0,:])):
+    for jj in range(len(nesw[z_var][0,:])):
         if reverse == True:
-            interp[:,jj] = np.interp(fp_height, nesw['z'][:,jj][::-1], nesw[species][:,jj][::-1]).astype(np.float)
+            interp[:,jj] = np.interp(fp_height, nesw[z_var][:,jj][::-1], nesw[species][:,jj][::-1]).astype(np.float)
         elif reverse == False:
-            interp[:,jj] = np.interp(fp_height, nesw['z'][:,jj], nesw[species][:,jj]).astype(np.float)
+            interp[:,jj] = np.interp(fp_height, nesw[z_var][:,jj], nesw[species][:,jj]).astype(np.float)
     
     ds2 = xr.DataArray(interp, coords=[fp_height, nesw[lonorlat].values], dims=['height', lonorlat])
     ds2 = ds2.to_dataset(name=species)
     return ds2
 
-def interplonlat(nesw, fp_lonorlat, species, lonorlat=None, reverse=None, verbose=False):
+def interplonlat(nesw, fp_lonorlat, species=None, lonorlat=None, reverse=None, height_var=None, verbose=False):
     """
     Interpolates the CAMS data to the NAME longitudes and latitudes
     
@@ -188,11 +218,16 @@ def interplonlat(nesw, fp_lonorlat, species, lonorlat=None, reverse=None, verbos
             Whether lon or lat values within nesw input are in reverse order
             (i.e. nesw[lonorlat][0] > nesw[lonorlat][1]).
             Default = None. If this is set to None this will be automatically determined.
+        height_var (str, optional)
+            name of the height variable, defaults to 'height'
             
     Returns:
         dataset : CAMS BC data interpolated to NAME longitudes or latitudes
         
     """
+    # set defaults if not given
+    species = 'ch4' if species is None else species
+    height_var = 'height' if height_var is None else height_var
 
     if reverse is None:
         if nesw[lonorlat].values[1] >= nesw[lonorlat].values[0]:
@@ -202,42 +237,46 @@ def interplonlat(nesw, fp_lonorlat, species, lonorlat=None, reverse=None, verbos
     
     if verbose: print("Reversing heights")
     
-    interp = np.zeros(( len(nesw.height),len(fp_lonorlat) ))
-    for jj in range(len(nesw.height)):
+    interp = np.zeros(( len(nesw[height_var]),len(fp_lonorlat) ))
+    for jj in range(len(nesw[height_var])):
         if reverse == True:
             interp[jj, :] = np.interp(fp_lonorlat, nesw[lonorlat].values[::-1], nesw[species][jj,:][::-1]).astype(np.float)
         elif reverse == False:
             interp[jj, :] = np.interp(fp_lonorlat, nesw[lonorlat].values, nesw[species][jj,:]).astype(np.float)
             
-    ds2 = xr.DataArray(interp, coords=[nesw.height.values, fp_lonorlat], dims=['height', lonorlat[0:3]])
+    ds2 = xr.DataArray(interp, coords=[nesw[height_var].values, fp_lonorlat], dims=[height_var, lonorlat[0:3]])
     ds2 = ds2.to_dataset(name=species)
     return ds2
 
-def bc_filename(domain, species, start_date, from_climatology=False):
+def bc_filename(domain, start_date, species=None, from_climatology=False):
     '''
     Create a standardised filename for CAMS boundary conditions files
     
     Args:
         domain (str)
             Georgaphical domain, e.g. 'EUROPE', 'PACIFIC', 'USA'
-        species (str)
-            Gas species, e.g. 'ch4', 'co2'
         start_date (str)
             Start date of BC, e.g. '2015-01-01'
+        species (str, optional)
+            Gas species, e.g. 'ch4', 'co2'
+            defaults to 'ch4'
         from_climatology (bool)
             Whether the BC has been produced from climatologies
     
     Returns:
         A standardised filename (str)
     '''
+    # set defaults if not given
+    species = 'ch4' if species is None else species
+
     clim_str = "_climatology" if from_climatology else ""
     date_str = dt.strptime(start_date, '%Y-%m-%d').strftime('%Y%m')
     
     return f"{species.lower()}_{domain}_{date_str}{clim_str}.nc"
 
 
-def write_CAMS_BC_tonetcdf(vmr_n, vmr_e, vmr_s, vmr_w, st_date, species, domain, outdir, gridsize,
-                           from_climatology=False):
+def write_CAMS_BC_tonetcdf(vmr_n, vmr_e, vmr_s, vmr_w, st_date, domain, outdir, gridsize,
+                           species=None, from_climatology=False, time_var=None):
     """
     Writes the CAMS BC data to a netcdf file.
     This uses bc_filename to produce a standardised file name for the boundary conditions file.
@@ -253,8 +292,6 @@ def write_CAMS_BC_tonetcdf(vmr_n, vmr_e, vmr_s, vmr_w, st_date, species, domain,
             Molar ratio at southern boundary
         st_date (str)
             Start date of form "YYYY-MM-dd"
-        species (str)
-            The gas species e.g. 'ch4', 'co2'
         domain (str)
             The domain which you want the boundary conditions for.
         outdir (str)
@@ -262,15 +299,22 @@ def write_CAMS_BC_tonetcdf(vmr_n, vmr_e, vmr_s, vmr_w, st_date, species, domain,
         gridsize (int/float)
             Resolution of CAMS output in degrees.
             Possible are: 0.125, 0.25, 0.4, 0.5, 0.75, 1, 1.125, 1.5, 2, 2.5, 3
+        species (str, optional)
+            The gas species e.g. 'ch4', 'co2'
+            defaults to 'ch4'
         from_climatology (bool)
             Whether BCs were produced from climatologies
     
     Returns
         netcdf file: Boundary conditions at domain boundaries
     """
+    # set defaults if not given
+    time_var = 'time' if time_var is None else time_var
+    species = 'ch4' if species is None else species
+
     BC_edges = vmr_n.merge(vmr_e).merge(vmr_s).merge(vmr_w)
-    BC_edges.expand_dims('time', 2)
-    BC_edges.coords['time'] = (dt.strptime(st_date, '%Y-%m-%d'))
+    BC_edges.expand_dims(time_var, 2)
+    BC_edges.coords[time_var] = (dt.strptime(st_date, '%Y-%m-%d'))
     
     BC_edges.attrs['title']           = f"ECMWF CAMS {species} volume mixing ratios at domain edges"
     BC_edges.attrs['CAMS_resolution'] = gridsize
@@ -279,15 +323,15 @@ def write_CAMS_BC_tonetcdf(vmr_n, vmr_e, vmr_s, vmr_w, st_date, species, domain,
     
     if not os.path.isdir(outdir): os.makedirs(outdir)
     
-    BC_filename = bc_filename(domain           = domain,
-                              species          = species,
-                              start_date       = st_date,
+    BC_filename = bc_filename(domain = domain,
+                              species = species,
+                              start_date = st_date,
                               from_climatology = from_climatology)
     BC_edges.to_netcdf(path = os.path.join(outdir, BC_filename), mode = 'w')
 
-def create_CAMS_BC(ds, fp_lat, fp_lon, fp_height, date, domain, species="ch4",
-                   outdir=None, cams_directory=cams_directory, 
-                   from_climatology=False, verbose=False, test=False):
+def create_CAMS_BC(ds, fp_lat, fp_lon, fp_height, date, domain, species=None,
+                   outdir=None, from_climatology=False, verbose=False, test=False,
+                   time_var=None, lat_var=None, lon_var=None):
     '''
     Create CAMS boundary conditions and write to a netcdf file
     
@@ -305,12 +349,10 @@ def create_CAMS_BC(ds, fp_lat, fp_lon, fp_height, date, domain, species="ch4",
             Geographical region of interest, e.g. 'EUROPE', 'PACIFIC', 'USA'
         species (str)
             Gas species of interest, e.g. 'ch4', 'co2'
+            defaults to 'ch4'
         outdir (str, optional)
             Directory in which to save outputs
             Outputs will be saved to a subdirectory : outdir/LPDM/bc/<domain>
-        cams_directory (str, optional)
-            Directory in which the CAMS data is stored
-            Defaults to <data_path>/ECMWF_CAMS/CAMS_inversion/
         from_climatology (bool, optional)
             Whether BCs are being produced from climatologies
         verbose (bool, optional)
@@ -318,6 +360,9 @@ def create_CAMS_BC(ds, fp_lat, fp_lon, fp_height, date, domain, species="ch4",
         test (bool, optional)
             If creating boundary conditions in a test units will not be converted
             Should never be True outside of testing
+        time_var, lat_var, lon_var (str, optional)
+            names of the time, latitude and longitude variables
+            default to 'time', 'latitude', 'longitude'
     
     Returns
         netcdf file
@@ -326,12 +371,18 @@ def create_CAMS_BC(ds, fp_lat, fp_lon, fp_height, date, domain, species="ch4",
             <species>_<domain>_<start_year><start_month>.nc'
     
     '''
-    lat_grid = np.mean(ds["latitude"][1:] -  ds["latitude"][:-1])
-    lon_grid = np.mean(ds["longitude"][1:] - ds["longitude"][:-1])
+    # set defaults if not given
+    time_var = 'time' if time_var is None else time_var
+    lat_var = 'latitude' if lat_var is None else lat_var
+    lon_var = 'longitude' if lon_var is None else lon_var
+    species = 'ch4' if species is None else species
+
+    lat_grid = np.mean(ds[lat_var][1:] -  ds[lat_var][:-1])
+    lon_grid = np.mean(ds[lon_var][1:] - ds[lon_var][:-1])
     gridsize = f"{lat_grid} x {lon_grid}"
     
     ds = convertCAMSaltitude(ds)
-    ds = ds.mean('time')
+    ds = ds.mean(time_var)
     
     # find the correct unit conversion between mol/mol and species specific parts-per- units
     if not test: 
@@ -341,46 +392,57 @@ def create_CAMS_BC(ds, fp_lat, fp_lon, fp_height, date, domain, species="ch4",
         if verbose: print('Warning: testing, units will not be converted')
     
     #Select the gridcells closest to the edges of the  domain and make sure outside of fp
-    lat_n = (np.abs(ds.coords['latitude'].values - max(fp_lat))).argmin()
-    if ds.coords['latitude'].values[lat_n] < np.max(fp_lat) and lat_n != 0:
+    lat_n = (np.abs(ds.coords[lat_var].values - max(fp_lat))).argmin()
+    if ds.coords[lat_var].values[lat_n] < np.max(fp_lat) and lat_n != 0:
         lat_n -= 1
-    lat_s = (np.abs(ds.coords['latitude'].values - min(fp_lat))).argmin()
-    if ds.coords['latitude'].values[lat_s] > np.min(fp_lat) and lat_s != (len(ds.coords['latitude'].values)-1):
+    lat_s = (np.abs(ds.coords[lat_var].values - min(fp_lat))).argmin()
+    if ds.coords[lat_var].values[lat_s] > np.min(fp_lat) and lat_s != (len(ds.coords[lat_var].values)-1):
         lat_s += 1
-    lon_e = (np.abs(ds.coords['longitude'].values - max(fp_lon))).argmin()
-    if ds.coords['longitude'].values[lon_e] < max(fp_lon) and lon_e != (len(ds.coords['longitude'].values)-1):
+    lon_e = (np.abs(ds.coords[lon_var].values - max(fp_lon))).argmin()
+    if ds.coords[lon_var].values[lon_e] < max(fp_lon) and lon_e != (len(ds.coords[lon_var].values)-1):
         lon_e += 1
-    lon_w = (np.abs(ds.coords['longitude'].values - min(fp_lon))).argmin()
-    if ds.coords['longitude'].values[lon_w] > min(fp_lon) and lon_w != 0:
+    lon_w = (np.abs(ds.coords[lon_var].values - min(fp_lon))).argmin()
+    if ds.coords[lon_var].values[lon_w] > min(fp_lon) and lon_w != 0:
         lon_e -= 1
     #Cut to these and then interpolate
-    north = ds.sel(latitude  = ds.coords['latitude'][lat_n],
-                   longitude = slice(ds.coords['longitude'][lon_w],ds.coords['longitude'][lon_e])).drop_vars(['latitude'])
-    south = ds.sel(latitude  = ds.coords['latitude'][lat_s],
-                   longitude = slice(ds.coords['longitude'][lon_w],ds.coords['longitude'][lon_e])).drop_vars(['latitude'])
-    east  = ds.sel(longitude = ds.coords['longitude'][lon_e],
-                   latitude  = slice(ds.coords['latitude'][lat_s],ds.coords['latitude'][lat_n])).drop_vars(['longitude'])
-    west  = ds.sel(longitude = ds.coords['longitude'][lon_w],
-                   latitude  = slice(ds.coords['latitude'][lat_s],ds.coords['latitude'][lat_n])).drop_vars(['longitude'])
+    north = ds.sel(latitude  = ds.coords[lat_var][lat_n],
+                   longitude = slice(ds.coords[lon_var][lon_w],ds.coords[lon_var][lon_e])).drop_vars([lat_var])
+    south = ds.sel(latitude  = ds.coords[lat_var][lat_s],
+                   longitude = slice(ds.coords[lon_var][lon_w],ds.coords[lon_var][lon_e])).drop_vars([lat_var])
+    east  = ds.sel(longitude = ds.coords[lon_var][lon_e],
+                   latitude  = slice(ds.coords[lat_var][lat_s],ds.coords[lat_var][lat_n])).drop_vars([lon_var])
+    west  = ds.sel(longitude = ds.coords[lon_var][lon_w],
+                   latitude  = slice(ds.coords[lat_var][lat_s],ds.coords[lat_var][lat_n])).drop_vars([lon_var])
     
-    vmr_n = interplonlat(interpheight(north, fp_height, species, lonorlat='longitude'),
-                         fp_lon, species, lonorlat='longitude', verbose=False).rename({species : 'vmr_n'})   
-    vmr_s = interplonlat(interpheight(south, fp_height, species, lonorlat='longitude'),
-                         fp_lon, species, lonorlat='longitude', verbose=False).rename({species : 'vmr_s'}) 
-    vmr_e = interplonlat(interpheight(east, fp_height, species, lonorlat='latitude'),
-                         fp_lat, species, lonorlat='latitude', verbose=False).rename({species : 'vmr_e'}) 
-    vmr_w = interplonlat(interpheight(west, fp_height, species, lonorlat='latitude'),
-                         fp_lat, species, lonorlat='latitude', verbose=False).rename({species : 'vmr_w'})      
+    vmr_n = interplonlat(interpheight(north, fp_height, species=species, lonorlat=lon_var),
+                         fp_lon, species=species, lonorlat=lon_var, verbose=False).rename({species : 'vmr_n'})   
+    vmr_s = interplonlat(interpheight(south, fp_height, species=species, lonorlat=lon_var),
+                         fp_lon, species=species, lonorlat=lon_var, verbose=False).rename({species : 'vmr_s'}) 
+    vmr_e = interplonlat(interpheight(east, fp_height, species=species, lonorlat=lat_var),
+                         fp_lat, species=species, lonorlat=lat_var, verbose=False).rename({species : 'vmr_e'}) 
+    vmr_w = interplonlat(interpheight(west, fp_height, species=species, lonorlat=lat_var),
+                         fp_lat, species=species, lonorlat=lat_var, verbose=False).rename({species : 'vmr_w'})      
 
-    write_CAMS_BC_tonetcdf(vmr_n, vmr_e, vmr_s, vmr_w, date, species, domain, outdir, gridsize, from_climatology=from_climatology) 
+    write_CAMS_BC_tonetcdf(vmr_n = vmr_n,
+                           vmr_e = vmr_e,
+                           vmr_s = vmr_s,
+                           vmr_w = vmr_w,
+                           st_date = date,
+                           domain = domain,
+                           outdir = outdir,
+                           gridsize = gridsize,
+                           species = species,
+                           from_climatology = from_climatology) 
 
 def makeCAMSBC(domain, start, end,
-               species = 'ch4',
-               outdir = None, cams_directory = cams_directory,
-               cams_version = 'v19',
+               species = None, 
+               outdir = None,
+               cams_directory = None,
+               cams_version = None,
                clim_start = None, clim_end = None,
                make_climatology = False,
                fp_directory = None,
+               time_var = None,
                verbose = False, overwrite = False, test = False):
     '''
     Make boundary condition files from the CAMS inversion product
@@ -417,6 +479,8 @@ def makeCAMSBC(domain, start, end,
         fp_directory (str/None, optional):
             Footprint folder to use when extracting domain volume. By default, this will use your data_path and expected file structure by default.
             If specified, sub-folder of domain name will be assumed.
+        time_var (str, optional)
+            name of the time variable, defaults to 'time'
         verbose (bool, optional)
             If False do not print updates
         overwrite (bool, optional)
@@ -437,7 +501,12 @@ def makeCAMSBC(domain, start, end,
         at a time. If multiple years are given in start and end, it will average them together. This code needs to be split up with a 
         climatology keywork so that it does not automatically do averaging.
     '''
-    
+    # set defaults if not given
+    time_var = 'time' if time_var is None else time_var
+    species = 'ch4' if species is None else species
+    cams_version = 'v19' if cams_version is None else cams_version
+    cams_directory = os.path.join(data_path, 'ECMWF_CAMS', 'CAMS_inversion/') if cams_directory is None else cams_directory
+
     # rename clim_start and clim_end if None
     if (clim_start is None and clim_end is None) or not make_climatology:
         clim_start = start
@@ -465,7 +534,7 @@ def makeCAMSBC(domain, start, end,
     for start, end in zip(date_range[:-1], date_range[1:]):
 
         # Check if file exists so a current file doesn't get overwritten
-        out_filename = bc_filename(domain, species, start, from_climatology=make_climatology)
+        out_filename = bc_filename(domain=domain, start_date=start, species=species, from_climatology=make_climatology)
         
         if overwrite and verbose:
             print(f'Boundary condition file {os.path.join(outdir, out_filename)} already exists and is being overwritten.')
@@ -478,13 +547,16 @@ def makeCAMSBC(domain, start, end,
                 pass
         
         # select the data for the correct date range
-        ds = cams_ds.sel(**{"time" : slice(start, end)}) 
+        ds = cams_ds.sel(**{time_var : slice(start, end)}) 
 
-        create_CAMS_BC(ds, fp_lat, fp_lon, fp_height, start,
+        create_CAMS_BC(ds               = ds,
+                       fp_lat           = fp_lat,
+                       fp_lon           = fp_lon,
+                       fp_height        = fp_height,
+                       date             = start,
                        species          = species,
                        domain           = domain,
                        outdir           = outdir,
-                       cams_directory   = cams_directory,
                        verbose          = verbose,
                        from_climatology = make_climatology,
                        test             = test)
