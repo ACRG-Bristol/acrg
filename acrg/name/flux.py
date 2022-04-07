@@ -140,6 +140,8 @@ def write(lat, lon, time, flux, species, domain,
             sys.exit()
         elif answer.lower() == 'y':
             pass
+    elif os.path.isfile(ncname) == True and overwrite:
+        print(f'Overwriting existing file: {ncname}')
     
     flux_attrs = {"source" : file_source,
                   "units" : 'mol/m2/s',
