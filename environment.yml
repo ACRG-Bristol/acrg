@@ -17,7 +17,7 @@ dependencies:
   - geopandas=0.10
   - yaml=0.2
   - iris=3.2
-  - cartopy=0.2
+  - cartopy=0.20
   - h5py=3.6
   - numba=0.55
   - scipy=1.8
