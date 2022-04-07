@@ -25,12 +25,12 @@
             }
         },
         "directory" : {
-            "GCMD":   "/user/work/chxmr/shared/obs_raw/AGAGE_GCWerks/data/",
-            "GCMS":   "/user/work/chxmr/shared/obs_raw/AGAGE_GCWerks/data-gcms/",
-            "medusa": "/user/work/chxmr/shared/obs_raw/AGAGE_GCWerks/data-gcms/"
+            "GCMD":   "/group/chemistry/acrg/obs_raw/AGAGE_GCWerks/data/",
+            "GCMS":   "/group/chemistry/acrg/obs_raw/AGAGE_GCWerks/data-gcms/",
+            "medusa": "/group/chemistry/acrg/obs_raw/AGAGE_GCWerks/data-gcms/"
         },
         "sampling_period": {
-            "GCMD": 75,
+            "GCMD": 120,
             "GCMS": 1200,
             "medusa": 1200
         },
@@ -39,13 +39,22 @@
             "GCMS": "Gas chromatograph-mass spectrometer measurements. Output from GCWerks.",
             "medusa": "Medusa measurements. Output from GCWerks. See Miller et al. (2008)."
         },
-        "directory_output" : "/user/work/chxmr/shared/obs",
+        "directory_output" : "/group/chemistry/acrg/obs",
         "BSD" : {
             "gcwerks_site_name": "bilsdale",
             "inlets": ["108m", "42m", "248m"],
             "global_attributes": {
                 "data_owner": "Simon O'Doherty",
                 "data_owner_email": "s.odoherty@bristol.ac.uk"
+            }
+        },
+        "BER" : {
+            "gcwerks_site_name": "beromunster",
+            "inlets": ["air"],
+            "inlet_label": ["212m"],
+            "global_attributes": {
+                "data_owner": "Martin Vollmer",
+                "data_owner_email": "martin.vollmer@empa.ch"
             }
         },
         "CGO" : {
@@ -139,7 +148,7 @@
         },
         "SDZ" : {
             "gcwerks_site_name": "shangdianzi",
-            "inlets": ["date_20000101_20150101", "date_20150101_21000101"],
+            "inlets": ["date_20000101_20110820", "date_20110820_21000101"],
             "inlet_label": ["10m", "80m"],
             "global_attributes": {
                 "data_owner": "Bo Yao",
@@ -162,6 +171,15 @@
             "global_attributes": {
                 "data_owner": "Ray Weiss",
                 "data_owner_email": "rfweiss@ucsd.edu"
+            }
+        },
+        "SOT" : {
+            "gcwerks_site_name": "sottens",
+            "inlets": ["air"],
+            "inlet_label": ["120m"],
+            "global_attributes": {
+                "data_owner": "Martin Vollmer",
+                "data_owner_email": "martin.vollmer@empa.ch"
             }
         },
         "TAC" : {
@@ -200,8 +218,8 @@
         }
     },
     "CRDS": {
-        "directory" : "/user/work/chxmr/shared/obs_raw/AGAGE_GCWerks/data-picarro/%site/",
-        "directory_output" : "/user/work/chxmr/shared/obs",
+        "directory" : "/group/chemistry/acrg/obs_raw/AGAGE_GCWerks/data-picarro/%site/",
+        "directory_output" : "/group/chemistry/acrg/obs",
         "comment": "Cavity ring-down measurements. Output from GCWerks",
         "default_scales": {
             "N2O": "WMO-X2006A",
@@ -253,8 +271,8 @@
         }
     },
     "ICOS": {
-        "directory" : "/user/work/chxmr/shared/obs_raw/AGAGE_GCWerks/data-icos/%site/",
-        "directory_output" : "/user/work/chxmr/shared/obs",
+        "directory" : "/group/chemistry/acrg/obs_raw/AGAGE_GCWerks/data-icos/%site/",
+        "directory_output" : "/group/chemistry/acrg/obs",
         "MHD" : {
             "gcwerks_site_name": "macehead",
             "inlet_rename": {"15m": "10m"},
