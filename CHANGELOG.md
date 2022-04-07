@@ -7,8 +7,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Use this section to keep track of any intermediate changes that can then be moved to a versioned section.
 
 ### Added
+
+### Changed
+
+### Removed
+
+
+## [0.3.0] - 2022-04-01
+### Added
 - hbmcmc code now has a function (and relevant additions to output) that allows the inversion to be rerun (i.e. reproduced)
-  using only the output as inputs and ACRG repository.  
+  using only the output as inputs and ACRG repository.
+- Country mask code has now been updated to allow ocean territories (Economic Exclusion Zone, EEZ) to be included.
 
 ### Changed
 - directory structure of acrg package has changed. Many import statements will likely need modifying
@@ -20,6 +29,7 @@ Use this section to keep track of any intermediate changes that can then be move
 - no changes will need to be made to user workflow
 - Some additions to hbmcmc output and changed string format for some attributes
 - update name.name.footprints_data_merge to accommodate high time res emissions, e.g. CO2.
+- NAME process script has been rewritten to not rely on load_NAME proprietry code
 
 ### Removed
 - removed GCWerks modules

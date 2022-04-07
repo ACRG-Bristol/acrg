@@ -16,17 +16,28 @@ the previous file if you wish to create a new file using this method.
 
 Function to use for creating the country file is:
  - create_country_mask(...)
+ 
+New function added to create country files that include marine territories (Exclusive 
+Economic Zones). Function to do this is :
+ - create_country_mask_eez(...)
 
 @author: rt17603
 """
 import regionmask
 import iso3166
 import numpy as np
-import xarray as xray
+import xarray as xr
 from collections import OrderedDict
 import glob
 import getpass
 import os
+import cartopy
+import cartopy.io.shapereader as shapereader
+from shapely.prepared import prep
+from shapely.geometry import Polygon
+import geopandas as gpd
+import pandas as pd
+from scipy import stats
 
 from acrg.convert import convert_lons_0360
 from acrg.config.paths import Paths
@@ -57,7 +68,7 @@ def domain_volume(domain,fp_directory=fp_directory):
     if listoffiles:
         filename = listoffiles[0]
         print('Using footprint file: {0} to extract domain'.format(filename))
-        with xray.open_dataset(filename) as temp:
+        with xr.open_dataset(filename) as temp:
             fields_ds = temp.load()
         
         fp_lat = fields_ds["lat"].values
@@ -331,8 +342,7 @@ def mask_index_reset(mask,regions=None):
     
     
 def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=True,use_domain_extent=False,
-                        write=True,
-                        output_dir=country_directory):
+                        fp_directory=fp_directory,write=True,output_dir=country_directory):
     '''
     Creates a country mask for the latitude and longitude range. Derives country data from
     Natural Earth database (at 1:50m resolution).
@@ -366,6 +376,9 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
             mask out any values outside the lat, lon bounds (treat lat,lon as a sub-domain).
             Note: Only the lat and lon outer values will be used as the latitude and longnitude values
             in the grid must match the domain values.
+        fp_directory (str, optional) :
+            Base footprint directory to use to extract domain values. Uses footprint directory on data path
+            by default and expects sub-directories of domain name. Only used if lat, lon are not specified.
         write (bool, optional) :
             Write produced dataset to file of the form "country_"DOMAIN".nc".
             Default = True.
@@ -384,13 +397,13 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
     scale = "1:50m"
     
     if lat is None and lon is None:
-        lat,lon,height = domain_volume(domain)
+        lat,lon,height = domain_volume(domain, fp_directory=fp_directory)
     elif lat is None or lon is None:
         raise Exception("Latitude and Longitude arrays must both be specified. Otherwise domain can be used to find these values.")
     elif use_domain_extent:
         sub_lat = lat[:]
         sub_lon = lon[:]
-        lat,lon,height = domain_volume(domain)
+        lat,lon,height = domain_volume(domain, fp_directory=fp_directory)
     
     if database == "Natural_Earth" and scale == "1:50m":
         # moves longitude values onto 0-360 range if lons have values less than 0 and greater than 180, as regionmask cannot use a lon range that has both 
@@ -464,9 +477,9 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
 
     countries = np.array(countries).astype(str)
     if reset_index:
-        ds["name"] = xray.DataArray(countries,dims="ncountries")
+        ds["name"] = xr.DataArray(countries,dims="ncountries")
     else:
-        ds["name"] = xray.DataArray(countries,coords={"ncountries":regions},dims={"ncountries":len(regions)})
+        ds["name"] = xr.DataArray(countries,coords={"ncountries":regions},dims={"ncountries":len(regions)})
     
     ds["country"].attrs = {"long_name":"Country indices"}
     ds["lat"].attrs = {"long_name":"latitude","units":"degrees_north"}
@@ -491,6 +504,201 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
             print("ERROR: DID NOT WRITE TO FILE: {} already exists".format(filename))
     
     return ds
+
+
+def create_country_mask_eez(domain,include_land_territories=True,
+                            include_ocean_territories=True,fill_gaps=True,
+                            fp_directory=fp_directory,
+                            output_path=None,save=False):
+    """
+    Creates a mask for all countries within the domain.
+    Uses Natural Earth 10m land datasets and Admin_0_map_units datasets
+    for specifiying country and ocean boundaries.
+    Option to include EEZ (Exclusive Economic Zones e.g. marine 
+    territories) is True by default. Remaining areas are given a value of 0.
+    
+    Based on code written by Daniel Hoare and Rachel Tunnicliffe.
+    
+    Args:
+        domain (str):
+            The domain the mask should cover, e.g. 'EUROPE'.
+        include_land_territories (bool):
+            If True, include land territories for all countries in the 
+            country mask.
+        include_ocean_territories (bool):
+            If True, include areas within EEZ (marine territories) in the 
+            country mask.
+        fill_gaps (bool):
+            Fills in gaps between the land and ocean masks that are missed.
+        fp_directory (str, optional) :
+            Base footprint directory to use to extract domain values. Uses footprint directory on data path
+            by default and expects sub-directories of domain name.
+         out_path (str) (optional):
+            Path and name to save mask to. If None, does not save dataset.
+    Returns:
+        ds (xarray dataset):
+            Country mask dataset.
+    """
+    
+    print("If you are having issues with downloading the required files from natural earth:")
+    print("Try installing cartopy version 0.20.0, this may fix the issue.")
+   
+    # extract lats and lons from fp file
+    lats,lons,heights = domain_volume(domain,fp_directory=fp_directory)
+
+    # load in land files
+    shpfilename_land = shapereader.natural_earth('10m','cultural','admin_0_map_units')
+
+    df_land = gpd.read_file(shpfilename_land)
+    
+    print('Creating land mask...')
+    mask = regionmask.mask_3D_geopandas(df_land['geometry'],lons,lats)
+    
+    land_regions = mask.region.values
+    
+    # load in ocean files
+    if include_ocean_territories:
+
+        shpfilename_ocean = os.path.join(data_path,'World_shape_databases/MarineRegions/eez_v10.shp')
+
+        df_ocean = gpd.read_file(shpfilename_ocean)
+        
+        print('Creating ocean mask...')
+        mask_ocean = regionmask.mask_3D_geopandas(df_ocean['geometry'],lons,lats)
+        
+        ocean_regions = mask_ocean.region.values
+        
+    else:
+        print('Not including ocean territories')
+        
+        
+    all_grid = np.zeros((lats.shape[0],lons.shape[0]))
+    country_names = []
+    country_codes = []
+
+    land_codes_all = np.unique(df_land.loc[land_regions]['ADM0_A3'])
+
+    count = 1
+
+    # loop through all countries
+    for i,c in enumerate(land_codes_all):
+
+        country_names.append(df_land[df_land['ADM0_A3'] == c]['ADMIN'].values[0].upper())
+        country_codes.append(c)
+        
+        if include_land_territories:
+        
+            # find shapefile dataset indexes that correspond to the country code 
+            land_region_indexes = np.where(df_land['ADM0_A3'] == c)[0]
+
+            for r in land_region_indexes:
+
+                if r in land_regions:
+
+                    # find mask index that corresponds to the dataset index
+                    land_mask_index = np.where(land_regions == r)[0][0]
+
+                    all_grid[np.where(mask[land_mask_index].values == True)] = count
+                    
+        elif i == 0:
+            
+            print('Not including land territories')
+
+        if include_ocean_territories:    
+            
+            # find shapefile dataset indexes that correspond to the country code
+            ocean_region_indexes = np.where(df_ocean['ISO_Ter1'] == c)[0]
+
+            for r in ocean_region_indexes:
+                
+                # checks that ocean region is in domain and not disputed territory
+                if r in ocean_regions and df_ocean['ISO_Ter2'][r] is None:
+                    
+                    # find ocean mask index that corresponds to the dataset index
+                    ocean_mask_index = np.where(ocean_regions == r)[0][0]
+
+                    all_grid[np.where(mask_ocean[ocean_mask_index].values == True)] = count
+
+        count += 1
+        
+    if fill_gaps:
+        #TODO: create a test for fill_gaps
+        print('\nFilling in gaps between the land and ocean masks\nby checking if surrounding cells are indentical.')
+        print('\nWARNING: this part of the code is currently untested.')
+        
+        # loop through grid to check for missing cells
+
+        for i in np.arange(1,all_grid.shape[0]-1):
+            for j in np.arange(1,all_grid.shape[1]-1):
+
+                if all_grid[i,j] == 0.:
+
+                    surrounding = np.delete(all_grid[i-1:i+2,j-1:j+2].flatten(),4)
+
+                    # if all surrounding cells are identical, fill in the gap
+                    if np.all(surrounding == surrounding[0]):
+
+                        all_grid[i,j] = surrounding[0]
+
+                    # if all but one of the surrounding cells are identical, fill in the gap
+                    # (fills in gaps of two adjacent grid cells)
+                    elif np.count_nonzero(surrounding == stats.mode(surrounding)[0][0]) == 7.:
+
+                        all_grid[i,j] = stats.mode(surrounding)[0][0]
+    
+    # create output dataset
+    ncountries = np.arange(len(country_names)+1)
+
+    country_names_all = ['OCEAN'] + country_names
+    country_codes_all = ['OCEAN'] + country_codes
+    
+    lat_da = xr.DataArray(lats,
+                          coords = {'lat':lats},
+                          dims = ('lat'),
+                          attrs = {"long_name":"latitude","units":"degrees_north"})
+    lon_da = xr.DataArray(lons,
+                          coords = {'lon':lons},
+                          dims = ('lon'),
+                          attrs = {"long_name":"longitude","units":"degrees_east"})
+    
+
+    country_da = xr.DataArray(all_grid,
+                               dims=["lat", "lon"],
+                               coords=[lat_da,lon_da],
+                             attrs={'long_name':'Land and ocean country indices'})
+
+    country_names_da = xr.DataArray(country_names_all,
+                                   dims=["ncountries"],
+                                   coords=[ncountries],
+                                    attrs={'long_name':'Country names'})
+    
+    country_codes_da = xr.DataArray(country_codes_all,
+                                   dims=["ncountries"],
+                                   coords=[ncountries],
+                                    attrs={'long_name':'Country codes'})
+
+    ds = xr.Dataset({"country":country_da,
+                     "name":country_names_da,
+                     "country_code":country_codes_da
+                    })
+    
+    ds.attrs["Notes"] = "Created using NaturalEarth 10m Land and Marineregion datasets"
+    ds.attrs["Marine_regions_data"] = "https://www.marineregions.org/eez.php"
+    ds.attrs["Land_regions_data"] = "https://www.naturalearthdata.com/downloads/10m-cultural-vectors/"
+    ds.attrs["Includes_ocean_territories"] = str(include_ocean_territories)
+    ds.attrs["domain"] = domain
+    ds.attrs["Created_by"] = f"{getpass.getuser()}@bristol.ac.uk"
+    ds.attrs["Created_on"] = str(pd.Timestamp.now(tz="UTC"))
+    
+    if save == True:
+        if output_path is None:
+            output_path = f'country_{domain}'
+        
+        ds.to_netcdf(f'{output_path}.nc')
+        print(f'Output saved to {output_path}.')
+        
+    return ds
+
 
 if __name__=="__main__":
     
