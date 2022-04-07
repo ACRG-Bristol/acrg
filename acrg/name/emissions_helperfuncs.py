@@ -925,6 +925,105 @@ def get_US_EPA(epa_sectors=None,output_path=None):
     
     return flux_ds
 
+def embed_field(domain_field, country_field, country, country_file=None, domain=None,
+                data_type=None, crop=None, var_name=None, global_attrs=None, verbose=True):
+    '''
+    Embed UKGHG map into the EDGAR map using a country mask
+    EDGAR and UKGHG map grid should match
+    
+    Args:
+        domain_field, country_field (xarray DataArray)
+            domain and country flux fields
+        country (str)
+            name of the country associated with the country_field
+        domain (str, optional)
+            domain associated with the domain_field
+            used to look up a country mask file if country_file is None
+        country_file (str, optional)
+            country mask file
+        data_type (str, optional)
+            data type to return (case insensitive)
+            either np_array, xr_dataset, or xr_array
+        crop (dict, optional)
+            lat and lon to crop data to
+            {'lat': [lat_1, lat_2], 'lon': [lon_1, lon_2]}
+        var_name (str, optional)
+            the variable name if saving to xarray.Dataset
+            defaults to 'flux'
+        global_attrs (dict, optional)
+            global attributes to apply to the Dataset
+            only used if data_type is xr_dataset
+        verbose (bool, optional)
+            print update statements
+    
+    Returns:
+        xarray DataArray, xarray Dataset, or numpy array
+            map with the country flux field embedded into the domain flux field
+        
+    '''
+    # check if there is a time dimension in both/any field array
+    time = True if all(['time' in dims for dims in [domain_field.dims, country_field.dims]]) else \
+           None if any(['time' in dims for dims in [domain_field.dims, country_field.dims]]) else False
+    if time is None:
+        # time dimension must be in both or neither array
+        print('Both fields must either be 2d or 3d')
+        return None 
+
+    if domain is None and country_file is None:
+        print('Either a country_file or domain name must be provided')
+        return None
+    
+    # import the country mask data
+    country_file = country_file if country_file is not None else \
+                   os.path.join(data_path,'LPDM', 'countries', f'country_{domain}.nc')
+    if verbose:
+        print(f'Using country mask from:\n  {country_file}')
+    with xr.open_dataset(country_file) as c_file:
+        country_mask = c_file['country']
+        country_codes = {country_name: cc for cc, country_name in enumerate(c_file['name'].values)}
+        country = [cc for cc in list(country_codes.keys()) if 'united kingdom' in cc.lower()][0] \
+                  if country.lower() in ['uk', 'united kingdom'] else country.upper()
+        if country not in list(country_codes.keys()):
+            print(f'country not found in country codes litst, options are:\n   {list(country_codes.keys())}')
+            return None
+
+    # crop data to given lat and lon if crop is not None
+    data = {'domain': domain_field, 'country': country_field, 'mask': country_mask}
+    data = data if crop is None else \
+            {f_type: data_type.sel(lat=slice(crop['lat'][0], crop['lat'][1]),
+                                  lon=slice(crop['lon'][0], crop['lon'][1]))
+            for f_type, data_type in data.items()}
+    
+    if verbose:
+        print(f'Embedding {country} flux field into {domain}')
+    embedded_field = copy.deepcopy(data['domain'])
+    for lat in range(embedded_field.shape[0]):
+        for lon in range(embedded_field.shape[1]):
+            # For lat lon values where the country mask matches the country given, replace domain values with country values
+            if country_mask[lat,lon] == country_codes[country]:
+                if time:
+                    embedded_field[lat,lon,:] = data['country'][lat,lon,:]
+                else:
+                    embedded_field[lat,lon] = data['country'][lat,lon]
+    
+    # convert data to required ouput type
+    if data_type.lower()=='np_array':
+        if verbose:
+            print('Outputting numpy array')
+        embedded_field= embedded_field.values
+    elif data_type.lower()=='xr_dataset':
+        if verbose:
+            print('Outputting xarray dataset')
+        var_name = 'flux' if var_name is None else var_name
+        embedded_field = embedded_field.to_dataset(name=var_name)
+        global_attrs = {} if global_attrs is None else global_attrs
+        embedded_field= embedded_field.assign_attrs(global_attrs)
+    else:
+        if verbose:
+            print('Outputting xarray dataarray')
+            
+    return embedded_field
+
 def embed_UKGHG_EDGAR(edgar_flux, ukghg_flux, time=False, country=None, data_type='np_array',
                       crop=None, global_attrs=None, verbose=True):
     '''
