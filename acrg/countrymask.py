@@ -508,7 +508,7 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
 
 def create_country_mask_eez(domain,include_land_territories=True,
                             include_ocean_territories=True,reset_index=True,fill_gaps=True,
-                            fp_directory=fp_directory,
+                            fp_directory=fp_directory,lat_lon_mask=False,sub_lats=None,sub_lons=None,
                             output_path=None,save=False):
     """
     Creates a mask for all countries within the domain.
@@ -536,6 +536,12 @@ def create_country_mask_eez(domain,include_land_territories=True,
         fp_directory (str, optional) :
             Base footprint directory to use to extract domain values. Uses footprint directory on data path
             by default and expects sub-directories of domain name.
+        lat_lon_mask (bool):
+            If True, masks all cells outside sub_lats and sub_lons (gives them values of np.nan).
+        sub_lats (list or array):
+            Either a list of [min_lat,max_lat] or a numpy array of lats. Any cells beyond these limits are masked.
+        sub_lons (list or array):
+            Either a list of [min_lon,max_lon] or a numpy array of lons. Any cells beyond these limits are masked.
          out_path (str) (optional):
             Path and name to save mask to. If None, does not save dataset.
     Returns:
@@ -667,6 +673,15 @@ def create_country_mask_eez(domain,include_land_territories=True,
 
                         all_grid[i,j] = stats.mode(surrounding)[0][0]
     
+    if lat_lon_mask == True:
+        print(f'Masking all values beyond lats: {sub_lats[0]}:{sub_lats[-1]} and lons: {sub_lons[0]}:{sub_lons[-1]}')
+        
+        lats_outer = np.where((lats < sub_lats[0]) | (lats >= sub_lats[-1]))[0]
+        lons_outer = np.where((lons < sub_lons[0]) | (lons >= sub_lons[-1]))[0]
+        
+        all_grid[lats_outer,:] = np.nan
+        all_grid[:,lons_outer] = np.nan
+        
     # create output dataset
     if reset_index == True:
         ncountries = np.arange(len(country_names)+1)
