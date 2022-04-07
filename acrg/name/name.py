@@ -316,8 +316,13 @@ def footprints(sitecode_or_filename, met_model = None, fp_directory = None,
 
         # Finds integrated footprints if specified as a dictionary with multiple entries (HiTRes = True)
         files = filenames(site, domain, start, end, height, fp_directory, met_model = met_model, network=network, species=species)
+    
+    if len(files)==0 and species is not None:
+        print(f"\nWarning: Can't find {species} footprint files for {sitecode_or_filename}. " \
+              + "Looking for footprints without a defined species.\n")
+        files = filenames(site, domain, start, end, height, fp_directory, met_model = met_model, network=network, species=None)
 
-    if len(files) == 0:
+    if len(files)==0:
         print(f"\nWarning: Can't find footprint files for {sitecode_or_filename}. " \
               + "This site will not be included in the output dictionary.\n")
         return None
