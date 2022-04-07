@@ -1301,9 +1301,9 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                 else:
                     region_name = [source+'-'+str(reg) for reg in range(1,int(np.max(site_bf.basis.values)+1))]
 
-                sensitivity = xr.DataArray(H, 
-                                             coords=[('region', region_name), 
-                                                     ('time', fp_and_data[site].coords['time'])])
+                sensitivity = xr.DataArray(H.data,
+                                    coords=[('region', region_name), 
+                                        ('time', fp_and_data[site].coords['time'].data)])
                                      
             if si == 0:
                 concat_sensitivity = sensitivity
@@ -1325,17 +1325,17 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                 else:
                     sub_fp_temp = site_bf.fp.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
                                                  method="nearest") 
-                    sub_fp = xr.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
-                                           coords = {'sub_lat': (site_bf.coords['sub_lat']),
-                                                     'sub_lon': (site_bf.coords['sub_lon']),
-                                                     'time' : (fp_and_data[site].coords['time'])})
+                    sub_fp = xr.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp.data)},
+                                           coords = {'sub_lat': (site_bf.coords['sub_lat'].data),
+                                                     'sub_lon': (site_bf.coords['sub_lon'].data),
+                                                     'time' : (fp_and_data[site].coords['time'].data)})
                                 
                     sub_H_temp = H_all.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
                                            method="nearest")                             
-                    sub_H = xr.Dataset({'sub_H': (['sub_lat','sub_lon','time'], sub_H_temp)},
-                                          coords = {'sub_lat': (site_bf.coords['sub_lat']),
-                                                    'sub_lon': (site_bf.coords['sub_lon']),
-                                                    'time' : (fp_and_data[site].coords['time'])},
+                    sub_H = xr.Dataset({'sub_H': (['sub_lat','sub_lon','time'], sub_H_temp.data)},
+                                          coords = {'sub_lat': (site_bf.coords['sub_lat'].data),
+                                                    'sub_lon': (site_bf.coords['sub_lon'].data),
+                                                    'time' : (fp_and_data[site].coords['time'].data)},
                                           attrs = {'flux_source_used_to_create_sub_H':source})
        
                     fp_and_data[site] = fp_and_data[site].merge(sub_fp)
