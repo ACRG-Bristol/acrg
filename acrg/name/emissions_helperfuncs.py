@@ -925,22 +925,26 @@ def get_US_EPA(epa_sectors=None,output_path=None):
     
     return flux_ds
 
-def embed_field(domain_field, country_field, country, country_file=None, domain=None,
+def embed_field(domain_field, country_field, country=None, country_file=None, domain=None,
                 data_type=None, crop=None, var_name=None, global_attrs=None, verbose=True):
     '''
-    Embed UKGHG map into the EDGAR map using a country mask
-    EDGAR and UKGHG map grid should match
+    Embed a country/regional flux field into a domain/larger region flux field
+    The dimensions of the fields should match
+
+    If a domain or country_file are given then a country mask is used 
     
     Args:
         domain_field, country_field (xarray DataArray)
             domain and country flux fields
-        country (str)
-            name of the country associated with the country_field
+        country (str, optional)
+            name of the country associated with the country_field in the country_file
         domain (str, optional)
             domain associated with the domain_field
             used to look up a country mask file if country_file is None
         country_file (str, optional)
-            country mask file
+            country mask filename
+            if neither this or domain is given then all fluxes within the
+            country flux field are embedded into the domain field
         data_type (str, optional)
             data type to return (case insensitive)
             either np_array, xr_dataset, or xr_array
@@ -961,6 +965,9 @@ def embed_field(domain_field, country_field, country, country_file=None, domain=
             map with the country flux field embedded into the domain flux field
         
     '''
+    if verbose:
+        print(f'Embedding {country} flux field into {domain}')
+    
     # check if there is a time dimension in both/any field array
     time = True if all(['time' in dims for dims in [domain_field.dims, country_field.dims]]) else \
            None if any(['time' in dims for dims in [domain_field.dims, country_field.dims]]) else False
@@ -969,44 +976,62 @@ def embed_field(domain_field, country_field, country, country_file=None, domain=
         print('Both fields must either be 2d or 3d')
         return None 
 
-    if domain is None and country_file is None:
-        print('Either a country_file or domain name must be provided')
-        return None
-    
-    # import the country mask data
-    country_file = country_file if country_file is not None else \
-                   os.path.join(data_path,'LPDM', 'countries', f'country_{domain}.nc')
-    if verbose:
-        print(f'Using country mask from:\n  {country_file}')
-    with xr.open_dataset(country_file) as c_file:
-        country_mask = c_file['country']
-        country_codes = {country_name: cc for cc, country_name in enumerate(c_file['name'].values)}
-        country = [cc for cc in list(country_codes.keys()) if 'united kingdom' in cc.lower()][0] \
-                  if country.lower() in ['uk', 'united kingdom'] else country.upper()
-        if country not in list(country_codes.keys()):
-            print(f'country not found in country codes litst, options are:\n   {list(country_codes.keys())}')
-            return None
-
     # crop data to given lat and lon if crop is not None
-    data = {'domain': domain_field, 'country': country_field, 'mask': country_mask}
+    data = {'domain': domain_field, 'country': country_field}
+    if crop is not None and verbose:
+        print(f'Cropping lat to: {crop["lat"][0]} and {crop["lat"][1]} and lon to: {crop["lon"][0]} and {crop["lon"][1]}')
     data = data if crop is None else \
-            {f_type: data_type.sel(lat=slice(crop['lat'][0], crop['lat'][1]),
+           {f_type: data_type.sel(lat=slice(crop['lat'][0], crop['lat'][1]),
                                   lon=slice(crop['lon'][0], crop['lon'][1]))
             for f_type, data_type in data.items()}
     
-    if verbose:
-        print(f'Embedding {country} flux field into {domain}')
-    embedded_field = copy.deepcopy(data['domain'])
-    for lat in range(embedded_field.shape[0]):
-        for lon in range(embedded_field.shape[1]):
-            # For lat lon values where the country mask matches the country given, replace domain values with country values
-            if country_mask[lat,lon] == country_codes[country]:
-                if time:
-                    embedded_field[lat,lon,:] = data['country'][lat,lon,:]
-                else:
-                    embedded_field[lat,lon] = data['country'][lat,lon]
+    if country is None and any([domain, country_file]):
+        print('If using a country mask, a country associated with the country field must be given. \n' + 
+              'Embedding without a country mask.')
+        domain = None
+        country_file = None
+
+    if domain is None and country_file is None:
+        if verbose:
+            print('Either a country_file or domain name must be provided to use a country mask')
+
+        # convert nans in country field to 0
+        country_field_masked = data['country'].where(data['country']!=0).fillna(0)
+        # where the country field is not 0, set the domain field to 0
+        domain_field_masked = data['domain'].where(country_field_masked==0).fillna(0)
+    
+    else:
+        # import the country mask data
+        country_file = country_file if country_file is not None else \
+                    os.path.join(data_path,'LPDM', 'countries', f'country_{domain}.nc')
+        if verbose:
+            print(f'Using country mask from:\n  {country_file}')
+        with xr.open_dataset(country_file) as c_file:
+            country_mask = c_file['country']
+            country_codes = {country_name: cc for cc, country_name in enumerate(c_file['name'].values)}
+        # if country is uk then look for the named version in the country codes
+        country = [cc for cc in list(country_codes.keys()) if 'united kingdom' in cc.lower()][0] \
+                if country.lower() in ['uk', 'united kingdom'] else country.upper()
+        if country not in list(country_codes.keys()):
+            print(f'country not found in country codes litst, options are:\n   {list(country_codes.keys())}')
+            return None
+        
+        if crop is not None:
+            country_mask = country_mask.sel(lat=slice(crop['lat'][0], crop['lat'][1]),
+                                            lon=slice(crop['lon'][0], crop['lon'][1]))
+        # convert the country mask to bools
+        mask = country_mask.where(country_mask==country_codes[country]).fillna(0).astype(dtype='bool')
+
+        # mask the country and domain fields, convert masked areas to 0
+        country_field_masked = data['country'].where(mask).fillna(0)
+        domain_field_masked = data['domain'].where(~mask).fillna(0)
+    
+    # add the country and domain fields together
+    # - this will fill in 0s in the domain field with those from the country field
+    embedded_field = country_field_masked + domain_field_masked
     
     # convert data to required ouput type
+    data_type = 'xr_array' if data_type is None else data_type
     if data_type.lower()=='np_array':
         if verbose:
             print('Outputting numpy array')
