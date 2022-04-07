@@ -1011,7 +1011,7 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
 
                 # If units are specified, multiply by scaling factor
                 if units:
-                    site_ds.update({'fp' : (site_ds.fp.dims, site_ds.fp/units)})
+                    site_ds.update({'fp' : (site_ds.fp.dims, site_ds.fp.data/units)})
                     if HiTRes:
                         site_ds.update({'fp_HiTRes' : (site_ds.fp_HiTRes.dims, 
                                                        site_ds.fp_HiTRes/units)})
