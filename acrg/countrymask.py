@@ -505,6 +505,36 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
     
     return ds
 
+def mask_fill_gaps(mask_array):
+    
+    #TODO: create a test for fill_gaps
+    print('\nFilling in gaps between masks\nby checking for grid cells where surrounding cells are indentical.')
+    print('WARNING: This is experimental, when using this mask to estimate country emissions from countries'+
+          'with complex coastlines you should manually check the mask before use.')
+    print('WARNING: This does not work for any gaps that are on the edge of the domain.')
+        
+    # loop through grid to check for missing cells
+
+    for i in np.arange(1,mask_array.shape[0]-1):
+        for j in np.arange(1,mask_array.shape[1]-1):
+
+            if mask_array[i,j] == 0.:
+                    
+                # find all surrounding grid cells
+                surrounding = np.delete(mask_array[i-1:i+2,j-1:j+2].flatten(),4)
+
+                # if all surrounding cells are identical, fill in the gap
+                if np.all(surrounding == surrounding[0]) and surrounding[0] != 0.:
+
+                    mask_array[i,j] = surrounding[0]
+
+                # if all but one of the surrounding cells are identical, fill in the gap
+                # (fills in gaps of two adjacent grid cells)
+                elif np.count_nonzero(surrounding == stats.mode(surrounding)[0][0]) == 7. and stats.mode(surrounding)[0] != 0.:
+
+                    mask_array[i,j] = stats.mode(surrounding)[0][0]
+                    
+    return mask_array
 
 def create_country_mask_eez(domain,include_land_territories=True,
                             include_ocean_territories=True,reset_index=True,fill_gaps=True,
@@ -532,7 +562,7 @@ def create_country_mask_eez(domain,include_land_territories=True,
             If True, start indexing countries from 1 (with ocean as 0). 
             If False, uses the Natural Earth index values (as extracted by geopandas).
         fill_gaps (bool):
-            Fills in gaps between the land and ocean masks that are missed.
+            Fills in gaps between the land and ocean masks that are missed and some 
         fp_directory (str, optional) :
             Base footprint directory to use to extract domain values. Uses footprint directory on data path
             by default and expects sub-directories of domain name.
@@ -649,29 +679,8 @@ def create_country_mask_eez(domain,include_land_territories=True,
         count += 1
         
     if fill_gaps:
-        #TODO: create a test for fill_gaps
-        print('\nFilling in gaps between the land and ocean masks\nby checking if surrounding cells are indentical.')
-        print('WARNING: this part of the code is currently untested.')
         
-        # loop through grid to check for missing cells
-
-        for i in np.arange(1,all_grid.shape[0]-1):
-            for j in np.arange(1,all_grid.shape[1]-1):
-
-                if all_grid[i,j] == 0.:
-
-                    surrounding = np.delete(all_grid[i-1:i+2,j-1:j+2].flatten(),4)
-
-                    # if all surrounding cells are identical, fill in the gap
-                    if np.all(surrounding == surrounding[0]):
-
-                        all_grid[i,j] = surrounding[0]
-
-                    # if all but one of the surrounding cells are identical, fill in the gap
-                    # (fills in gaps of two adjacent grid cells)
-                    elif np.count_nonzero(surrounding == stats.mode(surrounding)[0][0]) == 7.:
-
-                        all_grid[i,j] = stats.mode(surrounding)[0][0]
+        all_grid = mask_fill_gaps(all_grid)
     
     if lat_lon_mask == True:
         print(f'Masking all values beyond lats: {sub_lats[0]}:{sub_lats[-1]} and lons: {sub_lons[0]}:{sub_lons[-1]}')

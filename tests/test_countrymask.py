@@ -26,7 +26,26 @@ def not_country_codes():
     country_codes = ['BRA','CHN','NZL']
     return country_codes
 
+@pytest.fixture(scope="module")
+def mask_with_gaps():
+    mask_with_gaps = np.array([[1,1,1,4,4,4],
+                               [1,0,1,2,2,2],
+                               [1,1,1,2,0,0],
+                               [3,3,3,2,2,2],
+                               [3,0,3,5,5,5],
+                               [3,3,0,5,6,6]])
+    return mask_with_gaps
 
+@pytest.fixture(scope="module")
+def mask_no_gaps():
+    mask_no_gaps = np.array([[1,1,1,4,4,4],
+                             [1,1,1,2,2,2],
+                             [1,1,1,2,2,0],
+                             [3,3,3,2,2,2],
+                             [3,3,3,5,5,5],
+                             [3,3,0,5,6,6]])
+    return mask_no_gaps
+    
 #%% Tests for domain_volume function
 
 def test_incorrect_domain():
@@ -81,6 +100,8 @@ def test_convert_lons_0360():
     assert all(lon_0360 >= 0) is True
     assert all(lon_0360 < 360) is True
 
+# Tests for create_country_mask_eez
+    
 @pytest.mark.skipif(not glob.glob(os.path.join(data_path,"World_shape_databases")), reason="No access to files in data_path")
 def test_country_match(country_codes,not_country_codes,fp_directory):
     """
@@ -132,5 +153,16 @@ def test_country_match(country_codes,not_country_codes,fp_directory):
         country_code_match = [not_c_code for c in ds_both['country_code'].values if not_c_code == c]
         
         assert len(country_code_match) == 0
+        
+@pytest.mark.skipif(not glob.glob(os.path.join(data_path,"World_shape_databases")), reason="No access to files in data_path.")
+def test_fill_gaps(mask_with_gaps,mask_no_gaps,fp_directory):
+    """
+    Tests that mask_fill_gaps in correctly fills in all gaps in the mask 
+    by searching for empty grid cells which are surrounded by identically filled grid cells.
+    """
+    
+    filled_array = countrymask.mask_fill_gaps(mask_with_gaps)
+    
+    assert np.array_equal(filled_array,mask_no_gaps) == True
     
 # Samoa lat and lon 13.7590° S, 172.1046° W
