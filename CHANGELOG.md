@@ -18,6 +18,7 @@ Use this section to keep track of any intermediate changes that can then be move
 - hbmcmc code now has a function (and relevant additions to output) that allows the inversion to be rerun (i.e. reproduced)
   using only the output as inputs and ACRG repository.
 - Country mask code has now been updated to allow ocean territories (Economic Exclusion Zone, EEZ) to be included.
+- Add function for embedding regional fields into larger fields, in acrg.name.emissions_helper_func
 
 ### Changed
 - directory structure of acrg package has changed. Many import statements will likely need modifying
