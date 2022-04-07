@@ -331,10 +331,6 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
                 with {source_name: emissions_file_identifier} (e.g. {'anth':'co2-ff-mth'}). This way
                 multiple sources can be read in simultaneously if they are added as separate entries to
                 the emissions_name dictionary.
-                If using HiTRes footprints, both the high and low frequency emissions files must be specified
-                in a second dictionary like so: {'anth': {'high_freq':'co2-ff-2hr', 'low_freq':'co2-ff-mth'}}.
-                It is not a problem to have a mixture of sources, with some that use HiTRes footprints and some
-                that don't.
             basis_directory (str, optional):
                 Directory containing basis function file
             country_file (str, optional):
@@ -343,8 +339,6 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
                 Add an offset (intercept) to all sites but the first in the site list. Default False.
             rerun_file (xarray dataset, optional):
                 An xarray dataset containing the ncdf output from a previous run of the MCMC code.
-            HiTRes (bool):
-                True if using HiTRes footprints
                 
         Returns:
             netdf file containing results from inversion
@@ -411,12 +405,6 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
         else:
             spec = species if emissions_name == None else list(emissions_name.values())[0]
             emds = name.flux(domain=domain, species=spec, start=start_date, end=end_date, flux_directory=flux_directory)
-                # spec = list(emissions_name.values())[0] if not HiTRes else \
-                #        {list(emissions_name.keys())[0]: emissions_name[list(emissions_name.keys())[0]]}
-                # emds = name.flux(domain, spec, start = start_date, end = end_date, flux_directory=flux_directory) \
-                #        if not HiTRes else \
-                    #    name.flux_for_HiTRes(domain, spec, start = start_date, end = end_date,
-                    #                         flux_directory=flux_directory)['high_freq']
             emissions_flux = emds.flux.values
         flux = scalemap*emissions_flux[:,:,0]
         
