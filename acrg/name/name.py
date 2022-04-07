@@ -43,7 +43,7 @@ with open(acrg_path / "data/site_info.json") as f:
 with open(acrg_path / "data/species_info.json") as f:
     species_info=json.load(f)
 
-def open_ds(path, chunks=None):
+def open_ds(path, chunks=None, combine=None):
     """
     Function efficiently opens xray datasets.
 
@@ -58,7 +58,8 @@ def open_ds(path, chunks=None):
     """
     # use a context manager, to ensure the file gets closed after use
     if chunks is not None:
-        ds = xr.open_mfdataset(path, chunks=chunks)
+        combine = 'by_coords' if combine is None else combine
+        ds = xr.open_mfdataset(path, chunks=chunks, combine=combine)
     else:
         with xr.open_dataset(path) as ds:
             ds.load()
