@@ -27,7 +27,7 @@ def write(lat, lon, time, flux, species, domain,
           regridder_used = 'acrg_grid.regrid.regrid_3D',
           copy_from_year = None, climatology = False, flux_comments = None,
           uncertainty = None, uncertainty_desc=None,
-          output_directory = output_directory):
+          output_directory = output_directory, overwrite=False):
     '''Write a flux file for emissions
     
     Args:
@@ -134,7 +134,7 @@ def write(lat, lon, time, flux, species, domain,
     ncdesc = f'_{year}_copy-from-{copy_from_year}' if copy_from_year is not None else '' if climatology else f'_{year}'
     ncname = os.path.join(output_directory,domain,f"{file_source.lower()}_{domain}{ncdesc}.nc")
 
-    if os.path.isfile(ncname) == True:
+    if os.path.isfile(ncname) == True and not overwrite:
         answer = input("You are about to overwrite an existing file, do you want to continue? Y/N ")
         if answer.lower() == 'n':
             sys.exit()
