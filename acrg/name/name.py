@@ -49,18 +49,22 @@ def open_ds(path, chunks=None, combine=None):
 
     Args:
         path (str)
-        chunks (dict)
+        chunks (dict, optional)
             size of chunks for each dimension
             e.g. {'lat': 50, 'lon': 50}
             opens dataset with dask, such that it is opened 'lazily'
             and all of the data is not loaded into memory
             defaults to None - dataset is opened with out dask
+        combine (str, optional)
+            Way in which the data should be combined (if using chunks), either:
+            'by_coords': order the datasets before concatenating (default)
+            'nested': concatenate datasets in the order supplied
     """
-    # use a context manager, to ensure the file gets closed after use
     if chunks is not None:
         combine = 'by_coords' if combine is None else combine
         ds = xr.open_mfdataset(path, chunks=chunks, combine=combine)
     else:
+        # use a context manager, to ensure the file gets closed after use
         with xr.open_dataset(path) as ds:
             ds.load()
     return ds 
