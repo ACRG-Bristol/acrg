@@ -275,13 +275,13 @@ def region_mapping(upper=True):
         dict:
             Dictionary containing the mapping of the region number to the country name.
     '''
-    all_regions = regionmask.defined_regions.natural_earth.countries_50.region_ids
+    all_regions = regionmask.defined_regions.natural_earth_v5_0_0.countries_50.region_ids
     #codes = [key for key in all_regions.keys() if isinstance(key,unicode) and len(key) == 2]
     #names = [country_name(code,supress_print=True) for code in codes]
     
     #names = [name.split(',')[0] if name else name for name in names]
     
-    names = regionmask.defined_regions.natural_earth.countries_50.names
+    names = regionmask.defined_regions.natural_earth_v5_0_0.countries_50.names
     numbers = [all_regions[key] for key in names]
 
     # Check all numbers are covered
@@ -409,12 +409,12 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
         # moves longitude values onto 0-360 range if lons have values less than 0 and greater than 180, as regionmask cannot use a lon range that has both 
         if any(lon < 0) & any(lon > 180):
             lon = convert_lons_0360(lon)
-        mask = regionmask.defined_regions.natural_earth.countries_50.mask(lon,lat,xarray=True)
+        mask = regionmask.defined_regions.natural_earth_v5_0_0.countries_50.mask(lon,lat)
     elif database == "Natural_Earth" and scale == "1:110m":
         # moves longitude values onto 0-360 range if lons have values less than 0 and greater than 180, as regionmask cannot use a lon range that has both 
         if any(lon < 0) & any(lon > 180):
             lon = convert_lons_0360(lon)
-        mask = regionmask.defined_regions.natural_earth.countries_110.mask(lon,lat,xarray=True)
+        mask = regionmask.defined_regions.natural_earth_v5_0_0.countries_110.mask(lon,lat,xarray=True)
 
     if use_domain_extent:
         lat_outer = np.where((mask["lat"].values < sub_lat[0]) | (mask["lat"].values >= sub_lat[-1]))[0]
@@ -507,7 +507,7 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
 
 
 def create_country_mask_eez(domain,include_land_territories=True,
-                            include_ocean_territories=True,fill_gaps=True,
+                            include_ocean_territories=True,reset_index=True,fill_gaps=True,
                             fp_directory=fp_directory,
                             output_path=None,save=False):
     """
@@ -528,6 +528,9 @@ def create_country_mask_eez(domain,include_land_territories=True,
         include_ocean_territories (bool):
             If True, include areas within EEZ (marine territories) in the 
             country mask.
+        reset_index (bool):
+            If True, start indexing countries from 1 (with ocean as 0). 
+            If False, uses the Natural Earth index values (as extracted by geopandas).
         fill_gaps (bool):
             Fills in gaps between the land and ocean masks that are missed.
         fp_directory (str, optional) :
@@ -575,13 +578,31 @@ def create_country_mask_eez(domain,include_land_territories=True,
     all_grid = np.zeros((lats.shape[0],lons.shape[0]))
     country_names = []
     country_codes = []
-
-    land_codes_all = np.unique(df_land.loc[land_regions]['ADM0_A3'])
+    
+    if reset_index == True:
+    
+        #land_codes_all = np.unique(df_land.loc[land_regions]['ADM0_A3'])
+        land_codes_all = pd.unique(df_land.loc[land_regions]['ADM0_A3'])
+        
+    else:
+    
+        land_codes_all = []
+        indexes_all = []
+        
+        for i,l_code in enumerate(df_land.loc[land_regions]['ADM0_A3']):
+            if l_code not in land_codes_all:
+                land_codes_all.append(l_code)
+                indexes_all.append(df_land.loc[land_regions]['ADM0_A3'].index[i])
 
     count = 1
 
     # loop through all countries
     for i,c in enumerate(land_codes_all):
+        
+        if reset_index == True:
+            index_value = count
+        else:
+            index_value = indexes_all[i]
 
         country_names.append(df_land[df_land['ADM0_A3'] == c]['ADMIN'].values[0].upper())
         country_codes.append(c)
@@ -598,7 +619,7 @@ def create_country_mask_eez(domain,include_land_territories=True,
                     # find mask index that corresponds to the dataset index
                     land_mask_index = np.where(land_regions == r)[0][0]
 
-                    all_grid[np.where(mask[land_mask_index].values == True)] = count
+                    all_grid[np.where(mask[land_mask_index].values == True)] = index_value
                     
         elif i == 0:
             
@@ -617,14 +638,14 @@ def create_country_mask_eez(domain,include_land_territories=True,
                     # find ocean mask index that corresponds to the dataset index
                     ocean_mask_index = np.where(ocean_regions == r)[0][0]
 
-                    all_grid[np.where(mask_ocean[ocean_mask_index].values == True)] = count
+                    all_grid[np.where(mask_ocean[ocean_mask_index].values == True)] = index_value
 
         count += 1
         
     if fill_gaps:
         #TODO: create a test for fill_gaps
         print('\nFilling in gaps between the land and ocean masks\nby checking if surrounding cells are indentical.')
-        print('\nWARNING: this part of the code is currently untested.')
+        print('WARNING: this part of the code is currently untested.')
         
         # loop through grid to check for missing cells
 
@@ -647,7 +668,10 @@ def create_country_mask_eez(domain,include_land_territories=True,
                         all_grid[i,j] = stats.mode(surrounding)[0][0]
     
     # create output dataset
-    ncountries = np.arange(len(country_names)+1)
+    if reset_index == True:
+        ncountries = np.arange(len(country_names)+1)
+    else:
+        ncountries = [0] + indexes_all
 
     country_names_all = ['OCEAN'] + country_names
     country_codes_all = ['OCEAN'] + country_codes
@@ -669,12 +693,12 @@ def create_country_mask_eez(domain,include_land_territories=True,
 
     country_names_da = xr.DataArray(country_names_all,
                                    dims=["ncountries"],
-                                   coords=[ncountries],
+                                   coords={'ncountries':ncountries},
                                     attrs={'long_name':'Country names'})
     
     country_codes_da = xr.DataArray(country_codes_all,
                                    dims=["ncountries"],
-                                   coords=[ncountries],
+                                   coords={'ncountries':ncountries},
                                     attrs={'long_name':'Country codes'})
 
     ds = xr.Dataset({"country":country_da,
