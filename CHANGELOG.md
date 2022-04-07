@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 Use this section to keep track of any intermediate changes that can then be moved to a versioned section.
 
+Updated pinned packages, now expects Python 3.9
+
 ### Added
 
 ### Changed
