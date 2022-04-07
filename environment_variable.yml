@@ -22,3 +22,5 @@ dependencies:
   - iso3166
   - regionmask
   - xesmf
+  - pyfakefs
+  - pytest
