@@ -101,8 +101,8 @@ def write(lat, lon, time, flux, species, domain,
     print("WARNING: Make sure fluxes are in mol/m2/s.")
 
     name_climatology = "-climatology" if climatology == True else ""
-    file_source = species + name_climatology+ '-total' if source == None else \
-                  species + name_climatology + '-' + source    
+    file_source = f'{species}{name_climatology}-total' if source==None else \
+                  f'{species}{name_climatology}-{source}' 
     species = species.lower()  
         
     # Check that the flux is in the correct shape
