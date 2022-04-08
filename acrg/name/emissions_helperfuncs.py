@@ -1130,14 +1130,13 @@ def get_UKGHG_EDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,
     
         for EDGARsector in edgar_sectors:
             if EDGARsector not in EDGARsectorlist:
-                print('EDGAR sector {0} not one of: \n {1}'.format(EDGARsector,EDGARsectorlist))
+                print(f'EDGAR sector {EDGARsector} not one of: \n {EDGARsectorlist}')
                 print('Returning None')
                 return None
             
         #edgar flux in kg/m2/s
         for i,sector in enumerate(edgar_sectors):
-        
-            edgarfn = "v50_" + species.upper() + "_" + year + "_" + sector + ".0.1x0.1.nc"
+            edgarfn = f"v50_{species.upper()}_{year}_{sector}.0.1x0.1.nc"
 
             with xr.open_dataset(os.path.join(edgarfp,edgarfn)) as edgar_file:
                 edgar_flux = np.nan_to_num(edgar_file['emi_'+species.lower()].values,0.)
@@ -1165,14 +1164,13 @@ def get_UKGHG_EDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,
         
         for UKGHGsector in ukghg_sectors:
             if UKGHGsector not in UKGHGsectorlist:
-                print('UKGHG sector {0} not one of: \n {1}'.format(UKGHGsector,UKGHGsectorlist))
+                print(f'UKGHG sector {UKGHGsector} not one of: \n {UKGHGsectorlist}')
                 print('Returning None')
                 return None    
 
         #ukghg flux in mol/m2/s
         for j,sector in enumerate(ukghg_sectors):
-
-            ukghgfn = "uk_flux_" + sector + "_" + species.lower() + "_LonLat_0.01km_" + year + ".nc"
+            ukghgfn = f"uk_flux_{sector}_{species.lower()}_LonLat_0.01km_{year}.nc"
 
             with xr.open_dataset(os.path.join(ukghgfp,ukghgfn)) as ukghg_file:
                 ukghg_flux = np.nan_to_num(ukghg_file[species.lower()+'_flux'].values[0,:,:],0.)
@@ -1189,13 +1187,14 @@ def get_UKGHG_EDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,
         #if edgar, input ukghg over uk lat lons
         if edgar_sectors is not None:  
             print('Inserting UKGHG into EDGAR over UK lat/lons')
-            
-            total_flux = embed_UKGHG_EDGAR(edgar_flux = edgar_regrid,
-                                           ukghg_flux = ukghg_regrid,
-                                           time = False,
-                                           country = None,
-                                           data_type = 'np_array',
-                                           verbose = False)
+            ukghg_regrid = xr.DataArray(data = ukghg_regrid.data,
+                                        coords = {'lat': ukghg_lat, 'lon': ukghg_lon},
+                                        dims = ['lat', 'lon'])
+
+            total_flux = embed_field(domain_field = edgar_regrid,
+                                     country_field = ukghg_regrid,
+                                     data_type = 'np_array',
+                                     verbose = False)
             
             output_title = "EDGAR with UK lat/lons replaced with UKGHG values, regridded to EUROPE domain"
 
