@@ -925,26 +925,37 @@ def get_US_EPA(epa_sectors=None,output_path=None):
     
     return flux_ds
 
-def embed_UKGHG_EDGAR(edgar_flux, ukghg_flux, time=False, country=None, data_type='np_array',
-                      crop=None, global_attrs=None, verbose=True):
+def embed_field(domain_field, country_field, country=None, country_file=None, domain=None,
+                data_type=None, crop=None, var_name=None, global_attrs=None, verbose=True):
     '''
-    Embed UKGHG map into the EDGAR map using a country mask
-    EDGAR and UKGHG map grid should match
+    Embed a country/regional flux field into a domain/larger region flux field
+    The dimensions of the fields should match
+
+    If a domain or country_file are given then a country mask is used 
     
     Args:
-        edgar_flux, ukghg_flux (xarray DataArray)
-            EDGAR and UKGHG flux maps
-        time (bool)
-            True if the flux data is 3d (lat, lon, time)
-        country (xarray DataArray, optional)
-            country mask
-            if None then the file country-ukmo_EUROPE.nc is used by default
+        domain_field, country_field (xarray DataArray)
+            domain (large region) and country (regional) flux fields to be merged
+            country_field will be embedded into domain_field
+        country (str, optional)
+            name of the country associated with the country_field in the country_file
+            if not given, then a country mask will not be used
+        domain (str, optional)
+            domain associated with the domain_field
+            used to look up a country mask file if country_file is None
+        country_file (str, optional)
+            country mask filename
+            if neither this or domain is given then all fluxes within the
+            country flux field are embedded into the domain field
         data_type (str, optional)
             data type to return (case insensitive)
-            either np_array, xr_array, or xr_dataset
+            either np_array, xr_dataset, or xr_array, defaults to xr_array
         crop (dict, optional)
             lat and lon to crop data to
             {'lat': [lat_1, lat_2], 'lon': [lon_1, lon_2]}
+        var_name (str, optional)
+            the variable name if saving to xarray.Dataset
+            defaults to 'flux'
         global_attrs (dict, optional)
             global attributes to apply to the Dataset
             only used if data_type is xr_dataset
@@ -953,47 +964,85 @@ def embed_UKGHG_EDGAR(edgar_flux, ukghg_flux, time=False, country=None, data_typ
     
     Returns:
         xarray DataArray, xarray Dataset, or numpy array
-            map with UKGHG flux data embedded into EDGAR
+            map with the country flux field embedded into the domain flux field
         
     '''
-    if country is None:
-        country_file = os.path.join(data_path,'LPDM', 'countries', 'country-ukmo_EUROPE.nc')
+    if verbose:
+        print(f'Embedding {country} flux field into {domain}')
+    
+    # crop data to given lat and lon if crop is not None
+    data = {'domain': domain_field, 'country': country_field}
+    if crop is not None and verbose:
+        print(f'Cropping lat to: {crop["lat"][0]} and {crop["lat"][1]} and lon to: {crop["lon"][0]} and {crop["lon"][1]}')
+    data = data if crop is None else \
+           {f_type: data_type.sel(lat=slice(crop['lat'][0], crop['lat'][1]),
+                                  lon=slice(crop['lon'][0], crop['lon'][1]))
+            for f_type, data_type in data.items()}
+    
+    if country is None and any([domain, country_file]):
+        print('If using a country mask, a country associated with the country field must be given. \n' + 
+              'Embedding without a country mask.')
+        domain = None
+        country_file = None
+
+    if domain is None and country_file is None:
+        if verbose:
+            print('Either a country_file or domain name must be provided to use a country mask')
+
+        # convert nans in country field to 0
+        country_field_masked = data['country'].where(data['country']!=0).fillna(0)
+        # where the country field is not 0, set the domain field to 0
+        domain_field_masked = data['domain'].where(country_field_masked==0).fillna(0)
+    
+    else:
+        # import the country mask data
+        country_file = country_file if country_file is not None else \
+                    os.path.join(data_path,'LPDM', 'countries', f'country_{domain}.nc')
+        if verbose:
+            print(f'Using country mask from:\n  {country_file}')
         with xr.open_dataset(country_file) as c_file:
-            country = c_file['country']
+            country_mask = c_file['country']
+            country_codes = {country_name: cc for cc, country_name in enumerate(c_file['name'].values)}
+        
+        # if country is uk then look for the named version in the country codes
+        country = [cc for cc in list(country_codes.keys()) if 'united kingdom' in cc.lower()][0] \
+                if country.lower() in ['uk', 'united kingdom'] else country.upper()
+        if country not in list(country_codes.keys()):
+            print(f'country not found in country codes litst, options are:\n   {list(country_codes.keys())}')
+            return None
+        
+        if crop is not None:
+            country_mask = country_mask.sel(lat=slice(crop['lat'][0], crop['lat'][1]),
+                                            lon=slice(crop['lon'][0], crop['lon'][1]))
+        # convert the country mask to bools
+        mask = country_mask.where(country_mask==country_codes[country]).fillna(0).astype(dtype='bool')
+
+        # mask the country and domain fields, convert masked areas to 0
+        country_field_masked = data['country'].where(mask).fillna(0)
+        domain_field_masked = data['domain'].where(~mask).fillna(0)
     
-    if crop is not None:
-        edgar_flux = edgar_flux.sel(lat=slice(crop['lat'][0], crop['lat'][1]),
-                                    lon=slice(crop['lon'][0], crop['lon'][1]))
-        ukghg_flux = ukghg_flux.sel(lat=slice(crop['lat'][0], crop['lat'][1]),
-                                    lon=slice(crop['lon'][0], crop['lon'][1]))
-        country = country.sel(lat=slice(crop['lat'][0], crop['lat'][1]),
-                              lon=slice(crop['lon'][0], crop['lon'][1]))
-    
-    print('Embedding UKGHG into EDGAR map')
-    edgar_ukghg = copy.deepcopy(edgar_flux)
-    for lat in range(edgar_ukghg.shape[0]):
-        for lon in range(edgar_ukghg.shape[1]):
-            # For lat lon values where the country code is 19 (UK) replace EDGAR values with UKGHG
-            uk_country_code = 19.0
-            if country[lat,lon] == uk_country_code:
-                if time:
-                    edgar_ukghg[lat,lon,:] = ukghg_flux[lat,lon,:]
-                else:
-                    edgar_ukghg[lat,lon] = ukghg_flux[lat,lon]
+    # add the country and domain fields together
+    # - this will fill in 0s in the domain field with those from the country field
+    embedded_field = country_field_masked + domain_field_masked
     
     # convert data to required ouput type
+    data_type = 'xr_array' if data_type is None else data_type
     if data_type.lower()=='np_array':
-        if verbose: print('Outputting numpy array')
-        edgar_ukghg = edgar_ukghg.values
+        if verbose:
+            print('Outputting numpy array')
+        embedded_field= embedded_field.values
     elif data_type.lower()=='xr_dataset':
-        if verbose: print('Outputting xarray dataset')
+        if verbose:
+            print('Outputting xarray dataset')
+        var_name = 'flux' if var_name is None else var_name
+        embedded_field = embedded_field.to_dataset(name=var_name)
         global_attrs = {} if global_attrs is None else global_attrs
-        edgar_ukghg = edgar_ukghg.to_dataset(name='flux')
-        edgar_ukghg = edgar_ukghg.assign_attrs(global_attrs)
+        embedded_field= embedded_field.assign_attrs(global_attrs)
     else:
-        if verbose: print('Outputting xarray dataarray')
+        if verbose:
+            print('Outputting xarray dataarray')
             
-    return edgar_ukghg
+    return embedded_field
 
 def get_UKGHG_EDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,
                      output_title=None,output_path=None):
@@ -1081,14 +1130,13 @@ def get_UKGHG_EDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,
     
         for EDGARsector in edgar_sectors:
             if EDGARsector not in EDGARsectorlist:
-                print('EDGAR sector {0} not one of: \n {1}'.format(EDGARsector,EDGARsectorlist))
+                print(f'EDGAR sector {EDGARsector} not one of: \n {EDGARsectorlist}')
                 print('Returning None')
                 return None
             
         #edgar flux in kg/m2/s
         for i,sector in enumerate(edgar_sectors):
-        
-            edgarfn = "v50_" + species.upper() + "_" + year + "_" + sector + ".0.1x0.1.nc"
+            edgarfn = f"v50_{species.upper()}_{year}_{sector}.0.1x0.1.nc"
 
             with xr.open_dataset(os.path.join(edgarfp,edgarfn)) as edgar_file:
                 edgar_flux = np.nan_to_num(edgar_file['emi_'+species.lower()].values,0.)
@@ -1116,14 +1164,13 @@ def get_UKGHG_EDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,
         
         for UKGHGsector in ukghg_sectors:
             if UKGHGsector not in UKGHGsectorlist:
-                print('UKGHG sector {0} not one of: \n {1}'.format(UKGHGsector,UKGHGsectorlist))
+                print(f'UKGHG sector {UKGHGsector} not one of: \n {UKGHGsectorlist}')
                 print('Returning None')
                 return None    
 
         #ukghg flux in mol/m2/s
         for j,sector in enumerate(ukghg_sectors):
-
-            ukghgfn = "uk_flux_" + sector + "_" + species.lower() + "_LonLat_0.01km_" + year + ".nc"
+            ukghgfn = f"uk_flux_{sector}_{species.lower()}_LonLat_0.01km_{year}.nc"
 
             with xr.open_dataset(os.path.join(ukghgfp,ukghgfn)) as ukghg_file:
                 ukghg_flux = np.nan_to_num(ukghg_file[species.lower()+'_flux'].values[0,:,:],0.)
@@ -1140,13 +1187,14 @@ def get_UKGHG_EDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,
         #if edgar, input ukghg over uk lat lons
         if edgar_sectors is not None:  
             print('Inserting UKGHG into EDGAR over UK lat/lons')
-            
-            total_flux = embed_UKGHG_EDGAR(edgar_flux = edgar_regrid,
-                                           ukghg_flux = ukghg_regrid,
-                                           time = False,
-                                           country = None,
-                                           data_type = 'np_array',
-                                           verbose = False)
+            ukghg_regrid = xr.DataArray(data = ukghg_regrid.data,
+                                        coords = {'lat': ukghg_lat, 'lon': ukghg_lon},
+                                        dims = ['lat', 'lon'])
+
+            total_flux = embed_field(domain_field = edgar_regrid,
+                                     country_field = ukghg_regrid,
+                                     data_type = 'np_array',
+                                     verbose = False)
             
             output_title = "EDGAR with UK lat/lons replaced with UKGHG values, regridded to EUROPE domain"
 
