@@ -43,28 +43,23 @@ with open(acrg_path / "data/site_info.json") as f:
 with open(acrg_path / "data/species_info.json") as f:
     species_info=json.load(f)
 
-def open_ds(path, chunks=None, combine=None):
+def open_ds(path, chunks=None):
     """
     Function efficiently opens xray datasets.
 
     Args:
         path (str)
-        chunks (dict, optional)
+        chunks (dict)
             size of chunks for each dimension
             e.g. {'lat': 50, 'lon': 50}
             opens dataset with dask, such that it is opened 'lazily'
             and all of the data is not loaded into memory
             defaults to None - dataset is opened with out dask
-        combine (str, optional)
-            Way in which the data should be combined (if using chunks), either:
-            'by_coords': order the datasets before concatenating (default)
-            'nested': concatenate datasets in the order supplied
     """
+    # use a context manager, to ensure the file gets closed after use
     if chunks is not None:
-        combine = 'by_coords' if combine is None else combine
-        ds = xr.open_mfdataset(path, chunks=chunks, combine=combine)
+        ds = xr.open_mfdataset(path, chunks=chunks)
     else:
-        # use a context manager, to ensure the file gets closed after use
         with xr.open_dataset(path) as ds:
             ds.load()
     return ds 
@@ -1639,6 +1634,8 @@ def filtering(datasets_in, filters, keep_missing=False):
         '''
         Filters BRW data for BRW wind direction.
         '''
+        print('Applying wind filter.')
+        
         start_date = dataset.time[0].values
         end_date = dataset.time[-1].values
         
@@ -1646,12 +1643,20 @@ def filtering(datasets_in, filters, keep_missing=False):
         met_data = xr.open_dataset(met_file)
         met_data = met_data.loc[dict(time = slice(start_date, end_date))].rename({'wind_speed':'wind_sp'})
         
-        dataset = xr.merge([dataset, met_data])
+        dataset = xr.merge([dataset, met_data], join = 'inner')
+        time_len = len(dataset.time)
                      
-        # remove windspeeds below 3m/s and wind directions from Barrow
-        ti = np.where((dataset.wind_sp > 3) | (dataset.wind_dir <= 210))[0]
+        # remove windspeeds below 3m/s
+        ti = np.where(dataset.wind_sp > 3)[0]
+        dataset = dataset[dict(time = ti)]
+
+        # remove wind dir
+        ti = np.where(dataset.wind_dir <= 210)[0]
         dataset = dataset[dict(time = ti)]
         dataset = dataset.drop(['wind_sp', 'wind_dir'])
+        
+        # percentage of removed points
+        print(f"Percentage remaining data points :{len(ti)*100/time_len}%")
         
         return dataset
         
