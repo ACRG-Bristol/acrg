@@ -203,6 +203,20 @@
       "longitude": 90.71
     }
   },
+  "BER": {
+    "AGAGE": {
+      "height": [
+        "212m"
+      ],
+      "height_name": [
+        "212magl"
+      ],
+      "height_station_masl": 797.0,
+      "latitude": 47.189569,
+      "long_name": "Beromunster",
+      "longitude": 8.175482
+    }
+  },
   "BHD": {
     "NOAA": {
       "height": [
@@ -1936,6 +1950,20 @@
         "10magl"
       ],
       "long_name": "Sinhagad, India"
+    }
+  },
+  "SOT": {
+    "AGAGE": {
+      "height": [
+        "120m"
+      ],
+      "height_name": [
+        "120magl"
+      ],
+      "height_station_masl": 776.0,
+      "latitude": 46.6559,
+      "long_name": "Sottens",
+      "longitude": 6.7364
     }
   },
   "SPO": {
