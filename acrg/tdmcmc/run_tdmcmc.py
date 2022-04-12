@@ -24,7 +24,6 @@ uncertainties differently (emissions uncertainty > baseline uncertainty).
 
 @author: ml12574
 """
-from past.utils import old_div
 import pandas
 import datetime as dt
 from numba import jit
@@ -85,7 +84,7 @@ def get_nsigma_y(fp_data_H,start_date, end_date, sites,
     y_bl=np.zeros((nmeasure))
     
     nsigma=0
-    nsigma_max = np.int(np.ceil(old_div(ndays,np.float(bl_period))))
+    nsigma_max = np.int(np.ceil(ndays/np.float(bl_period)))
     ntime_stn=np.zeros((nsites))
     if levels is not None:
         ngroups=len(levels)-1
@@ -216,9 +215,9 @@ def add_local_ratio(fp_data_H,return_release=True):
             wh_rlon = np.where(abs(fp_data_H[site].sub_lon.values-release_lon) < dlon/2.)
             wh_rlat = np.where(abs(fp_data_H[site].sub_lat.values-release_lat) < dlat/2.)
             if np.any(wh_rlon[0]) and np.any(wh_rlat[0]):
-                local_sum[ti] = old_div(np.sum(fp_data_H[site].sub_fp[
-                        wh_rlat[0][0]-2:wh_rlat[0][0]+3,wh_rlon[0][0]-2:wh_rlon[0][0]+3,ti].values),np.sum(
-                        fp_data_H[site].fp[:,:,ti].values))  
+                local_sum[ti] = np.sum(fp_data_H[site].sub_fp[
+                                    wh_rlat[0][0]-2:wh_rlat[0][0]+3,wh_rlon[0][0]-2:wh_rlon[0][0]+3,ti].values)/\
+                                np.sum(fp_data_H[site].fp[:,:,ti].values)
             else:
                 local_sum[ti] = 0.0
             
@@ -640,7 +639,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
             
             for whi in wh_site:
                 tdelta = np.absolute(y_time[wh_site]-y_time[whi]).astype('timedelta64[m]')
-                deltatime_site=old_div(tdelta,np.timedelta64(1, 'h'))
+                deltatime_site=tdelta/np.timedelta64(1, 'h')
                 deltatime[whi,wh_site] = deltatime_site
 
         nsite_max=np.max(nmeasure_site)
@@ -704,7 +703,7 @@ def run_tdmcmc(sites,meas_period,av_period,species,start_date ,end_date,
     #%%
     # MCMC Parameters
     #########################################
-    nit_sub=old_div(nIt,nsub)
+    nit_sub=nIt//nsub
     k=np.zeros((nbeta),dtype=np.int)+k_ap
     
     x=np.zeros((kICmax,nbeta))

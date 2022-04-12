@@ -112,7 +112,7 @@ def convertCAMSaltitude(ds):
     
     z_dims = tuple([dim if dim!="hlevel" else "level" for dim in ds["altitude"].dims])
     
-    ds = ds.assign(**{"z":(z_dims,z)})
+    ds = ds.assign(**{"z":(z_dims,z.data)})
     ds["z"] = ds["z"].transpose(*("time","level","latitude","longitude"))
     
     return ds
