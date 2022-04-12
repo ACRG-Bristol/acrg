@@ -78,7 +78,6 @@ This could be run as:
                             write_nc=False,
                             write_name=False)
 """
-from past.utils import old_div
 import glob
 import os
 import re
@@ -579,7 +578,7 @@ def distance_lat(distance,radius=radius):
             Latitude difference in degrees
     '''
     # Haversine distance formula is given as distance = 2*asin(sqrt(a))*radius
-    a = math.sin(old_div(distance,(2.*radius)))*math.sin(old_div(distance,(2.*radius)))
+    a = math.sin(distance/(2.*radius))*math.sin(distance/(2.*radius))
     
     # Full formula for a = sin(dlat/2)**2 + cos(lat1)*cos(lat2)*sin(dLon/2)**2
     # When dlon=0, lon1=lon2, a reduces to a = sin(dlat/2)**2
@@ -607,11 +606,11 @@ def distance_lon(distance,lat,radius=radius):
     '''
     lat = math.radians(lat)
     # Haversine distance formula is given as distance = 2*asin(sqrt(a))*radius
-    a = math.sin(old_div(distance,(2.*radius)))*math.sin(old_div(distance,(2.*radius)))
+    a = math.sin(distance/(2.*radius))*math.sin(distance/(2.*radius))
     
     # Full formula for a = sin(dlat/2)**2 + cos(lat1)*cos(lat2)*sin(dLon/2)**2
     # When dlat=0, lat1=lat2, a reduces to a = cos^2(lat)*sin^2(dlat/2)
-    b = old_div(math.sqrt(a),math.cos(lat))
+    b = math.sqrt(a)/math.cos(lat)
     dlon = 2.*math.asin(b)
     dlon = np.abs(dlon)
     
@@ -1800,7 +1799,7 @@ def name_pressure_filter(ds,filters,pressure_NAME=None,columns=["latitude","long
     
     if "cutoff" in filters:
         model_diff = pressure_NAME - pressure_levels[:,0]
-        percent_diff = np.abs(old_div(model_diff*100.,pressure_NAME))
+        percent_diff = np.abs(model_diff*100./pressure_NAME)
         ds_new = ds_new.where(percent_diff <= cutoff, drop=True)
         #filt_1 = np.where(percent_diff <= cutoff)[0]
         #filt = filt_1
@@ -2526,7 +2525,7 @@ def gosat_output_name(ds,site,max_level=17,use_name_pressure=False,pressure_doma
                 filename = site+"_"+date.replace('-','')
                 if max_points:
                     if len(wh_date) > max_points:
-                        letter_split = chr(ord("A")+int(old_div(ID,max_points)))
+                        letter_split = chr(ord("A") + ID//max_points)
                         filename = "{}-{}".format(filename,letter_split)
                     ID_1 = ID%max_points
                 else:

@@ -94,6 +94,5 @@ def regrid_betweenGrids(data, input_grid, output_grid, method="conservative"):
     #method = 'conservative'
     regridder = xesmf.Regridder(input_grid, output_grid, method)
     regridded = regridder( data )
-    regridder.clean_weight_file()
         
     return regridded
