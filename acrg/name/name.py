@@ -3,12 +3,6 @@
 Created on Mon Nov 10 10:45:51 2014
 
 """
-import numpy as np
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-from matplotlib.ticker import MaxNLocator
-from matplotlib import ticker
-import datetime as dt
 import os
 import sys
 import glob
@@ -28,7 +22,6 @@ import matplotlib as mpl
 import cartopy.crs as ccrs
 from matplotlib import ticker
 import dateutil.relativedelta
-from past.utils import old_div
 import matplotlib.pyplot as plt
 from collections import OrderedDict
 from matplotlib.ticker import MaxNLocator
@@ -1047,7 +1040,8 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
 
                 # If units are specified, multiply by scaling factor
                 if units:
-                    site_ds.update({'fp' : (site_ds.fp.dims, site_ds.fp.data/units)})
+                    if 'fp' in site_ds.data_vars:
+                        site_ds.update({'fp' : (site_ds.fp.dims, site_ds.fp.data/units)})
                     if HiTRes:
                         site_ds.update({'fp_HiTRes' : (site_ds.fp_HiTRes.dims, 
                                                        site_ds.fp_HiTRes/units)})
