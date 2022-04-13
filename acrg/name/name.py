@@ -886,7 +886,6 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
         Dictionary of the form {"MHD": MHD_xarray_dataset, "TAC": TAC_xarray_dataset, ".flux": dictionary_of_flux_datasets, ".bc": boundary_conditions_dataset}:
             combined dataset for each site
     """
-
     sites = [key for key in data]
     
     species_list = []
@@ -908,24 +907,19 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
                       Setting load_flux to False.")
                 load_flux=False
         else:
-            emissions_name = {'all':species}    
-
+            emissions_name = {'all': species}
 
     # Output array
     fp_and_data = {}
 
     #empty variables to fill with earliest start and latest end dates
     flux_bc_start = None
-    flux_bc_end = None    
-
-    
+    flux_bc_end = None
 
     for i, site in enumerate(sites):
-
         site_ds_list = []
 
         for site_ds in data[site]:
-
             if network is None:
                 network_site = list(site_info[site].keys())[0]
             elif not isinstance(network,str):
@@ -948,7 +942,6 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
                 flux_bc_start = start
             if flux_bc_end == None or flux_bc_end < end:
                 flux_bc_end = end
-
 
             ## Convert to dataset
             #site_ds = xr.Dataset.from_dataframe(site_df)
@@ -1044,17 +1037,18 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
                         site_ds.update({'fp' : (site_ds.fp.dims, site_ds.fp.data/units)})
                     if HiTRes:
                         site_ds.update({'fp_HiTRes' : (site_ds.fp_HiTRes.dims, 
-                                                       site_ds.fp_HiTRes/units)})
+                                                       site_ds.fp_HiTRes.data/units)})
 
                 site_ds_list += [site_ds]
     
         fp_and_data[site] = xr.merge(site_ds_list)
 
     if load_flux:
-
         flux_dict = {} 
         basestring = (str, bytes)    
         for source, emiss_source in emissions_name.items():
+            if isinstance(emissions_name[source], basestring) and HiTRes:
+                emissions_name[source] = {'high_freq': emissions_name[source]}
 
             if isinstance(emissions_name[source], basestring):
                 flux_dict[source] = flux(domain, emiss_source, start=flux_bc_start, end=flux_bc_end,
@@ -1062,16 +1056,15 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
 
             elif isinstance(emissions_name[source], dict):
                 if HiTRes == False:
-                    print("HiTRes is set to False and a dictionary has been found as the emissions_name dictionary value\
-                          for source %s. Either enter your emissions names as separate entries in the emissions_name\
-                          dictionary or turn HiTRes to True to use the two emissions files together with HiTRes footprints." %source)
-                    #return None
+                    print("HiTRes is set to False and a dictionary has been found as the emissions_name dictionary value " +
+                          f"for source {source}. Either enter your emissions names as separate entries in the emissions_name " +
+                          "dictionary or turn HiTRes to True to use the two emissions files together with HiTRes footprints.\n" +
+                          "Not calculating timeseries")
                 else:
                     flux_dict[source] = flux_for_HiTRes(domain, emiss_source, start=flux_bc_start,
                                                         end=flux_bc_end, flux_directory=flux_directory, verbose=verbose)
 
         fp_and_data['.flux'] = flux_dict
-            
         
     if load_bc:       
         bc = boundary_conditions(domain, species, start=flux_bc_start, end=flux_bc_end, bc_directory=bc_directory, chunks=chunks)
