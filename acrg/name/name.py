@@ -425,10 +425,9 @@ def flux(domain, species, start = None, end = None, flux_directory=None, HiTRes=
            
         if 'climatology' in species:
             ndate = pd.to_datetime(flux_ds.time.values)
-            if len(ndate) == 1:  #If it's a single climatology value
-                dateadj = ndate - month_start  #Adjust climatology to start in same year as obs  
-            else: #Else if a monthly climatology
-                dateadj = ndate[month_start.month-1] - month_start  #Adjust climatology to start in same year as obs  
+            # Adjust climatology to start in same year as obs 
+            dateadj = ndate - month_start if len(ndate) == 1 else \
+                      ndate[ndate.month==month_start.month][0] - month_start
             ndate = ndate - dateadj
             flux_ds = flux_ds.update({'time' : ndate})  
             flux_tmp = flux_ds.copy()
@@ -437,7 +436,7 @@ def flux(domain, species, start = None, end = None, flux_directory=None, HiTRes=
                 flux_ds = xr.merge([flux_ds, flux_tmp.update({'time' : ndate})])
                     
         flux_timeslice = flux_ds.sel(time=slice(month_start, month_end))
-        if np.logical_and(month_start.year != month_end.year, len(flux_timeslice.time) != dateutil.relativedelta.relativedelta(end, start).months) and not HiTRes:
+        if np.logical_and(month_start.year != month_end.year, len(flux_timeslice.time) != dateutil.relativedelta.relativedelta(end, start).months):
             month_start = dt.datetime(start.year, 1, 1, 0, 0)
             flux_timeslice = flux_ds.sel(time=slice(month_start, month_end))
         if len(flux_timeslice.time)==0:
@@ -449,7 +448,6 @@ def flux(domain, species, start = None, end = None, flux_directory=None, HiTRes=
             if verbose:
                 print(f"Slicing time to range {month_start} - {month_end}")
         
-        flux_timeslice = flux_timeslice.compute()
         return flux_timeslice
 
 
@@ -504,7 +502,7 @@ def flux_for_HiTRes(domain, emissions_dict, start=None, end=None, flux_directory
                 print(f"Warning: {freq} key not found in emissions_dict.")
             else:
                 flux_dict[source][freq] = flux(domain, em_source[freq], start = start, end = end,
-                                               flux_directory = flux_directory, HiTRes=True, chunks = chunks, verbose = verbose)
+                                               flux_directory = flux_directory, chunks = chunks, verbose = verbose)
                 
     flux_dict = flux_dict['no_source'] if list(flux_dict.keys())==['no_source'] else flux_dict
     
