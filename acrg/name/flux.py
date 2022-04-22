@@ -26,7 +26,7 @@ def write(lat, lon, time, flux, species, domain,
           source, title, prior_info_dict,
           regridder_used = 'acrg_grid.regrid.regrid_3D',
           copy_from_year = None, climatology = False, flux_comments = None,
-          uncertainty = None, uncertainty_desc=None,
+          uncertainty = None, uncertainty_desc=None, units=None,
           output_directory = output_directory, overwrite=False):
     '''Write a flux file for emissions
     
@@ -71,6 +71,11 @@ def write(lat, lon, time, flux, species, domain,
             e.g. describing method of calculation
         output_directory (str, optional): 
             Output directory. Default is 'data_path + LPDM/emissions/'.
+        units (str, optional)
+            Units of data, defaults to flux units of mol/m2/s
+        overwrite (bool, optional)
+            If True, automatically overwrite files with the same species, source, and year
+            defaults to False - will ask for user input to overwrite file
     
     Returns:
         None
@@ -94,11 +99,15 @@ def write(lat, lon, time, flux, species, domain,
     Todo: 
         Add some error checking (e.g. check that domain is correct)
     '''
-    
-    print("WARNING: Make sure time stamp is start of time period (i.e. 1st of month\
-            for monthly data or 1st January for yearly data).")
+    units = 'mol/m2/s' if units is None else units
+
+    print("WARNING: Make sure time stamp is start of time period (i.e. 1st of month "+\
+          "for monthly data or 1st January for yearly data).")
     print("WARNING: Make sure coordinates are centre of the gridbox.")
-    print("WARNING: Make sure fluxes are in mol/m2/s.")
+    if units =='mol/m2/s':
+        print("WARNING: Make sure fluxes are in mol/m2/s.")
+    else:
+        print(f"Warning: Saving data in units of {units}")
 
     name_climatology = "-climatology" if climatology == True else ""
     file_source = f'{species}{name_climatology}-total' if source==None else \
@@ -116,7 +125,7 @@ def write(lat, lon, time, flux, species, domain,
         if len(time) not in [1, 12]:
             sys.exit('Expecting either yearly or monthly climatology. Make sure time dimension is of size 1 or 12.')
         time = [np.datetime64('1900-01-01')] if len(time) == 1 else \
-               np.arange('1900-01', '1901-01', dtype='datetime64[M]')
+                np.arange('1900-01', '1901-01', dtype='datetime64[M]')
     
     if type(time[0]) == np.datetime64:
         time = time.astype(dtype="datetime64[ns]") if isinstance(time, np.ndarray) else \
@@ -144,13 +153,13 @@ def write(lat, lon, time, flux, species, domain,
         print(f'Overwriting existing file: {ncname}')
     
     flux_attrs = {"source" : file_source,
-                  "units" : 'mol/m2/s',
+                  "units" : units,
                   "species" : species}
 
     if uncertainty is not None:
         uncertainty_desc = "" if uncertainty_desc is None else uncertainty_desc
         unc_attrs = {"source" : file_source,
-                     "units" : 'mol/m2/s',
+                     "units" : units,
                      "species" : species,
                      "description": uncertainty_desc} 
     
