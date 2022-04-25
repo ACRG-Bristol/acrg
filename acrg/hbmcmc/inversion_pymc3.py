@@ -198,7 +198,7 @@ def inferpymc3(Hx, Y, error, siteindicator, sigma_freq_index,
         if add_offset:
             offset_outs = trace.get_values(offset, burn=burn)[0:int((nit)-burn)]
             offset_trace = np.hstack([np.zeros((int(nit-burn),1)), offset_outs])
-        else:
+
         Ytrace = np.dot(Hx.T,outs.T)
         
         return outs, sigouts, Ytrace, convergence, step1, step2
@@ -473,7 +473,7 @@ def inferpymc3_postprocessouts(xouts, sigouts, convergence,
                             'country95':(['countrynames', 'nUI'],cntry95),
                             'countryapriori':(['countrynames'],cntryprior),
                             'countrydefinition':(['lat','lon'], cntrygrid),
-                            'xsensitivity':(['nmeasure','nparam'], Hx.T),
+                            'xsensitivity':(['nmeasure','nparam'], Hx.T)},
                         coords={'stepnum' : (['steps'], steps), 
                                    'paramnum' : (['nlatent'], nparam),
                                    'measurenum' : (['nmeasure'], nmeasure), 
@@ -543,7 +543,7 @@ def inferpymc3_postprocessouts(xouts, sigouts, convergence,
         outds.attrs['Date created'] = str(pd.Timestamp('today'))
         outds.attrs['Convergence'] = convergence
         outds.attrs['Repository version'] = code_version()
-        if if len(removed_sites) > 0:
+        if len(removed_sites) > 0:
             outds.attrs['Removed sites due to no observations'] = removed_sites
         
         comp = dict(zlib=True, complevel=5)

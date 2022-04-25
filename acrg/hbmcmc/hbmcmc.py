@@ -28,6 +28,10 @@ import acrg.hbmcmc.inversionsetup as setup
 import acrg.hbmcmc.inversion_pymc3 as mcmc
 import acrg.name.basis_functions as basis
 from acrg.config.paths import Paths
+import xarray as xr
+import glob
+import os
+import pandas as pd
 
 
 acrg_path = Paths.acrg
@@ -231,9 +235,10 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     fp_data = name.fp_sensitivity(fp_all, domain=domain, basis_case=fp_basis_case,basis_directory=basis_directory)
     
     ###### ADD SMOOTHED BCKG TO FP_DATA
-    smoothed_bckg = xr.open_dataset(glob.glob(data_path + '/obs/BRW/BRW_smoothed_bckg.nc')
-    smoothed_bckg = smoothed_bckg.loc[dict(time = slice(pd.Timestamp(start_date), pd.Timestamp(end_date)))] 
-    fp_data = xr.merge([fp_data['BRW'], smoothed_bckg], join = 'left')                             
+    smoothed_bckg = xr.open_dataset(glob.glob('/user/home/ky20893/shared/obs/BRW/BRW_smoothed_bckg.nc')[0])
+    smoothed_bckg = smoothed_bckg.loc[dict(time = slice(pd.Timestamp(start_date), pd.Timestamp(end_date)))]
+    fp_data['BRW'] = xr.merge([fp_data['BRW'], smoothed_bckg], join = 'left')                             
+    
     #apply named filters to the data
     fp_data = name.filtering(fp_data, filters)
     
@@ -252,7 +257,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             error = np.concatenate((error, fp_data[site].mf_variability.values))
         
         #### REMOVE SMOOTH BCKG
-        Y = np.concatenate((Y,fp_data[site].mf.values - fp_data.smoothed_bckg.values)) 
+        Y = np.concatenate((Y,fp_data[site].mf.values - fp_data['BRW'].smoothed_bckg.values)) 
         siteindicator = np.concatenate((siteindicator, np.ones_like(fp_data[site].mf.values)*si))
         if si == 0:
             Ytime=fp_data[site].time.values

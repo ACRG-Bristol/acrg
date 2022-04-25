@@ -970,7 +970,7 @@ def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True
     """
     
 
-    y_bg_mean = ds["YmodmeanBC"].values
+    # y_bg_mean = ds["YmodmeanBC"].values
 
     y_post_mean = ds["Ymodmean"].values
     
@@ -997,7 +997,7 @@ def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True
                 wh_site = np.where(y_site == np.where(sitenames == site)[0][0])
 
                 y_time_site = y_time[wh_site[0]]
-                y_bg_site = y_bg_mean[wh_site[0]]
+                # y_bg_site = y_bg_mean[wh_site[0]]
                 y_post_site = y_post_mean[wh_site[0]]
                 upper_site = upper[wh_site[0]]
                 lower_site = lower[wh_site[0]]
@@ -1009,7 +1009,7 @@ def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True
                 
                 ax[si].plot(y_time_site,y_post_site, color='blue', label='Modelled observations')
                 
-                ax[si].plot(y_time_site,y_bg_site,color='black', label='Modelled bounday conditions')
+                # ax[si].plot(y_time_site,y_bg_site,color='black', label='Modelled bounday conditions')
                 
                 if plot_prior:
                     ax[si].plot(y_time[wh_site[0]],y_prior[wh_site[0]], color='green', label='Prior')
@@ -1033,8 +1033,8 @@ def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True
                         facecolor='lightskyblue', edgecolor='lightskyblue')
             ax.plot(y_time,y_obs, 'ro', markersize=4, label='Observations')
             ax.plot(y_time,y_post_mean, color='blue', label='Modelled observations')
-            ax.plot(y_time,y_bg_mean,color='black', 
-                     label='Modelled boundary conditions')
+            # ax.plot(y_time,y_bg_mean,color='black', 
+                     # label='Modelled boundary conditions')
 
             if plot_prior:
                 ax.plot(y_time,y_prior, color='green', label='Prior')
