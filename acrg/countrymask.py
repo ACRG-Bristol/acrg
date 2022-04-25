@@ -508,8 +508,8 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
 def mask_fill_gaps(mask_array):
     
     #TODO: create a test for fill_gaps
-    print('\nFilling in gaps between masks\nby checking for grid cells where surrounding cells are indentical.')
-    print('WARNING: This is experimental, when using this mask to estimate country emissions from countries'+
+    print('\nFilling in gaps between masksby checking for grid cells where surrounding cells are indentical.')
+    print('WARNING: This is experimental, when using this mask to estimate country emissions from countries '+
           'with complex coastlines you should manually check the mask before use.')
     print('WARNING: This does not work for any gaps that are on the edge of the domain.')
         
@@ -536,12 +536,12 @@ def mask_fill_gaps(mask_array):
                     
     return mask_array
 
-def create_country_mask_eez(domain,include_land_territories=True,
+def create_country_mask_eez(domain,lat=None,lon=None,include_land_territories=True,
                             include_ocean_territories=True,reset_index=True,fill_gaps=True,
                             fp_directory=fp_directory,lat_lon_mask=False,sub_lats=None,sub_lons=None,
                             output_path=None,save=False):
     """
-    Creates a mask for all countries within the domain.
+    Creates a mask for all countries within the domain (or lat/lon bounds).
     Uses Natural Earth 10m land datasets and Admin_0_map_units datasets
     for specifiying country and ocean boundaries.
     Option to include EEZ (Exclusive Economic Zones e.g. marine 
@@ -551,7 +551,12 @@ def create_country_mask_eez(domain,include_land_territories=True,
     
     Args:
         domain (str):
-            The domain the mask should cover, e.g. 'EUROPE'.
+            The domain the mask should cover, e.g. 'EUROPE'. If lat and lon are not specified,
+            will use the domain to extract the latitudes and longitudes.
+        lat (numpy array) (optional):
+            Latitudes to create mask over. If not specified, will extract lats from a domain.
+        lon (numpy array) (optional):
+            Longitudes to create mask over. If not specified, will extract lons from a domain.
         include_land_territories (bool):
             If True, include land territories for all countries in the 
             country mask.
@@ -568,9 +573,9 @@ def create_country_mask_eez(domain,include_land_territories=True,
             by default and expects sub-directories of domain name.
         lat_lon_mask (bool):
             If True, masks all cells outside sub_lats and sub_lons (gives them values of np.nan).
-        sub_lats (list or array):
+        sub_lats (list or array) (optional):
             Either a list of [min_lat,max_lat] or a numpy array of lats. Any cells beyond these limits are masked.
-        sub_lons (list or array):
+        sub_lons (list or array) (optional):
             Either a list of [min_lon,max_lon] or a numpy array of lons. Any cells beyond these limits are masked.
          out_path (str) (optional):
             Path and name to save mask to. If None, does not save dataset.
@@ -582,8 +587,16 @@ def create_country_mask_eez(domain,include_land_territories=True,
     print("If you are having issues with downloading the required files from natural earth:")
     print("Try installing cartopy version 0.20.0, this may fix the issue.")
    
-    # extract lats and lons from fp file
-    lats,lons,heights = domain_volume(domain,fp_directory=fp_directory)
+    if lat is not None:
+        lat_range = [lat[0],lat[-1]]
+        lon_range = [lon[0],lon[-1]]
+        print(f'\nCreating mask between lats: {lat_range} and lons: {lon_range}.')
+        lats = lat
+        lons = lon
+    else:
+        print(f'\nExtracting lats and lons from domain: {domain}.')
+        # extract lats and lons from fp file
+        lats,lons,heights = domain_volume(domain,fp_directory=fp_directory)
 
     # load in land files
     shpfilename_land = shapereader.natural_earth('10m','cultural','admin_0_map_units')
