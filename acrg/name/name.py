@@ -24,6 +24,8 @@ import dateutil.relativedelta
 import cartopy.crs as ccrs
 import cartopy
 from collections import OrderedDict
+from acrg.convert import convert_lons_0360
+
 
 from acrg.time import convert
 import acrg.obs as obs
@@ -1140,9 +1142,7 @@ def add_bc(fp_and_data, load_bc, species):
             name of species in the dataset
     """
     if load_bc == False:
-
         print("Can't get modelled baseline timeseries because load_bc is set to False.")
-
     else:
         
         species_obs = obs.read.synonyms(species, species_info)
@@ -1154,7 +1154,6 @@ def add_bc(fp_and_data, load_bc, species):
             if 'lifetime' in species_info[species_obs].keys():
                 lifetime = species_info[species_obs]["lifetime"]
                 lifetime_hrs_list_or_float = convert.convert_to_hours(lifetime)
-
                 # calculate the lifetime_hrs associated with each time point in fp_and_data
                 # this is because lifetime can be a list of monthly values
                 
@@ -1174,12 +1173,24 @@ def add_bc(fp_and_data, load_bc, species):
                 loss_s = 1
                 loss_w = 1
 
-            fp_and_data[site]['bc'] = (fp_and_data[site].particle_locations_n*bc_reindex.vmr_n*loss_n).sum(["height", "lon"]) + \
-                                        (fp_and_data[site].particle_locations_e*bc_reindex.vmr_e*loss_e).sum(["height", "lat"]) + \
-                                        (fp_and_data[site].particle_locations_s*bc_reindex.vmr_s*loss_s).sum(["height", "lon"]) + \
-                                        (fp_and_data[site].particle_locations_w*bc_reindex.vmr_w*loss_w).sum(["height", "lat"])
-    return fp_and_data
+            if 0 in np.sum(fp_and_data[site].particle_locations_s.values, axis = (0,1)):
 
+                fp_and_data[site]['particle_locations_n'] = xr.zeros_like(fp_and_data[site].mean_age_particles_n)
+                fp_and_data[site]['particle_locations_e'] = xr.zeros_like(fp_and_data[site].mean_age_particles_e)
+                fp_and_data[site]['particle_locations_s'] = xr.ones_like(fp_and_data[site].mean_age_particles_s)*(1/20)*(1/1024)
+                fp_and_data[site]['particle_locations_w'] = xr.zeros_like(fp_and_data[site].mean_age_particles_w)
+                
+                fp_and_data[site]['bc'] = (fp_and_data[site].particle_locations_n*bc_reindex.vmr_n*loss_n).sum(["height", "lon"]) + \
+                                            (fp_and_data[site].particle_locations_e*bc_reindex.vmr_e*loss_e).sum(["height", "lat"]) + \
+                                            (fp_and_data[site].particle_locations_s*bc_reindex.vmr_s*loss_s).sum(["height", "lon"]) + \
+                                            (fp_and_data[site].particle_locations_w*bc_reindex.vmr_w*loss_w).sum(["height", "lat"])
+                               
+            else:
+                fp_and_data[site]['bc'] = (fp_and_data[site].particle_locations_n*bc_reindex.vmr_n*loss_n).sum(["height", "lon"]) + \
+                                            (fp_and_data[site].particle_locations_e*bc_reindex.vmr_e*loss_e).sum(["height", "lat"]) + \
+                                            (fp_and_data[site].particle_locations_s*bc_reindex.vmr_s*loss_s).sum(["height", "lon"]) + \
+                                            (fp_and_data[site].particle_locations_w*bc_reindex.vmr_w*loss_w).sum(["height", "lat"])
+    return fp_and_data
 
 def fp_sensitivity(fp_and_data, domain, basis_case,
                    basis_directory = None, verbose=True):
@@ -1493,6 +1504,7 @@ def filtering(datasets_in, filters, keep_missing=False):
                                  "local_influence"   : Only keep times when localness is low
                                  "six_hr_mean"       :
                                  "local_lapse"       :
+                                 "BRW_wind_dir_filter":
         keep_missing (bool) : Whether to reindex to retain missing data.
     
     Returns:
@@ -1529,6 +1541,8 @@ def filtering(datasets_in, filters, keep_missing=False):
 
         for ti in range(len(dataset.mf)):
             release_lon=dataset.release_lon[ti].values
+            if any(dataset.lon.values < 0) & (release_lon < min(dataset.lon.values)):
+                    release_lon = convert_lons_0360(release_lon)
             release_lat=dataset.release_lat[ti].values
             wh_rlon = np.where(abs(dataset.lon.values-release_lon) < dlon/2.)
             wh_rlat = np.where(abs(dataset.lat.values-release_lat) < dlat/2.)
@@ -1618,7 +1632,7 @@ def filtering(datasets_in, filters, keep_missing=False):
         else:
             lr = dataset.local_ratio
             
-        pc = 0.1
+        pc = 0.04
         ti = [i for i, local_ratio in enumerate(lr) if local_ratio <= pc]
         if keep_missing is True: 
             mf_data_array = dataset.mf            
@@ -1633,6 +1647,36 @@ def filtering(datasets_in, filters, keep_missing=False):
             return dataset_out
         else:
             return dataset[dict(time = ti)]
+        
+    def BRW_wind_dir_filter(dataset):
+        '''
+        Filters BRW data for BRW wind direction.
+        '''
+        print('Applying wind filter.')
+
+        start_date = dataset.time[0].values
+        end_date = dataset.time[-1].values
+
+        met_file = os.path.join(data_path, 'obs/BRW/NOAA-None_BRW_19800101_met-20210421.nc')
+        met_data = xr.open_dataset(met_file)
+        met_data = met_data.loc[dict(time = slice(start_date, end_date))].rename({'wind_speed':'wind_sp'})
+
+        dataset = xr.merge([dataset, met_data], join = 'inner')
+        time_len = len(dataset.time)
+
+        # remove windspeeds below 3m/s
+        ti = np.where(dataset.wind_sp > 3)[0]
+        dataset = dataset[dict(time = ti)]
+
+        # remove wind dir
+        ti = np.where(dataset.wind_dir <= 210)[0]
+        dataset = dataset[dict(time = ti)]
+        dataset = dataset.drop(['wind_sp', 'wind_dir'])
+
+        # percentage of removed points
+        print(f"Percentage remaining data points :{len(ti)*100/time_len}%")
+
+        return dataset
                      
         
     filtering_functions={"daily_median":daily_median,
@@ -1641,7 +1685,8 @@ def filtering(datasets_in, filters, keep_missing=False):
                          "nighttime":nighttime,
                          "noon":noon,
                          "local_influence":local_influence,
-                         "six_hr_mean":six_hr_mean}
+                         "six_hr_mean":six_hr_mean,
+                         "BRW_wind_dir_filter":BRW_wind_dir_filter}
 
     # Get list of sites
     sites = [key for key in list(datasets.keys()) if key[0] != '.']
@@ -1652,6 +1697,8 @@ def filtering(datasets_in, filters, keep_missing=False):
             for filt in filters:
                 if filt == "daily_median" or filt == "six_hr_mean":
                     datasets[site] = filtering_functions[filt](datasets[site], keep_missing=keep_missing)
+                elif filt == 'BRW_wind_dir_filter':
+                    datasets[site] = filtering_functions[filt](datasets[site])    
                 else:
                     datasets[site] = filtering_functions[filt](datasets[site], site, keep_missing=keep_missing)
 

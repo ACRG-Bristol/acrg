@@ -177,6 +177,16 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     data = getobs.get_obs(sites, species, start_date = start_date, end_date = end_date, 
                          average = meas_period, data_directory=obs_directory,
                           keep_missing=False,inlet=inlet, instrument=instrument, max_level=max_level)
+    
+    #Check to see if all sites have data and removes sites without data from inversion
+    removed_sites = []
+    for si, site in enumerate(sites):
+        if data[site][0].time.size == 0:
+            print(f"No data available for {site}, removing site from inversion.")
+            del data[site]
+            del sites[si]
+            removed_sites.append(site)
+    
     fp_all = name.footprints_data_merge(data, domain=domain, met_model = met_model, calc_bc=True, 
                                         height=fpheight, 
                                         fp_directory = fp_directory,
@@ -184,10 +194,6 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                                         flux_directory = flux_directory,
                                         emissions_name=emissions_name)
     
-    for site in sites:
-        for j in range(len(data[site])):
-            if len(data[site][j].mf) == 0:
-                print("No observations for %s to %s for %s" % (start_date, end_date, site))
     if sites[0] not in fp_all.keys():
         print("No footprints for %s to %s" % (start_date, end_date))
         return
@@ -280,7 +286,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                                burn, tune, nchain, sigma_per_site,
                                fp_data=fp_data, flux_directory=flux_directory, emissions_name=emissions_name, 
                                basis_directory=basis_directory, country_file=country_file,
-                               add_offset=add_offset)
+                               add_offset=add_offset, removed_sites = removed_sites)
 
     if quadtree_basis is True:
         # remove the temporary basis function directory

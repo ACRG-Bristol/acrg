@@ -228,7 +228,7 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
                                burn, tune, nchain, sigma_per_site,
                                fp_data=None, flux_directory=None, emissions_name=None, 
                                basis_directory=None, country_file=None,
-                               add_offset=False, rerun_file=None):
+                               add_offset=False, rerun_file=None, removed_sites=[]):
 
         """
         Takes the output from inferpymc3 function, along with some other input
@@ -343,6 +343,9 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
                 Add an offset (intercept) to all sites but the first in the site list. Default False.
             rerun_file (xarray dataset, optional):
                 An xarray dataset containing the ncdf output from a previous run of the MCMC code.
+            removed_sites (list, default empty):
+                If site is removed from inversion in hbmcmc.py due to no observation data then removed sites will be a 
+                list of strings of removed sites.
                 
         Returns:
             netdf file containing results from inversion
@@ -589,6 +592,8 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
         outds.attrs['Date created'] = str(pd.Timestamp('today'))
         outds.attrs['Convergence'] = convergence
         outds.attrs['Repository version'] = code_version()
+        if if len(removed_sites) > 0:
+            outds.attrs['Removed sites due to no observations'] = removed_sites
         
         comp = dict(zlib=True, complevel=5)
         encoding = {var: comp for var in outds.data_vars}
