@@ -27,12 +27,12 @@ To run all tests except those labelled 'long' use the syntax
 from cachetools import cached
 import pytest
 import os
-import sys
 import glob
 import numpy as np
 import xarray as xray
 import pandas as pd
 import pickle
+from datetime import datetime, timedelta
 
 import acrg.name.name as name
 import acrg.obs.read as read
@@ -223,6 +223,22 @@ def footprint_param(fp_directory,measurement_param):
     
     return input_param
 
+@pytest.fixture()
+def footprint_param_HiTRes(fp_directory,measurement_param):
+    ''' Define set of input parameters for footprints() function. Based on measurement_param '''
+    
+    input_param = {}
+    input_param["sitecode_or_filename"] = 'WAO'
+    input_param["domain"] = measurement_param["domain"]
+    input_param["fp_directory"] = fp_directory
+    input_param['HiTRes'] = True
+    input_param['met_model'] = 'UKV'
+    input_param['start'] = '2018-01-01'
+    input_param['end'] = '2018-02-01'
+    input_param['height'] = '20magl'
+    
+    return input_param
+
 def test_footprints_from_file(fp_directory,measurement_param):
     '''
     Test dataset can be created from footprint filename with footprints() function
@@ -237,14 +253,18 @@ def test_footprints_from_file(fp_directory,measurement_param):
     assert out
 
 @pytest.mark.long
-def test_footprints_from_site(footprint_param,flux_directory,bc_directory):
+def test_footprints_from_site(footprint_param, footprint_param_HiTRes):
     '''
     Test dataset can be created from set of parameters with footprints() function.
     '''
 
     out = name.footprints(**footprint_param)
+
+    # test importing the HiTRes footprint
+    out_HiTRes = name.footprints(**footprint_param_HiTRes)
     
     assert out
+    assert out_HiTRes
 
 
 @pytest.fixture()
@@ -264,6 +284,34 @@ def test_flux(flux_param):
     '''
     out = name.flux(**flux_param)
     assert out
+
+@pytest.fixture()
+def flux_param_HiTRes(flux_directory):
+    ''' Define set of input parameters for flux_HiTRes() function.'''
+    
+    input_param = {}
+    input_param["domain"] = 'SMALL-DOMAIN'
+    input_param["emissions_dict"] = {'high_freq': 'co2-ukghg-total-1hr'}
+    input_param["flux_directory"] = flux_directory
+    input_param["start"] = '2018-01-02'
+    input_param["end"] = '2018-01-10'
+    input_param["test"] = True
+    
+    return input_param
+
+def test_flux_HiTRes(flux_param_HiTRes):
+    '''
+    Test dataset can be created by flux_for_HiTRes() function
+    '''
+    start = datetime.strptime(flux_param_HiTRes['start'], '%Y-%m-%d')
+    start = datetime(start.year, start.month, start.day) + timedelta(hours=-24)
+
+    out = name.flux_for_HiTRes(**flux_param_HiTRes)['high_freq']
+    out_start = datetime.strptime(out.time.values[0].astype(str).split('T')[0], '%Y-%m-%d')
+    print(f'start (test): {out.time.values[0]}')
+
+    assert out
+    assert start==out_start
 
     
 @pytest.fixture()
