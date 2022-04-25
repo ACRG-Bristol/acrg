@@ -337,7 +337,8 @@ def footprints(sitecode_or_filename, met_model = None, fp_directory = None,
         return fp
 
 
-def flux(domain, species, start = None, end = None, flux_directory=None, HiTRes=False, chunks=None, verbose=True):
+def flux(domain, species, start = None, end = None, flux_directory=None,
+         HiTRes=False, H_back=None, chunks=None, verbose=True, test=False):
     """
     The flux function reads in all flux files for the domain and species as an xarray Dataset.
     Note that at present ALL flux data is read in per species per domain or by emissions name.
@@ -369,6 +370,11 @@ def flux(domain, species, start = None, end = None, flux_directory=None, HiTRes=
         flux_directory (str, optional) : 
             flux_directory can be specified if files are not in the default directory.
             Must point to a directory which contains subfolders organized by domain.
+        HiTRes (bool, optional) :
+            True if importing HiTRes fluxes
+        H_back (int, optional) :
+            hours back of data to collect if using the HiTRes processes
+            if HiTRes=True, by default H_back=24
     Returns:
         xarray.Dataset : combined dataset of all matching flux files
     """
@@ -414,14 +420,17 @@ def flux(domain, species, start = None, end = None, flux_directory=None, HiTRes=
         print("To get fluxes for a certain time period you must specify a start or end date.")
         return flux_ds
     else:
-
+        H_back = 24 if H_back is None and HiTRes else H_back
         #Change timeslice to be the beginning and end of months in the dates specified.
         start = pd.to_datetime(start)
-        month_start = dt.datetime(start.year, start.month, 1, 0, 0)
+        month_start = dt.datetime(start.year, start.month, 1, 0, 0) if not test else \
+                      dt.datetime(start.year, start.month, start.day, 0, 0)
+        month_start = month_start if not HiTRes else month_start - dt.timedelta(hours = H_back)
         
         end = pd.to_datetime(end)
-        month_end = dt.datetime(end.year, end.month, 1, 0, 0) - \
-                        dt.timedelta(seconds = 1)
+        month_end = dt.datetime(end.year, end.month, 1, 0, 0) if not test else \
+                    dt.datetime(end.year, end.month, end.day, 0, 0)
+        month_end = month_end - dt.timedelta(seconds = 1)
            
         if 'climatology' in species:
             ndate = pd.to_datetime(flux_ds.time.values)
@@ -451,7 +460,8 @@ def flux(domain, species, start = None, end = None, flux_directory=None, HiTRes=
         return flux_timeslice
 
 
-def flux_for_HiTRes(domain, emissions_dict, start=None, end=None, flux_directory=None, chunks=None, verbose=True):
+def flux_for_HiTRes(domain, emissions_dict, start=None, end=None, H_back=None, flux_directory=None,
+                    chunks=None, verbose=True, test=False):
     """
     Creates a dictionary of high and low frequency fluxes for use with HiTRes footprints.
     
@@ -477,6 +487,8 @@ def flux_for_HiTRes(domain, emissions_dict, start=None, end=None, flux_directory
         flux_directory (str, optional) : 
             flux_directory can be specified if files are not in the default directory. 
             Must point to a directory which contains subfolders organized by domain.
+        H_back (int, optional) :
+            hours back of data to collect, by default H_back=24
     Returns:
         dictionary:
             Dictionary containing xarray Datasets for both high and low frequency fluxes for the
@@ -486,13 +498,16 @@ def flux_for_HiTRes(domain, emissions_dict, start=None, end=None, flux_directory
     
     flux_dict = {}
     
-    if start:
-        # Get the month before the one one requested because this will be needed for the first few
-        # days in timeseries_HiTRes to calculate the modleed molefractions for times when the footprints
-        # are in the previous month.
-        start = str(pd.to_datetime(start) - dateutil.relativedelta.relativedelta(months=1))
-        print(f'start: {start}')
-    
+    # if start:
+    #     # Get the month before the one one requested because this will be needed for the first few
+    #     # days in timeseries_HiTRes to calculate the modleed molefractions for times when the footprints
+    #     # are in the previous month.
+    #     start = str(pd.to_datetime(start) - dateutil.relativedelta.relativedelta(months=1))
+    #     print(f'start: {start}')
+    H_back = 24 if H_back is None else H_back
+    if verbose and all([start, end]):
+        print(f'Finding fluxes between {H_back} hours back from {start} and {end}')
+
     emissions_dict = {'no_source': emissions_dict} if any([freq in emissions_dict.keys() for freq in ['high_freq', 'low_freq']]) else \
                      emissions_dict
     
@@ -503,7 +518,8 @@ def flux_for_HiTRes(domain, emissions_dict, start=None, end=None, flux_directory
                 print(f"Warning: {freq} key not found in emissions_dict.")
             else:
                 flux_dict[source][freq] = flux(domain, em_source[freq], start = start, end = end,
-                                               flux_directory = flux_directory, HiTRes=True, chunks = chunks, verbose = verbose)
+                                               flux_directory = flux_directory, HiTRes=True, H_back=H_back,
+                                               chunks = chunks, verbose = verbose, test=test)
                 
     flux_dict = flux_dict['no_source'] if list(flux_dict.keys())==['no_source'] else flux_dict
     
