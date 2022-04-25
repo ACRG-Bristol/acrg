@@ -834,6 +834,7 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
                           bc_directory = None,
                           resample_to_data = False,
                           species_footprint = None,
+                          H_back = None,
                           chunks = None,
                           verbose = True):
 
@@ -893,6 +894,10 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
                                   If set to None (default), then the footprints and data are sampled to the 
                                   coarset resolution of the two.
                                   (optional)
+        species_footprint (str) : species associated with the required footprint, if different to that given in data
+                                  (optional)
+        H_back (int) : hours of data required prior to start if using HiTRes processes
+                       optional, if HiTRes=True by default H_back=24 
         chunks (dict)
             size of chunks for each dimension of fp
             e.g. {'lat': 50, 'lon': 50}
@@ -1080,8 +1085,9 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
                           "dictionary or turn HiTRes to True to use the two emissions files together with HiTRes footprints.\n" +
                           "Not calculating timeseries")
                 else:
-                    flux_dict[source] = flux_for_HiTRes(domain, emiss_source, start=flux_bc_start,
-                                                        end=flux_bc_end, flux_directory=flux_directory, verbose=verbose)
+                    H_back = 24 if H_back is None else H_back
+                    flux_dict[source] = flux_for_HiTRes(domain, emiss_source, start=flux_bc_start, end=flux_bc_end,
+                                                        H_back=H_back, flux_directory=flux_directory, verbose=verbose)
 
         fp_and_data['.flux'] = flux_dict
         
