@@ -21,10 +21,10 @@ from os.path import join
 import matplotlib as mpl
 import cartopy.crs as ccrs
 from matplotlib import ticker
-import dateutil.relativedelta
 import matplotlib.pyplot as plt
 from collections import OrderedDict
 from matplotlib.ticker import MaxNLocator
+from dateutil.relativedelta import relativedelta
 
 import acrg.obs as obs
 from acrg.time import convert
@@ -378,7 +378,6 @@ def flux(domain, species, start = None, end = None, flux_directory=None,
     Returns:
         xarray.Dataset : combined dataset of all matching flux files
     """
-    
     if flux_directory is None:
         flux_directory = join(data_path, 'LPDM/emissions/')
     
@@ -400,7 +399,10 @@ def flux(domain, species, start = None, end = None, flux_directory=None,
         raise IOError(f"\nError: Can't find flux files for domain '{domain}' and species '{species}' (using search: {species_search_list})")
     
     if start and end and 'climatology' not in species:
-        files = filter_files_by_date(files, start, end)
+        # if getting fluxes for HiTRes data import data for the month prior to start
+        start_flux = start if not HiTRes else \
+                     (pd.to_datetime(start)-relativedelta(months=1)).strftime('%Y-%m-%d')
+        files = filter_files_by_date(files, start_flux, end)
     
     flux_ds = read_netcdfs(files, chunks=chunks)
     # Check that time coordinate is present
@@ -420,8 +422,9 @@ def flux(domain, species, start = None, end = None, flux_directory=None,
         print("To get fluxes for a certain time period you must specify a start or end date.")
         return flux_ds
     else:
+        # Change timeslice to be the beginning and end of months in the dates specified.
+        # Or H_back hours before that for HiTRes
         H_back = 24 if H_back is None and HiTRes else H_back
-        #Change timeslice to be the beginning and end of months in the dates specified.
         start = pd.to_datetime(start)
         month_start = dt.datetime(start.year, start.month, 1, 0, 0) if not test else \
                       dt.datetime(start.year, start.month, start.day, 0, 0)
@@ -445,10 +448,11 @@ def flux(domain, species, start = None, end = None, flux_directory=None,
                 flux_ds = xr.merge([flux_ds, flux_tmp.update({'time' : ndate})])
                     
         flux_timeslice = flux_ds.sel(time=slice(month_start, month_end))
-        if np.logical_and(month_start.year != month_end.year, len(flux_timeslice.time) != dateutil.relativedelta.relativedelta(end, start).months) and not HiTRes:
+        if np.logical_and(month_start.year != month_end.year, len(flux_timeslice.time) != relativedelta(end, start).months) and not HiTRes:
             month_start = dt.datetime(start.year, 1, 1, 0, 0)
             flux_timeslice = flux_ds.sel(time=slice(month_start, month_end))
         if len(flux_timeslice.time)==0:
+            # if there is no data between start and end, ffill data from the last available date
             flux_timeslice = flux_ds.sel(time=start, method = 'ffill')
             flux_timeslice = flux_timeslice.expand_dims('time',axis=-1)
             print("Warning: No fluxes available during the time period specified so outputting"\
@@ -502,7 +506,7 @@ def flux_for_HiTRes(domain, emissions_dict, start=None, end=None, H_back=None, f
     #     # Get the month before the one one requested because this will be needed for the first few
     #     # days in timeseries_HiTRes to calculate the modleed molefractions for times when the footprints
     #     # are in the previous month.
-    #     start = str(pd.to_datetime(start) - dateutil.relativedelta.relativedelta(months=1))
+    #     start = str(pd.to_datetime(start) - relativedelta(months=1))
     #     print(f'start: {start}')
     H_back = 24 if H_back is None else H_back
     if verbose and all([start, end]):
