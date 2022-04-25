@@ -436,7 +436,7 @@ def flux(domain, species, start = None, end = None, flux_directory=None, HiTRes=
                 flux_ds = xr.merge([flux_ds, flux_tmp.update({'time' : ndate})])
                     
         flux_timeslice = flux_ds.sel(time=slice(month_start, month_end))
-        if np.logical_and(month_start.year != month_end.year, len(flux_timeslice.time) != dateutil.relativedelta.relativedelta(end, start).months):
+        if np.logical_and(month_start.year != month_end.year, len(flux_timeslice.time) != dateutil.relativedelta.relativedelta(end, start).months) and not HiTRes:
             month_start = dt.datetime(start.year, 1, 1, 0, 0)
             flux_timeslice = flux_ds.sel(time=slice(month_start, month_end))
         if len(flux_timeslice.time)==0:
@@ -491,6 +491,7 @@ def flux_for_HiTRes(domain, emissions_dict, start=None, end=None, flux_directory
         # days in timeseries_HiTRes to calculate the modleed molefractions for times when the footprints
         # are in the previous month.
         start = str(pd.to_datetime(start) - dateutil.relativedelta.relativedelta(months=1))
+        print(f'start: {start}')
     
     emissions_dict = {'no_source': emissions_dict} if any([freq in emissions_dict.keys() for freq in ['high_freq', 'low_freq']]) else \
                      emissions_dict
@@ -502,7 +503,7 @@ def flux_for_HiTRes(domain, emissions_dict, start=None, end=None, flux_directory
                 print(f"Warning: {freq} key not found in emissions_dict.")
             else:
                 flux_dict[source][freq] = flux(domain, em_source[freq], start = start, end = end,
-                                               flux_directory = flux_directory, chunks = chunks, verbose = verbose)
+                                               flux_directory = flux_directory, HiTRes=True, chunks = chunks, verbose = verbose)
                 
     flux_dict = flux_dict['no_source'] if list(flux_dict.keys())==['no_source'] else flux_dict
     
