@@ -74,9 +74,8 @@ def parsePrior(name, prior_params, shape = ()):
     params = {x: prior_params[x] for x in prior_params if x != "pdf"}
     return functionDict[pdf.lower()](name, shape=shape, **params)
 
-def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
+def inferpymc3(Hx, Y, error, siteindicator, sigma_freq_index,
                xprior={"pdf":"lognormal", "mu":1, "sd":1},
-               bcprior={"pdf":"lognormal", "mu":0.004, "sd":0.02},
                sigprior={"pdf":"uniform", "lower":0.5, "upper":3},
                nit=2.5e5, burn=50000, tune=1.25e5, nchain=2, 
                sigma_per_site = True, 
@@ -93,8 +92,6 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
             This is the same as what is given from fp_data[site].H.values, where
             fp_data is the output from e.g. footprint_data_merge, but where it
             has been stacked for all sites.
-        Hbc (array):
-            Same as above but for boundary conditions
         Y (array):
             Measurement vector containing all measurements
         error (arrray):
@@ -113,8 +110,6 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
             e.g. N(1,1**2) would be: xprior={pdf:"normal", "mu":1, "sd":1}.
             Note that the standard deviation should be used rather than the 
             precision. Currently all variables are considered iid.
-        bcprior (dict):
-            Same as above but for boundary conditions.
         sigprior (dict):
             Same as above but for model error.
         offsetprior (dict):
@@ -131,14 +126,10 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
     Returns:
         outs (array):
             MCMC chain for emissions scaling factors for each basis function.
-        bcouts (array):
-            MCMC chain for boundary condition scaling factors.
         sigouts (array):
             MCMC chain for model error.
         Ytrace (array):
             MCMC chain for modelled obs.
-        YBCtrace (array):
-            MCMC chain for modelled boundary condition.
         convergence (str):
             Passed/Failed convergence test as to whether mutliple chains
             have a Gelman-Rubin diagnostic value <1.05
@@ -158,9 +149,7 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
     burn = int(burn)         
     
     hx = Hx.T 
-    hbc = Hbc.T
     nx = hx.shape[1]
-    nbc = hbc.shape[1]
     ny = len(Y)
     
     nit = int(nit)  
@@ -179,25 +168,23 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
 
     with pm.Model() as model:
         x = parsePrior("x", xprior, shape=nx)
-        xbc = parsePrior("xbc", bcprior, shape=nbc)
         sig = parsePrior("sig", sigprior, shape=(nsites, nsigmas))
         if add_offset:
             offset = parsePrior("offset", offsetprior, shape=nsites-1) 
             offset_vec = pm.math.concatenate( (np.array([0]), offset), axis=0)
-            mu = pm.math.dot(hx,x) + pm.math.dot(hbc,xbc) + pm.math.dot(B, offset_vec)
+            mu = pm.math.dot(hx,x) + pm.math.dot(B, offset_vec)
         else:
-            mu = pm.math.dot(hx,x) + pm.math.dot(hbc,xbc)       
+            mu = pm.math.dot(hx,x)      
         epsilon = pm.math.sqrt(error**2 + sig[sites, sigma_freq_index]**2)
         y = pm.Normal('y', mu = mu, sd=epsilon, observed=Y, shape = ny)
         
-        step1 = pm.NUTS(vars=[x,xbc])
+        step1 = pm.NUTS(vars=[x])
         step2 = pm.Slice(vars=[sig])
         
         trace = pm.sample(nit, tune=int(tune), chains=nchain,
                            step=[step1,step2], progressbar=verbose, cores=nchain)#step=pm.Metropolis())#  #target_accept=0.8,
         
         outs = trace.get_values(x, burn=burn)[0:int((nit)-burn)]
-        bcouts = trace.get_values(xbc, burn=burn)[0:int((nit)-burn)]
         sigouts = trace.get_values(sig, burn=burn)[0:int((nit)-burn)]
         
         #Check for convergence
@@ -211,17 +198,15 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
         if add_offset:
             offset_outs = trace.get_values(offset, burn=burn)[0:int((nit)-burn)]
             offset_trace = np.hstack([np.zeros((int(nit-burn),1)), offset_outs])
-            YBCtrace = np.dot(Hbc.T,bcouts.T) + np.dot(B, offset_trace.T)   
         else:
-            YBCtrace = np.dot(Hbc.T,bcouts.T)
-        Ytrace = np.dot(Hx.T,outs.T) + YBCtrace
+        Ytrace = np.dot(Hx.T,outs.T)
         
-        return outs, bcouts, sigouts, Ytrace, YBCtrace, convergence, step1, step2
+        return outs, sigouts, Ytrace, convergence, step1, step2
 
-def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence, 
-                               Hx, Hbc, Y, error, Ytrace, YBCtrace,
+def inferpymc3_postprocessouts(xouts, sigouts, convergence, 
+                               Hx, Y, error, Ytrace,
                                step1, step2, 
-                               xprior, bcprior, sigprior, offsetprior, Ytime, siteindicator, sigma_freq_index,
+                               xprior, sigprior, offsetprior, Ytime, siteindicator, sigma_freq_index,
                                domain, species, sites,
                                start_date, end_date, outputname, outputpath,
                                country_unit_prefix,
@@ -244,8 +229,6 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
         Args:
             xouts (array):
                 MCMC chain for emissions scaling factors for each basis function.
-            bcouts (array):
-                MCMC chain for boundary condition scaling factors.
             sigouts (array):
                 MCMC chain for model error.
             convergence (str):
@@ -256,16 +239,12 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
                 This is the same as what is given from fp_data[site].H.values, where
                 fp_data is the output from e.g. footprint_data_merge, but where it
                 has been stacked for all sites.
-            Hbc (array):
-                Same as above but for boundary conditions
             Y (array):
                 Measurement vector containing all measurements
             error (arrray):
                 Measurement error vector, containg a value for each element of Y.
             Ytrace (array):
                 Trace of modelled y values calculated from mcmc outputs and H matrices
-            YBCtrace (array):
-                Trace of modelled boundary condition values calculated from mcmc outputs and Hbc matrices
             step1 (str):
                 Type of MCMC sampler for emissions and boundary condition updates.
             step2 (str):
@@ -280,8 +259,6 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
                 e.g. N(1,1**2) would be: xprior={pdf:"normal", "mu":1, "sd":1}.
                 Note that the standard deviation should be used rather than the 
                 precision. Currently all variables are considered iid.
-            bcprior (dict):
-                Same as above but for boundary conditions.
             sigprior (dict):
                 Same as above but for model error.
             offsetprior (dict):
@@ -364,21 +341,14 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
         nit = xouts.shape[0]
         nx = Hx.shape[0]
         ny = len(Y)
-        nbc = Hbc.shape[0]
         nui = np.arange(2)
         steps = np.arange(nit)
         nmeasure = np.arange(ny)
         nparam = np.arange(nx)
-        nBC = np.arange(nbc)
-        #YBCtrace = np.dot(Hbc.T,bcouts.T)
-        YmodBC = np.mean(YBCtrace, axis=1)
-        Ymod95BC = pm.stats.hpd(YBCtrace.T, 0.95)
-        Ymod68BC = pm.stats.hpd(YBCtrace.T, 0.68)
-        YaprioriBC = np.sum(Hbc, axis=0)
         Ymod = np.mean(Ytrace, axis=1)
         Ymod95 = pm.stats.hpd(Ytrace.T, 0.95)
         Ymod68 = pm.stats.hpd(Ytrace.T, 0.68)
-        Yapriori = np.sum(Hx.T, axis=1) + np.sum(Hbc.T, axis=1)
+        Yapriori = np.sum(Hx.T, axis=1)
         sitenum = np.arange(len(sites))
         
         if fp_data is None and rerun_file is not None:
@@ -485,13 +455,8 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
                             'Yapriori':(['nmeasure'],Yapriori),
                             'Ymodmean':(['nmeasure'], Ymod), 
                             'Ymod95':(['nmeasure','nUI'], Ymod95),
-                            'Ymod68':(['nmeasure','nUI'], Ymod68),
-                            'YaprioriBC':(['nmeasure'],YaprioriBC),                            
-                            'YmodmeanBC':(['nmeasure'], YmodBC),
-                            'Ymod95BC':(['nmeasure','nUI'], Ymod95BC),
-                            'Ymod68BC':(['nmeasure','nUI'], Ymod68BC),                        
+                            'Ymod68':(['nmeasure','nUI'], Ymod68),                     
                             'xtrace':(['steps','nparam'], xouts),
-                            'bctrace':(['steps','nBC'],bcouts),
                             'sigtrace':(['steps', 'nsigma_site', 'nsigma_time'], sigouts),
                             'siteindicator':(['nmeasure'],siteindicator),
                             'sigmafreqindex':(['nmeasure'],sigma_freq_index),
@@ -509,10 +474,8 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
                             'countryapriori':(['countrynames'],cntryprior),
                             'countrydefinition':(['lat','lon'], cntrygrid),
                             'xsensitivity':(['nmeasure','nparam'], Hx.T),
-                            'bcsensitivity':(['nmeasure', 'nBC'],Hbc.T)},
                         coords={'stepnum' : (['steps'], steps), 
                                    'paramnum' : (['nlatent'], nparam),
-                                   'numBC' : (['nBC'], nBC),
                                    'measurenum' : (['nmeasure'], nmeasure), 
                                    'UInum' : (['nUI'], nui),
                                    'nsites': (['nsite'], sitenum),
@@ -529,10 +492,6 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
         outds.Ymodmean.attrs["units"] = obs_units+" "+"mol/mol"
         outds.Ymod95.attrs["units"] = obs_units+" "+"mol/mol"
         outds.Ymod68.attrs["units"] = obs_units+" "+"mol/mol"
-        outds.YmodmeanBC.attrs["units"] = obs_units+" "+"mol/mol"
-        outds.Ymod95BC.attrs["units"] = obs_units+" "+"mol/mol"
-        outds.Ymod68BC.attrs["units"] = obs_units+" "+"mol/mol"
-        outds.YaprioriBC.attrs["units"] = obs_units+" "+"mol/mol"
         outds.Yerror.attrs["units"] = obs_units+" "+"mol/mol"
         outds.countrymean.attrs["units"] = country_units
         outds.country68.attrs["units"] = country_units
@@ -540,7 +499,6 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
         outds.countrysd.attrs["units"] = country_units
         outds.countryapriori.attrs["units"] = country_units
         outds.xsensitivity.attrs["units"] = obs_units+" "+"mol/mol"
-        outds.bcsensitivity.attrs["units"] = obs_units+" "+"mol/mol"
         outds.sigtrace.attrs["units"] = obs_units+" "+"mol/mol"
         
         outds.Yobs.attrs["longname"] = "observations"
@@ -550,12 +508,7 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
         outds.Ymodmean.attrs["longname"] = "mean of posterior simulated measurements"
         outds.Ymod68.attrs["longname"] = " 0.68 Bayesian credible interval of posterior simulated measurements"
         outds.Ymod95.attrs["longname"] = " 0.95 Bayesian credible interval of posterior simulated measurements"
-        outds.YaprioriBC.attrs["longname"] = "a priori simulated boundary conditions"
-        outds.YmodmeanBC.attrs["longname"] = "mean of posterior simulated boundary conditions"
-        outds.Ymod68BC.attrs["longname"] = " 0.68 Bayesian credible interval of posterior simulated boundary conditions"
-        outds.Ymod95BC.attrs["longname"] = " 0.95 Bayesian credible interval of posterior simulated boundary conditions"
         outds.xtrace.attrs["longname"] = "trace of unitless scaling factors for emissions parameters"
-        outds.bctrace.attrs["longname"] = "trace of unitless scaling factors for boundary condition parameters"
         outds.sigtrace.attrs["longname"] = "trace of model error parameters"
         outds.siteindicator.attrs["longname"] = "index of site of measurement corresponding to sitenames"
         outds.sigmafreqindex.attrs["longname"] = "perdiod over which the model error is estimated"
@@ -573,7 +526,6 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
         outds.countryapriori.attrs["longname"] = "prior mean of ocean and country totals"
         outds.countrydefinition.attrs["longname"] = "grid definition of countries"
         outds.xsensitivity.attrs["longname"] = "emissions sensitivity timeseries"   
-        outds.bcsensitivity.attrs["longname"] = "boundary conditions sensitivity timeseries"  
         
         outds.attrs['Start date'] = start_date
         outds.attrs['End date'] = end_date
@@ -585,7 +537,6 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
         outds.attrs['Error for each site'] = str(sigma_per_site)
         outds.attrs['Emissions Prior'] = ''.join(['{0},{1},'.format(k, v) for k,v in xprior.items()])[:-1]
         outds.attrs['Model error Prior'] = ''.join(['{0},{1},'.format(k, v) for k,v in sigprior.items()])[:-1]
-        outds.attrs['BCs Prior'] = ''.join(['{0},{1},'.format(k, v) for k,v in bcprior.items()])[:-1]
         if add_offset:
             outds.attrs['Offset Prior'] = ''.join(['{0},{1},'.format(k, v) for k,v in offsetprior.items()])[:-1]
         outds.attrs['Creator'] = getpass.getuser()

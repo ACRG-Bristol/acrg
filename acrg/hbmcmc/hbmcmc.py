@@ -37,18 +37,18 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                    end_date, outputpath, outputname,
                    met_model = None,
                    xprior={"pdf":"lognormal", "mu":1, "sd":1},
-                   bcprior={"pdf":"lognormal", "mu":0.004, "sd":0.02},
+                   # bcprior={"pdf":"lognormal", "mu":0.004, "sd":0.02},
                    sigprior={"pdf":"uniform", "lower":0.5, "upper":3},
                    offsetprior={"pdf":"normal", "mu":0, "sd":1},
                    nit=2.5e5, burn=50000, tune=1.25e5, nchain=2,
                    emissions_name=None, inlet=None, fpheight=None, instrument=None, 
-                   fp_basis_case=None, basis_directory = None, bc_basis_case="NESW", 
+                   fp_basis_case=None, basis_directory = None, 
                    obs_directory = None, country_file = None,
-                   fp_directory = None, bc_directory = None, flux_directory = None,
+                   fp_directory = None, flux_directory = None,
                    max_level=None,
                    quadtree_basis=True,nbasis=100,
                    filters = [],
-                   averagingerror=True, bc_freq=None, sigma_freq=None, sigma_per_site=True,
+                   averagingerror=True, sigma_freq=None, sigma_per_site=True,
                    country_unit_prefix=None, add_offset = False,
                    verbose = False):
 
@@ -187,10 +187,10 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             del sites[si]
             removed_sites.append(site)
     
-    fp_all = name.footprints_data_merge(data, domain=domain, met_model = met_model, calc_bc=True, 
+    fp_all = name.footprints_data_merge(data, domain=domain, met_model = met_model, load_bc = False, calc_bc = False, 
                                         height=fpheight, 
                                         fp_directory = fp_directory,
-                                        bc_directory = bc_directory,
+                                        # bc_directory = bc_directory,
                                         flux_directory = flux_directory,
                                         emissions_name=emissions_name)
     
@@ -229,8 +229,11 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
         basis_directory = basis_directory
             
     fp_data = name.fp_sensitivity(fp_all, domain=domain, basis_case=fp_basis_case,basis_directory=basis_directory)
-    fp_data = name.bc_sensitivity(fp_data, domain=domain,basis_case=bc_basis_case)
     
+    ###### ADD SMOOTHED BCKG TO FP_DATA
+    smoothed_bckg = xr.open_dataset(glob.glob(data_path + '/obs/BRW/BRW_smoothed_bckg.nc')
+    smoothed_bckg = smoothed_bckg.loc[dict(time = slice(pd.Timestamp(start_date), pd.Timestamp(end_date)))] 
+    fp_data = xr.merge([fp_data['BRW'], smoothed_bckg], join = 'left')                             
     #apply named filters to the data
     fp_data = name.filtering(fp_data, filters)
     
@@ -239,7 +242,6 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     
     #Get inputs ready
     error = np.zeros(0)
-    Hbc = np.zeros(0)
     Hx = np.zeros(0)
     Y = np.zeros(0)
     siteindicator = np.zeros(0)
@@ -248,38 +250,30 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             error = np.concatenate((error, fp_data[site].mf_repeatability.values))
         if 'mf_variability' in fp_data[site]:
             error = np.concatenate((error, fp_data[site].mf_variability.values))
-            
-        Y = np.concatenate((Y,fp_data[site].mf.values)) 
+        
+        #### REMOVE SMOOTH BCKG
+        Y = np.concatenate((Y,fp_data[site].mf.values - fp_data.smoothed_bckg.values)) 
         siteindicator = np.concatenate((siteindicator, np.ones_like(fp_data[site].mf.values)*si))
         if si == 0:
             Ytime=fp_data[site].time.values
         else:
             Ytime = np.concatenate((Ytime,fp_data[site].time.values ))
-        
-        if bc_freq == "monthly":
-            Hmbc = setup.monthly_bcs(start_date, end_date, site, fp_data)
-        elif bc_freq == None:
-            Hmbc = fp_data[site].H_bc.values
-        else:
-            Hmbc = setup.create_bc_sensitivity(start_date, end_date, site, fp_data, bc_freq)
-            
+                
         if si == 0:
-            Hbc = np.copy(Hmbc) #fp_data[site].H_bc.values 
             Hx = fp_data[site].H.values
         else:
-            Hbc = np.hstack((Hbc, Hmbc))
             Hx = np.hstack((Hx, fp_data[site].H.values))
     
     sigma_freq_index = setup.sigma_freq_indicies(Ytime, sigma_freq)
 
     #Run Pymc3 inversion
-    xouts, bcouts, sigouts, Ytrace, YBCtrace, convergence, step1, step2 = mcmc.inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
-           xprior,bcprior, sigprior, nit, burn, tune, nchain, sigma_per_site, offsetprior=offsetprior, add_offset=add_offset, verbose=verbose)
+    xouts, sigouts, Ytrace, convergence, step1, step2 = mcmc.inferpymc3(Hx, Y, error, siteindicator, sigma_freq_index,
+           xprior, sigprior, nit, burn, tune, nchain, sigma_per_site, offsetprior=offsetprior, add_offset=add_offset, verbose=verbose)
     #Process and save inversion output
-    mcmc.inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence, 
-                               Hx, Hbc, Y, error, Ytrace, YBCtrace,
+    mcmc.inferpymc3_postprocessouts(xouts, sigouts, convergence, 
+                               Hx, Y, error, Ytrace,
                                step1, step2, 
-                               xprior, bcprior, sigprior, offsetprior, Ytime, siteindicator, sigma_freq_index,
+                               xprior, sigprior, offsetprior, Ytime, siteindicator, sigma_freq_index,
                                domain, species, sites,
                                start_date, end_date, outputname, outputpath,
                                country_unit_prefix,
@@ -328,7 +322,7 @@ def rerun_output(input_file, outputname, outputpath, verbose=False):
     start_date = ds_in.attrs['Start date']
     end_date = ds_in.attrs['End date']
     Hx = ds_in.xsensitivity.values.T
-    Hbc = ds_in.bcsensitivity.values.T
+    # Hbc = ds_in.bcsensitivity.values.T
     Y = ds_in.Yobs.values
     Ytime = ds_in.Ytime.values
     error = ds_in.Yerror.values
@@ -336,8 +330,8 @@ def rerun_output(input_file, outputname, outputpath, verbose=False):
     sigma_freq_index = ds_in.sigmafreqindex.values
     xprior_string = ds_in.attrs["Emissions Prior"].split(",")
     xprior = {k:float(v) if isFloat(v) else v for k,v in zip(xprior_string[::2], xprior_string[1::2])}
-    bcprior_string = ds_in.attrs["BCs Prior"].split(",")
-    bcprior = {k:float(v) if isFloat(v) else v for k,v in zip(bcprior_string[::2], bcprior_string[1::2])}
+    # bcprior_string = ds_in.attrs["BCs Prior"].split(",")
+    # bcprior = {k:float(v) if isFloat(v) else v for k,v in zip(bcprior_string[::2], bcprior_string[1::2])}
     sigprior_string = ds_in.attrs["Model error Prior"].split(",")
     sigprior = {k:float(v) if isFloat(v) else v for k,v in zip(sigprior_string[::2], sigprior_string[1::2])}
     if 'Offset Prior' in ds_in.attrs.keys():
@@ -365,16 +359,16 @@ def rerun_output(input_file, outputname, outputpath, verbose=False):
     else:
         country_unit_prefix = None
     
-    xouts, bcouts, sigouts, Ytrace, YBCtrace, convergence, step1, step2 = \
-            mcmc.inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
-                               xprior,bcprior, sigprior, nit, burn, 
+    xouts, sigouts, Ytrace, convergence, step1, step2 = \
+            mcmc.inferpymc3(Hx, Y, error, siteindicator, sigma_freq_index,
+                               xprior, sigprior, nit, burn, 
                                tune, nchain, sigma_per_site, offsetprior=offsetprior,
                                add_offset=add_offset, verbose=verbose)
 
-    mcmc.inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence, 
-                                   Hx, Hbc, Y, error, Ytrace, YBCtrace,
+    mcmc.inferpymc3_postprocessouts(xouts, sigouts, convergence, 
+                                   Hx, Y, error, Ytrace,
                                    step1, step2, 
-                                   xprior, bcprior, sigprior, offsetprior, Ytime, siteindicator, sigma_freq_index,
+                                   xprior, sigprior, offsetprior, Ytime, siteindicator, sigma_freq_index,
                                    domain, species, sites,
                                    start_date, end_date, outputname, outputpath, country_unit_prefix,
                                    burn, tune, nchain, sigma_per_site,
