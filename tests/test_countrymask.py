@@ -165,6 +165,7 @@ def test_fill_gaps(mask_with_gaps,mask_no_gaps,fp_directory):
     
     assert np.array_equal(filled_array,mask_no_gaps) == True
     
+@pytest.mark.skipif(not glob.glob(os.path.join(data_path,"LPDM/fp_NAME/")), reason="No access to files in data_path")
 def test_get_country(fp_directory):
     """
     Creates a countryfile and checks that name.get_country can 
