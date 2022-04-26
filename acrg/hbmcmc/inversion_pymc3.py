@@ -163,29 +163,51 @@ def inferpymc3(Hx, Y, error, siteindicator, sigma_freq_index,
         nsites = 1
     nsigmas = np.amax(sigma_freq_index)+1
     
+    #Check if hyperparameters are fixed
+    if sigprior["pdf"] == "fixed": 
+        sigma_fixed = True
+    else:
+        sigma_fixed = False
+    
     if add_offset:
         B = offset_matrix(siteindicator)
 
     with pm.Model() as model:
         x = parsePrior("x", xprior, shape=nx)
-        sig = parsePrior("sig", sigprior, shape=(nsites, nsigmas))
-        if add_offset:
-            offset = parsePrior("offset", offsetprior, shape=nsites-1) 
-            offset_vec = pm.math.concatenate( (np.array([0]), offset), axis=0)
-            mu = pm.math.dot(hx,x) + pm.math.dot(B, offset_vec)
+        if sigma_fixed: 
+            sig = sigprior["fixed_value"]  
+            mu = pm.math.dot(hx,x)
+            epsilon = pm.math.sqrt(error**2 + sig**2)   
+            print('Epsilon squared =', error**2 + sig**2)
         else:
-            mu = pm.math.dot(hx,x)      
-        epsilon = pm.math.sqrt(error**2 + sig[sites, sigma_freq_index]**2)
+            sig = parsePrior("sig", sigprior, shape=(nsites, nsigmas))
+            if add_offset:
+                offset = parsePrior("offset", offsetprior, shape=nsites-1) 
+                offset_vec = pm.math.concatenate( (np.array([0]), offset), axis=0)
+                mu = pm.math.dot(hx,x) + pm.math.dot(B, offset_vec)
+            else:
+                mu = pm.math.dot(hx,x)     
+            epsilon = pm.math.sqrt(error**2 + sig[sites, sigma_freq_index]**2)
+            print('Epsilon squared =', error**2 + sig[sites, sigma_freq_index]**2)
+
         y = pm.Normal('y', mu = mu, sd=epsilon, observed=Y, shape = ny)
-        
+
         step1 = pm.NUTS(vars=[x])
-        step2 = pm.Slice(vars=[sig])
-        
+        if sigma_fixed:
+            step2 = None
+            steps = [step1]
+        else:
+            step2 = pm.Slice(vars=[sig])
+            steps = [step1, step2]
+
         trace = pm.sample(nit, tune=int(tune), chains=nchain,
-                           step=[step1,step2], progressbar=verbose, cores=nchain)#step=pm.Metropolis())#  #target_accept=0.8,
-        
+                           step=steps, progressbar=verbose, cores=nchain)#step=pm.Metropolis())#  #target_accept=0.8,
+
         outs = trace.get_values(x, burn=burn)[0:int((nit)-burn)]
-        sigouts = trace.get_values(sig, burn=burn)[0:int((nit)-burn)]
+        if sigma_fixed: 
+            sigouts = None
+        else:
+            sigouts = trace.get_values(sig, burn=burn)[0:int((nit)-burn)]
         
         #Check for convergence
         gelrub = pm.rhat(trace)['x'].max()
@@ -366,7 +388,12 @@ def inferpymc3_postprocessouts(xouts, sigouts, convergence,
                 site_lat[si] = fp_data[site].release_lat.values[0]
                 site_lon[si] = fp_data[site].release_lon.values[0]
             bfds = fp_data[".basis"]
-
+            
+         #Check if hyperparameters are fixed
+        if sigprior["pdf"] == "fixed": 
+            sigma_fixed = True
+        else:
+            sigma_fixed = False
 
         #Calculate mean posterior scale map and flux field
         scalemap = np.zeros_like(bfds.values)
@@ -448,42 +475,77 @@ def inferpymc3_postprocessouts(xouts, sigouts, convergence,
             cntryprior[ci] = cntrytotprior
             
     
-        #Make output netcdf file
-        outds = xr.Dataset({'Yobs':(['nmeasure'], Y),
-                            'Yerror' :(['nmeasure'], error),                          
-                            'Ytime':(['nmeasure'],Ytime),
-                            'Yapriori':(['nmeasure'],Yapriori),
-                            'Ymodmean':(['nmeasure'], Ymod), 
-                            'Ymod95':(['nmeasure','nUI'], Ymod95),
-                            'Ymod68':(['nmeasure','nUI'], Ymod68),                     
-                            'xtrace':(['steps','nparam'], xouts),
-                            'sigtrace':(['steps', 'nsigma_site', 'nsigma_time'], sigouts),
-                            'siteindicator':(['nmeasure'],siteindicator),
-                            'sigmafreqindex':(['nmeasure'],sigma_freq_index),
-                            'sitenames':(['nsite'],sites),
-                            'sitelons':(['nsite'],site_lon),
-                            'sitelats':(['nsite'],site_lat),
-                            'fluxapriori':(['lat','lon'], aprioriflux), #NOTE this is the mean a priori flux over the inversion period
-                            'fluxmean':(['lat','lon'], flux),                            
-                            'scalingmean':(['lat','lon'],scalemap),
-                            'basisfunctions':(['lat','lon'],bfarray),
-                            'countrymean':(['countrynames'], cntrymean),
-                            'countrysd':(['countrynames'], cntrysd),
-                            'country68':(['countrynames', 'nUI'],cntry68),
-                            'country95':(['countrynames', 'nUI'],cntry95),
-                            'countryapriori':(['countrynames'],cntryprior),
-                            'countrydefinition':(['lat','lon'], cntrygrid),
-                            'xsensitivity':(['nmeasure','nparam'], Hx.T)},
-                        coords={'stepnum' : (['steps'], steps), 
-                                   'paramnum' : (['nlatent'], nparam),
-                                   'measurenum' : (['nmeasure'], nmeasure), 
-                                   'UInum' : (['nUI'], nui),
-                                   'nsites': (['nsite'], sitenum),
-                                   'nsigma_time': (['nsigma_time'], np.unique(sigma_freq_index)),
-                                   'nsigma_site': (['nsigma_site'], np.arange(sigouts.shape[1]).astype(int)),
-                                   'lat':(['lat'],lat),
-                                   'lon':(['lon'],lon),
-                                   'countrynames':(['countrynames'],cntrynames)})
+        if sigma_fixed:
+            #Make output netcdf file
+            outds = xr.Dataset({'Yobs':(['nmeasure'], Y),
+                                'Yerror' :(['nmeasure'], error),                          
+                                'Ytime':(['nmeasure'],Ytime),
+                                'Yapriori':(['nmeasure'],Yapriori),
+                                'Ymodmean':(['nmeasure'], Ymod), 
+                                'Ymod95':(['nmeasure','nUI'], Ymod95),
+                                'Ymod68':(['nmeasure','nUI'], Ymod68),
+                                'xtrace':(['steps','nparam'], xouts),
+                                'siteindicator':(['nmeasure'],siteindicator),
+                                'sigmafreqindex':(['nmeasure'],sigma_freq_index),
+                                'sitenames':(['nsite'],sites),
+                                'sitelons':(['nsite'],site_lon),
+                                'sitelats':(['nsite'],site_lat),
+                                'fluxapriori':(['lat','lon'], aprioriflux), #NOTE this is the mean a priori flux over the inversion period
+                                'fluxmean':(['lat','lon'], flux),                            
+                                'scalingmean':(['lat','lon'],scalemap),
+                                'basisfunctions':(['lat','lon'],bfarray),
+                                'countrymean':(['countrynames'], cntrymean),
+                                'countrysd':(['countrynames'], cntrysd),
+                                'country68':(['countrynames', 'nUI'],cntry68),
+                                'country95':(['countrynames', 'nUI'],cntry95),
+                                'countryapriori':(['countrynames'],cntryprior),
+                                'countrydefinition':(['lat','lon'], cntrygrid),
+                                'xsensitivity':(['nmeasure','nparam'], Hx.T),
+                            coords={'stepnum' : (['steps'], steps), 
+                                       'paramnum' : (['nlatent'], nparam),
+                                       'measurenum' : (['nmeasure'], nmeasure), 
+                                       'UInum' : (['nUI'], nui),
+                                       'nsites': (['nsite'], sitenum),
+                                       'lat':(['lat'],lat),
+                                       'lon':(['lon'],lon),
+                                       'countrynames':(['countrynames'],cntrynames)})
+        else:    
+            #Make output netcdf file
+            outds = xr.Dataset({'Yobs':(['nmeasure'], Y),
+                                'Yerror' :(['nmeasure'], error),                          
+                                'Ytime':(['nmeasure'],Ytime),
+                                'Yapriori':(['nmeasure'],Yapriori),
+                                'Ymodmean':(['nmeasure'], Ymod), 
+                                'Ymod95':(['nmeasure','nUI'], Ymod95),
+                                'Ymod68':(['nmeasure','nUI'], Ymod68),
+                                'xtrace':(['steps','nparam'], xouts),
+                                'sigtrace':(['steps', 'nsigma_site', 'nsigma_time'], sigouts),
+                                'siteindicator':(['nmeasure'],siteindicator),
+                                'sigmafreqindex':(['nmeasure'],sigma_freq_index),
+                                'sitenames':(['nsite'],sites),
+                                'sitelons':(['nsite'],site_lon),
+                                'sitelats':(['nsite'],site_lat),
+                                'fluxapriori':(['lat','lon'], aprioriflux), #NOTE this is the mean a priori flux over the inversion period
+                                'fluxmean':(['lat','lon'], flux),                            
+                                'scalingmean':(['lat','lon'],scalemap),
+                                'basisfunctions':(['lat','lon'],bfarray),
+                                'countrymean':(['countrynames'], cntrymean),
+                                'countrysd':(['countrynames'], cntrysd),
+                                'country68':(['countrynames', 'nUI'],cntry68),
+                                'country95':(['countrynames', 'nUI'],cntry95),
+                                'countryapriori':(['countrynames'],cntryprior),
+                                'countrydefinition':(['lat','lon'], cntrygrid),
+                                'xsensitivity':(['nmeasure','nparam'], Hx.T),
+                            coords={'stepnum' : (['steps'], steps), 
+                                       'paramnum' : (['nlatent'], nparam),
+                                       'measurenum' : (['nmeasure'], nmeasure), 
+                                       'UInum' : (['nUI'], nui),
+                                       'nsites': (['nsite'], sitenum),
+                                       'nsigma_time': (['nsigma_time'], np.unique(sigma_freq_index)),
+                                       'nsigma_site': (['nsigma_site'], np.arange(sigouts.shape[1]).astype(int)),
+                                       'lat':(['lat'],lat),
+                                       'lon':(['lon'],lon),
+                                       'countrynames':(['countrynames'],cntrynames)})
         
         outds.fluxmean.attrs["units"] = "mol/m2/s"
         outds.fluxapriori.attrs["units"] = "mol/m2/s"
@@ -499,8 +561,8 @@ def inferpymc3_postprocessouts(xouts, sigouts, convergence,
         outds.countrysd.attrs["units"] = country_units
         outds.countryapriori.attrs["units"] = country_units
         outds.xsensitivity.attrs["units"] = obs_units+" "+"mol/mol"
-        outds.sigtrace.attrs["units"] = obs_units+" "+"mol/mol"
-        
+        if not sigma_fixed:
+            outds.sigtrace.attrs["units"] = obs_units+" "+"mol/mol"        
         outds.Yobs.attrs["longname"] = "observations"
         outds.Yerror.attrs["longname"] = "measurement error"
         outds.Ytime.attrs["longname"] = "time of measurements"
@@ -509,7 +571,8 @@ def inferpymc3_postprocessouts(xouts, sigouts, convergence,
         outds.Ymod68.attrs["longname"] = " 0.68 Bayesian credible interval of posterior simulated measurements"
         outds.Ymod95.attrs["longname"] = " 0.95 Bayesian credible interval of posterior simulated measurements"
         outds.xtrace.attrs["longname"] = "trace of unitless scaling factors for emissions parameters"
-        outds.sigtrace.attrs["longname"] = "trace of model error parameters"
+        if not sigma_fixed:
+            outds.sigtrace.attrs["longname"] = "trace of model error parameters"
         outds.siteindicator.attrs["longname"] = "index of site of measurement corresponding to sitenames"
         outds.sigmafreqindex.attrs["longname"] = "perdiod over which the model error is estimated"
         outds.sitenames.attrs["longname"] = "site names"
@@ -530,7 +593,8 @@ def inferpymc3_postprocessouts(xouts, sigouts, convergence,
         outds.attrs['Start date'] = start_date
         outds.attrs['End date'] = end_date
         outds.attrs['Latent sampler'] = str(step1)[20:33]
-        outds.attrs['Hyper sampler'] = str(step2)[20:33]
+        if not sigma_fixed: 
+            outds.attrs['Hyper sampler'] = str(step2)[20:33]
         outds.attrs['Burn in'] = str(int(burn))
         outds.attrs['Tuning steps'] = str(int(tune))
         outds.attrs['Number of chains'] = str(int(nchain))
