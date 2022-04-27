@@ -3,7 +3,6 @@
 Created on Mon Nov 10 10:45:51 2014
 
 """
-from past.utils import old_div
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -1019,10 +1018,10 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
 
                 # If units are specified, multiply by scaling factor
                 if units:
-                    site_ds.update({'fp' : (site_ds.fp.dims, old_div(site_ds.fp, units))})
+                    site_ds.update({'fp' : (site_ds.fp.dims, site_ds.fp/units)})
                     if HiTRes:
                         site_ds.update({'fp_HiTRes' : (site_ds.fp_HiTRes.dims, 
-                                                       old_div(site_ds.fp_HiTRes, units))})
+                                                       site_ds.fp_HiTRes/units)})
 
                 site_ds_list += [site_ds]
     
@@ -1054,7 +1053,7 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
     if load_bc:       
         bc = boundary_conditions(domain, species, start=flux_bc_start, end=flux_bc_end, bc_directory=bc_directory)
         if units:
-            fp_and_data['.bc'] = old_div(bc, units)               
+            fp_and_data['.bc'] = bc/units              
         else:
             fp_and_data['.bc'] = bc
             
@@ -1547,9 +1546,8 @@ def filtering(datasets_in, filters, keep_missing=False):
             wh_rlon = np.where(abs(dataset.lon.values-release_lon) < dlon/2.)
             wh_rlat = np.where(abs(dataset.lat.values-release_lat) < dlat/2.)
             if np.any(wh_rlon[0]) and np.any(wh_rlat[0]):
-                local_sum[ti] = old_div(np.sum(dataset.fp[
-                        wh_rlat[0][0]-2:wh_rlat[0][0]+3,wh_rlon[0][0]-2:wh_rlon[0][0]+3,ti].values),np.sum(
-                        dataset.fp[:,:,ti].values))  
+                local_sum[ti] = np.sum(dataset.fp[wh_rlat[0][0]-2:wh_rlat[0][0]+3,wh_rlon[0][0]-2:wh_rlon[0][0]+3,ti].values)/\
+                                np.sum(dataset.fp[:,:,ti].values)
             else:
                 local_sum[ti] = 0.0 
         
@@ -1860,7 +1858,7 @@ def plot(fp_data, date, out_filename=None, out_format = 'pdf',
 
                 if np.float(date - time[ti-1]) < np.float(tol):
 
-                    dt = old_div(np.float(date - time[ti-1]),np.float(time[ti] - time[ti-1]))
+                    dt = np.float(date - time[ti-1])/np.float(time[ti] - time[ti-1])
                     fp_ti_0 = fp_data[site][dict(time = ti-1)].fp.values.squeeze()
                     fp_ti_1 = fp_data[site][dict(time = ti)].fp.values.squeeze()
                     fp_ti = fp_ti_0 + (fp_ti_1 - fp_ti_0)*dt

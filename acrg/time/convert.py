@@ -27,7 +27,6 @@ import sys
 if sys.version_info[0] == 2:
     from builtins import str
 
-from past.utils import old_div
 import datetime as dt
 import time as tm
 import calendar
