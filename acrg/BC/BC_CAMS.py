@@ -331,7 +331,7 @@ def write_CAMS_BC_tonetcdf(vmr_n, vmr_e, vmr_s, vmr_w, st_date, domain, outdir, 
 
 def create_CAMS_BC(ds, fp_lat, fp_lon, fp_height, date, domain, species=None,
                    outdir=None, from_climatology=False, verbose=False, test=False,
-                   time_var=None, lat_var=None, lon_var=None):
+                   time_var=None, lat_var=None, lon_var=None, height_var=None):
     '''
     Create CAMS boundary conditions and write to a netcdf file
     
@@ -415,13 +415,13 @@ def create_CAMS_BC(ds, fp_lat, fp_lon, fp_height, date, domain, species=None,
                    latitude  = slice(ds.coords[lat_var][lat_s],ds.coords[lat_var][lat_n])).drop_vars([lon_var])
     
     vmr_n = interplonlat(interpheight(north, fp_height, species=species, lonorlat=lon_var),
-                         fp_lon, species=species, lonorlat=lon_var, verbose=False).rename({species : 'vmr_n'})   
+                         fp_lon, species=species, lonorlat=lon_var, height_var=height_var, verbose=False).rename({species : 'vmr_n'})   
     vmr_s = interplonlat(interpheight(south, fp_height, species=species, lonorlat=lon_var),
-                         fp_lon, species=species, lonorlat=lon_var, verbose=False).rename({species : 'vmr_s'}) 
+                         fp_lon, species=species, lonorlat=lon_var, height_var=height_var, verbose=False).rename({species : 'vmr_s'}) 
     vmr_e = interplonlat(interpheight(east, fp_height, species=species, lonorlat=lat_var),
-                         fp_lat, species=species, lonorlat=lat_var, verbose=False).rename({species : 'vmr_e'}) 
+                         fp_lat, species=species, lonorlat=lat_var, height_var=height_var, verbose=False).rename({species : 'vmr_e'}) 
     vmr_w = interplonlat(interpheight(west, fp_height, species=species, lonorlat=lat_var),
-                         fp_lat, species=species, lonorlat=lat_var, verbose=False).rename({species : 'vmr_w'})      
+                         fp_lat, species=species, lonorlat=lat_var, height_var=height_var, verbose=False).rename({species : 'vmr_w'})      
 
     write_CAMS_BC_tonetcdf(vmr_n = vmr_n,
                            vmr_e = vmr_e,
@@ -439,10 +439,14 @@ def makeCAMSBC(domain, start, end,
                outdir = None,
                cams_directory = None,
                cams_version = None,
+               file_start_str=None, 
                clim_start = None, clim_end = None,
                make_climatology = False,
                fp_directory = None,
                time_var = None,
+               lat_var = None,
+               lon_var = None,
+               height_var = None,
                verbose = False, overwrite = False, test = False):
     '''
     Make boundary condition files from the CAMS inversion product
@@ -520,7 +524,8 @@ def makeCAMSBC(domain, start, end,
     
     outdir  = os.path.join(data_path, 'LPDM', 'bc', domain) if outdir is None else outdir
     
-    cams_ds = readCAMSInversion(clim_start, clim_end, cams_directory = cams_directory, version=cams_version)
+    cams_ds = readCAMSInversion(clim_start, clim_end, cams_directory = cams_directory, version=cams_version,
+                                file_start_str=file_start_str)
     
     # create climatology if required
     if make_climatology:
@@ -556,6 +561,10 @@ def makeCAMSBC(domain, start, end,
                        date             = start,
                        species          = species,
                        domain           = domain,
+                       time_var         = time_var,
+                       lat_var          = lat_var,
+                       lon_var          = lon_var,
+                       height_var       = height_var,
                        outdir           = outdir,
                        verbose          = verbose,
                        from_climatology = make_climatology,
