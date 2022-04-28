@@ -2,22 +2,25 @@
 name: acrg_var
 channels:
   - conda-forge
-  - defaults
 dependencies:
+  - python=3.10
   - numpy
   - scipy
   - pandas
   - h5py
   - netCDF4
   - xarray
-  - matplotlib
+  - matplotlib-base
   - cartopy
   - geopandas
   - iris
   - pymc3
-  - future
   - yaml
   - numba
-  - python-dateutil
+  - tqdm
+  - numexpr
   - iso3166
-
+  - regionmask
+  - xesmf
+  - pyfakefs
+  - pytest
