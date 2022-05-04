@@ -9,6 +9,7 @@ import pytest
 import os
 import glob
 import numpy as np
+from acrg.name.name import get_country
 
 from acrg import countrymask
 from acrg.config.paths import Paths
@@ -26,7 +27,26 @@ def not_country_codes():
     country_codes = ['BRA','CHN','NZL']
     return country_codes
 
+@pytest.fixture(scope="module")
+def mask_with_gaps():
+    mask_with_gaps = np.array([[1,1,1,4,4,4],
+                               [1,0,1,2,2,2],
+                               [1,1,1,2,0,0],
+                               [3,3,3,2,2,2],
+                               [3,0,3,5,5,5],
+                               [3,3,0,5,6,6]])
+    return mask_with_gaps
 
+@pytest.fixture(scope="module")
+def mask_no_gaps():
+    mask_no_gaps = np.array([[1,1,1,4,4,4],
+                             [1,1,1,2,2,2],
+                             [1,1,1,2,2,0],
+                             [3,3,3,2,2,2],
+                             [3,3,3,5,5,5],
+                             [3,3,0,5,6,6]])
+    return mask_no_gaps
+    
 #%% Tests for domain_volume function
 
 def test_incorrect_domain():
@@ -81,6 +101,8 @@ def test_convert_lons_0360():
     assert all(lon_0360 >= 0) is True
     assert all(lon_0360 < 360) is True
 
+# Tests for create_country_mask_eez
+    
 @pytest.mark.skipif(not glob.glob(os.path.join(data_path,"World_shape_databases")), reason="No access to files in data_path")
 def test_country_match(country_codes,not_country_codes,fp_directory):
     """
@@ -132,5 +154,39 @@ def test_country_match(country_codes,not_country_codes,fp_directory):
         country_code_match = [not_c_code for c in ds_both['country_code'].values if not_c_code == c]
         
         assert len(country_code_match) == 0
+        
+def test_fill_gaps(mask_with_gaps,mask_no_gaps,fp_directory):
+    """
+    Tests that mask_fill_gaps in correctly fills in all gaps in the mask 
+    by searching for empty grid cells which are surrounded by identically filled grid cells.
+    """
     
+    filled_array = countrymask.mask_fill_gaps(mask_with_gaps)
+    
+    assert np.array_equal(filled_array,mask_no_gaps) == True
+    
+@pytest.mark.skipif(not glob.glob(os.path.join(data_path,"LPDM/fp_NAME/")), reason="No access to files in data_path")
+def test_get_country(fp_directory):
+    """
+    Creates a countryfile and checks that name.get_country can 
+    read this file and extract all required variables.
+    Then removes this file.
+    """
+    
+    output_path = os.path.join(acrg_path,'tests/files/LPDM/countries/country_EUROPE')
+    
+    c_mask = countrymask.create_country_mask_eez(domain='EUROPE',include_land_territories=True,
+                                                 include_ocean_territories=True,reset_index=True,
+                                                 fill_gaps=False,fp_directory=fp_directory,
+                                                 output_path=output_path,save=True)
+    
+    c_mask_extracted = get_country(domain='EUROPE',country_file=output_path+'.nc')
+    
+    assert c_mask_extracted
+    assert type(c_mask_extracted.country) == np.ndarray
+    assert type(c_mask_extracted.name) == np.ndarray
+    
+    if os.path.exists(output_path+'.nc'):
+        os.remove(output_path+'.nc')
+
 # Samoa lat and lon 13.7590° S, 172.1046° W
