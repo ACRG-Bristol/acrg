@@ -56,7 +56,10 @@ acrg_path = Paths.acrg
 data_path = Paths.data
 cams_directory_default = os.path.join(data_path, 'ECMWF_CAMS', 'CAMS_inversion/')
 
-# default variable names in the CAMS files for each species and CAMS version, add 
+# latest version is currently v19, update as necessary
+latest_version = 'v19'
+
+# default variable names in the CAMS files for each species and CAMS versions
 default_inputs = {'ch4': {'v19': {'altitude': 'altitude',
                                   'file_start_str': 'cams73',
                                   'height': 'height',
@@ -68,14 +71,13 @@ default_inputs = {'ch4': {'v19': {'altitude': 'altitude',
                                   'z': 'z'}
                          }
                    }
-
-default_inputs['ch4']['latest'] = default_inputs['ch4']['v19']
+default_inputs['ch4']['latest'] = default_inputs['ch4'][latest_version]
 
 with open(os.path.join(acrg_path, "data/species_info.json")) as f:
     species_info=json.load(f,object_pairs_hook=OrderedDict)
 
 def readCAMSInversion(start, end, species='ch4', cams_directory=cams_directory_default,
-                      version='v19', variables=None):
+                      version='latest', variables=None):
     '''
     Args:
         start, end (str)
@@ -87,7 +89,7 @@ def readCAMSInversion(start, end, species='ch4', cams_directory=cams_directory_d
         version (str, int, optional))
             version number of inversion, e.g. 'v19'
             if an int is entered, it will be converted to a str starting with 'v'
-            defaults to 'v19'
+            defaults to 'latest'
         variables (dict, optional)
             dictionary containing variable names including:
                 'altitude', 'file_start_str', 'height', 'hlevel', 'lat', 'lon', 'time', & 'z'
@@ -98,7 +100,6 @@ def readCAMSInversion(start, end, species='ch4', cams_directory=cams_directory_d
     '''
     # set default inputs if not given
     cams_directory = cams_directory_default if cams_directory is None else cams_directory
-    version = 'v19' if version is None else version
     version = f'v{version}' if not isinstance(version, str) else version
 
     variables = default_inputs[species][version] if variables is None else variables
@@ -114,7 +115,7 @@ def readCAMSInversion(start, end, species='ch4', cams_directory=cams_directory_d
     
     return ds
 
-def convertCAMSaltitude(ds, species='ch4', version='v19'):
+def convertCAMSaltitude(ds, species='ch4', version='latest'):
     '''
     Convert altitude coordinate to level
     
@@ -123,7 +124,7 @@ def convertCAMSaltitude(ds, species='ch4', version='v19'):
             CAMS data
         species, version (str, optional)
             used to infer the variable names from the 'default_inputs' dictionary
-            default to species='ch4' and version='v19'
+            default to species='ch4' and version='latest'
         variables (dict, optional)
             dictionary containing variable names including:
                 'altitude', 'file_start_str', 'height', 'hlevel', 'lat', 'lon', 'time', & 'z'
@@ -132,7 +133,6 @@ def convertCAMSaltitude(ds, species='ch4', version='v19'):
     Returns
         xarray.Dataset
     '''
-    version = 'v19' if version is None else version
     version = f'v{version}' if not isinstance(version, str) else version
     # get default variable names
     variables = default_inputs[species][version]
@@ -155,7 +155,7 @@ def convertCAMSaltitude(ds, species='ch4', version='v19'):
     
     return ds
 
-def interpheight(nesw, fp_height, lonorlat, species='ch4', version='v19', reverse=None, variables=None):
+def interpheight(nesw, fp_height, lonorlat, species='ch4', version='latest', reverse=None, variables=None):
     """
     Interpolates the CAMS data to the NAME heights
     
@@ -183,7 +183,6 @@ def interpheight(nesw, fp_height, lonorlat, species='ch4', version='v19', revers
         dataset : CAMS BC data interpolated to NAME heights
         
     """
-    version = 'v19' if version is None else version
     version = f'v{version}' if not isinstance(version, str) else version
     # get default variable names
     variables = default_inputs[species][version] if variables is None else variables
@@ -216,7 +215,7 @@ def interpheight(nesw, fp_height, lonorlat, species='ch4', version='v19', revers
     ds2 = ds2.to_dataset(name=species)
     return ds2
 
-def interplonlat(nesw, fp_lonorlat, lonorlat, species='ch4', reverse=None, version='v19', variables=None, verbose=False):
+def interplonlat(nesw, fp_lonorlat, lonorlat, species='ch4', reverse=None, version='latest', variables=None, verbose=False):
     """
     Interpolates the CAMS data to the NAME longitudes and latitudes
     
@@ -245,7 +244,6 @@ def interplonlat(nesw, fp_lonorlat, lonorlat, species='ch4', reverse=None, versi
         dataset : CAMS BC data interpolated to NAME longitudes or latitudes
         
     """
-    version = 'v19' if version is None else version
     version = f'v{version}' if not isinstance(version, str) else version
     # get default variable names
     variables = default_inputs[species][version] if variables is None else variables
@@ -294,7 +292,7 @@ def bc_filename(domain, start_date, species='ch4', from_climatology=False):
 
 
 def write_CAMS_BC_tonetcdf(vmr_n, vmr_e, vmr_s, vmr_w, st_date, domain, outdir, gridsize,
-                           species='ch4', version='v19', variables=None, from_climatology=False):
+                           species='ch4', version='latest', variables=None, from_climatology=False):
     """
     Writes the CAMS BC data to a netcdf file.
     This uses bc_filename to produce a standardised file name for the boundary conditions file.
@@ -332,7 +330,6 @@ def write_CAMS_BC_tonetcdf(vmr_n, vmr_e, vmr_s, vmr_w, st_date, domain, outdir, 
     Returns
         netcdf file: Boundary conditions at domain boundaries
     """
-    version = 'v19' if version is None else version
     version = f'v{version}' if not isinstance(version, str) else version
     # get default variable names
     variables = default_inputs[species][version] if variables is None else variables
@@ -354,7 +351,7 @@ def write_CAMS_BC_tonetcdf(vmr_n, vmr_e, vmr_s, vmr_w, st_date, domain, outdir, 
                               from_climatology = from_climatology)
     BC_edges.to_netcdf(path = os.path.join(outdir, BC_filename), mode = 'w')
 
-def create_CAMS_BC(ds, fp_lat, fp_lon, fp_height, date, domain, species=None, version='v19', variables=None,
+def create_CAMS_BC(ds, fp_lat, fp_lon, fp_height, date, domain, species=None, version='latest', variables=None,
                    outdir=None, from_climatology=False, verbose=False, test=False):
     '''
     Create CAMS boundary conditions and write to a netcdf file
@@ -398,7 +395,6 @@ def create_CAMS_BC(ds, fp_lat, fp_lon, fp_height, date, domain, species=None, ve
             <species>_<domain>_<start_year><start_month>.nc'
     
     '''
-    version = 'v19' if version is None else version
     version = f'v{version}' if not isinstance(version, str) else version
     # get default variable names
     variables = default_inputs[species][version] if variables is None else variables
@@ -529,7 +525,6 @@ def makeCAMSBC(domain, start, end,
         at a time. If multiple years are given in start and end, it will average them together. This code needs to be split up with a 
         climatology keywork so that it does not automatically do averaging.
     '''
-    cams_version = 'v19' if cams_version is None else cams_version
     cams_version = f'v{cams_version}' if not isinstance(cams_version, str) else cams_version
     # get default variable names
     variables = default_inputs[species][cams_version] if variables is None else variables
