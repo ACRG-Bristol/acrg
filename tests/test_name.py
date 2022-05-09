@@ -253,17 +253,23 @@ def test_footprints_from_file(fp_directory,measurement_param):
     assert out
 
 @pytest.mark.long
-def test_footprints_from_site(footprint_param, footprint_param_HiTRes):
+def test_footprints_from_site(footprint_param):
     '''
     Test dataset can be created from set of parameters with footprints() function.
     '''
 
     out = name.footprints(**footprint_param)
+    
+    assert out
 
+@pytest.mark.long
+def test_footprints_from_site(footprint_param_HiTRes):
+    '''
+    Test dataset can be created from set of parameters with footprints() function.
+    '''
     # test importing the HiTRes footprint
     out_HiTRes = name.footprints(**footprint_param_HiTRes)
     
-    assert out
     assert out_HiTRes
 
 
@@ -299,20 +305,31 @@ def flux_param_HiTRes(flux_directory):
     
     return input_param
 
-def test_flux_HiTRes(flux_param_HiTRes):
+@pytest.fixture()
+def flux_HiTRes(flux_param_HiTRes):
     '''
-    Test dataset can be created by flux_for_HiTRes() function
+    Create flux dataset using flux_for_HiTRes for associated tests
     '''
     start = datetime.strptime(flux_param_HiTRes['start'], '%Y-%m-%d')
     start = datetime(start.year, start.month, start.day) + timedelta(hours=-24)
 
     out = name.flux_for_HiTRes(**flux_param_HiTRes)['high_freq']
-    out_start = datetime.strptime(out.time.values[0].astype(str).split('T')[0], '%Y-%m-%d')
-    print(f'start (test): {out.time.values[0]}')
 
-    assert out
+    return out
+
+def test_flux_HiTRes(flux_HiTRes):
+    '''
+    Test dataset can be created by flux_for_HiTRes() function
+    '''
+    assert flux_HiTRes
+
+def test_flux_HiTRes_date(flux_param_HiTRes, flux_HiTRes):
+    start = datetime.strptime(flux_param_HiTRes['start'], '%Y-%m-%d')
+    start = datetime(start.year, start.month, start.day) + timedelta(hours=-24)
+
+    out_start = datetime.strptime(flux_HiTRes.time.values[0].astype(str).split('T')[0], '%Y-%m-%d')
+    
     assert start==out_start
-
     
 @pytest.fixture()
 def bc_param(bc_directory,measurement_param):
@@ -875,18 +892,8 @@ def test_filtering_local(dummy_timeseries_dict_gen):
     out = name.filtering(dummy_timeseries_dict_gen,filters)
     assert np.isclose(out["TEST"].mf.values, np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])).all()
 
-@pytest.mark.long
-def test_hitres_timeseries(hitres_timeseries_benchmark_file, hitres_sens_benchmark_file):
-    '''
-    Checks the output of name.timeseries_HiTRes matches a benchmarked version saved to
-    HiTRes_timeseries_201801.nc
-    '''
-    
-    with xray.open_dataset(hitres_timeseries_benchmark_file) as benchmark:
-        benchmark.load()
-    with xray.open_dataset(hitres_sens_benchmark_file) as benchmark_sens:
-        benchmark_sens.load()
-    
+@pytest.fixture(scope="module")
+def setup_hitres_timeseries():
     fp_file_name = os.path.join(acrg_path, 'tests', 'files', 'LPDM', 'fp_NAME_minimal', 'EUROPE', 'WAO-20magl_UKV_co2_EUROPE_201801.nc')
     with xray.open_dataset(fp_file_name) as footprint:
         footprint.load()
@@ -895,7 +902,7 @@ def test_hitres_timeseries(hitres_timeseries_benchmark_file, hitres_sens_benchma
     with xray.open_dataset(emiss_file_name) as emiss:
         emiss.load()
     flux_dict = {'high_freq': emiss}
-    
+
     timeseries, sens = name.timeseries_HiTRes(flux_dict = flux_dict,
                                               fp_HiTRes_ds = footprint,
                                               output_TS = True,
@@ -905,8 +912,30 @@ def test_hitres_timeseries(hitres_timeseries_benchmark_file, hitres_sens_benchma
                                               verbose = False,
                                               time_resolution = '1H')
     
-    assert np.allclose(timeseries['total'], benchmark['total'])
-    assert np.allclose(sens['total'], benchmark_sens['total'])
+    out = (timeseries, sens)
+    return out
+
+@pytest.mark.long
+def test_hitres_timeseries(hitres_timeseries_benchmark_file, setup_hitres_timeseries):
+    '''
+    Checks the timeseries output of name.timeseries_HiTRes matches a benchmarked version saved to
+    HiTRes_timeseries_201801.nc
+    '''
+    with xray.open_dataset(hitres_timeseries_benchmark_file) as benchmark:
+        benchmark.load()
+    
+    assert np.allclose(setup_hitres_timeseries[0]['total'], benchmark['total'])
+
+@pytest.mark.long
+def test_hitres_timeseries_sens(hitres_sens_benchmark_file, setup_hitres_timeseries):
+    '''
+    Checks the sensitivity output of name.timeseries_HiTRes matches a benchmarked version saved to
+    HiTRes_timeseries_201801.nc
+    '''
+    with xray.open_dataset(hitres_sens_benchmark_file) as benchmark:
+        benchmark.load()
+    
+    assert np.allclose(setup_hitres_timeseries[1]['total'], benchmark['total'])
     
 # TODO: 
 #    Not working yet
