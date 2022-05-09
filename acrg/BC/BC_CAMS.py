@@ -543,10 +543,6 @@ def makeCAMSBC(domain, start, end,
     # Use fp_directory if specified.
     kwargs = {'domain': domain} if fp_directory is None else {'domain': domain, 'fp_directory': fp_directory}
     fp_lat,fp_lon,fp_height = domain_volume(**kwargs)
-    # if fp_directory is not None:
-    #     fp_lat,fp_lon,fp_height = domain_volume(domain, fp_directory=fp_directory)
-    # else:
-    #     fp_lat,fp_lon,fp_height = domain_volume(domain)
     
     outdir  = os.path.join(data_path, 'LPDM', 'bc', domain) if outdir is None else outdir
     
