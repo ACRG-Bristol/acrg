@@ -1151,7 +1151,7 @@ def add_timeseries(fp_and_data, load_flux, verbose=True):
                 mf_name = 'mf_mod' if source=='all' else f'mf_mod_{source}'
                 if type(fp_and_data['.flux'][source]) == dict:
                     # work out the resolution of the fp, to use to estimate the timeseries
-                    fp_time = (fp_and_data[site].time[1] - fp_and_data[site].time[0]).values.astype('timedelta64[h]').astype(int)
+                    fp_time = fp_and_data[site]["time"].diff(dim="time").values.mean().astype('timedelta64[h]').astype('int')
                     # estimate the timeseries
                     fp_and_data[site][mf_name] = timeseries_HiTRes(fp_HiTRes_ds = fp_and_data[site],
                                                                    flux_dict = fp_and_data['.flux'][source],
@@ -1283,7 +1283,7 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                                           "fp": fp_and_data[site]["fp"]})
                     
                     # work out the resolution of the fp, to use to estimate the timeseries
-                    fp_time = (fp_and_data[site].time[1] - fp_and_data[site].time[0]).values.astype('timedelta64[h]').astype(int)
+                    fp_time = fp_and_data[site]["time"].diff(dim="time").values.mean().astype('timedelta64[h]').astype('int')
                     
                     # calculate the H matrix
                     output_TS = True if calc_timeseries else False
