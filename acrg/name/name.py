@@ -4,6 +4,7 @@ Created on Mon Nov 10 10:45:51 2014
 
 """
 import os
+from sqlite3 import Time
 import sys
 import glob
 import json
@@ -2300,19 +2301,16 @@ class get_country(object):
         self.country = np.asarray(country)
         self.name = name 
 
-def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = True, output_fpXflux = True,
-                      output_type='Dataset', output_file=None, verbose=False, chunks=None,
-                      time_resolution='1H'):
-    """
-    The timeseries_HiTRes function computes flux * HiTRes footprints.
-    
-    HiTRes footprints record the footprint at each 2 hour period back in time for the first 24 hours.
-    A high time resolution flux is used to multiply the first 24 hours back of footprints, high 
-    frequency flux can be estimated by resampling low frequency data if required
-    
-    A residual flux is used to multiply the residual integrated footprint for the remainder of the 30 
-    day period, the residual can be calculated from the high frequency flux.
-    
+
+def timeseries_HiTRes_setup(flux_dict, fp_HiTRes_ds=None, fp_file=None, 
+                            chunks=None, time_resolution='1H', verbose=False):
+    '''
+    Setup for timeseries_HiTRes
+    - Makes sure that the footprint and fluxes have the correct time resolution
+    - Selects the required data from the fluxes to match the fp datetimes and those needed for H_back
+    - Sets up the low frequency fluxes
+    - Reformats the flux data as a numpy or dask array - using these is faster than xarray
+
     Args:
         flux_dict (dict)
             A dictionary of the form output in the format:
@@ -2327,18 +2325,6 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
         fp_file (str, optional)
             footprint filename
             not needed if fp_HiTRes_ds is given
-        output_TS (bool, optional)
-            Output the timeseries. Default is True.
-        output_fpXflux (bool, optional)
-            Output the sensitivity map. Default is True.
-        output_type (str, optional)
-            object type to be returned
-            default is Dataset which returns an xarray.Dataset
-        output_file (str, optional)
-            filename to save data to
-            data is not saved by default
-        verbose (bool, optional)
-            show progress bar throughout loop
         chunks (dict, optional)
             size of chunks for each dimension
             e.g. {'lat': 50, 'lon': 50}
@@ -2348,20 +2334,14 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
         time_resolution (str, optional)
             required time resolution of timeseries
             defaults to '1H'
+        verbose (bool, optional)
+            show progress bar throughout loop
     
     Returns:
-        xarray.Dataset, xarray.DataArray or dict
-            Same format as flux_dict['high_freq']:
-                If flux_dict['high_freq'] is an xarrayobject then an xarray object is returned
-                (either DataArray or Dataset, as specified by output_type)
-                If flux_dict['high_freq'] is a dict of xarray objects then a dict of xarray objects
-                is returned (an xarray.Dataset or xarray.DataArray for each sector)
-        
-            If output_TS is True:
-                Outputs a mol fraction timeseries, i.e. latlon sum of footprint * flux
-            If output_fpXflux is True:
-                Outputs a sensitivity map, i.e. footprint * flux
-    """
+        flux, fp_HiTRes, time_array
+            the reformatted fluxes, footprints, and time array as either
+            numpy or dask arrays
+    '''
     if verbose:
         print(f'\nCalculating timeseries with {time_resolution} resolution, this might take a few minutes')
     ### get the high time res footprint
@@ -2435,7 +2415,80 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
                            da.array(flux_freq)
                      for freq, flux_freq in flux_sector.items()}
             for sector, flux_sector in flux.items()}
+
+    return flux, fp_HiTRes, time_array
+
+
+def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS=True, output_fpXflux=True,
+                      output_type='Dataset', output_file=None, verbose=False, chunks=None,
+                      time_resolution='1H'):
+    """
+    The timeseries_HiTRes function computes flux * HiTRes footprints.
     
+    HiTRes footprints record the footprint at each 2 hour period back in time for the first 24 hours.
+    A high time resolution flux is used to multiply the first 24 hours back of footprints, high 
+    frequency flux can be estimated by resampling low frequency data if required
+    
+    A residual flux is used to multiply the residual integrated footprint for the remainder of the 30 
+    day period, the residual can be calculated from the high frequency flux.
+    
+    Args:
+        flux_dict (dict)
+            A dictionary of the form output in the format:
+            flux_dict: {'high_freq': xarray.Dataset, 'low_freq': xarray.Dataset}.            
+            If there are multiple sectors, the format should be:
+            flux_dict: {sector1 : {'high_freq' : flux_dataset, 'low_freq'  : flux_dataset},
+                        sector2 : {'high_freq' : flux_dataset, 'low_freq'  : flux_dataset}}
+        fp_HiTRes_ds (xarray.Dataset)
+            Dataset of high time resolution footprints. HiTRes footprints record the footprint at 
+            each timestep back in time for a given amount of time
+            (e.g. hourly time steps back in time for the first 24 hours).
+        fp_file (str, optional)
+            footprint filename
+            not needed if fp_HiTRes_ds is given
+        output_TS (bool, optional)
+            Output the timeseries. Default is True.
+        output_fpXflux (bool, optional)
+            Output the sensitivity map. Default is True.
+        output_type (str, optional)
+            object type to be returned
+            default is Dataset which returns an xarray.Dataset
+        output_file (str, optional)
+            filename to save data to
+            data is not saved by default
+        verbose (bool, optional)
+            show progress bar throughout loop
+        chunks (dict, optional)
+            size of chunks for each dimension
+            e.g. {'lat': 50, 'lon': 50}
+            opens dataset with dask, such that it is opened 'lazily'
+            and all of the data is not loaded into memory
+            defaults to None - dataset is opened with out dask
+        time_resolution (str, optional)
+            required time resolution of timeseries
+            defaults to '1H'
+    
+    Returns:
+        xarray.Dataset, xarray.DataArray or dict
+            Same format as flux_dict['high_freq']:
+                If flux_dict['high_freq'] is an xarrayobject then an xarray object is returned
+                (either DataArray or Dataset, as specified by output_type)
+                If flux_dict['high_freq'] is a dict of xarray objects then a dict of xarray objects
+                is returned (an xarray.Dataset or xarray.DataArray for each sector)
+        
+            If output_TS is True:
+                Outputs a mol fraction timeseries, i.e. latlon sum of footprint * flux
+            If output_fpXflux is True:
+                Outputs a sensitivity map, i.e. footprint * flux
+    """
+    # run the setup to make sure that the footprints and fluxes have the correct format
+    flux, fp_HiTRes, time_array = timeseries_HiTRes_setup(flux_dict=flux_dict,
+                                                          fp_HiTRes_ds=fp_HiTRes_ds,
+                                                          fp_file=fp_file, 
+                                                          verbose=verbose,
+                                                          chunks=chunks,
+                                                          time_resolution=time_resolution)
+
     # Set up a numpy array to calculate the product of the footprint (H matrix) with the fluxes
     if output_fpXflux:
         fpXflux = {sector: None for sector in flux.keys()}
@@ -2492,12 +2545,14 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS = Tr
                 # Sum over time (H back) to give the total mf at this timestep
                 fpXflux[sector] = da.asarray(np.nansum(fp_fl, axis=2)) if fpXflux[sector] is None else \
                                   da.dstack([fpXflux[sector], np.nansum(fp_fl, axis=2)])
+                timeseries = None
             
             elif output_TS:
                 # work out timeseries by summing over lat, lon, & time (24 hrs)
                 timeseries[sector] = da.from_array([np.nansum(fp_fl)]) if timeseries[sector] is None else \
                                      da.concatenate([timeseries[sector], [np.nansum(fp_fl)]], axis=0)
-    
+                fpXflux = None
+     
     if output_fpXflux and output_TS:
         # if not already done then calculate the timeseries
         timeseries = {sector: fp_fl.sum(axis=(0,1)) for sector, fp_fl in fpXflux.items()}
