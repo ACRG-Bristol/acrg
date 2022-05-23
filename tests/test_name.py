@@ -892,8 +892,9 @@ def test_filtering_local(dummy_timeseries_dict_gen):
     out = name.filtering(dummy_timeseries_dict_gen,filters)
     assert np.isclose(out["TEST"].mf.values, np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])).all()
 
-@pytest.fixture(scope="module")
-def setup_hitres_timeseries():
+
+@pytest.fixture(scope='module')
+def hitres_files():
     fp_file_name = os.path.join(acrg_path, 'tests', 'files', 'LPDM', 'fp_NAME_minimal', 'EUROPE', 'WAO-20magl_UKV_co2_EUROPE_201801.nc')
     with xray.open_dataset(fp_file_name) as footprint:
         footprint.load()
@@ -902,6 +903,12 @@ def setup_hitres_timeseries():
     with xray.open_dataset(emiss_file_name) as emiss:
         emiss.load()
     flux_dict = {'high_freq': emiss}
+
+    return (footprint, flux_dict)
+
+@pytest.fixture(scope="module")
+def setup_hitres_timeseries(hitres_files):
+    footprint, flux_dict = hitres_files
 
     timeseries, sens = name.timeseries_HiTRes(flux_dict = flux_dict,
                                               fp_HiTRes_ds = footprint,
@@ -936,7 +943,35 @@ def test_hitres_timeseries_sens(hitres_sens_benchmark_file, setup_hitres_timeser
         benchmark.load()
     
     assert np.allclose(setup_hitres_timeseries[1]['total'], benchmark['total'])
+
+@pytest.mark.long
+def test_hitres_timeseries_int(hitres_files):
+    '''
+    Test that using name.timeseries_HiTRes with constant fluxes and HiTRes footprint
+    gives the same result as calculating a timeseries with an integrated footprint
+    '''
+    footprint, flux_dict = hitres_files
+
+    # create a constant flux dataset using the mean from the high frequency one
+    flux_mean = flux_dict['high_freq'].flux.mean(dim='time')
+    flux_low_freq = flux_mean.values.tolist()
+    flux_low_freq = np.array([flux_low_freq] * len(flux_dict['high_freq'].time.values)).transpose(1, 2, 0)
+    flux_low_freq = xray.Dataset(data_vars = {'flux': (['lat', 'lon', 'time'], flux_low_freq)},
+                                 coords = {'lat': flux_dict['high_freq'].lat.values,
+                                           'lon': flux_dict['high_freq'].lon.values,
+                                           'time': flux_dict['high_freq'].time.values})
     
+    # calculate the timeseries using the HiTRes footprint
+    ts_HiTRes = name.timeseries_HiTRes(flux_dict = {'high_freq': flux_low_freq},
+                                       fp_HiTRes_ds = footprint,
+                                       output_fpXflux = False) * 1e6
+    # calculate the timeseries using the integrated footprint
+    for ll in ['lat', 'lon']:
+        footprint[ll] = flux_low_freq[ll]
+    ts_integrated = (flux_low_freq.flux * footprint.fp).sum(['lat', 'lon']) * 1e6
+
+    assert np.allclose(ts_HiTRes.total.round(1), ts_integrated.round(1))
+
 # TODO: 
 #    Not working yet
 #def test_filtering_pblh(fp_data_H_pblh_merge):
