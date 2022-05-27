@@ -30,6 +30,7 @@ import glob
 import gzip
 import datetime
 import re
+import dask
 import datetime as dt
 import numpy as np
 import pandas as pd
@@ -1019,8 +1020,9 @@ def footprint_array(fields_file,
         data_arrays     = []     
         
         if species == 'CO2':
+            # create a Dataset for the HiTRes footprints with an extra dimension for H_back
             FDS_rt = xray.Dataset({"fp_HiTRes": (["time", "lev", "lat", "lon", "H_back"],
-                                    np.zeros((len(time), len(levs),len(lats), len(lons), int(user_max_hour_back))))},
+                                    dask.array.zeros((len(time), len(levs),len(lats), len(lons), int(user_max_hour_back))))},
                                     coords={"time": time, "lev": levs, "lat": lats, "lon": lons,  
                                             "H_back": np.arange(0,user_max_hour_back)})
         for rtime in releasetime:
@@ -1047,7 +1049,7 @@ def footprint_array(fields_file,
                     fp_grid+=fp_grid_temp
                     
                     hr_back = datetime.datetime.strptime(rtime, '%Y%m%d%H%M') - datetime.datetime.strptime(ot, '%Y%m%d%H%M')
-                    hr_back = hr_back.total_seconds()/3600.
+                    hr_back = hr_back.total_seconds()/3600. # convert to hours
                     
                     if hr_back < user_max_hour_back:
                         FDS_rt.fp_HiTRes.loc[dict(lev='From     0 -    40m agl', time=rt_dt, H_back=hr_back)] = fp_grid_temp
@@ -1114,7 +1116,7 @@ def footprint_array(fields_file,
     
     # Set up footprint dataset
     fp = xray.Dataset({"fp": (["time", "lev", "lat", "lon"],
-                              np.zeros((ntime, nlev, nlat, nlon)))},
+                              dask.array.zeros((ntime, nlev, nlat, nlon)))},
                         coords={"lat": lats, "lon":lons, "lev": levs, 
                                 "time":time})
 
@@ -1307,15 +1309,13 @@ def footprint_array(fields_file,
                 
     if species == 'CO2':
         status_log("Adding residual footprints")
+        # add the fps along H_back and subtract from the integrated fp to get the residual
         addfp = fp.fp_HiTRes.sum(dim='H_back')
         remfp = fp.fp - addfp
-        remfpval = np.expand_dims(remfp.values, 4)
-        remfpvar = xray.DataArray(remfpval,
-                                  dims   = ['time','lev','lat', 'lon','H_back'],
-                                  coords = {'time': fp.time, 'lev': fp.lev,
-                                            'lat': fp.lat, 'lon': fp.lon,
-                                            'H_back': [user_max_hour_back]},
-                                  attrs = {'description': 'Disaggregated fp, where the last slice is the residual fp'})
+        # add H_back as a new dimension, with coord value of user_max_hour_back
+        remfpvar = remfp.assign_coords(H_back=[user_max_hour_back])
+        remfpvar = remfpvar.expand_dims(dim='H_back', axis=-1)
+        # add on to the footprint
         remfpvar = xray.concat([fp.fp_HiTRes, remfpvar], dim = 'H_back')
         remfpds = remfpvar.to_dataset(name = 'fp_HiTRes')
         fp = xray.merge([fp, remfpds])
