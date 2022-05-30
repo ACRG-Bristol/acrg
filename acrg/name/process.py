@@ -1049,8 +1049,9 @@ def footprint_array(fields_file,
                     fp_grid+=fp_grid_temp
                     
                     # get the time difference between the release time and output time
-                    hr_back = datetime.datetime.strptime(rtime, '%Y%m%d%H%M') - datetime.datetime.strptime(ot, '%Y%m%d%H%M')
-                    hr_back = hr_back.total_seconds()/3600. # convert to number of hours
+                    # hr_back = datetime.datetime.strptime(rtime, '%Y%m%d%H%M') - datetime.datetime.strptime(ot, '%Y%m%d%H%M')
+                    # hr_back = hr_back.total_seconds()/3600. # convert to number of hours
+                    hr_back = fp_timedelta_hrs - timeStep/2
                     
                     if hr_back < user_max_hour_back:    # add this slice to tbe H_back dimensions
                         FDS_rt.fp_HiTRes.loc[dict(lev='From     0 -    40m agl', time=rt_dt, H_back=hr_back)] = fp_grid_temp
@@ -1232,6 +1233,65 @@ def footprint_array(fields_file,
                        error_or_warning="error")
         
         return fp
+    
+    def convert_units_dask(fp, units, use_surface_conditions = True):
+        '''
+        Conversion is based on inputs units
+        
+        If units are 'ppm s':
+            Convert from [ppm s] (i.e. mu-mol/mol) units to [(mol/mol) / (mol/m2/s)].
+            
+            Using conversion:
+                sensitivity [mu-mol/mol s] * area [m2] * molar mass [g/mol] * 1e-6 [mu] 
+                    / (time [s] * release rate [g/s])
+        
+        If units are 'g s / m^3' (or 'gs/m3'):
+            Convert from [g s/m3] units to [(mol/mol) / (mol/m2/s)].
+            
+            Using conversion:
+                sensitivity [g s/m3] * area [m2] * RT/P [m3/mol]
+                / (time [s] * release rate [g/s])
+            
+        Note:
+            release rate is assumed to be 1. [g/s]
+            molecular weight in the NAME run itself was set to 1.0, so molar mass will
+            be 1.0 in this calculation as well.
+        
+        Optional args:
+            use_surface_conditions (bool, optional) :
+                If the input units are 'gs/m3', use representation surface P/T ratio of 345 rather
+                than using the input meteorological data.
+                Default = True
+        '''
+        units_no_space = units.replace(' ','')
+        
+        # convert the units for one release time, data_arrays[column] is the fp for 1 release time
+        # area is the pixel size
+        for col, data_array in enumerate(data_arrays):
+            if units == "g s / m^3" or units == "gs/m3" or units_no_space == "gs/m^3"  or units_no_space == "gs/m3":
+                if use_surface_conditions:
+                    molm3=345./const.R ## Surface P/T ratio we would expect over Europe (345).
+                else:
+                    molm3=fp["press"][slice_dict].values/const.R/\
+                        const.convert_temperature(fp["temp"][slice_dict].values.squeeze(),"C","K")
+                data_arrays[col] = data_arrays[column]*area/ (3600.*timeStep*1.)/molm3
+            elif units == "ppm s" or units_no_space == "ppms":
+                data_arrays[col] = data_arrays[column]*area*1e-6*1./(3600.*timeStep*1.)
+            elif units == "Bq s / m^3" or units_no_space == "Bqs/m^3" or units_no_space == "Bqs/m3" or units == "Bqs/m3":
+                data_arrays[col] = data_arrays[column]*area/(3600.*timeStep*1.)           
+            else:
+                status_log("DO NOT RECOGNISE UNITS OF {} FROM NAME INPUT (expect 'g s / m^3' or 'ppm s')".format(units),
+                           error_or_warning="error")    
+
+            data_arrays[col] = data_array*area/ (3600.*timeStep*1.)/molm3
+        fp_array = dask.array.dstack(data_arrays)
+        
+        fp['fp'] = xray.DataArray(data = {"fp": (["time", "lev", "lat", "lon"],
+                                                 fp_array)},
+                                  coords={"lat": lats, "lon":lons, "lev": levs, 
+                                          "time":time})
+        
+        return fp
 
     def convert_units_ds(fp_ds, slice_dict, units, use_surface_conditions = True):
         '''
@@ -1285,6 +1345,56 @@ def footprint_array(fields_file,
         
         return fp_ds
 
+    def convert_units_ds_dask(fp_ds, slice_dict, units, use_surface_conditions = True):
+        '''
+        Conversion is based on inputs units
+        Input: an xarray dataset with uncoverted HiTRes footprints. 
+        The following dimensions of the fp_HiTRes is expected: [time, lev, lat, lon, H_back]
+        
+        For each slice dictionary,
+        
+        If units are 'ppm s':
+            Convert from [ppm s] (i.e. mu-mol/mol) units to [(mol/mol) / (mol/m2/s)].
+            
+            Using conversion:
+                sensitivity [mu-mol/mol s] * area [m2] * molar mass [g/mol] * 1e-6 [mu] 
+                    / (time [s] * release rate [g/s])
+        
+        If units are 'g s / m^3' (or 'gs/m3'):
+            Convert from [g s/m3] units to [(mol/mol) / (mol/m2/s)].
+            
+            Using conversion:
+                sensitivity [g s/m3] * area [m2] * RT/P [m3/mol]
+                / (time [s] * release rate [g/s])
+            
+        Note:
+            release rate is assumed to be 1. [g/s]
+            molecular weight in the NAME run itself was set to 1.0, so molar mass will
+            be 1.0 in this calculation as well.
+        
+        Optional args:
+            use_surface_conditions (bool, optional) :
+                If the input units are 'gs/m3', use representation surface P/T ratio of 345 rather
+                than using the input meteorological data.
+                Default = True
+        '''
+        units_no_space = units.replace(' ','')
+        if units == "g s / m^3" or units == "gs/m3" or units_no_space == "gs/m^3"  or units_no_space == "gs/m3":
+            if use_surface_conditions:
+                molm3=345. / const.R ## Surface P/T ratio we would expect over Europe (345).
+            else:
+                molm3=fp["press"] / const.R / const.convert_temperature(fp["temp"].squeeze(),"C","K")
+            fp_ds.fp_HiTRes = fp_ds.fp_HiTRes * area/ (3600.*timeStep*1.)/molm3
+        elif units == "ppm s" or units_no_space == "ppms":
+            fp_ds.fp_HiTRes = fp_ds.fp_HiTRes * area*1e-6*1./(3600.*timeStep*1.)
+        elif units == "Bq s / m^3" or units_no_space == "Bqs/m^3" or units_no_space == "Bqs/m3" or units == "Bqs/m3":
+            fp_ds.fp_HiTRes = fp_ds.fp_HiTRes * area/(3600.*timeStep*1.)           
+        else:
+            status_log("DO NOT RECOGNISE UNITS OF {} FROM NAME INPUT (expect 'g s / m^3' or 'ppm s')".format(units),
+                       error_or_warning="error")
+        
+        return fp_ds
+
 
     if satellite:
         for t in range(len(time)):
@@ -1298,14 +1408,16 @@ def footprint_array(fields_file,
                 fp = convert_units(fp, slice_dict, column, units_str,use_surface_conditions=use_surface_conditions)
     else:
         if species == 'CO2':
-            for i in range(len(time)):
-                # convert the units for each time slice
-                slice_dict = dict(time = [i], lev = [0])
-                fp = convert_units(fp, slice_dict, i, units_str,use_surface_conditions=use_surface_conditions) 
-                for j in range(int(user_max_hour_back)):
-                    # convert the units for each H_back slice
-                    slice_dict = dict(time = time[i], lev='From     0 -    40m agl', H_back=j)
-                    fp = convert_units_ds(fp, slice_dict, units_str, use_surface_conditions=use_surface_conditions)
+            fp = convert_units_dask(fp, units_str,use_surface_conditions=use_surface_conditions)
+            fp = convert_units_ds_dask(fp, slice_dict, units_str, use_surface_conditions=use_surface_conditions)
+            # for i in range(len(time)):
+            #     # convert the units for each time slice
+            #     slice_dict = dict(time = [i], lev = [0])
+            #     fp = convert_units_dask(fp, units_str,use_surface_conditions=use_surface_conditions) 
+            #     for j in range(int(user_max_hour_back)):
+            #         # convert the units for each H_back slice
+            #         slice_dict = dict(time = time[i], lev='From     0 -    40m agl', H_back=j)
+            #         fp = convert_units_ds_dask(fp, slice_dict, units_str, use_surface_conditions=use_surface_conditions)
                     
         else:
             for i in range(len(time)):
