@@ -1274,16 +1274,15 @@ def footprint_array(fields_file,
                 else:
                     molm3=fp["press"][slice_dict].values/const.R/\
                         const.convert_temperature(fp["temp"][slice_dict].values.squeeze(),"C","K")
-                data_arrays[col] = data_arrays[column]*area/ (3600.*timeStep*1.)/molm3
+                data_arrays[col] = data_array*area/ (3600.*timeStep*1.)/molm3
             elif units == "ppm s" or units_no_space == "ppms":
-                data_arrays[col] = data_arrays[column]*area*1e-6*1./(3600.*timeStep*1.)
+                data_arrays[col] = data_array*area*1e-6*1./(3600.*timeStep*1.)
             elif units == "Bq s / m^3" or units_no_space == "Bqs/m^3" or units_no_space == "Bqs/m3" or units == "Bqs/m3":
-                data_arrays[col] = data_arrays[column]*area/(3600.*timeStep*1.)           
+                data_arrays[col] = data_array*area/(3600.*timeStep*1.)           
             else:
                 status_log("DO NOT RECOGNISE UNITS OF {} FROM NAME INPUT (expect 'g s / m^3' or 'ppm s')".format(units),
-                           error_or_warning="error")    
-
-            data_arrays[col] = data_array*area/ (3600.*timeStep*1.)/molm3
+                           error_or_warning="error")
+        # stack all release time arrays into one
         fp_array = dask.array.dstack(data_arrays)
         
         fp['fp'] = xray.DataArray(data = {"fp": (["time", "lev", "lat", "lon"],
