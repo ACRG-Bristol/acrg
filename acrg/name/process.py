@@ -1027,7 +1027,7 @@ def footprint_array(fields_file,
                                             "H_back": np.arange(0,user_max_hour_back)})
         for rtime in releasetime:
             rt_dt       = datetime.datetime.strptime(rtime, '%Y%m%d%H%M')
-            fp_grid     = np.zeros((len(lats), len(lons)))
+            fp_grid     = dask.array.zeros((len(lats), len(lons)))
             fields_vars = fields_ds.get_variables_by_attributes(ReleaseTime=rtime)
             outputtime  = [fields_vars[ii].getncattr('OutputTime') for ii in range(len(fields_vars))]
             outputtime  = list(sorted(set(outputtime)))
@@ -1037,7 +1037,7 @@ def footprint_array(fields_file,
                 xindex  = [f for f in data if 'Xindex' in f.name][0][:]-1 # Alistair's files index from 1
                 yindex  = [f for f in data if 'Yindex' in f.name][0][:]-1 # Alistair's files index from 1
                 fp_vals = [f for f in data if 'NAMEdata' in f.name][0][:]
-                fp_grid_temp     = np.zeros((len(lats), len(lons)))
+                fp_grid_temp     = dask.array.zeros((len(lats), len(lons)))
                 ot_dt            = datetime.datetime.strptime(ot, '%Y%m%d%H%M')
                 fp_timedelta_hrs = (rt_dt - ot_dt).total_seconds()/3600 + timeStep/2 # average time elapsed in hours
                 # turn this data into a grid
@@ -1048,10 +1048,11 @@ def footprint_array(fields_file,
                     # add to the total for that release time    
                     fp_grid+=fp_grid_temp
                     
+                    # get the time difference between the release time and output time
                     hr_back = datetime.datetime.strptime(rtime, '%Y%m%d%H%M') - datetime.datetime.strptime(ot, '%Y%m%d%H%M')
-                    hr_back = hr_back.total_seconds()/3600. # convert to hours
+                    hr_back = hr_back.total_seconds()/3600. # convert to number of hours
                     
-                    if hr_back < user_max_hour_back:
+                    if hr_back < user_max_hour_back:    # add this slice to tbe H_back dimensions
                         FDS_rt.fp_HiTRes.loc[dict(lev='From     0 -    40m agl', time=rt_dt, H_back=hr_back)] = fp_grid_temp
                 else:                 
                     # add to the total for that release time    
@@ -1212,14 +1213,16 @@ def footprint_array(fields_file,
                 Default = True
         '''
         units_no_space = units.replace(' ','')
+        
+        # convert the units for one release time, data_arrays[column] is the fp for 1 release time
+        # area is the pixel size
         if units == "g s / m^3" or units == "gs/m3" or units_no_space == "gs/m^3"  or units_no_space == "gs/m3":
             if use_surface_conditions:
                 molm3=345./const.R ## Surface P/T ratio we would expect over Europe (345).
             else:
                 molm3=fp["press"][slice_dict].values/const.R/\
                     const.convert_temperature(fp["temp"][slice_dict].values.squeeze(),"C","K")
-            fp.fp[slice_dict] = data_arrays[column]*area/ \
-                (3600.*timeStep*1.)/molm3
+            fp.fp[slice_dict] = data_arrays[column]*area/ (3600.*timeStep*1.)/molm3
         elif units == "ppm s" or units_no_space == "ppms":
             fp.fp[slice_dict] = data_arrays[column]*area*1e-6*1./(3600.*timeStep*1.)
         elif units == "Bq s / m^3" or units_no_space == "Bqs/m^3" or units_no_space == "Bqs/m3" or units == "Bqs/m3":
@@ -1296,9 +1299,11 @@ def footprint_array(fields_file,
     else:
         if species == 'CO2':
             for i in range(len(time)):
+                # convert the units for each time slice
                 slice_dict = dict(time = [i], lev = [0])
                 fp = convert_units(fp, slice_dict, i, units_str,use_surface_conditions=use_surface_conditions) 
                 for j in range(int(user_max_hour_back)):
+                    # convert the units for each H_back slice
                     slice_dict = dict(time = time[i], lev='From     0 -    40m agl', H_back=j)
                     fp = convert_units_ds(fp, slice_dict, units_str, use_surface_conditions=use_surface_conditions)
                     
