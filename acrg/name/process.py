@@ -1285,8 +1285,8 @@ def footprint_array(fields_file,
         # stack all release time arrays into one
         fp_array = dask.array.dstack(data_arrays)
         
-        fp['fp'] = xray.DataArray(data = {"fp": (["time", "lev", "lat", "lon"],
-                                                 fp_array)},
+        fp['fp'] = xray.DataArray(data = fp_array,
+                                  dims = ["time", "lev", "lat", "lon"],
                                   coords={"lat": lats, "lon":lons, "lev": levs, 
                                           "time":time})
         
