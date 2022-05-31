@@ -1283,7 +1283,7 @@ def footprint_array(fields_file,
                 status_log("DO NOT RECOGNISE UNITS OF {} FROM NAME INPUT (expect 'g s / m^3' or 'ppm s')".format(units),
                            error_or_warning="error")
         # stack all release time arrays into one
-        fp_array = da.dstack(data_arrays)
+        fp_array = da.stack(data_arrays)
         # add a dimension for the level
         fp_array = da.expand_dims(fp_array, 1)
         
