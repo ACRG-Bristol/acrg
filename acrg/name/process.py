@@ -30,7 +30,7 @@ import glob
 import gzip
 import datetime
 import re
-import dask
+import dask.array as da
 import datetime as dt
 import numpy as np
 import pandas as pd
@@ -1022,12 +1022,12 @@ def footprint_array(fields_file,
         if species == 'CO2':
             # create a Dataset for the HiTRes footprints with an extra dimension for H_back
             FDS_rt = xray.Dataset({"fp_HiTRes": (["time", "lev", "lat", "lon", "H_back"],
-                                    dask.array.zeros((len(time), len(levs),len(lats), len(lons), int(user_max_hour_back))))},
+                                    da.zeros((len(time), len(levs),len(lats), len(lons), int(user_max_hour_back))))},
                                     coords={"time": time, "lev": levs, "lat": lats, "lon": lons,  
                                             "H_back": np.arange(0,user_max_hour_back)})
         for rtime in releasetime:
             rt_dt       = datetime.datetime.strptime(rtime, '%Y%m%d%H%M')
-            fp_grid     = dask.array.zeros((len(lats), len(lons)))
+            fp_grid     = da.zeros((len(lats), len(lons)))
             fields_vars = fields_ds.get_variables_by_attributes(ReleaseTime=rtime)
             outputtime  = [fields_vars[ii].getncattr('OutputTime') for ii in range(len(fields_vars))]
             outputtime  = list(sorted(set(outputtime)))
@@ -1037,7 +1037,7 @@ def footprint_array(fields_file,
                 xindex  = [f for f in data if 'Xindex' in f.name][0][:]-1 # Alistair's files index from 1
                 yindex  = [f for f in data if 'Yindex' in f.name][0][:]-1 # Alistair's files index from 1
                 fp_vals = [f for f in data if 'NAMEdata' in f.name][0][:]
-                fp_grid_temp     = dask.array.zeros((len(lats), len(lons)))
+                fp_grid_temp     = da.zeros((len(lats), len(lons)))
                 ot_dt            = datetime.datetime.strptime(ot, '%Y%m%d%H%M')
                 fp_timedelta_hrs = (rt_dt - ot_dt).total_seconds()/3600 + timeStep/2 # average time elapsed in hours
                 # turn this data into a grid
@@ -1118,7 +1118,7 @@ def footprint_array(fields_file,
     
     # Set up footprint dataset
     fp = xray.Dataset({"fp": (["time", "lev", "lat", "lon"],
-                              dask.array.zeros((ntime, nlev, nlat, nlon)))},
+                              da.zeros((ntime, nlev, nlat, nlon)))},
                         coords={"lat": lats, "lon":lons, "lev": levs, 
                                 "time":time})
 
@@ -1283,7 +1283,9 @@ def footprint_array(fields_file,
                 status_log("DO NOT RECOGNISE UNITS OF {} FROM NAME INPUT (expect 'g s / m^3' or 'ppm s')".format(units),
                            error_or_warning="error")
         # stack all release time arrays into one
-        fp_array = dask.array.dstack(data_arrays)
+        fp_array = da.dstack(data_arrays)
+        # add a dimension for the level
+        fp_array = da.expand_dims(fp_array, 1)
         
         fp['fp'] = xray.DataArray(data = fp_array,
                                   dims = ["time", "lev", "lat", "lon"],
