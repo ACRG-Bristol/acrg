@@ -1456,7 +1456,7 @@ def footprint_concatenate(fields_prefix,
                           species = None,
                           user_max_hour_back=24.,
                           lifetime_hrs = None,
-                          unzip=False):
+                          unzip = False):
     '''Given file search string, finds all fields and particle
     files, reads them and concatenates the output arrays.
     
@@ -1550,7 +1550,7 @@ def footprint_concatenate(fields_prefix,
     # Create a list of xray datasets
     fp = []
     if len(fields_files) > 0:
-        if unzip:
+        if unzip and 'MixR_hourly' in fields_prefix:
             # unzip .nc.gz files
             # - check if the filename has .nc.gz and if there is already an unzipped version
             fields_files_unzip = [unzip(ff, return_filename=True) if '.nc.gz' in ff and
@@ -2068,7 +2068,7 @@ def status_log(message,
         else:
             print(message)
 
-def process_basic(fields_folder, outfile):
+def process_basic(fields_folder, outfile, unzip=False):
     """Basic processing with no meteorology or particle files
     NOT recommended, but helpful for a quick check
     
@@ -2084,7 +2084,7 @@ def process_basic(fields_folder, outfile):
     
     """
     
-    fp = footprint_concatenate(fields_folder)
+    fp = footprint_concatenate(fields_folder, unzip=unzip)
     write_netcdf(fp, outfile)
 
 def process(domain, site, height, year, month, 
@@ -2107,7 +2107,8 @@ def process(domain, site, height, year, month,
             transport_model="NAME",
             units = None,
             species = None,
-            user_max_hour_back = 24.):
+            user_max_hour_back = 24.,
+            unzip = False):
     
     '''Process a single month of footprints for a given domain, site, height,
     year, month. 
@@ -2475,7 +2476,8 @@ def process(domain, site, height, year, month,
                                             use_surface_conditions=use_surface_conditions,
                                             species = species,
                                             lifetime_hrs = lifetime_hrs,
-                                            user_max_hour_back = user_max_hour_back)
+                                            user_max_hour_back = user_max_hour_back,
+                                            unzip = unzip)
            
         # Do satellite process
         if satellite:
