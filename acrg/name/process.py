@@ -109,7 +109,7 @@ def unzip(filename, out_filename=None, return_filename=False, delete_zipped_file
         out_file.write(in_data)
     
     if delete_zipped_file:
-        print(f'Deleting file : {filename}')
+        if verbose: print(f'Deleting file : {filename}')
         os.remove(filename)
     
     if return_filename:
@@ -1257,7 +1257,7 @@ def footprint_array(fields_file,
         Results
         -------
             xarray.Dataset
-                footprint dataset with fp_HiTRes units converted
+                footprint dataset with units converted
         -------
         
         If units are 'ppm s':
@@ -1282,21 +1282,29 @@ def footprint_array(fields_file,
         units_no_space = units.replace(' ','')
         
         # convert the units for one release time, data_arrays[column] is the fp for 1 release time
-        for col, data_array in enumerate(data_arrays):
-            if units in ["g s / m^3", "g s / m3"] or units_no_space in ["gs/m^3", "gs/m3"]:
-                if use_surface_conditions:
-                    molm3=345./const.R ## Surface P/T ratio we would expect over Europe (345).
-                else:
-                    molm3=fp["press"][slice_dict].values/const.R/\
-                        const.convert_temperature(fp["temp"][slice_dict].values.squeeze(),"C","K")
-                data_arrays[col] = data_array*area_da/ (3600.*timeStep*1.)/molm3
-            elif units == "ppm s" or units_no_space == "ppms":
-                data_arrays[col] = data_array*area_da*1e-6*1./(3600.*timeStep*1.)
-            elif units in ["Bq s / m^3", "Bq s / m3"] or units_no_space in ["Bqs/m^3", "Bqs/m3"]:
-                data_arrays[col] = data_array*area_da/(3600.*timeStep*1.)           
-            else:
-                status_log(f"DO NOT RECOGNISE UNITS OF {units} FROM NAME INPUT (expect 'g s / m^3' or 'ppm s')",
-                           error_or_warning="error")
+        # for col, data_array in enumerate(data_arrays):
+        #     if units in ["g s / m^3", "g s / m3"] or units_no_space in ["gs/m^3", "gs/m3"]:
+        #         if use_surface_conditions:
+        #             molm3=345./const.R ## Surface P/T ratio we would expect over Europe (345).
+        #         else:
+        #             molm3=fp["press"][slice_dict].values/const.R/\
+        #                 const.convert_temperature(fp["temp"][slice_dict].values.squeeze(),"C","K")
+        #         data_arrays[col] = data_array*area_da/ (3600.*timeStep*1.)/molm3
+        #     elif units == "ppm s" or units_no_space == "ppms":
+        #         data_arrays[col] = data_array*area_da*1e-6*1./(3600.*timeStep*1.)
+        #     elif units in ["Bq s / m^3", "Bq s / m3"] or units_no_space in ["Bqs/m^3", "Bqs/m3"]:
+        #         data_arrays[col] = data_array*area_da/(3600.*timeStep*1.)           
+        #     else:
+        #         status_log(f"DO NOT RECOGNISE UNITS OF {units} FROM NAME INPUT (expect 'g s / m^3' or 'ppm s')",
+        #                    error_or_warning="error")
+        
+        # fp_array = da.stack(data_arrays)        # stack all release time arrays into one
+        # fp_array = da.expand_dims(fp_array, 1)  # add a dimension for the level
+        
+        # fp['fp'] = xray.DataArray(data = fp_array,
+        #                           dims = ["time", "lev", "lat", "lon"],
+        #                           coords={"lat": lats, "lon":lons, "lev": levs, 
+        #                                   "time":time})
         
         fp_array = da.stack(data_arrays)        # stack all release time arrays into one
         fp_array = da.expand_dims(fp_array, 1)  # add a dimension for the level
@@ -1305,6 +1313,21 @@ def footprint_array(fields_file,
                                   dims = ["time", "lev", "lat", "lon"],
                                   coords={"lat": lats, "lon":lons, "lev": levs, 
                                           "time":time})
+        
+        if units in ["g s / m^3", "g s / m3"] or units_no_space in ["gs/m^3", "gs/m3"]:
+            if use_surface_conditions:
+                molm3=345./const.R ## Surface P/T ratio we would expect over Europe (345).
+            else:
+                molm3=fp["press"][slice_dict].values/const.R/\
+                        const.convert_temperature(fp["temp"][slice_dict].values.squeeze(),"C","K")
+            fp_array = fp_array*area_da/ (3600.*timeStep*1.)/molm3
+        elif units == "ppm s" or units_no_space == "ppms":
+            fp_array = fp_array*area_da*1e-6*1./(3600.*timeStep*1.)
+        elif units in ["Bq s / m^3", "Bq s / m3"] or units_no_space in ["Bqs/m^3", "Bqs/m3"]:
+            fp_array = fp_array*area_da/(3600.*timeStep*1.)           
+        else:
+            status_log(f"DO NOT RECOGNISE UNITS OF {units} FROM NAME INPUT (expect 'g s / m^3' or 'ppm s')",
+                       error_or_warning="error")
         
         return fp
 
@@ -1360,7 +1383,7 @@ def footprint_array(fields_file,
         
         return fp_ds
 
-    def convert_units_ds_dask(fp_ds, units, use_surface_conditions = True):
+    def convert_units_HiTRes(fp_ds, units, use_surface_conditions = True):
         '''
         Convert the HiTRes footprint units to mol/mol / mol/m2/s
         
@@ -1402,16 +1425,17 @@ def footprint_array(fields_file,
             be 1.0 in this calculation as well.
         '''
         units_no_space = units.replace(' ','')
+        print(f'COnverting fp_HiTRes from units of {units}')
         if units in ["g s / m^3", "g s / m3"] or units_no_space in ["gs/m^3", "gs/m3"]:
             if use_surface_conditions:
                 molm3=345. / const.R ## Surface P/T ratio we would expect over Europe (345).
             else:
                 molm3=fp["press"] / const.R / const.convert_temperature(fp["temp"].squeeze(),"C","K")
-            fp_ds.fp_HiTRes = fp_ds.fp_HiTRes * area_da/ (3600.*timeStep*1.)/molm3
+            fp_ds['fp_HiTRes'] = fp_ds.fp_HiTRes * area_da/ (3600.*timeStep*1.)/molm3
         elif units == "ppm s" or units_no_space == "ppms":
-            fp_ds.fp_HiTRes = fp_ds.fp_HiTRes * area_da*1e-6*1./(3600.*timeStep*1.)
+            fp_ds['fp_HiTRes'] = fp_ds.fp_HiTRes * area_da*1e-6*1./(3600.*timeStep*1.)
         elif units in ["Bq s / m^3", "Bq s / m3"] or units_no_space in ["Bqs/m^3", "Bqs/m3"]:
-            fp_ds.fp_HiTRes = fp_ds.fp_HiTRes * area_da/(3600.*timeStep*1.)           
+            fp_ds['fp_HiTRes'] = fp_ds.fp_HiTRes * area_da/(3600.*timeStep*1.)           
         else:
             status_log(f"DO NOT RECOGNISE UNITS OF {units} FROM NAME INPUT (expect 'g s / m^3' or 'ppm s')",
                        error_or_warning="error")
@@ -1432,7 +1456,7 @@ def footprint_array(fields_file,
     else:
         if species == 'CO2':
             fp = convert_units_dask(fp, units_str,use_surface_conditions=use_surface_conditions)
-            fp = convert_units_ds_dask(fp, units_str, use_surface_conditions=use_surface_conditions)
+            fp = convert_units_HiTRes(fp, units_str, use_surface_conditions=use_surface_conditions)
             # for i in range(len(time)):
             #     # convert the units for each time slice
             #     slice_dict = dict(time = [i], lev = [0])
