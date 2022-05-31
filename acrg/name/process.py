@@ -1346,7 +1346,7 @@ def footprint_array(fields_file,
         
         return fp_ds
 
-    def convert_units_ds_dask(fp_ds, slice_dict, units, use_surface_conditions = True):
+    def convert_units_ds_dask(fp_ds, units, use_surface_conditions = True):
         '''
         Conversion is based on inputs units
         Input: an xarray dataset with uncoverted HiTRes footprints. 
@@ -1410,7 +1410,7 @@ def footprint_array(fields_file,
     else:
         if species == 'CO2':
             fp = convert_units_dask(fp, units_str,use_surface_conditions=use_surface_conditions)
-            fp = convert_units_ds_dask(fp, slice_dict, units_str, use_surface_conditions=use_surface_conditions)
+            fp = convert_units_ds_dask(fp, units_str, use_surface_conditions=use_surface_conditions)
             # for i in range(len(time)):
             #     # convert the units for each time slice
             #     slice_dict = dict(time = [i], lev = [0])
