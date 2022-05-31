@@ -1506,14 +1506,14 @@ def footprint_concatenate(fields_prefix,
     # Find footprint files and MATCHING particle location files
     # These files are identified by their date string. Make sure this is right!
     if satellite:
-        fields_files = sorted(glob.glob(fields_prefix + "*" +
-                             datestr + ".txt*"))
+        fields_files = sorted(glob.glob(f'{fields_prefix}*{datestr}.txt*'))
     elif 'MixR_hourly' in fields_prefix:
-        fields_files = sorted(glob.glob(fields_prefix + "*" +
-                             datestr + "*.nc*"))       
+        fields_files = sorted(glob.glob(f'{fields_prefix}*{datestr}*.nc*'))       
     else:
-        fields_files = sorted(glob.glob(fields_prefix + "*" +
-                             datestr + "*.txt*"))
+        fields_files = sorted(glob.glob(f'{fields_prefix}*{datestr}*.txt*'))
+
+    if len(fields_files)==0:
+        status_log("Cannot find fields files", error_or_warning="error")
     
     # Search for particle files
     if 'MixR_hourly' in fields_prefix: 
@@ -1566,6 +1566,9 @@ def footprint_concatenate(fields_prefix,
 
             # list of field files, excluding .nc.gz files
             fields_files_unzip = [ff for ff in fields_files if '.nc.gz' not in ff]
+            if len(fields_files_unzip)==0:
+                status_log("Cannot find unzipped fields files, unzip and retry",
+                           error_or_warning="error")
         
         # extract footprints
         for fields_file, particle_file in zip(fields_files_unzip, particle_files):
