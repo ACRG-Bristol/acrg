@@ -1280,31 +1280,7 @@ def footprint_array(fields_file,
             be 1.0 in this calculation as well.
         '''
         units_no_space = units.replace(' ','')
-        
-        # convert the units for one release time, data_arrays[column] is the fp for 1 release time
-        # for col, data_array in enumerate(data_arrays):
-        #     if units in ["g s / m^3", "g s / m3"] or units_no_space in ["gs/m^3", "gs/m3"]:
-        #         if use_surface_conditions:
-        #             molm3=345./const.R ## Surface P/T ratio we would expect over Europe (345).
-        #         else:
-        #             molm3=fp["press"][slice_dict].values/const.R/\
-        #                 const.convert_temperature(fp["temp"][slice_dict].values.squeeze(),"C","K")
-        #         data_arrays[col] = data_array*area_da/ (3600.*timeStep*1.)/molm3
-        #     elif units == "ppm s" or units_no_space == "ppms":
-        #         data_arrays[col] = data_array*area_da*1e-6*1./(3600.*timeStep*1.)
-        #     elif units in ["Bq s / m^3", "Bq s / m3"] or units_no_space in ["Bqs/m^3", "Bqs/m3"]:
-        #         data_arrays[col] = data_array*area_da/(3600.*timeStep*1.)           
-        #     else:
-        #         status_log(f"DO NOT RECOGNISE UNITS OF {units} FROM NAME INPUT (expect 'g s / m^3' or 'ppm s')",
-        #                    error_or_warning="error")
-        
-        # fp_array = da.stack(data_arrays)        # stack all release time arrays into one
-        # fp_array = da.expand_dims(fp_array, 1)  # add a dimension for the level
-        
-        # fp['fp'] = xray.DataArray(data = fp_array,
-        #                           dims = ["time", "lev", "lat", "lon"],
-        #                           coords={"lat": lats, "lon":lons, "lev": levs, 
-        #                                   "time":time})
+        print(f'Converting footprint from units of {units} to mol/mol / mol/m2/s')
         
         fp_array = da.stack(data_arrays)        # stack all release time arrays into one
         fp_array = da.expand_dims(fp_array, 1)  # add a dimension for the level
@@ -1314,20 +1290,21 @@ def footprint_array(fields_file,
                                   coords={"lat": lats, "lon":lons, "lev": levs, 
                                           "time":time})
         
+        # convert units, based on input units
         if units in ["g s / m^3", "g s / m3"] or units_no_space in ["gs/m^3", "gs/m3"]:
             if use_surface_conditions:
                 molm3=345./const.R ## Surface P/T ratio we would expect over Europe (345).
             else:
-                molm3=fp["press"][slice_dict].values/const.R/\
-                        const.convert_temperature(fp["temp"][slice_dict].values.squeeze(),"C","K")
-            fp_array = fp_array*area_da/ (3600.*timeStep*1.)/molm3
+                molm3=fp["press"].values/const.R/\
+                        const.convert_temperature(fp["temp"].values.squeeze(),"C","K")
+            fp['fp'] = fp['fp']*area_da / (3600.*timeStep*1.)/molm3
         elif units == "ppm s" or units_no_space == "ppms":
-            fp_array = fp_array*area_da*1e-6*1./(3600.*timeStep*1.)
+            fp['fp'] = fp['fp']*area_da *1e-6*1./(3600.*timeStep*1.)
         elif units in ["Bq s / m^3", "Bq s / m3"] or units_no_space in ["Bqs/m^3", "Bqs/m3"]:
-            fp_array = fp_array*area_da/(3600.*timeStep*1.)           
+            fp['fp'] = fp['fp']*area_da / (3600.*timeStep*1.)           
         else:
             status_log(f"DO NOT RECOGNISE UNITS OF {units} FROM NAME INPUT (expect 'g s / m^3' or 'ppm s')",
-                       error_or_warning="error")
+                           error_or_warning="error")
         
         return fp
 
@@ -1425,7 +1402,7 @@ def footprint_array(fields_file,
             be 1.0 in this calculation as well.
         '''
         units_no_space = units.replace(' ','')
-        print(f'COnverting fp_HiTRes from units of {units}')
+        print(f'Converting fp_HiTRes from units of {units} to mol/mol / mol/m2/s')
         if units in ["g s / m^3", "g s / m3"] or units_no_space in ["gs/m^3", "gs/m3"]:
             if use_surface_conditions:
                 molm3=345. / const.R ## Surface P/T ratio we would expect over Europe (345).
@@ -1477,8 +1454,7 @@ def footprint_array(fields_file,
         addfp = fp.fp_HiTRes.sum(dim='H_back')
         remfp = fp.fp - addfp
         # add H_back as a new dimension, with coord value of user_max_hour_back
-        remfpvar = remfp.assign_coords(H_back=[user_max_hour_back])
-        remfpvar = remfpvar.expand_dims(dim='H_back', axis=-1)
+        remfpvar = remfp.expand_dims(H_back=[user_max_hour_back], axis=-1)
         # add on to the footprint
         remfpvar = xray.concat([fp.fp_HiTRes, remfpvar], dim = 'H_back')
         remfpds = remfpvar.to_dataset(name = 'fp_HiTRes')
@@ -1706,6 +1682,7 @@ def write_netcdf(fp, outfile,
     Note: 
         netCDF4 is required, as we make use of compression.    
     '''
+    print('Saving to netcdf')
     
     fp_attr_loss = fp.fp.attrs["loss_lifetime_hrs"]
     
