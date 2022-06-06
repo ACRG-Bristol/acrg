@@ -51,7 +51,7 @@ def filtering(fp_data_H,sites,heights,species,filtering_types,
         Subset for times when local influence is below threshold.       
         Local influence expressed as a fraction of the sum of entire footprint domain.
         """
-        pc = 0.04      #localness 'ratio' limit - originally 0.04
+        pc = 0.04  #localness 'ratio' limit - originally 0.04
         lr = dataset.local_ratio
         ti = [i for i, local_ratio in enumerate(lr) if local_ratio <= pc]
         if keep_missing is True: 
@@ -77,7 +77,7 @@ def filtering(fp_data_H,sites,heights,species,filtering_types,
             mf_data_array = dataset.mf
             dataset_temp = dataset.drop('mf')
             dataarray_temp = mf_data_array[dict(time = ti)]
-            mf_ds = xraray.Dataset({'mf': (['time'], dataarray_temp)},
+            mf_ds = xr.Dataset({'mf': (['time'], dataarray_temp)},
                                    coords = {'time' : (dataarray_temp.coords['time'])})
             dataset_out = combine_datasets(dataset_temp, mf_ds, method=None)
             return dataset_out

@@ -32,6 +32,7 @@ import xarray as xr
 import glob
 import os
 import pandas as pd
+from filters import filtering
 
 
 acrg_path = Paths.acrg
@@ -234,13 +235,25 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             
     fp_data = name.fp_sensitivity(fp_all, domain=domain, basis_case=fp_basis_case,basis_directory=basis_directory)
     
-    ###### ADD SMOOTHED BCKG TO FP_DATA
-    smoothed_bckg = xr.open_dataset(glob.glob('/user/home/ky20893/shared/obs/BRW/BRW_smoothed_bckg.nc')[0])
-    smoothed_bckg = smoothed_bckg.loc[dict(time = slice(pd.Timestamp(start_date), pd.Timestamp(end_date)))]
-    fp_data['BRW'] = xr.merge([fp_data['BRW'], smoothed_bckg], join = 'left')                             
+    # ###### ADD SMOOTHED BCKG TO FP_DATA
+    # smoothed_bckg = xr.open_dataset(glob.glob('/user/home/ky20893/work/Arctic/BRW/BRW_smoothed_bckg.nc')[0])
+    # smoothed_bckg = smoothed_bckg.loc[dict(time = slice(pd.Timestamp(start_date), pd.Timestamp(end_date)))]
+    # fp_data['BRW'] = xr.merge([fp_data['BRW'], smoothed_bckg], join = 'left')  
+
+    ###### OR USE PERCENTILE FOR BCKG
+                           
     
     #apply named filters to the data
-    fp_data = name.filtering(fp_data, filters)
+    if filters == ["local_influence"]:
+        fp_data, perc_filtered = filtering(fp_data,sites,['20magl'],species,filtering_types = ['localness'],
+              network=None,secondary_heights=None,
+              start_date=None,end_date=None,average=None)
+    elif filters == ["wind_filt"]:
+        fp_data = name.filtering(fp_data, filters = ['BRW_wind_dir_filter'])
+    elif filters == [None]:
+        fp_data = fp_data
+    else:
+        raise ValueError('Please input filter type as wind_filt, local_influence or None.')
     
     for si, site in enumerate(sites):     
         fp_data[site].attrs['Domain']=domain
@@ -257,7 +270,11 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             error = np.concatenate((error, fp_data[site].mf_variability.values))
         
         #### REMOVE SMOOTH BCKG
-        Y = np.concatenate((Y,fp_data[site].mf.values - fp_data['BRW'].smoothed_bckg.values)) 
+        # Y = np.concatenate((Y,fp_data[site].mf.values - fp_data['BRW'].smoothed_bckg.values))
+
+        #### USE PERCENTILE FOR BCKG
+        Y = np.concatenate((Y,fp_data[site].mf.values - np.nanpercentile(fp_data[site].mf.values, 5)))
+
         siteindicator = np.concatenate((siteindicator, np.ones_like(fp_data[site].mf.values)*si))
         if si == 0:
             Ytime=fp_data[site].time.values

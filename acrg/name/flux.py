@@ -190,9 +190,9 @@ def write(lat, lon, time, flux, species, domain,
     elif copy_from_year != None:
         glob_attrs['comments'] = f"Fluxes copied from year {copy_from_year}."
 
-    flux_ds = xray.Dataset({'flux':(['lat','lon','time'], flux, flux_attrs)},
-                              coords = {'lat' : lat,
-                                        'lon' : lon,
+    flux_ds = xray.Dataset({'flux':(['lat','lon','time'], flux.data, flux_attrs)},
+                              coords = {'lat' : lat.data,
+                                        'lon' : lon.data,
                                         'time' : time},
                               attrs = glob_attrs)
     
