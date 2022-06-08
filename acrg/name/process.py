@@ -43,6 +43,7 @@ import getpass
 import scipy
 from multiprocessing import Pool
 import sys
+from collections import defaultdict
 
 from acrg.grid.areagrid import areagrid
 from acrg.time.convert import time2sec, sec2time
@@ -931,6 +932,311 @@ def particle_locations(particle_file, time, lats, lons, levs, heights, id_is_lev
 
     return hist
 
+def get_footprint_info(fields_file,
+                       satellite = False,
+                       time_step = None,
+                       upper_level = None):
+    if 'MixR_hourly' in fields_file:
+        fields_ds       = Dataset(fields_file, "r", format="NETCDF4")
+        lons            = np.array(fields_ds.variables["Longitude"][:])
+        lats            = np.array(fields_ds.variables["Latitude"][:])
+        attributes      = fields_ds.ncattrs()
+        releasetime_str = [s for s in attributes if 'ReleaseTime' in s]
+        releasetime     = [f.split("ReleaseTime")[1] for f in releasetime_str]
+        time            = [datetime.datetime.strptime(f, '%Y%m%d%H%M') for f in releasetime]
+        levs            = ['From     0 -    40m agl'] # not in the file, not sure if needed, placeholder
+        time_step       = fields_ds.getncattr('ReleaseDurationHours')
+    
+        return fields_ds, lons, lats, levs, time, time_step, attributes, releasetime
+
+    else:
+        header, column_headings, data_arrays, namever = read_file(fields_file)
+        # Define grid, including output heights    
+        lons, lats, levs, time, time_step = define_grid(namever, header, column_headings,
+                                                       satellite = satellite,
+                                                       upper_level = upper_level)
+    
+        return lons, lats, levs, time, time_step, header, column_headings, data_arrays, namever
+
+def convert_units(footprint, units, time_step, area=None, lat=None, lon=None, met=None,
+                  use_surface_conditions=True, verbose=True):
+    '''
+    Convert the HiTRes footprint units to mol/mol / mol/m2/s
+        
+    Args
+    ----
+        footprint: (xarray.DataArray)
+            footprint array
+        units: (str)
+            units of original footprint
+        use_surface_conditions: (bool, optional)
+            If the input units are 'gs/m3', use representation surface P/T ratio of 345 rather
+            than using the input meteorological data.
+            Default = True
+        
+    Results
+    -------
+        xarray.Dataset
+            footprint dataset with fp_HiTRes units converted
+    -------
+        
+    If units are 'ppm s':
+        Convert from [ppm s] (i.e. mu-mol/mol) units to [(mol/mol) / (mol/m2/s)].
+            
+        Using conversion:
+            sensitivity [mu-mol/mol s] * area [m2] * molar mass [g/mol] * 1e-6 [mu] 
+                    / (time [s] * release rate [g/s])
+        
+    If units are 'g s / m^3' (or 'gs/m3'):
+        Convert from [g s/m3] units to [(mol/mol) / (mol/m2/s)].
+            
+        Using conversion:
+            sensitivity [g s/m3] * area [m2] * RT/P [m3/mol]
+                / (time [s] * release rate [g/s])
+            
+    Note:
+        release rate is assumed to be 1. [g/s]
+        molecular weight in the NAME run itself was set to 1.0, so molar mass will
+        be 1.0 in this calculation as well.
+    '''
+    units_no_space = units.replace(' ','')
+    if verbose:
+        print(f'Converting footprint from units of {units} to mol/mol / mol/m2/s')
+    
+    area = xray.DataArray(data=areagrid(lat, lon),
+                          dims=['lat', 'lon'],
+                          coords={'lat': lat, 'lon': lon}) if area is None else area
+
+    # convert units, based on input units
+    if units in ["g s / m^3", "g s / m3"] or units_no_space in ["gs/m^3", "gs/m3"]:
+        if use_surface_conditions:
+            molm3=345. / const.R ## Surface P/T ratio we would expect over Europe (345).
+        else:
+            molm3=met["press"] / const.R / const.convert_temperature(met["temp"].squeeze(),"C","K")
+        footprint = footprint * area/ (3600.*time_step*1.)/molm3
+    elif units == "ppm s" or units_no_space == "ppms":
+        footprint = footprint * area*1e-6*1./(3600.*time_step*1.)
+    elif units in ["Bq s / m^3", "Bq s / m3"] or units_no_space in ["Bqs/m^3", "Bqs/m3"]:
+        footprint = footprint * area/(3600.*time_step*1.)           
+    else:
+        status_log(f"DO NOT RECOGNISE UNITS OF {units} FROM NAME INPUT (expect 'g s / m^3' or 'ppm s')",
+                   error_or_warning="error")
+        
+    return footprint
+
+def convert_units_satellite(footprint, units, time_step, time, lev, area=None, lat=None, lon=None, met=None,
+                            use_surface_conditions=True, verbose=True):
+    footprint_out = xray.DataArray(data=np.zeros([len(time), len(lev), len(lat), len(lon)]),
+                                   coords = {'time':time, 'lev':lev, 'lat':lat, 'lon':lon},
+                                   dims=['time', 'lev', 'lat', 'lon'])
+    for t in range(len(time)):
+        for l in range(len(lev)):
+            slice_dict = dict(time = [t], lev = [l])
+            column = t*len(lev)+l
+            if units == 'g s / m^3' or units.replace(' ','') == 'gs/m^3':
+                status_log("NOT RECOMMENDED TO CREATE SATELLITE FOOTPRINTS USING CONVERTED g s / m3 UNITS. IF POSSIBILE, NAME FOOTPRINTS SHOULD BE RE-GENERATED IN UNITS OF ppm s.",
+                           error_or_warning="warning")
+            column = t*len(lev)+l
+            fp = xray.DataArray(data=footprint[column],
+                                coords={'lat':lat, 'lon':lon},
+                                dims=['lat', 'lon'])
+            footprint_out[slice_dict] = convert_units(footprint=fp,
+                                                      units=units,
+                                                      time_step=time_step,
+                                                      area=area,
+                                                      lat=lat,
+                                                      lon=lon,
+                                                      met=met,
+                                                      use_surface_conditions=use_surface_conditions,
+                                                      verbose=verbose)
+    return footprint_out
+
+def calc_residual_fp(fp_integrated, fp_HiTRes, user_max_hour_back):
+    '''
+    Calculate the residual footprint and append to the HiTRes footprint
+
+    Args
+    ----
+    fp_integrated, fp_HiTRes: (xarray.DataArray)
+        integrated and HiTres footprints for 1 release time
+        HiTRes footprint should have dimensions of (lat, lon, H_back)
+    user_max_hour_back: (int)
+        number of hours to disaggregate in the HiTRes footprint H_back
+    
+    result
+    fp_HiTRes: (xarray.DataArray)
+        HiTres footprint with residual footprint appended onto the end of H_back
+    '''
+    # sum the fps along H_back and subtract from the integrated fp to get the residual
+    addfp = fp_HiTRes.sum(dim='H_back')
+    residual_fp = fp_integrated - addfp
+    # add H_back as a new dimension, with coord value of user_max_hour_back
+    residual_fp_var = residual_fp.expand_dims(H_back=[user_max_hour_back], axis=-1)
+    # add on to the footprint
+    fp_HiTRes = xray.concat([fp_HiTRes, residual_fp_var], dim = 'H_back')
+
+    return fp_HiTRes
+
+def process_output_time(footprint_rt, outputtime, releasetime, time_step, lats, lons, fields_vars,
+                        footprint_HiTRes_rt=None, user_max_hour_back=None, lifetime_hrs=None, dask=True):
+    '''
+    Process the footprint for one output time
+
+    Args
+    ----
+    footprint_rt: (numpy.ndarray or dask.array)
+        footprint for the associated release time, with dims (lat, lon)
+    outputtime, releasetime: (str)
+        ime associated with the output and release
+    time_step: (float, optional): 
+        Timestep of footprint. 
+        Needed if timestep cannot be extracted from input fields file.
+        Default = None 
+    lats, lons: (numpy.ndarray)
+        lat and lon arrays
+    fields_vars: 
+    footprint_rt: (xarray.DataArray)
+        HiTRes footprint for the associated release time, with dims (lat, lon, H_back)
+    species: (str,optional):
+        Defaults to None which will process footprints for an inert species
+        Otherwise will look in json file for lifetime and process a species-
+        specific footprint
+    user_max_hour_back (float, required when species = 'CO2'):
+        Defaults to 24 hours. This is the maximum amount of time back from release time that 
+        hourly footprints are calculated.
+    lifetime_hrs (float, optional):
+        Defaults to None which will process footprints for an inert species.
+        Otherwise will process it for the specified loss timescale.
+    
+    Output
+    ------
+    footprint_rt (numpy.ndarray or dask.array), footprint_HiTRes_rt (xarray.DataArray) 
+        footprint array for the release time with the footprint for this outputtime added on
+        if footprint_HiTRes_rt is not None the outputtime footprint is appended onto the end
+        of the H_back dimension of footprint_HiTRes_rt
+    '''
+    data    = [f for f in fields_vars if f.getncattr('OutputTime') == outputtime]
+    xindex  = [f for f in data if 'Xindex' in f.name][0][:]-1 # Alistair's files index from 1
+    yindex  = [f for f in data if 'Yindex' in f.name][0][:]-1 # Alistair's files index from 1
+    fp_vals = [f for f in data if 'NAMEdata' in f.name][0][:]
+    fp_grid_temp     = da.zeros((len(lats), len(lons))) if dask else \
+                       np.zeros((len(lats), len(lons)))
+    ot_dt            = datetime.datetime.strptime(outputtime, '%Y%m%d%H%M')
+    fp_timedelta_hrs = (releasetime - ot_dt).total_seconds()/3600 + time_step/2 # average time elapsed in hours
+
+    # turn this data into a grid
+    for ii in range(len(xindex)):
+        fp_grid_temp[yindex[ii], xindex[ii]] = fp_vals[ii]
+    
+    if footprint_HiTRes_rt is not None:
+        # add to the total for that release time    
+        footprint_rt = footprint_rt + fp_grid_temp
+
+        hr_back = fp_timedelta_hrs - time_step/2        
+        if hr_back < user_max_hour_back:    # add this slice to tbe H_back dimensions
+            footprint_HiTRes_rt.loc[dict(H_back=hr_back)] = fp_grid_temp
+        
+        return footprint_rt, footprint_HiTRes_rt
+    else:                 
+        # add to the total for that release time    
+        footprint_rt = footprint_rt + fp_grid_temp*np.exp(-1*fp_timedelta_hrs/lifetime_hrs) # lifetime applied
+
+        return footprint_rt 
+
+
+def create_data_array(fields_ds, lats, lons, releasetime, time_step, species=None, met=None,
+                      user_max_hour_back=None, lifetime_hrs=None, use_surface_conditions=True,
+                      verbose=True, dask=True):
+    '''
+    Process the footprint for one release time
+
+    Args
+    ----
+    fields_ds: (netcdf4 Dataset)
+        fields file opened using netcdf4 Dataset
+    lats, lons: (numpy.ndarray)
+        lat and lon arrays
+    releasetime: (str)
+    time_step: (float, optional): 
+        Timestep of footprint. 
+        Needed if timestep cannot be extracted from input fields file.
+        Default = None 
+    species: (str,optional):
+        Defaults to None which will process footprints for an inert species
+        Otherwise will look in json file for lifetime and process a species-
+        specific footprint
+    user_max_hour_back (float, required when species = 'CO2'):
+        Defaults to 24 hours. This is the maximum amount of time back from release time that 
+        hourly footprints are calculated.
+    lifetime_hrs (float, optional):
+        Defaults to None which will process footprints for an inert species.
+        Otherwise will process it for the specified loss timescale.
+    '''
+    if species == 'CO2':
+        # create a DataArray for the HiTRes footprints with an extra dimension for H_back
+        fp_HiTRes_rt = da.zeros((len(lats), len(lons), int(user_max_hour_back))) if dask else \
+                       np.zeros((len(lats), len(lons), int(user_max_hour_back)))
+        fp_HiTRes_rt = xray.DataArray(data = fp_HiTRes_rt,
+                                      dims = ["lat", "lon", "H_back"],
+                                      coords = {"lat": lats, "lon": lons,  
+                                                "H_back": np.arange(0,user_max_hour_back)})
+    else:
+        fp_HiTRes_rt = None
+
+    rt_dt       = datetime.datetime.strptime(releasetime, '%Y%m%d%H%M')
+    fp_rt       = da.zeros((len(lats), len(lons))) if dask else \
+                  np.zeros((len(lats), len(lons)))
+    fields_vars = fields_ds.get_variables_by_attributes(ReleaseTime=releasetime)
+    outputtime  = [fields_vars[ii].getncattr('OutputTime') for ii in range(len(fields_vars))]
+    outputtime  = list(sorted(set(outputtime)))
+    units_str   = fields_ds.getncattr('units')
+            
+    for ot in outputtime:
+        # process the footprints for each output time
+        footprints = process_output_time(footprint_rt=fp_rt,
+                                         outputtime=ot,
+                                         releasetime=rt_dt,
+                                         time_step=time_step,
+                                         lats=lats,
+                                         lons=lons,
+                                         fields_vars=fields_vars,
+                                         footprint_HiTRes_rt=fp_HiTRes_rt,
+                                         user_max_hour_back=user_max_hour_back, 
+                                         lifetime_hrs=lifetime_hrs,
+                                         dask=dask)
+                
+        if species == "CO2":  
+            fp_rt, fp_HiTRes_rt = footprints
+        else:                 
+            fp_rt = footprints
+    
+    # area is the pixel size, convert to xr.DataArray for multiplying by the footprint
+    data_dict = {'fp': xray.DataArray(data = fp_rt,
+                                      dims = ["lat", "lon"],
+                                      coords = {"lat": lats, "lon": lons})}
+    
+    if species == "CO2":
+        # add the residual footprint on to the HiTRes footprint
+        data_dict['fp_HiTRes'] = calc_residual_fp(fp_integrated=data_dict['fp'],
+                                                  fp_HiTRes=fp_HiTRes_rt,
+                                                  user_max_hour_back=user_max_hour_back)
+    
+    # convert the footprint units
+    data_out = {name: convert_units(footprint=data,
+                                    units=units_str,
+                                    lat=lats,
+                                    lon=lons,
+                                    time_step=time_step,
+                                    met=met,
+                                    use_surface_conditions=use_surface_conditions,
+                                    verbose=verbose)
+                for name, data in data_dict.items()}
+    # add the time dimension, with coord value of release time
+    data_out = {name: data.expand_dims(time=[rt_dt], axis=2)
+                for name, data in data_out.items()}
+    
+    return data_out
+
 
 def footprint_array(fields_file, 
                     particle_file = None,
@@ -942,7 +1248,8 @@ def footprint_array(fields_file,
                     use_surface_conditions = True,
                     species = None,
                     user_max_hour_back = 24.,
-                    lifetime_hrs = None):
+                    lifetime_hrs = None,
+                    dask=False):
     '''
     Convert text output from given files into arrays in an xarray.Dataset.
     
@@ -1006,67 +1313,72 @@ def footprint_array(fields_file,
     else:
         lifetime_attr = str(lifetime_hrs)
         
-    # note the code will fail early if a species is not defined or if it is long-lived   
     if 'MixR_hourly' in fields_file:
-        fields_ds       = Dataset(fields_file, "r", format="NETCDF4")
-        lons            = np.array(fields_ds.variables["Longitude"][:])
-        lats            = np.array(fields_ds.variables["Latitude"][:])
-        attributes      = fields_ds.ncattrs()
-        releasetime_str = [s for s in attributes if 'ReleaseTime' in s]
-        releasetime     = [f.split("ReleaseTime")[1] for f in releasetime_str]
-        time            = [datetime.datetime.strptime(f, '%Y%m%d%H%M') for f in releasetime]
-        levs            = ['From     0 -    40m agl'] # not in the file, not sure if needed, placeholder
-        timeStep        = fields_ds.getncattr('ReleaseDurationHours')
-        data_arrays     = []     
+        fields_ds, lons, lats, levs, time, time_step, attributes, releasetime = get_footprint_info(fields_file = fields_file,
+                                                                                                   satellite = satellite,
+                                                                                                   time_step = time_step,
+                                                                                                   upper_level = upper_level)
+        units_str = fields_ds.getncattr('units')
+        # process each release time slice, gives a dict for each timestep with a key for 'fp' (and 'fp_HiTRes' if species=='CO2')
+        fps_rt = {rtime: create_data_array(fields_ds=fields_ds,
+                                           lats=lats,
+                                           lons=lons,
+                                           releasetime=rtime,
+                                           time_step=time_step,
+                                           species=species,
+                                           met=met,
+                                           user_max_hour_back=user_max_hour_back,
+                                           lifetime_hrs=lifetime_hrs,
+                                           verbose=False,
+                                           dask=dask) for rtime in releasetime}
         
-        if species == 'CO2':
-            # create a Dataset for the HiTRes footprints with an extra dimension for H_back
-            FDS_rt = xray.Dataset({"fp_HiTRes": (["time", "lev", "lat", "lon", "H_back"],
-                                    da.zeros((len(time), len(levs),len(lats), len(lons), int(user_max_hour_back))))},
-                                    coords={"time": time, "lev": levs, "lat": lats, "lon": lons,  
-                                            "H_back": np.arange(0,user_max_hour_back)})
-        for rtime in releasetime:
-            rt_dt       = datetime.datetime.strptime(rtime, '%Y%m%d%H%M')
-            fp_grid     = da.zeros((len(lats), len(lons)))
-            fields_vars = fields_ds.get_variables_by_attributes(ReleaseTime=rtime)
-            outputtime  = [fields_vars[ii].getncattr('OutputTime') for ii in range(len(fields_vars))]
-            outputtime  = list(sorted(set(outputtime)))
-            
-            for ot in outputtime:
-                data    = [f for f in fields_vars if f.getncattr('OutputTime') == ot]
-                xindex  = [f for f in data if 'Xindex' in f.name][0][:]-1 # Alistair's files index from 1
-                yindex  = [f for f in data if 'Yindex' in f.name][0][:]-1 # Alistair's files index from 1
-                fp_vals = [f for f in data if 'NAMEdata' in f.name][0][:]
-                fp_grid_temp     = da.zeros((len(lats), len(lons)))
-                ot_dt            = datetime.datetime.strptime(ot, '%Y%m%d%H%M')
-                fp_timedelta_hrs = (rt_dt - ot_dt).total_seconds()/3600 + timeStep/2 # average time elapsed in hours
-                # turn this data into a grid
-                for ii in range(len(xindex)):
-                    fp_grid_temp[yindex[ii], xindex[ii]] = fp_vals[ii]
-                
-                if species == "CO2":
-                    # add to the total for that release time    
-                    fp_grid+=fp_grid_temp
-                    
-                    # get the time difference between the release time and output time
-                    # hr_back = datetime.datetime.strptime(rtime, '%Y%m%d%H%M') - datetime.datetime.strptime(ot, '%Y%m%d%H%M')
-                    # hr_back = hr_back.total_seconds()/3600. # convert to number of hours
-                    hr_back = fp_timedelta_hrs - timeStep/2
-                    
-                    if hr_back < user_max_hour_back:    # add this slice to tbe H_back dimensions
-                        FDS_rt.fp_HiTRes.loc[dict(lev='From     0 -    40m agl', time=rt_dt, H_back=hr_back)] = fp_grid_temp
-                else:                 
-                    # add to the total for that release time    
-                    fp_grid+=fp_grid_temp*np.exp(-1*fp_timedelta_hrs/lifetime_hrs) # lifetime applied
-                    
-            data_arrays.append(fp_grid)    
-            
+        # transpose so the 1st keys are fp (and fp_HiTRes) and 2nd keys are release times
+        fps = defaultdict(dict)
+        for key, val in fps_rt.items():
+            for key_in, val_in in val.items():
+                fps[key_in][key] = val_in
+        fps = dict(fps)
+        
+        # combine footprints for all release times
+        fp = xray.concat(list(fps['fp'].values()), 'time').to_dataset(name='fp')
+        fp['fp'] = fp['fp'].expand_dims(lev=levs, axis=1)
+        if species=='CO2':
+            fp['fp_HiTRes'] = xray.concat(list(fps['fp_HiTRes'].values()), 'time')
+            fp['fp_HiTRes'] = fp['fp_HiTRes'].expand_dims(lev=levs, axis=1)
     else:
-        header, column_headings, data_arrays, namever = read_file(fields_file)
-        # Define grid, including output heights    
-        lons, lats, levs, time, timeStep = define_grid(namever, header, column_headings,
-                                                       satellite = satellite,
-                                                       upper_level = upper_level)
+        lons, lats, levs, time, time_step, header, column_headings, fps, namever = get_footprint_info(fields_file = fields_file,
+                                                                                      satellite = satellite,
+                                                                                      time_step = time_step,
+                                                                                      upper_level = upper_level)
+        
+        z_level=column_headings['z_level'][4:] # anita: can be deleted?
+        time_column=column_headings['time'][4:] # anita: can be deleted?
+        units_column=column_headings["unit"][4:] # Find column containing NAME output units (e.g. g s/m3 or ppm s)
+        units_str = units_column[0]
+        
+        if satellite:
+            # satellite footprints are 4d but raw data is set to 3d --> need to rearrange the dimensions
+            fp = convert_units_satellite(footprint=fps,
+                                         units=units_str,
+                                         time_step=time_step,
+                                         time=time,
+                                         lev=levs,
+                                         lat=lats,
+                                         lon=lons,
+                                         met=met,
+                                         use_surface_conditions=use_surface_conditions).to_dataset(name='fp')
+        else:
+            # put the footprint into a dataarray and convert the units
+            fp = xray.DataArray(data={'fp': fps},
+                                coords = {'lat': lats, 'lon': lons, 'time': time},
+                                dims=['time', 'lat', 'lon',])
+            fp = convert_units(footprint=fp,
+                               units=units_str,
+                               lat=lats,
+                               lon=lons,
+                               time_step=time_step,
+                               met=met,
+                               use_surface_conditions=use_surface_conditions).to_dataset(name='fp')
 
     if met is None:
         met = met_empty()
@@ -1088,14 +1400,7 @@ def footprint_array(fields_file,
 
     dheights = 1000
     heights = np.arange(0, 19001, dheights) + dheights/2.
-    
-    # Get area of each grid cell
-    area =areagrid(lats, lons)
-    # area is the pixel size, convert to xr.DataArray for multiplying by the footprint
-    area_da = xray.DataArray(data = area,
-                             dims = ['lat', 'lon'],
-                             coords = {'lat': lats, 'lon': lons})
-    
+        
     # Get particle locations
     if particle_file is not None:
         particle_hist = particle_locations(particle_file,
@@ -1112,27 +1417,12 @@ def footprint_array(fields_file,
     ntime=len(time)
     status_log("Time steps in file: %d" % ntime, print_to_screen = False)
     
-    if 'MixR_hourly' in fields_file: 
-        units_str = fields_ds.getncattr('units')
-    else:
-        z_level=column_headings['z_level'][4:] # anita: can be deleted?
-        time_column=column_headings['time'][4:] # anita: can be deleted?
-        units_column=column_headings["unit"][4:] # Find column containing NAME output units (e.g. g s/m3 or ppm s)
-        units_str = units_column[0]
-    
-    # Set up footprint dataset
-    fp = xray.Dataset({"fp": (["time", "lev", "lat", "lon"],
-                              da.zeros((ntime, nlev, nlat, nlon)))},
-                        coords={"lat": lats, "lon":lons, "lev": levs, 
-                                "time":time})
-
     fp.fp.attrs = {"units": "(mol/mol)/(mol/m2/s)", "loss_lifetime_hrs": lifetime_attr}
 
     # anita I don't think these attributes below are read in - they are re-written in write_netcdfs
     fp.lon.attrs = {"units": "degrees_east"}
     fp.lat.attrs = {"units": "degrees_north"}
     fp.time.attrs = {"long_name": "start of time period"}
-    
     
     ## Reformat met data to separate into levels
     if satellite:
@@ -1175,8 +1465,7 @@ def footprint_array(fields_file,
         
     if "label" in met_ds.data_vars:
         met_ds = met_ds.drop("label")
-            
-
+    
     # Merge met dataset into footprint dataset
     fp = fp.merge(met_ds)
 
@@ -1184,286 +1473,10 @@ def footprint_array(fields_file,
     if particle_file is not None:
         fp = fp.merge(particle_hist)
     
-    if species == 'CO2':
-        fp = fp.merge(FDS_rt)
- 
-    # Extract footprint from columns assuming ppm s units
-    def convert_units(fp, slice_dict, column, units, use_surface_conditions = True):
-        '''
-        Conversion is based on inputs units
-        
-        If units are 'ppm s':
-            Convert from [ppm s] (i.e. mu-mol/mol) units to [(mol/mol) / (mol/m2/s)].
-            
-            Using conversion:
-                sensitivity [mu-mol/mol s] * area [m2] * molar mass [g/mol] * 1e-6 [mu] 
-                    / (time [s] * release rate [g/s])
-        
-        If units are 'g s / m^3' (or 'gs/m3'):
-            Convert from [g s/m3] units to [(mol/mol) / (mol/m2/s)].
-            
-            Using conversion:
-                sensitivity [g s/m3] * area [m2] * RT/P [m3/mol]
-                / (time [s] * release rate [g/s])
-            
-        Note:
-            release rate is assumed to be 1. [g/s]
-            molecular weight in the NAME run itself was set to 1.0, so molar mass will
-            be 1.0 in this calculation as well.
-        
-        Optional args:
-            use_surface_conditions (bool, optional) :
-                If the input units are 'gs/m3', use representation surface P/T ratio of 345 rather
-                than using the input meteorological data.
-                Default = True
-        '''
-        units_no_space = units.replace(' ','')
-        
-        # convert the units for one release time, data_arrays[column] is the fp for 1 release time
-        # area is the pixel size
-        if units == "g s / m^3" or units == "gs/m3" or units_no_space == "gs/m^3"  or units_no_space == "gs/m3":
-            if use_surface_conditions:
-                molm3=345./const.R ## Surface P/T ratio we would expect over Europe (345).
-            else:
-                molm3=fp["press"][slice_dict].values/const.R/\
-                    const.convert_temperature(fp["temp"][slice_dict].values.squeeze(),"C","K")
-            fp.fp[slice_dict] = data_arrays[column]*area/ (3600.*timeStep*1.)/molm3
-        elif units == "ppm s" or units_no_space == "ppms":
-            fp.fp[slice_dict] = data_arrays[column]*area*1e-6*1./(3600.*timeStep*1.)
-        elif units == "Bq s / m^3" or units_no_space == "Bqs/m^3" or units_no_space == "Bqs/m3" or units == "Bqs/m3":
-            fp.fp[slice_dict] = data_arrays[column]*area/(3600.*timeStep*1.)           
-        else:
-            status_log("DO NOT RECOGNISE UNITS OF {} FROM NAME INPUT (expect 'g s / m^3' or 'ppm s')".format(units),
-                       error_or_warning="error")
-        
-        return fp
-    
-    def convert_units_dask(fp, units, use_surface_conditions = True):
-        '''
-        Comvert integrated footprint units to mol/mol / mol/m2/s
-
-        Args
-        ----
-            fp: (xarray.Dataset)
-                footprint dataset, with a data variable fp
-                with dimensions: [time, lev, lat, lon]
-            units: (str)
-                units of original footprint
-            use_surface_conditions: (bool, optional)
-                If the input units are 'gs/m3', use representation surface P/T ratio of 345 rather
-                than using the input meteorological data.
-                Default = True
-        
-        Results
-        -------
-            xarray.Dataset
-                footprint dataset with units converted
-        -------
-        
-        If units are 'ppm s':
-            Convert from [ppm s] (i.e. mu-mol/mol) units to [(mol/mol) / (mol/m2/s)].
-            
-            Using conversion:
-                sensitivity [mu-mol/mol s] * area [m2] * molar mass [g/mol] * 1e-6 [mu] 
-                    / (time [s] * release rate [g/s])
-        
-        If units are 'g s / m^3' (or 'gs/m3'):
-            Convert from [g s/m3] units to [(mol/mol) / (mol/m2/s)].
-            
-            Using conversion:
-                sensitivity [g s/m3] * area [m2] * RT/P [m3/mol]
-                / (time [s] * release rate [g/s])
-            
-        Note:
-            release rate is assumed to be 1. [g/s]
-            molecular weight in the NAME run itself was set to 1.0, so molar mass will
-            be 1.0 in this calculation as well.
-        '''
-        units_no_space = units.replace(' ','')
-        print(f'Converting footprint from units of {units} to mol/mol / mol/m2/s')
-        
-        fp_array = da.stack(data_arrays)        # stack all release time arrays into one
-        fp_array = da.expand_dims(fp_array, 1)  # add a dimension for the level
-        
-        fp['fp'] = xray.DataArray(data = fp_array,
-                                  dims = ["time", "lev", "lat", "lon"],
-                                  coords={"lat": lats, "lon":lons, "lev": levs, 
-                                          "time":time})
-        
-        # convert units, based on input units
-        if units in ["g s / m^3", "g s / m3"] or units_no_space in ["gs/m^3", "gs/m3"]:
-            if use_surface_conditions:
-                molm3=345./const.R ## Surface P/T ratio we would expect over Europe (345).
-            else:
-                molm3=fp["press"].values/const.R/\
-                        const.convert_temperature(fp["temp"].values.squeeze(),"C","K")
-            fp['fp'] = fp['fp']*area_da / (3600.*timeStep*1.)/molm3
-        elif units == "ppm s" or units_no_space == "ppms":
-            fp['fp'] = fp['fp']*area_da *1e-6*1./(3600.*timeStep*1.)
-        elif units in ["Bq s / m^3", "Bq s / m3"] or units_no_space in ["Bqs/m^3", "Bqs/m3"]:
-            fp['fp'] = fp['fp']*area_da / (3600.*timeStep*1.)           
-        else:
-            status_log(f"DO NOT RECOGNISE UNITS OF {units} FROM NAME INPUT (expect 'g s / m^3' or 'ppm s')",
-                           error_or_warning="error")
-        
-        return fp
-
-    def convert_units_ds(fp_ds, slice_dict, units, use_surface_conditions = True):
-        '''
-        Conversion is based on inputs units
-        Input: an xarray dataset with uncoverted HiTRes footprints. 
-        The following dimensions of the fp_HiTRes is expected: [time, lev, lat, lon, H_back]
-        
-        For each slice dictionary,
-        
-        If units are 'ppm s':
-            Convert from [ppm s] (i.e. mu-mol/mol) units to [(mol/mol) / (mol/m2/s)].
-            
-            Using conversion:
-                sensitivity [mu-mol/mol s] * area [m2] * molar mass [g/mol] * 1e-6 [mu] 
-                    / (time [s] * release rate [g/s])
-        
-        If units are 'g s / m^3' (or 'gs/m3'):
-            Convert from [g s/m3] units to [(mol/mol) / (mol/m2/s)].
-            
-            Using conversion:
-                sensitivity [g s/m3] * area [m2] * RT/P [m3/mol]
-                / (time [s] * release rate [g/s])
-            
-        Note:
-            release rate is assumed to be 1. [g/s]
-            molecular weight in the NAME run itself was set to 1.0, so molar mass will
-            be 1.0 in this calculation as well.
-        
-        Optional args:
-            use_surface_conditions (bool, optional) :
-                If the input units are 'gs/m3', use representation surface P/T ratio of 345 rather
-                than using the input meteorological data.
-                Default = True
-        '''
-        units_no_space = units.replace(' ','')
-        if units == "g s / m^3" or units == "gs/m3" or units_no_space == "gs/m^3"  or units_no_space == "gs/m3":
-            if use_surface_conditions:
-                molm3=345./const.R ## Surface P/T ratio we would expect over Europe (345).
-            else:
-                molm3=fp["press"][slice_dict].values/const.R/\
-                    const.convert_temperature(fp["temp"][slice_dict].values.squeeze(),"C","K")
-            fp_ds.fp_HiTRes.loc[slice_dict] = fp_ds.fp_HiTRes.loc[slice_dict].values*area/ \
-                (3600.*timeStep*1.)/molm3
-        elif units == "ppm s" or units_no_space == "ppms":
-            fp_ds.fp_HiTRes.loc[slice_dict] = fp_ds.fp_HiTRes.loc[slice_dict].values*area*1e-6*1./(3600.*timeStep*1.)
-        elif units == "Bq s / m^3" or units_no_space == "Bqs/m^3" or units_no_space == "Bqs/m3" or units == "Bqs/m3":
-            fp_ds.fp_HiTRes.loc[slice_dict] = fp_ds.fp_HiTRes.loc[slice_dict].values*area/(3600.*timeStep*1.)           
-        else:
-            status_log("DO NOT RECOGNISE UNITS OF {} FROM NAME INPUT (expect 'g s / m^3' or 'ppm s')".format(units),
-                       error_or_warning="error")
-        
-        return fp_ds
-
-    def convert_units_HiTRes(fp_ds, units, use_surface_conditions = True):
-        '''
-        Convert the HiTRes footprint units to mol/mol / mol/m2/s
-        
-        Args
-        ----
-            fp_ds: (xarray.Dataset)
-                footprint dataset, with a data variable fp_HiTRes
-                with dimensions: [time, lev, lat, lon, H_back]
-            units: (str)
-                units of original footprint
-            use_surface_conditions: (bool, optional)
-                If the input units are 'gs/m3', use representation surface P/T ratio of 345 rather
-                than using the input meteorological data.
-                Default = True
-        
-        Results
-        -------
-            xarray.Dataset
-                footprint dataset with fp_HiTRes units converted
-        -------
-        
-        If units are 'ppm s':
-            Convert from [ppm s] (i.e. mu-mol/mol) units to [(mol/mol) / (mol/m2/s)].
-            
-            Using conversion:
-                sensitivity [mu-mol/mol s] * area [m2] * molar mass [g/mol] * 1e-6 [mu] 
-                    / (time [s] * release rate [g/s])
-        
-        If units are 'g s / m^3' (or 'gs/m3'):
-            Convert from [g s/m3] units to [(mol/mol) / (mol/m2/s)].
-            
-            Using conversion:
-                sensitivity [g s/m3] * area [m2] * RT/P [m3/mol]
-                / (time [s] * release rate [g/s])
-            
-        Note:
-            release rate is assumed to be 1. [g/s]
-            molecular weight in the NAME run itself was set to 1.0, so molar mass will
-            be 1.0 in this calculation as well.
-        '''
-        units_no_space = units.replace(' ','')
-        print(f'Converting fp_HiTRes from units of {units} to mol/mol / mol/m2/s')
-        if units in ["g s / m^3", "g s / m3"] or units_no_space in ["gs/m^3", "gs/m3"]:
-            if use_surface_conditions:
-                molm3=345. / const.R ## Surface P/T ratio we would expect over Europe (345).
-            else:
-                molm3=fp["press"] / const.R / const.convert_temperature(fp["temp"].squeeze(),"C","K")
-            fp_ds['fp_HiTRes'] = fp_ds.fp_HiTRes * area_da/ (3600.*timeStep*1.)/molm3
-        elif units == "ppm s" or units_no_space == "ppms":
-            fp_ds['fp_HiTRes'] = fp_ds.fp_HiTRes * area_da*1e-6*1./(3600.*timeStep*1.)
-        elif units in ["Bq s / m^3", "Bq s / m3"] or units_no_space in ["Bqs/m^3", "Bqs/m3"]:
-            fp_ds['fp_HiTRes'] = fp_ds.fp_HiTRes * area_da/(3600.*timeStep*1.)           
-        else:
-            status_log(f"DO NOT RECOGNISE UNITS OF {units} FROM NAME INPUT (expect 'g s / m^3' or 'ppm s')",
-                       error_or_warning="error")
-        
-        return fp_ds
-
-
-    if satellite:
-        for t in range(len(time)):
-            for l in range(len(levs)):
-                slice_dict = dict(time = [t], lev = [l])
-                column = t*len(levs)+l
-                if units_str == 'g s / m^3' or units_str.replace(' ','') == 'gs/m^3':
-                    status_log("NOT RECOMMENDED TO CREATE SATELLITE FOOTPRINTS USING CONVERTED g s / m3 UNITS. IF POSSIBILE, NAME FOOTPRINTS SHOULD BE RE-GENERATED IN UNITS OF ppm s.",
-                                error_or_warning="warning")
-                column = t*len(levs)+l
-                fp = convert_units(fp, slice_dict, column, units_str,use_surface_conditions=use_surface_conditions)
-    else:
-        if species == 'CO2':
-            fp = convert_units_dask(fp, units_str,use_surface_conditions=use_surface_conditions)
-            fp = convert_units_HiTRes(fp, units_str, use_surface_conditions=use_surface_conditions)
-            # for i in range(len(time)):
-            #     # convert the units for each time slice
-            #     slice_dict = dict(time = [i], lev = [0])
-            #     fp = convert_units_dask(fp, units_str,use_surface_conditions=use_surface_conditions) 
-            #     for j in range(int(user_max_hour_back)):
-            #         # convert the units for each H_back slice
-            #         slice_dict = dict(time = time[i], lev='From     0 -    40m agl', H_back=j)
-            #         fp = convert_units_ds_dask(fp, slice_dict, units_str, use_surface_conditions=use_surface_conditions)
-                    
-        else:
-            for i in range(len(time)):
-                slice_dict = dict(time = [i], lev = [0])
-                fp = convert_units(fp, slice_dict, i, units_str,use_surface_conditions=use_surface_conditions)
-                
-    if species == 'CO2':
-        status_log("Adding residual footprints")
-        # add the fps along H_back and subtract from the integrated fp to get the residual
-        addfp = fp.fp_HiTRes.sum(dim='H_back')
-        remfp = fp.fp - addfp
-        # add H_back as a new dimension, with coord value of user_max_hour_back
-        remfpvar = remfp.expand_dims(H_back=[user_max_hour_back], axis=-1)
-        # add on to the footprint
-        remfpvar = xray.concat([fp.fp_HiTRes, remfpvar], dim = 'H_back')
-        remfpds = remfpvar.to_dataset(name = 'fp_HiTRes')
-        fp = xray.merge([fp, remfpds])
-    
     fp.attrs["fp_output_units"] = units_str
     
     return fp
-    
+
 def footprint_concatenate(fields_prefix, 
                           particle_prefix = None,
                           datestr = "*",
@@ -1475,7 +1488,8 @@ def footprint_concatenate(fields_prefix,
                           species = None,
                           user_max_hour_back=24.,
                           lifetime_hrs = None,
-                          unzip = False):
+                          unzip = False,
+                          dask = False):
     '''Given file search string, finds all fields and particle
     files, reads them and concatenates the output arrays.
     
@@ -1599,8 +1613,9 @@ def footprint_concatenate(fields_prefix,
                                       upper_level = upper_level,
                                       use_surface_conditions = use_surface_conditions,
                                       species = species,
-                                      user_max_hour_back=user_max_hour_back,
-                                      lifetime_hrs = lifetime_hrs))
+                                      user_max_hour_back = user_max_hour_back,
+                                      lifetime_hrs = lifetime_hrs,
+                                      dask = dask))
         if unzip:
             # remove unzipped files to save space
             [os.remove(fields_file) for ff, fields_file in
@@ -1686,15 +1701,16 @@ def write_netcdf(fp, outfile,
     
     fp_attr_loss = fp.fp.attrs["loss_lifetime_hrs"]
     
-    lons = fp.lon.values.squeeze()
-    lats = fp.lat.values.squeeze()
+    lons = fp.lon.values#.squeeze()
+    lats = fp.lat.values#.squeeze()
     levs = fp.lev.values
     time = fp.time.to_pandas().index.to_pydatetime()
-    fp_ds = fp.fp.transpose("lat", "lon", "time").values.squeeze()
+    fp_ds = fp.fp.transpose("lat", "lon", "time").values#.squeeze()
     
     if fp_HiTRes_inc == True:
+        print('Loading HiTRes fp')
         H_back = fp.H_back.values
-        fp_HiTRes = fp.fp_HiTRes.transpose("lat", "lon", "time", "H_back").values.squeeze()
+        fp_HiTRes = fp.fp_HiTRes.transpose("lat", "lon", "time", "H_back").values#.squeeze()
     
     time_seconds, time_reference = time2sec(time)   
     
@@ -1733,7 +1749,7 @@ def write_netcdf(fp, outfile,
     nctime[:]=time_seconds
     nctime.long_name='time'
     nctime.standard_name='time'
-    nctime.units='seconds since ' + np.str(time_reference)
+    nctime.units='seconds since ' + str(time_reference)
     nctime.label='left'
     nctime.period = str(timestep_for_output) + " hours"
     nctime.comment = 'time stamp corresponds to the beginning of each averaging period'
@@ -2088,7 +2104,7 @@ def status_log(message,
         else:
             print(message)
 
-def process_basic(fields_folder, outfile, unzip=False):
+def process_basic(fields_folder, outfile, dask=False, unzip=False):
     """Basic processing with no meteorology or particle files
     NOT recommended, but helpful for a quick check
     
@@ -2104,7 +2120,7 @@ def process_basic(fields_folder, outfile, unzip=False):
     
     """
     
-    fp = footprint_concatenate(fields_folder, unzip=unzip)
+    fp = footprint_concatenate(fields_folder, dask=dask, unzip=unzip)
     write_netcdf(fp, outfile)
 
 def process(domain, site, height, year, month, 
@@ -2128,7 +2144,8 @@ def process(domain, site, height, year, month,
             units = None,
             species = None,
             user_max_hour_back = 24.,
-            unzip = False):
+            unzip = False,
+            dask = False):
     
     '''Process a single month of footprints for a given domain, site, height,
     year, month. 
@@ -2497,7 +2514,8 @@ def process(domain, site, height, year, month,
                                             species = species,
                                             lifetime_hrs = lifetime_hrs,
                                             user_max_hour_back = user_max_hour_back,
-                                            unzip = unzip)
+                                            unzip = unzip,
+                                            dask = dask)
            
         # Do satellite process
         if satellite:
