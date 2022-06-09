@@ -1078,7 +1078,7 @@ def calc_residual_fp(fp_integrated, fp_HiTRes, user_max_hour_back):
     return fp_HiTRes
 
 def process_output_time(footprint_rt, outputtime, releasetime, time_step, lats, lons, fields_vars,
-                        footprint_HiTRes_rt=None, user_max_hour_back=None, lifetime_hrs=None, dask=True):
+                        footprint_HiTRes_rt=None, user_max_hour_back=None, lifetime_hrs=None, chunks=None):
     '''
     Process the footprint for one output time
 
@@ -1119,8 +1119,7 @@ def process_output_time(footprint_rt, outputtime, releasetime, time_step, lats, 
     xindex  = [f for f in data if 'Xindex' in f.name][0][:]-1 # Alistair's files index from 1
     yindex  = [f for f in data if 'Yindex' in f.name][0][:]-1 # Alistair's files index from 1
     fp_vals = [f for f in data if 'NAMEdata' in f.name][0][:]
-    fp_grid_temp     = da.zeros((len(lats), len(lons))) if dask else \
-                       np.zeros((len(lats), len(lons)))
+    fp_grid_temp     = np.zeros((len(lats), len(lons)))
     ot_dt            = datetime.datetime.strptime(outputtime, '%Y%m%d%H%M')
     fp_timedelta_hrs = (releasetime - ot_dt).total_seconds()/3600 + time_step/2 # average time elapsed in hours
 
@@ -1146,7 +1145,7 @@ def process_output_time(footprint_rt, outputtime, releasetime, time_step, lats, 
 
 def create_data_array(fields_ds, lats, lons, releasetime, time_step, species=None, met=None,
                       user_max_hour_back=None, lifetime_hrs=None, use_surface_conditions=True,
-                      verbose=True, dask=True):
+                      verbose=True, chunks=None):
     '''
     Process the footprint for one release time
 
@@ -1174,18 +1173,18 @@ def create_data_array(fields_ds, lats, lons, releasetime, time_step, species=Non
     '''
     if species == 'CO2':
         # create a DataArray for the HiTRes footprints with an extra dimension for H_back
-        fp_HiTRes_rt = da.zeros((len(lats), len(lons), int(user_max_hour_back))) if dask else \
-                       np.zeros((len(lats), len(lons), int(user_max_hour_back)))
+        # fp_HiTRes_rt = da.zeros((len(lats), len(lons), int(user_max_hour_back)), chunks=(chunks, len(lons), int(user_max_hour_back))) if chunks is not None else \
+        fp_HiTRes_rt = np.zeros((len(lats), len(lons), int(user_max_hour_back)))
         fp_HiTRes_rt = xray.DataArray(data = fp_HiTRes_rt,
                                       dims = ["lat", "lon", "H_back"],
                                       coords = {"lat": lats, "lon": lons,  
-                                                "H_back": np.arange(0,user_max_hour_back)})
+                                                "H_back": np.arange(0,user_max_hour_back)},
+                                      attrs = {'description': 'Disaggregated fp, where the last slice is the residual fp'})
     else:
         fp_HiTRes_rt = None
 
     rt_dt       = datetime.datetime.strptime(releasetime, '%Y%m%d%H%M')
-    fp_rt       = da.zeros((len(lats), len(lons))) if dask else \
-                  np.zeros((len(lats), len(lons)))
+    fp_rt       = np.zeros((len(lats), len(lons)))
     fields_vars = fields_ds.get_variables_by_attributes(ReleaseTime=releasetime)
     outputtime  = [fields_vars[ii].getncattr('OutputTime') for ii in range(len(fields_vars))]
     outputtime  = list(sorted(set(outputtime)))
@@ -1203,7 +1202,7 @@ def create_data_array(fields_ds, lats, lons, releasetime, time_step, species=Non
                                          footprint_HiTRes_rt=fp_HiTRes_rt,
                                          user_max_hour_back=user_max_hour_back, 
                                          lifetime_hrs=lifetime_hrs,
-                                         dask=dask)
+                                         chunks=chunks)
                 
         if species == "CO2":  
             fp_rt, fp_HiTRes_rt = footprints
@@ -1249,7 +1248,7 @@ def footprint_array(fields_file,
                     species = None,
                     user_max_hour_back = 24.,
                     lifetime_hrs = None,
-                    dask=False):
+                    chunks=None):
     '''
     Convert text output from given files into arrays in an xarray.Dataset.
     
@@ -1330,21 +1329,23 @@ def footprint_array(fields_file,
                                            user_max_hour_back=user_max_hour_back,
                                            lifetime_hrs=lifetime_hrs,
                                            verbose=False,
-                                           dask=dask) for rtime in releasetime}
+                                           chunks=chunks) for rtime in releasetime}
         
         # transpose so the 1st keys are fp (and fp_HiTRes) and 2nd keys are release times
         fps = defaultdict(dict)
         for key, val in fps_rt.items():
             for key_in, val_in in val.items():
-                fps[key_in][key] = val_in
+                fps[key_in][key] = val_in.chunk({'time':50})
         fps = dict(fps)
         
         # combine footprints for all release times
         fp = xray.concat(list(fps['fp'].values()), 'time').to_dataset(name='fp')
         fp['fp'] = fp['fp'].expand_dims(lev=levs, axis=1)
+        print(f"\n\nfp type: {type(fp['fp'])}")
         if species=='CO2':
             fp['fp_HiTRes'] = xray.concat(list(fps['fp_HiTRes'].values()), 'time')
             fp['fp_HiTRes'] = fp['fp_HiTRes'].expand_dims(lev=levs, axis=1)
+            print(f"fp_HiTRes type: {type(fp['fp_HiTRes'])}\n\n")
     else:
         lons, lats, levs, time, time_step, header, column_headings, fps, namever = get_footprint_info(fields_file = fields_file,
                                                                                       satellite = satellite,
@@ -1358,6 +1359,7 @@ def footprint_array(fields_file,
         
         if satellite:
             # satellite footprints are 4d but raw data is set to 3d --> need to rearrange the dimensions
+            # currently this method is not compatible with dask
             fp = convert_units_satellite(footprint=fps,
                                          units=units_str,
                                          time_step=time_step,
@@ -1369,7 +1371,7 @@ def footprint_array(fields_file,
                                          use_surface_conditions=use_surface_conditions).to_dataset(name='fp')
         else:
             # put the footprint into a dataarray and convert the units
-            fp = xray.DataArray(data={'fp': fps},
+            fp = xray.DataArray(data=fps,
                                 coords = {'lat': lats, 'lon': lons, 'time': time},
                                 dims=['time', 'lat', 'lon',])
             fp = convert_units(footprint=fp,
@@ -1411,11 +1413,7 @@ def footprint_array(fields_file,
         status_log("No particle location file corresponding to " + fields_file,
                    error_or_warning="error")
 
-    nlon=len(lons)
-    nlat=len(lats)
-    nlev=len(levs)
-    ntime=len(time)
-    status_log("Time steps in file: %d" % ntime, print_to_screen = False)
+    status_log(f"Time steps in file: {len(time)}", print_to_screen = False)
     
     fp.fp.attrs = {"units": "(mol/mol)/(mol/m2/s)", "loss_lifetime_hrs": lifetime_attr}
 
@@ -1477,6 +1475,72 @@ def footprint_array(fields_file,
     
     return fp
 
+def find_fields_files(fields_prefix, particle_prefix=None, datestr="*", satellite=False):
+    '''
+    Given file search string, finds all fields and particle files.
+    
+    Args:
+        fields_prefix (str): 
+            prefix for fields file search string.
+        particle_prefix (str, optional): 
+            prefix for particle file search string.
+            Default = None
+        datestr (str, optional): 
+            Date for particle and fields files. Default = '*'
+        satellite (bool, optional): 
+            Is it for satellite data? Default = False
+    
+    Returns:
+        fields_files, particles_files (list):
+            two lists, one containing the field file names and
+            one the particle file names
+    '''
+
+    # Find footprint files and MATCHING particle location files
+    # These files are identified by their date string. Make sure this is right!
+    if satellite:
+        fields_files = sorted(glob.glob(f'{fields_prefix}*{datestr}.txt*'))
+    elif 'MixR_hourly' in fields_prefix:
+        fields_files = sorted(glob.glob(f'{fields_prefix}*{datestr}*.nc*'))       
+    else:
+        fields_files = sorted(glob.glob(f'{fields_prefix}*{datestr}*.txt*'))
+
+    if len(fields_files)==0:
+        status_log("Cannot find fields files", error_or_warning="error")
+    
+    # Search for particle files
+    if 'MixR_hourly' in fields_prefix: 
+        file_datestrs = [f.split(fields_prefix)[-1].split(".nc")[0].split("_")[-1] \
+            for f in fields_files]
+    else:
+        file_datestrs = [f.split(fields_prefix)[-1].split(".txt")[0].split("_")[-1] \
+                for f in fields_files]
+
+    particle_files = []
+    if particle_prefix is not None:
+        for file_datestr in file_datestrs:
+            
+            particle_file_search_string = \
+                particle_prefix + "*" + file_datestr + "*.txt*"
+            particle_file_search = \
+                glob.glob(particle_file_search_string)
+
+            if particle_file_search:
+                particle_files.append(particle_file_search[0])
+            else:
+                print("Can't find particle file " + \
+                      particle_file_search_string)
+                return None
+                
+        if len(particle_files) != len(fields_files):
+            status_log("Particle files don't match fields files. SKIPPING.",
+                       error_or_warning="error")
+            return None
+    else:
+        particle_files = [None for f in fields_files]
+    
+    return fields_files, particle_files
+
 def footprint_concatenate(fields_prefix, 
                           particle_prefix = None,
                           datestr = "*",
@@ -1489,7 +1553,7 @@ def footprint_concatenate(fields_prefix,
                           user_max_hour_back=24.,
                           lifetime_hrs = None,
                           unzip = False,
-                          dask = False):
+                          chunks = None):
     '''Given file search string, finds all fields and particle
     files, reads them and concatenates the output arrays.
     
@@ -1535,50 +1599,12 @@ def footprint_concatenate(fields_prefix,
     Example:
         fp_dataset = footprint_concatenate("/dagage2/agage/metoffice/NAME_output/MY_FOOTPRINTS_FOLDER/Fields_Files/filename_prefix")
     '''
-
     # Find footprint files and MATCHING particle location files
     # These files are identified by their date string. Make sure this is right!
-    if satellite:
-        fields_files = sorted(glob.glob(f'{fields_prefix}*{datestr}.txt*'))
-    elif 'MixR_hourly' in fields_prefix:
-        fields_files = sorted(glob.glob(f'{fields_prefix}*{datestr}*.nc*'))       
-    else:
-        fields_files = sorted(glob.glob(f'{fields_prefix}*{datestr}*.txt*'))
-
-    if len(fields_files)==0:
-        status_log("Cannot find fields files", error_or_warning="error")
-    
-    # Search for particle files
-    if 'MixR_hourly' in fields_prefix: 
-        file_datestrs = [f.split(fields_prefix)[-1].split(".nc")[0].split("_")[-1] \
-            for f in fields_files]
-    else:
-        file_datestrs = [f.split(fields_prefix)[-1].split(".txt")[0].split("_")[-1] \
-                for f in fields_files]
-
-    particle_files = []
-    if particle_prefix is not None:
-        for file_datestr in file_datestrs:
-            
-            particle_file_search_string = \
-                particle_prefix + "*" + file_datestr + "*.txt*"
-            particle_file_search = \
-                glob.glob(particle_file_search_string)
-
-            if particle_file_search:
-                particle_files.append(particle_file_search[0])
-            else:
-                print("Can't find particle file " + \
-                      particle_file_search_string)
-                return None
-                
-        if len(particle_files) != len(fields_files):
-            status_log("Particle files don't match fields files. SKIPPING.",
-                       error_or_warning="error")
-            return None
-    else:
-        particle_files = [None for f in fields_files]
-
+    fields_files, particle_files = find_fields_files(fields_prefix=fields_prefix,
+                                                     particle_prefix=particle_prefix,
+                                                     datestr=datestr,
+                                                     satellite=satellite)
 
     # Create a list of xray datasets
     fp = []
@@ -1615,7 +1641,7 @@ def footprint_concatenate(fields_prefix,
                                       species = species,
                                       user_max_hour_back = user_max_hour_back,
                                       lifetime_hrs = lifetime_hrs,
-                                      dask = dask))
+                                      chunks = chunks))
         if unzip:
             # remove unzipped files to save space
             [os.remove(fields_file) for ff, fields_file in
@@ -2104,7 +2130,7 @@ def status_log(message,
         else:
             print(message)
 
-def process_basic(fields_folder, outfile, dask=False, unzip=False):
+def process_basic(fields_folder, outfile, chunks=None, unzip=False):
     """Basic processing with no meteorology or particle files
     NOT recommended, but helpful for a quick check
     
@@ -2120,7 +2146,7 @@ def process_basic(fields_folder, outfile, dask=False, unzip=False):
     
     """
     
-    fp = footprint_concatenate(fields_folder, dask=dask, unzip=unzip)
+    fp = footprint_concatenate(fields_folder, chunks=chunks, unzip=unzip)
     write_netcdf(fp, outfile)
 
 def process(domain, site, height, year, month, 
@@ -2145,7 +2171,7 @@ def process(domain, site, height, year, month,
             species = None,
             user_max_hour_back = 24.,
             unzip = False,
-            dask = False):
+            chunks = 30): #None):
     
     '''Process a single month of footprints for a given domain, site, height,
     year, month. 
@@ -2515,7 +2541,7 @@ def process(domain, site, height, year, month,
                                             lifetime_hrs = lifetime_hrs,
                                             user_max_hour_back = user_max_hour_back,
                                             unzip = unzip,
-                                            dask = dask)
+                                            chunks = chunks)
            
         # Do satellite process
         if satellite:
