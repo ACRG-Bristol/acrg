@@ -1381,6 +1381,7 @@ def footprint_array(fields_file,
                                time_step=time_step,
                                met=met,
                                use_surface_conditions=use_surface_conditions).to_dataset(name='fp')
+            fp['fp'] = fp['fp'].expand_dims(lev=levs, axis=1)
 
     if met is None:
         met = met_empty()
