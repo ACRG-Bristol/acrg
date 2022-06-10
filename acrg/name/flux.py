@@ -26,7 +26,8 @@ def write(lat, lon, time, flux, species, domain,
           source, title, prior_info_dict,
           regridder_used = 'acrg_grid.regrid.regrid_3D',
           copy_from_year = None, climatology = False, flux_comments = None,
-          output_directory = output_directory):
+          uncertainty = None, uncertainty_desc=None, units=None,
+          output_directory = output_directory, overwrite=False):
     '''Write a flux file for emissions
     
     Args:
@@ -63,8 +64,18 @@ def write(lat, lon, time, flux, species, domain,
             Default is False
         flux_comments (str, optional): 
             Extra comments. Default is None.
+        uncertainty (array, optional):
+            Uncertainty in the flux
+        uncertainty_desc (str, optional):
+            Description to add to uncertainty attributes
+            e.g. describing method of calculation
         output_directory (str, optional): 
             Output directory. Default is 'data_path + LPDM/emissions/'.
+        units (str, optional)
+            Units of data, defaults to flux units of mol/m2/s
+        overwrite (bool, optional)
+            If True, automatically overwrite files with the same species, source, and year
+            defaults to False - will ask for user input to overwrite file
     
     Returns:
         None
@@ -88,25 +99,19 @@ def write(lat, lon, time, flux, species, domain,
     Todo: 
         Add some error checking (e.g. check that domain is correct)
     '''
-    
-    print("WARNING: Make sure time stamp is start of time period (i.e. 1st of month\
-            for monthly data or 1st January for yearly data).")
+    units = 'mol/m2/s' if units is None else units
+
+    print("WARNING: Make sure time stamp is start of time period (i.e. 1st of month "+\
+          "for monthly data or 1st January for yearly data).")
     print("WARNING: Make sure coordinates are centre of the gridbox.")
-    print("WARNING: Make sure fluxes are in mol/m2/s.")
-
-    if climatology == True:
-        name_climatology = "-climatology"
+    if units =='mol/m2/s':
+        print("WARNING: Make sure fluxes are in mol/m2/s.")
     else:
-        name_climatology = ""
+        print(f"Warning: Saving data in units of {units}")
 
-    if source == None:
-        file_source = species + name_climatology+ '-total'
-        source_name = file_source
-    else:
-        file_source = species + name_climatology + '-' + source
-        source_name = file_source
-    
-    file_source = file_source.lower()
+    name_climatology = "-climatology" if climatology == True else ""
+    file_source = f'{species}{name_climatology}-total' if source==None else \
+                  f'{species}{name_climatology}-{source}' 
     species = species.lower()  
         
     # Check that the flux is in the correct shape
@@ -117,47 +122,46 @@ def write(lat, lon, time, flux, species, domain,
         
     #Set climatology to year 1900
     if climatology == True:
-        if len(time) == 1:
-            time = [np.datetime64('1900-01-01')]
-        elif len(time) == 12:
-            time = np.arange('1900-01', '1901-01', dtype='datetime64[M]')
-        else:
+        if len(time) not in [1, 12]:
             sys.exit('Expecting either yearly or monthly climatology. Make sure time dimension is of size 1 or 12.')
+        time = [np.datetime64('1900-01-01')] if len(time) == 1 else \
+                np.arange('1900-01', '1901-01', dtype='datetime64[M]')
     
     if type(time[0]) == np.datetime64:
-        #time=time
-        if isinstance(time,np.ndarray):
-            time = time.astype(dtype="datetime64[ns]")
-        elif isinstance(time,list):
-            time = [t.astype("datetime64[ns]") for t in time]
-        else:
-            time = time
+        time = time.astype(dtype="datetime64[ns]") if isinstance(time, np.ndarray) else \
+               [t.astype("datetime64[ns]") for t in time] if isinstance(time, list) else \
+               time
     else:
-        sys.exit('Time format not correct, needs to be a list of type numpy.datetime64. A DatetimeIndex will not work.\
-                 To convert a DatetimeIndex to correct format: time = [np.datetime64(i) for i in DatetimeIndex]')
+        sys.exit('Time format not correct, needs to be a list of type numpy.datetime64. A DatetimeIndex will not work. ' + \
+                 'To convert a DatetimeIndex to correct format: time = [np.datetime64(i) for i in DatetimeIndex]')
 
     if not os.path.exists(output_directory):
         raise IOError("Unable to write file to specified output directory. Does not exist: {}.".format(output_directory))        
 
-    #Open netCDF file
+    # Open netCDF file
     year = pd.DatetimeIndex([time[0]]).year[0]
-    if copy_from_year != None:
-        ncname = os.path.join(output_directory,domain,f"{file_source}_{domain}_{year}_copy-from-{copy_from_year}.nc")
-    elif climatology == True:
-        ncname = os.path.join(output_directory,domain,f"{file_source}_{domain}.nc")
-    else:
-        ncname = os.path.join(output_directory,domain,f"{file_source}_{domain}_{year}.nc")
+    ncdesc = f'_{year}_copy-from-{copy_from_year}' if copy_from_year is not None else '' if climatology else f'_{year}'
+    ncname = os.path.join(output_directory,domain,f"{file_source.lower()}_{domain}{ncdesc}.nc")
 
-    if os.path.isfile(ncname) == True:
+    if os.path.isfile(ncname) == True and not overwrite:
         answer = input("You are about to overwrite an existing file, do you want to continue? Y/N ")
-        if answer == 'N':
+        if answer.lower() == 'n':
             sys.exit()
-        elif answer == 'Y':
+        elif answer.lower() == 'y':
             pass
+    elif os.path.isfile(ncname) == True and overwrite:
+        print(f'Overwriting existing file: {ncname}')
     
-    flux_attrs = {"source" : source_name,
-                  "units" : 'mol/m2/s',
-                  "species" : species} 
+    flux_attrs = {"source" : file_source,
+                  "units" : units,
+                  "species" : species}
+
+    if uncertainty is not None:
+        uncertainty_desc = "" if uncertainty_desc is None else uncertainty_desc
+        unc_attrs = {"source" : file_source,
+                     "units" : units,
+                     "species" : species,
+                     "description": uncertainty_desc} 
     
     lat_attrs = {"long_name" : "latitude",
                  "units" : "degrees_north",
@@ -167,7 +171,6 @@ def write(lat, lon, time, flux, species, domain,
                  "units" : "degrees_east",
                  "notes" : "centre of cell"}
 
-
     glob_attrs = c.OrderedDict([("title",title),
                                 ("author" , getpass.getuser()),
                                 ("date_created" , np.str(dt.datetime.today())),
@@ -175,22 +178,22 @@ def write(lat, lon, time, flux, species, domain,
 
     for i, key in enumerate(prior_info_dict.keys()):
         prior_number = i+1
-        glob_attrs['prior_file_' + str(prior_number)] = key
-        glob_attrs['prior_file_' + str(prior_number)+'_version'] = prior_info_dict[key][0]
-        glob_attrs['prior_file_' + str(prior_number)+'_raw_resolution']=prior_info_dict[key][1]
-        glob_attrs['prior_file_' + str(prior_number)+'_reference']=prior_info_dict[key][2]
+        glob_attrs[f'prior_file_{str(prior_number)}'] = key
+        glob_attrs[f'prior_file_{str(prior_number)}_version'] = prior_info_dict[key][0]
+        glob_attrs[f'prior_file_{str(prior_number)}_raw_resolution'] = prior_info_dict[key][1]
+        glob_attrs[f'prior_file_{str(prior_number)}_reference'] = prior_info_dict[key][2]
     
-    glob_attrs["regridder_used"]= regridder_used
+    glob_attrs["regridder_used"] = regridder_used
     
-    if flux_comments != None:
-        glob_attrs['comments'] = flux_comments
-        if copy_from_year != None:
-            glob_attrs['comments'] = f"Fluxes copied from year {copy_from_year}. {flux_comments}" 
-    
-    elif copy_from_year != None:
-        glob_attrs['comments'] = f"Fluxes copied from year {copy_from_year}."
+    if flux_comments is not None or copy_from_year is not None:
+        flux_comments = '' if flux_comments is None else flux_comments
+        glob_attrs['comments'] = flux_comments if copy_from_year is None else \
+                                 f"Fluxes copied from year {copy_from_year}. {flux_comments}" 
 
-    flux_ds = xray.Dataset({'flux':(['lat','lon','time'], flux, flux_attrs)},
+    flux_dict = {'flux':(['lat','lon','time'], flux, flux_attrs)}
+    if uncertainty is not None:
+        flux_dict['uncertainty'] = (['lat','lon','time'], uncertainty, unc_attrs)
+    flux_ds = xray.Dataset(flux_dict,
                               coords = {'lat' : lat,
                                         'lon' : lon,
                                         'time' : time},
@@ -204,6 +207,7 @@ def write(lat, lon, time, flux, species, domain,
         print(f"Creating {domain} subdirectory in output directory: {output_directory}")
         os.makedirs(os.path.join(output_directory,domain))
 
+    print(f'Saving to {ncname}')
     flux_ds.flux.encoding = {'zlib':True}                        
     flux_ds.to_netcdf(ncname, mode='w')    
 

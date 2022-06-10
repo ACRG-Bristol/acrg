@@ -4,8 +4,9 @@ import json
 from acrg.obs.read import synonyms
 from acrg.config.paths import Paths
 
-
 acrg_path = Paths.acrg
+
+import numpy as np
 
 def molar_mass(species):
     '''
@@ -71,4 +72,3 @@ def convert_lons_0360(lons):
     div = lons // 360
 
     return lons - div*360
-

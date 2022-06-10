@@ -36,6 +36,8 @@ data_path = Paths.data
 def fixedbasisMCMC(species, sites, domain, meas_period, start_date, 
                    end_date, outputpath, outputname,
                    met_model = None,
+                   species_footprint = None,
+                   HiTRes = False,
                    xprior={"pdf":"lognormal", "mu":1, "sd":1},
                    bcprior={"pdf":"lognormal", "mu":0.004, "sd":0.02},
                    sigprior={"pdf":"uniform", "lower":0.5, "upper":3},
@@ -71,6 +73,11 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             End time of inversion "YYYY-mm-dd"
         outputname (str):
             Unique identifier for output/run name.
+        species_footprint (str, optional):
+            species of the footprint to be imported, if different to the species
+            of interest (e.g. import co2 footprints for HiTRes studies)
+        HiTRes (bool)
+            True if using HiTRes footprints
         outputpath (str):
             Path to where output should be saved.
         xprior (dict):
@@ -174,15 +181,23 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     TO DO:
         Add a wishlist...
     """    
+    keep_missing = True if HiTRes else False
+    if verbose and species_footprint is not None:
+        print(f'species_footprint: {species_footprint}')
+    
     data = getobs.get_obs(sites, species, start_date = start_date, end_date = end_date, 
                          average = meas_period, data_directory=obs_directory,
-                          keep_missing=False,inlet=inlet, instrument=instrument, max_level=max_level)
-    fp_all = name.footprints_data_merge(data, domain=domain, met_model = met_model, calc_bc=True, 
-                                        height=fpheight, 
+                          keep_missing=keep_missing,inlet=inlet, instrument=instrument,
+                          max_level=max_level)
+    fp_all = name.footprints_data_merge(data, domain=domain, met_model = met_model, calc_bc=True,
+                                        HiTRes = HiTRes,
+                                        height = fpheight,
+                                        calc_timeseries = False,
                                         fp_directory = fp_directory,
                                         bc_directory = bc_directory,
                                         flux_directory = flux_directory,
-                                        emissions_name=emissions_name)
+                                        emissions_name = emissions_name,
+                                        species_footprint = species_footprint)
     
     for site in sites:
         for j in range(len(data[site])):
@@ -221,10 +236,15 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             basis_directory = tempdir
     else:
         basis_directory = basis_directory
-            
-    fp_data = name.fp_sensitivity(fp_all, domain=domain, basis_case=fp_basis_case,basis_directory=basis_directory)
-    fp_data = name.bc_sensitivity(fp_data, domain=domain,basis_case=bc_basis_case)
     
+    fp_data = name.fp_sensitivity(fp_all, domain=domain, basis_case=fp_basis_case, basis_directory=basis_directory,
+                                  calc_timeseries = True)
+    fp_data = name.bc_sensitivity(fp_data, domain=domain, basis_case=bc_basis_case)
+    
+    if HiTRes:
+        for site in sites:
+            fp_data[site] = fp_data[site].dropna(dim='time')
+        
     #apply named filters to the data
     fp_data = name.filtering(fp_data, filters)
     

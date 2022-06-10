@@ -49,7 +49,7 @@ def is_number(s):
     except ValueError:
         return False
 
-def combine_diff_resolution(data_1, data_2, method='add', verbose=True):
+def combine_diff_resolution(data_1, data_2, data_1_res=None, data_2_res=None, method='add', verbose=True):
     '''
     Combine datasets which have different time resolutions
     Avoids having to resample data to the same resolution in order to add,
@@ -73,8 +73,10 @@ def combine_diff_resolution(data_1, data_2, method='add', verbose=True):
     '''
     if 'np' not in dir(): import numpy as np
     data = {dd: dat for dd, dat in enumerate([data_1, data_2])}
+    data_res = {dd: dat for dd, dat in enumerate([data_1_res, data_2_res])}
     # calculate the time step for each dataset
-    time_step  = {dd: (dat.time[1] - dat.time[0]).values for dd, dat in data.items()}
+    time_step  = {dd: np.timedelta64(int(data_res[dd][0]), data_res[dd][1]).astype('timedelta64[ns]') if data_res[dd] else
+                      (dat.time[1] - dat.time[0]).values for dd, dat in data.items()}
     
     if time_step[0]==time_step[1]:
         # if the time steps are equal then apply the method as normal
@@ -123,7 +125,7 @@ def combine_diff_resolution(data_1, data_2, method='add', verbose=True):
             # divide by the low res data
             return resolved / integrated
         elif method.lower()=='divide_high':
-            return interated / resolved
+            return integrated / resolved
         else:
             print(f'Method not recognised: {method}')
             return(None)

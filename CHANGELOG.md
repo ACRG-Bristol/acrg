@@ -20,6 +20,7 @@ Updated pinned packages, now expects Python 3.9
 - hbmcmc code now has a function (and relevant additions to output) that allows the inversion to be rerun (i.e. reproduced)
   using only the output as inputs and ACRG repository.
 - Country mask code has now been updated to allow ocean territories (Economic Exclusion Zone, EEZ) to be included.
+- hbmcmc code now has options to use HiTRes processes for the set up
 - Add function for embedding regional fields into larger fields, in acrg.name.emissions_helper_func
 
 ### Changed
