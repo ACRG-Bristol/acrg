@@ -1013,29 +1013,28 @@ def convert_units(footprint, units, time_step, area=None, lat=None, lon=None, me
             molm3=345. / const.R ## Surface P/T ratio we would expect over Europe (345).
         else:
             molm3=met["press"] / const.R / const.convert_temperature(met["temp"].squeeze(),"C","K")
-        footprint = footprint * area/ (3600.*time_step*1.)/molm3
+        footprint_out = footprint * area/ (3600.*time_step*1.)/molm3
     elif units == "ppm s" or units_no_space == "ppms":
-        footprint = footprint * area*1e-6*1./(3600.*time_step*1.)
+        footprint_out = footprint * area*1e-6*1./(3600.*time_step*1.)
     elif units in ["Bq s / m^3", "Bq s / m3"] or units_no_space in ["Bqs/m^3", "Bqs/m3"]:
-        footprint = footprint * area/(3600.*time_step*1.)           
+        footprint_out = footprint * area/(3600.*time_step*1.)           
     else:
         status_log(f"DO NOT RECOGNISE UNITS OF {units} FROM NAME INPUT (expect 'g s / m^3' or 'ppm s')",
                    error_or_warning="error")
         
-    return footprint
+    return footprint_out
 
 def convert_units_satellite(footprint, units, time_step, time, lev, area=None, lat=None, lon=None, met=None,
                             use_surface_conditions=True, verbose=True):
     footprint_out = xray.DataArray(data=np.zeros([len(time), len(lev), len(lat), len(lon)]),
                                    coords = {'time':time, 'lev':lev, 'lat':lat, 'lon':lon},
                                    dims=['time', 'lev', 'lat', 'lon'])
+    if units == 'g s / m^3' or units.replace(' ','') == 'gs/m^3':
+        status_log("NOT RECOMMENDED TO CREATE SATELLITE FOOTPRINTS USING CONVERTED g s / m3 UNITS. IF POSSIBILE, NAME FOOTPRINTS SHOULD BE RE-GENERATED IN UNITS OF ppm s.",
+                   error_or_warning="warning")
     for t in range(len(time)):
         for l in range(len(lev)):
             slice_dict = dict(time = [t], lev = [l])
-            column = t*len(lev)+l
-            if units == 'g s / m^3' or units.replace(' ','') == 'gs/m^3':
-                status_log("NOT RECOMMENDED TO CREATE SATELLITE FOOTPRINTS USING CONVERTED g s / m3 UNITS. IF POSSIBILE, NAME FOOTPRINTS SHOULD BE RE-GENERATED IN UNITS OF ppm s.",
-                           error_or_warning="warning")
             column = t*len(lev)+l
             fp = xray.DataArray(data=footprint[column],
                                 coords={'lat':lat, 'lon':lon},
