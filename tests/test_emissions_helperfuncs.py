@@ -11,17 +11,36 @@ import os
 import xarray as xr
 import glob
 
+from acrg.name.name import open_ds
 from acrg.name import emissions_helperfuncs as ehf
 import acrg.grid as acrg_grid
 from acrg.grid.areagrid import areagrid
 from acrg.config.paths import Paths
-
 
 acrg_path = Paths.acrg
 
 lon =  np.arange(-5,4,0.5)
 lat =  np.arange(50,55,0.5)
 year = 2012
+
+@pytest.fixture(scope="module")
+def emissions_directory():
+    ''' Define base directory containing emissions files '''
+    directory = os.path.join(acrg_path, 'tests', 'files', 'LPDM', 'emissions', 'SMALL-DOMAIN')
+    return directory
+
+@pytest.fixture(scope="module")
+def fields(emissions_directory):
+    '''
+    Import the fields files for the sperate inventories and embedded version
+    '''
+    inventories = {'domain': 'edgar', 'country': 'ukghg', 'embedded': 'edgar-ukghg'}
+    filenames = {region: f'co2-{inv}-ff-1hr_EUROPE_2018.nc' for region, inv in inventories.items()}
+    
+    fields_data = {region: open_ds(os.path.join(emissions_directory, filename))
+                   for region, filename in filenames.items()}
+    
+    return fields_data
 
 @pytest.mark.skipif(not glob.glob(os.path.join(Paths.data,"Gridded_fluxes")), reason="No access to files in data_path")
 @pytest.mark.parametrize('species', [('ch4'),('n2o')])    
@@ -219,7 +238,16 @@ def test_get_naei_public():
     raw_sum = np.sum(raw["data"] * raw.attrs["cellsize"] * raw.attrs["cellsize"])
     
     assert np.abs( (output_sum-raw_sum)/raw_sum ) < 0.01
+
+def test_embed_field(fields):
+    '''
+    Test that embed_field() embeds a regional field into a domain field
+    '''
+    flux_embed = ehf.embed_field(domain_field = fields['domain'],
+                                 country_field = fields['country'],
+                                 verbose = False)
     
+    assert np.array_equal(flux_embed.flux.values, fields['embedded'].flux.values)
     
 def test_processUKGHG():
     ukghg_dir = os.path.join(acrg_path,"tests/files/gridded_fluxes/")

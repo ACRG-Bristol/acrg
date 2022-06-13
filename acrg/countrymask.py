@@ -275,13 +275,13 @@ def region_mapping(upper=True):
         dict:
             Dictionary containing the mapping of the region number to the country name.
     '''
-    all_regions = regionmask.defined_regions.natural_earth.countries_50.region_ids
+    all_regions = regionmask.defined_regions.natural_earth_v5_0_0.countries_50.region_ids
     #codes = [key for key in all_regions.keys() if isinstance(key,unicode) and len(key) == 2]
     #names = [country_name(code,supress_print=True) for code in codes]
     
     #names = [name.split(',')[0] if name else name for name in names]
     
-    names = regionmask.defined_regions.natural_earth.countries_50.names
+    names = regionmask.defined_regions.natural_earth_v5_0_0.countries_50.names
     numbers = [all_regions[key] for key in names]
 
     # Check all numbers are covered
@@ -409,12 +409,12 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
         # moves longitude values onto 0-360 range if lons have values less than 0 and greater than 180, as regionmask cannot use a lon range that has both 
         if any(lon < 0) & any(lon > 180):
             lon = convert_lons_0360(lon)
-        mask = regionmask.defined_regions.natural_earth.countries_50.mask(lon,lat,xarray=True)
+        mask = regionmask.defined_regions.natural_earth_v5_0_0.countries_50.mask(lon,lat)
     elif database == "Natural_Earth" and scale == "1:110m":
         # moves longitude values onto 0-360 range if lons have values less than 0 and greater than 180, as regionmask cannot use a lon range that has both 
         if any(lon < 0) & any(lon > 180):
             lon = convert_lons_0360(lon)
-        mask = regionmask.defined_regions.natural_earth.countries_110.mask(lon,lat,xarray=True)
+        mask = regionmask.defined_regions.natural_earth_v5_0_0.countries_110.mask(lon,lat,xarray=True)
 
     if use_domain_extent:
         lat_outer = np.where((mask["lat"].values < sub_lat[0]) | (mask["lat"].values >= sub_lat[-1]))[0]
@@ -505,13 +505,43 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
     
     return ds
 
+def mask_fill_gaps(mask_array):
+    
+    #TODO: create a test for fill_gaps
+    print('\nFilling in gaps between masksby checking for grid cells where surrounding cells are indentical.')
+    print('WARNING: This is experimental, when using this mask to estimate country emissions from countries '+
+          'with complex coastlines you should manually check the mask before use.')
+    print('WARNING: This does not work for any gaps that are on the edge of the domain.')
+        
+    # loop through grid to check for missing cells
 
-def create_country_mask_eez(domain,include_land_territories=True,
-                            include_ocean_territories=True,fill_gaps=True,
-                            fp_directory=fp_directory,
+    for i in np.arange(1,mask_array.shape[0]-1):
+        for j in np.arange(1,mask_array.shape[1]-1):
+
+            if mask_array[i,j] == 0.:
+                    
+                # find all surrounding grid cells
+                surrounding = np.delete(mask_array[i-1:i+2,j-1:j+2].flatten(),4)
+
+                # if all surrounding cells are identical, fill in the gap
+                if np.all(surrounding == surrounding[0]) and surrounding[0] != 0.:
+
+                    mask_array[i,j] = surrounding[0]
+
+                # if all but one of the surrounding cells are identical, fill in the gap
+                # (fills in gaps of two adjacent grid cells)
+                elif np.count_nonzero(surrounding == stats.mode(surrounding)[0][0]) == 7. and stats.mode(surrounding)[0] != 0.:
+
+                    mask_array[i,j] = stats.mode(surrounding)[0][0]
+                    
+    return mask_array
+
+def create_country_mask_eez(domain,lat=None,lon=None,include_land_territories=True,
+                            include_ocean_territories=True,reset_index=True,fill_gaps=True,
+                            fp_directory=fp_directory,lat_lon_mask=False,sub_lats=None,sub_lons=None,
                             output_path=None,save=False):
     """
-    Creates a mask for all countries within the domain.
+    Creates a mask for all countries within the domain (or lat/lon bounds).
     Uses Natural Earth 10m land datasets and Admin_0_map_units datasets
     for specifiying country and ocean boundaries.
     Option to include EEZ (Exclusive Economic Zones e.g. marine 
@@ -521,18 +551,32 @@ def create_country_mask_eez(domain,include_land_territories=True,
     
     Args:
         domain (str):
-            The domain the mask should cover, e.g. 'EUROPE'.
+            The domain the mask should cover, e.g. 'EUROPE'. If lat and lon are not specified,
+            will use the domain to extract the latitudes and longitudes.
+        lat (numpy array) (optional):
+            Latitudes to create mask over. If not specified, will extract lats from a domain.
+        lon (numpy array) (optional):
+            Longitudes to create mask over. If not specified, will extract lons from a domain.
         include_land_territories (bool):
             If True, include land territories for all countries in the 
             country mask.
         include_ocean_territories (bool):
             If True, include areas within EEZ (marine territories) in the 
             country mask.
+        reset_index (bool):
+            If True, start indexing countries from 1 (with ocean as 0). 
+            If False, uses the Natural Earth index values (as extracted by geopandas).
         fill_gaps (bool):
-            Fills in gaps between the land and ocean masks that are missed.
+            Fills in gaps between the land and ocean masks that are missed and some 
         fp_directory (str, optional) :
             Base footprint directory to use to extract domain values. Uses footprint directory on data path
             by default and expects sub-directories of domain name.
+        lat_lon_mask (bool):
+            If True, masks all cells outside sub_lats and sub_lons (gives them values of np.nan).
+        sub_lats (list or array) (optional):
+            Either a list of [min_lat,max_lat] or a numpy array of lats. Any cells beyond these limits are masked.
+        sub_lons (list or array) (optional):
+            Either a list of [min_lon,max_lon] or a numpy array of lons. Any cells beyond these limits are masked.
          out_path (str) (optional):
             Path and name to save mask to. If None, does not save dataset.
     Returns:
@@ -543,8 +587,16 @@ def create_country_mask_eez(domain,include_land_territories=True,
     print("If you are having issues with downloading the required files from natural earth:")
     print("Try installing cartopy version 0.20.0, this may fix the issue.")
    
-    # extract lats and lons from fp file
-    lats,lons,heights = domain_volume(domain,fp_directory=fp_directory)
+    if lat is not None:
+        lat_range = [lat[0],lat[-1]]
+        lon_range = [lon[0],lon[-1]]
+        print(f'\nCreating mask between lats: {lat_range} and lons: {lon_range}.')
+        lats = lat
+        lons = lon
+    else:
+        print(f'\nExtracting lats and lons from domain: {domain}.')
+        # extract lats and lons from fp file
+        lats,lons,heights = domain_volume(domain,fp_directory=fp_directory)
 
     # load in land files
     shpfilename_land = shapereader.natural_earth('10m','cultural','admin_0_map_units')
@@ -575,13 +627,31 @@ def create_country_mask_eez(domain,include_land_territories=True,
     all_grid = np.zeros((lats.shape[0],lons.shape[0]))
     country_names = []
     country_codes = []
-
-    land_codes_all = np.unique(df_land.loc[land_regions]['ADM0_A3'])
+    
+    if reset_index == True:
+    
+        #land_codes_all = np.unique(df_land.loc[land_regions]['ADM0_A3'])
+        land_codes_all = pd.unique(df_land.loc[land_regions]['ADM0_A3'])
+        
+    else:
+    
+        land_codes_all = []
+        indexes_all = []
+        
+        for i,l_code in enumerate(df_land.loc[land_regions]['ADM0_A3']):
+            if l_code not in land_codes_all:
+                land_codes_all.append(l_code)
+                indexes_all.append(df_land.loc[land_regions]['ADM0_A3'].index[i])
 
     count = 1
 
     # loop through all countries
     for i,c in enumerate(land_codes_all):
+        
+        if reset_index == True:
+            index_value = count
+        else:
+            index_value = indexes_all[i]
 
         country_names.append(df_land[df_land['ADM0_A3'] == c]['ADMIN'].values[0].upper())
         country_codes.append(c)
@@ -598,7 +668,7 @@ def create_country_mask_eez(domain,include_land_territories=True,
                     # find mask index that corresponds to the dataset index
                     land_mask_index = np.where(land_regions == r)[0][0]
 
-                    all_grid[np.where(mask[land_mask_index].values == True)] = count
+                    all_grid[np.where(mask[land_mask_index].values == True)] = index_value
                     
         elif i == 0:
             
@@ -617,37 +687,28 @@ def create_country_mask_eez(domain,include_land_territories=True,
                     # find ocean mask index that corresponds to the dataset index
                     ocean_mask_index = np.where(ocean_regions == r)[0][0]
 
-                    all_grid[np.where(mask_ocean[ocean_mask_index].values == True)] = count
+                    all_grid[np.where(mask_ocean[ocean_mask_index].values == True)] = index_value
 
         count += 1
         
     if fill_gaps:
-        #TODO: create a test for fill_gaps
-        print('\nFilling in gaps between the land and ocean masks\nby checking if surrounding cells are indentical.')
-        print('\nWARNING: this part of the code is currently untested.')
         
-        # loop through grid to check for missing cells
-
-        for i in np.arange(1,all_grid.shape[0]-1):
-            for j in np.arange(1,all_grid.shape[1]-1):
-
-                if all_grid[i,j] == 0.:
-
-                    surrounding = np.delete(all_grid[i-1:i+2,j-1:j+2].flatten(),4)
-
-                    # if all surrounding cells are identical, fill in the gap
-                    if np.all(surrounding == surrounding[0]):
-
-                        all_grid[i,j] = surrounding[0]
-
-                    # if all but one of the surrounding cells are identical, fill in the gap
-                    # (fills in gaps of two adjacent grid cells)
-                    elif np.count_nonzero(surrounding == stats.mode(surrounding)[0][0]) == 7.:
-
-                        all_grid[i,j] = stats.mode(surrounding)[0][0]
+        all_grid = mask_fill_gaps(all_grid)
     
+    if lat_lon_mask == True:
+        print(f'Masking all values beyond lats: {sub_lats[0]}:{sub_lats[-1]} and lons: {sub_lons[0]}:{sub_lons[-1]}')
+        
+        lats_outer = np.where((lats < sub_lats[0]) | (lats >= sub_lats[-1]))[0]
+        lons_outer = np.where((lons < sub_lons[0]) | (lons >= sub_lons[-1]))[0]
+        
+        all_grid[lats_outer,:] = np.nan
+        all_grid[:,lons_outer] = np.nan
+        
     # create output dataset
-    ncountries = np.arange(len(country_names)+1)
+    if reset_index == True:
+        ncountries = np.arange(len(country_names)+1)
+    else:
+        ncountries = [0] + indexes_all
 
     country_names_all = ['OCEAN'] + country_names
     country_codes_all = ['OCEAN'] + country_codes
@@ -669,12 +730,12 @@ def create_country_mask_eez(domain,include_land_territories=True,
 
     country_names_da = xr.DataArray(country_names_all,
                                    dims=["ncountries"],
-                                   coords=[ncountries],
+                                   coords={'ncountries':ncountries},
                                     attrs={'long_name':'Country names'})
     
     country_codes_da = xr.DataArray(country_codes_all,
                                    dims=["ncountries"],
-                                   coords=[ncountries],
+                                   coords={'ncountries':ncountries},
                                     attrs={'long_name':'Country codes'})
 
     ds = xr.Dataset({"country":country_da,
