@@ -86,9 +86,11 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
         bcprior (dict):
             Same as above but for boundary conditions.
         sigprior (dict):
-            Same as above but for model error.
+            Same as above but for model error. If running with fixed hyperparameters
+            needs "pdf" parameter set to "fixed" and a "fixed_value" parameter set to 
+            required value e.g. {"pdf": "fixed", "fixed_value": 3}.
         offsetprior (dict):
-            Same as above but for bias offset. Only used is addoffset=True.
+            Same as above but for bias offset. Only used if addoffset=True.
         nit (int):
             Number of iterations for MCMC
         burn (int):
@@ -177,6 +179,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     data = getobs.get_obs(sites, species, start_date = start_date, end_date = end_date, 
                          average = meas_period, data_directory=obs_directory,
                           keep_missing=False,inlet=inlet, instrument=instrument, max_level=max_level)
+    
     fp_all = name.footprints_data_merge(data, domain=domain, met_model = met_model, calc_bc=True, 
                                         height=fpheight, 
                                         fp_directory = fp_directory,
@@ -188,6 +191,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
         for j in range(len(data[site])):
             if len(data[site][j].mf) == 0:
                 print("No observations for %s to %s for %s" % (start_date, end_date, site))
+        
     if sites[0] not in fp_all.keys():
         print("No footprints for %s to %s" % (start_date, end_date))
         return

@@ -33,8 +33,8 @@ from collections import OrderedDict
 import pymc3 as pm
 import pandas as pd
 
-import acrg.name as name
-from acrg.grid import areagrid
+import acrg.name.name as name
+from acrg.grid.areagrid import areagrid
 from acrg import convert
 from acrg.config.paths import Paths
 
