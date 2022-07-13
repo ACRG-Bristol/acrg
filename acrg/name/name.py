@@ -444,8 +444,8 @@ def flux(domain, species, start = None, end = None, flux_directory=None,
             ndate = ndate - dateadj
             flux_ds = flux_ds.update({'time' : ndate})  
             flux_tmp = flux_ds.copy()
-            while month_end > ndate[-1]:
-                ndate = ndate + pd.DateOffset(years=1)      
+            while pd.to_datetime(month_end.strftime('%Y-%m')) > ndate[-1]:
+                ndate = ndate + pd.DateOffset(years=1)
                 flux_ds = xr.merge([flux_ds, flux_tmp.update({'time' : ndate})])
                     
         flux_timeslice = flux_ds.sel(time=slice(month_start, month_end))
