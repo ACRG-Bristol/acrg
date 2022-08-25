@@ -17,7 +17,10 @@ jobs:
       fail-fast: false
       matrix:
         operating-system: [ubuntu-latest, macos-latest]
-        python-version: ["3.9", "3.10"]
+        python-version: ["3.10"]
+    defaults:
+      run:  # This ensure that conda finds the environment for the setup-miniconda action
+        shell: bash -l {0}
     steps:
     - name: Checkout
       uses: actions/checkout@v3
@@ -29,7 +32,7 @@ jobs:
         activate-environment: acrg
         auto-activate-base: false
     - name: Test with pytest
-      run: pytest
+      run: pytest --verbose
         
     #     --cov=./ --cov-report=xml
 
