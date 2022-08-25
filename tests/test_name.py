@@ -24,6 +24,7 @@ To run all tests except those labelled 'long' use the syntax
 @author: rt17603
 """
 
+from cachetools import cached
 import pytest
 import os
 import sys
@@ -559,10 +560,11 @@ def test_fp_data_merge(data,measurement_param,fp_directory,flux_directory,bc_dir
                                      flux_directory=flux_directory,bc_directory=bc_directory,
                                      calc_bc=True,calc_timeseries=True)
 
-    # # How pickle file was created initially
-    # import pickle
-    # pickle_out = open(benchmarkdir / "fp_data_merge_benchmark.pkl", "wb")
-    # pickle.dump(out, pickle_out)
+    # How pickle file was created initially
+    #   Before re-running this step, make sure all preceding tests pass
+    # out["MHD"] = out["MHD"].load().copy()
+    # with open(benchmarkdir / "fp_data_merge_benchmark.pkl", "wb") as fpdm_file:
+    #     pickle.dump(out, fpdm_file)
 
     with open(benchmarkdir / "fp_data_merge_benchmark.pkl", "rb") as fpdm_file:
         benchmark_out = pickle.load(fpdm_file)

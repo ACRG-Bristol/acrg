@@ -1566,7 +1566,11 @@ def write_netcdf(fp, outfile,
     # pass any global attributes in fp to the netcdf file
     for key in list(global_attributes.keys()):
         ncF.__setattr__(key,global_attributes[key])
-    ncF.__setattr__("author", getpass.getuser())
+    ncF.__setattr__("author", 'Met Office/University of Bristol')
+    ncF.__setattr__("contact", 'Alistair Manning')
+    ncF.__setattr__("file_created_by", getpass.getuser())
+    ncF.__setattr__("funder", 'BEIS')
+    ncF.__setattr__("publication_acknowledgement", 'Please acknowledge the Met Office/University of Bristol in any publications that use these files.')
     ncF.__setattr__("created", str(dt.datetime.now()))
     
     

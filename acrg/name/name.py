@@ -3,7 +3,6 @@
 Created on Mon Nov 10 10:45:51 2014
 
 """
-from past.utils import old_div
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -43,23 +42,28 @@ with open(acrg_path / "data/site_info.json") as f:
 with open(acrg_path / "data/species_info.json") as f:
     species_info=json.load(f)
 
-def open_ds(path, chunks=None):
+def open_ds(path, chunks=None, combine=None):
     """
     Function efficiently opens xray datasets.
 
     Args:
         path (str)
-        chunks (dict)
+        chunks (dict, optional)
             size of chunks for each dimension
             e.g. {'lat': 50, 'lon': 50}
             opens dataset with dask, such that it is opened 'lazily'
             and all of the data is not loaded into memory
             defaults to None - dataset is opened with out dask
+        combine (str, optional)
+            Way in which the data should be combined (if using chunks), either:
+            'by_coords': order the datasets before concatenating (default)
+            'nested': concatenate datasets in the order supplied
     """
-    # use a context manager, to ensure the file gets closed after use
     if chunks is not None:
-        ds = xr.open_mfdataset(path, chunks=chunks)
+        combine = 'by_coords' if combine is None else combine
+        ds = xr.open_mfdataset(path, chunks=chunks, combine=combine)
     else:
+        # use a context manager, to ensure the file gets closed after use
         with xr.open_dataset(path) as ds:
             ds.load()
     return ds 
@@ -1012,10 +1016,10 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
 
                 # If units are specified, multiply by scaling factor
                 if units:
-                    site_ds.update({'fp' : (site_ds.fp.dims, old_div(site_ds.fp, units))})
+                    site_ds.update({'fp' : (site_ds.fp.dims, site_ds.fp.data/units)})
                     if HiTRes:
                         site_ds.update({'fp_HiTRes' : (site_ds.fp_HiTRes.dims, 
-                                                       old_div(site_ds.fp_HiTRes, units))})
+                                                       site_ds.fp_HiTRes/units)})
 
                 site_ds_list += [site_ds]
     
@@ -1047,7 +1051,7 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
     if load_bc:       
         bc = boundary_conditions(domain, species, start=flux_bc_start, end=flux_bc_end, bc_directory=bc_directory)
         if units:
-            fp_and_data['.bc'] = old_div(bc, units)               
+            fp_and_data['.bc'] = bc/units               
         else:
             fp_and_data['.bc'] = bc
             
@@ -1302,9 +1306,9 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                 else:
                     region_name = [source+'-'+str(reg) for reg in range(1,int(np.max(site_bf.basis.values)+1))]
 
-                sensitivity = xr.DataArray(H, 
-                                             coords=[('region', region_name), 
-                                                     ('time', fp_and_data[site].coords['time'])])
+                sensitivity = xr.DataArray(H.data,
+                                    coords=[('region', region_name), 
+                                        ('time', fp_and_data[site].coords['time'].data)])
                                      
             if si == 0:
                 concat_sensitivity = sensitivity
@@ -1326,17 +1330,17 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                 else:
                     sub_fp_temp = site_bf.fp.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
                                                  method="nearest") 
-                    sub_fp = xr.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
-                                           coords = {'sub_lat': (site_bf.coords['sub_lat']),
-                                                     'sub_lon': (site_bf.coords['sub_lon']),
-                                                     'time' : (fp_and_data[site].coords['time'])})
+                    sub_fp = xr.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp.data)},
+                                           coords = {'sub_lat': (site_bf.coords['sub_lat'].data),
+                                                     'sub_lon': (site_bf.coords['sub_lon'].data),
+                                                     'time' : (fp_and_data[site].coords['time'].data)})
                                 
                     sub_H_temp = H_all.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
                                            method="nearest")                             
-                    sub_H = xr.Dataset({'sub_H': (['sub_lat','sub_lon','time'], sub_H_temp)},
-                                          coords = {'sub_lat': (site_bf.coords['sub_lat']),
-                                                    'sub_lon': (site_bf.coords['sub_lon']),
-                                                    'time' : (fp_and_data[site].coords['time'])},
+                    sub_H = xr.Dataset({'sub_H': (['sub_lat','sub_lon','time'], sub_H_temp.data)},
+                                          coords = {'sub_lat': (site_bf.coords['sub_lat'].data),
+                                                    'sub_lon': (site_bf.coords['sub_lon'].data),
+                                                    'time' : (fp_and_data[site].coords['time'].data)},
                                           attrs = {'flux_source_used_to_create_sub_H':source})
        
                     fp_and_data[site] = fp_and_data[site].merge(sub_fp)
@@ -1528,14 +1532,12 @@ def filtering(datasets_in, filters, keep_missing=False):
             wh_rlon = np.where(abs(dataset.lon.values-release_lon) < dlon/2.)
             wh_rlat = np.where(abs(dataset.lat.values-release_lat) < dlat/2.)
             if np.any(wh_rlon[0]) and np.any(wh_rlat[0]):
-                local_sum[ti] = old_div(np.sum(dataset.fp[
-                        wh_rlat[0][0]-2:wh_rlat[0][0]+3,wh_rlon[0][0]-2:wh_rlon[0][0]+3,ti].values),np.sum(
-                        dataset.fp[:,:,ti].values))  
+                local_sum[ti] = np.sum(dataset.fp[wh_rlat[0][0]-2:wh_rlat[0][0]+3,wh_rlon[0][0]-2:wh_rlon[0][0]+3,ti].values)/\
+                                np.sum(dataset.fp[:,:,ti].values)
             else:
                 local_sum[ti] = 0.0 
         
         return local_sum
-    
     
     
     # Filter functions
@@ -1808,7 +1810,7 @@ def plot(fp_data, date, out_filename=None, out_format = 'pdf',
 
                 if np.float(date - time[ti-1]) < np.float(tol):
 
-                    dt = old_div(np.float(date - time[ti-1]),np.float(time[ti] - time[ti-1]))
+                    dt = np.float(date - time[ti-1])/np.float(time[ti] - time[ti-1])
                     fp_ti_0 = fp_data[site][dict(time = ti-1)].fp.values.squeeze()
                     fp_ti_1 = fp_data[site][dict(time = ti)].fp.values.squeeze()
                     fp_ti = fp_ti_0 + (fp_ti_1 - fp_ti_0)*dt

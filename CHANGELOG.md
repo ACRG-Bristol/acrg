@@ -13,11 +13,26 @@ Use this section to keep track of any intermediate changes that can then be move
 ### Removed
 
 
+## [0.3.1] - 2022-08-25
+### Added
+
+- New "combine" option to `acrg.name.open_ds` to avoid an xarray future warning when using `xarray.open_mfdataset` with chunking option.
+- New `acrg.countrymask.create_country_mask_eez` function to allow sea regions to be incorporated into a country mask the EEZ (Exclusive economic zone). Resolves issue #117.
+- New `acrg.name.emissions_helperfuncs.embed_field` function to allow embedding of regional/country flux fields (e.g. NAEI/UKGHG) into larger/domain flux field (e.g.EDGAR). Resolves issue #94
+
+### Changed
+
+- Updated pinned packages, now expects Python 3.10
+- Paths updated in `process_gcwerks_dagage2.sh` and json files (reflecting recent changes).
+- Additional sites and parameters added to json files.
+
+
 ## [0.3.0] - 2022-04-01
 ### Added
 - hbmcmc code now has a function (and relevant additions to output) that allows the inversion to be rerun (i.e. reproduced)
   using only the output as inputs and ACRG repository.
 - Country mask code has now been updated to allow ocean territories (Economic Exclusion Zone, EEZ) to be included.
+- Add function for embedding regional fields into larger fields, in acrg.name.emissions_helper_func
 
 ### Changed
 - directory structure of acrg package has changed. Many import statements will likely need modifying
