@@ -2,11 +2,11 @@ name: ACRG tests
 
 on:
   push:
-    branches: [master, devel]
+    branches: [master, develop]
     tags:
     - '*'
   pull_request:
-    branches: [master, devel]
+    branches: [master, develop]
 
 jobs:
   test:
