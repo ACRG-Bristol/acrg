@@ -1503,10 +1503,10 @@
     },
     "ICOS": {
       "height": [
-        "10m"
+        "24m"
       ],
       "height_name": [
-        "10magl"
+        "24magl"
       ],
       "height_station_masl": 5.0,
       "latitude": 53.32611,

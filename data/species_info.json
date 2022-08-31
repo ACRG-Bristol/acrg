@@ -425,7 +425,7 @@
         "lifetime": ["56.3D", "38.4D", "22.3D", "12.3D", "7.7D", "5.7D","5.9D", "7.4D", "12.4D","23.5D","48.8D","66.1D"],
         "lifetime_reference":"2018 ozone assessment with monthly profile derived from HFO-1234yf from Henne et al., 2012"
     },
-    "HFO-1233zde": {"alt": ["HFO1233zde", "HFO-1233ZDE", "HFO1233ZDE","hfo1233zde","hfo-1233zde"],
+    "HCFO-1233zde": {"alt": ["HCFO1233zde", "HCFO-1233ZDE", "HCFO1233ZDE","hcfo1233zde","hcfo-1233zde","HFO1233zde", "HFO-1233ZDE", "HFO1233ZDE","hfo1233zde","hfo-1233zde"],
         "group": "HFOs", 
         "long_name": "HFO-1233zd(E)", 
         "mol_mass": "130.49", 

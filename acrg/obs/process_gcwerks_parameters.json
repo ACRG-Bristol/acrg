@@ -30,7 +30,7 @@
             "medusa": "/group/chemistry/acrg/obs_raw/AGAGE_GCWerks/data-gcms/"
         },
         "sampling_period": {
-            "GCMD": 120,
+            "GCMD": 60,
             "GCMS": 1200,
             "medusa": 1200
         },
@@ -89,8 +89,8 @@
             "gcwerks_site_name": "heathfield",
             "inlets": ["100m", "50m"],
             "global_attributes": {
-                "data_owner": "Simon O'Doherty",
-                "data_owner_email": "s.odoherty@bristol.ac.uk"
+                "data_owner": "Tim Arnold",
+                "data_owner_email": "tim.arnold@npl.co.uk"
             }
         },
         "GSN" : {
@@ -237,8 +237,8 @@
         "HFD" : {
             "gcwerks_site_name": "heathfield",
             "global_attributes": {
-                "data_owner": "Simon O'Doherty",
-                "data_owner_email": "s.odoherty@bristol.ac.uk"
+                "data_owner": "Tim Arnold",
+                "data_owner_email": "tim.arnold@npl.co.uk"
             }
         },
         "RGL" : {
