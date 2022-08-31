@@ -14,7 +14,7 @@ import xarray as xray
 import json
 from os import stat
 import fnmatch
-from .utils import attributes, output_filename, cleanup
+from acrg.obs.utils import attributes, output_filename, cleanup
 
 from acrg.config.paths import Paths
 
@@ -156,20 +156,22 @@ def icos_data_read(data_file, species):
 
     # Format time
     df.index = pd.to_datetime(df.index, format = "%Y %m %d %H %M")
+    
+    # Set timestamp to left label
+    df["new_time"] = df.index - pd.Timedelta(seconds = 30)
+    df = df.set_index("new_time", inplace=False, drop=True)
 
-    df = df[df[species.lower()] >= 0.]
+    # Label time index
+    df.index.name = "time"
 
-    # Remove duplicate indices
-    df.reset_index(inplace = True)
-    df = df.reset_index().drop_duplicates(subset='index').set_index('index')
-
+    # Remove duplicates
+    df = df.reset_index().drop_duplicates(subset='time').set_index('time')
+    
     # Rename columns
     df.rename(columns = {species.lower(): species.upper(),
                          "Stdev": species.upper() + " variability",
                          "NbPoints": species.upper() + " number_of_observations"},
                inplace = True)
-
-    df.index.name = "time"
 
     # Convert to Dataset
     ds = xray.Dataset.from_dataframe(df.sort_index())
@@ -219,7 +221,7 @@ def icos(site, network = "ICOS",
 
         if stat(data_files[i]).st_size > 0:
 
-            # Create Pandas dataframe
+            # Create xarray dataset
             ds = icos_data_read(data_files[i], species.upper())
 
             # Sort out attributes
@@ -309,22 +311,19 @@ def gc_data_read(dotC_file, scale = {}, units = {}):
             col_loc = df.columns.get_loc(column)
             # Get name of column before this one for the gas name
             gas_name = df.columns[col_loc - 1]
-            # Add it to the dictionary for renaming later
-            columns_renamed[column] = gas_name + "_flag"
-            # Create 2 new columns based on the flag columns
-            df[gas_name + " status_flag"] = (df[column].str[0] != "-").astype(int)
-            df[gas_name + " integration_flag"] = (df[column].str[1] != "-").astype(int)
-
             col_shift = -1
-            units[gas_name] = header.iloc[1, col_loc + col_shift]
-            scale[gas_name] = header.iloc[0, col_loc + col_shift]
-
-            # Ensure the units and scale have been read in correctly
-            # Have this in case the column shift between the header and data changes
-            if units[gas_name] == "--" or scale[gas_name] == "--":
-                raise ValueError("Error reading units and scale, ensure columns are correct between header and dataframe")
-
-            species.append(gas_name)
+            if header.iloc[1, col_loc + col_shift] == "--" or header.iloc[0, col_loc + col_shift] == "--":
+                df = df.drop(columns=[column,gas_name])
+                header = header.drop(columns=[header.columns[col_loc + col_shift], header.columns[col_loc]])
+            else:
+                # Add it to the dictionary for renaming later
+                columns_renamed[column] = gas_name + "_flag"
+                # Create 2 new columns based on the flag columns
+                df[gas_name + " status_flag"] = (df[column].str[0] != "-").astype(int)
+                df[gas_name + " integration_flag"] = (df[column].str[1] != "-").astype(int)
+                units[gas_name] = header.iloc[1, col_loc + col_shift]
+                scale[gas_name] = header.iloc[0, col_loc + col_shift]
+                species.append(gas_name)
 
     # Rename columns to include the gas this flag represents
     df = df.rename(columns=columns_renamed, inplace=False)
@@ -431,10 +430,12 @@ def gc(site, instrument, network,
     # Concatenate
     dfs = pd.concat(dfs).sort_index()
 
-    # Apply timestamp correction, because GCwerks currently outputs
-    #   the CENTRE of the sampling period
+    # Apply timestamp correction - GCWerks timestamps the data at the first
+    # "stripchart store" command in the runfile. This can be in different places
+    # but everywhere I have seen it is after the end of the sample, so we want
+    # to subtract at least the sampling period. Need to revisit this (JP 2022-06-30)
     dfs["new_time"] = dfs.index - \
-            pd.Timedelta(seconds = params["GC"]["sampling_period"][instrument]/2.)
+            pd.Timedelta(seconds = params["GC"]["sampling_period"][instrument])
     dfs = dfs.set_index("new_time", inplace=False, drop=True)
 
     # Label time index
@@ -629,7 +630,12 @@ def crds_data_read(data_file):
     # Check if the index is sorted and if not sort it
     if not df.index.is_monotonic_increasing:
         df.sort_index()
+        
+    # Set timestamp to left label
+    df["new_time"] = df.index - pd.Timedelta(seconds = 30)
+    df = df.set_index("new_time", inplace=False, drop=True)
 
+    # Label time index
     df.index.name = "time"
 
     # Remove duplicates
@@ -676,7 +682,7 @@ def crds(site, network,
 
     for i, inlet in enumerate(inlets):
 
-        # Create Pandas dataframe
+        # Create xarray dataset
         ds, species = crds_data_read(data_files[i])
 
         # Write netCDF file for each species
@@ -868,25 +874,24 @@ def ale_gage(site, network):
 def mhd_o3():
 
     channels = ["channel1", "channel0", "channel2"]
-    base_directory = "/dagage2/agage/macehead-ozone/results/export/"
-
+    #base_directory = "/dagage2/agage/macehead-ozone/results/reported/"
+    base_directory = "/group/chemistry/acrg/obs_raw/MHD_o3/reported/"
+    
     df = []
 
-    for channel in channels:
+    o3_files = sorted(glob.glob(join(base_directory, "*.csv")))
 
-        files_channel = sorted(glob.glob(join(base_directory, channel, "*.csv")))
+    for f in o3_files:
 
-        for f in files_channel:
-
-            df.append(pd.read_csv(f, sep=",",
-                                  names = ["datetime",
-                                           "ozone",
-                                           "ozone_variability",
-                                           "ozone_number_samples"],
-                                  na_values = "NA",
-                                  index_col = "datetime",
-                                  parse_dates = ["datetime"]))
-            df[-1].dropna(inplace = True)
+        df.append(pd.read_csv(f, sep=",",
+                              names = ["datetime",
+                                       "ozone",
+                                       "ozone_variability",
+                                       "ozone_number_samples"],
+                              na_values = "NA",
+                              index_col = "datetime",
+                              parse_dates = ["datetime"]))
+        df[-1].dropna(inplace = True)
 
     df = pd.concat(df)
     df.index.name = "index"
@@ -900,17 +905,18 @@ def mhd_o3():
     ds = attributes(ds,
                     "ozone",
                     "MHD",
-                    network = network,
+                    network = "AGAGE",
                     scale = "SCALE",
                     sampling_period=60*60,
                     units = "ppb")
 
     # Write file
-    nc_filename = output_filename("/dagage2/agage/metoffice/processed_observations_2018",
+    #nc_filename = output_filename("/dagage2/agage/metoffice/processed_observations_Jan22",
+    nc_filename = output_filename("/group/chemistry/acrg/obs",
                                   "AURN",
                                   "thermo",
                                   "MHD",
-                                  str(ds.time.to_pandas().index.to_pydatetime()[0].year),
+                                  ds.time.to_pandas().index.to_pydatetime()[0],
                                   ds.species,
                                   site_params["MHD"]["AGAGE"]["height"][0])
     print("Writing " + nc_filename)
@@ -1024,8 +1030,6 @@ def array_job(array_index):
         [gc, ("TAC", "medusa", "DECC")],
         # Bristol CRDS
 #        [crds, ("BRI", "DECC")],
-        # ICOS
-#        [icos, ("TTA", "DECC")],
         [icos, ("MHD", "ICOS")]]
     
     # Return if index is too large for the above list
@@ -1041,7 +1045,7 @@ def array_job(array_index):
     
 if __name__ == "__main__":
 
-    # AGAGE Medusa
+     # AGAGE Medusa
     gc("MHD", "medusa", "AGAGE")
     gc("CGO", "medusa", "AGAGE")
     gc("GSN", "medusa", "AGAGE")
@@ -1095,7 +1099,6 @@ if __name__ == "__main__":
     gc("TAC", "medusa", "DECC")
 
     # ICOS
-    icos("TTA", network = "DECC")
     icos("MHD", network = "ICOS")
 
     cleanup("CGO")
