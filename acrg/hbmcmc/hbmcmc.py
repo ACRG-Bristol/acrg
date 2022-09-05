@@ -181,7 +181,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     #Check to see if all sites have data and removes sites without data from inversion
     removed_sites = []
     for si, site in enumerate(sites):
-        if data[site][0].time.size == 0:
+        if len(data[site]) == 0:
             print(f"No data available for {site}, removing site from inversion.")
             del data[site]
             del sites[si]
