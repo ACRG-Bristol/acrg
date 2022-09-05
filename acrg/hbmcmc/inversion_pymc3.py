@@ -592,7 +592,7 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
         outds.attrs['Date created'] = str(pd.Timestamp('today'))
         outds.attrs['Convergence'] = convergence
         outds.attrs['Repository version'] = code_version()
-        if if len(removed_sites) > 0:
+        if len(removed_sites) > 0:
             outds.attrs['Removed sites due to no observations'] = removed_sites
         
         comp = dict(zlib=True, complevel=5)
