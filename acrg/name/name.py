@@ -3,7 +3,6 @@
 Created on Mon Nov 10 10:45:51 2014
 
 """
-# from past.utils import old_div
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -1019,10 +1018,10 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
 
                 # If units are specified, multiply by scaling factor
                 if units:
-                    site_ds.update({'fp' : (site_ds.fp.dims, old_div(site_ds.fp, units))})
+                    site_ds.update({'fp' : (site_ds.fp.dims, site_ds.fp.data/units)})
                     if HiTRes:
                         site_ds.update({'fp_HiTRes' : (site_ds.fp_HiTRes.dims, 
-                                                       old_div(site_ds.fp_HiTRes, units))})
+                                                       site_ds.fp_HiTRes.data/units)})
 
                 site_ds_list += [site_ds]
     
@@ -1054,7 +1053,7 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
     if load_bc:       
         bc = boundary_conditions(domain, species, start=flux_bc_start, end=flux_bc_end, bc_directory=bc_directory)
         if units:
-            fp_and_data['.bc'] = old_div(bc, units)               
+            fp_and_data['.bc'] = bc/units               
         else:
             fp_and_data['.bc'] = bc
             
@@ -1218,24 +1217,22 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
     """    
     
     sites = [key for key in list(fp_and_data.keys()) if key[0] != '.']
-    
+        
     flux_sources = list(fp_and_data['.flux'].keys())
-    
+
     if type(basis_case) is not dict:
         if len(flux_sources) == 1:
             basis_case = {flux_sources[0]:basis_case}
         else:
             basis_case = {'all':basis_case}
-    
+
     if len(list(basis_case.keys())) != len(flux_sources):
         if len(list(basis_case.keys())) == 1:
             print("Using %s as the basis case for all sources" %basis_case[list(basis_case.keys())[0]])
         else:
             print("There should either only be one basis_case, or it should be a dictionary the same length\
-                  as the number of sources.")
-            return None
-    
-    
+                    as the number of sources.")    
+
     for site in sites:
         
         for si, source in enumerate(flux_sources):
@@ -1248,14 +1245,14 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
             if type(fp_and_data['.flux'][source]) == dict:
                 if 'fp_HiTRes' in list(fp_and_data[site].keys()):
                     site_bf = xr.Dataset({"fp_HiTRes":fp_and_data[site]["fp_HiTRes"],
-                                          "fp":fp_and_data[site]["fp"]})
+                                            "fp":fp_and_data[site]["fp"]})
                     
                     fp_time = (fp_and_data[site].time[1] - fp_and_data[site].time[0]).values.astype('timedelta64[h]').astype(int)
                     
                     # calculate the H matrix
                     H_all = timeseries_HiTRes(fp_HiTRes_ds = site_bf, flux_dict = fp_and_data['.flux'][source], output_TS = False,
-                                              output_fpXflux = True, output_type = 'DataArray',
-                                              time_resolution = f'{fp_time}H', verbose = verbose)
+                                                output_fpXflux = True, output_type = 'DataArray',
+                                                time_resolution = f'{fp_time}H', verbose = verbose)
                 else:
                     print("fp_and_data needs the variable fp_HiTRes to use the emissions dictionary with high_freq and low_freq emissions.")
         
@@ -1292,36 +1289,39 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                         region_name = [source+'-'+reg.decode('ascii') for reg in site_bf.region.values]
 
                 sensitivity = xr.DataArray(H, 
-                                             coords=[('region', region_name), 
-                                                     ('time', fp_and_data[site].coords['time'])])
+                                                coords=[('region', region_name), 
+                                                        ('time', fp_and_data[site].coords['time'])])
         
             else:
                 print("Warning: Using basis functions without a region dimension may be deprecated shortly.")
-        
+
+                ## FOR THE CASE WHERE USING A BASIS FUNCTION WITH THE WRONG DATE ON PURPOSE
+                basis_func.time.values[0] = site_bf.time.values[0]
+
                 site_bf = combine_datasets(site_bf,basis_func, method='ffill')
- 
+    
                 H = np.zeros((int(np.max(site_bf.basis)),len(site_bf.time)))
 
                 basis_scale = xr.Dataset({'basis_scale': (['lat','lon','time'],
 
                                                     np.zeros(np.shape(site_bf.basis)))},
-                                       coords = site_bf.coords)
+                                        coords = site_bf.coords)
                 site_bf = site_bf.merge(basis_scale)
 
                 base_v = np.ravel(site_bf.basis.values[:,:,0])
                 for i in range(int(np.max(site_bf.basis))):
                     wh_ri = np.where(base_v == i+1)
                     H[i,:]=np.sum(H_all_v[wh_ri[0],:], axis = 0)      
-                  
+                    
                 if source == all:
                     region_name = list(range(1,np.max(site_bf.basis.values)+1))
                 else:
                     region_name = [source+'-'+str(reg) for reg in range(1,int(np.max(site_bf.basis.values)+1))]
 
-                sensitivity = xr.DataArray(H, 
-                                             coords=[('region', region_name), 
-                                                     ('time', fp_and_data[site].coords['time'])])
-                                     
+                sensitivity = xr.DataArray(H.data, 
+                                                coords=[('region', region_name), 
+                                                        ('time', fp_and_data[site].coords['time'].data)])
+                                        
             if si == 0:
                 concat_sensitivity = sensitivity
             else:
@@ -1341,26 +1341,26 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                     print("Can currently only use a sub basis case for one source. Skipping...")
                 else:
                     sub_fp_temp = site_bf.fp.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
-                                                 method="nearest") 
-                    sub_fp = xr.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp)},
-                                           coords = {'sub_lat': (site_bf.coords['sub_lat']),
-                                                     'sub_lon': (site_bf.coords['sub_lon']),
-                                                     'time' : (fp_and_data[site].coords['time'])})
+                                                    method="nearest") 
+                    sub_fp = xr.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp.data)},
+                                            coords = {'sub_lat': (site_bf.coords['sub_lat'].data),
+                                                        'sub_lon': (site_bf.coords['sub_lon'].data),
+                                                        'time' : (fp_and_data[site].coords['time'].data)})
                                 
                     sub_H_temp = H_all.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
-                                           method="nearest")                             
-                    sub_H = xr.Dataset({'sub_H': (['sub_lat','sub_lon','time'], sub_H_temp)},
-                                          coords = {'sub_lat': (site_bf.coords['sub_lat']),
-                                                    'sub_lon': (site_bf.coords['sub_lon']),
-                                                    'time' : (fp_and_data[site].coords['time'])},
-                                          attrs = {'flux_source_used_to_create_sub_H':source})
-       
+                                            method="nearest")                             
+                    sub_H = xr.Dataset({'sub_H': (['sub_lat','sub_lon','time'], sub_H_temp.data)},
+                                            coords = {'sub_lat': (site_bf.coords['sub_lat'].data),
+                                                    'sub_lon': (site_bf.coords['sub_lon'].data),
+                                                    'time' : (fp_and_data[site].coords['time'].data)},
+                                            attrs = {'flux_source_used_to_create_sub_H':source})
+        
                     fp_and_data[site] = fp_and_data[site].merge(sub_fp)
                     fp_and_data[site] = fp_and_data[site].merge(sub_H)
             
         fp_and_data[site]['H'] = concat_sensitivity                             
         fp_and_data['.basis'] = site_bf.basis[:,:,0]
-                    
+
     return fp_and_data
 
 
@@ -1547,9 +1547,9 @@ def filtering(datasets_in, filters, keep_missing=False):
             wh_rlon = np.where(abs(dataset.lon.values-release_lon) < dlon/2.)
             wh_rlat = np.where(abs(dataset.lat.values-release_lat) < dlat/2.)
             if np.any(wh_rlon[0]) and np.any(wh_rlat[0]):
-                local_sum[ti] = old_div(np.sum(dataset.fp[
-                        wh_rlat[0][0]-2:wh_rlat[0][0]+3,wh_rlon[0][0]-2:wh_rlon[0][0]+3,ti].values),np.sum(
-                        dataset.fp[:,:,ti].values))  
+                local_sum[ti] = np.sum(dataset.fp[
+                        wh_rlat[0][0]-2:wh_rlat[0][0]+3,wh_rlon[0][0]-2:wh_rlon[0][0]+3,ti].values)/np.sum(
+                        dataset.fp[:,:,ti].values)  
             else:
                 local_sum[ti] = 0.0 
         
@@ -1860,7 +1860,7 @@ def plot(fp_data, date, out_filename=None, out_format = 'pdf',
 
                 if np.float(date - time[ti-1]) < np.float(tol):
 
-                    dt = old_div(np.float(date - time[ti-1]),np.float(time[ti] - time[ti-1]))
+                    dt = (np.float(date - time[ti-1]))/np.float(time[ti] - time[ti-1])
                     fp_ti_0 = fp_data[site][dict(time = ti-1)].fp.values.squeeze()
                     fp_ti_1 = fp_data[site][dict(time = ti)].fp.values.squeeze()
                     fp_ti = fp_ti_0 + (fp_ti_1 - fp_ti_0)*dt
