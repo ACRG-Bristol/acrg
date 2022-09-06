@@ -217,9 +217,9 @@ def test_obs_process_crds():
     
     # Check a particular value (note that time stamp is 10 minutes before analysis time,
     # because in GCWerks files, times are at the beginning of the sampling period)
-    assert np.allclose(ds.sel(time = slice("2014-01-30 14:00:00", "2014-01-30 14:01:00")).ch4.values,
+    assert np.allclose(ds.sel(time = slice("2014-01-30 14:00:00", "2014-01-30 14:00:00")).ch4.values,
                        np.array(1953.88))
-    assert np.allclose(ds.sel(time = slice("2014-01-30 14:00:00", "2014-01-30 14:01:00"))["ch4_variability"].values,
+    assert np.allclose(ds.sel(time = slice("2014-01-30 14:00:00", "2014-01-30 14:00:00"))["ch4_variability"].values,
                        np.array(0.398))
 
     # clean up
