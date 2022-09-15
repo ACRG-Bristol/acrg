@@ -23,11 +23,13 @@ import numpy as np
 import shutil
 
 import acrg.name.name as name
+import acrg.name.filtering as filtering 
 import acrg.obs as getobs
 import acrg.hbmcmc.inversionsetup as setup 
 import acrg.hbmcmc.inversion_pymc3 as mcmc
 import acrg.name.basis_functions as basis
 from acrg.config.paths import Paths
+
 
 
 acrg_path = Paths.acrg
@@ -231,10 +233,10 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     fp_data = name.fp_sensitivity(fp_all, domain=domain, basis_case=fp_basis_case,basis_directory=basis_directory)
     fp_data = name.bc_sensitivity(fp_data, domain=domain,basis_case=bc_basis_case)
     
-    #apply named filters to the data
-    fp_data = name.filtering(fp_data, filters)
+    #apply named filters to the data. UPDATED WITH NEW FASTER FILTERING FROM ALICE
+    fp_data, perc_filtered = filtering.filtering(fp_data, sites, species, filter_types = filters)
     
-    for si, site in enumerate(sites):     
+    for si, site in enumerate(sites):  
         fp_data[site].attrs['Domain']=domain
     
     #Get inputs ready
