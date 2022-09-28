@@ -1031,59 +1031,59 @@ def array_job(array_index):
 if __name__ == "__main__":
 
      # AGAGE Medusa
-#     gc("MHD", "medusa", "AGAGE")
-#     gc("CGO", "medusa", "AGAGE")
-#     gc("GSN", "medusa", "AGAGE")
-#     gc("SDZ", "medusa", "AGAGE")
-#     gc("THD", "medusa", "AGAGE")
-#     gc("RPB", "medusa", "AGAGE")
-#     gc("SMO", "medusa", "AGAGE")
-#     gc("SIO", "medusa", "AGAGE")
-#     gc("JFJ", "medusa", "AGAGE")
-#     gc("CMN", "medusa", "AGAGE")
-#     gc("ZEP", "medusa", "AGAGE")
+    gc("MHD", "medusa", "AGAGE")
+    gc("CGO", "medusa", "AGAGE")
+    gc("GSN", "medusa", "AGAGE")
+    gc("SDZ", "medusa", "AGAGE")
+    gc("THD", "medusa", "AGAGE")
+    gc("RPB", "medusa", "AGAGE")
+    gc("SMO", "medusa", "AGAGE")
+    gc("SIO", "medusa", "AGAGE")
+    gc("JFJ", "medusa", "AGAGE")
+    gc("CMN", "medusa", "AGAGE")
+    gc("ZEP", "medusa", "AGAGE")
 
-#     # AGAGE GC data
-#     gc("RPB", "GCMD", "AGAGE")
-#     gc("CGO", "GCMD", "AGAGE")
-#     gc("MHD", "GCMD", "AGAGE")
-#     gc("SMO", "GCMD", "AGAGE")
-#     gc("THD", "GCMD", "AGAGE")
+    # AGAGE GC data
+    gc("RPB", "GCMD", "AGAGE")
+    gc("CGO", "GCMD", "AGAGE")
+    gc("MHD", "GCMD", "AGAGE")
+    gc("SMO", "GCMD", "AGAGE")
+    gc("THD", "GCMD", "AGAGE")
 
-#     # AGAGE GCMS data
-#     gc("CGO", "GCMS", "AGAGE")
-#     gc("MHD", "GCMS", "AGAGE")
-#     gc("RPB", "GCMS", "AGAGE")
-#     gc("SMO", "GCMS", "AGAGE")
-#     gc("THD", "GCMS", "AGAGE")
-#     gc("JFJ", "GCMS", "AGAGE")
-#     gc("CMN", "GCMS", "AGAGE")
-#     gc("ZEP", "GCMS", "AGAGE")
+    # AGAGE GCMS data
+    gc("CGO", "GCMS", "AGAGE")
+    gc("MHD", "GCMS", "AGAGE")
+    gc("RPB", "GCMS", "AGAGE")
+    gc("SMO", "GCMS", "AGAGE")
+    gc("THD", "GCMS", "AGAGE")
+    gc("JFJ", "GCMS", "AGAGE")
+    gc("CMN", "GCMS", "AGAGE")
+    gc("ZEP", "GCMS", "AGAGE")
 
-#     # AGAGE CRDS data
-#     crds("RPB", "AGAGE")
+    # AGAGE CRDS data
+    crds("RPB", "AGAGE")
 
-#     # GAUGE CRDS data
-#     crds("HFD", "DECC")
-#     crds("BSD", "DECC")
+    # GAUGE CRDS data
+    crds("HFD", "DECC")
+    crds("BSD", "DECC")
 
-#     # GAUGE GC data
-#     gc("BSD", "GCMD", "DECC")
-#     gc("HFD", "GCMD", "DECC")
+    # GAUGE GC data
+    gc("BSD", "GCMD", "DECC")
+    gc("HFD", "GCMD", "DECC")
 
-#     # DECC CRDS data
-#     crds("TTA", "DECC")
-#     crds("RGL", "DECC")
-#     crds("TAC", "DECC")
+    # DECC CRDS data
+    crds("TTA", "DECC")
+    crds("RGL", "DECC")
+    crds("TAC", "DECC")
 
-#     # DECC GC data
-#     gc("TAC", "GCMD", "DECC")
-#     gc("RGL", "GCMD", "DECC")
+    # DECC GC data
+    gc("TAC", "GCMD", "DECC")
+    gc("RGL", "GCMD", "DECC")
 
-#     # DECC Medusa
-#     gc("TAC", "medusa", "DECC")
+    # DECC Medusa
+    gc("TAC", "medusa", "DECC")
 
-#     # ICOS
+    # ICOS
     icos("MHD", network = "ICOS")
 
     cleanup("CGO")
