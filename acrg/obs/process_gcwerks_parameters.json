@@ -275,7 +275,7 @@
         "directory_output" : "/group/chemistry/acrg/obs",
         "MHD" : {
             "gcwerks_site_name": "macehead",
-            "inlet_rename": {"15m": "10m"},
+            "inlet_rename": {"24m": "10m"},
             "global_attributes": {
                 "data_owner": "Michael Ramonet",
                 "data_owner_email": "michel.ramonet@cea.fr"

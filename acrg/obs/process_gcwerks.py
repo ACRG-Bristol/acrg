@@ -126,43 +126,28 @@ def icos_data_read(data_file, species):
 
     print("Reading " + data_file)
 
-    # Find out how many header lines there are
-    nheader = 0
-    with open(data_file, "r") as f:
-        for l in f:
-            if l[0] != "#":
-                break
-            nheader += 1
-
     # Read CSV file
+    colnames = ["SamplingHeight",
+                "Year",
+                "Month",
+                "Day",
+                "Hour",
+                "Minute",
+                str(species.lower()),
+                "Stdev",
+                "NbPoints"]
     df =  pd.read_csv(data_file,
-                      skiprows = nheader-1,
-                      parse_dates = {"time": ["Year", "Month", "Day", "Hour", "Minute"]},
-                      index_col = "time",
+                      comment = "#",
                       sep = ";",
-                      usecols = ["Day", "Month", "Year", "Hour", "Minute",
-                                 str(species.lower()), "SamplingHeight",
-                                 "Stdev", "NbPoints"],
-                      dtype = {"Day": np.int,
-                               "Month": np.int,
-                               "Year": np.int,
-                               "Hour": np.int,
-                               "Minute": np.int,
-                               species.lower(): np.float,
-                               "Stdev": np.float,
-                               "SamplingHeight": np.float,
-                               "NbPoints": np.int},
+                      usecols = [1, 2, 3, 4, 5, 6, 8, 9, 10],
+                      names = colnames,
                       na_values = "-999.99")
 
-    # Format time
-    df.index = pd.to_datetime(df.index, format = "%Y %m %d %H %M")
-    
-    # Set timestamp to left label
-    df["new_time"] = df.index - pd.Timedelta(seconds = 30)
-    df = df.set_index("new_time", inplace=False, drop=True)
-
-    # Label time index
+    # Create time index
+    df.index = pd.to_datetime(df[["Year", "Month", "Day", "Hour", "Minute"]])
     df.index.name = "time"
+    
+    df = df[[species.lower(), "NbPoints", "Stdev", "SamplingHeight"]]
 
     # Remove duplicates
     df = df.reset_index().drop_duplicates(subset='time').set_index('time')
@@ -185,14 +170,14 @@ def icos(site, network = "ICOS",
          date_range = None,
          version = None):
 
-    def find_species_inlet_model(filenames):
+    def find_species_inlet_inst(filenames):
         out = []
         for f in filenames:
             f_elements = f.split(".")
             if len(f_elements) == 6:
                 out.append((f_elements[1],
                             f_elements[4],
-                            "picarro" + f_elements[3].upper()))
+                            "picarro" + f_elements[2]))
             else:
                 out.append((f_elements[1],
                             f_elements[3],
@@ -209,15 +194,15 @@ def icos(site, network = "ICOS",
                             user_specified_input_directory = input_directory,
                             user_specified_output_directory = output_directory)
 
-    # Search for species, inlets and model from file names
+    # Search for species, inlets and instrument (potentially including ICOS ID) from file names
     data_file_search = join(data_folder, site.lower() + ".*.1minute.*.dat")
     data_files = glob.glob(data_file_search)
     data_file_names = [split(f)[1] for f in data_files]
-    species_inlet_model = find_species_inlet_model(data_file_names)
+    species_inlet_inst = find_species_inlet_inst(data_file_names)
 
-    inlets = set([i for (s, i, m) in species_inlet_model])
+    inlets = set([i for (s, i, m) in species_inlet_inst])
 
-    for i, (species, inlet, model) in enumerate(species_inlet_model):
+    for i, (species, inlet, inst) in enumerate(species_inlet_inst):
 
         if stat(data_files[i]).st_size > 0:
 
@@ -249,7 +234,7 @@ def icos(site, network = "ICOS",
                 # Write file
                 nc_filename = output_filename(output_folder,
                                               network,
-                                              model,
+                                              inst,
                                               site.upper(),
                                               ds.time.to_pandas().index.to_pydatetime()[0],
                                               ds.species,
@@ -1046,59 +1031,59 @@ def array_job(array_index):
 if __name__ == "__main__":
 
      # AGAGE Medusa
-    gc("MHD", "medusa", "AGAGE")
-    gc("CGO", "medusa", "AGAGE")
-    gc("GSN", "medusa", "AGAGE")
-    gc("SDZ", "medusa", "AGAGE")
-    gc("THD", "medusa", "AGAGE")
-    gc("RPB", "medusa", "AGAGE")
-    gc("SMO", "medusa", "AGAGE")
-    gc("SIO", "medusa", "AGAGE")
-    gc("JFJ", "medusa", "AGAGE")
-    gc("CMN", "medusa", "AGAGE")
-    gc("ZEP", "medusa", "AGAGE")
+#     gc("MHD", "medusa", "AGAGE")
+#     gc("CGO", "medusa", "AGAGE")
+#     gc("GSN", "medusa", "AGAGE")
+#     gc("SDZ", "medusa", "AGAGE")
+#     gc("THD", "medusa", "AGAGE")
+#     gc("RPB", "medusa", "AGAGE")
+#     gc("SMO", "medusa", "AGAGE")
+#     gc("SIO", "medusa", "AGAGE")
+#     gc("JFJ", "medusa", "AGAGE")
+#     gc("CMN", "medusa", "AGAGE")
+#     gc("ZEP", "medusa", "AGAGE")
 
-    # AGAGE GC data
-    gc("RPB", "GCMD", "AGAGE")
-    gc("CGO", "GCMD", "AGAGE")
-    gc("MHD", "GCMD", "AGAGE")
-    gc("SMO", "GCMD", "AGAGE")
-    gc("THD", "GCMD", "AGAGE")
+#     # AGAGE GC data
+#     gc("RPB", "GCMD", "AGAGE")
+#     gc("CGO", "GCMD", "AGAGE")
+#     gc("MHD", "GCMD", "AGAGE")
+#     gc("SMO", "GCMD", "AGAGE")
+#     gc("THD", "GCMD", "AGAGE")
 
-    # AGAGE GCMS data
-    gc("CGO", "GCMS", "AGAGE")
-    gc("MHD", "GCMS", "AGAGE")
-    gc("RPB", "GCMS", "AGAGE")
-    gc("SMO", "GCMS", "AGAGE")
-    gc("THD", "GCMS", "AGAGE")
-    gc("JFJ", "GCMS", "AGAGE")
-    gc("CMN", "GCMS", "AGAGE")
-    gc("ZEP", "GCMS", "AGAGE")
+#     # AGAGE GCMS data
+#     gc("CGO", "GCMS", "AGAGE")
+#     gc("MHD", "GCMS", "AGAGE")
+#     gc("RPB", "GCMS", "AGAGE")
+#     gc("SMO", "GCMS", "AGAGE")
+#     gc("THD", "GCMS", "AGAGE")
+#     gc("JFJ", "GCMS", "AGAGE")
+#     gc("CMN", "GCMS", "AGAGE")
+#     gc("ZEP", "GCMS", "AGAGE")
 
-    # AGAGE CRDS data
-    crds("RPB", "AGAGE")
+#     # AGAGE CRDS data
+#     crds("RPB", "AGAGE")
 
-    # GAUGE CRDS data
-    crds("HFD", "DECC")
-    crds("BSD", "DECC")
+#     # GAUGE CRDS data
+#     crds("HFD", "DECC")
+#     crds("BSD", "DECC")
 
-    # GAUGE GC data
-    gc("BSD", "GCMD", "DECC")
-    gc("HFD", "GCMD", "DECC")
+#     # GAUGE GC data
+#     gc("BSD", "GCMD", "DECC")
+#     gc("HFD", "GCMD", "DECC")
 
-    # DECC CRDS data
-    crds("TTA", "DECC")
-    crds("RGL", "DECC")
-    crds("TAC", "DECC")
+#     # DECC CRDS data
+#     crds("TTA", "DECC")
+#     crds("RGL", "DECC")
+#     crds("TAC", "DECC")
 
-    # DECC GC data
-    gc("TAC", "GCMD", "DECC")
-    gc("RGL", "GCMD", "DECC")
+#     # DECC GC data
+#     gc("TAC", "GCMD", "DECC")
+#     gc("RGL", "GCMD", "DECC")
 
-    # DECC Medusa
-    gc("TAC", "medusa", "DECC")
+#     # DECC Medusa
+#     gc("TAC", "medusa", "DECC")
 
-    # ICOS
+#     # ICOS
     icos("MHD", network = "ICOS")
 
     cleanup("CGO")
