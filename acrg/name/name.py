@@ -863,6 +863,28 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
             combined dataset for each site
     """
 
+    # Output array
+    fp_and_data = {}
+    
+    site = scenario_openghg.obs.data.attrs["site"]
+    scenario_combined = scenario_openghg.footprints_data_merge()
+    fp_and_data[site] = scenario_combined
+    
+    # add if statement whether fluxes were added
+    fluxes = scenario_openghg.flux_sources
+    flux_dict={}
+    flux_dict[fluxes[0]] = scenario_openghg.fluxes[fluxes[0]].data
+    fp_and_data['.flux'] = flux_dict
+    
+    
+    fp_and_data['.bc'] = scenario_openghg.bc.data
+    
+    
+    
+    
+    
+    
+    
     sites = [key for key in data]
     
     species_list = []
