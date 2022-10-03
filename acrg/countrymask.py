@@ -414,7 +414,7 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
         # moves longitude values onto 0-360 range if lons have values less than 0 and greater than 180, as regionmask cannot use a lon range that has both 
         if any(lon < 0) & any(lon > 180):
             lon = convert_lons_0360(lon)
-        mask = regionmask.defined_regions.natural_earth.countries_110.mask(lon,lat,xarray=True)
+        mask = regionmask.defined_regions.natural_earth.countries_110.mask(lon,lat)
 
     if use_domain_extent:
         lat_outer = np.where((mask["lat"].values < sub_lat[0]) | (mask["lat"].values >= sub_lat[-1]))[0]

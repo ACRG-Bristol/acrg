@@ -185,12 +185,22 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     
     #Check to see if all sites have data and removes sites without data from inversion
     removed_sites = []
+    keep_sites = []
     for si, site in enumerate(sites):
-        if data[site][0].time.size == 0:
+        if len(data[site]) == 0:
             print(f"No data available for {site}, removing site from inversion.")
-            del data[site]
-            del sites[si]
             removed_sites.append(site)
+        else:
+            if len(data[site][0].time) == 0:
+                print(f"No data available for {site}, removing site from inversion.")
+                removed_sites.append(site)
+            else:
+                keep_sites.append(site)
+                
+    for si,site in enumerate(removed_sites):
+        del data[site]
+
+    sites = keep_sites
     
     fp_all = name.footprints_data_merge(data, domain=domain, met_model = met_model, load_bc = False, calc_bc = False, 
                                         height=fpheight, 
@@ -242,7 +252,6 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
 
     ###### OR USE PERCENTILE FOR BCKG
                            
-    
     #apply named filters to the data
     if filters == ["local_influence"]:
         fp_data, perc_filtered = filtering(fp_data,sites,['20magl'],species,filtering_types = ['localness'],
