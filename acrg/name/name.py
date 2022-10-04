@@ -1657,7 +1657,7 @@ def filtering(datasets_in, filters, keep_missing=False):
         start_date = dataset.time[0].values
         end_date = dataset.time[-1].values
 
-        met_file = os.path.join(data_path, 'obs/BRW/NOAA-None_BRW_19800101_met-20210421.nc')
+        met_file = os.path.join('/user/home/ky20893/work/obs/BRW/NOAA-None_BRW_19800101_met-20210421.nc')
         met_data = xr.open_dataset(met_file)
         met_data = met_data.loc[dict(time = slice(start_date, end_date))].rename({'wind_speed':'wind_sp'})
 
