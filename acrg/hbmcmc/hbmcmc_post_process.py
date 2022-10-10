@@ -997,7 +997,7 @@ def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True
 
                 y_time_site = y_time[wh_site[0]]
                 if plot_bc:
-                    y_bg_site = y_bg_mean[wh  _site[0]]
+                    y_bg_site = y_bg_mean[wh_site[0]]
                 y_post_site = y_post_mean[wh_site[0]]
                 upper_site = upper[wh_site[0]]
                 lower_site = lower[wh_site[0]]
