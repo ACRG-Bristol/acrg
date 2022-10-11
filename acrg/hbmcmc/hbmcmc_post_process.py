@@ -989,7 +989,7 @@ def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True
     
 
     if doplot is True:
-        fig,ax=plt.subplots(nsites,sharex=True,figsize=figsize)
+        fig,ax=plt.subplots(nsites,sharex=True,figsize=figsize,facecolor=(1,1,1))
         
         if nsites > 1:
             for si,site in enumerate(sitenames):
@@ -1058,7 +1058,7 @@ def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True
         else:
             plt.show()
         
-    return
+    return 
 
 def open_ds(path):
     
