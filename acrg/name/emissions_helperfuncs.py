@@ -1110,8 +1110,10 @@ def get_UKGHG_EDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,
     """
     
     edgarfp = os.path.join(data_path,"Gridded_fluxes",species.upper(),"EDGAR_v5.0/yearly_sectoral")
-    ukghgfp = os.path.join(data_path,"Gridded_fluxes",species.upper(),"UKGHG")
-    
+    edgarfp = os.path.join("/user/work/wz22079/emissions/","EDGAR_v7.0")
+    #ukghgfp = os.path.join(data_path,"Gridded_fluxes",species.upper(),"UKGHG")
+    ukghgfp = os.path.join("/user/work/wz22079","emissions/UKGHG/LonLat/yearly")   
+
     UKGHGsectorlist = ["agric","domcom","energyprod","indcom","indproc","natural","offshore",
                        "othertrans","roadtrans","total","waste"]
     
@@ -1136,8 +1138,9 @@ def get_UKGHG_EDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,
             
         #edgar flux in kg/m2/s
         for i,sector in enumerate(edgar_sectors):
-            edgarfn = f"v50_{species.upper()}_{year}_{sector}.0.1x0.1.nc"
-
+            #edgarfn = f"v50_{species.upper()}_{year}_{sector}.0.1x0.1.nc"
+            edgarfn = f"v7.0_FT2021_{species.upper()}_{year}_{sector}_0.1x0.1.nc"
+            print(edgarfn)
             with xr.open_dataset(os.path.join(edgarfp,edgarfn)) as edgar_file:
                 edgar_flux = np.nan_to_num(edgar_file['emi_'+species.lower()].values,0.)
                 edgar_lat = edgar_file.lat.values
