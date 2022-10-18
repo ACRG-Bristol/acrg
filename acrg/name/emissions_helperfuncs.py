@@ -1139,7 +1139,7 @@ def get_UKGHG_EDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,
         #edgar flux in kg/m2/s
         for i,sector in enumerate(edgar_sectors):
             #edgarfn = f"v50_{species.upper()}_{year}_{sector}.0.1x0.1.nc"
-            edgarfn = f"v7.0_FT2021_{species.upper()}_{year}_{sector}_0.1x0.1.nc"
+            edgarfn = f"v7.0_FT2021_{species.upper()}_{year}_{sector}.0.1x0.1.nc"
             print(edgarfn)
             with xr.open_dataset(os.path.join(edgarfp,edgarfn)) as edgar_file:
                 edgar_flux = np.nan_to_num(edgar_file['emi_'+species.lower()].values,0.)
