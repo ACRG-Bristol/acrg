@@ -1088,7 +1088,8 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
                 else:
                     H_back = 24 if H_back is None else H_back
                     flux_dict[source] = flux_for_HiTRes(domain, emiss_source, start=flux_bc_start, end=flux_bc_end,
-                                                        H_back=H_back, flux_directory=flux_directory, verbose=verbose)
+                                                        H_back=H_back, flux_directory=flux_directory, verbose=verbose,
+                                                        chunks=chunks)
 
         fp_and_data['.flux'] = flux_dict
         
