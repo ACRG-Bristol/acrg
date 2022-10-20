@@ -993,7 +993,7 @@ def embed_field(domain_field, country_field, country=None, country_file=None, do
         country_field_masked = data['country'].where(data['country']!=0).fillna(0)
         # where the country field is not 0, set the domain field to 0
         domain_field_masked = data['domain'].where(country_field_masked==0).fillna(0)
-    
+         
     else:
         # import the country mask data
         country_file = country_file if country_file is not None else \
@@ -1109,8 +1109,8 @@ def get_UKGHG_EDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,
         
     """
     
-    edgarfp = os.path.join(data_path,"Gridded_fluxes",species.upper(),"EDGAR_v5.0/yearly_sectoral")
-    edgarfp = os.path.join("/user/work/wz22079/emissions/","EDGAR_v7.0")
+    #edgarfp = os.path.join(data_path,"Gridded_fluxes",species.upper(),"EDGAR_v5.0/yearly_sectoral")
+    edgarfp = os.path.join("/user/work/wz22079/emissions","EDGAR_v7.0")
     #ukghgfp = os.path.join(data_path,"Gridded_fluxes",species.upper(),"UKGHG")
     ukghgfp = os.path.join("/user/work/wz22079","emissions/UKGHG/LonLat/yearly")   
 
@@ -1120,7 +1120,7 @@ def get_UKGHG_EDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,
     EDGARsectorlist = ["AGS","AWB","CHE","ENE","ENF","FFF","IND","IRO","MNM",
                        "PRO_COAL","PRO_GAS","PRO_OIL","PRO","RCO","REF_TRF","SWD_INC",
                        "SWD_LDF","TNR_Aviation_CDS","TNR_Aviation_CRS",
-                       "TNR_Aviation_LTO","TNR_Other","TNR_Ship","TRO","WWT"]
+                       "TNR_Aviation_LTO","TNR_Other","TNR_Ship","TRO","TRO_noRES","WWT"]
     
     #extract output lat/lons from fp file
     domain_vol = domain_volume("EUROPE",os.path.join(data_path,"LPDM/fp_NAME"))
@@ -1186,12 +1186,23 @@ def get_UKGHG_EDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,
                 ukghg_total = np.add(ukghg_total,ukghg_flux)
 
         ukghg_regrid,arr = regrid2d(ukghg_total,ukghg_lat,ukghg_lon,lat_out,lon_out)
+        print(ukghg_lat.shape, ukghg_lon.shape, ukghg_regrid.data.shape)
+
+
    
         #if edgar, input ukghg over uk lat lons
         if edgar_sectors is not None:  
             print('Inserting UKGHG into EDGAR over UK lat/lons')
-            ukghg_regrid = xr.DataArray(data = ukghg_regrid.data,
-                                        coords = {'lat': ukghg_lat, 'lon': ukghg_lon},
+           # ukghg_regrid = xr.DataArray(data = ukghg_regrid.data,
+           #                             coords = {'lat': ukghg_lat, 'lon': ukghg_lon},
+           #                             dims = ['lat', 'lon'])
+           # ES edit: change lat, lon values for correct shape of regridded data 
+            ukghg_regrid = xr.DataArray(data=ukghg_regrid.data,
+                                        coords = {'lat': lat_out, 'lon': lon_out},
+                                        dims = ['lat', 'lon'])
+          # ES edit: added line putting edgar_regrid in DataArrary format
+            edgar_regrid = xr.DataArray(data=edgar_regrid,
+                                        coords = {'lat': lat_out, 'lon': lon_out},
                                         dims = ['lat', 'lon'])
 
             total_flux = embed_field(domain_field = edgar_regrid,
