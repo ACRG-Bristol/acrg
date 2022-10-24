@@ -862,59 +862,141 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
         Dictionary of the form {"MHD": MHD_xarray_dataset, "TAC": TAC_xarray_dataset, ".flux": dictionary_of_flux_datasets, ".bc": boundary_conditions_dataset}:
             combined dataset for each site
     """
+    from openghg.standardise import standardise_surface, standardise_flux, standardise_footprint
+    from openghg.analyse import ModelScenario
+     
+    # *** Assuming the input data object is in a "ModelScenario" format of the same format ***
+    # TODO Change input to match openghg format ... 
+    # Output dictionary
+    fp_and_data={}
+    scales={}
+    species={}
 
-    # Output array
-    fp_and_data = {}
-    
-    site = scenario_openghg.obs.data.attrs["site"]
-    scenario_combined = scenario_openghg.footprints_data_merge()
-    fp_and_data[site] = scenario_combined
-    
-    # add if statement whether fluxes were added
-    fluxes = scenario_openghg.flux_sources
-    flux_dict={}
-    flux_dict[fluxes[0]] = scenario_openghg.fluxes[fluxes[0]].data
-    fp_and_data['.flux'] = flux_dict
-    
-    
-    fp_and_data['.bc'] = scenario_openghg.bc.data
-    
-    
-    
-    
-    
-    
-    
     sites = [key for key in data]
+    check_species,  check_scales= [], []
+
+    for i in sites:
+        scenario_openghg=data[i]
+        site=scenario_openghg.obs.data.attrs['site']
+        scenario_combined=scenario_openghg.footprints_data_merge()
+        fp_and_data[site]=scenario_combined
+
+        check_species+=[scenario_openghg.species]
+        check_units+=[scenario_combined.mf.units]
+        check_scales+=[scenario_combined.scale]
+        # Check consistency of measurement scales
+        if not all (s==check_scales[0] for s in check_scales):
+            rt=[]
+            for j in check_scales:
+                if isinstance(j, list): rt.extend(flatten(j))
+            else:
+                rt.append(j)
+            scales[i]=rt
+        else:
+            scales[i]=check_scales[0]
+        # Check consistency of atmospheric species
+        if not all (s==check_species[0] for s in check_species):
+            rt=[]
+            for j in check_species:
+                if isinstance(j, list): rt.extend(flatten(j))
+            else:
+                rt.append(j)
+            species[i]=rt
+        else:
+            species[i]=check_species[0]
     
-    species_list = []
-    for site in sites:
-        species_list += [item.species for item in data[site]]
-    if not all(s==species_list[0] for s in species_list):
-        raise Exception("Species do not match in for all measurements")
-    else:
-        species = species_list[0]
-        
-    species_footprint = species if species_footprint is None else species_footprint
-    if species_footprint!=species:
-        print(f'Finding footprints files for {species_footprint}')
+    fp_and_data['.scales']=scales
+    fp_and_data['.species']=species[i]  
+    fp_and_data['.units']=scenario_openghg.footprints_data_merge().mf.units
+    
 
     if load_flux:
-        if emissions_name is not None:
-            if type(emissions_name) != dict:
-                print("emissions_name should be a dictionary: {source_name: emissions_file_identifier}.\
-                      Setting load_flux to False.")
-                load_flux=False
+        flux_sector=scenario_openghg.flux_sources
+        if flux_sector is not None:
+            flux_dict{}
+            for flux in range(len(flux_sector)):
+                flux_dict[flux_sector[flux]]=scenario_openghg.fluxes[flux_sector[flux]]
+            fp_and_data['.flux']=flux_dict
         else:
-            emissions_name = {'all':species}    
+            print("Fluxes are missing from input ModelScenario object and not included in the output dictionary.")
+            fp_and_data['.flux']=[]
+
+    if load_bc:
+        bc_data=scenario_openghg.bc
+        if bc_data is not None:
+            fp_and_data['.bc']=bc_data
+        else:
+            print("Boundary conditions are missing from input ModelScenario object and not included in the ouput dictionary.")
 
 
-    # Output array
-    fp_and_data = {}
+    # include option to calculate BCs?
 
-    #empty variables to fill with earliest start and latest end dates
-    flux_bc_start = None
-    flux_bc_end = None    
+
+    return fp_and_data
+
+
+#    # Output dictionary
+#    fp_and_data = {}
+#    
+#    site = scenario_openghg.obs.data.attrs["site"]
+#    fp_and_data[site]=scenario_openghg.footprints_data_merge()
+#
+#    #scenario_combined = scenario_openghg.footprints_data_merge()
+#    #fp_and_data[site] = scenario_combined
+#   
+#    fp_and_data['.species']=scenario_openghg.species
+#    
+#    flux_sector=scenario_openghg.flux_sources
+#    if flux_sector is not None:
+#        flux_dict={}
+#        for i in range(len(flux_sector)):
+#            flux_dict[flux_sector[i]]=scenario_openghg.fluxes[flux_sector[i]].data
+#        fp_and_data['.flux']=flux_dict
+#    else:
+#        print("Fluxes are missing from input and not included in output dictionary")
+#        fp_and_data['.flux']={}
+#
+#    bc=scenario_openghg.bc
+#    if bc is not None:
+#        fp_and_data['.bc']=bc.data
+#    else:
+#        print("Boundary conditions are missing from input and not included in the output dictionary")
+#
+    
+
+ 
+#    # add if statement whether fluxes were added
+#    fluxes = scenario_openghg.flux_sources
+#    flux_dict={}
+#    flux_dict[fluxes[0]] = scenario_openghg.fluxes[fluxes[0]].data
+#    fp_and_data['.flux'] = flux_dict
+#    
+#    
+#    fp_and_data['.bc'] = scenario_openghg.bc.data
+    
+    
+        
+        
+#    species_footprint = species if species_footprint is None else species_footprint
+#    if species_footprint!=species:
+#        print(f'Finding footprints files for {species_footprint}')
+#
+#    if load_flux:
+#        if emissions_name is not None:
+#            if type(emissions_name) != dict:
+#                print("emissions_name should be a dictionary: {source_name: emissions_file_identifier}.\
+#                      Setting load_flux to False.")
+#                load_flux=False
+#        else:
+#            emissions_name = {'all':species}    
+#
+#
+#   # Output array
+#   fp_and_data = {}
+#
+#    #empty variables to fill with earliest start and latest end dates
+#    flux_bc_start = None
+#    flux_bc_end = None    
 
     
 
@@ -1047,66 +1129,66 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
     
         fp_and_data[site] = xr.merge(site_ds_list)
 
-    if load_flux:
-
-        flux_dict = {} 
-        basestring = (str, bytes)    
-        for source, emiss_source in emissions_name.items():
-
-            if isinstance(emissions_name[source], basestring):
-                flux_dict[source] = flux(domain, emiss_source, start=flux_bc_start, end=flux_bc_end,
-                                         flux_directory=flux_directory, verbose=verbose)
-
-            elif isinstance(emissions_name[source], dict):
-                if HiTRes == False:
-                    print("HiTRes is set to False and a dictionary has been found as the emissions_name dictionary value\
-                          for source %s. Either enter your emissions names as separate entries in the emissions_name\
-                          dictionary or turn HiTRes to True to use the two emissions files together with HiTRes footprints." %source)
-                    #return None
-                else:
-                    flux_dict[source] = flux_for_HiTRes(domain, emiss_source, start=flux_bc_start,
-                                                        end=flux_bc_end, flux_directory=flux_directory, verbose=verbose)
-
-        fp_and_data['.flux'] = flux_dict
-            
-        
-    if load_bc:       
-        bc = boundary_conditions(domain, species, start=flux_bc_start, end=flux_bc_end, bc_directory=bc_directory)
-        if units:
-            fp_and_data['.bc'] = bc/units               
-        else:
-            fp_and_data['.bc'] = bc
-            
-    # Calculate model time series, if required
-    if calc_timeseries:
-        fp_and_data = add_timeseries(fp_and_data, load_flux, verbose=verbose)
-        
-    # Calculate boundary conditions, if required         
-    if calc_bc:
-        fp_and_data = add_bc(fp_and_data, load_bc, species)
-    
-    #Add "." attributes manually to be back-compatible
-    fp_and_data[".species"] = species
-    if platform != "satellite":
-        scales = {}
-        for site in sites:
-            scales_list = []
-            for site_ds in data[site]:
-                scales_list += [site_ds.scale]
-                if not all(s==scales_list[0] for s in scales_list):
-                    rt = []
-                    for i in scales_list:
-                        if isinstance(i,list): rt.extend(flatten(i))
-                    else: 
-                        rt.append(i)
-                    scales[site] = rt
-                else:
-                    scales[site] = scales_list[0]
-        fp_and_data[".scales"] = scales
-    if units:
-        fp_and_data[".units"] = units
-  
-    return fp_and_data
+#    if load_flux:
+#
+#        flux_dict = {} 
+#        basestring = (str, bytes)    
+#        for source, emiss_source in emissions_name.items():
+#
+#            if isinstance(emissions_name[source], basestring):
+#                flux_dict[source] = flux(domain, emiss_source, start=flux_bc_start, end=flux_bc_end,
+#                                         flux_directory=flux_directory, verbose=verbose)
+#
+#            elif isinstance(emissions_name[source], dict):
+#                if HiTRes == False:
+#                    print("HiTRes is set to False and a dictionary has been found as the emissions_name dictionary value\
+#                          for source %s. Either enter your emissions names as separate entries in the emissions_name\
+#                          dictionary or turn HiTRes to True to use the two emissions files together with HiTRes footprints." %source)
+#                    #return None
+#                else:
+#                    flux_dict[source] = flux_for_HiTRes(domain, emiss_source, start=flux_bc_start,
+#                                                        end=flux_bc_end, flux_directory=flux_directory, verbose=verbose)
+#
+#        fp_and_data['.flux'] = flux_dict
+#            
+#        
+#    if load_bc:       
+#        bc = boundary_conditions(domain, species, start=flux_bc_start, end=flux_bc_end, bc_directory=bc_directory)
+#        if units:
+#            fp_and_data['.bc'] = bc/units               
+#        else:
+#            fp_and_data['.bc'] = bc
+#            
+#    # Calculate model time series, if required
+#    if calc_timeseries:
+#        fp_and_data = add_timeseries(fp_and_data, load_flux, verbose=verbose)
+#        
+#    # Calculate boundary conditions, if required         
+#    if calc_bc:
+#        fp_and_data = add_bc(fp_and_data, load_bc, species)
+#    
+#    #Add "." attributes manually to be back-compatible
+#    fp_and_data[".species"] = species
+#    if platform != "satellite":
+#        scales = {}
+#        for site in sites:
+#            scales_list = []
+#            for site_ds in data[site]:
+#                scales_list += [site_ds.scale]
+#                if not all(s==scales_list[0] for s in scales_list):
+#                    rt = []
+#                    for i in scales_list:
+#                        if isinstance(i,list): rt.extend(flatten(i))
+#                    else: 
+#                        rt.append(i)
+#                    scales[site] = rt
+#                else:
+#                    scales[site] = scales_list[0]
+#        fp_and_data[".scales"] = scales
+#    if units:
+#        fp_and_data[".units"] = units
+#  
+#    return fp_and_data
 
 
 def add_timeseries(fp_and_data, load_flux, verbose=True):
