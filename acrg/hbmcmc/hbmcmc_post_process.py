@@ -973,12 +973,8 @@ def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True
     
     Specify an out_filename to write to disk
     """
-    print(ds["Ymodmean"])
-
     if country_file is not None:
         ds = regrid_country.regrid_country(ds, country_file, domain)
-
-    print(ds["Ymodmean"])
 
     y_post_mean = ds["Ymodmean"].values
     
