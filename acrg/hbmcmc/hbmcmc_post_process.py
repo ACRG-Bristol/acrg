@@ -35,6 +35,7 @@ import pandas as pd
 
 import acrg.name as name
 from acrg.grid import areagrid
+from acrg.grid import regrid_country
 from acrg import convert
 from acrg.config.paths import Paths
 
@@ -942,8 +943,8 @@ def plot_country_timeseries(country_mean, country_CI, country_prior, d0, prior_l
 
 #     return combined_ds
  
-def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True, figsize=None,
-                    plot_prior=False, plot_bc_prior=False,):
+def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True, figsize=None, plot_bc = True,
+                    plot_prior=False, plot_bc_prior=False, country_file=None, domain=None):
     
     """
     Plot measurement timeseries of posterior and observed measurements
@@ -964,16 +965,25 @@ def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True
                                    uncertainty (default = 16)
         upper_percentile (float) : Upper percentile of predicted time series 
                                    uncertainty (default = 84)
+        country_file (string) : If has a value, contibutions to the mole 
+                                fraction from the country file are plotted
+                                (default = None)
+        domain (str) : Domain of inversion (only needed if using country_file)                       
         
     
     Specify an out_filename to write to disk
     """
-    
+    print(ds["Ymodmean"])
 
-    y_bg_mean = ds["YmodmeanBC"].values
+    if country_file is not None:
+        ds = regrid_country.regrid_country(ds, country_file, domain)
+
+    print(ds["Ymodmean"])
 
     y_post_mean = ds["Ymodmean"].values
     
+    if plot_bc:
+        y_bg_mean = ds["YmodmeanBC"].values
     if plot_prior:
         y_prior = ds["Yapriori"].values
     if plot_bc_prior:
@@ -990,14 +1000,15 @@ def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True
     
 
     if doplot is True:
-        fig,ax=plt.subplots(nsites,sharex=True,figsize=figsize)
+        fig,ax=plt.subplots(nsites,sharex=True,figsize=figsize,facecolor=(1,1,1))
         
         if nsites > 1:
             for si,site in enumerate(sitenames):
                 wh_site = np.where(y_site == np.where(sitenames == site)[0][0])
 
                 y_time_site = y_time[wh_site[0]]
-                y_bg_site = y_bg_mean[wh_site[0]]
+                if plot_bc:
+                    y_bg_site = y_bg_mean[wh_site[0]]
                 y_post_site = y_post_mean[wh_site[0]]
                 upper_site = upper[wh_site[0]]
                 lower_site = lower[wh_site[0]]
@@ -1009,11 +1020,10 @@ def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True
                 
                 ax[si].plot(y_time_site,y_post_site, color='blue', label='Modelled observations')
                 
-                ax[si].plot(y_time_site,y_bg_site,color='black', label='Modelled bounday conditions')
-                
+                if plot_bc:
+                    ax[si].plot(y_time_site,y_bg_site,color='black', label='Modelled bounday conditions')
                 if plot_prior:
                     ax[si].plot(y_time[wh_site[0]],y_prior[wh_site[0]], color='green', label='Prior')
-                
                 if plot_bc_prior:
                     ax[si].plot(y_time[wh_site[0]],y_bc_prior[wh_site[0]], color='0.6', label='Prior boundary conditions')
                     
@@ -1033,12 +1043,12 @@ def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True
                         facecolor='lightskyblue', edgecolor='lightskyblue')
             ax.plot(y_time,y_obs, 'ro', markersize=4, label='Observations')
             ax.plot(y_time,y_post_mean, color='blue', label='Modelled observations')
-            ax.plot(y_time,y_bg_mean,color='black', 
-                     label='Modelled boundary conditions')
-
+            
+            if plot_bc:
+                ax.plot(y_time,y_bg_mean,color='black', 
+                        label='Modelled boundary conditions')
             if plot_prior:
                 ax.plot(y_time,y_prior, color='green', label='Prior')
-            
             if plot_bc_prior:
                 ax.plot(y_time,y_bc_prior, color='0.6', label='Prior boundary conditions')
 
@@ -1059,7 +1069,7 @@ def plot_timeseries(ds, fig_text=None, ylim=None, out_filename=None, doplot=True
         else:
             plt.show()
         
-    return
+    return 
 
 def open_ds(path):
     
