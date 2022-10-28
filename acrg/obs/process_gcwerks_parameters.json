@@ -273,6 +273,58 @@
     "ICOS": {
         "directory" : "/group/chemistry/acrg/obs_raw/AGAGE_GCWerks/data-icos/%site/",
         "directory_output" : "/group/chemistry/acrg/obs",
+        "BIR" : {
+            "gcwerks_site_name": "birkenes",
+            "inlet_rename": {"75m": "75m"},
+            "global_attributes": {
+                "data_owner": "oh@nilu.no,clm@nilu.no,crl@nilu.no,sp@nilu.no",
+                "data_owner_email": "oh@nilu.no,clm@nilu.no,crl@nilu.no,sp@nilu.no"
+            }
+        },
+        "HEI" : {
+            "gcwerks_site_name": "heidelberg",
+            "inlet_rename": {"30m": "30m"},
+            "global_attributes": {
+                "data_owner": "ingeborg.levin@iup.uni-heidelberg.de, Samuel.Hammer@iup.uni-heidelberg.de",
+                "data_owner_email": "ingeborg.levin@iup.uni-heidelberg.de, Samuel.Hammer@iup.uni-heidelberg.de"
+            }
+        },
+        "HEL" : {
+            "gcwerks_site_name": "helgoland",
+            "inlet_rename": {"110m": "110m"},
+            "global_attributes": {
+                "data_owner": "Tobias.Kneuer@dwd.de,dagmar.kubistin@dwd.de,matthias.lindauer@dwd.de,Jennifer.Mueller-Williams@dwd.de,christian.plass-duelmer@dwd.de",
+                "data_owner_email": "Tobias.Kneuer@dwd.de,dagmar.kubistin@dwd.de,matthias.lindauer@dwd.de,Jennifer.Mueller-Williams@dwd.de,christian.plass-duelmer@dwd.de"
+            }
+        },
+        "HTM" : {
+            "gcwerks_site_name": "hyltemossa",
+            "inlet_rename": {"150m": "150m"},
+            "global_attributes": {
+                "data_owner": "tobias.biermann@cec.lu.se,Michal.Heliasz@cec.lu.se",
+                "data_owner_email": "tobias.biermann@cec.lu.se,Michal.Heliasz@cec.lu.se"
+            }
+        },
+        "HUN" : {
+            "gcwerks_site_name": "hegyhatsal",
+            "inlet_rename": {"10m": "10m",
+                             "48m": "48m",
+                             "82m": "82m",
+                             "96m": "96m",
+                             "115m": "115m"},
+            "global_attributes": {
+                "data_owner": "haszpra.l@gmail.com",
+                "data_owner_email": "haszpra.l@gmail.com"
+            }
+        },
+        "LUT" : {
+            "gcwerks_site_name": "lutjewad",
+            "inlet_rename": {"60m": "60m"},
+            "global_attributes": {
+                "data_owner": "Huilin.Chen@rug.nl,h.a.scheeren@rug.nl",
+                "data_owner_email": "Huilin.Chen@rug.nl,h.a.scheeren@rug.nl"
+            }
+        },
         "MHD" : {
             "gcwerks_site_name": "macehead",
             "inlet_rename": {"24m": "10m"},
@@ -281,12 +333,64 @@
                 "data_owner_email": "michel.ramonet@cea.fr"
             }
         },
+        "NOR" : {
+            "gcwerks_site_name": "norunda",
+            "inlet_rename": {"100m": "100m"},
+            "global_attributes": {
+                "data_owner": "irene.lehner@cec.lu.se,meelis.molder@nateko.lu.se",
+                "data_owner_email": "irene.lehner@cec.lu.se,meelis.molder@nateko.lu.se"
+            }
+        },
+        "PAL" : {
+            "gcwerks_site_name": "pallas",
+            "inlet_rename": {"12m": "12m"},
+            "global_attributes": {
+                "data_owner": "juha.hatakka@fmi.fi",
+                "data_owner_email": "juha.hatakka@fmi.fi"
+            }
+        },
+        "SSL" : {
+            "gcwerks_site_name": "schauinsland",
+            "inlet_rename": {"12m": "12m",
+                             "35m": "35m"},
+            "global_attributes": {
+                "data_owner": "frank.meinhardt@uba.de, frank.meinhardt@uba.de,Martina.schmidt@iup.uni-Heidelberg.de, antje.hoheisel@iup.uni-heidelberg.de",
+                "data_owner_email": "frank.meinhardt@uba.de, frank.meinhardt@uba.de,Martina.schmidt@iup.uni-Heidelberg.de, antje.hoheisel@iup.uni-heidelberg.de"
+            }
+        },
+        "TRN" : {
+            "gcwerks_site_name": "trainou",
+            "inlet_rename": {"5m": "5m",
+                             "50m": "50m",
+                             "100m": "100m",
+                             "180m": "180m"},
+            "global_attributes": {
+                "data_owner": "marc.delmotte@lsce.ipsl.fr,victor.kazan@lsce.ipsl.fr,morgan.lopez@lsce.ipsl.fr,michel.ramonet@lsce.ipsl.fr",
+                "data_owner_email": "marc.delmotte@lsce.ipsl.fr,victor.kazan@lsce.ipsl.fr,morgan.lopez@lsce.ipsl.fr,michel.ramonet@lsce.ipsl.fr"
+            }
+        },
         "TTA" : {
             "gcwerks_site_name": "angus",
             "inlet_rename": {"222m": "222m"},
             "global_attributes": {
                 "data_owner": "Simon O'Doherty",
                 "data_owner_email": "s.odoherty@bristol.ac.uk"
+            }
+        },
+        "UTO" : {
+            "gcwerks_site_name": "uto",
+            "inlet_rename": {"57m": "57m"},
+            "global_attributes": {
+                "data_owner": "juha.hatakka@fmi.fi",
+                "data_owner_email": "juha.hatakka@fmi.fi"
+            }
+        },
+        "WES" : {
+            "gcwerks_site_name": "westerland",
+            "inlet_rename": {"14m": "14m"},
+            "global_attributes": {
+                "data_owner": "cedric.couret@uba.de,Martina.schmidt@iup.uni-Heidelberg.de",
+                "data_owner_email": "cedric.couret@uba.de,Martina.schmidt@iup.uni-Heidelberg.de"
             }
         }
     }
