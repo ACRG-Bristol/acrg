@@ -1015,6 +1015,20 @@
       "longitude": 126.16181
     }
   },
+  "GST": {
+    "COP26": {
+      "height": [
+        "100m"
+      ],
+      "height_name": [
+        "100magl"
+      ],
+      "height_station_masl": 5.0,
+      "latitude": 55.859238,
+      "long_name": "Glasgow Science Tower, UK",
+      "longitude": -4.29618
+    }
+  },
   "HAD": {
     "UCAM": {
       "height": [
@@ -1350,6 +1364,20 @@
       "latitude": 19.52,
       "long_name": "Cape Kumukahi, Hawaii",
       "longitude": -154.82
+    }
+  },
+  "KVH": {
+    "COP26": {
+      "height": [
+        "30m"
+      ],
+      "height_name": [
+        "30magl"
+      ],
+      "height_station_masl": 105.0,
+      "latitude": 56.0451,
+      "long_name": "Killearn Village Hall, UK",
+      "longitude": -4.3724
     }
   },
   "LEF": {
