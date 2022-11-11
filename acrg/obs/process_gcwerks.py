@@ -126,43 +126,28 @@ def icos_data_read(data_file, species):
 
     print("Reading " + data_file)
 
-    # Find out how many header lines there are
-    nheader = 0
-    with open(data_file, "r") as f:
-        for l in f:
-            if l[0] != "#":
-                break
-            nheader += 1
-
     # Read CSV file
+    colnames = ["SamplingHeight",
+                "Year",
+                "Month",
+                "Day",
+                "Hour",
+                "Minute",
+                str(species.lower()),
+                "Stdev",
+                "NbPoints"]
     df =  pd.read_csv(data_file,
-                      skiprows = nheader-1,
-                      parse_dates = {"time": ["Year", "Month", "Day", "Hour", "Minute"]},
-                      index_col = "time",
+                      comment = "#",
                       sep = ";",
-                      usecols = ["Day", "Month", "Year", "Hour", "Minute",
-                                 str(species.lower()), "SamplingHeight",
-                                 "Stdev", "NbPoints"],
-                      dtype = {"Day": np.int,
-                               "Month": np.int,
-                               "Year": np.int,
-                               "Hour": np.int,
-                               "Minute": np.int,
-                               species.lower(): np.float,
-                               "Stdev": np.float,
-                               "SamplingHeight": np.float,
-                               "NbPoints": np.int},
+                      usecols = [1, 2, 3, 4, 5, 6, 8, 9, 10],
+                      names = colnames,
                       na_values = "-999.99")
 
-    # Format time
-    df.index = pd.to_datetime(df.index, format = "%Y %m %d %H %M")
-    
-    # Set timestamp to left label
-    df["new_time"] = df.index - pd.Timedelta(seconds = 30)
-    df = df.set_index("new_time", inplace=False, drop=True)
-
-    # Label time index
+    # Create time index
+    df.index = pd.to_datetime(df[["Year", "Month", "Day", "Hour", "Minute"]])
     df.index.name = "time"
+    
+    df = df[[species.lower(), "NbPoints", "Stdev", "SamplingHeight"]]
 
     # Remove duplicates
     df = df.reset_index().drop_duplicates(subset='time').set_index('time')
@@ -183,16 +168,17 @@ def icos(site, network = "ICOS",
          input_directory = None,
          output_directory = None,
          date_range = None,
-         version = None):
+         version = None,
+         time_res = "1minute"):
 
-    def find_species_inlet_model(filenames):
+    def find_species_inlet_inst(filenames):
         out = []
         for f in filenames:
             f_elements = f.split(".")
             if len(f_elements) == 6:
                 out.append((f_elements[1],
                             f_elements[4],
-                            "picarro" + f_elements[3].upper()))
+                            "picarro" + f_elements[2]))
             else:
                 out.append((f_elements[1],
                             f_elements[3],
@@ -209,15 +195,15 @@ def icos(site, network = "ICOS",
                             user_specified_input_directory = input_directory,
                             user_specified_output_directory = output_directory)
 
-    # Search for species, inlets and model from file names
-    data_file_search = join(data_folder, site.lower() + ".*.1minute.*.dat")
+    # Search for species, inlets and instrument (potentially including ICOS ID) from file names
+    data_file_search = join(data_folder, site.lower() + ".*." + time_res + ".*.dat")
     data_files = glob.glob(data_file_search)
     data_file_names = [split(f)[1] for f in data_files]
-    species_inlet_model = find_species_inlet_model(data_file_names)
+    species_inlet_inst = find_species_inlet_inst(data_file_names)
 
-    inlets = set([i for (s, i, m) in species_inlet_model])
+    inlets = set([i for (s, i, m) in species_inlet_inst])
 
-    for i, (species, inlet, model) in enumerate(species_inlet_model):
+    for i, (species, inlet, inst) in enumerate(species_inlet_inst):
 
         if stat(data_files[i]).st_size > 0:
 
@@ -249,7 +235,7 @@ def icos(site, network = "ICOS",
                 # Write file
                 nc_filename = output_filename(output_folder,
                                               network,
-                                              model,
+                                              inst,
                                               site.upper(),
                                               ds.time.to_pandas().index.to_pydatetime()[0],
                                               ds.species,
@@ -430,13 +416,25 @@ def gc(site, instrument, network,
     # Concatenate
     dfs = pd.concat(dfs).sort_index()
 
-    # Apply timestamp correction - GCWerks timestamps the data at the first
-    # "stripchart store" command in the runfile. This can be in different places
-    # but everywhere I have seen it is after the end of the sample, so we want
-    # to subtract at least the sampling period. Need to revisit this (JP 2022-06-30)
-    dfs["new_time"] = dfs.index - \
-            pd.Timedelta(seconds = params["GC"]["sampling_period"][instrument])
-    dfs = dfs.set_index("new_time", inplace=False, drop=True)
+    # Apply timestamp correction - there are 3 timestamps in the .C file.
+    #
+    # For the Medusa we have:
+    # Year             = decimal timestamp of mid-sample point
+    # yyyy mm dd hh mi = timestamp of mid-sample point
+    # ryyy rm rd rh ri = timestamp of runtime (which is the same as the chromatogram and stripchart time)
+    #
+    # We have already calculated the index based on the second of these (mid-sample timestamp)
+    # But we want to use the start of the sample period for the .nc file timestamps.
+    # 
+    # For the MD we essentially have an instantaneous sample, and all 3 timestamps are the same.
+    # Theses timestamps actually represent the time of the first "stripchart store" command in the
+    # GCWerks runfile, truncated to the previous minute (i.e. with the seconds chopped off)
+    # This is within a minute of the instantaneous sample time that we are after, which is as precise
+    # as we can be given that the .C files don't contain seconds. So no need to correct for the MD data.
+    if instrument != "GCMD": 
+        dfs["new_time"] = dfs.index - \
+                pd.Timedelta(seconds = params["GC"]["sampling_period"][instrument])/2
+        dfs = dfs.set_index("new_time", inplace=False, drop=True)
 
     # Label time index
     dfs.index.name = "time"

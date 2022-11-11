@@ -257,6 +257,18 @@
       "latitude": 58.39,
       "long_name": "Birkenes",
       "longitude": 8.25
+    },
+    "ICOS": {
+      "height": [
+        "75m"
+      ],
+      "height_name": [
+        "75magl"
+      ],
+      "height_station_masl": 190.0,
+      "latitude": 58.39,
+      "long_name": "Birkenes",
+      "longitude": 8.25
     }
   },
   "BIS": {
@@ -1003,6 +1015,20 @@
       "longitude": 126.16181
     }
   },
+  "GST": {
+    "COP26": {
+      "height": [
+        "100m"
+      ],
+      "height_name": [
+        "100magl"
+      ],
+      "height_station_masl": 5.0,
+      "latitude": 55.859238,
+      "long_name": "Glasgow Science Tower, UK",
+      "longitude": -4.29618
+    }
+  },
   "HAD": {
     "UCAM": {
       "height": [
@@ -1043,6 +1069,32 @@
       "latitude": 49.417,
       "long_name": "Heidelberg, Germany",
       "longitude": 8.674
+    },
+    "ICOS": {
+      "height": [
+        "30m"
+      ],
+      "height_name": [
+        "30magl"
+      ],
+      "height_station_masl": 113.0,
+      "latitude": 49.4172,
+      "long_name": "Heidelberg, Germany",
+      "longitude": 8.674
+    }
+  },
+  "HEL": {
+    "ICOS": {
+      "height": [
+        "110m"
+      ],
+      "height_name": [
+        "110magl"
+      ],
+      "height_station_masl": 43.0,
+      "latitude": 54.1804,
+      "long_name": "Helgoland, Germany",
+      "longitude": 7.8833
     }
   },
   "HFD": {
@@ -1117,6 +1169,20 @@
       "longitude": -124.75
     }
   },
+  "HTM": {
+    "ICOS": {
+      "height": [
+        "150m"
+      ],
+      "height_name": [
+        "8magl"
+      ],
+      "height_station_masl": 115.0,
+      "latitude": 56.0976,
+      "long_name": "Hyltemossa, Sweden",
+      "longitude": 13.4189
+    }
+  },
   "HUN": {
     "EUROCOM": {
       "height": [
@@ -1129,6 +1195,26 @@
       "latitude": 46.95,
       "long_name": "Hegyhatsal, Hungary",
       "longitude": 16.65
+    },
+    "ICOS": {
+      "height": [
+        "10m",
+        "48m",
+        "82m",
+        "96m",
+        "115m"
+      ],
+      "height_name": [
+        "10magl",
+        "48magl",
+        "82magl",
+        "96magl",
+        "115magl"
+      ],
+      "height_station_masl": 248.0,
+      "latitude": 46.9558,
+      "long_name": "Hegyhatsal, Hungary",
+      "longitude": 16.6522
     }
   },
   "ICE": {
@@ -1280,6 +1366,20 @@
       "longitude": -154.82
     }
   },
+  "KVH": {
+    "COP26": {
+      "height": [
+        "30m"
+      ],
+      "height_name": [
+        "30magl"
+      ],
+      "height_station_masl": 105.0,
+      "latitude": 56.0451,
+      "long_name": "Killearn Village Hall, UK",
+      "longitude": -4.3724
+    }
+  },
   "LEF": {
     "NOAA": {
       "height": [
@@ -1365,6 +1465,18 @@
       "latitude": 53.404,
       "long_name": "Lutjewad, Netherlands",
       "longitude": 6.353
+    },
+    "ICOS": {
+      "height": [
+        "60m"
+      ],
+      "height_name": [
+        "60magl"
+      ],
+      "height_station_masl": 1.0,
+      "latitude": 53.4036,
+      "long_name": "Lutjewad, Netherlands",
+      "longitude": 6.3528
     }
   },
   "LHFT": {
@@ -1660,6 +1772,20 @@
       "longitude": -8.25
     }
   },
+  "NOR": {
+    "ICOS": {
+      "height": [
+        "100m"
+      ],
+      "height_name": [
+        "100magl"
+      ],
+      "height_station_masl": 46.0,
+      "latitude": 60.0864,
+      "long_name": "Norunda, Sweden",
+      "longitude": 17.4794
+    }
+  },
   "NWB": {
     "NOAA": {
       "height": [
@@ -1728,6 +1854,18 @@
       "latitude": 67.973,
       "long_name": "Pallas, Finland",
       "longitude": 24.116
+    },
+    "ICOS": {
+      "height": [
+        "12m"
+      ],
+      "height_name": [
+        "12magl"
+      ],
+      "height_station_masl": 565.0,
+      "latitude": 67.9733,
+      "long_name": "Pallas, Finland",
+      "longitude": 24.1157
     }
   },
   "POC": {
@@ -1992,6 +2130,20 @@
       "latitude": 47.92,
       "long_name": "Schauinsland, Germany",
       "longitude": 7.92
+    },
+    "ICOS": {
+      "height": [
+        "12m",
+        "35m"
+      ],
+      "height_name": [
+        "12magl",
+        "35magl"
+      ],
+      "height_station_masl": 1205.0,
+      "latitude": 47.9167,
+      "long_name": "Schauinsland, Germany",
+      "longitude": 7.9166
     }
   },
   "STM": {
@@ -2230,6 +2382,24 @@
       "latitude": 47.965,
       "long_name": "Trainou, France",
       "longitude": 2.112
+    },
+    "ICOS": {
+      "height": [
+        "5m",
+        "50m",
+        "100m",
+        "180m"
+      ],
+      "height_name": [
+        "5magl",
+        "50magl",
+        "100magl",
+        "180magl"
+      ],
+      "height_station_masl": 131.0,
+      "latitude": 47.9647,
+      "long_name": "Trainou, France",
+      "longitude": 2.1125
     }
   },
   "TTA": {
@@ -2286,6 +2456,20 @@
       "longitude": -113.7181
     }
   },
+  "UTO": {
+    "ICOS": {
+      "height": [
+        "57m"
+      ],
+      "height_name": [
+        "57magl"
+      ],
+      "height_station_masl": 8.0,
+      "latitude": 59.7839,
+      "long_name": "Utö - Baltic sea, Finland",
+      "longitude": 21.3672
+    }
+  },
   "UUM": {
     "NOAA": {
       "height": [
@@ -2336,6 +2520,20 @@
       "latitude": 52.95042,
       "long_name": "Weybourne Observatory, UK",
       "longitude": 1.12194
+    }
+  },
+  "WES": {
+    "ICOS": {
+      "height": [
+        "14m"
+      ],
+      "height_name": [
+        "14magl"
+      ],
+      "height_station_masl": 12.0,
+      "latitude": 54.9231,
+      "long_name": "Westerland, Germany",
+      "longitude": 8.308
     }
   },
   "WBI": {

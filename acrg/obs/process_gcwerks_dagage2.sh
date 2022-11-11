@@ -11,7 +11,7 @@ rsync -avh dagage2.chm.bris.ac.uk:/agage/summary/gccompare-decc/data/md/* /group
 
 # DECC/GAUGE/AGAGE CRDS
 folders=`ssh dagage2.chm.bris.ac.uk "ls /agage/"`
-sites="barbados bilsdale heathfield ridgehill tacolneston"
+sites="angus barbados bilsdale heathfield ridgehill tacolneston"
 
 for folder in $folders
 do
