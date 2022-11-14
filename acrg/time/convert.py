@@ -136,7 +136,7 @@ def time2decimal(dates):
     
         yearElapsed = s(date) - s(startOfThisYear)
         yearDuration = s(startOfNextYear) - s(startOfThisYear)
-        fraction = old_div(yearElapsed,yearDuration)
+        fraction = yearElapsed/yearDuration
 
         frac.append(date.year + fraction)
         
