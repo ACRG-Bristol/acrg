@@ -319,7 +319,7 @@ class BoundaryConditions:
                     self.edges[direction][self.vmr_var][i,:,j]
 
                 # interpolate and create a new array matching NAME heights
-                f = interpolate.interp1d(x, y, bounds_error = False, fill_value = np.max(y))
+                f = interpolate.interp1d(x, y, bounds_error = False, fill_value = np.min(y))
                 interp[i,:,j] = f(self.fp_height)
 
         # save interpolated vmr array to new dataset
@@ -391,7 +391,7 @@ class BoundaryConditions:
                 x = self.edges[direction][latorlon][::-1] if reverse else self.edges[direction][latorlon]
 
                 # interpolate and create a new array matching NAME heights
-                f = interpolate.interp1d(x, y, bounds_error = False, fill_value = np.max(y))
+                f = interpolate.interp1d(x, y, bounds_error = False, fill_value = np.min(y))
                 interp[i,j,:] = f(fp_latlon)
 
         # save interpolated vmr array to new dataset
