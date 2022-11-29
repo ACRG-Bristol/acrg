@@ -1981,6 +1981,20 @@
       "longitude": 29.60
     }
   },
+  "SAC": {
+    "ICOS": {
+      "height": [
+        "100m"
+      ],
+      "height_name": [
+        "100magl"
+      ],
+      "height_station_masl": 160,
+      "latitude": 48.7227,
+      "long_name": "Saclay, France",
+      "longitude": 2.142
+    }
+  },
   "SCT": {
     "NOAA": {
       "height": [
