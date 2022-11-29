@@ -217,7 +217,7 @@ class BoundaryConditions:
         
         lon_e = (np.abs(self.dataset.coords['lon'].values - max(self.fp_lon))).argmin()
         if self.dataset.coords['lon'].values[lon_e] < max(self.fp_lon) and lon_e != (len(self.dataset.coords['lon'].values)-1):
-            lat_s += 1
+            lat_e += 1
         
         lon_w = (np.abs(self.dataset.coords['lon'].values - min(self.fp_lon))).argmin()
         if self.dataset.coords['lon'].values[lon_w] > min(self.fp_lon) and lon_w != 0:
