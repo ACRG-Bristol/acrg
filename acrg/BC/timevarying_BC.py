@@ -36,6 +36,7 @@ import os
 import numpy as np
 import xarray as xr
 from scipy import interpolate
+import matplotlib.pyplot as plt
 from acrg.config.paths import Paths
     
 class BoundaryConditions:
@@ -92,9 +93,36 @@ class BoundaryConditions:
         # rename latitude and longitude to short version
         if 'latitude'  in dataset: dataset.rename({'latitude'  : 'lat'})
         if 'longitude' in dataset: dataset.rename({'longitude' : 'lon'})
-        self.dataset      = dataset
+
+        if adjust is not None:
+            print(f'Adjusting vmr by {adjust}')
+            dataset[vmr_var] = dataset[vmr_var] + adjust
+        self.dataset = dataset
     
-    def pressure_to_altitude(self, pressure_var='height', surface_pressure_var='ps', scale_height=8e3):
+    def pressure_to_altitude(self, pressure_var='height', surface_pressure_var='ps', scale_height=8e3,
+                             verbose=True):
+        '''
+        Convert height coordinates in pressure units to height above ground level
+        Uses the equation: P = P0 exp(-z / H)
+        P = pressure, P0 = surface pressure, z = altitude, H = scale height
+
+        Units of self.dataset[pressure_var] and self.dataset[surface_pressure_var] should match
+
+        Args
+            pressure_var (str)
+                Variable in self.dataset for the height levels in pressure units
+                units of e.g. millibar, bar, hPa, Pa
+            surface_pressure_var (str)
+                Variable in self.dataset for the pressure at surface level
+                units of e.g. millibar, bar, hPa, Pa
+            scale_height (int or float)
+                The increase in altitude over which the atmospheric pressure
+                decreases by a factor of e (approximately 2.718).
+                This varies with temperature: H/T = 29.26 m/K
+                Units : metres
+        '''
+        if verbose:
+            print(f'Converting height levels from pressure to altitude')
         pressure_ratio = self.dataset[pressure_var] / self.dataset[surface_pressure_var]
         self.dataset['altitude'] = -np.log(pressure_ratio) * scale_height
         self.dataset['altitude'] = self.dataset.altitude.transpose(self.time_coord, pressure_var, 'lat', 'lon')
@@ -207,37 +235,33 @@ class BoundaryConditions:
             self.dataset[self.species].values *= self.conversion
         
         # Select the gridcells closest to the edges of the  domain and make sure outside of fp
-        lat_n = (np.abs(self.dataset.coords['lat'].values - max(self.fp_lat))).argmin()
-        if self.dataset.coords['lat'].values[lat_n] < max(self.fp_lat) and lat_n != 0:
-            lat_n -= 1
+        latlon = {}
+        latlon['n'] = (np.abs(self.dataset.coords['lat'].values - max(self.fp_lat))).argmin()
+        if self.dataset.coords['lat'].values[latlon['n']] < max(self.fp_lat) and latlon['n'] != 0:
+            latlon['n'] -= 1
         
-        lat_s = (np.abs(self.dataset.coords['lat'].values - min(self.fp_lat))).argmin()
-        if self.dataset.coords['lat'].values[lat_s] > min(self.fp_lat) and lat_s != (len(self.dataset.coords['lat'].values)-1):
-            lat_s += 1
+        latlon['s'] = (np.abs(self.dataset.coords['lat'].values - min(self.fp_lat))).argmin()
+        if self.dataset.coords['lat'].values[latlon['s']] > min(self.fp_lat) and latlon['s'] != (len(self.dataset.coords['lat'].values)-1):
+            latlon['s'] += 1
         
-        lon_e = (np.abs(self.dataset.coords['lon'].values - max(self.fp_lon))).argmin()
-        if self.dataset.coords['lon'].values[lon_e] < max(self.fp_lon) and lon_e != (len(self.dataset.coords['lon'].values)-1):
-            lat_e += 1
+        latlon['e'] = (np.abs(self.dataset.coords['lon'].values - max(self.fp_lon))).argmin()
+        if self.dataset.coords['lon'].values[latlon['e']] < max(self.fp_lon) and latlon['e'] != (len(self.dataset.coords['lon'].values)-1):
+            latlon['e'] += 1
         
-        lon_w = (np.abs(self.dataset.coords['lon'].values - min(self.fp_lon))).argmin()
-        if self.dataset.coords['lon'].values[lon_w] > min(self.fp_lon) and lon_w != 0:
-            lat_w -= 1
+        latlon['w']= (np.abs(self.dataset.coords['lon'].values - min(self.fp_lon))).argmin()
+        if self.dataset.coords['lon'].values[latlon['w']] > min(self.fp_lon) and latlon['w'] != 0:
+            latlon['w'] -= 1
             
         # Cut to these
-        north = self.dataset.sel(lat  = self.dataset.coords['lat'][lat_n],
-                                 lon = slice(self.dataset.coords['lon'][lon_w],
-                                                   self.dataset.coords['lon'][lon_e])).drop_vars(['lat'])
-        south = self.dataset.sel(lat  = self.dataset.coords['lat'][lat_s],
-                                 lon = slice(self.dataset.coords['lon'][lon_w],
-                                                   self.dataset.coords['lon'][lon_e])).drop_vars(['lat'])
-        east  = self.dataset.sel(lon = self.dataset.coords['lon'][lon_e],
-                                 lat  = slice(self.dataset.coords['lat'][lat_s],
-                                                   self.dataset.coords['lat'][lat_n])).drop_vars(['lon'])
-        west  = self.dataset.sel(lon = self.dataset.coords['lon'][lon_w],
-                                 lat  = slice(self.dataset.coords['lat'][lat_s],
-                                                   self.dataset.coords['lat'][lat_n])).drop_vars(['lon'])
-        
-        self.edges = {'north' : north, 'south' : south, 'west' : west, 'east' : east}
+        self.edges = {}
+        for direction in ['north', 'south']:
+            self.edges[direction] = self.dataset.sel(lat = self.dataset.coords['lat'][latlon[direction[0]]],
+                                                     lon = slice(self.dataset.coords['lon'][latlon['w']],
+                                                                 self.dataset.coords['lon'][latlon['e']])).drop_vars(['lat'])
+        for direction in ['east', 'west']:
+            self.edges[direction] = self.dataset.sel(lon = self.dataset.coords['lon'][latlon[direction[0]]],
+                                                     lat  = slice(self.dataset.coords['lat'][latlon['s']],
+                                                                  self.dataset.coords['lat'][latlon['n']])).drop_vars(['lon'])
     
     def interpolate_all(self, reverse=None, verbose=True):
         '''
@@ -265,8 +289,8 @@ class BoundaryConditions:
             if verbose: print(f'-- Interpolating {dd} boundary vmr --')
             self.interp_height_single(direction=dd, reverse=reverse, verbose=verbose)
             self.interp_latlon_single(direction=dd, verbose=verbose)
-        
-    def interp_height_single(self, direction, reverse=None, new_height_coord='height', new_vmr_var=None, verbose=True):
+
+    def interp_height_single(self, direction, reverse=None, new_height_coord='height', verbose=True):
         '''
         Interpolates the data to the NAME heights
 
@@ -315,21 +339,23 @@ class BoundaryConditions:
                 # get the height and vmr array for all heights
                 x = self.edges[direction][self.height_var][i,:,j][::-1] if reverse else \
                     self.edges[direction][self.height_var][i,:,j]
-                y = self.edges[direction][self.vmr_var][i,:,j][::-1]    if reverse else \
+                y = self.edges[direction][self.vmr_var][i,:,j][::-1] if reverse else \
                     self.edges[direction][self.vmr_var][i,:,j]
 
                 # interpolate and create a new array matching NAME heights
-                f = interpolate.interp1d(x, y, bounds_error = False, fill_value = np.min(y))
+                f = interpolate.interp1d(x, y, bounds_error = False, fill_value = np.nan)
+
                 interp[i,:,j] = f(self.fp_height)
 
         # save interpolated vmr array to new dataset
-        new_vmr_var = new_vmr_var if new_vmr_var is not None else self.vmr_var
-        self.edges[direction] = xr.Dataset({new_vmr_var : (['time', new_height_coord, latorlon], interp)},
+        self.edges[direction] = xr.Dataset({self.vmr_var : (['time', new_height_coord, latorlon], interp)},
                                            coords = {'time'   : self.edges[direction][self.time_coord].values,
                                                      new_height_coord : self.fp_height,
                                                      latorlon : self.edges[direction][latorlon].values})
+        self.edges[direction] = self.edges[direction].ffill(dim=new_height_coord)
+        self.edges[direction] = self.edges[direction].bfill(dim=new_height_coord)
     
-    def interp_latlon_single(self, direction=None, height_coord='height', reverse=None, new_vmr_var=None, verbose=True):
+    def interp_latlon_single(self, direction=None, height_coord='height', reverse=None, verbose=True):
         '''
         Interpolates the data to the NAME latitudes and longitudes
 
@@ -376,9 +402,9 @@ class BoundaryConditions:
 
         # 3D array to fill with interpolated heights
         fp_latlon = self.fp_lat if latorlon=='lat' else self.fp_lon
-        interp    = np.zeros((len(self.edges[direction][self.time_coord]),
-                              len(self.fp_height),
-                              len(fp_latlon)))
+        interp = np.zeros((len(self.edges[direction][self.time_coord]),
+                           len(self.fp_height),
+                           len(fp_latlon)))
 
         # loop through height and time
         # self.edges[direction][height_var] : time, height, latlon
@@ -391,16 +417,106 @@ class BoundaryConditions:
                 x = self.edges[direction][latorlon][::-1] if reverse else self.edges[direction][latorlon]
 
                 # interpolate and create a new array matching NAME heights
-                f = interpolate.interp1d(x, y, bounds_error = False, fill_value = np.min(y))
+                f = interpolate.interp1d(x, y, bounds_error = False, fill_value = np.nan)
                 interp[i,j,:] = f(fp_latlon)
 
         # save interpolated vmr array to new dataset
-        new_vmr_var = new_vmr_var if new_vmr_var is not None else self.vmr_var
-        self.edges[direction] = xr.Dataset({new_vmr_var : (['time', 'height', latorlon], interp)},
+        self.edges[direction] = xr.Dataset({self.vmr_var: (['time', 'height', latorlon], interp)},
                                             coords = {'time'   : self.edges[direction][self.time_coord].values,
                                                       'height' : self.edges[direction][height_coord].values,
                                                       latorlon : fp_latlon})
+        self.edges[direction] = self.edges[direction].ffill(dim=latorlon)
+        self.edges[direction] = self.edges[direction].bfill(dim=latorlon)
     
+    def plot_vmr(self, quantiles=[0.25, 0.5, 0.75], height=500, figsize=(25, 12), fontsize=16, units='ppm',
+                 colors=None, cmap='tab10', return_fig=False, show=True, filename=None, savefig_kwargs={}):
+        '''
+        Plot the VMR at the boundary from the VMR field compared with the boundary condition
+
+        Args
+            quantiles (list, optional)
+                quantiles along the lat/lon array to plot the VMR timeseries
+                list of integers <1
+                defaults to quantiles=[0.25, 0.5, 0.75]
+            height (int or float, optional)
+                height at which to plot the VMR timeseries
+                defaults to height=500
+            figsize (tuple, optional)
+                figure size
+                defaults to figsize=(25, 12)
+            fontsize (int, optional)
+                size of font for the legend & axis labels
+                defaults to fontsize=16
+            units (str, optional)
+                VMR units, used for the axis label
+                defaults to units='ppm'
+            colors (list or None, optional)
+                list of colors to plot the VMR for each quantile
+                if None then colors will be selected from cmap
+                defaults to colors=None
+            cmap (str, optional)
+                colormap from which to select colors to plot the VMR for each quantile
+                defaults to cmap='tab10'
+            return_fig (bool, optional)
+                whether to return the fig and axes
+            show (bool, optional)
+                whether to show the figure
+            filename (str, optional)
+                filename to save figure
+                if not given the figure is not saved
+            savefig_kwargs (dict, optional)
+                keyword args to use when saving figure
+
+        Output
+            matplotlib.Figure and matplotlib axes
+                Displays a figure with an axis for each compass direction
+        '''
+        # get the lat and lon of the domain edges
+        bounds = {'north': float(self.fp_lat[-1]), 'east': float(self.fp_lon[-1]),
+                  'south': float(self.fp_lat[0]), 'west': float(self.fp_lon[0])}
+        # whether to select lat or lon for each boundary
+        ll_sel = {'north': 'lon', 'east': 'lat', 'south': 'lon', 'west': 'lat'}
+        # use the quantiles to get the lat and lon at which to compare the BCS with the raw field
+        latlons = {ll: self.edges[dd][ll].quantile(quantiles).values for ll, dd in {'lon':'north', 'lat':'east'}.items()}
+        # create dictionaries for selecting the lat and lon from the bcs and VMR field below
+        sel_kwargs_field = {direction: [{'lat':bounds[direction], 'lon':lon, 'method':'nearest'} for lon in latlons['lon']] if ll_sel_dir=='lon' else
+                                       [{'lon':bounds[direction], 'lat':lat, 'method':'nearest'} for lat in latlons['lat']]
+                            for direction, ll_sel_dir in ll_sel.items()}
+        sel_kwargs_bc = {ll: [{ll: latlon, 'height':height, 'method':'nearest'} for latlon in latlon_]
+                         for ll, latlon_ in latlons.items()}
+        
+        # get colors from the colormap unless a list of colors is provided
+        colors = [plt.get_cmap(cmap, len(quantiles))(cc) for cc in range(len(quantiles))] if colors is None else colors
+        fig, axes = plt.subplots(nrows=4, ncols=1, figsize=figsize, sharex=True, constrained_layout=True)
+        for dd, direction in enumerate(bounds.keys()):
+            # get the height and VMR arrays for each lat/lon coord
+            vmr_quantiles = {quantiles[ss]: self.dataset[self.vmr_var].sel(**sel_kwarg) for ss, sel_kwarg in enumerate(sel_kwargs_field[direction])}
+            for qq, quantile in enumerate(quantiles):
+                vmr_quantiles[quantile]['height'] = self.dataset[self.height_var].sel(**sel_kwargs_field[direction][qq])[0,:].values
+
+            # plot the boundary condition
+            [self.edges[direction][self.vmr_var].sel(**sel_kwarg).plot(ax=axes[dd], color=colors[ss], label=f'{latlons[ll_sel[direction]][ss]:.2f}')
+             for ss, sel_kwarg in enumerate(sel_kwargs_bc[ll_sel[direction]])]
+            # plot the raw field at the boundary
+            [vmr.sel(height=height, method='nearest').plot(ax=axes[dd], ls='--', color=colors[vv])
+             for vv, vmr in enumerate(vmr_quantiles.values())]
+            # add legend and text to show which boundary this is
+            axes[dd].legend(loc='upper right', fontsize=fontsize, title=f'{ll_sel[direction]}:', title_fontsize=fontsize);
+            axes[dd].text(0.01, 0.98, f'boundary: {direction}', transform=axes[dd].transAxes, fontsize=fontsize, va='top');
+        
+        # format the axis labels, title, and ticks
+        [ax.set_ylabel(f'VMR, {units}', fontsize=16) for ax in axes];
+        [ax.set_xlabel('') for ax in axes];
+        [ax.set_title('') for ax in axes];
+        [ax.tick_params(labelsize=fontsize) for ax in axes];
+
+        if show:
+            fig.show()
+        if return_fig:
+            return fig, axes
+        if filename is not None:
+            fig.savefig(filename, **savefig_kwargs)
+
     def bc_filename(self, from_climatology=False, verbose=True):
         '''
         Create a standardised filename for boundary conditions file
@@ -449,16 +565,16 @@ class BoundaryConditions:
             coordinates interpolated to match the NAME grid coordinates
 
             Includes DataArrays for the n, s, e, and w boundaries
-        '''        
-        edges    = {dd : self.edges[dd].rename({self.vmr_var: f'vmr_{dd[0]}'})
-                    for dd in ['north', 'south', 'east', 'west']}
+        '''
+        edges = {dd: self.edges[dd].rename({self.vmr_var: f'vmr_{dd[0]}'})
+                 for dd in ['north', 'south', 'east', 'west']}
         
         # merge the interpolated n, s, e, & w Datasets
         BC_edges = edges['north'].merge(edges['south']).merge(edges['east']).merge(edges['west'])
 
         # add global attributes
-        BC_edges.attrs['title']        = f'{datasource} {self.species} volume mixing ratios at domain edges'
-        BC_edges.attrs['author']       = os.getenv('USER')
+        BC_edges.attrs['title'] = f'{datasource} {self.species} volume mixing ratios at domain edges'
+        BC_edges.attrs['author'] = os.getenv('USER')
         BC_edges.attrs['date_created'] = np.str(np.datetime64('today'))
 
         # add optional global attributes
@@ -476,34 +592,11 @@ class BoundaryConditions:
                     print(f'Could not find {attr} in dataset attributes')
 
         # create a filename and save dataset to a netcdf file
-        out_path     = out_path if out_path is not None else \
-                       os.path.join(self.data_path, 'LPDM', 'bc', self.domain)
+        out_path = out_path if out_path is not None else \
+                   os.path.join(self.data_path, 'LPDM', 'bc', self.domain)
         
         self.bc_filename(from_climatology=from_climatology, verbose=verbose)
         if verbose: print(f'Saving boundary conditions to : {os.path.join(out_path, self.out_filename)}')
         BC_edges.to_netcdf(path = os.path.join(out_path, self.out_filename), mode = 'w')
 
-def hybrid_to_altitude(pressure_levels, surface_pressure, scale_height=8e3):
-    '''
-    Convert height coordinates in pressure units to height above ground level
-    Uses the equation: P = P0 exp(-z / H)
-    P = pressure, P0 = surface pressure, z = altitude, H = scale height
-
-    Units of pressure_levels and surface_pressure should match
-
-    Args
-        pressure_levels
-            Height levels in pressure units
-            units of e.g. millibar, bar, hPa, Pa
-        surface_pressure
-            Pressure at surface level
-            units of e.g. millibar, bar, hPa, Pa
-        scale_height
-            The increase in altitude over which the atmospheric pressure
-            decreases by a factor of e (approximately 2.718).
-            This varies with temperature: H/T = 29.26 m/K
-    '''
-    altitude = -np.log(pressure_levels / surface_pressure) * scale_height
-
-    return altitude
     
