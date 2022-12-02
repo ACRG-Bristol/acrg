@@ -1385,13 +1385,13 @@ def footprint_concatenate(fields_prefix,
     # Find footprint files and MATCHING particle location files
     # These files are identified by their date string. Make sure this is right!
     if satellite:
-        fields_files = sorted(glob.glob(fields_prefix + "*" +
-                             datestr + ".txt*"))
+        fields_files = sorted(glob.glob(fields_prefix +
+                             datestr + "*.txt*"))
     elif 'MixR_hourly' in fields_prefix:
-        fields_files = sorted(glob.glob(fields_prefix + "*" +
+        fields_files = sorted(glob.glob(fields_prefix +
                              datestr + "*.nc*"))       
     else:
-        fields_files = sorted(glob.glob(fields_prefix + "*" +
+        fields_files = sorted(glob.glob(fields_prefix + 'Fields_ARCTIC_BRW_20magl_' +
                              datestr + "*.txt*"))
     
     # Search for particle files
@@ -1970,7 +1970,7 @@ def process(domain, site, height, year, month,
             fields_folder = "MixR_files",
             particles_folder = "Particle_files",
             met_folder = ["Met_daily", "Met"],
-            processed_folder = "/work/chxmr/shared/LPDM/fp_NAME/",
+            processed_folder = "/user/work/chxmr/shared/LPDM/fp_NAME/",
             force_met_empty = False,
             use_surface_conditions = True,
             satellite = False,
@@ -1983,7 +1983,8 @@ def process(domain, site, height, year, month,
             transport_model="NAME",
             units = None,
             species = None,
-            user_max_hour_back = 24.):
+            user_max_hour_back = 24.,
+            check_error_files = True):
     
     '''Process a single month of footprints for a given domain, site, height,
     year, month. 
@@ -2160,9 +2161,13 @@ def process(domain, site, height, year, month,
                 error_days.sort()
                 num_days = len(error_days)
 
-        if len(error_days) > 0:
-            print(f"\nEXCEPTION: This month cannot be processed as there are {str(num_days)} days with with errors: {str(error_days)}\n")
-            raise Exception()
+        if check_error_files:         
+            if len(error_days) > 0:
+                print(f"\nEXCEPTION: This month cannot be processed as there are {str(num_days)} days with with errors: {str(error_days)}\n")
+                raise Exception()
+        else:
+            if len(error_days) > 0:
+                print(f"This month has {str(num_days)} days with with errors: {str(error_days)}. Running anyway as check_error_files = False\n")
         
    # Check for existance of subfolder
     if not os.path.isdir(subfolder):
