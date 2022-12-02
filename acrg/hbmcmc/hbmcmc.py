@@ -246,11 +246,13 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     fp_data = name.fp_sensitivity(fp_all, domain=domain, basis_case=fp_basis_case,basis_directory=basis_directory)
     
     # ###### ADD SMOOTHED BCKG TO FP_DATA
-    # smoothed_bckg = xr.open_dataset(glob.glob('/user/home/ky20893/work/Arctic/BRW/BRW_smoothed_bckg.nc')[0])
-    # smoothed_bckg = smoothed_bckg.loc[dict(time = slice(pd.Timestamp(start_date), pd.Timestamp(end_date)))]
-    # fp_data['BRW'] = xr.merge([fp_data['BRW'], smoothed_bckg], join = 'left')  
+    print('Using smoothed background')
+    smoothed_bckg = xr.open_dataset(glob.glob('/user/home/ky20893/work/Arctic/BRW/BRW_smoothed_bckg.nc')[0])
+    smoothed_bckg = smoothed_bckg.loc[dict(time = slice(pd.Timestamp(start_date), pd.Timestamp(end_date)))]
+    fp_data['BRW'] = xr.merge([fp_data['BRW'], smoothed_bckg], join = 'left')  
 
     ###### OR USE PERCENTILE FOR BCKG
+    # print('Using percentile background')
                            
     #apply named filters to the data
     if filters == ["local_influence"]:
@@ -279,10 +281,10 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             error = np.concatenate((error, fp_data[site].mf_variability.values))
         
         #### REMOVE SMOOTH BCKG
-        # Y = np.concatenate((Y,fp_data[site].mf.values - fp_data['BRW'].smoothed_bckg.values))
+        Y = np.concatenate((Y,fp_data[site].mf.values - fp_data['BRW'].smoothed_bckg.values))
 
         #### USE PERCENTILE FOR BCKG
-        Y = np.concatenate((Y,fp_data[site].mf.values - np.nanpercentile(fp_data[site].mf.values, 5)))
+        # Y = np.concatenate((Y,fp_data[site].mf.values - np.nanpercentile(fp_data[site].mf.values, 5)))
 
         siteindicator = np.concatenate((siteindicator, np.ones_like(fp_data[site].mf.values)*si))
         if si == 0:
