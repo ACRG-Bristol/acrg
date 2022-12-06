@@ -247,7 +247,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     
     # ###### ADD SMOOTHED BCKG TO FP_DATA
     print('Using smoothed background')
-    smoothed_bckg = xr.open_dataset(glob.glob('/user/home/ky20893/work/Arctic/BRW/BRW_smoothed_bckg.nc')[0])
+    smoothed_bckg = xr.open_dataset(glob.glob('/user/home/ky20893/work/Arctic/BRW/BRW_smoothed_bckg_1986-2021.nc')[0])
     smoothed_bckg = smoothed_bckg.loc[dict(time = slice(pd.Timestamp(start_date), pd.Timestamp(end_date)))]
     fp_data['BRW'] = xr.merge([fp_data['BRW'], smoothed_bckg], join = 'left')  
 
