@@ -42,7 +42,7 @@ from acrg.config.paths import Paths
 class BoundaryConditions:
     def __init__(self, vmr_var, altitude_height_var, dataset=None, filename=None,
                  file_dir=None, time_coord='time', species=None, domain='EUROPE',
-                 start_date=None, adjust=None):
+                 start_date=None, adjust=None, model=None):
         '''
         vmr_var : str
             The VMR variable name in the nesw dataset
@@ -89,6 +89,7 @@ class BoundaryConditions:
         self.species      = species
         self.domain       = domain
         self.start_date   = dataset.time.values[0] if start_date is None else start_date
+        self.model        = model
         
         # rename latitude and longitude to short version
         if 'latitude'  in dataset: dataset.rename({'latitude'  : 'lat'})
@@ -530,8 +531,9 @@ class BoundaryConditions:
         '''
         date_str = str(np.datetime64(self.start_date, 'M')).replace('-', '')
         clim_str = "_climatology" if from_climatology else ""
-        
-        self.out_filename = f"{self.species.lower()}_{self.domain}_{date_str}{clim_str}.nc"
+        model_str = f"-{self.model}" if self.model is not None else ""
+
+        self.out_filename = f"{self.species.lower()}{model_str}_{self.domain}_{date_str}{clim_str}.nc"
         if verbose: print(f'Output filename : {self.out_filename}')
     
     def to_netcdf(self, datasource=None, out_path=None, glob_attrs={}, from_climatology=False,
