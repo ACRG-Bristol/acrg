@@ -307,59 +307,6 @@ def process_param(input_param, folder_names, satellite, fields="mixr"):
     
     return param
 
-# def find_processed_file(subfolder,processed_folder,param):
-#     '''
-#     Find NAME processed file based on search string:
-#         "{site}-{height}_{domain}_{year}{month:02}*.nc"
-#     Args:
-#         subfolder (str) :
-#             Main sub-folder containing NAME output files
-#         processed_folder (str) :
-#             Directory containing the processed file.
-#         param (dict) :
-#             Parameter dictionary containing
-#             'site','height','domain','year','month'
-#     Returns
-#         str / list:
-#             Filename
-#         None :
-#             If no files or more than one file are found
-#     '''
-#     directory = os.path.join(subfolder,processed_folder)
-#     search_str = "{site}-{height}_{domain}_{year}{month:02}*.nc".format(site=param["site"],height=param["height"],domain=param["domain"],year=param["year"],month=param["month"])
-#     full_search_str = os.path.join(directory,search_str)
-#     print("search string",full_search_str)
-#     processed_file = glob.glob(full_search_str)
-#     if len(processed_file) == 1:
-#         processed_file = processed_file[0]
-#     elif len(processed_file) == 0:
-#         print("No processed file found")
-#         processed_file = None
-#     elif len(processed_file) > 1:
-#         print("Too many processed files found. Not unique")
-#         processed_file = None
-    
-#     return processed_file
-
-# def remove_processed_file(subfolder,processed_folder,param):
-#     '''
-#     Check and remove any files matching datestr extracted from param input from processed files folder.
-#     This is to allow test of process function to be run multiple times.
-#     Processed files are found within processed files folder based on datestr from 
-#     param["year"] + param["month"].zfill(2)
-#     '''
-    
-#     files_in_folder = find_processed_file(subfolder,processed_folder,param)
-    
-# #    folder = os.path.join(subfolder,processed_folder)
-# #    
-# #    search_str = "*{}*.nc".format(create_datestr(param))
-# #    search_str = os.path.join(folder,search_str)
-# #    files_in_folder = glob.glob(search_str)
-    
-#     if files_in_folder is not None:
-#         os.remove(files_in_folder)
-
 def find_processed_file(param):
     '''
     Find NAME processed file based on search string:
@@ -413,11 +360,6 @@ def remove_processed_file(param):
     
     files_in_folder = find_processed_file(param)
     
-#    folder = os.path.join(subfolder,processed_folder)
-#    
-#    search_str = "*{}*.nc".format(create_datestr(param))
-#    search_str = os.path.join(folder,search_str)
-#    files_in_folder = glob.glob(search_str)
     
     if files_in_folder is not None:
         os.remove(files_in_folder)
