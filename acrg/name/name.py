@@ -15,7 +15,7 @@ import glob
 import pandas as pd
 import bisect
 import subprocess
-import json
+# import json
 from os.path import join
 import xarray as xr
 import calendar
@@ -28,6 +28,10 @@ from acrg.time import convert
 import acrg.obs as obs
 from acrg.config.paths import Paths
 from acrg.utils import is_number
+from acrg.utils import load_json
+
+from openghg_defs import site_info_file
+from openghg_defs import species_info_file
 
 from tqdm import tqdm
 import dask.array as da
@@ -35,12 +39,15 @@ import dask.array as da
 acrg_path = Paths.acrg
 data_path = Paths.data
 
-# Get site_info and species_info file
-with open(acrg_path / "data/site_info.json") as f:
-    site_info=json.load(f,object_pairs_hook=OrderedDict)
+site_info = load_json(site_filename)
+species_info= load_json(species_filename)
 
-with open(acrg_path / "data/species_info.json") as f:
-    species_info=json.load(f)
+# Get site_info and species_info file
+# with open(acrg_path / "data/site_info.json") as f:
+#     site_info=json.load(f,object_pairs_hook=OrderedDict)
+
+# with open(acrg_path / "data/species_info.json") as f:
+#     species_info=json.load(f)
 
 def open_ds(path, chunks=None, combine=None):
     """

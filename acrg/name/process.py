@@ -49,6 +49,7 @@ from acrg.config.version import code_version
 import acrg.obs as obs
 import acrg.time as acrg_time
 from acrg.config.paths import Paths
+from acrg.utils import load_json
 
 
 #Default NAME output file version
@@ -2121,8 +2122,9 @@ def process(domain, site, height, year, month,
         fields_folder = "MixR_files"
     
     if species is not None:
-        with open(os.path.join(acrg_path,"data/species_info.json")) as f:
-            species_info=json.load(f)
+        # with open(os.path.join(acrg_path,"data/species_info.json")) as f:
+        #     species_info=json.load(f)
+        species_info= load_json(species_filename)
         species = obs.read.synonyms(species, species_info)
         if 'lifetime' in species_info[species].keys():
             lifetime = species_info[species]["lifetime"]
