@@ -1043,8 +1043,6 @@ def process_site_species_param(site_param_species,folder_names,site_directory):
     
     process_dir = os.path.join(site_directory, "Processed_Fields_files")
     param["process_dir"] = process_dir
-
-    #param["unzip"] = True
     
     return param
 
@@ -1061,8 +1059,6 @@ def test_process_site_species(process_site_species_param):
     4-hour back period (OutputTime) for 1 release (ReleaseTime) at 04:00 
     '''
     ph.remove_processed_file(process_site_species_param)
-    
-    print(process_site_species_param)
     out = process.process(**process_site_species_param)
 
     assert out is not None
