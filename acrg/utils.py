@@ -142,7 +142,7 @@ def combine_diff_resolution(data_1, data_2, method='add', verbose=True):
     
     return output
 
-def load_json(filename: pathType, internal_data: bool = False) -> Dict:
+def load_json(filename):
     """Returns a dictionary deserialised from JSON.
 
     Args:
@@ -154,9 +154,6 @@ def load_json(filename: pathType, internal_data: bool = False) -> Dict:
         dict: Dictionary created from JSON
     """
     from json import load
-
-    if internal_data:
-        filename = get_datapath(filename)
 
     with open(filename, "r") as f:
         data: Dict[str, Any] = load(f)

@@ -24,7 +24,6 @@ To run all tests except those labelled 'long' use the syntax
 @author: rt17603
 """
 
-from cachetools import cached
 import pytest
 import os
 import sys

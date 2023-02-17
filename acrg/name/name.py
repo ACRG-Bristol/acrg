@@ -39,8 +39,8 @@ import dask.array as da
 acrg_path = Paths.acrg
 data_path = Paths.data
 
-site_info = load_json(site_filename)
-species_info= load_json(species_filename)
+site_info = load_json(site_info_file)
+species_info= load_json(species_info_file)
 
 # Get site_info and species_info file
 # with open(acrg_path / "data/site_info.json") as f:

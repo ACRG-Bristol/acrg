@@ -35,7 +35,7 @@ import numpy as np
 import pandas as pd
 import scipy.constants as const
 import os
-import json
+# import json
 import xarray as xray
 import matplotlib.pyplot as plt
 import getpass
@@ -50,6 +50,8 @@ import acrg.obs as obs
 import acrg.time as acrg_time
 from acrg.config.paths import Paths
 from acrg.utils import load_json
+
+from openghg_defs import species_info_file
 
 
 #Default NAME output file version
@@ -2124,7 +2126,7 @@ def process(domain, site, height, year, month,
     if species is not None:
         # with open(os.path.join(acrg_path,"data/species_info.json")) as f:
         #     species_info=json.load(f)
-        species_info= load_json(species_filename)
+        species_info= load_json(species_info_file)
         species = obs.read.synonyms(species, species_info)
         if 'lifetime' in species_info[species].keys():
             lifetime = species_info[species]["lifetime"]
