@@ -35,7 +35,6 @@ import numpy as np
 import pandas as pd
 import scipy.constants as const
 import os
-# import json
 import xarray as xray
 import matplotlib.pyplot as plt
 import getpass
@@ -2124,8 +2123,6 @@ def process(domain, site, height, year, month,
         fields_folder = "MixR_files"
     
     if species is not None:
-        # with open(os.path.join(acrg_path,"data/species_info.json")) as f:
-        #     species_info=json.load(f)
         species_info= load_json(species_info_file)
         species = obs.read.synonyms(species, species_info)
         if 'lifetime' in species_info[species].keys():

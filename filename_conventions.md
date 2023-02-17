@@ -20,7 +20,7 @@ Files must then be named as follows:
     - For satellite data, this is an indication of both the satellite indicator (e.g. gosat, tropomi) and a name for the region the observation files are related to (seperated by a '-') e.g. gosat-india, tropomi-brazil
  
 - Startdate: YYYYMMDD of the first data point
-- Species: Gas species (e.g. ch4, co2, cfc11). *Don't* include hyphens in here (e.g. cfc11, not cfc-11). *Do* check that species are named consistently with the acrg_species_info.json keys.
+- Species: Gas species (e.g. ch4, co2, cfc11). *Don't* include hyphens in here (e.g. cfc11, not cfc-11). *Do* check that species are named consistently with the species_info.json keys in openghg/supplementary_data.
 - Inlet (**optional**): If multiple inlets are available at a site, use this entry to specify the inlet name, typically the height with an "m". E.g. "100m".
 - Version: A version name/number, typically the date that the file was created.
 

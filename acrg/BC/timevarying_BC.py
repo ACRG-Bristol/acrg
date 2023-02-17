@@ -111,7 +111,7 @@ class BoundaryConditions:
                 Default = None. If this is set to None this will be automatically determined.
             convert_units (bool, optional)
                 If True, units will be converted from mol/mol to parts per e.g. ppt, ppb, ppm
-                The units to be converted to will be extracted from acrg_species_info.json
+                The units to be converted to will be extracted from species_info.json
             datasource (str, optional)
                 source from which data was taken
             out_path : str, optional)
@@ -157,12 +157,12 @@ class BoundaryConditions:
                 Adds an integer to the BoundaryConditions object
                 Can be accessed using BoundaryConditions_obj.conversion
         '''
-        if 'json' not in dir(): import json
+        from acrg.utils import load_json
         from collections import OrderedDict
         from acrg_convert import concentration
+        from openghg_defs import species_info_file
         
-        with open(os.path.join(self.acrg_path, "acrg_species_info.json")) as ff:
-            species_info=json.load(ff, object_pairs_hook=OrderedDict)
+        species_info= load_json(species_info_file)
         
         self.conversion = concentration(species_info[self.species.upper()]['units'])
         if verbose: print(f'Unit conversion : {self.conversion}')
