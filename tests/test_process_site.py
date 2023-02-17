@@ -100,7 +100,7 @@ def site_param_species():
     param["year"] = 2010
     param["month"] = 1
     param["satellite"] = False
-    param["species"] = "HFO-1234zee"
+    param["species"] = "HFO1234zee"
    
     return param
 
