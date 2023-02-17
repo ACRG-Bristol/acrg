@@ -82,10 +82,10 @@ def output_directory():
 @pytest.fixture()
 def fs_mock(fs, fp_directory, flux_directory, bc_directory, basis_directory, bc_basis_directory):
     #add the real jsons to the fake file system:
-    # fs.add_real_file(os.path.join(acrg_path, "data/species_info.json"))
-    # fs.add_real_file(os.path.join(acrg_path, "data/site_info.json"))
-    fs.add_real_file(species_info_file)
-    fs.add_real_file(site_info_file)
+    fs.add_real_file(os.path.join(acrg_path, "data/species_info.json"))
+    fs.add_real_file(os.path.join(acrg_path, "data/site_info.json"))
+    # fs.add_real_file(species_info_file)
+    # fs.add_real_file(site_info_file)
     #create footprint files
     fs.create_file(os.path.join(fp_directory, "EUROPE", "MHD-10magl_EUROPE_201402.nc"))
     fs.create_file(os.path.join(fp_directory, "EUROPE", "MHD-10magl_EUROPE_201405.nc"))
