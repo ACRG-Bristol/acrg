@@ -379,7 +379,7 @@ def obs_database(data_directory = None):
         raise Exception("You need to be in the acrg group to run this")
 
     # Directories to exclude from database
-    exclude = ["GOSAT", "TROPOMI", "unknown"]
+    exclude = ["GOSAT", "TROPOMI", "unknown", "archive"]
 
     network = []
     instrument = []
@@ -413,8 +413,6 @@ def obs_database(data_directory = None):
                     # TODO: Some files are empty. Figure out why!
                     if os.stat(f).st_size != 0:
 
-                        #TODO: add try/except to see if files open with xarray 
-
                         f_parts = f.name.split("_")
 
                         network.append(f_parts[0].split("-")[0])
@@ -429,13 +427,16 @@ def obs_database(data_directory = None):
                         else:
                             inlet.append("%")
 
-                        with xr.open_dataset(f) as ds:
-                            if "Calibration_scale" in ds.attrs.keys():
-                                calibration_scale.append(ds.attrs["Calibration_scale"])
-                            else:
-                                calibration_scale.append(None)
-                            start_date.append(pd.Timestamp(ds["time"].values[0]).to_pydatetime())
-                            end_date.append(pd.Timestamp(ds["time"].values[-1]).to_pydatetime())
+                        try:
+                            with xr.open_dataset(f) as ds:
+                                if "Calibration_scale" in ds.attrs.keys():
+                                    calibration_scale.append(ds.attrs["Calibration_scale"])
+                                else:
+                                    calibration_scale.append(None)
+                                start_date.append(pd.Timestamp(ds["time"].values[0]).to_pydatetime())
+                                end_date.append(pd.Timestamp(ds["time"].values[-1]).to_pydatetime())
+                        except ValueError as e:
+                            raise ValueError(f"Cannot open {f}: {str(e)}")
 
                         filename.append(str(f))
 

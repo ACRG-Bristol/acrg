@@ -14,7 +14,7 @@ import xarray as xray
 import json
 from os import stat
 import fnmatch
-from .utils import attributes, output_filename, cleanup
+from acrg.obs.utils import attributes, output_filename, cleanup
 
 from acrg.config.paths import Paths
 
@@ -126,50 +126,37 @@ def icos_data_read(data_file, species):
 
     print("Reading " + data_file)
 
-    # Find out how many header lines there are
-    nheader = 0
-    with open(data_file, "r") as f:
-        for l in f:
-            if l[0] != "#":
-                break
-            nheader += 1
-
     # Read CSV file
+    colnames = ["SamplingHeight",
+                "Year",
+                "Month",
+                "Day",
+                "Hour",
+                "Minute",
+                str(species.lower()),
+                "Stdev",
+                "NbPoints"]
     df =  pd.read_csv(data_file,
-                      skiprows = nheader-1,
-                      parse_dates = {"time": ["Year", "Month", "Day", "Hour", "Minute"]},
-                      index_col = "time",
+                      comment = "#",
                       sep = ";",
-                      usecols = ["Day", "Month", "Year", "Hour", "Minute",
-                                 str(species.lower()), "SamplingHeight",
-                                 "Stdev", "NbPoints"],
-                      dtype = {"Day": np.int,
-                               "Month": np.int,
-                               "Year": np.int,
-                               "Hour": np.int,
-                               "Minute": np.int,
-                               species.lower(): np.float,
-                               "Stdev": np.float,
-                               "SamplingHeight": np.float,
-                               "NbPoints": np.int},
+                      usecols = [1, 2, 3, 4, 5, 6, 8, 9, 10],
+                      names = colnames,
                       na_values = "-999.99")
 
-    # Format time
-    df.index = pd.to_datetime(df.index, format = "%Y %m %d %H %M")
+    # Create time index
+    df.index = pd.to_datetime(df[["Year", "Month", "Day", "Hour", "Minute"]])
+    df.index.name = "time"
+    
+    df = df[[species.lower(), "NbPoints", "Stdev", "SamplingHeight"]]
 
-    df = df[df[species.lower()] >= 0.]
-
-    # Remove duplicate indices
-    df.reset_index(inplace = True)
-    df = df.reset_index().drop_duplicates(subset='index').set_index('index')
-
+    # Remove duplicates
+    df = df.reset_index().drop_duplicates(subset='time').set_index('time')
+    
     # Rename columns
     df.rename(columns = {species.lower(): species.upper(),
                          "Stdev": species.upper() + " variability",
                          "NbPoints": species.upper() + " number_of_observations"},
                inplace = True)
-
-    df.index.name = "time"
 
     # Convert to Dataset
     ds = xray.Dataset.from_dataframe(df.sort_index())
@@ -181,16 +168,17 @@ def icos(site, network = "ICOS",
          input_directory = None,
          output_directory = None,
          date_range = None,
-         version = None):
+         version = None,
+         time_res = "1minute"):
 
-    def find_species_inlet_model(filenames):
+    def find_species_inlet_inst(filenames):
         out = []
         for f in filenames:
             f_elements = f.split(".")
             if len(f_elements) == 6:
                 out.append((f_elements[1],
                             f_elements[4],
-                            "picarro" + f_elements[3].upper()))
+                            "picarro" + f_elements[2]))
             else:
                 out.append((f_elements[1],
                             f_elements[3],
@@ -207,19 +195,19 @@ def icos(site, network = "ICOS",
                             user_specified_input_directory = input_directory,
                             user_specified_output_directory = output_directory)
 
-    # Search for species, inlets and model from file names
-    data_file_search = join(data_folder, site.lower() + ".*.1minute.*.dat")
+    # Search for species, inlets and instrument (potentially including ICOS ID) from file names
+    data_file_search = join(data_folder, site.lower() + ".*." + time_res + ".*.dat")
     data_files = glob.glob(data_file_search)
     data_file_names = [split(f)[1] for f in data_files]
-    species_inlet_model = find_species_inlet_model(data_file_names)
+    species_inlet_inst = find_species_inlet_inst(data_file_names)
 
-    inlets = set([i for (s, i, m) in species_inlet_model])
+    inlets = set([i for (s, i, m) in species_inlet_inst])
 
-    for i, (species, inlet, model) in enumerate(species_inlet_model):
+    for i, (species, inlet, inst) in enumerate(species_inlet_inst):
 
         if stat(data_files[i]).st_size > 0:
 
-            # Create Pandas dataframe
+            # Create xarray dataset
             ds = icos_data_read(data_files[i], species.upper())
 
             # Sort out attributes
@@ -247,7 +235,7 @@ def icos(site, network = "ICOS",
                 # Write file
                 nc_filename = output_filename(output_folder,
                                               network,
-                                              model,
+                                              inst,
                                               site.upper(),
                                               ds.time.to_pandas().index.to_pydatetime()[0],
                                               ds.species,
@@ -309,22 +297,19 @@ def gc_data_read(dotC_file, scale = {}, units = {}):
             col_loc = df.columns.get_loc(column)
             # Get name of column before this one for the gas name
             gas_name = df.columns[col_loc - 1]
-            # Add it to the dictionary for renaming later
-            columns_renamed[column] = gas_name + "_flag"
-            # Create 2 new columns based on the flag columns
-            df[gas_name + " status_flag"] = (df[column].str[0] != "-").astype(int)
-            df[gas_name + " integration_flag"] = (df[column].str[1] != "-").astype(int)
-
             col_shift = -1
-            units[gas_name] = header.iloc[1, col_loc + col_shift]
-            scale[gas_name] = header.iloc[0, col_loc + col_shift]
-
-            # Ensure the units and scale have been read in correctly
-            # Have this in case the column shift between the header and data changes
-            if units[gas_name] == "--" or scale[gas_name] == "--":
-                raise ValueError("Error reading units and scale, ensure columns are correct between header and dataframe")
-
-            species.append(gas_name)
+            if header.iloc[1, col_loc + col_shift] == "--" or header.iloc[0, col_loc + col_shift] == "--":
+                df = df.drop(columns=[column,gas_name])
+                header = header.drop(columns=[header.columns[col_loc + col_shift], header.columns[col_loc]])
+            else:
+                # Add it to the dictionary for renaming later
+                columns_renamed[column] = gas_name + "_flag"
+                # Create 2 new columns based on the flag columns
+                df[gas_name + " status_flag"] = (df[column].str[0] != "-").astype(int)
+                df[gas_name + " integration_flag"] = (df[column].str[1] != "-").astype(int)
+                units[gas_name] = header.iloc[1, col_loc + col_shift]
+                scale[gas_name] = header.iloc[0, col_loc + col_shift]
+                species.append(gas_name)
 
     # Rename columns to include the gas this flag represents
     df = df.rename(columns=columns_renamed, inplace=False)
@@ -431,11 +416,25 @@ def gc(site, instrument, network,
     # Concatenate
     dfs = pd.concat(dfs).sort_index()
 
-    # Apply timestamp correction, because GCwerks currently outputs
-    #   the CENTRE of the sampling period
-    dfs["new_time"] = dfs.index - \
-            pd.Timedelta(seconds = params["GC"]["sampling_period"][instrument]/2.)
-    dfs = dfs.set_index("new_time", inplace=False, drop=True)
+    # Apply timestamp correction - there are 3 timestamps in the .C file.
+    #
+    # For the Medusa we have:
+    # Year             = decimal timestamp of mid-sample point
+    # yyyy mm dd hh mi = timestamp of mid-sample point
+    # ryyy rm rd rh ri = timestamp of runtime (which is the same as the chromatogram and stripchart time)
+    #
+    # We have already calculated the index based on the second of these (mid-sample timestamp)
+    # But we want to use the start of the sample period for the .nc file timestamps.
+    # 
+    # For the MD we essentially have an instantaneous sample, and all 3 timestamps are the same.
+    # Theses timestamps actually represent the time of the first "stripchart store" command in the
+    # GCWerks runfile, truncated to the previous minute (i.e. with the seconds chopped off)
+    # This is within a minute of the instantaneous sample time that we are after, which is as precise
+    # as we can be given that the .C files don't contain seconds. So no need to correct for the MD data.
+    if instrument != "GCMD": 
+        dfs["new_time"] = dfs.index - \
+                pd.Timedelta(seconds = params["GC"]["sampling_period"][instrument])/2
+        dfs = dfs.set_index("new_time", inplace=False, drop=True)
 
     # Label time index
     dfs.index.name = "time"
@@ -629,7 +628,12 @@ def crds_data_read(data_file):
     # Check if the index is sorted and if not sort it
     if not df.index.is_monotonic_increasing:
         df.sort_index()
+        
+    # Set timestamp to left label
+    df["new_time"] = df.index - pd.Timedelta(seconds = 30)
+    df = df.set_index("new_time", inplace=False, drop=True)
 
+    # Label time index
     df.index.name = "time"
 
     # Remove duplicates
@@ -676,7 +680,7 @@ def crds(site, network,
 
     for i, inlet in enumerate(inlets):
 
-        # Create Pandas dataframe
+        # Create xarray dataset
         ds, species = crds_data_read(data_files[i])
 
         # Write netCDF file for each species
@@ -868,25 +872,24 @@ def ale_gage(site, network):
 def mhd_o3():
 
     channels = ["channel1", "channel0", "channel2"]
-    base_directory = "/dagage2/agage/macehead-ozone/results/export/"
-
+    #base_directory = "/dagage2/agage/macehead-ozone/results/reported/"
+    base_directory = "/group/chemistry/acrg/obs_raw/MHD_o3/reported/"
+    
     df = []
 
-    for channel in channels:
+    o3_files = sorted(glob.glob(join(base_directory, "*.csv")))
 
-        files_channel = sorted(glob.glob(join(base_directory, channel, "*.csv")))
+    for f in o3_files:
 
-        for f in files_channel:
-
-            df.append(pd.read_csv(f, sep=",",
-                                  names = ["datetime",
-                                           "ozone",
-                                           "ozone_variability",
-                                           "ozone_number_samples"],
-                                  na_values = "NA",
-                                  index_col = "datetime",
-                                  parse_dates = ["datetime"]))
-            df[-1].dropna(inplace = True)
+        df.append(pd.read_csv(f, sep=",",
+                              names = ["datetime",
+                                       "ozone",
+                                       "ozone_variability",
+                                       "ozone_number_samples"],
+                              na_values = "NA",
+                              index_col = "datetime",
+                              parse_dates = ["datetime"]))
+        df[-1].dropna(inplace = True)
 
     df = pd.concat(df)
     df.index.name = "index"
@@ -900,17 +903,18 @@ def mhd_o3():
     ds = attributes(ds,
                     "ozone",
                     "MHD",
-                    network = network,
+                    network = "AGAGE",
                     scale = "SCALE",
                     sampling_period=60*60,
                     units = "ppb")
 
     # Write file
-    nc_filename = output_filename("/dagage2/agage/metoffice/processed_observations_2018",
+    #nc_filename = output_filename("/dagage2/agage/metoffice/processed_observations_Jan22",
+    nc_filename = output_filename("/group/chemistry/acrg/obs",
                                   "AURN",
                                   "thermo",
                                   "MHD",
-                                  str(ds.time.to_pandas().index.to_pydatetime()[0].year),
+                                  ds.time.to_pandas().index.to_pydatetime()[0],
                                   ds.species,
                                   site_params["MHD"]["AGAGE"]["height"][0])
     print("Writing " + nc_filename)
@@ -1024,8 +1028,6 @@ def array_job(array_index):
         [gc, ("TAC", "medusa", "DECC")],
         # Bristol CRDS
 #        [crds, ("BRI", "DECC")],
-        # ICOS
-#        [icos, ("TTA", "DECC")],
         [icos, ("MHD", "ICOS")]]
     
     # Return if index is too large for the above list
@@ -1041,7 +1043,7 @@ def array_job(array_index):
     
 if __name__ == "__main__":
 
-    # AGAGE Medusa
+     # AGAGE Medusa
     gc("MHD", "medusa", "AGAGE")
     gc("CGO", "medusa", "AGAGE")
     gc("GSN", "medusa", "AGAGE")
@@ -1095,7 +1097,6 @@ if __name__ == "__main__":
     gc("TAC", "medusa", "DECC")
 
     # ICOS
-    icos("TTA", network = "DECC")
     icos("MHD", network = "ICOS")
 
     cleanup("CGO")
