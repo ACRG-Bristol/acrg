@@ -1,0 +1,49 @@
+name: ACRG tests
+
+on:
+  push:
+    branches: [master, develop]
+    tags:
+    - '*'
+  pull_request:
+    branches: [master, develop]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.operating-system }}
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    strategy:
+      max-parallel: 4
+      fail-fast: false
+      matrix:
+        operating-system: [ubuntu-latest, macos-latest]
+        python-version: ["3.10"]
+    defaults:
+      run:  # This ensure that conda finds the environment for the setup-miniconda action
+        shell: bash -l {0}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Set up conda for Python ${{ matrix.python-version }}
+      uses: conda-incubator/setup-miniconda@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+        environment-file: environment.yml
+        activate-environment: acrg
+        auto-activate-base: false
+        miniforge-variant: Mambaforge  # Based on discussion within: https://github.com/conda-incubator/setup-miniconda/issues/116
+    - name: Test with pytest
+      run: pytest --verbose
+        
+    #     --cov=./ --cov-report=xml
+
+    # - name: Upload coverage to Codecov
+    #   run: |
+    #     curl -s https://codecov.io/bash > codecov;
+    #     VERSION=$(grep -o 'VERSION=\"[0-9\.]*\"' codecov | cut -d'"' -f2);
+    #     for i in 1 256 512
+    #     do
+    #       shasum -a $i -c --ignore-missing <(curl -s "https://raw.githubusercontent.com/codecov/codecov-bash/${VERSION}/SHA${i}SUM") ||
+    #       shasum -a $i -c <(curl -s "https://raw.githubusercontent.com/codecov/codecov-bash/${VERSION}/SHA${i}SUM")
+    #     done
+    #     bash codecov || echo "Codecov did not collect coverage reports"
