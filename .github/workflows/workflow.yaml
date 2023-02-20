@@ -28,10 +28,11 @@ jobs:
       uses: conda-incubator/setup-miniconda@v2
       with:
         python-version: ${{ matrix.python-version }}
+        miniforge-variant: Mambaforge  # This line and line below added based on discussion within: https://github.com/conda-incubator/setup-miniconda/issues/116
+        miniforge-version: latest
         environment-file: environment.yml
         activate-environment: acrg
         auto-activate-base: false
-        miniforge-variant: Mambaforge  # Based on discussion within: https://github.com/conda-incubator/setup-miniconda/issues/116
     - name: Test with pytest
       run: pytest --verbose
         
