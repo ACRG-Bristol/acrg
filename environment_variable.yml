@@ -1,26 +1,27 @@
-# This is a variable version acrg_environment.yml file. Will download whichever version of the packages are available when environment is created.
+# This is a variable version environment.yml file. Will download whichever version of the packages are available when environment is created.
 name: acrg_var
 channels:
   - conda-forge
 dependencies:
   - python=3.10
-  - numpy
-  - scipy
-  - pandas
-  - h5py
-  - netCDF4
-  - xarray
-  - matplotlib-base
-  - cartopy
-  - geopandas
-  - iris
   - pymc3
-  - yaml
-  - numba
-  - tqdm
-  - numexpr
-  - iso3166
+  - matplotlib-base
+  - netcdf4
+  - numpy
   - regionmask
+  - xarray
+  - iso3166
+  - pandas
+  - numexpr
+  - tqdm
   - xesmf
-  - pyfakefs
+  - geopandas
+  - yaml
+  - iris
+  - cartopy
+  - h5py
+  - numba
+  - scipy
   - pytest
+  - pyfakefs
+  - cachetools
