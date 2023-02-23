@@ -147,9 +147,6 @@ def load_json(filename):
 
     Args:
         filename: Name of JSON file
-        internal_data: Whether to use data internal to OpenGHG. This refers
-            to JSON files stored within the openghg/data/ folder.
-            If this is set to False, the full path to the file needs to be included.
     Returns:
         dict: Dictionary created from JSON
     """
