@@ -5,7 +5,6 @@ Created on Fri Dec 14 14:02:12 2018
 
 @author: chxmr
 """
-import json
 import pandas as pd
 import glob
 import os
@@ -19,14 +18,15 @@ from collections import OrderedDict
 from acrg.obs.process_gcwerks import set_encoding
 
 from acrg.config.paths import Paths
+from acrg.utils import load_json
+
+from openghg_defs import site_info_file
 
 acrg_path = Paths.acrg
 obs_directory = Paths.obs
 data_path = obs_directory.parent
 
-
-with open(acrg_path / "data/site_info.json") as f:
-    site_params=json.load(f, object_pairs_hook=OrderedDict)
+site_params = load_json(site_info_file)
 
 
 def generic_data_read(site,

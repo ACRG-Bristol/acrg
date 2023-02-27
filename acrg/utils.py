@@ -2,9 +2,9 @@ import gzip
 import bz2
 import os 
 import shutil
+import json
 
 from acrg.config.paths import Paths
-
 
 acrg_path = Paths.acrg
 
@@ -141,3 +141,18 @@ def combine_diff_resolution(data_1, data_2, method='add', verbose=True):
     output = grouped_data.map(combine_method, method=method)
     
     return output
+
+def load_json(filename):
+    """Returns a dictionary deserialised from JSON.
+
+    Args:
+        filename: Name of JSON file
+    Returns:
+        dict: Dictionary created from JSON
+    """
+    from json import load
+
+    with open(filename, "r") as f:
+        data: Dict[str, Any] = load(f)
+
+    return data

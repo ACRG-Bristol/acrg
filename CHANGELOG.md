@@ -10,6 +10,8 @@ Use this section to keep track of any intermediate changes that can then be move
 
 ### Changed
 
+All calls to species_info.json and site_info.json are now made through the openghg/supplementary_data repository.
+
 ### Removed
 
 

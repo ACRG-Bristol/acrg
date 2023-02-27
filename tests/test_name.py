@@ -24,7 +24,6 @@ To run all tests except those labelled 'long' use the syntax
 @author: rt17603
 """
 
-from cachetools import cached
 import pytest
 import os
 import sys
@@ -37,6 +36,8 @@ import pickle
 import acrg.name.name as name
 import acrg.obs.read as read
 from acrg.config.paths import Paths
+from openghg_defs import site_info_file
+from openghg_defs import species_info_file
 
 
 acrg_path = Paths.acrg
@@ -82,8 +83,8 @@ def output_directory():
 @pytest.fixture()
 def fs_mock(fs, fp_directory, flux_directory, bc_directory, basis_directory, bc_basis_directory):
     #add the real jsons to the fake file system:
-    fs.add_real_file(os.path.join(acrg_path, "data/species_info.json"))
-    fs.add_real_file(os.path.join(acrg_path, "data/site_info.json"))
+    fs.add_real_file(species_info_file)
+    fs.add_real_file(site_info_file)
     #create footprint files
     fs.create_file(os.path.join(fp_directory, "EUROPE", "MHD-10magl_EUROPE_201402.nc"))
     fs.create_file(os.path.join(fp_directory, "EUROPE", "MHD-10magl_EUROPE_201405.nc"))
