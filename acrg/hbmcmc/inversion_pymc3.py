@@ -188,9 +188,10 @@ def inferpymc3(Hx, Y, error, siteindicator, sigma_freq_index,
             else:
                 mu = pm.math.dot(hx,x)     
             epsilon = pm.math.sqrt(error**2 + sig[sites, sigma_freq_index]**2)
-            print('Epsilon squared =', error**2 + sig[sites, sigma_freq_index]**2)
+            print(f"mu:{mu}")
 
         y = pm.Normal('y', mu = mu, sd=epsilon, observed=Y, shape = ny)
+        print(f"y:{y}")
 
         step1 = pm.NUTS(vars=[x])
         if sigma_fixed:
