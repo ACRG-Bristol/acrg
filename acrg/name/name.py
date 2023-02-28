@@ -3,25 +3,25 @@
 Created on Mon Nov 10 10:45:51 2014
 
 """
-import numpy as np
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-from matplotlib.ticker import MaxNLocator
-from matplotlib import ticker
-import datetime as dt
 import os
 import sys
 import glob
-import pandas as pd
 import bisect
-import subprocess
-from os.path import join
-import xarray as xr
-import calendar
-from dateutil import relativedelta
-import cartopy.crs as ccrs
 import cartopy
-from collections import OrderedDict
+import calendar
+import subprocess
+import numpy as np
+import pandas as pd
+import xarray as xr
+import datetime as dt
+from tqdm import tqdm
+import dask.array as da
+from os.path import join
+import cartopy.crs as ccrs
+from matplotlib import ticker
+import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
+from dateutil.relativedelta import relativedelta
 
 from acrg.time import convert
 import acrg.obs as obs
@@ -31,9 +31,6 @@ from acrg.utils import load_json
 
 from openghg_defs import site_info_file
 from openghg_defs import species_info_file
-
-from tqdm import tqdm
-import dask.array as da
 
 acrg_path = Paths.acrg
 data_path = Paths.data
