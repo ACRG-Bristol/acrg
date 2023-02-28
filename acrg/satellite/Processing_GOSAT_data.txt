@@ -1,0 +1,282 @@
+
+=====================
+Processing GOSAT data
+=====================
+
+The script to process the GOSAT data into the correct format is "run_gosat_process.py". The inputs for this script are defined within the "gosat_process.ini" file in the same directory. This file can be copied to some local directory and updated or edited directly. Please see the docstring within the "run_gosat_process.py" for more details of the options and how this is run.
+
+The input to this code should be a global Level 2 GOSAT product files (provided by the University of Leicester). This needs to be obtained before the processing code can be run.
+
+Running this script on the command line uses the following syntax::
+
+    $ python run_gosat_process.py   -c gosat_process.ini
+
+The "gosat_process.ini" file is split into sections (defined structure should be maintained) and allows each relevant parameter to be specified.  The full list of available options are defined within "acrg_config/templates/gosat_process_template.ini".
+
+The key input parameters are as follows:
+
+- MEASUREMENTS
+
+ - input_directory
+
+   - Directory containing GOSAT files
+
+ - species
+
+   - Species name. Should be set to "ch4" for methane at present
+
+- MEASUREMENTS.SELECTION
+
+ - site
+
+   - Site name. This is a name to be picked which will be incorporated into the output name of the files. e.g. "GOSAT-BRAZIL" or "GOSAT-CHINA".
+
+ - lat_bounds
+
+   - Latitude lower and upper bounds for the region of interest (note: should be within a NAME domain - more on this later)
+
+ - lon_bounds
+
+   - Longitude lower and upper bounds for the region of interest
+
+ - coord_bin
+
+   - Details for the binning if you wish to group together GOSAT points to provide a different resolution.
+
+ - start
+
+   - Start of date range to interest. Should be in the format "YYYY-MM-DD" e.g. "2012-01-31"
+
+ - end
+
+   - End of date range of interest (up to but not including this date). Should match start format.
+
+Example gosat_process.ini file details::
+
+    ; GOSAT process parameter file
+ 
+    [MEASUREMENTS]
+    ; Details of GOSAT Measurements
+ 
+    input_directory = "/data/shared/obs_raw/GOSAT/CH4_GOS_OCPR_v7.2/" ; Location of input GOSAT files
+    species = "ch4"                                                   ; Species GOSAT files are related to
+    
+    [MEASUREMENTS.SELECTION]
+    ; Criteria to select data to process within GOSAT dataset
+    
+    site = "GOSAT-BRAZIL"          ; Name of site (will be included in any output name) (str)
+    lat_bounds = [-35.753,7.251]   ; Upper and lower bounds of latitude range of selection (optional) (two item list)
+    lon_bounds = [-75.984,-32.793] ; Upper and lower bounds of longitude range of selection (optional) (two item list)
+    coord_bin = [0.234,0.352]      ; Binning to apply to the data (optional) (one or two item list)
+    start = '2016-05-11'           ; Start of date range of selection (optional) (str in format YYYY-MM-DD)
+    end = '2016-05-12'             ; End of date range of selection (optional) (str in format YYYY-MM-DD)
+
+
+NOTE on site definition: Within our code the site name will be used to find the associated network (i.e. collection of sites e.g. DECC or AGAGE). This is more relevant to ground-based sites rather than satellite data but this format is still used for consistency. The network is defined within the "site_info.json" file in the openghg/supplementary_data repository. Before running "run_gosat_process.py" add your chosen site name to this file in the same format as the other sites:
+
+e.g.::
+
+    "GOSAT-BRAZIL" : {
+        "alt": ["GOSAT"],
+        "long_name" : "GOSAT, Brazil",
+        "height": ["column"],
+        "height_name": ["column"],
+        "network": "GOSAT/GOSAT-BRAZIL",
+        "platform": "satellite"
+
+Update the details to match your parameters e.g. if creating a site called GOSAT-CHINA update the long_name to "GOSAT, China" and the network to "GOSAT/GOSAT-CHINA". If your site already exists it doesn't need to be added.
+
+Output file grouping
+^^^^^^^^^^^^^^^^^^^^
+
+The output files produced can either be per GOSAT point or can be grouped for each day. For more efficient running of NAME **it is recommended to produce output files which are grouped by day**:
+
+- OUTPUT
+
+ - file_per_day
+     Set to True to group data points into daily files rather than splitting into individual points. Default = False.
+
+Example gosat_process.ini file details:
+
+::
+
+ [OUTPUT]
+ ; Parameters to apply to all output files
+ 
+ file_per_day = True     ; Whether to include all points for one day in one file or in multiple files
+
+
+
+Creating observation netCDF files
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To create measurement files for use with the inversion code the following parameters need to be set:
+
+- NC.OUTPUT
+
+ - write_nc
+
+    - Set to True to write observation netCDF file suitable for use with tdmcmc code.
+
+ - output_directory
+
+    - Output directory for observation netCDF file.
+
+Example gosat_process.ini file details::
+
+ [NC.OUTPUT]
+ ; Parameters for netCDF output file
+ 
+ write_nc = True                         ; Whether to write a simulatenous netCDF file
+ output_directory = "/data/shared/obs" ; Base directory to write netCDF output. Delete input to use default.
+
+Creating NAME input files
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To create files suitable for generating NAME footprints the following parameters need to be set:
+
+- NAME.OUTPUT
+
+ - write_name
+    
+    - Set to True to write out a text file suitable for input into NAME.
+
+ - name_directory
+
+    - Output directory for NAME file.
+
+Example gosat_process.ini file details::
+
+ [NAME.OUTPUT]
+ ; Parameters for NAME input csv file
+
+ write_name = True           ; Whether to write NAME file
+ name_directory = "/data/rt17603/NAME_files" ; Base directory to write NAME output. Delete input to use default.
+
+Filtering
+^^^^^^^^^
+
+In addition to the parameters listed above various filtering options are available when processing the GOSAT data including:
+ 
+- MEASUREMENTS.FILTER
+
+ - quality_filt
+
+    - Filter by quality flag (filtered out by default)
+
+ - bad_pressure_filt
+
+    - Remove measurement points if any associated pressure values are -9999.99 (filtered out by default).
+
+ - mode
+
+    - Select only "land" or "glint" mode. (set to not filter by default)
+
+- MEASUREMENTS.NAME_SP_FILT
+
+ - name_sp_filt
+
+    - Filter by values associated with the NAME surface pressure (note: additional files must be created to be able to use this filter) (not used by default)
+
+Example gosat_process.ini file details::
+
+ [MEASUREMENTS.FILTER]
+ ; Filters to apply to the data based on flags
+ 
+ quality_filt = True      ; Remove data points where quality filter flag indicates possible bad data
+ bad_pressure_filt = True ; Remove data points where pressure value is unknown for at least one pressure level
+ mode = ''                ; Select data points based on mode (either "land" or "glint") (optional)
+  
+NAME surface pressure filtering and use
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Options are included to allow filtering by NAME surface pressure values associated with each GOSAT measurement (location and time). These are the input pressure values at the surface generated by the Met Office Unified Model (UM) and used by NAME when modelling. To apply this filtering, the NAME surface pressure data files must have been generated beforehand. Ask Rachel if you need this output.
+
+The GOSAT pressure profile is split into 20 levels, the first being the surface pressure with decreasing values up to the top of the modelled atmosphere. The GOSAT surface pressure does not necessarily match to the pressure value used within NAME and the filtering is based on comparison of these GOSAT pressure levels and the surface pressure NAME will be using.
+
+This surface pressure data can be used in one of two ways:
+
+1. Used as a filter for the data including:
+
+ a. Removing any points where the NAME surface pressure is less than the second level within the GOSAT data. ("level_order")
+ b. Removing any points where the GOSAT surface pressure is outside a percentage cutoff of the NAME surface pressure. ("cutoff")
+ c. Removing any points where the derived width of the layer is above or below a certain range (too wide or too narrow). ("dpressure_range")
+
+2. Used explicitly as the surface pressure in the NAME input files. This only applies to the NAME options and not the netCDF output files.
+
+Option 2. is useful because the boundaries for releasing particles within the NAME model are defined using the pressure levels values. Explicitly using the NAME surface pressure value ensures that, within NAME, the particles are always released from the modelled surface. If the GOSAT surface pressure level was very different then NAME may attempt to release below the modelled ground level (which would be result in excess particles released at the surface as nothing can be released below ground) or far above the modelled surface.
+
+To access NAME pressure data set the following parameters:
+
+- NAME.SURFACE_PRESSURE
+
+ - pressure_base_dir
+    
+     - Directory containing NAME surface pressure data separated by domain.
+
+ - pressure_domain
+
+    - Domain for accessing pressure files from pressure_base_dir (or default). Must be specified to access pressure files if domain has not been provided.
+
+ - pressure_max_days
+
+    - Maximum number of days before date to use when searching for the relevant pressure data (default = 31)
+
+ - pressure_day_template
+
+    - Use nearest day as a template for the change of pressure over the course of the day and match to the nearest time on that day. (default = True)
+
+The pressure files should be stored in a directory with the structure of pressure_base_dir/pressure_domain
+e.g. if pressure_base_dir = "/data/shared/NAME/surface_pressure" and pressure_domain = "EASTASIA" the files should be stored in a directory:
+"/data/shared/NAME/surface_pressure/EASTASIA"
+  
+Note: pressure_max_days should be set to the minimum possible number of days to look for the pressure values. If the NAME surface pressure has been generated for one day each month then this should be set to 31. If these files have been generated for every day then this should be set to 1 (otherwise the script will run very slowly). 
+
+For filtering options (1):
+
+- MEASUREMENTS.NAME_SP_FILT
+
+ - name_sp_filt
+
+    -  Filter by values associated with the NAME surface pressure (note: additional files must be created to be able to use this filter). (not used by default)
+
+ - name_filters
+
+    - List of which NAME surface pressure filters to apply. Options include "level_order", "cutoff" or "dpressure_range".
+ - cutoff
+
+    - Only applicable if "cutoff" is included in name_filters. Percentage cutoff to apply from comparison between input pressure data and NAME pressure.
+
+ - layer_range 
+
+    - Only applicable if "dpressure_range" is included in name_filters. Range in metres the surface layer should have (will be converted to pressure units using barometric equation).
+
+For NAME output file options (2):
+
+- NAME.SURFACE_PRESSURE
+
+ - use_name_pressure
+
+    - Whether to use NAME surface pressure instead of GOSAT surface pressure in NAME files. Set to True to use.
+
+
+Example gosat_process.ini file details::
+
+ [MEASUREMENTS.NAME_SP_FILT]
+ 
+ name_sp_filt = False     ; Whether to apply any NAME surface pressure filters
+ name_filters = []        ; List of which NAME surface pressure filters to apply. Options listed above.
+ cutoff = 5.0             ; Percentage cutoff to apply from comparison between input pressure data and NAME pressure.
+ layer_range = [50.,500.] ; Range in metres the surface layer should have (will be converted to pressure units using barometric 
+ equation). 
+ 
+ [NAME.SURFACE_PRESSURE]
+ 
+ use_name_pressure = False ; Whether to use NAME surface pressure instead of GOSAT surface pressure in NAME files
+ pressure_base_dir = ""    ; Link to directory containing NAME surface pressure data separated by domain.
+ pressure_domain = ""      ; Domain for accessing pressure files from pressure_base_dir (or default). Must be specified to access 
+ pressure files if domain has not been provided.
+ pressure_max_days = 31    ; Maximum number of days before date to use when searching for the relevant pressure data. 
+ pressure_day_template = True ; Use nearest day as a template for the change of pressure over the course of the day and match to the 
+ nearest time on that day.
+   

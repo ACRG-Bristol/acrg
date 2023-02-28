@@ -11,7 +11,7 @@ rsync -avh dagage2.chm.bris.ac.uk:/agage/summary/gccompare-decc/data/md/* /group
 
 # DECC/GAUGE/AGAGE CRDS
 folders=`ssh dagage2.chm.bris.ac.uk "ls /agage/"`
-sites="barbados bilsdale heathfield ridgehill tacolneston"
+sites="angus barbados bilsdale heathfield ridgehill tacolneston"
 
 for folder in $folders
 do
@@ -32,3 +32,6 @@ rsync -avh dagage2.chm.bris.ac.uk:/agage/tacolneston-lgr/results-gcwerks/*.dat /
 # Copy ICOS data
 rsync -avh dagage2.chm.bris.ac.uk:/agage/macehead-picarro/results-icos/* /group/chemistry/acrg/obs_raw/AGAGE_GCWerks/data-icos/macehead/
 rsync -avh dagage2.chm.bris.ac.uk:/agage/angus-picarro/results-icos/* /group/chemistry/acrg/obs_raw/AGAGE_GCWerks/data-icos/angus/
+
+# Copy MHD ozone (first run /agage/macehead-ozone/rsync.macehead-ozone.sh on dagage2 to sync data from agage3)
+rsync -avh dagage2.chm.bris.ac.uk:/agage/macehead-ozone/results/reported/* /group/chemistry/acrg/obs_raw/MHD_o3/reported/

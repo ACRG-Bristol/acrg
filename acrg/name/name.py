@@ -3,44 +3,44 @@
 Created on Mon Nov 10 10:45:51 2014
 
 """
+import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
+from matplotlib import ticker
+import datetime as dt
 import os
-from sqlite3 import Time
 import sys
 import glob
-import json
-import bisect
-import cartopy
-import calendar
-import subprocess
-import numpy as np
 import pandas as pd
-import xarray as xr
-from tqdm import tqdm
-import datetime as dt
-import dask.array as da
+import bisect
+import subprocess
 from os.path import join
-import matplotlib as mpl
+import xarray as xr
+import calendar
+from dateutil import relativedelta
 import cartopy.crs as ccrs
-from matplotlib import ticker
-import matplotlib.pyplot as plt
+import cartopy
 from collections import OrderedDict
-from matplotlib.ticker import MaxNLocator
-from dateutil.relativedelta import relativedelta
 
-import acrg.obs as obs
 from acrg.time import convert
-from acrg.utils import is_number
+import acrg.obs as obs
 from acrg.config.paths import Paths
+from acrg.utils import is_number
+from acrg.utils import load_json
+
+from openghg_defs import site_info_file
+from openghg_defs import species_info_file
+
+from tqdm import tqdm
+import dask.array as da
 
 acrg_path = Paths.acrg
 data_path = Paths.data
 
-# Get site_info and species_info file
-with open(acrg_path / "data/site_info.json") as f:
-    site_info=json.load(f,object_pairs_hook=OrderedDict)
+site_info = load_json(site_info_file)
+species_info= load_json(species_info_file)
 
-with open(acrg_path / "data/species_info.json") as f:
-    species_info=json.load(f)
 
 def open_ds(path, chunks=None, combine=None):
     """
