@@ -118,8 +118,7 @@ def filenames(site, domain, start, end, height, fp_directory, met_model = None, 
         height (str) : 
             Height related to input data. 
         fp_directory (str) :
-            fp_directory can be specified if files are not in the default directory must point to a directory 
-            which contains subfolders organized by domain.
+            a directory containing subfolders organized by domain, if files are not in the default directory
         met_model (str):
             Met model used to run NAME
             Default is None and implies the standard global met model
@@ -264,11 +263,8 @@ def footprints(sitecode_or_filename, met_model = None, fp_directory = None,
                                {"MHD":'UKV', "JFJ":None} or {"MHD":'UKV', "TAC":"UKV"}
                                {"MHD":None, "TAC":None} is equivalent to met_model = None
                                {"MHD":'UKV', "TAC":'UKV'} is equivalent to met_model = 'UKV'
-        fp_directory (str/dict) : 
-            If the high time resolution footprints are used (HiTRes = True) fp_directory must be a dictionary
-            of the form :
-                fp_directory = {"integrated":PATH_TO_INTEGRATED_FP,"HiTRes":PATH_TO_HIGHTRES_FP}
-            otherwise can be a single string if only integrated FPs are used and non-default.
+        fp_directory (str) : 
+            a directory containing subfolders organized by domain, if files are not in the default directory
         start (str) : 
             Start date in format "YYYY-MM-DD" for range of files to find.
         end (str) : 
@@ -877,12 +873,7 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
                                in a second dictionary like so: {'anth': {'high_freq':'co2-ff-2hr', 'low_freq':'co2-ff-mth'}}.
                                It is not a problem to have a mixture of sources, with some that use HiTRes footprints and some
                                that don't.
-        fp_directory         : fp_directory must be a dictionary of the form 
-                               fp_directory = {"integrated":PATH_TO_INTEGRATED_FP, 
-                                               "HiTRes":PATH_TO_HIGHTRES_FP}
-                               if the high time resolution footprints are used (HiTRes = True)
-                               otherwise can be a single string if only integrated FPs are used and 
-                               non-default.
+        fp_directory         : a directory containing subfolders organized by domain, if files are not in the default directory
         flux_directory (str) : flux_directory can be specified if files are not in the default directory. 
                                Must point to a directory which contains subfolders organized by domain.
                                (optional)
