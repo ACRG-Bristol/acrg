@@ -12,7 +12,6 @@ bc_obj = BoundaryConditions(filename       = filename,
                             vmr_var        = 'vmr',
                             gph_height_var = 'height',
                             time_coord     = 'time',
-                            height_coord   = 'height',
                             species        = 'ch4',
                             domain         = 'EUROPE',
                             start_date     = None)
@@ -251,11 +250,7 @@ class BoundaryConditions:
                 Whether height values within th dataset input are in reverse order 
                 (i.e. nesw["gph"] level 1 values > nesw["gph"] level 2 values).
                 Default = None. If this is set to None this will be automatically determined.
-            height_coord (str, optional)
-                Used if reverse is not defined to extract appropriate
-                height values to compare.
-                nesw[height_coord] should be a 1D array of datetimes
-                verbose (bool, optional)
+            verbose (bool, optional)
                     Whether to print any updates
 
         Output
@@ -269,7 +264,7 @@ class BoundaryConditions:
             self.interp_height_single(direction=dd, reverse=reverse, verbose=verbose)
             self.interp_latlon_single(direction=dd, verbose=verbose)
         
-    def interp_height_single(self, direction, height_coord='height', reverse=None, new_vmr_var=None, verbose=True):
+    def interp_height_single(self, direction, reverse=None, new_vmr_var=None, verbose=True):
         '''
         Interpolates the data to the NAME heights
 
@@ -277,11 +272,7 @@ class BoundaryConditions:
             direction (str, optional)
                 The compass direction of nesw
                 Used for naming the output array : {self.species}_{direction}
-            height_coord (str, optional)
-                Used if reverse is not defined to extract appropriate
-                height values to compare.
-                nesw[height_coord] should be a 1D array of datetimes
-                verbose (bool, optional)
+            verbose (bool, optional)
             reverse (bool/None, optional)
                 Whether height values within is nesw input are in reverse order 
                 (i.e. nesw["gph"] level 1 values > nesw["gph"] level 2 values).
@@ -334,7 +325,7 @@ class BoundaryConditions:
                                                      'height' : self.fp_height,
                                                      latorlon : self.edges[direction][latorlon].values})
     
-    def interp_latlon_single(self, direction=None, height_coord='height', reverse=None, new_vmr_var=None, verbose=True):
+    def interp_latlon_single(self, direction=None, reverse=None, new_vmr_var=None, verbose=True):
         '''
         Interpolates the data to the NAME latitudes and longitudes
 
@@ -342,11 +333,7 @@ class BoundaryConditions:
             direction (str, optional)
                 The compass direction of nesw
                 Used for naming the output array : {self.species}_{direction}
-            height_coord (str, optional)
-                Used if reverse is not defined to extract appropriate
-                height values to compare.
-                nesw[height_coord] should be a 1D array of datetimes
-                verbose (bool, optional)
+            verbose (bool, optional)
                     Whether to print any updates
             reverse : bool/None
                 Whether height values within is nesw input are in reverse order 
@@ -382,11 +369,11 @@ class BoundaryConditions:
         # 3D array to fill with interpolated heights
         fp_latlon = self.fp_lat if latorlon=='lat' else self.fp_lon
         interp    = np.zeros((len(self.edges[direction][self.time_coord]),
-                              len(self.edges[direction][height_coord]),
+                              len(self.edges[direction][self.height_var]),
                               len(fp_latlon)))
 
         # loop through height and time
-        # self.edges[direction][height_var] : time, height, latlon
+        # self.edges[direction][self.height_var] : time, height, latlon
         for j in range(len(self.edges[direction][self.vmr_var][0,:,0])):
             for i in range(len(self.edges[direction][self.vmr_var][:,0,0])):
                 # get the vmr for all latorlon
@@ -403,7 +390,7 @@ class BoundaryConditions:
         new_vmr_var = new_vmr_var if new_vmr_var is not None else self.vmr_var
         self.edges[direction] = xr.Dataset({new_vmr_var : (['time', 'height', latorlon], interp)},
                                             coords = {'time'   : self.edges[direction][self.time_coord].values,
-                                                      'height' : self.edges[direction][height_coord].values,
+                                                      'height' : self.edges[direction][self.height_var].values,
                                                       latorlon : fp_latlon})
     
     def bc_filename(self, from_climatology=False, verbose=True):
