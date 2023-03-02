@@ -14,6 +14,13 @@ All calls to species_info.json and site_info.json are now made through the openg
 
 ### Removed
 
+## 2023-03-02
+### Added
+- hbmcmc code now has options to use HiTRes processes for the set up
+ 
+### Changed
+- removed option for fp_directory dictionary in HiTRes processes as HiTRes and integrated fps are no longer needed in conjunction
+
 
 ## [0.3.1] - 2022-08-25
 ### Added
@@ -34,7 +41,6 @@ All calls to species_info.json and site_info.json are now made through the openg
 - hbmcmc code now has a function (and relevant additions to output) that allows the inversion to be rerun (i.e. reproduced)
   using only the output as inputs and ACRG repository.
 - Country mask code has now been updated to allow ocean territories (Economic Exclusion Zone, EEZ) to be included.
-- hbmcmc code now has options to use HiTRes processes for the set up
 - Add function for embedding regional fields into larger fields, in acrg.name.emissions_helper_func
 
 ### Changed
