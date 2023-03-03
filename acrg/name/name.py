@@ -367,13 +367,16 @@ def flux(domain, species, start = None, end = None, flux_directory=None, chunk=T
     if flux_directory is None:
         flux_directory = join(data_path, 'LPDM/emissions/')
     
-    if "-" not in species:
-        species_search_list = [(species+"-total").lower(), species.lower()]
-    else:
-        species_search_list = [species.lower()]
+#    if "-" not in species:
+#        species_search_list = [(species+"-total").lower(), species.lower()]
+#    else:
+#        species_search_list = [species.lower()]
+
+    species_search_list = [species]
     
     for species_search in species_search_list:
-        filename = os.path.join(flux_directory,domain,f"{species_search}_*.nc")
+        filename = os.path.join(flux_directory,f"{species_search}.nc")
+        #filename = os.path.join(flux_directory,domain,f"{species_search}.nc")
         if verbose:
             print("\nSearching for flux files: {}".format(filename))
     
@@ -530,8 +533,9 @@ def boundary_conditions(domain, species, start = None, end = None, bc_directory=
     if bc_directory is None:
         bc_directory = join(data_path, 'LPDM/bc/')
     
-    filenames = os.path.join(bc_directory,domain,f"{species.lower()}_*.nc")
-    
+    #filenames = os.path.join(bc_directory,domain,f"{species.lower()}_*.nc")
+    filenames = os.path.join(bc_directory,"*.nc") 
+   
     files       = sorted(glob.glob(filenames))
     file_no_acc = [ff for ff in files if not os.access(ff, os.R_OK)]
     files       = [ff for ff in files if os.access(ff, os.R_OK)]
@@ -1266,7 +1270,7 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                 base_v = site_bf.basis.values.reshape((len(site_bf.lat)*len(site_bf.lon), len(site_bf.region)))
             
                 for i in range(len(site_bf.region)):
-                    H[i,:] = np.sum(H_all_v*base_v[:,i,np.newaxis], axis = 0)
+                    H[i,:] = np.nansum(H_all_v*base_v[:,i,np.newaxis], axis = 0)
                 
                 if source == all:
                     if (sys.version_info < (3,0)):
@@ -1299,7 +1303,7 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                 base_v = np.ravel(site_bf.basis.values[:,:,0])
                 for i in range(int(np.max(site_bf.basis))):
                     wh_ri = np.where(base_v == i+1)
-                    H[i,:]=np.sum(H_all_v[wh_ri[0],:], axis = 0)      
+                    H[i,:]=np.nansum(H_all_v[wh_ri[0],:], axis = 0)      
                   
                 if source == all:
                     region_name = list(range(1,np.max(site_bf.basis.values)+1))
@@ -1454,7 +1458,7 @@ def bc_sensitivity(fp_and_data, domain, basis_case, bc_basis_directory = None):
         
         for i in range(len(DS.coords['region'])):
             reg = bf[:,:,i,:]
-            H_bc[i,:] = np.sum((part_loc*loss*vmr_ed*reg), axis=(0,1))
+            H_bc[i,:] = np.nansum((part_loc*loss*vmr_ed*reg), axis=(0,1))
         
         sensitivity = xr.Dataset({'H_bc': (['region_bc','time'], H_bc)},
                                     coords = {'region_bc': (DS.coords['region'].values),
