@@ -1044,8 +1044,8 @@ def embed_field(domain_field, country_field, country=None, country_file=None, do
             
     return embedded_field
 
-def get_UKGHG_EDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,
-                     output_title=None,output_path=None):
+def get_UKGHG_EDGAR(species, year, edgarfp, ukghgfp, month=None, monthly=False, 
+                     edgar_sectors=None, ukghg_sectors=None, output_title=None, output_path=None):
     """
     Extracts EDGAR and UKGHG gridded emissions data for the given year and sector.
     Regrids both datasets to the EUROPE domain and converts both to mol/m2/s.
@@ -1109,18 +1109,24 @@ def get_UKGHG_EDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,
         
     """
     
+    # **** Update (Mar., 23) move edgarfp and ukghgfp as kwarg ****
     #edgarfp = os.path.join(data_path,"Gridded_fluxes",species.upper(),"EDGAR_v5.0/yearly_sectoral")
-    edgarfp = os.path.join("/user/work/wz22079/emissions","EDGAR_v7.0")
+    #edgarfp = os.path.join("/user/work/wz22079/emissions","EDGAR_v7.0/CH4")
     #ukghgfp = os.path.join(data_path,"Gridded_fluxes",species.upper(),"UKGHG")
-    ukghgfp = os.path.join("/user/work/wz22079","emissions/UKGHG/LonLat/yearly")   
+    #ukghgfp = os.path.join("/user/work/wz22079","emissions/UKGHG/LonLat/yearly")   
 
-    UKGHGsectorlist = ["agric","domcom","energyprod","indcom","indproc","natural","offshore",
-                       "othertrans","roadtrans","total","waste"]
+    UKGHGsectorlist = ["agric","domcom","energyprod","indcom","indproc",
+                       "natural","offshore","othertrans","roadtrans",
+                       "total","waste","marine","terr_agric","terr_other",]
     
-    EDGARsectorlist = ["AGS","AWB","CHE","ENE","ENF","FFF","IND","IRO","MNM",
-                       "PRO_COAL","PRO_GAS","PRO_OIL","PRO","RCO","REF_TRF","SWD_INC",
-                       "SWD_LDF","TNR_Aviation_CDS","TNR_Aviation_CRS",
-                       "TNR_Aviation_LTO","TNR_Other","TNR_Ship","TRO","TRO_noRES","WWT"]
+    EDGARsectorlist = ["AGS","AWB","CHE","ENE","ENF","NFE","NEU",
+                       "FFF","IND","IRO","MNM","N2O","NMM",
+                       "PRO_COAL","PRO_GAS","PRO_OIL","PRO",
+                       "RCO","REF_TRF","SWD_INC","SWD_LDF",
+                       "TNR_Aviation_CDS","TNR_Aviation_CRS",
+                       "TNR_Aviation_SPS","TNR_Aviation_LTO",
+                       "TNR_Other","TNR_Ship","PRU_SOL","IDE",
+                       "PRU","TRO","TRO_noREF","TRO_noRES","WWT"]
     
     #extract output lat/lons from fp file
     domain_vol = domain_volume("EUROPE",os.path.join(data_path,"LPDM/fp_NAME"))
@@ -1135,16 +1141,27 @@ def get_UKGHG_EDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,
                 print(f'EDGAR sector {EDGARsector} not one of: \n {EDGARsectorlist}')
                 print('Returning None')
                 return None
-            
+        
         #edgar flux in kg/m2/s
         for i,sector in enumerate(edgar_sectors):
-            #edgarfn = f"v50_{species.upper()}_{year}_{sector}.0.1x0.1.nc"
-            edgarfn = f"v7.0_FT2021_{species.upper()}_{year}_{sector}.0.1x0.1.nc"
+            if monthly==False:
+                #edgarfn = f"v50_{species.upper()}_{year}_{sector}.0.1x0.1.nc"
+                edgarfn = f"v6.0_{species}_{year}_{sector}.0.1x0.1.nc"
+                #edgarfn = f"v7.0_FT2021_{species}_{year}_{sector}.0.1x0.1.nc"
+            elif monthly==True:
+                edgarfn = f"v6.0_{species}_{year}_{month}_{sector}.0.1x0.1.nc"
+
             print(edgarfn)
             with xr.open_dataset(os.path.join(edgarfp,edgarfn)) as edgar_file:
                 edgar_flux = np.nan_to_num(edgar_file['emi_'+species.lower()].values,0.)
                 edgar_lat = edgar_file.lat.values
                 edgar_lon = edgar_file.lon.values
+   
+                mtohe = edgar_lon > 180
+                edgar_lon[mtohe] = edgar_lon[mtohe] - 360
+                ordinds = np.argsort(edgar_lon)
+                edgar_lon = edgar_lon[ordinds]
+                edgar_flux = edgar_flux[:, ordinds]
 
             if i == 0:
                 edgar_total = edgar_flux
@@ -1152,15 +1169,16 @@ def get_UKGHG_EDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,
                 edgar_total = np.add(edgar_total,edgar_flux)
             
         edgar_regrid_kg,arr = regrid2d(edgar_total,edgar_lat,edgar_lon,lat_out,lon_out)
-    
+ 
         #edgar flux in mol/m2/s
         speciesmm = molar_mass(species)
-        edgar_regrid = (edgar_regrid_kg.data*1e3) / speciesmm
+        edgar_regrid = (edgar_regrid_kg*1e3) / speciesmm
         
         if ukghg_sectors is None:
             total_flux = edgar_regrid
             output_title = "EDGAR sectors regridded to EUROPE domain"
     
+
     #extract ukghg
     if ukghg_sectors is not None:
         print('Including UKGHG sectors.')
@@ -1173,10 +1191,20 @@ def get_UKGHG_EDGAR(species,year,edgar_sectors=None,ukghg_sectors=None,
 
         #ukghg flux in mol/m2/s
         for j,sector in enumerate(ukghg_sectors):
-            ukghgfn = f"uk_flux_{sector}_{species.lower()}_LonLat_0.01km_{year}.nc"
+            #ukghgfn = f"uk_flux_{sector}_{species.lower()}_LonLat_0.01km_{year}.nc"
+
+            #N2O
+            if monthly==False:
+                ukghgfn = f"s_F_{species.lower()}_{year}_{sector}.nc"
+            elif monthly == True:
+                ukghgfn = f"s_F_{species.lower()}_{year}{month.zfill(2)}15_{sector}.nc"
 
             with xr.open_dataset(os.path.join(ukghgfp,ukghgfn)) as ukghg_file:
-                ukghg_flux = np.nan_to_num(ukghg_file[species.lower()+'_flux'].values[0,:,:],0.)
+                if species.lower()=='n2o':
+                    ukghg_flux = np.nan_to_num(ukghg_file['Fn2o'].values[:,:],0.)
+                else:
+                    ukghg_flux = np.nan_to_num(ukghg_file[species.lower()+'_flux'].values[0,:,:],0.)
+
                 ukghg_lat = ukghg_file.latitude.values
                 ukghg_lon = ukghg_file.longitude.values
 
