@@ -57,7 +57,7 @@ data_path = Paths.data
 cams_directory_default = os.path.join(data_path, 'ECMWF_CAMS', 'CAMS_inversion/')
 
 # latest version is currently v19, update as necessary
-latest_version = 'v19'
+latest_version = 'v20'
 
 # default variable names in the CAMS files for each species and CAMS versions
 default_inputs = {'ch4': {'v19': {'altitude': 'altitude',
@@ -68,10 +68,24 @@ default_inputs = {'ch4': {'v19': {'altitude': 'altitude',
                                   'level': 'level',
                                   'lon': 'longitude',
                                   'time': 'time',
-                                  'z': 'z'}
+                                  'z': 'z'},
+
+                          'v20': {'altitude': 'altitude',
+                                  'file_start_str': 'cams73',
+                                  'height': 'height',
+                                  'hlevel': 'hlevel',
+                                  'lat': 'latitude',
+                                  'level': 'level',
+                                  'lon': 'longitude',
+                                  'time': 'time',
+                                  'z': 'z'}    
                          }
-                   }
+                                    
+                 }
+
+
 default_inputs['ch4']['latest'] = default_inputs['ch4'][latest_version]
+
 
 with open(os.path.join(acrg_path, "data/species_info.json")) as f:
     species_info=json.load(f,object_pairs_hook=OrderedDict)
@@ -211,7 +225,7 @@ def interpheight(nesw, fp_height, lonorlat, species='ch4', version='latest', rev
         elif reverse == False:
             interp[:,jj] = np.interp(fp_height, nesw[variables['z']][:,jj], nesw[species][:,jj]).astype(np.float)
     
-    ds2 = xr.DataArray(interp, coords=[fp_height, nesw[lonorlat].values], dims=['height', lonorlat])
+    ds2 = xr.DataArray(interp, coords=[fp_height, nesw[lonorlat].values ], dims=['height', lonorlat])
     ds2 = ds2.to_dataset(name=species)
     return ds2
 
@@ -335,20 +349,23 @@ def write_CAMS_BC_tonetcdf(vmr_n, vmr_e, vmr_s, vmr_w, st_date, domain, outdir, 
     variables = default_inputs[species][version] if variables is None else variables
 
     BC_edges = vmr_n.merge(vmr_e).merge(vmr_s).merge(vmr_w)
-    BC_edges.expand_dims(variables['time'], 2)
+
+    #BC_edges.expand_dims(variables['time'], 2)
+
     BC_edges.coords[variables['time']] = (dt.strptime(st_date, '%Y-%m-%d'))
-    
     BC_edges.attrs['title']           = f"ECMWF CAMS {species} volume mixing ratios at domain edges"
     BC_edges.attrs['CAMS_resolution'] = gridsize
     BC_edges.attrs['author']          = os.getenv('USER')
     BC_edges.attrs['date_created']    = np.str(dt.today())
     
     if not os.path.isdir(outdir): os.makedirs(outdir)
-    
+
     BC_filename = bc_filename(domain = domain,
                               species = species,
                               start_date = st_date,
                               from_climatology = from_climatology)
+    # ES: edit added 1 line below to save the expanded time dim to output -> needed for openghg
+    BC_edges = BC_edges.expand_dims({"time":1})
     BC_edges.to_netcdf(path = os.path.join(outdir, BC_filename), mode = 'w')
 
 def create_CAMS_BC(ds, fp_lat, fp_lon, fp_height, date, domain, species=None, version='latest', variables=None,
@@ -458,7 +475,7 @@ def create_CAMS_BC(ds, fp_lat, fp_lon, fp_height, date, domain, species=None, ve
 
 def makeCAMSBC(domain, start, end,
                species = 'ch4',
-               cams_version = 'v19',
+               cams_version = 'latest',
                outdir = None,
                cams_directory = cams_directory_default,
                clim_start = None, clim_end = None,
