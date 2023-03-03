@@ -49,6 +49,7 @@ unit_interpret = {"ppm": "1e-6",
                   "ppb": "1e-9",
                   "ppt": "1e-12",
                   "ppq": "1e-15",
+                  "per meg": "4.77e-6",
                   "else": "unknown"}
 
 # For species which need more than just a hyphen removing and/or changing to lower case

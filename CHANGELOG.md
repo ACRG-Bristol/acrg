@@ -14,6 +14,13 @@ All calls to species_info.json and site_info.json are now made through the openg
 
 ### Removed
 
+## 2023-03-02
+### Added
+- hbmcmc code now has options to use HiTRes processes for the set up
+ 
+### Changed
+- removed option for fp_directory dictionary in HiTRes processes as HiTRes and integrated fps are no longer needed in conjunction
+
 
 ## [0.3.1] - 2022-08-25
 ### Added

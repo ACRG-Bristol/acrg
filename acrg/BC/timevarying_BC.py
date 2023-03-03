@@ -12,7 +12,6 @@ bc_obj = BoundaryConditions(filename       = filename,
                             vmr_var        = 'vmr',
                             gph_height_var = 'height',
                             time_coord     = 'time',
-                            height_coord   = 'height',
                             species        = 'ch4',
                             domain         = 'EUROPE',
                             start_date     = None)
@@ -32,15 +31,23 @@ bc_obj.make_bc_file(fp_directory    = None,
 -------
 
 '''
-if 'os'    not in dir(): import os
-if 'np'    not in dir(): import numpy as np
-if 'xr'    not in dir(): import xarray as xr
-if 'paths' not in dir(): from acrg_config.paths import paths
+import os
+import json
+import numpy as np
+import xarray as xr
+from scipy import interpolate
+from collections import OrderedDict
+
+from acrg.name.name import open_ds
+from acrg.config.paths import Paths
+from acrg.convert import concentration
+from acrg.countrymask import domain_volume
+
     
 class BoundaryConditions:
     def __init__(self, vmr_var, gph_height_var, dataset=None, filename=None,
-                 file_dir=None, time_coord='time', height_coord='height', species=None,
-                 domain='EUROPE', start_date=None):
+                 file_dir=None, time_coord='time', species=None,
+                 domain='EUROPE', start_date=None, adjust=None):
         '''
         vmr_var : str
             The VMR variable name in the nesw dataset
@@ -73,13 +80,12 @@ class BoundaryConditions:
             if filename is None:
                 print('Please provide either a dataset or filename containing vmr')
             elif os.path.isfile(filename):
-                from acrg_name.name import open_ds
                 dataset = open_ds(filename)
             else:
                 print(f'Cannot find file: {filename}')
         
-        self.data_path    = paths.data
-        self.acrg_path    = paths.acrg
+        self.data_path    = Paths.data
+        self.acrg_path    = Paths.acrg
         
         self.vmr_var      = vmr_var
         self.height_var   = gph_height_var
@@ -91,7 +97,12 @@ class BoundaryConditions:
         # rename latitude and longitude to short version
         if 'latitude'  in dataset: dataset.rename({'latitude'  : 'lat'})
         if 'longitude' in dataset: dataset.rename({'longitude' : 'lon'})
-        self.dataset      = dataset
+
+        if adjust is not None:
+            print(f'Adjusting vmr by {adjust}')
+            dataset[vmr_var] = dataset[vmr_var] + adjust
+    
+        self.dataset = dataset
     
     def make_bc_file(self, fp_directory=None, fp_height_coord='height', reverse=None,
                      convert_units=True, datasource=None, out_path=None, glob_attrs={},
@@ -145,7 +156,7 @@ class BoundaryConditions:
         if verbose: print('\nSaving to netcdf\n----------------')
         # save to a netcdf file with a standardised filename
         self.to_netcdf(datasource=datasource, out_path=out_path, glob_attrs=glob_attrs,
-                       copy_glob_attrs=copy_glob_attrs, verbose=verbose)
+                       copy_glob_attrs=copy_glob_attrs, verbose=verbose, overwrite=False)
             
     
     def get_unit_conversion(self, verbose=True):
@@ -190,8 +201,6 @@ class BoundaryConditions:
                 for north, south, east, and west
                 Can be accessed using BoundaryConditions_obj.edges
         '''
-        from acrg_countrymask import domain_volume
-        
         fp_directory = os.path.join(self.data_path, 'LPDM', 'fp_NAME') if fp_directory is None else fp_directory
         self.fp_lat, self.fp_lon, self.fp_height = domain_volume(self.domain, fp_directory=fp_directory)
         
@@ -205,16 +214,16 @@ class BoundaryConditions:
             lat_n -= 1
         
         lat_s = (np.abs(self.dataset.coords['lat'].values - min(self.fp_lat))).argmin()
-        if self.dataset.coords['lat'].values[lat_s] > min(self.fp_lat) and lat_s != (len(dataset.coords['lat'].values)-1):
+        if self.dataset.coords['lat'].values[lat_s] > min(self.fp_lat) and lat_s != (len(self.dataset.coords['lat'].values)-1):
             lat_s += 1
         
         lon_e = (np.abs(self.dataset.coords['lon'].values - max(self.fp_lon))).argmin()
-        if self.dataset.coords['lon'].values[lon_e] < max(self.fp_lon) and lon_e != (len(dataset.coords['lon'].values)-1):
-            lat_s += 1
+        if self.dataset.coords['lon'].values[lon_e] < max(self.fp_lon) and lon_e != (len(self.dataset.coords['lon'].values)-1):
+            lon_e += 1
         
         lon_w = (np.abs(self.dataset.coords['lon'].values - min(self.fp_lon))).argmin()
         if self.dataset.coords['lon'].values[lon_w] > min(self.fp_lon) and lon_w != 0:
-            lat_w -= 1
+            lon_w -= 1
             
         # Cut to these
         north = self.dataset.sel(lat  = self.dataset.coords['lat'][lat_n],
@@ -241,11 +250,7 @@ class BoundaryConditions:
                 Whether height values within th dataset input are in reverse order 
                 (i.e. nesw["gph"] level 1 values > nesw["gph"] level 2 values).
                 Default = None. If this is set to None this will be automatically determined.
-            height_coord (str, optional)
-                Used if reverse is not defined to extract appropriate
-                height values to compare.
-                nesw[height_coord] should be a 1D array of datetimes
-                verbose (bool, optional)
+            verbose (bool, optional)
                     Whether to print any updates
 
         Output
@@ -259,7 +264,7 @@ class BoundaryConditions:
             self.interp_height_single(direction=dd, reverse=reverse, verbose=verbose)
             self.interp_latlon_single(direction=dd, verbose=verbose)
         
-    def interp_height_single(self, direction, height_coord='height', reverse=None, new_vmr_var=None, verbose=True):
+    def interp_height_single(self, direction, reverse=None, new_vmr_var=None, verbose=True):
         '''
         Interpolates the data to the NAME heights
 
@@ -267,11 +272,7 @@ class BoundaryConditions:
             direction (str, optional)
                 The compass direction of nesw
                 Used for naming the output array : {self.species}_{direction}
-            height_coord (str, optional)
-                Used if reverse is not defined to extract appropriate
-                height values to compare.
-                nesw[height_coord] should be a 1D array of datetimes
-                verbose (bool, optional)
+            verbose (bool, optional)
             reverse (bool/None, optional)
                 Whether height values within is nesw input are in reverse order 
                 (i.e. nesw["gph"] level 1 values > nesw["gph"] level 2 values).
@@ -288,8 +289,6 @@ class BoundaryConditions:
                 with a 3D VMR array interpolated to the NAME heights
                 Can be accessed using BoundaryConditions_obj.edges
         '''
-        if 'interpolate' not in dir(): from scipy import interpolate
-
         # get the axis along which to interpolate
         # either 'longitude' (or 'lon', N or S) or 'latitude' (or 'lat', E or W)
         latorlon = 'lon' if 'lon' in self.edges[direction] else 'lat'
@@ -326,7 +325,7 @@ class BoundaryConditions:
                                                      'height' : self.fp_height,
                                                      latorlon : self.edges[direction][latorlon].values})
     
-    def interp_latlon_single(self, direction=None, height_coord='height', reverse=None, new_vmr_var=None, verbose=True):
+    def interp_latlon_single(self, direction=None, reverse=None, new_vmr_var=None, verbose=True):
         '''
         Interpolates the data to the NAME latitudes and longitudes
 
@@ -334,11 +333,7 @@ class BoundaryConditions:
             direction (str, optional)
                 The compass direction of nesw
                 Used for naming the output array : {self.species}_{direction}
-            height_coord (str, optional)
-                Used if reverse is not defined to extract appropriate
-                height values to compare.
-                nesw[height_coord] should be a 1D array of datetimes
-                verbose (bool, optional)
+            verbose (bool, optional)
                     Whether to print any updates
             reverse : bool/None
                 Whether height values within is nesw input are in reverse order 
@@ -358,8 +353,6 @@ class BoundaryConditions:
                 with a 3D VMR array interpolated to the NAME latitudes and longitudes
                 Can be accessed using BoundaryConditions_obj.edges
         '''
-        if 'interpolate' not in dir(): from scipy import interpolate
-
         # get the axis along which to interpolate
         # either 'longitude' (or 'lon', N or S) or 'latitude' (or 'lat', E or W)
         latorlon = 'lon'       if 'lon'       in self.edges[direction] else \
@@ -376,11 +369,11 @@ class BoundaryConditions:
         # 3D array to fill with interpolated heights
         fp_latlon = self.fp_lat if latorlon=='lat' else self.fp_lon
         interp    = np.zeros((len(self.edges[direction][self.time_coord]),
-                              len(self.edges[direction][height_coord]),
+                              len(self.edges[direction][self.height_var]),
                               len(fp_latlon)))
 
         # loop through height and time
-        # self.edges[direction][height_var] : time, height, latlon
+        # self.edges[direction][self.height_var] : time, height, latlon
         for j in range(len(self.edges[direction][self.vmr_var][0,:,0])):
             for i in range(len(self.edges[direction][self.vmr_var][:,0,0])):
                 # get the vmr for all latorlon
@@ -397,7 +390,7 @@ class BoundaryConditions:
         new_vmr_var = new_vmr_var if new_vmr_var is not None else self.vmr_var
         self.edges[direction] = xr.Dataset({new_vmr_var : (['time', 'height', latorlon], interp)},
                                             coords = {'time'   : self.edges[direction][self.time_coord].values,
-                                                      'height' : self.edges[direction][height_coord].values,
+                                                      'height' : self.edges[direction][self.height_var].values,
                                                       latorlon : fp_latlon})
     
     def bc_filename(self, from_climatology=False, verbose=True):
@@ -418,7 +411,7 @@ class BoundaryConditions:
         if verbose: print(f'Output filename : {self.out_filename}')
     
     def to_netcdf(self, datasource=None, out_path=None, glob_attrs={}, from_climatology=False,
-                  copy_glob_attrs=False, verbose=True):
+                  copy_glob_attrs=False, verbose=True, overwrite=False):
         '''
         Args
             datasource (str, optional)
@@ -449,7 +442,7 @@ class BoundaryConditions:
 
             Includes DataArrays for the n, s, e, and w boundaries
         '''        
-        edges    = {dd : self.edges[dd].rename({self.vmr_var: f'vmr_{dd}'})
+        edges    = {dd : self.edges[dd].rename({self.vmr_var: f'vmr_{dd[0]}'})
                     for dd in ['north', 'south', 'east', 'west']}
         
         # merge the interpolated n, s, e, & w Datasets
@@ -479,8 +472,22 @@ class BoundaryConditions:
                        os.path.join(self.data_path, 'LPDM', 'bc', self.domain)
         
         self.bc_filename(from_climatology=from_climatology, verbose=verbose)
-        if verbose: print(f'Saving boundary conditions to : {os.path.join(out_path, self.out_filename)}')
-        BC_edges.to_netcdf(path = os.path.join(out_path, self.out_filename), mode = 'w')
+        if overwrite and verbose:
+            save = True
+            if os.path.isfile(os.path.join(out_path, self.out_filename)):
+                print(f'Boundary condition file {os.path.join(out_path, self.out_filename)} already exists and is being overwritten.')
+        elif os.path.isfile(os.path.join(out_path, self.out_filename)) and not overwrite:
+            print(f'Boundary condition file {os.path.join(out_path, self.out_filename)} already exists.')
+            answer = input("You are about to overwrite an existing file, do you want to continue? Y/N ")
+            if answer.upper() == 'N':
+                save = False
+            elif answer.upper() == 'Y':
+                save = True
+        else:
+            save = True
+        if save == True:
+            if verbose: print(f'Saving boundary conditions to : {os.path.join(out_path, self.out_filename)}')
+            BC_edges.to_netcdf(path = os.path.join(out_path, self.out_filename), mode = 'w')
 
 
     

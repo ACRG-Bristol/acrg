@@ -8,6 +8,8 @@ from openghg_defs import species_info_file
 
 acrg_path = Paths.acrg
 
+import numpy as np
+
 def molar_mass(species):
     '''
     This function extracts the molar mass of a species from the acrg_species_info.json file.
@@ -70,4 +72,3 @@ def convert_lons_0360(lons):
     div = lons // 360
 
     return lons - div*360
-
