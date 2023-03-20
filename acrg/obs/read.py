@@ -80,30 +80,72 @@ def scale_convert(ds, species, to_scale):
         return(ds)
     else:
         print(f"... converting scale to {to_scale}")
-    
-    scale_converter = pd.read_csv(acrg_path / "acrg/obs/obs_scale_convert.csv")
-    scale_converter_scales = scale_converter[scale_converter.isin([species.upper(), ds_scale, to_scale])][["species", "scale1", "scale2"]].dropna(axis=0, how = "any")
-    
-    if len(scale_converter_scales) == 0:
-        errorMessage = f'''Scales {ds_scale} and {to_scale} are not both in any one row in obs_scale_convert.csv for species {species}'''
-        raise ValueError(errorMessage)
-    elif len(scale_converter_scales) > 1:
-        errorMessage = f'''Duplicate rows in obs_scale_convert.csv?'''
-        raise ValueError(errorMessage)
-    else:
-        row = scale_converter_scales.index[0]
-    
-    converter = scale_converter.loc[row]
 
-    if to_scale == converter["scale1"]:
-        direction = "2to1"
-    else:
-        direction = "1to2"
 
-    # scale_convert file has variable X in equations, so let's create it
-    X = 1.
-    scale_factor = ne.evaluate(converter[direction])
-    ds["mf"].values *= scale_factor
+    # Define scale conversions (coefficients from csv file)    
+    if species.upper() == 'N2O':
+        if to_scale == 'WMO-X2006A' and ds_scale=='SIO-16':
+            def scale_convert(x):
+                return x-0.44
+
+        elif to_scale == 'SIO-16' and ds_scale=='WMO-X2006A':
+            def scale_convert(x):
+                return x+0.44
+        
+        else:
+            raise ValueError(f"Converting {species} mole fractions to {to_scale} is not currently an option")
+
+    elif species.upper() == 'CH4':
+        if to_scale == 'WMO-X2004A' and ds_scale=='TU1987':
+            def scale_convert(x):
+                return x * 1.002
+       
+        elif to_scale == 'TU1987' and ds_scale=='WMO-X2004A':
+            def scale_convert(x):
+                return x/1.002
+
+        else:
+            raise ValueError(f"Converting {species} mole fractions to {to_scale} is not currently an option")
+
+
+    elif species.upper() == 'CO':
+        if to_scale == 'WMO-X2014A' and ds_scale=='CSIRO94':
+            def scale_convert(x):
+                return -3.17+(0.9898*x)
+
+        elif to_scale == 'CSIRO94' and ds_scale=='WMO-X2014A':
+            def scale_convert(x):
+                return (x+3.17)/0.9898
+
+        else:
+            raise ValueError(f"Converting {species} mole fractions to {to_scale} is not currently an option")
+    
+
+    
+#    scale_converter = pd.read_csv(acrg_path / "acrg/obs/obs_scale_convert.csv")
+#    scale_converter_scales = scale_converter[scale_converter.isin([species.upper(), ds_scale, to_scale])][["species", "scale1", "scale2"]].dropna(axis=0, how = "any")
+#    
+#    if len(scale_converter_scales) == 0:
+#        errorMessage = f'''Scales {ds_scale} and {to_scale} are not both in any one row in obs_scale_convert.csv for species {species}'''
+#        raise ValueError(errorMessage)
+#    elif len(scale_converter_scales) > 1:
+#        errorMessage = f'''Duplicate rows in obs_scale_convert.csv?'''
+#        raise ValueError(errorMessage)
+#    else:
+#        row = scale_converter_scales.index[0]
+#    
+#    converter = scale_converter.loc[row]
+#
+#    if to_scale == converter["scale1"]:
+#        direction = "2to1"
+#    else:
+#        direction = "1to2"
+#
+#    # scale_convert file has variable X in equations, so let's create it
+#    X = 1.
+#    scale_factor = ne.evaluate(converter[direction])
+
+    ds["mf"].values = scale_convert(df["mf"].values)
 
     ds.attrs["scale"] = to_scale
     
