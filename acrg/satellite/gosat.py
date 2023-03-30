@@ -2083,7 +2083,7 @@ def gosat_output_filename(output_directory,network,instrument,date,species,inlet
         date (str) : 
             Date the measurements are relevant to e.g. "2010-01-01"
         species (str) : 
-            Species being considered e.g. "ch4". Should be defined within "data/species_info.json" file
+            Species being considered e.g. "ch4". Should be defined within "openghg/supplementary data species_info.json" file
         inlet (str/None, optional) : 
             Additional information to add to ch4 measurement e.g. column
         num (str/None, optional) : 
@@ -2313,9 +2313,9 @@ def gosat_output(ds,site,species="ch4",file_per_day=False,output_directory=obs_d
             GOSAT CH4 Level 2 Data Product file as an xarray Dataset.
             Should have had co-ordinates and dimensions assigned with gosat_add_coords() function.
         site (str) : 
-            Specified sub-set defined for gosat e.g. GOSAT-INDIA (should be defined within acrg_sites_info.json)
+            Specified sub-set defined for gosat e.g. GOSAT-INDIA (should be defined within site_info.json)
         species (str, optional) : 
-            Species of interest e.g. "ch4" (should be defined within data/species_info.json).
+            Species of interest e.g. "ch4" (should be defined within species_info.json).
             Default = "ch4"
         file_per_day (bool, optional) : 
             Output all results to one file per day rather than splitting out per time point. Default = False.
@@ -2399,7 +2399,7 @@ def gosat_output_name(ds,site,max_level=17,use_name_pressure=False,pressure_doma
         ds (xarray.Dataset) : 
             GOSAT CH4 Level 2 Data Product file as an xarray Dataset.
         site (str) : 
-            Specified sub-set defined for gosat e.g. GOSAT-INDIA. Should be defined within acrg_sites_info.json.
+            Specified sub-set defined for gosat e.g. GOSAT-INDIA. Should be defined within site_info.json.
             Note: at the moment this is just used in the filename and not in the folder structure
         max_level (int, optional) : 
             Maximum level to include from input GOSAT data (up to 20).
@@ -2595,7 +2595,7 @@ def gosat_process_file(filename,site,species="ch4",lat_bounds=[],lon_bounds=[],d
         filename (str) : 
             Filename of GOSAT CH4 Level 2 Data Product file (str)
         site (str) : 
-            Specified sub-set defined for gosat e.g. GOSAT-INDIA. Should be defined within sites_info.json
+            Specified sub-set defined for gosat e.g. GOSAT-INDIA. Should be defined within site_info.json
         species (str, optional) : 
             Species of interest. Should be defined within species_info.json. Default = "ch4"
         lat_bounds (list, optional) : 
@@ -2830,9 +2830,9 @@ def gosat_process(site,species="ch4",input_directory=input_directory,start=None,
     
     Args:
         site (str) : 
-            Specified sub-set defined for gosat e.g. GOSAT-INDIA. Should be defined within acrg_sites_info.json
+            Specified sub-set defined for gosat e.g. GOSAT-INDIA. Should be defined within site_info.json
         species (str, optional) : 
-            Species of interest. Should be defined within data/species_info.json
+            Species of interest. Should be defined within species_info.json
             Default = "ch4"
         input_directory (str, optional) : 
             Top level directory containing GOSAT CH4 Level 2 Data Product files only.

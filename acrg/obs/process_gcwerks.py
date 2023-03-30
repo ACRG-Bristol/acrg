@@ -10,13 +10,14 @@ import pandas as pd
 from os.path import join, split
 from datetime import datetime as dt
 import glob
-import xarray as xray
 import json
+import xarray as xray
 from os import stat
 import fnmatch
 from acrg.obs.utils import attributes, output_filename, cleanup
-
+from acrg.utils import load_json
 from acrg.config.paths import Paths
+from openghg_defs import site_info_file
 
 acrg_path = Paths.acrg
 
@@ -26,9 +27,7 @@ info_file = join(acrg_path,
 with open(info_file) as sf:
     params = json.load(sf)
 
-site_info_file = join(acrg_path, "data/site_info.json")
-with open(site_info_file) as sf:
-    site_params = json.load(sf)
+site_params = load_json(site_info_file)
 
 # Output unit strings (upper case for matching)
 unit_species = {"CO2": "1e-6",

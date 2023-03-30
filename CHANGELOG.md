@@ -10,7 +10,16 @@ Use this section to keep track of any intermediate changes that can then be move
 
 ### Changed
 
+All calls to species_info.json and site_info.json are now made through the openghg/supplementary_data repository.
+
 ### Removed
+
+## 2023-03-02
+### Added
+- hbmcmc code now has options to use HiTRes processes for the set up
+ 
+### Changed
+- removed option for fp_directory dictionary in HiTRes processes as HiTRes and integrated fps are no longer needed in conjunction
 
 
 ## [0.3.1] - 2022-08-25

@@ -17,6 +17,8 @@ from pandas import Timestamp
 import pandas as pd
 import sqlite3
 import pathlib
+from acrg.utils import load_json
+from openghg_defs import site_info_file
 
 acrg_path = Paths.acrg
 obs_directory = Paths.obs
@@ -47,6 +49,7 @@ unit_interpret = {"ppm": "1e-6",
                   "ppb": "1e-9",
                   "ppt": "1e-12",
                   "ppq": "1e-15",
+                  "per meg": "4.77e-6",
                   "else": "unknown"}
 
 # For species which need more than just a hyphen removing and/or changing to lower case
@@ -95,9 +98,7 @@ def site_info_attributes(site, network):
             dict: Dictionary containing site attributes
     """
     # Read site info file
-    site_info_file = acrg_path / "data/site_info.json"
-    with open(site_info_file) as sf:
-        site_params = json.load(sf)
+    site_params = load_json(site_info_file)
 
     attributes = {}
     attributes_dict = {"longitude": "station_longitude",

@@ -24,19 +24,20 @@ To run all tests except those labelled 'long' use the syntax
 @author: rt17603
 """
 
-from cachetools import cached
 import pytest
 import os
-import sys
 import glob
 import numpy as np
 import xarray as xray
 import pandas as pd
 import pickle
+from datetime import datetime, timedelta
 
 import acrg.name.name as name
 import acrg.obs.read as read
 from acrg.config.paths import Paths
+from openghg_defs import site_info_file
+from openghg_defs import species_info_file
 
 
 acrg_path = Paths.acrg
@@ -82,8 +83,8 @@ def output_directory():
 @pytest.fixture()
 def fs_mock(fs, fp_directory, flux_directory, bc_directory, basis_directory, bc_basis_directory):
     #add the real jsons to the fake file system:
-    fs.add_real_file(os.path.join(acrg_path, "data/species_info.json"))
-    fs.add_real_file(os.path.join(acrg_path, "data/site_info.json"))
+    fs.add_real_file(species_info_file)
+    fs.add_real_file(site_info_file)
     #create footprint files
     fs.create_file(os.path.join(fp_directory, "EUROPE", "MHD-10magl_EUROPE_201402.nc"))
     fs.create_file(os.path.join(fp_directory, "EUROPE", "MHD-10magl_EUROPE_201405.nc"))
@@ -223,6 +224,22 @@ def footprint_param(fp_directory,measurement_param):
     
     return input_param
 
+@pytest.fixture()
+def footprint_param_HiTRes(fp_directory,measurement_param):
+    ''' Define set of input parameters for footprints() function. Based on measurement_param '''
+    
+    input_param = {}
+    input_param["sitecode_or_filename"] = 'WAO'
+    input_param["domain"] = measurement_param["domain"]
+    input_param["fp_directory"] = fp_directory
+    input_param['HiTRes'] = True
+    input_param['met_model'] = 'UKV'
+    input_param['start'] = '2018-01-01'
+    input_param['end'] = '2018-02-01'
+    input_param['height'] = '20magl'
+    
+    return input_param
+
 def test_footprints_from_file(fp_directory,measurement_param):
     '''
     Test dataset can be created from footprint filename with footprints() function
@@ -237,7 +254,7 @@ def test_footprints_from_file(fp_directory,measurement_param):
     assert out
 
 @pytest.mark.long
-def test_footprints_from_site(footprint_param,flux_directory,bc_directory):
+def test_footprints_from_site(footprint_param):
     '''
     Test dataset can be created from set of parameters with footprints() function.
     '''
@@ -245,6 +262,16 @@ def test_footprints_from_site(footprint_param,flux_directory,bc_directory):
     out = name.footprints(**footprint_param)
     
     assert out
+
+@pytest.mark.long
+def test_footprints_from_site(footprint_param_HiTRes):
+    '''
+    Test dataset can be created from set of parameters with footprints() function.
+    '''
+    # test importing the HiTRes footprint
+    out_HiTRes = name.footprints(**footprint_param_HiTRes)
+    
+    assert out_HiTRes
 
 
 @pytest.fixture()
@@ -265,6 +292,45 @@ def test_flux(flux_param):
     out = name.flux(**flux_param)
     assert out
 
+@pytest.fixture()
+def flux_param_HiTRes(flux_directory):
+    ''' Define set of input parameters for flux_HiTRes() function.'''
+    
+    input_param = {}
+    input_param["domain"] = 'SMALL-DOMAIN'
+    input_param["emissions_dict"] = {'high_freq': 'co2-ukghg-total-1hr'}
+    input_param["flux_directory"] = flux_directory
+    input_param["start"] = '2018-01-02'
+    input_param["end"] = '2018-01-10'
+    input_param["test"] = True
+    
+    return input_param
+
+@pytest.fixture()
+def flux_HiTRes(flux_param_HiTRes):
+    '''
+    Create flux dataset using flux_for_HiTRes for associated tests
+    '''
+    start = datetime.strptime(flux_param_HiTRes['start'], '%Y-%m-%d')
+    start = datetime(start.year, start.month, start.day) + timedelta(hours=-24)
+
+    out = name.flux_for_HiTRes(**flux_param_HiTRes)['high_freq']
+
+    return out
+
+def test_flux_HiTRes(flux_HiTRes):
+    '''
+    Test dataset can be created by flux_for_HiTRes() function
+    '''
+    assert flux_HiTRes
+
+def test_flux_HiTRes_date(flux_param_HiTRes, flux_HiTRes):
+    start = datetime.strptime(flux_param_HiTRes['start'], '%Y-%m-%d')
+    start = datetime(start.year, start.month, start.day) + timedelta(hours=-24)
+
+    out_start = datetime.strptime(flux_HiTRes.time.values[0].astype(str).split('T')[0], '%Y-%m-%d')
+    
+    assert start==out_start
     
 @pytest.fixture()
 def bc_param(bc_directory,measurement_param):
@@ -827,18 +893,9 @@ def test_filtering_local(dummy_timeseries_dict_gen):
     out = name.filtering(dummy_timeseries_dict_gen,filters)
     assert np.isclose(out["TEST"].mf.values, np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])).all()
 
-@pytest.mark.long
-def test_hitres_timeseries(hitres_timeseries_benchmark_file, hitres_sens_benchmark_file):
-    '''
-    Checks the output of name.timeseries_HiTRes matches a benchmarked version saved to
-    HiTRes_timeseries_201801.nc
-    '''
-    
-    with xray.open_dataset(hitres_timeseries_benchmark_file) as benchmark:
-        benchmark.load()
-    with xray.open_dataset(hitres_sens_benchmark_file) as benchmark_sens:
-        benchmark_sens.load()
-    
+
+@pytest.fixture(scope='module')
+def hitres_files():
     fp_file_name = os.path.join(acrg_path, 'tests', 'files', 'LPDM', 'fp_NAME_minimal', 'EUROPE', 'WAO-20magl_UKV_co2_EUROPE_201801.nc')
     with xray.open_dataset(fp_file_name) as footprint:
         footprint.load()
@@ -847,7 +904,13 @@ def test_hitres_timeseries(hitres_timeseries_benchmark_file, hitres_sens_benchma
     with xray.open_dataset(emiss_file_name) as emiss:
         emiss.load()
     flux_dict = {'high_freq': emiss}
-    
+
+    return (footprint, flux_dict)
+
+@pytest.fixture(scope="module")
+def setup_hitres_timeseries(hitres_files):
+    footprint, flux_dict = hitres_files
+
     timeseries, sens = name.timeseries_HiTRes(flux_dict = flux_dict,
                                               fp_HiTRes_ds = footprint,
                                               output_TS = True,
@@ -857,9 +920,59 @@ def test_hitres_timeseries(hitres_timeseries_benchmark_file, hitres_sens_benchma
                                               verbose = False,
                                               time_resolution = '1H')
     
-    assert np.allclose(timeseries['total'], benchmark['total'])
-    assert np.allclose(sens['total'], benchmark_sens['total'])
+    out = (timeseries, sens)
+    return out
+
+@pytest.mark.long
+def test_hitres_timeseries(hitres_timeseries_benchmark_file, setup_hitres_timeseries):
+    '''
+    Checks the timeseries output of name.timeseries_HiTRes matches a benchmarked version saved to
+    HiTRes_timeseries_201801.nc
+    '''
+    with xray.open_dataset(hitres_timeseries_benchmark_file) as benchmark:
+        benchmark.load()
     
+    assert np.allclose(setup_hitres_timeseries[0]['total'], benchmark['total'])
+
+@pytest.mark.long
+def test_hitres_timeseries_sens(hitres_sens_benchmark_file, setup_hitres_timeseries):
+    '''
+    Checks the sensitivity output of name.timeseries_HiTRes matches a benchmarked version saved to
+    HiTRes_timeseries_201801.nc
+    '''
+    with xray.open_dataset(hitres_sens_benchmark_file) as benchmark:
+        benchmark.load()
+    
+    assert np.allclose(setup_hitres_timeseries[1]['total'], benchmark['total'])
+
+@pytest.mark.long
+def test_hitres_timeseries_int(hitres_files):
+    '''
+    Test that using name.timeseries_HiTRes with constant fluxes and HiTRes footprint
+    gives the same result as calculating a timeseries with an integrated footprint
+    '''
+    footprint, flux_dict = hitres_files
+
+    # create a constant flux dataset using the mean from the high frequency one
+    flux_mean = flux_dict['high_freq'].flux.mean(dim='time')
+    flux_low_freq = flux_mean.values.tolist()
+    flux_low_freq = np.array([flux_low_freq] * len(flux_dict['high_freq'].time.values)).transpose(1, 2, 0)
+    flux_low_freq = xray.Dataset(data_vars = {'flux': (['lat', 'lon', 'time'], flux_low_freq)},
+                                 coords = {'lat': flux_dict['high_freq'].lat.values,
+                                           'lon': flux_dict['high_freq'].lon.values,
+                                           'time': flux_dict['high_freq'].time.values})
+    
+    # calculate the timeseries using the HiTRes footprint
+    ts_HiTRes = name.timeseries_HiTRes(flux_dict = {'high_freq': flux_low_freq},
+                                       fp_HiTRes_ds = footprint,
+                                       output_fpXflux = False) * 1e6
+    # calculate the timeseries using the integrated footprint
+    for ll in ['lat', 'lon']:
+        footprint[ll] = flux_low_freq[ll]
+    ts_integrated = (flux_low_freq.flux * footprint.fp).sum(['lat', 'lon']) * 1e6
+
+    assert np.allclose(ts_HiTRes.total.round(1), ts_integrated.round(1))
+
 # TODO: 
 #    Not working yet
 #def test_filtering_pblh(fp_data_H_pblh_merge):
