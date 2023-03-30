@@ -180,7 +180,6 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     
     # checks to see if all sites have data and removes sites without data from inversion
     # at the moment this doesn't rewrite the ini file to allow for cases where the ini file is not used
-    # adds removed sites to hbmcmc output netcdf
     removed_sites = []
     keep_sites = []
     for si, site in enumerate(sites):
