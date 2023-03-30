@@ -32,7 +32,8 @@ import xarray as xr
 import glob
 import os
 import pandas as pd
-from filters import filtering
+# from Arctic.functions.filters import filtering
+from Arctic.functions.filters import filtering
 
 
 acrg_path = Paths.acrg
