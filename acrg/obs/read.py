@@ -4,7 +4,6 @@
 """
 import numpy as np
 import pandas as pd
-import json
 import xarray as xr
 from collections import OrderedDict
 import sqlite3
@@ -14,15 +13,18 @@ import numexpr as ne
 from pathlib import Path
 import pathlib
 
+from acrg.utils import load_json
+from openghg_defs import site_info_file
+from openghg_defs import species_info_file
+
 acrg_path = Paths.acrg
 obs_directory = Paths.obs
 
 #Get site info and species info from JSON files
-with open(acrg_path / "data/species_info.json") as f:
-    species_info=json.load(f)
 
-with open(acrg_path / "data/site_info.json") as f:
-    site_info=json.load(f, object_pairs_hook=OrderedDict)
+species_info= load_json(species_info_file)
+
+site_info = load_json(site_info_file)
 
     
 def synonyms(search_string, info, alternative_label = "alt"):

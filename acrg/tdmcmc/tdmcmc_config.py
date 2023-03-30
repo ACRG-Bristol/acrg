@@ -306,7 +306,7 @@ def add_defaults(param,section_group=None):
     the input configuation file.
     
     The current defaults that can be added are:
-        "network" (within MEASUREMENTS section group) - extracted from acrg_site_info.json file
+        "network" (within MEASUREMENTS section group) - extracted from site_info.json file
         "unique_copy" (within MCMC section group)     - set to False as a default
         "lpdm" (within MCMC section group)            - set to 'name' if value is not specified
         "include_bias" (within MCMC section group)    - set to True if value is not specified

@@ -331,10 +331,6 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
                 with {source_name: emissions_file_identifier} (e.g. {'anth':'co2-ff-mth'}). This way
                 multiple sources can be read in simultaneously if they are added as separate entries to
                 the emissions_name dictionary.
-                If using HiTRes footprints, both the high and low frequency emissions files must be specified
-                in a second dictionary like so: {'anth': {'high_freq':'co2-ff-2hr', 'low_freq':'co2-ff-mth'}}.
-                It is not a problem to have a mixture of sources, with some that use HiTRes footprints and some
-                that don't.
             basis_directory (str, optional):
                 Directory containing basis function file
             country_file (str, optional):
@@ -407,10 +403,8 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
             # it varies over the inversion period
             emissions_flux = np.expand_dims(rerun_file.fluxapriori.values,2)
         else:
-            if emissions_name == None:
-                emds = name.flux(domain, species, start = start_date, end = end_date, flux_directory=flux_directory)
-            else:
-                emds = name.flux(domain, list(emissions_name.values())[0], start = start_date, end = end_date, flux_directory=flux_directory)
+            spec = species if emissions_name == None else list(emissions_name.values())[0]
+            emds = name.flux(domain=domain, species=spec, start=start_date, end=end_date, flux_directory=flux_directory)
             emissions_flux = emds.flux.values
         flux = scalemap*emissions_flux[:,:,0]
         
