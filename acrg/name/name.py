@@ -23,6 +23,7 @@ import dateutil.relativedelta
 import cartopy.crs as ccrs
 import cartopy
 from collections import OrderedDict
+import numba
 
 from acrg.time import convert
 import acrg.obs as obs
@@ -1516,30 +1517,34 @@ def filtering(datasets_in, filters, keep_missing=False):
         hours = dataset.time.to_pandas().index.hour
         return hours
     
-    def local_ratio(dataset):
-        """
-        Calculates the local ratio in the surrounding grid cells
-        """
-        release_lons = dataset.release_lon[0].values
-        release_lats = dataset.release_lat[0].values
-        dlon = dataset.lon[1].values - dataset.lon[0].values
-        dlat = dataset.lat[1].values-dataset.lat[0].values
-        local_sum=np.zeros((len(dataset.mf)))
-
-        for ti in range(len(dataset.mf)):
-            release_lon=dataset.release_lon[ti].values
-            release_lat=dataset.release_lat[ti].values
-            wh_rlon = np.where(abs(dataset.lon.values-release_lon) < dlon/2.)
-            wh_rlat = np.where(abs(dataset.lat.values-release_lat) < dlat/2.)
-            if np.any(wh_rlon[0]) and np.any(wh_rlat[0]):
-                local_sum[ti] = np.sum(dataset.fp[wh_rlat[0][0]-2:wh_rlat[0][0]+3,wh_rlon[0][0]-2:wh_rlon[0][0]+3,ti].values)/\
-                                np.sum(dataset.fp[:,:,ti].values)
-            else:
-                local_sum[ti] = 0.0 
-        
+    @numba.jit()
+    def assign_localness(dataset,wh_rlat,wh_rlon):
+        local_sum=np.zeros(dataset.shape[2])
+        for ti in range(dataset.shape[2]):
+            fp_data_H_site_local = dataset[wh_rlat[0]-2:wh_rlat[0]+3,
+                                                     wh_rlon[0]-2:wh_rlon[0]+3,ti]
+            local_sum[ti] = np.sum(fp_data_H_site_local)/np.sum(dataset[:,:,ti])
         return local_sum
-    
-    
+
+    def define_localness(fp_data_H,site):
+        """
+        Define the localness of each time point for each site.
+        Sum up the 25 grid boxes surrounding the site.
+        """
+        release_lon=fp_data_H[site].release_lon[0].values
+        release_lat=fp_data_H[site].release_lat[0].values
+        dlon=fp_data_H[site].lon[1].values-fp_data_H[site].lon[0].values
+        dlat=fp_data_H[site].lat[1].values-fp_data_H[site].lat[0].values
+        wh_rlon = np.where(abs(fp_data_H[site].lon.values-release_lon) < dlon/2.)[0]
+        wh_rlat = np.where(abs(fp_data_H[site].lat.values-release_lat) < dlat/2.)[0]
+        fp_data_H_site_fp = fp_data_H[site].fp.values
+        local_sum = assign_localness(fp_data_H_site_fp,wh_rlat,wh_rlon)
+        local_ds = xr.Dataset({'local_ratio': (['time'], local_sum)},
+                                coords = {'time' : (fp_data_H[site].coords['time'])})
+        fp_data_H[site] = fp_data_H[site].merge(local_ds)
+
+        return fp_data_H
+     
     # Filter functions
     def daily_median(dataset, keep_missing=False):
         """ Calculate daily median """
@@ -1605,31 +1610,25 @@ def filtering(datasets_in, filters, keep_missing=False):
             return dataset[dict(time = ti)] 
         
             
-    def local_influence(dataset,site, keep_missing=False):
+    def local_influence(dataset,site,keep_missing=False):
         """
         Subset for times when local influence is below threshold.       
         Local influence expressed as a fraction of the sum of entire footprint domain.
-        """        
-        if not dataset.filter_by_attrs(standard_name="local_ratio"):
-            lr = local_ratio(dataset)
-        else:
-            lr = dataset.local_ratio
-            
-        pc = 0.1
+        """
+        pc = 0.1      #localness 'ratio' limit
+        lr = dataset.local_ratio
         ti = [i for i, local_ratio in enumerate(lr) if local_ratio <= pc]
+
         if keep_missing is True: 
-            mf_data_array = dataset.mf            
+            mf_data_array = dataset.mf
             dataset_temp = dataset.drop('mf')
-
             dataarray_temp = mf_data_array[dict(time = ti)]   
-
             mf_ds = xr.Dataset({'mf': (['time'], dataarray_temp)}, 
                                   coords = {'time' : (dataarray_temp.coords['time'])})
-
             dataset_out = combine_datasets(dataset_temp, mf_ds, method=None)
             return dataset_out
         else:
-            return dataset[dict(time = ti)]
+            return dataset[dict(time = ti)] 
                      
         
     filtering_functions={"daily_median":daily_median,
@@ -1649,6 +1648,12 @@ def filtering(datasets_in, filters, keep_missing=False):
             for filt in filters:
                 if filt == "daily_median" or filt == "six_hr_mean":
                     datasets[site] = filtering_functions[filt](datasets[site], keep_missing=keep_missing)
+
+                elif filt == "local_influence":
+                    print('Applying localness filtering')
+                    fp_data_H = define_localness(datasets,site)
+                    datasets[site] = local_influence(fp_data_H[site],site)
+
                 else:
                     datasets[site] = filtering_functions[filt](datasets[site], site, keep_missing=keep_missing)
 
