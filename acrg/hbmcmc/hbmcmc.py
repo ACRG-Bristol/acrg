@@ -189,6 +189,28 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                          average = meas_period, data_directory=obs_directory,
                           keep_missing=keep_missing,inlet=inlet, instrument=instrument,
                           max_level=max_level)
+    
+    # checks to see if all sites have data and removes sites without data from inversion
+    # at the moment this doesn't rewrite the ini file to allow for cases where the ini file is not used
+    # adds removed sites to hbmcmc output netcdf
+    removed_sites = []
+    keep_sites = []
+    for si, site in enumerate(sites):
+        if len(data[site]) == 0:
+            print(f"No data available for {site}, removing site from inversion.")
+            removed_sites.append(site)
+        else:
+            if len(data[site][0].time) == 0:
+                print(f"No data available for {site}, removing site from inversion.")
+                removed_sites.append(site)
+            else:
+                keep_sites.append(site)
+
+    for si,site in enumerate(removed_sites):
+        del data[site]
+
+    sites = keep_sites
+
     fp_all = name.footprints_data_merge(data, domain=domain, met_model = met_model, calc_bc=True,
                                         HiTRes = HiTRes,
                                         height = fpheight,
