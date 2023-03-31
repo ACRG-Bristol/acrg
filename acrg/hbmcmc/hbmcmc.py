@@ -20,6 +20,7 @@ being annoying it will also slow down your run due to unnecessary forking.
 
 """
 import numpy as np
+import xarray as xr
 import shutil
 
 import acrg.name.name as name
@@ -332,7 +333,7 @@ def fixedbasisMCMC_no_bcs(species, sites, domain, meas_period, start_date,
 
     """
     Script to run hierarchical Bayesian MCMC for inference of emissions using
-    pymc3 to solve the inverse problem.
+    pymc3 to solve the inverse problem. For inversion with no background. 
     
     Args:
         species (str):
@@ -368,6 +369,17 @@ def fixedbasisMCMC_no_bcs(species, sites, domain, meas_period, start_date,
             precision. Currently all variables are considered iid.
         sigprior (dict):
             Same as above but for model error.
+        bc_type (str): 
+            Type of background to be subtracted from the observations. Can be 
+            "Percentile" or "Other". Default "Percentile"
+        percentile (int):
+             If bc_type is "percentile", the lowest nth percentile will be subtracted from the data.
+             Default 10.
+        bc_directory (str/None):
+            Directory containing the desired background, if using "other" background. Default None.
+        bc_filename (str/None):
+            Filename of desired background, if using "other" background. Background must 
+            be netcdf file, with variables for each background named as each site name. 
         offsetprior (dict):
             Same as above but for bias offset. Only used is addoffset=True.
         nit (int):
@@ -508,11 +520,12 @@ def fixedbasisMCMC_no_bcs(species, sites, domain, meas_period, start_date,
     #subtract background from data
     if bc_type == "Percentile":
         for site in sites:
+            print(f"Subtracting {percentile}th percentile from observations for {site}.")
             fp_data[site]["mf"] = fp_data[site].mf - np.percentile(fp_data[site].mf, percentile)
-    # elif bc_type == "Other":
-    #     background = xr.open_dataset()
+    elif bc_type == "Other":
+        background = xr.open_dataset(bc_directory + bc_filename)
     #     for site in sites:
-    #         fp_data[site].mf = fp_data[site].mf - background[site]
+    #         fp_data[site]["mf"] = fp_data[site].mf - background[site]
     else:
         raise ValueError("Please input 'Percentile' or 'Other' for bc_type")
         

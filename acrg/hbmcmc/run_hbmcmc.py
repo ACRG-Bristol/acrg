@@ -123,7 +123,7 @@ def hbmcmc_extract_param(config_file,mcmc_type="fixed_basis",print_param=True,**
             MCMC function to use, dictionary of parameter names and values which can be passed to MCMC function
     '''
     
-    if mcmc_type == "fixed_basis":
+    if mcmc_type == "fixed_basis" or "fixed_basis_no_bcs":
         expected_param = fixed_basis_expected_param()
 
     # If an expected parameter has been passed from the command line, this does not need to be within the config file

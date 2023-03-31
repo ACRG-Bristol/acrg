@@ -302,7 +302,6 @@ def inferpymc3_no_bcs(Hx, Y, error, siteindicator, sigma_freq_index,
     
     hx = Hx.T 
     nx = hx.shape[1]
-    nbc = hbc.shape[1]
     ny = len(Y)
     
     nit = int(nit)  
