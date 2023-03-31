@@ -90,11 +90,13 @@ def define_mcmc_function(mcmc_type):
     Current options:
         mcmc_type (str) :
             "fixed_basis" : acrg_hbmcmc.hbmcmc.fixedbasisMCMC(...) function
+            "fixed_basis_no_bcs": acrg_hbmcmc.hbmcmc.fixedbasisMCMC_no_bcs(...) function
     
     Returns:
         Function
     '''
-    function_dict = {"fixed_basis":mcmc.fixedbasisMCMC}
+    function_dict = {"fixed_basis":mcmc.fixedbasisMCMC,
+                     "fixed_basis_no_bcs": mcmc.fixedbasisMCMC_no_bcs}
     
     return function_dict[mcmc_type]
 
