@@ -1673,10 +1673,12 @@ def filtering(datasets_in, filters, keep_missing=False):
         dataset = dataset[dict(time = ti)]
         dataset = dataset.drop(['wind_sp', 'wind_dir'])
 
+        perc_filtered = len(ti)*100/time_len
+
         # percentage of removed points
         print(f"Percentage remaining data points :{len(ti)*100/time_len}%")
 
-        return dataset
+        return dataset, perc_filtered
                      
         
     filtering_functions={"daily_median":daily_median,
@@ -1698,11 +1700,11 @@ def filtering(datasets_in, filters, keep_missing=False):
                 if filt == "daily_median" or filt == "six_hr_mean":
                     datasets[site] = filtering_functions[filt](datasets[site], keep_missing=keep_missing)
                 elif filt == 'BRW_wind_dir_filter':
-                    datasets[site] = filtering_functions[filt](datasets[site])    
+                    datasets[site], perc_filtered = filtering_functions[filt](datasets[site])    
                 else:
                     datasets[site] = filtering_functions[filt](datasets[site], site, keep_missing=keep_missing)
 
-    return datasets
+    return datasets, perc_filtered
 
 
 def plot(fp_data, date, out_filename=None, out_format = 'pdf',
