@@ -554,18 +554,6 @@ def fixedbasisMCMC_no_bcs(species, sites, domain, meas_period, start_date,
     if HiTRes:
         for site in sites:
             fp_data[site] = fp_data[site].dropna(dim='time')
-
-    # #subtract background from data
-    # if bc_type == "Percentile":
-    #     for site in sites:
-    #         print(f"Subtracting {percentile}th percentile from observations for {site}.")
-    #         fp_data[site]["mf"] = fp_data[site].mf - np.percentile(fp_data[site].mf, percentile)
-    # elif bc_type == "Other":
-    #     background = xr.open_dataset(bc_directory + bc_filename)
-    # #     for site in sites:
-    # #         fp_data[site]["mf"] = fp_data[site].mf - background[site]
-    # else:
-    #     raise ValueError("Please input 'Percentile' or 'Other' for bc_type")
         
     #apply named filters to the data
     fp_data = name.filtering(fp_data, filters)
