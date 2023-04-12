@@ -190,6 +190,29 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                          average = meas_period, data_directory=obs_directory,
                           keep_missing=keep_missing,inlet=inlet, instrument=instrument,
                           max_level=max_level)
+    
+        
+    # checks to see if all sites have data and removes sites without data from inversion
+    # at the moment this doesn't rewrite the ini file to allow for cases where the ini file is not used
+    # adds removed sites to hbmcmc output netcdf
+    removed_sites = []
+    keep_sites = []
+    for si, site in enumerate(sites):
+        if len(data[site]) == 0:
+            print(f"No data available for {site}, removing site from inversion.")
+            removed_sites.append(site)
+        else:
+            if len(data[site][0].time) == 0:
+                print(f"No data available for {site}, removing site from inversion.")
+                removed_sites.append(site)
+            else:
+                keep_sites.append(site)
+
+    for si,site in enumerate(removed_sites):
+        del data[site]
+
+    sites = keep_sites
+
     fp_all = name.footprints_data_merge(data, domain=domain, met_model = met_model, calc_bc=True,
                                         HiTRes = HiTRes,
                                         height = fpheight,
@@ -200,10 +223,6 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                                         emissions_name = emissions_name,
                                         species_footprint = species_footprint)
     
-    for site in sites:
-        for j in range(len(data[site])):
-            if len(data[site][j].mf) == 0:
-                print("No observations for %s to %s for %s" % (start_date, end_date, site))
     if sites[0] not in fp_all.keys():
         print("No footprints for %s to %s" % (start_date, end_date))
         return
@@ -333,7 +352,8 @@ def fixedbasisMCMC_no_bcs(species, sites, domain, meas_period, start_date,
 
     """
     Script to run hierarchical Bayesian MCMC for inference of emissions using
-    pymc3 to solve the inverse problem. For inversion with no background. 
+    pymc3 to solve the inverse problem. For inversion with no boundary conditions.
+    Background must be pre-subtracted from data.  
     
     Args:
         species (str):
