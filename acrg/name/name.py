@@ -1180,13 +1180,11 @@ def add_bc(fp_and_data, load_bc, species, bc=None):
     
         sites = [key for key in list(fp_and_data.keys()) if key[0] != '.']
         for site in sites:
-            bc_reindex = bc.reindex_like(fp_and_data[site], 'ffill') if bc is not None else \
-                         fp_and_data['.bc'].reindex_like(fp_and_data[site], 'ffill')
+            bc_reindex = fp_and_data['.bc'].reindex_like(fp_and_data[site], 'ffill')
             
             if 'lifetime' in species_info[species_obs].keys():
                 lifetime = species_info[species_obs]["lifetime"]
                 lifetime_hrs_list_or_float = convert.convert_to_hours(lifetime)
-
                 # calculate the lifetime_hrs associated with each time point in fp_and_data
                 # this is because lifetime can be a list of monthly values
                 
@@ -1206,10 +1204,23 @@ def add_bc(fp_and_data, load_bc, species, bc=None):
                 loss_s = 1
                 loss_w = 1
 
-            fp_and_data[site]['bc'] = (fp_and_data[site].particle_locations_n*bc_reindex.vmr_n*loss_n).sum(["height", "lon"]) + \
-                                        (fp_and_data[site].particle_locations_e*bc_reindex.vmr_e*loss_e).sum(["height", "lat"]) + \
-                                        (fp_and_data[site].particle_locations_s*bc_reindex.vmr_s*loss_s).sum(["height", "lon"]) + \
-                                        (fp_and_data[site].particle_locations_w*bc_reindex.vmr_w*loss_w).sum(["height", "lat"])
+            if 0 in np.sum(fp_and_data[site].particle_locations_s.values, axis = (0,1)):
+
+                fp_and_data[site]['particle_locations_n'] = xr.zeros_like(fp_and_data[site].mean_age_particles_n)
+                fp_and_data[site]['particle_locations_e'] = xr.zeros_like(fp_and_data[site].mean_age_particles_e)
+                fp_and_data[site]['particle_locations_s'] = xr.ones_like(fp_and_data[site].mean_age_particles_s)*(1/20)*(1/1024)
+                fp_and_data[site]['particle_locations_w'] = xr.zeros_like(fp_and_data[site].mean_age_particles_w)
+                
+                fp_and_data[site]['bc'] = (fp_and_data[site].particle_locations_n*bc_reindex.vmr_n*loss_n).sum(["height", "lon"]) + \
+                                            (fp_and_data[site].particle_locations_e*bc_reindex.vmr_e*loss_e).sum(["height", "lat"]) + \
+                                            (fp_and_data[site].particle_locations_s*bc_reindex.vmr_s*loss_s).sum(["height", "lon"]) + \
+                                            (fp_and_data[site].particle_locations_w*bc_reindex.vmr_w*loss_w).sum(["height", "lat"])
+                               
+            else:
+                fp_and_data[site]['bc'] = (fp_and_data[site].particle_locations_n*bc_reindex.vmr_n*loss_n).sum(["height", "lon"]) + \
+                                            (fp_and_data[site].particle_locations_e*bc_reindex.vmr_e*loss_e).sum(["height", "lat"]) + \
+                                            (fp_and_data[site].particle_locations_s*bc_reindex.vmr_s*loss_s).sum(["height", "lon"]) + \
+                                            (fp_and_data[site].particle_locations_w*bc_reindex.vmr_w*loss_w).sum(["height", "lat"])
     return fp_and_data
 
 
