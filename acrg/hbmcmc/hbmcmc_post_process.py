@@ -24,7 +24,6 @@ import glob
 import cartopy.crs as ccrs
 import xarray as xray
 import os
-import json
 from matplotlib.colors import BoundaryNorm, Normalize
 import matplotlib.dates as mdates
 from matplotlib import ticker
@@ -38,12 +37,13 @@ from acrg.grid import areagrid
 from acrg import convert
 from acrg.config.paths import Paths
 
+from acrg.utils import load_json
+from openghg_defs import site_info_file
 
 acrg_path = Paths.acrg
 
 # Get site_info file
-with open(acrg_path / "data/site_info.json") as f:
-    site_info=json.load(f,object_pairs_hook=OrderedDict)
+site_info = load_json(site_info_file)
 
 def check_platform(site,network=None):
     '''
@@ -53,9 +53,6 @@ def check_platform(site,network=None):
     Returns:
         str : Platform type (e.g. "site", "satellite", "aircraft")
     '''
-    site_info_file = os.path.join(acrg_path,"data/site_info.json")
-    with open(site_info_file) as f:
-        site_info=json.load(f,object_pairs_hook=OrderedDict)
     if network is None:
         network = list(site_info[site].keys())[0]
     if "platform" in site_info[site][network].keys():

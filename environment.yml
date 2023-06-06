@@ -24,3 +24,5 @@ dependencies:
   - pytest=7.2
   - pyfakefs=5.1
   - cachetools=5.3
+  - pip:
+    - openghg_defs @ git+https://github.com/openghg/supplementary_data

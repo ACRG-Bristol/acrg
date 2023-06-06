@@ -24,7 +24,6 @@ import cartopy.crs as ccrs
 import xarray as xray
 from netCDF4 import Dataset
 import os
-import json
 import matplotlib.mlab as mlab
 from matplotlib.patches import Polygon
 from matplotlib.colors import BoundaryNorm
@@ -40,12 +39,15 @@ from acrg.grid import areagrid
 from acrg.time.convert import time2sec
 import acrg.obs as acrg_obs
 from acrg.config.paths import Paths
+from acrg.utils import load_json
+from openghg_defs import site_info_file
+from openghg_defs import species_info_file
 
 acrg_path = Paths.acrg
 
 # Get acrg_site_info file
-with open(acrg_path / "data/site_info.json") as f:
-    site_info=json.load(f,object_pairs_hook=OrderedDict)
+site_info = load_json(site_info_file)
+species_info= load_json(species_info_file)
 
 def append_netcdf(flux_mean, flux_percentile, flux_it, country_mean, country_percentile,
                   k_mean, k_percentile,
@@ -248,9 +250,6 @@ def molar_mass(species):
     Returns:
         float : Molar mass of species
     '''
-    species_info_file = os.path.join(acrg_path, "data/species_info.json")
-    with open(species_info_file) as f:
-            species_info=json.load(f)
     species_key = acrg_obs.read.synonyms(species, species_info)
     molmass = float(species_info[species_key]['mol_mass'])
     return molmass
@@ -268,9 +267,6 @@ def check_platform(site,network=None):
     Returns:
         str : Platform type (e.g. "site", "satellite", "aircraft")
     '''
-    site_info_file = os.path.join(acrg_path,"acrg_site_info.json")
-    with open(site_info_file) as f:
-        site_info=json.load(f,object_pairs_hook=OrderedDict)
     if network is None:
         network = list(site_info[site].keys())[0]
     if "platform" in site_info[site][network].keys():

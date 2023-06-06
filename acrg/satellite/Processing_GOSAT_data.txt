@@ -72,7 +72,7 @@ Example gosat_process.ini file details::
     end = '2016-05-12'             ; End of date range of selection (optional) (str in format YYYY-MM-DD)
 
 
-NOTE on site definition: Within our code the site name will be used to find the associated network (i.e. collection of sites e.g. DECC or AGAGE). This is more relevant to ground-based sites rather than satellite data but this format is still used for consistency. The network is defined within the "acrg_site_info.json" file in the base directory of the ACRG repository. Before running "run_gosat_process.py" add your chosen site name to this file in the same format as the other sites:
+NOTE on site definition: Within our code the site name will be used to find the associated network (i.e. collection of sites e.g. DECC or AGAGE). This is more relevant to ground-based sites rather than satellite data but this format is still used for consistency. The network is defined within the "site_info.json" file in the openghg/supplementary_data repository. Before running "run_gosat_process.py" add your chosen site name to this file in the same format as the other sites:
 
 e.g.::
 

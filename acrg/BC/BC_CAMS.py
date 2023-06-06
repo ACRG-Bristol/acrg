@@ -42,7 +42,6 @@ from datetime import datetime as dt
 from acrg.countrymask import domain_volume
 from acrg.satellite.gosat import extract_files
 from acrg.convert import concentration
-import json
 from collections import OrderedDict
 from acrg.config.paths import Paths
 import os
@@ -51,6 +50,8 @@ import xarray as xr
 from acrg.name.name import open_ds
 from acrg.config.paths import Paths
 from . import climatology
+from acrg.utils import load_json
+from openghg_defs import species_info_file
 
 acrg_path = Paths.acrg
 data_path = Paths.data
@@ -73,8 +74,7 @@ default_inputs = {'ch4': {'v19': {'altitude': 'altitude',
                    }
 default_inputs['ch4']['latest'] = default_inputs['ch4'][latest_version]
 
-with open(os.path.join(acrg_path, "data/species_info.json")) as f:
-    species_info=json.load(f,object_pairs_hook=OrderedDict)
+species_info= load_json(species_info_file)
 
 def readCAMSInversion(start, end, species='ch4', cams_directory=cams_directory_default,
                       version='latest', variables=None):
