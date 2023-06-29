@@ -331,10 +331,6 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
                 with {source_name: emissions_file_identifier} (e.g. {'anth':'co2-ff-mth'}). This way
                 multiple sources can be read in simultaneously if they are added as separate entries to
                 the emissions_name dictionary.
-                If using HiTRes footprints, both the high and low frequency emissions files must be specified
-                in a second dictionary like so: {'anth': {'high_freq':'co2-ff-2hr', 'low_freq':'co2-ff-mth'}}.
-                It is not a problem to have a mixture of sources, with some that use HiTRes footprints and some
-                that don't.
             basis_directory (str, optional):
                 Directory containing basis function file
             country_file (str, optional):
@@ -369,12 +365,12 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
         nBC = np.arange(nbc)
         #YBCtrace = np.dot(Hbc.T,bcouts.T)
         YmodBC = np.mean(YBCtrace, axis=1)
-        Ymod95BC = pm.stats.hpd(YBCtrace.T, 0.95)
-        Ymod68BC = pm.stats.hpd(YBCtrace.T, 0.68)
+        Ymod95BC = pm.stats.hdi(YBCtrace.T, 0.95)
+        Ymod68BC = pm.stats.hdi(YBCtrace.T, 0.68)
         YaprioriBC = np.sum(Hbc, axis=0)
         Ymod = np.mean(Ytrace, axis=1)
-        Ymod95 = pm.stats.hpd(Ytrace.T, 0.95)
-        Ymod68 = pm.stats.hpd(Ytrace.T, 0.68)
+        Ymod95 = pm.stats.hdi(Ytrace.T, 0.95)
+        Ymod68 = pm.stats.hdi(Ytrace.T, 0.68)
         Yapriori = np.sum(Hx.T, axis=1) + np.sum(Hbc.T, axis=1)
         sitenum = np.arange(len(sites))
         
@@ -407,10 +403,8 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
             # it varies over the inversion period
             emissions_flux = np.expand_dims(rerun_file.fluxapriori.values,2)
         else:
-            if emissions_name == None:
-                emds = name.flux(domain, species, start = start_date, end = end_date, flux_directory=flux_directory)
-            else:
-                emds = name.flux(domain, list(emissions_name.values())[0], start = start_date, end = end_date, flux_directory=flux_directory)
+            spec = species if emissions_name == None else list(emissions_name.values())[0]
+            emds = name.flux(domain=domain, species=spec, start=start_date, end=end_date, flux_directory=flux_directory)
             emissions_flux = emds.flux.values
         flux = scalemap*emissions_flux[:,:,0]
         
@@ -470,8 +464,8 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
                                3600*24*365*molarmass)/unit_factor
             cntrymean[ci] = np.mean(cntrytottrace)
             cntrysd[ci] = np.std(cntrytottrace)
-            cntry68[ci, :] = pm.stats.hpd(cntrytottrace, 0.68)
-            cntry95[ci, :] = pm.stats.hpd(cntrytottrace, 0.95)
+            cntry68[ci, :] = pm.stats.hdi(cntrytottrace, 0.68)
+            cntry95[ci, :] = pm.stats.hdi(cntrytottrace, 0.95)
             cntryprior[ci] = cntrytotprior
             
     

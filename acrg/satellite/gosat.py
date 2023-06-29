@@ -78,7 +78,6 @@ This could be run as:
                             write_nc=False,
                             write_name=False)
 """
-from past.utils import old_div
 import glob
 import os
 import re
@@ -579,7 +578,7 @@ def distance_lat(distance,radius=radius):
             Latitude difference in degrees
     '''
     # Haversine distance formula is given as distance = 2*asin(sqrt(a))*radius
-    a = math.sin(old_div(distance,(2.*radius)))*math.sin(old_div(distance,(2.*radius)))
+    a = math.sin(distance/(2.*radius))*math.sin(distance/(2.*radius))
     
     # Full formula for a = sin(dlat/2)**2 + cos(lat1)*cos(lat2)*sin(dLon/2)**2
     # When dlon=0, lon1=lon2, a reduces to a = sin(dlat/2)**2
@@ -607,11 +606,11 @@ def distance_lon(distance,lat,radius=radius):
     '''
     lat = math.radians(lat)
     # Haversine distance formula is given as distance = 2*asin(sqrt(a))*radius
-    a = math.sin(old_div(distance,(2.*radius)))*math.sin(old_div(distance,(2.*radius)))
+    a = math.sin(distance/(2.*radius))*math.sin(distance/(2.*radius))
     
     # Full formula for a = sin(dlat/2)**2 + cos(lat1)*cos(lat2)*sin(dLon/2)**2
     # When dlat=0, lat1=lat2, a reduces to a = cos^2(lat)*sin^2(dlat/2)
-    b = old_div(math.sqrt(a),math.cos(lat))
+    b = math.sqrt(a)/math.cos(lat)
     dlon = 2.*math.asin(b)
     dlon = np.abs(dlon)
     
@@ -1800,7 +1799,7 @@ def name_pressure_filter(ds,filters,pressure_NAME=None,columns=["latitude","long
     
     if "cutoff" in filters:
         model_diff = pressure_NAME - pressure_levels[:,0]
-        percent_diff = np.abs(old_div(model_diff*100.,pressure_NAME))
+        percent_diff = np.abs(model_diff*100./pressure_NAME)
         ds_new = ds_new.where(percent_diff <= cutoff, drop=True)
         #filt_1 = np.where(percent_diff <= cutoff)[0]
         #filt = filt_1
@@ -2084,7 +2083,7 @@ def define_obs_filename(output_directory,instrument,satellite,date,species,netwo
         date (str) : 
             Date the measurements are relevant to e.g. "2010-01-01"
         species (str) : 
-            Species being considered e.g. "ch4". Should be defined within "acrg_species_info.json" file
+            Species being considered e.g. "ch4". Should be defined within "openghg/supplementary data species_info.json" file
         network (str/None, optional) : 
             Which network is being considered e.g. "GOSAT/GOSAT-INDIA"
             If present, this will be extend the output path e.g. "/shared_data/air/shared/obs/GOSAT/GOSAT-INDIA/"
@@ -2385,9 +2384,9 @@ def gosat_output(ds,site,species="ch4",file_per_day=False,output_directory=obs_d
             GOSAT CH4 Level 2 Data Product file as an xarray Dataset.
             Should have had co-ordinates and dimensions assigned with gosat_add_coords() function.
         site (str) : 
-            Specified sub-set defined for gosat e.g. GOSAT-INDIA (should be defined within acrg_sites_info.json)
+            Specified sub-set defined for gosat e.g. GOSAT-INDIA (should be defined within site_info.json)
         species (str, optional) : 
-            Species of interest e.g. "ch4" (should be defined within data/species_info.json).
+            Species of interest e.g. "ch4" (should be defined within species_info.json).
             Default = "ch4"
         file_per_day (bool, optional) : 
             Output all results to one file per day rather than splitting out per time point. Default = False.
@@ -2582,7 +2581,7 @@ def gosat_output_name(ds,site,max_level=17,use_name_pressure=False,pressure_doma
         ds (xarray.Dataset) : 
             GOSAT CH4 Level 2 Data Product file as an xarray Dataset.
         site (str) : 
-            Specified sub-set defined for gosat e.g. GOSAT-INDIA. Should be defined within acrg_sites_info.json.
+            Specified sub-set defined for gosat e.g. GOSAT-INDIA. Should be defined within site_info.json.
             Note: at the moment this is just used in the filename and not in the folder structure
         max_level (int, optional) : 
             Maximum level to include from input GOSAT data (up to 20).
@@ -2714,6 +2713,9 @@ def gosat_output_name(ds,site,max_level=17,use_name_pressure=False,pressure_doma
             
             if file_per_day:
                 if max_points:
+                    if len(wh_date) > max_points:
+                        letter_split = chr(ord("A") + ID//max_points)
+                        filename = "{}-{}".format(filename,letter_split)
                     ID_1 = ID%max_points
                     fname_index = int((ID)/max_points)
                 else:
@@ -2785,7 +2787,7 @@ def gosat_process_file(filename,site,species="ch4",lat_bounds=[],lon_bounds=[],d
         filename (str) : 
             Filename of GOSAT CH4 Level 2 Data Product file (str)
         site (str) : 
-            Specified sub-set defined for gosat e.g. GOSAT-INDIA. Should be defined within sites_info.json
+            Specified sub-set defined for gosat e.g. GOSAT-INDIA. Should be defined within site_info.json
         species (str, optional) : 
             Species of interest. Should be defined within species_info.json. Default = "ch4"
         lat_bounds (list, optional) : 
@@ -3020,9 +3022,9 @@ def gosat_process(site,species="ch4",input_directory=input_directory,start=None,
     
     Args:
         site (str) : 
-            Specified sub-set defined for gosat e.g. GOSAT-INDIA. Should be defined within acrg_sites_info.json
+            Specified sub-set defined for gosat e.g. GOSAT-INDIA. Should be defined within site_info.json
         species (str, optional) : 
-            Species of interest. Should be defined within data/species_info.json
+            Species of interest. Should be defined within species_info.json
             Default = "ch4"
         input_directory (str, optional) : 
             Top level directory containing GOSAT CH4 Level 2 Data Product files only.

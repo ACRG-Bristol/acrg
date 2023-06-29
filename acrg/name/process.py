@@ -35,7 +35,6 @@ import numpy as np
 import pandas as pd
 import scipy.constants as const
 import os
-import json
 import xarray as xray
 import matplotlib.pyplot as plt
 import getpass
@@ -49,6 +48,9 @@ from acrg.config.version import code_version
 import acrg.obs as obs
 import acrg.time as acrg_time
 from acrg.config.paths import Paths
+from acrg.utils import load_json
+
+from openghg_defs import species_info_file
 
 
 #Default NAME output file version
@@ -1566,7 +1568,11 @@ def write_netcdf(fp, outfile,
     # pass any global attributes in fp to the netcdf file
     for key in list(global_attributes.keys()):
         ncF.__setattr__(key,global_attributes[key])
-    ncF.__setattr__("author", getpass.getuser())
+    ncF.__setattr__("author", 'Met Office/University of Bristol')
+    ncF.__setattr__("contact", 'Alistair Manning')
+    ncF.__setattr__("file_created_by", getpass.getuser())
+    ncF.__setattr__("funder", 'BEIS')
+    ncF.__setattr__("publication_acknowledgement", 'Please acknowledge the Met Office/University of Bristol in any publications that use these files.')
     ncF.__setattr__("created", str(dt.datetime.now()))
     
     
@@ -2117,17 +2123,18 @@ def process(domain, site, height, year, month,
         fields_folder = "MixR_files"
     
     if species is not None:
-        with open(os.path.join(acrg_path,"data/species_info.json")) as f:
-            species_info=json.load(f)
+        species_info= load_json(species_info_file)
         species = obs.read.synonyms(species, species_info)
-        if 'lifetime' in species_info[species].keys():
-            lifetime = species_info[species]["lifetime"]
-            if type(lifetime) == list:
-                lifetime_hrs = acrg_time.convert.convert_to_hours(lifetime[month-1])
-            else:
+        lifetime_labels = ['lifetime', 'lifetime_monthly']
+        if any(x in species_info[species].keys() for x in lifetime_labels):
+            if 'lifetime_monthly' in species_info[species].keys():
+                lifetime_monthly = species_info[species]["lifetime_monthly"]
+                lifetime_hrs = acrg_time.convert.convert_to_hours(lifetime_monthly[month-1])
+            elif 'lifetime' in species_info[species].keys():
+                lifetime = species_info[species]["lifetime"]
                 lifetime_hrs = acrg_time.convert.convert_to_hours(lifetime)
             print('Lifetime of species in hours is', lifetime_hrs)
-            
+        
             if lifetime_hrs > 1440:
                 print("This is a long-lived species. For efficiency, folder has been changed to MixR_files (inert species).")
                 lifetime_hrs = None

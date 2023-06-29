@@ -1,11 +1,14 @@
 import os
-import json
+from acrg.utils import load_json
 
 from acrg.obs.read import synonyms
 from acrg.config.paths import Paths
 
+from openghg_defs import species_info_file
 
 acrg_path = Paths.acrg
+
+import numpy as np
 
 def molar_mass(species):
     '''
@@ -13,9 +16,7 @@ def molar_mass(species):
     Returns:
         float : Molar mass of species
     '''
-    species_info_file = os.path.join(acrg_path,"data/species_info.json")
-    with open(species_info_file) as f:
-            species_info=json.load(f)
+    species_info= load_json(species_info_file)
     species_key = synonyms(species, species_info)
     molmass = float(species_info[species_key]['mol_mass'])
     return molmass
@@ -71,4 +72,3 @@ def convert_lons_0360(lons):
     div = lons // 360
 
     return lons - div*360
-

@@ -1,29 +1,28 @@
 name: acrg
 channels:
   - conda-forge
-  - defaults
 dependencies:
-  - python=3.8
-  - numpy=1.18.1
-  - scipy=1.4.1
-  - pandas=1.0.3
-  - h5py=2.10.0
-  - netcdf4=1.5.3
-  - xarray=0.15.1
-  - matplotlib=3.2.1
-  - cartopy=0.18.0
-  - geopandas=0.7.0
-  - regionmask=0.8.0
-  - iris=2.4.0
-  - pymc3=3.8
-  - arviz=0.11.0
-  - future=0.18.2
-  - yaml=0.2.2
-  - numba=0.48.0
-  - python-dateutil=2.8.1
-  - pytest=5.4.1
-  - pyfakefs=4.1.0
-  - esmpy=8.0.1
-  - xesmf=0.3.0
-  - numexpr=2.7
-  - iso3166=1.0.1
+  - python=3.10
+  - pymc3=3.9
+  - matplotlib-base=3.7
+  - netcdf4=1.6
+  - numpy=1.22
+  - regionmask=0.9
+  - xarray=2023.2
+  - iso3166=2.1
+  - pandas=1.5
+  - numexpr=2.8
+  - tqdm=4.64
+  - xesmf=0.7
+  - geopandas=0.12
+  - yaml=0.2
+  - iris=3.4
+  - cartopy=0.21
+  - h5py=3.8
+  - numba=0.56
+  - scipy=1.10
+  - pytest=7.2
+  - pyfakefs=5.1
+  - cachetools=5.3
+  - pip:
+    - openghg_defs @ git+https://github.com/openghg/supplementary_data

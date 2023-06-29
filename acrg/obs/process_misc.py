@@ -5,7 +5,6 @@ Created on Fri Dec 14 14:02:12 2018
 
 @author: chxmr
 """
-import json
 import pandas as pd
 import glob
 import os
@@ -16,17 +15,136 @@ import pytz
 import numpy as np
 import datetime as dt
 from collections import OrderedDict
+from acrg.obs.process_gcwerks import set_encoding
 
 from acrg.config.paths import Paths
+from acrg.utils import load_json
+
+from openghg_defs import site_info_file
 
 acrg_path = Paths.acrg
 obs_directory = Paths.obs
 data_path = obs_directory.parent
 
+site_params = load_json(site_info_file)
 
-with open(acrg_path / "data/site_info.json") as f:
-    site_params=json.load(f, object_pairs_hook=OrderedDict)
 
+def generic_data_read(site,
+                      network,
+                      global_attributes,
+                      inlet_filename,
+                      instrument,
+                      sampling_period,
+                      input_file,
+                      output_directory,
+                      sep,
+                      skipinitialspace,
+                      datetime_var,
+                      datetime_format,
+                      time_offset_seconds,
+                      variables,
+                      scales):
+    '''
+    Reads a generic delimited data file.
+    Site needs to be added to site_info.json first (but not process_gcwerks_parameters.json)
+    Example call:
+    
+    generic_data_read(site="GST",
+                      network="COP26",
+                      global_attributes={"data_owner": "Tim Arnold",
+                                         "data_owner_email": "tim.arnold@npl.co.uk",
+                                         "inlet_height_magl": 100.0,
+                                         "comment": "Created from glasgow-picarro-1min.csv"},
+                      inlet_filename=None,    # Use None if there is only one inlet at the site
+                      instrument="picarro",
+                      sampling_period=60,
+                      input_file="/group/chemistry/acrg/obs_raw/GST/glasgow-picarro-1min.csv",
+                      output_directory="/group/chemistry/acrg/obs/",
+                      sep=",",
+                      skipinitialspace=True,
+                      datetime_var="time",
+                      datetime_format="%Y-%m-%d %H:%M:%S",
+                      time_offset_seconds=-30,    # Value added to timestamp to get left-labelled timestamps in output
+                      variables={"co2_C": "co2",
+                                 "co2_stdev": "co2_variability",
+                                 "co2_N": "co2_number_of_observations",
+                                 "ch4_C": "ch4",
+                                 "ch4_stdev": "ch4_variability",
+                                 "ch4_N": "ch4_number_of_observations",
+                                 "co_C": "co",
+                                 "co_stdev": "co_variability",
+                                 "co_N": "co_number_of_observations"},
+                      scales={"co2": "WMO-X2019",
+                              "ch4": "WMO-X2004A",
+                              "co": "WMO-X2014A"})
+    '''
+    # Read file, rename columns and select only those that we need
+    df = pd.read_csv(input_file,
+                     sep=sep,
+                     skipinitialspace=skipinitialspace,
+                     index_col=[datetime_var],
+                     parse_dates=True,
+                     date_parser=lambda x: pd.to_datetime(x, format=datetime_format))
+    df.rename(columns=variables,
+              inplace=True)
+    df = df[list(variables.values())]
+
+    # Check if the index is sorted and if not sort it
+    if not df.index.is_monotonic_increasing:
+        df.sort_index()
+
+    # Set timestamp to left label
+    df["new_time"] = df.index - pd.Timedelta(seconds = 30)
+    df = df.set_index("new_time", inplace=False, drop=True)
+
+    # Label time index
+    df.index.name = "time"
+
+    # Remove duplicates
+    df = df.reset_index().drop_duplicates(subset='time').set_index('time')
+
+    # Convert to a Dataset
+    ds = df.to_xarray()
+
+    # Write netCDF file for each species
+    for sp, scale  in scales.items():
+        # Species-specific dataset
+        ds_sp = ds[[sp,
+                    sp + "_variability",
+                    sp + "_number_of_observations"]]
+        ds_sp = ds_sp.dropna("time")
+
+        ds_sp = attributes(ds_sp,
+                           sp.upper(),
+                           site.upper(),
+                           network = network,
+                           global_attributes = global_attributes,
+                           scale = scale,
+                           sampling_period = sampling_period)
+
+        if len(ds_sp.time.values) == 0:
+
+            # Then must have not passed date_range filter?
+            print(" ... no data in range")
+            # then do nothing
+
+        else:
+
+            # Write file
+            nc_filename = output_filename(output_directory,
+                                          network,
+                                          instrument,
+                                          site.upper(),
+                                          ds_sp.time.to_pandas().index.to_pydatetime()[0],
+                                          ds_sp.species,
+                                          inlet=inlet_filename)
+
+            # compress data
+            ds_sp = set_encoding(ds_sp)
+
+            print("Writing " + nc_filename)
+            ds_sp.to_netcdf(nc_filename)
+            print("... written.")
 
 
 def wdcgg_read(fname, species,
