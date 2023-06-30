@@ -3,7 +3,7 @@ name: acrg_var
 channels:
   - conda-forge
 dependencies:
-  - python=3.10
+  - python
   - pymc3
   - matplotlib-base
   - netcdf4
@@ -23,5 +23,8 @@ dependencies:
   - numba
   - scipy
   - pytest
+  - pytest-mock
   - pyfakefs
   - cachetools
+  - pip:
+    - openghg_defs @ git+https://github.com/openghg/supplementary_data
