@@ -11,11 +11,13 @@ import os
 import numpy as np
 import xarray as xr
 from pathlib import Path
-from acrg_config.paths import paths
-from acrg_satellite import tropomi
+from acrg.config import paths
+from acrg.satellite import tropomi
 
-acrg_path = paths.acrg
-test_data_dir = acrg_path / "tests/files/data/obs_raw/TROPOMI"
+# acrg_path = paths.acrg
+# test_data_dir = acrg_path / "tests/files/data/obs_raw/TROPOMI"
+this_file_path = Path(__file__).resolve().parent
+test_data_dir = this_file_path / "files/data/obs_raw/TROPOMI"
 
 @pytest.fixture(scope="module")
 def tropomi_filename():
@@ -485,7 +487,9 @@ def dummy_support_input():
     
     ds = xr.Dataset(data)
     
-    ## MAY NEED TO ADD ATTRS
+    ds["surface_pressure"].attrs["units"] = "Pa"
+
+    ## MAY NEED TO ADD MORE ATTRS
     
     return ds
 
@@ -658,13 +662,6 @@ def test_pre_process_pressure_bounds(mocker):
                                                   pressure_interval,
                                                   nlevel=nlevel)
     
-    print("surface pressure")
-    print(surface_pressure)
-    print("pressure interval")
-    print(pressure_interval)
-    print("presssure bounds")
-    print(pressure_bounds_expect)
-    
     # Test numpy array values and shape (coords not important)
     np.testing.assert_allclose(pressure_bounds, pressure_bounds_expect)
 
@@ -715,14 +712,6 @@ def test_pre_process_pressure_levels(mocker):
                                                   pressure_interval,
                                                   nlayer=nlayer)
 
-    print("surface pressure")
-    print(surface_pressure)
-    print("pressure interval")
-    print(pressure_interval)
-    print("presssure bounds")
-    print(pressure_levels_expect)
-
-    
     # Test numpy array values and shape (coords not important)
     np.testing.assert_allclose(pressure_levels, pressure_levels_expect)
 

@@ -4,6 +4,7 @@
 Created on Thu Oct 31 08:30:03 2019
 
 @author: al18242
+@author: rt17603
 
 Functions for processing and using TROPOMI data
 """
@@ -30,6 +31,10 @@ else:
     data_path = paths.data
     acrg_path = paths.acrg
 
+home = Path(os.getenv("HOME"))
+if not acrg_path:
+    acrg_path = os.path.join(home,"acrg")
+
 if not data_path:
     server_name = socket.gethostname()
     if "bp1" in server_name:
@@ -39,11 +44,8 @@ if not data_path:
     elif "snowy" in server_name:
         data_path = "/data/shared/"
     else:
-        print("Unable to infer data_path")
-
-home = Path(os.getenv("HOME"))
-if not acrg_path:
-    acrg_path = os.path.join(home,"acrg")
+        data_path = home
+        print(f"Unable to infer data_path - setting to home directory: {data_path}")
 
 ##TODO: Replace this more general directory (not SOUTHAMERICA) once this is sorted
 input_directory = os.path.join(data_path, "obs_raw/TROPOMI/SOUTHAMERICA/")
