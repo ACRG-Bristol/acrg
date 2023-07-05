@@ -6,7 +6,21 @@ Created on Thu Oct 31 08:30:03 2019
 @author: al18242
 @author: rt17603
 
-Functions for processing and using TROPOMI data
+This module provides a set of functions for processing and using TROPOMI data.
+
+Within this module the main summary functions used for processing is:
+    * tropomi_process(directory, ...) - process a directory of files
+
+This applies the following processes to the input files:
+ - Extract relevant details from the grouped netcdf TROPOMI data file
+ - Filter by the recommended quality conditions (combined filter > 0.5). (optional)
+ - Regrid the TROPOMI data to a regular 3D (time, lat, lon) grid (defined by lat_bounds,lon_bounds,coord_bin)
+    - Note: this can include each time point along the scanline direction but by default
+      this will be further grouped along the time axis to 1 minute increments (`time_increment`)
+ - Unravel the created 3D (time, lat, lon) grid to create a 1D (time) array of time points each with an associated lat-lon value
+   - Adds small time increments to make this unique for repeated time points (ground_pixel dimension)
+ - Create netcdf output file (*format needs finalising*)
+ - Creates file for using with NAME model (optional) (defined by `write_name` flag)
 """
 
 import os

@@ -4,6 +4,28 @@
 Created on Fri Nov 13 17:33:47 2020
 
 @author: rt17603
+
+This script is for processing TROPOMI Level 2 data product obtained from
+Copernicus Open Access Hub. This is expected to match to the format described
+within the Sentinel-5 precursor/TROPOMI Level 2 Product User Manual Methane.
+Note that at the moment only methane is supported, but this should not be too
+challenging to expanded to other data products as required.
+
+To process the TROPOMI data this will require an input configuration file.
+To generate an input (.ini) file from the template run this script as follows:
+    $ python run_tropomi_process.py -r [-c NAME_OF_CONFIG.ini]
+
+By default this create a new configuration file as 
+"acrg/satellite/tropomi_process.ini". Use the -c to overwrite this (including
+full path details). The created configuration file should then be updated to 
+match to the run parameters required.
+
+The details from the configuration file are used this to run the 
+acrg.satellite.tropomi.tropomi_process(...) function.
+See acrg.satellite.tropomi module for further details.
+
+Run on the command line as:
+    $ python run_tropomi_process.py [start] [end] -c tropomi_param.ini
 """
 
 import os
@@ -38,7 +60,7 @@ if __name__=="__main__":
     config_file = args.config or args.config_file
 
     if args.generate is True:
-        template_file = os.path.join(acrg_path,"acrg_config/templates/tropomi_process_template.ini")
+        template_file = os.path.join(acrg_path,"acrg/config/templates/tropomi_process_template.ini")
         if os.path.exists(config_file):
             write = input(f"Config file {config_file} already exists.\nOverwrite? (y/n): ")
             if write.lower() == "y" or write.lower() == "yes":        
