@@ -657,8 +657,8 @@ def regrid_orbit(ds_tropomi,lat_bounds,lon_bounds,coord_bin,
                 data_regridded = regridded #.expand_dims(time,axis=0)
             else:
                 data_regridded = xr.concat([data_regridded,regridded],dim=time)
-#        else:
-#            print(f"No tropomi data within output grid in file {os.path.split(filename)[-1]} for datetime: {dt}")
+        else:
+            print(f"No tropomi data within output grid in file for datetime: {dt}")
     
     if data_regridded is not None:
         data_regridded.attrs["dlat"] = dlat
