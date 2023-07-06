@@ -62,7 +62,7 @@ if not data_path:
         print(f"Unable to infer data_path - setting to home directory: {data_path}")
 
 ##TODO: Replace this more general directory (not SOUTHAMERICA) once this is sorted
-input_directory = os.path.join(data_path, "obs_raw/TROPOMI/SOUTHAMERICA/")
+input_directory = os.path.join(data_path, "obs_raw/TROPOMI/ARCTIC/")
 
 name_csv_directory = os.path.join(home,"NAME_files") # Where to write output NAME csv files
 obs_directory = os.path.join(data_path,'obs/') # Where to write output nc files
@@ -381,7 +381,6 @@ def regrid_da(da_tropomi,output_lat,output_lon,ds_tropomi_geo,
     if set_nan:
         regridded.values[regridded.values == 0.] = np.nan
     
-    regridded = regridded.drop(labels=("lat","lon"))
     regridded = regridded.assign_coords(**{"x":output_lat,"y":output_lon})
     regridded = regridded.rename({"x":"lat","y":"lon"})
 
