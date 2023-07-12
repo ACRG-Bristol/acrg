@@ -671,8 +671,8 @@ def regrid_orbit(ds_tropomi,lat_bounds,lon_bounds,coord_bin,
                 data_regridded = regridded #.expand_dims(time,axis=0)
             else:
                 data_regridded = xr.concat([data_regridded,regridded],dim=time)
-        else:
-            print(f"No tropomi data within output grid in file for datetime: {dt}")
+        # else:
+        #     print(f"No tropomi data within output grid in file for datetime: {dt}")
     
     if data_regridded is not None:
         data_regridded.attrs["dlat"] = dlat
@@ -1502,46 +1502,52 @@ def tropomi_process(site,start_date,end_date,lat_bounds,lon_bounds,
                     data_regridded = xr.concat([data_regridded,regridded],dim=time)
                 # Record filenames which contain data
                 input_filenames.append(filename)
-        
-        ##TODO: Filter any points where some specific values are not defined
-        # e.g. methane, pressure levels        
-        data_timeseries = unravel_grid(data_regridded)
-        
-        short_filenames = [os.path.split(fname)[1] for fname in input_filenames]
-        short_filenames = ','.join(short_filenames)
-        
-        if quality_filt:
-            data_timeseries.attrs["qa_filter"] = "Quality filter of > 0.5 applied"
-        data_timeseries.attrs["input_filename"] = short_filenames
-        data_timeseries.attrs["analysis_mode"] = f"Input files are from {analysis_mode} mode of analysis."
-        
-        if max_name_level is None:
-            print(f'Max name level: {data_timeseries["layer"].values[-1]}')
-            data_timeseries.attrs["max_level"] = data_timeseries["layer"].values[-1]
+
+            # Check if there is no tropomi data in data_regridded, if so, skip this day
+
+        if len(input_filenames) == 0:
+            print(f"No tropomi data within output grid for {date}. Skipping processing of this date.")
         else:
-            data_timeseries.attrs["max_level"] = max_name_level
         
-        ## Rename "layer" output to match "lev" used within GOSAT files.
-        # TROPOMI - level describes the bounds of each layer, layer = level-1
-        # GOSAT - level describes the midpoint of each layer
-        data_timeseries = data_timeseries.rename({"layer":"lev"})
-        #if "layer_bound" in data_timeseries.dims:
-        #    data_timeseries = data_timeseries.rename({"layer_bound":"lev_bound"})        
-        
-        write_tropomi_output(data_timeseries,site,date,species=species,
-                             network=network,
-                             output_directory=output_directory)
-                
-        if write_name:
-            write_tropomi_NAME(data_timeseries,site=site,max_level=max_name_level,
-                                max_points=max_name_points,network=network,
-                                use_name_pressure=use_name_pressure,
-                                pressure_base_dir=pressure_base_dir,
-                                pressure_domain=pressure_domain,
-                                pressure_max_days=pressure_max_days,
-                                pressure_day_template=pressure_day_template,
-                                name_directory=name_directory)
+            ##TODO: Filter any points where some specific values are not defined
+            # e.g. methane, pressure levels        
+            data_timeseries = unravel_grid(data_regridded)
+            
+            short_filenames = [os.path.split(fname)[1] for fname in input_filenames]
+            short_filenames = ','.join(short_filenames)
+            
+            if quality_filt:
+                data_timeseries.attrs["qa_filter"] = "Quality filter of > 0.5 applied"
+            data_timeseries.attrs["input_filename"] = short_filenames
+            data_timeseries.attrs["analysis_mode"] = f"Input files are from {analysis_mode} mode of analysis."
+            
+            if max_name_level is None:
+                print(f'Max name level: {data_timeseries["layer"].values[-1]}')
+                data_timeseries.attrs["max_level"] = data_timeseries["layer"].values[-1]
+            else:
+                data_timeseries.attrs["max_level"] = max_name_level
+            
+            ## Rename "layer" output to match "lev" used within GOSAT files.
+            # TROPOMI - level describes the bounds of each layer, layer = level-1
+            # GOSAT - level describes the midpoint of each layer
+            data_timeseries = data_timeseries.rename({"layer":"lev"})
+            #if "layer_bound" in data_timeseries.dims:
+            #    data_timeseries = data_timeseries.rename({"layer_bound":"lev_bound"})        
+            
+            write_tropomi_output(data_timeseries,site,date,species=species,
+                                network=network,
+                                output_directory=output_directory)
+                    
+            if write_name:
+                write_tropomi_NAME(data_timeseries,site=site,max_level=max_name_level,
+                                    max_points=max_name_points,network=network,
+                                    use_name_pressure=use_name_pressure,
+                                    pressure_base_dir=pressure_base_dir,
+                                    pressure_domain=pressure_domain,
+                                    pressure_max_days=pressure_max_days,
+                                    pressure_day_template=pressure_day_template,
+                                    name_directory=name_directory)
 
         print(f"\nTime to execute: {timing_module.time() - timing_1}\n")
 
-    
+        
