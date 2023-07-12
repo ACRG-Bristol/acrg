@@ -135,17 +135,22 @@ def preProcessFile(filename,add_corners=False):
     pressure_bounds = (np.expand_dims(tropomi_data_input.surface_pressure,axis=3) - \
                      np.expand_dims(tropomi_data_input.pressure_interval,axis=3) * \
                      np.reshape(np.arange(0,nlevel),newshape=(1,1,1,-1)))
-    tropomi_data['pressure_bounds'] = (["time", "scanline", "ground_pixel", "layer_bound"], pressure_bounds)
-    tropomi_data['pressure_bounds'].attrs["units"] = tropomi_data_input.surface_pressure.attrs["units"]
+    
+    # Tropomi pressure is in Pa so /100 to convert to hPa, to be the same as in GOSAT obs files.
+    tropomi_data['pressure_bounds'] = (["time", "scanline", "ground_pixel", "layer_bound"], pressure_bounds/100)
+    tropomi_data['pressure_bounds'].attrs["units"] = "hPa"
 
     #calculate mid point of pressure layers from surface pressure and constant intervals
     nlayer = tropomi_data["layer"].shape[0]
     surface_layer_mid_pressure = tropomi_data_input.surface_pressure - tropomi_data_input.pressure_interval/2.
     pressure_data = (np.expand_dims(surface_layer_mid_pressure,axis=3) - \
                      np.expand_dims(tropomi_data_input.pressure_interval,axis=3) * \
-                     np.reshape(np.arange(0,nlayer),newshape=(1,1,1,-1)))    
-    tropomi_data['pressure_levels'] = (["time", "scanline", "ground_pixel", "layer"], pressure_data)    
-    tropomi_data['pressure_levels'].attrs["units"] = tropomi_data_input.surface_pressure.attrs["units"]
+                     np.reshape(np.arange(0,nlayer),newshape=(1,1,1,-1))) 
+
+    # Tropomi pressure is in Pa so /100 to convert to hPa, to be the same as in GOSAT obs files.
+    tropomi_data['pressure_levels'] = (["time", "scanline", "ground_pixel", "layer"], pressure_data/100)    
+    tropomi_data['pressure_levels'].attrs["units"] = "hPa"
+    tropomi_data['pressure_levels'].attrs['short_description'] = "Vertical altitude coordinate in pressure units as used for averaging kernels"
     
     #tropomi_data['column_averaging_kernel'] = tropomi_data_aux.column_averaging_kernel
     #tropomi_data['methane_profile_apriori']= tropomi_data_input.methane_profile_apriori
@@ -161,6 +166,7 @@ def preProcessFile(filename,add_corners=False):
     # Updating the a priori profile to match to GOSAT equations so we can
     # apply the pressure weights in the same way
     tropomi_data['ch4_profile_apriori']= tropomi_data_input.methane_profile_apriori/tropomi_data["dry_air_subcolumns"]
+    # tropomi_data['ch4_profile_apriori'].attrs = tropomi_data_input.methane_profile_apriori.attrs   #may need updating
     
     tropomi_data = tropomi_data.assign_coords({'latitude_bounds':tropomi_data_geo['latitude_bounds']})
     tropomi_data = tropomi_data.assign_coords({'longitude_bounds':tropomi_data_geo['longitude_bounds']})
@@ -180,6 +186,12 @@ def preProcessFile(filename,add_corners=False):
                     (tropomi_data.qa_value.values > 0.5)
     
     tropomi_data["qa_pass"] = (["time", "scanline", "ground_pixel"], quality_flag)
+
+    # Rename methane mixing ratio variables to match GOSAT files
+    tropomi_data = tropomi_data.rename({
+        "methane_mixing_ratio":"xch4",
+        "methane_mixing_ratio_precision":"xch4_uncertainty",
+        "methane_mixing_ratio_bias_corrected":"xch4_bias_corrected"})
     
     return tropomi_data
 
@@ -307,7 +319,7 @@ def remove_weight_files(method, path=None):
 
 
 def regrid_da(da_tropomi,output_lat,output_lon,ds_tropomi_geo,
-              method="conservative",latlon=["latitude","longitude"],
+              method="conservative_normed",latlon=["latitude","longitude"],
               pos_coords=("ground_pixel","scanline"),
               set_nan=True,reuse_weights=False):
     '''
@@ -383,14 +395,17 @@ def regrid_da(da_tropomi,output_lat,output_lon,ds_tropomi_geo,
     
     regridded = regridded.assign_coords(**{"x":output_lat,"y":output_lon})
     regridded = regridded.rename({"x":"lat","y":"lon"})
+    
+    # preserve attributes from input da
+    regridded.attrs = da_tropomi.attrs
 
     return regridded
 
 
 def regrid_subset(ds_tropomi,output_lat,output_lon,names=None,ds_tropomi_geo=None,
-                 method="conservative",latlon=("latitude", "longitude"),
+                 method="conservative_normed",latlon=("latitude", "longitude"),
                  pos_coords=("scanline", "ground_pixel"),
-                 exclude=["time_utc","qa_pass"],set_nan=True,
+                 exclude=["time_utc","qa_pass","qa_value"],set_nan=True,
                  filter_latlon=True,clean_up_weights=False,
                  verbose=False):
     '''
@@ -427,7 +442,7 @@ def regrid_subset(ds_tropomi,output_lat,output_lon,names=None,ds_tropomi_geo=Non
         exclude (list, optional) :
             Data variables within the dataset to not include in the
             regridded output.
-            Default = ["time_utc","qa_pass"]
+            Default = ["time_utc","qa_pass","qa_value"]
         set_nan (bool, optional) :
             After regridding, explicitly set values of 0 to np.nan.
             Default = True
@@ -438,7 +453,6 @@ def regrid_subset(ds_tropomi,output_lat,output_lon,names=None,ds_tropomi_geo=Non
         verbose (bool, optional) :
             Print detailed output at each stage (verbose).
             Default = True
-            
         
     Returns:
         xarray.Dataset :
@@ -552,8 +566,8 @@ def regrid_subset(ds_tropomi,output_lat,output_lon,names=None,ds_tropomi_geo=Non
 
 
 def regrid_orbit(ds_tropomi,lat_bounds,lon_bounds,coord_bin,
-                 method="conservative",time_increment="1min",
-                 exclude=["time_utc","qa_pass"],
+                 method="conservative_normed",time_increment="1min",
+                 exclude=["time_utc","qa_pass","qa_value"],
                  clean_up_weights=True):
     '''
     The regrid_orbit function regrids data for one tropomi orbit. This can 
@@ -596,7 +610,7 @@ def regrid_orbit(ds_tropomi,lat_bounds,lon_bounds,coord_bin,
             Data variables within the dataset to not include in the
             regridded output.
             
-            Default = ["time_utc","qa_pass"]
+            Default = ["time_utc","qa_pass",""qa_value"]
             
         
     Returns:
@@ -1000,9 +1014,9 @@ def write_tropomi_NAME(ds,site,max_level=None,max_points=50,
                                        max_days=pressure_max_days,
                                        day_template=pressure_day_template)
 
-    ## Extract pressure values (for z and dz outputs)
-    dpressure = np.abs(ds[pressure_column].diff(dim="layer_bound",label="lower"))
-    pressure = ds[pressure_column].isel(layer_bound=slice(0,-1)) + dpressure/2.
+    ## Extract pressure values (for z and dz outputs), these are in units of hPa, so convert to Pa by *100
+    dpressure = 100*np.abs(ds[pressure_column].diff(dim="layer_bound",label="lower"))
+    pressure = 100*ds[pressure_column].isel(layer_bound=slice(0,-1)) + dpressure/2.
     
     # Limit to max_level (if specified)
     if max_level:
@@ -1180,7 +1194,7 @@ def define_tropomi_search_str(species="ch4",analysis_mode="OFFL"):
 def tropomi_regrid(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
                    time_increment="1min",
                    quality_filt=True,
-                   regrid_method="conservative",
+                   regrid_method="conservative_normed",
                    input_directory=input_directory,
                    allow_parallel=False,
                    verbose=False):
@@ -1315,7 +1329,7 @@ def tropomi_process(site,start_date,end_date,lat_bounds,lon_bounds,
                     species="ch4",
                     time_increment="1min",
                     quality_filt=True,
-                    regrid_method="conservative",
+                    regrid_method="conservative_normed",
                     input_directory=input_directory,
                     write_name=False,name_directory=name_csv_directory,
                     max_name_level=None,max_name_points=50,
