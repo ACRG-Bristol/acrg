@@ -753,7 +753,7 @@ def unravel_grid(ds_grid):
     # Reset the temporary dimension and make lat, lon into data variables
     ds_flatten = ds_flatten.reset_index(temp_dim) # Remove MultiIndex
     ds_flatten = ds_flatten.reset_coords(names=latlon)
-    
+
     # Remove nan values on the flattened dimension
     ds_flatten = ds_flatten.dropna(temp_dim)
     
@@ -1431,7 +1431,7 @@ def tropomi_process(site,start_date,end_date,lat_bounds,lon_bounds,
     #pos_coords=("scanline", "ground_pixel")
     
     if species == "ch4":
-        directory = input_directory / "CH4"
+        directory = input_directory + "CH4"
         #output_directory = base_output_directory / "CH4"
         search_species = "CH4____"
     analysis_mode = "OFFL"
@@ -1463,7 +1463,7 @@ def tropomi_process(site,start_date,end_date,lat_bounds,lon_bounds,
             ## ONLY WORKS FOR METHANE FILES ("ch4") AT THE MOMENT!
             print(f"Processing input file: {filename}")
             data = preProcessFile(filename)
-            
+
 
             # Making delta_time into a coordinate. This will be used
             # if splitting by time increments and also means that
@@ -1490,8 +1490,7 @@ def tropomi_process(site,start_date,end_date,lat_bounds,lon_bounds,
                 input_filenames.append(filename)
         
         ##TODO: Filter any points where some specific values are not defined
-        # e.g. methane, pressure levels
-        
+        # e.g. methane, pressure levels        
         data_timeseries = unravel_grid(data_regridded)
         
         short_filenames = [os.path.split(fname)[1] for fname in input_filenames]
@@ -1503,7 +1502,7 @@ def tropomi_process(site,start_date,end_date,lat_bounds,lon_bounds,
         data_timeseries.attrs["analysis_mode"] = f"Input files are from {analysis_mode} mode of analysis."
         
         if max_name_level is None:
-            print(data_timeseries["layer"].values[-1])
+            print(f'Max name level: {data_timeseries["layer"].values[-1]}')
             data_timeseries.attrs["max_level"] = data_timeseries["layer"].values[-1]
         else:
             data_timeseries.attrs["max_level"] = max_name_level

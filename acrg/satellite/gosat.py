@@ -2110,7 +2110,7 @@ def define_obs_filename(output_directory,instrument,satellite,date,species,netwo
     filename = '_'.join([instrument,satellite,date,species]) # Create filename string joined by "_" e.g. "gosat-fts_gosat_20120920-09_ch4-column"
     filename += '.nc' # Add file extension
     
-    print("filename",filename)
+    print(f"Regridded data filename: {filename}")
     
     filename = os.path.join(output_directory,filename)
        
