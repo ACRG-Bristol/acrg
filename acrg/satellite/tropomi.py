@@ -164,9 +164,11 @@ def preProcessFile(filename,add_corners=False):
     tropomi_data['pressure_weights'] = tropomi_data["dry_air_subcolumns"]/tropomi_data["dry_air_subcolumns"].sum(dim="layer")
     
     # Updating the a priori profile to match to GOSAT equations so we can
-    # apply the pressure weights in the same way
-    tropomi_data['ch4_profile_apriori']= tropomi_data_input.methane_profile_apriori/tropomi_data["dry_air_subcolumns"]
-    # tropomi_data['ch4_profile_apriori'].attrs = tropomi_data_input.methane_profile_apriori.attrs   #may need updating
+    # apply the pressure weights in the same way. Multiplying by 1e9 to be in units of ppb.
+    # CURRENTLY IN INCREASING ORDER ACROSS THE LEVELS???
+    tropomi_data['ch4_profile_apriori']= 1e9*tropomi_data_input.methane_profile_apriori/tropomi_data["dry_air_subcolumns"]
+    tropomi_data['ch4_profile_apriori'].attrs["units"] = "ppb"
+    tropomi_data['ch4_profile_apriori'].attrs['short_description'] = "A priori mole fraction profile of atmospheric CH4."
     
     tropomi_data = tropomi_data.assign_coords({'latitude_bounds':tropomi_data_geo['latitude_bounds']})
     tropomi_data = tropomi_data.assign_coords({'longitude_bounds':tropomi_data_geo['longitude_bounds']})
@@ -902,7 +904,7 @@ def use_NAME_surface_pressure(ds, pressure_domain,
 
 def write_tropomi_NAME(ds,site,max_level=None,max_points=50,
                        network=None,
-                       #overwrite=False,
+                       overwrite=False,
                        use_name_pressure=False,
                        pressure_base_dir=name_pressure_directory,
                        pressure_domain=None,pressure_max_days=31,
@@ -943,9 +945,9 @@ def write_tropomi_NAME(ds,site,max_level=None,max_points=50,
         network (str/None, optional) : 
             Which network is being considered e.g. "GOSAT/GOSAT-INDIA"
             If present, this will be extend the output path e.g. "/shared_data/air/shared/obs/GOSAT/GOSAT-INDIA/"
-        #overwrite (bool, optional) :
-        #    Whether to allow overwiting of existing files, if present.
-        #    Default = False.
+        overwrite (bool, optional) :
+           Whether to allow overwiting of existing files, if present.
+           Default = False.
         use_name_pressure (bool, optional) : 
             Whether to use the NAME surface pressure rather than the surface pressure value for each data 
             point.
@@ -1096,15 +1098,23 @@ def write_tropomi_NAME(ds,site,max_level=None,max_points=50,
         start = i*lines_per_file
         end = (i+1)*lines_per_file
 
-        print("start,end",start,end)
+        # print("start,end",start,end)
 
-        print(f"Writing to {name_fname}")
-        df.iloc[start:end].to_csv(name_fname)
-  
+        if not overwrite:
+            if os.path.isfile(name_fname):
+                print('\nERROR: {0} already exists. Data has not been written to file because overwrite=False.\n'.format(name_fname))
+            else:
+                print('Writing to filename:',name_fname)    
+                df.iloc[start:end].to_csv(name_fname)
+        else:
+            print('Writing to filename:',name_fname)    
+            df.iloc[start:end].to_csv(name_fname)
+
+
 
 def write_tropomi_output(ds,site,date,species="ch4",
                          network=None,
-                         #overwrite=False,
+                         overwrite=False,
                          output_directory=obs_directory):
     '''
     Write tropomi observation file for one day.
@@ -1159,8 +1169,9 @@ def write_tropomi_output(ds,site,date,species="ch4",
     ##TODO: Add general attributes - time of creation, who created the
     # file etc.    
     
-    print(f"Writing to file: {output_filename}")
-    ds.to_netcdf(output_filename)
+    # Write file 
+    gosat_fn.write_netcdf(ds, output_filename, overwrite)
+
 
 def define_tropomi_search_str(species="ch4",analysis_mode="OFFL"):
     '''
@@ -1339,7 +1350,7 @@ def tropomi_process(site,start_date,end_date,lat_bounds,lon_bounds,
                     pressure_domain=None,pressure_max_days=31,
                     pressure_day_template=True,
                     output_directory=obs_directory,
-                    #overwrite=False,
+                    overwrite=False,
                     allow_parallel=True,verbose=False):
     '''
     Process tropomi data within date range including re-gridding onto 
@@ -1427,8 +1438,6 @@ def tropomi_process(site,start_date,end_date,lat_bounds,lon_bounds,
     ##TODO: Allow more species to be specified and filter to choose 
     # correct search_species string
     ##TODO: Make this return something as well as writing to file?
-    ##TODO: Pass along overwrite parameter to write functions when
-    this functionality has been added.
     '''
     timing_1 = timing_module.time()
     
@@ -1536,7 +1545,8 @@ def tropomi_process(site,start_date,end_date,lat_bounds,lon_bounds,
             
             write_tropomi_output(data_timeseries,site,date,species=species,
                                 network=network,
-                                output_directory=output_directory)
+                                output_directory=output_directory,
+                                overwrite = overwrite)
                     
             if write_name:
                 write_tropomi_NAME(data_timeseries,site=site,max_level=max_name_level,
@@ -1546,7 +1556,8 @@ def tropomi_process(site,start_date,end_date,lat_bounds,lon_bounds,
                                     pressure_domain=pressure_domain,
                                     pressure_max_days=pressure_max_days,
                                     pressure_day_template=pressure_day_template,
-                                    name_directory=name_directory)
+                                    name_directory=name_directory,
+                                    overwrite = overwrite)
 
         print(f"\nTime to execute: {timing_module.time() - timing_1}\n")
 
