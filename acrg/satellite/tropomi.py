@@ -710,26 +710,31 @@ def make_time_unique(ds,name="time"):
     '''
     
     time = ds[name]
-    time_group = time.groupby(name)
-    
+    time_group = np.unique(time)
+
     time_unique = None
-    for t,tg in time_group:
+    for t,tg in enumerate(time_group):
         # Adds a different number of nanoseconds to each repeat time to
         # make the times unique
-        repeats = len(tg)
+        repeats = len(np.where(time == tg)[0])
         time_add = np.arange(0,repeats,step=1,dtype=int)
-        if "[ns]" in str(tg[0].dtype):
+
+        if "[ns]" in str(time[t].dtype):
             # At the moment, needs datetime in ns
             time_update = tg + time_add
         else:
             raise ValueError("Do not recognise time units as nanoseconds")
-        
-        dim = tg.dims[0]
-        
+            
+        dim = time.dims[0]
+        time_update_xarray = xr.DataArray(time_update, dims = dim)
+
         if time_unique is None:
-            time_unique = time_update
+            time_unique = time_update_xarray
         else:
-            time_unique = xr.concat([time_unique,time_update],dim=dim)
+            time_unique = xr.concat([time_unique,time_update_xarray],dim=dim)
+
+    # print(f"Time unique unique values? : {len(np.unique(time_unique))}")
+    # print(f"Original time unique values? : {len(np.unique(time))}")
     
     ds = ds.assign_coords({name:time_unique})
     
@@ -1041,7 +1046,7 @@ def write_tropomi_NAME(ds,site,max_level=None,max_points=50,
             ds_name = ds_name.assign({new_name:dv})
     
     ## Create dlon and dlat inputs (dx, dy) based on stored values
-    # - "dlat" and "dlon" attributes are created when regridded is applied
+    # - "dlat" and "dlon" attributes are created when tropomi_regridded is applied
     # These will be the same values for all x, y inputs.
     dlat = xr.DataArray(np.array(ds.attrs["dlat"]))
     dlon = xr.DataArray(np.array(ds.attrs["dlon"])) 
@@ -1208,7 +1213,8 @@ def tropomi_regrid(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
                    regrid_method="conservative_normed",
                    input_directory=input_directory,
                    allow_parallel=False,
-                   verbose=False):
+                   verbose=False,
+                   write = False, output_directory = None):
     '''
     The tropomi_regrid function combines tropomi data for a given date
     range onto a regular grid. This also involves grouping together
@@ -1457,7 +1463,10 @@ def tropomi_process(site,start_date,end_date,lat_bounds,lon_bounds,
         directory = input_directory + "CH4"
         #output_directory = base_output_directory / "CH4"
         search_species = "CH4____"
+
     analysis_mode = "OFFL"
+    #### TEMPORARY CHANGE TO RPRO BECAUSE OF UNIDENTIFIED PROBLEM WITH IF STATEMENT BELOW ####
+    # analysis_mode = "RPRO"
     search_str = f"S5P_{analysis_mode}_L2__{search_species}*.nc"
 
     dates = np.arange(start_date,end_date,dtype=np.datetime64).astype(str)
@@ -1519,7 +1528,10 @@ def tropomi_process(site,start_date,end_date,lat_bounds,lon_bounds,
         else:
         
             ##TODO: Filter any points where some specific values are not defined
-            # e.g. methane, pressure levels        
+            # e.g. methane, pressure levels       
+            if verbose:
+                print("Unravelling grid...") 
+            
             data_timeseries = unravel_grid(data_regridded)
             
             short_filenames = [os.path.split(fname)[1] for fname in input_filenames]
