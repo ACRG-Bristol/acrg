@@ -1464,9 +1464,9 @@ def tropomi_process(site,start_date,end_date,lat_bounds,lon_bounds,
         #output_directory = base_output_directory / "CH4"
         search_species = "CH4____"
 
-    analysis_mode = "OFFL"
+    # analysis_mode = "OFFL"
     #### TEMPORARY CHANGE TO RPRO BECAUSE OF UNIDENTIFIED PROBLEM WITH IF STATEMENT BELOW ####
-    # analysis_mode = "RPRO"
+    analysis_mode = "RPRO"
     search_str = f"S5P_{analysis_mode}_L2__{search_species}*.nc"
 
     dates = np.arange(start_date,end_date,dtype=np.datetime64).astype(str)

@@ -36,11 +36,11 @@ from acrg.satellite import tropomi,tropomi_config
 from acrg.config.config import generate_from_template
 
 try:
-    from acrg.config.paths import paths
+    from acrg.config.paths import Paths
 except ImportError:
     acrg_path = os.getenv("ACRG_PATH")
 else:
-    acrg_path = paths.acrg
+    acrg_path = Paths.acrg
 
 
 if __name__=="__main__":

@@ -14,9 +14,9 @@ import acrg.config.config as config
 if sys.version_info[0] == 2: # If major python version is 2, can't use paths module
     acrg_path = os.getenv("ACRG_PATH") 
 else:
-    from acrg.config.paths import paths
-    acrg_path = paths.acrg
-
+    from acrg.config.paths import Paths
+    acrg_path = Paths.acrg
+    
 def tropomi_template_file():
     '''
     Define template file for inputs to tropomi.tropomi_process() function.
@@ -108,10 +108,10 @@ def tropomi_check(param):
             if not param[p]:
                 raise Exception(f"If '{p}' is included in configuration file, please make sure this is defined.")
     
-    paths = ["input_directory","output_directory","name_directory"]
-    for path in paths:
-        if path in param:
-            param[path] = Path(param[path])
+    # paths = ["input_directory","output_directory","name_directory"]
+    # for path in paths:
+    #     if path in param:
+    #         param[path] = Path(param[path])
     
     #regrid_method
     #time_increment
