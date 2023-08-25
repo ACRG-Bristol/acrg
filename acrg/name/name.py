@@ -1296,7 +1296,7 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                 print("Warning: Using basis functions without a region dimension may be deprecated shortly.")
 
                 ## FOR THE CASE WHERE USING A BASIS FUNCTION WITH THE WRONG DATE ON PURPOSE
-                basis_func.time.values[0] = site_bf.time.values[0]
+                # basis_func.time.values[0] = site_bf.time.values[0]
 
                 site_bf = combine_datasets(site_bf,basis_func, method='ffill')
     
@@ -1704,7 +1704,7 @@ def filtering(datasets_in, filters, keep_missing=False):
                 else:
                     datasets[site] = filtering_functions[filt](datasets[site], site, keep_missing=keep_missing)
 
-    return datasets, perc_filtered
+    return datasets
 
 
 def plot(fp_data, date, out_filename=None, out_format = 'pdf',

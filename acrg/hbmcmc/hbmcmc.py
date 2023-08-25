@@ -244,7 +244,19 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     fp_data = name.bc_sensitivity(fp_data, domain=domain,basis_case=bc_basis_case)
     
     #apply named filters to the data. UPDATED WITH NEW FASTER FILTERING FROM ALICE
-    fp_data, perc_filtered = filtering.filtering(fp_data, sites, species, filter_types = filters)
+    # fp_data, perc_filtered = filtering.filtering(fp_data, sites, species, filter_types = filters)
+
+    print(f"Filters: {filters}")
+    if filters == ["local_influence"]:
+        fp_data, perc_filtered = filtering(fp_data,sites,species,filtering_types = filters,
+                network=None,secondary_heights=None,
+                start_date=None,end_date=None,average=None)
+    elif filters == ["wind_filt"]:
+        fp_data = name.filtering(fp_data, filters = ['BRW_wind_dir_filter'])
+    elif filters == [None]:
+        fp_data = fp_data
+    else:
+        raise ValueError('Please input filter type as wind_filt, local_influence or None.')
     
     for si, site in enumerate(sites):  
         fp_data[site].attrs['Domain']=domain
