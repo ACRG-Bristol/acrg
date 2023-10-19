@@ -39,7 +39,7 @@ site_info = load_json(site_info_file)
 species_info= load_json(species_info_file)
 
 
-def open_ds(path, chunks=None, combine=None):
+def open_ds(path, chunks=None, engine = None, combine=None):
     """
     Function efficiently opens xray datasets.
 
@@ -58,10 +58,10 @@ def open_ds(path, chunks=None, combine=None):
     """
     if chunks is not None:
         combine = 'by_coords' if combine is None else combine
-        ds = xr.open_mfdataset(path, chunks=chunks, combine=combine)
+        ds = xr.open_mfdataset(path, chunks=chunks, engine = engine, combine=combine)
     else:
         # use a context manager, to ensure the file gets closed after use
-        with xr.open_dataset(path) as ds:
+        with xr.open_dataset(path, engine = engine) as ds:
             ds.load()
     return ds 
 
@@ -194,7 +194,7 @@ def filenames(site, domain, start, end, height, fp_directory, met_model = None, 
     return files
 
 
-def read_netcdfs(files, dim = "time", chunks=None, verbose=True):
+def read_netcdfs(files, dim = "time", chunks=None, engine = None, verbose=True):
     """
     The read_netcdfs function uses xarray to open sequential netCDF files and 
     and concatenates them along the specified dimension.
@@ -222,10 +222,10 @@ def read_netcdfs(files, dim = "time", chunks=None, verbose=True):
         for fname in files:
             print(fname)
     
-    datasets = [open_ds(p, chunks=chunks) for p in sorted(files)]
+    datasets = [open_ds(p, chunks=chunks, engine = engine) for p in sorted(files)]
     
     # reindex all of the lat-lon values to a common one to prevent floating point error differences
-    with xr.open_dataset(files[0]) as temp:
+    with xr.open_dataset(files[0], engine = engine) as temp:
         fields_ds = temp.load()
     fp_lat = fields_ds["lat"].values
     fp_lon = fields_ds["lon"].values
@@ -238,7 +238,7 @@ def read_netcdfs(files, dim = "time", chunks=None, verbose=True):
 
 def footprints(sitecode_or_filename, met_model = None, fp_directory = None, 
                start = None, end = None, domain = None, height = None, network = None,
-               species = None, HiTRes = False, chunks = None, verbose=True):
+               species = None, HiTRes = False, chunks = None, engine = None, verbose=True):
 
     """
     The footprints function loads a NAME footprint netCDF files into an xarray Dataset.
@@ -288,6 +288,9 @@ def footprints(sitecode_or_filename, met_model = None, fp_directory = None,
             opens dataset with dask, such that it is opened 'lazily'
             and all of the data is not loaded into memory
             defaults to None - dataset is opened with out dask
+        engine (str)
+            engine variable to for xr.open_dataset. Default None. For tropomi data 
+            must be 'zarr'.
         
     Returns:
         xarray.Dataset : 
@@ -326,7 +329,7 @@ def footprints(sitecode_or_filename, met_model = None, fp_directory = None,
         return None
 
     else:
-        fp = read_netcdfs(files, chunks=chunks, verbose=verbose)  
+        fp = read_netcdfs(files, chunks=chunks, engine = engine, verbose=verbose)  
 
         return fp
 
@@ -988,6 +991,9 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
                 met_model_site = met_model
             
             # Get footprints
+            if site.split('-')[0] == 'TROPOMI':
+                engine = 'zarr'
+
             site_fp = footprints(site_modifier_fp, met_model = met_model_site, fp_directory = fp_directory, 
                                  start = start, end = end,
                                  domain = domain,
@@ -996,6 +1002,7 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
                                  network = network_site,
                                  HiTRes = HiTRes,
                                  chunks = chunks,
+                                 engine = engine,
                                  verbose = verbose)
 
             mfattrs = [key for key in site_ds.mf.attrs]
@@ -1011,7 +1018,6 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
                 # This needs to be made more general to 'satellite', 'aircraft' or 'ship'                
 
                 if platform == "satellite":
-                #if "GOSAT" in site.upper():
                     ml_obs = site_ds.max_level
                     ml_fp = site_fp.max_level
                     tolerance = 60e9 # footprints must match data with this tolerance in [ns]
