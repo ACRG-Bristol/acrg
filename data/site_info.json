@@ -161,6 +161,16 @@
       "longitude": -27.375
     }
   },
+  "AZV": {
+    "NIES": {
+      "height": ["50m"],
+      "height_name": ["50magl"],
+      "height_station_masl": 110,
+      "latitude": 54.7050,
+      "long_name": "Azovo, Russia",
+      "longitude": 73.0292
+    }
+  },
   "BAO": {
     "NOAA": {
       "height": [
@@ -325,6 +335,16 @@
       "latitude": 71.323,
       "long_name": "Barrow, Alaska",
       "longitude": -156.6114
+    }
+  },
+  "BRZ": {
+    "NIES": {
+      "height": ["80m"],
+      "height_name": ["80magl"],
+      "height_station_masl": 168,
+      "latitude": 56.1458,
+      "long_name": "Berezorechka, Russia",
+      "longitude": 84.3319
     }
   },
   "BSD": {
@@ -1266,6 +1286,16 @@
       "longitude": 29.2359
     }
   },
+  "KRS": {
+    "NIES": {
+      "height": ["67m"],
+      "height_name": ["67magl"],
+      "height_station_masl": 76,
+      "latitude": 58.2456,
+      "long_name": "Karasevoe, Russia",
+      "longitude": 82.4244
+    }
+  },
   "KUM": {
     "NOAA": {
       "height": [
@@ -1631,6 +1661,16 @@
         "latitude": -23.563,
         "longitude": 15.046}
 
+  },
+  "NOY": {
+    "NIES": {
+      "height": ["43m"],
+      "height_name": ["67magl"],
+      "height_station_masl": 108,
+      "latitude": 63.4292,
+      "long_name": "Noyabrsk, Russia",
+      "longitude": 75.7800
+    }
   },
   "NPL": {
     "LGHG": {
@@ -2298,6 +2338,16 @@
       "latitude": 44.452,
       "long_name": "Ulaan Uul, Mongolia",
       "longitude": 111.096
+    }
+  },
+  "VGN": {
+    "NIES": {
+      "height": ["85m"],
+      "height_name": ["85magl"],
+      "height_station_masl": 192,
+      "latitude": 54.4972,
+      "long_name": "Vaganovo, Russia",
+      "longitude": 62.3247
     }
   },
   "WAO": {
