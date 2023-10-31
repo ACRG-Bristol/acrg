@@ -23,7 +23,7 @@ import numpy as np
 import shutil
 
 import acrg.name.name as name
-import acrg.name.filtering as filtering 
+from acrg.name.filtering import filtering 
 import acrg.obs as getobs
 import acrg.hbmcmc.inversionsetup as setup 
 import acrg.hbmcmc.inversion_pymc3 as mcmc
@@ -248,9 +248,9 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
 
     print(f"Filters: {filters}")
     if filters == ["local_influence"]:
-        fp_data, perc_filtered = filtering(fp_data,sites,species,filtering_types = filters,
-                network=None,secondary_heights=None,
-                start_date=None,end_date=None,average=None)
+        fp_data, perc_filtered = filtering(fp_data,sites,species,filter_types = filters)
+                # network=None,secondary_heights=None,
+                # start_date=None,end_date=None,average=None)
     elif filters == ["wind_filt"]:
         fp_data = name.filtering(fp_data, filters = ['BRW_wind_dir_filter'])
     elif filters == [None]:
