@@ -260,7 +260,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
         fp_data, perc_filtered = filtering(fp_data,sites,['20magl'],species,filtering_types = ['localness'],
               network=None,secondary_heights=None,
               start_date=None,end_date=None,average=None)
-    elif filters == ["wind_filt"]:
+    elif filters == ["BRW_wind_dir_filter"]:
         fp_data = name.filtering(fp_data, filters = ['BRW_wind_dir_filter'])
     elif filters == [None]:
         fp_data = fp_data

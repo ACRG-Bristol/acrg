@@ -369,8 +369,8 @@ def inferpymc3_postprocessouts(xouts, sigouts, convergence,
         nmeasure = np.arange(ny)
         nparam = np.arange(nx)
         Ymod = np.mean(Ytrace, axis=1)
-        Ymod95 = pm.stats.hdi(Ytrace.T, 0.95)
-        Ymod68 = pm.stats.hdi(Ytrace.T, 0.68)
+        Ymod95 = pm.stats.hpd(Ytrace.T, 0.95)
+        Ymod68 = pm.stats.hpd(Ytrace.T, 0.68)
         Yapriori = np.sum(Hx.T, axis=1)
         sitenum = np.arange(len(sites))
         
@@ -471,8 +471,8 @@ def inferpymc3_postprocessouts(xouts, sigouts, convergence,
                                3600*24*365*molarmass)/unit_factor
             cntrymean[ci] = np.mean(cntrytottrace)
             cntrysd[ci] = np.std(cntrytottrace)
-            cntry68[ci, :] = pm.stats.hdi(cntrytottrace, 0.68)
-            cntry95[ci, :] = pm.stats.hdi(cntrytottrace, 0.95)
+            cntry68[ci, :] = pm.stats.hpd(cntrytottrace, 0.68)
+            cntry95[ci, :] = pm.stats.hpd(cntrytottrace, 0.95)
             cntryprior[ci] = cntrytotprior
             
     
