@@ -62,7 +62,8 @@ def regrid_uniform_cc(data, input_lat, input_lon, output_lat, output_lon):
         
     return regridded
 
-def regrid_betweenGrids(data, input_grid, output_grid, method="conservative"):
+def regrid_betweenGrids(data, input_grid, output_grid, method="conservative", 
+                        reuse_weights=False):
     """
     Regrid data from predefined input_grid and output_grid
     
@@ -84,6 +85,17 @@ def regrid_betweenGrids(data, input_grid, output_grid, method="conservative"):
             branch of the xesmf package (contact Daniel for more details).
             
             With the 'masking' branch of xESMF you can include a mask in the input_grid to ignore nan values
+
+        reuse_weights - Reuse the same weights when regridding.
+            From the xesmf documentaion:
+                "the output data field is linearly dependent on the input data field. 
+                Any linear transform can be viewed as a matrix-vector multiplication y=Ax,
+                where A is a matrix containing regridding weights, and x, y are input and 
+                output data fields flatten to 1D. Computing the weight matrix A
+                is expensive, but A only depends on input and output grids, 
+                not on input data. 
+                That means we can use the same A on different input fields x, as long 
+                as the grid structure is not changed."
     returns
         regridded numpy array
     """
@@ -92,7 +104,7 @@ def regrid_betweenGrids(data, input_grid, output_grid, method="conservative"):
     #    method = 'conservative_normed'
     #else:
     #method = 'conservative'
-    regridder = xesmf.Regridder(input_grid, output_grid, method)
+    regridder = xesmf.Regridder(input_grid, output_grid, method,reuse_weights=reuse_weights)
     regridded = regridder( data )
         
     return regridded

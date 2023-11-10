@@ -126,16 +126,16 @@ def get_single_site(site, species_in,
     '''
     Get measurements from one site as a list of xarray datasets.
     If there are multiple instruments and inlets at a particular site, 
-    note that the acrg_obs_defaults.csv file may be referenced to determine which instrument and inlet to use for each time period.
+    note that the obs_defaults.csv file may be referenced to determine which instrument and inlet to use for each time period.
     If an inlet or instrument changes at some point during time period, multiple datasets will be returned,
     one for each inlet/instrument.
     
     Args:    
         site_in (str) :
-            Site of interest. All sites should be defined within acrg_site_info.json. 
+            Site of interest. All sites should be defined within site_info.json. 
             E.g. ["MHD"] for Mace Head site.
         species_in (str) :
-            Species identifier. All species names should be defined within acrg_species_info.json. 
+            Species identifier. All species names should be defined within species_info.json. 
             E.g. "ch4" for methane.
         start_date (str, optional) : 
             Output start date in a format that Pandas can interpret
@@ -181,7 +181,7 @@ def get_single_site(site, species_in,
     # Check that site is in acrg_site_info.json
     if site not in list(site_info.keys()):
         print("No site called %s." % site)
-        print("Either try a different name, or add name to acrg_site_info.json.")
+        print("Either try a different name, or add name to site_info.json.")
         return
 
     species = synonyms(species_in, species_info)
@@ -577,19 +577,21 @@ def get_single_site(site, species_in,
     return obs_files
 
 
-def get_gosat(site, species, max_level,
+def get_satellite(site, species, satellite, max_level,
               start_date = None, end_date = None,
               data_directory = None):
     """retrieves obervations for a set of sites and species between start and 
-    end dates for GOSAT 
+    end dates for satellite data (i.e. GOSAT and TROPOMI) 
     
     Args:    
         site (str) :
-            Site of interest. All sites should be defined within acrg_site_info.json. 
-            E.g. ["MHD"] for Mace Head site.
+            Site of interest. All sites should be defined within site_info.json. 
+            E.g. ["GOSAT-BRAZIL"] 
         species (str) :
-            Species identifier. All species names should be defined within acrg_species_info.json. 
+            Species identifier. All species names should be defined within species_info.json. 
             E.g. "ch4" for methane.
+        satellite (str) :
+            Name of satellite. Currently can be "GOSAT" or "TROPOMI".
         max_level (int) : 
             Required for satellite data only. Maximum level to extract up to from within satellite data.
         start_date (str, optional) : 
@@ -605,7 +607,7 @@ def get_gosat(site, species, max_level,
             
     Returns:
         (xarray dataframe):
-            xarray data frame for GOSAT observations.
+            xarray data frame for satellite observations.
             
     """
     
@@ -613,17 +615,18 @@ def get_gosat(site, species, max_level,
         raise ValueError("'max_level' ARGUMENT REQUIRED FOR SATELLITE OBS DATA")
     
     if data_directory is None:
-        gosat_directory = obs_directory / "GOSAT" / site
+        sat_directory = obs_directory / satellite / site
     else:
-        gosat_directory = data_directory / "GOSAT" / site
-    files = [f.name for f in gosat_directory.glob("*.nc")]
+        sat_directory = data_directory / satellite / site
+
+    files = [f.name for f in sat_directory.glob("*.nc")]
 
     files_date = [pd.to_datetime(f.split("_")[2][0:8]) for f in files]
 
     data = []
     for (f, d) in zip(files, files_date):
         if d >= pd.to_datetime(start_date) and d < pd.to_datetime(end_date):
-            with xr.open_dataset(gosat_directory / f) as fxr:
+            with xr.open_dataset(sat_directory / f) as fxr:
                 data.append(fxr.load())
     
     if len(data) == 0:
@@ -668,7 +671,7 @@ def get_gosat(site, species, max_level,
         data.mf.attrs["units"] = '1e-6'
         data.attrs["species"] = "CO2"
 
-    data.attrs["scale"] = "GOSAT"
+    data.attrs["scale"] = satellite
 
     # return single element list
     return [data,]
@@ -690,12 +693,8 @@ def get_obs(sites, species,
     The get_obs function retrieves obervations for a set of sites and species between start and end dates.
     This is essentially a wrapper function for get_single_site, to read in multiple sites.    
     
-    Note: max_level only pertains to satellite data
-    
-    TODO: 
-        At the moment satellite data is identified by finding "GOSAT" in the site name. This will be 
-        changed to include a check by "platform" label from acrg_site_info.json to identify the type 
-        of observation (e.g. satellite, ferry, aircraft)
+    Note for satellites: max_level only pertains to satellite data. Satellite data site name must be in the format 
+    'satellite-points' i.e. 'TROPOMI-ALASKA', 'GOSAT-Brazil' etc. 
     
     If height, network, instrument or average inputs are specified they should have 
     the same number of entries as there are sites. Format:
@@ -704,7 +703,7 @@ def get_obs(sites, species,
     The status_flag_unflagged must also match the number of sites but must always be a list.
  
     For some sites where species are measured on multiple inlets and/or instruments,
-    the acrg_obs_defaults.csv file may be read to determine which inlet, instrument to be returned for each time period.
+    the obs_defaults.csv file may be read to determine which inlet, instrument to be returned for each time period.
     
     
     Examples:
@@ -718,10 +717,10 @@ def get_obs(sites, species,
     
     Args:
         sites (list) :
-            Site list. All sites should be defined within acrg_site_info.json. 
+            Site list. All sites should be defined within site_info.json. 
             E.g. ["MHD"] for Mace Head site.
         species (str) :
-            Species identifier. All species names should be defined within acrg_species_info.json. 
+            Species identifier. All species names should be defined within species_info.json. 
             E.g. "ch4" for methane.
         start_date (str) : 
             Output start date in a format that Pandas can interpret
@@ -799,10 +798,17 @@ def get_obs(sites, species,
     
     for si, site in enumerate(sites):
         print("Getting %s data for %s..." %(species, site))
-        if "GOSAT" in site.upper():
-            obs[site] = get_gosat(site, species,
+
+        # check if site is satellite data (is 'platform' in dict)
+        site_ind = list(site_info.keys()).index(site)
+        site_dict = list(site_info.values())[site_ind]
+        site_dict_values = list(site_dict.values())[0]
+
+        if 'platform'in site_dict_values.keys(): 
+            satellite = site.split('-')[0]   # satellite name taken from site name
+            obs[site] = get_satellite(site, species,
                                    start_date = start_date, end_date = end_date,
-                                   max_level = max_level,
+                                   satellite = satellite, max_level = max_level,
                                    data_directory = data_directory)
         else:
             if file_paths is not None:

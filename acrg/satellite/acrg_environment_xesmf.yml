@@ -1,0 +1,35 @@
+name: acrg_xesmf
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.8
+  - numpy=1.18.1
+  - scipy=1.4.1
+  - pandas=1.0.3
+  - h5py=2.10.0
+  - netcdf4=1.5.3
+  - xarray=0.15.1
+  - matplotlib=3.2.1
+  - cartopy=0.17.0
+  - geopandas=0.7.0
+  - regionmask=0.5.0
+  - iris=2.4.0
+  - pymc3=3.8
+  - future=0.18.2
+  - yaml=0.2.2
+  - numba=0.48.0
+  - python-dateutil=2.8.1
+  - pytest=5.4.1
+  - pyfakefs=4.1.0
+  - esmpy=8.0.1
+  - ipython=7.13.0
+  - spyder=4.1.1
+  - numexpr=2.7
+  - spyder-kernels=1.9.3
+  - pymc3=3.8
+  - pip=20.0.2
+  - pip:
+    - dirsync==2.2.4
+    - iso3166==1.0.1
+    - "--editable=git+https://github.com/JiaweiZhuang/xESMF.git@3588a78c00cc3f9f0a9d313509c49fd7e3510db1#egg=xesmf"

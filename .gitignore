@@ -4,6 +4,7 @@
 tests/.cache/v/cache/lastfailed
 acrg_tdmcmc/param.ini
 acrg_satellite/gosat_process.ini
+acrg_satellite/tropomi_process.ini
 tests/files/LPDM/raw_output/*/*/PROCESS*.txt
 tests/files/LPDM/raw_output/*/*/Processed_Fields_files/*
 tests/files/LPDM/raw_output/*/*/Processed_Fields_files_Org
@@ -15,7 +16,9 @@ acrg_hbmcmc/Temp/*
 *~
 .cache
 .DS_Store
-acrg/config/paths.y*ml
+acrg_config/paths.y*ml
+conservative_*.nc
 .vscode*
 *.code-workspace
 *.jupyter_symlinks
+

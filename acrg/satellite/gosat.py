@@ -99,7 +99,7 @@ from acrg.config.paths import Paths
 data_path = Paths.data
 
 home = os.getenv("HOME")
-input_directory=os.path.join(data_path,"obs_raw/GOSAT/CH4_GOS_OCPR_v7.2/")
+input_directory = os.path.join(data_path,"obs_raw/GOSAT/CH4_GOS_OCPR_v7.2/")
 fp_directory = os.path.join(data_path,'LPDM/fp_NAME/')
 obs_directory = os.path.join(data_path,'obs/') # Where to write output nc files
 name_csv_directory = os.path.join(home,"NAME_files") # Where to write output NAME csv files
@@ -2063,41 +2063,42 @@ def ds_check_internal_unique(ds,axis="time"):
             ds.attrs[mod_attr] += " Also found at indices {}.".format(repeat_all_index)
     
     return ds
-    
-def gosat_output_filename(output_directory,network,instrument,date,species,inlet=None,num=None):
+
+def define_obs_filename(output_directory,instrument,satellite,date,species,network=None,inlet=None,num=None):
     '''
-    The gosat_output_filename function creates an output filename of the correct format for gosat based on the 
-    inputs.
+    The define_obs_filename function creates an output filename of the correct 
+    format for satellite data based on the inputs.
     
-    Filenames are of the form: "instrument"_gosat_"date (reformated)"-"num"_"species"-"inlet".nc
+    Filenames are of the form: "instrument"_"satellite"_"date (reformated)"-"num"_"species"-"inlet".nc
     e.g. /shared_data/air/shared/obs/GOSAT/GOSAT-INDIA/gosat-fts_gosat_20120920-09_ch4-column.nc
     
     Args:
         output_directory (str) : 
-            Top level for output directory e.g. "/shared_data/air/shared/obs/"
-        network (str) : 
-            Which network is being considered e.g. "GOSAT/GOSAT-INDIA"
-            This will be used to create the output path e.g. "/shared_data/air/shared/obs/GOSAT/GOSAT-INDIA/"
+            Output directory or top level for output directory e.g. "/shared_data/air/shared/obs/"
+            if network is defined.
         instrument (str) : 
             Instrument on satellite being used. e.g. "gosat-fts"
+        satellite (str) :
+            Name of the satellite being used e.g. "gosat"
         date (str) : 
             Date the measurements are relevant to e.g. "2010-01-01"
         species (str) : 
             Species being considered e.g. "ch4". Should be defined within "openghg/supplementary data species_info.json" file
+        network (str/None, optional) : 
+            Which network is being considered e.g. "GOSAT/GOSAT-INDIA"
+            If present, this will be extend the output path e.g. "/shared_data/air/shared/obs/GOSAT/GOSAT-INDIA/"
         inlet (str/None, optional) : 
             Additional information to add to ch4 measurement e.g. column
         num (str/None, optional) : 
-            Number to append to the filename if gosat data is being written out as multiple files over one day.
+            Number to append to the filename if data is being written out as multiple files over one day.
             
      Returns:
          str: 
-             GOSAT observation filename with path information    
+             observation filename with path information
     '''
-    #Example /shared_data/air/shared/obs/GOSAT/GOSAT-INDIA/gosat-fts_gosat_20120920-09_ch4-column.nc
-    
-    output_directory = os.path.join(output_directory,network)
-    
-    satellite = 'gosat'
+
+    if network is not None:
+        output_directory = os.path.join(output_directory,network)
     
     date = date.replace('-','') # Turn date from e.g. 2012-09-20 to 20120920
     
@@ -2108,6 +2109,8 @@ def gosat_output_filename(output_directory,network,instrument,date,species,inlet
   
     filename = '_'.join([instrument,satellite,date,species]) # Create filename string joined by "_" e.g. "gosat-fts_gosat_20120920-09_ch4-column"
     filename += '.nc' # Add file extension
+    
+    print(f"Regridded data filename: {filename}")
     
     filename = os.path.join(output_directory,filename)
        
@@ -2121,6 +2124,74 @@ def gosat_output_filename(output_directory,network,instrument,date,species,inlet
 #                species + "-" + \
 #                inlet + ".nc")
 #    
+    return filename    
+    
+    
+
+def gosat_output_filename(output_directory,instrument,date,species,network=None,inlet=None,num=None):
+    '''
+    The gosat_output_filename function creates an output filename of the correct format for gosat based on the 
+    inputs.
+    
+    Filenames are of the form: "instrument"_gosat_"date (reformated)"-"num"_"species"-"inlet".nc
+    e.g. /shared_data/air/shared/obs/GOSAT/GOSAT-INDIA/gosat-fts_gosat_20120920-09_ch4-column.nc
+    
+    Args:
+        output_directory (str) : 
+            Output directory or top level for output directory e.g. "/shared_data/air/shared/obs/"
+            if network is defined.
+        instrument (str) : 
+            Instrument on satellite being used. e.g. "gosat-fts"
+        date (str) : 
+            Date the measurements are relevant to e.g. "2010-01-01"
+        species (str) : 
+            Species being considered e.g. "ch4". Should be defined within "acrg_species_info.json" file
+        network (str/None, optional) : 
+            Which network is being considered e.g. "GOSAT/GOSAT-INDIA"
+            If present, this will be extend the output path e.g. "/shared_data/air/shared/obs/GOSAT/GOSAT-INDIA/"
+        inlet (str/None, optional) : 
+            Additional information to add to ch4 measurement e.g. column
+        num (str/None, optional) : 
+            Number to append to the filename if gosat data is being written out as multiple files over one day.
+            
+     Returns:
+         str: 
+             GOSAT observation filename with path information    
+    '''
+#     #Example /shared_data/air/shared/obs/GOSAT/GOSAT-INDIA/gosat-fts_gosat_20120920-09_ch4-column.nc
+    
+#     output_directory = os.path.join(output_directory,network)
+    
+#     satellite = 'gosat'
+    
+#     date = date.replace('-','') # Turn date from e.g. 2012-09-20 to 20120920
+    
+#     if num:
+#         date = '-'.join([date,num]) # Create composite string of datetime and num (if present) e.g. "20120920-01"
+#     if inlet:
+#         species = '-'.join([species,inlet]) # Create composite string of species and inlet (if present) e.g. "ch4-column"
+  
+#     filename = '_'.join([instrument,satellite,date,species]) # Create filename string joined by "_" e.g. "gosat-fts_gosat_20120920-09_ch4-column"
+#     filename += '.nc' # Add file extension
+    
+#     filename = os.path.join(output_directory,filename)
+       
+# #   From cf_data_process.output_filename   
+# #        return join(output_directory,
+# #                network + "/" + \
+# #                network + "-" + \
+# #                instrument + "_" + \
+# #                site + "_" + \
+# #                year + "0101_" + \
+# #                species + "-" + \
+# #                inlet + ".nc")
+
+    satellite = 'gosat'
+    
+    filename = define_obs_filename(output_directory,
+                                   instrument,satellite,date,
+                                   species,network=network,inlet=inlet,num=num)
+
     return filename
   
 def gosat_split_output(ds,index,mapping=None,data_vars=[],split_dim="time",ident=None,ident_sep=','):
@@ -2176,7 +2247,7 @@ def gosat_split_output(ds,index,mapping=None,data_vars=[],split_dim="time",ident
         if ident not in data_vars:
             print('WARNING: Identifier column {0} is not within input data_vars: {1}. No ident column will be included'.format(ident,data_vars))
     
-    if isinstance(index,int):
+    if isinstance(index,int) or isinstance(index,np.int64):
         indices = [index]
     else:
         indices = index
@@ -2373,7 +2444,7 @@ def gosat_output(ds,site,species="ch4",file_per_day=False,output_directory=obs_d
             ds_output = gosat_split_output(ds,index=wh_date,mapping=data_var_mapping,split_dim=split_dim,ident=ident)
             
             # Create filename and write dataset to file
-            filename = gosat_output_filename(output_directory,network,instrument,date,species,inlet=inlet)
+            filename = gosat_output_filename(full_output_directory,instrument,date,species,inlet=inlet)
             ds_output.attrs["id"] = os.path.split(filename)[1]
             write_netcdf(ds_output,filename,overwrite=overwrite)
         else:
@@ -2382,10 +2453,121 @@ def gosat_output(ds,site,species="ch4",file_per_day=False,output_directory=obs_d
 
                 # Create filename and write dataset to file
                 ID_str = str(ID+1).zfill(3) # Number to add to filename - three digit with leading zeros
-                filename = gosat_output_filename(output_directory,network,instrument,date,species,num=ID_str,inlet=inlet)
+                filename = gosat_output_filename(full_output_directory,instrument,date,species,num=ID_str,inlet=inlet)
                 ds_output.attrs["id"] = os.path.split(filename)[1]
                 write_netcdf(ds_output,filename,overwrite=overwrite)
+
     
+def define_name_filenames(directory,site,date,
+                          number_of_points=None,max_points=None,
+                          network=None,ext=".csv"):
+    '''
+    Define filenames for NAME input files. These can be defined in one of
+    three ways:
+        1. One file per day - one filename will be returned (as a list)
+        2. File per point - each point will be saved to a separate file 
+        and labelled as that point e.g. -001, -002 etc. (set max_points=1)
+        3. Multiple files per day if number_of_points > max_points. Each
+        set of points will be saved as a separate file labelled with 
+        alphabetic characters (see below)
+    
+    If max_points is set (and does not equal 1), each file will be appended 
+    with an alphabetical character(s) depending on the number of files 
+    e.g. "A-Z" for 1-26 files, "AA-ZZ" for 26-676 files,
+    "AAA-ZZZ" for 676 - 17,576 files.
+    
+    Output files will be of the form:
+        1. [directory]/[site]_[date].csv
+        2. [directory]/[site]_[date]-[POINT-NUM].csv
+        3. [directory]/[site]_[date]-[LETTER-SEQ].csv
+    e.g.
+        [directory]/TROPOMI-BRAZIL_20190726.csv
+        [directory]/TROPOMI-BRAZIL_20190726-001.csv
+        [directory]/TROPOMI-BRAZIL_20190726-AA.csv
+
+    All file naming can be identified by the NAME satellite scripts.
+    
+    Args:
+        directory (str/Path) :
+            Output directory to write NAME input files. Normally will includ
+            the network name (e.g. "SENTINEL5P") but doesn't have to.
+        site (str) :
+            Chosen name for your selection of tropomi points.
+            e.g. TROPOMI-BRAZIL
+        date (numpy.datetime64/str) :
+            Date of the output data. This can be a numpy.datetime64 object
+            directly or a string of the form "YYYY-MM-DD".
+        number_of_points (int/None, optional) :
+            Total number of points written to file. Must be specified if
+            max_points is set (i.e. want to split data over multiple files).
+        max_points (int/None, optional) :
+            Maximum number of points for each filename.
+            max_points = None, one filename for all points in one file
+            max_points = 1, names created for one point per file (-001 extension)
+            max_points > 1, names created for multiple point per file (-AA extension)
+        network (str/None, optional) :
+            If network is specified this will be used to extend the output
+            directory name.
+            Default = None
+        extension (str, optional) :
+            File extension. By default this is ".csv"
+
+    Returns:
+        list (str) :
+            List of filenames to be written to.
+    '''
+    from itertools import chain, product
+    from string import ascii_uppercase as AUC
+    
+    if number_of_points is None and max_points is not None:
+        # Cannot create output filenames:
+        # Need to know number of points to be able to use max points input
+        print("Cannot create NAME output files with max_points if number_of_points is not provided.")
+        return None
+    elif max_points is None:
+        # Create one file/day
+        labels = ['']
+    elif number_of_points is not None and max_points == 1:
+        # Create one file/point
+        number_of_files = number_of_points
+        num_digits = len(str(number_of_files))
+        
+        labels = []
+        for i in range(number_of_files):
+            ID = f"-{i+1:0{num_digits}d}"
+            labels.append(ID)    
+    elif number_of_points is not None and max_points > 1:
+        # Create one file/max number of points
+        number_of_files = math.ceil(number_of_points/max_points)
+        if number_of_files > 26*26:
+              repeat = 3
+        elif number_of_files > 26:
+              repeat = 2
+        else:
+              repeat = 1
+        
+        labels = []
+        for i,chars in zip(range(number_of_files),chain(product(AUC, repeat=repeat))):
+              labels.append('-'+''.join(chars))
+    
+    if isinstance(date,np.datetime64):
+        date = np.datetime_as_string(date,unit='D')
+    
+    ## Reformat date if this includes '/' or '-' separators to remove them
+    # e.g. 2019-01-01 --> 20190101
+    seperator = ['-','/']
+    for s in seperator:
+        if s in date:
+            date = date.replace(s,'')
+            break
+    
+    if network is not None:
+        directory = os.path.join(directory, network)
+    
+    base_name = f"{site}_{date}"
+    filenames = [os.path.join(directory, f"{base_name}{label}{ext}") for label in labels]
+    
+    return filenames
 
 def gosat_output_name(ds,site,max_level=17,use_name_pressure=False,pressure_domain=None,
                       pressure_base_dir=name_pressure_directory,
@@ -2492,11 +2674,19 @@ def gosat_output_name(ds,site,max_level=17,use_name_pressure=False,pressure_doma
     if not os.path.isdir(name_directory):
         os.makedirs(name_directory)
     
+    if not file_per_day:
+        max_points = 1
+    
     for date in dates:
         wh_date = np.where(all_dates == date)[0] # Find indices for each different date
+        number_of_points = len(wh_date)
+        number_digits = len(str(number_of_points))
+        filenames = define_name_filenames(name_directory,site,date,
+                                          number_of_points,max_points=max_points)
         for ID,index in enumerate(wh_date):
             data = OrderedDict()
-            ID_str = '{num:03d}'.format(num=ID+1) # Number for each point in a day
+            #ID_str = '{num:03d}'.format(num=ID+1) # Number for each point in a day
+            ID_str = f'{ID+1:0{number_digits}d}' # Number for each point in a day
             
             for col in columns:
                 name = col_mapping[col]
@@ -2522,16 +2712,16 @@ def gosat_output_name(ds,site,max_level=17,use_name_pressure=False,pressure_doma
             df_output.set_index(out_index,inplace=True)
             
             if file_per_day:
-                filename = site+"_"+date.replace('-','')
                 if max_points:
                     if len(wh_date) > max_points:
                         letter_split = chr(ord("A") + ID//max_points)
                         filename = "{}-{}".format(filename,letter_split)
                     ID_1 = ID%max_points
+                    fname_index = int((ID)/max_points)
                 else:
                     ID_1 = ID
-                filename += '.csv'
-                filename = os.path.join(name_directory,filename)
+                    fname_index = 0
+                filename = filenames[fname_index]
                 
                 if not overwrite:
                     if ID_1 == 0 and os.path.isfile(filename):
@@ -2551,8 +2741,10 @@ def gosat_output_name(ds,site,max_level=17,use_name_pressure=False,pressure_doma
                         #print('Appending to filename: {}'.format(filename))
                         df_output.to_csv(filename,float_format='%f',mode='a',header=False)
             else:
-                filename = "{site}_{date}-{ID}.csv".format(site=site,date=date.replace('-',''),ID=ID_str)
-                filename = os.path.join(name_directory,filename)
+                fname_index = ID
+                filename = filenames[fname_index]
+                #filename = "{site}_{date}-{ID}.csv".format(site=site,date=date.replace('-',''),ID=ID_str)
+                #filename = os.path.join(name_directory,filename)
                 if not overwrite:
                     if os.path.isfile(filename):
                         print('\nERROR: {0} already exists. Data has not been written to file because overwrite=False.\n'.format(filename))
@@ -2954,7 +3146,7 @@ def gosat_process(site,species="ch4",input_directory=input_directory,start=None,
     '''
 
     
-    if input_directory.find("$DATA_PATH"):
+    if input_directory.find("$DATA_PATH") != -1:
         input_directory = input_directory.replace("$DATA_PATH",data_path)
     
     input_directory_format = "year_split" # "year_split" (subdirectories are split into years) or None
