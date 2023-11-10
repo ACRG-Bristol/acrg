@@ -3,6 +3,8 @@
 Created on Mon Nov 10 10:45:51 2014
 
 """
+import time
+
 import os
 import sys
 import glob
@@ -61,8 +63,9 @@ def open_ds(path, chunks=None, engine = None, combine=None):
         ds = xr.open_mfdataset(path, chunks=chunks, engine = engine, combine=combine)
     else:
         # use a context manager, to ensure the file gets closed after use
-        with xr.open_dataset(path, engine = engine) as ds:
-            ds.load()
+        # with xr.open_dataset(path, engine = engine) as ds:
+        #     ds.load()
+        ds = xr.open_dataset(path, engine = engine)
     return ds 
 
 def filter_files_by_date(files, start, end):
@@ -217,23 +220,31 @@ def read_netcdfs(files, dim = "time", chunks=None, engine = None, verbose=True):
         xarray.Dataset : 
             All files open as one concatenated xarray.Dataset object    
     """
+
     if verbose:
         print("Reading and concatenating files: ")
         for fname in files:
             print(fname)
     
     datasets = [open_ds(p, chunks=chunks, engine = engine) for p in sorted(files)]
-    
+
     # reindex all of the lat-lon values to a common one to prevent floating point error differences
-    with xr.open_dataset(files[0], engine = engine) as temp:
-        fields_ds = temp.load()
-    fp_lat = fields_ds["lat"].values
-    fp_lon = fields_ds["lon"].values
+    if engine == 'zarr':    # assumes that you are opening satellite fp file and thus 
+                            # only opening one file (combining not needed)
+        fields_ds = xr.open_dataset(files[0], engine = engine)
+        return fields_ds
+    else:
+        with xr.open_dataset(files[0]) as temp:
+            fields_ds = temp.load()
 
-    datasets = [ds.reindex(indexers={"lat":fp_lat, "lon":fp_lon}, method="nearest", tolerance=1e-5) for ds in datasets]
+        fp_lat = fields_ds["lat"].values
+        fp_lon = fields_ds["lon"].values
 
-    combined = xr.concat(datasets, dim)
-    return combined   
+        datasets = [ds.reindex(indexers={"lat":fp_lat, "lon":fp_lon}, method="nearest", tolerance=1e-5) for ds in datasets]
+
+        combined = xr.concat(datasets, dim)
+
+        return combined   
 
 
 def footprints(sitecode_or_filename, met_model = None, fp_directory = None, 
@@ -832,6 +843,7 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
                           resample_to_data = False,
                           species_footprint = None,
                           H_back = None,
+                          engine = None, 
                           chunks = None,
                           verbose = True):
 
@@ -1044,7 +1056,11 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
                                            tolerance = tolerance)
 
                 #transpose to keep time in the last dimension position in case it has been moved in resample
-                expected_dim_order = ['height','lat','lon','lev','time','H_back']
+                if site.split('-')[0] == 'TROPOMI':
+                    expected_dim_order = ['height','layer_bound','lat','lon','lev','time','H_back']
+                else:
+                    expected_dim_order = ['height','lat','lon','lev','time','H_back']
+
                 for d in expected_dim_order[:]:
                     if d not in list(site_ds.dims.keys()):
                         expected_dim_order.remove(d)
