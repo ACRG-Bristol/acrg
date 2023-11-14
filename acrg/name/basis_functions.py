@@ -142,13 +142,15 @@ def basis_bc_blocks(domain, time, basis_case = "NESW", vertical=1):
         basis_bc_blocks(domain='SOUTHASIA', basis_case='NESW', time='2012-01-01', vertical = 4)
     """
         
-    files = glob.glob(join(fields_file_path,domain,"*"))
+    files = glob.glob(join(fields_file_path,domain,"*.nc"))
 
     
     time = pd.to_datetime(time)
     
     with xray.open_dataset(files[0]) as temp:
         fields_ds = temp.load()
+
+    # fields_ds = xray.open_dataset(files[0], engine = 'zarr')
 
     if len(files) == 0:
         print("Can't find Fields files: " + domain)

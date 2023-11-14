@@ -231,7 +231,10 @@ def read_netcdfs(files, dim = "time", chunks=None, engine = None, verbose=True):
     # reindex all of the lat-lon values to a common one to prevent floating point error differences
     if engine == 'zarr':    # assumes that you are opening satellite fp file and thus 
                             # only opening one file (combining not needed)
-        fields_ds = xr.open_dataset(files[0], engine = engine)
+        # fields_ds = xr.open_dataset(files[0], engine = engine)
+        with xr.open_dataset(files[0], engine = engine) as temp:
+            fields_ds = temp.load()
+
         return fields_ds
     else:
         with xr.open_dataset(files[0]) as temp:
